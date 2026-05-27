@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// 桌面外壳基础冒烟测试，测试中会 mock adb 设备轮询。
 void main() {
   testWidgets('shows AdbManage shell in Chinese by default', (
     WidgetTester tester,

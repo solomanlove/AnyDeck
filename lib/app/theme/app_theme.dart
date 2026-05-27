@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// 基于同一个种子色构建 Material 3 的浅色和深色主题。
 ThemeData buildAppTheme(Brightness brightness) {
   const seed = Color(0xff2563eb);
   final colorScheme = ColorScheme.fromSeed(

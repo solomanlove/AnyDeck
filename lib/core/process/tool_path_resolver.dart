@@ -1,5 +1,6 @@
 import 'dart:io';
 
+/// 优先解析常见 Android 工具路径，找不到时回退到 PATH。
 String resolveToolPath(String toolName) {
   final sdkRoot =
       Platform.environment['ANDROID_HOME'] ??

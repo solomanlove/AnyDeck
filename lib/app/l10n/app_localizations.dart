@@ -1,17 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+/// 轻量本地化封装，底层使用当前文件内的字符串表。
 class AppLocalizations {
   const AppLocalizations(this.locale);
 
   final Locale locale;
 
+  /// 当前应用内置中文和英文。
   static const supportedLocales = [Locale('zh'), Locale('en')];
 
+  /// 从 BuildContext 读取最近的本地化对象。
   static AppLocalizations of(BuildContext context) {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
+  /// 按 key 取文案，英文缺失时回退中文，保证 UI 可用。
   String t(String key) {
     final languageCode = locale.languageCode == 'en' ? 'en' : 'zh';
     return _localizedValues[languageCode]?[key] ??
@@ -20,10 +24,12 @@ class AppLocalizations {
   }
 }
 
+/// 给 Widget 提供更短的本地化访问入口。
 extension AppLocalizationsX on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
 }
 
+/// 同步本地化代理，因为所有翻译都已内置在内存字符串表中。
 class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const AppLocalizationsDelegate();
 
@@ -43,6 +49,7 @@ class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   bool shouldReload(AppLocalizationsDelegate old) => false;
 }
 
+/// 全部 UI 文案字符串表。Widget 直接按 key 访问，key 应保持稳定。
 const _localizedValues = {
   'zh': {
     'settings': '设置',
@@ -57,6 +64,7 @@ const _localizedValues = {
     'devices': '设备',
     'files': '文件',
     'logcat': '日志',
+    'overview': '概览',
     'control': '控制',
     'apps': '应用',
     'refreshDevices': '刷新设备',
@@ -100,6 +108,22 @@ const _localizedValues = {
     'reboot': '重启',
     'rebootDevice': '确定重启设备？',
     'filterPackage': '筛选包名',
+    'hideSystemApps': '隐藏系统应用',
+    'appCount': '共 {visible}/{total} 个应用',
+    'appName': '名称',
+    'packageName': '包名',
+    'minSdkVersion': '最小 SDK',
+    'targetMaxSdk': '目标/最大 SDK',
+    'storageUsed': '存储占用',
+    'status': '状态',
+    'appType': '类型',
+    'actions': '操作',
+    'enabled': '已启用',
+    'disabled': '已停用',
+    'systemApp': '系统',
+    'userApp': '用户',
+    'flutterApp': 'Flutter',
+    'nativeApp': 'Native',
     'installApk': '安装 APK',
     'refreshPackages': '刷新应用列表',
     'loadingPackages': '正在加载应用',
@@ -125,6 +149,22 @@ const _localizedValues = {
     'result': '结果',
     'error': '错误',
     'confirm': '确认',
+    'overviewTitle': '手机信息概览',
+    'copiedToClipboard': '已复制 {label}',
+    'deviceName': '名称',
+    'brand': '品牌',
+    'model': '型号',
+    'serial': '序列号',
+    'androidVersion': 'Android 版本',
+    'kernelVersion': '内核版本',
+    'processor': '处理器',
+    'storage': '存储',
+    'memory': '内存',
+    'physicalResolution': '物理分辨率',
+    'resolution': '分辨率',
+    'fontScale': '字体缩放',
+    'wifi': 'Wi-Fi',
+    'macAddress': 'MAC 地址',
   },
   'en': {
     'settings': 'Settings',
@@ -139,6 +179,7 @@ const _localizedValues = {
     'devices': 'Devices',
     'files': 'Files',
     'logcat': 'Logcat',
+    'overview': 'Overview',
     'control': 'Control',
     'apps': 'Apps',
     'refreshDevices': 'Refresh devices',
@@ -182,6 +223,22 @@ const _localizedValues = {
     'reboot': 'Reboot',
     'rebootDevice': 'Reboot device?',
     'filterPackage': 'Filter package',
+    'hideSystemApps': 'Hide system apps',
+    'appCount': '{visible}/{total} apps',
+    'appName': 'Name',
+    'packageName': 'Package',
+    'minSdkVersion': 'Min SDK',
+    'targetMaxSdk': 'Target/max SDK',
+    'storageUsed': 'Storage',
+    'status': 'Status',
+    'appType': 'Type',
+    'actions': 'Actions',
+    'enabled': 'Enabled',
+    'disabled': 'Disabled',
+    'systemApp': 'System',
+    'userApp': 'User',
+    'flutterApp': 'Flutter',
+    'nativeApp': 'Native',
     'installApk': 'Install APK',
     'refreshPackages': 'Refresh packages',
     'loadingPackages': 'Loading packages',
@@ -207,5 +264,21 @@ const _localizedValues = {
     'result': 'Result',
     'error': 'Error',
     'confirm': 'Confirm',
+    'overviewTitle': 'Phone overview',
+    'copiedToClipboard': 'Copied {label}',
+    'deviceName': 'Name',
+    'brand': 'Brand',
+    'model': 'Model',
+    'serial': 'Serial number',
+    'androidVersion': 'Android version',
+    'kernelVersion': 'Kernel version',
+    'processor': 'Processor',
+    'storage': 'Storage',
+    'memory': 'Memory',
+    'physicalResolution': 'Physical resolution',
+    'resolution': 'Resolution',
+    'fontScale': 'Font scale',
+    'wifi': 'Wi-Fi',
+    'macAddress': 'MAC address',
   },
 };

@@ -1,3 +1,4 @@
+/// 应用启动的单个 scrcpy 进程运行时元数据。
 class ScrcpySession {
   const ScrcpySession({
     required this.id,

@@ -7,6 +7,7 @@ import 'router/app_router.dart';
 import 'settings/app_settings_controller.dart';
 import 'theme/app_theme.dart';
 
+/// 应用根组件，统一装配路由、本地化和主题设置。
 class AdbManageApp extends ConsumerWidget {
   const AdbManageApp({super.key});
 
