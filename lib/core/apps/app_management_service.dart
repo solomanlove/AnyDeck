@@ -427,6 +427,19 @@ done | sort -u
     return _adb.shellArgs(deviceId, ['pm', 'clear', packageName]);
   }
 
+  /// 冻结（停用）应用，使用 disable-user 无需 root 权限。
+  Future<AdbResult> freezeApp(String deviceId, String packageName) {
+    return _adb.shellArgs(
+      deviceId,
+      ['pm', 'disable-user', '--user', '0', packageName],
+    );
+  }
+
+  /// 解冻（启用）应用。
+  Future<AdbResult> unfreezeApp(String deviceId, String packageName) {
+    return _adb.shellArgs(deviceId, ['pm', 'enable', packageName]);
+  }
+
   /// 查询应用在设备上的 APK 安装路径。
   Future<AdbResult> packagePath(String deviceId, String packageName) {
     return _adb.shellArgs(deviceId, ['pm', 'path', packageName]);

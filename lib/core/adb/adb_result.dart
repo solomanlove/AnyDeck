@@ -21,6 +21,6 @@ class AdbResult {
     if (stderr.trim().isNotEmpty) {
       return stderr.trim();
     }
-    return isSuccess ? 'Command completed' : 'Command failed';
+    return isSuccess ? '命令执行完成' : '命令执行失败';
   }
 }
