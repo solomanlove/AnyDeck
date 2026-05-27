@@ -14,6 +14,22 @@ class FakeAdbService extends AdbService {
 }
 
 void main() {
+  test('maps adb device not found errors to disconnected message', () {
+    const result = AdbResult(
+      exitCode: 1,
+      stdout: '',
+      stderr:
+          "adb: device 'adb-5002ba00-9wYbHj._adb-tls-connect._tcp' not found",
+    );
+
+    expect(result.isDeviceDisconnected, isTrue);
+    expect(
+      result.disconnectedDeviceId,
+      'adb-5002ba00-9wYbHj._adb-tls-connect._tcp',
+    );
+    expect(result.message, 'adb已断开');
+  });
+
   test('parses mdns device ids containing spaces', () async {
     const output = '''
 List of devices attached

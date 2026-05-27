@@ -1137,6 +1137,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                                     constraints: const BoxConstraints(),
                                     onPressed: () => _runAdbAction(
                                       context,
+                                      ref,
                                       ref
                                           .read(deviceRegistryProvider.notifier)
                                           .disconnectDevice(device.id),
@@ -1153,6 +1154,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                                     constraints: const BoxConstraints(),
                                     onPressed: () => _runAdbAction(
                                       context,
+                                      ref,
                                       ref
                                           .read(deviceRegistryProvider.notifier)
                                           .connectDevice(device.id),
@@ -2312,7 +2314,13 @@ class _DeviceOverviewPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final overview = ref.watch(deviceOverviewProvider(device.id));
+    final overview = device.isOnline
+        ? ref.watch(
+            deviceOverviewProvider(device.id).select(
+              (value) => value.whenData<DeviceOverview?>((data) => data),
+            ),
+          )
+        : ref.watch(cachedDeviceOverviewProvider(device.id));
 
     return Card(
       child: Padding(
@@ -2321,35 +2329,48 @@ class _DeviceOverviewPanel extends ConsumerWidget {
           loading: () => _PanelMessage(
             icon: Icons.phone_android,
             title: context.l10n.t('overviewTitle'),
-            subtitle: context.l10n.t('scanningDevices'),
+            subtitle: device.isOnline
+                ? context.l10n.t('scanningDevices')
+                : context.l10n.t('loadingCachedOverview'),
           ),
           error: (error, stackTrace) => _PanelMessage(
             icon: Icons.error_outline,
             title: context.l10n.t('overviewTitle'),
             subtitle: error.toString(),
           ),
-          data: (data) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    context.l10n.t('overviewTitle'),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: context.l10n.t('refresh'),
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () =>
-                        ref.invalidate(deviceOverviewProvider(device.id)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _OverviewGrid(items: _buildOverviewItems(context, data)),
-            ],
-          ),
+          data: (data) => data == null
+              ? _PanelMessage(
+                  icon: Icons.info_outline,
+                  title: context.l10n.t('overviewTitle'),
+                  subtitle: context.l10n.t('noCachedOverview'),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          context.l10n.t('overviewTitle'),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          tooltip: context.l10n.t('refresh'),
+                          icon: const Icon(Icons.refresh),
+                          onPressed: () => device.isOnline
+                              ? ref.invalidate(
+                                  deviceOverviewProvider(device.id),
+                                )
+                              : ref.invalidate(
+                                  cachedDeviceOverviewProvider(device.id),
+                                ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _OverviewGrid(items: _buildOverviewItems(context, data)),
+                  ],
+                ),
         ),
       ),
     );
@@ -2562,73 +2583,78 @@ class _QuickActionsPanel extends ConsumerWidget {
           icon: Icons.home,
           label: context.l10n.t('home'),
           onPressed: () =>
-              _runAdbAction(context, actions.keyEvent(device.id, 3)),
+              _runAdbAction(context, ref, actions.keyEvent(device.id, 3)),
         ),
         _ActionButton(
           icon: Icons.arrow_back,
           label: context.l10n.t('back'),
           onPressed: () =>
-              _runAdbAction(context, actions.keyEvent(device.id, 4)),
+              _runAdbAction(context, ref, actions.keyEvent(device.id, 4)),
         ),
         _ActionButton(
           icon: Icons.power_settings_new,
           label: context.l10n.t('power'),
           onPressed: () =>
-              _runAdbAction(context, actions.keyEvent(device.id, 26)),
+              _runAdbAction(context, ref, actions.keyEvent(device.id, 26)),
         ),
         _ActionButton(
           icon: Icons.volume_up,
           label: context.l10n.t('volumeUp'),
-          onPressed: () => _runAdbAction(context, actions.volumeUp(device.id)),
+          onPressed: () =>
+              _runAdbAction(context, ref, actions.volumeUp(device.id)),
         ),
         _ActionButton(
           icon: Icons.volume_down,
           label: context.l10n.t('volumeDown'),
           onPressed: () =>
-              _runAdbAction(context, actions.volumeDown(device.id)),
+              _runAdbAction(context, ref, actions.volumeDown(device.id)),
         ),
         _ToggleActionButton(
           iconOn: Icons.wifi,
           iconOff: Icons.wifi_off,
           label: context.l10n.t('wifiToggle'),
           onToggle: (on) =>
-              _runAdbAction(context, actions.setWifi(device.id, on)),
+              _runAdbAction(context, ref, actions.setWifi(device.id, on)),
         ),
         _ActionButton(
           icon: Icons.menu,
           label: context.l10n.t('menuKey'),
-          onPressed: () => _runAdbAction(context, actions.menuKey(device.id)),
+          onPressed: () =>
+              _runAdbAction(context, ref, actions.menuKey(device.id)),
         ),
         _ActionButton(
           icon: Icons.notifications_active,
           label: context.l10n.t('notificationBar'),
-          onPressed: () =>
-              _runAdbAction(context, actions.openNotificationBar(device.id)),
+          onPressed: () => _runAdbAction(
+            context,
+            ref,
+            actions.openNotificationBar(device.id),
+          ),
         ),
         _ToggleActionButton(
           iconOn: Icons.screen_rotation,
           iconOff: Icons.screen_lock_rotation,
           label: context.l10n.t('autoRotateToggle'),
           onToggle: (on) =>
-              _runAdbAction(context, actions.setAutoRotate(device.id, on)),
+              _runAdbAction(context, ref, actions.setAutoRotate(device.id, on)),
         ),
         _ActionButton(
           icon: Icons.badge_outlined,
           label: context.l10n.t('androidId'),
           onPressed: () =>
-              _showAdbResult(context, actions.androidId(device.id)),
+              _showAdbResult(context, ref, actions.androidId(device.id)),
         ),
         _ActionButton(
           icon: Icons.info_outline,
           label: context.l10n.t('version'),
           onPressed: () =>
-              _showAdbResult(context, actions.systemVersion(device.id)),
+              _showAdbResult(context, ref, actions.systemVersion(device.id)),
         ),
         _ActionButton(
           icon: Icons.center_focus_strong,
           label: context.l10n.t('focus'),
           onPressed: () =>
-              _showAdbResult(context, actions.currentFocus(device.id)),
+              _showAdbResult(context, ref, actions.currentFocus(device.id)),
         ),
         _ActionButton(
           icon: Icons.restart_alt,
@@ -2639,7 +2665,7 @@ class _QuickActionsPanel extends ConsumerWidget {
               context.l10n.t('rebootDevice'),
             );
             if (confirmed && context.mounted) {
-              await _runAdbAction(context, actions.reboot(device.id));
+              await _runAdbAction(context, ref, actions.reboot(device.id));
             }
           },
         ),
@@ -2686,6 +2712,7 @@ class _QuickActionsPanel extends ConsumerWidget {
     }
     await _runAdbAction(
       context,
+      ref,
       ref.read(deviceActionServiceProvider).inputText(deviceId, text),
     );
   }
@@ -2708,15 +2735,18 @@ class _LayoutHelperPanel extends ConsumerWidget {
           iconOn: Icons.border_outer,
           iconOff: Icons.border_clear,
           label: context.l10n.t('layoutBoundsToggle'),
-          onToggle: (on) =>
-              _runAdbAction(context, actions.toggleLayoutBounds(device.id, on)),
+          onToggle: (on) => _runAdbAction(
+            context,
+            ref,
+            actions.toggleLayoutBounds(device.id, on),
+          ),
         ),
         _ToggleActionButton(
           iconOn: Icons.dark_mode,
           iconOff: Icons.light_mode,
           label: context.l10n.t('darkLightToggle'),
           onToggle: (on) =>
-              _runAdbAction(context, actions.setDarkMode(device.id, on)),
+              _runAdbAction(context, ref, actions.setDarkMode(device.id, on)),
         ),
       ],
     );
@@ -3530,14 +3560,18 @@ class _PackageActions extends ConsumerWidget {
           IconButton(
             tooltip: context.l10n.t('launch'),
             icon: const Icon(Icons.play_arrow),
-            onPressed: () =>
-                _runAdbAction(context, service.launch(deviceId, packageName)),
+            onPressed: () => _runAdbAction(
+              context,
+              ref,
+              service.launch(deviceId, packageName),
+            ),
           ),
           IconButton(
             tooltip: context.l10n.t('forceStop'),
             icon: const Icon(Icons.stop),
             onPressed: () => _runAdbAction(
               context,
+              ref,
               service.forceStop(deviceId, packageName),
             ),
           ),
@@ -3546,6 +3580,7 @@ class _PackageActions extends ConsumerWidget {
             icon: const Icon(Icons.route),
             onPressed: () => _showAdbResult(
               context,
+              ref,
               service.packagePath(deviceId, packageName),
             ),
           ),
@@ -3562,6 +3597,7 @@ class _PackageActions extends ConsumerWidget {
               if (confirmed && context.mounted) {
                 await _runAdbAction(
                   context,
+                  ref,
                   service.clearData(deviceId, packageName),
                 );
               }
@@ -4104,13 +4140,36 @@ class _PanelMessage extends StatelessWidget {
 /// 等待 adb 命令完成，并通过 SnackBar 展示统一结果。
 Future<void> _runAdbAction(
   BuildContext context,
+  WidgetRef ref,
   Future<AdbResult> future,
 ) async {
   final result = await future;
+  await _syncAdbStateAfterResult(ref, result);
   if (!context.mounted) {
     return;
   }
   _showSnack(context, result.message, isError: !result.isSuccess);
+}
+
+Future<void> _syncAdbStateAfterResult(WidgetRef ref, AdbResult result) async {
+  if (!result.isDeviceDisconnected) {
+    return;
+  }
+
+  await ref.read(deviceRegistryProvider.notifier).refreshDevices();
+
+  final disconnectedDeviceId = result.disconnectedDeviceId;
+  final selected = ref.read(selectedDeviceProvider);
+  if (selected == null || selected.id != disconnectedDeviceId) {
+    return;
+  }
+
+  for (final device in ref.read(deviceRegistryProvider)) {
+    if (device.id == selected.id) {
+      ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
+      return;
+    }
+  }
 }
 
 /// 主动刷新 adb 设备列表，避免仅重建 StreamProvider 时 UI 无明显反馈。
@@ -4185,6 +4244,7 @@ Future<void> _showConnectDeviceDialog(
 
   await _runAdbAction(
     context,
+    ref,
     ref.read(deviceRegistryProvider.notifier).connectDevice(address.trim()),
   );
 }
@@ -4192,9 +4252,11 @@ Future<void> _showConnectDeviceDialog(
 /// 执行 adb 命令，并在弹窗中展示完整输出。
 Future<void> _showAdbResult(
   BuildContext context,
+  WidgetRef ref,
   Future<AdbResult> future,
 ) async {
   final result = await future;
+  await _syncAdbStateAfterResult(ref, result);
   if (!context.mounted) {
     return;
   }

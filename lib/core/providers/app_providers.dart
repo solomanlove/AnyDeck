@@ -81,6 +81,12 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       yield fresh;
     });
 
+/// 离线设备的本地手机信息概览缓存。
+final cachedDeviceOverviewProvider = FutureProvider.autoDispose
+    .family<DeviceOverview?, String>((ref, deviceId) {
+      return ref.watch(deviceInfoServiceProvider).loadFromCache(deviceId);
+    });
+
 /// 按设备和路径缓存的远程目录内容。
 final remoteFilesProvider = FutureProvider.autoDispose
     .family<List<RemoteFile>, RemoteDirectoryRequest>((ref, request) {
