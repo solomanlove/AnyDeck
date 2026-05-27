@@ -98,6 +98,31 @@ class DeviceActionService {
     ]);
   }
 
+  /// 模拟菜单键。
+  Future<AdbResult> menuKey(String deviceId) {
+    return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_MENU']);
+  }
+
+  /// 展开通知栏（下拉状态栏）。
+  Future<AdbResult> openNotificationBar(String deviceId) {
+    return _adb.shellArgs(deviceId, [
+      'cmd',
+      'statusbar',
+      'expand-notifications',
+    ]);
+  }
+
+  /// 切换屏幕自动旋转。
+  Future<AdbResult> setAutoRotate(String deviceId, bool enabled) {
+    return _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'system',
+      'accelerometer_rotation',
+      enabled ? '1' : '0',
+    ]);
+  }
+
   /// 在设备坐标上执行一次点击。
   Future<AdbResult> tap(String deviceId, int x, int y) {
     return _adb.shellArgs(deviceId, ['input', 'tap', '$x', '$y']);

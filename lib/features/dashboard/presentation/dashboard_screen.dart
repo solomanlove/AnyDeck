@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +21,7 @@ import '../../../core/files/remote_file.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/scrcpy/scrcpy_session.dart';
+import 'terminal_tab.dart';
 
 /// 桌面主面板，整合设备发现和工具区域。
 class DashboardScreen extends ConsumerWidget {
@@ -89,13 +93,21 @@ class DashboardScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 children: const [
                   _DeviceListPanel(),
+                  SizedBox(height: 16),
+                  _EmulatorListPanel(),
                 ],
               );
             }
 
             return const Padding(
               padding: EdgeInsets.all(16),
-              child: _DeviceListPanel(),
+              child: Column(
+                children: [
+                  Expanded(child: _DeviceListPanel()),
+                  SizedBox(height: 16),
+                  Expanded(child: _EmulatorListPanel()),
+                ],
+              ),
             );
           } else {
             if (compact) {
@@ -253,6 +265,10 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
     // Sort items
     final sortedItems = List<RegisteredDevice>.from(items);
     sortedItems.sort((a, b) {
+      // 已经连接的设备自动置顶 (Online devices always at the top)
+      if (a.isOnline && !b.isOnline) return -1;
+      if (!a.isOnline && b.isOnline) return 1;
+
       int cmp = 0;
       if (_sortColumn == 'id') {
         cmp = a.id.compareTo(b.id);
@@ -345,7 +361,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  device.id,
+                                  device.connectionMethodDisplay,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
@@ -353,7 +369,19 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              if (device.isNetwork) ...[
+                              if (device.connections.isNotEmpty
+                                  ? device.connections.any((c) => !(c.contains(':') || c.contains('.') || c == '127.0.0.1'))
+                                  : !device.isNetwork) ...[
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.usb,
+                                  color: Color(0xFF26A69A),
+                                  size: 16,
+                                ),
+                              ],
+                              if (device.connections.isNotEmpty
+                                  ? device.connections.any((c) => c.contains(':') || c.contains('.') || c == '127.0.0.1')
+                                  : device.isNetwork) ...[
                                 const SizedBox(width: 4),
                                 const Icon(
                                   Icons.wifi,
@@ -508,6 +536,22 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                       child: IconButton.filledTonal(
                         icon: const Icon(Icons.add_link),
                         onPressed: () => _showConnectDialog(context),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: context.l10n.t('pairDeviceTitle'),
+                      child: IconButton.filledTonal(
+                        icon: const Icon(Icons.sensors),
+                        onPressed: () => _showPairingDialog(context),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: context.l10n.t('restartAdb'),
+                      child: IconButton.filledTonal(
+                        icon: const Icon(Icons.restart_alt),
+                        onPressed: () => _runAdbRestart(context),
                       ),
                     ),
                   ],
@@ -739,6 +783,460 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
       ref.read(deviceRegistryProvider.notifier).connectDevice(address.trim()),
     );
   }
+
+  Future<void> _runAdbRestart(BuildContext context) async {
+    _showSnack(context, context.l10n.t('restartingAdb'));
+    final result = await ref.read(deviceRegistryProvider.notifier).restartAdb();
+    if (!context.mounted) return;
+    _showSnack(
+      context,
+      result.isSuccess
+          ? context.l10n.t('restartAdbSuccess')
+          : '${context.l10n.t('restartAdbFailed')}: ${result.message}',
+      isError: !result.isSuccess,
+    );
+  }
+
+  void _showPairingDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const _DevicePairingDialog(),
+    );
+  }
+}
+
+class _EmulatorListPanel extends ConsumerStatefulWidget {
+  const _EmulatorListPanel();
+
+  @override
+  ConsumerState<_EmulatorListPanel> createState() => _EmulatorListPanelState();
+}
+
+class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
+  String _sortColumn = 'name';
+  bool _sortAscending = true;
+
+  void _toggleSort(String column) {
+    setState(() {
+      if (_sortColumn == column) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortColumn = column;
+        _sortAscending = true;
+      }
+    });
+  }
+
+  Widget _getSortIcon(String column) {
+    if (_sortColumn != column) {
+      return const Padding(
+        padding: EdgeInsets.only(left: 4),
+        child: Icon(Icons.unfold_more, size: 14, color: Colors.grey),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Icon(
+        _sortAscending ? Icons.expand_less : Icons.expand_more,
+        size: 14,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final emulatorsAsync = ref.watch(emulatorListProvider);
+    final runningEmulatorsAsync = ref.watch(runningEmulatorsProvider);
+    final startingEmulators = ref.watch(startingEmulatorsProvider);
+
+    final emulators = emulatorsAsync.value ?? [];
+    final runningMap = runningEmulatorsAsync.value ?? {};
+
+    // 组合数据
+    final items = emulators.map((name) {
+      final isStarting = startingEmulators.contains(name);
+      final runningDeviceId = runningMap[name];
+      final isRunning = runningDeviceId != null;
+      
+      String status = 'stopped';
+      if (isRunning) status = 'running';
+      if (isStarting) status = 'starting';
+
+      return _EmulatorItem(
+        name: name,
+        status: status,
+        deviceId: runningDeviceId,
+      );
+    }).toList();
+
+    // 排序
+    items.sort((a, b) {
+      // 运行中和启动中的置顶
+      final aActive = a.status != 'stopped';
+      final bActive = b.status != 'stopped';
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+
+      int cmp = 0;
+      if (_sortColumn == 'name') {
+        cmp = a.name.compareTo(b.name);
+      } else if (_sortColumn == 'status') {
+        cmp = a.status.compareTo(b.status);
+      }
+      return _sortAscending ? cmp : -cmp;
+    });
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isCompact = constraints.maxWidth < 600;
+        final bool hasBoundedHeight = constraints.hasBoundedHeight;
+
+        Widget contentWidget;
+        if (emulatorsAsync.hasError) {
+          contentWidget = Center(
+            child: _PanelMessage(
+              icon: Icons.error_outline,
+              title: context.l10n.t('noEmulators'),
+              subtitle: emulatorsAsync.error.toString(),
+            ),
+          );
+        } else if (emulatorsAsync.isLoading && emulators.isEmpty) {
+          contentWidget = Center(
+            child: _PanelMessage(
+              icon: Icons.sync,
+              title: context.l10n.t('scanningEmulators'),
+            ),
+          );
+        } else if (items.isEmpty) {
+          contentWidget = Center(
+            child: _PanelMessage(
+              icon: Icons.devices_other_outlined,
+              title: context.l10n.t('noEmulators'),
+              subtitle: context.l10n.t('createEmulatorHint'),
+            ),
+          );
+        } else {
+          contentWidget = ListView.separated(
+            shrinkWrap: !hasBoundedHeight,
+            physics: hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
+            itemCount: items.length,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              color: Theme.of(context).dividerColor.withOpacity(0.5),
+            ),
+            itemBuilder: (context, index) {
+              final item = items[index];
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    // Emulator Name
+                    Expanded(
+                      flex: 5,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.tablet_android,
+                            color: Color(0xFF26A69A),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item.name.replaceAll('_', ' '),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Status Badge
+                    Expanded(
+                      flex: 3,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getStatusBgColor(item.status),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _getStatusText(context, item.status),
+                            style: TextStyle(
+                              color: _getStatusTextColor(item.status),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Actions
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        children: [
+                          if (item.status == 'running')
+                            IconButton(
+                              icon: const Icon(Icons.stop_circle_outlined, color: Colors.red),
+                              tooltip: context.l10n.t('stop'),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => _stopEmulator(context, item),
+                            )
+                          else if (item.status == 'stopped')
+                            IconButton(
+                              icon: const Icon(Icons.play_circle_outline, color: Colors.green),
+                              tooltip: context.l10n.t('start'),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => _startEmulator(context, item.name),
+                            )
+                          else
+                            const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (!isCompact) ...[
+                      const SizedBox(width: 10),
+                      const SizedBox(
+                        width: 40,
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          );
+        }
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      context.l10n.t('emulators'),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const Spacer(),
+                    Tooltip(
+                      message: context.l10n.t('refresh'),
+                      child: IconButton.filledTonal(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () {
+                          ref.invalidate(emulatorListProvider);
+                          ref.invalidate(runningEmulatorsProvider);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Table Header Row
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Theme.of(context).dividerColor,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Name header
+                      Expanded(
+                        flex: 5,
+                        child: InkWell(
+                          onTap: () => _toggleSort('name'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  context.l10n.t('emulatorNameCol'),
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                _getSortIcon('name'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Status header
+                      Expanded(
+                        flex: 3,
+                        child: InkWell(
+                          onTap: () => _toggleSort('status'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  context.l10n.t('emulatorStatusCol'),
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                _getSortIcon('status'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Actions header
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          context.l10n.t('emulatorActionsCol'),
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                      if (!isCompact) ...[
+                        const SizedBox(width: 10),
+                        const SizedBox(
+                          width: 40,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Table Body Row
+                if (hasBoundedHeight)
+                  Expanded(child: contentWidget)
+                else
+                  contentWidget,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getStatusBgColor(String status) {
+    return switch (status) {
+      'running' => const Color(0xFFE8F5E9),
+      'starting' => const Color(0xFFFFF3E0),
+      'stopped' => const Color(0xFFF5F5F5),
+      _ => const Color(0xFFF5F5F5),
+    };
+  }
+
+  Color _getStatusTextColor(String status) {
+    return switch (status) {
+      'running' => const Color(0xFF2E7D32),
+      'starting' => const Color(0xFFE65100),
+      'stopped' => const Color(0xFF9E9E9E),
+      _ => const Color(0xFF9E9E9E),
+    };
+  }
+
+  String _getStatusText(BuildContext context, String status) {
+    return switch (status) {
+      'running' => context.l10n.t('emulatorRunning'),
+      'starting' => context.l10n.t('emulatorStarting'),
+      'stopped' => context.l10n.t('emulatorStopped'),
+      _ => status,
+    };
+  }
+
+  Future<void> _startEmulator(BuildContext context, String avdName) async {
+    ref.read(startingEmulatorsProvider.notifier).start(avdName);
+    
+    final success = await ref.read(emulatorServiceProvider).startEmulator(avdName);
+    if (!context.mounted) return;
+
+    if (success) {
+      _showSnack(context, context.l10n.t('startSuccess'));
+    } else {
+      ref.read(startingEmulatorsProvider.notifier).stopStarting(avdName);
+      _showSnack(context, '启动模拟器失败', isError: true);
+    }
+  }
+
+  Future<void> _stopEmulator(BuildContext context, _EmulatorItem item) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(context.l10n.t('confirm')),
+          content: Text(
+            context.l10n.t('stopEmulatorConfirm').replaceAll('{emulator}', item.name.replaceAll('_', ' ')),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(context.l10n.t('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(context.l10n.t('confirm')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    if (item.deviceId == null) {
+      _showSnack(context, context.l10n.t('stopFailed'), isError: true);
+      return;
+    }
+
+    final adb = ref.read(adbServiceProvider);
+    final result = await adb.run(['-s', item.deviceId!, 'emu', 'kill']);
+    if (!context.mounted) return;
+
+    if (result.isSuccess) {
+      _showSnack(context, context.l10n.t('stopSuccess'));
+      ref.invalidate(devicesProvider);
+    } else {
+      _showSnack(context, '${context.l10n.t('stopFailed')}: ${result.message}', isError: true);
+    }
+  }
+}
+
+class _EmulatorItem {
+  const _EmulatorItem({
+    required this.name,
+    required this.status,
+    this.deviceId,
+  });
+
+  final String name;
+  final String status;
+  final String? deviceId;
 }
 
 /// 承载选中设备全部工具的工作区。
@@ -768,13 +1266,13 @@ class _WorkspacePanel extends ConsumerWidget {
           onDragDone: (details) =>
               _handleDrop(context, ref, device, details.files),
           child: DefaultTabController(
-            key: ValueKey('${device.id}-$tabIndex'),
-            length: 5,
+            key: ValueKey(device.id),
+            length: 6,
             initialIndex: tabIndex,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SelectedDeviceHeader(device: device),
+                _SelectedDeviceHeader(device: device, sessions: sessions),
                 const SizedBox(height: 16),
                 if (hasBoundedHeight)
                   Expanded(
@@ -782,7 +1280,7 @@ class _WorkspacePanel extends ConsumerWidget {
                   )
                 else
                   SizedBox(
-                    height: 620,
+                    height: 800,
                     child: _ToolTabCard(device: device, sessions: sessions),
                   ),
               ],
@@ -864,13 +1362,22 @@ class _ToolTabCard extends ConsumerWidget {
                 icon: const Icon(Icons.article),
                 text: context.l10n.t('logcat'),
               ),
+              Tab(
+                icon: const Icon(Icons.terminal),
+                text: context.l10n.t('terminal'),
+              ),
             ],
           ),
           Expanded(
             child: TabBarView(
               children: [
                 SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 32,
+                  ),
                   child: _OverviewTab(device: device),
                 ),
                 SingleChildScrollView(
@@ -880,6 +1387,10 @@ class _ToolTabCard extends ConsumerWidget {
                 _AppsTab(device: device),
                 _FilesTab(device: device),
                 _LogcatTab(device: device),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TerminalTab(device: device),
+                ),
               ],
             ),
           ),
@@ -901,14 +1412,22 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-/// 展示当前设备身份和 adb 状态的头部区域。
+/// 展示当前设备身份和 adb 状态的头部区域，同时包含 scrcpy 投屏控制。
 class _SelectedDeviceHeader extends ConsumerWidget {
-  const _SelectedDeviceHeader({required this.device});
+  const _SelectedDeviceHeader({
+    required this.device,
+    this.sessions = const {},
+  });
 
   final AdbDevice device;
+  final Map<String, ScrcpySession> sessions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final activeSessions = sessions.values
+        .where((session) => session.deviceId == device.id)
+        .toList(growable: false);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -933,6 +1452,31 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 ],
               ),
             ),
+            // scrcpy 投屏控制区
+            FilledButton.icon(
+              icon: const Icon(Icons.cast, size: 18),
+              label: Text(context.l10n.t('start')),
+              onPressed: device.isOnline
+                  ? () => _startScrcpy(context, ref, device.id)
+                  : null,
+            ),
+            const SizedBox(width: 8),
+            if (activeSessions.isNotEmpty) ...[
+              OutlinedButton.icon(
+                icon: const Icon(Icons.stop, size: 18),
+                label: Text(context.l10n.t('stopAll')),
+                onPressed: () => _stopSessions(context, ref, activeSessions),
+              ),
+              const SizedBox(width: 8),
+              for (final session in activeSessions) ...[
+                InputChip(
+                  avatar: const Icon(Icons.cast_connected, size: 18),
+                  label: Text('PID ${session.pid}'),
+                  onDeleted: () => _stopSessions(context, ref, [session]),
+                ),
+                const SizedBox(width: 4),
+              ],
+            ],
             Chip(
               label: Text(device.status),
               avatar: Icon(
@@ -951,9 +1495,51 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       ),
     );
   }
+
+  /// 启动 scrcpy，并将返回的进程元数据记录到 Riverpod 状态。
+  Future<void> _startScrcpy(
+    BuildContext context,
+    WidgetRef ref,
+    String deviceId,
+  ) async {
+    try {
+      final session = await ref
+          .read(scrcpyServiceProvider)
+          .start(deviceId: deviceId, options: const ScrcpyLaunchOptions());
+      ref.read(scrcpySessionsProvider.notifier).add(session);
+      if (context.mounted) {
+        _showSnack(
+          context,
+          '${context.l10n.t('scrcpyStarted')}: PID ${session.pid}',
+        );
+      }
+    } on Object catch (error) {
+      if (context.mounted) {
+        _showSnack(context, error.toString(), isError: true);
+      }
+    }
+  }
+
+  /// 停止选中的会话，并从 UI 中移除对应 Chip。
+  Future<void> _stopSessions(
+    BuildContext context,
+    WidgetRef ref,
+    List<ScrcpySession> sessions,
+  ) async {
+    final service = ref.read(scrcpyServiceProvider);
+    for (final session in sessions) {
+      await service.stop(session.id);
+    }
+    ref
+        .read(scrcpySessionsProvider.notifier)
+        .removeAll(sessions.map((session) => session.id));
+    if (context.mounted) {
+      _showSnack(context, context.l10n.t('scrcpyStopped'));
+    }
+  }
 }
 
-/// 控制 tab，组合 scrcpy、快捷操作和调试辅助。
+/// 控制 tab，组合快捷操作和调试辅助（scrcpy 已移至设备头部）。
 class _ControlTab extends StatelessWidget {
   const _ControlTab({required this.device, required this.sessions});
 
@@ -965,8 +1551,6 @@ class _ControlTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ScrcpyPanel(device: device, sessions: sessions),
-        const SizedBox(height: 16),
         _QuickActionsPanel(device: device),
         const SizedBox(height: 16),
         _LayoutHelperPanel(device: device),
@@ -1088,6 +1672,16 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         value: overview.resolution,
       ),
       _OverviewItemData(
+        icon: Icons.blur_on,
+        label: context.l10n.t('logicalDensity'),
+        value: overview.logicalDensity,
+      ),
+      _OverviewItemData(
+        icon: Icons.speed,
+        label: context.l10n.t('refreshRate'),
+        value: overview.refreshRate,
+      ),
+      _OverviewItemData(
         icon: Icons.text_fields,
         label: context.l10n.t('fontScale'),
         value: overview.fontScale,
@@ -1201,88 +1795,6 @@ class _OverviewItemData extends StatelessWidget {
   }
 }
 
-/// scrcpy 启动器和活跃会话控制区。
-class _ScrcpyPanel extends ConsumerWidget {
-  const _ScrcpyPanel({required this.device, required this.sessions});
-
-  final AdbDevice device;
-  final Map<String, ScrcpySession> sessions;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final activeSessions = sessions.values
-        .where((session) => session.deviceId == device.id)
-        .toList(growable: false);
-
-    return _ActionCard(
-      title: context.l10n.t('scrcpyLauncher'),
-      children: [
-        FilledButton.icon(
-          icon: const Icon(Icons.play_arrow),
-          label: Text(context.l10n.t('start')),
-          onPressed: device.isOnline
-              ? () => _startScrcpy(context, ref, device.id)
-              : null,
-        ),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.stop),
-          label: Text(context.l10n.t('stopAll')),
-          onPressed: activeSessions.isEmpty
-              ? null
-              : () => _stopSessions(context, ref, activeSessions),
-        ),
-        for (final session in activeSessions)
-          InputChip(
-            avatar: const Icon(Icons.cast_connected, size: 18),
-            label: Text('PID ${session.pid}'),
-            onDeleted: () => _stopSessions(context, ref, [session]),
-          ),
-      ],
-    );
-  }
-
-  /// 启动 scrcpy，并将返回的进程元数据记录到 Riverpod 状态。
-  Future<void> _startScrcpy(
-    BuildContext context,
-    WidgetRef ref,
-    String deviceId,
-  ) async {
-    try {
-      final session = await ref
-          .read(scrcpyServiceProvider)
-          .start(deviceId: deviceId, options: const ScrcpyLaunchOptions());
-      ref.read(scrcpySessionsProvider.notifier).add(session);
-      if (context.mounted) {
-        _showSnack(
-          context,
-          '${context.l10n.t('scrcpyStarted')}: PID ${session.pid}',
-        );
-      }
-    } on Object catch (error) {
-      if (context.mounted) {
-        _showSnack(context, error.toString(), isError: true);
-      }
-    }
-  }
-
-  /// 停止选中的会话，并从 UI 中移除对应 Chip。
-  Future<void> _stopSessions(
-    BuildContext context,
-    WidgetRef ref,
-    List<ScrcpySession> sessions,
-  ) async {
-    final service = ref.read(scrcpyServiceProvider);
-    for (final session in sessions) {
-      await service.stop(session.id);
-    }
-    ref
-        .read(scrcpySessionsProvider.notifier)
-        .removeAll(sessions.map((session) => session.id));
-    if (context.mounted) {
-      _showSnack(context, context.l10n.t('scrcpyStopped'));
-    }
-  }
-}
 
 /// 常用一键设备操作，例如 key event、Wi-Fi 和文本输入。
 class _QuickActionsPanel extends ConsumerWidget {
@@ -1331,17 +1843,31 @@ class _QuickActionsPanel extends ConsumerWidget {
           onPressed: () =>
               _runAdbAction(context, actions.volumeDown(device.id)),
         ),
-        _ActionButton(
-          icon: Icons.wifi,
-          label: context.l10n.t('wifiOn'),
-          onPressed: () =>
-              _runAdbAction(context, actions.setWifi(device.id, true)),
+        _ToggleActionButton(
+          iconOn: Icons.wifi,
+          iconOff: Icons.wifi_off,
+          label: context.l10n.t('wifiToggle'),
+          onToggle: (on) =>
+              _runAdbAction(context, actions.setWifi(device.id, on)),
         ),
         _ActionButton(
-          icon: Icons.wifi_off,
-          label: context.l10n.t('wifiOff'),
+          icon: Icons.menu,
+          label: context.l10n.t('menuKey'),
           onPressed: () =>
-              _runAdbAction(context, actions.setWifi(device.id, false)),
+              _runAdbAction(context, actions.menuKey(device.id)),
+        ),
+        _ActionButton(
+          icon: Icons.notifications_active,
+          label: context.l10n.t('notificationBar'),
+          onPressed: () =>
+              _runAdbAction(context, actions.openNotificationBar(device.id)),
+        ),
+        _ToggleActionButton(
+          iconOn: Icons.screen_rotation,
+          iconOff: Icons.screen_lock_rotation,
+          label: context.l10n.t('autoRotateToggle'),
+          onToggle: (on) =>
+              _runAdbAction(context, actions.setAutoRotate(device.id, on)),
         ),
         _ActionButton(
           icon: Icons.badge_outlined,
@@ -1435,33 +1961,21 @@ class _LayoutHelperPanel extends ConsumerWidget {
     return _ActionCard(
       title: context.l10n.t('layoutHelper'),
       children: [
-        _ActionButton(
-          icon: Icons.border_outer,
-          label: context.l10n.t('boundsOn'),
-          onPressed: () => _runAdbAction(
+        _ToggleActionButton(
+          iconOn: Icons.border_outer,
+          iconOff: Icons.border_clear,
+          label: context.l10n.t('layoutBoundsToggle'),
+          onToggle: (on) => _runAdbAction(
             context,
-            actions.toggleLayoutBounds(device.id, true),
+            actions.toggleLayoutBounds(device.id, on),
           ),
         ),
-        _ActionButton(
-          icon: Icons.border_clear,
-          label: context.l10n.t('boundsOff'),
-          onPressed: () => _runAdbAction(
-            context,
-            actions.toggleLayoutBounds(device.id, false),
-          ),
-        ),
-        _ActionButton(
-          icon: Icons.dark_mode,
-          label: context.l10n.t('darkMode'),
-          onPressed: () =>
-              _runAdbAction(context, actions.setDarkMode(device.id, true)),
-        ),
-        _ActionButton(
-          icon: Icons.light_mode,
-          label: context.l10n.t('lightMode'),
-          onPressed: () =>
-              _runAdbAction(context, actions.setDarkMode(device.id, false)),
+        _ToggleActionButton(
+          iconOn: Icons.dark_mode,
+          iconOff: Icons.light_mode,
+          label: context.l10n.t('darkLightToggle'),
+          onToggle: (on) =>
+              _runAdbAction(context, actions.setDarkMode(device.id, on)),
         ),
       ],
     );
@@ -2534,6 +3048,54 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
+/// 带开关状态的操作按钮，点击在开/关之间切换，图标和颜色随状态变化。
+class _ToggleActionButton extends StatefulWidget {
+  const _ToggleActionButton({
+    required this.iconOn,
+    required this.iconOff,
+    required this.label,
+    required this.onToggle,
+  });
+
+  final IconData iconOn;
+  final IconData iconOff;
+  final String label;
+  final ValueChanged<bool> onToggle;
+
+  @override
+  State<_ToggleActionButton> createState() => _ToggleActionButtonState();
+}
+
+class _ToggleActionButtonState extends State<_ToggleActionButton> {
+  bool _isOn = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return _isOn
+        ? FilledButton.icon(
+            icon: Icon(widget.iconOn, size: 18),
+            label: Text(widget.label),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+            ),
+            onPressed: () {
+              setState(() => _isOn = false);
+              widget.onToggle(false);
+            },
+          )
+        : OutlinedButton.icon(
+            icon: Icon(widget.iconOff, size: 18),
+            label: Text(widget.label),
+            onPressed: () {
+              setState(() => _isOn = true);
+              widget.onToggle(true);
+            },
+          );
+  }
+}
+
 /// dashboard 各面板复用的居中空态、加载态和错误态。
 class _PanelMessage extends StatelessWidget {
   const _PanelMessage({required this.icon, required this.title, this.subtitle});
@@ -2951,3 +3513,286 @@ class _DetailItem extends StatelessWidget {
     );
   }
 }
+
+class _DevicePairingDialog extends ConsumerStatefulWidget {
+  const _DevicePairingDialog();
+
+  @override
+  ConsumerState<_DevicePairingDialog> createState() => _DevicePairingDialogState();
+}
+
+class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late String _ssid;
+  late String _password;
+  Timer? _pairingTimer;
+  bool _isPairing = false;
+  String _statusMessage = '';
+  bool _isError = false;
+
+  final _addressController = TextEditingController(text: '192.168.1.10:37123');
+  final _codeController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _generateQrCredentials();
+    _startMdnsDiscovery();
+  }
+
+  @override
+  void dispose() {
+    _pairingTimer?.cancel();
+    _tabController.dispose();
+    _addressController.dispose();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  void _generateQrCredentials() {
+    final rand = Random();
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final randomString = List.generate(6, (index) => chars[rand.nextInt(chars.length)]).join();
+    _ssid = 'adb-manage-$randomString';
+
+    const digits = '0123456789';
+    _password = List.generate(6, (index) => digits[rand.nextInt(digits.length)]).join();
+  }
+
+  void _startMdnsDiscovery() {
+    _pairingTimer?.cancel();
+    _pairingTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) async {
+      if (_isPairing) return;
+      final adb = ref.read(adbServiceProvider);
+      final result = await adb.run(['mdns', 'services']);
+      if (!mounted) return;
+
+      if (result.isSuccess) {
+        final lines = result.stdout.split('\n');
+        for (final line in lines) {
+          if (line.contains('_adb-tls-pairing._tcp') && line.contains(_ssid)) {
+            final parts = line.split(RegExp(r'\s+'));
+            if (parts.length >= 3) {
+              final pairingAddress = parts[2].trim();
+              timer.cancel();
+              _performPairAndConnect(pairingAddress, _password);
+              break;
+            }
+          }
+        }
+      }
+    });
+  }
+
+  Future<void> _performPairAndConnect(String address, String code) async {
+    setState(() {
+      _isPairing = true;
+      _statusMessage = context.l10n.t('pairing');
+      _isError = false;
+    });
+
+    final result = await ref.read(deviceRegistryProvider.notifier).pairAndConnect(address, code);
+    if (!mounted) return;
+
+    setState(() {
+      _isPairing = false;
+      if (result.isSuccess) {
+        _statusMessage = context.l10n.t('pairSuccess');
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        });
+      } else {
+        _statusMessage = '${context.l10n.t('pairFailed')}: ${result.message}';
+        _isError = true;
+        // Resume QR code discovery if we were on the QR tab
+        if (_tabController.index == 0) {
+          _startMdnsDiscovery();
+        }
+      }
+    });
+  }
+
+  Future<void> _manualPair() async {
+    final address = _addressController.text.trim();
+    final code = _codeController.text.trim();
+    if (address.isEmpty || code.isEmpty) {
+      return;
+    }
+    _pairingTimer?.cancel();
+    await _performPairAndConnect(address, code);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: Text(context.l10n.t('pairDeviceTitle')),
+      content: SizedBox(
+        width: 420,
+        height: 480,
+        child: Column(
+          children: [
+            TabBar(
+              controller: _tabController,
+              tabs: [
+                Tab(text: context.l10n.t('pairQr')),
+                Tab(text: context.l10n.t('pairCode')),
+              ],
+              onTap: (index) {
+                if (index == 0) {
+                  _startMdnsDiscovery();
+                } else {
+                  _pairingTimer?.cancel();
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  // Tab 1: QR Code
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: QrImageView(
+                          data: 'WIFI:T:ADB;S:$_ssid;P:$_password;;',
+                          version: QrVersions.auto,
+                          size: 180,
+                          eyeStyle: const QrEyeStyle(
+                            eyeShape: QrEyeShape.square,
+                            color: Colors.black,
+                          ),
+                          dataModuleStyle: const QrDataModuleStyle(
+                            dataModuleShape: QrDataModuleShape.square,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        context.l10n.t('qrInstruction'),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${context.l10n.t('pairingCode')}: $_password',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Tab 2: Pairing Code
+                  SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 8),
+                        Text(
+                          context.l10n.t('codeInstruction'),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _addressController,
+                          decoration: InputDecoration(
+                            labelText: '${context.l10n.t('ipAddress')} & ${context.l10n.t('pairingPort')}',
+                            hintText: '192.168.1.10:37123',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.link),
+                          ),
+                          keyboardType: TextInputType.text,
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _codeController,
+                          decoration: InputDecoration(
+                            labelText: context.l10n.t('pairingCode'),
+                            hintText: '123456',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.pin),
+                          ),
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _isPairing ? null : _manualPair,
+                          icon: const Icon(Icons.vpn_key),
+                          label: Text(context.l10n.t('connect')),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Common Status indicator
+            if (_isPairing || _statusMessage.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_isPairing) ...[
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Flexible(
+                    child: Text(
+                      _statusMessage,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: _isError
+                            ? theme.colorScheme.error
+                            : _statusMessage == context.l10n.t('pairSuccess')
+                                ? Colors.green
+                                : theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.t('close')),
+        ),
+      ],
+    );
+  }
+}
+

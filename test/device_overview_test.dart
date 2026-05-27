@@ -60,6 +60,8 @@ void main() {
         memory: '11.24G',
         physicalResolution: '1080x2400 (440dpi)',
         resolution: '1080x2400 (440dpi)',
+        logicalDensity: '2.75x (xxhdpi)',
+        refreshRate: '120 Hz',
         fontScale: '1x',
         wifi: 'jie',
         ipAddress: '192.168.31.54',
@@ -80,6 +82,8 @@ void main() {
       expect(decoded.memory, overview.memory);
       expect(decoded.physicalResolution, overview.physicalResolution);
       expect(decoded.resolution, overview.resolution);
+      expect(decoded.logicalDensity, overview.logicalDensity);
+      expect(decoded.refreshRate, overview.refreshRate);
       expect(decoded.fontScale, overview.fontScale);
       expect(decoded.wifi, overview.wifi);
       expect(decoded.ipAddress, overview.ipAddress);

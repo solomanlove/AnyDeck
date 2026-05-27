@@ -45,6 +45,15 @@ class AdbService {
     }
   }
 
+  /// 终止并重新启动 ADB 服务端。
+  Future<AdbResult> restartServer() async {
+    final killResult = await run(['kill-server']);
+    if (!killResult.isSuccess) {
+      return killResult;
+    }
+    return run(['start-server']);
+  }
+
   /// 在指定设备上执行单条 shell 命令字符串。
   Future<AdbResult> shell(String deviceId, String command) {
     return run(['-s', deviceId, 'shell', command]);

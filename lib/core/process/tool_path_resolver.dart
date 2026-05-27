@@ -5,12 +5,20 @@ String resolveToolPath(String toolName) {
   final sdkRoot =
       Platform.environment['ANDROID_HOME'] ??
       Platform.environment['ANDROID_SDK_ROOT'];
-  final home = Platform.environment['HOME'];
+  final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
 
   final candidates = <String>[
     if (toolName == 'adb' && sdkRoot != null) '$sdkRoot/platform-tools/adb',
     if (toolName == 'adb' && home != null)
       '$home/Library/Android/sdk/platform-tools/adb',
+    if (toolName == 'emulator' && sdkRoot != null) ...[
+      '$sdkRoot/emulator/emulator',
+      '$sdkRoot/emulator/emulator.exe',
+    ],
+    if (toolName == 'emulator' && home != null) ...[
+      '$home/Library/Android/sdk/emulator/emulator',
+      '$home/AppData/Local/Android/Sdk/emulator/emulator.exe',
+    ],
     if (toolName == 'scrcpy') '/opt/homebrew/bin/scrcpy',
     if (toolName == 'scrcpy') '/usr/local/bin/scrcpy',
     '/opt/homebrew/bin/$toolName',

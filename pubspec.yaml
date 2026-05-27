@@ -42,6 +42,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   lpinyin: ^2.0.3
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

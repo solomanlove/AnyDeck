@@ -16,13 +16,15 @@ void main() {
       ProviderScope(
         overrides: [
           devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+          emulatorListProvider.overrideWith((ref) => Future.value(<String>[])),
+          runningEmulatorsProvider.overrideWith((ref) => Future.value(<String, String>{})),
         ],
         child: const AdbManageApp(),
       ),
     );
 
     expect(find.text('安卓手机管理'), findsOneWidget);
-    expect(find.text('设备'), findsWidgets);
+    expect(find.text('设备管理'), findsWidgets);
     expect(find.text('选择设备'), findsNothing);
   });
 }
