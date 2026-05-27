@@ -17,7 +17,7 @@ class AdbManageApp extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
 
     return MaterialApp.router(
-      title: 'AdbManage',
+      onGenerateTitle: (context) => context.l10n.t('appTitle'),
       debugShowCheckedModeBanner: false,
       locale: settings.language.locale,
       supportedLocales: AppLocalizations.supportedLocales,

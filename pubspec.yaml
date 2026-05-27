@@ -41,6 +41,7 @@ dependencies:
   file_selector: ^1.1.0
   flutter_localizations:
     sdk: flutter
+  lpinyin: ^2.0.3
 
 dev_dependencies:
   flutter_test:

@@ -15,6 +15,9 @@ class AdbPackage {
     this.enabled = true,
     this.system = false,
     this.flutter = false,
+    this.signatureMd5,
+    this.firstInstallTime,
+    this.lastUpdateTime,
   });
 
   /// 包名，例如 `com.android.settings`。
@@ -37,6 +40,9 @@ class AdbPackage {
   final bool enabled;
   final bool system;
   final bool flutter;
+  final String? signatureMd5;
+  final int? firstInstallTime;
+  final int? lastUpdateTime;
 
   factory AdbPackage.fromJson(Map<String, Object?> json) {
     return AdbPackage(
@@ -54,6 +60,9 @@ class AdbPackage {
       enabled: json['enabled'] as bool? ?? true,
       system: json['system'] as bool? ?? false,
       flutter: json['flutter'] as bool? ?? false,
+      signatureMd5: json['signatureMd5'] as String?,
+      firstInstallTime: json['firstInstallTime'] as int?,
+      lastUpdateTime: json['lastUpdateTime'] as int?,
     );
   }
 
@@ -73,6 +82,9 @@ class AdbPackage {
       'enabled': enabled,
       'system': system,
       'flutter': flutter,
+      'signatureMd5': signatureMd5,
+      'firstInstallTime': firstInstallTime,
+      'lastUpdateTime': lastUpdateTime,
     };
   }
 
@@ -80,6 +92,9 @@ class AdbPackage {
     String? label,
     String? iconLocalPath,
     String? iconRemotePath,
+    String? signatureMd5,
+    int? firstInstallTime,
+    int? lastUpdateTime,
   }) {
     return AdbPackage(
       name: name,
@@ -96,6 +111,9 @@ class AdbPackage {
       enabled: enabled,
       system: system,
       flutter: flutter,
+      signatureMd5: signatureMd5 ?? this.signatureMd5,
+      firstInstallTime: firstInstallTime ?? this.firstInstallTime,
+      lastUpdateTime: lastUpdateTime ?? this.lastUpdateTime,
     );
   }
 

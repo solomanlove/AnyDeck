@@ -2,6 +2,8 @@ package com.adbmanage.helper;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
+import android.content.pm.Signature;
+import java.security.MessageDigest;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -84,10 +86,13 @@ public final class PackageIconHelper {
                     System.out.println(
                             packageName + "\t" +
                                     base64(info.label) + "\t" +
-                                    info.iconPath
+                                    info.iconPath + "\t" +
+                                    info.signatureMd5 + "\t" +
+                                    info.firstInstallTime + "\t" +
+                                    info.lastUpdateTime
                     );
                 } catch (Throwable ignored) {
-                    System.out.println(packageName + "\t\t");
+                    System.out.println(packageName + "\t\t\t\t");
                 }
             }
         }
@@ -128,11 +133,34 @@ public final class PackageIconHelper {
             iconPath = iconFile.getAbsolutePath();
         }
 
-        return new PackageIconInfo(label, iconPath);
+        String signatureMd5 = getSignatureMd5(packageInfo);
+        long firstInstallTime = packageInfo.firstInstallTime;
+        long lastUpdateTime = packageInfo.lastUpdateTime;
+
+        return new PackageIconInfo(label, iconPath, signatureMd5, firstInstallTime, lastUpdateTime);
+    }
+
+    private String getSignatureMd5(PackageInfo packageInfo) {
+        try {
+            Signature[] signatures = packageInfo.signatures;
+            if (signatures == null || signatures.length == 0) {
+                return "";
+            }
+            byte[] certBytes = signatures[0].toByteArray();
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(certBytes);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Throwable ignored) {
+            return "";
+        }
     }
 
     private PackageInfo getPackageInfo(String packageName) throws Exception {
-        int flags = 0;
+        int flags = 64; // PackageManager.GET_SIGNATURES
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             return (PackageInfo) getPackageInfoMethod.invoke(
                     packageManager,
@@ -191,10 +219,16 @@ public final class PackageIconHelper {
     private static final class PackageIconInfo {
         private final String label;
         private final String iconPath;
+        private final String signatureMd5;
+        private final long firstInstallTime;
+        private final long lastUpdateTime;
 
-        private PackageIconInfo(String label, String iconPath) {
+        private PackageIconInfo(String label, String iconPath, String signatureMd5, long firstInstallTime, long lastUpdateTime) {
             this.label = label;
             this.iconPath = iconPath;
+            this.signatureMd5 = signatureMd5;
+            this.firstInstallTime = firstInstallTime;
+            this.lastUpdateTime = lastUpdateTime;
         }
     }
 }

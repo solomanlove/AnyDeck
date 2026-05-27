@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import 'device_overview.dart';
@@ -8,75 +11,118 @@ class DeviceInfoService {
 
   final AdbService _adb;
 
+  static const _overviewKeyPrefix = 'devices.overview.';
+
+  Future<void> _saveToCache(String deviceId, DeviceOverview overview) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = jsonEncode(overview.toJson());
+      await prefs.setString('$_overviewKeyPrefix$deviceId', jsonStr);
+    } catch (_) {
+      // Ignore cache save errors to prevent breaking the main flow
+    }
+  }
+
+  Future<DeviceOverview?> loadFromCache(String deviceId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('$_overviewKeyPrefix$deviceId');
+      if (jsonStr != null) {
+        final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+        return DeviceOverview.fromJson(decoded);
+      }
+    } catch (_) {
+      // Ignore cache load errors to prevent breaking the main flow
+    }
+    return null;
+  }
+
   /// 并行加载所有概览字段，避免 dashboard 阻塞。
   Future<DeviceOverview> loadOverview(String deviceId) async {
-    // 保持概览能力只读：下面命令只读取系统属性或 proc/sysfs 状态，
-    // 打开该面板不会修改手机状态。
-    final results = await Future.wait<AdbResult>([
-      _adb.shellArgs(deviceId, ['getprop']),
-      _adb.run(['-s', deviceId, 'get-serialno']),
-      _adb.shellArgs(deviceId, ['uname', '-r']),
-      _adb.shellArgs(deviceId, ['nproc']),
-      _adb.shellArgs(deviceId, ['wm', 'size']),
-      _adb.shellArgs(deviceId, ['wm', 'density']),
-      _adb.shellArgs(deviceId, ['settings', 'get', 'system', 'font_scale']),
-      _adb.shellArgs(deviceId, ['cat', '/proc/meminfo']),
-      _adb.shellArgs(deviceId, ['df', '-k', '/data']),
-      _adb.shellArgs(deviceId, ['ip', 'addr', 'show', 'wlan0']),
-      _adb.shellArgs(deviceId, ['dumpsys', 'wifi']),
-    ]);
+    try {
+      // 保持概览能力只读：下面命令只读取系统属性或 proc/sysfs 状态，
+      // 打开该面板不会修改手机状态。
+      final results = await Future.wait<AdbResult>([
+        _adb.shellArgs(deviceId, ['getprop']),
+        _adb.run(['-s', deviceId, 'get-serialno']),
+        _adb.shellArgs(deviceId, ['uname', '-r']),
+        _adb.shellArgs(deviceId, ['nproc']),
+        _adb.shellArgs(deviceId, ['wm', 'size']),
+        _adb.shellArgs(deviceId, ['wm', 'density']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'system', 'font_scale']),
+        _adb.shellArgs(deviceId, ['cat', '/proc/meminfo']),
+        _adb.shellArgs(deviceId, ['df', '-k', '/data']),
+        _adb.shellArgs(deviceId, ['ip', 'addr', 'show', 'wlan0']),
+        _adb.shellArgs(deviceId, ['dumpsys', 'wifi']),
+      ]);
 
-    final properties = _parseGetProp(results[0].stdout);
-    final serialFromAdb = _clean(results[1].stdout);
-    final kernel = _clean(results[2].stdout);
-    final cores = _clean(results[3].stdout);
-    final size = _parseWmSize(results[4].stdout);
-    final density = _parseWmDensity(results[5].stdout);
-    final fontScale = _formatScale(_clean(results[6].stdout));
-    final memory = _parseMemory(results[7].stdout);
-    final storage = _parseStorage(results[8].stdout);
-    final network = results[9].stdout;
-    final wifiDump = results[10].stdout;
+      if (!results[0].isSuccess) {
+        throw AdbException(results[0].message);
+      }
 
-    final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
-    final deviceCode = _firstValue(properties, [
-      'ro.product.device',
-      'ro.product.vendor.device',
-    ]);
+      final properties = _parseGetProp(results[0].stdout);
+      final serialFromAdb = _clean(results[1].stdout);
+      final kernel = _clean(results[2].stdout);
+      final cores = _clean(results[3].stdout);
+      final size = _parseWmSize(results[4].stdout);
+      final density = _parseWmDensity(results[5].stdout);
+      final fontScale = _formatScale(_clean(results[6].stdout));
+      final memory = _parseMemory(results[7].stdout);
+      final storage = _parseStorage(results[8].stdout);
+      final network = results[9].stdout;
+      final wifiDump = results[10].stdout;
 
-    return DeviceOverview(
-      name: _firstValue(properties, [
-        'ro.product.marketname',
-        'ro.product.vendor.marketname',
-        'ro.product.model',
-      ]),
-      brand: _firstValue(properties, [
-        'ro.product.brand',
-        'ro.product.vendor.brand',
-        'ro.product.manufacturer',
-      ]),
-      model: _firstValue(properties, [
-        'ro.product.model',
-        'ro.product.vendor.model',
-      ]),
-      serial: _firstValue(properties, [
-        'ro.serialno',
-        'ro.boot.serialno',
-      ], fallback: serialFromAdb),
-      androidVersion:
-          'Android ${_firstValue(properties, ['ro.build.version.release'])}'
-          ' (API ${_firstValue(properties, ['ro.build.version.sdk'])})',
-      kernelVersion: kernel,
-      processor: _formatProcessor(deviceCode, cores, abi),
-      storage: storage,
-      memory: memory,
-      physicalResolution: _formatResolution(size.physical, density.physical),
-      resolution: _formatResolution(size.current, density.current),
-      fontScale: fontScale,
-      wifi: _parseWifiName(wifiDump),
-      ipAddress: _parseIpAddress(network),
-      macAddress: _parseMacAddress(network),
-    );
+      final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
+      final deviceCode = _firstValue(properties, [
+        'ro.product.device',
+        'ro.product.vendor.device',
+      ]);
+
+      final overview = DeviceOverview(
+        name: _firstValue(properties, [
+          'ro.product.marketname',
+          'ro.product.vendor.marketname',
+          'ro.product.model',
+        ]),
+        brand: _firstValue(properties, [
+          'ro.product.brand',
+          'ro.product.vendor.brand',
+          'ro.product.manufacturer',
+        ]),
+        model: _firstValue(properties, [
+          'ro.product.model',
+          'ro.product.vendor.model',
+        ]),
+        serial: _firstValue(properties, [
+          'ro.serialno',
+          'ro.boot.serialno',
+        ], fallback: serialFromAdb),
+        androidVersion:
+            'Android ${_firstValue(properties, ['ro.build.version.release'])}'
+            ' (API ${_firstValue(properties, ['ro.build.version.sdk'])})',
+        kernelVersion: kernel,
+        processor: _formatProcessor(deviceCode, cores, abi),
+        storage: storage,
+        memory: memory,
+        physicalResolution: _formatResolution(size.physical, density.physical),
+        resolution: _formatResolution(size.current, density.current),
+        fontScale: fontScale,
+        wifi: _parseWifiName(wifiDump),
+        ipAddress: _parseIpAddress(network),
+        macAddress: _parseMacAddress(network),
+      );
+
+      // 保存到本地缓存
+      await _saveToCache(deviceId, overview);
+
+      return overview;
+    } catch (e) {
+      final cached = await loadFromCache(deviceId);
+      if (cached != null) {
+        return cached;
+      }
+      rethrow;
+    }
   }
 
   /// 解析 Android getprop 的 `[key]: [value]` 输出。

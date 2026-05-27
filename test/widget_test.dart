@@ -21,8 +21,8 @@ void main() {
       ),
     );
 
-    expect(find.text('AdbManage'), findsOneWidget);
+    expect(find.text('安卓手机管理'), findsOneWidget);
     expect(find.text('设备'), findsWidgets);
-    expect(find.text('选择设备'), findsOneWidget);
+    expect(find.text('选择设备'), findsNothing);
   });
 }

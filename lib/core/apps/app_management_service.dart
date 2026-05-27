@@ -197,6 +197,9 @@ class AppManagementService {
             iconRemotePath: iconInfo.remotePath.isEmpty
                 ? null
                 : iconInfo.remotePath,
+            signatureMd5: iconInfo.signatureMd5.isEmpty ? null : iconInfo.signatureMd5,
+            firstInstallTime: iconInfo.firstInstallTime,
+            lastUpdateTime: iconInfo.lastUpdateTime,
           ),
         );
       }
@@ -261,10 +264,17 @@ class AppManagementService {
       if (parts.length < 3) {
         continue;
       }
+      final signatureMd5 = parts.length > 3 ? parts[3].trim() : '';
+      final firstInstallTime = parts.length > 4 ? int.tryParse(parts[4].trim()) : null;
+      final lastUpdateTime = parts.length > 5 ? int.tryParse(parts[5].trim()) : null;
+
       infos[parts[0]] = _IconHelperInfo(
         packageName: parts[0],
         label: _decodeBase64(parts[1]),
         remotePath: parts[2],
+        signatureMd5: signatureMd5,
+        firstInstallTime: firstInstallTime,
+        lastUpdateTime: lastUpdateTime,
       );
     }
     return infos;
@@ -363,6 +373,38 @@ done | sort -u
   /// 从宿主机安装或覆盖安装 APK。
   Future<AdbResult> installApk(String deviceId, String apkPath) {
     return _adb.run(['-s', deviceId, 'install', '-r', apkPath]);
+  }
+
+  /// 导出设备上的应用安装包到本地。
+  Future<AdbResult> exportApk(
+    String deviceId,
+    String packageName,
+    String localSavePath, {
+    String? apkPath,
+  }) async {
+    String? path = apkPath;
+    if (path == null || path.isEmpty) {
+      final pathResult = await packagePath(deviceId, packageName);
+      if (!pathResult.isSuccess || pathResult.stdout.isEmpty) {
+        return AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: '无法获取应用的安装路径',
+        );
+      }
+      final stdout = pathResult.stdout.trim();
+      if (stdout.startsWith('package:')) {
+        path = stdout.substring('package:'.length).trim();
+      }
+    }
+    if (path == null || path.isEmpty) {
+      return AdbResult(
+        exitCode: 1,
+        stdout: '',
+        stderr: '解析安装路径失败',
+      );
+    }
+    return _adb.run(['-s', deviceId, 'pull', path, localSavePath]);
   }
 
   /// 从设备卸载指定应用包。
@@ -506,6 +548,73 @@ done | sort -u
         path.startsWith('/vendor/') ||
         path.startsWith('/apex/');
   }
+
+  Future<Map<String, int>> getPackageSizeDetails(String deviceId, String packageName) async {
+    final results = await Future.wait([
+      _adb.shell(deviceId, 'dumpsys diskstats'),
+      _adb.shellArgs(deviceId, ['dumpsys', 'package', packageName]),
+    ]);
+
+    final diskstatsOutput = results[0].isSuccess ? results[0].stdout : '';
+    final packageOutput = results[1].isSuccess ? results[1].stdout : '';
+
+    final pkgMatch = RegExp(r'Package Names:\s*\[(.*?)\]').firstMatch(diskstatsOutput);
+    final appMatch = RegExp(r'App Sizes:\s*\[(.*?)\]').firstMatch(diskstatsOutput);
+    final dataMatch = RegExp(r'App Data Sizes:\s*\[(.*?)\]').firstMatch(diskstatsOutput);
+    final cacheMatch = RegExp(r'Cache Sizes:\s*\[(.*?)\]').firstMatch(diskstatsOutput);
+
+    int appSize = 0;
+    int dataSize = 0;
+    int cacheSize = 0;
+
+    if (pkgMatch != null && appMatch != null && dataMatch != null && cacheMatch != null) {
+      final pkgs = pkgMatch.group(1)!.split(',').map((p) => p.trim().replaceAll('"', '')).toList();
+      final index = pkgs.indexOf(packageName);
+      if (index != -1) {
+        final appSizes = appMatch.group(1)!.split(',').map((s) => int.tryParse(s.trim()) ?? 0).toList();
+        final dataSizes = dataMatch.group(1)!.split(',').map((s) => int.tryParse(s.trim()) ?? 0).toList();
+        final cacheSizes = cacheMatch.group(1)!.split(',').map((s) => int.tryParse(s.trim()) ?? 0).toList();
+
+        if (index < appSizes.length) appSize = appSizes[index];
+        if (index < dataSizes.length) dataSize = dataSizes[index];
+        if (index < cacheSizes.length) cacheSize = cacheSizes[index];
+      }
+    }
+
+    final odexMatch = RegExp(r'base\.odex:\s*(\d+)\s*(Kb|Mb|Bytes|B|KB|MB)', caseSensitive: false).firstMatch(packageOutput);
+    final vdexMatch = RegExp(r'base\.vdex:\s*(\d+)\s*(Kb|Mb|Bytes|B|KB|MB)', caseSensitive: false).firstMatch(packageOutput);
+
+    int compiledSize = 0;
+    if (odexMatch != null) {
+      compiledSize += _parseSizeString(odexMatch.group(1)!, odexMatch.group(2)!);
+    }
+    if (vdexMatch != null) {
+      compiledSize += _parseSizeString(vdexMatch.group(1)!, vdexMatch.group(2)!);
+    }
+
+    return {
+      'appSize': appSize + compiledSize,
+      'dataSize': dataSize,
+      'cacheSize': cacheSize,
+    };
+  }
+
+  int _parseSizeString(String value, String unit) {
+    final val = int.tryParse(value) ?? 0;
+    switch (unit.toLowerCase()) {
+      case 'kb':
+      case 'k':
+        return val * 1024;
+      case 'mb':
+      case 'm':
+        return val * 1024 * 1024;
+      case 'gb':
+      case 'g':
+        return val * 1024 * 1024 * 1024;
+      default:
+        return val;
+    }
+  }
 }
 
 class _ListedPackage {
@@ -540,9 +649,15 @@ class _IconHelperInfo {
     required this.packageName,
     required this.label,
     required this.remotePath,
+    this.signatureMd5 = '',
+    this.firstInstallTime,
+    this.lastUpdateTime,
   });
 
   final String packageName;
   final String label;
   final String remotePath;
+  final String signatureMd5;
+  final int? firstInstallTime;
+  final int? lastUpdateTime;
 }

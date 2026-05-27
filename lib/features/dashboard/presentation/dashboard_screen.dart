@@ -5,6 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:lpinyin/lpinyin.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/settings/app_settings.dart';
@@ -26,10 +27,33 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedDevice = ref.watch(selectedDeviceProvider);
     final sessions = ref.watch(scrcpySessionsProvider);
+    final registeredDevices = ref.watch(deviceRegistryProvider);
+
+    String appBarTitle = context.l10n.t('appTitle');
+    if (selectedDevice != null) {
+      final matchedDevice = registeredDevices.firstWhere(
+        (d) => d.id == selectedDevice.id,
+        orElse: () => RegisteredDevice(
+          id: selectedDevice.id,
+          status: selectedDevice.status,
+          model: selectedDevice.model,
+          product: selectedDevice.product,
+          transportId: selectedDevice.transportId,
+          isOnline: selectedDevice.isOnline,
+        ),
+      );
+      appBarTitle = matchedDevice.displayName;
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AdbManage'),
+        leading: selectedDevice != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => ref.read(selectedDeviceProvider.notifier).clear(),
+              )
+            : null,
+        title: Text(appBarTitle),
         actions: [
           Tooltip(
             message: context.l10n.t('refreshDevices'),
@@ -59,28 +83,35 @@ class DashboardScreen extends ConsumerWidget {
             sessions: sessions,
           );
 
-          if (compact) {
-            return ListView(
+          if (selectedDevice == null) {
+            if (compact) {
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: const [
+                  _DeviceListPanel(),
+                ],
+              );
+            }
+
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: _DeviceListPanel(),
+            );
+          } else {
+            if (compact) {
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: const [
+                  _WorkspaceSlot(),
+                ],
+              );
+            }
+
+            return Padding(
               padding: const EdgeInsets.all(16),
-              children: const [
-                _DeviceListPanel(),
-                SizedBox(height: 16),
-                _WorkspaceSlot(),
-              ],
+              child: workspace,
             );
           }
-
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(width: 360, child: _DeviceListPanel()),
-                const SizedBox(width: 16),
-                Expanded(child: workspace),
-              ],
-            ),
-          );
         },
       ),
     );
@@ -174,75 +205,503 @@ class _SettingsDialog extends ConsumerWidget {
   }
 }
 
-/// 设备发现卡片，提供 USB/TCP 连接入口。
-class _DeviceListPanel extends ConsumerWidget {
+/// 设备发现卡片，已重构为响应式表格形式。
+class _DeviceListPanel extends ConsumerStatefulWidget {
   const _DeviceListPanel();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final devices = ref.watch(devicesProvider);
+  ConsumerState<_DeviceListPanel> createState() => _DeviceListPanelState();
+}
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  context.l10n.t('devices'),
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const Spacer(),
-                Tooltip(
-                  message: context.l10n.t('connectTcp'),
-                  child: IconButton.filledTonal(
-                    icon: const Icon(Icons.add_link),
-                    onPressed: () => _showConnectDialog(context, ref),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            devices.when(
-              loading: () => _PanelMessage(
-                icon: Icons.sync,
-                title: context.l10n.t('scanningDevices'),
-              ),
-              error: (error, stackTrace) => _PanelMessage(
-                icon: Icons.error_outline,
-                title: context.l10n.t('adbUnavailable'),
-                subtitle: error.toString(),
-              ),
-              data: (items) {
-                if (items.isEmpty) {
-                  return _PanelMessage(
-                    icon: Icons.usb_off_outlined,
-                    title: context.l10n.t('noDevices'),
-                    subtitle: context.l10n.t('connectUsbOrTcp'),
-                  );
-                }
+class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
+  String _sortColumn = 'id';
+  bool _sortAscending = true;
 
-                return Column(
-                  children: [
-                    for (final device in items)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _DeviceTile(device: device),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+  void _toggleSort(String column) {
+    setState(() {
+      if (_sortColumn == column) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortColumn = column;
+        _sortAscending = true;
+      }
+    });
+  }
+
+  Widget _getSortIcon(String column) {
+    if (_sortColumn != column) {
+      return const Padding(
+        padding: EdgeInsets.only(left: 4),
+        child: Icon(Icons.unfold_more, size: 14, color: Colors.grey),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Icon(
+        _sortAscending ? Icons.expand_less : Icons.expand_more,
+        size: 14,
+        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }
 
-  /// 输入 adb TCP 地址，连接后刷新设备列表。
-  Future<void> _showConnectDialog(BuildContext context, WidgetRef ref) async {
+  @override
+  Widget build(BuildContext context) {
+    final activeDevicesAsync = ref.watch(devicesProvider);
+    final items = ref.watch(deviceRegistryProvider);
+
+    // Sort items
+    final sortedItems = List<RegisteredDevice>.from(items);
+    sortedItems.sort((a, b) {
+      int cmp = 0;
+      if (_sortColumn == 'id') {
+        cmp = a.id.compareTo(b.id);
+      } else if (_sortColumn == 'name') {
+        cmp = a.displayName.compareTo(b.displayName);
+      } else if (_sortColumn == 'status') {
+        cmp = a.status.compareTo(b.status);
+      }
+      return _sortAscending ? cmp : -cmp;
+    });
+
+    final allChecked = items.isNotEmpty && items.every((d) => d.isChecked);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isCompact = constraints.maxWidth < 600;
+        final bool hasBoundedHeight = constraints.hasBoundedHeight;
+
+        Widget contentWidget;
+        if (activeDevicesAsync.hasError && items.isEmpty) {
+          contentWidget = Center(
+            child: _PanelMessage(
+              icon: Icons.error_outline,
+              title: context.l10n.t('adbUnavailable'),
+              subtitle: activeDevicesAsync.error.toString(),
+            ),
+          );
+        } else if (activeDevicesAsync.isLoading && items.isEmpty) {
+          contentWidget = Center(
+            child: _PanelMessage(
+              icon: Icons.sync,
+              title: context.l10n.t('scanningDevices'),
+            ),
+          );
+        } else if (sortedItems.isEmpty) {
+          contentWidget = Center(
+            child: _PanelMessage(
+              icon: Icons.usb_off_outlined,
+              title: context.l10n.t('noDevices'),
+              subtitle: context.l10n.t('connectUsbOrTcp'),
+            ),
+          );
+        } else {
+          contentWidget = ListView.separated(
+            shrinkWrap: !hasBoundedHeight,
+            physics: hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
+            itemCount: sortedItems.length,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              color: Theme.of(context).dividerColor.withOpacity(0.5),
+            ),
+            itemBuilder: (context, index) {
+              final device = sortedItems[index];
+              final isSelected = ref.watch(selectedDeviceProvider)?.id == device.id;
+
+              return Material(
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4)
+                    : Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    child: Row(
+                      children: [
+                        if (!isCompact) ...[
+                          SizedBox(
+                            width: 45,
+                            child: Checkbox(
+                              value: device.isChecked,
+                              onChanged: (val) {
+                                ref.read(deviceRegistryProvider.notifier).toggleCheck(device.id);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        // Device Identifier
+                        Expanded(
+                          flex: 3,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.info,
+                                color: Color(0xFF26A69A),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  device.id,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (device.isNetwork) ...[
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.wifi,
+                                  color: Color(0xFF26A69A),
+                                  size: 16,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Device Name (Editable Badge)
+                        Expanded(
+                          flex: 3,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE8F5E9),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFFC8E6C9),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    device.displayName,
+                                    style: const TextStyle(
+                                      color: Color(0xFF2E7D32),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 14),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                splashRadius: 16,
+                                onPressed: () => _showRenameDialog(context, device),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Status Badge
+                        Expanded(
+                          flex: 2,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _getStatusBgColor(device.status),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                _getStatusText(context, device.status),
+                                style: TextStyle(
+                                  color: _getStatusTextColor(device.status),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Actions
+                        Expanded(
+                          flex: 2,
+                          child: Row(
+                            children: [
+                              if (device.isNetwork) ...[
+                                if (device.isOnline)
+                                  IconButton(
+                                    icon: const Icon(Icons.link_off, color: Colors.red),
+                                    tooltip: context.l10n.t('disconnect'),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () => _runAdbAction(
+                                      context,
+                                      ref
+                                          .read(deviceRegistryProvider.notifier)
+                                          .disconnectDevice(device.id),
+                                    ),
+                                  )
+                                else
+                                  IconButton(
+                                    icon: const Icon(Icons.link, color: Colors.green),
+                                    tooltip: context.l10n.t('connect'),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () => _runAdbAction(
+                                      context,
+                                      ref
+                                          .read(deviceRegistryProvider.notifier)
+                                          .connectDevice(device.id),
+                                    ),
+                                  ),
+                                const SizedBox(width: 8),
+                              ],
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                tooltip: context.l10n.t('delete'),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () => ref
+                                    .read(deviceRegistryProvider.notifier)
+                                    .removeDevice(device.id),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!isCompact) ...[
+                          const SizedBox(width: 10),
+                          const SizedBox(
+                            width: 40,
+                            child: Icon(Icons.chevron_right, color: Colors.grey),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        }
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      context.l10n.t('devices'),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const Spacer(),
+                    Tooltip(
+                      message: context.l10n.t('connectTcp'),
+                      child: IconButton.filledTonal(
+                        icon: const Icon(Icons.add_link),
+                        onPressed: () => _showConnectDialog(context),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Table Header Row
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Theme.of(context).dividerColor,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      if (!isCompact) ...[
+                        SizedBox(
+                          width: 45,
+                          child: Checkbox(
+                            value: allChecked,
+                            onChanged: (val) {
+                              ref.read(deviceRegistryProvider.notifier).toggleAll(val ?? false);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      // Identifier header
+                      Expanded(
+                        flex: 3,
+                        child: InkWell(
+                          onTap: () => _toggleSort('id'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  context.l10n.t('deviceIdentifier'),
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                _getSortIcon('id'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Name header
+                      Expanded(
+                        flex: 3,
+                        child: InkWell(
+                          onTap: () => _toggleSort('name'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  context.l10n.t('deviceNameCol'),
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                _getSortIcon('name'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Status header
+                      Expanded(
+                        flex: 2,
+                        child: InkWell(
+                          onTap: () => _toggleSort('status'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  context.l10n.t('deviceStatusCol'),
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                _getSortIcon('status'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Actions header
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          context.l10n.t('deviceActionsCol'),
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                      if (!isCompact) ...[
+                        const SizedBox(width: 10),
+                        const SizedBox(
+                          width: 40,
+                          child: Icon(Icons.settings, size: 16, color: Colors.grey),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Table Body Row
+                if (hasBoundedHeight)
+                  Expanded(child: contentWidget)
+                else
+                  contentWidget,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getStatusBgColor(String status) {
+    return switch (status) {
+      'device' => const Color(0xFFE8F5E9),
+      'unauthorized' => const Color(0xFFFFF3E0),
+      'offline' => const Color(0xFFF5F5F5),
+      _ => const Color(0xFFF5F5F5),
+    };
+  }
+
+  Color _getStatusTextColor(String status) {
+    return switch (status) {
+      'device' => const Color(0xFF2E7D32),
+      'unauthorized' => const Color(0xFFE65100),
+      'offline' => const Color(0xFF9E9E9E),
+      _ => const Color(0xFF9E9E9E),
+    };
+  }
+
+  String _getStatusText(BuildContext context, String status) {
+    return switch (status) {
+      'device' => context.l10n.t('deviceOnline'),
+      'unauthorized' => context.l10n.t('deviceUnauthorized'),
+      'offline' => context.l10n.t('deviceOffline'),
+      _ => status,
+    };
+  }
+
+  Future<void> _showRenameDialog(BuildContext context, RegisteredDevice device) async {
+    final controller = TextEditingController(text: device.customName ?? device.model ?? '');
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(context.l10n.t('editDeviceName')),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: context.l10n.t('enterDeviceName'),
+            ),
+            onSubmitted: (value) => Navigator.of(context).pop(value),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(context.l10n.t('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: Text(context.l10n.t('confirm')),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+
+    if (name != null && context.mounted) {
+      await ref.read(deviceRegistryProvider.notifier).setAlias(device.id, name);
+    }
+  }
+
+  Future<void> _showConnectDialog(BuildContext context) async {
     final controller = TextEditingController(text: '192.168.1.10:5555');
     final address = await showDialog<String>(
       context: context,
@@ -277,40 +736,7 @@ class _DeviceListPanel extends ConsumerWidget {
 
     await _runAdbAction(
       context,
-      ref.read(deviceActionServiceProvider).connect(address.trim()),
-    );
-    ref.invalidate(devicesProvider);
-  }
-}
-
-/// 单台 adb 设备的可选列表项。
-class _DeviceTile extends ConsumerWidget {
-  const _DeviceTile({required this.device});
-
-  final AdbDevice device;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(selectedDeviceProvider)?.id == device.id;
-
-    return ListTile(
-      selected: selected,
-      selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      leading: Icon(
-        device.isOnline ? Icons.phone_android : Icons.phonelink_off,
-        color: device.isOnline
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.error,
-      ),
-      title: Text(device.displayName),
-      subtitle: Text('${device.id} · ${device.status}'),
-      trailing: device.transportId == null
-          ? null
-          : Text('#${device.transportId}'),
-      onTap: () {
-        ref.read(selectedDeviceProvider.notifier).select(device);
-      },
+      ref.read(deviceRegistryProvider.notifier).connectDevice(address.trim()),
     );
   }
 }
@@ -327,16 +753,7 @@ class _WorkspacePanel extends ConsumerWidget {
     final device = selectedDevice;
 
     if (device == null) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: _PanelMessage(
-            icon: Icons.ads_click,
-            title: context.l10n.t('selectDevice'),
-            subtitle: context.l10n.t('selectDeviceHint'),
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     final tabIndex = ref.watch(selectedToolTabProvider);
@@ -485,13 +902,13 @@ class _OverviewTab extends StatelessWidget {
 }
 
 /// 展示当前设备身份和 adb 状态的头部区域。
-class _SelectedDeviceHeader extends StatelessWidget {
+class _SelectedDeviceHeader extends ConsumerWidget {
   const _SelectedDeviceHeader({required this.device});
 
   final AdbDevice device;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -522,6 +939,12 @@ class _SelectedDeviceHeader extends StatelessWidget {
                 device.isOnline ? Icons.check_circle : Icons.warning_amber,
                 size: 18,
               ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: context.l10n.t('close'),
+              onPressed: () => ref.read(selectedDeviceProvider.notifier).clear(),
             ),
           ],
         ),
@@ -1165,18 +1588,37 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     );
   }
 
-  /// 对应用名和包名执行大小写不敏感筛选，并可隐藏系统应用。
+  /// 对应用名和包名执行大小写不敏感筛选，并且支持拼音匹配（全拼、首字母），可隐藏系统应用。
   List<AdbPackage> _filterPackages(List<AdbPackage> items) {
     final filter = _filter.trim().toLowerCase();
+    final cleanFilter = filter.replaceAll(' ', '');
     return items
         .where((package) => !_hideSystemApps || !package.system)
         .where((package) {
           if (filter.isEmpty) {
             return true;
           }
-          return package.name.toLowerCase().contains(filter) ||
-              package.displayName.toLowerCase().contains(filter) ||
-              package.versionLabel.toLowerCase().contains(filter);
+          final nameMatch = package.name.toLowerCase().contains(filter);
+          final displayNameMatch = package.displayName.toLowerCase().contains(filter);
+          final versionMatch = package.versionLabel.toLowerCase().contains(filter);
+          
+          if (nameMatch || displayNameMatch || versionMatch) {
+            return true;
+          }
+          
+          // 拼音筛选：全拼和首字母匹配（忽略空格）
+          final displayNamePinyin = PinyinHelper.getPinyin(
+            package.displayName,
+            separator: '',
+            format: PinyinFormat.WITHOUT_TONE,
+          ).toLowerCase().replaceAll(' ', '');
+          
+          final displayNameShortPinyin = PinyinHelper.getShortPinyin(
+            package.displayName,
+          ).toLowerCase().replaceAll(' ', '');
+          
+          return displayNamePinyin.contains(cleanFilter) ||
+              displayNameShortPinyin.contains(cleanFilter);
         })
         .toList(growable: false);
   }
@@ -1395,7 +1837,7 @@ class _PackageHeaderCell extends StatelessWidget {
 }
 
 /// 单个应用数据行。
-class _PackageTableRow extends StatelessWidget {
+class _PackageTableRow extends ConsumerWidget {
   const _PackageTableRow({
     required this.deviceId,
     required this.package,
@@ -1411,9 +1853,13 @@ class _PackageTableRow extends StatelessWidget {
   final VoidCallback onSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return InkWell(
       onTap: onSelected,
+      onDoubleTap: () {
+        onSelected();
+        _showAppDetailsDialog(context, ref, deviceId, package);
+      },
       child: Container(
         height: 72,
         color: selected ? Theme.of(context).colorScheme.primaryContainer : null,
@@ -1456,7 +1902,7 @@ class _PackageTableRow extends StatelessWidget {
               child: selected
                   ? _PackageActions(
                       deviceId: deviceId,
-                      packageName: package.name,
+                      package: package,
                     )
                   : const SizedBox.shrink(),
             ),
@@ -1633,18 +2079,26 @@ String _targetMaxSdkLabel(AdbPackage package) {
 
 /// 当前选中应用行的内联操作按钮。
 class _PackageActions extends ConsumerWidget {
-  const _PackageActions({required this.deviceId, required this.packageName});
+  const _PackageActions({required this.deviceId, required this.package});
 
   final String deviceId;
-  final String packageName;
+  final AdbPackage package;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final service = ref.read(appManagementServiceProvider);
+    final packageName = package.name;
 
     return Wrap(
       spacing: 2,
       children: [
+        IconButton(
+          tooltip: '应用信息',
+          icon: const Icon(Icons.info_outline),
+          onPressed: () {
+            _showAppDetailsDialog(context, ref, deviceId, package);
+          },
+        ),
         IconButton(
           tooltip: context.l10n.t('launch'),
           icon: const Icon(Icons.play_arrow),
@@ -1705,10 +2159,44 @@ class _PackageActions extends ConsumerWidget {
             }
           },
         ),
+        IconButton(
+          tooltip: context.l10n.t('exportApk'),
+          icon: const Icon(Icons.download),
+          onPressed: () async {
+            final directory = await getDirectoryPath();
+            if (directory == null || !context.mounted) {
+              return;
+            }
+            final safeLabel = package.displayName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+            final versionStr = package.versionName != null ? '_v${package.versionName}' : '';
+            final fileName = '$safeLabel$versionStr.apk';
+            final localSavePath = '$directory/$fileName';
+
+            _showSnack(context, context.l10n.t('exporting'));
+
+            final result = await service.exportApk(
+              deviceId,
+              packageName,
+              localSavePath,
+              apkPath: package.apkPath,
+            );
+
+            if (context.mounted) {
+              final successMsg = context.l10n.t('exportSuccess').replaceAll('{path}', localSavePath);
+              final failMsg = context.l10n.t('exportFailed').replaceAll('{error}', result.message);
+              _showSnack(
+                context,
+                result.isSuccess ? successMsg : failMsg,
+                isError: !result.isSuccess,
+              );
+            }
+          },
+        ),
       ],
     );
   }
 }
+
 
 /// `/sdcard/` 及其子目录的远程文件浏览器。
 class _FilesTab extends ConsumerWidget {
@@ -2186,4 +2674,280 @@ Color _logColor(String line) {
     return const Color(0xff86efac);
   }
   return const Color(0xffe2e8f0);
+}
+
+void _showAppDetailsDialog(BuildContext context, WidgetRef ref, String deviceId, AdbPackage package) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return _AppDetailsDialog(deviceId: deviceId, package: package);
+    },
+  );
+}
+
+class _AppDetailsDialog extends ConsumerStatefulWidget {
+  const _AppDetailsDialog({required this.deviceId, required this.package});
+
+  final String deviceId;
+  final AdbPackage package;
+
+  @override
+  ConsumerState<_AppDetailsDialog> createState() => _AppDetailsDialogState();
+}
+
+class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
+  late final Future<Map<String, int>> _sizesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _sizesFuture = ref.read(appManagementServiceProvider).getPackageSizeDetails(
+          widget.deviceId,
+          widget.package.name,
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final package = widget.package;
+    final theme = Theme.of(context);
+
+    String formatEpoch(int? epochMs) {
+      if (epochMs == null || epochMs <= 0) return '-';
+      final dt = DateTime.fromMillisecondsSinceEpoch(epochMs);
+      String pad(int value) => value.toString().padLeft(2, '0');
+      return '${dt.year}-${pad(dt.month)}-${pad(dt.day)} ${pad(dt.hour)}:${pad(dt.minute)}:${pad(dt.second)}';
+    }
+
+    String formatSize(int? bytes) {
+      if (bytes == null || bytes <= 0) return '-';
+      const kb = 1024;
+      const mb = kb * 1024;
+      const gb = mb * 1024;
+      if (bytes >= gb) return '${(bytes / gb).toStringAsFixed(2)}G';
+      if (bytes >= mb) return '${(bytes / mb).toStringAsFixed(2)}M';
+      if (bytes >= kb) return '${(bytes / kb).toStringAsFixed(1)}K';
+      return '${bytes}B';
+    }
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 440,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '应用信息',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 20,
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: 72,
+                    height: 72,
+                    child: package.iconLocalPath != null &&
+                            File(package.iconLocalPath!).existsSync()
+                        ? Image.file(
+                            File(package.iconLocalPath!),
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _FallbackIconLarge(package: package, theme: theme),
+                          )
+                        : _FallbackIconLarge(package: package, theme: theme),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        package.displayName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        package.name,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        package.versionLabel,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            _DetailItem(label: '系统应用', value: package.system ? '是' : '否'),
+            _DetailItem(label: '最小 SDK 版本', value: _sdkLabel(package.minSdk)),
+            _DetailItem(label: '目标 SDK 版本', value: _sdkLabel(package.targetSdk)),
+            _DetailItem(label: '首次安装时间', value: formatEpoch(package.firstInstallTime)),
+            _DetailItem(label: '最后更新时间', value: formatEpoch(package.lastUpdateTime)),
+            _DetailItem(label: '安装包大小', value: formatSize(package.storageBytes)),
+            FutureBuilder<Map<String, int>>(
+              future: _sizesFuture,
+              builder: (context, snapshot) {
+                final sizes = snapshot.data;
+                final isLoading = snapshot.connectionState == ConnectionState.waiting;
+
+                String getValue(String key) {
+                  if (isLoading) return '加载中...';
+                  if (snapshot.hasError || sizes == null) return '-';
+                  return formatSize(sizes[key]);
+                }
+
+                return Column(
+                  children: [
+                    _DetailItem(label: '应用大小', value: getValue('appSize')),
+                    _DetailItem(label: '数据大小', value: getValue('dataSize')),
+                    _DetailItem(label: '缓存大小', value: getValue('cacheSize')),
+                  ],
+                );
+              },
+            ),
+            _DetailItem(
+              label: '签名 MD5',
+              value: package.signatureMd5 ?? '-',
+              trailing: package.signatureMd5 != null && package.signatureMd5!.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.copy, size: 16),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: package.signatureMd5!));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('签名已复制到剪贴板')),
+                        );
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      splashRadius: 16,
+                      tooltip: '复制签名',
+                    )
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FallbackIconLarge extends StatelessWidget {
+  const _FallbackIconLarge({required this.package, required this.theme});
+
+  final AdbPackage package;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = theme.colorScheme;
+    final icon = package.flutter
+        ? Icons.flutter_dash
+        : package.system
+            ? Icons.settings_applications
+            : Icons.android;
+
+    return Container(
+      color: package.system
+          ? colorScheme.surfaceContainerHighest
+          : colorScheme.primaryContainer,
+      child: Icon(
+        icon,
+        size: 40,
+        color: package.system
+            ? colorScheme.onSurfaceVariant
+            : colorScheme.onPrimaryContainer,
+      ),
+    );
+  }
+}
+
+class _DetailItem extends StatelessWidget {
+  const _DetailItem({
+    required this.label,
+    required this.value,
+    this.trailing,
+  });
+
+  final String label;
+  final String value;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: theme.dividerColor.withOpacity(0.4),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Expanded(
+                flex: 0,
+                child: Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 6),
+                trailing!,
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
