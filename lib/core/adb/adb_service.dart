@@ -10,6 +10,10 @@ class AdbService {
   AdbService({String? executable})
     : executable = executable ?? resolveToolPath('adb');
 
+  static final RegExp _deviceLinePattern = RegExp(
+    r'^(.*?)\s+(device|offline|unauthorized|recovery|sideload|bootloader|host|no permissions)(?:\s+(.*))?$',
+  );
+
   final String executable;
 
   /// 获取已连接设备列表；adb 不可用时抛出异常。
@@ -77,10 +81,14 @@ class AdbService {
 
   /// 解析单行 adb 设备信息，并保留可选的 key:value 属性。
   AdbDevice _parseDeviceLine(String line) {
-    final parts = line.split(RegExp(r'\s+'));
+    final match = _deviceLinePattern.firstMatch(line);
+    final id = match?.group(1) ?? line.split(RegExp(r'\s+')).first;
+    final status = match?.group(2) ?? 'unknown';
+    final attributesText = match?.group(3) ?? '';
+    final parts = attributesText.split(RegExp(r'\s+'));
     final attributes = <String, String>{};
 
-    for (final part in parts.skip(2)) {
+    for (final part in parts) {
       final separator = part.indexOf(':');
       if (separator > 0 && separator < part.length - 1) {
         attributes[part.substring(0, separator)] = part.substring(
@@ -90,8 +98,8 @@ class AdbService {
     }
 
     return AdbDevice(
-      id: parts.first,
-      status: parts.length > 1 ? parts[1] : 'unknown',
+      id: id,
+      status: status,
       model: attributes['model'],
       product: attributes['product'],
       transportId: attributes['transport_id'],

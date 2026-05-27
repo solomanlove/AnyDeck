@@ -50,39 +50,6 @@ class DashboardScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        leading: selectedDevice != null
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () =>
-                    ref.read(selectedDeviceProvider.notifier).clear(),
-              )
-            : null,
-        title: Text(appBarTitle),
-        actions: [
-          Tooltip(
-            message: context.l10n.t('refreshDevices'),
-            child: IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () {
-                ref.invalidate(devicesProvider);
-                _showSnack(context, context.l10n.t('devicesRefreshed'));
-              },
-            ),
-          ),
-          Tooltip(
-            message: context.l10n.t('settings'),
-            child: IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (_) => const _SettingsDialog(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 980;
@@ -90,6 +57,18 @@ class DashboardScreen extends ConsumerWidget {
             selectedDevice: selectedDevice,
             sessions: sessions,
           );
+
+          if (!compact) {
+            return _WechatStyleShell(
+              title: appBarTitle,
+              selectedDevice: selectedDevice,
+              registeredDevices: registeredDevices,
+              sessions: sessions,
+              child: selectedDevice == null
+                  ? const _DashboardHomeContent()
+                  : workspace,
+            );
+          }
 
           if (selectedDevice == null) {
             if (compact) {
@@ -113,31 +92,529 @@ class DashboardScreen extends ConsumerWidget {
                 ],
               ),
             );
-          } else {
-            if (compact) {
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: const [_WorkspaceSlot()],
-              );
-            }
-
-            return Padding(padding: const EdgeInsets.all(16), child: workspace);
           }
+
+          return Padding(padding: const EdgeInsets.all(16), child: workspace);
         },
       ),
     );
   }
 }
 
-/// 紧凑布局下的 workspace 占位组件，从 Riverpod 状态重建内容。
-class _WorkspaceSlot extends ConsumerWidget {
-  const _WorkspaceSlot();
+class _WechatStyleShell extends ConsumerWidget {
+  const _WechatStyleShell({
+    required this.title,
+    required this.selectedDevice,
+    required this.registeredDevices,
+    required this.sessions,
+    required this.child,
+  });
+
+  final String title;
+  final AdbDevice? selectedDevice;
+  final List<RegisteredDevice> registeredDevices;
+  final Map<String, ScrcpySession> sessions;
+  final Widget child;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _WorkspacePanel(
-      selectedDevice: ref.watch(selectedDeviceProvider),
-      sessions: ref.watch(scrcpySessionsProvider),
+    return Row(
+      children: [
+        _PrimaryRail(selectedDevice: selectedDevice),
+        _SecondarySidebar(
+          selectedDevice: selectedDevice,
+          registeredDevices: registeredDevices,
+          sessions: sessions,
+        ),
+        Expanded(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: Color(0xfffbfbfc)),
+            child: Column(
+              children: [
+                _ContentTitleBar(title: title),
+                Expanded(child: child),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PrimaryRail extends ConsumerWidget {
+  const _PrimaryRail({required this.selectedDevice});
+
+  final AdbDevice? selectedDevice;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedTool = ref.watch(selectedToolTabProvider);
+
+    return Container(
+      width: 76,
+      color: const Color(0xffd8f3f5),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 14),
+            Container(
+              width: 42,
+              height: 42,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.62),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Image(
+                image: AssetImage('assets/brand/app_logo.png'),
+              ),
+            ),
+            const SizedBox(height: 28),
+            _RailButton(
+              icon: Icons.phone_android_outlined,
+              selected: selectedDevice == null,
+              tooltip: context.l10n.t('devices'),
+              onPressed: () =>
+                  ref.read(selectedDeviceProvider.notifier).clear(),
+            ),
+            _RailButton(
+              icon: Icons.apps_outlined,
+              selected: selectedDevice != null && selectedTool == 2,
+              tooltip: context.l10n.t('apps'),
+              onPressed: selectedDevice == null
+                  ? null
+                  : () => ref.read(selectedToolTabProvider.notifier).select(2),
+            ),
+            _RailButton(
+              icon: Icons.folder_outlined,
+              selected: selectedDevice != null && selectedTool == 3,
+              tooltip: context.l10n.t('files'),
+              onPressed: selectedDevice == null
+                  ? null
+                  : () => ref.read(selectedToolTabProvider.notifier).select(3),
+            ),
+            _RailButton(
+              icon: Icons.article_outlined,
+              selected: selectedDevice != null && selectedTool == 4,
+              tooltip: context.l10n.t('logcat'),
+              onPressed: selectedDevice == null
+                  ? null
+                  : () => ref.read(selectedToolTabProvider.notifier).select(4),
+            ),
+            _RailButton(
+              icon: Icons.terminal_outlined,
+              selected: selectedDevice != null && selectedTool == 5,
+              tooltip: context.l10n.t('terminal'),
+              onPressed: selectedDevice == null
+                  ? null
+                  : () => ref.read(selectedToolTabProvider.notifier).select(5),
+            ),
+            const Spacer(),
+            _RailButton(
+              icon: Icons.adb,
+              tooltip: context.l10n.t('restartAdb'),
+              onPressed: () => _restartAdbServer(context, ref),
+            ),
+            _RailButton(
+              icon: Icons.settings_outlined,
+              tooltip: context.l10n.t('settings'),
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => const _SettingsDialog(),
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RailButton extends StatelessWidget {
+  const _RailButton({
+    required this.icon,
+    required this.tooltip,
+    this.selected = false,
+    this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final bool selected;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? const Color(0xff09c47c) : const Color(0xff5f6b6e);
+
+    return Tooltip(
+      message: tooltip,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: IconButton(
+          icon: Icon(icon),
+          color: color,
+          iconSize: 28,
+          onPressed: onPressed,
+          style: IconButton.styleFrom(
+            backgroundColor: selected
+                ? Colors.white.withValues(alpha: 0.56)
+                : Colors.transparent,
+            disabledForegroundColor: const Color(0xff8b9a9e),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SecondarySidebar extends ConsumerWidget {
+  const _SecondarySidebar({
+    required this.selectedDevice,
+    required this.registeredDevices,
+    required this.sessions,
+  });
+
+  final AdbDevice? selectedDevice;
+  final List<RegisteredDevice> registeredDevices;
+  final Map<String, ScrcpySession> sessions;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedTool = ref.watch(selectedToolTabProvider);
+    final selectedRegisteredDevice = selectedDevice == null
+        ? null
+        : registeredDevices.firstWhere(
+            (device) => device.id == selectedDevice!.id,
+            orElse: () => RegisteredDevice(
+              id: selectedDevice!.id,
+              status: selectedDevice!.status,
+              model: selectedDevice!.model,
+              product: selectedDevice!.product,
+              transportId: selectedDevice!.transportId,
+              isOnline: selectedDevice!.isOnline,
+            ),
+          );
+
+    return Container(
+      width: 300,
+      color: const Color(0xfff0f1f4),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 10),
+              child: _SidebarSearchField(),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: Text(context.l10n.t('connectDevice')),
+                  onPressed: () => _showConnectDeviceDialog(context, ref),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xff1f2328),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _SidebarNavItem(
+                    icon: Icons.grid_view_rounded,
+                    label: context.l10n.t('devices'),
+                    selected: selectedDevice == null,
+                    onTap: () =>
+                        ref.read(selectedDeviceProvider.notifier).clear(),
+                  ),
+                  if (selectedRegisteredDevice != null) ...[
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 8, 18, 6),
+                      child: _SelectedDeviceSummary(
+                        device: selectedRegisteredDevice,
+                        sessions: sessions,
+                      ),
+                    ),
+                    _SidebarNavItem(
+                      icon: Icons.dashboard_outlined,
+                      label: context.l10n.t('overview'),
+                      selected: selectedTool == 0,
+                      onTap: () =>
+                          ref.read(selectedToolTabProvider.notifier).select(0),
+                    ),
+                    _SidebarNavItem(
+                      icon: Icons.tune,
+                      label: context.l10n.t('control'),
+                      selected: selectedTool == 1,
+                      onTap: () =>
+                          ref.read(selectedToolTabProvider.notifier).select(1),
+                    ),
+                    _SidebarNavItem(
+                      icon: Icons.apps_outlined,
+                      label: context.l10n.t('apps'),
+                      selected: selectedTool == 2,
+                      onTap: () =>
+                          ref.read(selectedToolTabProvider.notifier).select(2),
+                    ),
+                    _SidebarNavItem(
+                      icon: Icons.folder_outlined,
+                      label: context.l10n.t('files'),
+                      selected: selectedTool == 3,
+                      onTap: () =>
+                          ref.read(selectedToolTabProvider.notifier).select(3),
+                    ),
+                    _SidebarNavItem(
+                      icon: Icons.article_outlined,
+                      label: context.l10n.t('logcat'),
+                      selected: selectedTool == 4,
+                      onTap: () =>
+                          ref.read(selectedToolTabProvider.notifier).select(4),
+                    ),
+                    _SidebarNavItem(
+                      icon: Icons.terminal_outlined,
+                      label: context.l10n.t('terminal'),
+                      selected: selectedTool == 5,
+                      onTap: () =>
+                          ref.read(selectedToolTabProvider.notifier).select(5),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            _SidebarFooter(
+              registeredDevices: registeredDevices,
+              selectedDevice: selectedDevice,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarSearchField extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 46,
+      child: TextField(
+        readOnly: true,
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.search, size: 22),
+          hintText: context.l10n.t('filterPackage'),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarNavItem extends StatelessWidget {
+  const _SidebarNavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? const Color(0xffd8d9dd) : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+          child: Row(
+            children: [
+              Icon(icon, size: 27, color: const Color(0xff202124)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xff202124),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectedDeviceSummary extends StatelessWidget {
+  const _SelectedDeviceSummary({required this.device, required this.sessions});
+
+  final RegisteredDevice device;
+  final Map<String, ScrcpySession> sessions;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeCount = sessions.values
+        .where((session) => session.deviceId == device.id)
+        .length;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            device.isOnline
+                ? Icons.phone_android_rounded
+                : Icons.phone_android_outlined,
+            color: device.isOnline ? const Color(0xff09c47c) : Colors.grey,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  device.displayName,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  activeCount == 0 ? device.status : 'scrcpy x$activeCount',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xff6b7280),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SidebarFooter extends StatelessWidget {
+  const _SidebarFooter({
+    required this.registeredDevices,
+    required this.selectedDevice,
+  });
+
+  final List<RegisteredDevice> registeredDevices;
+  final AdbDevice? selectedDevice;
+
+  @override
+  Widget build(BuildContext context) {
+    final onlineCount = registeredDevices
+        .where((device) => device.isOnline)
+        .length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
+      child: Row(
+        children: [
+          Icon(
+            selectedDevice?.isOnline == true
+                ? Icons.usb_rounded
+                : Icons.usb_off_outlined,
+            size: 20,
+            color: const Color(0xff6b7280),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$onlineCount/${registeredDevices.length} ${context.l10n.t('deviceOnline')}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: const Color(0xff9aa0aa),
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContentTitleBar extends StatelessWidget {
+  const _ContentTitleBar({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
+      ),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          color: const Color(0xff202124),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardHomeContent extends StatelessWidget {
+  const _DashboardHomeContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: const [
+        _DeviceListPanel(),
+        SizedBox(height: 16),
+        _EmulatorListPanel(),
+      ],
     );
   }
 }
@@ -436,7 +913,9 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
       return _sortAscending ? cmp : -cmp;
     });
 
-    final allChecked = items.isNotEmpty && items.every((d) => d.isChecked);
+    final selectedCount = items.where((d) => d.isChecked).length;
+    final allChecked = items.isNotEmpty && selectedCount == items.length;
+    final hasChecked = selectedCount > 0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -476,7 +955,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
             itemCount: sortedItems.length,
             separatorBuilder: (context, index) => Divider(
               height: 1,
-              color: Theme.of(context).dividerColor.withOpacity(0.5),
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
             ),
             itemBuilder: (context, index) {
               final device = sortedItems[index];
@@ -487,7 +966,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                 color: isSelected
                     ? Theme.of(
                         context,
-                      ).colorScheme.primaryContainer.withOpacity(0.4)
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.4)
                     : Colors.transparent,
                 child: InkWell(
                   onTap: () {
@@ -729,6 +1208,18 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                     ),
                     const Spacer(),
                     Tooltip(
+                      message: context.l10n.t('deleteSelectedDevices'),
+                      child: IconButton.filledTonal(
+                        icon: const Icon(Icons.delete_sweep_outlined),
+                        color: Colors.redAccent,
+                        onPressed: hasChecked
+                            ? () =>
+                                  _deleteSelectedDevices(context, selectedCount)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
                       message: context.l10n.t('connectTcp'),
                       child: IconButton.filledTonal(
                         icon: const Icon(Icons.add_link),
@@ -745,10 +1236,10 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                     ),
                     const SizedBox(width: 8),
                     Tooltip(
-                      message: context.l10n.t('restartAdb'),
+                      message: context.l10n.t('refreshDevices'),
                       child: IconButton.filledTonal(
-                        icon: const Icon(Icons.restart_alt),
-                        onPressed: () => _runAdbRestart(context),
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () => _refreshDevices(context, ref),
                       ),
                     ),
                   ],
@@ -761,9 +1252,8 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                     horizontal: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.3),
                     border: Border(
                       bottom: BorderSide(
                         color: Theme.of(context).dividerColor,
@@ -777,11 +1267,14 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                         SizedBox(
                           width: 45,
                           child: Checkbox(
-                            value: allChecked,
-                            onChanged: (val) {
+                            tristate: true,
+                            value: hasChecked && !allChecked
+                                ? null
+                                : allChecked,
+                            onChanged: (_) {
                               ref
                                   .read(deviceRegistryProvider.notifier)
-                                  .toggleAll(val ?? false);
+                                  .toggleAll(!allChecked);
                             },
                           ),
                         ),
@@ -887,6 +1380,33 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
     );
   }
 
+  Future<void> _deleteSelectedDevices(
+    BuildContext context,
+    int selectedCount,
+  ) async {
+    final confirmed = await _confirm(
+      context,
+      context.l10n
+          .t('deleteSelectedDevicesConfirm')
+          .replaceAll('{count}', '$selectedCount'),
+    );
+    if (!context.mounted || !confirmed) {
+      return;
+    }
+
+    await ref.read(deviceRegistryProvider.notifier).removeCheckedDevices();
+    if (!context.mounted) {
+      return;
+    }
+
+    _showSnack(
+      context,
+      context.l10n
+          .t('selectedDevicesDeleted')
+          .replaceAll('{count}', '$selectedCount'),
+    );
+  }
+
   Color _getStatusBgColor(String status) {
     return switch (status) {
       'device' => const Color(0xFFE8F5E9),
@@ -955,55 +1475,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
   }
 
   Future<void> _showConnectDialog(BuildContext context) async {
-    final controller = TextEditingController(text: '192.168.1.10:5555');
-    final address = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(context.l10n.t('connectDevice')),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: InputDecoration(labelText: context.l10n.t('ipAddress')),
-            onSubmitted: (value) => Navigator.of(context).pop(value),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(context.l10n.t('cancel')),
-            ),
-            FilledButton.icon(
-              icon: const Icon(Icons.add_link),
-              label: Text(context.l10n.t('connect')),
-              onPressed: () => Navigator.of(context).pop(controller.text),
-            ),
-          ],
-        );
-      },
-    );
-    controller.dispose();
-
-    if (address == null || address.trim().isEmpty || !context.mounted) {
-      return;
-    }
-
-    await _runAdbAction(
-      context,
-      ref.read(deviceRegistryProvider.notifier).connectDevice(address.trim()),
-    );
-  }
-
-  Future<void> _runAdbRestart(BuildContext context) async {
-    _showSnack(context, context.l10n.t('restartingAdb'));
-    final result = await ref.read(deviceRegistryProvider.notifier).restartAdb();
-    if (!context.mounted) return;
-    _showSnack(
-      context,
-      result.isSuccess
-          ? context.l10n.t('restartAdbSuccess')
-          : '${context.l10n.t('restartAdbFailed')}: ${result.message}',
-      isError: !result.isSuccess,
-    );
+    await _showConnectDeviceDialog(context, ref);
   }
 
   void _showPairingDialog(BuildContext context) {
@@ -1135,7 +1607,7 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
             itemCount: items.length,
             separatorBuilder: (context, index) => Divider(
               height: 1,
-              color: Theme.of(context).dividerColor.withOpacity(0.5),
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
             ),
             itemBuilder: (context, index) {
               final item = items[index];
@@ -1276,9 +1748,8 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
                     horizontal: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.3),
                     border: Border(
                       bottom: BorderSide(
                         color: Theme.of(context).dividerColor,
@@ -1490,26 +1961,29 @@ class _WorkspacePanel extends ConsumerWidget {
         return DropTarget(
           onDragDone: (details) =>
               _handleDrop(context, ref, device, details.files),
-          child: DefaultTabController(
-            key: ValueKey(device.id),
-            length: 6,
-            initialIndex: tabIndex,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SelectedDeviceHeader(device: device, sessions: sessions),
-                const SizedBox(height: 16),
-                if (hasBoundedHeight)
-                  Expanded(
-                    child: _ToolTabCard(device: device, sessions: sessions),
-                  )
-                else
-                  SizedBox(
-                    height: 800,
-                    child: _ToolTabCard(device: device, sessions: sessions),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SelectedDeviceHeader(device: device, sessions: sessions),
+              const SizedBox(height: 16),
+              if (hasBoundedHeight)
+                Expanded(
+                  child: _ToolContentCard(
+                    device: device,
+                    sessions: sessions,
+                    tabIndex: tabIndex,
                   ),
-              ],
-            ),
+                )
+              else
+                SizedBox(
+                  height: 800,
+                  child: _ToolContentCard(
+                    device: device,
+                    sessions: sessions,
+                    tabIndex: tabIndex,
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -1553,73 +2027,121 @@ class _WorkspacePanel extends ConsumerWidget {
   }
 }
 
-/// Overview、Control、Apps、Files、Logcat 五个 tab 的卡片容器。
-class _ToolTabCard extends ConsumerWidget {
-  const _ToolTabCard({required this.device, required this.sessions});
+class _ToolContentCard extends StatelessWidget {
+  const _ToolContentCard({
+    required this.device,
+    required this.sessions,
+    required this.tabIndex,
+  });
 
   final AdbDevice device;
   final Map<String, ScrcpySession> sessions;
+  final int tabIndex;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final child = switch (tabIndex) {
+      0 => _ToolTabScrollView(child: _OverviewTab(device: device)),
+      1 => _ToolTabScrollView(
+        child: _ControlTab(device: device, sessions: sessions),
+      ),
+      2 => _AppsTab(device: device),
+      3 => _FilesTab(device: device),
+      4 => _LogcatTab(device: device),
+      _ => Padding(
+        padding: const EdgeInsets.all(16),
+        child: TerminalTab(device: device),
+      ),
+    };
+
     return Card(
-      child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Column(
+          children: [
+            _ToolContentHeader(tabIndex: tabIndex),
+            Expanded(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ToolContentHeader extends StatelessWidget {
+  const _ToolContentHeader({required this.tabIndex});
+
+  final int tabIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = switch (tabIndex) {
+      0 => (Icons.dashboard_outlined, context.l10n.t('overview')),
+      1 => (Icons.tune, context.l10n.t('control')),
+      2 => (Icons.apps_outlined, context.l10n.t('apps')),
+      3 => (Icons.folder_outlined, context.l10n.t('files')),
+      4 => (Icons.article_outlined, context.l10n.t('logcat')),
+      _ => (Icons.terminal_outlined, context.l10n.t('terminal')),
+    };
+
+    return Container(
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
+      ),
+      child: Row(
         children: [
-          TabBar(
-            onTap: (index) {
-              ref.read(selectedToolTabProvider.notifier).select(index);
-            },
-            tabs: [
-              Tab(
-                icon: const Icon(Icons.dashboard_outlined),
-                text: context.l10n.t('overview'),
-              ),
-              Tab(
-                icon: const Icon(Icons.tune),
-                text: context.l10n.t('control'),
-              ),
-              Tab(icon: const Icon(Icons.apps), text: context.l10n.t('apps')),
-              Tab(
-                icon: const Icon(Icons.folder),
-                text: context.l10n.t('files'),
-              ),
-              Tab(
-                icon: const Icon(Icons.article),
-                text: context.l10n.t('logcat'),
-              ),
-              Tab(
-                icon: const Icon(Icons.terminal),
-                text: context.l10n.t('terminal'),
-              ),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                SingleChildScrollView(
-                  padding: const EdgeInsets.only(
-                    left: 16,
-                    right: 16,
-                    top: 16,
-                    bottom: 32,
-                  ),
-                  child: _OverviewTab(device: device),
-                ),
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: _ControlTab(device: device, sessions: sessions),
-                ),
-                _AppsTab(device: device),
-                _FilesTab(device: device),
-                _LogcatTab(device: device),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TerminalTab(device: device),
-                ),
-              ],
+          Icon(data.$1, size: 22, color: const Color(0xff09c47c)),
+          const SizedBox(width: 10),
+          Text(
+            data.$2,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: const Color(0xff202124),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Tab 内容统一使用内部滚动，避免外层页面滚动抢占桌面端滚轮事件。
+class _ToolTabScrollView extends StatefulWidget {
+  const _ToolTabScrollView({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_ToolTabScrollView> createState() => _ToolTabScrollViewState();
+}
+
+class _ToolTabScrollViewState extends State<_ToolTabScrollView> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scrollbar(
+      controller: _controller,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        controller: _controller,
+        primary: false,
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          32 + MediaQuery.paddingOf(context).bottom,
+        ),
+        child: widget.child,
       ),
     );
   }
@@ -3591,6 +4113,82 @@ Future<void> _runAdbAction(
   _showSnack(context, result.message, isError: !result.isSuccess);
 }
 
+/// 主动刷新 adb 设备列表，避免仅重建 StreamProvider 时 UI 无明显反馈。
+Future<void> _refreshDevices(BuildContext context, WidgetRef ref) async {
+  final result = await ref
+      .read(deviceRegistryProvider.notifier)
+      .refreshDevices();
+  if (!context.mounted) {
+    return;
+  }
+  _showSnack(
+    context,
+    result.isSuccess
+        ? context.l10n.t('devicesRefreshed')
+        : '${context.l10n.t('adbUnavailable')}: ${result.message}',
+    isError: !result.isSuccess,
+  );
+}
+
+/// 重启 ADB server，并在完成后刷新设备流。
+Future<void> _restartAdbServer(BuildContext context, WidgetRef ref) async {
+  _showSnack(context, context.l10n.t('restartingAdb'));
+  final result = await ref.read(deviceRegistryProvider.notifier).restartAdb();
+  if (!context.mounted) {
+    return;
+  }
+  _showSnack(
+    context,
+    result.isSuccess
+        ? context.l10n.t('restartAdbSuccess')
+        : '${context.l10n.t('restartAdbFailed')}: ${result.message}',
+    isError: !result.isSuccess,
+  );
+}
+
+/// 展示 TCP/IP 连接弹窗，供左侧导航和设备列表共同复用。
+Future<void> _showConnectDeviceDialog(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final controller = TextEditingController(text: '192.168.1.10:5555');
+  final address = await showDialog<String>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text(context.l10n.t('connectDevice')),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(labelText: context.l10n.t('ipAddress')),
+          onSubmitted: (value) => Navigator.of(context).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.l10n.t('cancel')),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.add_link),
+            label: Text(context.l10n.t('connect')),
+            onPressed: () => Navigator.of(context).pop(controller.text),
+          ),
+        ],
+      );
+    },
+  );
+  controller.dispose();
+
+  if (address == null || address.trim().isEmpty || !context.mounted) {
+    return;
+  }
+
+  await _runAdbAction(
+    context,
+    ref.read(deviceRegistryProvider.notifier).connectDevice(address.trim()),
+  );
+}
+
 /// 执行 adb 命令，并在弹窗中展示完整输出。
 Future<void> _showAdbResult(
   BuildContext context,
@@ -3645,65 +4243,77 @@ Future<bool> _confirm(BuildContext context, String message) async {
 
 /// 展示应用级短消息。
 void _showSnack(BuildContext context, String message, {bool isError = false}) {
+  final overlay = Overlay.maybeOf(context);
+  if (overlay == null) {
+    return;
+  }
+
+  final media = MediaQuery.of(context);
   final accentColor = isError
       ? Theme.of(context).colorScheme.error
       : const Color(0xff00c853);
+  final textStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+    color: const Color(0xff171a21),
+    fontWeight: FontWeight.w600,
+  );
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      duration: const Duration(seconds: 2),
-      padding: EdgeInsets.zero,
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      content: Align(
-        alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(context).width - 64,
-          ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xffd7dce5)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x26000000),
-                  blurRadius: 12,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isError ? Icons.error : Icons.check_circle,
-                    color: accentColor,
-                    size: 30,
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Text(
-                      message,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: const Color(0xff171a21),
-                        fontWeight: FontWeight.w600,
-                      ),
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (context) {
+      return Positioned(
+        top: media.padding.top + 16,
+        left: 16,
+        right: 16,
+        child: IgnorePointer(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: media.size.width - 64),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xffd7dce5)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x26000000),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
                     ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isError ? Icons.error : Icons.check_circle,
+                        color: accentColor,
+                        size: 30,
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(child: Text(message, style: textStyle)),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ),
-    ),
+      );
+    },
   );
+
+  overlay.insert(entry);
+  Timer(const Duration(seconds: 2), () {
+    if (entry.mounted) {
+      entry.remove();
+    }
+  });
 }
 
 /// 拼接远程目录路径和文件名，不参与宿主机路径处理。
@@ -3995,7 +4605,7 @@ class _DetailItem extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: theme.dividerColor.withOpacity(0.4),
+            color: theme.dividerColor.withValues(alpha: 0.4),
             width: 0.5,
           ),
         ),
@@ -4196,7 +4806,7 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),

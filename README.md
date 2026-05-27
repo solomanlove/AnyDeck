@@ -43,7 +43,35 @@ Flutter Desktop UI
 
 ## 更新日志
 
-### v0.4.0 — 2026-05-27（本次提交）
+### v0.5.0 — 2026-05-27（本次提交）
+
+本次提交重点优化桌面端主界面、品牌资源和设备管理稳定性：
+
+1. **桌面端工作台布局重构**
+   - 大屏模式下主界面改为左侧 Rail + 二级 Sidebar + 右侧内容区的桌面工作台布局。
+   - 左侧 Rail 集中放置设备首页、应用、文件、Logcat、终端、ADB 重启和设置入口。
+   - 右侧工具内容区取消传统 `TabBarView`，改为独立工具页标题栏和内部滚动，减少桌面端滚轮抢占和布局跳动。
+2. **首页与设备侧栏优化**
+   - 未选择设备时显示设备列表和模拟器管理首页，便于直接完成设备连接、刷新和模拟器启动。
+   - 二级 Sidebar 展示当前设备、设备工具入口和 scrcpy 状态，选中设备后可快速切换常用调试模块。
+3. **设备批量删除**
+   - 设备列表新增**删除已选设备**按钮，支持一次性删除多台勾选设备。
+   - 删除无线设备时会先执行断开连接，并同步清理历史记录、别名和序列号映射。
+   - 补齐批量删除相关中文和英文 localization 文案。
+4. **ADB 设备刷新与 mDNS 解析增强**
+   - 新增主动刷新设备列表逻辑，刷新后立即同步到设备注册表，不再只依赖 Provider 重建。
+   - `adb devices -l` 解析改为正则匹配，支持包含空格的 mDNS 设备 ID，例如 `adb-xxx (2)._adb-tls-connect._tcp`。
+   - 新增 `adb_service_test.dart` 单元测试覆盖 mDNS 设备 ID 解析场景。
+5. **品牌 Logo 与应用图标**
+   - 新增 `assets/brand/app_logo.svg` 和 `assets/brand/app_logo.png` 品牌资源，并在主界面 Rail 中展示。
+   - 更新 macOS AppIcon 和 Windows `app_icon.ico`，统一桌面端应用图标。
+   - 新增 `tool/generate_app_icons.swift`，用于从同一套绘制逻辑生成 macOS、Windows 和应用内 Logo 资源。
+6. **提示样式优化**
+   - 全局提示从 `ScaffoldMessenger SnackBar` 调整为 Overlay 浮层，避免受页面结构影响，并统一顶部展示位置。
+
+---
+
+### v0.4.0 — 2026-05-27
 
 本次提交补充了设置说明、应用管理和交互反馈能力：
 
@@ -128,7 +156,7 @@ Flutter Desktop UI
 
 | 模块 | 状态 | 说明 |
 |---|---:|---|
-| 设备列表 | ✅ 已实现 | 轮询 `adb devices -l`，自动去重、连接方式识别 |
+| 设备列表 | ✅ 已实现 | 轮询 `adb devices -l`，自动去重、连接方式识别、批量删除 |
 | TCP/IP 连接 | ✅ 已实现 | `adb connect`、二维码配对、配对码配对 |
 | ADB 服务管理 | ✅ 已实现 | 一键重启 ADB 服务端 |
 | scrcpy 启动器 | ✅ 已实现 | 使用默认 MVP 参数启动外部 `scrcpy` |
@@ -140,6 +168,7 @@ Flutter Desktop UI
 | Logcat | ✅ 已实现 | 启停日志流、保留最近 1000 行、关键字筛选 |
 | 终端调试 | ✅ 已实现 | 多标签 ADB Shell、命令历史、常用命令收藏与重置 |
 | 模拟器管理 | ✅ 已实现 | AVD 列表扫描、启动/停止模拟器、运行状态监控 |
+| 品牌资源 | ✅ 已实现 | 应用内 Logo、macOS AppIcon、Windows ICO 图标生成与更新 |
 
 拖拽行为：
 
@@ -171,6 +200,12 @@ lib/
   features/
     dashboard/
       presentation/    # 主界面、终端标签页等
+assets/
+  brand/               # 应用 Logo 品牌资源
+tool/
+  generate_app_icons.swift
+test/
+  adb_service_test.dart
 ```
 
 ## 开发命令

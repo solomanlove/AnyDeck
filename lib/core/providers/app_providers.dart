@@ -316,6 +316,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   Map<String, String> _aliases = {};
   Set<String> _checkedIds = {};
   Map<String, String> _serialMap = {};
+  List<AdbDevice> _lastActiveDevices = [];
   final Set<String> _pendingFetchIds = {};
   bool _isDisposed = false;
 
@@ -342,7 +343,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     });
 
     final activeDevicesAsync = ref.watch(devicesProvider);
-    final activeDevices = activeDevicesAsync.value ?? [];
+    final activeDevices = activeDevicesAsync.value ?? _lastActiveDevices;
+    if (activeDevicesAsync.hasValue) {
+      _lastActiveDevices = activeDevices;
+    }
 
     _loadFromPrefs();
 
@@ -365,7 +369,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     _aliases = aliases;
 
     // 加载缓存的序列号映射
-    final activeDevices = ref.read(devicesProvider).value ?? [];
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    _lastActiveDevices = activeDevices;
     final allIds = {...history, ...activeDevices.map((d) => d.id)};
     final serialMap = <String, String>{};
     for (final id in allIds) {
@@ -455,7 +460,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       } finally {
         _pendingFetchIds.remove(id);
         if (!_isDisposed) {
-          final activeDevices = ref.read(devicesProvider).value ?? [];
+          final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
           state = _mergeDevices(activeDevices);
         }
       }
@@ -598,18 +603,39 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       }
     }
     await _saveAliases();
-    final activeDevices = ref.read(devicesProvider).value ?? [];
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
-  Future<void> removeDevice(String id) async {
-    final serial = _serialMap[id] ?? id;
-    final idsToRemove = _serialMap.entries
-        .where((entry) => entry.value == serial)
-        .map((entry) => entry.key)
+  Future<void> removeDevice(String id) {
+    return _removeDevices({id});
+  }
+
+  Future<void> removeCheckedDevices() {
+    final checkedDeviceIds = state
+        .where((device) => device.isChecked)
+        .map((device) => device.id)
         .toSet();
-    if (idsToRemove.isEmpty) {
-      idsToRemove.add(id);
+    return _removeDevices(checkedDeviceIds);
+  }
+
+  Future<void> _removeDevices(Set<String> ids) async {
+    if (ids.isEmpty) {
+      return;
+    }
+
+    final idsToRemove = <String>{};
+    for (final id in ids) {
+      final serial = _serialMap[id] ?? id;
+      final sameSerialIds = _serialMap.entries
+          .where((entry) => entry.value == serial)
+          .map((entry) => entry.key)
+          .toSet();
+      if (sameSerialIds.isEmpty) {
+        idsToRemove.add(id);
+      } else {
+        idsToRemove.addAll(sameSerialIds);
+      }
     }
 
     for (final removeId in idsToRemove) {
@@ -631,7 +657,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     await _saveHistory();
     await _saveAliases();
 
-    var activeDevices = ref.read(devicesProvider).value ?? [];
+    var activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     activeDevices = activeDevices.where((d) => !idsToRemove.contains(d.id)).toList();
     state = _mergeDevices(activeDevices);
   }
@@ -655,7 +681,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       }
     }
 
-    final activeDevices = ref.read(devicesProvider).value ?? [];
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
@@ -672,27 +698,49 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     } else {
       _checkedIds.clear();
     }
-    final activeDevices = ref.read(devicesProvider).value ?? [];
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
   Future<AdbResult> connectDevice(String address) async {
     final result = await ref.read(deviceActionServiceProvider).connect(address);
-    ref.invalidate(devicesProvider);
+    await _refreshRegistryAfterAdbCommand();
     return result;
   }
 
   Future<AdbResult> disconnectDevice(String address) async {
     final result = await ref.read(deviceActionServiceProvider).disconnect(address);
-    ref.invalidate(devicesProvider);
+    await _refreshRegistryAfterAdbCommand();
     return result;
+  }
+
+  /// 主动刷新设备列表，并立即同步到设备注册表。
+  Future<AdbResult> refreshDevices() async {
+    try {
+      await _syncActiveDevices();
+      return const AdbResult(exitCode: 0, stdout: 'Devices refreshed', stderr: '');
+    } on Object catch (error) {
+      return AdbResult(exitCode: 1, stdout: '', stderr: error.toString());
+    }
   }
 
   /// 重启 ADB 服务并刷新设备列表。
   Future<AdbResult> restartAdb() async {
     final result = await ref.read(adbServiceProvider).restartServer();
-    ref.invalidate(devicesProvider);
+    await _refreshRegistryAfterAdbCommand();
     return result;
+  }
+
+  Future<void> _refreshRegistryAfterAdbCommand() async {
+    try {
+      await _syncActiveDevices();
+    } catch (_) {}
+  }
+
+  Future<void> _syncActiveDevices() async {
+    final activeDevices = await ref.read(adbServiceProvider).listDevices();
+    _lastActiveDevices = activeDevices;
+    state = _mergeDevices(activeDevices);
   }
 
   /// 使用配对码配对设备并自动发现端口连接。
@@ -829,4 +877,3 @@ final runningEmulatorsProvider = FutureProvider.autoDispose<Map<String, String>>
 
   return map;
 });
-
