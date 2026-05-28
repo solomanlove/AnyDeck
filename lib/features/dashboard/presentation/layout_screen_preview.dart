@@ -3,14 +3,18 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'layout_tab.dart';
 
-/// 渲染手机屏幕截图，并在其上叠加手势交互与高亮边框。
+/// 渲染手机屏幕截图，支持 InteractiveViewer 缩放和平移，以及旋转度数下的坐标映射。
 class LayoutScreenPreview extends StatelessWidget {
   final LayoutNode rootNode;
   final ui.Image decodedImage;
   final LayoutNode? selectedNode;
   final LayoutNode? hoveredNode;
+  final bool showBorders;
+  final int rotationAngle;
+  final TransformationController transformationController;
   final ValueChanged<LayoutNode?> onNodeSelected;
   final ValueChanged<LayoutNode?> onNodeHovered;
+  final ValueChanged<Size> onViewportSizeChanged;
 
   const LayoutScreenPreview({
     super.key,
@@ -18,8 +22,12 @@ class LayoutScreenPreview extends StatelessWidget {
     required this.decodedImage,
     required this.selectedNode,
     required this.hoveredNode,
+    required this.showBorders,
+    required this.rotationAngle,
+    required this.transformationController,
     required this.onNodeSelected,
     required this.onNodeHovered,
+    required this.onViewportSizeChanged,
   });
 
   LayoutNode? _findDeepestNodeAt(LayoutNode node, Offset nativePoint) {
@@ -28,7 +36,7 @@ class LayoutScreenPreview extends StatelessWidget {
       return null;
     }
 
-    // 优先搜索子节点（因为子节点在树的最深层，即界面最上层）
+    // 优先搜索子节点
     for (final child in node.children.reversed) {
       final found = _findDeepestNodeAt(child, nativePoint);
       if (found != null) {
@@ -36,84 +44,94 @@ class LayoutScreenPreview extends StatelessWidget {
       }
     }
 
-    // 如果子节点都不包含该点，但当前节点包含
     return node;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xff181818), // 采用暗色背景来展示手机屏幕截图，使其更具沉浸感
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final viewportWidth = constraints.maxWidth;
-          final viewportHeight = constraints.maxHeight;
-          if (viewportWidth <= 0 || viewportHeight <= 0) {
-            return const SizedBox.shrink();
-          }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewportWidth = constraints.maxWidth;
+        final viewportHeight = constraints.maxHeight;
+        if (viewportWidth <= 0 || viewportHeight <= 0) {
+          return const SizedBox.shrink();
+        }
 
-          final imageWidth = decodedImage.width.toDouble();
-          final imageHeight = decodedImage.height.toDouble();
+        // 通知父组件视口大小已变更，以便在操作栏计算 1:1 或重置时使用
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onViewportSizeChanged(Size(viewportWidth, viewportHeight));
+        });
 
-          // 保持宽高比适配视口大小
-          final scale = min(viewportWidth / imageWidth, viewportHeight / imageHeight);
-          final renderedWidth = imageWidth * scale;
-          final renderedHeight = imageHeight * scale;
-          final offsetX = (viewportWidth - renderedWidth) / 2;
-          final offsetY = (viewportHeight - renderedHeight) / 2;
+        final imageWidth = decodedImage.width.toDouble();
+        final imageHeight = decodedImage.height.toDouble();
 
-          LayoutNode? getNodeAtLocalPoint(Offset localPoint) {
-            final x = localPoint.dx;
-            final y = localPoint.dy;
+        // 旋转后的图片容器边界尺寸
+        final rotatedW = (rotationAngle == 90 || rotationAngle == 270) ? imageHeight : imageWidth;
+        final rotatedH = (rotationAngle == 90 || rotationAngle == 270) ? imageWidth : imageHeight;
 
-            // 检查点击或悬停点是否在图片范围内
-            if (x < offsetX ||
-                x > offsetX + renderedWidth ||
-                y < offsetY ||
-                y > offsetY + renderedHeight) {
-              return null;
-            }
+        // 根据当前的旋转角度，将视口局部坐标映射回设备的原生坐标
+        Offset localToNative(Offset localPoint) {
+          final cx = localPoint.dx - rotatedW / 2;
+          final cy = localPoint.dy - rotatedH / 2;
 
-            // 映射回设备原生坐标系
-            final nativeX = (x - offsetX) / scale;
-            final nativeY = (y - offsetY) / scale;
+          // 逆旋转 (向后反转)
+          final rad = -rotationAngle * pi / 180;
+          final rx = cx * cos(rad) - cy * sin(rad);
+          final ry = cx * sin(rad) + cy * cos(rad);
 
-            return _findDeepestNodeAt(rootNode, Offset(nativeX, nativeY));
-          }
+          // 移动回以左上角为基准的原生点
+          return Offset(rx + imageWidth / 2, ry + imageHeight / 2);
+        }
 
-          return MouseRegion(
-            cursor: SystemMouseCursors.click,
-            onHover: (event) {
-              final node = getNodeAtLocalPoint(event.localPosition);
-              onNodeHovered(node);
-            },
-            onExit: (_) {
-              onNodeHovered(null);
-            },
-            child: GestureDetector(
-              onTapDown: (details) {
-                final node = getNodeAtLocalPoint(details.localPosition);
-                onNodeSelected(node);
-              },
+        LayoutNode? getNodeAtLocalPoint(Offset localPoint) {
+          final nativePoint = localToNative(localPoint);
+          return _findDeepestNodeAt(rootNode, nativePoint);
+        }
+
+        return Container(
+          color: const Color(0xff181818),
+          child: InteractiveViewer(
+            transformationController: transformationController,
+            boundaryMargin: const EdgeInsets.all(400.0),
+            minScale: 0.05,
+            maxScale: 10.0,
+            child: Center(
               child: SizedBox(
-                width: double.infinity,
-                height: double.infinity,
-                child: CustomPaint(
-                  painter: _ScreenPreviewPainter(
-                    image: decodedImage,
-                    rootNode: rootNode,
-                    selectedNode: selectedNode,
-                    hoveredNode: hoveredNode,
-                    scale: scale,
-                    offsetX: offsetX,
-                    offsetY: offsetY,
+                width: rotatedW,
+                height: rotatedH,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  onHover: (event) {
+                    final node = getNodeAtLocalPoint(event.localPosition);
+                    onNodeHovered(node);
+                  },
+                  onExit: (_) {
+                    onNodeHovered(null);
+                  },
+                  child: GestureDetector(
+                    onTapDown: (details) {
+                      final node = getNodeAtLocalPoint(details.localPosition);
+                      onNodeSelected(node);
+                    },
+                    child: SizedBox.expand(
+                      child: CustomPaint(
+                        painter: _ScreenPreviewPainter(
+                          image: decodedImage,
+                          rootNode: rootNode,
+                          selectedNode: selectedNode,
+                          hoveredNode: hoveredNode,
+                          showBorders: showBorders,
+                          rotationAngle: rotationAngle,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -123,98 +141,94 @@ class _ScreenPreviewPainter extends CustomPainter {
   final LayoutNode rootNode;
   final LayoutNode? selectedNode;
   final LayoutNode? hoveredNode;
-  final double scale;
-  final double offsetX;
-  final double offsetY;
+  final bool showBorders;
+  final int rotationAngle;
 
   _ScreenPreviewPainter({
     required this.image,
     required this.rootNode,
     required this.selectedNode,
     required this.hoveredNode,
-    required this.scale,
-    required this.offsetX,
-    required this.offsetY,
+    required this.showBorders,
+    required this.rotationAngle,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. 绘制居中的设备屏幕截图
-    final src = Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
-    final dst = Rect.fromLTWH(offsetX, offsetY, image.width.toDouble() * scale, image.height.toDouble() * scale);
+    final imageWidth = image.width.toDouble();
+    final imageHeight = image.height.toDouble();
+
+    final rotatedW = (rotationAngle == 90 || rotationAngle == 270) ? imageHeight : imageWidth;
+    final rotatedH = (rotationAngle == 90 || rotationAngle == 270) ? imageWidth : imageHeight;
+
+    canvas.save();
+    // 旋转 canvas 以便我们可以使用原始的设备坐标系进行绘制
+    canvas.translate(rotatedW / 2, rotatedH / 2);
+    canvas.rotate(rotationAngle * pi / 180);
+    canvas.translate(-imageWidth / 2, -imageHeight / 2);
+
+    // 1. 绘制截图
+    final src = Rect.fromLTWH(0, 0, imageWidth, imageHeight);
+    final dst = Rect.fromLTWH(0, 0, imageWidth, imageHeight);
     canvas.drawImageRect(image, src, dst, Paint());
 
-    // 2. 绘制所有节点的微弱边缘边框（辅助开发，类似于 Android 开发者选项中的“显示布局边界”）
-    final boundsPaint = Paint()
-      ..color = Colors.blue.withValues(alpha: 0.1)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.5;
+    // 2. 绘制全局布局边界
+    if (showBorders) {
+      final boundsPaint = Paint()
+        ..color = const Color(0xff4caf50).withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
 
-    void drawAllNodeBounds(LayoutNode node) {
-      final rect = node.rect;
-      if (rect != null) {
-        final scaledRect = Rect.fromLTRB(
-          offsetX + rect.left * scale,
-          offsetY + rect.top * scale,
-          offsetX + rect.right * scale,
-          offsetY + rect.bottom * scale,
-        );
-        canvas.drawRect(scaledRect, boundsPaint);
+      void drawAllNodeBounds(LayoutNode node) {
+        final rect = node.rect;
+        if (rect != null) {
+          canvas.drawRect(rect, boundsPaint);
+        }
+        for (final child in node.children) {
+          drawAllNodeBounds(child);
+        }
       }
-      for (final child in node.children) {
-        drawAllNodeBounds(child);
-      }
+
+      drawAllNodeBounds(rootNode);
     }
 
-    drawAllNodeBounds(rootNode);
-
-    // 3. 绘制悬停状态边框（橙色细边框）
+    // 3. 绘制 Hover 节点
     if (hoveredNode != null && hoveredNode != selectedNode) {
       final rect = hoveredNode!.rect;
       if (rect != null) {
-        final scaledRect = Rect.fromLTRB(
-          offsetX + rect.left * scale,
-          offsetY + rect.top * scale,
-          offsetX + rect.right * scale,
-          offsetY + rect.bottom * scale,
-        );
         canvas.drawRect(
-          scaledRect,
+          rect,
           Paint()
-            ..color = Colors.orange.withValues(alpha: 0.8)
+            ..color = Colors.orange.withValues(alpha: 0.85)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5,
+            ..strokeWidth = 2.0,
         );
         canvas.drawRect(
-          scaledRect,
+          rect,
           Paint()..color = Colors.orange.withValues(alpha: 0.08),
         );
       }
     }
 
-    // 4. 绘制选中状态边框（品牌绿色粗边框）
+    // 4. 绘制 Selected 选区高亮
     if (selectedNode != null) {
       final rect = selectedNode!.rect;
       if (rect != null) {
-        final scaledRect = Rect.fromLTRB(
-          offsetX + rect.left * scale,
-          offsetY + rect.top * scale,
-          offsetX + rect.right * scale,
-          offsetY + rect.bottom * scale,
-        );
         canvas.drawRect(
-          scaledRect,
+          rect,
           Paint()
             ..color = const Color(0xff09c47c)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.5,
+            ..strokeWidth = 3.0,
         );
         canvas.drawRect(
-          scaledRect,
+          rect,
           Paint()..color = const Color(0xff09c47c).withValues(alpha: 0.15),
         );
       }
     }
+
+    canvas.restore();
   }
 
   @override
@@ -223,8 +237,7 @@ class _ScreenPreviewPainter extends CustomPainter {
         oldDelegate.rootNode != rootNode ||
         oldDelegate.selectedNode != selectedNode ||
         oldDelegate.hoveredNode != hoveredNode ||
-        oldDelegate.scale != scale ||
-        oldDelegate.offsetX != offsetX ||
-        oldDelegate.offsetY != offsetY;
+        oldDelegate.showBorders != showBorders ||
+        oldDelegate.rotationAngle != rotationAngle;
   }
 }

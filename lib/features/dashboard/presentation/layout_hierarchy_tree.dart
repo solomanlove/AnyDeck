@@ -1,21 +1,27 @@
 import 'package:flutter/material.dart';
 import 'layout_tab.dart';
 
-/// 渲染左侧树状 XML 节点结构，支持自动展开、高亮与悬停。
+/// 渲染左侧树状 XML 节点结构，支持由父组件驱动的展开、折叠、高亮与悬停。
 class LayoutHierarchyTree extends StatefulWidget {
   final LayoutNode rootNode;
+  final bool loading;
   final LayoutNode? selectedNode;
   final LayoutNode? hoveredNode;
+  final Set<LayoutNode> expandedNodes;
   final ValueChanged<LayoutNode?> onNodeSelected;
   final ValueChanged<LayoutNode?> onNodeHovered;
+  final void Function(LayoutNode node, bool expanded) onNodeExpansionChanged;
 
   const LayoutHierarchyTree({
     super.key,
     required this.rootNode,
+    this.loading = false,
     required this.selectedNode,
     this.hoveredNode,
+    required this.expandedNodes,
     required this.onNodeSelected,
     required this.onNodeHovered,
+    required this.onNodeExpansionChanged,
   });
 
   @override
@@ -55,35 +61,55 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
                 SizedBox(width: 8),
                 Text(
                   '节点结构 (Hierarchy)',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.blueGrey,
+                  ),
                 ),
               ],
             ),
           ),
           // 树结构展示区
           Expanded(
-            child: Scrollbar(
-              controller: _scrollController,
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                scrollDirection: Axis.vertical,
-                padding: const EdgeInsets.all(8),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 500),
-                    child: _TreeNodeWidget(
-                      node: widget.rootNode,
-                      depth: 0,
-                      selectedNode: widget.selectedNode,
-                      hoveredNode: widget.hoveredNode,
-                      onNodeSelected: widget.onNodeSelected,
-                      onNodeHovered: widget.onNodeHovered,
+            child: Stack(
+              children: [
+                Opacity(
+                  opacity: widget.loading ? 0.4 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: widget.loading,
+                    child: Scrollbar(
+                      controller: _scrollController,
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        scrollDirection: Axis.vertical,
+                        padding: const EdgeInsets.all(8),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minWidth: 600),
+                            child: _TreeNodeWidget(
+                              node: widget.rootNode,
+                              depth: 0,
+                              selectedNode: widget.selectedNode,
+                              hoveredNode: widget.hoveredNode,
+                              expandedNodes: widget.expandedNodes,
+                              onNodeSelected: widget.onNodeSelected,
+                              onNodeHovered: widget.onNodeHovered,
+                              onNodeExpansionChanged: widget.onNodeExpansionChanged,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+                if (widget.loading)
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+              ],
             ),
           ),
         ],
@@ -92,52 +118,26 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
   }
 }
 
-class _TreeNodeWidget extends StatefulWidget {
+class _TreeNodeWidget extends StatelessWidget {
   final LayoutNode node;
   final int depth;
   final LayoutNode? selectedNode;
   final LayoutNode? hoveredNode;
+  final Set<LayoutNode> expandedNodes;
   final ValueChanged<LayoutNode?> onNodeSelected;
   final ValueChanged<LayoutNode?> onNodeHovered;
+  final void Function(LayoutNode node, bool expanded) onNodeExpansionChanged;
 
   const _TreeNodeWidget({
     required this.node,
     required this.depth,
     required this.selectedNode,
     required this.hoveredNode,
+    required this.expandedNodes,
     required this.onNodeSelected,
     required this.onNodeHovered,
+    required this.onNodeExpansionChanged,
   });
-
-  @override
-  State<_TreeNodeWidget> createState() => _TreeNodeWidgetState();
-}
-
-class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
-  bool _isExpanded = true;
-
-  bool _isDescendant(LayoutNode parent, LayoutNode? child) {
-    if (child == null) return false;
-    var current = child.parent;
-    while (current != null) {
-      if (current == parent) return true;
-      current = current.parent;
-    }
-    return false;
-  }
-
-  @override
-  void didUpdateWidget(covariant _TreeNodeWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 当选中的节点是当前节点的子孙节点时，自动展开当前节点以显示选中项
-    if (widget.selectedNode != oldWidget.selectedNode &&
-        widget.selectedNode != null &&
-        _isDescendant(widget.node, widget.selectedNode)) {
-      setState(() {
-        _isExpanded = true;
-      });
-    }
-  }
 
   Widget _buildSyntaxHighlightedNode(LayoutNode node) {
     final spans = <TextSpan>[];
@@ -188,20 +188,23 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final isSelected = widget.selectedNode == widget.node;
-    final isHovered = widget.hoveredNode == widget.node;
+    final isSelected = selectedNode == node;
+    final isHovered = hoveredNode == node;
+    final isExpanded = expandedNodes.contains(node);
 
     final List<Widget> treeChildren = [];
-    if (_isExpanded && widget.node.children.isNotEmpty) {
-      for (final child in widget.node.children) {
+    if (isExpanded && node.children.isNotEmpty) {
+      for (final child in node.children) {
         treeChildren.add(
           _TreeNodeWidget(
             node: child,
-            depth: widget.depth + 1,
-            selectedNode: widget.selectedNode,
-            hoveredNode: widget.hoveredNode,
-            onNodeSelected: widget.onNodeSelected,
-            onNodeHovered: widget.onNodeHovered,
+            depth: depth + 1,
+            selectedNode: selectedNode,
+            hoveredNode: hoveredNode,
+            expandedNodes: expandedNodes,
+            onNodeSelected: onNodeSelected,
+            onNodeHovered: onNodeHovered,
+            onNodeExpansionChanged: onNodeExpansionChanged,
           ),
         );
       }
@@ -212,10 +215,10 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
       children: [
         // 节点单行元素
         MouseRegion(
-          onEnter: (_) => widget.onNodeHovered(widget.node),
-          onExit: (_) => widget.onNodeHovered(null),
+          onEnter: (_) => onNodeHovered(node),
+          onExit: (_) => onNodeHovered(null),
           child: GestureDetector(
-            onTap: () => widget.onNodeSelected(widget.node),
+            onTap: () => onNodeSelected(node),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
               decoration: BoxDecoration(
@@ -230,17 +233,15 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // 缩进占位
-                  SizedBox(width: widget.depth * 16.0),
+                  SizedBox(width: depth * 16.0),
                   // 展开/收起小箭头
-                  if (widget.node.children.isNotEmpty)
+                  if (node.children.isNotEmpty)
                     GestureDetector(
                       onTap: () {
-                        setState(() {
-                          _isExpanded = !_isExpanded;
-                        });
+                        onNodeExpansionChanged(node, !isExpanded);
                       },
                       child: Icon(
-                        _isExpanded ? Icons.arrow_drop_down : Icons.arrow_right,
+                        isExpanded ? Icons.arrow_drop_down : Icons.arrow_right,
                         size: 16,
                         color: Colors.grey[700],
                       ),
@@ -249,28 +250,28 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
                     const SizedBox(width: 16),
                   const SizedBox(width: 4),
                   // 节点 XML 结构
-                  _buildSyntaxHighlightedNode(widget.node),
+                  _buildSyntaxHighlightedNode(node),
                 ],
               ),
             ),
           ),
         ),
         // 子节点递归
-        if (_isExpanded && treeChildren.isNotEmpty) ...treeChildren,
+        if (isExpanded && treeChildren.isNotEmpty) ...treeChildren,
         // 如果有子节点且已展开，绘制闭合标签
-        if (_isExpanded && widget.node.children.isNotEmpty)
+        if (isExpanded && node.children.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(width: (widget.depth * 16.0) + 20), // 缩进配合
+                SizedBox(width: (depth * 16.0) + 20), // 缩进配合
                 RichText(
                   text: TextSpan(
                     children: [
                       const TextSpan(text: '</', style: TextStyle(color: Colors.grey)),
                       TextSpan(
-                        text: widget.node.className.split('.').last,
+                        text: node.className.split('.').last,
                         style: const TextStyle(color: Color(0xff881280), fontWeight: FontWeight.bold),
                       ),
                       const TextSpan(text: '>', style: TextStyle(color: Colors.grey)),
