@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../app/l10n/app_localizations.dart';
-import 'layout_tab.dart';
+import '../../../core/layout_inspector/layout_node.dart';
 
 /// 渲染左侧树状 XML 节点结构，支持由父组件驱动的展开、折叠、高亮与悬停。
 class LayoutHierarchyTree extends StatefulWidget {
@@ -169,19 +169,24 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
         if (mounted) {
           // 查找外层 Axis.vertical 方向的垂直滚动组件，避免被内层水平滚动组件拦截
           ScrollableState? verticalScrollable;
-          ScrollableState? currentScrollable = context.findAncestorStateOfType<ScrollableState>();
+          ScrollableState? currentScrollable = context
+              .findAncestorStateOfType<ScrollableState>();
           while (currentScrollable != null) {
             if (currentScrollable.widget.axis == Axis.vertical) {
               verticalScrollable = currentScrollable;
               break;
             }
-            currentScrollable = currentScrollable.context.findAncestorStateOfType<ScrollableState>();
+            currentScrollable = currentScrollable.context
+                .findAncestorStateOfType<ScrollableState>();
           }
 
-
           if (verticalScrollable != null) {
+            final renderObject = context.findRenderObject();
+            if (renderObject == null || !renderObject.attached) {
+              return;
+            }
             verticalScrollable.position.ensureVisible(
-              context.findRenderObject()!,
+              renderObject,
               alignment: 0.3, // 滚动到视口偏上 30% 位置以获得最佳视觉效果
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeInOut,

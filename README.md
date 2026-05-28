@@ -43,7 +43,37 @@ Flutter Desktop UI
 
 ## 更新日志
 
-### v0.10.0 — 2026-05-28（本次提交）
+### v0.11.0 — 2026-05-28（本次提交）
+
+本次提交重点重构 Layout Inspector 的核心能力，并补齐解析测试：
+
+1. **布局分析核心服务拆分**
+   - 新增 `LayoutInspectorService`，集中负责执行 `uiautomator dump`、读取 XML、通过 `exec-out screencap -p` 抓取截图。
+   - 新增 `LayoutInspectorSnapshot`，一次性返回布局树、原始 XML 和截图字节。
+   - 新增 `LayoutInspectorException`，在布局抓取失败时保留 `AdbResult`，便于 UI 同步设备断连状态。
+2. **布局节点模型独立**
+   - 新增 `LayoutNode`，承载 `uiautomator` 节点属性、父子关系、布尔属性和 `bounds` 坐标解析。
+   - 将 `parseLayoutXml` 和 XML entity 反转义逻辑从 UI 文件迁移到 core 层，供树、属性表、截图预览和测试复用。
+   - `bounds` 解析支持负坐标，兼容被裁剪或越界的 Android View 节点。
+3. **Layout Tab 抓取流程重构**
+   - `LayoutTab` 改为通过 `layoutInspectorServiceProvider` 获取布局快照，UI 不再直接拼接 ADB 命令和 `Process.run`。
+   - 切换设备时会清空旧布局内容并重置旋转、缩放、展开状态。
+   - 刷新新截图时会释放旧 `ui.Image`，减少桌面端长时间抓取布局时的图片资源占用。
+   - 布局抓取失败且识别到设备断连时，会调用 `syncAfterAdbResult` 同步设备注册表和选中设备状态。
+4. **布局分析 UI 拆分**
+   - 新增 `LayoutToolbar`，把刷新、保存、复制 XML、展开/折叠、旋转、缩放、显示属性、显示边框等工具栏控制从 `layout_tab.dart` 拆出。
+   - 层级树、属性表和屏幕预览统一依赖 core 层 `LayoutNode`，减少 UI 文件之间的互相引用。
+   - 层级树自动滚动前增加 `RenderObject` 存活检查，避免节点已卸载时调用 `ensureVisible`。
+5. **布局预览与概览细节优化**
+   - 屏幕预览继续支持点击截图选中最深层节点，并按当前旋转角度映射回设备原生坐标。
+   - 概览 Header 改为独立 `_OverviewHeader`，窄宽度下上下排列并横向滚动快捷按钮，降低 overflow 风险。
+   - 设备 Header 简化 scrcpy 区域，仅保留启动投屏和状态展示，降低顶部区域复杂度。
+6. **单元测试补充**
+   - 新增 `layout_node_test.dart`，覆盖 XML 树解析、属性反转义和负坐标 `bounds` 解析。
+
+---
+
+### v0.10.0 — 2026-05-28
 
 本次提交主要围绕终端调试收藏命令、本地化文案和工作台细节做结构整理，并同步记录风险与影响范围：
 
@@ -290,7 +320,7 @@ Flutter Desktop UI
 | scrcpy 启动器 | ✅ 已实现 | 使用默认 MVP 参数启动外部 `scrcpy` |
 | 设备操作 | ✅ 已实现 | 文本输入、Home/Back/Power/Menu 键、音量、Wi-Fi、通知栏、屏幕旋转、当前焦点查询 |
 | 设备信息 | ✅ 已实现 | 硬件概览含逻辑密度和刷新率，支持本地持久化缓存 |
-| 布局辅助 | ✅ 已实现 | 布局边界、深色/浅色模式 |
+| 布局辅助 | ✅ 已实现 | 布局边界、深色/浅色模式、Layout Inspector XML 树与截图预览 |
 | 应用管理 | ✅ 已实现 | 安装 APK、应用列表（拼音搜索）、启动、强停、清数据、冻结/解冻、卸载、详情查看、APK 导出 |
 | 进程管理 | ✅ 已实现 | 获取设备进程列表（PID/CPU/CPU 时间/用户）、支持仅显示应用、搜索与杀死进程 |
 | 网页调试 | ✅ 已实现 | 扫描并列出运行中的 Web/WebView 页面、支持在浏览器中打开或调试网页 |

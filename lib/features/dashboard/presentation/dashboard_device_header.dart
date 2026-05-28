@@ -1,17 +1,12 @@
 part of 'dashboard_screen.dart';
 
 class _SelectedDeviceHeader extends ConsumerWidget {
-  const _SelectedDeviceHeader({required this.device, this.sessions = const {}});
+  const _SelectedDeviceHeader({required this.device});
 
   final AdbDevice device;
-  final Map<String, ScrcpySession> sessions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activeSessions = sessions.values
-        .where((session) => session.deviceId == device.id)
-        .toList(growable: false);
-
     return Container(
       height: 96,
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
@@ -148,63 +143,5 @@ class _SelectedDeviceHeader extends ConsumerWidget {
         _showSnack(context, error.toString(), isError: true);
       }
     }
-  }
-
-  /// 停止选中的会话，并从 UI 中移除对应 Chip。
-  Future<void> _stopSessions(
-    BuildContext context,
-    WidgetRef ref,
-    List<ScrcpySession> sessions,
-  ) async {
-    final service = ref.read(scrcpyServiceProvider);
-    for (final session in sessions) {
-      await service.stop(session.id);
-    }
-    ref
-        .read(scrcpySessionsProvider.notifier)
-        .removeAll(sessions.map((session) => session.id));
-    if (context.mounted) {
-      _showSnack(context, context.l10n.t('scrcpyStopped'));
-    }
-  }
-}
-
-/// 顶部设备 Header 中使用的纯图标操作按钮。
-class _HeaderIconAction extends StatelessWidget {
-  const _HeaderIconAction({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.filled = true,
-  });
-
-  final Widget icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-  final bool filled;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
-    );
-
-    return IconButton(
-      icon: icon,
-      tooltip: tooltip,
-      onPressed: onPressed,
-      style: IconButton.styleFrom(
-        fixedSize: const Size(56, 56),
-        foregroundColor: filled ? colorScheme.onPrimary : colorScheme.primary,
-        backgroundColor: filled ? colorScheme.primary : Colors.transparent,
-        disabledForegroundColor: colorScheme.onSurface.withValues(alpha: 0.38),
-        disabledBackgroundColor: filled
-            ? colorScheme.onSurface.withValues(alpha: 0.12)
-            : Colors.transparent,
-        side: filled ? BorderSide.none : BorderSide(color: colorScheme.outline),
-        shape: shape,
-      ),
-    );
   }
 }

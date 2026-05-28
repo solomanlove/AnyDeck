@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'layout_tab.dart';
+import '../../../core/layout_inspector/layout_node.dart';
 
 /// 渲染手机屏幕截图，支持 InteractiveViewer 缩放和平移，以及旋转度数下的坐标映射。
 class LayoutScreenPreview extends StatefulWidget {
@@ -56,25 +56,20 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
     return rect != null ? node : null;
   }
 
-  Offset _viewportToLocal(Offset viewportPoint) {
-    final matrix = widget.transformationController.value;
-    final scale = matrix.storage[0]; // 均匀缩放比例
-    final tx = matrix.storage[12];    // 轴向平移 X
-    final ty = matrix.storage[13];    // 轴向平移 Y
-    if (scale == 0) return viewportPoint;
-    return Offset(
-      (viewportPoint.dx - tx) / scale,
-      (viewportPoint.dy - ty) / scale,
-    );
-  }
-
   void _resetZoomAndPan(Size viewportSize) {
     final imageWidth = widget.decodedImage.width.toDouble();
     final imageHeight = widget.decodedImage.height.toDouble();
-    final rotatedW = (widget.rotationAngle == 90 || widget.rotationAngle == 270) ? imageHeight : imageWidth;
-    final rotatedH = (widget.rotationAngle == 90 || widget.rotationAngle == 270) ? imageWidth : imageHeight;
+    final rotatedW = (widget.rotationAngle == 90 || widget.rotationAngle == 270)
+        ? imageHeight
+        : imageWidth;
+    final rotatedH = (widget.rotationAngle == 90 || widget.rotationAngle == 270)
+        ? imageWidth
+        : imageHeight;
 
-    final scale = min(viewportSize.width / rotatedW, viewportSize.height / rotatedH);
+    final scale = min(
+      viewportSize.width / rotatedW,
+      viewportSize.height / rotatedH,
+    );
     final renderedW = rotatedW * scale;
     final renderedH = rotatedH * scale;
     final offsetX = (viewportSize.width - renderedW) / 2;
@@ -120,8 +115,14 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
         final imageHeight = widget.decodedImage.height.toDouble();
 
         // 旋转后的图片容器边界尺寸
-        final rotatedW = (widget.rotationAngle == 90 || widget.rotationAngle == 270) ? imageHeight : imageWidth;
-        final rotatedH = (widget.rotationAngle == 90 || widget.rotationAngle == 270) ? imageWidth : imageHeight;
+        final rotatedW =
+            (widget.rotationAngle == 90 || widget.rotationAngle == 270)
+            ? imageHeight
+            : imageWidth;
+        final rotatedH =
+            (widget.rotationAngle == 90 || widget.rotationAngle == 270)
+            ? imageWidth
+            : imageHeight;
 
         // 根据当前的旋转角度，将视口局部坐标映射回设备的原生坐标
         Offset localToNative(Offset localPoint) {
@@ -156,9 +157,14 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 onHover: (event) {
-                  final RenderBox viewportBox = context.findRenderObject() as RenderBox;
-                  final viewportPoint = viewportBox.globalToLocal(event.position);
-                  final localPoint = _viewportToLocal(viewportPoint);
+                  final RenderBox viewportBox =
+                      context.findRenderObject() as RenderBox;
+                  final viewportPoint = viewportBox.globalToLocal(
+                    event.position,
+                  );
+                  final localPoint = widget.transformationController.toScene(
+                    viewportPoint,
+                  );
                   final node = getNodeAtLocalPoint(localPoint);
                   widget.onNodeHovered(node);
                 },
@@ -167,11 +173,19 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
                 },
                 child: GestureDetector(
                   onTapDown: (details) {
-                    final RenderBox viewportBox = context.findRenderObject() as RenderBox;
-                    final viewportPoint = viewportBox.globalToLocal(details.globalPosition);
-                    final localPoint = _viewportToLocal(viewportPoint);
+                    final RenderBox viewportBox =
+                        context.findRenderObject() as RenderBox;
+                    final viewportPoint = viewportBox.globalToLocal(
+                      details.globalPosition,
+                    );
+                    final localPoint = widget.transformationController.toScene(
+                      viewportPoint,
+                    );
                     final nativePoint = localToNative(localPoint);
-                    final node = _findDeepestNodeAt(widget.rootNode, nativePoint);
+                    final node = _findDeepestNodeAt(
+                      widget.rootNode,
+                      nativePoint,
+                    );
                     widget.onNodeSelected(node);
 
                     final x = nativePoint.dx.round();
@@ -181,7 +195,9 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
                     final nodeInfo = node != null
                         ? 'Node: ${node.className} (id: ${node.resourceId}, bounds: ${node.bounds})'
                         : 'No node selected';
-                    debugPrint('Layout Inspector - Clicked native coordinates: ($x, $y) - $nodeInfo');
+                    debugPrint(
+                      'Layout Inspector - Clicked native coordinates: ($x, $y) - $nodeInfo',
+                    );
                   },
                   child: SizedBox.expand(
                     child: CustomPaint(
@@ -227,8 +243,12 @@ class _ScreenPreviewPainter extends CustomPainter {
     final imageWidth = image.width.toDouble();
     final imageHeight = image.height.toDouble();
 
-    final rotatedW = (rotationAngle == 90 || rotationAngle == 270) ? imageHeight : imageWidth;
-    final rotatedH = (rotationAngle == 90 || rotationAngle == 270) ? imageWidth : imageHeight;
+    final rotatedW = (rotationAngle == 90 || rotationAngle == 270)
+        ? imageHeight
+        : imageWidth;
+    final rotatedH = (rotationAngle == 90 || rotationAngle == 270)
+        ? imageWidth
+        : imageHeight;
 
     canvas.save();
     // 旋转 canvas 以便我们可以使用原始的设备坐标系进行绘制

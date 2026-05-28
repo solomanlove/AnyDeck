@@ -28,7 +28,7 @@ class _WorkspacePanel extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SelectedDeviceHeader(device: device, sessions: sessions),
+              _SelectedDeviceHeader(device: device),
               const SizedBox(height: 16),
               if (hasBoundedHeight)
                 Expanded(

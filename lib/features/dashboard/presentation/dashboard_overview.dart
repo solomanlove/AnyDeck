@@ -53,33 +53,13 @@ class _DeviceOverviewPanel extends ConsumerWidget {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.max,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          context.l10n.t('overviewTitle'),
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Row(
-                          children: [
-                            const SizedBox(width: 12),
-                            _OverviewShortcutActions(device: device),
-                            const SizedBox(width: 4),
-                            IconButton(
-                              tooltip: context.l10n.t('refresh'),
-                              icon: const Icon(Icons.refresh),
-                              onPressed: () => device.isOnline
-                                  ? ref.invalidate(
-                                      deviceOverviewProvider(device.id),
-                                    )
-                                  : ref.invalidate(
-                                      cachedDeviceOverviewProvider(device.id),
-                                    ),
+                    _OverviewHeader(
+                      device: device,
+                      onRefresh: () => device.isOnline
+                          ? ref.invalidate(deviceOverviewProvider(device.id))
+                          : ref.invalidate(
+                              cachedDeviceOverviewProvider(device.id),
                             ),
-                          ],
-                        ),
-                      ],
                     ),
                     const SizedBox(height: 8),
                     _OverviewGrid(items: _buildOverviewItems(context, data)),
@@ -187,6 +167,62 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         value: overview.macAddress,
       ),
     ];
+  }
+}
+
+/// 概览区域标题栏，极窄宽度下改为上下排列，避免快捷按钮挤压标题。
+class _OverviewHeader extends StatelessWidget {
+  const _OverviewHeader({required this.device, required this.onRefresh});
+
+  final AdbDevice device;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final title = Text(
+          context.l10n.t('overviewTitle'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleMedium,
+        );
+        final actions = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _OverviewShortcutActions(device: device),
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: context.l10n.t('refresh'),
+              icon: const Icon(Icons.refresh),
+              onPressed: onRefresh,
+            ),
+          ],
+        );
+
+        if (constraints.maxWidth < 360) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: actions,
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: title),
+            const SizedBox(width: 12),
+            actions,
+          ],
+        );
+      },
+    );
   }
 }
 

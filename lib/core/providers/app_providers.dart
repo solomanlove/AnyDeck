@@ -12,6 +12,7 @@ import '../device_info/device_info_service.dart';
 import '../device_info/device_overview.dart';
 import '../emulator/android_emulator.dart';
 import '../files/file_manager_service.dart';
+import '../layout_inspector/layout_inspector_service.dart';
 import '../files/remote_file.dart';
 import '../logcat/logcat_controller.dart';
 import '../logcat/logcat_state.dart';
@@ -47,6 +48,11 @@ final fileManagerServiceProvider = Provider<FileManagerService>((ref) {
 /// 只读设备概览服务。
 final deviceInfoServiceProvider = Provider<DeviceInfoService>((ref) {
   return DeviceInfoService(ref.watch(adbServiceProvider));
+});
+
+/// 布局分析服务，负责抓取 `uiautomator` XML 和屏幕截图。
+final layoutInspectorServiceProvider = Provider<LayoutInspectorService>((ref) {
+  return LayoutInspectorService(ref.watch(adbServiceProvider));
 });
 
 /// scrcpy 进程管理器，provider 销毁时会停止所有会话。
@@ -1018,6 +1024,28 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       );
     } on Object catch (error) {
       return AdbResult(exitCode: 1, stdout: '', stderr: error.toString());
+    }
+  }
+
+  /// ADB 命令发现 transport 断开后，同步注册表与当前选中设备。
+  Future<void> syncAfterAdbResult(AdbResult result) async {
+    if (!result.isDeviceDisconnected) {
+      return;
+    }
+
+    await refreshDevices();
+
+    final disconnectedDeviceId = result.disconnectedDeviceId;
+    final selected = ref.read(selectedDeviceProvider);
+    if (selected == null || selected.id != disconnectedDeviceId) {
+      return;
+    }
+
+    for (final device in state) {
+      if (device.id == selected.id) {
+        ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
+        return;
+      }
     }
   }
 

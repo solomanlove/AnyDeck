@@ -48,24 +48,7 @@ Future<void> _runAdbAction(
 }
 
 Future<void> _syncAdbStateAfterResult(WidgetRef ref, AdbResult result) async {
-  if (!result.isDeviceDisconnected) {
-    return;
-  }
-
-  await ref.read(deviceRegistryProvider.notifier).refreshDevices();
-
-  final disconnectedDeviceId = result.disconnectedDeviceId;
-  final selected = ref.read(selectedDeviceProvider);
-  if (selected == null || selected.id != disconnectedDeviceId) {
-    return;
-  }
-
-  for (final device in ref.read(deviceRegistryProvider)) {
-    if (device.id == selected.id) {
-      ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
-      return;
-    }
-  }
+  await ref.read(deviceRegistryProvider.notifier).syncAfterAdbResult(result);
 }
 
 /// 主动刷新 adb 设备列表，避免仅重建 StreamProvider 时 UI 无明显反馈。
