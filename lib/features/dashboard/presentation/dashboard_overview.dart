@@ -53,32 +53,31 @@ class _DeviceOverviewPanel extends ConsumerWidget {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          context.l10n.t('overviewTitle'),
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: _OverviewShortcutActions(device: device),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            context.l10n.t('overviewTitle'),
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        IconButton(
-                          tooltip: context.l10n.t('refresh'),
-                          icon: const Icon(Icons.refresh),
-                          onPressed: () => device.isOnline
-                              ? ref.invalidate(
-                                  deviceOverviewProvider(device.id),
-                                )
-                              : ref.invalidate(
-                                  cachedDeviceOverviewProvider(device.id),
-                                ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          _OverviewShortcutActions(device: device),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            tooltip: context.l10n.t('refresh'),
+                            icon: const Icon(Icons.refresh),
+                            onPressed: () => device.isOnline
+                                ? ref.invalidate(
+                                    deviceOverviewProvider(device.id),
+                                  )
+                                : ref.invalidate(
+                                    cachedDeviceOverviewProvider(device.id),
+                                  ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 8),
                     _OverviewGrid(items: _buildOverviewItems(context, data)),
@@ -343,18 +342,34 @@ class _OverviewItemData extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(icon, size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleSmall,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final iconWidth = min(18.0, constraints.maxWidth);
+                final showLabel = constraints.maxWidth >= 56;
+
+                return Row(
+                  children: [
+                    SizedBox(
+                      width: iconWidth,
+                      height: 18,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: Icon(icon, size: 18),
+                      ),
+                    ),
+                    if (showLabel) ...[
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: Theme.of(context).textTheme.titleSmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 6),
             Text(

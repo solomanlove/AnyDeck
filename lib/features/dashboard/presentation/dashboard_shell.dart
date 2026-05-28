@@ -37,7 +37,40 @@ class _PrimaryRail extends ConsumerWidget {
 
   final AdbDevice? selectedDevice;
 
-  static const double _fullToolRailMinHeight = 704;
+  static const double _topSpacing = 14;
+  static const double _logoSize = 42;
+  static const double _fullLogoToolGap = 28;
+  static const double _compactLogoToolGap = 18;
+  static const double _toolSlotHeight = 60;
+  static const double _settingsSlotHeight = 60;
+  static const double _bottomSpacing = 18;
+
+  int _visibleToolCount(double railHeight, int toolCount) {
+    final fullAvailable =
+        railHeight -
+        _topSpacing -
+        _logoSize -
+        _fullLogoToolGap -
+        _settingsSlotHeight -
+        _bottomSpacing;
+    final fullSlots = fullAvailable ~/ _toolSlotHeight;
+    if (fullSlots >= toolCount) {
+      return toolCount;
+    }
+
+    final compactAvailable =
+        railHeight -
+        _topSpacing -
+        _logoSize -
+        _compactLogoToolGap -
+        _settingsSlotHeight -
+        _bottomSpacing;
+    final compactSlots = compactAvailable ~/ _toolSlotHeight;
+    if (compactSlots <= 1) {
+      return 0;
+    }
+    return min(toolCount, compactSlots - 1);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -116,12 +149,17 @@ class _PrimaryRail extends ConsumerWidget {
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final hideToolButtons =
-                constraints.maxHeight < _fullToolRailMinHeight;
+            final visibleToolCount = _visibleToolCount(
+              constraints.maxHeight,
+              tools.length,
+            );
+            final visibleTools = tools.take(visibleToolCount).toList();
+            final overflowTools = tools.skip(visibleToolCount).toList();
+            final hasOverflowTools = overflowTools.isNotEmpty;
 
             return Column(
               children: [
-                const SizedBox(height: 14),
+                const SizedBox(height: _topSpacing),
                 GestureDetector(
                   onTap: () {
                     ref
@@ -133,8 +171,8 @@ class _PrimaryRail extends ConsumerWidget {
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: Container(
-                      width: 42,
-                      height: 42,
+                      width: _logoSize,
+                      height: _logoSize,
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.62),
@@ -146,27 +184,29 @@ class _PrimaryRail extends ConsumerWidget {
                     ),
                   ),
                 ),
-                SizedBox(height: hideToolButtons ? 18 : 28),
-                if (hideToolButtons)
+                SizedBox(
+                  height: hasOverflowTools
+                      ? _compactLogoToolGap
+                      : _fullLogoToolGap,
+                ),
+                for (final tool in visibleTools)
+                  _RailButton(
+                    icon: tool.icon,
+                    selected:
+                        selectedDevice != null && selectedTool == tool.tabIndex,
+                    tooltip: tool.label,
+                    onPressed: canInteract
+                        ? () => handleTap(tool.tabIndex)
+                        : null,
+                  ),
+                if (hasOverflowTools)
                   _RailMoreButton(
-                    tools: tools,
+                    tools: overflowTools,
                     hasSelectedDevice: selectedDevice != null,
                     selectedTool: selectedTool,
                     enabled: canInteract,
                     onSelected: handleTap,
-                  )
-                else
-                  for (final tool in tools)
-                    _RailButton(
-                      icon: tool.icon,
-                      selected:
-                          selectedDevice != null &&
-                          selectedTool == tool.tabIndex,
-                      tooltip: tool.label,
-                      onPressed: canInteract
-                          ? () => handleTap(tool.tabIndex)
-                          : null,
-                    ),
+                  ),
                 const Spacer(),
                 _RailButton(
                   icon: Icons.settings_outlined,
@@ -176,7 +216,7 @@ class _PrimaryRail extends ConsumerWidget {
                     builder: (_) => const _SettingsDialog(),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: _bottomSpacing),
               ],
             );
           },

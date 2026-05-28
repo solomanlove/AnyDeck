@@ -159,18 +159,22 @@ class _ToolContentHeader extends StatelessWidget {
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
       ),
-      child: Row(
-        children: [
-          Icon(data.$1, size: 22, color: const Color(0xff09c47c)),
-          const SizedBox(width: 10),
-          Text(
-            data.$2,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: const Color(0xff202124),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(data.$1, size: 22, color: const Color(0xff09c47c)),
+            const SizedBox(width: 10),
+            Text(
+              data.$2,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: const Color(0xff202124),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

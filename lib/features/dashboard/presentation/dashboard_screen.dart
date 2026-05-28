@@ -108,56 +108,18 @@ class DashboardScreen extends ConsumerWidget {
       appBarTitle = matchedDevice.displayName;
     }
 
+    final workspace = _WorkspacePanel(
+      selectedDevice: selectedDevice,
+      sessions: sessions,
+    );
+
     return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 980;
-          final workspace = _WorkspacePanel(
-            selectedDevice: selectedDevice,
-            sessions: sessions,
-          );
-
-          if (!compact) {
-            return _WechatStyleShell(
-              title: appBarTitle,
-              selectedDevice: selectedDevice,
-              child: selectedDevice == null
-                  ? const _DashboardHomeContent()
-                  : workspace,
-            );
-          }
-
-          if (selectedDevice == null) {
-            if (compact) {
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: const [
-                  _DeviceListPanel(),
-                  SizedBox(height: 16),
-                  _EmulatorListPanel(),
-                ],
-              );
-            }
-
-            final isEmulatorExpanded = ref.watch(_emulatorListExpandedProvider);
-
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const Expanded(child: _DeviceListPanel()),
-                  const SizedBox(height: 16),
-                  if (isEmulatorExpanded)
-                    const Expanded(child: _EmulatorListPanel())
-                  else
-                    const _EmulatorListPanel(),
-                ],
-              ),
-            );
-          }
-
-          return Padding(padding: const EdgeInsets.all(16), child: workspace);
-        },
+      body: _WechatStyleShell(
+        title: appBarTitle,
+        selectedDevice: selectedDevice,
+        child: selectedDevice == null
+            ? const _DashboardHomeContent()
+            : workspace,
       ),
     );
   }
