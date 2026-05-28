@@ -892,7 +892,7 @@ class _LogcatTableWidths {
       pidTid: 96,
       tag: 180 + extra * 0.18,
       packageName: 220 + extra * 0.22,
-      level: 42,
+      level: 50,
       message: messageWidth,
     );
   }
