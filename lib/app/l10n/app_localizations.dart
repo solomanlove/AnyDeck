@@ -334,6 +334,7 @@ const _localizedValues = {
     'pid': 'PID',
     'user': '用户',
     'onlyShowApps': '仅显示应用',
+    'autoRefreshInterval': '自动刷新 ({seconds}s)',
     'processCount': '共 {count} 个进程',
     'killProcessConfirm': '确定结束进程 {name} (PID: {pid}) 吗？',
     'killProcessSuccess': '进程已结束',
@@ -640,6 +641,7 @@ const _localizedValues = {
     'pid': 'PID',
     'user': 'User',
     'onlyShowApps': 'Show Apps Only',
+    'autoRefreshInterval': 'Auto refresh ({seconds}s)',
     'processCount': 'Total {count} processes',
     'killProcessConfirm':
         'Are you sure you want to kill process {name} (PID: {pid})?',

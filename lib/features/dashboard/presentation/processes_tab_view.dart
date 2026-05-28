@@ -52,7 +52,11 @@ extension _ProcessesTabView on _ProcessesTabState {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Checkbox(value: _autoRefresh, onChanged: _toggleAutoRefresh),
-                  const Text('自动刷新 (3s)'),
+                  Text(
+                    context.l10n
+                        .t('autoRefreshInterval')
+                        .replaceAll('{seconds}', '3'),
+                  ),
                 ],
               ),
               const SizedBox(width: 8),
