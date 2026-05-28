@@ -264,7 +264,7 @@ class _ScreenPreviewPainter extends CustomPainter {
         );
         canvas.drawRect(
           rect,
-          Paint()..color = const Color(0xff09c47c).withValues(alpha: 0.15),
+          Paint()..color = const Color(0xff09c47c).withValues(alpha: 0.20),
         );
       }
     }
