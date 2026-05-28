@@ -52,8 +52,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[mockDevice])),
-          packagesProvider(mockDevice.id).overrideWith((ref) => Future.value(mockPackages)),
+          devicesProvider.overrideWith(
+            (ref) => Stream.value(<AdbDevice>[mockDevice]),
+          ),
+          packagesProvider(
+            mockDevice.id,
+          ).overrideWith((ref) => Future.value(mockPackages)),
         ],
         child: const AdbManageApp(),
       ),
@@ -68,7 +72,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 2. 切换到 "应用" tab (index 2)
-    final appsTabFinder = find.text('应用');
+    final appsTabFinder = find.byIcon(Icons.apps_outlined);
     expect(appsTabFinder, findsOneWidget);
     await tester.tap(appsTabFinder);
     await tester.pumpAndSettle();
@@ -80,11 +84,10 @@ void main() {
 
     // 3. 搜索 "bj" (北京首字母)
     final searchFieldFinder = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextField && widget.decoration?.labelText == '筛选包名',
+      (widget) => widget is TextField && widget.decoration?.labelText == '筛选包名',
     );
     expect(searchFieldFinder, findsOneWidget);
-    
+
     await tester.enterText(searchFieldFinder, 'bj');
     await tester.pumpAndSettle();
 

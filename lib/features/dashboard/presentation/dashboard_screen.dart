@@ -25,6 +25,20 @@ import 'terminal_tab.dart';
 import 'processes_tab.dart';
 import 'webpages_tab.dart';
 
+class _EmulatorListExpandedNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() {
+    state = !state;
+  }
+}
+
+final _emulatorListExpandedProvider =
+    NotifierProvider<_EmulatorListExpandedNotifier, bool>(
+      _EmulatorListExpandedNotifier.new,
+    );
+
 /// 桌面主面板，整合设备发现和工具区域。
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -34,6 +48,22 @@ class DashboardScreen extends ConsumerWidget {
     final selectedDevice = ref.watch(selectedDeviceProvider);
     final sessions = ref.watch(scrcpySessionsProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);
+
+    // Auto-select first online device if none selected and not manually cleared
+    final userCleared = ref.watch(userClearedDeviceSelectionProvider);
+    if (selectedDevice == null && !userCleared) {
+      final onlineDevices = registeredDevices.where((d) => d.isOnline).toList();
+      if (onlineDevices.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (ref.read(selectedDeviceProvider) == null &&
+              !ref.read(userClearedDeviceSelectionProvider)) {
+            ref
+                .read(selectedDeviceProvider.notifier)
+                .select(onlineDevices.first.toAdbDevice);
+          }
+        });
+      }
+    }
 
     String appBarTitle = context.l10n.t('appTitle');
     if (selectedDevice != null) {
@@ -46,6 +76,7 @@ class DashboardScreen extends ConsumerWidget {
           product: selectedDevice.product,
           transportId: selectedDevice.transportId,
           isOnline: selectedDevice.isOnline,
+          serial: selectedDevice.id,
         ),
       );
       appBarTitle = matchedDevice.displayName;
@@ -64,8 +95,6 @@ class DashboardScreen extends ConsumerWidget {
             return _WechatStyleShell(
               title: appBarTitle,
               selectedDevice: selectedDevice,
-              registeredDevices: registeredDevices,
-              sessions: sessions,
               child: selectedDevice == null
                   ? const _DashboardHomeContent()
                   : workspace,
@@ -84,13 +113,18 @@ class DashboardScreen extends ConsumerWidget {
               );
             }
 
-            return const Padding(
-              padding: EdgeInsets.all(16),
+            final isEmulatorExpanded = ref.watch(_emulatorListExpandedProvider);
+
+            return Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  Expanded(child: _DeviceListPanel()),
-                  SizedBox(height: 16),
-                  Expanded(child: _EmulatorListPanel()),
+                  const Expanded(child: _DeviceListPanel()),
+                  const SizedBox(height: 16),
+                  if (isEmulatorExpanded)
+                    const Expanded(child: _EmulatorListPanel())
+                  else
+                    const _EmulatorListPanel(),
                 ],
               ),
             );
@@ -107,15 +141,11 @@ class _WechatStyleShell extends ConsumerWidget {
   const _WechatStyleShell({
     required this.title,
     required this.selectedDevice,
-    required this.registeredDevices,
-    required this.sessions,
     required this.child,
   });
 
   final String title;
   final AdbDevice? selectedDevice;
-  final List<RegisteredDevice> registeredDevices;
-  final Map<String, ScrcpySession> sessions;
   final Widget child;
 
   @override
@@ -123,17 +153,12 @@ class _WechatStyleShell extends ConsumerWidget {
     return Row(
       children: [
         _PrimaryRail(selectedDevice: selectedDevice),
-        _SecondarySidebar(
-          selectedDevice: selectedDevice,
-          registeredDevices: registeredDevices,
-          sessions: sessions,
-        ),
         Expanded(
           child: DecoratedBox(
             decoration: const BoxDecoration(color: Color(0xfffbfbfc)),
             child: Column(
               children: [
-                _ContentTitleBar(title: title),
+                if (selectedDevice == null) _ContentTitleBar(title: title),
                 Expanded(child: child),
               ],
             ),
@@ -149,101 +174,224 @@ class _PrimaryRail extends ConsumerWidget {
 
   final AdbDevice? selectedDevice;
 
+  static const double _fullToolRailMinHeight = 704;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedTool = ref.watch(selectedToolTabProvider);
+    final registeredDevices = ref.watch(deviceRegistryProvider);
+    final hasOnlineDevice = registeredDevices.any((d) => d.isOnline);
+    final canInteract = selectedDevice != null || hasOnlineDevice;
+    final tools = [
+      _RailToolItem(
+        tabIndex: 0,
+        icon: Icons.phone_android_outlined,
+        label: context.l10n.t('overview'),
+      ),
+      _RailToolItem(
+        tabIndex: 1,
+        icon: Icons.tune,
+        label: context.l10n.t('control'),
+      ),
+      _RailToolItem(
+        tabIndex: 2,
+        icon: Icons.apps_outlined,
+        label: context.l10n.t('apps'),
+      ),
+      _RailToolItem(
+        tabIndex: 3,
+        icon: Icons.folder_outlined,
+        label: context.l10n.t('files'),
+      ),
+      _RailToolItem(
+        tabIndex: 4,
+        icon: Icons.article_outlined,
+        label: context.l10n.t('logcat'),
+      ),
+      _RailToolItem(
+        tabIndex: 5,
+        icon: Icons.terminal_outlined,
+        label: context.l10n.t('terminal'),
+      ),
+      _RailToolItem(
+        tabIndex: 6,
+        icon: Icons.analytics_outlined,
+        label: context.l10n.t('processes'),
+      ),
+      _RailToolItem(
+        tabIndex: 7,
+        icon: Icons.web_outlined,
+        label: context.l10n.t('webpages'),
+      ),
+    ];
+
+    void handleTap(int tabIndex) {
+      var device = selectedDevice;
+      if (device == null) {
+        // Find the first online device
+        RegisteredDevice? firstOnline;
+        for (final d in registeredDevices) {
+          if (d.isOnline) {
+            firstOnline = d;
+            break;
+          }
+        }
+        if (firstOnline != null) {
+          device = firstOnline.toAdbDevice;
+          ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
+          ref.read(selectedDeviceProvider.notifier).select(device);
+        }
+      }
+      if (device != null) {
+        ref.read(selectedToolTabProvider.notifier).select(tabIndex);
+      }
+    }
 
     return Container(
       width: 76,
       color: const Color(0xffd8f3f5),
       child: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 14),
-            Container(
-              width: 42,
-              height: 42,
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.62),
-                borderRadius: BorderRadius.circular(10),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final hideToolButtons =
+                constraints.maxHeight < _fullToolRailMinHeight;
+
+            return Column(
+              children: [
+                const SizedBox(height: 14),
+                GestureDetector(
+                  onTap: () {
+                    ref
+                            .read(userClearedDeviceSelectionProvider.notifier)
+                            .state =
+                        true;
+                    ref.read(selectedDeviceProvider.notifier).clear();
+                  },
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Container(
+                      width: 42,
+                      height: 42,
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.62),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Image(
+                        image: AssetImage('assets/brand/app_logo.png'),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: hideToolButtons ? 18 : 28),
+                if (hideToolButtons)
+                  _RailMoreButton(
+                    tools: tools,
+                    hasSelectedDevice: selectedDevice != null,
+                    selectedTool: selectedTool,
+                    enabled: canInteract,
+                    onSelected: handleTap,
+                  )
+                else
+                  for (final tool in tools)
+                    _RailButton(
+                      icon: tool.icon,
+                      selected:
+                          selectedDevice != null &&
+                          selectedTool == tool.tabIndex,
+                      tooltip: tool.label,
+                      onPressed: canInteract
+                          ? () => handleTap(tool.tabIndex)
+                          : null,
+                    ),
+                const Spacer(),
+                _RailButton(
+                  icon: Icons.settings_outlined,
+                  tooltip: context.l10n.t('settings'),
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => const _SettingsDialog(),
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _RailToolItem {
+  const _RailToolItem({
+    required this.tabIndex,
+    required this.icon,
+    required this.label,
+  });
+
+  final int tabIndex;
+  final IconData icon;
+  final String label;
+}
+
+class _RailMoreButton extends StatelessWidget {
+  const _RailMoreButton({
+    required this.tools,
+    required this.hasSelectedDevice,
+    required this.selectedTool,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final List<_RailToolItem> tools;
+  final bool hasSelectedDevice;
+  final int selectedTool;
+  final bool enabled;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected =
+        hasSelectedDevice && tools.any((tool) => tool.tabIndex == selectedTool);
+    final color = selected ? const Color(0xff09c47c) : const Color(0xff5f6b6e);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: PopupMenuButton<int>(
+        tooltip: context.l10n.t('moreTools'),
+        onSelected: enabled ? onSelected : null,
+        itemBuilder: (context) => [
+          for (final tool in tools)
+            PopupMenuItem<int>(
+              value: tool.tabIndex,
+              enabled: enabled,
+              child: Row(
+                children: [
+                  Icon(
+                    tool.icon,
+                    size: 20,
+                    color: tool.tabIndex == selectedTool
+                        ? const Color(0xff09c47c)
+                        : const Color(0xff5f6b6e),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(tool.label),
+                ],
               ),
-              child: const Image(
-                image: AssetImage('assets/brand/app_logo.png'),
-              ),
             ),
-            const SizedBox(height: 28),
-            _RailButton(
-              icon: Icons.phone_android_outlined,
-              selected: selectedDevice == null,
-              tooltip: context.l10n.t('devices'),
-              onPressed: () =>
-                  ref.read(selectedDeviceProvider.notifier).clear(),
-            ),
-            _RailButton(
-              icon: Icons.apps_outlined,
-              selected: selectedDevice != null && selectedTool == 2,
-              tooltip: context.l10n.t('apps'),
-              onPressed: selectedDevice == null
-                  ? null
-                  : () => ref.read(selectedToolTabProvider.notifier).select(2),
-            ),
-            _RailButton(
-              icon: Icons.folder_outlined,
-              selected: selectedDevice != null && selectedTool == 3,
-              tooltip: context.l10n.t('files'),
-              onPressed: selectedDevice == null
-                  ? null
-                  : () => ref.read(selectedToolTabProvider.notifier).select(3),
-            ),
-            _RailButton(
-              icon: Icons.article_outlined,
-              selected: selectedDevice != null && selectedTool == 4,
-              tooltip: context.l10n.t('logcat'),
-              onPressed: selectedDevice == null
-                  ? null
-                  : () => ref.read(selectedToolTabProvider.notifier).select(4),
-            ),
-            _RailButton(
-              icon: Icons.terminal_outlined,
-              selected: selectedDevice != null && selectedTool == 5,
-              tooltip: context.l10n.t('terminal'),
-              onPressed: selectedDevice == null
-                  ? null
-                  : () => ref.read(selectedToolTabProvider.notifier).select(5),
-            ),
-            _RailButton(
-              icon: Icons.analytics_outlined,
-              selected: selectedDevice != null && selectedTool == 6,
-              tooltip: context.l10n.t('processes'),
-              onPressed: selectedDevice == null
-                  ? null
-                  : () => ref.read(selectedToolTabProvider.notifier).select(6),
-            ),
-            _RailButton(
-              icon: Icons.web_outlined,
-              selected: selectedDevice != null && selectedTool == 7,
-              tooltip: context.l10n.t('webpages'),
-              onPressed: selectedDevice == null
-                  ? null
-                  : () => ref.read(selectedToolTabProvider.notifier).select(7),
-            ),
-            const Spacer(),
-            _RailButton(
-              icon: Icons.adb,
-              tooltip: context.l10n.t('restartAdb'),
-              onPressed: () => _restartAdbServer(context, ref),
-            ),
-            _RailButton(
-              icon: Icons.settings_outlined,
-              tooltip: context.l10n.t('settings'),
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (_) => const _SettingsDialog(),
-              ),
-            ),
-            const SizedBox(height: 18),
-          ],
+        ],
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: selected
+                ? Colors.white.withValues(alpha: 0.56)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: Icon(Icons.more_horiz, size: 28, color: color),
         ),
       ),
     );
@@ -291,331 +439,13 @@ class _RailButton extends StatelessWidget {
   }
 }
 
-class _SecondarySidebar extends ConsumerWidget {
-  const _SecondarySidebar({
-    required this.selectedDevice,
-    required this.registeredDevices,
-    required this.sessions,
-  });
-
-  final AdbDevice? selectedDevice;
-  final List<RegisteredDevice> registeredDevices;
-  final Map<String, ScrcpySession> sessions;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selectedTool = ref.watch(selectedToolTabProvider);
-    final selectedRegisteredDevice = selectedDevice == null
-        ? null
-        : registeredDevices.firstWhere(
-            (device) => device.id == selectedDevice!.id,
-            orElse: () => RegisteredDevice(
-              id: selectedDevice!.id,
-              status: selectedDevice!.status,
-              model: selectedDevice!.model,
-              product: selectedDevice!.product,
-              transportId: selectedDevice!.transportId,
-              isOnline: selectedDevice!.isOnline,
-            ),
-          );
-
-    return Container(
-      width: 300,
-      color: const Color(0xfff0f1f4),
-      child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 10),
-              child: _SidebarSearchField(),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: Text(context.l10n.t('connectDevice')),
-                  onPressed: () => _showConnectDeviceDialog(context, ref),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xff1f2328),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  _SidebarNavItem(
-                    icon: Icons.grid_view_rounded,
-                    label: context.l10n.t('devices'),
-                    selected: selectedDevice == null,
-                    onTap: () =>
-                        ref.read(selectedDeviceProvider.notifier).clear(),
-                  ),
-                  if (selectedRegisteredDevice != null) ...[
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(22, 8, 18, 6),
-                      child: _SelectedDeviceSummary(
-                        device: selectedRegisteredDevice,
-                        sessions: sessions,
-                      ),
-                    ),
-                    _SidebarNavItem(
-                      icon: Icons.dashboard_outlined,
-                      label: context.l10n.t('overview'),
-                      selected: selectedTool == 0,
-                      onTap: () =>
-                          ref.read(selectedToolTabProvider.notifier).select(0),
-                    ),
-                    _SidebarNavItem(
-                      icon: Icons.tune,
-                      label: context.l10n.t('control'),
-                      selected: selectedTool == 1,
-                      onTap: () =>
-                          ref.read(selectedToolTabProvider.notifier).select(1),
-                    ),
-                    _SidebarNavItem(
-                      icon: Icons.apps_outlined,
-                      label: context.l10n.t('apps'),
-                      selected: selectedTool == 2,
-                      onTap: () =>
-                          ref.read(selectedToolTabProvider.notifier).select(2),
-                    ),
-                    _SidebarNavItem(
-                      icon: Icons.folder_outlined,
-                      label: context.l10n.t('files'),
-                      selected: selectedTool == 3,
-                      onTap: () =>
-                          ref.read(selectedToolTabProvider.notifier).select(3),
-                    ),
-                    _SidebarNavItem(
-                      icon: Icons.article_outlined,
-                      label: context.l10n.t('logcat'),
-                      selected: selectedTool == 4,
-                      onTap: () =>
-                          ref.read(selectedToolTabProvider.notifier).select(4),
-                    ),
-                    _SidebarNavItem(
-                      icon: Icons.terminal_outlined,
-                      label: context.l10n.t('terminal'),
-                      selected: selectedTool == 5,
-                      onTap: () =>
-                          ref.read(selectedToolTabProvider.notifier).select(5),
-                    ),
-                    _SidebarNavItem(
-                      icon: Icons.analytics_outlined,
-                      label: context.l10n.t('processes'),
-                      selected: selectedTool == 6,
-                      onTap: () =>
-                          ref.read(selectedToolTabProvider.notifier).select(6),
-                    ),
-                    _SidebarNavItem(
-                      icon: Icons.web_outlined,
-                      label: context.l10n.t('webpages'),
-                      selected: selectedTool == 7,
-                      onTap: () =>
-                          ref.read(selectedToolTabProvider.notifier).select(7),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            _SidebarFooter(
-              registeredDevices: registeredDevices,
-              selectedDevice: selectedDevice,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SidebarSearchField extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 46,
-      child: TextField(
-        readOnly: true,
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search, size: 22),
-          hintText: context.l10n.t('filterPackage'),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: EdgeInsets.zero,
-        ),
-      ),
-    );
-  }
-}
-
-class _SidebarNavItem extends StatelessWidget {
-  const _SidebarNavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? const Color(0xffd8d9dd) : Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
-          child: Row(
-            children: [
-              Icon(icon, size: 27, color: const Color(0xff202124)),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xff202124),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SelectedDeviceSummary extends StatelessWidget {
-  const _SelectedDeviceSummary({required this.device, required this.sessions});
-
-  final RegisteredDevice device;
-  final Map<String, ScrcpySession> sessions;
-
-  @override
-  Widget build(BuildContext context) {
-    final activeCount = sessions.values
-        .where((session) => session.deviceId == device.id)
-        .length;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            device.isOnline
-                ? Icons.phone_android_rounded
-                : Icons.phone_android_outlined,
-            color: device.isOnline ? const Color(0xff09c47c) : Colors.grey,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  device.displayName,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  activeCount == 0 ? device.status : 'scrcpy x$activeCount',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xff6b7280),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SidebarFooter extends StatelessWidget {
-  const _SidebarFooter({
-    required this.registeredDevices,
-    required this.selectedDevice,
-  });
-
-  final List<RegisteredDevice> registeredDevices;
-  final AdbDevice? selectedDevice;
-
-  @override
-  Widget build(BuildContext context) {
-    final onlineCount = registeredDevices
-        .where((device) => device.isOnline)
-        .length;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
-      child: Row(
-        children: [
-          Icon(
-            selectedDevice?.isOnline == true
-                ? Icons.usb_rounded
-                : Icons.usb_off_outlined,
-            size: 20,
-            color: const Color(0xff6b7280),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '$onlineCount/${registeredDevices.length} ${context.l10n.t('deviceOnline')}',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xff9aa0aa),
-                fontWeight: FontWeight.w600,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ContentTitleBar extends StatelessWidget {
+class _ContentTitleBar extends ConsumerWidget {
   const _ContentTitleBar({required this.title});
 
   final String title;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -623,13 +453,30 @@ class _ContentTitleBar extends StatelessWidget {
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
       ),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-          color: const Color(0xff202124),
-        ),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: const Color(0xff202124),
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            tooltip: context.l10n.t('restartAdb'),
+            icon: const Icon(Icons.adb),
+            iconSize: 30,
+            color: const Color(0xff5f6b6e),
+            onPressed: () => _restartAdbServer(context, ref),
+            style: IconButton.styleFrom(
+              fixedSize: const Size(48, 48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1003,6 +850,10 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                 child: InkWell(
                   onTap: () {
                     ref
+                            .read(userClearedDeviceSelectionProvider.notifier)
+                            .state =
+                        false;
+                    ref
                         .read(selectedDeviceProvider.notifier)
                         .select(device.toAdbDevice);
                   },
@@ -1027,7 +878,9 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                           ),
                           const SizedBox(width: 10),
                         ],
-                        // Device Identifier
+
+                        const SizedBox(width: 10),
+                        // 设备标识：展示合并后的连接/序列标识，名称列单独保留可编辑别名。
                         Expanded(
                           flex: 3,
                           child: Row(
@@ -1082,7 +935,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        // Device Name (Editable Badge)
+                        // 设备名称：可编辑的用户别名，未设置时回退到 adb model/id。
                         Expanded(
                           flex: 3,
                           child: Row(
@@ -1562,6 +1415,7 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final isExpanded = ref.watch(_emulatorListExpandedProvider);
     final emulatorsAsync = ref.watch(emulatorListProvider);
     final runningEmulatorsAsync = ref.watch(runningEmulatorsProvider);
     final startingEmulators = ref.watch(startingEmulatorsProvider);
@@ -1752,112 +1606,152 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      context.l10n.t('emulators'),
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const Spacer(),
-                    Tooltip(
-                      message: context.l10n.t('refresh'),
-                      child: IconButton.filledTonal(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            ref
+                                .read(_emulatorListExpandedProvider.notifier)
+                                .toggle();
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  context.l10n.t('emulators'),
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(width: 8),
+                                AnimatedRotation(
+                                  turns: isExpanded ? 0.5 : 0.0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: const Icon(Icons.keyboard_arrow_down),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton.filledTonal(
                         icon: const Icon(Icons.refresh),
                         onPressed: () {
                           ref.invalidate(emulatorListProvider);
                           ref.invalidate(runningEmulatorsProvider);
                         },
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Table Header Row
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.3),
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Theme.of(context).dividerColor,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      // Name header
-                      Expanded(
-                        flex: 5,
-                        child: InkWell(
-                          onTap: () => _toggleSort('name'),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                Text(
-                                  context.l10n.t('emulatorNameCol'),
-                                  style: Theme.of(context).textTheme.titleSmall
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                                _getSortIcon('name'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Status header
-                      Expanded(
-                        flex: 3,
-                        child: InkWell(
-                          onTap: () => _toggleSort('status'),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                Text(
-                                  context.l10n.t('emulatorStatusCol'),
-                                  style: Theme.of(context).textTheme.titleSmall
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                                _getSortIcon('status'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Actions header
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          context.l10n.t('emulatorActionsCol'),
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      if (!isCompact) ...[
-                        const SizedBox(width: 10),
-                        const SizedBox(width: 40),
-                      ],
                     ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                // Table Body Row
-                if (hasBoundedHeight)
-                  Expanded(child: contentWidget)
-                else
-                  contentWidget,
-              ],
+                  if (isExpanded) ...[
+                    const SizedBox(height: 16),
+                    // Table Header Row
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest
+                            .withValues(alpha: 0.3),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Theme.of(context).dividerColor,
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Name header
+                          Expanded(
+                            flex: 5,
+                            child: InkWell(
+                              onTap: () => _toggleSort('name'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      context.l10n.t('emulatorNameCol'),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    _getSortIcon('name'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // Status header
+                          Expanded(
+                            flex: 3,
+                            child: InkWell(
+                              onTap: () => _toggleSort('status'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      context.l10n.t('emulatorStatusCol'),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    _getSortIcon('status'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // Actions header
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              context.l10n.t('emulatorActionsCol'),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          if (!isCompact) ...[
+                            const SizedBox(width: 10),
+                            const SizedBox(width: 40),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Table Body Row
+                    if (hasBoundedHeight)
+                      Expanded(child: contentWidget)
+                    else
+                      contentWidget,
+                  ],
+                ],
+              ),
             ),
           ),
         );
@@ -2197,7 +2091,7 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-/// 展示当前设备身份和 adb 状态的头部区域，同时包含 scrcpy 投屏控制。
+/// 展示当前设备身份和 adb 状态的顶部单行 Header，同时包含 scrcpy 投屏控制。
 class _SelectedDeviceHeader extends ConsumerWidget {
   const _SelectedDeviceHeader({required this.device, this.sessions = const {}});
 
@@ -2210,71 +2104,113 @@ class _SelectedDeviceHeader extends ConsumerWidget {
         .where((session) => session.deviceId == device.id)
         .toList(growable: false);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(
-              Icons.phone_android,
-              size: 36,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
+    return Container(
+      height: 96,
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.phone_android,
+            size: 38,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 120),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     device.displayName,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xff202124),
+                    ),
                   ),
                   const SizedBox(height: 4),
-                  Text(device.id),
+                  Text(
+                    device.id,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xff202124),
+                    ),
+                  ),
                 ],
               ),
             ),
-            // scrcpy 投屏控制区
-            FilledButton.icon(
-              icon: const Icon(Icons.cast, size: 18),
-              label: Text(context.l10n.t('start')),
-              onPressed: device.isOnline
-                  ? () => _startScrcpy(context, ref, device.id)
-                  : null,
-            ),
-            const SizedBox(width: 8),
-            if (activeSessions.isNotEmpty) ...[
-              OutlinedButton.icon(
-                icon: const Icon(Icons.stop, size: 18),
-                label: Text(context.l10n.t('stopAll')),
-                onPressed: () => _stopSessions(context, ref, activeSessions),
-              ),
-              const SizedBox(width: 8),
-              for (final session in activeSessions) ...[
-                InputChip(
-                  avatar: const Icon(Icons.cast_connected, size: 18),
-                  label: Text('PID ${session.pid}'),
-                  onDeleted: () => _stopSessions(context, ref, [session]),
+          ),
+          const SizedBox(width: 16),
+          Flexible(
+            fit: FlexFit.loose,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                reverse: true,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // scrcpy 投屏控制区
+                    FilledButton.icon(
+                      icon: const Icon(Icons.cast, size: 18),
+                      label: Text(context.l10n.t('start')),
+                      onPressed: device.isOnline
+                          ? () => _startScrcpy(context, ref, device.id)
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    if (activeSessions.isNotEmpty) ...[
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.stop, size: 18),
+                        label: Text(context.l10n.t('stopAll')),
+                        onPressed: () =>
+                            _stopSessions(context, ref, activeSessions),
+                      ),
+                      const SizedBox(width: 8),
+                      for (final session in activeSessions) ...[
+                        InputChip(
+                          avatar: const Icon(Icons.cast_connected, size: 18),
+                          label: Text('PID ${session.pid}'),
+                          onDeleted: () =>
+                              _stopSessions(context, ref, [session]),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                    ],
+                    Chip(
+                      label: Text(device.status),
+                      avatar: Icon(
+                        device.isOnline
+                            ? Icons.check_circle
+                            : Icons.warning_amber,
+                        size: 18,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-              ],
-            ],
-            Chip(
-              label: Text(device.status),
-              avatar: Icon(
-                device.isOnline ? Icons.check_circle : Icons.warning_amber,
-                size: 18,
               ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.close),
-              tooltip: context.l10n.t('close'),
-              onPressed: () =>
-                  ref.read(selectedDeviceProvider.notifier).clear(),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: context.l10n.t('close'),
+            onPressed: () {
+              ref.read(userClearedDeviceSelectionProvider.notifier).state =
+                  true;
+              ref.read(selectedDeviceProvider.notifier).clear();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -2389,7 +2325,14 @@ class _DeviceOverviewPanel extends ConsumerWidget {
                           context.l10n.t('overviewTitle'),
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: _OverviewShortcutActions(device: device),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
                         IconButton(
                           tooltip: context.l10n.t('refresh'),
                           icon: const Icon(Icons.refresh),
@@ -2509,6 +2452,97 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         value: overview.macAddress,
       ),
     ];
+  }
+}
+
+/// 概览页右上角常用设备功能入口，保持只读信息页也能快速操作设备。
+class _OverviewShortcutActions extends ConsumerWidget {
+  const _OverviewShortcutActions({required this.device});
+
+  final AdbDevice device;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final actions = ref.read(deviceActionServiceProvider);
+    final enabled = device.isOnline;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      reverse: true,
+      child: IconButtonTheme(
+        data: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            foregroundColor: const Color(0xff374151),
+            disabledForegroundColor: const Color(0xffa9b0bc),
+            minimumSize: const Size(36, 36),
+            fixedSize: const Size(36, 36),
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: context.l10n.t('home'),
+              icon: const Icon(Icons.home_outlined),
+              onPressed: enabled
+                  ? () => _runAdbAction(
+                      context,
+                      ref,
+                      actions.keyEvent(device.id, 3),
+                    )
+                  : null,
+            ),
+            IconButton(
+              tooltip: context.l10n.t('back'),
+              icon: const Icon(Icons.arrow_back),
+              onPressed: enabled
+                  ? () => _runAdbAction(
+                      context,
+                      ref,
+                      actions.keyEvent(device.id, 4),
+                    )
+                  : null,
+            ),
+            IconButton(
+              tooltip: context.l10n.t('power'),
+              icon: const Icon(Icons.power_settings_new),
+              onPressed: enabled
+                  ? () => _runAdbAction(
+                      context,
+                      ref,
+                      actions.keyEvent(device.id, 26),
+                    )
+                  : null,
+            ),
+            IconButton(
+              tooltip: context.l10n.t('notificationBar'),
+              icon: const Icon(Icons.notifications_active_outlined),
+              onPressed: enabled
+                  ? () => _runAdbAction(
+                      context,
+                      ref,
+                      actions.openNotificationBar(device.id),
+                    )
+                  : null,
+            ),
+            IconButton(
+              tooltip: context.l10n.t('focus'),
+              icon: const Icon(Icons.center_focus_strong),
+              onPressed: enabled
+                  ? () => _showAdbResult(
+                      context,
+                      ref,
+                      actions.currentFocus(device.id),
+                    )
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -3782,7 +3816,9 @@ class _FilesTab extends ConsumerWidget {
                   tooltip: '前进',
                   icon: const Icon(Icons.arrow_forward),
                   onPressed: navState.canGoForward
-                      ? () => ref.read(fileNavigationProvider.notifier).goForward()
+                      ? () => ref
+                            .read(fileNavigationProvider.notifier)
+                            .goForward()
                       : null,
                 ),
                 IconButton(
@@ -3808,7 +3844,9 @@ class _FilesTab extends ConsumerWidget {
                       color: Theme.of(context).colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withOpacity(0.5),
                       ),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -3817,7 +3855,8 @@ class _FilesTab extends ConsumerWidget {
                             autofocus: true,
                             controller: TextEditingController(text: path)
                               ..selection = TextSelection.fromPosition(
-                                  TextPosition(offset: path.length)),
+                                TextPosition(offset: path.length),
+                              ),
                             decoration: const InputDecoration(
                               border: InputBorder.none,
                               isDense: true,
@@ -3843,8 +3882,11 @@ class _FilesTab extends ConsumerWidget {
                                   child: SingleChildScrollView(
                                     scrollDirection: Axis.horizontal,
                                     child: Row(
-                                      children:
-                                          _buildBreadcrumbs(context, ref, path),
+                                      children: _buildBreadcrumbs(
+                                        context,
+                                        ref,
+                                        path,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -3870,10 +3912,14 @@ class _FilesTab extends ConsumerWidget {
                   width: 150,
                   height: 38,
                   child: TextField(
-                    onChanged: (val) =>
-                        ref.read(fileFilterQueryProvider.notifier).setQuery(val),
+                    onChanged: (val) => ref
+                        .read(fileFilterQueryProvider.notifier)
+                        .setQuery(val),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.filter_alt_outlined, size: 16),
+                      prefixIcon: const Icon(
+                        Icons.filter_alt_outlined,
+                        size: 16,
+                      ),
                       hintText: '过滤',
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 8),
@@ -3886,10 +3932,9 @@ class _FilesTab extends ConsumerWidget {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outlineVariant
-                              .withOpacity(0.5),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withOpacity(0.5),
                         ),
                       ),
                     ),
@@ -3909,11 +3954,19 @@ class _FilesTab extends ConsumerWidget {
                 ),
                 IconButton(
                   tooltip: '列表视图',
-                  icon: const Icon(Icons.format_list_bulleted_outlined, size: 20),
+                  icon: const Icon(
+                    Icons.format_list_bulleted_outlined,
+                    size: 20,
+                  ),
                   isSelected: !navState.isGridView,
-                  selectedIcon: const Icon(Icons.format_list_bulleted, size: 20),
+                  selectedIcon: const Icon(
+                    Icons.format_list_bulleted,
+                    size: 20,
+                  ),
                   onPressed: () {
-                    ref.read(fileNavigationProvider.notifier).setGridView(false);
+                    ref
+                        .read(fileNavigationProvider.notifier)
+                        .setGridView(false);
                   },
                 ),
                 IconButton(
@@ -3962,13 +4015,17 @@ class _FilesTab extends ConsumerWidget {
                   // Client-side filtering
                   var filtered = items;
                   if (!navState.showHiddenFiles) {
-                    filtered = filtered.where((f) => !f.name.startsWith('.')).toList();
+                    filtered = filtered
+                        .where((f) => !f.name.startsWith('.'))
+                        .toList();
                   }
                   if (filterQuery.isNotEmpty) {
                     filtered = filtered
-                        .where((f) => f.name
-                            .toLowerCase()
-                            .contains(filterQuery.toLowerCase()))
+                        .where(
+                          (f) => f.name.toLowerCase().contains(
+                            filterQuery.toLowerCase(),
+                          ),
+                        )
                         .toList();
                   }
 
@@ -3984,12 +4041,13 @@ class _FilesTab extends ConsumerWidget {
                   if (navState.isGridView) {
                     return GridView.builder(
                       padding: const EdgeInsets.only(top: 8),
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 110,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 0.8,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 110,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 0.8,
+                          ),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final file = filtered[index];
@@ -4037,7 +4095,10 @@ class _FilesTab extends ConsumerWidget {
   }
 
   List<Widget> _buildBreadcrumbs(
-      BuildContext context, WidgetRef ref, String path) {
+    BuildContext context,
+    WidgetRef ref,
+    String path,
+  ) {
     final segments = path.split('/').where((s) => s.isNotEmpty).toList();
     final list = <Widget>[];
 
@@ -4068,10 +4129,9 @@ class _FilesTab extends ConsumerWidget {
         Text(
           ' > ',
           style: TextStyle(
-            color: Theme.of(context)
-                .colorScheme
-                .onSurfaceVariant
-                .withOpacity(0.5),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurfaceVariant.withOpacity(0.5),
             fontSize: 12,
           ),
         ),
@@ -4101,16 +4161,15 @@ class _FilesTab extends ConsumerWidget {
 
   Widget _buildTableHeader(BuildContext context) {
     final textStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        );
+      fontWeight: FontWeight.bold,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest
-            .withOpacity(0.4),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withOpacity(0.4),
         border: Border(
           bottom: BorderSide(
             color: Theme.of(context).colorScheme.outlineVariant,
@@ -4120,22 +4179,10 @@ class _FilesTab extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            flex: 4,
-            child: Text('名称', style: textStyle),
-          ),
-          SizedBox(
-            width: 120,
-            child: Text('权限', style: textStyle),
-          ),
-          SizedBox(
-            width: 180,
-            child: Text('修改日期', style: textStyle),
-          ),
-          SizedBox(
-            width: 80,
-            child: Text('类型', style: textStyle),
-          ),
+          Expanded(flex: 4, child: Text('名称', style: textStyle)),
+          SizedBox(width: 120, child: Text('权限', style: textStyle)),
+          SizedBox(width: 180, child: Text('修改日期', style: textStyle)),
+          SizedBox(width: 80, child: Text('类型', style: textStyle)),
           SizedBox(
             width: 100,
             child: Text('大小', style: textStyle, textAlign: TextAlign.right),
@@ -4246,8 +4293,8 @@ class _FileGridItemState extends State<_FileGridItem> {
                       color: file.isFolder
                           ? Colors.amber
                           : file.isLink
-                              ? Colors.teal
-                              : theme.colorScheme.onSurfaceVariant,
+                          ? Colors.teal
+                          : theme.colorScheme.onSurfaceVariant,
                     ),
                     const SizedBox(height: 8),
                     Tooltip(
@@ -4367,8 +4414,8 @@ class _FileRowState extends State<_FileRow> {
                       color: file.isFolder
                           ? Colors.amber
                           : file.isLink
-                              ? Colors.teal
-                              : theme.colorScheme.onSurfaceVariant,
+                          ? Colors.teal
+                          : theme.colorScheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -4403,10 +4450,7 @@ class _FileRowState extends State<_FileRow> {
                 child: Text(file.modifiedDate, style: cellStyle),
               ),
               // 类型
-              SizedBox(
-                width: 80,
-                child: Text(typeLabel, style: cellStyle),
-              ),
+              SizedBox(width: 80, child: Text(typeLabel, style: cellStyle)),
               // 大小
               SizedBox(
                 width: 100,
@@ -4503,7 +4547,11 @@ class _RemoteFileActions extends ConsumerWidget {
             }
             if (result.isSuccess) {
               final currentPath = ref.read(fileNavigationProvider).currentPath;
-              ref.invalidate(remoteFilesProvider(RemoteDirectoryRequest(deviceId: deviceId, path: currentPath)));
+              ref.invalidate(
+                remoteFilesProvider(
+                  RemoteDirectoryRequest(deviceId: deviceId, path: currentPath),
+                ),
+              );
             }
           },
         ),

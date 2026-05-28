@@ -79,9 +79,10 @@ final webTargetsProvider = FutureProvider.autoDispose
     });
 
 /// 选中的网页目标。
-final selectedWebTargetProvider = NotifierProvider<SelectedWebTargetNotifier, WebpageTarget?>(
-  SelectedWebTargetNotifier.new,
-);
+final selectedWebTargetProvider =
+    NotifierProvider<SelectedWebTargetNotifier, WebpageTarget?>(
+      SelectedWebTargetNotifier.new,
+    );
 
 class SelectedWebTargetNotifier extends Notifier<WebpageTarget?> {
   @override
@@ -92,9 +93,10 @@ class SelectedWebTargetNotifier extends Notifier<WebpageTarget?> {
 }
 
 /// 是否使用本地调试器。
-final useLocalDebuggerProvider = NotifierProvider<UseLocalDebuggerNotifier, bool>(
-  UseLocalDebuggerNotifier.new,
-);
+final useLocalDebuggerProvider =
+    NotifierProvider<UseLocalDebuggerNotifier, bool>(
+      UseLocalDebuggerNotifier.new,
+    );
 
 class UseLocalDebuggerNotifier extends Notifier<bool> {
   static const _key = 'web_debug.use_local_debugger';
@@ -168,16 +170,16 @@ final remotePathProvider = NotifierProvider<RemotePathNotifier, String>(
 );
 
 /// 文件浏览器高级导航状态。
-final fileNavigationProvider = NotifierProvider<FileNavigationNotifier, FileNavigationState>(
-  FileNavigationNotifier.new,
-);
+final fileNavigationProvider =
+    NotifierProvider<FileNavigationNotifier, FileNavigationState>(
+      FileNavigationNotifier.new,
+    );
 
 /// 文件列表搜索过滤。
-final fileFilterQueryProvider = NotifierProvider<FileFilterQueryNotifier, String>(
-  FileFilterQueryNotifier.new,
-);
-
-
+final fileFilterQueryProvider =
+    NotifierProvider<FileFilterQueryNotifier, String>(
+      FileFilterQueryNotifier.new,
+    );
 
 /// Logcat 进程控制器和可见日志状态。
 final logcatControllerProvider =
@@ -193,6 +195,20 @@ final selectedDeviceProvider =
     NotifierProvider<SelectedDeviceNotifier, AdbDevice?>(
       SelectedDeviceNotifier.new,
     );
+
+/// 用户是否手动清空了选中的设备（例如点击了 logo）
+final userClearedDeviceSelectionProvider =
+    NotifierProvider<UserClearedDeviceSelectionNotifier, bool>(
+      UserClearedDeviceSelectionNotifier.new,
+    );
+
+class UserClearedDeviceSelectionNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  @override
+  set state(bool value) => super.state = value;
+}
 
 /// 以生成的 session id 为 key 的活跃 scrcpy 会话。
 final scrcpySessionsProvider =
@@ -346,9 +362,13 @@ class FileNavigationNotifier extends Notifier<FileNavigationState> {
     final path = state.currentPath;
     if (path == '/') return;
 
-    final normalized = path.endsWith('/') ? path.substring(0, path.length - 1) : path;
+    final normalized = path.endsWith('/')
+        ? path.substring(0, path.length - 1)
+        : path;
     final lastSlash = normalized.lastIndexOf('/');
-    final parent = lastSlash == 0 ? '/' : normalized.substring(0, lastSlash + 1);
+    final parent = lastSlash == 0
+        ? '/'
+        : normalized.substring(0, lastSlash + 1);
 
     navigateTo(parent);
   }
@@ -383,9 +403,9 @@ class RemotePathNotifier extends Notifier<String> {
 
   /// 打开当前路径下的子目录。
   void open(String folderName) {
-    ref.read(fileNavigationProvider.notifier).navigateTo(
-      _join(state, folderName),
-    );
+    ref
+        .read(fileNavigationProvider.notifier)
+        .navigateTo(_join(state, folderName));
   }
 
   /// 返回父目录。
@@ -413,7 +433,6 @@ class FileFilterQueryNotifier extends Notifier<String> {
     state = query;
   }
 }
-
 
 /// 目录列表 FutureProvider family 使用的 key 对象。
 class RemoteDirectoryRequest {
@@ -445,6 +464,7 @@ class RegisteredDevice {
     required this.isOnline,
     this.isChecked = false,
     this.connections = const [],
+    this.serial,
   });
 
   final String id;
@@ -456,6 +476,7 @@ class RegisteredDevice {
   final bool isOnline;
   final bool isChecked;
   final List<String> connections;
+  final String? serial;
 
   bool get isNetwork =>
       id.contains(':') || id.contains('.') || id == '127.0.0.1';
@@ -471,27 +492,13 @@ class RegisteredDevice {
   }
 
   String get connectionMethodDisplay {
-    final activeConns = connections.isEmpty ? [id] : connections;
-    final displays = activeConns
-        .map((connId) {
-          if (connId.contains('_adb-tls-connect')) {
-            return '无线 (mDNS)';
-          } else if (connId.contains(':') ||
-              connId.contains('.') ||
-              connId == '127.0.0.1') {
-            final ipPattern = RegExp(r'^(\d+\.\d+\.\d+\.\d+)(:\d+)?$');
-            final match = ipPattern.firstMatch(connId);
-            if (match != null) {
-              return '无线 (${match.group(1)})';
-            }
-            return '无线 ($connId)';
-          } else {
-            return 'USB';
-          }
-        })
-        .toSet()
-        .toList();
-    return displays.join(' / ');
+    final name = (model != null && model!.isNotEmpty)
+        ? model!.replaceAll('_', ' ')
+        : id;
+    if (serial != null && serial!.isNotEmpty) {
+      return '$name($serial)';
+    }
+    return name;
   }
 
   AdbDevice get toAdbDevice => AdbDevice(
@@ -512,6 +519,7 @@ class RegisteredDevice {
     bool? isOnline,
     bool? isChecked,
     List<String>? connections,
+    String? serial,
   }) {
     return RegisteredDevice(
       id: id ?? this.id,
@@ -523,6 +531,7 @@ class RegisteredDevice {
       isOnline: isOnline ?? this.isOnline,
       isChecked: isChecked ?? this.isChecked,
       connections: connections ?? this.connections,
+      serial: serial ?? this.serial,
     );
   }
 }
@@ -769,6 +778,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       final active = activeMap[id];
       final customName = _aliases[id];
       final isChecked = _checkedIds.contains(id);
+      final serial = _serialMap[id] ?? id;
 
       if (active != null) {
         allCandidates.add(
@@ -782,6 +792,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             isOnline: active.isOnline,
             isChecked: isChecked,
             connections: [id],
+            serial: serial,
           ),
         );
       } else {
@@ -793,6 +804,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             isOnline: false,
             isChecked: isChecked,
             connections: [id],
+            serial: serial,
           ),
         );
       }
@@ -846,6 +858,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             isChecked: anyChecked,
             customName: mergedCustomName,
             connections: connectionIds,
+            serial: serial,
           ),
         );
       }
