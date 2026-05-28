@@ -14,6 +14,10 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
   final TextEditingController _packageController = TextEditingController();
   final TextEditingController _tagController = TextEditingController();
   final TextEditingController _textController = TextEditingController();
+  final FocusNode _logViewFocusNode = FocusNode(debugLabel: 'LogcatView');
+  final FocusNode _textFilterFocusNode = FocusNode(
+    debugLabel: 'LogcatTextFilter',
+  );
   int _lastVisibleCount = 0;
 
   @override
@@ -22,7 +26,17 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
     _packageController.dispose();
     _tagController.dispose();
     _textController.dispose();
+    _logViewFocusNode.dispose();
+    _textFilterFocusNode.dispose();
     super.dispose();
+  }
+
+  void _focusTextFilter() {
+    _textFilterFocusNode.requestFocus();
+    _textController.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _textController.text.length,
+    );
   }
 
   @override
@@ -56,6 +70,7 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
             packageController: _packageController,
             tagController: _tagController,
             textController: _textController,
+            textFocusNode: _textFilterFocusNode,
             onStartStop: () {
               state.isRunning
                   ? controller.stop()
@@ -81,46 +96,74 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                border: Border.all(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: state.error != null
-                    ? _LogcatError(message: state.error!)
-                    : state.viewMode == LogcatViewMode.raw
-                    ? _LogcatTextList(
-                        entries: entries,
-                        controller: _verticalController,
-                        wrapLines: state.wrapLines,
-                        useLevelColor: true,
-                        textForEntry: (entry) => entry.rawLine,
-                      )
-                    : state.viewMode == LogcatViewMode.plain
-                    ? _LogcatTextList(
-                        entries: entries,
-                        controller: _verticalController,
-                        wrapLines: state.wrapLines,
-                        textForEntry: (entry) => entry.message.isEmpty
-                            ? entry.rawLine
-                            : entry.message,
-                      )
-                    : state.viewMode == LogcatViewMode.compact
-                    ? _CompactLogcatList(
-                        entries: entries,
-                        controller: _verticalController,
-                        wrapLines: state.wrapLines,
-                      )
-                    : _StructuredLogcatTable(
-                        entries: entries,
-                        verticalController: _verticalController,
-                        wrapLines: state.wrapLines,
+            child: Shortcuts(
+              shortcuts: const {
+                SingleActivator(LogicalKeyboardKey.keyF, meta: true):
+                    _OpenLogcatSearchIntent(),
+                SingleActivator(LogicalKeyboardKey.keyF, control: true):
+                    _OpenLogcatSearchIntent(),
+              },
+              child: Actions(
+                actions: {
+                  _OpenLogcatSearchIntent:
+                      CallbackAction<_OpenLogcatSearchIntent>(
+                        onInvoke: (_) {
+                          _focusTextFilter();
+                          return null;
+                        },
                       ),
+                },
+                child: Focus(
+                  focusNode: _logViewFocusNode,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _logViewFocusNode.requestFocus,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.5),
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: state.error != null
+                            ? _LogcatError(message: state.error!)
+                            : state.viewMode == LogcatViewMode.raw
+                            ? _LogcatTextList(
+                                entries: entries,
+                                controller: _verticalController,
+                                wrapLines: state.wrapLines,
+                                useLevelColor: true,
+                                textForEntry: (entry) => entry.rawLine,
+                              )
+                            : state.viewMode == LogcatViewMode.plain
+                            ? _LogcatTextList(
+                                entries: entries,
+                                controller: _verticalController,
+                                wrapLines: state.wrapLines,
+                                textForEntry: (entry) => entry.message.isEmpty
+                                    ? entry.rawLine
+                                    : entry.message,
+                              )
+                            : state.viewMode == LogcatViewMode.compact
+                            ? _CompactLogcatList(
+                                entries: entries,
+                                controller: _verticalController,
+                                wrapLines: state.wrapLines,
+                              )
+                            : _StructuredLogcatTable(
+                                entries: entries,
+                                verticalController: _verticalController,
+                                wrapLines: state.wrapLines,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -199,12 +242,17 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
   }
 }
 
+class _OpenLogcatSearchIntent extends Intent {
+  const _OpenLogcatSearchIntent();
+}
+
 class _LogcatToolbar extends StatelessWidget {
   const _LogcatToolbar({
     required this.state,
     required this.packageController,
     required this.tagController,
     required this.textController,
+    required this.textFocusNode,
     required this.onStartStop,
     required this.onClear,
     required this.onImport,
@@ -229,6 +277,7 @@ class _LogcatToolbar extends StatelessWidget {
   final TextEditingController packageController;
   final TextEditingController tagController;
   final TextEditingController textController;
+  final FocusNode textFocusNode;
   final VoidCallback onStartStop;
   final VoidCallback onClear;
   final VoidCallback onImport;
@@ -285,6 +334,7 @@ class _LogcatToolbar extends StatelessWidget {
     );
     final textField = _HistoryTextField(
       controller: textController,
+      focusNode: textFocusNode,
       hintText: context.l10n.t('filterLog'),
       history: state.textFilterHistory,
       prefixIcon: Icons.search,
@@ -432,6 +482,7 @@ class _HistoryTextField extends StatefulWidget {
     required this.onSelected,
     required this.onHistoryRemoved,
     this.prefixIcon,
+    this.focusNode,
   });
 
   final TextEditingController controller;
@@ -442,6 +493,7 @@ class _HistoryTextField extends StatefulWidget {
   final ValueChanged<String> onSelected;
   final ValueChanged<String> onHistoryRemoved;
   final IconData? prefixIcon;
+  final FocusNode? focusNode;
 
   @override
   State<_HistoryTextField> createState() => _HistoryTextFieldState();
@@ -449,18 +501,23 @@ class _HistoryTextField extends StatefulWidget {
 
 class _HistoryTextFieldState extends State<_HistoryTextField> {
   final MenuController _menuController = MenuController();
-  final FocusNode _focusNode = FocusNode();
+  late final FocusNode _focusNode;
+  late final bool _ownsFocusNode;
 
   @override
   void initState() {
     super.initState();
+    _ownsFocusNode = widget.focusNode == null;
+    _focusNode = widget.focusNode ?? FocusNode();
     _focusNode.addListener(_handleFocusChanged);
   }
 
   @override
   void dispose() {
     _focusNode.removeListener(_handleFocusChanged);
-    _focusNode.dispose();
+    if (_ownsFocusNode) {
+      _focusNode.dispose();
+    }
     super.dispose();
   }
 
