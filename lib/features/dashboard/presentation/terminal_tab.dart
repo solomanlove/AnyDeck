@@ -6,6 +6,7 @@ import '../../../app/l10n/app_localizations.dart';
 import '../../../core/adb/adb_device.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/terminal/adb_terminal_session.dart';
+import '../../../core/terminal/favorite_commands.dart';
 
 part 'terminal_favorites.dart';
 
@@ -191,7 +192,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            session.name,
+                            context.l10n
+                                .t('terminalTabLabel')
+                                .replaceAll('{index}', '${index + 1}'),
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: isActive
@@ -254,7 +257,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
             const Icon(Icons.terminal, size: 48, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
-              '没有活动的终端调试窗口',
+              context.l10n.t('noActiveTerminal'),
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
@@ -299,7 +302,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                     itemBuilder: (context, index) {
                       final line = session.lines[index];
                       return Text(
-                        line.text,
+                        _terminalLineText(context, line),
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 13,
@@ -402,21 +405,21 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                       label: context.l10n.t('ctrlC'),
                       onPressed: () =>
                           notifier.sendCtrlC(widget.device.id, session.id),
-                      tooltip: '中断当前运行的命令',
+                      tooltip: context.l10n.t('terminalInterruptTooltip'),
                     ),
                     // 清屏
                     _TerminalButton(
                       label: context.l10n.t('clearLogs'),
                       onPressed: () =>
                           notifier.clearBuffer(widget.device.id, session.id),
-                      tooltip: '清除控制台输出',
+                      tooltip: context.l10n.t('terminalClearTooltip'),
                     ),
                     // 重启终端
                     _TerminalButton(
                       label: context.l10n.t('reconnect'),
                       onPressed: () =>
                           notifier.restartSession(widget.device.id, session.id),
-                      tooltip: '关闭并重启当前 ADB 终端进程',
+                      tooltip: context.l10n.t('terminalRestartTooltip'),
                     ),
                   ],
                 ),
@@ -426,6 +429,17 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
         ),
       ),
     );
+  }
+
+  String _terminalLineText(BuildContext context, TerminalLine line) {
+    final key = line.l10nKey;
+    if (key == null) return line.text;
+
+    var text = context.l10n.t(key);
+    for (final entry in line.l10nArgs.entries) {
+      text = text.replaceAll('{${entry.key}}', entry.value);
+    }
+    return text;
   }
 
   /// 终端各行输出色彩映射

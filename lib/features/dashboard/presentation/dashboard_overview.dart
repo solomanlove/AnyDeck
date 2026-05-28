@@ -53,31 +53,33 @@ class _DeviceOverviewPanel extends ConsumerWidget {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            context.l10n.t('overviewTitle'),
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(width: 12),
-                          _OverviewShortcutActions(device: device),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            tooltip: context.l10n.t('refresh'),
-                            icon: const Icon(Icons.refresh),
-                            onPressed: () => device.isOnline
-                                ? ref.invalidate(
-                                    deviceOverviewProvider(device.id),
-                                  )
-                                : ref.invalidate(
-                                    cachedDeviceOverviewProvider(device.id),
-                                  ),
-                          ),
-                        ],
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          context.l10n.t('overviewTitle'),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Row(
+                          children: [
+                            const SizedBox(width: 12),
+                            _OverviewShortcutActions(device: device),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              tooltip: context.l10n.t('refresh'),
+                              icon: const Icon(Icons.refresh),
+                              onPressed: () => device.isOnline
+                                  ? ref.invalidate(
+                                      deviceOverviewProvider(device.id),
+                                    )
+                                  : ref.invalidate(
+                                      cachedDeviceOverviewProvider(device.id),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     _OverviewGrid(items: _buildOverviewItems(context, data)),

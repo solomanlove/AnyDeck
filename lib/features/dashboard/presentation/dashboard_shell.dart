@@ -316,18 +316,25 @@ class _RailButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? const Color(0xff09c47c) : const Color(0xff5f6b6e);
+    final Color color;
+    if (onPressed == null) {
+      color = const Color(0xff8b9a9e);
+    } else if (selected) {
+      color = const Color(0xff09c47c);
+    } else {
+      color = const Color(0xff5f6b6e);
+    }
 
     return Tooltip(
       message: tooltip,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: IconButton(
-          icon: Icon(icon),
-          color: color,
+          icon: Icon(icon, color: color),
           iconSize: 28,
           onPressed: onPressed,
           style: IconButton.styleFrom(
+            foregroundColor: color,
             backgroundColor: selected
                 ? Colors.white.withValues(alpha: 0.56)
                 : Colors.transparent,

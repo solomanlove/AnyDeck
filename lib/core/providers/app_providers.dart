@@ -18,6 +18,7 @@ import '../logcat/logcat_state.dart';
 import '../scrcpy/scrcpy_service.dart';
 import '../scrcpy/scrcpy_session.dart';
 import '../terminal/adb_terminal_session.dart';
+import '../terminal/favorite_commands.dart';
 import '../emulator/emulator_service.dart';
 import '../process/process_service.dart';
 import '../web_debug/webpage_target.dart';

@@ -3,25 +3,34 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../process/tool_path_resolver.dart';
 
-/// 终端单行输出类型
 enum TerminalLineType { stdout, stderr, input, info }
 
-/// 终端单行输出数据
 class TerminalLine {
   final String text;
   final TerminalLineType type;
+  final String? l10nKey;
+  final Map<String, String> l10nArgs;
 
-  const TerminalLine({required this.text, required this.type});
+  const TerminalLine({
+    required this.text,
+    required this.type,
+    this.l10nKey,
+    this.l10nArgs = const {},
+  });
+
+  const TerminalLine.localized({
+    required this.l10nKey,
+    required this.type,
+    this.l10nArgs = const {},
+  }) : text = '';
 }
 
 /// 终端会话状态模型
 class AdbTerminalSession {
   final String id;
-  final String name;
   final String deviceId;
   final List<TerminalLine> lines;
   final List<String> commandHistory;
@@ -31,7 +40,6 @@ class AdbTerminalSession {
 
   const AdbTerminalSession({
     required this.id,
-    required this.name,
     required this.deviceId,
     required this.lines,
     required this.commandHistory,
@@ -42,7 +50,6 @@ class AdbTerminalSession {
 
   AdbTerminalSession copyWith({
     String? id,
-    String? name,
     String? deviceId,
     List<TerminalLine>? lines,
     List<String>? commandHistory,
@@ -52,7 +59,6 @@ class AdbTerminalSession {
   }) {
     return AdbTerminalSession(
       id: id ?? this.id,
-      name: name ?? this.name,
       deviceId: deviceId ?? this.deviceId,
       lines: lines ?? this.lines,
       commandHistory: commandHistory ?? this.commandHistory,
@@ -119,15 +125,13 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
   Future<void> createSession(String deviceId) async {
     final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
     final currentSessions = state.getSessions(deviceId);
-    final name = '终端 ${currentSessions.length + 1}';
 
     final session = AdbTerminalSession(
       id: sessionId,
-      name: name,
       deviceId: deviceId,
       lines: [
-        const TerminalLine(
-          text: '正在初始化 ADB shell 会话...\n',
+        const TerminalLine.localized(
+          l10nKey: 'terminalSessionStarted',
           type: TerminalLineType.info,
         ),
       ],
@@ -173,11 +177,12 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
       // 进程退出处理
       process.exitCode.then((code) {
-        _appendOutput(
+        _appendLocalizedOutput(
           deviceId,
           sessionId,
-          '\n[进程已终止，退出码: $code]',
+          'terminalProcessTerminated',
           TerminalLineType.info,
+          args: {'code': '$code'},
         );
         _updateSession(
           deviceId,
@@ -186,7 +191,13 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         );
       });
     } on Object catch (e) {
-      _appendOutput(deviceId, sessionId, '\n启动终端失败: $e', TerminalLineType.info);
+      _appendLocalizedOutput(
+        deviceId,
+        sessionId,
+        'terminalStartFailed',
+        TerminalLineType.info,
+        args: {'error': '$e'},
+      );
       _updateSession(
         deviceId,
         sessionId,
@@ -243,10 +254,10 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
     final session = sessions[index];
     if (session.process == null || !session.isRunning) {
-      _appendOutput(
+      _appendLocalizedOutput(
         deviceId,
         sessionId,
-        '\n[当前终端已离线，无法发送命令]',
+        'terminalOfflineCannotSend',
         TerminalLineType.info,
       );
       return;
@@ -296,8 +307,8 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       sessionId,
       (s) => s.copyWith(
         lines: [
-          const TerminalLine(
-            text: '正在重新连接 shell...\n',
+          const TerminalLine.localized(
+            l10nKey: 'terminalReconnectingShell',
             type: TerminalLineType.info,
           ),
         ],
@@ -325,11 +336,12 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       });
 
       process.exitCode.then((code) {
-        _appendOutput(
+        _appendLocalizedOutput(
           deviceId,
           sessionId,
-          '\n[进程已终止，退出码: $code]',
+          'terminalProcessTerminated',
           TerminalLineType.info,
+          args: {'code': '$code'},
         );
         _updateSession(
           deviceId,
@@ -338,7 +350,13 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         );
       });
     } on Object catch (e) {
-      _appendOutput(deviceId, sessionId, '\n重连终端失败: $e', TerminalLineType.info);
+      _appendLocalizedOutput(
+        deviceId,
+        sessionId,
+        'terminalReconnectFailed',
+        TerminalLineType.info,
+        args: {'error': '$e'},
+      );
       _updateSession(
         deviceId,
         sessionId,
@@ -456,165 +474,27 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
     _updateSession(deviceId, sessionId, (s) => s.copyWith(lines: currentLines));
   }
-}
 
-/// 常用收藏命令模型
-class FavoriteCommand {
-  final String id;
-  final String title;
-  final String command;
-  final bool isCustom;
+  /// 追加应用内状态文案，交给 UI 根据当前语言渲染。
+  void _appendLocalizedOutput(
+    String deviceId,
+    String sessionId,
+    String key,
+    TerminalLineType type, {
+    Map<String, String> args = const {},
+  }) {
+    final sessions = state.getSessions(deviceId);
+    final index = sessions.indexWhere((s) => s.id == sessionId);
+    if (index == -1) return;
 
-  const FavoriteCommand({
-    required this.id,
-    required this.title,
-    required this.command,
-    this.isCustom = false,
-  });
+    final session = sessions[index];
+    final currentLines = List<TerminalLine>.from(session.lines)
+      ..add(TerminalLine.localized(l10nKey: key, type: type, l10nArgs: args));
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'command': command,
-    'isCustom': isCustom,
-  };
-
-  factory FavoriteCommand.fromJson(Map<String, dynamic> json) =>
-      FavoriteCommand(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        command: json['command'] as String,
-        isCustom: json['isCustom'] as bool? ?? false,
-      );
-}
-
-/// 收藏命令管理器 Notifier
-class FavoriteCommandsNotifier extends Notifier<List<FavoriteCommand>> {
-  static const _prefsKey = 'terminal.favorites';
-  static const _deletedDefaultsKey = 'terminal.favorites.deleted_defaults';
-
-  final List<FavoriteCommand> _defaultCommands = [
-    const FavoriteCommand(
-      id: 'default_packages',
-      title: '列出所有已安装包',
-      command: 'pm list packages',
-    ),
-    const FavoriteCommand(
-      id: 'default_focus',
-      title: '获取当前前台 Activity',
-      command: 'dumpsys window | grep mCurrentFocus',
-    ),
-    const FavoriteCommand(
-      id: 'default_screenshot',
-      title: '手机屏幕截图',
-      command: 'screencap -p /sdcard/screenshot.png',
-    ),
-    const FavoriteCommand(
-      id: 'default_version',
-      title: '获取系统 Android 版本',
-      command: 'getprop ro.build.version.release',
-    ),
-    const FavoriteCommand(
-      id: 'default_logcat_dump',
-      title: '导出当前日志缓冲区',
-      command: 'logcat -d',
-    ),
-    const FavoriteCommand(
-      id: 'default_ip',
-      title: '查看手机网卡 IP 信息',
-      command: 'ip addr show wlan0',
-    ),
-  ];
-
-  @override
-  List<FavoriteCommand> build() {
-    _loadFavorites();
-    return _defaultCommands;
-  }
-
-  Future<void> _loadFavorites() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final customJson = prefs.getStringList(_prefsKey);
-      final deletedDefaults = prefs.getStringList(_deletedDefaultsKey) ?? [];
-
-      final activeDefaults = _defaultCommands
-          .where((cmd) => !deletedDefaults.contains(cmd.id))
-          .toList();
-
-      if (customJson == null) {
-        state = activeDefaults;
-        return;
-      }
-
-      final customList = customJson
-          .map((item) {
-            try {
-              return FavoriteCommand.fromJson(
-                jsonDecode(item) as Map<String, dynamic>,
-              );
-            } catch (_) {
-              return null;
-            }
-          })
-          .whereType<FavoriteCommand>()
-          .toList();
-
-      state = [...activeDefaults, ...customList];
-    } catch (_) {}
-  }
-
-  Future<void> addFavorite(String title, String command) async {
-    final newCmd = FavoriteCommand(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title.trim(),
-      command: command.trim(),
-      isCustom: true,
-    );
-
-    state = [...state, newCmd];
-    await _saveCustomFavorites();
-  }
-
-  Future<void> deleteFavorite(String id) async {
-    final cmdToDelete = state.firstWhere(
-      (cmd) => cmd.id == id,
-      orElse: () => const FavoriteCommand(id: '', title: '', command: ''),
-    );
-    if (cmdToDelete.id.isEmpty) return;
-
-    state = state.where((cmd) => cmd.id != id).toList();
-
-    if (!cmdToDelete.isCustom) {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final deletedDefaults = prefs.getStringList(_deletedDefaultsKey) ?? [];
-        if (!deletedDefaults.contains(id)) {
-          deletedDefaults.add(id);
-          await prefs.setStringList(_deletedDefaultsKey, deletedDefaults);
-        }
-      } catch (_) {}
-    } else {
-      await _saveCustomFavorites();
+    if (currentLines.length > 1500) {
+      currentLines.removeRange(0, currentLines.length - 1500);
     }
-  }
 
-  Future<void> resetFavorites() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_deletedDefaultsKey);
-      await _loadFavorites();
-    } catch (_) {}
-  }
-
-  Future<void> _saveCustomFavorites() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final customList = state.where((cmd) => cmd.isCustom).toList();
-      final jsonList = customList
-          .map((cmd) => jsonEncode(cmd.toJson()))
-          .toList();
-      await prefs.setStringList(_prefsKey, jsonList);
-    } catch (_) {}
+    _updateSession(deviceId, sessionId, (s) => s.copyWith(lines: currentLines));
   }
 }

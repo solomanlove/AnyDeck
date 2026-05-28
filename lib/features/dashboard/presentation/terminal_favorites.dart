@@ -88,7 +88,7 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                       context: context,
                       builder: (context) => AlertDialog(
                         title: Text(context.l10n.t('resetFavorites')),
-                        content: const Text('确定重置并恢复默认收藏命令吗？'),
+                        content: Text(context.l10n.t('resetFavoritesConfirm')),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(false),
@@ -120,10 +120,10 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
             const SizedBox(height: 8),
             Expanded(
               child: favorites.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
-                        '暂无收藏命令',
-                        style: TextStyle(color: Colors.grey),
+                        context.l10n.t('noFavoriteCommands'),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     )
                   : ListView.separated(
@@ -265,7 +265,7 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
               children: [
                 Expanded(
                   child: Text(
-                    widget.command.title,
+                    _commandTitle(context),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -283,6 +283,7 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     splashRadius: 12,
+                    tooltip: context.l10n.t('deleteFavorite'),
                     onPressed: widget.onDelete,
                   ),
               ],
@@ -306,7 +307,10 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
               children: [
                 TextButton.icon(
                   icon: const Icon(Icons.edit_note, size: 12),
-                  label: const Text('填入', style: TextStyle(fontSize: 11)),
+                  label: Text(
+                    context.l10n.t('fillCommand'),
+                    style: const TextStyle(fontSize: 11),
+                  ),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     minimumSize: Size.zero,
@@ -317,7 +321,10 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
                 const SizedBox(width: 8),
                 FilledButton.icon(
                   icon: const Icon(Icons.play_arrow, size: 12),
-                  label: const Text('执行', style: TextStyle(fontSize: 11)),
+                  label: Text(
+                    context.l10n.t('runCommand'),
+                    style: const TextStyle(fontSize: 11),
+                  ),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     minimumSize: Size.zero,
@@ -331,5 +338,10 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
         ),
       ),
     );
+  }
+
+  String _commandTitle(BuildContext context) {
+    final titleKey = widget.command.titleKey;
+    return titleKey == null ? widget.command.title : context.l10n.t(titleKey);
   }
 }

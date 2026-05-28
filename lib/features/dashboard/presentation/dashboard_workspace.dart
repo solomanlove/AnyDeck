@@ -123,58 +123,7 @@ class _ToolContentCard extends StatelessWidget {
     return Card(
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Column(
-          children: [
-            _ToolContentHeader(tabIndex: tabIndex),
-            Expanded(child: child),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ToolContentHeader extends StatelessWidget {
-  const _ToolContentHeader({required this.tabIndex});
-
-  final int tabIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final data = switch (tabIndex) {
-      0 => (Icons.dashboard_outlined, context.l10n.t('overview')),
-      1 => (Icons.tune, context.l10n.t('control')),
-      2 => (Icons.apps_outlined, context.l10n.t('apps')),
-      3 => (Icons.folder_outlined, context.l10n.t('files')),
-      4 => (Icons.article_outlined, context.l10n.t('logcat')),
-      5 => (Icons.terminal_outlined, context.l10n.t('terminal')),
-      6 => (Icons.analytics_outlined, context.l10n.t('processes')),
-      _ => (Icons.web_outlined, context.l10n.t('webpages')),
-    };
-
-    return Container(
-      height: 54,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(data.$1, size: 22, color: const Color(0xff09c47c)),
-            const SizedBox(width: 10),
-            Text(
-              data.$2,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: const Color(0xff202124),
-              ),
-            ),
-          ],
-        ),
+        child: Column(children: [Expanded(child: child)]),
       ),
     );
   }
