@@ -52,7 +52,7 @@ class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
 /// 全部 UI 文案字符串表。Widget 直接按 key 访问，key 应保持稳定。
 const _localizedValues = {
   'zh': {
-    'appTitle': '安卓手机管理',
+    'appTitle': '手机管理',
     'settings': '设置',
     'language': '语言',
     'chinese': '中文',
@@ -351,7 +351,7 @@ const _localizedValues = {
     'openInBrowser': '浏览器打开',
   },
   'en': {
-    'appTitle': 'Android Phone Manager',
+    'appTitle': 'Phone Manager',
     'settings': 'Settings',
     'language': 'Language',
     'chinese': '中文',
