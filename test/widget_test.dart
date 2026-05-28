@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:adb_manage/app/adb_manage_app.dart';
 import 'package:adb_manage/core/adb/adb_device.dart';
+import 'package:adb_manage/core/emulator/android_emulator.dart';
 import 'package:adb_manage/core/providers/app_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,8 +25,12 @@ void main() {
       ProviderScope(
         overrides: [
           devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
-          emulatorListProvider.overrideWith((ref) => Future.value(<String>[])),
-          runningEmulatorsProvider.overrideWith((ref) => Future.value(<String, String>{})),
+          emulatorListProvider.overrideWith(
+            (ref) => Future.value(<AndroidEmulator>[]),
+          ),
+          runningEmulatorsProvider.overrideWith(
+            (ref) => Future.value(<String, String>{}),
+          ),
         ],
         child: const AdbManageApp(),
       ),

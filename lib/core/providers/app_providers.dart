@@ -10,6 +10,7 @@ import '../apps/app_management_service.dart';
 import '../device_actions/device_action_service.dart';
 import '../device_info/device_info_service.dart';
 import '../device_info/device_overview.dart';
+import '../emulator/android_emulator.dart';
 import '../files/file_manager_service.dart';
 import '../files/remote_file.dart';
 import '../logcat/logcat_controller.dart';
@@ -1106,8 +1107,8 @@ final emulatorServiceProvider = Provider<EmulatorService>((ref) {
   return EmulatorService();
 });
 
-/// 可用 AVD 模拟器名称列表。
-final emulatorListProvider = FutureProvider.autoDispose<List<String>>((
+/// 可用 AVD 模拟器配置列表。
+final emulatorListProvider = FutureProvider.autoDispose<List<AndroidEmulator>>((
   ref,
 ) async {
   return ref.watch(emulatorServiceProvider).listEmulators();

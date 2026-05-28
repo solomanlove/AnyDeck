@@ -17,6 +17,7 @@ import '../../../core/adb/adb_device.dart';
 import '../../../core/adb/adb_result.dart';
 import '../../../core/apps/adb_package.dart';
 import '../../../core/device_info/device_overview.dart';
+import '../../../core/emulator/android_emulator.dart';
 import '../../../core/files/remote_file.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
