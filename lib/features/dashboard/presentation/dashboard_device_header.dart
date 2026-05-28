@@ -54,31 +54,15 @@ class _SelectedDeviceHeader extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               // scrcpy 投屏控制区：只展示图标，完整语义放在 tooltip。
-              _HeaderIconAction(
-                icon: const Icon(Icons.cast, size: 18),
+              IconButton(
+                icon: const Icon(Icons.cast),
                 tooltip: context.l10n.t('start'),
                 onPressed: device.isOnline
                     ? () => _startScrcpy(context, ref, device.id)
                     : null,
               ),
               const SizedBox(width: 8),
-              if (activeSessions.isNotEmpty) ...[
-                _HeaderIconAction(
-                  icon: const Icon(Icons.stop, size: 18),
-                  tooltip: context.l10n.t('stopAll'),
-                  filled: false,
-                  onPressed: () => _stopSessions(context, ref, activeSessions),
-                ),
-                const SizedBox(width: 8),
-                for (final session in activeSessions) ...[
-                  InputChip(
-                    avatar: const Icon(Icons.cast_connected, size: 18),
-                    label: Text('PID ${session.pid}'),
-                    onDeleted: () => _stopSessions(context, ref, [session]),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-              ],
+
               Chip(
                 label: Text(device.status),
                 avatar: Icon(
