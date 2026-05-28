@@ -167,12 +167,26 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
     if (widget.selectedNode == widget.node) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Scrollable.ensureVisible(
-            context,
-            alignment: 0.3, // 滚动到视口偏上 30% 位置
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-          );
+          // 查找外层 Axis.vertical 方向的垂直滚动组件，避免被内层水平滚动组件拦截
+          ScrollableState? verticalScrollable;
+          ScrollableState? currentScrollable = context.findAncestorStateOfType<ScrollableState>();
+          while (currentScrollable != null) {
+            if (currentScrollable.widget.axis == Axis.vertical) {
+              verticalScrollable = currentScrollable;
+              break;
+            }
+            currentScrollable = currentScrollable.context.findAncestorStateOfType<ScrollableState>();
+          }
+
+
+          if (verticalScrollable != null) {
+            verticalScrollable.position.ensureVisible(
+              context.findRenderObject()!,
+              alignment: 0.3, // 滚动到视口偏上 30% 位置以获得最佳视觉效果
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+            );
+          }
         }
       });
     }

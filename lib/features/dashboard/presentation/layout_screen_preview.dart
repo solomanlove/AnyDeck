@@ -41,7 +41,7 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
 
   LayoutNode? _findDeepestNodeAt(LayoutNode node, Offset nativePoint) {
     final rect = node.rect;
-    if (rect == null || !rect.contains(nativePoint)) {
+    if (rect != null && !rect.contains(nativePoint)) {
       return null;
     }
 
@@ -53,7 +53,19 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
       }
     }
 
-    return node;
+    return rect != null ? node : null;
+  }
+
+  Offset _viewportToLocal(Offset viewportPoint) {
+    final matrix = widget.transformationController.value;
+    final scale = matrix.storage[0]; // 均匀缩放比例
+    final tx = matrix.storage[12];    // 轴向平移 X
+    final ty = matrix.storage[13];    // 轴向平移 Y
+    if (scale == 0) return viewportPoint;
+    return Offset(
+      (viewportPoint.dx - tx) / scale,
+      (viewportPoint.dy - ty) / scale,
+    );
   }
 
   void _resetZoomAndPan(Size viewportSize) {
@@ -144,7 +156,10 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 onHover: (event) {
-                  final node = getNodeAtLocalPoint(event.localPosition);
+                  final RenderBox viewportBox = context.findRenderObject() as RenderBox;
+                  final viewportPoint = viewportBox.globalToLocal(event.position);
+                  final localPoint = _viewportToLocal(viewportPoint);
+                  final node = getNodeAtLocalPoint(localPoint);
                   widget.onNodeHovered(node);
                 },
                 onExit: (_) {
@@ -152,8 +167,21 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
                 },
                 child: GestureDetector(
                   onTapDown: (details) {
-                    final node = getNodeAtLocalPoint(details.localPosition);
+                    final RenderBox viewportBox = context.findRenderObject() as RenderBox;
+                    final viewportPoint = viewportBox.globalToLocal(details.globalPosition);
+                    final localPoint = _viewportToLocal(viewportPoint);
+                    final nativePoint = localToNative(localPoint);
+                    final node = _findDeepestNodeAt(widget.rootNode, nativePoint);
                     widget.onNodeSelected(node);
+
+                    final x = nativePoint.dx.round();
+                    final y = nativePoint.dy.round();
+
+                    // 将坐标与选中节点信息转换为开发日志输出
+                    final nodeInfo = node != null
+                        ? 'Node: ${node.className} (id: ${node.resourceId}, bounds: ${node.bounds})'
+                        : 'No node selected';
+                    debugPrint('Layout Inspector - Clicked native coordinates: ($x, $y) - $nodeInfo');
                   },
                   child: SizedBox.expand(
                     child: CustomPaint(
