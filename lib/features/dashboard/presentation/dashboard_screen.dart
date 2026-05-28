@@ -2160,32 +2160,14 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // scrcpy 投屏控制区
-                    FilledButton.icon(
-                      icon: const Icon(Icons.cast, size: 18),
-                      label: Text(context.l10n.t('start')),
+                    IconButton(
+                      icon: const Icon(Icons.cast),
+                      tooltip: context.l10n.t('start'),
                       onPressed: device.isOnline
                           ? () => _startScrcpy(context, ref, device.id)
                           : null,
                     ),
                     const SizedBox(width: 8),
-                    if (activeSessions.isNotEmpty) ...[
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.stop, size: 18),
-                        label: Text(context.l10n.t('stopAll')),
-                        onPressed: () =>
-                            _stopSessions(context, ref, activeSessions),
-                      ),
-                      const SizedBox(width: 8),
-                      for (final session in activeSessions) ...[
-                        InputChip(
-                          avatar: const Icon(Icons.cast_connected, size: 18),
-                          label: Text('PID ${session.pid}'),
-                          onDeleted: () =>
-                              _stopSessions(context, ref, [session]),
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                    ],
                     Chip(
                       label: Text(device.status),
                       avatar: Icon(
