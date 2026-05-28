@@ -137,7 +137,7 @@ class _FilesTab extends ConsumerWidget {
                         Icons.filter_alt_outlined,
                         size: 16,
                       ),
-                      hintText: '过滤',
+                      hintText: context.l10n.t('filter'),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 8),
                       border: OutlineInputBorder(
@@ -331,7 +331,7 @@ class _FilesTab extends ConsumerWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Text(
-          '存储',
+          context.l10n.t('storage'),
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.primary,
