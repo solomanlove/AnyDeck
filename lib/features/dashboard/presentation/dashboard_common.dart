@@ -289,23 +289,6 @@ IconData _fileIcon(RemoteFile file) {
   };
 }
 
-/// 根据常见 logcat 标记应用简单的日志级别颜色。
-Color _logColor(String line) {
-  if (line.contains(' E ') || line.contains('/E')) {
-    return const Color(0xffff6b6b);
-  }
-  if (line.contains(' W ') || line.contains('/W')) {
-    return const Color(0xffffd166);
-  }
-  if (line.contains(' I ') || line.contains('/I')) {
-    return const Color(0xff67e8f9);
-  }
-  if (line.contains(' D ') || line.contains('/D')) {
-    return const Color(0xff86efac);
-  }
-  return const Color(0xffe2e8f0);
-}
-
 void _showAppDetailsDialog(
   BuildContext context,
   WidgetRef ref,
