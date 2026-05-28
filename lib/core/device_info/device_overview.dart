@@ -5,6 +5,7 @@ class DeviceOverview {
     required this.brand,
     required this.model,
     required this.serial,
+    required this.androidId,
     required this.androidVersion,
     required this.kernelVersion,
     required this.processor,
@@ -16,6 +17,7 @@ class DeviceOverview {
     required this.refreshRate,
     required this.fontScale,
     required this.wifi,
+    required this.wifiEnabled,
     required this.ipAddress,
     required this.macAddress,
   });
@@ -24,6 +26,7 @@ class DeviceOverview {
   final String brand;
   final String model;
   final String serial;
+  final String androidId;
   final String androidVersion;
   final String kernelVersion;
   final String processor;
@@ -35,6 +38,7 @@ class DeviceOverview {
   final String refreshRate;
   final String fontScale;
   final String wifi;
+  final bool wifiEnabled;
   final String ipAddress;
   final String macAddress;
 
@@ -44,6 +48,7 @@ class DeviceOverview {
       'brand': brand,
       'model': model,
       'serial': serial,
+      'androidId': androidId,
       'androidVersion': androidVersion,
       'kernelVersion': kernelVersion,
       'processor': processor,
@@ -55,6 +60,7 @@ class DeviceOverview {
       'refreshRate': refreshRate,
       'fontScale': fontScale,
       'wifi': wifi,
+      'wifiEnabled': wifiEnabled,
       'ipAddress': ipAddress,
       'macAddress': macAddress,
     };
@@ -66,6 +72,7 @@ class DeviceOverview {
       brand: json['brand'] as String? ?? '-',
       model: json['model'] as String? ?? '-',
       serial: json['serial'] as String? ?? '-',
+      androidId: json['androidId'] as String? ?? '-',
       androidVersion: json['androidVersion'] as String? ?? '-',
       kernelVersion: json['kernelVersion'] as String? ?? '-',
       processor: json['processor'] as String? ?? '-',
@@ -77,6 +84,7 @@ class DeviceOverview {
       refreshRate: json['refreshRate'] as String? ?? '-',
       fontScale: json['fontScale'] as String? ?? '-',
       wifi: json['wifi'] as String? ?? '-',
+      wifiEnabled: json['wifiEnabled'] as bool? ?? false,
       ipAddress: json['ipAddress'] as String? ?? '-',
       macAddress: json['macAddress'] as String? ?? '-',
     );
@@ -87,6 +95,7 @@ class DeviceOverview {
     String? brand,
     String? model,
     String? serial,
+    String? androidId,
     String? androidVersion,
     String? kernelVersion,
     String? processor,
@@ -98,6 +107,7 @@ class DeviceOverview {
     String? refreshRate,
     String? fontScale,
     String? wifi,
+    bool? wifiEnabled,
     String? ipAddress,
     String? macAddress,
   }) {
@@ -106,6 +116,7 @@ class DeviceOverview {
       brand: brand ?? this.brand,
       model: model ?? this.model,
       serial: serial ?? this.serial,
+      androidId: androidId ?? this.androidId,
       androidVersion: androidVersion ?? this.androidVersion,
       kernelVersion: kernelVersion ?? this.kernelVersion,
       processor: processor ?? this.processor,
@@ -117,6 +128,7 @@ class DeviceOverview {
       refreshRate: refreshRate ?? this.refreshRate,
       fontScale: fontScale ?? this.fontScale,
       wifi: wifi ?? this.wifi,
+      wifiEnabled: wifiEnabled ?? this.wifiEnabled,
       ipAddress: ipAddress ?? this.ipAddress,
       macAddress: macAddress ?? this.macAddress,
     );

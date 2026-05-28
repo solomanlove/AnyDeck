@@ -6,7 +6,7 @@ import '../process/tool_path_resolver.dart';
 /// 模拟器管理服务，封装 AVD 列表读取和后台启动。
 class EmulatorService {
   EmulatorService({String? executable})
-      : executable = executable ?? resolveToolPath('emulator');
+    : executable = executable ?? resolveToolPath('emulator');
 
   final String executable;
 
@@ -31,11 +31,10 @@ class EmulatorService {
   /// 后台启动指定的 AVD 模拟器（使用 ProcessStartMode.detached 运行）。
   Future<bool> startEmulator(String avdName) async {
     try {
-      await Process.start(
-        executable,
-        ['-avd', avdName],
-        mode: ProcessStartMode.detached,
-      );
+      await Process.start(executable, [
+        '-avd',
+        avdName,
+      ], mode: ProcessStartMode.detached);
       return true;
     } catch (_) {
       return false;

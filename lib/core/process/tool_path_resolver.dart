@@ -5,7 +5,8 @@ String resolveToolPath(String toolName) {
   final sdkRoot =
       Platform.environment['ANDROID_HOME'] ??
       Platform.environment['ANDROID_SDK_ROOT'];
-  final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  final home =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
 
   final candidates = <String>[
     if (toolName == 'adb' && sdkRoot != null) '$sdkRoot/platform-tools/adb',

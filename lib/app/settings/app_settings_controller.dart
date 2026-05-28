@@ -14,6 +14,7 @@ final appSettingsProvider =
 class AppSettingsController extends Notifier<AppSettings> {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
+  static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
 
   @override
   AppSettings build() {
@@ -36,12 +37,25 @@ class AppSettingsController extends Notifier<AppSettings> {
     await preferences.setString(_themeModeKey, themeMode.name);
   }
 
+  /// 更新投屏窗口是否保持最前，并持久化。
+  Future<void> setScrcpyAlwaysOnTop(bool value) async {
+    state = state.copyWith(scrcpyAlwaysOnTop: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_scrcpyAlwaysOnTopKey, value);
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
     final language = AppLanguage.fromCode(preferences.getString(_languageKey));
     final themeMode = _themeModeFromName(preferences.getString(_themeModeKey));
-    state = AppSettings(language: language, themeMode: themeMode);
+    final scrcpyAlwaysOnTop =
+        preferences.getBool(_scrcpyAlwaysOnTopKey) ?? true;
+    state = AppSettings(
+      language: language,
+      themeMode: themeMode,
+      scrcpyAlwaysOnTop: scrcpyAlwaysOnTop,
+    );
   }
 
   /// 将本地存储的枚举名称映射回 Flutter 的 ThemeMode。

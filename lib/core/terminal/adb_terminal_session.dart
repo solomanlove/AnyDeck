@@ -8,22 +8,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../process/tool_path_resolver.dart';
 
 /// 终端单行输出类型
-enum TerminalLineType {
-  stdout,
-  stderr,
-  input,
-  info,
-}
+enum TerminalLineType { stdout, stderr, input, info }
 
 /// 终端单行输出数据
 class TerminalLine {
   final String text;
   final TerminalLineType type;
 
-  const TerminalLine({
-    required this.text,
-    required this.type,
-  });
+  const TerminalLine({required this.text, required this.type});
 }
 
 /// 终端会话状态模型
@@ -144,10 +136,14 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       isRunning: true,
     );
 
-    final updatedSessionsMap = Map<String, List<AdbTerminalSession>>.from(state.deviceSessions);
+    final updatedSessionsMap = Map<String, List<AdbTerminalSession>>.from(
+      state.deviceSessions,
+    );
     updatedSessionsMap[deviceId] = [...currentSessions, session];
 
-    final updatedActiveIdsMap = Map<String, String?>.from(state.activeSessionIds);
+    final updatedActiveIdsMap = Map<String, String?>.from(
+      state.activeSessionIds,
+    );
     updatedActiveIdsMap[deviceId] = sessionId;
 
     state = state.copyWith(
@@ -162,16 +158,16 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
 
       // 监听 stdout
-      process.stdout
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .listen((data) {
+      process.stdout.transform(const Utf8Decoder(allowMalformed: true)).listen((
+        data,
+      ) {
         _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
       });
 
       // 监听 stderr
-      process.stderr
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .listen((data) {
+      process.stderr.transform(const Utf8Decoder(allowMalformed: true)).listen((
+        data,
+      ) {
         _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
       });
 
@@ -190,12 +186,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         );
       });
     } on Object catch (e) {
-      _appendOutput(
-        deviceId,
-        sessionId,
-        '\n启动终端失败: $e',
-        TerminalLineType.info,
-      );
+      _appendOutput(deviceId, sessionId, '\n启动终端失败: $e', TerminalLineType.info);
       _updateSession(
         deviceId,
         sessionId,
@@ -206,7 +197,9 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
   /// 切换当前活动的终端标签页
   void selectSession(String deviceId, String sessionId) {
-    final updatedActiveIdsMap = Map<String, String?>.from(state.activeSessionIds);
+    final updatedActiveIdsMap = Map<String, String?>.from(
+      state.activeSessionIds,
+    );
     updatedActiveIdsMap[deviceId] = sessionId;
     state = state.copyWith(activeSessionIds: updatedActiveIdsMap);
   }
@@ -221,13 +214,19 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     session.process?.kill();
 
     final updatedSessions = sessions.where((s) => s.id != sessionId).toList();
-    
-    final updatedSessionsMap = Map<String, List<AdbTerminalSession>>.from(state.deviceSessions);
+
+    final updatedSessionsMap = Map<String, List<AdbTerminalSession>>.from(
+      state.deviceSessions,
+    );
     updatedSessionsMap[deviceId] = updatedSessions;
 
-    final updatedActiveIdsMap = Map<String, String?>.from(state.activeSessionIds);
+    final updatedActiveIdsMap = Map<String, String?>.from(
+      state.activeSessionIds,
+    );
     if (state.getActiveSessionId(deviceId) == sessionId) {
-      updatedActiveIdsMap[deviceId] = updatedSessions.isNotEmpty ? updatedSessions.last.id : null;
+      updatedActiveIdsMap[deviceId] = updatedSessions.isNotEmpty
+          ? updatedSessions.last.id
+          : null;
     }
 
     state = state.copyWith(
@@ -244,14 +243,22 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
     final session = sessions[index];
     if (session.process == null || !session.isRunning) {
-      _appendOutput(deviceId, sessionId, '\n[当前终端已离线，无法发送命令]', TerminalLineType.info);
+      _appendOutput(
+        deviceId,
+        sessionId,
+        '\n[当前终端已离线，无法发送命令]',
+        TerminalLineType.info,
+      );
       return;
     }
 
     session.process!.stdin.write('$command\n');
 
     final newHistory = [...session.commandHistory, command];
-    final newLines = [...session.lines, TerminalLine(text: command, type: TerminalLineType.input)];
+    final newLines = [
+      ...session.lines,
+      TerminalLine(text: command, type: TerminalLineType.input),
+    ];
 
     _updateSession(deviceId, sessionId, (s) {
       return s.copyWith(
@@ -305,15 +312,15 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
       _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
 
-      process.stdout
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .listen((data) {
+      process.stdout.transform(const Utf8Decoder(allowMalformed: true)).listen((
+        data,
+      ) {
         _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
       });
 
-      process.stderr
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .listen((data) {
+      process.stderr.transform(const Utf8Decoder(allowMalformed: true)).listen((
+        data,
+      ) {
         _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
       });
 
@@ -331,12 +338,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         );
       });
     } on Object catch (e) {
-      _appendOutput(
-        deviceId,
-        sessionId,
-        '\n重连终端失败: $e',
-        TerminalLineType.info,
-      );
+      _appendOutput(deviceId, sessionId, '\n重连终端失败: $e', TerminalLineType.info);
       _updateSession(
         deviceId,
         sessionId,
@@ -351,7 +353,12 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
   }
 
   /// 历史命令上下翻页
-  String? getHistoryCommand(String deviceId, String sessionId, bool isUp, String currentInput) {
+  String? getHistoryCommand(
+    String deviceId,
+    String sessionId,
+    bool isUp,
+    String currentInput,
+  ) {
     final sessions = state.getSessions(deviceId);
     final index = sessions.indexWhere((s) => s.id == sessionId);
     if (index == -1) return null;
@@ -367,17 +374,29 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       newIndex = newIndex + 1;
       if (newIndex >= session.commandHistory.length) {
         newIndex = session.commandHistory.length;
-        _updateSession(deviceId, sessionId, (s) => s.copyWith(historyIndex: newIndex));
+        _updateSession(
+          deviceId,
+          sessionId,
+          (s) => s.copyWith(historyIndex: newIndex),
+        );
         return '';
       }
     }
 
-    _updateSession(deviceId, sessionId, (s) => s.copyWith(historyIndex: newIndex));
+    _updateSession(
+      deviceId,
+      sessionId,
+      (s) => s.copyWith(historyIndex: newIndex),
+    );
     return session.commandHistory[newIndex];
   }
 
   /// 辅助更新单个会话的数据
-  void _updateSession(String deviceId, String sessionId, AdbTerminalSession Function(AdbTerminalSession) updater) {
+  void _updateSession(
+    String deviceId,
+    String sessionId,
+    AdbTerminalSession Function(AdbTerminalSession) updater,
+  ) {
     final sessions = state.getSessions(deviceId);
     final updatedSessions = sessions.map((s) {
       if (s.id == sessionId) {
@@ -386,14 +405,21 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       return s;
     }).toList();
 
-    final updatedSessionsMap = Map<String, List<AdbTerminalSession>>.from(state.deviceSessions);
+    final updatedSessionsMap = Map<String, List<AdbTerminalSession>>.from(
+      state.deviceSessions,
+    );
     updatedSessionsMap[deviceId] = updatedSessions;
 
     state = state.copyWith(deviceSessions: updatedSessionsMap);
   }
 
   /// 追加输出数据
-  void _appendOutput(String deviceId, String sessionId, String chunk, TerminalLineType type) {
+  void _appendOutput(
+    String deviceId,
+    String sessionId,
+    String chunk,
+    TerminalLineType type,
+  ) {
     final sessions = state.getSessions(deviceId);
     final index = sessions.indexWhere((s) => s.id == sessionId);
     if (index == -1) return;
@@ -447,13 +473,14 @@ class FavoriteCommand {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'command': command,
-        'isCustom': isCustom,
-      };
+    'id': id,
+    'title': title,
+    'command': command,
+    'isCustom': isCustom,
+  };
 
-  factory FavoriteCommand.fromJson(Map<String, dynamic> json) => FavoriteCommand(
+  factory FavoriteCommand.fromJson(Map<String, dynamic> json) =>
+      FavoriteCommand(
         id: json['id'] as String,
         title: json['title'] as String,
         command: json['command'] as String,
@@ -511,20 +538,27 @@ class FavoriteCommandsNotifier extends Notifier<List<FavoriteCommand>> {
       final customJson = prefs.getStringList(_prefsKey);
       final deletedDefaults = prefs.getStringList(_deletedDefaultsKey) ?? [];
 
-      final activeDefaults = _defaultCommands.where((cmd) => !deletedDefaults.contains(cmd.id)).toList();
+      final activeDefaults = _defaultCommands
+          .where((cmd) => !deletedDefaults.contains(cmd.id))
+          .toList();
 
       if (customJson == null) {
         state = activeDefaults;
         return;
       }
 
-      final customList = customJson.map((item) {
-        try {
-          return FavoriteCommand.fromJson(jsonDecode(item) as Map<String, dynamic>);
-        } catch (_) {
-          return null;
-        }
-      }).whereType<FavoriteCommand>().toList();
+      final customList = customJson
+          .map((item) {
+            try {
+              return FavoriteCommand.fromJson(
+                jsonDecode(item) as Map<String, dynamic>,
+              );
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<FavoriteCommand>()
+          .toList();
 
       state = [...activeDefaults, ...customList];
     } catch (_) {}
@@ -543,7 +577,10 @@ class FavoriteCommandsNotifier extends Notifier<List<FavoriteCommand>> {
   }
 
   Future<void> deleteFavorite(String id) async {
-    final cmdToDelete = state.firstWhere((cmd) => cmd.id == id, orElse: () => const FavoriteCommand(id: '', title: '', command: ''));
+    final cmdToDelete = state.firstWhere(
+      (cmd) => cmd.id == id,
+      orElse: () => const FavoriteCommand(id: '', title: '', command: ''),
+    );
     if (cmdToDelete.id.isEmpty) return;
 
     state = state.where((cmd) => cmd.id != id).toList();
@@ -574,7 +611,9 @@ class FavoriteCommandsNotifier extends Notifier<List<FavoriteCommand>> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final customList = state.where((cmd) => cmd.isCustom).toList();
-      final jsonList = customList.map((cmd) => jsonEncode(cmd.toJson())).toList();
+      final jsonList = customList
+          .map((cmd) => jsonEncode(cmd.toJson()))
+          .toList();
       await prefs.setStringList(_prefsKey, jsonList);
     } catch (_) {}
   }

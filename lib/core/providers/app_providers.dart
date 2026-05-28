@@ -18,6 +18,9 @@ import '../scrcpy/scrcpy_service.dart';
 import '../scrcpy/scrcpy_session.dart';
 import '../terminal/adb_terminal_session.dart';
 import '../emulator/emulator_service.dart';
+import '../process/process_service.dart';
+import '../web_debug/webpage_target.dart';
+import '../web_debug/web_debug_service.dart';
 
 /// 所有命令型 provider 共享的 adb 服务实例。
 final adbServiceProvider = Provider<AdbService>((ref) {
@@ -50,6 +53,70 @@ final scrcpyServiceProvider = Provider<ScrcpyService>((ref) {
   ref.onDispose(service.stopAll);
   return service;
 });
+
+/// 进程管理门面，负责查询和结束进程。
+final processServiceProvider = Provider<ProcessService>((ref) {
+  return ProcessService(ref.watch(adbServiceProvider));
+});
+
+/// 单台设备的当前运行进程列表。
+final processesProvider = FutureProvider.autoDispose
+    .family<List<AdbProcess>, String>((ref, deviceId) {
+      return ref.watch(processServiceProvider).getProcesses(deviceId);
+    });
+
+/// 网页调试服务。
+final webDebugServiceProvider = Provider<WebDebugService>((ref) {
+  return WebDebugService(ref.watch(adbServiceProvider));
+});
+
+/// 单台设备的运行网页调试目标列表。
+final webTargetsProvider = FutureProvider.autoDispose
+    .family<List<WebpageTarget>, String>((ref, deviceId) async {
+      final service = ref.watch(webDebugServiceProvider);
+      await Future<void>.delayed(Duration.zero);
+      return service.scanTargets(deviceId);
+    });
+
+/// 选中的网页目标。
+final selectedWebTargetProvider = NotifierProvider<SelectedWebTargetNotifier, WebpageTarget?>(
+  SelectedWebTargetNotifier.new,
+);
+
+class SelectedWebTargetNotifier extends Notifier<WebpageTarget?> {
+  @override
+  WebpageTarget? build() => null;
+
+  @override
+  set state(WebpageTarget? value) => super.state = value;
+}
+
+/// 是否使用本地调试器。
+final useLocalDebuggerProvider = NotifierProvider<UseLocalDebuggerNotifier, bool>(
+  UseLocalDebuggerNotifier.new,
+);
+
+class UseLocalDebuggerNotifier extends Notifier<bool> {
+  static const _key = 'web_debug.use_local_debugger';
+
+  @override
+  bool build() {
+    _load();
+    return false;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool(_key) ?? false;
+  }
+
+  Future<void> toggle() async {
+    final next = !state;
+    state = next;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_key, next);
+  }
+}
 
 /// 自动轮询的实时 adb 设备列表。
 final devicesProvider = StreamProvider.autoDispose<List<AdbDevice>>((ref) {
@@ -100,6 +167,18 @@ final remotePathProvider = NotifierProvider<RemotePathNotifier, String>(
   RemotePathNotifier.new,
 );
 
+/// 文件浏览器高级导航状态。
+final fileNavigationProvider = NotifierProvider<FileNavigationNotifier, FileNavigationState>(
+  FileNavigationNotifier.new,
+);
+
+/// 文件列表搜索过滤。
+final fileFilterQueryProvider = NotifierProvider<FileFilterQueryNotifier, String>(
+  FileFilterQueryNotifier.new,
+);
+
+
+
 /// Logcat 进程控制器和可见日志状态。
 final logcatControllerProvider =
     NotifierProvider<LogcatController, LogcatState>(LogcatController.new);
@@ -128,11 +207,19 @@ class SelectedDeviceNotifier extends Notifier<AdbDevice?> {
 
   /// 从左侧设备列表中选择设备。
   void select(AdbDevice device) {
+    final old = state;
+    if (old != null && old.id != device.id) {
+      ref.read(webDebugServiceProvider).removeForwards(old.id);
+    }
     state = device;
   }
 
   /// 清空选择，使 workspace 不展示具体设备。
   void clear() {
+    final old = state;
+    if (old != null) {
+      ref.read(webDebugServiceProvider).removeForwards(old.id);
+    }
     state = null;
   }
 }
@@ -168,39 +255,165 @@ class ToolTabNotifier extends Notifier<int> {
   }
 }
 
-/// 维护文件浏览器当前远程目录。
+/// 文件导航状态。
+class FileNavigationState {
+  const FileNavigationState({
+    required this.currentPath,
+    required this.history,
+    required this.historyIndex,
+    this.isEditingPath = false,
+    this.showHiddenFiles = false,
+    this.isGridView = false,
+  });
+
+  final String currentPath;
+  final List<String> history;
+  final int historyIndex;
+  final bool isEditingPath;
+  final bool showHiddenFiles;
+  final bool isGridView;
+
+  bool get canGoBack => historyIndex > 0;
+  bool get canGoForward => historyIndex < history.length - 1;
+
+  FileNavigationState copyWith({
+    String? currentPath,
+    List<String>? history,
+    int? historyIndex,
+    bool? isEditingPath,
+    bool? showHiddenFiles,
+    bool? isGridView,
+  }) {
+    return FileNavigationState(
+      currentPath: currentPath ?? this.currentPath,
+      history: history ?? this.history,
+      historyIndex: historyIndex ?? this.historyIndex,
+      isEditingPath: isEditingPath ?? this.isEditingPath,
+      showHiddenFiles: showHiddenFiles ?? this.showHiddenFiles,
+      isGridView: isGridView ?? this.isGridView,
+    );
+  }
+}
+
+/// 维护高级文件浏览器导航状态。
+class FileNavigationNotifier extends Notifier<FileNavigationState> {
+  @override
+  FileNavigationState build() {
+    const initialPath = '/';
+    return const FileNavigationState(
+      currentPath: initialPath,
+      history: [initialPath],
+      historyIndex: 0,
+    );
+  }
+
+  void navigateTo(String path) {
+    final normalized = _normalize(path);
+    if (state.currentPath == normalized) return;
+
+    final newHistory = state.history.sublist(0, state.historyIndex + 1);
+    newHistory.add(normalized);
+
+    state = state.copyWith(
+      currentPath: normalized,
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+      isEditingPath: false,
+    );
+  }
+
+  void goBack() {
+    if (!state.canGoBack) return;
+    final newIndex = state.historyIndex - 1;
+    state = state.copyWith(
+      currentPath: state.history[newIndex],
+      historyIndex: newIndex,
+      isEditingPath: false,
+    );
+  }
+
+  void goForward() {
+    if (!state.canGoForward) return;
+    final newIndex = state.historyIndex + 1;
+    state = state.copyWith(
+      currentPath: state.history[newIndex],
+      historyIndex: newIndex,
+      isEditingPath: false,
+    );
+  }
+
+  void goUp() {
+    final path = state.currentPath;
+    if (path == '/') return;
+
+    final normalized = path.endsWith('/') ? path.substring(0, path.length - 1) : path;
+    final lastSlash = normalized.lastIndexOf('/');
+    final parent = lastSlash == 0 ? '/' : normalized.substring(0, lastSlash + 1);
+
+    navigateTo(parent);
+  }
+
+  void setEditingPath(bool editing) {
+    state = state.copyWith(isEditingPath: editing);
+  }
+
+  void toggleShowHiddenFiles() {
+    state = state.copyWith(showHiddenFiles: !state.showHiddenFiles);
+  }
+
+  void setGridView(bool gridView) {
+    state = state.copyWith(isGridView: gridView);
+  }
+
+  String _normalize(String path) {
+    var p = path.trim();
+    if (!p.startsWith('/')) {
+      p = '/$p';
+    }
+    return p.endsWith('/') ? p : '$p/';
+  }
+}
+
+/// 维护文件浏览器当前远程目录（兼容层，桥接到 fileNavigationProvider）。
 class RemotePathNotifier extends Notifier<String> {
   @override
-  String build() => '/sdcard/';
+  String build() {
+    return ref.watch(fileNavigationProvider).currentPath;
+  }
 
   /// 打开当前路径下的子目录。
   void open(String folderName) {
-    state = _join(state, folderName);
+    ref.read(fileNavigationProvider.notifier).navigateTo(
+      _join(state, folderName),
+    );
   }
 
-  /// 返回父目录，但不离开 `/sdcard/` 根路径。
+  /// 返回父目录。
   void back() {
-    if (state == '/sdcard/') {
-      return;
-    }
-    final normalized = state.endsWith('/')
-        ? state.substring(0, state.length - 1)
-        : state;
-    final parent = normalized.substring(0, normalized.lastIndexOf('/') + 1);
-    state = parent.isEmpty ? '/sdcard/' : parent;
+    ref.read(fileNavigationProvider.notifier).goUp();
   }
 
-  /// 替换当前路径，并规范化为斜杠结尾。
+  /// 替换当前路径。
   void setPath(String path) {
-    state = path.endsWith('/') ? path : '$path/';
+    ref.read(fileNavigationProvider.notifier).navigateTo(path);
   }
 
-  /// 使用 Android 风格正斜杠拼接远程路径片段。
   String _join(String base, String child) {
     final normalizedBase = base.endsWith('/') ? base : '$base/';
     return '$normalizedBase$child/';
   }
 }
+
+/// 维护文件列表过滤查询。
+class FileFilterQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void setQuery(String query) {
+    state = query;
+  }
+}
+
 
 /// 目录列表 FutureProvider family 使用的 key 对象。
 class RemoteDirectoryRequest {
@@ -244,7 +457,8 @@ class RegisteredDevice {
   final bool isChecked;
   final List<String> connections;
 
-  bool get isNetwork => id.contains(':') || id.contains('.') || id == '127.0.0.1';
+  bool get isNetwork =>
+      id.contains(':') || id.contains('.') || id == '127.0.0.1';
 
   String get displayName {
     if (customName != null && customName!.isNotEmpty) {
@@ -258,30 +472,35 @@ class RegisteredDevice {
 
   String get connectionMethodDisplay {
     final activeConns = connections.isEmpty ? [id] : connections;
-    final displays = activeConns.map((connId) {
-      if (connId.contains('_adb-tls-connect')) {
-        return '无线 (mDNS)';
-      } else if (connId.contains(':') || connId.contains('.') || connId == '127.0.0.1') {
-        final ipPattern = RegExp(r'^(\d+\.\d+\.\d+\.\d+)(:\d+)?$');
-        final match = ipPattern.firstMatch(connId);
-        if (match != null) {
-          return '无线 (${match.group(1)})';
-        }
-        return '无线 ($connId)';
-      } else {
-        return 'USB';
-      }
-    }).toSet().toList();
+    final displays = activeConns
+        .map((connId) {
+          if (connId.contains('_adb-tls-connect')) {
+            return '无线 (mDNS)';
+          } else if (connId.contains(':') ||
+              connId.contains('.') ||
+              connId == '127.0.0.1') {
+            final ipPattern = RegExp(r'^(\d+\.\d+\.\d+\.\d+)(:\d+)?$');
+            final match = ipPattern.firstMatch(connId);
+            if (match != null) {
+              return '无线 (${match.group(1)})';
+            }
+            return '无线 ($connId)';
+          } else {
+            return 'USB';
+          }
+        })
+        .toSet()
+        .toList();
     return displays.join(' / ');
   }
 
   AdbDevice get toAdbDevice => AdbDevice(
-        id: id,
-        status: status,
-        model: model,
-        product: product,
-        transportId: transportId,
-      );
+    id: id,
+    status: status,
+    model: model,
+    product: product,
+    transportId: transportId,
+  );
 
   RegisteredDevice copyWith({
     String? id,
@@ -311,8 +530,8 @@ class RegisteredDevice {
 /// Global device registry provider.
 final deviceRegistryProvider =
     NotifierProvider<DeviceRegistryNotifier, List<RegisteredDevice>>(
-  DeviceRegistryNotifier.new,
-);
+      DeviceRegistryNotifier.new,
+    );
 
 class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   static const _historyKey = 'devices.history';
@@ -393,7 +612,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           try {
             final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
             final cachedSerial = decoded['serial']?.toString();
-            if (cachedSerial != null && cachedSerial.isNotEmpty && cachedSerial != '-') {
+            if (cachedSerial != null &&
+                cachedSerial.isNotEmpty &&
+                cachedSerial != '-') {
               serialMap[id] = cachedSerial;
             }
           } catch (_) {}
@@ -415,7 +636,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
         var serial = result.isSuccess ? result.stdout.trim() : '';
         if (serial.isEmpty || serial == 'unknown' || serial == '-') {
-          final bootResult = await adb.shellArgs(id, ['getprop', 'ro.boot.serialno']);
+          final bootResult = await adb.shellArgs(id, [
+            'getprop',
+            'ro.boot.serialno',
+          ]);
           if (_isDisposed) return;
           serial = bootResult.isSuccess ? bootResult.stdout.trim() : '';
         }
@@ -423,7 +647,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         if (serial.isEmpty || serial == 'unknown' || serial == '-') {
           final getSerialResult = await adb.run(['-s', id, 'get-serialno']);
           if (_isDisposed) return;
-          serial = getSerialResult.isSuccess ? getSerialResult.stdout.trim() : '';
+          serial = getSerialResult.isSuccess
+              ? getSerialResult.stdout.trim()
+              : '';
         }
 
         if (serial.isNotEmpty && serial != 'unknown' && serial != '-') {
@@ -436,24 +662,52 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           if (existingJson != null) {
             try {
               final decoded = jsonDecode(existingJson) as Map<String, dynamic>;
-              overview = DeviceOverview.fromJson(decoded).copyWith(serial: serial);
+              overview = DeviceOverview.fromJson(
+                decoded,
+              ).copyWith(serial: serial);
             } catch (_) {
               overview = DeviceOverview(
-                name: id, brand: '-', model: '-', serial: serial,
-                androidVersion: '-', kernelVersion: '-', processor: '-',
-                storage: '-', memory: '-', physicalResolution: '-',
-                resolution: '-', logicalDensity: '-', refreshRate: '-',
-                fontScale: '-', wifi: '-', ipAddress: '-',
+                name: id,
+                brand: '-',
+                model: '-',
+                serial: serial,
+                androidId: '-',
+                androidVersion: '-',
+                kernelVersion: '-',
+                processor: '-',
+                storage: '-',
+                memory: '-',
+                physicalResolution: '-',
+                resolution: '-',
+                logicalDensity: '-',
+                refreshRate: '-',
+                fontScale: '-',
+                wifi: '-',
+                wifiEnabled: false,
+                ipAddress: '-',
                 macAddress: '-',
               );
             }
           } else {
             overview = DeviceOverview(
-              name: id, brand: '-', model: '-', serial: serial,
-              androidVersion: '-', kernelVersion: '-', processor: '-',
-              storage: '-', memory: '-', physicalResolution: '-',
-              resolution: '-', logicalDensity: '-', refreshRate: '-',
-              fontScale: '-', wifi: '-', ipAddress: '-',
+              name: id,
+              brand: '-',
+              model: '-',
+              serial: serial,
+              androidId: '-',
+              androidVersion: '-',
+              kernelVersion: '-',
+              processor: '-',
+              storage: '-',
+              memory: '-',
+              physicalResolution: '-',
+              resolution: '-',
+              logicalDensity: '-',
+              refreshRate: '-',
+              fontScale: '-',
+              wifi: '-',
+              wifiEnabled: false,
+              ipAddress: '-',
               macAddress: '-',
             );
           }
@@ -466,7 +720,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       } finally {
         _pendingFetchIds.remove(id);
         if (!_isDisposed) {
-          final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+          final activeDevices =
+              ref.read(devicesProvider).value ?? _lastActiveDevices;
           state = _mergeDevices(activeDevices);
         }
       }
@@ -501,7 +756,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
     // 触发获取新在线无线设备的序列号
     for (final device in activeDevices) {
-      if (device.isOnline && !_serialMap.containsKey(device.id) && !_pendingFetchIds.contains(device.id)) {
+      if (device.isOnline &&
+          !_serialMap.containsKey(device.id) &&
+          !_pendingFetchIds.contains(device.id)) {
         _pendingFetchIds.add(device.id);
         _fetchAndCacheSerial(device.id);
       }
@@ -514,26 +771,30 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       final isChecked = _checkedIds.contains(id);
 
       if (active != null) {
-        allCandidates.add(RegisteredDevice(
-          id: id,
-          customName: customName,
-          status: active.status,
-          model: active.model,
-          product: active.product,
-          transportId: active.transportId,
-          isOnline: active.isOnline,
-          isChecked: isChecked,
-          connections: [id],
-        ));
+        allCandidates.add(
+          RegisteredDevice(
+            id: id,
+            customName: customName,
+            status: active.status,
+            model: active.model,
+            product: active.product,
+            transportId: active.transportId,
+            isOnline: active.isOnline,
+            isChecked: isChecked,
+            connections: [id],
+          ),
+        );
       } else {
-        allCandidates.add(RegisteredDevice(
-          id: id,
-          customName: customName,
-          status: 'offline',
-          isOnline: false,
-          isChecked: isChecked,
-          connections: [id],
-        ));
+        allCandidates.add(
+          RegisteredDevice(
+            id: id,
+            customName: customName,
+            status: 'offline',
+            isOnline: false,
+            isChecked: isChecked,
+            connections: [id],
+          ),
+        );
       }
     }
 
@@ -565,7 +826,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
         final best = candidates.first;
         final anyChecked = candidates.any((c) => c.isChecked);
-        
+
         String? mergedCustomName;
         for (final c in candidates) {
           if (c.customName != null && c.customName!.isNotEmpty) {
@@ -580,11 +841,13 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             ? candidates.where((c) => c.isOnline).map((c) => c.id).toList()
             : candidates.map((c) => c.id).toList();
 
-        merged.add(best.copyWith(
-          isChecked: anyChecked,
-          customName: mergedCustomName,
-          connections: connectionIds,
-        ));
+        merged.add(
+          best.copyWith(
+            isChecked: anyChecked,
+            customName: mergedCustomName,
+            connections: connectionIds,
+          ),
+        );
       }
     });
 
@@ -645,7 +908,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     }
 
     for (final removeId in idsToRemove) {
-      final isNetwork = removeId.contains(':') || removeId.contains('.') || removeId == '127.0.0.1';
+      final isNetwork =
+          removeId.contains(':') ||
+          removeId.contains('.') ||
+          removeId == '127.0.0.1';
       if (isNetwork) {
         await disconnectDevice(removeId);
       }
@@ -664,7 +930,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     await _saveAliases();
 
     var activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
-    activeDevices = activeDevices.where((d) => !idsToRemove.contains(d.id)).toList();
+    activeDevices = activeDevices
+        .where((d) => !idsToRemove.contains(d.id))
+        .toList();
     state = _mergeDevices(activeDevices);
   }
 
@@ -693,7 +961,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
   void toggleAll(bool checked) {
     if (checked) {
-      final allRepresentedSerials = state.map((d) => _serialMap[d.id] ?? d.id).toSet();
+      final allRepresentedSerials = state
+          .map((d) => _serialMap[d.id] ?? d.id)
+          .toSet();
       _checkedIds = _serialMap.entries
           .where((entry) => allRepresentedSerials.contains(entry.value))
           .map((entry) => entry.key)
@@ -715,7 +985,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   }
 
   Future<AdbResult> disconnectDevice(String address) async {
-    final result = await ref.read(deviceActionServiceProvider).disconnect(address);
+    final result = await ref
+        .read(deviceActionServiceProvider)
+        .disconnect(address);
     await _refreshRegistryAfterAdbCommand();
     return result;
   }
@@ -724,7 +996,11 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   Future<AdbResult> refreshDevices() async {
     try {
       await _syncActiveDevices();
-      return const AdbResult(exitCode: 0, stdout: 'Devices refreshed', stderr: '');
+      return const AdbResult(
+        exitCode: 0,
+        stdout: 'Devices refreshed',
+        stderr: '',
+      );
     } on Object catch (error) {
       return AdbResult(exitCode: 1, stdout: '', stderr: error.toString());
     }
@@ -750,18 +1026,21 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   }
 
   /// 使用配对码配对设备并自动发现端口连接。
-  Future<AdbResult> pairAndConnect(String hostWithPort, String pairingCode) async {
+  Future<AdbResult> pairAndConnect(
+    String hostWithPort,
+    String pairingCode,
+  ) async {
     final adb = ref.read(adbServiceProvider);
-    
+
     // 1. 执行配对
     final pairResult = await adb.run(['pair', hostWithPort, pairingCode]);
     if (!pairResult.isSuccess) {
       return pairResult;
     }
-    
+
     // 2. 配对成功后，尝试自动发现连接端口并连接
     final ip = hostWithPort.split(':').first;
-    
+
     // 轮询 5 次尝试发现 _adb-tls-connect 服务
     String? connectAddress;
     for (int i = 0; i < 5; i++) {
@@ -783,28 +1062,31 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         break;
       }
     }
-    
+
     // 3. 执行连接
     final addressToConnect = connectAddress ?? '$ip:5555';
     final connectResult = await connectDevice(addressToConnect);
-    
+
     return AdbResult(
       exitCode: connectResult.exitCode,
-      stdout: 'Successfully paired to $hostWithPort. Connection result: ${connectResult.message}',
+      stdout:
+          'Successfully paired to $hostWithPort. Connection result: ${connectResult.message}',
       stderr: connectResult.stderr,
     );
   }
 }
 
 /// 终端调试会话列表（按设备划分）
-final adbTerminalProvider = NotifierProvider<AdbTerminalNotifier, AdbTerminalState>(
-  AdbTerminalNotifier.new,
-);
+final adbTerminalProvider =
+    NotifierProvider<AdbTerminalNotifier, AdbTerminalState>(
+      AdbTerminalNotifier.new,
+    );
 
 /// 收藏调试命令
-final favoriteCommandsProvider = NotifierProvider<FavoriteCommandsNotifier, List<FavoriteCommand>>(
-  FavoriteCommandsNotifier.new,
-);
+final favoriteCommandsProvider =
+    NotifierProvider<FavoriteCommandsNotifier, List<FavoriteCommand>>(
+      FavoriteCommandsNotifier.new,
+    );
 
 /// 模拟器底层服务实例。
 final emulatorServiceProvider = Provider<EmulatorService>((ref) {
@@ -812,7 +1094,9 @@ final emulatorServiceProvider = Provider<EmulatorService>((ref) {
 });
 
 /// 可用 AVD 模拟器名称列表。
-final emulatorListProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+final emulatorListProvider = FutureProvider.autoDispose<List<String>>((
+  ref,
+) async {
   return ref.watch(emulatorServiceProvider).listEmulators();
 });
 
@@ -834,52 +1118,60 @@ class StartingEmulatorsNotifier extends Notifier<Set<String>> {
   }
 }
 
-final startingEmulatorsProvider = NotifierProvider<StartingEmulatorsNotifier, Set<String>>(
-  StartingEmulatorsNotifier.new,
-);
+final startingEmulatorsProvider =
+    NotifierProvider<StartingEmulatorsNotifier, Set<String>>(
+      StartingEmulatorsNotifier.new,
+    );
 
 /// 当前正在运行的模拟器，以 map 形式提供：AVD名称 -> 对应的设备ID。
-final runningEmulatorsProvider = FutureProvider.autoDispose<Map<String, String>>((ref) async {
-  final devicesAsync = ref.watch(devicesProvider);
-  final devices = devicesAsync.value ?? [];
-  final adb = ref.read(adbServiceProvider);
-  final map = <String, String>{};
+final runningEmulatorsProvider =
+    FutureProvider.autoDispose<Map<String, String>>((ref) async {
+      final devicesAsync = ref.watch(devicesProvider);
+      final devices = devicesAsync.value ?? [];
+      final adb = ref.read(adbServiceProvider);
+      final map = <String, String>{};
 
-  for (final device in devices) {
-    if (device.isOnline) {
-      try {
-        var result = await adb.shellArgs(device.id, ['getprop', 'ro.boot.qemu.avd_name']);
-        var avdName = result.isSuccess ? result.stdout.trim() : '';
-        if (avdName.isEmpty) {
-          result = await adb.shellArgs(device.id, ['getprop', 'ro.kernel.qemu.avd_name']);
-          avdName = result.isSuccess ? result.stdout.trim() : '';
-        }
-        
-        if (avdName.isNotEmpty) {
-          map[avdName] = device.id;
-        }
-      } catch (_) {}
-    }
-  }
+      for (final device in devices) {
+        if (device.isOnline) {
+          try {
+            var result = await adb.shellArgs(device.id, [
+              'getprop',
+              'ro.boot.qemu.avd_name',
+            ]);
+            var avdName = result.isSuccess ? result.stdout.trim() : '';
+            if (avdName.isEmpty) {
+              result = await adb.shellArgs(device.id, [
+                'getprop',
+                'ro.kernel.qemu.avd_name',
+              ]);
+              avdName = result.isSuccess ? result.stdout.trim() : '';
+            }
 
-  // 如果某些处于 starting 状态的模拟器已经在 running 映射中出现，将它们从 starting 状态移除。
-  final startingNotifier = ref.read(startingEmulatorsProvider.notifier);
-  final starting = ref.read(startingEmulatorsProvider);
-  if (starting.isNotEmpty) {
-    final nextStarting = Set<String>.from(starting);
-    bool changed = false;
-    for (final runningAvd in map.keys) {
-      if (nextStarting.contains(runningAvd)) {
-        nextStarting.remove(runningAvd);
-        changed = true;
+            if (avdName.isNotEmpty) {
+              map[avdName] = device.id;
+            }
+          } catch (_) {}
+        }
       }
-    }
-    if (changed) {
-      Future.microtask(() {
-        startingNotifier.setStarting(nextStarting);
-      });
-    }
-  }
 
-  return map;
-});
+      // 如果某些处于 starting 状态的模拟器已经在 running 映射中出现，将它们从 starting 状态移除。
+      final startingNotifier = ref.read(startingEmulatorsProvider.notifier);
+      final starting = ref.read(startingEmulatorsProvider);
+      if (starting.isNotEmpty) {
+        final nextStarting = Set<String>.from(starting);
+        bool changed = false;
+        for (final runningAvd in map.keys) {
+          if (nextStarting.contains(runningAvd)) {
+            nextStarting.remove(runningAvd);
+            changed = true;
+          }
+        }
+        if (changed) {
+          Future.microtask(() {
+            startingNotifier.setStarting(nextStarting);
+          });
+        }
+      }
+
+      return map;
+    });

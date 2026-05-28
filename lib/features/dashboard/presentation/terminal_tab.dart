@@ -10,10 +10,7 @@ import '../../../core/terminal/adb_terminal_session.dart';
 class TerminalTab extends ConsumerStatefulWidget {
   final AdbDevice device;
 
-  const TerminalTab({
-    super.key,
-    required this.device,
-  });
+  const TerminalTab({super.key, required this.device});
 
   @override
   ConsumerState<TerminalTab> createState() => _TerminalTabState();
@@ -56,7 +53,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
 
   void _handleSendCommand(String sessionId, String text) {
     if (text.trim().isEmpty) return;
-    ref.read(adbTerminalProvider.notifier).sendCommand(widget.device.id, sessionId, text.trim());
+    ref
+        .read(adbTerminalProvider.notifier)
+        .sendCommand(widget.device.id, sessionId, text.trim());
     _commandController.clear();
     _inputFocusNode.requestFocus();
   }
@@ -67,17 +66,15 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     final activeSession = terminalState.getActiveSession(widget.device.id);
 
     // 监听日志行数变化，自动滚动到底部
-    ref.listen<AdbTerminalState>(
-      adbTerminalProvider,
-      (previous, next) {
-        final prevActive = previous?.getActiveSession(widget.device.id);
-        final nextActive = next.getActiveSession(widget.device.id);
-        if (nextActive != null &&
-            (prevActive == null || prevActive.lines.length != nextActive.lines.length)) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-        }
-      },
-    );
+    ref.listen<AdbTerminalState>(adbTerminalProvider, (previous, next) {
+      final prevActive = previous?.getActiveSession(widget.device.id);
+      final nextActive = next.getActiveSession(widget.device.id);
+      if (nextActive != null &&
+          (prevActive == null ||
+              prevActive.lines.length != nextActive.lines.length)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      }
+    });
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -156,16 +153,21 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
 
                 return Material(
                   color: isActive
-                      ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withValues(alpha: 0.5)
                       : Colors.transparent,
                   child: InkWell(
-                    onTap: () => notifier.selectSession(widget.device.id, session.id),
+                    onTap: () =>
+                        notifier.selectSession(widget.device.id, session.id),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         border: Border(
                           right: BorderSide(
-                            color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.2),
                           ),
                           bottom: isActive
                               ? BorderSide(
@@ -190,9 +192,13 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                             session.name,
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isActive
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               color: isActive
-                                  ? Theme.of(context).colorScheme.onPrimaryContainer
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer
                                   : null,
                             ),
                           ),
@@ -202,7 +208,10 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             splashRadius: 12,
-                            onPressed: () => notifier.closeSession(widget.device.id, session.id),
+                            onPressed: () => notifier.closeSession(
+                              widget.device.id,
+                              session.id,
+                            ),
                           ),
                         ],
                       ),
@@ -232,7 +241,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.3)),
+        side: BorderSide(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+        ),
       ),
       child: Center(
         child: Column(
@@ -242,16 +253,17 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
             const SizedBox(height: 16),
             Text(
               '没有活动的终端调试窗口',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
               icon: const Icon(Icons.add),
               label: Text(context.l10n.t('newTerminal')),
-              onPressed: () =>
-                  ref.read(adbTerminalProvider.notifier).createSession(widget.device.id),
+              onPressed: () => ref
+                  .read(adbTerminalProvider.notifier)
+                  .createSession(widget.device.id),
             ),
           ],
         ),
@@ -260,15 +272,16 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
   }
 
   /// 交互式终端核心窗口
-  Widget _buildTerminalConsole(BuildContext context, AdbTerminalSession session) {
+  Widget _buildTerminalConsole(
+    BuildContext context,
+    AdbTerminalSession session,
+  ) {
     final notifier = ref.read(adbTerminalProvider.notifier);
 
     return Card(
       elevation: 4,
       color: const Color(0xFF1E1E2E), // 极具质感的深色调终端色
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -331,11 +344,13 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                           );
                           if (prevCmd != null) {
                             _commandController.text = prevCmd;
-                            _commandController.selection = TextSelection.fromPosition(
-                              TextPosition(offset: prevCmd.length),
-                            );
+                            _commandController.selection =
+                                TextSelection.fromPosition(
+                                  TextPosition(offset: prevCmd.length),
+                                );
                           }
-                        } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                        } else if (event.logicalKey ==
+                            LogicalKeyboardKey.arrowDown) {
                           final nextCmd = notifier.getHistoryCommand(
                             widget.device.id,
                             session.id,
@@ -344,9 +359,10 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                           );
                           if (nextCmd != null) {
                             _commandController.text = nextCmd;
-                            _commandController.selection = TextSelection.fromPosition(
-                              TextPosition(offset: nextCmd.length),
-                            );
+                            _commandController.selection =
+                                TextSelection.fromPosition(
+                                  TextPosition(offset: nextCmd.length),
+                                );
                           }
                         }
                       }
@@ -361,12 +377,16 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                       ),
                       decoration: InputDecoration(
                         hintText: context.l10n.t('enterCommandHint'),
-                        hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+                        hintStyle: const TextStyle(
+                          color: Colors.white24,
+                          fontSize: 12,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(vertical: 6),
                       ),
-                      onSubmitted: (text) => _handleSendCommand(session.id, text),
+                      onSubmitted: (text) =>
+                          _handleSendCommand(session.id, text),
                     ),
                   ),
                 ),
@@ -378,19 +398,22 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                     // Ctrl+C
                     _TerminalButton(
                       label: context.l10n.t('ctrlC'),
-                      onPressed: () => notifier.sendCtrlC(widget.device.id, session.id),
+                      onPressed: () =>
+                          notifier.sendCtrlC(widget.device.id, session.id),
                       tooltip: '中断当前运行的命令',
                     ),
                     // 清屏
                     _TerminalButton(
                       label: context.l10n.t('clearLogs'),
-                      onPressed: () => notifier.clearBuffer(widget.device.id, session.id),
+                      onPressed: () =>
+                          notifier.clearBuffer(widget.device.id, session.id),
                       tooltip: '清除控制台输出',
                     ),
                     // 重启终端
                     _TerminalButton(
                       label: context.l10n.t('reconnect'),
-                      onPressed: () => notifier.restartSession(widget.device.id, session.id),
+                      onPressed: () =>
+                          notifier.restartSession(widget.device.id, session.id),
                       tooltip: '关闭并重启当前 ADB 终端进程',
                     ),
                   ],
@@ -478,7 +501,9 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.3)),
+        side: BorderSide(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -492,8 +517,8 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                 Text(
                   context.l10n.t('commandFavorites'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -518,7 +543,9 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                       ),
                     );
                     if (confirmed == true) {
-                      await ref.read(favoriteCommandsProvider.notifier).resetFavorites();
+                      await ref
+                          .read(favoriteCommandsProvider.notifier)
+                          .resetFavorites();
                     }
                   },
                 ),
@@ -534,10 +561,16 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
             const SizedBox(height: 8),
             Expanded(
               child: favorites.isEmpty
-                  ? const Center(child: Text('暂无收藏命令', style: TextStyle(color: Colors.grey)))
+                  ? const Center(
+                      child: Text(
+                        '暂无收藏命令',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
                   : ListView.separated(
                       itemCount: favorites.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 8),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 8),
                       itemBuilder: (context, index) {
                         final cmd = favorites[index];
                         return _FavoriteItem(
@@ -547,11 +580,17 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                               : () {
                                   ref
                                       .read(adbTerminalProvider.notifier)
-                                      .sendCommand(device.id, activeSessionId!, cmd.command);
+                                      .sendCommand(
+                                        device.id,
+                                        activeSessionId!,
+                                        cmd.command,
+                                      );
                                 },
                           onFill: () => onFillCommand(cmd.command),
                           onDelete: () {
-                            ref.read(favoriteCommandsProvider.notifier).deleteFavorite(cmd.id);
+                            ref
+                                .read(favoriteCommandsProvider.notifier)
+                                .deleteFavorite(cmd.id);
                           },
                         );
                       },
@@ -563,7 +602,10 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
     );
   }
 
-  Future<void> _showAddFavoriteDialog(BuildContext context, WidgetRef ref) async {
+  Future<void> _showAddFavoriteDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final titleController = TextEditingController();
     final commandController = TextEditingController();
 
@@ -649,7 +691,9 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHigh.withValues(alpha: 0.4),
+          color: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHigh.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
@@ -672,7 +716,11 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
                 ),
                 if (_hovering)
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 14, color: Colors.redAccent),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 14,
+                      color: Colors.redAccent,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     splashRadius: 12,
@@ -686,7 +734,9 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
               style: TextStyle(
                 fontFamily: 'monospace',
                 fontSize: 11,
-                color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,

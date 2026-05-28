@@ -39,6 +39,13 @@ class StubAdbService extends AdbService {
         stderr: '',
       );
     }
+    if (args.contains('android_id')) {
+      return const AdbResult(
+        exitCode: 0,
+        stdout: 'abcdef1234567890',
+        stderr: '',
+      );
+    }
     return const AdbResult(exitCode: 0, stdout: '', stderr: '');
   }
 }
@@ -53,6 +60,7 @@ void main() {
         brand: 'Redmi',
         model: 'M2012K11AC',
         serial: '5002ba00',
+        androidId: 'abcdef1234567890',
         androidVersion: 'Android 13 (API 33)',
         kernelVersion: '4.19.157',
         processor: 'alioth 6 cores (arm64-v8a)',
@@ -64,6 +72,7 @@ void main() {
         refreshRate: '120 Hz',
         fontScale: '1x',
         wifi: 'jie',
+        wifiEnabled: true,
         ipAddress: '192.168.31.54',
         macAddress: '6c:f7:84:80:c9:33',
       );
@@ -75,6 +84,7 @@ void main() {
       expect(decoded.brand, overview.brand);
       expect(decoded.model, overview.model);
       expect(decoded.serial, overview.serial);
+      expect(decoded.androidId, overview.androidId);
       expect(decoded.androidVersion, overview.androidVersion);
       expect(decoded.kernelVersion, overview.kernelVersion);
       expect(decoded.processor, overview.processor);
@@ -86,6 +96,7 @@ void main() {
       expect(decoded.refreshRate, overview.refreshRate);
       expect(decoded.fontScale, overview.fontScale);
       expect(decoded.wifi, overview.wifi);
+      expect(decoded.wifiEnabled, overview.wifiEnabled);
       expect(decoded.ipAddress, overview.ipAddress);
       expect(decoded.macAddress, overview.macAddress);
     });

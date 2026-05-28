@@ -156,11 +156,6 @@ class DeviceActionService {
     ]);
   }
 
-  /// 读取用户可见的 Android 版本。
-  Future<AdbResult> systemVersion(String deviceId) {
-    return _adb.shellArgs(deviceId, ['getprop', 'ro.build.version.release']);
-  }
-
   /// 读取当前焦点窗口，便于 UI 调试。
   Future<AdbResult> currentFocus(String deviceId) {
     return _adb.shell(deviceId, 'dumpsys window | grep mCurrentFocus');

@@ -11,6 +11,13 @@ void main() {
   testWidgets('app list filters by pinyin (full pinyin and initials)', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
     SharedPreferences.setMockInitialValues({});
 
     final mockDevice = const AdbDevice(
@@ -72,7 +79,10 @@ void main() {
     expect(find.text('支付宝'), findsOneWidget);
 
     // 3. 搜索 "bj" (北京首字母)
-    final searchFieldFinder = find.byType(TextField);
+    final searchFieldFinder = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField && widget.decoration?.labelText == '筛选包名',
+    );
     expect(searchFieldFinder, findsOneWidget);
     
     await tester.enterText(searchFieldFinder, 'bj');

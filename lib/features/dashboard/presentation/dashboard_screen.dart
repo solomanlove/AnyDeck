@@ -22,6 +22,8 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/scrcpy/scrcpy_session.dart';
 import 'terminal_tab.dart';
+import 'processes_tab.dart';
+import 'webpages_tab.dart';
 
 /// 桌面主面板，整合设备发现和工具区域。
 class DashboardScreen extends ConsumerWidget {
@@ -210,6 +212,22 @@ class _PrimaryRail extends ConsumerWidget {
                   ? null
                   : () => ref.read(selectedToolTabProvider.notifier).select(5),
             ),
+            _RailButton(
+              icon: Icons.analytics_outlined,
+              selected: selectedDevice != null && selectedTool == 6,
+              tooltip: context.l10n.t('processes'),
+              onPressed: selectedDevice == null
+                  ? null
+                  : () => ref.read(selectedToolTabProvider.notifier).select(6),
+            ),
+            _RailButton(
+              icon: Icons.web_outlined,
+              selected: selectedDevice != null && selectedTool == 7,
+              tooltip: context.l10n.t('webpages'),
+              onPressed: selectedDevice == null
+                  ? null
+                  : () => ref.read(selectedToolTabProvider.notifier).select(7),
+            ),
             const Spacer(),
             _RailButton(
               icon: Icons.adb,
@@ -393,6 +411,20 @@ class _SecondarySidebar extends ConsumerWidget {
                       selected: selectedTool == 5,
                       onTap: () =>
                           ref.read(selectedToolTabProvider.notifier).select(5),
+                    ),
+                    _SidebarNavItem(
+                      icon: Icons.analytics_outlined,
+                      label: context.l10n.t('processes'),
+                      selected: selectedTool == 6,
+                      onTap: () =>
+                          ref.read(selectedToolTabProvider.notifier).select(6),
+                    ),
+                    _SidebarNavItem(
+                      icon: Icons.web_outlined,
+                      label: context.l10n.t('webpages'),
+                      selected: selectedTool == 7,
+                      onTap: () =>
+                          ref.read(selectedToolTabProvider.notifier).select(7),
                     ),
                   ],
                 ],
@@ -2050,10 +2082,12 @@ class _ToolContentCard extends StatelessWidget {
       2 => _AppsTab(device: device),
       3 => _FilesTab(device: device),
       4 => _LogcatTab(device: device),
-      _ => Padding(
+      5 => Padding(
         padding: const EdgeInsets.all(16),
         child: TerminalTab(device: device),
       ),
+      6 => ProcessesTab(device: device),
+      _ => WebpagesTab(device: device),
     };
 
     return Card(
@@ -2083,7 +2117,9 @@ class _ToolContentHeader extends StatelessWidget {
       2 => (Icons.apps_outlined, context.l10n.t('apps')),
       3 => (Icons.folder_outlined, context.l10n.t('files')),
       4 => (Icons.article_outlined, context.l10n.t('logcat')),
-      _ => (Icons.terminal_outlined, context.l10n.t('terminal')),
+      5 => (Icons.terminal_outlined, context.l10n.t('terminal')),
+      6 => (Icons.analytics_outlined, context.l10n.t('processes')),
+      _ => (Icons.web_outlined, context.l10n.t('webpages')),
     };
 
     return Container(
@@ -2403,6 +2439,11 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         value: overview.serial,
       ),
       _OverviewItemData(
+        icon: Icons.badge_outlined,
+        label: context.l10n.t('androidId'),
+        value: overview.androidId,
+      ),
+      _OverviewItemData(
         icon: Icons.android,
         label: context.l10n.t('androidVersion'),
         value: overview.androidVersion,
@@ -2637,18 +2678,6 @@ class _QuickActionsPanel extends ConsumerWidget {
           label: context.l10n.t('autoRotateToggle'),
           onToggle: (on) =>
               _runAdbAction(context, ref, actions.setAutoRotate(device.id, on)),
-        ),
-        _ActionButton(
-          icon: Icons.badge_outlined,
-          label: context.l10n.t('androidId'),
-          onPressed: () =>
-              _showAdbResult(context, ref, actions.androidId(device.id)),
-        ),
-        _ActionButton(
-          icon: Icons.info_outline,
-          label: context.l10n.t('version'),
-          onPressed: () =>
-              _showAdbResult(context, ref, actions.systemVersion(device.id)),
         ),
         _ActionButton(
           icon: Icons.center_focus_strong,
@@ -3719,7 +3748,7 @@ class _PackageActions extends ConsumerWidget {
   }
 }
 
-/// `/sdcard/` 及其子目录的远程文件浏览器。
+/// `/` 及其子目录的远程文件浏览器。
 class _FilesTab extends ConsumerWidget {
   const _FilesTab({required this.device});
 
@@ -3727,9 +3756,11 @@ class _FilesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final path = ref.watch(remotePathProvider);
+    final navState = ref.watch(fileNavigationProvider);
+    final path = navState.currentPath;
     final request = RemoteDirectoryRequest(deviceId: device.id, path: path);
-    final files = ref.watch(remoteFilesProvider(request));
+    final filesAsync = ref.watch(remoteFilesProvider(request));
+    final filterQuery = ref.watch(fileFilterQueryProvider);
 
     return DropTarget(
       onDragDone: (details) => _pushFiles(context, ref, details.files, path),
@@ -3737,27 +3768,169 @@ class _FilesTab extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // Toolbar
             Row(
               children: [
-                IconButton.filledTonal(
-                  tooltip: context.l10n.t('back'),
-                  icon: const Icon(Icons.arrow_upward),
-                  onPressed: () {
-                    ref.read(remotePathProvider.notifier).back();
-                  },
+                IconButton(
+                  tooltip: '后退',
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: navState.canGoBack
+                      ? () => ref.read(fileNavigationProvider.notifier).goBack()
+                      : null,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    path,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                IconButton(
+                  tooltip: '前进',
+                  icon: const Icon(Icons.arrow_forward),
+                  onPressed: navState.canGoForward
+                      ? () => ref.read(fileNavigationProvider.notifier).goForward()
+                      : null,
+                ),
+                IconButton(
+                  tooltip: '向上',
+                  icon: const Icon(Icons.arrow_upward),
+                  onPressed: path != '/'
+                      ? () => ref.read(fileNavigationProvider.notifier).goUp()
+                      : null,
                 ),
                 IconButton(
                   tooltip: context.l10n.t('refresh'),
                   icon: const Icon(Icons.refresh),
-                  onPressed: () => ref.invalidate(remoteFilesProvider(request)),
+                  onPressed: () {
+                    ref.invalidate(remoteFilesProvider(request));
+                  },
                 ),
+                const SizedBox(width: 8),
+                // Path bar
+                Expanded(
+                  child: Container(
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: navState.isEditingPath
+                        ? TextField(
+                            autofocus: true,
+                            controller: TextEditingController(text: path)
+                              ..selection = TextSelection.fromPosition(
+                                  TextPosition(offset: path.length)),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            onSubmitted: (value) {
+                              ref
+                                  .read(fileNavigationProvider.notifier)
+                                  .navigateTo(value);
+                            },
+                          )
+                        : GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onDoubleTap: () {
+                              ref
+                                  .read(fileNavigationProvider.notifier)
+                                  .setEditingPath(true);
+                            },
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children:
+                                          _buildBreadcrumbs(context, ref, path),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 14),
+                                  onPressed: () {
+                                    ref
+                                        .read(fileNavigationProvider.notifier)
+                                        .setEditingPath(true);
+                                  },
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  splashRadius: 16,
+                                ),
+                              ],
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Filter search
+                SizedBox(
+                  width: 150,
+                  height: 38,
+                  child: TextField(
+                    onChanged: (val) =>
+                        ref.read(fileFilterQueryProvider.notifier).setQuery(val),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.filter_alt_outlined, size: 16),
+                      hintText: '过滤',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outlineVariant
+                              .withOpacity(0.5),
+                        ),
+                      ),
+                    ),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // View Mode & Hidden Files toggle
+                IconButton(
+                  tooltip: '网格视图',
+                  icon: const Icon(Icons.grid_view_outlined, size: 20),
+                  isSelected: navState.isGridView,
+                  selectedIcon: const Icon(Icons.grid_view, size: 20),
+                  onPressed: () {
+                    ref.read(fileNavigationProvider.notifier).setGridView(true);
+                  },
+                ),
+                IconButton(
+                  tooltip: '列表视图',
+                  icon: const Icon(Icons.format_list_bulleted_outlined, size: 20),
+                  isSelected: !navState.isGridView,
+                  selectedIcon: const Icon(Icons.format_list_bulleted, size: 20),
+                  onPressed: () {
+                    ref.read(fileNavigationProvider.notifier).setGridView(false);
+                  },
+                ),
+                IconButton(
+                  tooltip: navState.showHiddenFiles ? '隐藏隐藏文件' : '显示隐藏文件',
+                  icon: Icon(
+                    navState.showHiddenFiles
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    ref
+                        .read(fileNavigationProvider.notifier)
+                        .toggleShowHiddenFiles();
+                  },
+                ),
+                const SizedBox(width: 8),
                 FilledButton.icon(
                   icon: const Icon(Icons.upload_file),
                   label: Text(context.l10n.t('push')),
@@ -3770,9 +3943,12 @@ class _FilesTab extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            // Table Header (only visible in list view)
+            if (!navState.isGridView) _buildTableHeader(context),
+            // Files List / Grid / Table Rows
             Expanded(
-              child: files.when(
+              child: filesAsync.when(
                 loading: () => _PanelMessage(
                   icon: Icons.sync,
                   title: context.l10n.t('loadingFiles'),
@@ -3783,33 +3959,71 @@ class _FilesTab extends ConsumerWidget {
                   subtitle: error.toString(),
                 ),
                 data: (items) {
-                  if (items.isEmpty) {
+                  // Client-side filtering
+                  var filtered = items;
+                  if (!navState.showHiddenFiles) {
+                    filtered = filtered.where((f) => !f.name.startsWith('.')).toList();
+                  }
+                  if (filterQuery.isNotEmpty) {
+                    filtered = filtered
+                        .where((f) => f.name
+                            .toLowerCase()
+                            .contains(filterQuery.toLowerCase()))
+                        .toList();
+                  }
+
+                  if (filtered.isEmpty) {
                     return _PanelMessage(
                       icon: Icons.folder_open,
-                      title: context.l10n.t('emptyFolder'),
+                      title: filterQuery.isNotEmpty
+                          ? '未找到匹配的文件'
+                          : context.l10n.t('emptyFolder'),
                     );
                   }
+
+                  if (navState.isGridView) {
+                    return GridView.builder(
+                      padding: const EdgeInsets.only(top: 8),
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 110,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.8,
+                      ),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final file = filtered[index];
+                        return _FileGridItem(
+                          file: file,
+                          deviceId: device.id,
+                          currentPath: path,
+                          onTap: () {
+                            if (file.isFolder) {
+                              ref
+                                  .read(fileNavigationProvider.notifier)
+                                  .navigateTo(_joinRemotePath(path, file.name));
+                            }
+                          },
+                        );
+                      },
+                    );
+                  }
+
                   return ListView.builder(
-                    itemCount: items.length,
+                    itemCount: filtered.length,
                     itemBuilder: (context, index) {
-                      final file = items[index];
-                      final remoteFilePath = _joinRemotePath(path, file.name);
-                      return ListTile(
-                        leading: Icon(_fileIcon(file)),
-                        title: Text(file.name),
-                        subtitle: Text(file.type.name),
-                        onTap: file.isFolder
-                            ? () => ref
-                                  .read(remotePathProvider.notifier)
-                                  .open(file.name)
-                            : null,
-                        trailing: file.isFolder
-                            ? null
-                            : _RemoteFileActions(
-                                deviceId: device.id,
-                                remotePath: remoteFilePath,
-                                fileName: file.name,
-                              ),
+                      final file = filtered[index];
+                      return _FileRow(
+                        file: file,
+                        deviceId: device.id,
+                        currentPath: path,
+                        onTap: () {
+                          if (file.isFolder) {
+                            ref
+                                .read(fileNavigationProvider.notifier)
+                                .navigateTo(_joinRemotePath(path, file.name));
+                          }
+                        },
                       );
                     },
                   );
@@ -3818,6 +4032,116 @@ class _FilesTab extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  List<Widget> _buildBreadcrumbs(
+      BuildContext context, WidgetRef ref, String path) {
+    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+    final list = <Widget>[];
+
+    // Root segment
+    list.add(
+      TextButton(
+        onPressed: () {
+          ref.read(fileNavigationProvider.notifier).navigateTo('/');
+        },
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Text(
+          '存储',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ),
+    );
+
+    var currentAccPath = '/';
+    for (final segment in segments) {
+      list.add(
+        Text(
+          ' > ',
+          style: TextStyle(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurfaceVariant
+                .withOpacity(0.5),
+            fontSize: 12,
+          ),
+        ),
+      );
+      currentAccPath += '$segment/';
+      final segmentPath = currentAccPath;
+      list.add(
+        TextButton(
+          onPressed: () {
+            ref.read(fileNavigationProvider.notifier).navigateTo(segmentPath);
+          },
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Text(
+            segment,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+
+    return list;
+  }
+
+  Widget _buildTableHeader(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withOpacity(0.4),
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text('名称', style: textStyle),
+          ),
+          SizedBox(
+            width: 120,
+            child: Text('权限', style: textStyle),
+          ),
+          SizedBox(
+            width: 180,
+            child: Text('修改日期', style: textStyle),
+          ),
+          SizedBox(
+            width: 80,
+            child: Text('类型', style: textStyle),
+          ),
+          SizedBox(
+            width: 100,
+            child: Text('大小', style: textStyle, textAlign: TextAlign.right),
+          ),
+          const SizedBox(width: 80), // spacer for inline actions
+        ],
       ),
     );
   }
@@ -3863,6 +4187,262 @@ class _FilesTab extends ConsumerWidget {
   }
 }
 
+/// 单个文件网格项，支持悬停高亮和显示浮动操作按钮。
+class _FileGridItem extends StatefulWidget {
+  const _FileGridItem({
+    required this.file,
+    required this.deviceId,
+    required this.currentPath,
+    required this.onTap,
+  });
+
+  final RemoteFile file;
+  final String deviceId;
+  final String currentPath;
+  final VoidCallback onTap;
+
+  @override
+  State<_FileGridItem> createState() => _FileGridItemState();
+}
+
+class _FileGridItemState extends State<_FileGridItem> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final file = widget.file;
+    final theme = Theme.of(context);
+    final remoteFilePath = _joinRemotePath(widget.currentPath, file.name);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _hovering
+                ? theme.colorScheme.primaryContainer.withOpacity(0.08)
+                : null,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _hovering
+                  ? theme.colorScheme.primary.withOpacity(0.15)
+                  : Colors.transparent,
+            ),
+          ),
+          padding: const EdgeInsets.all(8),
+          child: Stack(
+            children: [
+              // 网格项内容
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _fileIcon(file),
+                      size: 40,
+                      color: file.isFolder
+                          ? Colors.amber
+                          : file.isLink
+                              ? Colors.teal
+                              : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 8),
+                    Tooltip(
+                      message: file.linkTarget != null
+                          ? '${file.name} -> ${file.linkTarget}'
+                          : file.name,
+                      child: Text(
+                        file.name,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: file.isFolder ? FontWeight.w500 : null,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 悬停时在右上角显示浮动操作按钮 (如果是文件且正在悬停)
+              if (_hovering && !file.isFolder)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: _RemoteFileActions(
+                      deviceId: widget.deviceId,
+                      remotePath: remoteFilePath,
+                      fileName: file.name,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 单个文件行，支持悬停高亮和显示操作按钮。
+class _FileRow extends StatefulWidget {
+  const _FileRow({
+    required this.file,
+    required this.deviceId,
+    required this.currentPath,
+    required this.onTap,
+  });
+
+  final RemoteFile file;
+  final String deviceId;
+  final String currentPath;
+  final VoidCallback onTap;
+
+  @override
+  State<_FileRow> createState() => _FileRowState();
+}
+
+class _FileRowState extends State<_FileRow> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final file = widget.file;
+    final theme = Theme.of(context);
+    final cellStyle = theme.textTheme.bodyMedium;
+
+    // 类型翻译
+    String typeLabel = '文件';
+    if (file.isFolder) {
+      typeLabel = '文件夹';
+    } else if (file.isLink) {
+      typeLabel = '链接';
+    }
+
+    final remoteFilePath = _joinRemotePath(widget.currentPath, file.name);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: _hovering
+                ? theme.colorScheme.primaryContainer.withOpacity(0.08)
+                : null,
+            border: Border(
+              bottom: BorderSide(
+                color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                width: 0.5,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              // 名称
+              Expanded(
+                flex: 4,
+                child: Row(
+                  children: [
+                    Icon(
+                      _fileIcon(file),
+                      size: 20,
+                      color: file.isFolder
+                          ? Colors.amber
+                          : file.isLink
+                              ? Colors.teal
+                              : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Tooltip(
+                        message: file.linkTarget != null
+                            ? '${file.name} -> ${file.linkTarget}'
+                            : file.name,
+                        child: Text(
+                          file.name,
+                          style: cellStyle?.copyWith(
+                            fontWeight: file.isFolder ? FontWeight.w500 : null,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 权限
+              SizedBox(
+                width: 120,
+                child: Text(
+                  file.permissions,
+                  style: cellStyle?.copyWith(fontFamily: 'monospace'),
+                ),
+              ),
+              // 修改日期
+              SizedBox(
+                width: 180,
+                child: Text(file.modifiedDate, style: cellStyle),
+              ),
+              // 类型
+              SizedBox(
+                width: 80,
+                child: Text(typeLabel, style: cellStyle),
+              ),
+              // 大小
+              SizedBox(
+                width: 100,
+                child: Text(
+                  file.formattedSize,
+                  style: cellStyle,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+              // 操作 (悬停时显示)
+              SizedBox(
+                width: 80,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: AnimatedOpacity(
+                    opacity: _hovering ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 100),
+                    child: IgnorePointer(
+                      ignoring: !_hovering,
+                      child: _RemoteFileActions(
+                        deviceId: widget.deviceId,
+                        remotePath: remoteFilePath,
+                        fileName: file.name,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 单个远程文件的下载和删除操作。
 class _RemoteFileActions extends ConsumerWidget {
   const _RemoteFileActions({
@@ -3879,12 +4459,15 @@ class _RemoteFileActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final service = ref.read(fileManagerServiceProvider);
 
-    return Wrap(
-      spacing: 2,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           tooltip: context.l10n.t('pull'),
-          icon: const Icon(Icons.download),
+          icon: const Icon(Icons.download, size: 18),
+          constraints: const BoxConstraints(),
+          padding: const EdgeInsets.all(6),
+          splashRadius: 16,
           onPressed: () async {
             final directory = await getDirectoryPath();
             if (directory == null || !context.mounted) {
@@ -3902,7 +4485,10 @@ class _RemoteFileActions extends ConsumerWidget {
         ),
         IconButton(
           tooltip: context.l10n.t('delete'),
-          icon: const Icon(Icons.delete_outline),
+          icon: const Icon(Icons.delete_outline, size: 18),
+          constraints: const BoxConstraints(),
+          padding: const EdgeInsets.all(6),
+          splashRadius: 16,
           onPressed: () async {
             final confirmed = await _confirm(
               context,
@@ -3914,6 +4500,10 @@ class _RemoteFileActions extends ConsumerWidget {
             final result = await service.delete(deviceId, remotePath);
             if (context.mounted) {
               _showSnack(context, result.message, isError: !result.isSuccess);
+            }
+            if (result.isSuccess) {
+              final currentPath = ref.read(fileNavigationProvider).currentPath;
+              ref.invalidate(remoteFilesProvider(RemoteDirectoryRequest(deviceId: deviceId, path: currentPath)));
             }
           },
         ),

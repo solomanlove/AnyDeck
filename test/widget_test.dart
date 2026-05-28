@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:adb_manage/app/adb_manage_app.dart';
 import 'package:adb_manage/core/adb/adb_device.dart';
 import 'package:adb_manage/core/providers/app_providers.dart';
@@ -10,6 +11,13 @@ void main() {
   testWidgets('shows AdbManage shell in Chinese by default', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
     SharedPreferences.setMockInitialValues({});
 
     await tester.pumpWidget(

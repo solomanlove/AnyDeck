@@ -4,7 +4,7 @@ class ScrcpyLaunchOptions {
     this.maxSize = 1920,
     this.videoBitRate = '8M',
     this.maxFps,
-    this.alwaysOnTop = false,
+    this.alwaysOnTop = true,
   });
 
   final int maxSize;

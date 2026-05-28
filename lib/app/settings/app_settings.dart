@@ -23,16 +23,23 @@ class AppSettings {
   const AppSettings({
     this.language = AppLanguage.zh,
     this.themeMode = ThemeMode.system,
+    this.scrcpyAlwaysOnTop = true,
   });
 
   final AppLanguage language;
   final ThemeMode themeMode;
+  final bool scrcpyAlwaysOnTop;
 
   /// 创建新的不可变设置对象，未指定字段沿用当前值。
-  AppSettings copyWith({AppLanguage? language, ThemeMode? themeMode}) {
+  AppSettings copyWith({
+    AppLanguage? language,
+    ThemeMode? themeMode,
+    bool? scrcpyAlwaysOnTop,
+  }) {
     return AppSettings(
       language: language ?? this.language,
       themeMode: themeMode ?? this.themeMode,
+      scrcpyAlwaysOnTop: scrcpyAlwaysOnTop ?? this.scrcpyAlwaysOnTop,
     );
   }
 }

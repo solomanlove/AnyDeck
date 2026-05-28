@@ -55,6 +55,8 @@ class DeviceInfoService {
         _adb.shellArgs(deviceId, ['ip', 'addr', 'show', 'wlan0']),
         _adb.shellArgs(deviceId, ['dumpsys', 'wifi']),
         _adb.shellArgs(deviceId, ['dumpsys', 'display']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'wifi_on']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'secure', 'android_id']),
       ]);
 
       if (!results[0].isSuccess) {
@@ -73,6 +75,8 @@ class DeviceInfoService {
       final network = results[9].stdout;
       final wifiDump = results[10].stdout;
       final displayDump = results[11].stdout;
+      final wifiOnRaw = _clean(results[12].stdout);
+      final androidIdRaw = _clean(results[13].stdout);
 
       final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
       final deviceCode = _firstValue(properties, [
@@ -104,6 +108,7 @@ class DeviceInfoService {
           'ro.serialno',
           'ro.boot.serialno',
         ], fallback: serialFromAdb),
+        androidId: androidIdRaw,
         androidVersion:
             'Android ${_firstValue(properties, ['ro.build.version.release'])}'
             ' (API ${_firstValue(properties, ['ro.build.version.sdk'])})',
@@ -117,6 +122,7 @@ class DeviceInfoService {
         refreshRate: refreshRate,
         fontScale: fontScale,
         wifi: _parseWifiName(wifiDump),
+        wifiEnabled: wifiOnRaw == '1',
         ipAddress: _parseIpAddress(network),
         macAddress: _parseMacAddress(network),
       );
@@ -306,7 +312,10 @@ class DeviceInfoService {
     final scale = dpi / 160.0;
     final scaleStr = scale == scale.roundToDouble()
         ? scale.toStringAsFixed(0)
-        : scale.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+        : scale
+              .toStringAsFixed(2)
+              .replaceAll(RegExp(r'0+$'), '')
+              .replaceAll(RegExp(r'\.$'), '');
 
     String qualifier;
     if (dpi <= 120) {
@@ -350,7 +359,9 @@ class DeviceInfoService {
     }
 
     // 2. 尝试匹配 renderFrameRate
-    final renderFrameRateMatch = RegExp(r'renderFrameRate\s+([0-9.]+)').firstMatch(output);
+    final renderFrameRateMatch = RegExp(
+      r'renderFrameRate\s+([0-9.]+)',
+    ).firstMatch(output);
     if (renderFrameRateMatch != null) {
       final rate = double.tryParse(renderFrameRateMatch.group(1)!);
       if (rate != null) {
