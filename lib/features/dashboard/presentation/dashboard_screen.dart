@@ -28,6 +28,7 @@ import '../../../core/scrcpy/scrcpy_session.dart';
 import 'terminal_tab.dart';
 import 'processes_tab.dart';
 import 'webpages_tab.dart';
+import 'layout_tab.dart';
 
 part 'dashboard_shell.dart';
 part 'dashboard_dialogs.dart';

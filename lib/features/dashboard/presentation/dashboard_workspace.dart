@@ -117,7 +117,8 @@ class _ToolContentCard extends StatelessWidget {
         child: TerminalTab(device: device),
       ),
       6 => ProcessesTab(device: device),
-      _ => WebpagesTab(device: device),
+      7 => WebpagesTab(device: device),
+      _ => LayoutTab(device: device),
     };
 
     return Card(

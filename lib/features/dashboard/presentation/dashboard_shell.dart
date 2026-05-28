@@ -119,6 +119,11 @@ class _PrimaryRail extends ConsumerWidget {
         icon: Icons.web_outlined,
         label: context.l10n.t('webpages'),
       ),
+      _RailToolItem(
+        tabIndex: 8,
+        icon: Icons.layers_outlined,
+        label: context.l10n.t('layout'),
+      ),
     ];
 
     void handleTap(int tabIndex) {
