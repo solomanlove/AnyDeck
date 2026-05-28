@@ -231,10 +231,6 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
           _expandAll(parsedRoot); // 默认展开全部
           _loading = false;
         });
-        // 在帧绘制完成后重置缩放以适应视口
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _zoomReset();
-        });
       }
     } catch (e) {
       if (mounted) {

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'layout_tab.dart';
 
 /// 渲染手机屏幕截图，支持 InteractiveViewer 缩放和平移，以及旋转度数下的坐标映射。
-class LayoutScreenPreview extends StatelessWidget {
+class LayoutScreenPreview extends StatefulWidget {
   final LayoutNode rootNode;
   final ui.Image decodedImage;
   final LayoutNode? selectedNode;
@@ -30,6 +30,15 @@ class LayoutScreenPreview extends StatelessWidget {
     required this.onViewportSizeChanged,
   });
 
+  @override
+  State<LayoutScreenPreview> createState() => _LayoutScreenPreviewState();
+}
+
+class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
+  Size? _lastSize;
+  ui.Image? _lastImage;
+  int? _lastRotation;
+
   LayoutNode? _findDeepestNodeAt(LayoutNode node, Offset nativePoint) {
     final rect = node.rect;
     if (rect == null || !rect.contains(nativePoint)) {
@@ -47,6 +56,27 @@ class LayoutScreenPreview extends StatelessWidget {
     return node;
   }
 
+  void _resetZoomAndPan(Size viewportSize) {
+    final imageWidth = widget.decodedImage.width.toDouble();
+    final imageHeight = widget.decodedImage.height.toDouble();
+    final rotatedW = (widget.rotationAngle == 90 || widget.rotationAngle == 270) ? imageHeight : imageWidth;
+    final rotatedH = (widget.rotationAngle == 90 || widget.rotationAngle == 270) ? imageWidth : imageHeight;
+
+    final scale = min(viewportSize.width / rotatedW, viewportSize.height / rotatedH);
+    final renderedW = rotatedW * scale;
+    final renderedH = rotatedH * scale;
+    final offsetX = (viewportSize.width - renderedW) / 2;
+    final offsetY = (viewportSize.height - renderedH) / 2;
+
+    widget.transformationController.value = Matrix4.identity()
+      ..setTranslationRaw(offsetX, offsetY, 0.0)
+      // ignore: deprecated_member_use
+      ..scale(scale);
+
+    // 同步给父组件最新的视口大小
+    widget.onViewportSizeChanged(viewportSize);
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -57,17 +87,29 @@ class LayoutScreenPreview extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        // 通知父组件视口大小已变更，以便在操作栏计算 1:1 或重置时使用
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          onViewportSizeChanged(Size(viewportWidth, viewportHeight));
-        });
+        final currentSize = Size(viewportWidth, viewportHeight);
 
-        final imageWidth = decodedImage.width.toDouble();
-        final imageHeight = decodedImage.height.toDouble();
+        // 如果视口尺寸、图片或旋转角度发生变更，自动执行初始化居中重置，解决“第一次图片未居中”的异步时序问题
+        if (_lastSize != currentSize ||
+            _lastImage != widget.decodedImage ||
+            _lastRotation != widget.rotationAngle) {
+          _lastSize = currentSize;
+          _lastImage = widget.decodedImage;
+          _lastRotation = widget.rotationAngle;
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _resetZoomAndPan(currentSize);
+            }
+          });
+        }
+
+        final imageWidth = widget.decodedImage.width.toDouble();
+        final imageHeight = widget.decodedImage.height.toDouble();
 
         // 旋转后的图片容器边界尺寸
-        final rotatedW = (rotationAngle == 90 || rotationAngle == 270) ? imageHeight : imageWidth;
-        final rotatedH = (rotationAngle == 90 || rotationAngle == 270) ? imageWidth : imageHeight;
+        final rotatedW = (widget.rotationAngle == 90 || widget.rotationAngle == 270) ? imageHeight : imageWidth;
+        final rotatedH = (widget.rotationAngle == 90 || widget.rotationAngle == 270) ? imageWidth : imageHeight;
 
         // 根据当前的旋转角度，将视口局部坐标映射回设备的原生坐标
         Offset localToNative(Offset localPoint) {
@@ -75,7 +117,7 @@ class LayoutScreenPreview extends StatelessWidget {
           final cy = localPoint.dy - rotatedH / 2;
 
           // 逆旋转 (向后反转)
-          final rad = -rotationAngle * pi / 180;
+          final rad = -widget.rotationAngle * pi / 180;
           final rx = cx * cos(rad) - cy * sin(rad);
           final ry = cx * sin(rad) + cy * cos(rad);
 
@@ -85,44 +127,43 @@ class LayoutScreenPreview extends StatelessWidget {
 
         LayoutNode? getNodeAtLocalPoint(Offset localPoint) {
           final nativePoint = localToNative(localPoint);
-          return _findDeepestNodeAt(rootNode, nativePoint);
+          return _findDeepestNodeAt(widget.rootNode, nativePoint);
         }
 
         return Container(
           color: const Color(0xff181818),
           child: InteractiveViewer(
-            transformationController: transformationController,
+            transformationController: widget.transformationController,
             boundaryMargin: const EdgeInsets.all(400.0),
             minScale: 0.05,
             maxScale: 10.0,
-            child: Center(
-              child: SizedBox(
-                width: rotatedW,
-                height: rotatedH,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  onHover: (event) {
-                    final node = getNodeAtLocalPoint(event.localPosition);
-                    onNodeHovered(node);
+            constrained: false,
+            child: SizedBox(
+              width: rotatedW,
+              height: rotatedH,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                onHover: (event) {
+                  final node = getNodeAtLocalPoint(event.localPosition);
+                  widget.onNodeHovered(node);
+                },
+                onExit: (_) {
+                  widget.onNodeHovered(null);
+                },
+                child: GestureDetector(
+                  onTapDown: (details) {
+                    final node = getNodeAtLocalPoint(details.localPosition);
+                    widget.onNodeSelected(node);
                   },
-                  onExit: (_) {
-                    onNodeHovered(null);
-                  },
-                  child: GestureDetector(
-                    onTapDown: (details) {
-                      final node = getNodeAtLocalPoint(details.localPosition);
-                      onNodeSelected(node);
-                    },
-                    child: SizedBox.expand(
-                      child: CustomPaint(
-                        painter: _ScreenPreviewPainter(
-                          image: decodedImage,
-                          rootNode: rootNode,
-                          selectedNode: selectedNode,
-                          hoveredNode: hoveredNode,
-                          showBorders: showBorders,
-                          rotationAngle: rotationAngle,
-                        ),
+                  child: SizedBox.expand(
+                    child: CustomPaint(
+                      painter: _ScreenPreviewPainter(
+                        image: widget.decodedImage,
+                        rootNode: widget.rootNode,
+                        selectedNode: widget.selectedNode,
+                        hoveredNode: widget.hoveredNode,
+                        showBorders: widget.showBorders,
+                        rotationAngle: widget.rotationAngle,
                       ),
                     ),
                   ),
