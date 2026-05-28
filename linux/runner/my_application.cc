@@ -7,6 +7,43 @@
 
 #include "flutter/generated_plugin_registrant.h"
 
+namespace {
+
+constexpr char kDefaultWindowTitle[] = "Phone Manager";
+
+struct WindowTitleState {
+  GtkWindow* window;
+  GtkHeaderBar* header_bar;
+};
+
+static void window_method_call_cb(FlMethodChannel* channel,
+                                  FlMethodCall* method_call,
+                                  gpointer user_data) {
+  const gchar* method = fl_method_call_get_name(method_call);
+  if (g_strcmp0(method, "setWindowTitle") != 0) {
+    fl_method_call_respond_not_implemented(method_call, nullptr);
+    return;
+  }
+
+  FlValue* args = fl_method_call_get_args(method_call);
+  if (fl_value_get_type(args) != FL_VALUE_TYPE_STRING) {
+    g_autoptr(FlMethodErrorResponse) response = fl_method_error_response_new(
+        "invalid_argument", "setWindowTitle requires a string title", nullptr);
+    fl_method_call_respond(method_call, FL_METHOD_RESPONSE(response), nullptr);
+    return;
+  }
+
+  WindowTitleState* state = static_cast<WindowTitleState*>(user_data);
+  const gchar* title = fl_value_get_string(args);
+  gtk_window_set_title(state->window, title);
+  if (state->header_bar != nullptr) {
+    gtk_header_bar_set_title(state->header_bar, title);
+  }
+  fl_method_call_respond_success(method_call, nullptr, nullptr);
+}
+
+}  // namespace
+
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
@@ -42,14 +79,15 @@ static void my_application_activate(GApplication* application) {
     }
   }
 #endif
+  GtkHeaderBar* header_bar = nullptr;
   if (use_header_bar) {
-    GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
+    header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "安卓手机管理");
+    gtk_header_bar_set_title(header_bar, kDefaultWindowTitle);
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "安卓手机管理");
+    gtk_window_set_title(window, kDefaultWindowTitle);
   }
 
   gtk_window_set_default_size(window, 1280, 720);
@@ -59,6 +97,20 @@ static void my_application_activate(GApplication* application) {
       project, self->dart_entrypoint_arguments);
 
   FlView* view = fl_view_new(project);
+  WindowTitleState* title_state = g_new0(WindowTitleState, 1);
+  title_state->window = window;
+  title_state->header_bar = header_bar;
+  g_object_set_data_full(G_OBJECT(window), "window-title-state", title_state,
+                         g_free);
+
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  FlMethodChannel* window_channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "adb_manage/window", FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(
+      window_channel, window_method_call_cb, title_state, nullptr);
+  g_object_set_data_full(G_OBJECT(window), "window-title-channel",
+                         window_channel, g_object_unref);
   GdkRGBA background_color;
   // Background defaults to black, override it here if necessary, e.g. #00000000
   // for transparent.

@@ -157,7 +157,7 @@ void main() {
       ),
     );
 
-    expect(find.text('安卓手机管理'), findsOneWidget);
+    expect(find.text('手机管理'), findsOneWidget);
     expect(find.text('设备管理'), findsWidgets);
     expect(find.text('选择设备'), findsNothing);
   });
