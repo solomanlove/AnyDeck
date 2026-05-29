@@ -26,34 +26,34 @@ import '../../../core/logcat/logcat_state.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/scrcpy/scrcpy_session.dart';
-import 'terminal_tab.dart';
-import 'processes_tab.dart';
-import 'webpages_tab.dart';
-import 'layout_tab.dart';
+import 'terminal/terminal_tab.dart';
+import 'processes/processes_tab.dart';
+import 'webpages/webpages_tab.dart';
+import 'layout/layout_tab.dart';
 
-part 'dashboard_shell.dart';
-part 'dashboard_dialogs.dart';
-part 'dashboard_emulators.dart';
-part 'dashboard_workspace.dart';
-part 'dashboard_device_header.dart';
-part 'dashboard_overview.dart';
-part 'dashboard_control.dart';
-part 'dashboard_apps_tab.dart';
-part 'dashboard_apps_table_widths.dart';
-part 'dashboard_apps_table.dart';
-part 'dashboard_apps_actions.dart';
-part 'dashboard_files_tab.dart';
-part 'dashboard_file_items.dart';
-part 'dashboard_logcat.dart';
-part 'dashboard_common.dart';
-part 'dashboard_app_details.dart';
-part 'dashboard_pairing.dart';
-part 'dashboard_devices_panel.dart';
-part 'dashboard_devices_view.dart';
-part 'dashboard_devices_rows.dart';
-part 'dashboard_devices_actions.dart';
-part 'dashboard_screenshot_tab.dart';
-part 'dashboard_screenshot_recording.dart';
+part 'overview/dashboard_shell.dart';
+part 'widgets/dashboard_dialogs.dart';
+part 'devices/dashboard_emulators.dart';
+part 'overview/dashboard_workspace.dart';
+part 'devices/dashboard_device_header.dart';
+part 'overview/dashboard_overview.dart';
+part 'control/dashboard_control.dart';
+part 'apps/dashboard_apps_tab.dart';
+part 'apps/dashboard_apps_table_widths.dart';
+part 'apps/dashboard_apps_table.dart';
+part 'apps/dashboard_apps_actions.dart';
+part 'files/dashboard_files_tab.dart';
+part 'files/dashboard_file_items.dart';
+part 'logcat/dashboard_logcat.dart';
+part 'widgets/dashboard_common.dart';
+part 'apps/dashboard_app_details.dart';
+part 'devices/dashboard_pairing.dart';
+part 'devices/dashboard_devices_panel.dart';
+part 'devices/dashboard_devices_view.dart';
+part 'devices/dashboard_devices_rows.dart';
+part 'devices/dashboard_devices_actions.dart';
+part 'screenshot/dashboard_screenshot_tab.dart';
+part 'screenshot/dashboard_screenshot_recording.dart';
 
 class _EmulatorListExpandedNotifier extends Notifier<bool> {
   @override
@@ -114,7 +114,7 @@ class DashboardScreen extends ConsumerWidget {
       appBarTitle = matchedDevice.displayName;
 
       if (_hasDeviceSnapshotChanged(selectedDevice, effectiveSelectedDevice)) {
-        final syncedDevice = effectiveSelectedDevice!;
+        final syncedDevice = effectiveSelectedDevice;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final current = ref.read(selectedDeviceProvider);
           if (current != null &&
