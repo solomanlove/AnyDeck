@@ -135,6 +135,9 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
                         ? () =>
                               _clearEmulatorData(context, selectedItem.emulator)
                         : null,
+                    onDelete: selectedItem != null && selectedItem.canDelete
+                        ? () => _deleteEmulator(context, selectedItem.emulator)
+                        : null,
                     onOpenFolder: selectedItem != null
                         ? () => _openAvdFolder(context, selectedItem.emulator)
                         : null,
@@ -292,6 +295,38 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
     }
   }
 
+  Future<void> _deleteEmulator(
+    BuildContext context,
+    AndroidEmulator emulator,
+  ) async {
+    final confirm = await _confirm(
+      context,
+      context.l10n
+          .t('deleteEmulatorConfirm')
+          .replaceAll('{emulator}', emulator.displayName),
+    );
+
+    if (!confirm || !context.mounted) return;
+
+    final success = await ref
+        .read(emulatorServiceProvider)
+        .deleteEmulator(emulator);
+    if (!context.mounted) return;
+
+    if (success) {
+      setState(() => _selectedName = null);
+      _showSnack(context, context.l10n.t('deleteEmulatorSuccess'));
+      ref.invalidate(emulatorListProvider);
+      ref.invalidate(runningEmulatorsProvider);
+    } else {
+      _showSnack(
+        context,
+        context.l10n.t('deleteEmulatorFailed'),
+        isError: true,
+      );
+    }
+  }
+
   Future<void> _openAvdFolder(
     BuildContext context,
     AndroidEmulator emulator,
@@ -318,6 +353,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
     required this.onClearFilter,
     required this.onStart,
     required this.onClearData,
+    required this.onDelete,
     required this.onOpenFolder,
     required this.onRefresh,
   });
@@ -331,6 +367,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
   final VoidCallback onClearFilter;
   final VoidCallback? onStart;
   final VoidCallback? onClearData;
+  final VoidCallback? onDelete;
   final VoidCallback? onOpenFolder;
   final VoidCallback onRefresh;
 
@@ -365,6 +402,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
     final toolbar = _EmulatorToolbar(
       onStart: onStart,
       onClearData: onClearData,
+      onDelete: onDelete,
       onOpenFolder: onOpenFolder,
       onRefresh: onRefresh,
     );
@@ -448,12 +486,14 @@ class _EmulatorToolbar extends StatelessWidget {
   const _EmulatorToolbar({
     required this.onStart,
     required this.onClearData,
+    required this.onDelete,
     required this.onOpenFolder,
     required this.onRefresh,
   });
 
   final VoidCallback? onStart;
   final VoidCallback? onClearData;
+  final VoidCallback? onDelete;
   final VoidCallback? onOpenFolder;
   final VoidCallback onRefresh;
 
@@ -471,6 +511,11 @@ class _EmulatorToolbar extends StatelessWidget {
           tooltip: context.l10n.t('clearEmulatorData'),
           icon: const Icon(Icons.cleaning_services_outlined),
           onPressed: onClearData,
+        ),
+        IconButton(
+          tooltip: context.l10n.t('deleteEmulator'),
+          icon: const Icon(Icons.delete_outline),
+          onPressed: onDelete,
         ),
         IconButton(
           tooltip: context.l10n.t('openAvdFolder'),
@@ -873,6 +918,8 @@ class _EmulatorItem {
   bool get canStart => status == 'stopped';
 
   bool get canClearData => status == 'stopped';
+
+  bool get canDelete => status == 'stopped';
 }
 
 /// 承载选中设备全部工具的工作区。

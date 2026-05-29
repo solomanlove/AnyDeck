@@ -4,13 +4,19 @@ import 'dart:io';
 import 'android_emulator.dart';
 import '../process/tool_path_resolver.dart';
 
-/// 模拟器管理服务，封装 AVD 列表读取和后台启动。
+/// 模拟器管理服务，封装 AVD 列表读取、启动和删除。
 class EmulatorService {
-  EmulatorService({String? executable, String? avdHome})
-    : executable = executable ?? resolveToolPath('emulator'),
-      avdHome = avdHome ?? _defaultAvdHome();
+  EmulatorService({
+    String? executable,
+    String? avdManagerExecutable,
+    String? avdHome,
+  }) : executable = executable ?? resolveToolPath('emulator'),
+       avdManagerExecutable =
+           avdManagerExecutable ?? resolveToolPath('avdmanager'),
+       avdHome = avdHome ?? _defaultAvdHome();
 
   final String executable;
+  final String avdManagerExecutable;
   final String? avdHome;
 
   /// 获取本地所有 AVD 模拟器配置摘要。
@@ -96,6 +102,51 @@ class EmulatorService {
         await snapshots.delete(recursive: true);
       }
       return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 删除 AVD 配置和本地镜像目录。
+  Future<bool> deleteEmulator(AndroidEmulator emulator) async {
+    try {
+      final result = await Process.run(avdManagerExecutable, [
+        'delete',
+        'avd',
+        '-n',
+        emulator.name,
+      ]);
+      if (result.exitCode == 0) {
+        return true;
+      }
+      return false;
+    } catch (_) {
+      // 部分精简 Android SDK 只带 emulator，不带 avdmanager，继续走本地文件兜底。
+    }
+
+    return _deleteAvdFiles(emulator);
+  }
+
+  Future<bool> _deleteAvdFiles(AndroidEmulator emulator) async {
+    final home = avdHome;
+    if (home == null) {
+      return false;
+    }
+
+    try {
+      var deleted = false;
+      final metadata = File('$home/${emulator.name}.ini');
+      if (await metadata.exists()) {
+        await metadata.delete();
+        deleted = true;
+      }
+
+      final directory = emulator.avdDirectory;
+      if (directory != null && await directory.exists()) {
+        await directory.delete(recursive: true);
+        deleted = true;
+      }
+      return deleted;
     } catch (_) {
       return false;
     }

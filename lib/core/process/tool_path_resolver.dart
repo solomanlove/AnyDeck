@@ -20,6 +20,16 @@ String resolveToolPath(String toolName) {
       '$home/Library/Android/sdk/emulator/emulator',
       '$home/AppData/Local/Android/Sdk/emulator/emulator.exe',
     ],
+    if (toolName == 'avdmanager' && sdkRoot != null) ...[
+      '$sdkRoot/cmdline-tools/latest/bin/avdmanager',
+      '$sdkRoot/tools/bin/avdmanager',
+    ],
+    if (toolName == 'avdmanager' && home != null) ...[
+      '$home/Library/Android/sdk/cmdline-tools/latest/bin/avdmanager',
+      '$home/Library/Android/sdk/tools/bin/avdmanager',
+      '$home/AppData/Local/Android/Sdk/cmdline-tools/latest/bin/avdmanager.bat',
+      '$home/AppData/Local/Android/Sdk/tools/bin/avdmanager.bat',
+    ],
     if (toolName == 'scrcpy') '/opt/homebrew/bin/scrcpy',
     if (toolName == 'scrcpy') '/usr/local/bin/scrcpy',
     '/opt/homebrew/bin/$toolName',
