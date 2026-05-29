@@ -20,6 +20,8 @@ class _PackageTable extends StatefulWidget {
 class _PackageTableState extends State<_PackageTable> {
   final ScrollController _horizontalController = ScrollController();
   final ScrollController _verticalController = ScrollController();
+  String _sortColumn = 'appName';
+  bool _sortAscending = true;
 
   @override
   void dispose() {
@@ -28,25 +30,73 @@ class _PackageTableState extends State<_PackageTable> {
     super.dispose();
   }
 
+  void _toggleSort(String col) => setState(() {
+    if (_sortColumn == col) {
+      _sortAscending = !_sortAscending;
+    } else {
+      _sortColumn = col;
+      _sortAscending = true;
+    }
+  });
+
+  Widget _getSortIcon(String col) {
+    if (_sortColumn != col) {
+      return const Padding(
+        padding: EdgeInsets.only(left: 4),
+        child: Icon(Icons.unfold_more, size: 14, color: Colors.grey),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Icon(
+        _sortAscending ? Icons.expand_less : Icons.expand_more,
+        size: 14,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    );
+  }
+
+  int _compareAppType(AdbPackage a, AdbPackage b) {
+    final systemCmp = (a.system ? 1 : 0).compareTo(b.system ? 1 : 0);
+    return systemCmp != 0 ? systemCmp : (a.flutter ? 1 : 0).compareTo(b.flutter ? 1 : 0);
+  }
+
+  List<AdbPackage> _sortedPackages() {
+    final sortedList = List<AdbPackage>.from(widget.packages);
+    sortedList.sort((a, b) {
+      final cmp = switch (_sortColumn) {
+        'appName' => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+        'packageName' => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        'version' => a.versionLabel.toLowerCase().compareTo(b.versionLabel.toLowerCase()),
+        'minSdk' => (a.minSdk ?? 0).compareTo(b.minSdk ?? 0),
+        'targetSdk' => (a.targetSdk ?? 0).compareTo(b.targetSdk ?? 0),
+        'storage' => (a.storageBytes ?? 0).compareTo(b.storageBytes ?? 0),
+        'status' => (a.enabled ? 1 : 0).compareTo(b.enabled ? 1 : 0),
+        'type' => _compareAppType(a, b),
+        _ => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+      };
+      return _sortAscending ? cmp : -cmp;
+    });
+    return sortedList;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final sorted = _sortedPackages();
     return LayoutBuilder(
       builder: (context, constraints) {
         final widths = _PackageTableWidths.adaptive(
           context: context,
-          packages: widget.packages,
+          packages: sorted,
           viewportWidth: constraints.maxWidth,
         );
         final tableWidth = max(widths.total, constraints.maxWidth);
 
         return Scrollbar(
           controller: _horizontalController,
-          notificationPredicate: (notification) =>
-              notification.metrics.axis == Axis.horizontal,
+          notificationPredicate: (n) => n.metrics.axis == Axis.horizontal,
           child: SingleChildScrollView(
-            key: PageStorageKey<String>(
-              'apps-table-horizontal-${widget.deviceId}',
-            ),
+            key: PageStorageKey<String>('apps-table-horizontal-${widget.deviceId}'),
             controller: _horizontalController,
             primary: false,
             scrollDirection: Axis.horizontal,
@@ -55,19 +105,23 @@ class _PackageTableState extends State<_PackageTable> {
               height: constraints.maxHeight,
               child: Column(
                 children: [
-                  _PackageTableHeader(widths: widths),
+                  _PackageTableHeader(
+                    widths: widths,
+                    sortColumn: _sortColumn,
+                    sortAscending: _sortAscending,
+                    onSort: _toggleSort,
+                    sortIconBuilder: _getSortIcon,
+                  ),
                   Expanded(
                     child: Scrollbar(
                       controller: _verticalController,
                       child: ListView.builder(
-                        key: PageStorageKey<String>(
-                          'apps-table-vertical-${widget.deviceId}',
-                        ),
+                        key: PageStorageKey<String>('apps-table-vertical-${widget.deviceId}'),
                         controller: _verticalController,
                         primary: false,
-                        itemCount: widget.packages.length,
+                        itemCount: sorted.length,
                         itemBuilder: (context, index) {
-                          final package = widget.packages[index];
+                          final package = sorted[index];
                           return _PackageTableRow(
                             deviceId: widget.deviceId,
                             package: package,
@@ -90,9 +144,19 @@ class _PackageTableState extends State<_PackageTable> {
 }
 
 class _PackageTableHeader extends StatelessWidget {
-  const _PackageTableHeader({required this.widths});
+  const _PackageTableHeader({
+    required this.widths,
+    required this.sortColumn,
+    required this.sortAscending,
+    required this.onSort,
+    required this.sortIconBuilder,
+  });
 
   final _PackageTableWidths widths;
+  final String sortColumn;
+  final bool sortAscending;
+  final ValueChanged<String> onSort;
+  final Widget Function(String) sortIconBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -100,9 +164,7 @@ class _PackageTableHeader extends StatelessWidget {
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor),
-        ),
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
         children: [
@@ -110,41 +172,57 @@ class _PackageTableHeader extends StatelessWidget {
             width: widths.appName,
             label: context.l10n.t('appName'),
             style: style,
+            sortIcon: sortIconBuilder('appName'),
+            onTap: () => onSort('appName'),
           ),
           _PackageHeaderCell(
             width: widths.packageName,
             label: context.l10n.t('packageName'),
             style: style,
+            sortIcon: sortIconBuilder('packageName'),
+            onTap: () => onSort('packageName'),
           ),
           _PackageHeaderCell(
             width: widths.version,
             label: context.l10n.t('version'),
             style: style,
+            sortIcon: sortIconBuilder('version'),
+            onTap: () => onSort('version'),
           ),
           _PackageHeaderCell(
             width: widths.minSdk,
             label: context.l10n.t('minSdkVersion'),
             style: style,
+            sortIcon: sortIconBuilder('minSdk'),
+            onTap: () => onSort('minSdk'),
           ),
           _PackageHeaderCell(
             width: widths.targetSdk,
             label: context.l10n.t('targetMaxSdk'),
             style: style,
+            sortIcon: sortIconBuilder('targetSdk'),
+            onTap: () => onSort('targetSdk'),
           ),
           _PackageHeaderCell(
             width: widths.storage,
             label: context.l10n.t('storageUsed'),
             style: style,
+            sortIcon: sortIconBuilder('storage'),
+            onTap: () => onSort('storage'),
           ),
           _PackageHeaderCell(
             width: widths.status,
             label: context.l10n.t('status'),
             style: style,
+            sortIcon: sortIconBuilder('status'),
+            onTap: () => onSort('status'),
           ),
           _PackageHeaderCell(
             width: widths.type,
             label: context.l10n.t('appType'),
             style: style,
+            sortIcon: sortIconBuilder('type'),
+            onTap: () => onSort('type'),
           ),
         ],
       ),
@@ -157,21 +235,42 @@ class _PackageHeaderCell extends StatelessWidget {
     required this.width,
     required this.label,
     required this.style,
+    required this.sortIcon,
+    required this.onTap,
   });
 
   final double width;
   final String label;
   final TextStyle? style;
+  final Widget sortIcon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _PackageCell(
+    return SizedBox(
       width: width,
-      child: Text(
-        label,
-        style: style,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    style: style,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                sortIcon,
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -232,11 +331,14 @@ class _PackageTableRow extends ConsumerWidget {
             ),
             _PackageCell(
               width: widths.status,
-              child: _StatusChip(package: package),
+              child: Chip(
+                label: Text(package.enabled ? context.l10n.t('enabled') : context.l10n.t('disabled')),
+                visualDensity: VisualDensity.compact,
+              ),
             ),
             _PackageCell(
               width: widths.type,
-              child: _AppTypeChip(package: package),
+              child: _TableText('${package.system ? context.l10n.t('systemApp') : context.l10n.t('userApp')} / ${package.flutter ? context.l10n.t('flutterApp') : context.l10n.t('nativeApp')}'),
             ),
           ],
         ),
@@ -265,7 +367,6 @@ class _PackageCell extends StatelessWidget {
   }
 }
 
-/// 应用名称单元格，附带轻量类型图标。
 class _AppNameCell extends StatelessWidget {
   const _AppNameCell({required this.package});
 
@@ -323,12 +424,7 @@ class _AppNameCell extends StatelessWidget {
 }
 
 class _FallbackAppIcon extends StatelessWidget {
-  const _FallbackAppIcon({
-    required this.icon,
-    required this.system,
-    required this.colorScheme,
-  });
-
+  const _FallbackAppIcon({required this.icon, required this.system, required this.colorScheme});
   final IconData icon;
   final bool system;
   final ColorScheme colorScheme;
@@ -337,21 +433,12 @@ class _FallbackAppIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: 14,
-      backgroundColor: system
-          ? colorScheme.surfaceContainerHighest
-          : colorScheme.primaryContainer,
-      child: Icon(
-        icon,
-        size: 18,
-        color: system
-            ? colorScheme.onSurfaceVariant
-            : colorScheme.onPrimaryContainer,
-      ),
+      backgroundColor: system ? colorScheme.surfaceContainerHighest : colorScheme.primaryContainer,
+      child: Icon(icon, size: 18, color: system ? colorScheme.onSurfaceVariant : colorScheme.onPrimaryContainer),
     );
   }
 }
 
-/// 表格中的受限宽度文本，鼠标悬停时可查看完整值。
 class _TableText extends StatelessWidget {
   const _TableText(this.value);
 
@@ -363,43 +450,6 @@ class _TableText extends StatelessWidget {
       message: value,
       child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
-  }
-}
-
-/// 启用或停用状态徽标。
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.package});
-
-  final AdbPackage package;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      label: Text(
-        package.enabled
-            ? context.l10n.t('enabled')
-            : context.l10n.t('disabled'),
-      ),
-      visualDensity: VisualDensity.compact,
-    );
-  }
-}
-
-/// 展示系统/用户应用和 Flutter/native 分类。
-class _AppTypeChip extends StatelessWidget {
-  const _AppTypeChip({required this.package});
-
-  final AdbPackage package;
-
-  @override
-  Widget build(BuildContext context) {
-    final labels = [
-      package.system ? context.l10n.t('systemApp') : context.l10n.t('userApp'),
-      package.flutter
-          ? context.l10n.t('flutterApp')
-          : context.l10n.t('nativeApp'),
-    ];
-    return _TableText(labels.join(' / '));
   }
 }
 
