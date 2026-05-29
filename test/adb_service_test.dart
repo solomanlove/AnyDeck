@@ -8,7 +8,10 @@ class FakeAdbService extends AdbService {
   final String output;
 
   @override
-  Future<AdbResult> run(List<String> args) async {
+  Future<AdbResult> run(
+    List<String> args, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
     return AdbResult(exitCode: 0, stdout: output, stderr: '');
   }
 }

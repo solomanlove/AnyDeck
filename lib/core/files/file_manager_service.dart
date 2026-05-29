@@ -6,6 +6,8 @@ import 'remote_file.dart';
 class FileManagerService {
   FileManagerService(this._adb);
 
+  static const _fileTransferTimeout = Duration(minutes: 5);
+
   final AdbService _adb;
 
   /// 列出远程目录，并解析详细属性。
@@ -57,12 +59,24 @@ class FileManagerService {
 
   /// 上传本地文件或目录到当前远程路径。
   Future<AdbResult> push(String deviceId, String localPath, String remotePath) {
-    return _adb.run(['-s', deviceId, 'push', localPath, remotePath]);
+    return _adb.run([
+      '-s',
+      deviceId,
+      'push',
+      localPath,
+      remotePath,
+    ], timeout: _fileTransferTimeout);
   }
 
   /// 下载远程文件到本地目标路径。
   Future<AdbResult> pull(String deviceId, String remotePath, String localPath) {
-    return _adb.run(['-s', deviceId, 'pull', remotePath, localPath]);
+    return _adb.run([
+      '-s',
+      deviceId,
+      'pull',
+      remotePath,
+      localPath,
+    ], timeout: _fileTransferTimeout);
   }
 
   /// 递归删除远程文件路径。

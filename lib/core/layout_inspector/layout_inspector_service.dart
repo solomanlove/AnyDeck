@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -33,6 +34,8 @@ class LayoutInspectorException implements Exception {
 class LayoutInspectorService {
   const LayoutInspectorService(this._adb);
 
+  static const _screenshotTimeout = Duration(seconds: 15);
+
   final AdbService _adb;
 
   Future<LayoutInspectorSnapshot> capture(String deviceId) async {
@@ -63,29 +66,49 @@ class LayoutInspectorService {
   }
 
   Future<Uint8List> _captureScreenshot(String deviceId) async {
+    Process? process;
     try {
-      final result = await Process.run(_adb.executable, [
+      process = await Process.start(_adb.executable, [
         '-s',
         deviceId,
         'exec-out',
         'screencap',
         '-p',
-      ], stdoutEncoding: null);
-      if (result.exitCode != 0) {
+      ]);
+      final stdoutFuture = process.stdout.fold<List<int>>(
+        <int>[],
+        (buffer, chunk) => buffer..addAll(chunk),
+      );
+      final stderrFuture = process.stderr
+          .transform(systemEncoding.decoder)
+          .join();
+      final exitCode = await process.exitCode.timeout(_screenshotTimeout);
+      final stderr = await stderrFuture;
+      if (exitCode != 0) {
         final adbResult = AdbResult(
-          exitCode: result.exitCode,
-          stdout: result.stdout is String ? result.stdout.toString() : '',
-          stderr: result.stderr.toString(),
+          exitCode: exitCode,
+          stdout: '',
+          stderr: stderr,
         );
         throw LayoutInspectorException(adbResult.message, result: adbResult);
       }
 
-      final stdout = result.stdout;
-      if (stdout is List<int>) {
-        return Uint8List.fromList(stdout);
-      }
-
-      throw const LayoutInspectorException('截图输出格式异常');
+      return Uint8List.fromList(await stdoutFuture);
+    } on TimeoutException {
+      process?.kill();
+      await process?.exitCode.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          process?.kill(ProcessSignal.sigkill);
+          return 124;
+        },
+      );
+      final adbResult = AdbResult(
+        exitCode: 124,
+        stdout: '',
+        stderr: 'adb截图命令超时(${_screenshotTimeout.inSeconds}s)',
+      );
+      throw LayoutInspectorException(adbResult.message, result: adbResult);
     } on ProcessException catch (error) {
       final adbResult = AdbResult(
         exitCode: 127,

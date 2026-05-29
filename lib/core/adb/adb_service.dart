@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import '../process/tool_path_resolver.dart';
@@ -36,13 +37,34 @@ class AdbService {
   }
 
   /// 使用原始参数执行 adb，并将进程异常转换为 AdbResult。
-  Future<AdbResult> run(List<String> args) async {
+  Future<AdbResult> run(
+    List<String> args, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    Process? process;
     try {
-      final result = await Process.run(executable, args);
+      process = await Process.start(executable, args);
+      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
+      final exitCode = await process.exitCode.timeout(timeout);
       return AdbResult(
-        exitCode: result.exitCode,
-        stdout: result.stdout.toString(),
-        stderr: result.stderr.toString(),
+        exitCode: exitCode,
+        stdout: await stdoutFuture,
+        stderr: await stderrFuture,
+      );
+    } on TimeoutException {
+      process?.kill();
+      await process?.exitCode.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          process?.kill(ProcessSignal.sigkill);
+          return 124;
+        },
+      );
+      return AdbResult(
+        exitCode: 124,
+        stdout: '',
+        stderr: 'adb命令超时(${timeout.inSeconds}s): adb ${args.join(' ')}',
       );
     } on ProcessException catch (error) {
       return AdbResult(exitCode: 127, stdout: '', stderr: error.message);
@@ -59,13 +81,21 @@ class AdbService {
   }
 
   /// 在指定设备上执行单条 shell 命令字符串。
-  Future<AdbResult> shell(String deviceId, String command) {
-    return run(['-s', deviceId, 'shell', command]);
+  Future<AdbResult> shell(
+    String deviceId,
+    String command, {
+    Duration timeout = const Duration(seconds: 15),
+  }) {
+    return run(['-s', deviceId, 'shell', command], timeout: timeout);
   }
 
   /// 在指定设备上执行 shell 参数列表，调用方无需手写 adb 前缀。
-  Future<AdbResult> shellArgs(String deviceId, List<String> args) {
-    return run(['-s', deviceId, 'shell', ...args]);
+  Future<AdbResult> shellArgs(
+    String deviceId,
+    List<String> args, {
+    Duration timeout = const Duration(seconds: 15),
+  }) {
+    return run(['-s', deviceId, 'shell', ...args], timeout: timeout);
   }
 
   /// 解析 `adb devices -l` 返回的表格文本。

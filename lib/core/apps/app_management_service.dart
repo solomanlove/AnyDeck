@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -18,6 +19,9 @@ class AppManagementService {
   static const _remoteBaseDir = '/data/local/tmp/adb_manage';
   static const _remoteDexPath = '$_remoteBaseDir/package_icon_helper.dex';
   static const _remotePackageListPath = '$_remoteBaseDir/packages.txt';
+  static const _quickTimeout = Duration(seconds: 8);
+  static const _metadataTimeout = Duration(seconds: 10);
+  static const _fileTransferTimeout = Duration(minutes: 5);
 
   final AdbService _adb;
 
@@ -43,13 +47,33 @@ class AppManagementService {
   }
 
   Future<List<AdbPackage>> _readPackagesFromDevice(String deviceId) async {
-    final results = await Future.wait([
-      _adb.shellArgs(deviceId, ['pm', 'list', 'packages', '-f', '-U']),
-      _adb.shellArgs(deviceId, ['pm', 'list', 'packages', '-s']),
-      _adb.shellArgs(deviceId, ['pm', 'list', 'packages', '-d']),
-      _adb.shellArgs(deviceId, ['dumpsys', 'package', 'packages']),
-      _adb.shell(deviceId, _packageSizeCommand),
-      _adb.shell(deviceId, _flutterPackageCommand),
+    final results = await Future.wait<AdbResult>([
+      _adb.shellArgs(deviceId, [
+        'pm',
+        'list',
+        'packages',
+        '-f',
+        '-U',
+      ], timeout: _quickTimeout),
+      _adb.shellArgs(deviceId, [
+        'pm',
+        'list',
+        'packages',
+        '-s',
+      ], timeout: _quickTimeout),
+      _adb.shellArgs(deviceId, [
+        'pm',
+        'list',
+        'packages',
+        '-d',
+      ], timeout: _quickTimeout),
+      _adb.shellArgs(deviceId, [
+        'dumpsys',
+        'package',
+        'packages',
+      ], timeout: _metadataTimeout),
+      _adb.shell(deviceId, _packageSizeCommand, timeout: _metadataTimeout),
+      _adb.shell(deviceId, _flutterPackageCommand, timeout: _metadataTimeout),
     ]);
 
     final packageListResult = results[0];
@@ -58,11 +82,21 @@ class AppManagementService {
     }
 
     final listedPackages = _parsePackageList(packageListResult.stdout);
-    final systemPackages = _parsePackageNames(results[1].stdout);
-    final disabledPackages = _parsePackageNames(results[2].stdout);
-    final dumpMetadata = _parsePackageDump(results[3].stdout);
-    final sizes = _parsePackageSizes(results[4].stdout);
-    final flutterPackages = _parseLineSet(results[5].stdout);
+    final systemPackages = results[1].isSuccess
+        ? _parsePackageNames(results[1].stdout)
+        : <String>{};
+    final disabledPackages = results[2].isSuccess
+        ? _parsePackageNames(results[2].stdout)
+        : <String>{};
+    final dumpMetadata = results[3].isSuccess
+        ? _parsePackageDump(results[3].stdout)
+        : <String, _PackageDumpMetadata>{};
+    final sizes = results[4].isSuccess
+        ? _parsePackageSizes(results[4].stdout)
+        : <String, int>{};
+    final flutterPackages = results[5].isSuccess
+        ? _parseLineSet(results[5].stdout)
+        : <String>{};
 
     final packages = listedPackages
         .map((listed) {
@@ -87,13 +121,32 @@ class AppManagementService {
         })
         .toList(growable: false);
 
-    final enrichedPackages = await _enrichPackagesWithIcons(deviceId, packages);
+    final sortedPackages = packages
+      ..sort(
+        (left, right) => left.displayName.toLowerCase().compareTo(
+          right.displayName.toLowerCase(),
+        ),
+      );
+    unawaited(_refreshPackageIconCache(deviceId, sortedPackages));
+    return sortedPackages;
+  }
 
-    return enrichedPackages..sort(
-      (left, right) => left.displayName.toLowerCase().compareTo(
-        right.displayName.toLowerCase(),
-      ),
-    );
+  Future<void> _refreshPackageIconCache(
+    String deviceId,
+    List<AdbPackage> packages,
+  ) async {
+    try {
+      final enrichedPackages = await _enrichPackagesWithIcons(
+        deviceId,
+        packages,
+      );
+      await _savePackageCache(
+        deviceId,
+        enrichedPackages..sort(_comparePackages),
+      );
+    } catch (_) {
+      // 后台图标缓存失败不影响首屏应用列表展示。
+    }
   }
 
   Future<List<AdbPackage>?> _loadPackageCache(String deviceId) async {
@@ -161,7 +214,7 @@ class AppManagementService {
         'push',
         packageListFile.path,
         _remotePackageListPath,
-      ]);
+      ], timeout: _fileTransferTimeout);
       if (!pushListResult.isSuccess) {
         return packages;
       }
@@ -172,6 +225,7 @@ class AppManagementService {
         'CLASSPATH=$_remoteDexPath app_process /system/bin '
         'com.adbmanage.helper.PackageIconHelper '
         '$_remotePackageListPath $userId',
+        timeout: _metadataTimeout,
       );
       if (!result.isSuccess) {
         return packages;
@@ -213,8 +267,18 @@ class AppManagementService {
 
   Future<void> _ensureIconHelperPushed(String deviceId) async {
     final helperFile = await _writeHelperAssetToTemp();
-    await _adb.shell(deviceId, 'mkdir -p $_remoteBaseDir/icons');
-    await _adb.run(['-s', deviceId, 'push', helperFile.path, _remoteDexPath]);
+    await _adb.shell(
+      deviceId,
+      'mkdir -p $_remoteBaseDir/icons',
+      timeout: _quickTimeout,
+    );
+    await _adb.run([
+      '-s',
+      deviceId,
+      'push',
+      helperFile.path,
+      _remoteDexPath,
+    ], timeout: _fileTransferTimeout);
   }
 
   Future<File> _writeHelperAssetToTemp() async {
@@ -248,7 +312,10 @@ class AppManagementService {
   }
 
   Future<int> _currentUserId(String deviceId) async {
-    final result = await _adb.shellArgs(deviceId, ['am', 'get-current-user']);
+    final result = await _adb.shellArgs(deviceId, [
+      'am',
+      'get-current-user',
+    ], timeout: _quickTimeout);
     if (!result.isSuccess) {
       return 0;
     }
@@ -325,7 +392,7 @@ class AppManagementService {
       'pull',
       remotePath,
       localFile.path,
-    ]);
+    ], timeout: _fileTransferTimeout);
     return result.isSuccess && localFile.existsSync() ? localFile.path : null;
   }
 
@@ -378,7 +445,13 @@ done | sort -u
 
   /// 从宿主机安装或覆盖安装 APK。
   Future<AdbResult> installApk(String deviceId, String apkPath) {
-    return _adb.run(['-s', deviceId, 'install', '-r', apkPath]);
+    return _adb.run([
+      '-s',
+      deviceId,
+      'install',
+      '-r',
+      apkPath,
+    ], timeout: _fileTransferTimeout);
   }
 
   /// 导出设备上的应用安装包到本地。
@@ -402,7 +475,13 @@ done | sort -u
     if (path == null || path.isEmpty) {
       return AdbResult(exitCode: 1, stdout: '', stderr: '解析安装路径失败');
     }
-    return _adb.run(['-s', deviceId, 'pull', path, localSavePath]);
+    return _adb.run([
+      '-s',
+      deviceId,
+      'pull',
+      path,
+      localSavePath,
+    ], timeout: _fileTransferTimeout);
   }
 
   /// 从设备卸载指定应用包。
