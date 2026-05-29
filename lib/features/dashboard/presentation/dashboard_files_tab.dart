@@ -282,6 +282,8 @@ class _FilesTab extends ConsumerWidget {
                               ref
                                   .read(fileNavigationProvider.notifier)
                                   .navigateTo(_joinRemotePath(path, file.name));
+                            } else if (_isPreviewableTextFile(file.name)) {
+                              _previewTextFile(context, ref, device.id, path, file);
                             }
                           },
                         );
@@ -302,6 +304,8 @@ class _FilesTab extends ConsumerWidget {
                             ref
                                 .read(fileNavigationProvider.notifier)
                                 .navigateTo(_joinRemotePath(path, file.name));
+                          } else if (_isPreviewableTextFile(file.name)) {
+                            _previewTextFile(context, ref, device.id, path, file);
                           }
                         },
                       );
@@ -507,6 +511,302 @@ class _FilesTab extends ConsumerWidget {
     ref.invalidate(
       remoteFilesProvider(
         RemoteDirectoryRequest(deviceId: device.id, path: remotePath),
+      ),
+    );
+  }
+}
+
+bool _isPreviewableTextFile(String fileName) {
+  final ext = fileName.split('.').last.toLowerCase();
+  return const {
+    'txt', 'log', 'json', 'xml', 'yaml', 'yml', 'ini', 'conf', 'properties',
+    'sh', 'py', 'js', 'ts', 'html', 'css', 'md', 'csv', 'sql'
+  }.contains(ext);
+}
+
+Future<void> _previewTextFile(
+  BuildContext context,
+  WidgetRef ref,
+  String deviceId,
+  String currentPath,
+  RemoteFile file,
+) async {
+  bool loadingDismissed = false;
+  void dismissLoading() {
+    if (!loadingDismissed && context.mounted) {
+      Navigator.of(context).pop();
+      loadingDismissed = true;
+    }
+  }
+
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const AlertDialog(
+      content: Row(
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(width: 16),
+          Text('正在拉取文件以供预览...'),
+        ],
+      ),
+    ),
+  );
+
+  try {
+    final remoteFilePath = _joinRemotePath(currentPath, file.name);
+    final tempDir = Directory.systemTemp.path;
+    final localDir = Directory('$tempDir/AdbManage/previews');
+    if (!localDir.existsSync()) {
+      localDir.createSync(recursive: true);
+    }
+    final localPath = '${localDir.path}/${file.name}';
+    
+    final service = ref.read(fileManagerServiceProvider);
+    final result = await service.pull(deviceId, remoteFilePath, localPath);
+
+    dismissLoading();
+
+    if (!result.isSuccess) {
+      if (context.mounted) {
+        _showSnack(context, '拉取文件失败: ${result.message}', isError: true);
+      }
+      return;
+    }
+
+    final ioFile = File(localPath);
+    if (!ioFile.existsSync()) {
+      if (context.mounted) {
+        _showSnack(context, '拉取失败：未找到本地文件', isError: true);
+      }
+      return;
+    }
+
+    String content = '';
+    bool isTruncated = false;
+    final fileLength = ioFile.lengthSync();
+    const int limit = 500 * 1024; // 500 KB
+
+    if (fileLength > limit) {
+      isTruncated = true;
+      final bytes = await ioFile.openRead(0, limit).reduce((a, b) => [...a, ...b]);
+      try {
+        content = utf8.decode(bytes, allowMalformed: true);
+      } catch (_) {
+        content = String.fromCharCodes(bytes);
+      }
+    } else {
+      try {
+        content = await ioFile.readAsString(encoding: utf8);
+      } catch (_) {
+        final bytes = await ioFile.readAsBytes();
+        content = utf8.decode(bytes, allowMalformed: true);
+      }
+    }
+
+    if (context.mounted) {
+      showDialog<void>(
+        context: context,
+        builder: (context) => _TextPreviewDialog(
+          fileName: file.name,
+          content: content,
+          localPath: localPath,
+          isTruncated: isTruncated,
+          totalSize: file.size ?? fileLength,
+        ),
+      );
+    }
+  } catch (e) {
+    dismissLoading();
+    if (context.mounted) {
+      _showSnack(context, '预览出错: $e', isError: true);
+    }
+  }
+}
+
+class _TextPreviewDialog extends StatefulWidget {
+  const _TextPreviewDialog({
+    required this.fileName,
+    required this.content,
+    required this.localPath,
+    required this.isTruncated,
+    required this.totalSize,
+  });
+
+  final String fileName;
+  final String content;
+  final String localPath;
+  final bool isTruncated;
+  final int totalSize;
+
+  @override
+  State<_TextPreviewDialog> createState() => _TextPreviewDialogState();
+}
+
+class _TextPreviewDialogState extends State<_TextPreviewDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.content);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return "0 B";
+    const suffixes = ["B", "KB", "MB", "GB"];
+    var i = (log(bytes) / log(1024)).floor();
+    return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sizeText = _formatBytes(widget.totalSize);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        width: 800,
+        height: 600,
+        color: theme.colorScheme.surface,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              child: Row(
+                children: [
+                  Icon(Icons.description_outlined, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.fileName,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Actions
+                  IconButton(
+                    tooltip: '复制全部',
+                    icon: const Icon(Icons.copy_all, size: 20),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: widget.content));
+                      _showSnack(context, '已复制全部内容');
+                    },
+                  ),
+                  IconButton(
+                    tooltip: '使用系统默认程序打开',
+                    icon: const Icon(Icons.open_in_new, size: 20),
+                    onPressed: () async {
+                      try {
+                        if (Platform.isMacOS) {
+                          await Process.run('open', [widget.localPath]);
+                        } else if (Platform.isWindows) {
+                          await Process.run('cmd', ['/c', 'start', '', widget.localPath]);
+                        } else if (Platform.isLinux) {
+                          await Process.run('xdg-open', [widget.localPath]);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          _showSnack(context, '无法打开文件: $e', isError: true);
+                        }
+                      }
+                    },
+                  ),
+                  IconButton(
+                    tooltip: '关闭',
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            // Truncated Warning Banner
+            if (widget.isTruncated)
+              Container(
+                color: Colors.amber.withValues(alpha: 0.15),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '此文件过大 (大小: $sizeText)，为防止卡死，当前仅展示前 500 KB 文本内容。',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            // Content
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                color: theme.colorScheme.surfaceContainerLow,
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    child: TextField(
+                      controller: _controller,
+                      readOnly: true,
+                      maxLines: null,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        height: 1.45,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Footer Info
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '大小: $sizeText',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    '编码: UTF-8',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
