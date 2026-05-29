@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -52,6 +53,7 @@ part 'dashboard_devices_view.dart';
 part 'dashboard_devices_rows.dart';
 part 'dashboard_devices_actions.dart';
 part 'dashboard_screenshot_tab.dart';
+part 'dashboard_screenshot_recording.dart';
 
 class _EmulatorListExpandedNotifier extends Notifier<bool> {
   @override

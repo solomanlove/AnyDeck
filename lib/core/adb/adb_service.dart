@@ -178,6 +178,37 @@ class AdbService {
     }
   }
 
+  /// 开始录制手机屏幕，返回 Process 实例。
+  Future<Process> startScreenRecord(
+    String deviceId,
+    String remotePath, {
+    int timeLimit = 180,
+    int? bitRate,
+    String? size,
+  }) {
+    final args = <String>[
+      '-s',
+      deviceId,
+      'shell',
+      'screenrecord',
+      '--time-limit',
+      '$timeLimit',
+    ];
+    if (bitRate != null) {
+      args.addAll(['--bit-rate', '$bitRate']);
+    }
+    if (size != null) {
+      args.addAll(['--size', size]);
+    }
+    args.add(remotePath);
+    return Process.start(executable, args);
+  }
+
+  /// 停止录屏（通过发送 SIGINT 信号使 screenrecord 正常保存文件）。
+  Future<AdbResult> stopScreenRecord(String deviceId) {
+    return shell(deviceId, 'killall -2 screenrecord || pkill -2 -x screenrecord');
+  }
+
   bool _sameDeviceList(List<AdbDevice> previous, List<AdbDevice> next) {
     if (previous.length != next.length) {
       return false;

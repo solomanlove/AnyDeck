@@ -9,7 +9,7 @@ class _ScreenshotTab extends ConsumerStatefulWidget {
   ConsumerState<_ScreenshotTab> createState() => _ScreenshotTabState();
 }
 
-class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> {
+class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenRecordMixin {
   Uint8List? _screenshotBytes;
   bool _loading = false;
   String? _error;
@@ -31,6 +31,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> {
 
   @override
   void dispose() {
+    _cleanupRecord();
     _autoRefreshTimer?.cancel();
     _transformationController.dispose();
     super.dispose();
@@ -290,23 +291,23 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> {
               IconButton(
                 tooltip: context.l10n.t('refresh'),
                 icon: const Icon(Icons.refresh),
-                onPressed: _loading ? null : () => _capture(),
+                onPressed: (_loading || isRecording) ? null : () => _capture(),
               ),
               IconButton(
                 tooltip: context.l10n.t('save'),
                 icon: const Icon(Icons.save_alt),
-                onPressed: _screenshotBytes == null ? null : _saveScreenshot,
+                onPressed: (_screenshotBytes == null || isRecording) ? null : _saveScreenshot,
               ),
               IconButton(
                 tooltip: context.l10n.t('copy'),
                 icon: const Icon(Icons.content_copy),
-                onPressed: _screenshotBytes == null ? null : _copyScreenshot,
+                onPressed: (_screenshotBytes == null || isRecording) ? null : _copyScreenshot,
               ),
               const VerticalDivider(width: 24, indent: 12, endIndent: 12),
               IconButton(
                 tooltip: context.l10n.t('rotateLeft'),
                 icon: const Icon(Icons.rotate_left),
-                onPressed: _screenshotBytes == null ? null : () {
+                onPressed: (_screenshotBytes == null || isRecording) ? null : () {
                   setState(() {
                     _rotation = (_rotation - 90 + 360) % 360;
                     _zoomReset();
@@ -316,7 +317,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> {
               IconButton(
                 tooltip: context.l10n.t('rotateRight'),
                 icon: const Icon(Icons.rotate_right),
-                onPressed: _screenshotBytes == null ? null : () {
+                onPressed: (_screenshotBytes == null || isRecording) ? null : () {
                   setState(() {
                     _rotation = (_rotation + 90) % 360;
                     _zoomReset();
@@ -327,22 +328,22 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> {
               IconButton(
                 tooltip: context.l10n.t('zoomIn'),
                 icon: const Icon(Icons.zoom_in),
-                onPressed: _screenshotBytes == null ? null : () => _zoom(1.2),
+                onPressed: (_screenshotBytes == null || isRecording) ? null : () => _zoom(1.2),
               ),
               IconButton(
                 tooltip: context.l10n.t('zoomOut'),
                 icon: const Icon(Icons.zoom_out),
-                onPressed: _screenshotBytes == null ? null : () => _zoom(0.8),
+                onPressed: (_screenshotBytes == null || isRecording) ? null : () => _zoom(0.8),
               ),
               IconButton(
                 tooltip: context.l10n.t('zoomReset'),
                 icon: const Icon(Icons.aspect_ratio),
-                onPressed: _screenshotBytes == null ? null : _zoomReset,
+                onPressed: (_screenshotBytes == null || isRecording) ? null : _zoomReset,
               ),
               IconButton(
                 tooltip: context.l10n.t('zoom1to1'),
                 icon: const Icon(Icons.fullscreen),
-                onPressed: _screenshotBytes == null ? null : _zoom1to1,
+                onPressed: (_screenshotBytes == null || isRecording) ? null : _zoom1to1,
               ),
               const VerticalDivider(width: 24, indent: 12, endIndent: 12),
               IconButton(
@@ -351,8 +352,31 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> {
                   Icons.history,
                   color: _autoRefresh ? colorScheme.primary : null,
                 ),
-                onPressed: _screenshotBytes == null ? null : _toggleAutoRefresh,
+                onPressed: (_screenshotBytes == null || isRecording) ? null : _toggleAutoRefresh,
               ),
+              const VerticalDivider(width: 24, indent: 12, endIndent: 12),
+              IconButton(
+                tooltip: isRecording ? context.l10n.t('stopRecord') : context.l10n.t('startRecord'),
+                icon: Icon(
+                  isRecording ? Icons.stop : Icons.videocam,
+                  color: isRecording ? Colors.red : null,
+                ),
+                onPressed: _loading
+                    ? null
+                    : (isRecording ? _stopRecording : _startRecording),
+              ),
+              if (isRecording) ...[
+                const SizedBox(width: 8),
+                const _PulsingRecordDot(),
+                const SizedBox(width: 6),
+                Text(
+                  _formatDuration(recordDuration),
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               const Spacer(),
               if (_screenshotBytes != null)
                 Text(
@@ -369,46 +393,61 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> {
         Expanded(
           child: Container(
             color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final currentSize = Size(constraints.maxWidth, constraints.maxHeight);
-                if (_viewportSize != currentSize) {
-                  _viewportSize = currentSize;
-                  if (_screenshotBytes != null) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) _zoomReset();
-                    });
-                  }
-                }
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final currentSize = Size(constraints.maxWidth, constraints.maxHeight);
+                      if (_viewportSize != currentSize) {
+                        _viewportSize = currentSize;
+                        if (_screenshotBytes != null) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) _zoomReset();
+                          });
+                        }
+                      }
 
-                if (_screenshotBytes == null) {
-                  return const SizedBox.shrink();
-                }
+                      if (_screenshotBytes == null) {
+                        return const SizedBox.shrink();
+                      }
 
-                final rotatedW = (_rotation == 90 || _rotation == 270) ? _imgHeight.toDouble() : _imgWidth.toDouble();
-                final rotatedH = (_rotation == 90 || _rotation == 270) ? _imgWidth.toDouble() : _imgHeight.toDouble();
+                      final rotatedW = (_rotation == 90 || _rotation == 270) ? _imgHeight.toDouble() : _imgWidth.toDouble();
+                      final rotatedH = (_rotation == 90 || _rotation == 270) ? _imgWidth.toDouble() : _imgHeight.toDouble();
 
-                return InteractiveViewer(
-                  transformationController: _transformationController,
-                  boundaryMargin: const EdgeInsets.all(400.0),
-                  minScale: 0.05,
-                  maxScale: 10.0,
-                  constrained: false,
-                  child: SizedBox(
-                    width: rotatedW,
-                    height: rotatedH,
-                    child: Center(
-                      child: RotatedBox(
-                        quarterTurns: _rotation ~/ 90,
-                        child: Image.memory(
-                          _screenshotBytes!,
-                          fit: BoxFit.contain,
+                      return InteractiveViewer(
+                        transformationController: _transformationController,
+                        boundaryMargin: const EdgeInsets.all(400.0),
+                        minScale: 0.05,
+                        maxScale: 10.0,
+                        constrained: false,
+                        child: SizedBox(
+                          width: rotatedW,
+                          height: rotatedH,
+                          child: Center(
+                            child: RotatedBox(
+                              quarterTurns: _rotation ~/ 90,
+                              child: Image.memory(
+                                _screenshotBytes!,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
                         ),
+                      );
+                    },
+                  ),
+                ),
+                if (_loading)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      child: const Center(
+                        child: CircularProgressIndicator(),
                       ),
                     ),
                   ),
-                );
-              },
+              ],
             ),
           ),
         ),
