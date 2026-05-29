@@ -1,21 +1,50 @@
 part of 'dashboard_screen.dart';
 
-class _ControlTab extends StatelessWidget {
+class _ControlTab extends ConsumerStatefulWidget {
   const _ControlTab({required this.device, required this.sessions});
 
   final AdbDevice device;
   final Map<String, ScrcpySession> sessions;
 
   @override
+  ConsumerState<_ControlTab> createState() => _ControlTabState();
+}
+
+class _ControlTabState extends ConsumerState<_ControlTab> {
+  @override
+  void initState() {
+    super.initState();
+    _refreshOverview();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ControlTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.device.id != oldWidget.device.id) {
+      _refreshOverview();
+    }
+  }
+
+  void _refreshOverview() {
+    if (widget.device.isOnline) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.invalidate(deviceOverviewProvider(widget.device.id));
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _QuickActionsPanel(device: device),
+        _QuickActionsPanel(device: widget.device),
         const SizedBox(height: 16),
-        _DeeplinkPanel(device: device),
+        _DeeplinkPanel(device: widget.device),
         const SizedBox(height: 16),
-        _LayoutHelperPanel(device: device),
+        _LayoutHelperPanel(device: widget.device),
       ],
     );
   }
@@ -31,6 +60,11 @@ class _QuickActionsPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = ref.read(deviceActionServiceProvider);
+
+    final overviewAsync = device.isOnline
+        ? ref.watch(deviceOverviewProvider(device.id))
+        : const AsyncValue<DeviceOverview>.loading();
+    final wifiEnabled = overviewAsync.value?.wifiEnabled ?? false;
 
     return _ActionCard(
       title: context.l10n.t('deviceActions'),
@@ -74,8 +108,13 @@ class _QuickActionsPanel extends ConsumerWidget {
           iconOn: Icons.wifi,
           iconOff: Icons.wifi_off,
           label: context.l10n.t('wifiToggle'),
-          onToggle: (on) =>
-              _runAdbAction(context, ref, actions.setWifi(device.id, on)),
+          value: wifiEnabled,
+          onToggle: (on) async {
+            await _runAdbAction(context, ref, actions.setWifi(device.id, on));
+            if (device.isOnline) {
+              ref.invalidate(deviceOverviewProvider(device.id));
+            }
+          },
         ),
         _ActionButton(
           icon: Icons.menu,

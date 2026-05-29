@@ -1454,24 +1454,45 @@ class _ToggleActionButton extends StatefulWidget {
     required this.iconOff,
     required this.label,
     required this.onToggle,
+    this.value,
   });
 
   final IconData iconOn;
   final IconData iconOff;
   final String label;
   final ValueChanged<bool> onToggle;
+  final bool? value;
 
   @override
   State<_ToggleActionButton> createState() => _ToggleActionButtonState();
 }
 
 class _ToggleActionButtonState extends State<_ToggleActionButton> {
-  bool _isOn = false;
+  bool _localIsOn = false;
+
+  bool get _effectiveIsOn => widget.value ?? _localIsOn;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.value != null) {
+      _localIsOn = widget.value!;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _ToggleActionButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != null && widget.value != oldWidget.value) {
+      _localIsOn = widget.value!;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return _isOn
+    final isOn = _effectiveIsOn;
+    return isOn
         ? FilledButton.icon(
             icon: Icon(widget.iconOn, size: 18),
             label: Text(widget.label),
@@ -1480,7 +1501,7 @@ class _ToggleActionButtonState extends State<_ToggleActionButton> {
               foregroundColor: colorScheme.onPrimary,
             ),
             onPressed: () {
-              setState(() => _isOn = false);
+              setState(() => _localIsOn = false);
               widget.onToggle(false);
             },
           )
@@ -1488,7 +1509,7 @@ class _ToggleActionButtonState extends State<_ToggleActionButton> {
             icon: Icon(widget.iconOff, size: 18),
             label: Text(widget.label),
             onPressed: () {
-              setState(() => _isOn = true);
+              setState(() => _localIsOn = true);
               widget.onToggle(true);
             },
           );
