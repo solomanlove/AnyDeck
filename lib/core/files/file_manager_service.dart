@@ -16,17 +16,22 @@ class FileManagerService {
     // 第一选择：ls -llA (长格式，带秒/纳秒，隐藏 . 和 ..)
     // 第二选择：ls -lA (长格式，隐藏 . 和 ..)
     // 第三选择：ls -la (长格式，显示所有文件)
-    var result = await _adb.shellArgs(deviceId, ['ls', '-llA', remotePath]);
+    const listTimeout = Duration(seconds: 5);
+    var result = await _adb.shellArgs(deviceId, ['ls', '-llA', remotePath], timeout: listTimeout);
 
-    if (result.stdout.trim().isEmpty ||
-        result.stderr.contains('invalid option') ||
-        result.stderr.contains('unknown option')) {
-      result = await _adb.shellArgs(deviceId, ['ls', '-lA', remotePath]);
+    bool shouldFallback(AdbResult res) {
+      final err = res.stderr.toLowerCase();
+      return err.contains('invalid option') ||
+          err.contains('unknown option') ||
+          err.contains('usage: ls') ||
+          err.contains('bad option');
     }
-    if (result.stdout.trim().isEmpty ||
-        result.stderr.contains('invalid option') ||
-        result.stderr.contains('unknown option')) {
-      result = await _adb.shellArgs(deviceId, ['ls', '-la', remotePath]);
+
+    if (shouldFallback(result)) {
+      result = await _adb.shellArgs(deviceId, ['ls', '-lA', remotePath], timeout: listTimeout);
+    }
+    if (shouldFallback(result)) {
+      result = await _adb.shellArgs(deviceId, ['ls', '-la', remotePath], timeout: listTimeout);
     }
 
     // 即使命令返回非零（如有些 root 目录部分文件无权限导致 ls 返回 1），

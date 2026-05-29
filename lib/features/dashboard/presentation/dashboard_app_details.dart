@@ -48,6 +48,7 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 440,
+        constraints: const BoxConstraints(maxHeight: 560),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -72,124 +73,133 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
               ],
             ),
             const SizedBox(height: 20),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SizedBox(
-                    width: 72,
-                    height: 72,
-                    child:
-                        package.iconLocalPath != null &&
-                            File(package.iconLocalPath!).existsSync()
-                        ? Image.file(
-                            File(package.iconLocalPath!),
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _FallbackIconLarge(
-                                  package: package,
-                                  theme: theme,
-                                ),
-                          )
-                        : _FallbackIconLarge(package: package, theme: theme),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        package.displayName,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        package.name,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        package.versionLabel,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            _DetailItem(label: '系统应用', value: package.system ? '是' : '否'),
-            _DetailItem(label: '最小 SDK 版本', value: _sdkLabel(package.minSdk)),
-            _DetailItem(
-              label: '目标 SDK 版本',
-              value: _sdkLabel(package.targetSdk),
-            ),
-            _DetailItem(
-              label: '首次安装时间',
-              value: formatEpoch(package.firstInstallTime),
-            ),
-            _DetailItem(
-              label: '最后更新时间',
-              value: formatEpoch(package.lastUpdateTime),
-            ),
-            _DetailItem(
-              label: '安装包大小',
-              value: formatSize(package.storageBytes),
-            ),
-            FutureBuilder<Map<String, int>>(
-              future: _sizesFuture,
-              builder: (context, snapshot) {
-                final sizes = snapshot.data;
-                final isLoading =
-                    snapshot.connectionState == ConnectionState.waiting;
-
-                String getValue(String key) {
-                  if (isLoading) return '加载中...';
-                  if (snapshot.hasError || sizes == null) return '-';
-                  return formatSize(sizes[key]);
-                }
-
-                return Column(
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _DetailItem(label: '应用大小', value: getValue('appSize')),
-                    _DetailItem(label: '数据大小', value: getValue('dataSize')),
-                    _DetailItem(label: '缓存大小', value: getValue('cacheSize')),
-                  ],
-                );
-              },
-            ),
-            _DetailItem(
-              label: '签名 MD5',
-              value: package.signatureMd5 ?? '-',
-              trailing:
-                  package.signatureMd5 != null &&
-                      package.signatureMd5!.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.copy, size: 16),
-                      onPressed: () {
-                        Clipboard.setData(
-                          ClipboardData(text: package.signatureMd5!),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            width: 72,
+                            height: 72,
+                            child:
+                                package.iconLocalPath != null &&
+                                    File(package.iconLocalPath!).existsSync()
+                                ? Image.file(
+                                    File(package.iconLocalPath!),
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        _FallbackIconLarge(
+                                          package: package,
+                                          theme: theme,
+                                        ),
+                                  )
+                                : _FallbackIconLarge(package: package, theme: theme),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                package.displayName,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                package.name,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                package.versionLabel,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    const Divider(height: 1),
+                    const SizedBox(height: 8),
+                    _DetailItem(label: '系统应用', value: package.system ? '是' : '否'),
+                    _DetailItem(label: '最小 SDK 版本', value: _sdkLabel(package.minSdk)),
+                    _DetailItem(
+                      label: '目标 SDK 版本',
+                      value: _sdkLabel(package.targetSdk),
+                    ),
+                    _DetailItem(
+                      label: '首次安装时间',
+                      value: formatEpoch(package.firstInstallTime),
+                    ),
+                    _DetailItem(
+                      label: '最后更新时间',
+                      value: formatEpoch(package.lastUpdateTime),
+                    ),
+                    _DetailItem(
+                      label: '安装包大小',
+                      value: formatSize(package.storageBytes),
+                    ),
+                    FutureBuilder<Map<String, int>>(
+                      future: _sizesFuture,
+                      builder: (context, snapshot) {
+                        final sizes = snapshot.data;
+                        final isLoading =
+                            snapshot.connectionState == ConnectionState.waiting;
+
+                        String getValue(String key) {
+                          if (isLoading) return '加载中...';
+                          if (snapshot.hasError || sizes == null) return '-';
+                          return formatSize(sizes[key]);
+                        }
+
+                        return Column(
+                          children: [
+                            _DetailItem(label: '应用大小', value: getValue('appSize')),
+                            _DetailItem(label: '数据大小', value: getValue('dataSize')),
+                            _DetailItem(label: '缓存大小', value: getValue('cacheSize')),
+                          ],
                         );
-                        _showSnack(context, '签名已复制到剪贴板');
                       },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      splashRadius: 16,
-                      tooltip: '复制签名',
-                    )
-                  : null,
+                    ),
+                    _DetailItem(
+                      label: '签名 MD5',
+                      value: package.signatureMd5 ?? '-',
+                      trailing:
+                          package.signatureMd5 != null &&
+                              package.signatureMd5!.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.copy, size: 16),
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: package.signatureMd5!),
+                                );
+                                _showSnack(context, '签名已复制到剪贴板');
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              splashRadius: 16,
+                              tooltip: '复制签名',
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

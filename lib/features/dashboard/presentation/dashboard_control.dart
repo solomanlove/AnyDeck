@@ -126,33 +126,10 @@ class _QuickActionsPanel extends ConsumerWidget {
     WidgetRef ref,
     String deviceId,
   ) async {
-    final controller = TextEditingController();
     final text = await showDialog<String>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(context.l10n.t('inputText')),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: InputDecoration(labelText: context.l10n.t('text')),
-            onSubmitted: (value) => Navigator.of(context).pop(value),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(context.l10n.t('cancel')),
-            ),
-            FilledButton.icon(
-              icon: const Icon(Icons.send),
-              label: Text(context.l10n.t('send')),
-              onPressed: () => Navigator.of(context).pop(controller.text),
-            ),
-          ],
-        );
-      },
+      builder: (context) => const _InputTextDialog(),
     );
-    controller.dispose();
 
     if (text == null || text.isEmpty || !context.mounted) {
       return;
@@ -161,6 +138,53 @@ class _QuickActionsPanel extends ConsumerWidget {
       context,
       ref,
       ref.read(deviceActionServiceProvider).inputText(deviceId, text),
+    );
+  }
+}
+
+class _InputTextDialog extends StatefulWidget {
+  const _InputTextDialog();
+
+  @override
+  State<_InputTextDialog> createState() => _InputTextDialogState();
+}
+
+class _InputTextDialogState extends State<_InputTextDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.t('inputText')),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(labelText: context.l10n.t('text')),
+        onSubmitted: (value) => Navigator.of(context).pop(value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.t('cancel')),
+        ),
+        FilledButton.icon(
+          icon: const Icon(Icons.send),
+          label: Text(context.l10n.t('send')),
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+        ),
+      ],
     );
   }
 }
