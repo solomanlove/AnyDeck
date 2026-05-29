@@ -514,7 +514,11 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
                 // 3. 右侧属性详细面板
                 Expanded(
                   flex: 4,
-                  child: LayoutPropertiesTable(selectedNode: _selectedNode),
+                  child: LayoutPropertiesTable(
+                    selectedNode: _selectedNode,
+                    useDp: _useDp,
+                    deviceScale: _deviceLogicalDensity,
+                  ),
                 ),
               ],
             ],

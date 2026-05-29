@@ -6,8 +6,15 @@ import '../../../../core/layout_inspector/layout_node.dart';
 /// 渲染右侧属性面板，展示当前选中的 XML 节点的所有详细属性，并支持点击复制。
 class LayoutPropertiesTable extends StatelessWidget {
   final LayoutNode? selectedNode;
+  final bool useDp;
+  final double deviceScale;
 
-  const LayoutPropertiesTable({super.key, this.selectedNode});
+  const LayoutPropertiesTable({
+    super.key,
+    this.selectedNode,
+    this.useDp = false,
+    this.deviceScale = 1.0,
+  });
 
   void _copyToClipboard(BuildContext context, String label, String value) {
     if (value.isEmpty) return;
@@ -46,6 +53,19 @@ class LayoutPropertiesTable extends StatelessWidget {
     }
 
     final node = selectedNode!;
+    final rect = node.rect;
+    final parentRect = node.parent?.rect;
+
+    String formatValue(double pxValue) {
+      if (useDp) {
+        final dpValue = pxValue / deviceScale;
+        final dpStr = dpValue.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+        return '${pxValue.round()} px ($dpStr dp)';
+      } else {
+        return '${pxValue.round()} px';
+      }
+    }
+
     final properties = <_PropertyItem>[
       _PropertyItem(key: 'index', value: node.index.toString()),
       _PropertyItem(key: 'class', value: node.className),
@@ -54,6 +74,16 @@ class LayoutPropertiesTable extends StatelessWidget {
       _PropertyItem(key: 'text', value: node.text),
       _PropertyItem(key: 'content-desc', value: node.contentDesc),
       _PropertyItem(key: 'bounds', value: node.bounds),
+      if (rect != null) ...[
+        _PropertyItem(key: 'width', value: formatValue(rect.width)),
+        _PropertyItem(key: 'height', value: formatValue(rect.height)),
+      ],
+      if (rect != null && parentRect != null) ...[
+        _PropertyItem(key: 'layout_margin_left', value: formatValue(rect.left - parentRect.left)),
+        _PropertyItem(key: 'layout_margin_top', value: formatValue(rect.top - parentRect.top)),
+        _PropertyItem(key: 'layout_margin_right', value: formatValue(parentRect.right - rect.right)),
+        _PropertyItem(key: 'layout_margin_bottom', value: formatValue(parentRect.bottom - rect.bottom)),
+      ],
       _PropertyItem(
         key: 'checkable',
         value: node.checkable.toString(),
