@@ -14,22 +14,32 @@ class _PackageActions extends ConsumerWidget {
     return IconButtonTheme(
       data: IconButtonThemeData(
         style: IconButton.styleFrom(
-          minimumSize: const Size.square(32),
+          minimumSize: const Size.square(36),
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
-      child: Wrap(
-        spacing: 2,
-        runSpacing: 2,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: '应用信息',
+            tooltip: context.l10n.t('appDetails'),
             icon: const Icon(Icons.info_outline),
             onPressed: () {
               _showAppDetailsDialog(context, ref, deviceId, package);
             },
           ),
+          const SizedBox(width: 2),
+          IconButton(
+            tooltip: context.l10n.t('openSystemAppInfo'),
+            icon: const Icon(Icons.app_settings_alt_outlined),
+            onPressed: () => _runAdbAction(
+              context,
+              ref,
+              service.openAppInfo(deviceId, packageName),
+            ),
+          ),
+          const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('launch'),
             icon: const Icon(Icons.play_arrow),
@@ -39,6 +49,7 @@ class _PackageActions extends ConsumerWidget {
               service.launch(deviceId, packageName),
             ),
           ),
+          const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('forceStop'),
             icon: const Icon(Icons.stop),
@@ -48,6 +59,7 @@ class _PackageActions extends ConsumerWidget {
               service.forceStop(deviceId, packageName),
             ),
           ),
+          const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('packagePath'),
             icon: const Icon(Icons.route),
@@ -57,6 +69,7 @@ class _PackageActions extends ConsumerWidget {
               service.packagePath(deviceId, packageName),
             ),
           ),
+          const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('clearData'),
             icon: const Icon(Icons.cleaning_services_outlined),
@@ -76,6 +89,7 @@ class _PackageActions extends ConsumerWidget {
               }
             },
           ),
+          const SizedBox(width: 2),
           // 冻结/解冻按钮：根据应用当前启用状态显示对应操作
           IconButton(
             tooltip: package.enabled
@@ -118,6 +132,7 @@ class _PackageActions extends ConsumerWidget {
               }
             },
           ),
+          const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('uninstall'),
             icon: const Icon(Icons.delete_outline),
@@ -144,6 +159,7 @@ class _PackageActions extends ConsumerWidget {
               }
             },
           ),
+          const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('exportApk'),
             icon: const Icon(Icons.download),

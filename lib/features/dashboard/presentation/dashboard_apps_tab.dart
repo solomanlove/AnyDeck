@@ -89,15 +89,27 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                     title: context.l10n.t('noPackages'),
                   );
                 }
+                final selectedPackage = _selectedVisiblePackage(filtered);
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      context.l10n
-                          .t('appCount')
-                          .replaceAll('{visible}', '${filtered.length}')
-                          .replaceAll('{total}', '${items.length}'),
-                      style: Theme.of(context).textTheme.labelLarge,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            context.l10n
+                                .t('appCount')
+                                .replaceAll('{visible}', '${filtered.length}')
+                                .replaceAll('{total}', '${items.length}'),
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ),
+                        if (selectedPackage != null)
+                          _PackageActions(
+                            deviceId: widget.device.id,
+                            package: selectedPackage,
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Expanded(
@@ -156,6 +168,19 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
               displayNameShortPinyin.contains(cleanFilter);
         })
         .toList(growable: false);
+  }
+
+  AdbPackage? _selectedVisiblePackage(List<AdbPackage> packages) {
+    final selected = _selectedPackage;
+    if (selected == null) {
+      return null;
+    }
+    for (final package in packages) {
+      if (package.name == selected) {
+        return package;
+      }
+    }
+    return null;
   }
 
   /// 打开宿主机文件选择器并安装选中的 APK。

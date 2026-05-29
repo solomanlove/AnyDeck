@@ -494,6 +494,18 @@ done | sort -u
     return _adb.shellArgs(deviceId, ['monkey', '-p', packageName, '1']);
   }
 
+  /// 跳转到手机系统设置中的应用信息页面。
+  Future<AdbResult> openAppInfo(String deviceId, String packageName) {
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'android.settings.APPLICATION_DETAILS_SETTINGS',
+      '-d',
+      'package:$packageName',
+    ]);
+  }
+
   /// 强停目标应用进程，但不清除应用数据。
   Future<AdbResult> forceStop(String deviceId, String packageName) {
     return _adb.shellArgs(deviceId, ['am', 'force-stop', packageName]);

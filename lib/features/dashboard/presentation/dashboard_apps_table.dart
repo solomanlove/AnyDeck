@@ -140,11 +140,6 @@ class _PackageTableHeader extends StatelessWidget {
             label: context.l10n.t('appType'),
             style: style,
           ),
-          _PackageHeaderCell(
-            width: widths.actions,
-            label: context.l10n.t('actions'),
-            style: style,
-          ),
         ],
       ),
     );
@@ -236,12 +231,6 @@ class _PackageTableRow extends ConsumerWidget {
             _PackageCell(
               width: widths.type,
               child: _AppTypeChip(package: package),
-            ),
-            _PackageCell(
-              width: widths.actions,
-              child: selected
-                  ? _PackageActions(deviceId: deviceId, package: package)
-                  : const SizedBox.shrink(),
             ),
           ],
         ),
@@ -416,4 +405,4 @@ String _targetMaxSdkLabel(AdbPackage package) {
   return max == '-' ? target : '$target / $max';
 }
 
-/// 当前选中应用行的内联操作按钮。
+/// 当前选中应用的操作按钮。

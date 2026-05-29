@@ -10,7 +10,6 @@ class _PackageTableWidths {
     required this.storage,
     required this.status,
     required this.type,
-    required this.actions,
   });
 
   factory _PackageTableWidths.adaptive({
@@ -77,8 +76,6 @@ class _PackageTableWidths {
         ),
       ),
     ).clamp(128.0, 164.0);
-    const actions = 274.0;
-
     final base = _PackageTableWidths(
       appName: appName + _PackageCell.horizontalPadding + 38,
       packageName: packageName + _PackageCell.horizontalPadding,
@@ -88,7 +85,6 @@ class _PackageTableWidths {
       storage: storage + _PackageCell.horizontalPadding,
       status: status + _PackageCell.horizontalPadding,
       type: type + _PackageCell.horizontalPadding,
-      actions: actions,
     );
 
     if (base.total > viewportWidth) {
@@ -117,7 +113,6 @@ class _PackageTableWidths {
   final double storage;
   final double status;
   final double type;
-  final double actions;
 
   double get total =>
       appName +
@@ -127,8 +122,7 @@ class _PackageTableWidths {
       targetSdk +
       storage +
       status +
-      type +
-      actions;
+      type;
 
   _PackageTableWidths copyWith({double? appName, double? packageName}) {
     return _PackageTableWidths(
@@ -140,7 +134,6 @@ class _PackageTableWidths {
       storage: storage,
       status: status,
       type: type,
-      actions: actions,
     );
   }
 }
