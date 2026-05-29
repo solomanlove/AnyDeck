@@ -10,6 +10,7 @@ class LayoutToolbar extends StatelessWidget {
     required this.canSave,
     required this.showProperties,
     required this.showBorders,
+    required this.enableClickSelect,
     required this.resolutionText,
     required this.onRefresh,
     required this.onSave,
@@ -24,12 +25,14 @@ class LayoutToolbar extends StatelessWidget {
     required this.onZoom1To1,
     required this.onZoomReset,
     required this.onShowBordersChanged,
+    required this.onEnableClickSelectChanged,
   });
 
   final bool hasLayout;
   final bool canSave;
   final bool showProperties;
   final bool showBorders;
+  final bool enableClickSelect;
   final String? resolutionText;
   final VoidCallback onRefresh;
   final VoidCallback onSave;
@@ -44,6 +47,7 @@ class LayoutToolbar extends StatelessWidget {
   final VoidCallback onZoom1To1;
   final VoidCallback onZoomReset;
   final ValueChanged<bool?> onShowBordersChanged;
+  final ValueChanged<bool?>? onEnableClickSelectChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +160,12 @@ class LayoutToolbar extends StatelessWidget {
             value: showBorders,
             onChanged: onShowBordersChanged,
           ),
+          const SizedBox(width: 8),
+          _ToolbarCheckbox(
+            label: context.l10n.t('clickToSelect'),
+            value: enableClickSelect,
+            onChanged: showBorders ? onEnableClickSelectChanged : null,
+          ),
           const Spacer(),
           if (resolutionText != null)
             Padding(
@@ -211,7 +221,7 @@ class _ToolbarCheckbox extends StatelessWidget {
 
   final String label;
   final bool value;
-  final ValueChanged<bool?> onChanged;
+  final ValueChanged<bool?>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -227,10 +237,10 @@ class _ToolbarCheckbox extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Color(0xff5f6368),
+            color: onChanged != null ? const Color(0xff5f6368) : Colors.grey[400],
           ),
         ),
       ],

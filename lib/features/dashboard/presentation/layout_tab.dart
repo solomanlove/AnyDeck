@@ -38,6 +38,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
   Uint8List? _rawScreenshotBytes;
   bool _showProperties = true;
   bool _showBorders = false;
+  bool _enableClickSelect = false;
   int _rotationAngle = 0;
   final Set<LayoutNode> _expandedNodes = {};
   final TransformationController _transformationController =
@@ -189,11 +190,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
     final node = _selectedNode ?? _rootNode;
     if (node == null) return;
 
-    final buffer = StringBuffer();
-    _buildNodeXmlString(node, buffer, 0);
-    final xmlText = buffer.toString();
-
-    Clipboard.setData(ClipboardData(text: xmlText));
+    Clipboard.setData(ClipboardData(text: node.toXmlString()));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(context.l10n.t('copySuccess')),
@@ -203,23 +200,6 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
         width: 300,
       ),
     );
-  }
-
-  void _buildNodeXmlString(LayoutNode node, StringBuffer buffer, int depth) {
-    final indent = '  ' * depth;
-    buffer.write('$indent<node');
-    node.attributes.forEach((key, val) {
-      buffer.write(' $key="${val.replaceAll('"', '&quot;')}"');
-    });
-    if (node.children.isEmpty) {
-      buffer.writeln(' />');
-    } else {
-      buffer.writeln('>');
-      for (final child in node.children) {
-        _buildNodeXmlString(child, buffer, depth + 1);
-      }
-      buffer.writeln('$indent</node>');
-    }
   }
 
   Future<void> _saveLayoutAndScreenshot() async {
@@ -396,6 +376,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
           canSave: _rawScreenshotBytes != null,
           showProperties: _showProperties,
           showBorders: _showBorders,
+          enableClickSelect: _enableClickSelect,
           resolutionText: _decodedImage == null
               ? null
               : '${_decodedImage!.width}x${_decodedImage!.height}',
@@ -428,6 +409,14 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
           onShowBordersChanged: (val) {
             setState(() {
               _showBorders = val ?? false;
+              if (!_showBorders) {
+                _enableClickSelect = false;
+              }
+            });
+          },
+          onEnableClickSelectChanged: (val) {
+            setState(() {
+              _enableClickSelect = val ?? false;
             });
           },
         ),
@@ -477,6 +466,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
                   onViewportSizeChanged: (size) {
                     _lastViewportSize = size;
                   },
+                  enableClickSelect: _enableClickSelect,
                 ),
               ),
               if (_showProperties) ...[

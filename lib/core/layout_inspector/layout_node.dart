@@ -40,6 +40,29 @@ class LayoutNode {
     final bottom = double.tryParse(match.group(4)!) ?? 0;
     return Rect.fromLTRB(left, top, right, bottom);
   }
+
+  String toXmlString() {
+    final buffer = StringBuffer();
+    _buildXmlString(buffer, 0);
+    return buffer.toString();
+  }
+
+  void _buildXmlString(StringBuffer buffer, int depth) {
+    final indent = '  ' * depth;
+    buffer.write('$indent<node');
+    attributes.forEach((key, val) {
+      buffer.write(' $key="${val.replaceAll('"', '&quot;')}"');
+    });
+    if (children.isEmpty) {
+      buffer.writeln(' />');
+    } else {
+      buffer.writeln('>');
+      for (final child in children) {
+        child._buildXmlString(buffer, depth + 1);
+      }
+      buffer.writeln('$indent</node>');
+    }
+  }
 }
 
 /// 解析 `uiautomator dump` XML 字符串为 LayoutNode 树。

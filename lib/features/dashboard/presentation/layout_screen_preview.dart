@@ -15,6 +15,7 @@ class LayoutScreenPreview extends StatefulWidget {
   final ValueChanged<LayoutNode?> onNodeSelected;
   final ValueChanged<LayoutNode?> onNodeHovered;
   final ValueChanged<Size> onViewportSizeChanged;
+  final bool enableClickSelect;
 
   const LayoutScreenPreview({
     super.key,
@@ -28,6 +29,7 @@ class LayoutScreenPreview extends StatefulWidget {
     required this.onNodeSelected,
     required this.onNodeHovered,
     required this.onViewportSizeChanged,
+    required this.enableClickSelect,
   });
 
   @override
@@ -155,8 +157,9 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
               width: rotatedW,
               height: rotatedH,
               child: MouseRegion(
-                cursor: SystemMouseCursors.click,
+                cursor: widget.enableClickSelect ? SystemMouseCursors.click : MouseCursor.defer,
                 onHover: (event) {
+                  if (!widget.enableClickSelect) return;
                   final RenderBox viewportBox =
                       context.findRenderObject() as RenderBox;
                   final viewportPoint = viewportBox.globalToLocal(
@@ -169,10 +172,12 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
                   widget.onNodeHovered(node);
                 },
                 onExit: (_) {
+                  if (!widget.enableClickSelect) return;
                   widget.onNodeHovered(null);
                 },
                 child: GestureDetector(
                   onTapDown: (details) {
+                    if (!widget.enableClickSelect) return;
                     final RenderBox viewportBox =
                         context.findRenderObject() as RenderBox;
                     final viewportPoint = viewportBox.globalToLocal(
