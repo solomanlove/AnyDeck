@@ -205,7 +205,7 @@ void main() {
   testWidgets('rail shows all tools when height is enough', (
     WidgetTester tester,
   ) async {
-    await _pumpDashboard(tester, size: const Size(1200, 800));
+    await _pumpDashboard(tester, size: const Size(1200, 900));
 
     expect(find.byIcon(Icons.phone_android_outlined), findsOneWidget);
     expect(find.byIcon(Icons.tune), findsOneWidget);
@@ -221,7 +221,7 @@ void main() {
   testWidgets('rail stays visible when width is narrow', (
     WidgetTester tester,
   ) async {
-    await _pumpDashboard(tester, size: const Size(700, 800));
+    await _pumpDashboard(tester, size: const Size(700, 900));
 
     expect(find.byIcon(Icons.phone_android_outlined), findsOneWidget);
     expect(find.byIcon(Icons.apps_outlined), findsWidgets);

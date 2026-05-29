@@ -31,6 +31,14 @@ class _PackageActions extends ConsumerWidget {
           ),
           const SizedBox(width: 2),
           IconButton(
+            tooltip: context.l10n.t('permissions'),
+            icon: const Icon(Icons.security),
+            onPressed: () {
+              _showAppPermissionsDialog(context, ref, deviceId, package);
+            },
+          ),
+          const SizedBox(width: 2),
+          IconButton(
             tooltip: context.l10n.t('openSystemAppInfo'),
             icon: const Icon(Icons.app_settings_alt_outlined),
             onPressed: () => _runAdbAction(

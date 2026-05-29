@@ -7,6 +7,7 @@ import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import '../apps/adb_package.dart';
 import '../apps/app_management_service.dart';
+import '../apps/app_permission_service.dart';
 import '../device_actions/device_action_service.dart';
 import '../device_info/device_info_service.dart';
 import '../device_info/device_overview.dart';
@@ -38,6 +39,11 @@ final deviceActionServiceProvider = Provider<DeviceActionService>((ref) {
 /// 应用管理门面，负责安装、卸载、启动和列表读取。
 final appManagementServiceProvider = Provider<AppManagementService>((ref) {
   return AppManagementService(ref.watch(adbServiceProvider));
+});
+
+/// 应用权限管理门面，负责查询、授予和撤销应用权限。
+final appPermissionServiceProvider = Provider<AppPermissionService>((ref) {
+  return AppPermissionService(ref.watch(adbServiceProvider));
 });
 
 /// 远程文件管理门面，负责 adb push/pull 和目录列表。
