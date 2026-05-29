@@ -5,6 +5,7 @@ import 'package:adb_manage/core/apps/adb_package.dart';
 import 'package:adb_manage/core/device_info/device_overview.dart';
 import 'package:adb_manage/core/emulator/android_emulator.dart';
 import 'package:adb_manage/core/providers/app_providers.dart';
+import 'package:adb_manage/core/process/process_service.dart';
 import 'package:adb_manage/core/web_debug/webpage_target.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,14 @@ const _mockDevice = AdbDevice(
   transportId: '1',
 );
 
+const _offlineMockDevice = AdbDevice(
+  id: 'mock_serial_123',
+  status: 'offline',
+  model: 'Redmi K40',
+  product: 'alioth',
+  transportId: '1',
+);
+
 final _mockRegisteredDevice = RegisteredDevice(
   id: _mockDevice.id,
   status: _mockDevice.status,
@@ -26,6 +35,16 @@ final _mockRegisteredDevice = RegisteredDevice(
   transportId: _mockDevice.transportId,
   isOnline: true,
   serial: _mockDevice.id,
+);
+
+final _offlineMockRegisteredDevice = RegisteredDevice(
+  id: _offlineMockDevice.id,
+  status: _offlineMockDevice.status,
+  model: _offlineMockDevice.model,
+  product: _offlineMockDevice.product,
+  transportId: _offlineMockDevice.transportId,
+  isOnline: false,
+  serial: _offlineMockDevice.id,
 );
 
 const _mockOverview = DeviceOverview(
@@ -55,9 +74,24 @@ class _FixedSelectedDeviceNotifier extends SelectedDeviceNotifier {
   AdbDevice? build() => _mockDevice;
 }
 
+class _OfflineSelectedDeviceNotifier extends SelectedDeviceNotifier {
+  @override
+  AdbDevice? build() => _offlineMockDevice;
+}
+
+class _StaleSelectedDeviceNotifier extends SelectedDeviceNotifier {
+  @override
+  AdbDevice? build() => _offlineMockDevice;
+}
+
 class _FixedDeviceRegistryNotifier extends DeviceRegistryNotifier {
   @override
   List<RegisteredDevice> build() => [_mockRegisteredDevice];
+}
+
+class _OfflineDeviceRegistryNotifier extends DeviceRegistryNotifier {
+  @override
+  List<RegisteredDevice> build() => [_offlineMockRegisteredDevice];
 }
 
 class _FixedToolTabNotifier extends ToolTabNotifier {
@@ -251,5 +285,87 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.phone_android_outlined), findsWidgets);
+  });
+
+  testWidgets('selected device status follows registry refresh', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    SharedPreferences.setMockInitialValues({});
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+          deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
+          selectedDeviceProvider.overrideWith(_StaleSelectedDeviceNotifier.new),
+          selectedToolTabProvider.overrideWith(() => _FixedToolTabNotifier(0)),
+          deviceOverviewProvider(
+            _mockDevice.id,
+          ).overrideWith((ref) => Stream.value(_mockOverview)),
+          emulatorListProvider.overrideWith(
+            (ref) => Future.value(<AndroidEmulator>[]),
+          ),
+          runningEmulatorsProvider.overrideWith(
+            (ref) => Future.value(<String, String>{}),
+          ),
+        ],
+        child: const AdbManageApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('device'), findsOneWidget);
+    expect(find.text('offline'), findsNothing);
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+  });
+
+  testWidgets('processes tab hides refresh ui when device is offline', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    SharedPreferences.setMockInitialValues({});
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+          deviceRegistryProvider.overrideWith(
+            _OfflineDeviceRegistryNotifier.new,
+          ),
+          selectedDeviceProvider.overrideWith(
+            _OfflineSelectedDeviceNotifier.new,
+          ),
+          selectedToolTabProvider.overrideWith(() => _FixedToolTabNotifier(6)),
+          processesProvider(
+            _offlineMockDevice.id,
+          ).overrideWith((ref) => Future.value(<AdbProcess>[])),
+          emulatorListProvider.overrideWith(
+            (ref) => Future.value(<AndroidEmulator>[]),
+          ),
+          runningEmulatorsProvider.overrideWith(
+            (ref) => Future.value(<String, String>{}),
+          ),
+        ],
+        child: const AdbManageApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('手机离线，无法读取进程列表'), findsOneWidget);
+    expect(find.byIcon(Icons.refresh), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 }

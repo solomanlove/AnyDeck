@@ -43,6 +43,27 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
   }
 
   @override
+  void didUpdateWidget(covariant ProcessesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!widget.device.isOnline) {
+      _stopRefreshTimer();
+      if (_refreshing || _selectedPid != null || _selectedProcess != null) {
+        setState(() {
+          _refreshing = false;
+          _selectedPid = null;
+          _selectedProcess = null;
+        });
+      }
+      return;
+    }
+
+    if (!oldWidget.device.isOnline || oldWidget.device.id != widget.device.id) {
+      _startRefreshTimer();
+    }
+  }
+
+  @override
   void dispose() {
     _stopRefreshTimer();
     _filterController.dispose();
@@ -51,9 +72,9 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
-    if (_autoRefresh) {
+    if (_autoRefresh && widget.device.isOnline) {
       _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-        if (mounted && !_refreshing) {
+        if (mounted && !_refreshing && widget.device.isOnline) {
           _refreshProcesses(silent: true);
         }
       });
@@ -77,6 +98,12 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
   }
 
   Future<void> _refreshProcesses({bool silent = false}) async {
+    if (!widget.device.isOnline) {
+      if (mounted && _refreshing) {
+        setState(() => _refreshing = false);
+      }
+      return;
+    }
     if (_refreshing) return;
     if (!silent) {
       setState(() => _refreshing = true);

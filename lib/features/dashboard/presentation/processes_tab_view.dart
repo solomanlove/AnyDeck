@@ -3,6 +3,19 @@ part of 'processes_tab.dart';
 /// 进程管理页的主布局，和进程筛选/排序状态分离维护。
 extension _ProcessesTabView on _ProcessesTabState {
   Widget _buildProcessesTab(BuildContext context) {
+    if (!widget.device.isOnline) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.link_off, size: 48, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('手机离线，无法读取进程列表'),
+          ],
+        ),
+      );
+    }
+
     final processesAsync = ref.watch(processesProvider(widget.device.id));
     final packagesAsync = ref.watch(packagesProvider(widget.device.id));
 

@@ -92,6 +92,7 @@ class DashboardScreen extends ConsumerWidget {
       }
     }
 
+    var effectiveSelectedDevice = selectedDevice;
     String appBarTitle = context.l10n.t('appTitle');
     if (selectedDevice != null) {
       final matchedDevice = registeredDevices.firstWhere(
@@ -106,22 +107,44 @@ class DashboardScreen extends ConsumerWidget {
           serial: selectedDevice.id,
         ),
       );
+      effectiveSelectedDevice = matchedDevice.toAdbDevice;
       appBarTitle = matchedDevice.displayName;
+
+      if (_hasDeviceSnapshotChanged(selectedDevice, effectiveSelectedDevice)) {
+        final syncedDevice = effectiveSelectedDevice!;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final current = ref.read(selectedDeviceProvider);
+          if (current != null &&
+              current.id == syncedDevice.id &&
+              _hasDeviceSnapshotChanged(current, syncedDevice)) {
+            ref.read(selectedDeviceProvider.notifier).select(syncedDevice);
+          }
+        });
+      }
     }
 
     final workspace = _WorkspacePanel(
-      selectedDevice: selectedDevice,
+      selectedDevice: effectiveSelectedDevice,
       sessions: sessions,
     );
 
     return Scaffold(
       body: _WechatStyleShell(
         title: appBarTitle,
-        selectedDevice: selectedDevice,
+        selectedDevice: effectiveSelectedDevice,
         child: selectedDevice == null
             ? const _DashboardHomeContent()
             : workspace,
       ),
     );
+  }
+
+  bool _hasDeviceSnapshotChanged(AdbDevice left, AdbDevice? right) {
+    return right == null ||
+        left.id != right.id ||
+        left.status != right.status ||
+        left.model != right.model ||
+        left.product != right.product ||
+        left.transportId != right.transportId;
   }
 }
