@@ -58,6 +58,27 @@ class AppPermissionService {
     return _adb.shellArgs(deviceId, ['pm', 'revoke', packageName, permission]);
   }
 
+  /// 一键撤销所有已授权的运行时权限，恢复至应用刚安装时的权限状态。
+  /// 返回成功撤销的权限数量。
+  Future<int> revokeAllRuntimePermissions(
+    String deviceId,
+    String packageName,
+  ) async {
+    final permissions = await getPermissions(deviceId, packageName);
+    final grantedRuntime = permissions
+        .where((p) => p.isRuntime && p.granted)
+        .toList();
+
+    var count = 0;
+    for (final perm in grantedRuntime) {
+      final result = await revokePermission(deviceId, packageName, perm.name);
+      if (result.isSuccess) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   /// 解析 dumpsys package 的输出，提取权限列表及状态。
   List<AdbAppPermission> _parsePermissions(String output, int currentUserId) {
     final permissionsMap = <String, AdbAppPermission>{};

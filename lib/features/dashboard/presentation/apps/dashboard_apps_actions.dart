@@ -39,6 +39,46 @@ class _PackageActions extends ConsumerWidget {
           ),
           const SizedBox(width: 2),
           IconButton(
+            tooltip: context.l10n.t('revokeAllPermissions'),
+            icon: const Icon(Icons.lock_open),
+            onPressed: () async {
+              final confirmed = await _confirm(
+                context,
+                context.l10n
+                    .t('revokeAllPermissionsConfirm')
+                    .replaceAll('{package}', packageName),
+              );
+              if (!confirmed || !context.mounted) return;
+
+              final permissionService = ref.read(appPermissionServiceProvider);
+              _showSnack(context, context.l10n.t('revokingAll'));
+
+              final count =
+                  await permissionService.revokeAllRuntimePermissions(
+                    deviceId,
+                    packageName,
+                  );
+
+              if (!context.mounted) return;
+
+              if (count > 0) {
+                _showSnack(
+                  context,
+                  context.l10n
+                      .t('revokeAllPermissionsSuccess')
+                      .replaceAll('{count}', count.toString()),
+                );
+              } else {
+                _showSnack(
+                  context,
+                  context.l10n.t('revokeAllPermissionsNone'),
+                  isError: true,
+                );
+              }
+            },
+          ),
+          const SizedBox(width: 2),
+          IconButton(
             tooltip: context.l10n.t('openSystemAppInfo'),
             icon: const Icon(Icons.app_settings_alt_outlined),
             onPressed: () => _runAdbAction(
