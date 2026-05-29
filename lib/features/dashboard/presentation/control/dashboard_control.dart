@@ -45,6 +45,8 @@ class _ControlTabState extends ConsumerState<_ControlTab> {
         _DeeplinkPanel(device: widget.device),
         const SizedBox(height: 16),
         _LayoutHelperPanel(device: widget.device),
+        const SizedBox(height: 16),
+        _SystemSettingsPanel(device: widget.device),
       ],
     );
   }
@@ -424,6 +426,370 @@ class _DeeplinkPanel extends ConsumerWidget {
       ref
           .read(deviceActionServiceProvider)
           .openCustomDeeplink(deviceId, url.trim()),
+    );
+  }
+}
+
+class _SystemSettingsPanel extends ConsumerStatefulWidget {
+  const _SystemSettingsPanel({required this.device});
+
+  final AdbDevice device;
+
+  @override
+  ConsumerState<_SystemSettingsPanel> createState() => _SystemSettingsPanelState();
+}
+
+class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
+  final TextEditingController _dpiController = TextEditingController();
+  double? _tempFontScale;
+
+  @override
+  void dispose() {
+    _dpiController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SystemSettingsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.device.id != oldWidget.device.id) {
+      _tempFontScale = null;
+      _dpiController.clear();
+    }
+  }
+
+  int? _parseDpi(String resolutionText) {
+    final match = RegExp(r'\((\d+)dpi\)').firstMatch(resolutionText);
+    if (match != null) {
+      return int.tryParse(match.group(1)!);
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final overviewAsync = widget.device.isOnline
+        ? ref.watch(deviceOverviewProvider(widget.device.id))
+        : const AsyncValue<DeviceOverview>.loading();
+
+    return overviewAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (err, stack) => const SizedBox.shrink(),
+      data: (overview) {
+        // 解析并更新 DPI
+        final currentDpi = _parseDpi(overview.resolution);
+        if (currentDpi != null &&
+            _dpiController.text != currentDpi.toString() &&
+            !FocusScope.of(context).hasFocus) {
+          _dpiController.text = currentDpi.toString();
+        }
+
+        // 解析字体缩放值
+        final double fontScaleNum = _tempFontScale ??
+            (double.tryParse(overview.fontScale.replaceAll('x', '')) ?? 1.0);
+
+        final actions = ref.read(deviceActionServiceProvider);
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.t('systemSettings'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 16),
+
+                // 1. 字体缩放 (Font Scale)
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 150,
+                      child: Text(
+                        '${context.l10n.t('fontScaleLabel')}: ${fontScaleNum.toStringAsFixed(2)}x',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Expanded(
+                      child: Slider(
+                        value: fontScaleNum.clamp(0.85, 1.30),
+                        min: 0.85,
+                        max: 1.30,
+                        divisions: 9,
+                        label: '${fontScaleNum.toStringAsFixed(2)}x',
+                        onChanged: (val) {
+                          setState(() {
+                            _tempFontScale = val;
+                          });
+                        },
+                        onChangeEnd: (val) async {
+                          await _runAdbAction(
+                            context,
+                            ref,
+                            actions.setFontScale(widget.device.id, val),
+                          );
+                          setState(() {
+                            _tempFontScale = null;
+                          });
+                          ref.invalidate(deviceOverviewProvider(widget.device.id));
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24, thickness: 0.5),
+
+                // 2. 显示大小 (DPI)
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 150,
+                      child: Text(
+                        context.l10n.t('displayDensityLabel'),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.remove),
+                      onPressed: currentDpi == null
+                          ? null
+                          : () async {
+                              final target = currentDpi - 10;
+                              if (target > 80) {
+                                await _runAdbAction(
+                                  context,
+                                  ref,
+                                  actions.setDisplayDensity(widget.device.id, target),
+                                );
+                                ref.invalidate(deviceOverviewProvider(widget.device.id));
+                              }
+                            },
+                    ),
+                    SizedBox(
+                      width: 70,
+                      child: TextField(
+                        controller: _dpiController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          border: OutlineInputBorder(),
+                        ),
+                        onSubmitted: (val) async {
+                          final numVal = int.tryParse(val);
+                          if (numVal != null && numVal >= 80 && numVal <= 1000) {
+                            await _runAdbAction(
+                              context,
+                              ref,
+                              actions.setDisplayDensity(widget.device.id, numVal),
+                            );
+                            ref.invalidate(deviceOverviewProvider(widget.device.id));
+                          }
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: currentDpi == null
+                          ? null
+                          : () async {
+                              final target = currentDpi + 10;
+                              if (target < 1000) {
+                                await _runAdbAction(
+                                  context,
+                                  ref,
+                                  actions.setDisplayDensity(widget.device.id, target),
+                                );
+                                ref.invalidate(deviceOverviewProvider(widget.device.id));
+                              }
+                            },
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: () async {
+                        final numVal = int.tryParse(_dpiController.text);
+                        if (numVal != null && numVal >= 80 && numVal <= 1000) {
+                          await _runAdbAction(
+                            context,
+                            ref,
+                            actions.setDisplayDensity(widget.device.id, numVal),
+                          );
+                          ref.invalidate(deviceOverviewProvider(widget.device.id));
+                        }
+                      },
+                      child: Text(context.l10n.t('send')),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: () async {
+                        await _runAdbAction(
+                          context,
+                          ref,
+                          actions.resetDisplayDensity(widget.device.id),
+                        );
+                        ref.invalidate(deviceOverviewProvider(widget.device.id));
+                      },
+                      child: Text(context.l10n.t('displayDensityReset')),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24, thickness: 0.5),
+
+                // 3. 动画缩放 (Animation Scale)
+                Text(
+                  context.l10n.t('animationScaleLabel'),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 24,
+                  runSpacing: 12,
+                  children: [
+                    _buildAnimDropdown(
+                      context,
+                      label: context.l10n.t('windowAnimationScale'),
+                      currentVal: overview.windowAnimationScale,
+                      onChanged: (val) async {
+                        if (val != null) {
+                          await _runAdbAction(
+                            context,
+                            ref,
+                            actions.setWindowAnimationScale(widget.device.id, val),
+                          );
+                          ref.invalidate(deviceOverviewProvider(widget.device.id));
+                        }
+                      },
+                    ),
+                    _buildAnimDropdown(
+                      context,
+                      label: context.l10n.t('transitionAnimationScale'),
+                      currentVal: overview.transitionAnimationScale,
+                      onChanged: (val) async {
+                        if (val != null) {
+                          await _runAdbAction(
+                            context,
+                            ref,
+                            actions.setTransitionAnimationScale(widget.device.id, val),
+                          );
+                          ref.invalidate(deviceOverviewProvider(widget.device.id));
+                        }
+                      },
+                    ),
+                    _buildAnimDropdown(
+                      context,
+                      label: context.l10n.t('animatorDurationScale'),
+                      currentVal: overview.animatorDurationScale,
+                      onChanged: (val) async {
+                        if (val != null) {
+                          await _runAdbAction(
+                            context,
+                            ref,
+                            actions.setAnimatorDurationScale(widget.device.id, val),
+                          );
+                          ref.invalidate(deviceOverviewProvider(widget.device.id));
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    FilledButton.icon(
+                      icon: const Icon(Icons.flash_off),
+                      label: Text(context.l10n.t('disableAllAnimations')),
+                      onPressed: () async {
+                        await _runAdbAction(
+                          context,
+                          ref,
+                          Future.wait([
+                            actions.setWindowAnimationScale(widget.device.id, 0.0),
+                            actions.setTransitionAnimationScale(widget.device.id, 0.0),
+                            actions.setAnimatorDurationScale(widget.device.id, 0.0),
+                          ]).then(
+                            (results) => results.firstWhere(
+                              (r) => !r.isSuccess,
+                              orElse: () => results.first,
+                            ),
+                          ),
+                        );
+                        ref.invalidate(deviceOverviewProvider(widget.device.id));
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.refresh),
+                      label: Text(context.l10n.t('resetAllAnimations')),
+                      onPressed: () async {
+                        await _runAdbAction(
+                          context,
+                          ref,
+                          Future.wait([
+                            actions.setWindowAnimationScale(widget.device.id, 1.0),
+                            actions.setTransitionAnimationScale(widget.device.id, 1.0),
+                            actions.setAnimatorDurationScale(widget.device.id, 1.0),
+                          ]).then(
+                            (results) => results.firstWhere(
+                              (r) => !r.isSuccess,
+                              orElse: () => results.first,
+                            ),
+                          ),
+                        );
+                        ref.invalidate(deviceOverviewProvider(widget.device.id));
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAnimDropdown(
+    BuildContext context, {
+    required String label,
+    required String currentVal,
+    required ValueChanged<double?> onChanged,
+  }) {
+    final options = {
+      0.0: context.l10n.t('animationScaleOff'),
+      0.5: '0.5x',
+      1.0: context.l10n.t('animationScaleDefault'),
+      1.5: '1.5x',
+      2.0: '2.0x',
+      5.0: '5.0x',
+      10.0: '10.0x',
+    };
+
+    final double? parsedVal = double.tryParse(currentVal);
+    final effectiveVal = options.keys.firstWhere(
+      (k) => (k - (parsedVal ?? 1.0)).abs() < 0.01,
+      orElse: () => 1.0,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 4),
+        DropdownButton<double>(
+          value: effectiveVal,
+          onChanged: onChanged,
+          items: options.entries.map((entry) {
+            return DropdownMenuItem<double>(
+              value: entry.key,
+              child: Text(entry.value),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

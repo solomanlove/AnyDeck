@@ -60,6 +60,9 @@ class DeviceInfoService {
         _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'airplane_mode_on']),
         _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'mobile_data']),
         _adb.shellArgs(deviceId, ['settings', 'get', 'secure', 'enabled_accessibility_services']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'window_animation_scale']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'transition_animation_scale']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'animator_duration_scale']),
       ]);
 
       if (!results[0].isSuccess) {
@@ -83,6 +86,9 @@ class DeviceInfoService {
       final airplaneModeOnRaw = _clean(results[14].stdout);
       final mobileDataOnRaw = _clean(results[15].stdout);
       final accessibilityServicesRaw = results[16].stdout.trim();
+      final windowAnimRaw = _formatAnimScale(_clean(results[17].stdout));
+      final transitionAnimRaw = _formatAnimScale(_clean(results[18].stdout));
+      final animatorAnimRaw = _formatAnimScale(_clean(results[19].stdout));
 
       final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
       final deviceCode = _firstValue(properties, [
@@ -134,6 +140,9 @@ class DeviceInfoService {
         airplaneModeEnabled: airplaneModeOnRaw == '1',
         mobileDataEnabled: mobileDataOnRaw == '1',
         talkbackEnabled: accessibilityServicesRaw.contains('talkback'),
+        windowAnimationScale: windowAnimRaw,
+        transitionAnimationScale: transitionAnimRaw,
+        animatorDurationScale: animatorAnimRaw,
       );
 
       // 保存到本地缓存
@@ -281,6 +290,14 @@ class DeviceInfoService {
       return '-';
     }
     return density == '-' ? size : '$size (${density}dpi)';
+  }
+
+  String _formatAnimScale(String raw) {
+    final cleaned = raw.trim();
+    if (cleaned.isEmpty || cleaned == 'null' || cleaned == 'Setting not found') {
+      return '1.0';
+    }
+    return cleaned;
   }
 
   /// 将 Android 字体缩放格式化为 `x` 倍率。

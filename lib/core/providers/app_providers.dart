@@ -726,6 +726,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
                 airplaneModeEnabled: false,
                 mobileDataEnabled: false,
                 talkbackEnabled: false,
+                windowAnimationScale: '1.0',
+                transitionAnimationScale: '1.0',
+                animatorDurationScale: '1.0',
               );
             }
           } else {
@@ -752,6 +755,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               airplaneModeEnabled: false,
               mobileDataEnabled: false,
               talkbackEnabled: false,
+              windowAnimationScale: '1.0',
+              transitionAnimationScale: '1.0',
+              animatorDurationScale: '1.0',
             );
           }
           await prefs.setString(cacheKey, jsonEncode(overview.toJson()));

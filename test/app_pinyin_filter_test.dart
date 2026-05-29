@@ -85,6 +85,9 @@ void main() {
             airplaneModeEnabled: false,
             mobileDataEnabled: true,
             talkbackEnabled: false,
+            windowAnimationScale: '1.0',
+            transitionAnimationScale: '1.0',
+            animatorDurationScale: '1.0',
           ))),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),

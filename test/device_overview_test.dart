@@ -94,6 +94,9 @@ void main() {
         airplaneModeEnabled: false,
         mobileDataEnabled: true,
         talkbackEnabled: false,
+        windowAnimationScale: '1.0',
+        transitionAnimationScale: '1.0',
+        animatorDurationScale: '1.0',
       );
 
       final json = overview.toJson();
@@ -121,6 +124,9 @@ void main() {
       expect(decoded.airplaneModeEnabled, overview.airplaneModeEnabled);
       expect(decoded.mobileDataEnabled, overview.mobileDataEnabled);
       expect(decoded.talkbackEnabled, overview.talkbackEnabled);
+      expect(decoded.windowAnimationScale, overview.windowAnimationScale);
+      expect(decoded.transitionAnimationScale, overview.transitionAnimationScale);
+      expect(decoded.animatorDurationScale, overview.animatorDurationScale);
     });
   });
 

@@ -23,6 +23,9 @@ class DeviceOverview {
     required this.airplaneModeEnabled,
     required this.mobileDataEnabled,
     required this.talkbackEnabled,
+    required this.windowAnimationScale,
+    required this.transitionAnimationScale,
+    required this.animatorDurationScale,
   });
 
   final String name;
@@ -47,6 +50,9 @@ class DeviceOverview {
   final bool airplaneModeEnabled;
   final bool mobileDataEnabled;
   final bool talkbackEnabled;
+  final String windowAnimationScale;
+  final String transitionAnimationScale;
+  final String animatorDurationScale;
 
   Map<String, dynamic> toJson() {
     return {
@@ -72,6 +78,9 @@ class DeviceOverview {
       'airplaneModeEnabled': airplaneModeEnabled,
       'mobileDataEnabled': mobileDataEnabled,
       'talkbackEnabled': talkbackEnabled,
+      'windowAnimationScale': windowAnimationScale,
+      'transitionAnimationScale': transitionAnimationScale,
+      'animatorDurationScale': animatorDurationScale,
     };
   }
 
@@ -99,6 +108,9 @@ class DeviceOverview {
       airplaneModeEnabled: json['airplaneModeEnabled'] as bool? ?? false,
       mobileDataEnabled: json['mobileDataEnabled'] as bool? ?? false,
       talkbackEnabled: json['talkbackEnabled'] as bool? ?? false,
+      windowAnimationScale: json['windowAnimationScale'] as String? ?? '1.0',
+      transitionAnimationScale: json['transitionAnimationScale'] as String? ?? '1.0',
+      animatorDurationScale: json['animatorDurationScale'] as String? ?? '1.0',
     );
   }
 
@@ -125,6 +137,9 @@ class DeviceOverview {
     bool? airplaneModeEnabled,
     bool? mobileDataEnabled,
     bool? talkbackEnabled,
+    String? windowAnimationScale,
+    String? transitionAnimationScale,
+    String? animatorDurationScale,
   }) {
     return DeviceOverview(
       name: name ?? this.name,
@@ -149,6 +164,9 @@ class DeviceOverview {
       airplaneModeEnabled: airplaneModeEnabled ?? this.airplaneModeEnabled,
       mobileDataEnabled: mobileDataEnabled ?? this.mobileDataEnabled,
       talkbackEnabled: talkbackEnabled ?? this.talkbackEnabled,
+      windowAnimationScale: windowAnimationScale ?? this.windowAnimationScale,
+      transitionAnimationScale: transitionAnimationScale ?? this.transitionAnimationScale,
+      animatorDurationScale: animatorDurationScale ?? this.animatorDurationScale,
     );
   }
 }

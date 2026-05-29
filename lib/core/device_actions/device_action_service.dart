@@ -332,4 +332,66 @@ class DeviceActionService {
       '1599295570',
     ]);
   }
+
+  /// 设置系统字体缩放。
+  Future<AdbResult> setFontScale(String deviceId, double scale) {
+    return _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'system',
+      'font_scale',
+      scale.toString(),
+    ]);
+  }
+
+  /// 设置显示大小 (DPI)。
+  Future<AdbResult> setDisplayDensity(String deviceId, int density) {
+    return _adb.shellArgs(deviceId, [
+      'wm',
+      'density',
+      density.toString(),
+    ]);
+  }
+
+  /// 重置显示大小 (DPI) 为物理默认。
+  Future<AdbResult> resetDisplayDensity(String deviceId) {
+    return _adb.shellArgs(deviceId, [
+      'wm',
+      'density',
+      'reset',
+    ]);
+  }
+
+  /// 设置窗口动画缩放。
+  Future<AdbResult> setWindowAnimationScale(String deviceId, double scale) {
+    return _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'global',
+      'window_animation_scale',
+      scale.toString(),
+    ]);
+  }
+
+  /// 设置过渡动画缩放。
+  Future<AdbResult> setTransitionAnimationScale(String deviceId, double scale) {
+    return _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'global',
+      'transition_animation_scale',
+      scale.toString(),
+    ]);
+  }
+
+  /// 设置动画程序时长缩放。
+  Future<AdbResult> setAnimatorDurationScale(String deviceId, double scale) {
+    return _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'global',
+      'animator_duration_scale',
+      scale.toString(),
+    ]);
+  }
 }
