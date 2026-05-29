@@ -44,6 +44,9 @@ class _PackageTableState extends State<_PackageTable> {
           notificationPredicate: (notification) =>
               notification.metrics.axis == Axis.horizontal,
           child: SingleChildScrollView(
+            key: PageStorageKey<String>(
+              'apps-table-horizontal-${widget.deviceId}',
+            ),
             controller: _horizontalController,
             primary: false,
             scrollDirection: Axis.horizontal,
@@ -57,6 +60,9 @@ class _PackageTableState extends State<_PackageTable> {
                     child: Scrollbar(
                       controller: _verticalController,
                       child: ListView.builder(
+                        key: PageStorageKey<String>(
+                          'apps-table-vertical-${widget.deviceId}',
+                        ),
                         controller: _verticalController,
                         primary: false,
                         itemCount: widget.packages.length,

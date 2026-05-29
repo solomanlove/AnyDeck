@@ -41,8 +41,13 @@ class AppManagementService {
 
   /// 强制从手机读取已安装应用元数据，并写入本地缓存。
   Future<List<AdbPackage>> refreshPackages(String deviceId) async {
-    final packages = await _readPackagesFromDevice(deviceId);
+    final cachedPackages = await _loadPackageCache(deviceId);
+    final packages = _restoreCachedPresentationData(
+      await _readPackagesFromDevice(deviceId),
+      cachedPackages,
+    );
     await _savePackageCache(deviceId, packages);
+    unawaited(_refreshPackageIconCache(deviceId, packages));
     return packages;
   }
 
@@ -54,18 +59,26 @@ class AppManagementService {
         'packages',
         '-f',
         '-U',
+        '--user',
+        '0',
       ], timeout: _quickTimeout),
       _adb.shellArgs(deviceId, [
         'pm',
         'list',
         'packages',
         '-s',
+        '--user',
+        '0',
       ], timeout: _quickTimeout),
       _adb.shellArgs(deviceId, [
         'pm',
         'list',
         'packages',
+        '-f',
+        '-U',
         '-d',
+        '--user',
+        '0',
       ], timeout: _quickTimeout),
       _adb.shellArgs(deviceId, [
         'dumpsys',
@@ -81,12 +94,19 @@ class AppManagementService {
       throw Exception(packageListResult.message);
     }
 
-    final listedPackages = _parsePackageList(packageListResult.stdout);
+    final listedPackages = _mergeListedPackages(
+      _parsePackageList(packageListResult.stdout),
+      results[2].isSuccess
+          ? _parsePackageList(results[2].stdout)
+          : const <_ListedPackage>[],
+    );
     final systemPackages = results[1].isSuccess
         ? _parsePackageNames(results[1].stdout)
         : <String>{};
     final disabledPackages = results[2].isSuccess
-        ? _parsePackageNames(results[2].stdout)
+        ? _parsePackageList(
+            results[2].stdout,
+          ).map((package) => package.name).toSet()
         : <String>{};
     final dumpMetadata = results[3].isSuccess
         ? _parsePackageDump(results[3].stdout)
@@ -127,8 +147,36 @@ class AppManagementService {
           right.displayName.toLowerCase(),
         ),
       );
-    unawaited(_refreshPackageIconCache(deviceId, sortedPackages));
     return sortedPackages;
+  }
+
+  List<AdbPackage> _restoreCachedPresentationData(
+    List<AdbPackage> packages,
+    List<AdbPackage>? cachedPackages,
+  ) {
+    if (cachedPackages == null || cachedPackages.isEmpty) {
+      return packages;
+    }
+    final cachedByName = {
+      for (final package in cachedPackages) package.name: package,
+    };
+    return packages
+        .map((package) {
+          final cached = cachedByName[package.name];
+          if (cached == null) {
+            return package;
+          }
+          return package.copyWith(
+            label: cached.label,
+            iconLocalPath: cached.iconLocalPath,
+            iconRemotePath: cached.iconRemotePath,
+            signatureMd5: cached.signatureMd5,
+            firstInstallTime: cached.firstInstallTime,
+            lastUpdateTime: cached.lastUpdateTime,
+          );
+        })
+        .toList(growable: false)
+      ..sort(_comparePackages);
   }
 
   Future<void> _refreshPackageIconCache(
@@ -544,6 +592,20 @@ done | sort -u
         .where((line) => line.startsWith('package:'))
         .map(_parsePackageListLine)
         .toList(growable: false);
+  }
+
+  List<_ListedPackage> _mergeListedPackages(
+    List<_ListedPackage> primary,
+    List<_ListedPackage> secondary,
+  ) {
+    final merged = <String, _ListedPackage>{};
+    for (final package in primary) {
+      merged[package.name] = package;
+    }
+    for (final package in secondary) {
+      merged[package.name] = package;
+    }
+    return merged.values.toList(growable: false);
   }
 
   _ListedPackage _parsePackageListLine(String line) {
