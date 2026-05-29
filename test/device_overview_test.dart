@@ -91,6 +91,9 @@ void main() {
         wifiEnabled: true,
         ipAddress: '192.168.31.54',
         macAddress: '6c:f7:84:80:c9:33',
+        airplaneModeEnabled: false,
+        mobileDataEnabled: true,
+        talkbackEnabled: false,
       );
 
       final json = overview.toJson();
@@ -115,6 +118,9 @@ void main() {
       expect(decoded.wifiEnabled, overview.wifiEnabled);
       expect(decoded.ipAddress, overview.ipAddress);
       expect(decoded.macAddress, overview.macAddress);
+      expect(decoded.airplaneModeEnabled, overview.airplaneModeEnabled);
+      expect(decoded.mobileDataEnabled, overview.mobileDataEnabled);
+      expect(decoded.talkbackEnabled, overview.talkbackEnabled);
     });
   });
 

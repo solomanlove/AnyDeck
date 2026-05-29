@@ -57,6 +57,9 @@ class DeviceInfoService {
         _adb.shellArgs(deviceId, ['dumpsys', 'display']),
         _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'wifi_on']),
         _adb.shellArgs(deviceId, ['settings', 'get', 'secure', 'android_id']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'airplane_mode_on']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'mobile_data']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'secure', 'enabled_accessibility_services']),
       ]);
 
       if (!results[0].isSuccess) {
@@ -77,6 +80,9 @@ class DeviceInfoService {
       final displayDump = results[11].stdout;
       final wifiOnRaw = _clean(results[12].stdout);
       final androidIdRaw = _clean(results[13].stdout);
+      final airplaneModeOnRaw = _clean(results[14].stdout);
+      final mobileDataOnRaw = _clean(results[15].stdout);
+      final accessibilityServicesRaw = results[16].stdout.trim();
 
       final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
       final deviceCode = _firstValue(properties, [
@@ -125,6 +131,9 @@ class DeviceInfoService {
         wifiEnabled: wifiOnRaw == '1',
         ipAddress: _parseIpAddress(network),
         macAddress: _parseMacAddress(network),
+        airplaneModeEnabled: airplaneModeOnRaw == '1',
+        mobileDataEnabled: mobileDataOnRaw == '1',
+        talkbackEnabled: accessibilityServicesRaw.contains('talkback'),
       );
 
       // 保存到本地缓存

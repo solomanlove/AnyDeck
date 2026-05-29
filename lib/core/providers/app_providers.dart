@@ -703,6 +703,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
                 wifiEnabled: false,
                 ipAddress: '-',
                 macAddress: '-',
+                airplaneModeEnabled: false,
+                mobileDataEnabled: false,
+                talkbackEnabled: false,
               );
             }
           } else {
@@ -726,6 +729,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               wifiEnabled: false,
               ipAddress: '-',
               macAddress: '-',
+              airplaneModeEnabled: false,
+              mobileDataEnabled: false,
+              talkbackEnabled: false,
             );
           }
           await prefs.setString(cacheKey, jsonEncode(overview.toJson()));

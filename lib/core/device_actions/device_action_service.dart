@@ -79,6 +79,91 @@ class DeviceActionService {
     ]);
   }
 
+  /// 优先使用 cmd connectivity 开关离线模式（飞行模式），失败时回退到广播方式以保障最大兼容性。
+  Future<AdbResult> setAirplaneMode(String deviceId, bool enabled) async {
+    final result = await _adb.shellArgs(deviceId, [
+      'cmd',
+      'connectivity',
+      'airplane-mode',
+      enabled ? 'enable' : 'disable',
+    ]);
+    if (!result.isSuccess) {
+      final value = enabled ? '1' : '0';
+      await _adb.shellArgs(deviceId, [
+        'settings',
+        'put',
+        'global',
+        'airplane_mode_on',
+        value,
+      ]);
+      return _adb.shellArgs(deviceId, [
+        'am',
+        'broadcast',
+        '-a',
+        'android.intent.action.AIRPLANE_MODE',
+        '--ez',
+        'state',
+        enabled ? 'true' : 'false',
+      ]);
+    }
+    return result;
+  }
+
+  /// 安全地开关 TalkBack 辅助服务，同时保留其他启用的辅助服务。
+  Future<AdbResult> setTalkback(String deviceId, bool enabled) async {
+    final getRes = await _adb.shellArgs(deviceId, [
+      'settings',
+      'get',
+      'secure',
+      'enabled_accessibility_services',
+    ]);
+    String services = getRes.stdout.trim();
+    if (services == 'null' || services == 'Setting not found') {
+      services = '';
+    }
+    const talkbackService = 'com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService';
+    final serviceList = services
+        .split(':')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (enabled) {
+      if (!serviceList.contains(talkbackService)) {
+        serviceList.add(talkbackService);
+      }
+    } else {
+      serviceList.remove(talkbackService);
+      serviceList.removeWhere((s) => s.contains('talkback'));
+    }
+    final newServices = serviceList.join(':');
+
+    if (newServices.isEmpty) {
+      await _adb.shellArgs(deviceId, [
+        'settings',
+        'put',
+        'secure',
+        'enabled_accessibility_services',
+        '""',
+      ]);
+    } else {
+      await _adb.shellArgs(deviceId, [
+        'settings',
+        'put',
+        'secure',
+        'enabled_accessibility_services',
+        newServices,
+      ]);
+    }
+
+    return _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'secure',
+      'accessibility_enabled',
+      enabled ? '1' : '0',
+    ]);
+  }
+
   /// 向选中设备发送 Android key code。
   Future<AdbResult> keyEvent(String deviceId, int keyCode) {
     return _adb.shellArgs(deviceId, ['input', 'keyevent', keyCode.toString()]);

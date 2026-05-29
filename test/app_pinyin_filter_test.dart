@@ -6,6 +6,8 @@ import 'package:adb_manage/app/adb_manage_app.dart';
 import 'package:adb_manage/core/adb/adb_device.dart';
 import 'package:adb_manage/core/apps/adb_package.dart';
 import 'package:adb_manage/core/providers/app_providers.dart';
+import 'package:adb_manage/core/device_info/device_overview.dart';
+import 'package:adb_manage/core/emulator/android_emulator.dart';
 
 void main() {
   testWidgets('app list filters by pinyin (full pinyin and initials)', (
@@ -58,6 +60,38 @@ void main() {
           packagesProvider(
             mockDevice.id,
           ).overrideWith((ref) => Future.value(mockPackages)),
+          deviceOverviewProvider(
+            mockDevice.id,
+          ).overrideWith((ref) => Stream.value(const DeviceOverview(
+            name: 'Redmi K40',
+            brand: 'Redmi',
+            model: 'M2012K11AC',
+            serial: 'mock_serial_123',
+            androidId: 'abcdef1234567890',
+            androidVersion: 'Android 13 (API 33)',
+            kernelVersion: '4.19.157',
+            processor: 'alioth 6 cores (arm64-v8a)',
+            storage: '202.92G / 225.43G',
+            memory: '11.24G',
+            physicalResolution: '1080x2400 (440dpi)',
+            resolution: '1080x2400 (440dpi)',
+            logicalDensity: '2.75x (xxhdpi)',
+            refreshRate: '120 Hz',
+            fontScale: '1x',
+            wifi: 'jie',
+            wifiEnabled: true,
+            ipAddress: '192.168.31.54',
+            macAddress: '6c:f7:84:80:c9:33',
+            airplaneModeEnabled: false,
+            mobileDataEnabled: true,
+            talkbackEnabled: false,
+          ))),
+          emulatorListProvider.overrideWith(
+            (ref) => Future.value(<AndroidEmulator>[]),
+          ),
+          runningEmulatorsProvider.overrideWith(
+            (ref) => Future.value(<String, String>{}),
+          ),
         ],
         child: const AdbManageApp(),
       ),

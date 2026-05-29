@@ -20,6 +20,9 @@ class DeviceOverview {
     required this.wifiEnabled,
     required this.ipAddress,
     required this.macAddress,
+    required this.airplaneModeEnabled,
+    required this.mobileDataEnabled,
+    required this.talkbackEnabled,
   });
 
   final String name;
@@ -41,6 +44,9 @@ class DeviceOverview {
   final bool wifiEnabled;
   final String ipAddress;
   final String macAddress;
+  final bool airplaneModeEnabled;
+  final bool mobileDataEnabled;
+  final bool talkbackEnabled;
 
   Map<String, dynamic> toJson() {
     return {
@@ -63,6 +69,9 @@ class DeviceOverview {
       'wifiEnabled': wifiEnabled,
       'ipAddress': ipAddress,
       'macAddress': macAddress,
+      'airplaneModeEnabled': airplaneModeEnabled,
+      'mobileDataEnabled': mobileDataEnabled,
+      'talkbackEnabled': talkbackEnabled,
     };
   }
 
@@ -87,6 +96,9 @@ class DeviceOverview {
       wifiEnabled: json['wifiEnabled'] as bool? ?? false,
       ipAddress: json['ipAddress'] as String? ?? '-',
       macAddress: json['macAddress'] as String? ?? '-',
+      airplaneModeEnabled: json['airplaneModeEnabled'] as bool? ?? false,
+      mobileDataEnabled: json['mobileDataEnabled'] as bool? ?? false,
+      talkbackEnabled: json['talkbackEnabled'] as bool? ?? false,
     );
   }
 
@@ -110,6 +122,9 @@ class DeviceOverview {
     bool? wifiEnabled,
     String? ipAddress,
     String? macAddress,
+    bool? airplaneModeEnabled,
+    bool? mobileDataEnabled,
+    bool? talkbackEnabled,
   }) {
     return DeviceOverview(
       name: name ?? this.name,
@@ -131,6 +146,9 @@ class DeviceOverview {
       wifiEnabled: wifiEnabled ?? this.wifiEnabled,
       ipAddress: ipAddress ?? this.ipAddress,
       macAddress: macAddress ?? this.macAddress,
+      airplaneModeEnabled: airplaneModeEnabled ?? this.airplaneModeEnabled,
+      mobileDataEnabled: mobileDataEnabled ?? this.mobileDataEnabled,
+      talkbackEnabled: talkbackEnabled ?? this.talkbackEnabled,
     );
   }
 }

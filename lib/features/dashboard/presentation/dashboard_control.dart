@@ -65,6 +65,9 @@ class _QuickActionsPanel extends ConsumerWidget {
         ? ref.watch(deviceOverviewProvider(device.id))
         : const AsyncValue<DeviceOverview>.loading();
     final wifiEnabled = overviewAsync.value?.wifiEnabled ?? false;
+    final airplaneModeEnabled = overviewAsync.value?.airplaneModeEnabled ?? false;
+    final mobileDataEnabled = overviewAsync.value?.mobileDataEnabled ?? false;
+    final talkbackEnabled = overviewAsync.value?.talkbackEnabled ?? false;
 
     return _ActionCard(
       title: context.l10n.t('deviceActions'),
@@ -111,6 +114,42 @@ class _QuickActionsPanel extends ConsumerWidget {
           value: wifiEnabled,
           onToggle: (on) async {
             await _runAdbAction(context, ref, actions.setWifi(device.id, on));
+            if (device.isOnline) {
+              ref.invalidate(deviceOverviewProvider(device.id));
+            }
+          },
+        ),
+        _ToggleActionButton(
+          iconOn: Icons.airplanemode_active,
+          iconOff: Icons.airplanemode_inactive,
+          label: context.l10n.t('airplaneModeToggle'),
+          value: airplaneModeEnabled,
+          onToggle: (on) async {
+            await _runAdbAction(context, ref, actions.setAirplaneMode(device.id, on));
+            if (device.isOnline) {
+              ref.invalidate(deviceOverviewProvider(device.id));
+            }
+          },
+        ),
+        _ToggleActionButton(
+          iconOn: Icons.network_cell,
+          iconOff: Icons.signal_cellular_off,
+          label: context.l10n.t('mobileDataToggle'),
+          value: mobileDataEnabled,
+          onToggle: (on) async {
+            await _runAdbAction(context, ref, actions.setMobileData(device.id, on));
+            if (device.isOnline) {
+              ref.invalidate(deviceOverviewProvider(device.id));
+            }
+          },
+        ),
+        _ToggleActionButton(
+          iconOn: Icons.volume_up,
+          iconOff: Icons.volume_mute,
+          label: context.l10n.t('talkbackToggle'),
+          value: talkbackEnabled,
+          onToggle: (on) async {
+            await _runAdbAction(context, ref, actions.setTalkback(device.id, on));
             if (device.isOnline) {
               ref.invalidate(deviceOverviewProvider(device.id));
             }

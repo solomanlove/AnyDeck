@@ -67,6 +67,9 @@ const _mockOverview = DeviceOverview(
   wifiEnabled: true,
   ipAddress: '192.168.31.54',
   macAddress: '6c:f7:84:80:c9:33',
+  airplaneModeEnabled: false,
+  mobileDataEnabled: true,
+  talkbackEnabled: false,
 );
 
 class _FixedSelectedDeviceNotifier extends SelectedDeviceNotifier {
