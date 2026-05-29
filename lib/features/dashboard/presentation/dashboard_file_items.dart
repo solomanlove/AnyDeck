@@ -325,4 +325,135 @@ class _RemoteFileActions extends ConsumerWidget {
   }
 }
 
+int _compareFiles(RemoteFile left, RemoteFile right, String sortColumn, bool sortAscending) {
+  // 文件夹始终排在前面
+  if (left.isFolder != right.isFolder) {
+    return left.isFolder ? -1 : 1;
+  }
+
+  int cmp;
+  switch (sortColumn) {
+    case 'size':
+      final leftSize = left.size ?? 0;
+      final rightSize = right.size ?? 0;
+      cmp = leftSize.compareTo(rightSize);
+      break;
+    case 'date':
+      cmp = left.modifiedDate.compareTo(right.modifiedDate);
+      break;
+    case 'type':
+      cmp = left.type.index.compareTo(right.type.index);
+      break;
+    case 'permissions':
+      cmp = left.permissions.compareTo(right.permissions);
+      break;
+    case 'name':
+    default:
+      cmp = left.name.toLowerCase().compareTo(right.name.toLowerCase());
+      break;
+  }
+
+  return sortAscending ? cmp : -cmp;
+}
+
+class _FileSortMenuButton extends ConsumerWidget {
+  const _FileSortMenuButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final navState = ref.watch(fileNavigationProvider);
+    final notifier = ref.read(fileNavigationProvider.notifier);
+
+    final columns = {
+      'name': '名称',
+      'permissions': '权限',
+      'date': '修改日期',
+      'type': '类型',
+      'size': '大小',
+    };
+
+    return PopupMenuButton<String>(
+      tooltip: '排序',
+      icon: const Icon(Icons.sort, size: 20),
+      onSelected: (value) {
+        if (value == 'asc') {
+          notifier.setSort(navState.sortColumn, true);
+        } else if (value == 'desc') {
+          notifier.setSort(navState.sortColumn, false);
+        } else if (columns.containsKey(value)) {
+          notifier.setSort(value, navState.sortAscending);
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          enabled: false,
+          child: Text(
+            '排序字段',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ),
+        ...columns.entries.map((e) {
+          final isSelected = navState.sortColumn == e.key;
+          return PopupMenuItem<String>(
+            value: e.key,
+            child: Row(
+              children: [
+                Icon(
+                  isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                  size: 16,
+                  color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                ),
+                const SizedBox(width: 8),
+                Text(e.value),
+              ],
+            ),
+          );
+        }),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          enabled: false,
+          child: Text(
+            '排序顺序',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'asc',
+          child: Row(
+            children: [
+              Icon(
+                navState.sortAscending ? Icons.radio_button_checked : Icons.radio_button_off,
+                size: 16,
+                color: navState.sortAscending ? Theme.of(context).colorScheme.primary : null,
+              ),
+              const SizedBox(width: 8),
+              const Text('升序'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'desc',
+          child: Row(
+            children: [
+              Icon(
+                !navState.sortAscending ? Icons.radio_button_checked : Icons.radio_button_off,
+                size: 16,
+                color: !navState.sortAscending ? Theme.of(context).colorScheme.primary : null,
+              ),
+              const SizedBox(width: 8),
+              const Text('降序'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// 实时 logcat 查看器，支持启动/停止、清空和文本筛选。

@@ -288,6 +288,8 @@ class FileNavigationState {
     this.isEditingPath = false,
     this.showHiddenFiles = false,
     this.isGridView = false,
+    this.sortColumn = 'name',
+    this.sortAscending = true,
   });
 
   final String currentPath;
@@ -296,6 +298,8 @@ class FileNavigationState {
   final bool isEditingPath;
   final bool showHiddenFiles;
   final bool isGridView;
+  final String sortColumn;
+  final bool sortAscending;
 
   bool get canGoBack => historyIndex > 0;
   bool get canGoForward => historyIndex < history.length - 1;
@@ -307,6 +311,8 @@ class FileNavigationState {
     bool? isEditingPath,
     bool? showHiddenFiles,
     bool? isGridView,
+    String? sortColumn,
+    bool? sortAscending,
   }) {
     return FileNavigationState(
       currentPath: currentPath ?? this.currentPath,
@@ -315,6 +321,8 @@ class FileNavigationState {
       isEditingPath: isEditingPath ?? this.isEditingPath,
       showHiddenFiles: showHiddenFiles ?? this.showHiddenFiles,
       isGridView: isGridView ?? this.isGridView,
+      sortColumn: sortColumn ?? this.sortColumn,
+      sortAscending: sortAscending ?? this.sortAscending,
     );
   }
 }
@@ -391,6 +399,18 @@ class FileNavigationNotifier extends Notifier<FileNavigationState> {
 
   void setGridView(bool gridView) {
     state = state.copyWith(isGridView: gridView);
+  }
+
+  void toggleSort(String column) {
+    if (state.sortColumn == column) {
+      state = state.copyWith(sortAscending: !state.sortAscending);
+    } else {
+      state = state.copyWith(sortColumn: column, sortAscending: true);
+    }
+  }
+
+  void setSort(String column, bool ascending) {
+    state = state.copyWith(sortColumn: column, sortAscending: ascending);
   }
 
   String _normalize(String path) {

@@ -200,6 +200,7 @@ class _FilesTab extends ConsumerWidget {
                         .toggleShowHiddenFiles();
                   },
                 ),
+                const _FileSortMenuButton(),
                 const SizedBox(width: 8),
                 FilledButton.icon(
                   icon: const Icon(Icons.upload_file),
@@ -215,7 +216,7 @@ class _FilesTab extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             // Table Header (only visible in list view)
-            if (!navState.isGridView) _buildTableHeader(context),
+            if (!navState.isGridView) _buildTableHeader(context, ref),
             // Files List / Grid / Table Rows
             Expanded(
               child: filesAsync.when(
@@ -245,6 +246,10 @@ class _FilesTab extends ConsumerWidget {
                         )
                         .toList();
                   }
+
+                  // Client-side sorting
+                  filtered = List<RemoteFile>.from(filtered)
+                    ..sort((a, b) => _compareFiles(a, b, navState.sortColumn, navState.sortAscending));
 
                   if (filtered.isEmpty) {
                     return _PanelMessage(
@@ -376,13 +381,71 @@ class _FilesTab extends ConsumerWidget {
     return list;
   }
 
-  Widget _buildTableHeader(BuildContext context) {
+  Widget _buildTableHeader(BuildContext context, WidgetRef ref) {
+    final navState = ref.watch(fileNavigationProvider);
+    final notifier = ref.read(fileNavigationProvider.notifier);
+
     final textStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
       fontWeight: FontWeight.bold,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
+
+    Widget buildHeaderCell({
+      required String label,
+      required String column,
+      double? width,
+      int? flex,
+      bool alignRight = false,
+    }) {
+      final isSorted = navState.sortColumn == column;
+      final sortIcon = Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Icon(
+          isSorted
+              ? (navState.sortAscending ? Icons.expand_less : Icons.expand_more)
+              : Icons.unfold_more,
+          size: 14,
+          color: isSorted
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+        ),
+      );
+
+      final cellContent = Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          Flexible(
+            child: Text(
+              label,
+              style: textStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          sortIcon,
+        ],
+      );
+
+      final cell = InkWell(
+        onTap: () => notifier.toggleSort(column),
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: alignRight
+              ? Align(alignment: Alignment.centerRight, child: cellContent)
+              : cellContent,
+        ),
+      );
+
+      if (flex != null) {
+        return Expanded(flex: flex, child: cell);
+      }
+      return SizedBox(width: width, child: cell);
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.only(left: 8, right: 16, top: 8, bottom: 8),
       decoration: BoxDecoration(
         color: Theme.of(
           context,
@@ -396,14 +459,12 @@ class _FilesTab extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Expanded(flex: 4, child: Text('名称', style: textStyle)),
-          SizedBox(width: 120, child: Text('权限', style: textStyle)),
-          SizedBox(width: 180, child: Text('修改日期', style: textStyle)),
-          SizedBox(width: 80, child: Text('类型', style: textStyle)),
-          SizedBox(
-            width: 100,
-            child: Text('大小', style: textStyle, textAlign: TextAlign.right),
-          ),
+          const SizedBox(width: 8), // align with ListView padding
+          buildHeaderCell(label: '名称', column: 'name', flex: 4),
+          buildHeaderCell(label: '权限', column: 'permissions', width: 120),
+          buildHeaderCell(label: '修改日期', column: 'date', width: 180),
+          buildHeaderCell(label: '类型', column: 'type', width: 80),
+          buildHeaderCell(label: '大小', column: 'size', width: 100, alignRight: true),
           const SizedBox(width: 80), // spacer for inline actions
         ],
       ),
