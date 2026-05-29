@@ -23,6 +23,20 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
   final TransformationController _transformationController = TransformationController();
   Size _viewportSize = const Size(400, 800);
 
+  double get _fitScale {
+    if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0) return 1.0;
+    final rotatedW = (_rotation == 90 || _rotation == 270) ? _imgHeight : _imgWidth;
+    final rotatedH = (_rotation == 90 || _rotation == 270) ? _imgWidth : _imgHeight;
+    return min(
+      _viewportSize.width / rotatedW,
+      _viewportSize.height / rotatedH,
+    );
+  }
+
+  double get _minScale {
+    return min(max(0.01, _fitScale * 0.8), 1.0);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -106,7 +120,8 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
   void _zoom(double factor) {
     final currentMatrix = _transformationController.value;
     final currentScale = currentMatrix.getMaxScaleOnAxis();
-    if (currentScale * factor < 0.1 || currentScale * factor > 10.0) return;
+    final targetScale = currentScale * factor;
+    if (targetScale < _minScale || targetScale > 10.0) return;
 
     final center = Offset(_viewportSize.width / 2, _viewportSize.height / 2);
     final translation = currentMatrix.getTranslation();
@@ -415,10 +430,17 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
                       final rotatedW = (_rotation == 90 || _rotation == 270) ? _imgHeight.toDouble() : _imgWidth.toDouble();
                       final rotatedH = (_rotation == 90 || _rotation == 270) ? _imgWidth.toDouble() : _imgHeight.toDouble();
 
+                      final minScaleVal = _minScale;
+                      final marginX = max(400.0, (currentSize.width / minScaleVal - rotatedW) / 2);
+                      final marginY = max(400.0, (currentSize.height / minScaleVal - rotatedH) / 2);
+
                       return InteractiveViewer(
                         transformationController: _transformationController,
-                        boundaryMargin: const EdgeInsets.all(400.0),
-                        minScale: 0.05,
+                        boundaryMargin: EdgeInsets.symmetric(
+                          horizontal: marginX,
+                          vertical: marginY,
+                        ),
+                        minScale: minScaleVal,
                         maxScale: 10.0,
                         constrained: false,
                         child: SizedBox(

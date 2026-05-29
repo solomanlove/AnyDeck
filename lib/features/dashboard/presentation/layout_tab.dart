@@ -45,6 +45,22 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
       TransformationController();
   Size _lastViewportSize = const Size(400, 800);
 
+  double get _fitScale {
+    if (_decodedImage == null) return 1.0;
+    final imgW = _decodedImage!.width.toDouble();
+    final imgH = _decodedImage!.height.toDouble();
+    final rotatedW = (_rotationAngle == 90 || _rotationAngle == 270) ? imgH : imgW;
+    final rotatedH = (_rotationAngle == 90 || _rotationAngle == 270) ? imgW : imgH;
+    return min(
+      _lastViewportSize.width / rotatedW,
+      _lastViewportSize.height / rotatedH,
+    );
+  }
+
+  double get _minScale {
+    return min(max(0.01, _fitScale * 0.8), 1.0);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -250,7 +266,8 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
   void _zoom(double factor) {
     final currentMatrix = _transformationController.value;
     final currentScale = currentMatrix.getMaxScaleOnAxis();
-    if (currentScale * factor < 0.1 || currentScale * factor > 10.0) return;
+    final targetScale = currentScale * factor;
+    if (targetScale < _minScale || targetScale > 10.0) return;
 
     final center = Offset(
       _lastViewportSize.width / 2,

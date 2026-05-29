@@ -126,6 +126,16 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
             ? imageWidth
             : imageHeight;
 
+        final fitScale = min(
+          viewportWidth / rotatedW,
+          viewportHeight / rotatedH,
+        );
+
+        final minScaleVal = min(max(0.01, fitScale * 0.8), 1.0);
+
+        final marginX = max(400.0, (viewportWidth / minScaleVal - rotatedW) / 2);
+        final marginY = max(400.0, (viewportHeight / minScaleVal - rotatedH) / 2);
+
         // 根据当前的旋转角度，将视口局部坐标映射回设备的原生坐标
         Offset localToNative(Offset localPoint) {
           final cx = localPoint.dx - rotatedW / 2;
@@ -149,8 +159,11 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
           color: const Color(0xff181818),
           child: InteractiveViewer(
             transformationController: widget.transformationController,
-            boundaryMargin: const EdgeInsets.all(400.0),
-            minScale: 0.05,
+            boundaryMargin: EdgeInsets.symmetric(
+              horizontal: marginX,
+              vertical: marginY,
+            ),
+            minScale: minScaleVal,
             maxScale: 10.0,
             constrained: false,
             child: SizedBox(
