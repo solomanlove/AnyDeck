@@ -43,9 +43,24 @@ Flutter Desktop UI
 
 ## 更新日志
 
-### v0.11.0 — 2026-05-28（本次提交）
+### v0.12.0 — 2026-05-29（本次提交）
 
-本次提交重点重构 Layout Inspector 的核心能力，并补齐解析测试：
+本次提交重点重构主面板展现层目录，按照功能进行合理分包，以降低单目录文件膨胀程度：
+
+1. **Dashboard Presentation 结构重构**
+   - 根目录下原本堆积的 36 个 Dart 文件精简为 **1 个** 主入口文件 (`dashboard_screen.dart`)。
+   - 其余 35 个文件按照业务及功能特性，分别归类到 11 个子目录中：`apps/`、`control/`、`devices/`、`files/`、`layout/`、`logcat/`、`overview/`、`processes/`、`screenshot/`、`terminal/`、`webpages/` 和 `widgets/`。
+2. **Part / Part of 与 Import 链修复**
+   - 自动完成了 23 个 Part 文件的 `part of '../dashboard_screen.dart';` 路径指向升级。
+   - 修复了被移动的 8 个独立 Tab 文件的相对 `import` 路径前缀（例如将引用核心库及本地化的相对路径升级为 `../../../../`）。
+   - 主入口中对独立 Tab 文件的 `import` 路径同步添加了子包层级。
+3. **消除分析器警告 (Analyzer Warning)**
+   - 修复了主入口中 `effectiveSelectedDevice!` 的冗余非空断言（`unnecessary_non_null_assertion`）警告，使项目在 `flutter analyze` 静态分析中实现 **Zero Issues**。
+
+---
+
+### v0.11.0 — 2026-05-28
+
 
 1. **布局分析核心服务拆分**
    - 新增 `LayoutInspectorService`，集中负责执行 `uiautomator dump`、读取 XML、通过 `exec-out screencap -p` 抓取截图。
@@ -360,7 +375,19 @@ lib/
     web_debug/         # Web 与 WebView 调试服务
   features/
     dashboard/
-      presentation/    # 主界面、终端标签页等
+      presentation/    # 主界面展现层入口 (dashboard_screen.dart)
+        apps/          # 应用管理模块
+        control/       # 控制中心模块
+        devices/       # 设备发现、连接、配对与模拟器
+        files/         # 手机文件管理器
+        layout/        # 界面布局分析 (Layout Inspector)
+        logcat/        # Logcat 日志查看器
+        overview/      # 主界面外壳与概览页
+        processes/     # 进程管理器
+        screenshot/    # 屏幕截图与录制
+        terminal/      # 交互式终端 (ADB Shell)
+        webpages/      # 手机网页调试
+        widgets/       # 公共对话框与通用组件
 assets/
   brand/               # 应用 Logo 品牌资源
 tool/
