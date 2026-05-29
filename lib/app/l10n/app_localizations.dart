@@ -417,6 +417,7 @@ const _localizedValues = {
     'animationScaleDefault': '1x (默认)',
     'disableAllAnimations': '一键关闭所有动画',
     'resetAllAnimations': '一键恢复默认动画',
+    'performance': '性能',
   },
   'en': {
     'appTitle': 'Phone Manager',
@@ -794,5 +795,6 @@ const _localizedValues = {
     'animationScaleDefault': '1x (Default)',
     'disableAllAnimations': 'Disable All Animations',
     'resetAllAnimations': 'Reset All Animations',
+    'performance': 'Performance',
   },
 };

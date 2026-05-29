@@ -129,6 +129,11 @@ class _PrimaryRail extends ConsumerWidget {
         icon: Icons.camera_alt_outlined,
         label: context.l10n.t('screenshot'),
       ),
+      _RailToolItem(
+        tabIndex: 10,
+        icon: Icons.speed_outlined,
+        label: context.l10n.t('performance'),
+      ),
     ];
 
     void handleTap(int tabIndex) {

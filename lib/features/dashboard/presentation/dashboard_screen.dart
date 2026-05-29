@@ -30,6 +30,8 @@ import 'terminal/terminal_tab.dart';
 import 'processes/processes_tab.dart';
 import 'webpages/webpages_tab.dart';
 import 'layout/layout_tab.dart';
+import 'performance/performance_tab.dart';
+
 
 part 'overview/dashboard_shell.dart';
 part 'widgets/dashboard_dialogs.dart';

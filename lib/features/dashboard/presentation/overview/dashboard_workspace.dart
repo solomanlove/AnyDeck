@@ -119,7 +119,9 @@ class _ToolContentCard extends StatelessWidget {
       6 => ProcessesTab(device: device),
       7 => WebpagesTab(device: device),
       8 => LayoutTab(device: device),
-      _ => _ScreenshotTab(device: device),
+      9 => _ScreenshotTab(device: device),
+      10 => PerformanceTab(device: device),
+      _ => const SizedBox.shrink(),
     };
 
     return Card(
