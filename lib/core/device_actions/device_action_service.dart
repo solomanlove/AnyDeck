@@ -166,6 +166,78 @@ class DeviceActionService {
     return _adb.run(['-s', deviceId, 'reboot']);
   }
 
+  /// 打开开发者选项。
+  Future<AdbResult> openDeveloperSettings(String deviceId) {
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'android.settings.APPLICATION_DEVELOPMENT_SETTINGS',
+    ]);
+  }
+
+  /// 打开手机信息。
+  Future<AdbResult> openDeviceInfoSettings(String deviceId) {
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'android.settings.DEVICE_INFO_SETTINGS',
+    ]);
+  }
+
+  /// 打开语言设置。
+  Future<AdbResult> openLocaleSettings(String deviceId) {
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'android.settings.LOCALE_SETTINGS',
+    ]);
+  }
+
+  /// 打开系统设置。
+  Future<AdbResult> openMainSettings(String deviceId) {
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'android.settings.SETTINGS',
+    ]);
+  }
+
+  /// 打开 Wi-Fi 设置。
+  Future<AdbResult> openWifiSettings(String deviceId) {
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'android.settings.WIFI_SETTINGS',
+    ]);
+  }
+
+  /// 打开应用管理。
+  Future<AdbResult> openManageApplicationsSettings(String deviceId) {
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'android.settings.MANAGE_APPLICATIONS_SETTINGS',
+    ]);
+  }
+
+  /// 打开自定义 Applink/Deeplink 链接。
+  Future<AdbResult> openCustomDeeplink(String deviceId, String uri) {
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'android.intent.action.VIEW',
+      '-d',
+      uri,
+    ]);
+  }
+
   /// setprop/settings 写入后通知 ActivityManager 重新加载系统属性。
   Future<void> _refreshSystemProperties(String deviceId) async {
     await _adb.shellArgs(deviceId, [

@@ -13,6 +13,8 @@ class _ControlTab extends StatelessWidget {
       children: [
         _QuickActionsPanel(device: device),
         const SizedBox(height: 16),
+        _DeeplinkPanel(device: device),
+        const SizedBox(height: 16),
         _LayoutHelperPanel(device: device),
       ],
     );
@@ -220,6 +222,130 @@ class _LayoutHelperPanel extends ConsumerWidget {
               _runAdbAction(context, ref, actions.setDarkMode(device.id, on)),
         ),
       ],
+    );
+  }
+}
+
+class _DeeplinkPanel extends ConsumerWidget {
+  const _DeeplinkPanel({required this.device});
+
+  final AdbDevice device;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final actions = ref.read(deviceActionServiceProvider);
+
+    return _ActionCard(
+      title: context.l10n.t('deeplink'),
+      children: [
+        _ActionButton(
+          icon: Icons.developer_mode,
+          label: context.l10n.t('deeplinkDeveloperOptions'),
+          onPressed: () => _runAdbAction(
+            context,
+            ref,
+            actions.openDeveloperSettings(device.id),
+          ),
+        ),
+        _ActionButton(
+          icon: Icons.info_outline,
+          label: context.l10n.t('deeplinkDeviceInfo'),
+          onPressed: () => _runAdbAction(
+            context,
+            ref,
+            actions.openDeviceInfoSettings(device.id),
+          ),
+        ),
+        _ActionButton(
+          icon: Icons.language,
+          label: context.l10n.t('deeplinkLanguages'),
+          onPressed: () => _runAdbAction(
+            context,
+            ref,
+            actions.openLocaleSettings(device.id),
+          ),
+        ),
+        _ActionButton(
+          icon: Icons.settings,
+          label: context.l10n.t('deeplinkSettings'),
+          onPressed: () => _runAdbAction(
+            context,
+            ref,
+            actions.openMainSettings(device.id),
+          ),
+        ),
+        _ActionButton(
+          icon: Icons.wifi,
+          label: context.l10n.t('deeplinkWifi'),
+          onPressed: () => _runAdbAction(
+            context,
+            ref,
+            actions.openWifiSettings(device.id),
+          ),
+        ),
+        _ActionButton(
+          icon: Icons.apps,
+          label: context.l10n.t('deeplinkApps'),
+          onPressed: () => _runAdbAction(
+            context,
+            ref,
+            actions.openManageApplicationsSettings(device.id),
+          ),
+        ),
+        _ActionButton(
+          icon: Icons.link,
+          label: context.l10n.t('deeplinkCustom'),
+          onPressed: () => _showCustomDeeplinkDialog(context, ref, device.id),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showCustomDeeplinkDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String deviceId,
+  ) async {
+    final controller = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.t('deeplinkCustomTitle')),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'https://... 或 myapp://...',
+            labelText: context.l10n.t('deeplinkCustomHint'),
+          ),
+          onSubmitted: (value) => Navigator.of(context).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.l10n.t('cancel')),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.open_in_browser),
+            label: Text(context.l10n.t('send')),
+            onPressed: () => Navigator.of(context).pop(controller.text),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (url == null || url.trim().isEmpty || !context.mounted) {
+      return;
+    }
+
+    await _runAdbAction(
+      context,
+      ref,
+      ref
+          .read(deviceActionServiceProvider)
+          .openCustomDeeplink(deviceId, url.trim()),
     );
   }
 }
