@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../process/tool_path_resolver.dart';
 import 'adb_device.dart';
@@ -137,6 +138,46 @@ class AdbService {
   }
 
   /// 当 adb 连续返回相同列表时，避免 StreamProvider 重复刷新。
+  /// 截取手机屏幕截图，返回 PNG 图像的原始字节。
+  Future<Uint8List> captureScreenshot(
+    String deviceId, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    Process? process;
+    try {
+      process = await Process.start(executable, [
+        '-s',
+        deviceId,
+        'exec-out',
+        'screencap',
+        '-p',
+      ]);
+      final stdoutFuture = process.stdout.fold<List<int>>(
+        <int>[],
+        (buffer, chunk) => buffer..addAll(chunk),
+      );
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
+      final exitCode = await process.exitCode.timeout(timeout);
+      final stderr = await stderrFuture;
+      if (exitCode != 0) {
+        throw AdbException(stderr.isNotEmpty ? stderr : 'Failed to capture screenshot (exit code $exitCode)');
+      }
+      return Uint8List.fromList(await stdoutFuture);
+    } on TimeoutException {
+      process?.kill();
+      await process?.exitCode.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          process?.kill(ProcessSignal.sigkill);
+          return 124;
+        },
+      );
+      throw AdbException('adb截图命令超时(${timeout.inSeconds}s)');
+    } on ProcessException catch (error) {
+      throw AdbException(error.message);
+    }
+  }
+
   bool _sameDeviceList(List<AdbDevice> previous, List<AdbDevice> next) {
     if (previous.length != next.length) {
       return false;

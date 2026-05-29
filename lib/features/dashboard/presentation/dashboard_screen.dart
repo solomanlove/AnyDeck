@@ -51,6 +51,7 @@ part 'dashboard_devices_panel.dart';
 part 'dashboard_devices_view.dart';
 part 'dashboard_devices_rows.dart';
 part 'dashboard_devices_actions.dart';
+part 'dashboard_screenshot_tab.dart';
 
 class _EmulatorListExpandedNotifier extends Notifier<bool> {
   @override

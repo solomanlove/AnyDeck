@@ -20,30 +20,170 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
   );
   int _lastVisibleCount = 0;
 
+  bool _searchBarVisible = false;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode(debugLabel: 'LogcatSearchInput');
+  int _activeMatchIndex = -1;
+  String _lastSearchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_handleSearchTextChanged);
+  }
+
   @override
   void dispose() {
+    _searchController.removeListener(_handleSearchTextChanged);
     _verticalController.dispose();
     _packageController.dispose();
     _tagController.dispose();
     _textController.dispose();
     _logViewFocusNode.dispose();
     _textFilterFocusNode.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
-  void _focusTextFilter() {
-    _textFilterFocusNode.requestFocus();
-    _textController.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: _textController.text.length,
+  void _handleSearchTextChanged() {
+    final query = _searchController.text;
+    if (query != _lastSearchQuery) {
+      _lastSearchQuery = query;
+      setState(() {
+        _activeMatchIndex = 0;
+      });
+      if (query.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final entries = ref.read(logcatControllerProvider.notifier).visibleEntries();
+          final queryLower = query.toLowerCase();
+          final matches = <int>[];
+          for (var i = 0; i < entries.length; i++) {
+            if (entries[i].rawLine.toLowerCase().contains(queryLower)) {
+              matches.add(i);
+            }
+          }
+          if (matches.isNotEmpty) {
+            _scrollToMatch(matches[0]);
+          }
+        });
+      }
+    }
+  }
+
+  void _closeSearch() {
+    setState(() {
+      _searchBarVisible = false;
+      _searchController.clear();
+      _activeMatchIndex = -1;
+    });
+    _logViewFocusNode.requestFocus();
+  }
+
+  void _openSearch() {
+    setState(() {
+      _searchBarVisible = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFocusNode.requestFocus();
+      _searchController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _searchController.text.length,
+      );
+    });
+  }
+
+  void _goToNextMatch(List<int> matchIndices) {
+    if (matchIndices.isEmpty) {
+      return;
+    }
+    setState(() {
+      _activeMatchIndex = (_activeMatchIndex + 1) % matchIndices.length;
+    });
+    _scrollToMatch(matchIndices[_activeMatchIndex]);
+  }
+
+  void _goToPrevMatch(List<int> matchIndices) {
+    if (matchIndices.isEmpty) {
+      return;
+    }
+    setState(() {
+      _activeMatchIndex =
+          (_activeMatchIndex - 1 + matchIndices.length) % matchIndices.length;
+    });
+    _scrollToMatch(matchIndices[_activeMatchIndex]);
+  }
+
+  void _scrollToMatch(int entryIndex) {
+    if (!_verticalController.hasClients || entryIndex < 0) {
+      return;
+    }
+
+    if (ref.read(logcatControllerProvider).autoScroll) {
+      ref.read(logcatControllerProvider.notifier).toggleAutoScroll();
+    }
+
+    final state = ref.read(logcatControllerProvider);
+    double estimatedHeight = 28.0;
+    if (state.viewMode == LogcatViewMode.compact) {
+      estimatedHeight = state.wrapLines ? 34.0 : 32.0;
+    } else if (state.viewMode == LogcatViewMode.standard) {
+      estimatedHeight = state.wrapLines ? 34.0 : 28.0;
+    } else {
+      estimatedHeight = 16.0;
+    }
+
+    final targetOffset = entryIndex * estimatedHeight;
+    final viewportHeight = _verticalController.position.viewportDimension;
+    final alignedOffset = targetOffset - (viewportHeight / 2) + (estimatedHeight / 2);
+    final clampedOffset = alignedOffset.clamp(
+      0.0,
+      _verticalController.position.maxScrollExtent,
+    );
+
+    _verticalController.animateTo(
+      clampedOffset,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeInOut,
     );
   }
+
+
 
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(logcatControllerProvider.notifier);
     final state = ref.watch(logcatControllerProvider);
     final entries = controller.visibleEntries();
+
+    final query = _searchController.text;
+    final List<int> matchIndices;
+    if (query.isEmpty) {
+      matchIndices = const [];
+    } else {
+      final queryLower = query.toLowerCase();
+      matchIndices = [];
+      for (var i = 0; i < entries.length; i++) {
+        final entry = entries[i];
+        final text = entry.rawLine.toLowerCase();
+        if (text.contains(queryLower)) {
+          matchIndices.add(i);
+        }
+      }
+    }
+
+    int activeMatchIndex = _activeMatchIndex;
+    if (matchIndices.isEmpty) {
+      activeMatchIndex = -1;
+    } else if (activeMatchIndex >= matchIndices.length) {
+      activeMatchIndex = matchIndices.length - 1;
+    } else if (activeMatchIndex < 0 && matchIndices.isNotEmpty) {
+      activeMatchIndex = 0;
+    }
+
+    final activeEntryIndex = (activeMatchIndex >= 0 && activeMatchIndex < matchIndices.length)
+        ? matchIndices[activeMatchIndex]
+        : -1;
 
     if (state.autoScroll &&
         entries.length != _lastVisibleCount &&
@@ -108,7 +248,7 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
                   _OpenLogcatSearchIntent:
                       CallbackAction<_OpenLogcatSearchIntent>(
                         onInvoke: (_) {
-                          _focusTextFilter();
+                          _openSearch();
                           return null;
                         },
                       ),
@@ -130,36 +270,62 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: state.error != null
-                            ? _LogcatError(message: state.error!)
-                            : state.viewMode == LogcatViewMode.raw
-                            ? _LogcatTextList(
-                                entries: entries,
-                                controller: _verticalController,
-                                wrapLines: state.wrapLines,
-                                useLevelColor: true,
-                                textForEntry: (entry) => entry.rawLine,
-                              )
-                            : state.viewMode == LogcatViewMode.plain
-                            ? _LogcatTextList(
-                                entries: entries,
-                                controller: _verticalController,
-                                wrapLines: state.wrapLines,
-                                textForEntry: (entry) => entry.message.isEmpty
-                                    ? entry.rawLine
-                                    : entry.message,
-                              )
-                            : state.viewMode == LogcatViewMode.compact
-                            ? _CompactLogcatList(
-                                entries: entries,
-                                controller: _verticalController,
-                                wrapLines: state.wrapLines,
-                              )
-                            : _StructuredLogcatTable(
-                                entries: entries,
-                                verticalController: _verticalController,
-                                wrapLines: state.wrapLines,
+                        child: Stack(
+                          children: [
+                            state.error != null
+                                ? _LogcatError(message: state.error!)
+                                : state.viewMode == LogcatViewMode.raw
+                                ? _LogcatTextList(
+                                    entries: entries,
+                                    controller: _verticalController,
+                                    wrapLines: state.wrapLines,
+                                    useLevelColor: true,
+                                    textForEntry: (entry) => entry.rawLine,
+                                    searchQuery: query,
+                                    activeEntryIndex: activeEntryIndex,
+                                  )
+                                : state.viewMode == LogcatViewMode.plain
+                                ? _LogcatTextList(
+                                    entries: entries,
+                                    controller: _verticalController,
+                                    wrapLines: state.wrapLines,
+                                    textForEntry: (entry) => entry.message.isEmpty
+                                        ? entry.rawLine
+                                        : entry.message,
+                                    searchQuery: query,
+                                    activeEntryIndex: activeEntryIndex,
+                                  )
+                                : state.viewMode == LogcatViewMode.compact
+                                ? _CompactLogcatList(
+                                    entries: entries,
+                                    controller: _verticalController,
+                                    wrapLines: state.wrapLines,
+                                    searchQuery: query,
+                                    activeEntryIndex: activeEntryIndex,
+                                  )
+                                : _StructuredLogcatTable(
+                                    entries: entries,
+                                    verticalController: _verticalController,
+                                    wrapLines: state.wrapLines,
+                                    searchQuery: query,
+                                    activeEntryIndex: activeEntryIndex,
+                                  ),
+                            if (_searchBarVisible)
+                              Positioned(
+                                top: 8,
+                                right: 16,
+                                child: _LogcatSearchPanel(
+                                  controller: _searchController,
+                                  focusNode: _searchFocusNode,
+                                  matchIndices: matchIndices,
+                                  activeMatchIndex: activeMatchIndex,
+                                  onClose: _closeSearch,
+                                  onPrev: () => _goToPrevMatch(matchIndices),
+                                  onNext: () => _goToNextMatch(matchIndices),
+                                ),
                               ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -621,11 +787,15 @@ class _CompactLogcatList extends StatefulWidget {
     required this.entries,
     required this.controller,
     required this.wrapLines,
+    required this.searchQuery,
+    required this.activeEntryIndex,
   });
 
   final List<LogcatEntry> entries;
   final ScrollController controller;
   final bool wrapLines;
+  final String searchQuery;
+  final int activeEntryIndex;
 
   @override
   State<_CompactLogcatList> createState() => _CompactLogcatListState();
@@ -718,10 +888,12 @@ class _CompactLogcatListState extends State<_CompactLogcatList> {
                             const SizedBox(width: 10),
                             SizedBox(
                               width: messageWidth,
-                              child: Text(
-                                entry.message.isEmpty
+                              child: _HighlightedText(
+                                text: entry.message.isEmpty
                                     ? entry.rawLine
                                     : entry.message,
+                                query: widget.searchQuery,
+                                isActiveMatch: index == widget.activeEntryIndex,
                                 style: textStyle,
                                 softWrap: widget.wrapLines,
                                 maxLines: widget.wrapLines ? null : 1,
@@ -786,11 +958,15 @@ class _StructuredLogcatTable extends StatefulWidget {
     required this.entries,
     required this.verticalController,
     required this.wrapLines,
+    required this.searchQuery,
+    required this.activeEntryIndex,
   });
 
   final List<LogcatEntry> entries;
   final ScrollController verticalController;
   final bool wrapLines;
+  final String searchQuery;
+  final int activeEntryIndex;
 
   @override
   State<_StructuredLogcatTable> createState() => _StructuredLogcatTableState();
@@ -840,6 +1016,8 @@ class _StructuredLogcatTableState extends State<_StructuredLogcatTable> {
                               widths: widths,
                               index: index,
                               wrapLines: widget.wrapLines,
+                              searchQuery: widget.searchQuery,
+                              isActiveMatch: index == widget.activeEntryIndex,
                             );
                           },
                         ),
@@ -958,12 +1136,16 @@ class _LogcatTableRow extends StatelessWidget {
     required this.widths,
     required this.index,
     required this.wrapLines,
+    required this.searchQuery,
+    required this.isActiveMatch,
   });
 
   final LogcatEntry entry;
   final _LogcatTableWidths widths;
   final int index;
   final bool wrapLines;
+  final String searchQuery;
+  final bool isActiveMatch;
 
   @override
   Widget build(BuildContext context) {
@@ -987,34 +1169,46 @@ class _LogcatTableRow extends StatelessWidget {
         children: [
           _LogcatCell(
             width: widths.time,
-            child: Text(
-              entry.timestamp,
+            child: _HighlightedText(
+              text: entry.timestamp,
+              query: searchQuery,
+              isActiveMatch: isActiveMatch,
               style: textStyle,
               overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
           _LogcatCell(
             width: widths.pidTid,
-            child: Text(
-              entry.pidTid,
+            child: _HighlightedText(
+              text: entry.pidTid,
+              query: searchQuery,
+              isActiveMatch: isActiveMatch,
               style: textStyle,
               overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
           _LogcatCell(
             width: widths.tag,
-            child: Text(
-              entry.tag,
+            child: _HighlightedText(
+              text: entry.tag,
+              query: searchQuery,
+              isActiveMatch: isActiveMatch,
               style: textStyle,
               overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
           _LogcatCell(
             width: widths.packageName,
-            child: Text(
-              entry.packageName,
+            child: _HighlightedText(
+              text: entry.packageName,
+              query: searchQuery,
+              isActiveMatch: isActiveMatch,
               style: textStyle,
               overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
           _LogcatCell(
@@ -1024,8 +1218,10 @@ class _LogcatTableRow extends StatelessWidget {
           ),
           _LogcatCell(
             width: widths.message,
-            child: Text(
-              entry.message.isEmpty ? entry.rawLine : entry.message,
+            child: _HighlightedText(
+              text: entry.message.isEmpty ? entry.rawLine : entry.message,
+              query: searchQuery,
+              isActiveMatch: isActiveMatch,
               style: textStyle,
               softWrap: wrapLines,
               maxLines: wrapLines ? null : 1,
@@ -1098,6 +1294,8 @@ class _LogcatTextList extends StatefulWidget {
     required this.wrapLines,
     required this.textForEntry,
     this.useLevelColor = false,
+    required this.searchQuery,
+    required this.activeEntryIndex,
   });
 
   final List<LogcatEntry> entries;
@@ -1105,6 +1303,8 @@ class _LogcatTextList extends StatefulWidget {
   final bool wrapLines;
   final String Function(LogcatEntry entry) textForEntry;
   final bool useLevelColor;
+  final String searchQuery;
+  final int activeEntryIndex;
 
   @override
   State<_LogcatTextList> createState() => _LogcatTextListState();
@@ -1153,19 +1353,21 @@ class _LogcatTextListState extends State<_LogcatTextList> {
                       final textColor = widget.useLevelColor
                           ? _levelForeground(entry.level)
                           : Theme.of(context).colorScheme.onSurface;
-                      return Text(
-                        widget.textForEntry(entry),
-                        softWrap: widget.wrapLines,
-                        maxLines: widget.wrapLines ? null : 1,
-                        overflow: widget.wrapLines
-                            ? TextOverflow.visible
-                            : TextOverflow.clip,
+                      return _HighlightedText(
+                        text: widget.textForEntry(entry),
+                        query: widget.searchQuery,
+                        isActiveMatch: index == widget.activeEntryIndex,
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 12.5,
                           height: 1.25,
                           color: textColor,
                         ),
+                        softWrap: widget.wrapLines,
+                        maxLines: widget.wrapLines ? null : 1,
+                        overflow: widget.wrapLines
+                            ? TextOverflow.visible
+                            : TextOverflow.clip,
                       );
                     },
                   ),
@@ -1336,4 +1538,239 @@ Color _levelForeground(LogcatLevel level) {
     LogcatLevel.assertLevel => const Color(0xffb91c1c),
     LogcatLevel.unknown => const Color(0xff334155),
   };
+}
+
+class _HighlightedText extends StatelessWidget {
+  const _HighlightedText({
+    required this.text,
+    required this.query,
+    required this.style,
+    required this.isActiveMatch,
+    this.overflow,
+    this.maxLines,
+    this.softWrap,
+  });
+
+  final String text;
+  final String query;
+  final TextStyle style;
+  final bool isActiveMatch;
+  final TextOverflow? overflow;
+  final int? maxLines;
+  final bool? softWrap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (query.isEmpty) {
+      return Text(
+        text,
+        style: style,
+        overflow: overflow,
+        maxLines: maxLines,
+        softWrap: softWrap,
+      );
+    }
+
+    final queryLower = query.toLowerCase();
+    final textLower = text.toLowerCase();
+    
+    final spans = <TextSpan>[];
+    var start = 0;
+    
+
+    final activeBg = Colors.orange.withValues(alpha: 0.4);
+    final inactiveBg = Colors.yellow.withValues(alpha: 0.4);
+    
+    while (true) {
+      final index = textLower.indexOf(queryLower, start);
+      if (index == -1) {
+        spans.add(TextSpan(text: text.substring(start)));
+        break;
+      }
+      
+      if (index > start) {
+        spans.add(TextSpan(text: text.substring(start, index)));
+      }
+      
+      final matchText = text.substring(index, index + query.length);
+      spans.add(
+        TextSpan(
+          text: matchText,
+          style: TextStyle(
+            backgroundColor: isActiveMatch ? activeBg : inactiveBg,
+            fontWeight: isActiveMatch ? FontWeight.bold : null,
+          ),
+        ),
+      );
+      
+      start = index + query.length;
+    }
+
+    return Text.rich(
+      TextSpan(children: spans),
+      style: style,
+      overflow: overflow,
+      maxLines: maxLines,
+      softWrap: softWrap,
+    );
+  }
+}
+
+class _LogcatSearchPanel extends StatefulWidget {
+  const _LogcatSearchPanel({
+    required this.controller,
+    required this.focusNode,
+    required this.matchIndices,
+    required this.activeMatchIndex,
+    required this.onClose,
+    required this.onPrev,
+    required this.onNext,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final List<int> matchIndices;
+  final int activeMatchIndex;
+  final VoidCallback onClose;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+
+  @override
+  State<_LogcatSearchPanel> createState() => _LogcatSearchPanelState();
+}
+
+class _LogcatSearchPanelState extends State<_LogcatSearchPanel> {
+  final FocusNode _keyboardFocusNode = FocusNode(debugLabel: 'SearchPanelKeyboard');
+
+  @override
+  void dispose() {
+    _keyboardFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final countText = widget.matchIndices.isEmpty
+        ? context.l10n.t('logcatNoMatches')
+        : '${widget.activeMatchIndex + 1} / ${widget.matchIndices.length}';
+
+    return Container(
+      width: 340,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.8),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: KeyboardListener(
+        focusNode: _keyboardFocusNode,
+        onKeyEvent: (KeyEvent event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.enter) {
+              final isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
+              if (isShiftPressed) {
+                widget.onPrev();
+              } else {
+                widget.onNext();
+              }
+            } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+              widget.onClose();
+            }
+          }
+        },
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                autofocus: true,
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: context.l10n.t('logcatSearchPlaceholder'),
+                  hintStyle: TextStyle(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  border: InputBorder.none,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              countText,
+              style: TextStyle(
+                fontSize: 12,
+                color: widget.matchIndices.isEmpty && widget.controller.text.isNotEmpty
+                    ? colorScheme.error
+                    : colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _SearchIconButton(
+              icon: Icons.keyboard_arrow_up,
+              tooltip: context.l10n.t('logcatSearchPrev'),
+              onPressed: widget.matchIndices.isEmpty ? null : widget.onPrev,
+            ),
+            _SearchIconButton(
+              icon: Icons.keyboard_arrow_down,
+              tooltip: context.l10n.t('logcatSearchNext'),
+              onPressed: widget.matchIndices.isEmpty ? null : widget.onNext,
+            ),
+            const SizedBox(width: 4),
+            _SearchIconButton(
+              icon: Icons.close,
+              tooltip: context.l10n.t('logcatSearchClose'),
+              onPressed: widget.onClose,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchIconButton extends StatelessWidget {
+  const _SearchIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        icon: Icon(icon, size: 18),
+        onPressed: onPressed,
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(
+          minWidth: 26,
+          minHeight: 26,
+        ),
+      ),
+    );
+  }
 }

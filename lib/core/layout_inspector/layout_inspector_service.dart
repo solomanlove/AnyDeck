@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import '../adb/adb_result.dart';
@@ -66,56 +65,10 @@ class LayoutInspectorService {
   }
 
   Future<Uint8List> _captureScreenshot(String deviceId) async {
-    Process? process;
     try {
-      process = await Process.start(_adb.executable, [
-        '-s',
-        deviceId,
-        'exec-out',
-        'screencap',
-        '-p',
-      ]);
-      final stdoutFuture = process.stdout.fold<List<int>>(
-        <int>[],
-        (buffer, chunk) => buffer..addAll(chunk),
-      );
-      final stderrFuture = process.stderr
-          .transform(systemEncoding.decoder)
-          .join();
-      final exitCode = await process.exitCode.timeout(_screenshotTimeout);
-      final stderr = await stderrFuture;
-      if (exitCode != 0) {
-        final adbResult = AdbResult(
-          exitCode: exitCode,
-          stdout: '',
-          stderr: stderr,
-        );
-        throw LayoutInspectorException(adbResult.message, result: adbResult);
-      }
-
-      return Uint8List.fromList(await stdoutFuture);
-    } on TimeoutException {
-      process?.kill();
-      await process?.exitCode.timeout(
-        const Duration(seconds: 2),
-        onTimeout: () {
-          process?.kill(ProcessSignal.sigkill);
-          return 124;
-        },
-      );
-      final adbResult = AdbResult(
-        exitCode: 124,
-        stdout: '',
-        stderr: 'adb截图命令超时(${_screenshotTimeout.inSeconds}s)',
-      );
-      throw LayoutInspectorException(adbResult.message, result: adbResult);
-    } on ProcessException catch (error) {
-      final adbResult = AdbResult(
-        exitCode: 127,
-        stdout: '',
-        stderr: error.message,
-      );
-      throw LayoutInspectorException(adbResult.message, result: adbResult);
+      return await _adb.captureScreenshot(deviceId, timeout: _screenshotTimeout);
+    } on AdbException catch (e) {
+      throw LayoutInspectorException(e.message);
     }
   }
 
