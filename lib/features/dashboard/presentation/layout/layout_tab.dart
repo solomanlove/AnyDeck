@@ -40,7 +40,19 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
   bool _showBorders = false;
   bool _enableClickSelect = false;
   int _rotationAngle = 0;
+  bool _useDp = false;
   final Set<LayoutNode> _expandedNodes = {};
+
+  double get _deviceLogicalDensity {
+    final overview = ref.watch(cachedDeviceOverviewProvider(widget.device.id)).value;
+    if (overview == null) return 1.0;
+    final densityStr = overview.logicalDensity;
+    final match = RegExp(r'^([0-9.]+)\s*x').firstMatch(densityStr);
+    if (match != null) {
+      return double.tryParse(match.group(1)!) ?? 1.0;
+    }
+    return 1.0;
+  }
   final TransformationController _transformationController =
       TransformationController();
   Size _lastViewportSize = const Size(400, 800);
@@ -394,6 +406,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
           showProperties: _showProperties,
           showBorders: _showBorders,
           enableClickSelect: _enableClickSelect,
+          useDp: _useDp,
           resolutionText: _decodedImage == null
               ? null
               : '${_decodedImage!.width}x${_decodedImage!.height}',
@@ -434,6 +447,11 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
           onEnableClickSelectChanged: (val) {
             setState(() {
               _enableClickSelect = val ?? false;
+            });
+          },
+          onUseDpChanged: (val) {
+            setState(() {
+              _useDp = val ?? false;
             });
           },
         ),
@@ -484,6 +502,8 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
                     _lastViewportSize = size;
                   },
                   enableClickSelect: _enableClickSelect,
+                  useDp: _useDp,
+                  deviceScale: _deviceLogicalDensity,
                 ),
               ),
               if (_showProperties) ...[

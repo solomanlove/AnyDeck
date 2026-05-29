@@ -11,6 +11,7 @@ class LayoutToolbar extends StatelessWidget {
     required this.showProperties,
     required this.showBorders,
     required this.enableClickSelect,
+    required this.useDp,
     required this.resolutionText,
     required this.onRefresh,
     required this.onSave,
@@ -26,6 +27,7 @@ class LayoutToolbar extends StatelessWidget {
     required this.onZoomReset,
     required this.onShowBordersChanged,
     required this.onEnableClickSelectChanged,
+    required this.onUseDpChanged,
   });
 
   final bool hasLayout;
@@ -33,6 +35,7 @@ class LayoutToolbar extends StatelessWidget {
   final bool showProperties;
   final bool showBorders;
   final bool enableClickSelect;
+  final bool useDp;
   final String? resolutionText;
   final VoidCallback onRefresh;
   final VoidCallback onSave;
@@ -48,6 +51,7 @@ class LayoutToolbar extends StatelessWidget {
   final VoidCallback onZoomReset;
   final ValueChanged<bool?> onShowBordersChanged;
   final ValueChanged<bool?>? onEnableClickSelectChanged;
+  final ValueChanged<bool?>? onUseDpChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -165,6 +169,12 @@ class LayoutToolbar extends StatelessWidget {
             label: context.l10n.t('clickToSelect'),
             value: enableClickSelect,
             onChanged: showBorders ? onEnableClickSelectChanged : null,
+          ),
+          const SizedBox(width: 8),
+          _ToolbarCheckbox(
+            label: context.l10n.t('useDp'),
+            value: useDp,
+            onChanged: hasLayout ? onUseDpChanged : null,
           ),
           const Spacer(),
           if (resolutionText != null)
