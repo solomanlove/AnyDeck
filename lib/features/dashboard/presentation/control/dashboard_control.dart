@@ -46,6 +46,8 @@ class _ControlTabState extends ConsumerState<_ControlTab> {
         const SizedBox(height: 16),
         _LayoutHelperPanel(device: widget.device),
         const SizedBox(height: 16),
+        _PowerPanel(device: widget.device),
+        const SizedBox(height: 16),
         _SystemSettingsPanel(device: widget.device),
       ],
     );
@@ -184,19 +186,6 @@ class _QuickActionsPanel extends ConsumerWidget {
           label: context.l10n.t('focus'),
           onPressed: () =>
               _showAdbResult(context, ref, actions.currentFocus(device.id)),
-        ),
-        _ActionButton(
-          icon: CupertinoIcons.refresh,
-          label: context.l10n.t('reboot'),
-          onPressed: () async {
-            final confirmed = await _confirm(
-              context,
-              context.l10n.t('rebootDevice'),
-            );
-            if (confirmed && context.mounted) {
-              await _runAdbAction(context, ref, actions.reboot(device.id));
-            }
-          },
         ),
       ],
     );

@@ -246,9 +246,13 @@ class DeviceActionService {
     return _adb.shell(deviceId, 'dumpsys window | grep mCurrentFocus');
   }
 
-  /// 重启选中设备。
-  Future<AdbResult> reboot(String deviceId) {
-    return _adb.run(['-s', deviceId, 'reboot']);
+  /// 重启选中设备，支持可选模式 (如 recovery, bootloader, sideload, sideload-auto-reboot)。
+  Future<AdbResult> reboot(String deviceId, [String? mode]) {
+    final args = ['-s', deviceId, 'reboot'];
+    if (mode != null && mode.trim().isNotEmpty) {
+      args.add(mode.trim());
+    }
+    return _adb.run(args);
   }
 
   /// 打开开发者选项。
