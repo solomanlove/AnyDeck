@@ -24,6 +24,20 @@ import java.lang.reflect.Method;
 public final class PackageIconHelper {
     private static final String ICON_CACHE_DIR = "/data/local/tmp/adb_manage/icons";
 
+    static {
+        try {
+            Method forName = Class.class.getDeclaredMethod("forName", String.class);
+            Method getDeclaredMethod = Class.class.getDeclaredMethod("getDeclaredMethod", String.class, Class[].class);
+            Class<?> vmRuntimeClass = (Class<?>) forName.invoke(null, "dalvik.system.VMRuntime");
+            Method getRuntime = (Method) getDeclaredMethod.invoke(vmRuntimeClass, "getRuntime", null);
+            Object vmRuntime = getRuntime.invoke(null);
+            Method setHiddenApiExemptions = (Method) getDeclaredMethod.invoke(vmRuntimeClass, "setHiddenApiExemptions", new Class[]{String[].class});
+            setHiddenApiExemptions.invoke(vmRuntime, new Object[]{new String[]{"L"}});
+        } catch (Throwable e) {
+            // Ignore if it fails
+        }
+    }
+
     public static void main(String[] args) {
         if (args.length < 2) {
             System.err.println("Usage: PackageIconHelper <package-file> <user-id>");
@@ -108,7 +122,7 @@ public final class PackageIconHelper {
             label = applicationInfo.nonLocalizedLabel.toString();
         }
 
-        Resources resources = getResources(applicationInfo.sourceDir);
+        Resources resources = getResources(applicationInfo);
         if (applicationInfo.labelRes != 0) {
             try {
                 label = resources.getString(applicationInfo.labelRes);
@@ -177,10 +191,18 @@ public final class PackageIconHelper {
         );
     }
 
-    private Resources getResources(String apkPath) throws Exception {
+    private Resources getResources(ApplicationInfo applicationInfo) throws Exception {
         AssetManager assetManager = AssetManager.class.newInstance();
         Method addAssetPathMethod = assetManager.getClass().getMethod("addAssetPath", String.class);
-        addAssetPathMethod.invoke(assetManager, apkPath);
+        if (new File("/system/framework/framework-res.apk").exists()) {
+            addAssetPathMethod.invoke(assetManager, "/system/framework/framework-res.apk");
+        }
+        addAssetPathMethod.invoke(assetManager, applicationInfo.sourceDir);
+        if (applicationInfo.splitSourceDirs != null) {
+            for (String splitDir : applicationInfo.splitSourceDirs) {
+                addAssetPathMethod.invoke(assetManager, splitDir);
+            }
+        }
 
         DisplayMetrics displayMetrics = new DisplayMetrics();
         displayMetrics.setToDefaults();
