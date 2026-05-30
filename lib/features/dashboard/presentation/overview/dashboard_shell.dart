@@ -38,9 +38,9 @@ class _PrimaryRail extends ConsumerWidget {
   final AdbDevice? selectedDevice;
 
   static const double _topSpacing = 14;
-  static const double _logoSize = 42;
-  static const double _fullLogoToolGap = 28;
-  static const double _compactLogoToolGap = 18;
+  static const double _logoSize = 50;
+  static const double _fullLogoToolGap = 10;
+  static const double _compactLogoToolGap = 6;
   static const double _toolSlotHeight = 60;
   static const double _settingsSlotHeight = 60;
   static const double _bottomSpacing = 18;
@@ -185,14 +185,9 @@ class _PrimaryRail extends ConsumerWidget {
                   },
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
-                    child: Container(
+                    child: SizedBox(
                       width: _logoSize,
                       height: _logoSize,
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.62),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
                       child: const Image(
                         image: AssetImage('assets/brand/app_logo.png'),
                       ),
@@ -279,23 +274,32 @@ class _RailMoreButton extends StatelessWidget {
       child: PopupMenuButton<int>(
         tooltip: context.l10n.t('moreTools'),
         onSelected: enabled ? onSelected : null,
+        offset: const Offset(66, 0),
+        color: const Color(0xfff5f6f8),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xffeceef1), width: 1),
+        ),
+        constraints: const BoxConstraints(
+          minWidth: 68,
+          maxWidth: 68,
+        ),
         itemBuilder: (context) => [
           for (final tool in tools)
             PopupMenuItem<int>(
               value: tool.tabIndex,
               enabled: enabled,
-              child: Row(
-                children: [
-                  Icon(
-                    tool.icon,
-                    size: 20,
-                    color: tool.tabIndex == selectedTool
-                        ? const Color(0xff09c47c)
-                        : const Color(0xff5f6b6e),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(tool.label),
-                ],
+              padding: EdgeInsets.zero,
+              height: 52,
+              child: Center(
+                child: Icon(
+                  tool.icon,
+                  size: 26,
+                  color: tool.tabIndex == selectedTool
+                      ? const Color(0xff09c47c)
+                      : const Color(0xff5f6b6e),
+                ),
               ),
             ),
         ],
