@@ -160,7 +160,7 @@ class _PrimaryRail extends ConsumerWidget {
 
     return Container(
       width: 76,
-      color: const Color(0xffd8f3f5),
+      color: const Color(0xffe1e4e5),
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
