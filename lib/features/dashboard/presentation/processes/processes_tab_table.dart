@@ -153,8 +153,8 @@ class _ProcessTableState extends State<_ProcessTable> {
                 const SizedBox(width: 4),
                 Icon(
                   widget.sortAscending
-                      ? Icons.arrow_upward
-                      : Icons.arrow_downward,
+                      ? CupertinoIcons.arrow_up
+                      : CupertinoIcons.arrow_down,
                   size: 14,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -324,13 +324,13 @@ class _ProcessTableState extends State<_ProcessTable> {
 
   Widget _buildFallbackIcon(AdbPackage package) {
     if (package.name.isEmpty) {
-      return const Icon(Icons.android, color: Colors.grey, size: 20);
+      return const Icon(CupertinoIcons.device_phone_portrait, color: Colors.grey, size: 20);
     }
     final icon = package.flutter
-        ? Icons.flutter_dash
+        ? CupertinoIcons.square_grid_2x2
         : package.system
-        ? Icons.settings_applications
-        : Icons.android;
+        ? CupertinoIcons.settings
+        : CupertinoIcons.device_phone_portrait;
     final color = package.system ? Colors.grey[600] : Colors.green[600];
     return Icon(icon, color: color, size: 20);
   }

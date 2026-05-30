@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'performance_charts.dart';
 import 'performance_data.dart';
 
@@ -25,7 +26,7 @@ class PerformanceTopStatusRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.power_settings_new, size: 18, color: theme.colorScheme.primary),
+              Icon(CupertinoIcons.power, size: 18, color: theme.colorScheme.primary),
               const SizedBox(width: 6),
               Text(
                 '已开机 $uptime',
@@ -41,7 +42,7 @@ class PerformanceTopStatusRow extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Icon(
-                isCharging ? Icons.battery_charging_full : Icons.battery_full,
+                isCharging ? CupertinoIcons.battery_charging : CupertinoIcons.battery_100,
                 size: 20,
                 color: isCharging ? const Color(0xff00c853) : const Color(0xff5f6b6e),
               ),

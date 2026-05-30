@@ -17,7 +17,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final icon = Icon(
-            Icons.phone_android,
+            CupertinoIcons.device_phone_portrait,
             size: 38,
             color: Theme.of(context).colorScheme.primary,
           );
@@ -50,7 +50,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
             children: [
               // scrcpy 投屏控制区：只展示图标，完整语义放在 tooltip。
               IconButton(
-                icon: const Icon(Icons.cast),
+                icon: const Icon(CupertinoIcons.tv),
                 tooltip: context.l10n.t('start'),
                 onPressed: device.isOnline
                     ? () => _startScrcpy(context, ref, device.id)
@@ -61,14 +61,14 @@ class _SelectedDeviceHeader extends ConsumerWidget {
               Chip(
                 label: Text(device.status),
                 avatar: Icon(
-                  device.isOnline ? Icons.check_circle : Icons.warning_amber,
+                  device.isOnline ? CupertinoIcons.checkmark_circle : CupertinoIcons.exclamationmark_triangle,
                   size: 18,
                 ),
               ),
             ],
           );
           final closeButton = IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(CupertinoIcons.xmark),
             tooltip: context.l10n.t('close'),
             onPressed: () {
               ref.read(userClearedDeviceSelectionProvider.notifier).state =

@@ -35,13 +35,13 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
     if (_sortColumn != column) {
       return const Padding(
         padding: EdgeInsets.only(left: 4),
-        child: Icon(Icons.unfold_more, size: 14, color: Colors.grey),
+        child: Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: Colors.grey),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Icon(
-        _sortAscending ? Icons.expand_less : Icons.expand_more,
+        _sortAscending ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
         size: 14,
         color: Theme.of(context).colorScheme.primary,
       ),
@@ -69,7 +69,7 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
         if (emulatorsAsync.hasError) {
           contentWidget = Center(
             child: _PanelMessage(
-              icon: Icons.error_outline,
+              icon: CupertinoIcons.exclamationmark_circle,
               title: context.l10n.t('noEmulators'),
               subtitle: emulatorsAsync.error.toString(),
             ),
@@ -77,14 +77,14 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
         } else if (emulatorsAsync.isLoading && emulators.isEmpty) {
           contentWidget = Center(
             child: _PanelMessage(
-              icon: Icons.sync,
+              icon: CupertinoIcons.arrow_2_circlepath,
               title: context.l10n.t('scanningEmulators'),
             ),
           );
         } else if (items.isEmpty) {
           contentWidget = Center(
             child: _PanelMessage(
-              icon: Icons.devices_other_outlined,
+              icon: CupertinoIcons.device_desktop,
               title: context.l10n.t('noEmulators'),
               subtitle: _filter.trim().isEmpty
                   ? context.l10n.t('createEmulatorHint')
@@ -392,7 +392,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
             AnimatedRotation(
               turns: isExpanded ? 0.5 : 0.0,
               duration: const Duration(milliseconds: 200),
-              child: const Icon(Icons.keyboard_arrow_down),
+              child: const Icon(CupertinoIcons.chevron_down),
             ),
           ],
         ),
@@ -470,10 +470,10 @@ class _EmulatorFilterField extends StatelessWidget {
       child: TextField(
         controller: controller,
         decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search),
+          prefixIcon: const Icon(CupertinoIcons.search),
           labelText: context.l10n.t('filterEmulator'),
           suffixIcon: filter.isNotEmpty
-              ? IconButton(icon: const Icon(Icons.clear), onPressed: onClear)
+              ? IconButton(icon: const Icon(CupertinoIcons.clear), onPressed: onClear)
               : null,
         ),
         onChanged: onChanged,
@@ -504,22 +504,22 @@ class _EmulatorToolbar extends StatelessWidget {
       children: [
         IconButton(
           tooltip: context.l10n.t('start'),
-          icon: const Icon(Icons.play_arrow),
+          icon: const Icon(CupertinoIcons.play),
           onPressed: onStart,
         ),
         IconButton(
           tooltip: context.l10n.t('clearEmulatorData'),
-          icon: const Icon(Icons.cleaning_services_outlined),
+          icon: const Icon(CupertinoIcons.clear),
           onPressed: onClearData,
         ),
         IconButton(
           tooltip: context.l10n.t('deleteEmulator'),
-          icon: const Icon(Icons.delete_outline),
+          icon: const Icon(CupertinoIcons.trash),
           onPressed: onDelete,
         ),
         IconButton(
           tooltip: context.l10n.t('openAvdFolder'),
-          icon: const Icon(Icons.folder_open_outlined),
+          icon: const Icon(CupertinoIcons.folder_open),
           onPressed: onOpenFolder,
         ),
         Container(
@@ -530,7 +530,7 @@ class _EmulatorToolbar extends StatelessWidget {
         ),
         IconButton(
           tooltip: context.l10n.t('refresh'),
-          icon: const Icon(Icons.refresh),
+          icon: const Icon(CupertinoIcons.refresh),
           onPressed: onRefresh,
         ),
       ],

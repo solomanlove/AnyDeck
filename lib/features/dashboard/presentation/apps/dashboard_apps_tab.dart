@@ -37,7 +37,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                 child: TextField(
                   controller: _filterController,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: const Icon(CupertinoIcons.search),
                     labelText: context.l10n.t('filterPackage'),
                   ),
                   onChanged: (value) => setState(() => _filter = value),
@@ -57,14 +57,14 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
-                icon: const Icon(Icons.install_desktop),
+                icon: const Icon(CupertinoIcons.square_arrow_down),
                 label: Text(context.l10n.t('installApk')),
                 onPressed: _installApk,
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
                 tooltip: context.l10n.t('refreshPackages'),
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(CupertinoIcons.refresh),
                 onPressed: _refreshingPackages ? null : _refreshPackages,
               ),
             ],
@@ -73,11 +73,11 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
           Expanded(
             child: packages.when(
               loading: () => _PanelMessage(
-                icon: Icons.sync,
+                icon: CupertinoIcons.arrow_2_circlepath,
                 title: context.l10n.t('loadingPackages'),
               ),
               error: (error, stackTrace) => _PanelMessage(
-                icon: Icons.error_outline,
+                icon: CupertinoIcons.exclamationmark_circle,
                 title: context.l10n.t('packageListFailed'),
                 subtitle: error.toString(),
               ),
@@ -85,7 +85,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                 final filtered = _filterPackages(items);
                 if (filtered.isEmpty) {
                   return _PanelMessage(
-                    icon: Icons.apps_outlined,
+                    icon: CupertinoIcons.square_grid_2x2,
                     title: context.l10n.t('noPackages'),
                   );
                 }

@@ -24,7 +24,7 @@ class _PackageActions extends ConsumerWidget {
         children: [
           IconButton(
             tooltip: context.l10n.t('appDetails'),
-            icon: const Icon(Icons.info_outline),
+            icon: const Icon(CupertinoIcons.info),
             onPressed: () {
               _showAppDetailsDialog(context, ref, deviceId, package);
             },
@@ -32,7 +32,7 @@ class _PackageActions extends ConsumerWidget {
           const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('permissions'),
-            icon: const Icon(Icons.security),
+            icon: const Icon(CupertinoIcons.shield),
             onPressed: () {
               _showAppPermissionsDialog(context, ref, deviceId, package);
             },
@@ -40,7 +40,7 @@ class _PackageActions extends ConsumerWidget {
           const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('revokeAllPermissions'),
-            icon: const Icon(Icons.lock_open),
+            icon: const Icon(CupertinoIcons.lock_open),
             onPressed: () async {
               final confirmed = await _confirm(
                 context,
@@ -80,7 +80,7 @@ class _PackageActions extends ConsumerWidget {
           const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('openSystemAppInfo'),
-            icon: const Icon(Icons.app_settings_alt_outlined),
+            icon: const Icon(CupertinoIcons.settings),
             onPressed: () => _runAdbAction(
               context,
               ref,
@@ -90,7 +90,7 @@ class _PackageActions extends ConsumerWidget {
           const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('launch'),
-            icon: const Icon(Icons.play_arrow),
+            icon: const Icon(CupertinoIcons.play),
             onPressed: () => _runAdbAction(
               context,
               ref,
@@ -100,7 +100,7 @@ class _PackageActions extends ConsumerWidget {
           const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('forceStop'),
-            icon: const Icon(Icons.stop),
+            icon: const Icon(CupertinoIcons.stop),
             onPressed: () => _runAdbAction(
               context,
               ref,
@@ -110,7 +110,7 @@ class _PackageActions extends ConsumerWidget {
           const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('packagePath'),
-            icon: const Icon(Icons.route),
+            icon: const Icon(CupertinoIcons.arrow_merge),
             onPressed: () => _showAdbResult(
               context,
               ref,
@@ -120,7 +120,7 @@ class _PackageActions extends ConsumerWidget {
           const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('clearData'),
-            icon: const Icon(Icons.cleaning_services_outlined),
+            icon: const Icon(CupertinoIcons.clear),
             onPressed: () async {
               final confirmed = await _confirm(
                 context,
@@ -144,7 +144,7 @@ class _PackageActions extends ConsumerWidget {
                 ? context.l10n.t('freezeApp')
                 : context.l10n.t('unfreezeApp'),
             icon: Icon(
-              package.enabled ? Icons.ac_unit : Icons.local_fire_department,
+              package.enabled ? CupertinoIcons.snow : CupertinoIcons.flame,
             ),
             onPressed: () async {
               final confirmMsg = package.enabled
@@ -183,7 +183,7 @@ class _PackageActions extends ConsumerWidget {
           const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('uninstall'),
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(CupertinoIcons.trash),
             onPressed: () async {
               final confirmed = await _confirm(
                 context,
@@ -210,7 +210,7 @@ class _PackageActions extends ConsumerWidget {
           const SizedBox(width: 2),
           IconButton(
             tooltip: context.l10n.t('exportApk'),
-            icon: const Icon(Icons.download),
+            icon: const Icon(CupertinoIcons.cloud_download),
             onPressed: () async {
               final directory = await getDirectoryPath();
               if (directory == null || !context.mounted) {

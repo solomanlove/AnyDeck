@@ -146,7 +146,7 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(CupertinoIcons.xmark),
                   onPressed: () => Navigator.of(context).pop(),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -212,7 +212,7 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
                 Expanded(
                   child: TextField(
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, size: 20),
+                      prefixIcon: const Icon(CupertinoIcons.search, size: 20),
                       hintText: context.l10n.t('searchPermission'),
                       contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                       border: OutlineInputBorder(
@@ -279,7 +279,7 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 40, color: theme.colorScheme.error),
+            Icon(CupertinoIcons.exclamationmark_circle, size: 40, color: theme.colorScheme.error),
             const SizedBox(height: 12),
             Text(
               context.l10n.t('permissionsLoadFailed').replaceAll('{error}', _error!),
@@ -290,7 +290,7 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(CupertinoIcons.refresh),
               label: Text(context.l10n.t('refresh')),
               onPressed: _loadPermissions,
             ),
@@ -305,7 +305,7 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.rule_folder_outlined,
+              CupertinoIcons.folder_badge_minus,
               size: 40,
               color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
             ),
@@ -342,7 +342,7 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             leading: Icon(
-              perm.isRuntime ? Icons.security_rounded : Icons.info_outline_rounded,
+              perm.isRuntime ? CupertinoIcons.shield : CupertinoIcons.info,
               color: perm.granted 
                   ? theme.colorScheme.primary 
                   : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),

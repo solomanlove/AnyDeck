@@ -107,7 +107,7 @@ Future<void> _showConnectDeviceDialog(
             child: Text(context.l10n.t('cancel')),
           ),
           FilledButton.icon(
-            icon: const Icon(Icons.add_link),
+            icon: const Icon(CupertinoIcons.link),
             label: Text(context.l10n.t('connect')),
             onPressed: () => Navigator.of(context).pop(controller.text),
           ),
@@ -232,7 +232,7 @@ void _showSnack(BuildContext context, String message, {bool isError = false}) {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isError ? Icons.error : Icons.check_circle,
+                        isError ? CupertinoIcons.exclamationmark_circle_fill : CupertinoIcons.checkmark_circle_fill,
                         color: accentColor,
                         size: 30,
                       ),
@@ -266,9 +266,9 @@ String _joinRemotePath(String base, String name) {
 /// 根据解析出的远程文件类型选择图标。
 IconData _fileIcon(RemoteFile file) {
   return switch (file.type) {
-    RemoteFileType.folder => Icons.folder,
-    RemoteFileType.link => Icons.link,
-    RemoteFileType.file => Icons.insert_drive_file_outlined,
+    RemoteFileType.folder => CupertinoIcons.folder,
+    RemoteFileType.link => CupertinoIcons.link,
+    RemoteFileType.file => CupertinoIcons.doc,
   };
 }
 

@@ -64,9 +64,9 @@ class _SettingsDialog extends ConsumerWidget {
             const Divider(),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.person_outline),
+              leading: const Icon(CupertinoIcons.person),
               title: Text(context.l10n.t('authorInfo')),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const Icon(CupertinoIcons.chevron_right),
               onTap: () => showDialog<void>(
                 context: context,
                 builder: (_) => const _AuthorInfoDialog(),
@@ -74,9 +74,9 @@ class _SettingsDialog extends ConsumerWidget {
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.menu_book_outlined),
+              leading: const Icon(CupertinoIcons.book),
               title: Text(context.l10n.t('softwareManual')),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const Icon(CupertinoIcons.chevron_right),
               onTap: () => showDialog<void>(
                 context: context,
                 builder: (_) => const _SoftwareManualDialog(),

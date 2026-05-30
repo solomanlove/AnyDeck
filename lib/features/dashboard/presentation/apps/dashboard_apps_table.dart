@@ -43,13 +43,13 @@ class _PackageTableState extends State<_PackageTable> {
     if (_sortColumn != col) {
       return const Padding(
         padding: EdgeInsets.only(left: 4),
-        child: Icon(Icons.unfold_more, size: 14, color: Colors.grey),
+        child: Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: Colors.grey),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Icon(
-        _sortAscending ? Icons.expand_less : Icons.expand_more,
+        _sortAscending ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
         size: 14,
         color: Theme.of(context).colorScheme.primary,
       ),
@@ -376,10 +376,10 @@ class _AppNameCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final icon = package.flutter
-        ? Icons.flutter_dash
+        ? CupertinoIcons.square_grid_2x2
         : package.system
-        ? Icons.settings_applications
-        : Icons.android;
+        ? CupertinoIcons.settings
+        : CupertinoIcons.device_phone_portrait;
     final iconPath = package.iconLocalPath;
 
     return Row(

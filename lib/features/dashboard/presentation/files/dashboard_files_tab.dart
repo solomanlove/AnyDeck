@@ -24,14 +24,14 @@ class _FilesTab extends ConsumerWidget {
               children: [
                 IconButton(
                   tooltip: '后退',
-                  icon: const Icon(Icons.arrow_back),
+                  icon: const Icon(CupertinoIcons.back),
                   onPressed: navState.canGoBack
                       ? () => ref.read(fileNavigationProvider.notifier).goBack()
                       : null,
                 ),
                 IconButton(
                   tooltip: '前进',
-                  icon: const Icon(Icons.arrow_forward),
+                  icon: const Icon(CupertinoIcons.forward),
                   onPressed: navState.canGoForward
                       ? () => ref
                             .read(fileNavigationProvider.notifier)
@@ -40,14 +40,14 @@ class _FilesTab extends ConsumerWidget {
                 ),
                 IconButton(
                   tooltip: '向上',
-                  icon: const Icon(Icons.arrow_upward),
+                  icon: const Icon(CupertinoIcons.up_arrow),
                   onPressed: path != '/'
                       ? () => ref.read(fileNavigationProvider.notifier).goUp()
                       : null,
                 ),
                 IconButton(
                   tooltip: context.l10n.t('refresh'),
-                  icon: const Icon(Icons.refresh),
+                  icon: const Icon(CupertinoIcons.refresh),
                   onPressed: () {
                     ref.invalidate(remoteFilesProvider(request));
                   },
@@ -108,7 +108,7 @@ class _FilesTab extends ConsumerWidget {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.edit, size: 14),
+                                  icon: const Icon(CupertinoIcons.pencil, size: 14),
                                   onPressed: () {
                                     ref
                                         .read(fileNavigationProvider.notifier)
@@ -134,7 +134,7 @@ class _FilesTab extends ConsumerWidget {
                         .setQuery(val),
                     decoration: InputDecoration(
                       prefixIcon: const Icon(
-                        Icons.filter_alt_outlined,
+                        CupertinoIcons.line_horizontal_3_decrease,
                         size: 16,
                       ),
                       hintText: context.l10n.t('filter'),
@@ -162,9 +162,9 @@ class _FilesTab extends ConsumerWidget {
                 // View Mode & Hidden Files toggle
                 IconButton(
                   tooltip: '网格视图',
-                  icon: const Icon(Icons.grid_view_outlined, size: 20),
+                  icon: const Icon(CupertinoIcons.square_grid_2x2, size: 20),
                   isSelected: navState.isGridView,
-                  selectedIcon: const Icon(Icons.grid_view, size: 20),
+                  selectedIcon: const Icon(CupertinoIcons.square_grid_2x2_fill, size: 20),
                   onPressed: () {
                     ref.read(fileNavigationProvider.notifier).setGridView(true);
                   },
@@ -172,12 +172,12 @@ class _FilesTab extends ConsumerWidget {
                 IconButton(
                   tooltip: '列表视图',
                   icon: const Icon(
-                    Icons.format_list_bulleted_outlined,
+                    CupertinoIcons.list_bullet,
                     size: 20,
                   ),
                   isSelected: !navState.isGridView,
                   selectedIcon: const Icon(
-                    Icons.format_list_bulleted,
+                    CupertinoIcons.list_bullet,
                     size: 20,
                   ),
                   onPressed: () {
@@ -190,8 +190,8 @@ class _FilesTab extends ConsumerWidget {
                   tooltip: navState.showHiddenFiles ? '隐藏隐藏文件' : '显示隐藏文件',
                   icon: Icon(
                     navState.showHiddenFiles
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+                        ? CupertinoIcons.eye
+                        : CupertinoIcons.eye_slash,
                     size: 20,
                   ),
                   onPressed: () {
@@ -203,7 +203,7 @@ class _FilesTab extends ConsumerWidget {
                 const _FileSortMenuButton(),
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  icon: const Icon(Icons.upload_file),
+                  icon: const Icon(CupertinoIcons.cloud_upload),
                   label: Text(context.l10n.t('push')),
                   onPressed: () async {
                     final file = await openFile();
@@ -221,11 +221,11 @@ class _FilesTab extends ConsumerWidget {
             Expanded(
               child: filesAsync.when(
                 loading: () => _PanelMessage(
-                  icon: Icons.sync,
+                  icon: CupertinoIcons.arrow_2_circlepath,
                   title: context.l10n.t('loadingFiles'),
                 ),
                 error: (error, stackTrace) => _PanelMessage(
-                  icon: Icons.error_outline,
+                  icon: CupertinoIcons.exclamationmark_circle,
                   title: context.l10n.t('fileListFailed'),
                   subtitle: error.toString(),
                 ),
@@ -253,7 +253,7 @@ class _FilesTab extends ConsumerWidget {
 
                   if (filtered.isEmpty) {
                     return _PanelMessage(
-                      icon: Icons.folder_open,
+                      icon: CupertinoIcons.folder_open,
                       title: filterQuery.isNotEmpty
                           ? '未找到匹配的文件'
                           : context.l10n.t('emptyFolder'),
@@ -406,8 +406,8 @@ class _FilesTab extends ConsumerWidget {
         padding: const EdgeInsets.only(left: 4),
         child: Icon(
           isSorted
-              ? (navState.sortAscending ? Icons.expand_less : Icons.expand_more)
-              : Icons.unfold_more,
+              ? (navState.sortAscending ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down)
+              : CupertinoIcons.chevron_up_chevron_down,
           size: 14,
           color: isSorted
               ? Theme.of(context).colorScheme.primary
@@ -686,7 +686,7 @@ class _TextPreviewDialogState extends State<_TextPreviewDialog> {
               color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               child: Row(
                 children: [
-                  Icon(Icons.description_outlined, color: theme.colorScheme.primary),
+                  Icon(CupertinoIcons.doc, color: theme.colorScheme.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -702,7 +702,7 @@ class _TextPreviewDialogState extends State<_TextPreviewDialog> {
                   // Actions
                   IconButton(
                     tooltip: '复制全部',
-                    icon: const Icon(Icons.copy_all, size: 20),
+                    icon: const Icon(CupertinoIcons.doc_on_doc, size: 20),
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: widget.content));
                       _showSnack(context, '已复制全部内容');
@@ -710,7 +710,7 @@ class _TextPreviewDialogState extends State<_TextPreviewDialog> {
                   ),
                   IconButton(
                     tooltip: '使用系统默认程序打开',
-                    icon: const Icon(Icons.open_in_new, size: 20),
+                    icon: const Icon(CupertinoIcons.square_arrow_up, size: 20),
                     onPressed: () async {
                       try {
                         if (Platform.isMacOS) {
@@ -729,7 +729,7 @@ class _TextPreviewDialogState extends State<_TextPreviewDialog> {
                   ),
                   IconButton(
                     tooltip: '关闭',
-                    icon: const Icon(Icons.close, size: 20),
+                    icon: const Icon(CupertinoIcons.xmark, size: 20),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -742,7 +742,7 @@ class _TextPreviewDialogState extends State<_TextPreviewDialog> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
+                    const Icon(CupertinoIcons.exclamationmark_triangle, color: Colors.amber, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

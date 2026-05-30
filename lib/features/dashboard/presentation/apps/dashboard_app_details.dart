@@ -64,7 +64,7 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(CupertinoIcons.xmark),
                   onPressed: () => Navigator.of(context).pop(),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -183,7 +183,7 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
                           package.signatureMd5 != null &&
                               package.signatureMd5!.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.copy, size: 16),
+                              icon: const Icon(CupertinoIcons.doc_on_doc, size: 16),
                               onPressed: () {
                                 Clipboard.setData(
                                   ClipboardData(text: package.signatureMd5!),
@@ -218,10 +218,10 @@ class _FallbackIconLarge extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = theme.colorScheme;
     final icon = package.flutter
-        ? Icons.flutter_dash
+        ? CupertinoIcons.square_grid_2x2
         : package.system
-        ? Icons.settings_applications
-        : Icons.android;
+        ? CupertinoIcons.settings
+        : CupertinoIcons.device_phone_portrait;
 
     return Container(
       color: package.system

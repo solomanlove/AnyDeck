@@ -33,20 +33,20 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: overview.when(
           loading: () => _PanelMessage(
-            icon: Icons.phone_android,
+            icon: CupertinoIcons.device_phone_portrait,
             title: context.l10n.t('overviewTitle'),
             subtitle: device.isOnline
                 ? context.l10n.t('scanningDevices')
                 : context.l10n.t('loadingCachedOverview'),
           ),
           error: (error, stackTrace) => _PanelMessage(
-            icon: Icons.error_outline,
+            icon: CupertinoIcons.exclamationmark_circle,
             title: context.l10n.t('overviewTitle'),
             subtitle: error.toString(),
           ),
           data: (data) => data == null
               ? _PanelMessage(
-                  icon: Icons.info_outline,
+                  icon: CupertinoIcons.info_circle,
                   title: context.l10n.t('overviewTitle'),
                   subtitle: context.l10n.t('noCachedOverview'),
                 )
@@ -77,92 +77,92 @@ class _DeviceOverviewPanel extends ConsumerWidget {
   ) {
     return [
       _OverviewItemData(
-        icon: Icons.phone_android,
+        icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('deviceName'),
         value: overview.name,
       ),
       _OverviewItemData(
-        icon: Icons.info,
+        icon: CupertinoIcons.info,
         label: context.l10n.t('brand'),
         value: overview.brand,
       ),
       _OverviewItemData(
-        icon: Icons.layers_outlined,
+        icon: CupertinoIcons.layers,
         label: context.l10n.t('model'),
         value: overview.model,
       ),
       _OverviewItemData(
-        icon: Icons.pin_outlined,
+        icon: CupertinoIcons.number,
         label: context.l10n.t('serial'),
         value: overview.serial,
       ),
       _OverviewItemData(
-        icon: Icons.badge_outlined,
+        icon: CupertinoIcons.person_crop_square,
         label: context.l10n.t('androidId'),
         value: overview.androidId,
       ),
       _OverviewItemData(
-        icon: Icons.android,
+        icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('androidVersion'),
         value: overview.androidVersion,
       ),
       _OverviewItemData(
-        icon: Icons.android,
+        icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('kernelVersion'),
         value: overview.kernelVersion,
       ),
       _OverviewItemData(
-        icon: Icons.memory,
+        icon: CupertinoIcons.settings,
         label: context.l10n.t('processor'),
         value: overview.processor,
       ),
       _OverviewItemData(
-        icon: Icons.storage,
+        icon: CupertinoIcons.folder,
         label: context.l10n.t('storage'),
         value: overview.storage,
       ),
       _OverviewItemData(
-        icon: Icons.developer_board,
+        icon: CupertinoIcons.square_grid_2x2,
         label: context.l10n.t('memory'),
         value: overview.memory,
       ),
       _OverviewItemData(
-        icon: Icons.stay_current_portrait,
+        icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('physicalResolution'),
         value: overview.physicalResolution,
       ),
       _OverviewItemData(
-        icon: Icons.stay_current_portrait,
+        icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('resolution'),
         value: overview.resolution,
       ),
       _OverviewItemData(
-        icon: Icons.blur_on,
+        icon: CupertinoIcons.circle_grid_3x3,
         label: context.l10n.t('logicalDensity'),
         value: overview.logicalDensity,
       ),
       _OverviewItemData(
-        icon: Icons.speed,
+        icon: CupertinoIcons.gauge,
         label: context.l10n.t('refreshRate'),
         value: overview.refreshRate,
       ),
       _OverviewItemData(
-        icon: Icons.text_fields,
+        icon: CupertinoIcons.textformat,
         label: context.l10n.t('fontScale'),
         value: overview.fontScale,
       ),
       _OverviewItemData(
-        icon: Icons.wifi,
+        icon: CupertinoIcons.wifi,
         label: context.l10n.t('wifi'),
         value: overview.wifi,
       ),
       _OverviewItemData(
-        icon: Icons.public,
+        icon: CupertinoIcons.globe,
         label: context.l10n.t('ipAddress'),
         value: overview.ipAddress,
       ),
       _OverviewItemData(
-        icon: Icons.public,
+        icon: CupertinoIcons.globe,
         label: context.l10n.t('macAddress'),
         value: overview.macAddress,
       ),
@@ -194,7 +194,7 @@ class _OverviewHeader extends StatelessWidget {
             const SizedBox(width: 4),
             IconButton(
               tooltip: context.l10n.t('refresh'),
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(CupertinoIcons.refresh),
               onPressed: onRefresh,
             ),
           ],
@@ -257,7 +257,7 @@ class _OverviewShortcutActions extends ConsumerWidget {
           children: [
             IconButton(
               tooltip: context.l10n.t('home'),
-              icon: const Icon(Icons.home_outlined),
+              icon: const Icon(CupertinoIcons.home),
               onPressed: enabled
                   ? () => _runAdbAction(
                       context,
@@ -268,7 +268,7 @@ class _OverviewShortcutActions extends ConsumerWidget {
             ),
             IconButton(
               tooltip: context.l10n.t('back'),
-              icon: const Icon(Icons.arrow_back),
+              icon: const Icon(CupertinoIcons.back),
               onPressed: enabled
                   ? () => _runAdbAction(
                       context,
@@ -279,7 +279,7 @@ class _OverviewShortcutActions extends ConsumerWidget {
             ),
             IconButton(
               tooltip: context.l10n.t('power'),
-              icon: const Icon(Icons.power_settings_new),
+              icon: const Icon(CupertinoIcons.power),
               onPressed: enabled
                   ? () => _runAdbAction(
                       context,
@@ -290,7 +290,7 @@ class _OverviewShortcutActions extends ConsumerWidget {
             ),
             IconButton(
               tooltip: context.l10n.t('notificationBar'),
-              icon: const Icon(Icons.notifications_active_outlined),
+              icon: const Icon(CupertinoIcons.bell),
               onPressed: enabled
                   ? () => _runAdbAction(
                       context,
@@ -301,7 +301,7 @@ class _OverviewShortcutActions extends ConsumerWidget {
             ),
             IconButton(
               tooltip: context.l10n.t('focus'),
-              icon: const Icon(Icons.center_focus_strong),
+              icon: const Icon(CupertinoIcons.viewfinder),
               onPressed: enabled
                   ? () => _showAdbResult(
                       context,

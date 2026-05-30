@@ -49,7 +49,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 const SizedBox(width: 10),
                 const SizedBox(
                   width: 40,
-                  child: Icon(Icons.chevron_right, color: Colors.grey),
+                  child: Icon(CupertinoIcons.chevron_right, color: Colors.grey),
                 ),
               ],
             ],
@@ -64,7 +64,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
       flex: 3,
       child: Row(
         children: [
-          const Icon(Icons.info, color: Color(0xFF26A69A), size: 18),
+          const Icon(CupertinoIcons.info_circle, color: Color(0xFF26A69A), size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -75,11 +75,11 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           ),
           if (_hasUsbConnection(device)) ...[
             const SizedBox(width: 4),
-            const Icon(Icons.usb, color: Color(0xFF26A69A), size: 16),
+            const Icon(CupertinoIcons.bolt, color: Color(0xFF26A69A), size: 16),
           ],
           if (_hasNetworkConnection(device)) ...[
             const SizedBox(width: 4),
-            const Icon(Icons.wifi, color: Color(0xFF26A69A), size: 16),
+            const Icon(CupertinoIcons.wifi, color: Color(0xFF26A69A), size: 16),
           ],
         ],
       ),
@@ -113,7 +113,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           ),
           const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 14),
+            icon: const Icon(CupertinoIcons.pencil, size: 14),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             splashRadius: 16,
@@ -156,7 +156,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           if (device.isNetwork) ...[
             IconButton(
               icon: Icon(
-                device.isOnline ? Icons.link_off : Icons.link,
+                device.isOnline ? CupertinoIcons.bolt_slash : CupertinoIcons.link,
                 color: device.isOnline ? Colors.red : Colors.green,
               ),
               tooltip: device.isOnline
@@ -179,7 +179,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             const SizedBox(width: 8),
           ],
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+            icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent),
             tooltip: context.l10n.t('delete'),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),

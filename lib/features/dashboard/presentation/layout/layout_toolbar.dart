@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../../../app/l10n/app_localizations.dart';
 
@@ -68,17 +69,17 @@ class LayoutToolbar extends StatelessWidget {
       child: Row(
         children: [
           _ToolbarButton(
-            icon: Icons.refresh,
+            icon: CupertinoIcons.refresh,
             tooltip: context.l10n.t('refreshLayout'),
             onPressed: onRefresh,
           ),
           _ToolbarButton(
-            icon: Icons.save_outlined,
+            icon: CupertinoIcons.floppy_disk,
             tooltip: context.l10n.t('save'),
             onPressed: canSave ? onSave : null,
           ),
           _ToolbarButton(
-            icon: Icons.copy_outlined,
+            icon: CupertinoIcons.doc_on_doc,
             tooltip: context.l10n.t('copyLayout'),
             onPressed: hasLayout ? onCopyXml : null,
           ),
@@ -89,12 +90,12 @@ class LayoutToolbar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _ToolbarButton(
-            icon: Icons.unfold_more,
+            icon: CupertinoIcons.chevron_up_chevron_down,
             tooltip: context.l10n.t('expandAll'),
             onPressed: hasLayout ? onExpandAll : null,
           ),
           _ToolbarButton(
-            icon: Icons.unfold_less,
+            icon: CupertinoIcons.minus,
             tooltip: context.l10n.t('collapseAll'),
             onPressed: hasLayout ? onCollapseAll : null,
           ),
@@ -111,22 +112,22 @@ class LayoutToolbar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _ToolbarButton(
-            icon: Icons.rotate_left,
+            icon: CupertinoIcons.rotate_left,
             tooltip: context.l10n.t('rotateLeft'),
             onPressed: hasLayout ? onRotateLeft : null,
           ),
           _ToolbarButton(
-            icon: Icons.rotate_right,
+            icon: CupertinoIcons.rotate_right,
             tooltip: context.l10n.t('rotateRight'),
             onPressed: hasLayout ? onRotateRight : null,
           ),
           _ToolbarButton(
-            icon: Icons.zoom_in,
+            icon: CupertinoIcons.zoom_in,
             tooltip: context.l10n.t('zoomIn'),
             onPressed: hasLayout ? onZoomIn : null,
           ),
           _ToolbarButton(
-            icon: Icons.zoom_out,
+            icon: CupertinoIcons.zoom_out,
             tooltip: context.l10n.t('zoomOut'),
             onPressed: hasLayout ? onZoomOut : null,
           ),
@@ -154,7 +155,7 @@ class LayoutToolbar extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           _ToolbarButton(
-            icon: Icons.settings_backup_restore,
+            icon: CupertinoIcons.arrow_counterclockwise,
             tooltip: context.l10n.t('zoomReset'),
             onPressed: hasLayout ? onZoomReset : null,
           ),

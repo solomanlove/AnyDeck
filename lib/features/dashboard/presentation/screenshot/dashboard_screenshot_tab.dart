@@ -271,7 +271,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.red),
             const SizedBox(height: 16),
             Text(
               _error!,
@@ -281,7 +281,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: () => _capture(),
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(CupertinoIcons.refresh),
               label: Text(context.l10n.t('refresh')),
             ),
           ],
@@ -305,23 +305,23 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
             children: [
               IconButton(
                 tooltip: context.l10n.t('refresh'),
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(CupertinoIcons.refresh),
                 onPressed: (_loading || isRecording) ? null : () => _capture(),
               ),
               IconButton(
                 tooltip: context.l10n.t('save'),
-                icon: const Icon(Icons.save_alt),
+                icon: const Icon(CupertinoIcons.floppy_disk),
                 onPressed: (_screenshotBytes == null || isRecording) ? null : _saveScreenshot,
               ),
               IconButton(
                 tooltip: context.l10n.t('copy'),
-                icon: const Icon(Icons.content_copy),
+                icon: const Icon(CupertinoIcons.doc_on_doc),
                 onPressed: (_screenshotBytes == null || isRecording) ? null : _copyScreenshot,
               ),
               const VerticalDivider(width: 24, indent: 12, endIndent: 12),
               IconButton(
                 tooltip: context.l10n.t('rotateLeft'),
-                icon: const Icon(Icons.rotate_left),
+                icon: const Icon(CupertinoIcons.rotate_left),
                 onPressed: (_screenshotBytes == null || isRecording) ? null : () {
                   setState(() {
                     _rotation = (_rotation - 90 + 360) % 360;
@@ -331,7 +331,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
               ),
               IconButton(
                 tooltip: context.l10n.t('rotateRight'),
-                icon: const Icon(Icons.rotate_right),
+                icon: const Icon(CupertinoIcons.rotate_right),
                 onPressed: (_screenshotBytes == null || isRecording) ? null : () {
                   setState(() {
                     _rotation = (_rotation + 90) % 360;
@@ -342,29 +342,29 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
               const VerticalDivider(width: 24, indent: 12, endIndent: 12),
               IconButton(
                 tooltip: context.l10n.t('zoomIn'),
-                icon: const Icon(Icons.zoom_in),
+                icon: const Icon(CupertinoIcons.zoom_in),
                 onPressed: (_screenshotBytes == null || isRecording) ? null : () => _zoom(1.2),
               ),
               IconButton(
                 tooltip: context.l10n.t('zoomOut'),
-                icon: const Icon(Icons.zoom_out),
+                icon: const Icon(CupertinoIcons.zoom_out),
                 onPressed: (_screenshotBytes == null || isRecording) ? null : () => _zoom(0.8),
               ),
               IconButton(
                 tooltip: context.l10n.t('zoomReset'),
-                icon: const Icon(Icons.aspect_ratio),
+                icon: const Icon(CupertinoIcons.resize),
                 onPressed: (_screenshotBytes == null || isRecording) ? null : _zoomReset,
               ),
               IconButton(
                 tooltip: context.l10n.t('zoom1to1'),
-                icon: const Icon(Icons.fullscreen),
+                icon: const Icon(CupertinoIcons.fullscreen),
                 onPressed: (_screenshotBytes == null || isRecording) ? null : _zoom1to1,
               ),
               const VerticalDivider(width: 24, indent: 12, endIndent: 12),
               IconButton(
                 tooltip: context.l10n.t('autoRefresh'),
                 icon: Icon(
-                  Icons.history,
+                  CupertinoIcons.clock,
                   color: _autoRefresh ? colorScheme.primary : null,
                 ),
                 onPressed: (_screenshotBytes == null || isRecording) ? null : _toggleAutoRefresh,
@@ -373,7 +373,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
               IconButton(
                 tooltip: isRecording ? context.l10n.t('stopRecord') : context.l10n.t('startRecord'),
                 icon: Icon(
-                  isRecording ? Icons.stop : Icons.videocam,
+                  isRecording ? CupertinoIcons.stop : CupertinoIcons.videocam,
                   color: isRecording ? Colors.red : null,
                 ),
                 onPressed: _loading

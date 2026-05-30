@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -184,7 +185,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.terminal_outlined,
+                            CupertinoIcons.chevron_left_slash_chevron_right,
                             size: 16,
                             color: isActive
                                 ? Theme.of(context).colorScheme.primary
@@ -209,7 +210,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                           ),
                           const SizedBox(width: 8),
                           IconButton(
-                            icon: const Icon(Icons.close, size: 12),
+                            icon: const Icon(CupertinoIcons.xmark, size: 12),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             splashRadius: 12,
@@ -231,7 +232,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
           Tooltip(
             message: context.l10n.t('newTerminal'),
             child: IconButton(
-              icon: const Icon(Icons.add, size: 20),
+              icon: const Icon(CupertinoIcons.plus, size: 20),
               onPressed: () => notifier.createSession(widget.device.id),
             ),
           ),
@@ -254,7 +255,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.terminal, size: 48, color: Colors.grey),
+            const Icon(CupertinoIcons.chevron_left_slash_chevron_right, size: 48, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               context.l10n.t('noActiveTerminal'),
@@ -264,7 +265,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
-              icon: const Icon(Icons.add),
+              icon: const Icon(CupertinoIcons.plus),
               label: Text(context.l10n.t('newTerminal')),
               onPressed: () => ref
                   .read(adbTerminalProvider.notifier)

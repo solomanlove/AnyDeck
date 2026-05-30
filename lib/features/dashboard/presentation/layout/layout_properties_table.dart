@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../../../app/l10n/app_localizations.dart';
 import '../../../../core/layout_inspector/layout_node.dart';
@@ -40,7 +41,7 @@ class LayoutPropertiesTable extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.info_outline, size: 48, color: Colors.grey),
+              const Icon(CupertinoIcons.info, size: 48, color: Colors.grey),
               const SizedBox(height: 16),
               Text(
                 context.l10n.t('noComponentSelected'),
@@ -154,7 +155,7 @@ class LayoutPropertiesTable extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.list_alt, size: 18, color: Colors.blueGrey),
+                const Icon(CupertinoIcons.list_bullet, size: 18, color: Colors.blueGrey),
                 const SizedBox(width: 8),
                 Text(
                   context.l10n.t('properties'),
@@ -235,7 +236,7 @@ class LayoutPropertiesTable extends StatelessWidget {
                                   ),
                                   if (hasValue)
                                     Icon(
-                                      Icons.copy,
+                                      CupertinoIcons.doc_on_doc,
                                       size: 14,
                                       color: Colors.grey[400],
                                     ),

@@ -76,7 +76,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         Tooltip(
           message: context.l10n.t('deleteSelectedDevices'),
           child: IconButton.filledTonal(
-            icon: const Icon(Icons.delete_sweep_outlined),
+            icon: const Icon(CupertinoIcons.trash),
             color: Colors.redAccent,
             onPressed: hasChecked
                 ? () => _deleteSelectedDevices(context, selectedCount)
@@ -87,7 +87,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         Tooltip(
           message: context.l10n.t('connectTcp'),
           child: IconButton.filledTonal(
-            icon: const Icon(Icons.add_link),
+            icon: const Icon(CupertinoIcons.link),
             onPressed: () => _showConnectDialog(context),
           ),
         ),
@@ -95,7 +95,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         Tooltip(
           message: context.l10n.t('pairDeviceTitle'),
           child: IconButton.filledTonal(
-            icon: const Icon(Icons.sensors),
+            icon: const Icon(CupertinoIcons.antenna_radiowaves_left_right),
             onPressed: () => _showPairingDialog(context),
           ),
         ),
@@ -103,7 +103,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         Tooltip(
           message: context.l10n.t('refreshDevices'),
           child: IconButton.filledTonal(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(CupertinoIcons.refresh),
             onPressed: () => _refreshDevices(context, ref),
           ),
         ),
@@ -121,7 +121,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     if (activeDevicesAsync.hasError && sortedItems.isEmpty) {
       return Center(
         child: _PanelMessage(
-          icon: Icons.error_outline,
+          icon: CupertinoIcons.exclamationmark_circle,
           title: context.l10n.t('adbUnavailable'),
           subtitle: activeDevicesAsync.error.toString(),
         ),
@@ -130,7 +130,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     if (activeDevicesAsync.isLoading && sortedItems.isEmpty) {
       return Center(
         child: _PanelMessage(
-          icon: Icons.sync,
+          icon: CupertinoIcons.arrow_2_circlepath,
           title: context.l10n.t('scanningDevices'),
         ),
       );
@@ -138,7 +138,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     if (sortedItems.isEmpty) {
       return Center(
         child: _PanelMessage(
-          icon: Icons.usb_off_outlined,
+          icon: CupertinoIcons.slash_circle,
           title: context.l10n.t('noDevices'),
           subtitle: context.l10n.t('connectUsbOrTcp'),
         ),
@@ -230,7 +230,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
             const SizedBox(width: 10),
             const SizedBox(
               width: 40,
-              child: Icon(Icons.settings, size: 16, color: Colors.grey),
+              child: Icon(CupertinoIcons.settings, size: 16, color: Colors.grey),
             ),
           ],
         ],
@@ -242,13 +242,13 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     if (_sortColumn != column) {
       return const Padding(
         padding: EdgeInsets.only(left: 4),
-        child: Icon(Icons.unfold_more, size: 14, color: Colors.grey),
+        child: Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: Colors.grey),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Icon(
-        _sortAscending ? Icons.expand_less : Icons.expand_more,
+        _sortAscending ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
         size: 14,
         color: Theme.of(context).colorScheme.primary,
       ),

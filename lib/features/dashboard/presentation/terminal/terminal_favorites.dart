@@ -71,7 +71,7 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.bookmark_outline, size: 20),
+                const Icon(CupertinoIcons.bookmark, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   context.l10n.t('commandFavorites'),
@@ -81,7 +81,7 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.restore, size: 20),
+                  icon: const Icon(CupertinoIcons.arrow_counterclockwise, size: 20),
                   tooltip: context.l10n.t('resetFavorites'),
                   onPressed: () async {
                     final confirmed = await showDialog<bool>(
@@ -109,7 +109,7 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.add, size: 20),
+                  icon: const Icon(CupertinoIcons.plus, size: 20),
                   tooltip: context.l10n.t('addFavorite'),
                   onPressed: () => _showAddFavoriteDialog(context, ref),
                 ),
@@ -276,7 +276,7 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
                 if (_hovering)
                   IconButton(
                     icon: const Icon(
-                      Icons.delete_outline,
+                      CupertinoIcons.trash,
                       size: 14,
                       color: Colors.redAccent,
                     ),
@@ -306,7 +306,7 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton.icon(
-                  icon: const Icon(Icons.edit_note, size: 12),
+                  icon: const Icon(CupertinoIcons.pencil, size: 12),
                   label: Text(
                     context.l10n.t('fillCommand'),
                     style: const TextStyle(fontSize: 11),
@@ -320,7 +320,7 @@ class _FavoriteItemState extends ConsumerState<_FavoriteItem> {
                 ),
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  icon: const Icon(Icons.play_arrow, size: 12),
+                  icon: const Icon(CupertinoIcons.play, size: 12),
                   label: Text(
                     context.l10n.t('runCommand'),
                     style: const TextStyle(fontSize: 11),

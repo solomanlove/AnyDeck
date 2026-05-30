@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_selector/file_selector.dart';
@@ -369,7 +370,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.red),
               const SizedBox(height: 16),
               Text(
                 '${context.l10n.t('getLayoutFailed')}\n$_error',
@@ -379,7 +380,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _loadLayoutAndScreenshot,
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(CupertinoIcons.refresh),
                 label: Text(context.l10n.t('refreshLayout')),
               ),
             ],
@@ -392,7 +393,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
       return Center(
         child: FilledButton.icon(
           onPressed: _loadLayoutAndScreenshot,
-          icon: const Icon(Icons.refresh),
+          icon: const Icon(CupertinoIcons.refresh),
           label: Text(context.l10n.t('refreshLayout')),
         ),
       );

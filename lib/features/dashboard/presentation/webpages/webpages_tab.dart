@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/l10n/app_localizations.dart';
@@ -145,7 +146,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isError ? Icons.error : Icons.check_circle,
+                          isError ? CupertinoIcons.exclamationmark_circle_fill : CupertinoIcons.checkmark_circle_fill,
                           color: accentColor,
                           size: 30,
                         ),
@@ -235,11 +236,11 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                 child: TextField(
                   controller: _filterController,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: const Icon(CupertinoIcons.search),
                     labelText: context.l10n.t('filterWebpage'),
                     suffixIcon: _filter.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear),
+                            icon: const Icon(CupertinoIcons.clear),
                             onPressed: () {
                               _filterController.clear();
                               setState(() => _filter = '');
@@ -303,13 +304,13 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.refresh),
+                    : const Icon(CupertinoIcons.refresh),
                 onPressed: _refreshing ? null : () => _refreshTargets(),
               ),
               const SizedBox(width: 8),
               // 调试按钮 (Bug 图标)
               IconButton(
-                icon: const Icon(Icons.bug_report),
+                icon: const Icon(CupertinoIcons.ant),
                 style: IconButton.styleFrom(
                   backgroundColor: _selectedTarget != null
                       ? Theme.of(context).colorScheme.primaryContainer
@@ -324,7 +325,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
               const SizedBox(width: 8),
               // 浏览器打开按钮 (Globe 图标)
               IconButton(
-                icon: const Icon(Icons.language),
+                icon: const Icon(CupertinoIcons.globe),
                 style: IconButton.styleFrom(
                   backgroundColor: _selectedTarget != null
                       ? Theme.of(context).colorScheme.secondaryContainer
@@ -358,7 +359,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.error_outline,
+                      CupertinoIcons.exclamationmark_circle,
                       size: 48,
                       color: Colors.red,
                     ),
@@ -381,7 +382,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.web_asset_off_outlined,
+                          CupertinoIcons.slash_circle,
                           size: 48,
                           color: Colors.grey,
                         ),

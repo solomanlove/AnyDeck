@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/l10n/app_localizations.dart';
@@ -231,7 +232,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.red),
               const SizedBox(height: 16),
               Text(
                 '数据获取失败: $_errorMsg',
@@ -240,7 +241,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(CupertinoIcons.refresh),
                 label: const Text('重试连接'),
                 onPressed: _startPolling,
               ),

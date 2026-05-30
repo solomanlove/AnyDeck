@@ -8,7 +8,7 @@ extension _ProcessesTabView on _ProcessesTabState {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.link_off, size: 48, color: Colors.grey),
+            Icon(CupertinoIcons.bolt_slash, size: 48, color: Colors.grey),
             SizedBox(height: 16),
             Text('手机离线，无法读取进程列表'),
           ],
@@ -33,11 +33,11 @@ extension _ProcessesTabView on _ProcessesTabState {
                 child: TextField(
                   controller: _filterController,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: const Icon(CupertinoIcons.search),
                     labelText: context.l10n.t('filterPackage'),
                     suffixIcon: _filter.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear),
+                            icon: const Icon(CupertinoIcons.clear),
                             onPressed: () {
                               _filterController.clear();
                               _updateState(() => _filter = '');
@@ -103,12 +103,12 @@ extension _ProcessesTabView on _ProcessesTabState {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.refresh),
+                    : const Icon(CupertinoIcons.refresh),
                 onPressed: _refreshing ? null : () => _refreshProcesses(),
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(CupertinoIcons.xmark),
                 style: IconButton.styleFrom(
                   backgroundColor: _selectedPid != null
                       ? Theme.of(context).colorScheme.errorContainer
@@ -142,7 +142,7 @@ extension _ProcessesTabView on _ProcessesTabState {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.error_outline,
+                      CupertinoIcons.exclamationmark_circle,
                       size: 48,
                       color: Colors.red,
                     ),
@@ -165,7 +165,7 @@ extension _ProcessesTabView on _ProcessesTabState {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.list_alt_outlined,
+                          CupertinoIcons.list_bullet,
                           size: 48,
                           color: Colors.grey,
                         ),

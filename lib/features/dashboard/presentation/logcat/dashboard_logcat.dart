@@ -503,7 +503,7 @@ class _LogcatToolbar extends StatelessWidget {
       focusNode: textFocusNode,
       hintText: context.l10n.t('filterLog'),
       history: state.textFilterHistory,
-      prefixIcon: Icons.search,
+      prefixIcon: CupertinoIcons.search,
       onChanged: onTextChanged,
       onSubmitted: onTextSubmitted,
       onSelected: onTextChanged,
@@ -514,7 +514,7 @@ class _LogcatToolbar extends StatelessWidget {
         tooltip: state.isRunning
             ? context.l10n.t('stop')
             : context.l10n.t('start'),
-        icon: state.isRunning ? Icons.stop : Icons.play_arrow,
+        icon: state.isRunning ? CupertinoIcons.stop : CupertinoIcons.play,
         selected: state.isRunning,
         onPressed: onStartStop,
       ),
@@ -522,35 +522,35 @@ class _LogcatToolbar extends StatelessWidget {
         tooltip: state.isPaused
             ? context.l10n.t('logcatResume')
             : context.l10n.t('logcatPause'),
-        icon: state.isPaused ? Icons.play_arrow : Icons.pause,
+        icon: state.isPaused ? CupertinoIcons.play : CupertinoIcons.pause,
         selected: state.isPaused,
         onPressed: onPause,
       ),
       _LogcatIconButton(
         tooltip: context.l10n.t('logcatAutoScroll'),
-        icon: Icons.vertical_align_bottom,
+        icon: CupertinoIcons.arrow_down_to_line,
         selected: state.autoScroll,
         onPressed: onAutoScroll,
       ),
       _LogcatIconButton(
         tooltip: context.l10n.t('logcatWrapLines'),
-        icon: Icons.wrap_text,
+        icon: CupertinoIcons.text_alignleft,
         selected: state.wrapLines,
         onPressed: onWrap,
       ),
       _LogcatIconButton(
         tooltip: context.l10n.t('logcatImport'),
-        icon: Icons.file_open_outlined,
+        icon: CupertinoIcons.folder_open,
         onPressed: onImport,
       ),
       _LogcatIconButton(
         tooltip: context.l10n.t('logcatExport'),
-        icon: Icons.save_alt,
+        icon: CupertinoIcons.floppy_disk,
         onPressed: onExport,
       ),
       _LogcatIconButton(
         tooltip: context.l10n.t('clear'),
-        icon: Icons.cleaning_services,
+        icon: CupertinoIcons.clear,
         onPressed: onClear,
       ),
     ];
@@ -723,7 +723,7 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
                   Expanded(child: Text(item, overflow: TextOverflow.ellipsis)),
                   IconButton(
                     tooltip: context.l10n.t('logcatRemoveHistory'),
-                    icon: const Icon(Icons.close, size: 16),
+                    icon: const Icon(CupertinoIcons.xmark, size: 16),
                     visualDensity: VisualDensity.compact,
                     onPressed: () {
                       widget.onHistoryRemoved(item);
@@ -758,7 +758,7 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
                 ? null
                 : IconButton(
                     tooltip: context.l10n.t('logcatFilterHistory'),
-                    icon: const Icon(Icons.arrow_drop_down, size: 18),
+                    icon: const Icon(CupertinoIcons.chevron_down, size: 18),
                     onPressed: _openHistory,
                   ),
             suffixIconConstraints: const BoxConstraints(minWidth: 30),
@@ -1745,18 +1745,18 @@ class _LogcatSearchPanelState extends State<_LogcatSearchPanel> {
             ),
             const SizedBox(width: 8),
             _SearchIconButton(
-              icon: Icons.keyboard_arrow_up,
+              icon: CupertinoIcons.chevron_up,
               tooltip: context.l10n.t('logcatSearchPrev'),
               onPressed: widget.matchIndices.isEmpty ? null : widget.onPrev,
             ),
             _SearchIconButton(
-              icon: Icons.keyboard_arrow_down,
+              icon: CupertinoIcons.chevron_down,
               tooltip: context.l10n.t('logcatSearchNext'),
               onPressed: widget.matchIndices.isEmpty ? null : widget.onNext,
             ),
             const SizedBox(width: 4),
             _SearchIconButton(
-              icon: Icons.close,
+              icon: CupertinoIcons.xmark,
               tooltip: context.l10n.t('logcatSearchClose'),
               onPressed: widget.onClose,
             ),

@@ -273,7 +273,7 @@ class _RemoteFileActions extends ConsumerWidget {
       children: [
         IconButton(
           tooltip: context.l10n.t('pull'),
-          icon: const Icon(Icons.download, size: 18),
+          icon: const Icon(CupertinoIcons.cloud_download, size: 18),
           constraints: const BoxConstraints(),
           padding: const EdgeInsets.all(6),
           splashRadius: 16,
@@ -294,7 +294,7 @@ class _RemoteFileActions extends ConsumerWidget {
         ),
         IconButton(
           tooltip: context.l10n.t('delete'),
-          icon: const Icon(Icons.delete_outline, size: 18),
+          icon: const Icon(CupertinoIcons.trash, size: 18),
           constraints: const BoxConstraints(),
           padding: const EdgeInsets.all(6),
           splashRadius: 16,
@@ -374,7 +374,7 @@ class _FileSortMenuButton extends ConsumerWidget {
 
     return PopupMenuButton<String>(
       tooltip: '排序',
-      icon: const Icon(Icons.sort, size: 20),
+      icon: const Icon(CupertinoIcons.sort_down, size: 20),
       onSelected: (value) {
         if (value == 'asc') {
           notifier.setSort(navState.sortColumn, true);
@@ -402,7 +402,7 @@ class _FileSortMenuButton extends ConsumerWidget {
             child: Row(
               children: [
                 Icon(
-                  isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                  isSelected ? CupertinoIcons.largecircle_fill_circle : CupertinoIcons.circle,
                   size: 16,
                   color: isSelected ? Theme.of(context).colorScheme.primary : null,
                 ),
@@ -428,7 +428,7 @@ class _FileSortMenuButton extends ConsumerWidget {
           child: Row(
             children: [
               Icon(
-                navState.sortAscending ? Icons.radio_button_checked : Icons.radio_button_off,
+                navState.sortAscending ? CupertinoIcons.largecircle_fill_circle : CupertinoIcons.circle,
                 size: 16,
                 color: navState.sortAscending ? Theme.of(context).colorScheme.primary : null,
               ),
@@ -442,7 +442,7 @@ class _FileSortMenuButton extends ConsumerWidget {
           child: Row(
             children: [
               Icon(
-                !navState.sortAscending ? Icons.radio_button_checked : Icons.radio_button_off,
+                !navState.sortAscending ? CupertinoIcons.largecircle_fill_circle : CupertinoIcons.circle,
                 size: 16,
                 color: !navState.sortAscending ? Theme.of(context).colorScheme.primary : null,
               ),

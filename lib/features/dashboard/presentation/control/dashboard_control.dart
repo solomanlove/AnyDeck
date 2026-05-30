@@ -75,43 +75,43 @@ class _QuickActionsPanel extends ConsumerWidget {
       title: context.l10n.t('deviceActions'),
       children: [
         _ActionButton(
-          icon: Icons.keyboard,
+          icon: CupertinoIcons.keyboard,
           label: context.l10n.t('inputText'),
           onPressed: () => _showInputTextDialog(context, ref, device.id),
         ),
         _ActionButton(
-          icon: Icons.home,
+          icon: CupertinoIcons.home,
           label: context.l10n.t('home'),
           onPressed: () =>
               _runAdbAction(context, ref, actions.keyEvent(device.id, 3)),
         ),
         _ActionButton(
-          icon: Icons.arrow_back,
+          icon: CupertinoIcons.back,
           label: context.l10n.t('back'),
           onPressed: () =>
               _runAdbAction(context, ref, actions.keyEvent(device.id, 4)),
         ),
         _ActionButton(
-          icon: Icons.power_settings_new,
+          icon: CupertinoIcons.power,
           label: context.l10n.t('power'),
           onPressed: () =>
               _runAdbAction(context, ref, actions.keyEvent(device.id, 26)),
         ),
         _ActionButton(
-          icon: Icons.volume_up,
+          icon: CupertinoIcons.volume_up,
           label: context.l10n.t('volumeUp'),
           onPressed: () =>
               _runAdbAction(context, ref, actions.volumeUp(device.id)),
         ),
         _ActionButton(
-          icon: Icons.volume_down,
+          icon: CupertinoIcons.volume_down,
           label: context.l10n.t('volumeDown'),
           onPressed: () =>
               _runAdbAction(context, ref, actions.volumeDown(device.id)),
         ),
         _ToggleActionButton(
-          iconOn: Icons.wifi,
-          iconOff: Icons.wifi_off,
+          iconOn: CupertinoIcons.wifi,
+          iconOff: CupertinoIcons.wifi_slash,
           label: context.l10n.t('wifiToggle'),
           value: wifiEnabled,
           onToggle: (on) async {
@@ -122,8 +122,8 @@ class _QuickActionsPanel extends ConsumerWidget {
           },
         ),
         _ToggleActionButton(
-          iconOn: Icons.airplanemode_active,
-          iconOff: Icons.airplanemode_inactive,
+          iconOn: CupertinoIcons.airplane,
+          iconOff: CupertinoIcons.airplane,
           label: context.l10n.t('airplaneModeToggle'),
           value: airplaneModeEnabled,
           onToggle: (on) async {
@@ -134,8 +134,8 @@ class _QuickActionsPanel extends ConsumerWidget {
           },
         ),
         _ToggleActionButton(
-          iconOn: Icons.network_cell,
-          iconOff: Icons.signal_cellular_off,
+          iconOn: CupertinoIcons.antenna_radiowaves_left_right,
+          iconOff: CupertinoIcons.antenna_radiowaves_left_right,
           label: context.l10n.t('mobileDataToggle'),
           value: mobileDataEnabled,
           onToggle: (on) async {
@@ -146,8 +146,8 @@ class _QuickActionsPanel extends ConsumerWidget {
           },
         ),
         _ToggleActionButton(
-          iconOn: Icons.volume_up,
-          iconOff: Icons.volume_mute,
+          iconOn: CupertinoIcons.volume_up,
+          iconOff: CupertinoIcons.volume_mute,
           label: context.l10n.t('talkbackToggle'),
           value: talkbackEnabled,
           onToggle: (on) async {
@@ -158,13 +158,13 @@ class _QuickActionsPanel extends ConsumerWidget {
           },
         ),
         _ActionButton(
-          icon: Icons.menu,
+          icon: CupertinoIcons.bars,
           label: context.l10n.t('menuKey'),
           onPressed: () =>
               _runAdbAction(context, ref, actions.menuKey(device.id)),
         ),
         _ActionButton(
-          icon: Icons.notifications_active,
+          icon: CupertinoIcons.bell,
           label: context.l10n.t('notificationBar'),
           onPressed: () => _runAdbAction(
             context,
@@ -173,20 +173,20 @@ class _QuickActionsPanel extends ConsumerWidget {
           ),
         ),
         _ToggleActionButton(
-          iconOn: Icons.screen_rotation,
-          iconOff: Icons.screen_lock_rotation,
+          iconOn: CupertinoIcons.device_phone_landscape,
+          iconOff: CupertinoIcons.device_phone_portrait,
           label: context.l10n.t('autoRotateToggle'),
           onToggle: (on) =>
               _runAdbAction(context, ref, actions.setAutoRotate(device.id, on)),
         ),
         _ActionButton(
-          icon: Icons.center_focus_strong,
+          icon: CupertinoIcons.scope,
           label: context.l10n.t('focus'),
           onPressed: () =>
               _showAdbResult(context, ref, actions.currentFocus(device.id)),
         ),
         _ActionButton(
-          icon: Icons.restart_alt,
+          icon: CupertinoIcons.refresh,
           label: context.l10n.t('reboot'),
           onPressed: () async {
             final confirmed = await _confirm(
@@ -262,7 +262,7 @@ class _InputTextDialogState extends State<_InputTextDialog> {
           child: Text(context.l10n.t('cancel')),
         ),
         FilledButton.icon(
-          icon: const Icon(Icons.send),
+          icon: const Icon(CupertinoIcons.paperplane),
           label: Text(context.l10n.t('send')),
           onPressed: () => Navigator.of(context).pop(_controller.text),
         ),
@@ -285,8 +285,8 @@ class _LayoutHelperPanel extends ConsumerWidget {
       title: context.l10n.t('layoutHelper'),
       children: [
         _ToggleActionButton(
-          iconOn: Icons.border_outer,
-          iconOff: Icons.border_clear,
+          iconOn: CupertinoIcons.square_grid_2x2,
+          iconOff: CupertinoIcons.rectangle,
           label: context.l10n.t('layoutBoundsToggle'),
           onToggle: (on) => _runAdbAction(
             context,
@@ -295,8 +295,8 @@ class _LayoutHelperPanel extends ConsumerWidget {
           ),
         ),
         _ToggleActionButton(
-          iconOn: Icons.dark_mode,
-          iconOff: Icons.light_mode,
+          iconOn: CupertinoIcons.moon,
+          iconOff: CupertinoIcons.sun_max,
           label: context.l10n.t('darkLightToggle'),
           onToggle: (on) =>
               _runAdbAction(context, ref, actions.setDarkMode(device.id, on)),
@@ -319,7 +319,7 @@ class _DeeplinkPanel extends ConsumerWidget {
       title: context.l10n.t('deeplink'),
       children: [
         _ActionButton(
-          icon: Icons.developer_mode,
+          icon: CupertinoIcons.device_desktop,
           label: context.l10n.t('deeplinkDeveloperOptions'),
           onPressed: () => _runAdbAction(
             context,
@@ -328,7 +328,7 @@ class _DeeplinkPanel extends ConsumerWidget {
           ),
         ),
         _ActionButton(
-          icon: Icons.info_outline,
+          icon: CupertinoIcons.info,
           label: context.l10n.t('deeplinkDeviceInfo'),
           onPressed: () => _runAdbAction(
             context,
@@ -337,7 +337,7 @@ class _DeeplinkPanel extends ConsumerWidget {
           ),
         ),
         _ActionButton(
-          icon: Icons.language,
+          icon: CupertinoIcons.globe,
           label: context.l10n.t('deeplinkLanguages'),
           onPressed: () => _runAdbAction(
             context,
@@ -346,7 +346,7 @@ class _DeeplinkPanel extends ConsumerWidget {
           ),
         ),
         _ActionButton(
-          icon: Icons.settings,
+          icon: CupertinoIcons.settings,
           label: context.l10n.t('deeplinkSettings'),
           onPressed: () => _runAdbAction(
             context,
@@ -355,7 +355,7 @@ class _DeeplinkPanel extends ConsumerWidget {
           ),
         ),
         _ActionButton(
-          icon: Icons.wifi,
+          icon: CupertinoIcons.wifi,
           label: context.l10n.t('deeplinkWifi'),
           onPressed: () => _runAdbAction(
             context,
@@ -364,7 +364,7 @@ class _DeeplinkPanel extends ConsumerWidget {
           ),
         ),
         _ActionButton(
-          icon: Icons.apps,
+          icon: CupertinoIcons.square_grid_2x2,
           label: context.l10n.t('deeplinkApps'),
           onPressed: () => _runAdbAction(
             context,
@@ -373,7 +373,7 @@ class _DeeplinkPanel extends ConsumerWidget {
           ),
         ),
         _ActionButton(
-          icon: Icons.link,
+          icon: CupertinoIcons.link,
           label: context.l10n.t('deeplinkCustom'),
           onPressed: () => _showCustomDeeplinkDialog(context, ref, device.id),
         ),
@@ -406,7 +406,7 @@ class _DeeplinkPanel extends ConsumerWidget {
             child: Text(context.l10n.t('cancel')),
           ),
           FilledButton.icon(
-            icon: const Icon(Icons.open_in_browser),
+            icon: const Icon(CupertinoIcons.link),
             label: Text(context.l10n.t('send')),
             onPressed: () => Navigator.of(context).pop(controller.text),
           ),
@@ -552,7 +552,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.remove),
+                      icon: const Icon(CupertinoIcons.minus),
                       onPressed: currentDpi == null
                           ? null
                           : () async {
@@ -592,7 +592,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add),
+                      icon: const Icon(CupertinoIcons.plus),
                       onPressed: currentDpi == null
                           ? null
                           : () async {
@@ -699,7 +699,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                 Row(
                   children: [
                     FilledButton.icon(
-                      icon: const Icon(Icons.flash_off),
+                      icon: const Icon(CupertinoIcons.bolt_slash),
                       label: Text(context.l10n.t('disableAllAnimations')),
                       onPressed: () async {
                         await _runAdbAction(
@@ -721,7 +721,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
-                      icon: const Icon(Icons.refresh),
+                      icon: const Icon(CupertinoIcons.refresh),
                       label: Text(context.l10n.t('resetAllAnimations')),
                       onPressed: () async {
                         await _runAdbAction(

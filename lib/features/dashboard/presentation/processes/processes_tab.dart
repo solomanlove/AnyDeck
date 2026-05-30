@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/l10n/app_localizations.dart';
@@ -173,7 +174,7 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isError ? Icons.error : Icons.check_circle,
+                          isError ? CupertinoIcons.exclamationmark_circle_fill : CupertinoIcons.checkmark_circle_fill,
                           color: accentColor,
                           size: 30,
                         ),

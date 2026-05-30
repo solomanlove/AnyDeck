@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../../../../app/l10n/app_localizations.dart';
 import '../../../../core/layout_inspector/layout_node.dart';
 
@@ -59,7 +60,7 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
             child: Row(
               children: [
                 const Icon(
-                  Icons.account_tree_outlined,
+                  CupertinoIcons.square_stack_3d_up,
                   size: 18,
                   color: Colors.blueGrey,
                 ),
@@ -338,7 +339,7 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
                         widget.onNodeExpansionChanged(widget.node, !isExpanded);
                       },
                       child: Icon(
-                        isExpanded ? Icons.arrow_drop_down : Icons.arrow_right,
+                        isExpanded ? CupertinoIcons.chevron_down : CupertinoIcons.chevron_right,
                         size: 16,
                         color: Colors.grey[700],
                       ),
