@@ -73,7 +73,9 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     if (logoAsset != null) {
       Widget logoImage = Image.asset(
         logoAsset,
-        fit: BoxFit.contain,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
       );
       if (status != 'device') {
         logoImage = ColorFiltered(
@@ -87,18 +89,17 @@ class _SelectedDeviceHeader extends ConsumerWidget {
           ),
         );
       }
-      avatarChild = Padding(
-        padding: const EdgeInsets.all(8),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: logoImage,
-        ),
+      avatarChild = ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: logoImage,
       );
     } else {
-      avatarChild = Icon(
-        CupertinoIcons.device_phone_portrait,
-        size: 32,
-        color: iconColor,
+      avatarChild = Center(
+        child: Icon(
+          CupertinoIcons.device_phone_portrait,
+          size: 32,
+          color: iconColor,
+        ),
       );
     }
 
@@ -112,9 +113,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
             ? Border.all(color: iconBgColor, width: 2)
             : null,
       ),
-      child: Center(
-        child: avatarChild,
-      ),
+      child: avatarChild,
     );
 
     // Status text
