@@ -81,57 +81,57 @@ class _PrimaryRail extends ConsumerWidget {
     final tools = [
       _RailToolItem(
         tabIndex: 0,
-        icon: Icons.phone_android_outlined,
+        icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('overview'),
       ),
       _RailToolItem(
         tabIndex: 1,
-        icon: Icons.tune,
+        icon: CupertinoIcons.slider_horizontal_3,
         label: context.l10n.t('control'),
       ),
       _RailToolItem(
         tabIndex: 2,
-        icon: Icons.apps_outlined,
+        icon: CupertinoIcons.square_grid_2x2,
         label: context.l10n.t('apps'),
       ),
       _RailToolItem(
         tabIndex: 3,
-        icon: Icons.folder_outlined,
+        icon: CupertinoIcons.folder,
         label: context.l10n.t('files'),
       ),
       _RailToolItem(
         tabIndex: 4,
-        icon: Icons.article_outlined,
+        icon: CupertinoIcons.doc_text,
         label: context.l10n.t('logcat'),
       ),
       _RailToolItem(
         tabIndex: 5,
-        icon: Icons.terminal_outlined,
+        icon: CupertinoIcons.chevron_left_slash_chevron_right,
         label: context.l10n.t('terminal'),
       ),
       _RailToolItem(
         tabIndex: 6,
-        icon: Icons.analytics_outlined,
+        icon: CupertinoIcons.list_bullet,
         label: context.l10n.t('processes'),
       ),
       _RailToolItem(
         tabIndex: 7,
-        icon: Icons.web_outlined,
+        icon: CupertinoIcons.globe,
         label: context.l10n.t('webpages'),
       ),
       _RailToolItem(
         tabIndex: 8,
-        icon: Icons.layers_outlined,
+        icon: CupertinoIcons.square_stack_3d_up,
         label: context.l10n.t('layout'),
       ),
       _RailToolItem(
         tabIndex: 9,
-        icon: Icons.camera_alt_outlined,
+        icon: CupertinoIcons.camera,
         label: context.l10n.t('screenshot'),
       ),
       _RailToolItem(
         tabIndex: 10,
-        icon: Icons.speed_outlined,
+        icon: CupertinoIcons.speedometer,
         label: context.l10n.t('performance'),
       ),
     ];
@@ -224,7 +224,7 @@ class _PrimaryRail extends ConsumerWidget {
                   ),
                 const Spacer(),
                 _RailButton(
-                  icon: Icons.settings_outlined,
+                  icon: CupertinoIcons.settings,
                   tooltip: context.l10n.t('settings'),
                   onPressed: () => showDialog<void>(
                     context: context,
@@ -309,7 +309,7 @@ class _RailMoreButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
-          child: Icon(Icons.more_horiz, size: 28, color: color),
+          child: Icon(CupertinoIcons.ellipsis, size: 28, color: color),
         ),
       ),
     );
