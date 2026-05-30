@@ -46,9 +46,9 @@ class _ControlTabState extends ConsumerState<_ControlTab> {
         const SizedBox(height: 16),
         _LayoutHelperPanel(device: widget.device),
         const SizedBox(height: 16),
-        _PowerPanel(device: widget.device),
-        const SizedBox(height: 16),
         _SystemSettingsPanel(device: widget.device),
+        const SizedBox(height: 16),
+        _PowerPanel(device: widget.device),
       ],
     );
   }
