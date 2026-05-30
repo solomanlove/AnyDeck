@@ -579,9 +579,13 @@ final deviceRegistryProvider =
 class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   static const _historyKey = 'devices.history';
   static const _aliasesKey = 'devices.aliases';
+  static const _modelsKey = 'devices.models';
+  static const _productsKey = 'devices.products';
 
   List<String> _historyIds = [];
   Map<String, String> _aliases = {};
+  Map<String, String> _models = {};
+  Map<String, String> _products = {};
   Set<String> _checkedIds = {};
   Map<String, String> _serialMap = {};
   List<AdbDevice> _lastActiveDevices = [];
@@ -633,8 +637,28 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       } catch (_) {}
     }
 
+    final modelsJson = prefs.getString(_modelsKey);
+    Map<String, String> models = {};
+    if (modelsJson != null) {
+      try {
+        final decoded = Map<String, dynamic>.from(jsonDecode(modelsJson));
+        models = decoded.map((key, value) => MapEntry(key, value.toString()));
+      } catch (_) {}
+    }
+
+    final productsJson = prefs.getString(_productsKey);
+    Map<String, String> products = {};
+    if (productsJson != null) {
+      try {
+        final decoded = Map<String, dynamic>.from(jsonDecode(productsJson));
+        products = decoded.map((key, value) => MapEntry(key, value.toString()));
+      } catch (_) {}
+    }
+
     _historyIds = history;
     _aliases = aliases;
+    _models = models;
+    _products = products;
 
     // 加载缓存的序列号映射
     final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
@@ -793,6 +817,14 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     await prefs.setString(_aliasesKey, jsonEncode(_aliases));
   }
 
+  Future<void> _saveModelsAndProducts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_modelsKey, jsonEncode(_models));
+      await prefs.setString(_productsKey, jsonEncode(_products));
+    } catch (_) {}
+  }
+
   List<RegisteredDevice> _mergeDevices(List<AdbDevice> activeDevices) {
     final activeMap = {for (final d in activeDevices) d.id: d};
 
@@ -807,6 +839,26 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     if (historyChanged) {
       _historyIds = nextHistory;
       _saveHistory();
+    }
+
+    // 缓存最新获取到的在线设备 model 和 product 信息
+    bool modelsOrProductsChanged = false;
+    for (final device in activeDevices) {
+      if (device.model != null && device.model!.isNotEmpty) {
+        if (_models[device.id] != device.model) {
+          _models[device.id] = device.model!;
+          modelsOrProductsChanged = true;
+        }
+      }
+      if (device.product != null && device.product!.isNotEmpty) {
+        if (_products[device.id] != device.product) {
+          _products[device.id] = device.product!;
+          modelsOrProductsChanged = true;
+        }
+      }
+    }
+    if (modelsOrProductsChanged) {
+      _saveModelsAndProducts();
     }
 
     // 触发获取新在线无线设备的序列号
@@ -825,6 +877,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       final customName = _aliases[id];
       final isChecked = _checkedIds.contains(id);
       final serial = _serialMap[id] ?? id;
+      final cachedModel = _models[id];
+      final cachedProduct = _products[id];
 
       if (active != null) {
         allCandidates.add(
@@ -832,8 +886,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             id: id,
             customName: customName,
             status: active.status,
-            model: active.model,
-            product: active.product,
+            model: active.model ?? cachedModel,
+            product: active.product ?? cachedProduct,
             transportId: active.transportId,
             isOnline: active.isOnline,
             isChecked: isChecked,
@@ -847,6 +901,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             id: id,
             customName: customName,
             status: 'offline',
+            model: cachedModel,
+            product: cachedProduct,
             isOnline: false,
             isChecked: isChecked,
             connections: [id],
@@ -893,6 +949,26 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           }
         }
 
+        String? mergedModel = best.model;
+        if (mergedModel == null || mergedModel.isEmpty) {
+          for (final c in candidates) {
+            if (c.model != null && c.model!.isNotEmpty) {
+              mergedModel = c.model;
+              break;
+            }
+          }
+        }
+
+        String? mergedProduct = best.product;
+        if (mergedProduct == null || mergedProduct.isEmpty) {
+          for (final c in candidates) {
+            if (c.product != null && c.product!.isNotEmpty) {
+              mergedProduct = c.product;
+              break;
+            }
+          }
+        }
+
         // When the merged device is online, we filter the connection IDs to only active (online) connections.
         // Otherwise, we show all historical offline connections.
         final connectionIds = best.isOnline
@@ -903,6 +979,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           best.copyWith(
             isChecked: anyChecked,
             customName: mergedCustomName,
+            model: mergedModel,
+            product: mergedProduct,
             connections: connectionIds,
             serial: serial,
           ),
@@ -983,10 +1061,13 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       _historyIds.remove(removeId);
       _checkedIds.remove(removeId);
       _aliases.remove(removeId);
+      _models.remove(removeId);
+      _products.remove(removeId);
     }
 
     await _saveHistory();
     await _saveAliases();
+    await _saveModelsAndProducts();
 
     var activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     activeDevices = activeDevices
