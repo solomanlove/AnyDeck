@@ -269,6 +269,10 @@ class _LayoutHelperPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = ref.read(deviceActionServiceProvider);
+    final overviewAsync = device.isOnline
+        ? ref.watch(deviceOverviewProvider(device.id))
+        : const AsyncValue<DeviceOverview>.loading();
+    final showTouchesEnabled = overviewAsync.value?.showTouchesEnabled ?? false;
 
     return _ActionCard(
       title: context.l10n.t('layoutHelper'),
@@ -289,6 +293,22 @@ class _LayoutHelperPanel extends ConsumerWidget {
           label: context.l10n.t('darkLightToggle'),
           onToggle: (on) =>
               _runAdbAction(context, ref, actions.setDarkMode(device.id, on)),
+        ),
+        _ToggleActionButton(
+          iconOn: CupertinoIcons.hand_point_right_fill,
+          iconOff: CupertinoIcons.hand_point_right,
+          label: context.l10n.t('showTouchesToggle'),
+          value: showTouchesEnabled,
+          onToggle: (on) async {
+            await _runAdbAction(
+              context,
+              ref,
+              actions.setShowTouches(device.id, on),
+            );
+            if (device.isOnline) {
+              ref.invalidate(deviceOverviewProvider(device.id));
+            }
+          },
         ),
       ],
     );

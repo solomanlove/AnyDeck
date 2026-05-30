@@ -46,6 +46,18 @@ class DeviceActionService {
     return lastResult ?? const AdbResult(exitCode: 1, stdout: '', stderr: '');
   }
 
+  /// 开关 Android 调试点按操作反馈 (Show taps)。
+  Future<AdbResult> setShowTouches(String deviceId, bool enabled) {
+    final flag = enabled ? '1' : '0';
+    return _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'system',
+      'show_touches',
+      flag,
+    ]);
+  }
+
   /// 模拟电源键，用于亮屏或熄屏。
   Future<AdbResult> standby(String deviceId) {
     return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_POWER']);

@@ -28,6 +28,7 @@ class DeviceOverview {
     required this.animatorDurationScale,
     required this.rawResolution,
     required this.hwuiProfile,
+    required this.showTouchesEnabled,
   });
 
   final String name;
@@ -57,6 +58,7 @@ class DeviceOverview {
   final String animatorDurationScale;
   final String rawResolution;
   final String hwuiProfile;
+  final bool showTouchesEnabled;
 
   Map<String, dynamic> toJson() {
     return {
@@ -87,6 +89,7 @@ class DeviceOverview {
       'animatorDurationScale': animatorDurationScale,
       'rawResolution': rawResolution,
       'hwuiProfile': hwuiProfile,
+      'showTouchesEnabled': showTouchesEnabled,
     };
   }
 
@@ -119,6 +122,7 @@ class DeviceOverview {
       animatorDurationScale: json['animatorDurationScale'] as String? ?? '1.0',
       rawResolution: json['rawResolution'] as String? ?? '-',
       hwuiProfile: json['hwuiProfile'] as String? ?? 'false',
+      showTouchesEnabled: json['showTouchesEnabled'] as bool? ?? false,
     );
   }
 
@@ -150,6 +154,7 @@ class DeviceOverview {
     String? animatorDurationScale,
     String? rawResolution,
     String? hwuiProfile,
+    bool? showTouchesEnabled,
   }) {
     return DeviceOverview(
       name: name ?? this.name,
@@ -179,6 +184,7 @@ class DeviceOverview {
       animatorDurationScale: animatorDurationScale ?? this.animatorDurationScale,
       rawResolution: rawResolution ?? this.rawResolution,
       hwuiProfile: hwuiProfile ?? this.hwuiProfile,
+      showTouchesEnabled: showTouchesEnabled ?? this.showTouchesEnabled,
     );
   }
 }

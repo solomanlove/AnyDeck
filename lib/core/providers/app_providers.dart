@@ -761,6 +761,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
                 animatorDurationScale: '1.0',
                 rawResolution: '-',
                 hwuiProfile: 'false',
+                showTouchesEnabled: false,
               );
             }
           } else {
@@ -792,6 +793,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               animatorDurationScale: '1.0',
               rawResolution: '-',
               hwuiProfile: 'false',
+              showTouchesEnabled: false,
             );
           }
           await prefs.setString(cacheKey, jsonEncode(overview.toJson()));

@@ -90,6 +90,7 @@ void main() {
             animatorDurationScale: '1.0',
             rawResolution: '1080x2400',
             hwuiProfile: 'false',
+            showTouchesEnabled: false,
           ))),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),

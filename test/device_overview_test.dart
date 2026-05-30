@@ -99,6 +99,7 @@ void main() {
         animatorDurationScale: '1.0',
         rawResolution: '1080x2400',
         hwuiProfile: 'false',
+        showTouchesEnabled: false,
       );
 
       final json = overview.toJson();
@@ -131,6 +132,7 @@ void main() {
       expect(decoded.animatorDurationScale, overview.animatorDurationScale);
       expect(decoded.rawResolution, overview.rawResolution);
       expect(decoded.hwuiProfile, overview.hwuiProfile);
+      expect(decoded.showTouchesEnabled, overview.showTouchesEnabled);
     });
   });
 
