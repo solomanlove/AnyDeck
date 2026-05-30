@@ -74,6 +74,7 @@ class _PowerPanel extends ConsumerWidget {
                       child: _PowerButton(
                         icon: CupertinoIcons.refresh,
                         label: context.l10n.t('reboot'),
+                        tooltip: context.l10n.t('rebootTooltip'),
                         onPressed: () => _handleReboot(context, ref, actions, null, context.l10n.t('reboot')),
                       ),
                     ),
@@ -82,6 +83,7 @@ class _PowerPanel extends ConsumerWidget {
                       child: _PowerButton(
                         icon: CupertinoIcons.wrench,
                         label: context.l10n.t('rebootRecovery'),
+                        tooltip: context.l10n.t('rebootRecoveryTooltip'),
                         onPressed: () => _handleReboot(context, ref, actions, 'recovery', context.l10n.t('rebootRecovery')),
                       ),
                     ),
@@ -90,6 +92,7 @@ class _PowerPanel extends ConsumerWidget {
                       child: _PowerButton(
                         icon: Icons.memory,
                         label: context.l10n.t('rebootBootloader'),
+                        tooltip: context.l10n.t('rebootBootloaderTooltip'),
                         onPressed: () => _handleReboot(context, ref, actions, 'bootloader', context.l10n.t('rebootBootloader')),
                       ),
                     ),
@@ -98,6 +101,7 @@ class _PowerPanel extends ConsumerWidget {
                       child: _PowerButton(
                         icon: CupertinoIcons.arrow_down_circle,
                         label: context.l10n.t('rebootSideload'),
+                        tooltip: context.l10n.t('rebootSideloadTooltip'),
                         onPressed: () => _handleReboot(context, ref, actions, 'sideload', context.l10n.t('rebootSideload')),
                       ),
                     ),
@@ -106,6 +110,7 @@ class _PowerPanel extends ConsumerWidget {
                       child: _PowerButton(
                         icon: CupertinoIcons.arrow_down_circle,
                         label: context.l10n.t('rebootSideloadAutoReboot'),
+                        tooltip: context.l10n.t('rebootSideloadAutoRebootTooltip'),
                         onPressed: () => _handleReboot(
                           context,
                           ref,
@@ -146,11 +151,13 @@ class _PowerButton extends StatelessWidget {
   const _PowerButton({
     required this.icon,
     required this.label,
+    required this.tooltip,
     required this.onPressed,
   });
 
   final IconData icon;
   final String label;
+  final String tooltip;
   final VoidCallback onPressed;
 
   @override
@@ -163,32 +170,37 @@ class _PowerButton extends StatelessWidget {
         : const Color(0xfff3f4f6);
     final foregroundColor = theme.colorScheme.onSurface;
 
-    return Material(
-      color: backgroundColor,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onPressed,
+    return Tooltip(
+      message: tooltip,
+      preferBelow: true,
+      waitDuration: const Duration(milliseconds: 300),
+      child: Material(
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 100,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 28, color: foregroundColor),
-              const SizedBox(height: 12),
-              Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: foregroundColor,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            height: 100,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 28, color: foregroundColor),
+                const SizedBox(height: 12),
+                Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: foregroundColor,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
