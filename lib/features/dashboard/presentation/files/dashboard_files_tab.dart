@@ -676,7 +676,7 @@ class _TextPreviewDialogState extends State<_TextPreviewDialog> {
       child: Container(
         width: 800,
         height: 600,
-        color: theme.colorScheme.surface,
+        color: theme.dialogTheme.backgroundColor ?? theme.colorScheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

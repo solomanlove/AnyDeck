@@ -16,6 +16,10 @@ ThemeData buildAppTheme(Brightness brightness) {
         ? const Color(0xff0f172a)
         : const Color(0xfff7f8fb),
     visualDensity: VisualDensity.standard,
+    dialogTheme: DialogThemeData(
+      backgroundColor: isDark ? const Color(0xff1e293b) : Colors.white,
+      surfaceTintColor: Colors.transparent,
+    ),
     appBarTheme: AppBarTheme(
       centerTitle: false,
       elevation: 0,
