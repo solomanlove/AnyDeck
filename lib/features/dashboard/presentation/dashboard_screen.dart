@@ -27,6 +27,7 @@ import '../../../core/logcat/logcat_controller.dart';
 import '../../../core/logcat/logcat_entry.dart';
 import '../../../core/logcat/logcat_state.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/providers/network_providers.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/scrcpy/scrcpy_session.dart';
 import '../../../core/device_actions/device_action_service.dart';
@@ -35,6 +36,7 @@ import 'processes/processes_tab.dart';
 import 'webpages/webpages_tab.dart';
 import 'layout/layout_tab.dart';
 import 'performance/performance_tab.dart';
+import 'network/network_tab.dart';
 
 
 part 'overview/dashboard_shell.dart';

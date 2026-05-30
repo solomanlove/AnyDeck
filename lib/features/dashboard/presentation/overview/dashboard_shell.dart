@@ -134,6 +134,11 @@ class _PrimaryRail extends ConsumerWidget {
         icon: CupertinoIcons.speedometer,
         label: context.l10n.t('performance'),
       ),
+      _RailToolItem(
+        tabIndex: 11,
+        icon: CupertinoIcons.wifi,
+        label: context.l10n.t('network'),
+      ),
     ];
 
     void handleTap(int tabIndex) {

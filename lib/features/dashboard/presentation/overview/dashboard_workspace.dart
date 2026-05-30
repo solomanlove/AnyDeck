@@ -16,6 +16,9 @@ class _WorkspacePanel extends ConsumerWidget {
 
     final tabIndex = ref.watch(selectedToolTabProvider);
 
+    // 监听端口转发自动应用服务
+    ref.watch(portForwardAutoApplyProvider);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         // 同一个 workspace 可能处在有界的桌面 Row 中，也可能处在无界的
@@ -128,7 +131,7 @@ class _ToolContentCardState extends State<_ToolContentCard> {
 
   @override
   Widget build(BuildContext context) {
-    final children = List.generate(11, (index) {
+    final children = List.generate(12, (index) {
       if (!_initializedTabs.contains(index)) {
         return const SizedBox.shrink();
       }
@@ -149,6 +152,7 @@ class _ToolContentCardState extends State<_ToolContentCard> {
         8 => LayoutTab(device: widget.device),
         9 => _ScreenshotTab(device: widget.device),
         10 => PerformanceTab(device: widget.device),
+        11 => NetworkTab(device: widget.device),
         _ => const SizedBox.shrink(),
       };
     });
