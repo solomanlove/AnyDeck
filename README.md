@@ -428,3 +428,15 @@ flutter run -d macos
 | UI 文案 | 优先走本地化字符串表，避免在 Widget 中散落硬编码文案 |
 
 ADB 和 scrcpy 路径自定义能力后续放入设置模块。
+
+
+## 构建release包
+```flutter build macos```，执行该命令后，生成的 release 应用（.app文件）位于项目目录下的 build/macos/Build/Products/Release/
+
+后续分发：如果你需要将应用分发给用户（尤其是通过非 Mac App Store 渠道分发），还需要对应用进行公证（notarization）。通常需要先在 Xcode 中打开项目：```open macos/Runner.xcworkspace```
+然后在 Xcode 中完成签名、公证等分发准备工作。
+
+环境要求：确保已安装 Xcode 并配置好命令行工具。
+
+配置 Xcode 命令行工具（如尚未配置）
+```sudo sh -c 'xcode-select -s /Applications/Xcode.app/Contents/Developer && xcodebuild -runFirstLaunch'```
