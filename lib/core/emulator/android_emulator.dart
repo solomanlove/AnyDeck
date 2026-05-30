@@ -10,6 +10,7 @@ class AndroidEmulator {
     this.abi,
     this.memory,
     this.storage,
+    this.config = const {},
   });
 
   final String name;
@@ -19,6 +20,7 @@ class AndroidEmulator {
   final String? abi;
   final String? memory;
   final String? storage;
+  final Map<String, String> config;
 
   String get displayName => name.replaceAll('_', ' ');
 

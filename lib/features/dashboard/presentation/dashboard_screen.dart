@@ -42,6 +42,7 @@ import 'network/network_tab.dart';
 part 'overview/dashboard_shell.dart';
 part 'widgets/dashboard_dialogs.dart';
 part 'devices/dashboard_emulators.dart';
+part 'devices/dashboard_emulator_details.dart';
 part 'overview/dashboard_workspace.dart';
 part 'devices/dashboard_device_header.dart';
 part 'overview/dashboard_overview.dart';

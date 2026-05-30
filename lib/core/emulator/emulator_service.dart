@@ -163,6 +163,7 @@ class EmulatorService {
       abi: _abi(config),
       memory: _memory(config),
       storage: _storage(config),
+      config: config,
     );
   }
 

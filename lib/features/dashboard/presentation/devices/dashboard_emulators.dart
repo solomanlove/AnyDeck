@@ -101,6 +101,43 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
           );
         }
 
+        Widget layoutWidget;
+        if (selectedItem != null) {
+          if (isCompact) {
+            layoutWidget = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 4, child: contentWidget),
+                const SizedBox(height: 12),
+                Expanded(
+                  flex: 5,
+                  child: _EmulatorDetailsPanel(
+                    item: selectedItem,
+                    onClose: () => setState(() => _selectedName = null),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            layoutWidget = Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 3, child: contentWidget),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: _EmulatorDetailsPanel(
+                    item: selectedItem,
+                    onClose: () => setState(() => _selectedName = null),
+                  ),
+                ),
+              ],
+            );
+          }
+        } else {
+          layoutWidget = contentWidget;
+        }
+
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -146,9 +183,12 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
                   if (isExpanded) ...[
                     const SizedBox(height: 12),
                     if (hasBoundedHeight)
-                      Expanded(child: contentWidget)
+                      Expanded(child: layoutWidget)
                     else
-                      SizedBox(height: 360, child: contentWidget),
+                      SizedBox(
+                        height: selectedItem != null ? (isCompact ? 480 : 360) : 360,
+                        child: layoutWidget,
+                      ),
                   ],
                 ],
               ),
