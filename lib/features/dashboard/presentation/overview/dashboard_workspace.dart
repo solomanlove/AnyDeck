@@ -91,7 +91,7 @@ class _WorkspacePanel extends ConsumerWidget {
   }
 }
 
-class _ToolContentCard extends StatelessWidget {
+class _ToolContentCard extends StatefulWidget {
   const _ToolContentCard({
     required this.device,
     required this.sessions,
@@ -103,31 +103,63 @@ class _ToolContentCard extends StatelessWidget {
   final int tabIndex;
 
   @override
+  State<_ToolContentCard> createState() => _ToolContentCardState();
+}
+
+class _ToolContentCardState extends State<_ToolContentCard> {
+  // 记录已经访问并初始化的 tab 索引，实现懒加载
+  final Set<int> _initializedTabs = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _initializedTabs.add(widget.tabIndex);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ToolContentCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 如果设备切换了，清空已初始化的 Tab 状态，释放资源
+    if (oldWidget.device.id != widget.device.id) {
+      _initializedTabs.clear();
+    }
+    _initializedTabs.add(widget.tabIndex);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final child = switch (tabIndex) {
-      0 => _ToolTabScrollView(child: _OverviewTab(device: device)),
-      1 => _ToolTabScrollView(
-        child: _ControlTab(device: device, sessions: sessions),
-      ),
-      2 => _AppsTab(device: device),
-      3 => _FilesTab(device: device),
-      4 => _LogcatTab(device: device),
-      5 => Padding(
-        padding: const EdgeInsets.all(16),
-        child: TerminalTab(device: device),
-      ),
-      6 => ProcessesTab(device: device),
-      7 => WebpagesTab(device: device),
-      8 => LayoutTab(device: device),
-      9 => _ScreenshotTab(device: device),
-      10 => PerformanceTab(device: device),
-      _ => const SizedBox.shrink(),
-    };
+    final children = List.generate(11, (index) {
+      if (!_initializedTabs.contains(index)) {
+        return const SizedBox.shrink();
+      }
+      return switch (index) {
+        0 => _ToolTabScrollView(child: _OverviewTab(device: widget.device)),
+        1 => _ToolTabScrollView(
+          child: _ControlTab(device: widget.device, sessions: widget.sessions),
+        ),
+        2 => _AppsTab(device: widget.device),
+        3 => _FilesTab(device: widget.device),
+        4 => _LogcatTab(device: widget.device),
+        5 => Padding(
+          padding: const EdgeInsets.all(16),
+          child: TerminalTab(device: widget.device),
+        ),
+        6 => ProcessesTab(device: widget.device),
+        7 => WebpagesTab(device: widget.device),
+        8 => LayoutTab(device: widget.device),
+        9 => _ScreenshotTab(device: widget.device),
+        10 => PerformanceTab(device: widget.device),
+        _ => const SizedBox.shrink(),
+      };
+    });
 
     return Card(
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Column(children: [Expanded(child: child)]),
+        child: IndexedStack(
+          index: widget.tabIndex,
+          children: children,
+        ),
       ),
     );
   }

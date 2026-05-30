@@ -73,6 +73,19 @@ final _emulatorListExpandedProvider =
       _EmulatorListExpandedNotifier.new,
     );
 
+class _LastActiveDeviceNotifier extends Notifier<AdbDevice?> {
+  @override
+  AdbDevice? build() => null;
+
+  @override
+  set state(AdbDevice? value) => super.state = value;
+}
+
+final lastActiveDeviceProvider =
+    NotifierProvider<_LastActiveDeviceNotifier, AdbDevice?>(
+      _LastActiveDeviceNotifier.new,
+    );
+
 /// 桌面主面板，整合设备发现和工具区域。
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -82,6 +95,7 @@ class DashboardScreen extends ConsumerWidget {
     final selectedDevice = ref.watch(selectedDeviceProvider);
     final sessions = ref.watch(scrcpySessionsProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);
+    final lastActiveDevice = ref.watch(lastActiveDeviceProvider);
 
     // Auto-select first online device if none selected and not manually cleared
     final userCleared = ref.watch(userClearedDeviceSelectionProvider);
@@ -130,8 +144,16 @@ class DashboardScreen extends ConsumerWidget {
       }
     }
 
+    if (effectiveSelectedDevice != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (ref.read(lastActiveDeviceProvider) != effectiveSelectedDevice) {
+          ref.read(lastActiveDeviceProvider.notifier).state = effectiveSelectedDevice;
+        }
+      });
+    }
+
     final workspace = _WorkspacePanel(
-      selectedDevice: effectiveSelectedDevice,
+      selectedDevice: effectiveSelectedDevice ?? lastActiveDevice,
       sessions: sessions,
     );
 
@@ -139,9 +161,13 @@ class DashboardScreen extends ConsumerWidget {
       body: _WechatStyleShell(
         title: appBarTitle,
         selectedDevice: effectiveSelectedDevice,
-        child: selectedDevice == null
-            ? const _DashboardHomeContent()
-            : workspace,
+        child: IndexedStack(
+          index: selectedDevice == null ? 0 : 1,
+          children: [
+            const _DashboardHomeContent(),
+            workspace,
+          ],
+        ),
       ),
     );
   }
