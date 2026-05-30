@@ -68,7 +68,7 @@ flutter:
 
   assets:
     - assets/android/package_icon_helper.dex
-    - assets/brand/app_logo.png
+    - assets/brand/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
