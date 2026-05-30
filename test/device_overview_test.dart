@@ -97,6 +97,8 @@ void main() {
         windowAnimationScale: '1.0',
         transitionAnimationScale: '1.0',
         animatorDurationScale: '1.0',
+        rawResolution: '1080x2400',
+        hwuiProfile: 'false',
       );
 
       final json = overview.toJson();
@@ -127,6 +129,8 @@ void main() {
       expect(decoded.windowAnimationScale, overview.windowAnimationScale);
       expect(decoded.transitionAnimationScale, overview.transitionAnimationScale);
       expect(decoded.animatorDurationScale, overview.animatorDurationScale);
+      expect(decoded.rawResolution, overview.rawResolution);
+      expect(decoded.hwuiProfile, overview.hwuiProfile);
     });
   });
 

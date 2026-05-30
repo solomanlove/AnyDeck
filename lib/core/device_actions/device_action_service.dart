@@ -398,4 +398,23 @@ class DeviceActionService {
       scale.toString(),
     ]);
   }
+
+  /// 设置显示分辨率大小，例如 "1080x1920"
+  Future<AdbResult> setDisplaySize(String deviceId, String size) {
+    return _adb.shellArgs(deviceId, ['wm', 'size', size]);
+  }
+
+  /// 重置显示分辨率大小为默认物理值
+  Future<AdbResult> resetDisplaySize(String deviceId) {
+    return _adb.shellArgs(deviceId, ['wm', 'size', 'reset']);
+  }
+
+  /// 设置 GPU/HWUI 渲染分析模式，支持 "visual_bars", "true", "false"
+  Future<AdbResult> setHwuiProfile(String deviceId, String value) async {
+    final result = await _adb.shellArgs(deviceId, ['setprop', 'debug.hwui.profile', value]);
+    if (result.isSuccess) {
+      await _refreshSystemProperties(deviceId);
+    }
+    return result;
+  }
 }

@@ -759,6 +759,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
                 windowAnimationScale: '1.0',
                 transitionAnimationScale: '1.0',
                 animatorDurationScale: '1.0',
+                rawResolution: '-',
+                hwuiProfile: 'false',
               );
             }
           } else {
@@ -788,6 +790,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               windowAnimationScale: '1.0',
               transitionAnimationScale: '1.0',
               animatorDurationScale: '1.0',
+              rawResolution: '-',
+              hwuiProfile: 'false',
             );
           }
           await prefs.setString(cacheKey, jsonEncode(overview.toJson()));

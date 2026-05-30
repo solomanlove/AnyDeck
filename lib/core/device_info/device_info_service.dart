@@ -89,6 +89,7 @@ class DeviceInfoService {
       final windowAnimRaw = _formatAnimScale(_clean(results[17].stdout));
       final transitionAnimRaw = _formatAnimScale(_clean(results[18].stdout));
       final animatorAnimRaw = _formatAnimScale(_clean(results[19].stdout));
+      final hwuiProfile = properties['debug.hwui.profile']?.trim() ?? 'false';
 
       final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
       final deviceCode = _firstValue(properties, [
@@ -143,6 +144,8 @@ class DeviceInfoService {
         windowAnimationScale: windowAnimRaw,
         transitionAnimationScale: transitionAnimRaw,
         animatorDurationScale: animatorAnimRaw,
+        rawResolution: size.current,
+        hwuiProfile: hwuiProfile,
       );
 
       // 保存到本地缓存

@@ -47,6 +47,7 @@ part 'devices/dashboard_device_header.dart';
 part 'overview/dashboard_overview.dart';
 part 'control/dashboard_control.dart';
 part 'control/dashboard_power.dart';
+part 'control/dashboard_display_control.dart';
 part 'apps/dashboard_apps_tab.dart';
 part 'apps/dashboard_apps_table_widths.dart';
 part 'apps/dashboard_apps_table.dart';

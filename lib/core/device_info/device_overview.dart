@@ -26,6 +26,8 @@ class DeviceOverview {
     required this.windowAnimationScale,
     required this.transitionAnimationScale,
     required this.animatorDurationScale,
+    required this.rawResolution,
+    required this.hwuiProfile,
   });
 
   final String name;
@@ -53,6 +55,8 @@ class DeviceOverview {
   final String windowAnimationScale;
   final String transitionAnimationScale;
   final String animatorDurationScale;
+  final String rawResolution;
+  final String hwuiProfile;
 
   Map<String, dynamic> toJson() {
     return {
@@ -81,6 +85,8 @@ class DeviceOverview {
       'windowAnimationScale': windowAnimationScale,
       'transitionAnimationScale': transitionAnimationScale,
       'animatorDurationScale': animatorDurationScale,
+      'rawResolution': rawResolution,
+      'hwuiProfile': hwuiProfile,
     };
   }
 
@@ -111,6 +117,8 @@ class DeviceOverview {
       windowAnimationScale: json['windowAnimationScale'] as String? ?? '1.0',
       transitionAnimationScale: json['transitionAnimationScale'] as String? ?? '1.0',
       animatorDurationScale: json['animatorDurationScale'] as String? ?? '1.0',
+      rawResolution: json['rawResolution'] as String? ?? '-',
+      hwuiProfile: json['hwuiProfile'] as String? ?? 'false',
     );
   }
 
@@ -140,6 +148,8 @@ class DeviceOverview {
     String? windowAnimationScale,
     String? transitionAnimationScale,
     String? animatorDurationScale,
+    String? rawResolution,
+    String? hwuiProfile,
   }) {
     return DeviceOverview(
       name: name ?? this.name,
@@ -167,6 +177,8 @@ class DeviceOverview {
       windowAnimationScale: windowAnimationScale ?? this.windowAnimationScale,
       transitionAnimationScale: transitionAnimationScale ?? this.transitionAnimationScale,
       animatorDurationScale: animatorDurationScale ?? this.animatorDurationScale,
+      rawResolution: rawResolution ?? this.rawResolution,
+      hwuiProfile: hwuiProfile ?? this.hwuiProfile,
     );
   }
 }

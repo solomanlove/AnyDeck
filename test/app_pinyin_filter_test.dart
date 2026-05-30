@@ -88,6 +88,8 @@ void main() {
             windowAnimationScale: '1.0',
             transitionAnimationScale: '1.0',
             animatorDurationScale: '1.0',
+            rawResolution: '1080x2400',
+            hwuiProfile: 'false',
           ))),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),
