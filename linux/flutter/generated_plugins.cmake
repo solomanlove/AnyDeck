@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
   file_selector_linux
+  scrcpy_flutter
   screen_retriever_linux
   tray_manager
   window_manager

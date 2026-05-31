@@ -7,6 +7,7 @@ import Foundation
 
 import desktop_drop
 import file_selector_macos
+import scrcpy_flutter
 import screen_retriever_macos
 import shared_preferences_foundation
 import tray_manager
@@ -15,6 +16,7 @@ import window_manager
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   DesktopDropPlugin.register(with: registry.registrar(forPlugin: "DesktopDropPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
+  ScrcpyFlutterPlugin.register(with: registry.registrar(forPlugin: "ScrcpyFlutterPlugin"))
   ScreenRetrieverMacosPlugin.register(with: registry.registrar(forPlugin: "ScreenRetrieverMacosPlugin"))
   SharedPreferencesPlugin.register(with: registry.registrar(forPlugin: "SharedPreferencesPlugin"))
   TrayManagerPlugin.register(with: registry.registrar(forPlugin: "TrayManagerPlugin"))

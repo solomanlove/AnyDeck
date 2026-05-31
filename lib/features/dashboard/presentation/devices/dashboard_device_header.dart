@@ -22,6 +22,8 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     );
 
     final overviewAsync = ref.watch(deviceOverviewProvider(device.id));
+    final textureId = ref.watch(activeEmbeddedMirrorProvider(device.id));
+    final isMirrorActive = textureId != null;
 
     final String subtitleText;
     if (overviewAsync.hasValue) {
@@ -269,10 +271,13 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(CupertinoIcons.tv),
-                      tooltip: context.l10n.t('start'),
+                      icon: Icon(
+                        isMirrorActive ? CupertinoIcons.tv_fill : CupertinoIcons.tv,
+                        color: isMirrorActive ? const Color(0xFF2EC46B) : null,
+                      ),
+                      tooltip: isMirrorActive ? '停止投屏' : '内嵌投屏',
                       onPressed: device.isOnline
-                          ? () => _startScrcpy(context, ref, device.id)
+                          ? () => _toggleEmbeddedScrcpy(context, ref, device.id)
                           : null,
                     ),
                     const SizedBox(width: 8),
@@ -306,10 +311,13 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(CupertinoIcons.tv),
-                  tooltip: context.l10n.t('start'),
+                  icon: Icon(
+                    isMirrorActive ? CupertinoIcons.tv_fill : CupertinoIcons.tv,
+                    color: isMirrorActive ? const Color(0xFF2EC46B) : null,
+                  ),
+                  tooltip: isMirrorActive ? '停止投屏' : '内嵌投屏',
                   onPressed: device.isOnline
-                      ? () => _startScrcpy(context, ref, device.id)
+                      ? () => _toggleEmbeddedScrcpy(context, ref, device.id)
                       : null,
                 ),
                 const SizedBox(width: 8),
@@ -373,6 +381,22 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       await ref
           .read(deviceRegistryProvider.notifier)
           .setAlias(device.id, name);
+    }
+  }
+
+  Future<void> _toggleEmbeddedScrcpy(
+    BuildContext context,
+    WidgetRef ref,
+    String deviceId,
+  ) async {
+    try {
+      await ref
+          .read(activeEmbeddedMirrorProvider(deviceId).notifier)
+          .toggleMirroring();
+    } on Object catch (error) {
+      if (context.mounted) {
+        _showSnack(context, error.toString(), isError: true);
+      }
     }
   }
 

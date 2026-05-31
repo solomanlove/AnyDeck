@@ -8,5 +8,6 @@ import 'app/window/desktop_window_manager_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DesktopWindowManagerService.initialize();
+
   runApp(const ProviderScope(child: AdbManageApp()));
 }
