@@ -16,6 +16,8 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
   bool _hideSystemApps = true;
   bool _refreshingPackages = false;
   String? _selectedPackage;
+  bool _isGridView = false;
+  double _gridItemSize = 100.0;
 
   @override
   void dispose() {
@@ -67,6 +69,36 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                 icon: const Icon(CupertinoIcons.refresh),
                 onPressed: _refreshingPackages ? null : _refreshPackages,
               ),
+              const SizedBox(width: 8),
+              _buildToolbarButton(
+                icon: CupertinoIcons.zoom_in,
+                onPressed: (_isGridView && _gridItemSize < 160.0)
+                    ? () => setState(() => _gridItemSize = min(160.0, _gridItemSize + 15.0))
+                    : null,
+                active: false,
+                tooltip: context.l10n.t('zoomIn'),
+              ),
+              _buildToolbarButton(
+                icon: CupertinoIcons.zoom_out,
+                onPressed: (_isGridView && _gridItemSize > 70.0)
+                    ? () => setState(() => _gridItemSize = max(70.0, _gridItemSize - 15.0))
+                    : null,
+                active: false,
+                tooltip: context.l10n.t('zoomOut'),
+              ),
+              _buildDivider(),
+              _buildToolbarButton(
+                icon: CupertinoIcons.square_grid_2x2,
+                onPressed: () => setState(() => _isGridView = true),
+                active: _isGridView,
+                tooltip: context.l10n.t('gridView'),
+              ),
+              _buildToolbarButton(
+                icon: CupertinoIcons.list_bullet,
+                onPressed: () => setState(() => _isGridView = false),
+                active: !_isGridView,
+                tooltip: context.l10n.t('listView'),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -113,13 +145,22 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                     ),
                     const SizedBox(height: 8),
                     Expanded(
-                      child: _PackageTable(
-                        deviceId: widget.device.id,
-                        packages: filtered,
-                        selectedPackage: _selectedPackage,
-                        onSelected: (packageName) =>
-                            setState(() => _selectedPackage = packageName),
-                      ),
+                      child: _isGridView
+                          ? _PackageGrid(
+                              deviceId: widget.device.id,
+                              packages: filtered,
+                              selectedPackage: _selectedPackage,
+                              onSelected: (packageName) =>
+                                  setState(() => _selectedPackage = packageName),
+                              gridItemSize: _gridItemSize,
+                            )
+                          : _PackageTable(
+                              deviceId: widget.device.id,
+                              packages: filtered,
+                              selectedPackage: _selectedPackage,
+                              onSelected: (packageName) =>
+                                  setState(() => _selectedPackage = packageName),
+                            ),
                     ),
                   ],
                 );
@@ -222,6 +263,61 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
         setState(() => _refreshingPackages = false);
       }
     }
+  }
+
+  Widget _buildToolbarButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required bool active,
+    required String tooltip,
+  }) {
+    final theme = Theme.of(context);
+    return Tooltip(
+      message: tooltip,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: active
+              ? theme.colorScheme.secondaryContainer.withValues(alpha: 0.5)
+              : Colors.transparent,
+          border: Border.all(
+            color: active
+                ? theme.colorScheme.outline.withValues(alpha: 0.3)
+                : Colors.transparent,
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: IconButton(
+          icon: Icon(icon, size: 20),
+          onPressed: onPressed,
+          style: IconButton.styleFrom(
+            minimumSize: const Size(36, 36),
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: SizedBox(
+        height: 20,
+        width: 1,
+        child: VerticalDivider(
+          color: theme.dividerColor.withValues(alpha: 0.6),
+          width: 1,
+          thickness: 1,
+        ),
+      ),
+    );
   }
 }
 

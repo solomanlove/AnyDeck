@@ -56,6 +56,7 @@ part 'control/dashboard_display_control.dart';
 part 'apps/dashboard_apps_tab.dart';
 part 'apps/dashboard_apps_table_widths.dart';
 part 'apps/dashboard_apps_table.dart';
+part 'apps/dashboard_apps_grid.dart';
 part 'apps/dashboard_apps_actions.dart';
 part 'files/dashboard_files_tab.dart';
 part 'files/dashboard_file_items.dart';

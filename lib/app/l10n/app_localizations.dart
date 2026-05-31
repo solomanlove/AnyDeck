@@ -495,6 +495,8 @@ const _localizedValues = {
     'rooted': '已 Root',
     'unrooted': '未 Root',
     'terminalDir': '打开 ADB 目录终端',
+    'gridView': '网格模式',
+    'listView': '列表模式',
   },
   'en': {
     'appTitle': 'Phone Manager',
@@ -951,5 +953,7 @@ const _localizedValues = {
     'rooted': 'Rooted',
     'unrooted': 'Unrooted',
     'terminalDir': 'Open Terminal in ADB Dir',
+    'gridView': 'Grid View',
+    'listView': 'List View',
   },
 };
