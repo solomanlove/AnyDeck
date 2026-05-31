@@ -43,6 +43,8 @@ dependencies:
     sdk: flutter
   lpinyin: ^2.0.3
   qr_flutter: ^4.1.0
+  window_manager: ^0.4.3
+  tray_manager: ^0.5.2
 
 dev_dependencies:
   flutter_test:

@@ -240,57 +240,59 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       },
     );
 
-    return Container(
-      height: 112,
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth < 260) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  avatar,
-                  const SizedBox(width: 14),
-                  SizedBox(width: 160, child: title),
-                  const SizedBox(width: 16),
-                  IconButton(
-                    icon: const Icon(CupertinoIcons.tv),
-                    tooltip: context.l10n.t('start'),
-                    onPressed: device.isOnline
-                        ? () => _startScrcpy(context, ref, device.id)
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  closeButton,
-                ],
-              ),
-            );
-          }
+    return DragToMoveArea(
+      child: Container(
+        height: 112,
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 260) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    avatar,
+                    const SizedBox(width: 14),
+                    SizedBox(width: 160, child: title),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      icon: const Icon(CupertinoIcons.tv),
+                      tooltip: context.l10n.t('start'),
+                      onPressed: device.isOnline
+                          ? () => _startScrcpy(context, ref, device.id)
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    closeButton,
+                  ],
+                ),
+              );
+            }
 
-          return Row(
-            children: [
-              avatar,
-              const SizedBox(width: 14),
-              Expanded(child: title),
-              const SizedBox(width: 16),
-              IconButton(
-                icon: const Icon(CupertinoIcons.tv),
-                tooltip: context.l10n.t('start'),
-                onPressed: device.isOnline
-                    ? () => _startScrcpy(context, ref, device.id)
-                    : null,
-              ),
-              const SizedBox(width: 8),
-              closeButton,
-            ],
-          );
-        },
+            return Row(
+              children: [
+                avatar,
+                const SizedBox(width: 14),
+                Expanded(child: title),
+                const SizedBox(width: 16),
+                IconButton(
+                  icon: const Icon(CupertinoIcons.tv),
+                  tooltip: context.l10n.t('start'),
+                  onPressed: device.isOnline
+                      ? () => _startScrcpy(context, ref, device.id)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                closeButton,
+              ],
+            );
+          },
+        ),
       ),
     );
   }

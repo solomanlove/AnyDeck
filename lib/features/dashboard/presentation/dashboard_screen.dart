@@ -11,6 +11,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:lpinyin/lpinyin.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/settings/app_settings.dart';

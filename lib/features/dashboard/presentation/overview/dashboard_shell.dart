@@ -37,7 +37,7 @@ class _PrimaryRail extends ConsumerWidget {
 
   final AdbDevice? selectedDevice;
 
-  static const double _topSpacing = 14;
+  static double get _topSpacing => Platform.isMacOS ? 36.0 : 14.0;
   static const double _logoSize = 50;
   static const double _fullLogoToolGap = 10;
   static const double _compactLogoToolGap = 6;
@@ -179,30 +179,40 @@ class _PrimaryRail extends ConsumerWidget {
 
             return Column(
               children: [
-                const SizedBox(height: _topSpacing),
-                GestureDetector(
-                  onTap: () {
-                    ref
-                            .read(userClearedDeviceSelectionProvider.notifier)
-                            .state =
-                        true;
-                    ref.read(selectedDeviceProvider.notifier).clear();
-                  },
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: SizedBox(
-                      width: _logoSize,
-                      height: _logoSize,
-                      child: const Image(
-                        image: AssetImage('assets/brand/app_logo.png'),
-                      ),
+                DragToMoveArea(
+                  child: Container(
+                    color: Colors.transparent,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(height: _topSpacing),
+                        GestureDetector(
+                          onTap: () {
+                            ref
+                                    .read(userClearedDeviceSelectionProvider.notifier)
+                                    .state =
+                                true;
+                            ref.read(selectedDeviceProvider.notifier).clear();
+                          },
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: SizedBox(
+                              width: _logoSize,
+                              height: _logoSize,
+                              child: const Image(
+                                image: AssetImage('assets/brand/app_logo.png'),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: hasOverflowTools
+                              ? _compactLogoToolGap
+                              : _fullLogoToolGap,
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                SizedBox(
-                  height: hasOverflowTools
-                      ? _compactLogoToolGap
-                      : _fullLogoToolGap,
                 ),
                 for (final tool in visibleTools)
                   _RailButton(
@@ -380,37 +390,39 @@ class _ContentTitleBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
-      ),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: const Color(0xff202124),
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            tooltip: context.l10n.t('restartAdb'),
-            icon: const Icon(CupertinoIcons.ant),
-            iconSize: 30,
-            color: const Color(0xff5f6b6e),
-            onPressed: () => _restartAdbServer(context, ref),
-            style: IconButton.styleFrom(
-              fixedSize: const Size(48, 48),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+    return DragToMoveArea(
+      child: Container(
+        height: 72,
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
+        ),
+        child: Row(
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: const Color(0xff202124),
               ),
             ),
-          ),
-        ],
+            const Spacer(),
+            IconButton(
+              tooltip: context.l10n.t('restartAdb'),
+              icon: const Icon(CupertinoIcons.ant),
+              iconSize: 30,
+              color: const Color(0xff5f6b6e),
+              onPressed: () => _restartAdbServer(context, ref),
+              style: IconButton.styleFrom(
+                fixedSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
