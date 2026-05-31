@@ -29,6 +29,10 @@ extension _DeviceListPanelView on _DeviceListPanelState {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildToolbar(context, hasChecked, selectedCount),
+                if (hasChecked) ...[
+                  const SizedBox(height: 12),
+                  _buildBatchActionsToolbar(context, items.where((d) => d.isChecked).toList()),
+                ],
                 const SizedBox(height: 16),
                 _buildTableHeader(context, isCompact, allChecked, hasChecked),
                 const SizedBox(height: 8),

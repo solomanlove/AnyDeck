@@ -69,6 +69,7 @@ part 'devices/dashboard_devices_panel.dart';
 part 'devices/dashboard_devices_view.dart';
 part 'devices/dashboard_devices_rows.dart';
 part 'devices/dashboard_devices_actions.dart';
+part 'devices/dashboard_batch_actions.dart';
 part 'screenshot/dashboard_screenshot_tab.dart';
 part 'screenshot/dashboard_screenshot_recording.dart';
 
