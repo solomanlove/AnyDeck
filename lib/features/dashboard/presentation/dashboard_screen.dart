@@ -100,11 +100,37 @@ final lastActiveDeviceProvider =
     );
 
 /// 桌面主面板，整合设备发现和工具区域。
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> with WindowListener {
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  @override
+  void onWindowClose() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _ExitConfirmDialog(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedDevice = ref.watch(selectedDeviceProvider);
     final sessions = ref.watch(scrcpySessionsProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);

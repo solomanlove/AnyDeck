@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' hide MenuItem;
+import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 
@@ -91,9 +91,4 @@ class _AppTrayListener extends TrayListener {
 }
 
 class _AppWindowListener extends WindowListener {
-  @override
-  void onWindowClose() async {
-    // 拦截点击关闭按钮：隐藏窗口以实现最小化到托盘
-    await windowManager.hide();
-  }
 }

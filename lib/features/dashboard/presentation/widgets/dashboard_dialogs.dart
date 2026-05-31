@@ -230,4 +230,168 @@ class _ManualSection extends StatelessWidget {
   }
 }
 
+class _ExitConfirmDialog extends StatelessWidget {
+  const _ExitConfirmDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Dialog(
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(32),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 340),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 顶部应用 Logo
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  image: const DecorationImage(
+                    image: AssetImage('assets/brand/app_logo.png'),
+                    fit: BoxFit.cover,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 确认提示文本
+              Text(
+                context.l10n.t('confirmExitTitle'),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // 直接退出
+              _DialogActionButton(
+                text: context.l10n.t('exitDirectly'),
+                isPrimary: true,
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await windowManager.setPreventClose(false);
+                  await windowManager.destroy();
+                  exit(0);
+                },
+              ),
+              const SizedBox(height: 12),
+              // 最小化到托盘
+              _DialogActionButton(
+                text: context.l10n.t('minimizeToTray'),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await windowManager.hide();
+                },
+              ),
+              const SizedBox(height: 12),
+              // 取消退出
+              _DialogActionButton(
+                text: context.l10n.t('cancelExit'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogActionButton extends StatefulWidget {
+  const _DialogActionButton({
+    required this.text,
+    required this.onPressed,
+    this.isPrimary = false,
+  });
+
+  final String text;
+  final VoidCallback onPressed;
+  final bool isPrimary;
+
+  @override
+  State<_DialogActionButton> createState() => _DialogActionButtonState();
+}
+
+class _DialogActionButtonState extends State<_DialogActionButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final primaryBg = const Color(0xFF007BFF);
+    final primaryHoverBg = const Color(0xFF0069D9);
+    final secondaryBg = isDark ? const Color(0xFF333333) : const Color(0xFFEFEFEF);
+    final secondaryHoverBg = isDark ? const Color(0xFF444444) : const Color(0xFFE2E2E2);
+
+    final bg = widget.isPrimary
+        ? (_isHovered ? primaryHoverBg : primaryBg)
+        : (_isHovered ? secondaryHoverBg : secondaryBg);
+
+    final textColor = widget.isPrimary
+        ? Colors.white
+        : (isDark ? Colors.white70 : Colors.black87);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 280,
+        height: 48,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: widget.isPrimary && _isHovered
+              ? [
+                  BoxShadow(
+                    color: primaryBg.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: widget.onPressed,
+            child: Center(
+              child: Text(
+                widget.text,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 15,
+                  fontWeight: widget.isPrimary ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 设备发现卡片，已重构为响应式表格形式。
