@@ -143,6 +143,9 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         icon: CupertinoIcons.circle_grid_3x3,
         label: context.l10n.t('logicalDensity'),
         value: overview.logicalDensity,
+        tooltip: ScreenDensityHelper.getDensityMappingTooltip(
+          context.l10n.t('densityMapping'),
+        ),
       ),
       _OverviewItemData(
         icon: CupertinoIcons.gauge,
