@@ -413,11 +413,12 @@ flutter run -d macos
 
 ## 本地依赖
 
-| 工具 | 用途 |
-|---|---|
-| `adb` | 设备发现和 shell 命令 |
-| `scrcpy` | 外部投屏能力 |
-| Flutter Desktop | macOS、Windows、Linux 桌面目标 |
+| 工具/依赖 | 推荐版本 | 用途 | 官方链接 |
+|---|---|---|---|
+| `adb` | - | 设备发现、应用管理及 shell 命令调试 | [Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools) |
+| `scrcpy` | `v4.0` | 内嵌投屏与外部投屏核心依赖，推送到手机端的 `scrcpy-server` | [Genymobile/scrcpy](https://github.com/Genymobile/scrcpy) |
+| `FFmpeg` | `v6.0+` | 供原生 C++ 编解码插件 `scrcpy_flutter` 动态链接并进行视频流硬解 | [FFmpeg](https://ffmpeg.org) |
+| Flutter Desktop | - | 编译构建 macOS、Windows、Linux 桌面目标应用 | [Flutter](https://flutter.dev) |
 
 ## 代码约定
 
