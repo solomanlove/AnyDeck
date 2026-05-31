@@ -23,11 +23,53 @@ class TerminalTab extends ConsumerStatefulWidget {
 class _TerminalTabState extends ConsumerState<TerminalTab> {
   final TextEditingController _commandController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final FocusNode _inputFocusNode = FocusNode();
+  late final FocusNode _inputFocusNode;
 
   @override
   void initState() {
     super.initState();
+    _inputFocusNode = FocusNode(
+      debugLabel: 'TerminalInput',
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          final terminalState = ref.read(adbTerminalProvider);
+          final activeSession = terminalState.getActiveSession(widget.device.id);
+          if (activeSession == null) return KeyEventResult.ignored;
+
+          final notifier = ref.read(adbTerminalProvider.notifier);
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            final prevCmd = notifier.getHistoryCommand(
+              widget.device.id,
+              activeSession.id,
+              true,
+              _commandController.text,
+            );
+            if (prevCmd != null) {
+              _commandController.text = prevCmd;
+              _commandController.selection = TextSelection.fromPosition(
+                TextPosition(offset: prevCmd.length),
+              );
+            }
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+            final nextCmd = notifier.getHistoryCommand(
+              widget.device.id,
+              activeSession.id,
+              false,
+              _commandController.text,
+            );
+            if (nextCmd != null) {
+              _commandController.text = nextCmd;
+              _commandController.selection = TextSelection.fromPosition(
+                TextPosition(offset: nextCmd.length),
+              );
+            }
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+    );
     // 延迟一帧，如果当前没有会话，自动创建一个默认终端
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final terminalState = ref.read(adbTerminalProvider);
@@ -337,63 +379,26 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
 
                 // 命令输入框，支持历史记录上下翻页
                 Expanded(
-                  child: KeyboardListener(
-                    focusNode: FocusNode(), // 拦截键盘事件
-                    onKeyEvent: (event) {
-                      if (event is KeyDownEvent) {
-                        if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                          final prevCmd = notifier.getHistoryCommand(
-                            widget.device.id,
-                            session.id,
-                            true,
-                            _commandController.text,
-                          );
-                          if (prevCmd != null) {
-                            _commandController.text = prevCmd;
-                            _commandController.selection =
-                                TextSelection.fromPosition(
-                                  TextPosition(offset: prevCmd.length),
-                                );
-                          }
-                        } else if (event.logicalKey ==
-                            LogicalKeyboardKey.arrowDown) {
-                          final nextCmd = notifier.getHistoryCommand(
-                            widget.device.id,
-                            session.id,
-                            false,
-                            _commandController.text,
-                          );
-                          if (nextCmd != null) {
-                            _commandController.text = nextCmd;
-                            _commandController.selection =
-                                TextSelection.fromPosition(
-                                  TextPosition(offset: nextCmd.length),
-                                );
-                          }
-                        }
-                      }
-                    },
-                    child: TextField(
-                      controller: _commandController,
-                      focusNode: _inputFocusNode,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 13,
-                        color: Colors.white70,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: context.l10n.t('enterCommandHint'),
-                        hintStyle: const TextStyle(
-                          color: Colors.white24,
-                          fontSize: 12,
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                      ),
-                      onSubmitted: (text) =>
-                          _handleSendCommand(session.id, text),
+                  child: TextField(
+                    controller: _commandController,
+                    focusNode: _inputFocusNode,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                      color: Colors.white70,
                     ),
+                    decoration: InputDecoration(
+                      hintText: context.l10n.t('enterCommandHint'),
+                      hintStyle: const TextStyle(
+                        color: Colors.white24,
+                        fontSize: 12,
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                    ),
+                    onSubmitted: (text) =>
+                        _handleSendCommand(session.id, text),
                   ),
                 ),
 
