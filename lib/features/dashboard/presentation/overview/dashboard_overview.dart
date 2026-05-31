@@ -105,6 +105,9 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('androidVersion'),
         value: overview.androidVersion,
+        tooltip: AndroidVersionHelper.getApiMappingTooltip(
+          context.l10n.t('androidApiMapping'),
+        ),
       ),
       _OverviewItemData(
         icon: CupertinoIcons.device_phone_portrait,
@@ -354,16 +357,18 @@ class _OverviewItemData extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.tooltip,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     // 只复制值，不复制标签，便于将 ID、型号、IP 等内容粘贴到其他工具。
-    return InkWell(
+    final child = InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () async {
         await Clipboard.setData(ClipboardData(text: value));
@@ -423,6 +428,42 @@ class _OverviewItemData extends StatelessWidget {
         ),
       ),
     );
+
+    if (tooltip != null) {
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+      return Tooltip(
+        message: tooltip!,
+        preferBelow: false,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.all(8),
+        verticalOffset: 24,
+        textStyle: const TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 12,
+          color: Colors.white,
+          height: 1.4,
+        ),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[900]!.withAlpha(242) : Colors.black.withAlpha(217),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDark ? Colors.white.withAlpha(31) : Colors.white.withAlpha(51),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(64),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: child,
+      );
+    }
+
+    return child;
   }
 }
 

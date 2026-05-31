@@ -22,6 +22,7 @@ import '../../../core/apps/adb_package.dart';
 import '../../../core/apps/adb_app_permission.dart';
 import '../../../core/device_info/device_overview.dart';
 import '../../../core/device_info/brand_logo_helper.dart';
+import '../../../core/device_info/android_version_helper.dart';
 import '../../../core/emulator/android_emulator.dart';
 import '../../../core/files/remote_file.dart';
 import '../../../core/logcat/logcat_controller.dart';
