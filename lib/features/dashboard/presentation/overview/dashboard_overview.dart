@@ -385,6 +385,7 @@ class _OverviewItemData extends StatelessWidget {
                 final iconWidth = min(18.0, constraints.maxWidth);
                 final showLabel = constraints.maxWidth >= 56;
 
+                final color = Theme.of(context).colorScheme.onSurfaceVariant;
                 return Row(
                   children: [
                     SizedBox(
@@ -392,7 +393,7 @@ class _OverviewItemData extends StatelessWidget {
                       height: 18,
                       child: FittedBox(
                         fit: BoxFit.contain,
-                        child: Icon(icon, size: 18),
+                        child: Icon(icon, size: 18, color: color),
                       ),
                     ),
                     if (showLabel) ...[
@@ -400,7 +401,9 @@ class _OverviewItemData extends StatelessWidget {
                       Expanded(
                         child: Text(
                           label,
-                          style: Theme.of(context).textTheme.titleSmall,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleSmall?.copyWith(color: color),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
