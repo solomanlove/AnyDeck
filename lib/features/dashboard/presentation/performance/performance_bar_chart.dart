@@ -1,42 +1,28 @@
 import 'package:flutter/material.dart';
+import 'performance_charts.dart';
 
-/// 统一图表采样数据点模型。
-class ChartDataPoint {
-  const ChartDataPoint({
-    required this.value,
-    required this.label,
-    this.timestamp,
-  });
-
-  final double value; // 具体数值
-  final String label; // 时间戳字符串 (如 "15:52:30")
-  final DateTime? timestamp; // 真实时间戳
-}
-
-/// 支持渐变填充、网格线和鼠标悬停交互的折线/面积图。
-class InteractiveLineChart extends StatefulWidget {
-  const InteractiveLineChart({
+/// 支持渐变柱子和悬停 Tooltip 交互的柱状图 (专门针对 FPS)
+class InteractiveBarChart extends StatefulWidget {
+  const InteractiveBarChart({
     super.key,
     required this.data,
     required this.maxVal,
-    required this.lineColor,
-    required this.fillGradientColors,
-    this.unit = '%',
+    required this.barColor,
+    this.unit = '',
     this.windowSize = 90,
   });
 
   final List<ChartDataPoint> data;
   final double maxVal;
-  final Color lineColor;
-  final List<Color> fillGradientColors;
+  final Color barColor;
   final String unit;
   final int windowSize;
 
   @override
-  State<InteractiveLineChart> createState() => _InteractiveLineChartState();
+  State<InteractiveBarChart> createState() => _InteractiveBarChartState();
 }
 
-class _InteractiveLineChartState extends State<InteractiveLineChart> {
+class _InteractiveBarChartState extends State<InteractiveBarChart> {
   Offset? _hoverPosition;
 
   @override
@@ -54,11 +40,10 @@ class _InteractiveLineChartState extends State<InteractiveLineChart> {
       },
       child: CustomPaint(
         size: Size.infinite,
-        painter: _LineChartPainter(
+        painter: _BarChartPainter(
           data: widget.data,
           maxVal: widget.maxVal,
-          lineColor: widget.lineColor,
-          gradientColors: widget.fillGradientColors,
+          barColor: widget.barColor,
           hoverPosition: _hoverPosition,
           unit: widget.unit,
           windowSize: widget.windowSize,
@@ -68,12 +53,11 @@ class _InteractiveLineChartState extends State<InteractiveLineChart> {
   }
 }
 
-class _LineChartPainter extends CustomPainter {
-  _LineChartPainter({
+class _BarChartPainter extends CustomPainter {
+  _BarChartPainter({
     required this.data,
     required this.maxVal,
-    required this.lineColor,
-    required this.gradientColors,
+    required this.barColor,
     required this.hoverPosition,
     required this.unit,
     required this.windowSize,
@@ -81,8 +65,7 @@ class _LineChartPainter extends CustomPainter {
 
   final List<ChartDataPoint> data;
   final double maxVal;
-  final Color lineColor;
-  final List<Color> gradientColors;
+  final Color barColor;
   final Offset? hoverPosition;
   final String unit;
   final int windowSize;
@@ -99,10 +82,9 @@ class _LineChartPainter extends CustomPainter {
       ..color = const Color(0xffeceef1)
       ..strokeWidth = 1.0;
 
-    // 水平分割线
-    canvas.drawLine(Offset(0, 0), Offset(width, 0), gridPaint); // 100%
-    canvas.drawLine(Offset(0, height / 2), Offset(width, height / 2), gridPaint); // 50%
-    canvas.drawLine(Offset(0, height), Offset(width, height), gridPaint); // 0%
+    canvas.drawLine(Offset(0, 0), Offset(width, 0), gridPaint); // 60
+    canvas.drawLine(Offset(0, height / 2), Offset(width, height / 2), gridPaint); // 30
+    canvas.drawLine(Offset(0, height), Offset(width, height), gridPaint); // 0
 
     // 纵向时间网格 (根据时间戳每隔 10 秒绘制一条垂直网格线并附带时间戳标签)
     final latestTime = data.last.timestamp ?? DateTime.now();
@@ -145,98 +127,75 @@ class _LineChartPainter extends CustomPainter {
       boundary = boundary.add(const Duration(seconds: 10));
     }
 
-    // 绘制坐标轴文字
+    // 绘制网格文字
     const textStyle = TextStyle(color: Color(0xff80868b), fontSize: 10, fontWeight: FontWeight.w500);
     _drawText(canvas, '${maxVal.toInt()}$unit', Offset(6, 4), textStyle);
     _drawText(canvas, '${(maxVal / 2).toInt()}$unit', Offset(6, height / 2 - 6), textStyle);
 
-    // 计算折线点坐标
-    final List<Offset> points = [];
+    // 计算柱状图宽度
+    final double slotW = width / windowSize;
+    final double barW = slotW * 0.8;
+    final double spaceW = slotW * 0.2;
+
+    int? hoveredIndex;
+    if (hoverPosition != null) {
+      double minDistance = double.infinity;
+      for (int i = 0; i < data.length; i++) {
+        final point = data[i];
+        final pointTime = point.timestamp ?? latestTime.subtract(Duration(seconds: data.length - 1 - i));
+        final double offsetSeconds = latestTime.difference(pointTime).inMilliseconds / 1000.0;
+        final double barCenterX = width - (offsetSeconds + 0.5) * slotW;
+        final double distance = (hoverPosition!.dx - barCenterX).abs();
+        if (distance < minDistance && distance < slotW * 1.5) {
+          minDistance = distance;
+          hoveredIndex = i;
+        }
+      }
+    }
+
     for (int i = 0; i < data.length; i++) {
       final point = data[i];
       final pointTime = point.timestamp ?? latestTime.subtract(Duration(seconds: data.length - 1 - i));
       final double offsetSeconds = latestTime.difference(pointTime).inMilliseconds / 1000.0;
-      final double x = width - (offsetSeconds / windowSize) * width;
+      
+      final double x = width - (offsetSeconds + 1) * slotW + spaceW / 2;
       final double y = height - (point.value / maxVal * height);
-      points.add(Offset(x.clamp(0.0, width), y.clamp(0.0, height)));
-    }
 
-    // 绘制面积渐变填充
-    if (points.length > 1) {
-      final fillPath = Path()
-        ..moveTo(points.first.dx, height)
-        ..lineTo(points.first.dx, points.first.dy);
-
-      for (int i = 1; i < points.length; i++) {
-        fillPath.lineTo(points[i].dx, points[i].dy);
-      }
-      fillPath.lineTo(points.last.dx, height);
-      fillPath.close();
-
-      final fillPaint = Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: gradientColors,
-        ).createShader(Rect.fromLTRB(0, 0, width, height));
-
-      canvas.drawPath(fillPath, fillPaint);
-    }
-
-    // 绘制折线
-    final linePaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
-
-    final linePath = Path()..moveTo(points.first.dx, points.first.dy);
-    for (int i = 1; i < points.length; i++) {
-      linePath.lineTo(points[i].dx, points[i].dy);
-    }
-    canvas.drawPath(linePath, linePaint);
-
-    // 如果鼠标悬停，绘制悬停指示器和 Tooltip
-    if (hoverPosition != null && data.isNotEmpty) {
-      final double hoverX = hoverPosition!.dx;
-      int closestIndex = 0;
-      double minDistance = double.infinity;
-      for (int i = 0; i < points.length; i++) {
-        final double distance = (hoverX - points[i].dx).abs();
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestIndex = i;
-        }
-      }
-
-      final targetPoint = points[closestIndex];
-      final targetData = data[closestIndex];
-
-      // 1. 绘制纵向指示虚线
-      final dashPaint = Paint()
-        ..color = lineColor.withValues(alpha: 0.6)
-        ..strokeWidth = 1.0;
-
-      double startY = 0;
-      const dashWidth = 4.0;
-      const dashSpace = 4.0;
-      while (startY < height) {
-        canvas.drawLine(
-          Offset(targetPoint.dx, startY),
-          Offset(targetPoint.dx, startY + dashWidth),
-          dashPaint,
+      if (x >= -barW && x <= width) {
+        final rect = RRect.fromRectAndRadius(
+          Rect.fromLTRB(x, y.clamp(0.0, height), x + barW, height),
+          const Radius.circular(2),
         );
-        startY += dashWidth + dashSpace;
+
+        final isHovered = hoveredIndex == i;
+        final paint = Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              isHovered ? barColor.withValues(alpha: 0.9) : barColor.withValues(alpha: 0.7),
+              isHovered ? barColor.withValues(alpha: 0.5) : barColor.withValues(alpha: 0.3),
+            ],
+          ).createShader(Rect.fromLTRB(x, y.clamp(0.0, height), x + barW, height));
+
+        canvas.drawRRect(rect, paint);
       }
+    }
 
-      // 2. 绘制选中数据点发光圆圈
-      canvas.drawCircle(targetPoint, 6.0, Paint()..color = lineColor.withValues(alpha: 0.3));
-      canvas.drawCircle(targetPoint, 4.0, Paint()..color = lineColor);
-      canvas.drawCircle(targetPoint, 2.0, Paint()..color = Colors.white);
+    // 绘制悬停 Tooltip
+    if (hoveredIndex != null) {
+      final targetData = data[hoveredIndex];
+      final pointTime = targetData.timestamp ?? latestTime.subtract(Duration(seconds: data.length - 1 - hoveredIndex));
+      final double offsetSeconds = latestTime.difference(pointTime).inMilliseconds / 1000.0;
+      final double x = width - (offsetSeconds + 0.5) * slotW;
+      final val = targetData.value;
+      final y = height - (val / maxVal * height);
 
-      // 3. 绘制 Tooltip 箱子
-      final tooltipText = '${targetData.value.toStringAsFixed(1)}$unit\n${targetData.label}';
+      // 绘制柱子高亮圆球
+      canvas.drawCircle(Offset(x, y), 4.0, Paint()..color = barColor);
+      canvas.drawCircle(Offset(x, y), 2.0, Paint()..color = Colors.white);
+
+      final tooltipText = '${targetData.value.toStringAsFixed(0)}$unit\n${targetData.label}';
       final textSpan = TextSpan(
         style: const TextStyle(
           color: Colors.white,
@@ -254,12 +213,11 @@ class _LineChartPainter extends CustomPainter {
       final tooltipW = textPainter.width + 16;
       final tooltipH = textPainter.height + 12;
 
-      // 尽量把 Tooltip 放在悬停线左右侧，避免超出屏幕边缘
-      double tooltipX = targetPoint.dx + 8;
+      double tooltipX = x + 8;
       if (tooltipX + tooltipW > width) {
-        tooltipX = targetPoint.dx - tooltipW - 8;
+        tooltipX = x - tooltipW - 8;
       }
-      double tooltipY = targetPoint.dy - tooltipH / 2;
+      double tooltipY = y - tooltipH / 2;
       if (tooltipY < 4) tooltipY = 4;
       if (tooltipY + tooltipH > height - 4) tooltipY = height - tooltipH - 4;
 
@@ -289,11 +247,11 @@ class _LineChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _LineChartPainter oldDelegate) {
+  bool shouldRepaint(covariant _BarChartPainter oldDelegate) {
     return oldDelegate.data != data ||
         oldDelegate.hoverPosition != hoverPosition ||
         oldDelegate.maxVal != maxVal ||
-        oldDelegate.lineColor != lineColor ||
+        oldDelegate.barColor != barColor ||
         oldDelegate.windowSize != windowSize;
   }
 }

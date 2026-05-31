@@ -33,7 +33,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   DateTime? _prevFpsTime;
   double _lastFps = 0.0;
 
-  // 缓存的历史数据集 (最多保留 30 个数据点)
+  // 缓存的历史数据集
   final List<ChartDataPoint> _historyOverallCpu = [];
   final Map<int, List<ChartDataPoint>> _historyCores = {};
   final List<ChartDataPoint> _historyMemory = [];
@@ -158,23 +158,23 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
           '${snapshot.timestamp.second.toString().padLeft(2, '0')}';
 
       // 1. 更新整体 CPU 历史列表
-      _historyOverallCpu.add(ChartDataPoint(value: snapshot.overallCpuUsage, label: timeStr));
-      if (_historyOverallCpu.length > 30) _historyOverallCpu.removeAt(0);
+      _historyOverallCpu.add(ChartDataPoint(value: snapshot.overallCpuUsage, label: timeStr, timestamp: snapshot.timestamp));
+      if (_historyOverallCpu.length > 90) _historyOverallCpu.removeAt(0);
 
       // 2. 更新每个核心 CPU 历史列表
       for (final core in snapshot.cores) {
         final list = _historyCores.putIfAbsent(core.id, () => []);
-        list.add(ChartDataPoint(value: core.usage, label: timeStr));
+        list.add(ChartDataPoint(value: core.usage, label: timeStr, timestamp: snapshot.timestamp));
         if (list.length > 20) list.removeAt(0);
       }
 
       // 3. 更新内存历史列表
-      _historyMemory.add(ChartDataPoint(value: snapshot.memoryUsagePercent, label: timeStr));
-      if (_historyMemory.length > 30) _historyMemory.removeAt(0);
+      _historyMemory.add(ChartDataPoint(value: snapshot.memoryUsagePercent, label: timeStr, timestamp: snapshot.timestamp));
+      if (_historyMemory.length > 90) _historyMemory.removeAt(0);
 
       // 4. 更新 FPS 历史列表
-      _historyFps.add(ChartDataPoint(value: snapshot.fps, label: timeStr));
-      if (_historyFps.length > 30) _historyFps.removeAt(0);
+      _historyFps.add(ChartDataPoint(value: snapshot.fps, label: timeStr, timestamp: snapshot.timestamp));
+      if (_historyFps.length > 90) _historyFps.removeAt(0);
 
       setState(() {
         _isLoading = false;

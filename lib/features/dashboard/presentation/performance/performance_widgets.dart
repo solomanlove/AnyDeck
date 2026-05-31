@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'performance_charts.dart';
+import 'performance_bar_chart.dart';
 import 'performance_data.dart';
 
 /// 顶部开机时间和电量状态组件。
@@ -107,6 +108,7 @@ class CpuOverviewCard extends StatelessWidget {
                   const Color(0xff00c853).withValues(alpha: 0.25),
                   const Color(0xff00c853).withValues(alpha: 0.0),
                 ],
+                windowSize: 90,
               ),
             ),
           ],
@@ -202,6 +204,7 @@ class CpuCoresGrid extends StatelessWidget {
                       const Color(0xff81c784).withValues(alpha: 0.15),
                       const Color(0xff81c784).withValues(alpha: 0.0),
                     ],
+                    windowSize: 20,
                   ),
                 ),
               ],
@@ -268,6 +271,7 @@ class MemoryOverviewCard extends StatelessWidget {
                   const Color(0xff7e57c2).withValues(alpha: 0.25),
                   const Color(0xff7e57c2).withValues(alpha: 0.0),
                 ],
+                windowSize: 90,
               ),
             ),
           ],
@@ -331,6 +335,7 @@ class FpsOverviewCard extends StatelessWidget {
                 data: historyFps,
                 maxVal: 60,
                 barColor: const Color(0xffff9800),
+                windowSize: 90,
               ),
             ),
           ],
