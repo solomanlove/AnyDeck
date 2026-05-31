@@ -58,6 +58,18 @@ class DeviceActionService {
     ]);
   }
 
+  /// 开关 Android 指针位置 (Pointer location)。
+  Future<AdbResult> setPointerLocation(String deviceId, bool enabled) {
+    final flag = enabled ? '1' : '0';
+    return _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'system',
+      'pointer_location',
+      flag,
+    ]);
+  }
+
   /// 模拟电源键，用于亮屏或熄屏。
   Future<AdbResult> standby(String deviceId) {
     return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_POWER']);

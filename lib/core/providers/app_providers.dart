@@ -164,6 +164,19 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       yield fresh;
     });
 
+/// 单台设备的 adb shell 是否拥有 root 权限。
+final isDeviceRootProvider = FutureProvider.autoDispose
+    .family<bool, String>((ref, deviceId) async {
+      final adb = ref.watch(adbServiceProvider);
+      try {
+        final result = await adb.shell(deviceId, 'id');
+        if (result.isSuccess) {
+          return result.stdout.contains('uid=0');
+        }
+      } catch (_) {}
+      return false;
+    });
+
 /// 离线设备的本地手机信息概览缓存。
 final cachedDeviceOverviewProvider = FutureProvider.autoDispose
     .family<DeviceOverview?, String>((ref, deviceId) {
@@ -762,6 +775,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
                 rawResolution: '-',
                 hwuiProfile: 'false',
                 showTouchesEnabled: false,
+                pointerLocationEnabled: false,
               );
             }
           } else {
@@ -794,6 +808,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               rawResolution: '-',
               hwuiProfile: 'false',
               showTouchesEnabled: false,
+              pointerLocationEnabled: false,
             );
           }
           await prefs.setString(cacheKey, jsonEncode(overview.toJson()));

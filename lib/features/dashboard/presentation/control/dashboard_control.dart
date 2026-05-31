@@ -273,6 +273,7 @@ class _LayoutHelperPanel extends ConsumerWidget {
         ? ref.watch(deviceOverviewProvider(device.id))
         : const AsyncValue<DeviceOverview>.loading();
     final showTouchesEnabled = overviewAsync.value?.showTouchesEnabled ?? false;
+    final pointerLocationEnabled = overviewAsync.value?.pointerLocationEnabled ?? false;
 
     return _ActionCard(
       title: context.l10n.t('layoutHelper'),
@@ -304,6 +305,22 @@ class _LayoutHelperPanel extends ConsumerWidget {
               context,
               ref,
               actions.setShowTouches(device.id, on),
+            );
+            if (device.isOnline) {
+              ref.invalidate(deviceOverviewProvider(device.id));
+            }
+          },
+        ),
+        _ToggleActionButton(
+          iconOn: CupertinoIcons.pencil,
+          iconOff: CupertinoIcons.pencil,
+          label: context.l10n.t('pointerLocationToggle'),
+          value: pointerLocationEnabled,
+          onToggle: (on) async {
+            await _runAdbAction(
+              context,
+              ref,
+              actions.setPointerLocation(device.id, on),
             );
             if (device.isOnline) {
               ref.invalidate(deviceOverviewProvider(device.id));

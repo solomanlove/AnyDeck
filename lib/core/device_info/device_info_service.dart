@@ -64,6 +64,7 @@ class DeviceInfoService {
         _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'transition_animation_scale']),
         _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'animator_duration_scale']),
         _adb.shellArgs(deviceId, ['settings', 'get', 'system', 'show_touches']),
+        _adb.shellArgs(deviceId, ['settings', 'get', 'system', 'pointer_location']),
       ]);
 
       if (!results[0].isSuccess) {
@@ -92,6 +93,7 @@ class DeviceInfoService {
       final animatorAnimRaw = _formatAnimScale(_clean(results[19].stdout));
       final hwuiProfile = properties['debug.hwui.profile']?.trim() ?? 'false';
       final showTouchesRaw = _clean(results[20].stdout);
+      final pointerLocationRaw = _clean(results[21].stdout);
 
       final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
       final deviceCode = _firstValue(properties, [
@@ -149,6 +151,7 @@ class DeviceInfoService {
         rawResolution: size.current,
         hwuiProfile: hwuiProfile,
         showTouchesEnabled: showTouchesRaw == '1',
+        pointerLocationEnabled: pointerLocationRaw == '1',
       );
 
       // 保存到本地缓存

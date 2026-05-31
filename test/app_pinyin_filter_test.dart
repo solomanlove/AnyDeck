@@ -91,6 +91,7 @@ void main() {
             rawResolution: '1080x2400',
             hwuiProfile: 'false',
             showTouchesEnabled: false,
+            pointerLocationEnabled: false,
           ))),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),

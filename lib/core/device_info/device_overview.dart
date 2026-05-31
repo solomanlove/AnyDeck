@@ -29,6 +29,7 @@ class DeviceOverview {
     required this.rawResolution,
     required this.hwuiProfile,
     required this.showTouchesEnabled,
+    required this.pointerLocationEnabled,
   });
 
   final String name;
@@ -59,6 +60,7 @@ class DeviceOverview {
   final String rawResolution;
   final String hwuiProfile;
   final bool showTouchesEnabled;
+  final bool pointerLocationEnabled;
 
   Map<String, dynamic> toJson() {
     return {
@@ -90,6 +92,7 @@ class DeviceOverview {
       'rawResolution': rawResolution,
       'hwuiProfile': hwuiProfile,
       'showTouchesEnabled': showTouchesEnabled,
+      'pointerLocationEnabled': pointerLocationEnabled,
     };
   }
 
@@ -123,6 +126,7 @@ class DeviceOverview {
       rawResolution: json['rawResolution'] as String? ?? '-',
       hwuiProfile: json['hwuiProfile'] as String? ?? 'false',
       showTouchesEnabled: json['showTouchesEnabled'] as bool? ?? false,
+      pointerLocationEnabled: json['pointerLocationEnabled'] as bool? ?? false,
     );
   }
 
@@ -155,6 +159,7 @@ class DeviceOverview {
     String? rawResolution,
     String? hwuiProfile,
     bool? showTouchesEnabled,
+    bool? pointerLocationEnabled,
   }) {
     return DeviceOverview(
       name: name ?? this.name,
@@ -185,6 +190,7 @@ class DeviceOverview {
       rawResolution: rawResolution ?? this.rawResolution,
       hwuiProfile: hwuiProfile ?? this.hwuiProfile,
       showTouchesEnabled: showTouchesEnabled ?? this.showTouchesEnabled,
+      pointerLocationEnabled: pointerLocationEnabled ?? this.pointerLocationEnabled,
     );
   }
 }

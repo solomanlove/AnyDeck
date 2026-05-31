@@ -100,6 +100,7 @@ void main() {
         rawResolution: '1080x2400',
         hwuiProfile: 'false',
         showTouchesEnabled: false,
+        pointerLocationEnabled: false,
       );
 
       final json = overview.toJson();
@@ -133,6 +134,7 @@ void main() {
       expect(decoded.rawResolution, overview.rawResolution);
       expect(decoded.hwuiProfile, overview.hwuiProfile);
       expect(decoded.showTouchesEnabled, overview.showTouchesEnabled);
+      expect(decoded.pointerLocationEnabled, overview.pointerLocationEnabled);
     });
   });
 
