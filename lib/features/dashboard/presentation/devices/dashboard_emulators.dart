@@ -543,7 +543,7 @@ class _EmulatorToolbar extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          tooltip: context.l10n.t('start'),
+          tooltip: context.l10n.t('launch'),
           icon: const Icon(CupertinoIcons.play),
           onPressed: onStart,
         ),
