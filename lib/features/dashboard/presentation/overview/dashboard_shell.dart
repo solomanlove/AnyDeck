@@ -428,17 +428,25 @@ class _ContentTitleBar extends ConsumerWidget {
   }
 }
 
-class _DashboardHomeContent extends StatelessWidget {
+class _DashboardHomeContent extends ConsumerWidget {
   const _DashboardHomeContent();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final emulatorsAsync = ref.watch(emulatorListProvider);
+    final hasEmulators = emulatorsAsync.maybeWhen(
+      data: (list) => list.isNotEmpty,
+      orElse: () => true,
+    );
+
     return ListView(
       padding: const EdgeInsets.all(24),
-      children: const [
-        _DeviceListPanel(),
-        SizedBox(height: 16),
-        _EmulatorListPanel(),
+      children: [
+        const _DeviceListPanel(),
+        if (hasEmulators) ...[
+          const SizedBox(height: 16),
+          const _EmulatorListPanel(),
+        ],
       ],
     );
   }
