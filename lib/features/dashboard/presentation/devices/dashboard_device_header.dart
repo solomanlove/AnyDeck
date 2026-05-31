@@ -175,6 +175,8 @@ class _SelectedDeviceHeader extends ConsumerWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
+        const SizedBox(width: 12),
+        _buildRootPill(context, ref, device.id, device.isOnline),
       ],
     );
 
@@ -261,10 +263,27 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                     SizedBox(width: 160, child: title),
                     const SizedBox(width: 16),
                     IconButton(
+                      icon: const Icon(Icons.terminal),
+                      tooltip: context.l10n.t('terminalDir'),
+                      onPressed: () => _openLocalTerminal(context, ref),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
                       icon: const Icon(CupertinoIcons.tv),
                       tooltip: context.l10n.t('start'),
                       onPressed: device.isOnline
                           ? () => _startScrcpy(context, ref, device.id)
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(CupertinoIcons.gamecontroller),
+                      tooltip: context.l10n.t('remoteController'),
+                      onPressed: device.isOnline
+                          ? () => showDialog<void>(
+                                context: context,
+                                builder: (_) => _RemoteControllerDialog(device: device),
+                              )
                           : null,
                     ),
                     const SizedBox(width: 8),
@@ -281,10 +300,27 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 Expanded(child: title),
                 const SizedBox(width: 16),
                 IconButton(
+                  icon: const Icon(Icons.terminal),
+                  tooltip: context.l10n.t('terminalDir'),
+                  onPressed: () => _openLocalTerminal(context, ref),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
                   icon: const Icon(CupertinoIcons.tv),
                   tooltip: context.l10n.t('start'),
                   onPressed: device.isOnline
                       ? () => _startScrcpy(context, ref, device.id)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(CupertinoIcons.gamecontroller),
+                  tooltip: context.l10n.t('remoteController'),
+                  onPressed: device.isOnline
+                      ? () => showDialog<void>(
+                            context: context,
+                            builder: (_) => _RemoteControllerDialog(device: device),
+                          )
                       : null,
                 ),
                 const SizedBox(width: 8),
@@ -360,6 +396,107 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     } on Object catch (error) {
       if (context.mounted) {
         _showSnack(context, error.toString(), isError: true);
+      }
+    }
+  }
+
+  Widget _buildRootPill(BuildContext context, WidgetRef ref, String deviceId, bool isOnline) {
+    final isRootAsync = ref.watch(isDeviceRootProvider(deviceId));
+    return isRootAsync.when(
+      data: (isRoot) {
+        final text = isRoot ? context.l10n.t('rooted') : context.l10n.t('unrooted');
+        final color = isRoot ? const Color(0xFF2EC46B) : const Color(0xFFE65100);
+        final bgColor = isRoot ? const Color(0xFFE2F7EB) : const Color(0xFFFFF3E0);
+
+        return Tooltip(
+          message: isRoot ? context.l10n.t('rooted') : context.l10n.t('enterRootMode'),
+          child: Material(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: isOnline && !isRoot
+                  ? () => _toggleRoot(context, ref, deviceId)
+                  : null,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isRoot ? CupertinoIcons.lock_open_fill : CupertinoIcons.lock_fill,
+                      size: 12,
+                      color: color,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      text,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+      error: (_, stack) => const Icon(CupertinoIcons.question, size: 14, color: Colors.grey),
+    );
+  }
+
+  Future<void> _toggleRoot(BuildContext context, WidgetRef ref, String deviceId) async {
+    try {
+      _showSnack(context, context.l10n.t('enteringRootMode'));
+      final adb = ref.read(adbServiceProvider);
+      final res = await adb.run(['-s', deviceId, 'root']);
+      if (!context.mounted) return;
+      if (res.isSuccess) {
+        _showSnack(context, res.stdout.isNotEmpty ? res.stdout.trim() : context.l10n.t('enterRootModeSuccess'));
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+        if (!context.mounted) return;
+        ref.invalidate(isDeviceRootProvider(deviceId));
+      } else {
+        _showSnack(context, res.stderr.isNotEmpty ? res.stderr.trim() : 'Failed to enter root mode', isError: true);
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      _showSnack(context, e.toString(), isError: true);
+    }
+  }
+
+  Future<void> _openLocalTerminal(BuildContext context, WidgetRef ref) async {
+    try {
+      final adbPath = ref.read(adbServiceProvider).executable;
+      String dirPath = Directory.current.path;
+      if (adbPath != 'adb') {
+        final adbFile = File(adbPath);
+        if (adbFile.existsSync()) {
+          dirPath = adbFile.parent.path;
+        }
+      }
+      
+      if (Platform.isMacOS) {
+        await Process.run('open', ['-a', 'Terminal', dirPath]);
+      } else if (Platform.isWindows) {
+        await Process.run('cmd.exe', ['/c', 'start', 'cmd.exe'], workingDirectory: dirPath);
+      } else if (Platform.isLinux) {
+        await Process.run('x-terminal-emulator', [], workingDirectory: dirPath);
+      }
+      if (context.mounted) {
+        _showSnack(context, '${context.l10n.t('terminalDir')}: $dirPath');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnack(context, 'Failed to open terminal: $e', isError: true);
       }
     }
   }
