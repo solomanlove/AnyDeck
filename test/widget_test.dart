@@ -11,6 +11,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class MockPackagesNotifier extends PackagesNotifier {
+  MockPackagesNotifier(this.packages) : super('');
+  final List<AdbPackage> packages;
+
+  @override
+  AsyncValue<List<AdbPackage>> build() {
+    return AsyncValue.data(packages);
+  }
+}
+
 const _mockDevice = AdbDevice(
   id: 'mock_serial_123',
   status: 'device',
@@ -142,7 +152,7 @@ Future<void> _pumpDashboard(
         ),
         packagesProvider(
           _mockDevice.id,
-        ).overrideWith((ref) => Future.value(<AdbPackage>[])),
+        ).overrideWith(() => MockPackagesNotifier(<AdbPackage>[])),
         deviceOverviewProvider(
           _mockDevice.id,
         ).overrideWith((ref) => Stream.value(_mockOverview)),
@@ -319,6 +329,9 @@ void main() {
           deviceOverviewProvider(
             _mockDevice.id,
           ).overrideWith((ref) => Stream.value(_mockOverview)),
+          packagesProvider(
+            _mockDevice.id,
+          ).overrideWith(() => MockPackagesNotifier(<AdbPackage>[])),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),
           ),
@@ -362,6 +375,9 @@ void main() {
           processesProvider(
             _offlineMockDevice.id,
           ).overrideWith((ref) => Future.value(<AdbProcess>[])),
+          packagesProvider(
+            _offlineMockDevice.id,
+          ).overrideWith(() => MockPackagesNotifier(<AdbPackage>[])),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),
           ),

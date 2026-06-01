@@ -9,6 +9,16 @@ import 'package:adb_manage/core/providers/app_providers.dart';
 import 'package:adb_manage/core/device_info/device_overview.dart';
 import 'package:adb_manage/core/emulator/android_emulator.dart';
 
+class MockPackagesNotifier extends PackagesNotifier {
+  MockPackagesNotifier(this.packages) : super('');
+  final List<AdbPackage> packages;
+
+  @override
+  AsyncValue<List<AdbPackage>> build() {
+    return AsyncValue.data(packages);
+  }
+}
+
 void main() {
   testWidgets('app list filters by pinyin (full pinyin and initials)', (
     WidgetTester tester,
@@ -59,7 +69,7 @@ void main() {
           ),
           packagesProvider(
             mockDevice.id,
-          ).overrideWith((ref) => Future.value(mockPackages)),
+          ).overrideWith(() => MockPackagesNotifier(mockPackages)),
           deviceOverviewProvider(
             mockDevice.id,
           ).overrideWith((ref) => Stream.value(const DeviceOverview(

@@ -140,10 +140,42 @@ final devicesProvider = StreamProvider.autoDispose<List<AdbDevice>>((ref) {
 });
 
 /// 单台设备的已安装应用列表。
-final packagesProvider = FutureProvider.autoDispose
-    .family<List<AdbPackage>, String>((ref, deviceId) {
-      return ref.watch(appManagementServiceProvider).listPackages(deviceId);
-    });
+final packagesProvider = NotifierProvider.autoDispose
+    .family<PackagesNotifier, AsyncValue<List<AdbPackage>>, String>(
+      PackagesNotifier.new,
+    );
+
+class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
+  final String deviceId;
+  PackagesNotifier(this.deviceId);
+
+  @override
+  AsyncValue<List<AdbPackage>> build() {
+    _load();
+    return const AsyncValue.loading();
+  }
+
+  Future<void> _load() async {
+    var isDisposed = false;
+    ref.onDispose(() => isDisposed = true);
+
+    try {
+      final service = ref.read(appManagementServiceProvider);
+      final initialPackages = await service.listPackages(deviceId);
+      if (isDisposed) return;
+      state = AsyncValue.data(initialPackages);
+
+      await for (final updatedPackages in service.enrichPackagesWithIconsProgressive(deviceId, initialPackages)) {
+        if (isDisposed) return;
+        state = AsyncValue.data(updatedPackages);
+      }
+    } catch (err, stack) {
+      if (!isDisposed) {
+        state = AsyncValue.error(err, stack);
+      }
+    }
+  }
+}
 
 /// 单台设备的手机信息概览。
 final deviceOverviewProvider = StreamProvider.autoDispose

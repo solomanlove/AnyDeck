@@ -51,6 +51,26 @@ class AppManagementService {
     return packages;
   }
 
+  Future<AdbResult> _getDumpsysMetadata(String deviceId) async {
+    const dumpsysCmd = 'dumpsys package packages | grep -E "Package \\[|versionName=|versionCode=|minSdk=|targetSdk=|maxSdk=|pkgFlags=\\["';
+    try {
+      final filteredResult = await _adb.shell(
+        deviceId,
+        dumpsysCmd,
+        timeout: _metadataTimeout,
+      );
+      if (filteredResult.isSuccess && filteredResult.stdout.trim().isNotEmpty) {
+        return filteredResult;
+      }
+    } catch (_) {}
+
+    return _adb.shellArgs(deviceId, [
+      'dumpsys',
+      'package',
+      'packages',
+    ], timeout: _metadataTimeout);
+  }
+
   Future<List<AdbPackage>> _readPackagesFromDevice(String deviceId) async {
     final results = await Future.wait<AdbResult>([
       _adb.shellArgs(deviceId, [
@@ -80,11 +100,7 @@ class AppManagementService {
         '--user',
         '0',
       ], timeout: _quickTimeout),
-      _adb.shellArgs(deviceId, [
-        'dumpsys',
-        'package',
-        'packages',
-      ], timeout: _metadataTimeout),
+      _getDumpsysMetadata(deviceId),
       _adb.shell(deviceId, _packageSizeCommand, timeout: _metadataTimeout),
       _adb.shell(deviceId, _flutterPackageCommand, timeout: _metadataTimeout),
     ]);
@@ -185,14 +201,7 @@ class AppManagementService {
     List<AdbPackage> packages,
   ) async {
     try {
-      final enrichedPackages = await _enrichPackagesWithIcons(
-        deviceId,
-        packages,
-      );
-      await _savePackageCache(
-        deviceId,
-        enrichedPackages..sort(_comparePackages),
-      );
+      await enrichPackagesWithIconsProgressive(deviceId, packages).drain();
     } catch (_) {
       // 后台图标缓存失败不影响首屏应用列表展示。
     }
@@ -250,68 +259,105 @@ class AppManagementService {
     );
   }
 
-  Future<List<AdbPackage>> _enrichPackagesWithIcons(
+  Stream<List<AdbPackage>> enrichPackagesWithIconsProgressive(
     String deviceId,
     List<AdbPackage> packages,
-  ) async {
+  ) async* {
     try {
       await _ensureIconHelperPushed(deviceId);
-      final packageListFile = await _writePackageListFile(deviceId, packages);
-      final pushListResult = await _adb.run([
-        '-s',
-        deviceId,
-        'push',
-        packageListFile.path,
-        _remotePackageListPath,
-      ], timeout: _fileTransferTimeout);
-      if (!pushListResult.isSuccess) {
-        return packages;
-      }
-
       final userId = await _currentUserId(deviceId);
-      final result = await _adb.shell(
-        deviceId,
-        'CLASSPATH=$_remoteDexPath app_process /system/bin '
-        'com.adbmanage.helper.PackageIconHelper '
-        '$_remotePackageListPath $userId',
-        timeout: _metadataTimeout,
-      );
-      if (!result.isSuccess) {
-        return packages;
-      }
 
-      final iconInfos = _parseIconHelperOutput(result.stdout);
-      if (iconInfos.isEmpty) {
-        return packages;
-      }
+      // 分批提取图标（每批 50 个应用）
+      const chunkSize = 50;
+      final currentPackages = List<AdbPackage>.from(packages);
 
-      final enriched = <AdbPackage>[];
-      for (final package in packages) {
-        final iconInfo = iconInfos[package.name];
-        if (iconInfo == null) {
-          enriched.add(package);
+      for (var i = 0; i < currentPackages.length; i += chunkSize) {
+        final end = (i + chunkSize < currentPackages.length)
+            ? i + chunkSize
+            : currentPackages.length;
+        final chunk = currentPackages.sublist(i, end);
+
+        final chunkFile = await _writePackageListFileForChunk(deviceId, chunk, i);
+        final remoteChunkPath = '$_remotePackageListPath.$i';
+        
+        final pushListResult = await _adb.run([
+          '-s',
+          deviceId,
+          'push',
+          chunkFile.path,
+          remoteChunkPath,
+        ], timeout: _fileTransferTimeout);
+
+        if (!pushListResult.isSuccess) {
           continue;
         }
-        final iconLocalPath = await _pullIconIfNeeded(deviceId, iconInfo);
-        enriched.add(
-          package.copyWith(
-            label: iconInfo.label.isEmpty ? null : iconInfo.label,
-            iconLocalPath: iconLocalPath,
-            iconRemotePath: iconInfo.remotePath.isEmpty
-                ? null
-                : iconInfo.remotePath,
-            signatureMd5: iconInfo.signatureMd5.isEmpty
-                ? null
-                : iconInfo.signatureMd5,
-            firstInstallTime: iconInfo.firstInstallTime,
-            lastUpdateTime: iconInfo.lastUpdateTime,
-          ),
+
+        final result = await _adb.shell(
+          deviceId,
+          'CLASSPATH=$_remoteDexPath app_process /system/bin '
+          'com.adbmanage.helper.PackageIconHelper '
+          '$remoteChunkPath $userId',
+          timeout: _metadataTimeout,
         );
+
+        // 删除临时生成的分批包名列表文件
+        unawaited(_adb.shell(deviceId, 'rm -f $remoteChunkPath'));
+
+        if (!result.isSuccess) {
+          continue;
+        }
+
+        final iconInfos = _parseIconHelperOutput(result.stdout);
+        if (iconInfos.isEmpty) {
+          continue;
+        }
+
+        var updatedAny = false;
+        for (var j = i; j < end; j++) {
+          final package = currentPackages[j];
+          final iconInfo = iconInfos[package.name];
+          if (iconInfo != null) {
+            final iconLocalPath = await _pullIconIfNeeded(deviceId, iconInfo);
+            currentPackages[j] = package.copyWith(
+              label: iconInfo.label.isEmpty ? null : iconInfo.label,
+              iconLocalPath: iconLocalPath,
+              iconRemotePath: iconInfo.remotePath.isEmpty
+                  ? null
+                  : iconInfo.remotePath,
+              signatureMd5: iconInfo.signatureMd5.isEmpty
+                  ? null
+                  : iconInfo.signatureMd5,
+              firstInstallTime: iconInfo.firstInstallTime,
+              lastUpdateTime: iconInfo.lastUpdateTime,
+            );
+            updatedAny = true;
+          }
+        }
+
+        if (updatedAny) {
+          yield List<AdbPackage>.from(currentPackages);
+        }
       }
-      return enriched;
     } catch (_) {
-      return packages;
+      // 允许后台分批拉取失败时不抛出异常
     }
+  }
+
+  Future<File> _writePackageListFileForChunk(
+    String deviceId,
+    List<AdbPackage> chunk,
+    int index,
+  ) async {
+    final dir = Directory('${Directory.systemTemp.path}/adb_manage_packages');
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+    final file = File('${dir.path}/${_safeFileSegment(deviceId)}_chunk_$index.txt');
+    await file.writeAsString(
+      chunk.map((package) => package.name).join('\n'),
+      flush: true,
+    );
+    return file;
   }
 
   Future<void> _ensureIconHelperPushed(String deviceId) async {
@@ -462,7 +508,7 @@ class AppManagementService {
   }
 
   static const _packageSizeCommand = '''
-for line in \$(pm list packages -f | sed 's/^package://'); do
+for line in \$(pm list packages -f --user 0 2>/dev/null | sed 's/^package://'); do
   path=\${line%=*}
   pkg=\${line##*=}
   size=\$(du -sk "\$path" 2>/dev/null | awk '{print \$1}')
@@ -474,7 +520,7 @@ done
 for file in \$(find /data/app /system/app /system/priv-app /product/app /product/priv-app /vendor/app /vendor/priv-app -name libflutter.so 2>/dev/null); do
   best=""
   bestLen=0
-  for line in \$(pm list packages -f | sed 's/^package://'); do
+  for line in \$(pm list packages -f --user 0 2>/dev/null | sed 's/^package://'); do
     path=\${line%=*}
     pkg=\${line##*=}
     dir=\$(dirname "\$path")
