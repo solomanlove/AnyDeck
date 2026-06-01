@@ -24,6 +24,12 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   int? _videoHeight;
   Timer? _sizePollTimer;
 
+  // Track pointers to ignore (e.g. right-click or middle-click)
+  final Set<int> _ignoredPointers = {};
+
+  // Track the last pan offset for trackpad scrolling
+  Offset _lastPanOffset = Offset.zero;
+
   @override
   void initState() {
     super.initState();
@@ -214,6 +220,101 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     });
   }
 
+  void _handlePointerDown(PointerDownEvent event, String? resolution) {
+    if (event.buttons == kSecondaryMouseButton) {
+      _ignoredPointers.add(event.pointer);
+      ref.read(deviceActionServiceProvider).keyEvent(widget.deviceId, 4); // KEYCODE_BACK
+      debugPrint('[EmbeddedScrcpy] Intercepted right click -> Back');
+      return;
+    }
+    if (event.buttons == kMiddleMouseButton) {
+      _ignoredPointers.add(event.pointer);
+      ref.read(deviceActionServiceProvider).keyEvent(widget.deviceId, 3); // KEYCODE_HOME
+      debugPrint('[EmbeddedScrcpy] Intercepted middle click -> Home');
+      return;
+    }
+    _sendTouchEvent(event, 0, resolution); // DOWN
+  }
+
+  void _handlePointerMove(PointerMoveEvent event, String? resolution) {
+    if (_ignoredPointers.contains(event.pointer)) {
+      return;
+    }
+    _sendTouchEvent(event, 2, resolution); // MOVE
+  }
+
+  void _handlePointerUp(PointerUpEvent event, String? resolution) {
+    if (_ignoredPointers.contains(event.pointer)) {
+      _ignoredPointers.remove(event.pointer);
+      return;
+    }
+    _sendTouchEvent(event, 1, resolution); // UP
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event, String? resolution) {
+    if (_ignoredPointers.contains(event.pointer)) {
+      _ignoredPointers.remove(event.pointer);
+      return;
+    }
+    _sendTouchEvent(event, 3, resolution); // CANCEL
+  }
+
+  void _handlePanZoomStart(PointerPanZoomStartEvent event) {
+    _lastPanOffset = Offset.zero;
+  }
+
+  void _handlePanZoomUpdate(PointerPanZoomUpdateEvent event, String? resolution) {
+    final delta = event.pan - _lastPanOffset;
+    _lastPanOffset = event.pan;
+
+    if (delta.dx == 0 && delta.dy == 0) return;
+
+    final renderBox = _textureKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final localPosition = renderBox.globalToLocal(event.position);
+    final size = renderBox.size;
+
+    int realW = _videoWidth ?? size.width.toInt();
+    int realH = _videoHeight ?? size.height.toInt();
+
+    if (_videoWidth == null || _videoHeight == null) {
+      if (resolution != null && resolution != '-') {
+        final match = RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(resolution);
+        if (match != null) {
+          final w = int.parse(match.group(1)!);
+          final h = int.parse(match.group(2)!);
+          if (w > 0 && h > 0) {
+            realW = w;
+            realH = h;
+          }
+        }
+      }
+    }
+
+    final x = (localPosition.dx / size.width * realW).clamp(0.0, realW.toDouble()).toInt();
+    final y = (localPosition.dy / size.height * realH).clamp(0.0, realH.toDouble()).toInt();
+
+    // Scale delta similarly to scrollDelta
+    final hScroll = (delta.dx / 40.0).clamp(-1.0, 1.0);
+    final vScroll = (-delta.dy / 40.0).clamp(-1.0, 1.0); // Android scroll is inverted
+
+    debugPrint('[EmbeddedScrcpy] PanScroll: x=$x, y=$y, realW=$realW, realH=$realH, hScroll=$hScroll, vScroll=$vScroll');
+
+    final message = _serializeScrollEvent(
+      x: x,
+      y: y,
+      screenWidth: realW,
+      screenHeight: realH,
+      hScroll: hScroll,
+      vScroll: vScroll,
+    );
+
+    ScrcpyFlutter.sendControl(deviceId: widget.deviceId, controlMessage: message).then((success) {
+      debugPrint('[EmbeddedScrcpy] sendControl PanScroll success = $success');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final textureId = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
@@ -244,10 +345,12 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
                 aspectRatio: aspectRatio,
                 child: Listener(
                   key: _textureKey,
-                  onPointerDown: (e) => _sendTouchEvent(e, 0, resolution), // DOWN
-                  onPointerMove: (e) => _sendTouchEvent(e, 2, resolution), // MOVE
-                  onPointerUp: (e) => _sendTouchEvent(e, 1, resolution),   // UP
-                  onPointerCancel: (e) => _sendTouchEvent(e, 3, resolution), // CANCEL
+                  onPointerDown: (e) => _handlePointerDown(e, resolution),
+                  onPointerMove: (e) => _handlePointerMove(e, resolution),
+                  onPointerUp: (e) => _handlePointerUp(e, resolution),
+                  onPointerCancel: (e) => _handlePointerCancel(e, resolution),
+                  onPointerPanZoomStart: _handlePanZoomStart,
+                  onPointerPanZoomUpdate: (e) => _handlePanZoomUpdate(e, resolution),
                   onPointerSignal: (signal) {
                     if (signal is PointerScrollEvent) {
                       _sendScrollEvent(signal, resolution);
