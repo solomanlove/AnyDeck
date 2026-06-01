@@ -409,13 +409,43 @@ class _AppNameCell extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Tooltip(
-            message: package.displayName,
-            child: Text(
-              package.displayName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Tooltip(
+                  message: package.displayName,
+                  child: Text(
+                    package.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              if (package.debuggable) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: colorScheme.error.withValues(alpha: 0.3),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(
+                    'DEBUG',
+                    style: TextStyle(
+                      color: colorScheme.onErrorContainer,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ],

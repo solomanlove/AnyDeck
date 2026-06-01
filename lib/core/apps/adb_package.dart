@@ -18,6 +18,7 @@ class AdbPackage {
     this.signatureMd5,
     this.firstInstallTime,
     this.lastUpdateTime,
+    this.debuggable = false,
   });
 
   /// 包名，例如 `com.android.settings`。
@@ -43,6 +44,7 @@ class AdbPackage {
   final String? signatureMd5;
   final int? firstInstallTime;
   final int? lastUpdateTime;
+  final bool debuggable;
 
   factory AdbPackage.fromJson(Map<String, Object?> json) {
     return AdbPackage(
@@ -63,6 +65,7 @@ class AdbPackage {
       signatureMd5: json['signatureMd5'] as String?,
       firstInstallTime: json['firstInstallTime'] as int?,
       lastUpdateTime: json['lastUpdateTime'] as int?,
+      debuggable: json['debuggable'] as bool? ?? false,
     );
   }
 
@@ -85,6 +88,7 @@ class AdbPackage {
       'signatureMd5': signatureMd5,
       'firstInstallTime': firstInstallTime,
       'lastUpdateTime': lastUpdateTime,
+      'debuggable': debuggable,
     };
   }
 
@@ -95,6 +99,7 @@ class AdbPackage {
     String? signatureMd5,
     int? firstInstallTime,
     int? lastUpdateTime,
+    bool? debuggable,
   }) {
     return AdbPackage(
       name: name,
@@ -114,6 +119,7 @@ class AdbPackage {
       signatureMd5: signatureMd5 ?? this.signatureMd5,
       firstInstallTime: firstInstallTime ?? this.firstInstallTime,
       lastUpdateTime: lastUpdateTime ?? this.lastUpdateTime,
+      debuggable: debuggable ?? this.debuggable,
     );
   }
 

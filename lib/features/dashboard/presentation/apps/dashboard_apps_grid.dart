@@ -124,30 +124,72 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // App Icon
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: iconSize,
-                    height: iconSize,
-                    child: iconPath != null && File(iconPath).existsSync()
-                        ? Image.file(
-                            File(iconPath),
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _FallbackGridIcon(
-                                  icon: icon,
-                                  system: package.system,
-                                  colorScheme: colorScheme,
-                                  size: iconSize,
-                                ),
-                          )
-                        : _FallbackGridIcon(
-                            icon: icon,
-                            system: package.system,
-                            colorScheme: colorScheme,
-                            size: iconSize,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: iconSize,
+                        height: iconSize,
+                        child: iconPath != null && File(iconPath).existsSync()
+                            ? Image.file(
+                                File(iconPath),
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _FallbackGridIcon(
+                                      icon: icon,
+                                      system: package.system,
+                                      colorScheme: colorScheme,
+                                      size: iconSize,
+                                    ),
+                              )
+                            : _FallbackGridIcon(
+                                icon: icon,
+                                system: package.system,
+                                colorScheme: colorScheme,
+                                size: iconSize,
+                              ),
+                      ),
+                    ),
+                    if (package.debuggable)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.error,
+                                colorScheme.error.withValues(alpha: 0.85),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                            border: Border.all(
+                              color: colorScheme.surface,
+                              width: 1.5,
+                            ),
                           ),
-                  ),
+                          child: const Text(
+                            'DEBUG',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 SizedBox(height: max(6.0, widget.size * 0.06)),
                 // App Name

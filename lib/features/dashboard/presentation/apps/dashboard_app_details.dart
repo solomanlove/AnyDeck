@@ -137,6 +137,7 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
                     const Divider(height: 1),
                     const SizedBox(height: 8),
                     _DetailItem(label: '系统应用', value: package.system ? '是' : '否'),
+                    _DetailItem(label: '可调试 (Debuggable)', value: package.debuggable ? '是' : '否'),
                     _DetailItem(label: '最小 SDK 版本', value: _sdkLabel(package.minSdk)),
                     _DetailItem(
                       label: '目标 SDK 版本',

@@ -13,8 +13,8 @@ import 'adb_package.dart';
 class AppManagementService {
   AppManagementService(this._adb);
 
-  static const _cacheSchemaVersion = 2;
-  static const _packageCachePrefix = 'apps.packages.v2';
+  static const _cacheSchemaVersion = 3;
+  static const _packageCachePrefix = 'apps.packages.v3';
   static const _helperAssetPath = 'assets/android/package_icon_helper.dex';
   static const _remoteBaseDir = '/data/local/tmp/adb_manage';
   static const _remoteDexPath = '$_remoteBaseDir/package_icon_helper.dex';
@@ -137,6 +137,7 @@ class AppManagementService {
                 metadata?.system == true ||
                 _looksLikeSystemPath(listed.apkPath),
             flutter: flutterPackages.contains(listed.name),
+            debuggable: metadata?.debuggable == true,
           );
         })
         .toList(growable: false);
@@ -672,6 +673,7 @@ done | sort -u
           (block.contains(' SYSTEM ') ||
               block.contains('[ SYSTEM') ||
               block.contains(' UPDATED_SYSTEM_APP ')),
+      debuggable: block.contains('DEBUGGABLE'),
     );
   }
 
@@ -842,6 +844,7 @@ class _PackageDumpMetadata {
     this.targetSdk,
     this.maxSdk,
     this.system = false,
+    this.debuggable = false,
   });
 
   final String? label;
@@ -851,6 +854,7 @@ class _PackageDumpMetadata {
   final int? targetSdk;
   final int? maxSdk;
   final bool system;
+  final bool debuggable;
 }
 
 class _IconHelperInfo {
