@@ -193,17 +193,10 @@ class _OverviewHeader extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.titleMedium,
         );
-        final actions = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _OverviewShortcutActions(device: device),
-            const SizedBox(width: 4),
-            IconButton(
-              tooltip: context.l10n.t('refresh'),
-              icon: const Icon(CupertinoIcons.refresh),
-              onPressed: onRefresh,
-            ),
-          ],
+        final actions = IconButton(
+          tooltip: context.l10n.t('refresh'),
+          icon: const Icon(CupertinoIcons.refresh),
+          onPressed: onRefresh,
         );
 
         if (constraints.maxWidth < 360) {
@@ -212,10 +205,7 @@ class _OverviewHeader extends StatelessWidget {
             children: [
               title,
               const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: actions,
-              ),
+              actions,
             ],
           );
         }
@@ -228,97 +218,6 @@ class _OverviewHeader extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-/// 概览页右上角常用设备功能入口，保持只读信息页也能快速操作设备。
-class _OverviewShortcutActions extends ConsumerWidget {
-  const _OverviewShortcutActions({required this.device});
-
-  final AdbDevice device;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final actions = ref.read(deviceActionServiceProvider);
-    final enabled = device.isOnline;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      reverse: true,
-      child: IconButtonTheme(
-        data: IconButtonThemeData(
-          style: IconButton.styleFrom(
-            foregroundColor: const Color(0xff374151),
-            disabledForegroundColor: const Color(0xffa9b0bc),
-            minimumSize: const Size(36, 36),
-            fixedSize: const Size(36, 36),
-            padding: EdgeInsets.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              tooltip: context.l10n.t('home'),
-              icon: const Icon(CupertinoIcons.home),
-              onPressed: enabled
-                  ? () => _runAdbAction(
-                      context,
-                      ref,
-                      actions.keyEvent(device.id, 3),
-                    )
-                  : null,
-            ),
-            IconButton(
-              tooltip: context.l10n.t('back'),
-              icon: const Icon(CupertinoIcons.back),
-              onPressed: enabled
-                  ? () => _runAdbAction(
-                      context,
-                      ref,
-                      actions.keyEvent(device.id, 4),
-                    )
-                  : null,
-            ),
-            IconButton(
-              tooltip: context.l10n.t('power'),
-              icon: const Icon(CupertinoIcons.power),
-              onPressed: enabled
-                  ? () => _runAdbAction(
-                      context,
-                      ref,
-                      actions.keyEvent(device.id, 26),
-                    )
-                  : null,
-            ),
-            IconButton(
-              tooltip: context.l10n.t('notificationBar'),
-              icon: const Icon(CupertinoIcons.bell),
-              onPressed: enabled
-                  ? () => _runAdbAction(
-                      context,
-                      ref,
-                      actions.openNotificationBar(device.id),
-                    )
-                  : null,
-            ),
-            IconButton(
-              tooltip: context.l10n.t('focus'),
-              icon: const Icon(CupertinoIcons.viewfinder),
-              onPressed: enabled
-                  ? () => _showAdbResult(
-                      context,
-                      ref,
-                      actions.currentFocus(device.id),
-                    )
-                  : null,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

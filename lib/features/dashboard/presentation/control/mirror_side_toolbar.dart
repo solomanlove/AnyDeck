@@ -227,6 +227,26 @@ class _MirrorSideToolbar extends ConsumerWidget {
             tooltip: context.l10n.t('volumeDown'),
             onPressed: () => actions.volumeDown(deviceId),
           ),
+          // Notification Bar
+          _ToolbarButton(
+            icon: Icon(CupertinoIcons.bell, color: isDark ? Colors.white70 : Colors.black87),
+            tooltip: context.l10n.t('notificationBar'),
+            onPressed: () => _runAdbAction(
+              context,
+              ref,
+              actions.openNotificationBar(deviceId),
+            ),
+          ),
+          // Focus Window (Current Focus)
+          _ToolbarButton(
+            icon: Icon(CupertinoIcons.viewfinder, color: isDark ? Colors.white70 : Colors.black87),
+            tooltip: context.l10n.t('focus'),
+            onPressed: () => _showAdbResult(
+              context,
+              ref,
+              actions.currentFocus(deviceId),
+            ),
+          ),
           const Divider(height: 12, indent: 8, endIndent: 8),
           // 5. Screenshot
           _ToolbarButton(

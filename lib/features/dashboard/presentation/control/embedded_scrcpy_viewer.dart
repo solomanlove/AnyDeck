@@ -319,7 +319,6 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   Widget build(BuildContext context) {
     final textureId = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
     final overviewAsync = ref.watch(deviceOverviewProvider(widget.deviceId));
-    final actionService = ref.read(deviceActionServiceProvider);
 
     if (textureId == null) {
       return const Center(
@@ -337,61 +336,24 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
     return Container(
       color: const Color(0xff121212),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: AspectRatio(
-                aspectRatio: aspectRatio,
-                child: Listener(
-                  key: _textureKey,
-                  onPointerDown: (e) => _handlePointerDown(e, resolution),
-                  onPointerMove: (e) => _handlePointerMove(e, resolution),
-                  onPointerUp: (e) => _handlePointerUp(e, resolution),
-                  onPointerCancel: (e) => _handlePointerCancel(e, resolution),
-                  onPointerPanZoomStart: _handlePanZoomStart,
-                  onPointerPanZoomUpdate: (e) => _handlePanZoomUpdate(e, resolution),
-                  onPointerSignal: (signal) {
-                    if (signal is PointerScrollEvent) {
-                      _sendScrollEvent(signal, resolution);
-                    }
-                  },
-                  child: Texture(textureId: textureId),
-                ),
-              ),
-            ),
-          ),
-          // Navigation Keys toolbar
-          Container(
-            height: 48,
-            color: const Color(0xff1e1e1e),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  tooltip: 'Back',
-                  icon: const Icon(Icons.chevron_left, color: Colors.white70),
-                  onPressed: () => actionService.keyEvent(widget.deviceId, 4),
-                ),
-                IconButton(
-                  tooltip: 'Home',
-                  icon: const Icon(Icons.radio_button_unchecked, color: Colors.white70),
-                  onPressed: () => actionService.keyEvent(widget.deviceId, 3),
-                ),
-                IconButton(
-                  tooltip: 'Recents',
-                  icon: const Icon(Icons.crop_square, color: Colors.white70),
-                  onPressed: () => actionService.keyEvent(widget.deviceId, 187),
-                ),
-                IconButton(
-                  tooltip: 'Power',
-                  icon: const Icon(Icons.power_settings_new, color: Colors.white70),
-                  onPressed: () => actionService.keyEvent(widget.deviceId, 26),
-                ),
-              ],
-            ),
-          ),
-        ],
+      alignment: Alignment.center,
+      child: AspectRatio(
+        aspectRatio: aspectRatio,
+        child: Listener(
+          key: _textureKey,
+          onPointerDown: (e) => _handlePointerDown(e, resolution),
+          onPointerMove: (e) => _handlePointerMove(e, resolution),
+          onPointerUp: (e) => _handlePointerUp(e, resolution),
+          onPointerCancel: (e) => _handlePointerCancel(e, resolution),
+          onPointerPanZoomStart: _handlePanZoomStart,
+          onPointerPanZoomUpdate: (e) => _handlePanZoomUpdate(e, resolution),
+          onPointerSignal: (signal) {
+            if (signal is PointerScrollEvent) {
+              _sendScrollEvent(signal, resolution);
+            }
+          },
+          child: Texture(textureId: textureId),
+        ),
       ),
     );
   }
