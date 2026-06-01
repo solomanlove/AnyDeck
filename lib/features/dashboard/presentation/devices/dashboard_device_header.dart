@@ -265,12 +265,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                     SizedBox(width: 160, child: title),
                     const SizedBox(width: 16),
                     IconButton(
-                      icon: const Icon(Icons.terminal),
-                      tooltip: context.l10n.t('terminalDir'),
-                      onPressed: () => _openLocalTerminal(context, ref),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
                       icon: Icon(
                         isMirrorActive ? CupertinoIcons.tv_fill : CupertinoIcons.tv,
                         color: isMirrorActive ? const Color(0xFF2EC46B) : null,
@@ -304,12 +298,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 const SizedBox(width: 14),
                 Expanded(child: title),
                 const SizedBox(width: 16),
-                IconButton(
-                  icon: const Icon(Icons.terminal),
-                  tooltip: context.l10n.t('terminalDir'),
-                  onPressed: () => _openLocalTerminal(context, ref),
-                ),
-                const SizedBox(width: 8),
                 IconButton(
                   icon: Icon(
                     isMirrorActive ? CupertinoIcons.tv_fill : CupertinoIcons.tv,
@@ -472,32 +460,5 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       _showSnack(context, e.toString(), isError: true);
     }
   }
-
-  Future<void> _openLocalTerminal(BuildContext context, WidgetRef ref) async {
-    try {
-      final adbPath = ref.read(adbServiceProvider).executable;
-      String dirPath = Directory.current.path;
-      if (adbPath != 'adb') {
-        final adbFile = File(adbPath);
-        if (adbFile.existsSync()) {
-          dirPath = adbFile.parent.path;
-        }
-      }
-      
-      if (Platform.isMacOS) {
-        await Process.run('open', ['-a', 'Terminal', dirPath]);
-      } else if (Platform.isWindows) {
-        await Process.run('cmd.exe', ['/c', 'start', 'cmd.exe'], workingDirectory: dirPath);
-      } else if (Platform.isLinux) {
-        await Process.run('x-terminal-emulator', [], workingDirectory: dirPath);
-      }
-      if (context.mounted) {
-        _showSnack(context, '${context.l10n.t('terminalDir')}: $dirPath');
-      }
-    } catch (e) {
-      if (context.mounted) {
-        _showSnack(context, 'Failed to open terminal: $e', isError: true);
-      }
-    }
-  }
 }
+

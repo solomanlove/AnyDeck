@@ -285,3 +285,32 @@ void _showAppDetailsDialog(
     },
   );
 }
+
+Future<void> _openLocalTerminal(BuildContext context, WidgetRef ref) async {
+  try {
+    final adbPath = ref.read(adbServiceProvider).executable;
+    String dirPath = Directory.current.path;
+    if (adbPath != 'adb') {
+      final adbFile = File(adbPath);
+      if (adbFile.existsSync()) {
+        dirPath = adbFile.parent.path;
+      }
+    }
+    
+    if (Platform.isMacOS) {
+      await Process.run('open', ['-a', 'Terminal', dirPath]);
+    } else if (Platform.isWindows) {
+      await Process.run('cmd.exe', ['/c', 'start', 'cmd.exe'], workingDirectory: dirPath);
+    } else if (Platform.isLinux) {
+      await Process.run('x-terminal-emulator', [], workingDirectory: dirPath);
+    }
+    if (context.mounted) {
+      _showSnack(context, '${context.l10n.t('terminalDir')}: $dirPath');
+    }
+  } catch (e) {
+    if (context.mounted) {
+      _showSnack(context, 'Failed to open terminal: $e', isError: true);
+    }
+  }
+}
+
