@@ -30,6 +30,14 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
     }
 
     try {
+      // Pre-clean up any leftover temporary recording file
+      try {
+        await ref.read(fileManagerServiceProvider).delete(
+          widget.device.id,
+          '/sdcard/adb_screenrecord_temp.mp4',
+        );
+      } catch (_) {}
+
       _recordProcess = await ref.read(adbServiceProvider).startScreenRecord(
         widget.device.id,
         '/sdcard/adb_screenrecord_temp.mp4',

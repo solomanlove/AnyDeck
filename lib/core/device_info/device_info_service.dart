@@ -40,32 +40,58 @@ class DeviceInfoService {
   /// 并行加载所有概览字段，避免 dashboard 阻塞。
   Future<DeviceOverview> loadOverview(String deviceId) async {
     try {
-      // 保持概览能力只读：下面命令只读取系统属性或 proc/sysfs 状态，
-      // 打开该面板不会修改手机状态。
+      final basicScript = '''
+echo "===UNAME==="
+uname -r
+echo "===NPROC==="
+nproc
+echo "===WMSIZE==="
+wm size
+echo "===WMDENSITY==="
+wm density
+echo "===MEMINFO==="
+cat /proc/meminfo
+echo "===DF==="
+df -k /data
+echo "===IP==="
+ip addr show wlan0
+''';
+
+      final settingsScript = '''
+echo "===FONTSCALE==="
+settings get system font_scale
+echo "===WIFION==="
+settings get global wifi_on
+echo "===ANDROIDID==="
+settings get secure android_id
+echo "===AIRPLANEMODE==="
+settings get global airplane_mode_on
+echo "===MOBILEDATA==="
+settings get global mobile_data
+echo "===ACCESSIBILITY==="
+settings get secure enabled_accessibility_services
+echo "===WINDOWANIM==="
+settings get global window_animation_scale
+echo "===TRANSITIONANIM==="
+settings get global transition_animation_scale
+echo "===ANIMATORANIM==="
+settings get global animator_duration_scale
+echo "===SHOWTOUCHES==="
+settings get system show_touches
+echo "===POINTERLOCATION==="
+settings get system pointer_location
+echo "===DEMOMODE==="
+settings get global sysui_demo_allowed
+''';
+
+      // 保持概览能力只读：通过分组命令降低子进程创建开销从23个到6个
       final results = await Future.wait<AdbResult>([
         _adb.shellArgs(deviceId, ['getprop']),
         _adb.run(['-s', deviceId, 'get-serialno']),
-        _adb.shellArgs(deviceId, ['uname', '-r']),
-        _adb.shellArgs(deviceId, ['nproc']),
-        _adb.shellArgs(deviceId, ['wm', 'size']),
-        _adb.shellArgs(deviceId, ['wm', 'density']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'system', 'font_scale']),
-        _adb.shellArgs(deviceId, ['cat', '/proc/meminfo']),
-        _adb.shellArgs(deviceId, ['df', '-k', '/data']),
-        _adb.shellArgs(deviceId, ['ip', 'addr', 'show', 'wlan0']),
+        _adb.shell(deviceId, basicScript),
+        _adb.shell(deviceId, settingsScript),
         _adb.shellArgs(deviceId, ['dumpsys', 'wifi']),
         _adb.shellArgs(deviceId, ['dumpsys', 'display']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'wifi_on']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'secure', 'android_id']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'airplane_mode_on']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'mobile_data']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'secure', 'enabled_accessibility_services']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'window_animation_scale']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'transition_animation_scale']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'animator_duration_scale']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'system', 'show_touches']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'system', 'pointer_location']),
-        _adb.shellArgs(deviceId, ['settings', 'get', 'global', 'sysui_demo_allowed']),
       ]);
 
       if (!results[0].isSuccess) {
@@ -74,28 +100,32 @@ class DeviceInfoService {
 
       final properties = _parseGetProp(results[0].stdout);
       final serialFromAdb = _clean(results[1].stdout);
-      final kernel = _clean(results[2].stdout);
-      final cores = _clean(results[3].stdout);
-      final size = _parseWmSize(results[4].stdout);
-      final density = _parseWmDensity(results[5].stdout);
-      final fontScale = _formatScale(_clean(results[6].stdout));
-      final memory = _parseMemory(results[7].stdout);
-      final storage = _parseStorage(results[8].stdout);
-      final network = results[9].stdout;
-      final wifiDump = results[10].stdout;
-      final displayDump = results[11].stdout;
-      final wifiOnRaw = _clean(results[12].stdout);
-      final androidIdRaw = _clean(results[13].stdout);
-      final airplaneModeOnRaw = _clean(results[14].stdout);
-      final mobileDataOnRaw = _clean(results[15].stdout);
-      final accessibilityServicesRaw = results[16].stdout.trim();
-      final windowAnimRaw = _formatAnimScale(_clean(results[17].stdout));
-      final transitionAnimRaw = _formatAnimScale(_clean(results[18].stdout));
-      final animatorAnimRaw = _formatAnimScale(_clean(results[19].stdout));
+      
+      final basicSections = _parseSections(results[2].stdout);
+      final settingsSections = _parseSections(results[3].stdout);
+
+      final kernel = _clean(basicSections['UNAME'] ?? '');
+      final cores = _clean(basicSections['NPROC'] ?? '');
+      final size = _parseWmSize(basicSections['WMSIZE'] ?? '');
+      final density = _parseWmDensity(basicSections['WMDENSITY'] ?? '');
+      final fontScale = _formatScale(_clean(settingsSections['FONTSCALE'] ?? ''));
+      final memory = _parseMemory(basicSections['MEMINFO'] ?? '');
+      final storage = _parseStorage(basicSections['DF'] ?? '');
+      final network = basicSections['IP'] ?? '';
+      final wifiDump = results[4].stdout;
+      final displayDump = results[5].stdout;
+      final wifiOnRaw = _clean(settingsSections['WIFION'] ?? '');
+      final androidIdRaw = _clean(settingsSections['ANDROIDID'] ?? '');
+      final airplaneModeOnRaw = _clean(settingsSections['AIRPLANEMODE'] ?? '');
+      final mobileDataOnRaw = _clean(settingsSections['MOBILEDATA'] ?? '');
+      final accessibilityServicesRaw = (settingsSections['ACCESSIBILITY'] ?? '').trim();
+      final windowAnimRaw = _formatAnimScale(_clean(settingsSections['WINDOWANIM'] ?? ''));
+      final transitionAnimRaw = _formatAnimScale(_clean(settingsSections['TRANSITIONANIM'] ?? ''));
+      final animatorAnimRaw = _formatAnimScale(_clean(settingsSections['ANIMATORANIM'] ?? ''));
       final hwuiProfile = properties['debug.hwui.profile']?.trim() ?? 'false';
-      final showTouchesRaw = _clean(results[20].stdout);
-      final pointerLocationRaw = _clean(results[21].stdout);
-      final demoModeRaw = _clean(results[22].stdout);
+      final showTouchesRaw = _clean(settingsSections['SHOWTOUCHES'] ?? '');
+      final pointerLocationRaw = _clean(settingsSections['POINTERLOCATION'] ?? '');
+      final demoModeRaw = _clean(settingsSections['DEMOMODE'] ?? '');
 
       final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
       final deviceCode = _firstValue(properties, [
@@ -421,6 +451,31 @@ class DeviceInfoService {
     }
 
     return '-';
+  }
+
+  /// 将由 ===SECTION=== 标签分割的 stdout 解析为以 section 名字为 key 的 map。
+  Map<String, String> _parseSections(String output) {
+    final sections = <String, String>{};
+    final lines = output.split('\n');
+    String? currentKey;
+    final buffer = StringBuffer();
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('===') && trimmed.endsWith('===')) {
+        if (currentKey != null) {
+          sections[currentKey] = buffer.toString().trim();
+          buffer.clear();
+        }
+        currentKey = trimmed.substring(3, trimmed.length - 3).trim();
+      } else {
+        buffer.writeln(line);
+      }
+    }
+    if (currentKey != null) {
+      sections[currentKey] = buffer.toString().trim();
+    }
+    return sections;
   }
 }
 

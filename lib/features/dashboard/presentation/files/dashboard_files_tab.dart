@@ -68,18 +68,8 @@ class _FilesTab extends ConsumerWidget {
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: navState.isEditingPath
-                        ? TextField(
-                            autofocus: true,
-                            controller: TextEditingController(text: path)
-                              ..selection = TextSelection.fromPosition(
-                                TextPosition(offset: path.length),
-                              ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 8),
-                            ),
-                            style: Theme.of(context).textTheme.bodyMedium,
+                        ? _PathTextField(
+                            initialPath: path,
                             onSubmitted: (value) {
                               ref
                                   .read(fileNavigationProvider.notifier)
@@ -624,7 +614,7 @@ Future<void> _previewTextFile(
   }
 }
 
-class _TextPreviewDialog extends StatefulWidget {
+class _TextPreviewDialog extends ConsumerStatefulWidget {
   const _TextPreviewDialog({
     required this.fileName,
     required this.content,
@@ -640,10 +630,10 @@ class _TextPreviewDialog extends StatefulWidget {
   final int totalSize;
 
   @override
-  State<_TextPreviewDialog> createState() => _TextPreviewDialogState();
+  ConsumerState<_TextPreviewDialog> createState() => _TextPreviewDialogState();
 }
 
-class _TextPreviewDialogState extends State<_TextPreviewDialog> {
+class _TextPreviewDialogState extends ConsumerState<_TextPreviewDialog> {
   late final TextEditingController _controller;
 
   @override
@@ -713,12 +703,9 @@ class _TextPreviewDialogState extends State<_TextPreviewDialog> {
                     icon: const Icon(CupertinoIcons.square_arrow_up, size: 20),
                     onPressed: () async {
                       try {
-                        if (Platform.isMacOS) {
-                          await Process.run('open', [widget.localPath]);
-                        } else if (Platform.isWindows) {
-                          await Process.run('cmd', ['/c', 'start', '', widget.localPath]);
-                        } else if (Platform.isLinux) {
-                          await Process.run('xdg-open', [widget.localPath]);
+                        final opened = await ref.read(hostPlatformServiceProvider).openFile(widget.localPath);
+                        if (!opened) {
+                          throw Exception('System failed to open file');
                         }
                       } catch (e) {
                         if (context.mounted) {
@@ -808,6 +795,64 @@ class _TextPreviewDialogState extends State<_TextPreviewDialog> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PathTextField extends StatefulWidget {
+  const _PathTextField({
+    required this.initialPath,
+    required this.onSubmitted,
+  });
+
+  final String initialPath;
+  final ValueChanged<String> onSubmitted;
+
+  @override
+  State<_PathTextField> createState() => _PathTextFieldState();
+}
+
+class _PathTextFieldState extends State<_PathTextField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialPath)
+      ..selection = TextSelection.fromPosition(
+        TextPosition(offset: widget.initialPath.length),
+      );
+  }
+
+  @override
+  void didUpdateWidget(covariant _PathTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialPath != widget.initialPath) {
+      _controller.text = widget.initialPath;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: widget.initialPath.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      autofocus: true,
+      controller: _controller,
+      decoration: const InputDecoration(
+        border: InputBorder.none,
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(vertical: 8),
+      ),
+      style: Theme.of(context).textTheme.bodyMedium,
+      onSubmitted: widget.onSubmitted,
     );
   }
 }

@@ -554,6 +554,14 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
 
     for (final device in widget.devices) {
       try {
+        // Pre-clean up any leftover temporary recording file
+        try {
+          await ref.read(fileManagerServiceProvider).delete(
+            device.id,
+            '/sdcard/adb_batch_record_temp.mp4',
+          );
+        } catch (_) {}
+
         final process = await ref.read(adbServiceProvider).startScreenRecord(
           device.id,
           '/sdcard/adb_batch_record_temp.mp4',
@@ -849,6 +857,19 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
   List<String> _pushFilePaths = [];
   String _pushTargetPath = '/sdcard/Download/';
   String _scriptText = '';
+  late final TextEditingController _pushTargetPathController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pushTargetPathController = TextEditingController(text: _pushTargetPath);
+  }
+
+  @override
+  void dispose() {
+    _pushTargetPathController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -999,7 +1020,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
                 border: OutlineInputBorder(),
               ),
               onChanged: (val) => _pushTargetPath = val,
-              controller: TextEditingController(text: _pushTargetPath),
+              controller: _pushTargetPathController,
             ),
           ],
         );
@@ -1107,15 +1128,16 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
 
       case 'push':
         if (_pushFilePaths.isEmpty) return;
+        final targetPath = _pushTargetPathController.text.trim();
         title = '批量推送文件';
-        payload = {'files': _pushFilePaths, 'target': _pushTargetPath};
+        payload = {'files': _pushFilePaths, 'target': targetPath};
         execute = () async {
           int success = 0;
           for (final d in targetDevices) {
             bool devOk = true;
             for (final f in _pushFilePaths) {
               final filename = f.split('/').last;
-              final remoteFile = _pushTargetPath.endsWith('/') ? '$_pushTargetPath$filename' : '$_pushTargetPath/$filename';
+              final remoteFile = targetPath.endsWith('/') ? '$targetPath$filename' : '$targetPath/$filename';
               final res = await ref.read(fileManagerServiceProvider).push(d.id, f, remoteFile);
               if (!res.isSuccess) devOk = false;
             }

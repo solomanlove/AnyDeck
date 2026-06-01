@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'android_emulator.dart';
 import '../process/tool_path_resolver.dart';
+import '../process/host_platform_service.dart';
 
 /// 模拟器管理服务，封装 AVD 列表读取、启动和删除。
 class EmulatorService {
@@ -10,14 +11,17 @@ class EmulatorService {
     String? executable,
     String? avdManagerExecutable,
     String? avdHome,
+    HostPlatformService? hostPlatformService,
   }) : executable = executable ?? resolveToolPath('emulator'),
        avdManagerExecutable =
            avdManagerExecutable ?? resolveToolPath('avdmanager'),
-       avdHome = avdHome ?? _defaultAvdHome();
+       avdHome = avdHome ?? _defaultAvdHome(),
+       _hostPlatformService = hostPlatformService ?? HostPlatformService();
 
   final String executable;
   final String avdManagerExecutable;
   final String? avdHome;
+  final HostPlatformService _hostPlatformService;
 
   /// 获取本地所有 AVD 模拟器配置摘要。
   Future<List<AndroidEmulator>> listEmulators() async {
@@ -54,24 +58,10 @@ class EmulatorService {
   /// 在系统文件管理器中打开指定 AVD 配置目录。
   Future<bool> openAvdDirectory(AndroidEmulator emulator) async {
     final directory = emulator.avdDirectory;
-    if (directory == null || !directory.existsSync()) {
+    if (directory == null) {
       return false;
     }
-
-    try {
-      if (Platform.isMacOS) {
-        await Process.start('open', [directory.path]);
-      } else if (Platform.isWindows) {
-        await Process.start('explorer', [directory.path]);
-      } else if (Platform.isLinux) {
-        await Process.start('xdg-open', [directory.path]);
-      } else {
-        return false;
-      }
-      return true;
-    } catch (_) {
-      return false;
-    }
+    return _hostPlatformService.openDirectory(directory.path);
   }
 
   /// 清空 AVD 的用户数据和快照缓存，保留系统镜像和基础配置。

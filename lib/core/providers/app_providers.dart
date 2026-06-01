@@ -22,6 +22,7 @@ import '../scrcpy/scrcpy_session.dart';
 import '../terminal/adb_terminal_session.dart';
 import '../terminal/favorite_commands.dart';
 import '../emulator/emulator_service.dart';
+import '../process/host_platform_service.dart';
 import '../process/process_service.dart';
 import '../web_debug/webpage_target.dart';
 import '../web_debug/web_debug_service.dart';
@@ -71,6 +72,11 @@ final scrcpyServiceProvider = Provider<ScrcpyService>((ref) {
 /// 进程管理门面，负责查询和结束进程。
 final processServiceProvider = Provider<ProcessService>((ref) {
   return ProcessService(ref.watch(adbServiceProvider));
+});
+
+/// 宿主机系统平台服务，负责处理与宿主机 OS 交互的操作。
+final hostPlatformServiceProvider = Provider<HostPlatformService>((ref) {
+  return HostPlatformService();
 });
 
 /// 单台设备的当前运行进程列表。
@@ -1307,7 +1313,9 @@ final favoriteCommandsProvider =
 
 /// 模拟器底层服务实例。
 final emulatorServiceProvider = Provider<EmulatorService>((ref) {
-  return EmulatorService();
+  return EmulatorService(
+    hostPlatformService: ref.watch(hostPlatformServiceProvider),
+  );
 });
 
 /// 可用 AVD 模拟器配置列表。

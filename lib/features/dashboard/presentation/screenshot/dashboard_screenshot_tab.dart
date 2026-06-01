@@ -219,39 +219,8 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
     }
   }
 
-  Future<bool> _copyImageToClipboard(Uint8List bytes) async {
-    try {
-      final tempDir = Directory.systemTemp;
-      final tempFile = File('${tempDir.path}/adb_screenshot_temp.png');
-      await tempFile.writeAsBytes(bytes);
-
-      if (Platform.isMacOS) {
-        final result = await Process.run('osascript', [
-          '-e',
-          'set the clipboard to (read (POSIX file "${tempFile.path}") as «class PNGf»)',
-        ]);
-        return result.exitCode == 0;
-      } else if (Platform.isWindows) {
-        final psCommand = 'Add-Type -AssemblyName System.Windows.Forms, System.Drawing; '
-            '[System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile("${tempFile.path}"))';
-        final result = await Process.run('powershell', ['-Command', psCommand]);
-        return result.exitCode == 0;
-      } else if (Platform.isLinux) {
-        final result = await Process.run('xclip', [
-          '-selection',
-          'clipboard',
-          '-t',
-          'image/png',
-          '-i',
-          tempFile.path,
-        ]);
-        return result.exitCode == 0;
-      }
-      return false;
-    } catch (e) {
-      debugPrint('Failed to copy clipboard: $e');
-      return false;
-    }
+  Future<bool> _copyImageToClipboard(Uint8List bytes) {
+    return ref.read(hostPlatformServiceProvider).copyImageToClipboard(bytes);
   }
 
   String get _sizeLabel {

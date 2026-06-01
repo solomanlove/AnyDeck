@@ -297,12 +297,9 @@ Future<void> _openLocalTerminal(BuildContext context, WidgetRef ref) async {
       }
     }
     
-    if (Platform.isMacOS) {
-      await Process.run('open', ['-a', 'Terminal', dirPath]);
-    } else if (Platform.isWindows) {
-      await Process.run('cmd.exe', ['/c', 'start', 'cmd.exe'], workingDirectory: dirPath);
-    } else if (Platform.isLinux) {
-      await Process.run('x-terminal-emulator', [], workingDirectory: dirPath);
+    final opened = await ref.read(hostPlatformServiceProvider).openTerminal(dirPath);
+    if (!opened) {
+      throw Exception('Open terminal command failed');
     }
     if (context.mounted) {
       _showSnack(context, '${context.l10n.t('terminalDir')}: $dirPath');
