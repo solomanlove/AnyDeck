@@ -33,7 +33,9 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/network_providers.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/scrcpy/scrcpy_session.dart';
+import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
+import '../../../core/scrcpy/screen_record_provider.dart';
 import '../../../core/device_actions/device_action_service.dart';
 import 'control/embedded_scrcpy_viewer.dart';
 import 'terminal/terminal_tab.dart';
@@ -78,6 +80,7 @@ part 'devices/dashboard_devices_actions.dart';
 part 'devices/dashboard_batch_actions.dart';
 part 'screenshot/dashboard_screenshot_tab.dart';
 part 'screenshot/dashboard_screenshot_recording.dart';
+part 'control/mirror_side_toolbar.dart';
 
 class _EmulatorListExpandedNotifier extends Notifier<bool> {
   @override
