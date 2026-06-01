@@ -25,31 +25,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     final textureId = ref.watch(activeEmbeddedMirrorProvider(device.id));
     final isMirrorActive = textureId != null;
 
-    final String subtitleText;
-    if (overviewAsync.hasValue) {
-      final overview = overviewAsync.value!;
-      final brand = overview.brand.trim();
-      final model = overview.model.trim();
-
-      if (model.isNotEmpty && model != '-') {
-        final cleanModel = model.replaceAll('_', ' ');
-        if (brand.isNotEmpty && brand != '-' && brand.toLowerCase() != 'unknown') {
-          if (cleanModel.toLowerCase().contains(brand.toLowerCase())) {
-            subtitleText = cleanModel;
-          } else {
-            final capitalizedBrand = brand[0].toUpperCase() + brand.substring(1);
-            subtitleText = '$capitalizedBrand $cleanModel';
-          }
-        } else {
-          subtitleText = cleanModel;
-        }
-      } else {
-        subtitleText = matchedDevice.model?.replaceAll('_', ' ') ?? device.displayName;
-      }
-    } else {
-      subtitleText = matchedDevice.model?.replaceAll('_', ' ') ?? device.displayName;
-    }
-
     final titleText = matchedDevice.displayName;
     final status = device.status;
 
@@ -118,51 +93,11 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       child: avatarChild,
     );
 
-    // Status text
-    final String statusText;
-    if (status == 'device') {
-      statusText = context.l10n.t('deviceOnline');
-    } else if (status == 'unauthorized') {
-      statusText = context.l10n.t('deviceUnauthorized');
-    } else {
-      statusText = context.l10n.t('deviceOffline');
-    }
-
-    // Status colors
-    final Color statusBgColor;
-    final Color statusTextColor;
-    if (status == 'device') {
-      statusBgColor = const Color(0xFF2EC46B); // Solid green
-      statusTextColor = Colors.white;
-    } else if (status == 'unauthorized') {
-      statusBgColor = const Color(0xFFFFF3E0);
-      statusTextColor = const Color(0xFFE65100);
-    } else {
-      statusBgColor = const Color(0xFFECEEF1);
-      statusTextColor = const Color(0xFF757575);
-    }
-
     final isNetwork = matchedDevice.isNetwork;
 
     final statusAndConnectionRow = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: statusBgColor,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            statusText,
-            style: TextStyle(
-              color: statusTextColor,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
         Icon(
           isNetwork ? Icons.wifi : Icons.usb,
           size: 16,
@@ -196,39 +131,11 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                   color: const Color(0xff202124),
                   fontSize: 20,
                 ),
-              ),
-              const WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: SizedBox(width: 6),
-              ),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => _showRenameDialog(context, ref, matchedDevice),
-                    child: const Icon(
-                      CupertinoIcons.pencil,
-                      size: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-              ),
+              )
             ],
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 2),
-        Text(
-          subtitleText,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: const Color(0xff5f6368),
-            fontSize: 13,
-          ),
         ),
         const SizedBox(height: 6),
         statusAndConnectionRow,
@@ -246,8 +153,8 @@ class _SelectedDeviceHeader extends ConsumerWidget {
 
     return DragToMoveArea(
       child: Container(
-        height: 112,
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+        height: 80,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
         decoration: const BoxDecoration(
           color: Colors.white,
           border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
