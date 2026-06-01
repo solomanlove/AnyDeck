@@ -400,30 +400,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     }
   }
 
-  /// 启动 scrcpy，并将返回的进程元数据记录 to Riverpod 状态。
-  Future<void> _startScrcpy(
-    BuildContext context,
-    WidgetRef ref,
-    String deviceId,
-  ) async {
-    try {
-      final session = await ref
-          .read(scrcpyServiceProvider)
-          .start(deviceId: deviceId, options: const ScrcpyLaunchOptions());
-      ref.read(scrcpySessionsProvider.notifier).add(session);
-      if (context.mounted) {
-        _showSnack(
-          context,
-          '${context.l10n.t('scrcpyStarted')}: PID ${session.pid}',
-        );
-      }
-    } on Object catch (error) {
-      if (context.mounted) {
-        _showSnack(context, error.toString(), isError: true);
-      }
-    }
-  }
-
   Widget _buildRootPill(BuildContext context, WidgetRef ref, String deviceId, bool isOnline) {
     final isRootAsync = ref.watch(isDeviceRootProvider(deviceId));
     return isRootAsync.when(

@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
 import '../adb/adb_service.dart';
-import '../process/tool_path_resolver.dart';
 import '../providers/app_providers.dart';
 
 class EmbeddedScrcpySession {
@@ -33,31 +33,18 @@ class EmbeddedScrcpyService {
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
   int? getTextureId(String deviceId) => _sessions[deviceId]?.textureId;
 
-  String _findScrcpyServerJar() {
-    final candidates = [
-      '/opt/homebrew/share/scrcpy/scrcpy-server',
-      '/usr/local/share/scrcpy/scrcpy-server',
-      '/usr/share/scrcpy/scrcpy-server',
-    ];
-    for (final path in candidates) {
-      if (File(path).existsSync()) {
-        return path;
-      }
+  Future<String> _extractScrcpyServerJar() async {
+    final bytes = await rootBundle.load('assets/scrcpy/scrcpy-server.jar');
+    final dir = Directory('${Directory.systemTemp.path}/adb_manage_scrcpy');
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
     }
-
-    final scrcpyPath = resolveToolPath('scrcpy');
-    if (scrcpyPath != 'scrcpy') {
-      final resolvedFile = File(scrcpyPath);
-      if (resolvedFile.existsSync()) {
-        final binDir = resolvedFile.parent;
-        final shareServer = File('${binDir.parent.path}/share/scrcpy/scrcpy-server');
-        if (shareServer.existsSync()) {
-          return shareServer.path;
-        }
-      }
-    }
-
-    return '/opt/homebrew/share/scrcpy/scrcpy-server';
+    final file = File('${dir.path}/scrcpy-server.jar');
+    await file.writeAsBytes(
+      bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+      flush: true,
+    );
+    return file.path;
   }
 
   Future<int> _findFreePort() async {
@@ -73,9 +60,9 @@ class EmbeddedScrcpyService {
     }
 
     // 1. Resolve and push scrcpy-server.jar
-    final serverJar = _findScrcpyServerJar();
+    final serverJar = await _extractScrcpyServerJar();
     if (!File(serverJar).existsSync()) {
-      throw Exception('scrcpy-server not found on host. Please make sure scrcpy is installed.');
+      throw Exception('scrcpy-server not found on host. Failed to extract asset.');
     }
 
     final pushRes = await _adbService.run([

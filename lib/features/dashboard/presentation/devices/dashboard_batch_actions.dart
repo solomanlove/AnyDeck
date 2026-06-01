@@ -362,9 +362,8 @@ class _BatchItemProgress {
 
   _BatchItemProgress({
     required this.device,
-    this.status = _BatchItemStatus.pending,
-    this.message = '',
-  });
+  }) : status = _BatchItemStatus.pending,
+       message = '';
 }
 
 class _BatchProgressDialog extends ConsumerStatefulWidget {

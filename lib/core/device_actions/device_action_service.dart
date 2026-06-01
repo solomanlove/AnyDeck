@@ -306,8 +306,8 @@ class DeviceActionService {
       return focusResult;
     }
 
-    final combinedStdout = '$focusLine\n\nActive Fragments:\n' +
-        fragments.map((f) => '  - $f').join('\n');
+    final combinedStdout = '$focusLine\n\nActive Fragments:\n'
+        '${fragments.map((f) => '  - $f').join('\n')}';
 
     return AdbResult(
       exitCode: focusResult.exitCode,
