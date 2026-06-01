@@ -257,9 +257,13 @@ class DeviceInfoService {
     // 不同 Android 版本打印 Wi-Fi 状态的格式不同；这里同时覆盖
     // cmd/dumpsys 风格的 "SSID: name" 和 WifiInfo toString 输出。
     final candidates = [
+      // 优先匹配当前活跃连接的 mWifiInfo/WifiInfo 或 mNetworkInfo 字段中的 SSID
+      _matchFirst(output, r'(?:mWifiInfo|WifiInfo)[^\n]*?SSID:\s*"([^"\n]+)"'),
+      _matchFirst(output, r'(?:mWifiInfo|WifiInfo)[^\n]*?SSID:\s*([^,\n]+)'),
+      _matchFirst(output, r'mNetworkInfo[^\n]*?extra:\s*"([^"\n]+)"'),
+      // 兜底匹配普通 SSID 格式
       _matchFirst(output, r'SSID:\s*"([^"\n]+)"'),
       _matchFirst(output, r'SSID:\s*([^,\n]+)'),
-      _matchFirst(output, r'mWifiInfo.*?SSID:\s*([^,\n]+)'),
     ];
     for (final candidate in candidates) {
       final value = candidate.replaceAll('"', '').trim();
