@@ -81,36 +81,7 @@ class _QuickActionsPanel extends ConsumerWidget {
           label: context.l10n.t('inputText'),
           onPressed: () => _showInputTextDialog(context, ref, device.id),
         ),
-        _ActionButton(
-          icon: CupertinoIcons.home,
-          label: context.l10n.t('home'),
-          onPressed: () =>
-              _runAdbAction(context, ref, actions.keyEvent(device.id, 3)),
-        ),
-        _ActionButton(
-          icon: CupertinoIcons.back,
-          label: context.l10n.t('back'),
-          onPressed: () =>
-              _runAdbAction(context, ref, actions.keyEvent(device.id, 4)),
-        ),
-        _ActionButton(
-          icon: CupertinoIcons.power,
-          label: context.l10n.t('power'),
-          onPressed: () =>
-              _runAdbAction(context, ref, actions.keyEvent(device.id, 26)),
-        ),
-        _ActionButton(
-          icon: CupertinoIcons.volume_up,
-          label: context.l10n.t('volumeUp'),
-          onPressed: () =>
-              _runAdbAction(context, ref, actions.volumeUp(device.id)),
-        ),
-        _ActionButton(
-          icon: CupertinoIcons.volume_down,
-          label: context.l10n.t('volumeDown'),
-          onPressed: () =>
-              _runAdbAction(context, ref, actions.volumeDown(device.id)),
-        ),
+
         _ToggleActionButton(
           iconOn: CupertinoIcons.wifi,
           iconOff: CupertinoIcons.wifi_slash,
@@ -159,21 +130,7 @@ class _QuickActionsPanel extends ConsumerWidget {
             }
           },
         ),
-        _ActionButton(
-          icon: CupertinoIcons.bars,
-          label: context.l10n.t('menuKey'),
-          onPressed: () =>
-              _runAdbAction(context, ref, actions.menuKey(device.id)),
-        ),
-        _ActionButton(
-          icon: CupertinoIcons.bell,
-          label: context.l10n.t('notificationBar'),
-          onPressed: () => _runAdbAction(
-            context,
-            ref,
-            actions.openNotificationBar(device.id),
-          ),
-        ),
+
         _ToggleActionButton(
           iconOn: CupertinoIcons.device_phone_landscape,
           iconOff: CupertinoIcons.device_phone_portrait,
