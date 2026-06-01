@@ -8,14 +8,10 @@ class DeviceActionService {
   final AdbService _adb;
 
   /// 连接 adb TCP/IP 地址，例如 `192.168.1.10:5555`。
-  Future<AdbResult> connect(String address) {
-    return _adb.run(['connect', address]);
-  }
+  Future<AdbResult> connect(String address) => _adb.run(['connect', address]);
 
   /// 断开 adb TCP/IP 地址连接。
-  Future<AdbResult> disconnect(String address) {
-    return _adb.run(['disconnect', address]);
-  }
+  Future<AdbResult> disconnect(String address) => _adb.run(['disconnect', address]);
 
   /// 通过 Android input 命令输入文本，空格需要替换为 `%s`。
   Future<AdbResult> inputText(String deviceId, String text) {
@@ -28,9 +24,7 @@ class DeviceActionService {
     final flag = enabled ? '1' : '0';
     final propertyValue = enabled ? 'true' : 'false';
     final commands = [
-      // AOSP 会读取 debug.layout 系统属性。
       ['setprop', 'debug.layout', propertyValue],
-      // 部分 ROM 将开发者选项暴露为 settings key。
       ['settings', 'put', 'global', 'debug_layout', flag],
       ['settings', 'put', 'system', 'debug_layout', flag],
     ];
@@ -70,38 +64,54 @@ class DeviceActionService {
     ]);
   }
 
-  /// 模拟电源键，用于亮屏或熄屏。
-  Future<AdbResult> standby(String deviceId) {
-    return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_POWER']);
+
+
+  /// 开关 Android 演示模式 (Demo mode)。
+  Future<AdbResult> setDemoMode(String deviceId, bool enabled) async {
+    final flag = enabled ? '1' : '0';
+    await _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'global',
+      'sysui_demo_allowed',
+      flag,
+    ]);
+    final action = enabled ? 'enter' : 'exit';
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'broadcast',
+      '-a',
+      'com.android.systemui.demo',
+      '-e',
+      'command',
+      action,
+    ]);
   }
+
+  /// 模拟电源键，用于亮屏或熄屏。
+  Future<AdbResult> standby(String deviceId) => _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_POWER']);
 
   /// 通过 cmd uimode 切换系统夜间模式。
-  Future<AdbResult> setDarkMode(String deviceId, bool enabled) {
-    return _adb.shellArgs(deviceId, [
-      'cmd',
-      'uimode',
-      'night',
-      enabled ? 'yes' : 'no',
-    ]);
-  }
+  Future<AdbResult> setDarkMode(String deviceId, bool enabled) => _adb.shellArgs(deviceId, [
+        'cmd',
+        'uimode',
+        'night',
+        enabled ? 'yes' : 'no',
+      ]);
 
   /// 通过 svc 开关 Wi-Fi。
-  Future<AdbResult> setWifi(String deviceId, bool enabled) {
-    return _adb.shellArgs(deviceId, [
-      'svc',
-      'wifi',
-      enabled ? 'enable' : 'disable',
-    ]);
-  }
+  Future<AdbResult> setWifi(String deviceId, bool enabled) => _adb.shellArgs(deviceId, [
+        'svc',
+        'wifi',
+        enabled ? 'enable' : 'disable',
+      ]);
 
   /// 通过 svc 开关移动数据。
-  Future<AdbResult> setMobileData(String deviceId, bool enabled) {
-    return _adb.shellArgs(deviceId, [
-      'svc',
-      'data',
-      enabled ? 'enable' : 'disable',
-    ]);
-  }
+  Future<AdbResult> setMobileData(String deviceId, bool enabled) => _adb.shellArgs(deviceId, [
+        'svc',
+        'data',
+        enabled ? 'enable' : 'disable',
+      ]);
 
   /// 优先使用 cmd connectivity 开关离线模式（飞行模式），失败时回退到广播方式以保障最大兼容性。
   Future<AdbResult> setAirplaneMode(String deviceId, bool enabled) async {
@@ -189,53 +199,43 @@ class DeviceActionService {
   }
 
   /// 向选中设备发送 Android key code。
-  Future<AdbResult> keyEvent(String deviceId, int keyCode) {
-    return _adb.shellArgs(deviceId, ['input', 'keyevent', keyCode.toString()]);
-  }
+  Future<AdbResult> keyEvent(String deviceId, int keyCode) =>
+      _adb.shellArgs(deviceId, ['input', 'keyevent', keyCode.toString()]);
 
   /// 通过 Android 具名 key code 调高当前音频流音量。
-  Future<AdbResult> volumeUp(String deviceId) {
-    return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_VOLUME_UP']);
-  }
+  Future<AdbResult> volumeUp(String deviceId) =>
+      _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_VOLUME_UP']);
 
   /// 通过 Android 具名 key code 调低当前音频流音量。
-  Future<AdbResult> volumeDown(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'input',
-      'keyevent',
-      'KEYCODE_VOLUME_DOWN',
-    ]);
-  }
+  Future<AdbResult> volumeDown(String deviceId) => _adb.shellArgs(deviceId, [
+        'input',
+        'keyevent',
+        'KEYCODE_VOLUME_DOWN',
+      ]);
 
   /// 模拟菜单键。
-  Future<AdbResult> menuKey(String deviceId) {
-    return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_MENU']);
-  }
+  Future<AdbResult> menuKey(String deviceId) =>
+      _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_MENU']);
 
   /// 展开通知栏（下拉状态栏）。
-  Future<AdbResult> openNotificationBar(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'cmd',
-      'statusbar',
-      'expand-notifications',
-    ]);
-  }
+  Future<AdbResult> openNotificationBar(String deviceId) => _adb.shellArgs(deviceId, [
+        'cmd',
+        'statusbar',
+        'expand-notifications',
+      ]);
 
   /// 切换屏幕自动旋转。
-  Future<AdbResult> setAutoRotate(String deviceId, bool enabled) {
-    return _adb.shellArgs(deviceId, [
-      'settings',
-      'put',
-      'system',
-      'accelerometer_rotation',
-      enabled ? '1' : '0',
-    ]);
-  }
+  Future<AdbResult> setAutoRotate(String deviceId, bool enabled) => _adb.shellArgs(deviceId, [
+        'settings',
+        'put',
+        'system',
+        'accelerometer_rotation',
+        enabled ? '1' : '0',
+      ]);
 
   /// 在设备坐标上执行一次点击。
-  Future<AdbResult> tap(String deviceId, int x, int y) {
-    return _adb.shellArgs(deviceId, ['input', 'tap', '$x', '$y']);
-  }
+  Future<AdbResult> tap(String deviceId, int x, int y) =>
+      _adb.shellArgs(deviceId, ['input', 'tap', '$x', '$y']);
 
   /// 在两个设备坐标之间执行滑动手势。
   Future<AdbResult> swipe(
@@ -244,26 +244,23 @@ class DeviceActionService {
     int startY,
     int endX,
     int endY,
-  ) {
-    return _adb.shellArgs(deviceId, [
-      'input',
-      'swipe',
-      '$startX',
-      '$startY',
-      '$endX',
-      '$endY',
-    ]);
-  }
+  ) =>
+      _adb.shellArgs(deviceId, [
+        'input',
+        'swipe',
+        '$startX',
+        '$startY',
+        '$endX',
+        '$endY',
+      ]);
 
   /// 从 secure settings 读取设备 Android ID。
-  Future<AdbResult> androidId(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'settings',
-      'get',
-      'secure',
-      'android_id',
-    ]);
-  }
+  Future<AdbResult> androidId(String deviceId) => _adb.shellArgs(deviceId, [
+        'settings',
+        'get',
+        'secure',
+        'android_id',
+      ]);
 
   /// 读取当前焦点窗口，并解析其中的 Fragment 类型信息。
   Future<AdbResult> currentFocus(String deviceId) async {
@@ -355,181 +352,138 @@ class DeviceActionService {
     return fragments;
   }
 
-  bool _isDigit(String char) {
-    if (char.isEmpty) return false;
-    final code = char.codeUnitAt(0);
-    return code >= 48 && code <= 57;
-  }
+  bool _isDigit(String char) =>
+      char.isNotEmpty && char.codeUnitAt(0) >= 48 && char.codeUnitAt(0) <= 57;
 
   /// 重启选中设备，支持可选模式 (如 recovery, bootloader, sideload, sideload-auto-reboot)。
-  Future<AdbResult> reboot(String deviceId, [String? mode]) {
-    final args = ['-s', deviceId, 'reboot'];
-    if (mode != null && mode.trim().isNotEmpty) {
-      args.add(mode.trim());
-    }
-    return _adb.run(args);
-  }
+  Future<AdbResult> reboot(String deviceId, [String? mode]) => _adb.run([
+        '-s',
+        deviceId,
+        'reboot',
+        if (mode != null && mode.trim().isNotEmpty) mode.trim()
+      ]);
 
   /// 打开开发者选项。
-  Future<AdbResult> openDeveloperSettings(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'am',
-      'start',
-      '-a',
-      'android.settings.APPLICATION_DEVELOPMENT_SETTINGS',
-    ]);
-  }
+  Future<AdbResult> openDeveloperSettings(String deviceId) => _adb.shellArgs(deviceId, [
+        'am',
+        'start',
+        '-a',
+        'android.settings.APPLICATION_DEVELOPMENT_SETTINGS',
+      ]);
 
   /// 打开手机信息。
-  Future<AdbResult> openDeviceInfoSettings(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'am',
-      'start',
-      '-a',
-      'android.settings.DEVICE_INFO_SETTINGS',
-    ]);
-  }
+  Future<AdbResult> openDeviceInfoSettings(String deviceId) => _adb.shellArgs(deviceId, [
+        'am',
+        'start',
+        '-a',
+        'android.settings.DEVICE_INFO_SETTINGS',
+      ]);
 
   /// 打开语言设置。
-  Future<AdbResult> openLocaleSettings(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'am',
-      'start',
-      '-a',
-      'android.settings.LOCALE_SETTINGS',
-    ]);
-  }
+  Future<AdbResult> openLocaleSettings(String deviceId) => _adb.shellArgs(deviceId, [
+        'am',
+        'start',
+        '-a',
+        'android.settings.LOCALE_SETTINGS',
+      ]);
 
   /// 打开系统设置。
-  Future<AdbResult> openMainSettings(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'am',
-      'start',
-      '-a',
-      'android.settings.SETTINGS',
-    ]);
-  }
+  Future<AdbResult> openMainSettings(String deviceId) => _adb.shellArgs(deviceId, [
+        'am',
+        'start',
+        '-a',
+        'android.settings.SETTINGS',
+      ]);
 
   /// 打开 Wi-Fi 设置。
-  Future<AdbResult> openWifiSettings(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'am',
-      'start',
-      '-a',
-      'android.settings.WIFI_SETTINGS',
-    ]);
-  }
+  Future<AdbResult> openWifiSettings(String deviceId) => _adb.shellArgs(deviceId, [
+        'am',
+        'start',
+        '-a',
+        'android.settings.WIFI_SETTINGS',
+      ]);
 
   /// 打开应用管理。
-  Future<AdbResult> openManageApplicationsSettings(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'am',
-      'start',
-      '-a',
-      'android.settings.MANAGE_APPLICATIONS_SETTINGS',
-    ]);
-  }
+  Future<AdbResult> openManageApplicationsSettings(String deviceId) => _adb.shellArgs(deviceId, [
+        'am',
+        'start',
+        '-a',
+        'android.settings.MANAGE_APPLICATIONS_SETTINGS',
+      ]);
 
   /// 打开自定义 Applink/Deeplink 链接。
-  Future<AdbResult> openCustomDeeplink(String deviceId, String uri) {
-    return _adb.shellArgs(deviceId, [
-      'am',
-      'start',
-      '-a',
-      'android.intent.action.VIEW',
-      '-d',
-      uri,
-    ]);
-  }
+  Future<AdbResult> openCustomDeeplink(String deviceId, String uri) => _adb.shellArgs(deviceId, [
+        'am',
+        'start',
+        '-a',
+        'android.intent.action.VIEW',
+        '-d',
+        uri,
+      ]);
 
-  /// setprop/settings 写入后通知 ActivityManager 重新加载系统属性。
-  Future<void> _refreshSystemProperties(String deviceId) async {
-    await _adb.shellArgs(deviceId, [
-      'service',
-      'call',
-      'activity',
-      '1599295570',
-    ]);
-  }
+  /// setprop/settings 写入后通知 ActivityManager 重新加载 system properties。
+  Future<void> _refreshSystemProperties(String deviceId) =>
+      _adb.shellArgs(deviceId, ['service', 'call', 'activity', '1599295570']);
 
   /// 设置系统字体缩放。
-  Future<AdbResult> setFontScale(String deviceId, double scale) {
-    return _adb.shellArgs(deviceId, [
-      'settings',
-      'put',
-      'system',
-      'font_scale',
-      scale.toString(),
-    ]);
-  }
+  Future<AdbResult> setFontScale(String deviceId, double scale) => _adb.shellArgs(deviceId, [
+        'settings',
+        'put',
+        'system',
+        'font_scale',
+        scale.toString(),
+      ]);
 
   /// 设置显示大小 (DPI)。
-  Future<AdbResult> setDisplayDensity(String deviceId, int density) {
-    return _adb.shellArgs(deviceId, [
-      'wm',
-      'density',
-      density.toString(),
-    ]);
-  }
+  Future<AdbResult> setDisplayDensity(String deviceId, int density) => _adb.shellArgs(deviceId, [
+        'wm',
+        'density',
+        density.toString(),
+      ]);
 
   /// 重置显示大小 (DPI) 为物理默认。
-  Future<AdbResult> resetDisplayDensity(String deviceId) {
-    return _adb.shellArgs(deviceId, [
-      'wm',
-      'density',
-      'reset',
-    ]);
-  }
+  Future<AdbResult> resetDisplayDensity(String deviceId) =>
+      _adb.shellArgs(deviceId, ['wm', 'density', 'reset']);
 
   /// 设置窗口动画缩放。
-  Future<AdbResult> setWindowAnimationScale(String deviceId, double scale) {
-    return _adb.shellArgs(deviceId, [
-      'settings',
-      'put',
-      'global',
-      'window_animation_scale',
-      scale.toString(),
-    ]);
-  }
+  Future<AdbResult> setWindowAnimationScale(String deviceId, double scale) => _adb.shellArgs(deviceId, [
+        'settings',
+        'put',
+        'global',
+        'window_animation_scale',
+        scale.toString(),
+      ]);
 
   /// 设置过渡动画缩放。
-  Future<AdbResult> setTransitionAnimationScale(String deviceId, double scale) {
-    return _adb.shellArgs(deviceId, [
-      'settings',
-      'put',
-      'global',
-      'transition_animation_scale',
-      scale.toString(),
-    ]);
-  }
+  Future<AdbResult> setTransitionAnimationScale(String deviceId, double scale) => _adb.shellArgs(deviceId, [
+        'settings',
+        'put',
+        'global',
+        'transition_animation_scale',
+        scale.toString(),
+      ]);
 
   /// 设置动画程序时长缩放。
-  Future<AdbResult> setAnimatorDurationScale(String deviceId, double scale) {
-    return _adb.shellArgs(deviceId, [
-      'settings',
-      'put',
-      'global',
-      'animator_duration_scale',
-      scale.toString(),
-    ]);
-  }
+  Future<AdbResult> setAnimatorDurationScale(String deviceId, double scale) => _adb.shellArgs(deviceId, [
+        'settings',
+        'put',
+        'global',
+        'animator_duration_scale',
+        scale.toString(),
+      ]);
 
   /// 设置显示分辨率大小，例如 "1080x1920"
-  Future<AdbResult> setDisplaySize(String deviceId, String size) {
-    return _adb.shellArgs(deviceId, ['wm', 'size', size]);
-  }
+  Future<AdbResult> setDisplaySize(String deviceId, String size) =>
+      _adb.shellArgs(deviceId, ['wm', 'size', size]);
 
   /// 重置显示分辨率大小为默认物理值
-  Future<AdbResult> resetDisplaySize(String deviceId) {
-    return _adb.shellArgs(deviceId, ['wm', 'size', 'reset']);
-  }
+  Future<AdbResult> resetDisplaySize(String deviceId) =>
+      _adb.shellArgs(deviceId, ['wm', 'size', 'reset']);
 
   /// 设置 GPU/HWUI 渲染分析模式，支持 "visual_bars", "true", "false"
   Future<AdbResult> setHwuiProfile(String deviceId, String value) async {
     final result = await _adb.shellArgs(deviceId, ['setprop', 'debug.hwui.profile', value]);
-    if (result.isSuccess) {
-      await _refreshSystemProperties(deviceId);
-    }
+    if (result.isSuccess) await _refreshSystemProperties(deviceId);
     return result;
   }
 }

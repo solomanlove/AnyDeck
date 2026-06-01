@@ -87,6 +87,7 @@ const _mockOverview = DeviceOverview(
   hwuiProfile: 'false',
   showTouchesEnabled: false,
   pointerLocationEnabled: false,
+  demoModeEnabled: false,
 );
 
 class _FixedSelectedDeviceNotifier extends SelectedDeviceNotifier {

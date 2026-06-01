@@ -808,6 +808,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
                 hwuiProfile: 'false',
                 showTouchesEnabled: false,
                 pointerLocationEnabled: false,
+                demoModeEnabled: false,
               );
             }
           } else {
@@ -841,6 +842,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               hwuiProfile: 'false',
               showTouchesEnabled: false,
               pointerLocationEnabled: false,
+              demoModeEnabled: false,
             );
           }
           await prefs.setString(cacheKey, jsonEncode(overview.toJson()));

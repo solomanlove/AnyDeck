@@ -101,6 +101,7 @@ void main() {
         hwuiProfile: 'false',
         showTouchesEnabled: false,
         pointerLocationEnabled: false,
+        demoModeEnabled: false,
       );
 
       final json = overview.toJson();
@@ -135,6 +136,7 @@ void main() {
       expect(decoded.hwuiProfile, overview.hwuiProfile);
       expect(decoded.showTouchesEnabled, overview.showTouchesEnabled);
       expect(decoded.pointerLocationEnabled, overview.pointerLocationEnabled);
+      expect(decoded.demoModeEnabled, overview.demoModeEnabled);
     });
   });
 

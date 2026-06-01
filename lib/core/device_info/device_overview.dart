@@ -30,6 +30,7 @@ class DeviceOverview {
     required this.hwuiProfile,
     required this.showTouchesEnabled,
     required this.pointerLocationEnabled,
+    required this.demoModeEnabled,
   });
 
   final String name;
@@ -61,6 +62,7 @@ class DeviceOverview {
   final String hwuiProfile;
   final bool showTouchesEnabled;
   final bool pointerLocationEnabled;
+  final bool demoModeEnabled;
 
   Map<String, dynamic> toJson() {
     return {
@@ -93,6 +95,7 @@ class DeviceOverview {
       'hwuiProfile': hwuiProfile,
       'showTouchesEnabled': showTouchesEnabled,
       'pointerLocationEnabled': pointerLocationEnabled,
+      'demoModeEnabled': demoModeEnabled,
     };
   }
 
@@ -127,6 +130,7 @@ class DeviceOverview {
       hwuiProfile: json['hwuiProfile'] as String? ?? 'false',
       showTouchesEnabled: json['showTouchesEnabled'] as bool? ?? false,
       pointerLocationEnabled: json['pointerLocationEnabled'] as bool? ?? false,
+      demoModeEnabled: json['demoModeEnabled'] as bool? ?? false,
     );
   }
 
@@ -160,6 +164,7 @@ class DeviceOverview {
     String? hwuiProfile,
     bool? showTouchesEnabled,
     bool? pointerLocationEnabled,
+    bool? demoModeEnabled,
   }) {
     return DeviceOverview(
       name: name ?? this.name,
@@ -191,6 +196,7 @@ class DeviceOverview {
       hwuiProfile: hwuiProfile ?? this.hwuiProfile,
       showTouchesEnabled: showTouchesEnabled ?? this.showTouchesEnabled,
       pointerLocationEnabled: pointerLocationEnabled ?? this.pointerLocationEnabled,
+      demoModeEnabled: demoModeEnabled ?? this.demoModeEnabled,
     );
   }
 }

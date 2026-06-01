@@ -102,6 +102,7 @@ void main() {
             hwuiProfile: 'false',
             showTouchesEnabled: false,
             pointerLocationEnabled: false,
+            demoModeEnabled: false,
           ))),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),
