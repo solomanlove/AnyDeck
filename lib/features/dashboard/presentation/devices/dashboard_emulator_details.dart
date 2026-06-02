@@ -2,8 +2,9 @@ part of '../dashboard_screen.dart';
 
 
 
-class _EmulatorFullConfigDialog extends StatefulWidget {
-  const _EmulatorFullConfigDialog({
+class EmulatorFullConfigDialog extends StatefulWidget {
+  const EmulatorFullConfigDialog({
+    super.key,
     required this.emulatorName,
     required this.config,
   });
@@ -12,10 +13,10 @@ class _EmulatorFullConfigDialog extends StatefulWidget {
   final Map<String, String> config;
 
   @override
-  State<_EmulatorFullConfigDialog> createState() => _EmulatorFullConfigDialogState();
+  State<EmulatorFullConfigDialog> createState() => EmulatorFullConfigDialogState();
 }
 
-class _EmulatorFullConfigDialogState extends State<_EmulatorFullConfigDialog> {
+class EmulatorFullConfigDialogState extends State<EmulatorFullConfigDialog> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 

@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:lpinyin/lpinyin.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/settings/app_settings.dart';

@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
+  desktop_multi_window
   file_selector_windows
   scrcpy_flutter
   screen_retriever_windows

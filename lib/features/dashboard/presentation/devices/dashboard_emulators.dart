@@ -1,13 +1,15 @@
 part of '../dashboard_screen.dart';
 
-class _EmulatorListPanel extends ConsumerStatefulWidget {
-  const _EmulatorListPanel();
+class EmulatorListPanel extends ConsumerStatefulWidget {
+  const EmulatorListPanel({super.key, this.isStandalone = false});
+
+  final bool isStandalone;
 
   @override
-  ConsumerState<_EmulatorListPanel> createState() => _EmulatorListPanelState();
+  ConsumerState<EmulatorListPanel> createState() => EmulatorListPanelState();
 }
 
-class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
+class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   final TextEditingController _filterController = TextEditingController();
   String _filter = '';
   String _sortColumn = 'name';
@@ -50,7 +52,7 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final isExpanded = ref.watch(_emulatorListExpandedProvider);
+    final isExpanded = widget.isStandalone ? true : ref.watch(_emulatorListExpandedProvider);
     final emulatorsAsync = ref.watch(emulatorListProvider);
     final runningEmulatorsAsync = ref.watch(runningEmulatorsProvider);
     final startingEmulators = ref.watch(startingEmulatorsProvider);
@@ -103,7 +105,7 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
               final item = items.firstWhere((e) => e.emulator.name == name);
               showDialog<void>(
                 context: context,
-                builder: (context) => _EmulatorFullConfigDialog(
+                builder: (context) => EmulatorFullConfigDialog(
                   emulatorName: item.emulator.displayName,
                   config: item.emulator.config,
                 ),
@@ -113,6 +115,51 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
         }
 
         final layoutWidget = contentWidget;
+
+        if (widget.isStandalone) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _EmulatorPanelHeader(
+                  isExpanded: true,
+                  isCompact: isCompact,
+                  isStandalone: true,
+                  filterController: _filterController,
+                  filter: _filter,
+                  onToggleExpanded: () {},
+                  onFilterChanged: (value) => setState(() => _filter = value),
+                  onClearFilter: () {
+                    _filterController.clear();
+                    setState(() => _filter = '');
+                  },
+                  onStart: selectedItem != null && selectedItem.canStart
+                      ? () => _startEmulator(
+                          context,
+                          selectedItem.emulator.name,
+                        )
+                      : null,
+                  onClearData:
+                      selectedItem != null && selectedItem.canClearData
+                      ? () =>
+                            _clearEmulatorData(context, selectedItem.emulator)
+                      : null,
+                  onDelete: selectedItem != null && selectedItem.canDelete
+                      ? () => _deleteEmulator(context, selectedItem.emulator)
+                      : null,
+                  onOpenFolder: selectedItem != null
+                      ? () => _openAvdFolder(context, selectedItem.emulator)
+                      : null,
+                  onRefresh: _refreshEmulators,
+                  onPopOut: null,
+                ),
+                const SizedBox(height: 12),
+                Expanded(child: layoutWidget),
+              ],
+            ),
+          );
+        }
 
         return Card(
           child: Padding(
@@ -155,6 +202,7 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
                         ? () => _openAvdFolder(context, selectedItem.emulator)
                         : null,
                     onRefresh: _refreshEmulators,
+                    onPopOut: _popOutWindow,
                   ),
                   if (isExpanded) ...[
                     const SizedBox(height: 12),
@@ -245,6 +293,25 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
   void _refreshEmulators() {
     ref.invalidate(emulatorListProvider);
     ref.invalidate(runningEmulatorsProvider);
+  }
+
+  Future<void> _popOutWindow() async {
+    final title = context.l10n.t('emulators');
+    try {
+      final window = await DesktopMultiWindow.createWindow(jsonEncode({
+        'type': 'emulator_manager',
+      }));
+      await window.setFrame(const Offset(100, 100) & const Size(900, 600));
+      await window.center();
+      await window.setTitle(title);
+      await window.show();
+
+      if (ref.read(_emulatorListExpandedProvider)) {
+        ref.read(_emulatorListExpandedProvider.notifier).toggle();
+      }
+    } catch (e) {
+      debugPrint('Failed to open multi-window: $e');
+    }
   }
 
   Future<void> _startEmulator(BuildContext context, String avdName) async {
@@ -362,6 +429,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
   const _EmulatorPanelHeader({
     required this.isExpanded,
     required this.isCompact,
+    this.isStandalone = false,
     required this.filterController,
     required this.filter,
     required this.onToggleExpanded,
@@ -372,10 +440,12 @@ class _EmulatorPanelHeader extends StatelessWidget {
     required this.onDelete,
     required this.onOpenFolder,
     required this.onRefresh,
+    this.onPopOut,
   });
 
   final bool isExpanded;
   final bool isCompact;
+  final bool isStandalone;
   final TextEditingController filterController;
   final String filter;
   final VoidCallback onToggleExpanded;
@@ -386,11 +456,12 @@ class _EmulatorPanelHeader extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onOpenFolder;
   final VoidCallback onRefresh;
+  final VoidCallback? onPopOut;
 
   @override
   Widget build(BuildContext context) {
     final title = InkWell(
-      onTap: onToggleExpanded,
+      onTap: isStandalone ? null : onToggleExpanded,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -404,12 +475,14 @@ class _EmulatorPanelHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
-            AnimatedRotation(
-              turns: isExpanded ? 0.5 : 0.0,
-              duration: const Duration(milliseconds: 200),
-              child: const Icon(CupertinoIcons.chevron_down),
-            ),
+            if (!isStandalone) ...[
+              const SizedBox(width: 8),
+              AnimatedRotation(
+                turns: isExpanded ? 0.5 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: const Icon(CupertinoIcons.chevron_down),
+              ),
+            ],
           ],
         ),
       ),
@@ -421,6 +494,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
       onDelete: onDelete,
       onOpenFolder: onOpenFolder,
       onRefresh: onRefresh,
+      onPopOut: onPopOut,
     );
 
     if (!isExpanded) {
@@ -505,6 +579,7 @@ class _EmulatorToolbar extends StatelessWidget {
     required this.onDelete,
     required this.onOpenFolder,
     required this.onRefresh,
+    this.onPopOut,
   });
 
   final VoidCallback? onStart;
@@ -512,6 +587,7 @@ class _EmulatorToolbar extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onOpenFolder;
   final VoidCallback onRefresh;
+  final VoidCallback? onPopOut;
 
   @override
   Widget build(BuildContext context) {
@@ -538,6 +614,12 @@ class _EmulatorToolbar extends StatelessWidget {
           icon: const Icon(CupertinoIcons.folder_open),
           onPressed: onOpenFolder,
         ),
+        if (onPopOut != null)
+          IconButton(
+            tooltip: '独立窗口显示',
+            icon: const Icon(Icons.open_in_new),
+            onPressed: onPopOut,
+          ),
         Container(
           height: 24,
           width: 1,

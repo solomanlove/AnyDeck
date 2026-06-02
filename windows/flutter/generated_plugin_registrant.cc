@@ -7,6 +7,7 @@
 #include "generated_plugin_registrant.h"
 
 #include <desktop_drop/desktop_drop_plugin.h>
+#include <desktop_multi_window/desktop_multi_window_plugin.h>
 #include <file_selector_windows/file_selector_windows.h>
 #include <scrcpy_flutter/scrcpy_flutter_plugin_c_api.h>
 #include <screen_retriever_windows/screen_retriever_windows_plugin_c_api.h>
@@ -16,6 +17,8 @@
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   DesktopDropPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("DesktopDropPlugin"));
+  DesktopMultiWindowPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("DesktopMultiWindowPlugin"));
   FileSelectorWindowsRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FileSelectorWindows"));
   ScrcpyFlutterPluginCApiRegisterWithRegistrar(

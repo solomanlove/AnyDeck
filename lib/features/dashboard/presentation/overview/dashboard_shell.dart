@@ -460,7 +460,7 @@ class _DashboardHomeContent extends ConsumerWidget {
         const _DeviceListPanel(),
         if (hasEmulators) ...[
           const SizedBox(height: 16),
-          const _EmulatorListPanel(),
+          const EmulatorListPanel(),
         ],
       ],
     );
