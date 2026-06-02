@@ -98,46 +98,21 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
             selectedName: _selectedName,
             onSort: _toggleSort,
             sortIconBuilder: _getSortIcon,
-            onSelected: (name) => setState(() => _selectedName = name),
+            onSelected: (name) {
+              setState(() => _selectedName = name);
+              final item = items.firstWhere((e) => e.emulator.name == name);
+              showDialog<void>(
+                context: context,
+                builder: (context) => _EmulatorFullConfigDialog(
+                  emulatorName: item.emulator.displayName,
+                  config: item.emulator.config,
+                ),
+              );
+            },
           );
         }
 
-        Widget layoutWidget;
-        if (selectedItem != null) {
-          if (isCompact) {
-            layoutWidget = Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(flex: 4, child: contentWidget),
-                const SizedBox(height: 12),
-                Expanded(
-                  flex: 5,
-                  child: _EmulatorDetailsPanel(
-                    item: selectedItem,
-                    onClose: () => setState(() => _selectedName = null),
-                  ),
-                ),
-              ],
-            );
-          } else {
-            layoutWidget = Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(flex: 3, child: contentWidget),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 2,
-                  child: _EmulatorDetailsPanel(
-                    item: selectedItem,
-                    onClose: () => setState(() => _selectedName = null),
-                  ),
-                ),
-              ],
-            );
-          }
-        } else {
-          layoutWidget = contentWidget;
-        }
+        final layoutWidget = contentWidget;
 
         return Card(
           child: Padding(
@@ -187,7 +162,7 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
                       Expanded(child: layoutWidget)
                     else
                       SizedBox(
-                        height: selectedItem != null ? (isCompact ? 480 : 360) : 360,
+                        height: 360,
                         child: layoutWidget,
                       ),
                   ],
