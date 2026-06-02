@@ -132,7 +132,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WindowLi
   }
 
   @override
-  void onWindowClose() {
+  void onWindowClose() async {
+    try {
+      final subWindowIds = await DesktopMultiWindow.getAllSubWindowIds();
+      if (subWindowIds.isNotEmpty) {
+        await windowManager.hide();
+        return;
+      }
+    } catch (e) {
+      debugPrint('Failed to get sub-window IDs: $e');
+    }
+
+    if (!mounted) return;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
