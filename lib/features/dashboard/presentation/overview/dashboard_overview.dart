@@ -33,11 +33,12 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: overview.when(
           loading: () => _PanelMessage(
-            icon: CupertinoIcons.device_phone_portrait,
+            icon: CupertinoIcons.arrow_2_circlepath,
             title: context.l10n.t('overviewTitle'),
             subtitle: device.isOnline
                 ? context.l10n.t('scanningDevices')
                 : context.l10n.t('loadingCachedOverview'),
+            animateIcon: true,
           ),
           error: (error, stackTrace) => _PanelMessage(
             icon: CupertinoIcons.exclamationmark_circle,

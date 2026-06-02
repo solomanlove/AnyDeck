@@ -213,6 +213,7 @@ class _FilesTab extends ConsumerWidget {
                 loading: () => _PanelMessage(
                   icon: CupertinoIcons.arrow_2_circlepath,
                   title: context.l10n.t('loadingFiles'),
+                  animateIcon: true,
                 ),
                 error: (error, stackTrace) => _PanelMessage(
                   icon: CupertinoIcons.exclamationmark_circle,

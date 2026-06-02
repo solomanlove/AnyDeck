@@ -79,6 +79,7 @@ class _EmulatorListPanelState extends ConsumerState<_EmulatorListPanel> {
             child: _PanelMessage(
               icon: CupertinoIcons.arrow_2_circlepath,
               title: context.l10n.t('scanningEmulators'),
+              animateIcon: true,
             ),
           );
         } else if (items.isEmpty) {

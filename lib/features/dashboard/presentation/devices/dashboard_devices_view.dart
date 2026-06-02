@@ -136,6 +136,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         child: _PanelMessage(
           icon: CupertinoIcons.arrow_2_circlepath,
           title: context.l10n.t('scanningDevices'),
+          animateIcon: true,
         ),
       );
     }

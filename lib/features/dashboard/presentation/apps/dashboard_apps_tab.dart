@@ -107,6 +107,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
               loading: () => _PanelMessage(
                 icon: CupertinoIcons.arrow_2_circlepath,
                 title: context.l10n.t('loadingPackages'),
+                animateIcon: true,
               ),
               error: (error, stackTrace) => _PanelMessage(
                 icon: CupertinoIcons.exclamationmark_circle,

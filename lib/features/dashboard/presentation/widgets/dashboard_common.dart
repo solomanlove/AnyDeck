@@ -1,21 +1,71 @@
 part of '../dashboard_screen.dart';
 
+class _RotatingWidget extends StatefulWidget {
+  const _RotatingWidget({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_RotatingWidget> createState() => _RotatingWidgetState();
+}
+
+class _RotatingWidgetState extends State<_RotatingWidget>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _controller,
+      child: widget.child,
+    );
+  }
+}
+
 class _PanelMessage extends StatelessWidget {
-  const _PanelMessage({required this.icon, required this.title, this.subtitle});
+  const _PanelMessage({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.animateIcon = false,
+  });
 
   final IconData icon;
   final String title;
   final String? subtitle;
+  final bool animateIcon;
 
   @override
   Widget build(BuildContext context) {
+    Widget iconWidget = Icon(icon, size: 36, color: Theme.of(context).colorScheme.primary);
+    if (animateIcon) {
+      iconWidget = _RotatingWidget(child: iconWidget);
+    }
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 36, color: Theme.of(context).colorScheme.primary),
+            iconWidget,
             const SizedBox(height: 12),
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             if (subtitle != null) ...[
