@@ -1,9 +1,14 @@
 part of '../dashboard_screen.dart';
 
-class _MirrorSideToolbar extends ConsumerWidget {
-  const _MirrorSideToolbar({required this.deviceId});
+class MirrorSideToolbar extends ConsumerWidget {
+  const MirrorSideToolbar({
+    super.key,
+    required this.deviceId,
+    this.isStandalone = false,
+  });
 
   final String deviceId;
+  final bool isStandalone;
 
   Future<bool> _setScreenPowerMode(String deviceId, bool powerOn) async {
     final buffer = ByteData(2);
@@ -132,6 +137,42 @@ class _MirrorSideToolbar extends ConsumerWidget {
     }
   }
 
+  Future<void> _openStandaloneMirror(
+    BuildContext context,
+    WidgetRef ref,
+    String deviceId,
+  ) async {
+    final registeredDevices = ref.read(deviceRegistryProvider);
+    final matchedDevice = registeredDevices.firstWhere(
+      (d) => d.id == deviceId,
+      orElse: () => RegisteredDevice(
+        id: deviceId,
+        serial: deviceId,
+        status: 'device',
+        isOnline: true,
+      ),
+    );
+    final deviceName = matchedDevice.displayName;
+
+    await ref
+        .read(activeEmbeddedMirrorProvider(deviceId).notifier)
+        .forceStop();
+
+    try {
+      final window = await DesktopMultiWindow.createWindow(jsonEncode({
+        'type': 'mirror',
+        'deviceId': deviceId,
+        'deviceName': deviceName,
+      }));
+      await window.setFrame(const Offset(100, 100) & const Size(480, 800));
+      await window.center();
+      await window.setTitle('投屏 - $deviceName');
+      await window.show();
+    } catch (e) {
+      debugPrint('Failed to open standalone mirror window: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = ref.read(deviceActionServiceProvider);
@@ -165,6 +206,14 @@ class _MirrorSideToolbar extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (!isStandalone) ...[
+            _ToolbarButton(
+              icon: Icon(Icons.open_in_new, color: isDark ? Colors.white70 : Colors.black87),
+              tooltip: '独立窗口显示',
+              onPressed: () => _openStandaloneMirror(context, ref, deviceId),
+            ),
+            const Divider(height: 12, indent: 8, endIndent: 8),
+          ],
           // 1. Power key
           _ToolbarButton(
             icon: Icon(CupertinoIcons.power, color: isDark ? Colors.white70 : Colors.black87),

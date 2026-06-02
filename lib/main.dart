@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/adb_manage_app.dart';
 import 'app/window/desktop_window_manager_service.dart';
 import 'app/window/emulator_manager_window_app.dart';
+import 'app/window/mirror_window_app.dart';
 
 /// 应用入口，ProviderScope 负责承载全局 Riverpod 依赖图。
 void main(List<String> args) async {
@@ -16,14 +17,26 @@ void main(List<String> args) async {
         ? const <String, dynamic>{}
         : jsonDecode(args[2]) as Map<String, dynamic>;
 
-    runApp(
-      ProviderScope(
-        child: EmulatorManagerWindowApp(
-          windowId: windowId,
-          argument: argument,
+    final type = argument['type'] as String?;
+    if (type == 'mirror') {
+      runApp(
+        ProviderScope(
+          child: MirrorWindowApp(
+            windowId: windowId,
+            argument: argument,
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      runApp(
+        ProviderScope(
+          child: EmulatorManagerWindowApp(
+            windowId: windowId,
+            argument: argument,
+          ),
+        ),
+      );
+    }
     return;
   }
 

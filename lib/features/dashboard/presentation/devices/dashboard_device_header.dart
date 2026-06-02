@@ -183,6 +183,14 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
+                      icon: const Icon(CupertinoIcons.macwindow),
+                      tooltip: '独立窗口投屏',
+                      onPressed: device.isOnline
+                          ? () => _openStandaloneMirror(context, ref, device)
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
                       icon: const Icon(Icons.settings_remote),
                       tooltip: context.l10n.t('remoteController'),
                       onPressed: device.isOnline
@@ -213,6 +221,14 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                   tooltip: isMirrorActive ? '停止投屏' : '内嵌投屏',
                   onPressed: device.isOnline
                       ? () => _toggleEmbeddedScrcpy(context, ref, device.id)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(CupertinoIcons.macwindow),
+                  tooltip: '独立窗口投屏',
+                  onPressed: device.isOnline
+                      ? () => _openStandaloneMirror(context, ref, device)
                       : null,
                 ),
                 const SizedBox(width: 8),
@@ -292,6 +308,35 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       if (context.mounted) {
         _showSnack(context, error.toString(), isError: true);
       }
+    }
+  }
+
+  Future<void> _openStandaloneMirror(
+    BuildContext context,
+    WidgetRef ref,
+    AdbDevice device,
+  ) async {
+    // 1. If embedded mirroring is active in the main window, stop it first.
+    final textureId = ref.read(activeEmbeddedMirrorProvider(device.id));
+    if (textureId != null) {
+      await ref
+          .read(activeEmbeddedMirrorProvider(device.id).notifier)
+          .forceStop();
+    }
+
+    // 2. Open the standalone mirroring window
+    try {
+      final window = await DesktopMultiWindow.createWindow(jsonEncode({
+        'type': 'mirror',
+        'deviceId': device.id,
+        'deviceName': device.model ?? device.id,
+      }));
+      await window.setFrame(const Offset(100, 100) & const Size(480, 800));
+      await window.center();
+      await window.setTitle('投屏 - ${device.model ?? device.id}');
+      await window.show();
+    } catch (e) {
+      debugPrint('Failed to open standalone mirror window: $e');
     }
   }
 

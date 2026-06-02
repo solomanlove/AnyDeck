@@ -138,67 +138,65 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              DragToMoveArea(
-                child: Container(
-                  height: 56,
-                  padding: EdgeInsets.only(
-                    left: Platform.isMacOS ? 80 : 16,
-                    right: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-                        width: 1,
-                      ),
+              Container(
+                height: 56,
+                padding: EdgeInsets.only(
+                  left: Platform.isMacOS ? 80 : 16,
+                  right: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                      width: 1,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Text(
-                        context.l10n.t('emulators'),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      context.l10n.t('emulators'),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: SizedBox(
-                            width: 240,
-                            child: _EmulatorFilterField(
-                              controller: _filterController,
-                              filter: _filter,
-                              onChanged: (value) => setState(() => _filter = value),
-                              onClear: () {
-                                _filterController.clear();
-                                setState(() => _filter = '');
-                              },
-                            ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: 240,
+                          child: _EmulatorFilterField(
+                            controller: _filterController,
+                            filter: _filter,
+                            onChanged: (value) => setState(() => _filter = value),
+                            onClear: () {
+                              _filterController.clear();
+                              setState(() => _filter = '');
+                            },
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      _EmulatorToolbar(
-                        onStart: selectedItem != null && selectedItem.canStart
-                            ? () => _startEmulator(context, selectedItem.emulator.name)
-                            : null,
-                        onClearData: selectedItem != null && selectedItem.canClearData
-                            ? () => _clearEmulatorData(context, selectedItem.emulator)
-                            : null,
-                        onDelete: selectedItem != null && selectedItem.canDelete
-                            ? () => _deleteEmulator(context, selectedItem.emulator)
-                            : null,
-                        onOpenFolder: selectedItem != null
-                            ? () => _openAvdFolder(context, selectedItem.emulator)
-                            : null,
-                        onRefresh: _refreshEmulators,
-                        onPopOut: null,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 16),
+                    _EmulatorToolbar(
+                      onStart: selectedItem != null && selectedItem.canStart
+                          ? () => _startEmulator(context, selectedItem.emulator.name)
+                          : null,
+                      onClearData: selectedItem != null && selectedItem.canClearData
+                          ? () => _clearEmulatorData(context, selectedItem.emulator)
+                          : null,
+                      onDelete: selectedItem != null && selectedItem.canDelete
+                          ? () => _deleteEmulator(context, selectedItem.emulator)
+                          : null,
+                      onOpenFolder: selectedItem != null
+                          ? () => _openAvdFolder(context, selectedItem.emulator)
+                          : null,
+                      onRefresh: _refreshEmulators,
+                      onPopOut: null,
+                    ),
+                  ],
                 ),
               ),
               Expanded(

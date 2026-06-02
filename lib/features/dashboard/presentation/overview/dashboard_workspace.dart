@@ -46,7 +46,7 @@ class _WorkspacePanel extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Center(
-                child: _MirrorSideToolbar(deviceId: device.id),
+                child: MirrorSideToolbar(deviceId: device.id),
               ),
               const SizedBox(width: 16),
               Expanded(
