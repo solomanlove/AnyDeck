@@ -5,6 +5,21 @@ class EmulatorListPanel extends ConsumerStatefulWidget {
 
   final bool isStandalone;
 
+  static Future<void> openStandaloneWindow(BuildContext context) async {
+    final title = context.l10n.t('emulators');
+    try {
+      final window = await DesktopMultiWindow.createWindow(jsonEncode({
+        'type': 'emulator_manager',
+      }));
+      await window.setFrame(const Offset(100, 100) & const Size(900, 600));
+      await window.center();
+      await window.setTitle(title);
+      await window.show();
+    } catch (e) {
+      debugPrint('Failed to open multi-window: $e');
+    }
+  }
+
   @override
   ConsumerState<EmulatorListPanel> createState() => EmulatorListPanelState();
 }
@@ -102,6 +117,9 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
             sortIconBuilder: _getSortIcon,
             onSelected: (name) {
               setState(() => _selectedName = name);
+            },
+            onDoubleTap: (name) {
+              setState(() => _selectedName = name);
               final item = items.firstWhere((e) => e.emulator.name == name);
               showDialog<void>(
                 context: context,
@@ -117,47 +135,79 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
         final layoutWidget = contentWidget;
 
         if (widget.isStandalone) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _EmulatorPanelHeader(
-                  isExpanded: true,
-                  isCompact: isCompact,
-                  isStandalone: true,
-                  filterController: _filterController,
-                  filter: _filter,
-                  onToggleExpanded: () {},
-                  onFilterChanged: (value) => setState(() => _filter = value),
-                  onClearFilter: () {
-                    _filterController.clear();
-                    setState(() => _filter = '');
-                  },
-                  onStart: selectedItem != null && selectedItem.canStart
-                      ? () => _startEmulator(
-                          context,
-                          selectedItem.emulator.name,
-                        )
-                      : null,
-                  onClearData:
-                      selectedItem != null && selectedItem.canClearData
-                      ? () =>
-                            _clearEmulatorData(context, selectedItem.emulator)
-                      : null,
-                  onDelete: selectedItem != null && selectedItem.canDelete
-                      ? () => _deleteEmulator(context, selectedItem.emulator)
-                      : null,
-                  onOpenFolder: selectedItem != null
-                      ? () => _openAvdFolder(context, selectedItem.emulator)
-                      : null,
-                  onRefresh: _refreshEmulators,
-                  onPopOut: null,
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DragToMoveArea(
+                child: Container(
+                  height: 56,
+                  padding: EdgeInsets.only(
+                    left: Platform.isMacOS ? 80 : 16,
+                    right: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        context.l10n.t('emulators'),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: SizedBox(
+                            width: 240,
+                            child: _EmulatorFilterField(
+                              controller: _filterController,
+                              filter: _filter,
+                              onChanged: (value) => setState(() => _filter = value),
+                              onClear: () {
+                                _filterController.clear();
+                                setState(() => _filter = '');
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      _EmulatorToolbar(
+                        onStart: selectedItem != null && selectedItem.canStart
+                            ? () => _startEmulator(context, selectedItem.emulator.name)
+                            : null,
+                        onClearData: selectedItem != null && selectedItem.canClearData
+                            ? () => _clearEmulatorData(context, selectedItem.emulator)
+                            : null,
+                        onDelete: selectedItem != null && selectedItem.canDelete
+                            ? () => _deleteEmulator(context, selectedItem.emulator)
+                            : null,
+                        onOpenFolder: selectedItem != null
+                            ? () => _openAvdFolder(context, selectedItem.emulator)
+                            : null,
+                        onRefresh: _refreshEmulators,
+                        onPopOut: null,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                Expanded(child: layoutWidget),
-              ],
-            ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: layoutWidget,
+                ),
+              ),
+            ],
           );
         }
 
@@ -296,21 +346,9 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   }
 
   Future<void> _popOutWindow() async {
-    final title = context.l10n.t('emulators');
-    try {
-      final window = await DesktopMultiWindow.createWindow(jsonEncode({
-        'type': 'emulator_manager',
-      }));
-      await window.setFrame(const Offset(100, 100) & const Size(900, 600));
-      await window.center();
-      await window.setTitle(title);
-      await window.show();
-
-      if (ref.read(_emulatorListExpandedProvider)) {
-        ref.read(_emulatorListExpandedProvider.notifier).toggle();
-      }
-    } catch (e) {
-      debugPrint('Failed to open multi-window: $e');
+    await EmulatorListPanel.openStandaloneWindow(context);
+    if (ref.read(_emulatorListExpandedProvider)) {
+      ref.read(_emulatorListExpandedProvider.notifier).toggle();
     }
   }
 
@@ -429,7 +467,6 @@ class _EmulatorPanelHeader extends StatelessWidget {
   const _EmulatorPanelHeader({
     required this.isExpanded,
     required this.isCompact,
-    this.isStandalone = false,
     required this.filterController,
     required this.filter,
     required this.onToggleExpanded,
@@ -445,7 +482,6 @@ class _EmulatorPanelHeader extends StatelessWidget {
 
   final bool isExpanded;
   final bool isCompact;
-  final bool isStandalone;
   final TextEditingController filterController;
   final String filter;
   final VoidCallback onToggleExpanded;
@@ -461,7 +497,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = InkWell(
-      onTap: isStandalone ? null : onToggleExpanded,
+      onTap: onToggleExpanded,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -475,14 +511,12 @@ class _EmulatorPanelHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (!isStandalone) ...[
-              const SizedBox(width: 8),
-              AnimatedRotation(
-                turns: isExpanded ? 0.5 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: const Icon(CupertinoIcons.chevron_down),
-              ),
-            ],
+            const SizedBox(width: 8),
+            AnimatedRotation(
+              turns: isExpanded ? 0.5 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: const Icon(CupertinoIcons.chevron_down),
+            ),
           ],
         ),
       ),
@@ -643,6 +677,7 @@ class _EmulatorTable extends StatefulWidget {
     required this.onSort,
     required this.sortIconBuilder,
     required this.onSelected,
+    required this.onDoubleTap,
   });
 
   final List<_EmulatorItem> items;
@@ -650,6 +685,7 @@ class _EmulatorTable extends StatefulWidget {
   final ValueChanged<String> onSort;
   final Widget Function(String column) sortIconBuilder;
   final ValueChanged<String> onSelected;
+  final ValueChanged<String> onDoubleTap;
 
   @override
   State<_EmulatorTable> createState() => _EmulatorTableState();
@@ -707,6 +743,8 @@ class _EmulatorTableState extends State<_EmulatorTable> {
                             index: index,
                             onSelected: () =>
                                 widget.onSelected(item.emulator.name),
+                            onDoubleTap: () =>
+                                widget.onDoubleTap(item.emulator.name),
                           );
                         },
                       ),
@@ -878,6 +916,7 @@ class _EmulatorTableRow extends StatelessWidget {
     required this.selected,
     required this.index,
     required this.onSelected,
+    required this.onDoubleTap,
   });
 
   final _EmulatorItem item;
@@ -885,6 +924,7 @@ class _EmulatorTableRow extends StatelessWidget {
   final bool selected;
   final int index;
   final VoidCallback onSelected;
+  final VoidCallback onDoubleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -898,6 +938,7 @@ class _EmulatorTableRow extends StatelessWidget {
 
     return InkWell(
       onTap: onSelected,
+      onDoubleTap: onDoubleTap,
       child: Container(
         height: 40,
         color: color,

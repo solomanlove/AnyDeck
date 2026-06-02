@@ -423,6 +423,20 @@ class _ContentTitleBar extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             IconButton(
+              tooltip: context.l10n.t('emulators'),
+              icon: const Icon(CupertinoIcons.device_desktop),
+              iconSize: 30,
+              color: const Color(0xff5f6b6e),
+              onPressed: () => EmulatorListPanel.openStandaloneWindow(context),
+              style: IconButton.styleFrom(
+                fixedSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
               tooltip: context.l10n.t('restartAdb'),
               icon: const Icon(CupertinoIcons.ant),
               iconSize: 30,
@@ -448,20 +462,10 @@ class _DashboardHomeContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final emulatorsAsync = ref.watch(emulatorListProvider);
-    final hasEmulators = emulatorsAsync.maybeWhen(
-      data: (list) => list.isNotEmpty,
-      orElse: () => true,
-    );
-
     return ListView(
       padding: const EdgeInsets.all(24),
-      children: [
-        const _DeviceListPanel(),
-        if (hasEmulators) ...[
-          const SizedBox(height: 16),
-          const EmulatorListPanel(),
-        ],
+      children: const [
+        _DeviceListPanel(),
       ],
     );
   }
