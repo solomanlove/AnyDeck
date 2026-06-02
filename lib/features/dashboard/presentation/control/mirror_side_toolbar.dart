@@ -1,23 +1,5 @@
 part of '../dashboard_screen.dart';
 
-// Track whether the physical screen is turned off for each device.
-// Defaults to false (screen is on).
-class ScreenPowerOffNotifier extends Notifier<bool> {
-  ScreenPowerOffNotifier(this.deviceId);
-  final String deviceId;
-
-  @override
-  bool build() => false;
-
-  void setOff(bool value) {
-    state = value;
-  }
-}
-
-final screenPowerOffProvider = NotifierProvider.family<ScreenPowerOffNotifier, bool, String>(
-  ScreenPowerOffNotifier.new,
-);
-
 class _MirrorSideToolbar extends ConsumerWidget {
   const _MirrorSideToolbar({required this.deviceId});
 
@@ -201,16 +183,6 @@ class _MirrorSideToolbar extends ConsumerWidget {
               final success = await _setScreenPowerMode(deviceId, !nextState);
               if (success) {
                 ref.read(screenPowerOffProvider(deviceId).notifier).setOff(nextState);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(nextState ? context.l10n.t('screenPowerOffTip') : context.l10n.t('screenPowerOnTip')),
-                      backgroundColor: nextState ? Colors.orange : const Color(0xff09c47c),
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
               }
             },
           ),

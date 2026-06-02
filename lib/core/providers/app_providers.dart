@@ -1400,3 +1400,22 @@ final runningEmulatorsProvider =
 
       return map;
     });
+
+// Track whether the physical screen is turned off for each device.
+// Defaults to false (screen is on).
+class ScreenPowerOffNotifier extends Notifier<bool> {
+  ScreenPowerOffNotifier(this.deviceId);
+  final String deviceId;
+
+  @override
+  bool build() => false;
+
+  void setOff(bool value) {
+    state = value;
+  }
+}
+
+final screenPowerOffProvider = NotifierProvider.family<ScreenPowerOffNotifier, bool, String>(
+  ScreenPowerOffNotifier.new,
+);
+
