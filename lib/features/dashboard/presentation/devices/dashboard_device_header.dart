@@ -183,7 +183,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(CupertinoIcons.gamecontroller),
+                      icon: const Icon(Icons.settings_remote),
                       tooltip: context.l10n.t('remoteController'),
                       onPressed: device.isOnline
                           ? () => showDialog<void>(
@@ -217,7 +217,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(CupertinoIcons.gamecontroller),
+                  icon: const Icon(Icons.settings_remote),
                   tooltip: context.l10n.t('remoteController'),
                   onPressed: device.isOnline
                       ? () => showDialog<void>(
