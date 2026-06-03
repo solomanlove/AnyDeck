@@ -36,6 +36,27 @@ class MainFlutterWindow: NSWindow {
 
     FlutterMultiWindowPlugin.setOnWindowCreatedCallback { controller in
       RegisterGeneratedPlugins(registry: controller)
+      
+      let windowChannel = FlutterMethodChannel(
+        name: "adb_manage/window",
+        binaryMessenger: controller.engine.binaryMessenger
+      )
+      windowChannel.setMethodCallHandler { [weak controller] call, result in
+        guard let window = controller?.view.window else {
+          result(FlutterError(code: "no_window", message: "Window not found", details: nil))
+          return
+        }
+        if call.method == "setAlwaysOnTop" {
+          guard let alwaysOnTop = call.arguments as? Bool else {
+            result(FlutterError(code: "invalid_argument", message: "Requires bool arguments", details: nil))
+            return
+          }
+          window.level = alwaysOnTop ? .floating : .normal
+          result(nil)
+        } else {
+          result(FlutterMethodNotImplemented)
+        }
+      }
     }
 
     super.awakeFromNib()

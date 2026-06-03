@@ -5,12 +5,14 @@ class ScrcpyLaunchOptions {
     this.videoBitRate = '8M',
     this.maxFps,
     this.alwaysOnTop = true,
+    this.noAudio = false,
   });
 
   final int maxSize;
   final String videoBitRate;
   final int? maxFps;
   final bool alwaysOnTop;
+  final bool noAudio;
 
   /// 为单台设备构建 scrcpy 参数列表。
   List<String> toArgs(String deviceId) {
@@ -23,6 +25,7 @@ class ScrcpyLaunchOptions {
       videoBitRate,
       if (maxFps != null) ...['--max-fps', maxFps.toString()],
       if (alwaysOnTop) '--always-on-top',
+      if (noAudio) '--no-audio',
     ];
   }
 }

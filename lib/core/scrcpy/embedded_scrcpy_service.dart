@@ -7,6 +7,7 @@ import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
 import '../adb/adb_service.dart';
 import '../providers/app_providers.dart';
+import '../../app/settings/app_settings_controller.dart';
 
 class EmbeddedScrcpySession {
   EmbeddedScrcpySession({
@@ -25,9 +26,10 @@ class EmbeddedScrcpySession {
 }
 
 class EmbeddedScrcpyService {
-  EmbeddedScrcpyService(this._adbService);
+  EmbeddedScrcpyService(this._adbService, this._ref);
 
   final AdbService _adbService;
+  final Ref _ref;
   final Map<String, EmbeddedScrcpySession> _sessions = {};
 
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
@@ -83,6 +85,10 @@ class EmbeddedScrcpyService {
       throw Exception('Failed to setup adb forward: ${forwardRes.stderr}');
     }
 
+    final settings = _ref.read(appSettingsProvider);
+    final bitrate = settings.mirrorVideoBitrate;
+    final maxSize = settings.mirrorMaxSize;
+
     // 3. Start scrcpy-server process on Android
     final adbPath = _adbService.executable;
     final serverProcess = await Process.start(adbPath, [
@@ -93,7 +99,9 @@ class EmbeddedScrcpyService {
       '4.0',
       'scid=0',
       'log_level=verbose',
-      'audio=false',
+      'audio=false', // 内嵌投屏底层插件缺乏音频解码及接收实现，必须强制设为 false 避免协商阻塞黑屏
+      'video_bit_rate=$bitrate',
+      if (maxSize > 0) 'max_size=$maxSize',
       'control=true',
       'tunnel_forward=true',
       'display_id=0',
@@ -160,7 +168,7 @@ class EmbeddedScrcpyService {
 // Riverpod Provider definitions
 final embeddedScrcpyServiceProvider = Provider<EmbeddedScrcpyService>((ref) {
   final adbService = ref.watch(adbServiceProvider);
-  final service = EmbeddedScrcpyService(adbService);
+  final service = EmbeddedScrcpyService(adbService, ref);
   ref.onDispose(service.stopAll);
   return service;
 });
@@ -191,6 +199,24 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
         state = null;
         rethrow;
       }
+    }
+  }
+
+  Future<void> restartMirroring() async {
+    final service = ref.read(embeddedScrcpyServiceProvider);
+    if (service.isActive(deviceId)) {
+      await service.stop(deviceId);
+      ref.read(screenPowerOffProvider(deviceId).notifier).setOff(false);
+      state = null;
+      // 稍作延迟确保资源完全释放
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
+    try {
+      final textureId = await service.start(deviceId: deviceId);
+      state = textureId;
+    } catch (e) {
+      state = null;
+      rethrow;
     }
   }
   

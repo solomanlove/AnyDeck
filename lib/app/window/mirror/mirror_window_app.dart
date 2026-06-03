@@ -6,9 +6,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
-import '../../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../../features/dashboard/presentation/control/embedded_scrcpy_viewer.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
+import 'mirror_floating_toolbar.dart';
 
 /// 投屏独立窗口应用入口。
 class MirrorWindowApp extends ConsumerWidget {
@@ -44,6 +44,7 @@ class MirrorWindowApp extends ConsumerWidget {
       home: MirrorWindowContent(
         deviceId: deviceId,
         deviceName: deviceName,
+        windowId: windowId,
       ),
     );
   }
@@ -54,10 +55,12 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
     super.key,
     required this.deviceId,
     required this.deviceName,
+    required this.windowId,
   });
 
   final String deviceId;
   final String deviceName;
+  final int windowId;
 
   @override
   ConsumerState<MirrorWindowContent> createState() => _MirrorWindowContentState();
@@ -159,21 +162,21 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent> {
         ),
       );
     } else if (isMirrorActive) {
-      contentWidget = Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      contentWidget = Stack(
         children: [
-          Expanded(
+          Positioned.fill(
             child: ClipRRect(
               child: EmbeddedScrcpyViewer(deviceId: widget.deviceId),
             ),
           ),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+          Positioned(
+            top: 10,
+            left: 16,
+            right: 16,
             child: Center(
-              child: MirrorSideToolbar(
+              child: MirrorFloatingToolbar(
                 deviceId: widget.deviceId,
-                isStandalone: true,
+                windowId: widget.windowId,
               ),
             ),
           ),
@@ -190,10 +193,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent> {
       body: Column(
         children: [
           Container(
-            height: 56,
+            height: 44, // 减小高度，由 56 降至 44
             padding: EdgeInsets.only(
               left: Platform.isMacOS ? 80 : 16,
               right: 16,
+              top: 4, // 让标题再距离上一些
             ),
             decoration: BoxDecoration(
               color: headerBgColor,
@@ -205,6 +209,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent> {
               ),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   widget.deviceName,
@@ -212,29 +217,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent> {
                         fontWeight: FontWeight.bold,
                       ),
                 ),
-                const Spacer(),
-                if (isMirrorActive && !_isLoading && _errorMessage == null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xffe2f7eb),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.fiber_manual_record, color: Color(0xff2ec46b), size: 10),
-                        SizedBox(width: 6),
-                        Text(
-                          '投屏中',
-                          style: TextStyle(
-                            color: Color(0xff2ec46b),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
               ],
             ),
           ),

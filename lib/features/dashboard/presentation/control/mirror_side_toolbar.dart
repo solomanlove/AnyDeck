@@ -173,6 +173,57 @@ class MirrorSideToolbar extends ConsumerWidget {
     }
   }
 
+  Future<void> _openExternalMirror(
+    BuildContext context,
+    WidgetRef ref,
+    String deviceId,
+  ) async {
+    // 1. If embedded mirroring is active, stop it first.
+    final textureId = ref.read(activeEmbeddedMirrorProvider(deviceId));
+    if (textureId != null) {
+      await ref
+          .read(activeEmbeddedMirrorProvider(deviceId).notifier)
+          .forceStop();
+    }
+
+    try {
+      final settings = ref.read(appSettingsProvider);
+      final bitrateMbps = (settings.mirrorVideoBitrate / 1000000).round();
+      final options = ScrcpyLaunchOptions(
+        maxSize: settings.mirrorMaxSize == 0 ? 1920 : settings.mirrorMaxSize,
+        videoBitRate: '${bitrateMbps}M',
+        alwaysOnTop: settings.scrcpyAlwaysOnTop,
+        noAudio: !settings.mirrorAudioEnabled,
+      );
+
+      final session = await ref.read(scrcpyServiceProvider).start(
+        deviceId: deviceId,
+        options: options,
+      );
+      ref.read(scrcpySessionsProvider.notifier).add(session);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('已启动系统原生投屏，音频已同步转发到电脑播放'),
+            backgroundColor: Color(0xff2ec46b),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('启动外部原生投屏失败: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = ref.read(deviceActionServiceProvider);
@@ -211,6 +262,11 @@ class MirrorSideToolbar extends ConsumerWidget {
               icon: Icon(Icons.open_in_new, color: isDark ? Colors.white70 : Colors.black87),
               tooltip: '独立窗口显示',
               onPressed: () => _openStandaloneMirror(context, ref, deviceId),
+            ),
+            _ToolbarButton(
+              icon: Icon(Icons.launch, color: isDark ? Colors.white70 : Colors.black87),
+              tooltip: '开启系统原生投屏(支持音频)',
+              onPressed: () => _openExternalMirror(context, ref, deviceId),
             ),
             const Divider(height: 12, indent: 8, endIndent: 8),
           ],

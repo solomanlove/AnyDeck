@@ -191,6 +191,14 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
+                      icon: const Icon(Icons.open_in_new),
+                      tooltip: '系统原生投屏(支持音频)',
+                      onPressed: device.isOnline
+                          ? () => _openExternalMirror(context, ref, device.id)
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
                       icon: const Icon(Icons.settings_remote),
                       tooltip: context.l10n.t('remoteController'),
                       onPressed: device.isOnline
@@ -229,6 +237,14 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                   tooltip: '独立窗口投屏',
                   onPressed: device.isOnline
                       ? () => _openStandaloneMirror(context, ref, device)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.open_in_new),
+                  tooltip: '系统原生投屏(支持音频)',
+                  onPressed: device.isOnline
+                      ? () => _openExternalMirror(context, ref, device.id)
                       : null,
                 ),
                 const SizedBox(width: 8),
@@ -337,6 +353,45 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       await window.show();
     } catch (e) {
       debugPrint('Failed to open standalone mirror window: $e');
+    }
+  }
+
+  Future<void> _openExternalMirror(
+    BuildContext context,
+    WidgetRef ref,
+    String deviceId,
+  ) async {
+    // 1. If embedded mirroring is active, stop it first.
+    final textureId = ref.read(activeEmbeddedMirrorProvider(deviceId));
+    if (textureId != null) {
+      await ref
+          .read(activeEmbeddedMirrorProvider(deviceId).notifier)
+          .forceStop();
+    }
+
+    try {
+      final settings = ref.read(appSettingsProvider);
+      final bitrateMbps = (settings.mirrorVideoBitrate / 1000000).round();
+      final options = ScrcpyLaunchOptions(
+        maxSize: settings.mirrorMaxSize == 0 ? 1920 : settings.mirrorMaxSize,
+        videoBitRate: '${bitrateMbps}M',
+        alwaysOnTop: settings.scrcpyAlwaysOnTop,
+        noAudio: !settings.mirrorAudioEnabled,
+      );
+
+      final session = await ref.read(scrcpyServiceProvider).start(
+        deviceId: deviceId,
+        options: options,
+      );
+      ref.read(scrcpySessionsProvider.notifier).add(session);
+
+      if (context.mounted) {
+        _showSnack(context, '已成功开启系统原生投屏，音频同步转发');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnack(context, '启动外部原生投屏失败: $e', isError: true);
+      }
     }
   }
 

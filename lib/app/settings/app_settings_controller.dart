@@ -20,6 +20,9 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
+  static const _mirrorVideoBitrateKey = 'settings.mirrorVideoBitrate';
+  static const _mirrorMaxSizeKey = 'settings.mirrorMaxSize';
+  static const _mirrorAudioEnabledKey = 'settings.mirrorAudioEnabled';
 
   @override
   AppSettings build() {
@@ -87,6 +90,27 @@ class AppSettingsController extends Notifier<AppSettings> {
     await preferences.setBool(_scrcpyAlwaysOnTopKey, value);
   }
 
+  /// 更新投屏视频比特率，并持久化。
+  Future<void> setMirrorVideoBitrate(int value) async {
+    state = state.copyWith(mirrorVideoBitrate: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(_mirrorVideoBitrateKey, value);
+  }
+
+  /// 更新投屏最佳尺寸，并持久化。
+  Future<void> setMirrorMaxSize(int value) async {
+    state = state.copyWith(mirrorMaxSize: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(_mirrorMaxSizeKey, value);
+  }
+
+  /// 更新投屏音频转发状态，并持久化。
+  Future<void> setMirrorAudioEnabled(bool value) async {
+    state = state.copyWith(mirrorAudioEnabled: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_mirrorAudioEnabledKey, value);
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -94,10 +118,19 @@ class AppSettingsController extends Notifier<AppSettings> {
     final themeMode = _themeModeFromName(preferences.getString(_themeModeKey));
     final scrcpyAlwaysOnTop =
         preferences.getBool(_scrcpyAlwaysOnTopKey) ?? true;
+    final mirrorVideoBitrate =
+        preferences.getInt(_mirrorVideoBitrateKey) ?? 8000000;
+    final mirrorMaxSize =
+        preferences.getInt(_mirrorMaxSizeKey) ?? 1080;
+    final mirrorAudioEnabled =
+        preferences.getBool(_mirrorAudioEnabledKey) ?? true;
     state = AppSettings(
       language: language,
       themeMode: themeMode,
       scrcpyAlwaysOnTop: scrcpyAlwaysOnTop,
+      mirrorVideoBitrate: mirrorVideoBitrate,
+      mirrorMaxSize: mirrorMaxSize,
+      mirrorAudioEnabled: mirrorAudioEnabled,
     );
   }
 
