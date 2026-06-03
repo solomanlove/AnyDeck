@@ -69,15 +69,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     return ScrcpyFlutter.sendControl(deviceId: deviceId, controlMessage: message);
   }
 
-  Future<void> _rotateLandscape(String deviceId) async {
-    await ref.read(adbServiceProvider).shellArgs(deviceId, ['settings', 'put', 'system', 'accelerometer_rotation', '0']);
-    await ref.read(adbServiceProvider).shellArgs(deviceId, ['settings', 'put', 'system', 'user_rotation', '1']);
-  }
 
-  Future<void> _rotatePortrait(String deviceId) async {
-    await ref.read(adbServiceProvider).shellArgs(deviceId, ['settings', 'put', 'system', 'accelerometer_rotation', '0']);
-    await ref.read(adbServiceProvider).shellArgs(deviceId, ['settings', 'put', 'system', 'user_rotation', '0']);
-  }
 
   Future<void> _takeScreenshot(BuildContext context, String deviceId) async {
     try {
@@ -624,18 +616,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                     ),
                   ],
                   const _VerticalDivider(),
-                  // 10. Rotate Landscape / Portrait
-                  _ToolbarButton(
-                    icon: Icon(Icons.rotate_right, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('rotateLandscape'),
-                    onPressed: () => _rotateLandscape(widget.deviceId),
-                  ),
-                  _ToolbarButton(
-                    icon: Icon(Icons.rotate_left, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('rotatePortrait'),
-                    onPressed: () => _rotatePortrait(widget.deviceId),
-                  ),
-                  const _VerticalDivider(),
+
                   // 11. Navigation Bar
                   _ToolbarButton(
                     icon: Icon(Icons.chevron_left, color: isDark ? Colors.white70 : Colors.black87),

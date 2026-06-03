@@ -18,15 +18,7 @@ class MirrorSideToolbar extends ConsumerWidget {
     return ScrcpyFlutter.sendControl(deviceId: deviceId, controlMessage: message);
   }
 
-  Future<void> _rotateLandscape(WidgetRef ref, String deviceId) async {
-    await ref.read(adbServiceProvider).shellArgs(deviceId, ['settings', 'put', 'system', 'accelerometer_rotation', '0']);
-    await ref.read(adbServiceProvider).shellArgs(deviceId, ['settings', 'put', 'system', 'user_rotation', '1']);
-  }
 
-  Future<void> _rotatePortrait(WidgetRef ref, String deviceId) async {
-    await ref.read(adbServiceProvider).shellArgs(deviceId, ['settings', 'put', 'system', 'accelerometer_rotation', '0']);
-    await ref.read(adbServiceProvider).shellArgs(deviceId, ['settings', 'put', 'system', 'user_rotation', '0']);
-  }
 
   Future<void> _takeScreenshot(BuildContext context, WidgetRef ref, String deviceId) async {
     try {
@@ -359,20 +351,7 @@ class MirrorSideToolbar extends ConsumerWidget {
               ref.read(selectedToolTabProvider.notifier).select(8); // Switch to Layout Tab
             },
           ),
-          const Divider(height: 12, indent: 8, endIndent: 8),
-          // 8. Rotate Landscape
-          _ToolbarButton(
-            icon: Icon(Icons.rotate_right, color: isDark ? Colors.white70 : Colors.black87),
-            tooltip: context.l10n.t('rotateLandscape'),
-            onPressed: () => _rotateLandscape(ref, deviceId),
-          ),
-          // 9. Rotate Portrait
-          _ToolbarButton(
-            icon: Icon(Icons.rotate_left, color: isDark ? Colors.white70 : Colors.black87),
-            tooltip: context.l10n.t('rotatePortrait'),
-            onPressed: () => _rotatePortrait(ref, deviceId),
-          ),
-          const Divider(height: 12, indent: 8, endIndent: 8),
+
           // 10. Back
           _ToolbarButton(
             icon: Icon(Icons.chevron_left, color: isDark ? Colors.white70 : Colors.black87),

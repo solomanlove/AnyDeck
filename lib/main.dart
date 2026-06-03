@@ -20,6 +20,13 @@ void main(List<String> args) async {
   // 拦截并丢弃该事件以防止在 Debug 模式下抛出 AssertionError 导致红屏或崩溃。
   final originalOnKeyData = PlatformDispatcher.instance.onKeyData;
   PlatformDispatcher.instance.onKeyData = (KeyData data) {
+    try {
+      final dynamic binding = ServicesBinding.instance;
+      final dynamic manager = binding.keyEventManager;
+      if (manager.transitMode.toString().endsWith('rawKeyData')) {
+        return false;
+      }
+    } catch (_) {}
     if (data.type == KeyEventType.up) {
       final physicalKey = PhysicalKeyboardKey(data.physical);
       if (!HardwareKeyboard.instance.physicalKeysPressed.contains(physicalKey)) {
