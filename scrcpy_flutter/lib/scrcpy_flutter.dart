@@ -9,11 +9,13 @@ class ScrcpyFlutter {
     required String deviceId,
     String host = '127.0.0.1',
     required int port,
+    bool audio = false,
   }) async {
     final int? textureId = await _channel.invokeMethod<int>('startMirroring', {
       'deviceId': deviceId,
       'host': host,
       'port': port,
+      'audio': audio,
     });
     if (textureId == null) {
       throw PlatformException(

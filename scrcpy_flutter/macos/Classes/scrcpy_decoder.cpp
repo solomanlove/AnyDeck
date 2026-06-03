@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <cstdio>
 #include <chrono>
+#include <algorithm>
 
 static uint32_t ReadUint32BE(const uint8_t* buf) {
     return (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
@@ -17,19 +18,29 @@ static uint64_t ReadUint64BE(const uint8_t* buf) {
     return ((uint64_t)ReadUint32BE(buf) << 32) | ReadUint32BE(buf + 4);
 }
 
-ScrcpyDecoder::ScrcpyDecoder(const std::string& host, int port, ScrcpyFrameCallback callback, void* opaque)
-    : host_(host), port_(port), callback_(callback), opaque_(opaque) {
+static void ScrcpyAudioQueueCallback(void* custom_data, AudioQueueRef queue, AudioQueueBufferRef buffer) {
+    ScrcpyDecoder* decoder = static_cast<ScrcpyDecoder*>(custom_data);
+    decoder->ReleaseAudioBuffer(buffer);
+}
+
+ScrcpyDecoder::ScrcpyDecoder(const std::string& host, int port, bool audio_enabled, ScrcpyFrameCallback callback, void* opaque)
+    : host_(host), port_(port), audio_enabled_(audio_enabled), callback_(callback), opaque_(opaque) {
     packet_ = av_packet_alloc();
     frame_ = av_frame_alloc();
-    std::cout << "[ScrcpyDecoder] Constructor called for " << host << ":" << port << std::endl;
+    audio_packet_ = av_packet_alloc();
+    audio_frame_ = av_frame_alloc();
+    std::cout << "[ScrcpyDecoder] Constructor called for " << host << ":" << port << " (audio: " << audio_enabled_ << ")" << std::endl;
 }
 
 ScrcpyDecoder::~ScrcpyDecoder() {
     std::cout << "[ScrcpyDecoder] Destructor called" << std::endl;
     Stop();
     Cleanup();
+    CleanupAudio();
     if (packet_) av_packet_free(&packet_);
     if (frame_) av_frame_free(&frame_);
+    if (audio_packet_) av_packet_free(&audio_packet_);
+    if (audio_frame_) av_frame_free(&audio_frame_);
 }
 
 bool ScrcpyDecoder::Start() {
@@ -37,6 +48,10 @@ bool ScrcpyDecoder::Start() {
     std::cout << "[ScrcpyDecoder] Starting decoder thread..." << std::endl;
     running_ = true;
     thread_ = std::thread(&ScrcpyDecoder::DecodeLoop, this);
+    if (audio_enabled_) {
+        std::cout << "[ScrcpyDecoder] Starting audio decoder thread..." << std::endl;
+        audio_thread_ = std::thread(&ScrcpyDecoder::AudioLoop, this);
+    }
     return true;
 }
 
@@ -51,6 +66,11 @@ void ScrcpyDecoder::Stop() {
             close(video_socket_);
             video_socket_ = -1;
         }
+        if (audio_socket_ != -1) {
+            shutdown(audio_socket_, SHUT_RDWR);
+            close(audio_socket_);
+            audio_socket_ = -1;
+        }
         if (control_socket_ != -1) {
             shutdown(control_socket_, SHUT_RDWR);
             close(control_socket_);
@@ -58,8 +78,14 @@ void ScrcpyDecoder::Stop() {
         }
     }
 
+    // Wake up AudioQueue wait condition
+    audio_buf_cond_.notify_all();
+
     if (thread_.joinable()) {
         thread_.join();
+    }
+    if (audio_thread_.joinable()) {
+        audio_thread_.join();
     }
     std::cout << "[ScrcpyDecoder] Stopped" << std::endl;
 }
@@ -117,18 +143,40 @@ bool ScrcpyDecoder::ConnectSockets() {
     }
     std::cout << "[ScrcpyDecoder] Video socket connected!" << std::endl;
 
+    int audio_fd = -1;
+    if (audio_enabled_) {
+        usleep(50000); // 50ms delay
+        std::cout << "[ScrcpyDecoder] Connecting to audio socket..." << std::endl;
+        audio_fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (audio_fd < 0) {
+            std::cout << "[ScrcpyDecoder] Failed to create audio socket. errno = " << errno << std::endl;
+            close(video_fd);
+            return false;
+        }
+
+        if (connect(audio_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+            std::cout << "[ScrcpyDecoder] Failed to connect audio socket. errno = " << errno << std::endl;
+            close(video_fd);
+            close(audio_fd);
+            return false;
+        }
+        std::cout << "[ScrcpyDecoder] Audio socket connected!" << std::endl;
+    }
+
     usleep(50000); // 50ms delay
     std::cout << "[ScrcpyDecoder] Connecting to control socket..." << std::endl;
     int control_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (control_fd < 0) {
         std::cout << "[ScrcpyDecoder] Failed to create control socket. errno = " << errno << std::endl;
         close(video_fd);
+        if (audio_fd != -1) close(audio_fd);
         return false;
     }
 
     if (connect(control_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         std::cout << "[ScrcpyDecoder] Failed to connect control socket. errno = " << errno << std::endl;
         close(video_fd);
+        if (audio_fd != -1) close(audio_fd);
         close(control_fd);
         return false;
     }
@@ -137,6 +185,7 @@ bool ScrcpyDecoder::ConnectSockets() {
     {
         std::lock_guard<std::mutex> lock(socket_mutex_);
         video_socket_ = video_fd;
+        audio_socket_ = audio_fd;
         control_socket_ = control_fd;
     }
 
@@ -163,6 +212,7 @@ void ScrcpyDecoder::DecodeLoop() {
             {
                 std::lock_guard<std::mutex> lock(socket_mutex_);
                 if (video_socket_ != -1) { close(video_socket_); video_socket_ = -1; }
+                if (audio_socket_ != -1) { close(audio_socket_); audio_socket_ = -1; }
                 if (control_socket_ != -1) { close(control_socket_); control_socket_ = -1; }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -330,6 +380,243 @@ void ScrcpyDecoder::DecodeLoop() {
     Cleanup();
 }
 
+void ScrcpyDecoder::AudioLoop() {
+    std::cout << "[ScrcpyDecoder] AudioLoop started" << std::endl;
+    
+    // Wait until sockets are connected
+    while (running_ && audio_socket_ == -1) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    
+    if (!running_) return;
+
+    // 1. Read 4-byte codec ID
+    uint8_t codec_header[4];
+    if (!ReadExactly(audio_socket_, codec_header, 4)) {
+        std::cout << "[ScrcpyDecoder] Failed to read audio codec ID" << std::endl;
+        return;
+    }
+    uint32_t codec_id = ReadUint32BE(codec_header);
+    std::cout << "[ScrcpyDecoder] Audio Codec ID: 0x" << std::hex << codec_id << std::dec << std::endl;
+
+    // Determine Audio Codec
+    AVCodecID ffmpeg_codec_id = AV_CODEC_ID_OPUS; // Default to Opus
+    if (codec_id == 0x6f707573) { // "opus"
+        ffmpeg_codec_id = AV_CODEC_ID_OPUS;
+    } else if (codec_id == 0x61616300 || codec_id == 0x61616320) { // "aac"
+        ffmpeg_codec_id = AV_CODEC_ID_AAC;
+    } else if (codec_id == 0x72617700) { // "raw" (PCM)
+        ffmpeg_codec_id = AV_CODEC_ID_NONE;
+    }
+
+    bool raw_pcm = (ffmpeg_codec_id == AV_CODEC_ID_NONE);
+    
+    if (!raw_pcm) {
+        audio_codec_ = avcodec_find_decoder(ffmpeg_codec_id);
+        if (!audio_codec_) {
+            std::cout << "[ScrcpyDecoder] Failed to find FFmpeg audio decoder" << std::endl;
+            return;
+        }
+
+        audio_codec_ctx_ = avcodec_alloc_context3(audio_codec_);
+        if (!audio_codec_ctx_) {
+            std::cout << "[ScrcpyDecoder] Failed to alloc audio context" << std::endl;
+            return;
+        }
+
+        audio_codec_ctx_->sample_rate = 48000;
+        audio_codec_ctx_->request_sample_fmt = AV_SAMPLE_FMT_FLTP;
+
+        if (avcodec_open2(audio_codec_ctx_, audio_codec_, nullptr) < 0) {
+            std::cout << "[ScrcpyDecoder] Failed to open audio codec" << std::endl;
+            CleanupAudio();
+            return;
+        }
+    }
+
+    // 3. Initialize AudioQueue Basic Description
+    AudioStreamBasicDescription asbd;
+    std::memset(&asbd, 0, sizeof(asbd));
+    asbd.mSampleRate = 48000.0;
+    asbd.mFormatID = kAudioFormatLinearPCM;
+    asbd.mFormatFlags = kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked;
+    asbd.mBytesPerPacket = 4;
+    asbd.mFramesPerPacket = 1;
+    asbd.mBytesPerFrame = 4;
+    asbd.mChannelsPerFrame = 2;
+    asbd.mBitsPerChannel = 16;
+
+    // Create AudioQueue
+    OSStatus status = AudioQueueNewOutput(&asbd, ScrcpyAudioQueueCallback, this, nullptr, nullptr, 0, &audio_queue_);
+    if (status != noErr) {
+        std::cout << "[ScrcpyDecoder] AudioQueueNewOutput failed. status = " << status << std::endl;
+        CleanupAudio();
+        return;
+    }
+
+    // Allocate Buffers
+    for (int i = 0; i < 3; ++i) {
+        AudioQueueBufferRef buf = nullptr;
+        AudioQueueAllocateBuffer(audio_queue_, 8192, &buf);
+        if (buf) {
+            free_audio_buffers_.push_back(buf);
+        }
+    }
+
+    // Start AudioQueue
+    AudioQueueStart(audio_queue_, nullptr);
+    std::cout << "[ScrcpyDecoder] macOS AudioQueue started successfully!" << std::endl;
+
+    std::vector<uint8_t> packet_data;
+    
+    while (running_) {
+        // Read 12-byte header
+        uint8_t header[12];
+        if (!ReadExactly(audio_socket_, header, 12)) {
+            std::cout << "[ScrcpyDecoder] Audio socket read error or closed during header read" << std::endl;
+            break;
+        }
+
+        uint64_t pts = ReadUint64BE(header);
+        uint32_t size = ReadUint32BE(header + 8);
+
+        if (size == 0) continue;
+
+        if (packet_data.size() < size) {
+            packet_data.resize(size);
+        }
+
+        if (!ReadExactly(audio_socket_, packet_data.data(), size)) {
+            std::cout << "[ScrcpyDecoder] Audio socket read error during packet data read" << std::endl;
+            break;
+        }
+
+        bool is_config = (pts & (1ULL << 63)) != 0 || (pts & (1ULL << 62)) != 0;
+        uint64_t clean_pts = pts & ~(3ULL << 62);
+
+        if (is_config) {
+            std::cout << "[ScrcpyDecoder] Audio config packet received, size = " << size << std::endl;
+            if (audio_codec_ctx_) {
+                avcodec_free_context(&audio_codec_ctx_);
+                audio_codec_ctx_ = avcodec_alloc_context3(audio_codec_);
+                if (audio_codec_ctx_) {
+                    audio_codec_ctx_->sample_rate = 48000;
+                    audio_codec_ctx_->request_sample_fmt = AV_SAMPLE_FMT_FLTP;
+                    audio_codec_ctx_->extradata = (uint8_t*)av_mallocz(size + AV_INPUT_BUFFER_PADDING_SIZE);
+                    std::memcpy(audio_codec_ctx_->extradata, packet_data.data(), size);
+                    audio_codec_ctx_->extradata_size = size;
+
+                    if (avcodec_open2(audio_codec_ctx_, audio_codec_, nullptr) < 0) {
+                        std::cout << "[ScrcpyDecoder] Failed to re-open audio codec with extradata" << std::endl;
+                    }
+                } else {
+                    std::cout << "[ScrcpyDecoder] Failed to re-alloc audio context with extradata" << std::endl;
+                }
+            }
+            continue;
+        }
+
+        if (raw_pcm) {
+            // Raw PCM signed 16-bit LE, directly play it (assume stereo 48000Hz)
+            AudioQueueBufferRef buf = nullptr;
+            {
+                std::unique_lock<std::mutex> lock(audio_buf_mutex_);
+                audio_buf_cond_.wait(lock, [this]() { return !free_audio_buffers_.empty() || !running_; });
+                if (!running_ || free_audio_buffers_.empty()) break;
+                buf = free_audio_buffers_.back();
+                free_audio_buffers_.pop_back();
+            }
+
+            if (buf) {
+                size_t copy_size = std::min((size_t)size, (size_t)buf->mAudioDataBytesCapacity);
+                std::memcpy(buf->mAudioData, packet_data.data(), copy_size);
+                buf->mAudioDataByteSize = (UInt32)copy_size;
+                AudioQueueEnqueueBuffer(audio_queue_, buf, 0, nullptr);
+            }
+        } else {
+            // Send to FFmpeg decoder
+            audio_packet_->data = packet_data.data();
+            audio_packet_->size = size;
+            audio_packet_->pts = clean_pts;
+
+            int send_res = avcodec_send_packet(audio_codec_ctx_, audio_packet_);
+            if (send_res < 0) continue;
+
+            while (avcodec_receive_frame(audio_codec_ctx_, audio_frame_) >= 0) {
+                // Initialize/Update SwrContext
+                if (!swr_ctx_) {
+                    AVChannelLayout out_ch_layout;
+                    av_channel_layout_default(&out_ch_layout, 2); // stereo
+                    
+                    AVChannelLayout in_ch_layout;
+                    if (audio_frame_->ch_layout.nb_channels > 0) {
+                        av_channel_layout_copy(&in_ch_layout, &audio_frame_->ch_layout);
+                    } else {
+                        av_channel_layout_default(&in_ch_layout, 2);
+                    }
+
+                    int swr_init_res = swr_alloc_set_opts2(
+                        &swr_ctx_,
+                        &out_ch_layout, AV_SAMPLE_FMT_S16, 48000,
+                        &in_ch_layout, (AVSampleFormat)audio_frame_->format, audio_frame_->sample_rate,
+                        0, nullptr
+                    );
+                    
+                    av_channel_layout_uninit(&out_ch_layout);
+                    av_channel_layout_uninit(&in_ch_layout);
+
+                    if (swr_init_res < 0 || swr_init(swr_ctx_) < 0) {
+                        std::cout << "[ScrcpyDecoder] Failed to init SwrContext" << std::endl;
+                        break;
+                    }
+                }
+
+                if (swr_ctx_) {
+                    int out_samples = swr_get_out_samples(swr_ctx_, audio_frame_->nb_samples);
+                    std::vector<uint8_t> pcm_buf(out_samples * 4); // stereo S16 = 4 bytes per sample
+                    uint8_t* out_data[1] = { pcm_buf.data() };
+                    
+                    int converted = swr_convert(
+                        swr_ctx_,
+                        out_data, out_samples,
+                        (const uint8_t**)audio_frame_->data, audio_frame_->nb_samples
+                    );
+
+                    if (converted > 0) {
+                        int pcm_len = converted * 4;
+                        
+                        // Enqueue to AudioQueue
+                        AudioQueueBufferRef buf = nullptr;
+                        {
+                            std::unique_lock<std::mutex> lock(audio_buf_mutex_);
+                            audio_buf_cond_.wait(lock, [this]() { return !free_audio_buffers_.empty() || !running_; });
+                            if (!running_ || free_audio_buffers_.empty()) break;
+                            buf = free_audio_buffers_.back();
+                            free_audio_buffers_.pop_back();
+                        }
+
+                        if (buf) {
+                            size_t copy_size = std::min((size_t)pcm_len, (size_t)buf->mAudioDataBytesCapacity);
+                            std::memcpy(buf->mAudioData, pcm_buf.data(), copy_size);
+                            buf->mAudioDataByteSize = (UInt32)copy_size;
+                            AudioQueueEnqueueBuffer(audio_queue_, buf, 0, nullptr);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    std::cout << "[ScrcpyDecoder] AudioLoop ending" << std::endl;
+    CleanupAudio();
+}
+
+void ScrcpyDecoder::ReleaseAudioBuffer(AudioQueueBufferRef buffer) {
+    std::lock_guard<std::mutex> lock(audio_buf_mutex_);
+    free_audio_buffers_.push_back(buffer);
+    audio_buf_cond_.notify_one();
+}
+
 void ScrcpyDecoder::Cleanup() {
     if (sws_ctx_) {
         sws_freeContext(sws_ctx_);
@@ -344,4 +631,25 @@ void ScrcpyDecoder::Cleanup() {
         codec_ctx_ = nullptr;
     }
     codec_ = nullptr;
+}
+
+void ScrcpyDecoder::CleanupAudio() {
+    if (audio_queue_) {
+        AudioQueueStop(audio_queue_, true);
+        for (auto buf : free_audio_buffers_) {
+            AudioQueueFreeBuffer(audio_queue_, buf);
+        }
+        free_audio_buffers_.clear();
+        AudioQueueDispose(audio_queue_, true);
+        audio_queue_ = nullptr;
+    }
+    if (swr_ctx_) {
+        swr_free(&swr_ctx_);
+        swr_ctx_ = nullptr;
+    }
+    if (audio_codec_ctx_) {
+        avcodec_free_context(&audio_codec_ctx_);
+        audio_codec_ctx_ = nullptr;
+    }
+    audio_codec_ = nullptr;
 }

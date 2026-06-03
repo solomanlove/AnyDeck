@@ -41,6 +41,8 @@ static void scrcpy_frame_callback(void* opaque, const uint8_t* rgbaBuf, int widt
         NSString* deviceId = call.arguments[@"deviceId"];
         NSString* host = call.arguments[@"host"] ?: @"127.0.0.1";
         NSNumber* portNum = call.arguments[@"port"];
+        NSNumber* audioNum = call.arguments[@"audio"];
+        bool audioEnabled = audioNum ? [audioNum boolValue] : false;
         
         if (!deviceId || !portNum) {
             result([FlutterError errorWithCode:@"INVALID_ARGUMENT"
@@ -65,6 +67,7 @@ static void scrcpy_frame_callback(void* opaque, const uint8_t* rgbaBuf, int widt
         auto decoder = std::make_unique<ScrcpyDecoder>(
             [host UTF8String],
             [portNum intValue],
+            audioEnabled,
             scrcpy_frame_callback,
             opaque
         );

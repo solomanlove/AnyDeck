@@ -23,14 +23,14 @@ A new Flutter plugin project.
   # s.resource_bundles = {'scrcpy_flutter_privacy' => ['Resources/PrivacyInfo.xcprivacy']}
 
   s.dependency 'FlutterMacOS'
-  s.frameworks = 'FlutterMacOS'
+  s.frameworks = 'FlutterMacOS', 'AudioToolbox'
 
   s.platform = :osx, '10.11'
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'HEADER_SEARCH_PATHS' => '"/opt/homebrew/opt/ffmpeg/include"',
     'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Libs"',
-    'OTHER_LDFLAGS' => '$(inherited) -lavcodec -lavformat -lavutil -lswscale'
+    'OTHER_LDFLAGS' => '$(inherited) -lavcodec -lavformat -lavutil -lswscale -lswresample'
   }
   s.vendored_libraries = 'Libs/*.dylib'
   s.swift_version = '5.0'

@@ -99,7 +99,7 @@ class EmbeddedScrcpyService {
       '4.0',
       'scid=0',
       'log_level=verbose',
-      'audio=false', // 内嵌投屏底层插件缺乏音频解码及接收实现，必须强制设为 false 避免协商阻塞黑屏
+      'audio=${settings.mirrorAudioEnabled ? "true" : "false"}',
       'video_bit_rate=$bitrate',
       if (maxSize > 0) 'max_size=$maxSize',
       'control=true',
@@ -123,6 +123,7 @@ class EmbeddedScrcpyService {
       final textureId = await ScrcpyFlutter.startMirroring(
         deviceId: deviceId,
         port: localPort,
+        audio: settings.mirrorAudioEnabled,
       );
 
       final session = EmbeddedScrcpySession(
