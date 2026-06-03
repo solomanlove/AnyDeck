@@ -7,6 +7,8 @@ import 'app/window/desktop_window_manager_service.dart';
 import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
 
+import 'app/settings/app_settings_controller.dart';
+
 /// 应用入口，ProviderScope 负责承载全局 Riverpod 依赖图。
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +24,9 @@ void main(List<String> args) async {
       //投屏窗口
       runApp(
         ProviderScope(
+          overrides: [
+            windowIdProvider.overrideWithValue(windowId),
+          ],
           child: MirrorWindowApp(
             windowId: windowId,
             argument: argument,
@@ -32,6 +37,9 @@ void main(List<String> args) async {
       //模拟器管理窗口
       runApp(
         ProviderScope(
+          overrides: [
+            windowIdProvider.overrideWithValue(windowId),
+          ],
           child: EmulatorManagerWindowApp(
             windowId: windowId,
             argument: argument,
