@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import '../l10n/app_localizations.dart';
-import '../settings/app_settings_controller.dart';
-import '../theme/app_theme.dart';
-import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../l10n/app_localizations.dart';
+import '../../settings/app_settings_controller.dart';
+import '../../theme/app_theme.dart';
+import '../../../features/dashboard/presentation/dashboard_screen.dart';
 
 /// 模拟器管理独立窗口的应用入口。
 class EmulatorManagerWindowApp extends ConsumerWidget {

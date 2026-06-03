@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/adb_manage_app.dart';
 import 'app/window/desktop_window_manager_service.dart';
-import 'app/window/emulator_manager_window_app.dart';
-import 'app/window/mirror_window_app.dart';
+import 'app/window/emulator/emulator_manager_window_app.dart';
+import 'app/window/mirror/mirror_window_app.dart';
 
 /// 应用入口，ProviderScope 负责承载全局 Riverpod 依赖图。
 void main(List<String> args) async {
@@ -19,6 +19,7 @@ void main(List<String> args) async {
 
     final type = argument['type'] as String?;
     if (type == 'mirror') {
+      //投屏窗口
       runApp(
         ProviderScope(
           child: MirrorWindowApp(
@@ -28,6 +29,7 @@ void main(List<String> args) async {
         ),
       );
     } else {
+      //模拟器管理窗口
       runApp(
         ProviderScope(
           child: EmulatorManagerWindowApp(
@@ -41,6 +43,6 @@ void main(List<String> args) async {
   }
 
   await DesktopWindowManagerService.initialize();
-
+  //主窗口
   runApp(const ProviderScope(child: AdbManageApp()));
 }

@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import '../l10n/app_localizations.dart';
-import '../settings/app_settings_controller.dart';
-import '../theme/app_theme.dart';
-import '../../features/dashboard/presentation/dashboard_screen.dart';
-import '../../features/dashboard/presentation/control/embedded_scrcpy_viewer.dart';
-import '../../core/scrcpy/embedded_scrcpy_service.dart';
+import '../../l10n/app_localizations.dart';
+import '../../settings/app_settings_controller.dart';
+import '../../theme/app_theme.dart';
+import '../../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../../features/dashboard/presentation/control/embedded_scrcpy_viewer.dart';
+import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 
 /// 投屏独立窗口应用入口。
 class MirrorWindowApp extends ConsumerWidget {
@@ -28,7 +28,7 @@ class MirrorWindowApp extends ConsumerWidget {
     final deviceName = argument['deviceName'] as String? ?? 'Device';
 
     return MaterialApp(
-      onGenerateTitle: (context) => '投屏 - $deviceName',
+      onGenerateTitle: (context) => deviceName,
       debugShowCheckedModeBanner: false,
       locale: settings.language.locale,
       supportedLocales: AppLocalizations.supportedLocales,
