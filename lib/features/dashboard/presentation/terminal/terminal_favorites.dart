@@ -1,44 +1,5 @@
 part of 'terminal_tab.dart';
 
-/// 终端专用紧凑按钮
-class _TerminalButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-  final String tooltip;
-
-  const _TerminalButton({
-    required this.label,
-    required this.onPressed,
-    required this.tooltip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(4),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.white24),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 11,
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// 常用调试命令收藏侧边栏
 class _FavoriteCommandsPanel extends ConsumerWidget {
@@ -56,33 +17,43 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final favorites = ref.watch(favoriteCommandsProvider);
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(CupertinoIcons.bookmark, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  context.l10n.t('commandFavorites'),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 头部对齐栏（高度为 40，与左侧的标签栏对齐，样式一致）
+        Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                CupertinoIcons.bookmark,
+                size: 16,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                context.l10n.t('commandFavorites'),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(CupertinoIcons.arrow_counterclockwise, size: 20),
-                  tooltip: context.l10n.t('resetFavorites'),
+              ),
+              const Spacer(),
+              Tooltip(
+                message: context.l10n.t('resetFavorites'),
+                child: IconButton(
+                  icon: const Icon(CupertinoIcons.arrow_counterclockwise, size: 16),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 16,
                   onPressed: () async {
                     final confirmed = await showDialog<bool>(
                       context: context,
@@ -108,17 +79,36 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                     }
                   },
                 ),
-                IconButton(
-                  icon: const Icon(CupertinoIcons.plus, size: 20),
-                  tooltip: context.l10n.t('addFavorite'),
+              ),
+              const SizedBox(width: 12),
+              Tooltip(
+                message: context.l10n.t('addFavorite'),
+                child: IconButton(
+                  icon: const Icon(CupertinoIcons.plus, size: 16),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 16,
                   onPressed: () => _showAddFavoriteDialog(context, ref),
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // 常用命令收藏列表卡片
+        Expanded(
+          child: Card(
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+              ),
             ),
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
               child: favorites.isEmpty
                   ? Center(
                       child: Text(
@@ -155,9 +145,9 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                       },
                     ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 

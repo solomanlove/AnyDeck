@@ -320,118 +320,118 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
   }
 
   /// 交互式终端核心窗口
+  /// 交互式终端核心窗口
   Widget _buildTerminalConsole(
     BuildContext context,
     AdbTerminalSession session,
   ) {
-    final notifier = ref.read(adbTerminalProvider.notifier);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final consoleBg = isDark ? const Color(0xFF1E1E2E) : const Color(0xFFF5F5F7);
+    final promptColor = isDark ? const Color(0xFF89B4FA) : const Color(0xFF1D4ED8); // 柔和蓝 vs 深蓝
+    final inputColor = isDark ? const Color(0xFFA6E3A1) : const Color(0xFF111827); // 浅绿 vs 墨黑
+    final hintColor = isDark ? Colors.white24 : Colors.black26;
 
     return Card(
       elevation: 4,
-      color: const Color(0xFF1E1E2E), // 极具质感的深色调终端色
+      color: consoleBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          children: [
-            // 终端日志输出区域
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: SelectionArea(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: session.lines.length,
-                    itemBuilder: (context, index) {
-                      final line = session.lines[index];
-                      return Text(
-                        _terminalLineText(context, line),
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (event) => _inputFocusNode.requestFocus(),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: SelectionArea(
+            child: ListView.builder(
+              controller: _scrollController,
+              itemCount: session.lines.length + 1,
+              itemBuilder: (context, index) {
+                if (index == session.lines.length) {
+                  // 最末行：交互式输入框
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${(widget.device.product ?? widget.device.model ?? 'shell').toLowerCase()}:/ \$ ',
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 13,
-                          height: 1.3,
-                          color: _getTerminalLineColor(line.type),
+                          color: promptColor,
+                          fontWeight: FontWeight.bold,
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Divider(color: Colors.grey, height: 1, thickness: 0.2),
-            const SizedBox(height: 8),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: TextField(
+                          controller: _commandController,
+                          focusNode: _inputFocusNode,
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                            color: inputColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: context.l10n.t('enterCommandHint'),
+                            hintStyle: TextStyle(
+                              color: hintColor,
+                              fontSize: 12,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          ),
+                          onSubmitted: (text) =>
+                              _handleSendCommand(session.id, text),
+                        ),
+                      ),
+                    ],
+                  );
+                }
 
-            // 终端输入栏和控制快捷按钮
-            Row(
-              children: [
-                // 提示符
-                const Text(
-                  'adb shell \$ ',
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                    color: Color(0xFF89B4FA), // 柔和蓝
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 4),
+                final line = session.lines[index];
 
-                // 命令输入框，支持历史记录上下翻页
-                Expanded(
-                  child: TextField(
-                    controller: _commandController,
-                    focusNode: _inputFocusNode,
+                // 历史输入行渲染：拼接设备提示符前缀并进行语法着色
+                if (line.type == TerminalLineType.input) {
+                  return Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${(widget.device.product ?? widget.device.model ?? 'shell').toLowerCase()}:/ \$ ',
+                          style: TextStyle(
+                            color: promptColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text: line.text,
+                          style: TextStyle(
+                            color: inputColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                     style: const TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 13,
-                      color: Colors.white70,
+                      height: 1.3,
                     ),
-                    decoration: InputDecoration(
-                      hintText: context.l10n.t('enterCommandHint'),
-                      hintStyle: const TextStyle(
-                        color: Colors.white24,
-                        fontSize: 12,
-                      ),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                    ),
-                    onSubmitted: (text) =>
-                        _handleSendCommand(session.id, text),
-                  ),
-                ),
+                  );
+                }
 
-                // 控制按钮行
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    // Ctrl+C
-                    _TerminalButton(
-                      label: context.l10n.t('ctrlC'),
-                      onPressed: () =>
-                          notifier.sendCtrlC(widget.device.id, session.id),
-                      tooltip: context.l10n.t('terminalInterruptTooltip'),
-                    ),
-                    // 清屏
-                    _TerminalButton(
-                      label: context.l10n.t('clearLogs'),
-                      onPressed: () =>
-                          notifier.clearBuffer(widget.device.id, session.id),
-                      tooltip: context.l10n.t('terminalClearTooltip'),
-                    ),
-                    // 重启终端
-                    _TerminalButton(
-                      label: context.l10n.t('reconnect'),
-                      onPressed: () =>
-                          notifier.restartSession(widget.device.id, session.id),
-                      tooltip: context.l10n.t('terminalRestartTooltip'),
-                    ),
-                  ],
-                ),
-              ],
+                // 普通的 stdout/stderr/info 日志渲染
+                return Text(
+                  _terminalLineText(context, line),
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                    height: 1.3,
+                    color: _getTerminalLineColor(line.type, isDark),
+                  ),
+                );
+              },
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -449,16 +449,16 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
   }
 
   /// 终端各行输出色彩映射
-  Color _getTerminalLineColor(TerminalLineType type) {
+  Color _getTerminalLineColor(TerminalLineType type, bool isDark) {
     switch (type) {
       case TerminalLineType.stdout:
-        return const Color(0xFFCDD6F4); // 柔白
+        return isDark ? const Color(0xFFCDD6F4) : const Color(0xFF374151); // 柔白 vs 深灰
       case TerminalLineType.stderr:
-        return const Color(0xFFF38BA8); // 玫瑰红/粉
+        return isDark ? const Color(0xFFF38BA8) : const Color(0xFFDC2626); // 粉红 vs 鲜红
       case TerminalLineType.input:
-        return const Color(0xFFA6E3A1); // 浅绿
+        return isDark ? const Color(0xFFA6E3A1) : const Color(0xFF111827); // 浅绿 vs 纯黑
       case TerminalLineType.info:
-        return const Color(0xFFFAB387); // 亮黄/橙
+        return isDark ? const Color(0xFFFAB387) : const Color(0xFFD97706); // 橙黄 vs 褐黄
     }
   }
 }

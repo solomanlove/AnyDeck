@@ -129,12 +129,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     final session = AdbTerminalSession(
       id: sessionId,
       deviceId: deviceId,
-      lines: [
-        const TerminalLine.localized(
-          l10nKey: 'terminalSessionStarted',
-          type: TerminalLineType.info,
-        ),
-      ],
+      lines: [],
       commandHistory: [],
       historyIndex: -1,
       isRunning: true,
@@ -306,12 +301,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       deviceId,
       sessionId,
       (s) => s.copyWith(
-        lines: [
-          const TerminalLine.localized(
-            l10nKey: 'terminalReconnectingShell',
-            type: TerminalLineType.info,
-          ),
-        ],
+        lines: [],
         isRunning: true,
         process: null,
       ),

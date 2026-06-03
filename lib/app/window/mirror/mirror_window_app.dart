@@ -207,7 +207,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent> {
             child: Row(
               children: [
                 Text(
-                  '投屏 - ${widget.deviceName}',
+                  widget.deviceName,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
