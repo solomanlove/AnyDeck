@@ -188,14 +188,14 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                           ? () => _openStandaloneMirror(context, ref, device)
                           : null,
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.open_in_new),
-                      tooltip: '系统原生投屏(支持音频)',
-                      onPressed: device.isOnline
-                          ? () => _openExternalMirror(context, ref, device.id)
-                          : null,
-                    ),
+                    // const SizedBox(width: 8),
+                    // IconButton(
+                    //   icon: const Icon(Icons.open_in_new),
+                    //   tooltip: '系统原生投屏(支持音频)',
+                    //   onPressed: device.isOnline
+                    //       ? () => _openExternalMirror(context, ref, device.id)
+                    //       : null,
+                    // ),
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.settings_remote),
@@ -239,14 +239,14 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                       ? () => _openStandaloneMirror(context, ref, device)
                       : null,
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.open_in_new),
-                  tooltip: '系统原生投屏(支持音频)',
-                  onPressed: device.isOnline
-                      ? () => _openExternalMirror(context, ref, device.id)
-                      : null,
-                ),
+                // const SizedBox(width: 8),
+                // IconButton(
+                //   icon: const Icon(Icons.open_in_new),
+                //   tooltip: '系统原生投屏(支持音频)',
+                //   onPressed: device.isOnline
+                //       ? () => _openExternalMirror(context, ref, device.id)
+                //       : null,
+                // ),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.settings_remote),
@@ -357,6 +357,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     }
   }
 
+  // ignore: unused_element
   Future<void> _openExternalMirror(
     BuildContext context,
     WidgetRef ref,

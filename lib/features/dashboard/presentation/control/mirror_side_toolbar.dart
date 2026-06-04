@@ -182,6 +182,7 @@ class MirrorSideToolbar extends ConsumerWidget {
     }
   }
 
+  // ignore: unused_element
   Future<void> _openExternalMirror(
     BuildContext context,
     WidgetRef ref,
@@ -274,14 +275,14 @@ class MirrorSideToolbar extends ConsumerWidget {
               tooltip: '独立窗口显示',
               onPressed: () => _openStandaloneMirror(context, ref, deviceId),
             ),
-            _ToolbarButton(
-              icon: Icon(
-                Icons.launch,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-              tooltip: '开启系统原生投屏(支持音频)',
-              onPressed: () => _openExternalMirror(context, ref, deviceId),
-            ),
+            // _ToolbarButton(
+            //   icon: Icon(
+            //     Icons.launch,
+            //     color: isDark ? Colors.white70 : Colors.black87,
+            //   ),
+            //   tooltip: '开启系统原生投屏(支持音频)',
+            //   onPressed: () => _openExternalMirror(context, ref, deviceId),
+            // ),
             const Divider(height: 12, indent: 8, endIndent: 8),
           ],
           // 1. Power key

@@ -101,10 +101,26 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
     int started = 0;
     for (final device in devices) {
       try {
-        final session = await ref
-            .read(scrcpyServiceProvider)
-            .start(deviceId: device.id, options: const ScrcpyLaunchOptions());
-        ref.read(scrcpySessionsProvider.notifier).add(session);
+        // 1. 如果该设备在主窗口已经开启了内嵌投屏，先停止它
+        final textureId = ref.read(activeEmbeddedMirrorProvider(device.id));
+        if (textureId != null) {
+          await ref
+              .read(activeEmbeddedMirrorProvider(device.id).notifier)
+              .forceStop();
+        }
+
+        // 2. 开启独立投屏窗口
+        final window = await DesktopMultiWindow.createWindow(
+          jsonEncode({
+            'type': 'mirror',
+            'deviceId': device.id,
+            'deviceName': device.displayName,
+          }),
+        );
+        await window.setFrame(const Offset(100, 100) & const Size(480, 800));
+        await window.center();
+        await window.setTitle('投屏 - ${device.displayName}');
+        await window.show();
         started++;
       } catch (e) {
         debugPrint('Mirror failed for ${device.id}: $e');

@@ -184,44 +184,44 @@ void showMirrorSettingsDialog({
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    '注意：当前内嵌投屏窗口因底层限制无法直接播放音频。如需使用音频转发到电脑播放，请使用外部原生投屏。',
-                    style: TextStyle(
-                      color: Colors.orangeAccent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xff2ec46b)),
-                      foregroundColor: const Color(0xff2ec46b),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    icon: const Icon(Icons.open_in_new, size: 14),
-                    label: const Text(
-                      '启动外部原生投屏 (支持音频播放)',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      launchExternalMirror(
-                        context: context,
-                        ref: ref,
-                        deviceId: deviceId,
-                        windowId: windowId,
-                        isAlwaysOnTop: isAlwaysOnTop,
-                      );
-                    },
-                  ),
+                  // const SizedBox(height: 6),
+                  // const Text(
+                  //   '注意：当前内嵌投屏窗口因底层限制无法直接播放音频。如需使用音频转发到电脑播放，请使用外部原生投屏。',
+                  //   style: TextStyle(
+                  //     color: Colors.orangeAccent,
+                  //     fontSize: 11,
+                  //     fontWeight: FontWeight.w500,
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 12),
+                  // OutlinedButton.icon(
+                  //   style: OutlinedButton.styleFrom(
+                  //     side: const BorderSide(color: Color(0xff2ec46b)),
+                  //     foregroundColor: const Color(0xff2ec46b),
+                  //     padding: const EdgeInsets.symmetric(
+                  //       vertical: 8,
+                  //       horizontal: 12,
+                  //     ),
+                  //     shape: RoundedRectangleBorder(
+                  //       borderRadius: BorderRadius.circular(8),
+                  //     ),
+                  //   ),
+                  //   icon: const Icon(Icons.open_in_new, size: 14),
+                  //   label: const Text(
+                  //     '启动外部原生投屏 (支持音频播放)',
+                  //     style: TextStyle(fontSize: 12),
+                  //   ),
+                  //   onPressed: () {
+                  //     Navigator.of(context).pop();
+                  //     launchExternalMirror(
+                  //       context: context,
+                  //       ref: ref,
+                  //       deviceId: deviceId,
+                  //       windowId: windowId,
+                  //       isAlwaysOnTop: isAlwaysOnTop,
+                  //     );
+                  //   },
+                  // ),
                   const SizedBox(height: 12),
                   const Text(
                     '注：修改设置后保存，投屏服务将自动重启以应用新画质。',
