@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -149,6 +150,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   }
 
   void _toggleFullScreen(bool fullscreen) async {
+    if (mounted) {
+      setState(() {
+        _isFullScreen = fullscreen;
+      });
+    }
     if (Platform.isMacOS) {
       try {
         await _windowChannel.invokeMethod('setFullScreen', fullscreen);
@@ -156,7 +162,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         debugPrint('Failed to set fullscreen on macOS: $e');
       }
     } else {
-      await windowManager.setFullScreen(fullscreen);
+      try {
+        await windowManager.setFullScreen(fullscreen);
+      } catch (e) {
+        debugPrint('Failed to set fullscreen: $e');
+      }
     }
     if (fullscreen && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -209,7 +219,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       }
     } catch (_) {}
 
-    final renderBox = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+    final renderBox =
+        _viewerKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
     final viewerSize = renderBox.size;
     final double viewerW = viewerSize.width;
@@ -249,7 +260,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         });
       }
     } else {
-      debugPrint('[MirrorWindow] Double tap on device screen, ignore fullscreen toggle.');
+      debugPrint(
+        '[MirrorWindow] Double tap on device screen, ignore fullscreen toggle.',
+      );
     }
   }
 
@@ -273,12 +286,26 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     }
   }
 
-  Future<void> _fitWindowToAspectRatio(double R, double viewerW, double viewerH) async {
+  Future<void> _fitWindowToAspectRatio(
+    double R,
+    double viewerW,
+    double viewerH,
+  ) async {
     if (R <= 0 || R.isNaN || R.isInfinite) return;
-    if (viewerW <= 0 || viewerH <= 0 || viewerW.isNaN || viewerW.isInfinite || viewerH.isNaN || viewerH.isInfinite) return;
+    if (viewerW <= 0 ||
+        viewerH <= 0 ||
+        viewerW.isNaN ||
+        viewerW.isInfinite ||
+        viewerH.isNaN ||
+        viewerH.isInfinite)
+      return;
 
     final Rect frame = await _getWindowFrame();
-    if (frame.width.isNaN || frame.width.isInfinite || frame.height.isNaN || frame.height.isInfinite) return;
+    if (frame.width.isNaN ||
+        frame.width.isInfinite ||
+        frame.height.isNaN ||
+        frame.height.isInfinite)
+      return;
 
     final double currentWindowW = frame.width;
     final double currentWindowH = frame.height;
@@ -304,20 +331,30 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     final double newWindowW = currentWindowW + deltaW;
     final double newWindowH = currentWindowH + deltaH;
 
-    if (newWindowW < 200 || newWindowH < 200 || newWindowW.isNaN || newWindowW.isInfinite || newWindowH.isNaN || newWindowH.isInfinite) return;
+    if (newWindowW < 200 ||
+        newWindowH < 200 ||
+        newWindowW.isNaN ||
+        newWindowW.isInfinite ||
+        newWindowH.isNaN ||
+        newWindowH.isInfinite)
+      return;
 
     // 保持窗口中心点不变进行缩放
     final double newLeft = frame.left - deltaW / 2;
     final double newTop = frame.top - deltaH / 2;
 
-    if (newLeft.isNaN || newLeft.isInfinite || newTop.isNaN || newTop.isInfinite) return;
+    if (newLeft.isNaN ||
+        newLeft.isInfinite ||
+        newTop.isNaN ||
+        newTop.isInfinite)
+      return;
 
     final windowController = WindowController.fromWindowId(widget.windowId);
-    windowController.setFrame(
-      Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH),
-    ).catchError((e) {
-      debugPrint('Failed to set window frame: $e');
-    });
+    windowController
+        .setFrame(Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH))
+        .catchError((e) {
+          debugPrint('Failed to set window frame: $e');
+        });
   }
 
   Future<void> _startMirroring() async {
@@ -340,6 +377,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         setState(() {
           _isLoading = false;
         });
+        _scheduleAutoFit();
       }
     } catch (e) {
       if (mounted) {
@@ -349,6 +387,54 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         });
       }
     }
+  }
+
+  void _scheduleAutoFit() {
+    int attempts = 0;
+    Timer.periodic(const Duration(milliseconds: 200), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      attempts++;
+
+      final overviewAsync = ref.read(deviceOverviewProvider(widget.deviceId));
+      final resolution = overviewAsync.maybeWhen(
+        data: (overview) => overview.physicalResolution,
+        orElse: () => null,
+      );
+      double aspectRatio = _getAspectRatio(resolution);
+
+      try {
+        final size = await ScrcpyFlutter.getVideoSize(
+          deviceId: widget.deviceId,
+        );
+        if (size != null && size['width']! > 0 && size['height']! > 0) {
+          aspectRatio = size['width']! / size['height']!;
+        }
+      } catch (_) {}
+
+      final renderBox =
+          _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox != null) {
+        final viewerSize = renderBox.size;
+        final double viewerW = viewerSize.width;
+        final double viewerH = viewerSize.height;
+        if (viewerW > 0 && viewerH > 0) {
+          timer.cancel();
+          Future.delayed(const Duration(milliseconds: 50), () {
+            if (mounted) {
+              _fitWindowToAspectRatio(aspectRatio, viewerW, viewerH);
+            }
+          });
+          return;
+        }
+      }
+
+      if (attempts >= 15) {
+        timer.cancel();
+      }
+    });
   }
 
   @override
@@ -414,8 +500,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         children: [
           if (!_isFullScreen)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              child: Center(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+              child: SizedBox(
+                width: double.infinity,
                 child: MirrorFloatingToolbar(
                   deviceId: widget.deviceId,
                   windowId: widget.windowId,
