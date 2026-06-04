@@ -86,6 +86,15 @@ class MainFlutterWindow: NSWindow {
         
         if call.method == "initWindow" {
           result(nil)
+        } else if call.method == "getWindowFrame" {
+          let frame = window.frame
+          let frameDict: [String: Any] = [
+            "left": frame.origin.x,
+            "top": frame.origin.y,
+            "width": frame.size.width,
+            "height": frame.size.height
+          ]
+          result(frameDict)
         } else if call.method == "setAlwaysOnTop" {
           guard let alwaysOnTop = call.arguments as? Bool else {
             result(FlutterError(code: "invalid_argument", message: "Requires bool arguments", details: nil))
