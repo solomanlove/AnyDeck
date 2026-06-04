@@ -231,9 +231,6 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
 
   @override
   Widget build(BuildContext context) {
-    if (_loading && _screenshotBytes == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
 
     if (_error != null && _screenshotBytes == null) {
       return Center(
@@ -432,7 +429,9 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
                 if (_loading)
                   Positioned.fill(
                     child: Container(
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: _screenshotBytes == null
+                          ? Colors.transparent
+                          : Colors.black.withValues(alpha: 0.3),
                       child: const Center(
                         child: CircularProgressIndicator(),
                       ),

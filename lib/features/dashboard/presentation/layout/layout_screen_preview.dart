@@ -5,7 +5,7 @@ import '../../../../core/layout_inspector/layout_node.dart';
 
 /// 渲染手机屏幕截图，支持 InteractiveViewer 缩放和平移，以及旋转度数下的坐标映射。
 class LayoutScreenPreview extends StatefulWidget {
-  final LayoutNode rootNode;
+  final LayoutNode? rootNode;
   final ui.Image decodedImage;
   final LayoutNode? selectedNode;
   final LayoutNode? hoveredNode;
@@ -21,7 +21,7 @@ class LayoutScreenPreview extends StatefulWidget {
 
   const LayoutScreenPreview({
     super.key,
-    required this.rootNode,
+    this.rootNode,
     required this.decodedImage,
     required this.selectedNode,
     required this.hoveredNode,
@@ -155,8 +155,9 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
         }
 
         LayoutNode? getNodeAtLocalPoint(Offset localPoint) {
+          if (widget.rootNode == null) return null;
           final nativePoint = localToNative(localPoint);
-          return _findDeepestNodeAt(widget.rootNode, nativePoint);
+          return _findDeepestNodeAt(widget.rootNode!, nativePoint);
         }
 
         return Container(
@@ -204,10 +205,12 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
                       viewportPoint,
                     );
                     final nativePoint = localToNative(localPoint);
-                    final node = _findDeepestNodeAt(
-                      widget.rootNode,
-                      nativePoint,
-                    );
+                    final node = widget.rootNode == null
+                        ? null
+                        : _findDeepestNodeAt(
+                            widget.rootNode!,
+                            nativePoint,
+                          );
                     widget.onNodeSelected(node);
 
                     final x = nativePoint.dx.round();
@@ -247,7 +250,7 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
 
 class _ScreenPreviewPainter extends CustomPainter {
   final ui.Image image;
-  final LayoutNode rootNode;
+  final LayoutNode? rootNode;
   final LayoutNode? selectedNode;
   final LayoutNode? hoveredNode;
   final bool showBorders;
@@ -290,7 +293,7 @@ class _ScreenPreviewPainter extends CustomPainter {
     canvas.drawImageRect(image, src, dst, Paint());
 
     // 2. 绘制全局布局边界
-    if (showBorders) {
+    if (showBorders && rootNode != null) {
       final boundsPaint = Paint()
         ..color = const Color(0xff4caf50).withValues(alpha: 0.6)
         ..style = PaintingStyle.stroke
@@ -306,7 +309,7 @@ class _ScreenPreviewPainter extends CustomPainter {
         }
       }
 
-      drawAllNodeBounds(rootNode);
+      drawAllNodeBounds(rootNode!);
     }
 
     // 3. 绘制 Hover 节点

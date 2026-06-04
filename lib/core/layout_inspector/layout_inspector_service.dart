@@ -38,6 +38,16 @@ class LayoutInspectorService {
   final AdbService _adb;
 
   Future<LayoutInspectorSnapshot> capture(String deviceId) async {
+    final (parsedRoot, xmlContent) = await captureLayout(deviceId);
+    final screenshotBytes = await captureScreenshot(deviceId);
+    return LayoutInspectorSnapshot(
+      rootNode: parsedRoot,
+      xmlContent: xmlContent,
+      screenshotBytes: screenshotBytes,
+    );
+  }
+
+  Future<(LayoutNode, String)> captureLayout(String deviceId) async {
     final dumpResult = await _adb.shellArgs(deviceId, [
       'uiautomator',
       'dump',
@@ -57,14 +67,10 @@ class LayoutInspectorService {
       throw const LayoutInspectorException('XML 解析失败或内容为空');
     }
 
-    return LayoutInspectorSnapshot(
-      rootNode: parsedRoot,
-      xmlContent: xmlContent,
-      screenshotBytes: await _captureScreenshot(deviceId),
-    );
+    return (parsedRoot, xmlContent);
   }
 
-  Future<Uint8List> _captureScreenshot(String deviceId) async {
+  Future<Uint8List> captureScreenshot(String deviceId) async {
     try {
       return await _adb.captureScreenshot(deviceId, timeout: _screenshotTimeout);
     } on AdbException catch (e) {

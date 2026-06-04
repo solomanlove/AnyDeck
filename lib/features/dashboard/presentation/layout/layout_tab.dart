@@ -95,7 +95,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
     }
   }
 
-  Future<void> _loadLayoutAndScreenshot({bool clearContent = false}) async {
+  Future<void> _loadLayoutAndScreenshot({bool clearContent = true}) async {
     if (_loading) return;
     final shouldClearContent = clearContent || _rootNode == null;
     setState(() {
@@ -116,10 +116,15 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
     });
 
     try {
-      final snapshot = await ref
-          .read(layoutInspectorServiceProvider)
-          .capture(widget.device.id);
-      final codec = await ui.instantiateImageCodec(snapshot.screenshotBytes);
+      final service = ref.read(layoutInspectorServiceProvider);
+
+      // Start screenshot capture and layout dump in parallel
+      final screenshotFuture = service.captureScreenshot(widget.device.id);
+      final layoutFuture = service.captureLayout(widget.device.id);
+
+      // Await screenshot first
+      final screenshotBytes = await screenshotFuture;
+      final codec = await ui.instantiateImageCodec(screenshotBytes);
       final frameInfo = await codec.getNextFrame();
       final decodedImg = frameInfo.image;
       codec.dispose();
@@ -127,19 +132,27 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
       if (mounted) {
         final oldImage = _decodedImage;
         setState(() {
-          _rootNode = snapshot.rootNode;
           _decodedImage = decodedImg;
-          _xmlContent = snapshot.xmlContent;
-          _rawScreenshotBytes = snapshot.screenshotBytes;
-          _expandedNodes
-            ..clear()
-            ..add(snapshot.rootNode);
-          _expandAll(snapshot.rootNode);
-          _loading = false;
+          _rawScreenshotBytes = screenshotBytes;
         });
         oldImage?.dispose();
       } else {
         decodedImg.dispose();
+        return;
+      }
+
+      // Await layout XML dump second
+      final (parsedRoot, xmlContent) = await layoutFuture;
+      if (mounted) {
+        setState(() {
+          _rootNode = parsedRoot;
+          _xmlContent = xmlContent;
+          _expandedNodes
+            ..clear()
+            ..add(parsedRoot);
+          _expandAll(parsedRoot);
+          _loading = false;
+        });
       }
     } on LayoutInspectorException catch (e) {
       final result = e.result;
@@ -162,6 +175,53 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
         });
       }
     }
+  }
+
+  Widget _buildHierarchyTreePlaceholder() {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 标题栏
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xfff7f9fa),
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  CupertinoIcons.square_stack_3d_up,
+                  size: 18,
+                  color: Colors.blueGrey,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  context.l10n.t('nodeHierarchy'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 树结构展示区（显示 Loading）
+          const Expanded(
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _selectNode(LayoutNode? node) {
@@ -350,20 +410,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading && _rootNode == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(context.l10n.t('dumpingLayout')),
-          ],
-        ),
-      );
-    }
-
-    if (_error != null) {
+    if (_error != null && !_loading) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -389,7 +436,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
       );
     }
 
-    if (_rootNode == null || _decodedImage == null) {
+    if (_rootNode == null && _decodedImage == null && !_loading) {
       return Center(
         child: FilledButton.icon(
           onPressed: _loadLayoutAndScreenshot,
@@ -463,24 +510,26 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
             children: [
               Expanded(
                 flex: _showProperties ? 4 : 6,
-                child: LayoutHierarchyTree(
-                  rootNode: _rootNode!,
-                  loading: _loading,
-                  selectedNode: _selectedNode,
-                  hoveredNode: _hoveredNode,
-                  expandedNodes: _expandedNodes,
-                  onNodeSelected: _selectNode,
-                  onNodeHovered: _hoverNode,
-                  onNodeExpansionChanged: (node, expanded) {
-                    setState(() {
-                      if (expanded) {
-                        _expandedNodes.add(node);
-                      } else {
-                        _expandedNodes.remove(node);
-                      }
-                    });
-                  },
-                ),
+                child: _rootNode == null
+                    ? _buildHierarchyTreePlaceholder()
+                    : LayoutHierarchyTree(
+                        rootNode: _rootNode!,
+                        loading: _loading,
+                        selectedNode: _selectedNode,
+                        hoveredNode: _hoveredNode,
+                        expandedNodes: _expandedNodes,
+                        onNodeSelected: _selectNode,
+                        onNodeHovered: _hoverNode,
+                        onNodeExpansionChanged: (node, expanded) {
+                          setState(() {
+                            if (expanded) {
+                              _expandedNodes.add(node);
+                            } else {
+                              _expandedNodes.remove(node);
+                            }
+                          });
+                        },
+                      ),
               ),
               VerticalDivider(
                 width: 1,
@@ -489,23 +538,27 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
               // 2. 中间截图与选区
               Expanded(
                 flex: _showProperties ? 4 : 6,
-                child: LayoutScreenPreview(
-                  rootNode: _rootNode!,
-                  decodedImage: _decodedImage!,
-                  selectedNode: _selectedNode,
-                  hoveredNode: _hoveredNode,
-                  showBorders: _showBorders,
-                  rotationAngle: _rotationAngle,
-                  transformationController: _transformationController,
-                  onNodeSelected: _selectNode,
-                  onNodeHovered: _hoverNode,
-                  onViewportSizeChanged: (size) {
-                    _lastViewportSize = size;
-                  },
-                  enableClickSelect: _enableClickSelect,
-                  useDp: _useDp,
-                  deviceScale: _deviceLogicalDensity,
-                ),
+                child: _decodedImage == null
+                    ? const Center(
+                        child: CircularProgressIndicator(),
+                      )
+                    : LayoutScreenPreview(
+                        rootNode: _rootNode,
+                        decodedImage: _decodedImage!,
+                        selectedNode: _selectedNode,
+                        hoveredNode: _hoveredNode,
+                        showBorders: _showBorders,
+                        rotationAngle: _rotationAngle,
+                        transformationController: _transformationController,
+                        onNodeSelected: _selectNode,
+                        onNodeHovered: _hoverNode,
+                        onViewportSizeChanged: (size) {
+                          _lastViewportSize = size;
+                        },
+                        enableClickSelect: _enableClickSelect,
+                        useDp: _useDp,
+                        deviceScale: _deviceLogicalDensity,
+                      ),
               ),
               if (_showProperties) ...[
                 VerticalDivider(
