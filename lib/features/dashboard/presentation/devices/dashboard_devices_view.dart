@@ -28,12 +28,10 @@ extension _DeviceListPanelView on _DeviceListPanelState {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildToolbar(context, hasChecked, selectedCount),
                 if (hasChecked) ...[
-                  const SizedBox(height: 12),
                   _buildBatchActionsToolbar(context, items.where((d) => d.isChecked).toList()),
+                  const SizedBox(height: 16),
                 ],
-                const SizedBox(height: 16),
                 _buildTableHeader(context, isCompact, allChecked, hasChecked),
                 const SizedBox(height: 8),
                 if (hasBoundedHeight)
@@ -63,56 +61,6 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       return _sortAscending ? cmp : -cmp;
     });
     return sortedItems;
-  }
-
-  Widget _buildToolbar(
-    BuildContext context,
-    bool hasChecked,
-    int selectedCount,
-  ) {
-    return Row(
-      children: [
-        Text(
-          context.l10n.t('devices'),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const Spacer(),
-        Tooltip(
-          message: context.l10n.t('deleteSelectedDevices'),
-          child: IconButton.filledTonal(
-            icon: const Icon(CupertinoIcons.trash),
-            color: Colors.redAccent,
-            onPressed: hasChecked
-                ? () => _deleteSelectedDevices(context, selectedCount)
-                : null,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Tooltip(
-          message: context.l10n.t('connectTcp'),
-          child: IconButton.filledTonal(
-            icon: const Icon(CupertinoIcons.link),
-            onPressed: () => _showConnectDialog(context),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Tooltip(
-          message: context.l10n.t('pairDeviceTitle'),
-          child: IconButton.filledTonal(
-            icon: const Icon(CupertinoIcons.antenna_radiowaves_left_right),
-            onPressed: () => _showPairingDialog(context),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Tooltip(
-          message: context.l10n.t('refreshDevices'),
-          child: IconButton.filledTonal(
-            icon: const Icon(CupertinoIcons.refresh),
-            onPressed: () => _refreshDevices(context, ref),
-          ),
-        ),
-      ],
-    );
   }
 
   Widget _buildDeviceListContent({

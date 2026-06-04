@@ -85,6 +85,16 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
+                OutlinedButton.icon(
+                  onPressed: checkedDevices.isEmpty ? null : () => _deleteSelectedDevices(context, checkedDevices.length),
+                  icon: const Icon(CupertinoIcons.trash, size: 16),
+                  label: Text(context.l10n.t('deleteSelectedDevices')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
               ],
             ),
           ),

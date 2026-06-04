@@ -95,16 +95,4 @@ extension _DeviceListPanelActions on _DeviceListPanelState {
       await ref.read(deviceRegistryProvider.notifier).setAlias(device.id, name);
     }
   }
-
-  Future<void> _showConnectDialog(BuildContext context) async {
-    await _showConnectDeviceDialog(context, ref);
-  }
-
-  void _showPairingDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const _DevicePairingDialog(),
-    );
-  }
 }

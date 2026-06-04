@@ -59,6 +59,52 @@ class _ContentTitleBar extends ConsumerWidget {
             ),
             const Spacer(),
             IconButton(
+              tooltip: context.l10n.t('connectTcp'),
+              icon: const Icon(CupertinoIcons.link),
+              iconSize: 30,
+              color: const Color(0xff5f6b6e),
+              onPressed: () => _showConnectDeviceDialog(context, ref),
+              style: IconButton.styleFrom(
+                fixedSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: context.l10n.t('pairDeviceTitle'),
+              icon: const Icon(CupertinoIcons.antenna_radiowaves_left_right),
+              iconSize: 30,
+              color: const Color(0xff5f6b6e),
+              onPressed: () => showDialog<void>(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const _DevicePairingDialog(),
+              ),
+              style: IconButton.styleFrom(
+                fixedSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: context.l10n.t('refreshDevices'),
+              icon: const Icon(CupertinoIcons.refresh),
+              iconSize: 30,
+              color: const Color(0xff5f6b6e),
+              onPressed: () => _refreshDevices(context, ref),
+              style: IconButton.styleFrom(
+                fixedSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
               tooltip: context.l10n.t('terminalDir'),
               icon: const Icon(Icons.terminal),
               iconSize: 30,
