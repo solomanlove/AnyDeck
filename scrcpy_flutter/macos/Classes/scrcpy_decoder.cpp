@@ -111,6 +111,11 @@ bool ScrcpyDecoder::ReadExactly(int fd, uint8_t* buf, size_t len) {
         if (!running_) return false;
         ssize_t res = read(fd, buf + total, len - total);
         if (res <= 0) {
+            if (res < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+                // Wait briefly to prevent spinning CPU
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
             return false;
         }
         total += res;
@@ -129,35 +134,67 @@ bool ScrcpyDecoder::ConnectSockets() {
         return false;
     }
 
+    struct timeval tv;
+    tv.tv_sec = 1; // 1 second timeout
+    tv.tv_usec = 0;
+
     std::cout << "[ScrcpyDecoder] Connecting to video socket on " << host_ << ":" << port_ << "..." << std::endl;
     int video_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (video_fd < 0) {
         std::cout << "[ScrcpyDecoder] Failed to create video socket. errno = " << errno << std::endl;
         return false;
     }
+    setsockopt(video_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+    setsockopt(video_fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof(tv));
 
-    if (connect(video_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+    {
+        std::lock_guard<std::mutex> lock(socket_mutex_);
+        if (!running_) {
+            close(video_fd);
+            return false;
+        }
+        video_socket_ = video_fd;
+    }
+
+    if (connect(video_socket_, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         std::cout << "[ScrcpyDecoder] Failed to connect video socket. errno = " << errno << std::endl;
-        close(video_fd);
+        std::lock_guard<std::mutex> lock(socket_mutex_);
+        if (video_socket_ != -1) {
+            close(video_socket_);
+            video_socket_ = -1;
+        }
         return false;
     }
     std::cout << "[ScrcpyDecoder] Video socket connected!" << std::endl;
 
-    int audio_fd = -1;
     if (audio_enabled_) {
         usleep(50000); // 50ms delay
         std::cout << "[ScrcpyDecoder] Connecting to audio socket..." << std::endl;
-        audio_fd = socket(AF_INET, SOCK_STREAM, 0);
+        int audio_fd = socket(AF_INET, SOCK_STREAM, 0);
         if (audio_fd < 0) {
             std::cout << "[ScrcpyDecoder] Failed to create audio socket. errno = " << errno << std::endl;
-            close(video_fd);
+            std::lock_guard<std::mutex> lock(socket_mutex_);
+            if (video_socket_ != -1) { close(video_socket_); video_socket_ = -1; }
             return false;
         }
+        setsockopt(audio_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+        setsockopt(audio_fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof(tv));
 
-        if (connect(audio_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        {
+            std::lock_guard<std::mutex> lock(socket_mutex_);
+            if (!running_) {
+                if (video_socket_ != -1) { close(video_socket_); video_socket_ = -1; }
+                close(audio_fd);
+                return false;
+            }
+            audio_socket_ = audio_fd;
+        }
+
+        if (connect(audio_socket_, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
             std::cout << "[ScrcpyDecoder] Failed to connect audio socket. errno = " << errno << std::endl;
-            close(video_fd);
-            close(audio_fd);
+            std::lock_guard<std::mutex> lock(socket_mutex_);
+            if (video_socket_ != -1) { close(video_socket_); video_socket_ = -1; }
+            if (audio_socket_ != -1) { close(audio_socket_); audio_socket_ = -1; }
             return false;
         }
         std::cout << "[ScrcpyDecoder] Audio socket connected!" << std::endl;
@@ -168,26 +205,34 @@ bool ScrcpyDecoder::ConnectSockets() {
     int control_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (control_fd < 0) {
         std::cout << "[ScrcpyDecoder] Failed to create control socket. errno = " << errno << std::endl;
-        close(video_fd);
-        if (audio_fd != -1) close(audio_fd);
+        std::lock_guard<std::mutex> lock(socket_mutex_);
+        if (video_socket_ != -1) { close(video_socket_); video_socket_ = -1; }
+        if (audio_socket_ != -1) { close(audio_socket_); audio_socket_ = -1; }
         return false;
     }
-
-    if (connect(control_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        std::cout << "[ScrcpyDecoder] Failed to connect control socket. errno = " << errno << std::endl;
-        close(video_fd);
-        if (audio_fd != -1) close(audio_fd);
-        close(control_fd);
-        return false;
-    }
-    std::cout << "[ScrcpyDecoder] Control socket connected!" << std::endl;
+    setsockopt(control_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+    setsockopt(control_fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof(tv));
 
     {
         std::lock_guard<std::mutex> lock(socket_mutex_);
-        video_socket_ = video_fd;
-        audio_socket_ = audio_fd;
+        if (!running_) {
+            if (video_socket_ != -1) { close(video_socket_); video_socket_ = -1; }
+            if (audio_socket_ != -1) { close(audio_socket_); audio_socket_ = -1; }
+            close(control_fd);
+            return false;
+        }
         control_socket_ = control_fd;
     }
+
+    if (connect(control_socket_, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        std::cout << "[ScrcpyDecoder] Failed to connect control socket. errno = " << errno << std::endl;
+        std::lock_guard<std::mutex> lock(socket_mutex_);
+        if (video_socket_ != -1) { close(video_socket_); video_socket_ = -1; }
+        if (audio_socket_ != -1) { close(audio_socket_); audio_socket_ = -1; }
+        if (control_socket_ != -1) { close(control_socket_); control_socket_ = -1; }
+        return false;
+    }
+    std::cout << "[ScrcpyDecoder] Control socket connected!" << std::endl;
 
     return true;
 }
