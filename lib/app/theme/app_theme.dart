@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// 基于同一个种子色构建 Material 3 的浅色和深色主题。
 ThemeData buildAppTheme(Brightness brightness) {
-  const seed = Color(0xff2563eb);
+  const seed = Color(0xff09c47c);
   final colorScheme = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: brightness,
@@ -44,6 +44,50 @@ ThemeData buildAppTheme(Brightness brightness) {
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       isDense: true,
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        foregroundColor: isDark ? Colors.white : const Color(0xff1f2937),
+        backgroundColor: isDark ? const Color(0xff1e293b) : Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
+          ),
+        ),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        foregroundColor: Colors.white,
+        backgroundColor: colorScheme.primary,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colorScheme.primary,
+        side: BorderSide(color: colorScheme.primary),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: colorScheme.primary,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
     ),
   );
 }

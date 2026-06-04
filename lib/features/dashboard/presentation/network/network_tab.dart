@@ -243,12 +243,12 @@ class NetworkTab extends ConsumerWidget {
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xff2dd4bf).withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.swap_horiz,
-                color: Color(0xff2dd4bf),
+                color: Theme.of(context).colorScheme.primary,
                 size: 20,
               ),
             ),
@@ -354,15 +354,15 @@ class NetworkTab extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                       decoration: BoxDecoration(
-                        color: const Color(0xff2dd4bf).withValues(alpha: 0.15),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Auto-apply',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xff0d9488),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -404,8 +404,8 @@ class NetworkTab extends ConsumerWidget {
                   icon: const Icon(CupertinoIcons.play_arrow_solid, size: 12),
                   label: Text(context.l10n.t('apply')),
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xff0d9488),
-                    backgroundColor: const Color(0xff2dd4bf).withValues(alpha: 0.1),
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),

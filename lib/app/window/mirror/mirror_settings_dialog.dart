@@ -39,9 +39,9 @@ Future<void> launchExternalMirror({
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('已启动系统原生投屏，音频已同步转发到电脑播放'),
-          backgroundColor: Color(0xff2ec46b),
+        SnackBar(
+          content: const Text('已启动系统原生投屏，音频已同步转发到电脑播放'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -177,7 +177,7 @@ void showMirrorSettingsDialog({
                       Text('音频转发 (Audio Forwarding)', style: titleStyle),
                       Switch(
                         value: selectedAudio,
-                        activeTrackColor: const Color(0xff2ec46b),
+                        activeTrackColor: Theme.of(context).colorScheme.primary,
                         onChanged: (val) {
                           setDialogState(() => selectedAudio = val);
                         },
@@ -237,11 +237,8 @@ void showMirrorSettingsDialog({
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff2ec46b),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
                 ),
                 onPressed: () async {
                   Navigator.of(context).pop();

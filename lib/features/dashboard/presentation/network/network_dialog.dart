@@ -43,7 +43,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xff2dd4bf); // Mint / Cyan color from image
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
