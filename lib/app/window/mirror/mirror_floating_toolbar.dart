@@ -12,6 +12,7 @@ import '../../../core/device_actions/device_action_service.dart';
 import '../../../core/scrcpy/screen_record_provider.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
+import '../../../core/scrcpy/scrcpy_keycode_helper.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../app/l10n/app_localizations.dart';
 
@@ -20,13 +21,18 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
     super.key,
     required this.deviceId,
     required this.windowId,
+    required this.isFullScreen,
+    required this.onToggleFullScreen,
   });
 
   final String deviceId;
   final int windowId;
+  final bool isFullScreen;
+  final VoidCallback onToggleFullScreen;
 
   @override
-  ConsumerState<MirrorFloatingToolbar> createState() => _MirrorFloatingToolbarState();
+  ConsumerState<MirrorFloatingToolbar> createState() =>
+      _MirrorFloatingToolbarState();
 }
 
 class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
@@ -66,20 +72,24 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     buffer.setUint8(0, 10); // CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE
     buffer.setUint8(1, powerOn ? 2 : 0); // 2 = normal (on), 0 = off
     final message = buffer.buffer.asUint8List();
-    return ScrcpyFlutter.sendControl(deviceId: deviceId, controlMessage: message);
+    return ScrcpyFlutter.sendControl(
+      deviceId: deviceId,
+      controlMessage: message,
+    );
   }
-
-
 
   Future<void> _takeScreenshot(BuildContext context, String deviceId) async {
     try {
-      final bytes = await ref.read(adbServiceProvider).captureScreenshot(deviceId);
-      
+      final bytes = await ref
+          .read(adbServiceProvider)
+          .captureScreenshot(deviceId);
+
       final location = await getSaveLocation(
         acceptedTypeGroups: [
           const XTypeGroup(label: 'PNG Image', extensions: ['png']),
         ],
-        suggestedName: 'screenshot_${deviceId}_${DateTime.now().millisecondsSinceEpoch}.png',
+        suggestedName:
+            'screenshot_${deviceId}_${DateTime.now().millisecondsSinceEpoch}.png',
       );
       if (location == null) return;
 
@@ -110,7 +120,9 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
 
   Future<void> _toggleScreenRecording(BuildContext context) async {
     final recordState = ref.read(screenRecordProvider(widget.deviceId));
-    final recordNotifier = ref.read(screenRecordProvider(widget.deviceId).notifier);
+    final recordNotifier = ref.read(
+      screenRecordProvider(widget.deviceId).notifier,
+    );
 
     if (recordState.isRecording) {
       try {
@@ -121,28 +133,35 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
           acceptedTypeGroups: [
             const XTypeGroup(label: 'MP4 Video', extensions: ['mp4']),
           ],
-          suggestedName: 'screenrecord_${widget.deviceId}_${DateTime.now().millisecondsSinceEpoch}.mp4',
+          suggestedName:
+              'screenrecord_${widget.deviceId}_${DateTime.now().millisecondsSinceEpoch}.mp4',
         );
 
         if (location != null) {
-          final pullResult = await ref.read(fileManagerServiceProvider).pull(
-            widget.deviceId,
-            remotePath,
-            location.path,
-          );
+          final pullResult = await ref
+              .read(fileManagerServiceProvider)
+              .pull(widget.deviceId, remotePath, location.path);
 
           if (pullResult.isSuccess) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(context.l10n.t('recordSuccess').replaceAll('{path}', location.path)),
+                  content: Text(
+                    context.l10n
+                        .t('recordSuccess')
+                        .replaceAll('{path}', location.path),
+                  ),
                   backgroundColor: const Color(0xff09c47c),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             }
           } else {
-            throw Exception(pullResult.stderr.isNotEmpty ? pullResult.stderr : 'File transfer failed');
+            throw Exception(
+              pullResult.stderr.isNotEmpty
+                  ? pullResult.stderr
+                  : 'File transfer failed',
+            );
           }
         }
       } catch (e) {
@@ -157,10 +176,9 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         }
       } finally {
         try {
-          await ref.read(fileManagerServiceProvider).delete(
-            widget.deviceId,
-            '/sdcard/adb_screenrecord_temp.mp4',
-          );
+          await ref
+              .read(fileManagerServiceProvider)
+              .delete(widget.deviceId, '/sdcard/adb_screenrecord_temp.mp4');
         } catch (_) {}
       }
     } else {
@@ -198,17 +216,24 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final isDark = Theme.of(context).brightness == Brightness.dark;
-            final cardColor = isDark ? const Color(0xff1e1e1e) : const Color(0xffffffff);
-            final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                );
+            final cardColor = isDark
+                ? const Color(0xff1e1e1e)
+                : const Color(0xffffffff);
+            final titleStyle = Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold);
 
             return AlertDialog(
               backgroundColor: cardColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Row(
                 children: [
-                  Icon(Icons.settings, color: isDark ? Colors.white70 : Colors.black87),
+                  Icon(
+                    Icons.settings,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
                   const SizedBox(width: 8),
                   const Text('投屏画质设置'),
                 ],
@@ -225,11 +250,26 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                       isExpanded: true,
                       dropdownColor: cardColor,
                       items: const [
-                        DropdownMenuItem(value: 2000000, child: Text('2 Mbps (极低/流畅)')),
-                        DropdownMenuItem(value: 4000000, child: Text('4 Mbps (低)')),
-                        DropdownMenuItem(value: 8000000, child: Text('8 Mbps (默认/推荐)')),
-                        DropdownMenuItem(value: 16000000, child: Text('16 Mbps (超清)')),
-                        DropdownMenuItem(value: 32000000, child: Text('32 Mbps (极清/高带宽)')),
+                        DropdownMenuItem(
+                          value: 2000000,
+                          child: Text('2 Mbps (极低/流畅)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 4000000,
+                          child: Text('4 Mbps (低)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 8000000,
+                          child: Text('8 Mbps (默认/推荐)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 16000000,
+                          child: Text('16 Mbps (超清)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 32000000,
+                          child: Text('32 Mbps (极清/高带宽)'),
+                        ),
                       ],
                       onChanged: (val) {
                         if (val != null) {
@@ -246,9 +286,18 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                       dropdownColor: cardColor,
                       items: const [
                         DropdownMenuItem(value: 0, child: Text('原始大小 (无限制)')),
-                        DropdownMenuItem(value: 720, child: Text('720p (1280x720)')),
-                        DropdownMenuItem(value: 1080, child: Text('1080p (1920x1080, 默认)')),
-                        DropdownMenuItem(value: 1440, child: Text('1440p (2K / 2560x1440)')),
+                        DropdownMenuItem(
+                          value: 720,
+                          child: Text('720p (1280x720)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 1080,
+                          child: Text('1080p (1920x1080, 默认)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 1440,
+                          child: Text('1440p (2K / 2560x1440)'),
+                        ),
                       ],
                       onChanged: (val) {
                         if (val != null) {
@@ -273,18 +322,30 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                     const SizedBox(height: 6),
                     const Text(
                       '注意：当前内嵌投屏窗口因底层限制无法直接播放音频。如需使用音频转发到电脑播放，请使用外部原生投屏。',
-                      style: TextStyle(color: Colors.orangeAccent, fontSize: 11, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: Colors.orangeAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xff2ec46b)),
                         foregroundColor: const Color(0xff2ec46b),
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       icon: const Icon(Icons.open_in_new, size: 14),
-                      label: const Text('启动外部原生投屏 (支持音频播放)', style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        '启动外部原生投屏 (支持音频播放)',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       onPressed: () {
                         Navigator.of(context).pop();
                         _launchExternalMirror(context);
@@ -307,16 +368,24 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xff2ec46b),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   onPressed: () async {
                     Navigator.of(context).pop();
-                    
+
                     // 保存配置
-                    await ref.read(appSettingsProvider.notifier).setMirrorVideoBitrate(selectedBitrate);
-                    await ref.read(appSettingsProvider.notifier).setMirrorMaxSize(selectedMaxSize);
-                    await ref.read(appSettingsProvider.notifier).setMirrorAudioEnabled(selectedAudio);
- 
+                    await ref
+                        .read(appSettingsProvider.notifier)
+                        .setMirrorVideoBitrate(selectedBitrate);
+                    await ref
+                        .read(appSettingsProvider.notifier)
+                        .setMirrorMaxSize(selectedMaxSize);
+                    await ref
+                        .read(appSettingsProvider.notifier)
+                        .setMirrorAudioEnabled(selectedAudio);
+
                     // 提示并重启
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -327,9 +396,15 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                         ),
                       );
                     }
- 
+
                     // 自动重连投屏
-                    await ref.read(activeEmbeddedMirrorProvider(widget.deviceId).notifier).restartMirroring();
+                    await ref
+                        .read(
+                          activeEmbeddedMirrorProvider(
+                            widget.deviceId,
+                          ).notifier,
+                        )
+                        .restartMirroring();
                   },
                   child: const Text('保存并应用'),
                 ),
@@ -353,14 +428,15 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     );
 
     // 2. 停止内嵌投屏
-    await ref.read(activeEmbeddedMirrorProvider(widget.deviceId).notifier).forceStop();
+    await ref
+        .read(activeEmbeddedMirrorProvider(widget.deviceId).notifier)
+        .forceStop();
 
     // 3. 启动外部投屏
     try {
-      final session = await ref.read(scrcpyServiceProvider).start(
-        deviceId: widget.deviceId,
-        options: options,
-      );
+      final session = await ref
+          .read(scrcpyServiceProvider)
+          .start(deviceId: widget.deviceId, options: options);
       ref.read(scrcpySessionsProvider.notifier).add(session);
 
       if (context.mounted) {
@@ -399,7 +475,13 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
       child: _isExpanded
-          ? _buildExpandedToolbar(context, actions, isDark, isScreenOff, recordState)
+          ? _buildExpandedToolbar(
+              context,
+              actions,
+              isDark,
+              isScreenOff,
+              recordState,
+            )
           : _buildCollapsedToolbar(context, isDark),
     );
   }
@@ -474,172 +556,293 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
       onTap: () {}, // 吸收点击事件，防止穿透
       child: Container(
         constraints: const BoxConstraints(maxHeight: 46),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: hoverBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(CupertinoIcons.chevron_up),
-            iconSize: 18,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            onPressed: () => setState(() => _isExpanded = false),
-            tooltip: '收起工具栏',
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  // 1. Always On Top
-                  _ToolbarButton(
-                    icon: Icon(
-                      _isAlwaysOnTop ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
-                      color: _isAlwaysOnTop ? Colors.orange : (isDark ? Colors.white70 : Colors.black87),
-                    ),
-                    tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
-                    onPressed: _toggleAlwaysOnTop,
-                  ),
-                  // 2. Settings
-                  _ToolbarButton(
-                    icon: Icon(CupertinoIcons.settings, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: '投屏画质设置',
-                    onPressed: () => _showSettingsDialog(context),
-                  ),
-                  // 2.5. Launch External Mirror (System Native)
-                  _ToolbarButton(
-                    icon: Icon(Icons.open_in_new, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: '开启系统原生投屏 (支持音频/电脑播放)',
-                    onPressed: () => _launchExternalMirror(context),
-                  ),
-                  const _VerticalDivider(),
-                  // 3. Power Key
-                  _ToolbarButton(
-                    icon: Icon(CupertinoIcons.power, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('power'),
-                    onPressed: () => actions.keyEvent(widget.deviceId, 26),
-                  ),
-                  // 4. Screen Off/On
-                  _ToolbarButton(
-                    icon: Icon(
-                      isScreenOff ? Icons.mobile_off : Icons.smartphone,
-                      color: isScreenOff ? Colors.orange : (isDark ? Colors.white70 : Colors.black87),
-                    ),
-                    tooltip: context.l10n.t('screenPowerToggle'),
-                    onPressed: () async {
-                      final nextState = !isScreenOff;
-                      final success = await _setScreenPowerMode(widget.deviceId, !nextState);
-                      if (success) {
-                        ref.read(screenPowerOffProvider(widget.deviceId).notifier).setOff(nextState);
-                      }
-                    },
-                  ),
-                  const _VerticalDivider(),
-                  // 5. Volume Up/Down
-                  _ToolbarButton(
-                    icon: Icon(CupertinoIcons.volume_up, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('volumeUp'),
-                    onPressed: () => actions.volumeUp(widget.deviceId),
-                  ),
-                  _ToolbarButton(
-                    icon: Icon(CupertinoIcons.volume_down, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('volumeDown'),
-                    onPressed: () => actions.volumeDown(widget.deviceId),
-                  ),
-                  // 6. Notifications
-                  _ToolbarButton(
-                    icon: Icon(CupertinoIcons.bell, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('notificationBar'),
-                    onPressed: () => actions.openNotificationBar(widget.deviceId),
-                  ),
-                  // 7. Focus Window
-                  _ToolbarButton(
-                    icon: Icon(CupertinoIcons.viewfinder, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('focus'),
-                    onPressed: () async {
-                      final res = await actions.currentFocus(widget.deviceId);
-                      if (context.mounted) {
-                        showDialog<void>(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text('当前焦点窗口'),
-                            content: SelectableText(res.stdout),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('确定'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const _VerticalDivider(),
-                  // 8. Screenshot
-                  _ToolbarButton(
-                    icon: Icon(CupertinoIcons.camera, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('screenshot'),
-                    onPressed: () => _takeScreenshot(context, widget.deviceId),
-                  ),
-                  // 9. Screen Record
-                  _ToolbarButton(
-                    icon: Icon(
-                      recordState.isRecording ? CupertinoIcons.stop : CupertinoIcons.videocam,
-                      color: recordState.isRecording ? Colors.red : (isDark ? Colors.white70 : Colors.black87),
-                    ),
-                    tooltip: recordState.isRecording ? context.l10n.t('stopRecord') : context.l10n.t('startRecord'),
-                    isLoading: recordState.isStopping,
-                    badge: recordState.isRecording ? const _PulsingRecordBadge() : null,
-                    onPressed: () => _toggleScreenRecording(context),
-                  ),
-                  if (recordState.isRecording) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, right: 8),
-                      child: Text(
-                        _formatDuration(recordState.durationSeconds),
-                        style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: hoverBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(CupertinoIcons.chevron_up),
+              iconSize: 18,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              onPressed: () => setState(() => _isExpanded = false),
+              tooltip: '收起工具栏',
+            ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    // 1. Always On Top
+                    _ToolbarButton(
+                      icon: Icon(
+                        _isAlwaysOnTop
+                            ? CupertinoIcons.pin_fill
+                            : CupertinoIcons.pin,
+                        color: _isAlwaysOnTop
+                            ? Colors.orange
+                            : (isDark ? Colors.white70 : Colors.black87),
                       ),
+                      tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
+                      onPressed: _toggleAlwaysOnTop,
+                    ),
+                    // 1.5 Full Screen
+                    _ToolbarButton(
+                      icon: Icon(
+                        widget.isFullScreen
+                            ? CupertinoIcons.fullscreen_exit
+                            : CupertinoIcons.fullscreen,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: widget.isFullScreen ? '退出全屏' : '全屏显示',
+                      onPressed: widget.onToggleFullScreen,
+                    ),
+                    // 2. Settings
+                    _ToolbarButton(
+                      icon: Icon(
+                        CupertinoIcons.settings,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: '投屏画质设置',
+                      onPressed: () => _showSettingsDialog(context),
+                    ),
+                    // 2.5. Launch External Mirror (System Native)
+                    _ToolbarButton(
+                      icon: Icon(
+                        Icons.open_in_new,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: '开启系统原生投屏 (支持音频/电脑播放)',
+                      onPressed: () => _launchExternalMirror(context),
+                    ),
+                    const _VerticalDivider(),
+                    // 3. Power Key
+                    _ToolbarButton(
+                      icon: Icon(
+                        CupertinoIcons.power,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: context.l10n.t('power'),
+                      onPressed: () => actions.keyEvent(widget.deviceId, 26),
+                    ),
+                    // 4. Screen Off/On
+                    _ToolbarButton(
+                      icon: Icon(
+                        isScreenOff ? Icons.mobile_off : Icons.smartphone,
+                        color: isScreenOff
+                            ? Colors.orange
+                            : (isDark ? Colors.white70 : Colors.black87),
+                      ),
+                      tooltip: context.l10n.t('screenPowerToggle'),
+                      onPressed: () async {
+                        final nextState = !isScreenOff;
+                        final success = await _setScreenPowerMode(
+                          widget.deviceId,
+                          !nextState,
+                        );
+                        if (success) {
+                          ref
+                              .read(
+                                screenPowerOffProvider(
+                                  widget.deviceId,
+                                ).notifier,
+                              )
+                              .setOff(nextState);
+                        }
+                      },
+                    ),
+                    const _VerticalDivider(),
+                    // 5. Volume Up/Down
+                    _ToolbarButton(
+                      icon: Icon(
+                        CupertinoIcons.volume_up,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: context.l10n.t('volumeUp'),
+                      onPressed: () => actions.volumeUp(widget.deviceId),
+                    ),
+                    _ToolbarButton(
+                      icon: Icon(
+                        CupertinoIcons.volume_down,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: context.l10n.t('volumeDown'),
+                      onPressed: () => actions.volumeDown(widget.deviceId),
+                    ),
+                    // 6. Notifications
+                    _ToolbarButton(
+                      icon: Icon(
+                        CupertinoIcons.bell,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: context.l10n.t('notificationBar'),
+                      onPressed: () =>
+                          actions.openNotificationBar(widget.deviceId),
+                    ),
+                    // 7. Focus Window
+                    _ToolbarButton(
+                      icon: Icon(
+                        CupertinoIcons.scope,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: context.l10n.t('focus'),
+                      onPressed: () async {
+                        final res = await actions.currentFocus(widget.deviceId);
+                        if (context.mounted) {
+                          showDialog<void>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('当前焦点窗口'),
+                              content: SelectableText(res.stdout),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('确定'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    // Clipboard Input Text T
+                    _ToolbarButton(
+                      icon: Text(
+                        'T',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                      tooltip: '获取剪切板并输入文本',
+                      onPressed: () async {
+                        final clipboardData = await Clipboard.getData(
+                          Clipboard.kTextPlain,
+                        );
+                        if (clipboardData != null &&
+                            clipboardData.text != null &&
+                            clipboardData.text!.isNotEmpty) {
+                          final text = clipboardData.text!;
+                          final message =
+                              ScrcpyKeycodeHelper.serializeTextEvent(text);
+                          final success = await ScrcpyFlutter.sendControl(
+                            deviceId: widget.deviceId,
+                            controlMessage: message,
+                          );
+                          if (!success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('发送剪切板文本失败，请确保投屏运行中'),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('剪切板为空或获取失败'),
+                                backgroundColor: Colors.orange,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    const _VerticalDivider(),
+                    // 8. Screenshot
+                    _ToolbarButton(
+                      icon: Icon(
+                        CupertinoIcons.camera,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: context.l10n.t('screenshot'),
+                      onPressed: () =>
+                          _takeScreenshot(context, widget.deviceId),
+                    ),
+                    // 9. Screen Record
+                    _ToolbarButton(
+                      icon: Icon(
+                        recordState.isRecording
+                            ? CupertinoIcons.stop
+                            : CupertinoIcons.videocam,
+                        color: recordState.isRecording
+                            ? Colors.red
+                            : (isDark ? Colors.white70 : Colors.black87),
+                      ),
+                      tooltip: recordState.isRecording
+                          ? context.l10n.t('stopRecord')
+                          : context.l10n.t('startRecord'),
+                      isLoading: recordState.isStopping,
+                      badge: recordState.isRecording
+                          ? const _PulsingRecordBadge()
+                          : null,
+                      onPressed: () => _toggleScreenRecording(context),
+                    ),
+                    if (recordState.isRecording) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, right: 8),
+                        child: Text(
+                          _formatDuration(recordState.durationSeconds),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const _VerticalDivider(),
+
+                    // 11. Navigation Bar
+                    _ToolbarButton(
+                      icon: Icon(
+                        Icons.chevron_left,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: context.l10n.t('back'),
+                      onPressed: () => actions.keyEvent(widget.deviceId, 4),
+                    ),
+                    _ToolbarButton(
+                      icon: Icon(
+                        Icons.radio_button_unchecked,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: context.l10n.t('home'),
+                      onPressed: () => actions.keyEvent(widget.deviceId, 3),
+                    ),
+                    _ToolbarButton(
+                      icon: Icon(
+                        Icons.crop_square,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      tooltip: context.l10n.t('menuKey'),
+                      onPressed: () => actions.keyEvent(widget.deviceId, 187),
                     ),
                   ],
-                  const _VerticalDivider(),
-
-                  // 11. Navigation Bar
-                  _ToolbarButton(
-                    icon: Icon(Icons.chevron_left, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('back'),
-                    onPressed: () => actions.keyEvent(widget.deviceId, 4),
-                  ),
-                  _ToolbarButton(
-                    icon: Icon(Icons.radio_button_unchecked, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('home'),
-                    onPressed: () => actions.keyEvent(widget.deviceId, 3),
-                  ),
-                  _ToolbarButton(
-                    icon: Icon(Icons.crop_square, color: isDark ? Colors.white70 : Colors.black87),
-                    tooltip: context.l10n.t('menuKey'),
-                    onPressed: () => actions.keyEvent(widget.deviceId, 187),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ));
+    );
   }
 }
 
@@ -650,7 +853,8 @@ class _PulsingRecordBadge extends StatefulWidget {
   State<_PulsingRecordBadge> createState() => _PulsingRecordBadgeState();
 }
 
-class _PulsingRecordBadgeState extends State<_PulsingRecordBadge> with SingleTickerProviderStateMixin {
+class _PulsingRecordBadgeState extends State<_PulsingRecordBadge>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -732,10 +936,7 @@ class _ToolbarButtonState extends State<_ToolbarButton> {
               IconButton(
                 iconSize: 18,
                 padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(
-                  minWidth: 28,
-                  minHeight: 28,
-                ),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 style: IconButton.styleFrom(
                   backgroundColor: _isHovered ? hoverBg : Colors.transparent,
                   shape: RoundedRectangleBorder(
@@ -746,19 +947,13 @@ class _ToolbarButtonState extends State<_ToolbarButton> {
                     ? const SizedBox(
                         width: 14,
                         height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : widget.icon,
                 onPressed: widget.isLoading ? null : widget.onPressed,
               ),
               if (widget.badge != null)
-                Positioned(
-                  top: 2,
-                  right: 2,
-                  child: widget.badge!,
-                ),
+                Positioned(top: 2, right: 2, child: widget.badge!),
             ],
           ),
         ),

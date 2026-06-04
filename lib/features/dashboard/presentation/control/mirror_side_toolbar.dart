@@ -15,20 +15,28 @@ class MirrorSideToolbar extends ConsumerWidget {
     buffer.setUint8(0, 10); // CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE
     buffer.setUint8(1, powerOn ? 2 : 0); // 2 = normal (on), 0 = off
     final message = buffer.buffer.asUint8List();
-    return ScrcpyFlutter.sendControl(deviceId: deviceId, controlMessage: message);
+    return ScrcpyFlutter.sendControl(
+      deviceId: deviceId,
+      controlMessage: message,
+    );
   }
 
-
-
-  Future<void> _takeScreenshot(BuildContext context, WidgetRef ref, String deviceId) async {
+  Future<void> _takeScreenshot(
+    BuildContext context,
+    WidgetRef ref,
+    String deviceId,
+  ) async {
     try {
-      final bytes = await ref.read(adbServiceProvider).captureScreenshot(deviceId);
-      
+      final bytes = await ref
+          .read(adbServiceProvider)
+          .captureScreenshot(deviceId);
+
       final location = await getSaveLocation(
         acceptedTypeGroups: [
           const XTypeGroup(label: 'PNG Image', extensions: ['png']),
         ],
-        suggestedName: 'screenshot_${deviceId}_${DateTime.now().millisecondsSinceEpoch}.png',
+        suggestedName:
+            'screenshot_${deviceId}_${DateTime.now().millisecondsSinceEpoch}.png',
       );
       if (location == null) return;
 
@@ -57,7 +65,10 @@ class MirrorSideToolbar extends ConsumerWidget {
     }
   }
 
-  Future<void> _toggleScreenRecording(BuildContext context, WidgetRef ref) async {
+  Future<void> _toggleScreenRecording(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final recordState = ref.read(screenRecordProvider(deviceId));
     final recordNotifier = ref.read(screenRecordProvider(deviceId).notifier);
 
@@ -70,28 +81,35 @@ class MirrorSideToolbar extends ConsumerWidget {
           acceptedTypeGroups: [
             const XTypeGroup(label: 'MP4 Video', extensions: ['mp4']),
           ],
-          suggestedName: 'screenrecord_${deviceId}_${DateTime.now().millisecondsSinceEpoch}.mp4',
+          suggestedName:
+              'screenrecord_${deviceId}_${DateTime.now().millisecondsSinceEpoch}.mp4',
         );
 
         if (location != null) {
-          final pullResult = await ref.read(fileManagerServiceProvider).pull(
-            deviceId,
-            remotePath,
-            location.path,
-          );
+          final pullResult = await ref
+              .read(fileManagerServiceProvider)
+              .pull(deviceId, remotePath, location.path);
 
           if (pullResult.isSuccess) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(context.l10n.t('recordSuccess').replaceAll('{path}', location.path)),
+                  content: Text(
+                    context.l10n
+                        .t('recordSuccess')
+                        .replaceAll('{path}', location.path),
+                  ),
                   backgroundColor: const Color(0xff09c47c),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             }
           } else {
-            throw Exception(pullResult.stderr.isNotEmpty ? pullResult.stderr : 'File transfer failed');
+            throw Exception(
+              pullResult.stderr.isNotEmpty
+                  ? pullResult.stderr
+                  : 'File transfer failed',
+            );
           }
         }
       } catch (e) {
@@ -106,10 +124,9 @@ class MirrorSideToolbar extends ConsumerWidget {
         }
       } finally {
         try {
-          await ref.read(fileManagerServiceProvider).delete(
-            deviceId,
-            '/sdcard/adb_screenrecord_temp.mp4',
-          );
+          await ref
+              .read(fileManagerServiceProvider)
+              .delete(deviceId, '/sdcard/adb_screenrecord_temp.mp4');
         } catch (_) {}
       }
     } else {
@@ -146,16 +163,16 @@ class MirrorSideToolbar extends ConsumerWidget {
     );
     final deviceName = matchedDevice.displayName;
 
-    await ref
-        .read(activeEmbeddedMirrorProvider(deviceId).notifier)
-        .forceStop();
+    await ref.read(activeEmbeddedMirrorProvider(deviceId).notifier).forceStop();
 
     try {
-      final window = await DesktopMultiWindow.createWindow(jsonEncode({
-        'type': 'mirror',
-        'deviceId': deviceId,
-        'deviceName': deviceName,
-      }));
+      final window = await DesktopMultiWindow.createWindow(
+        jsonEncode({
+          'type': 'mirror',
+          'deviceId': deviceId,
+          'deviceName': deviceName,
+        }),
+      );
       await window.setFrame(const Offset(100, 100) & const Size(480, 800));
       await window.center();
       await window.setTitle('投屏 - $deviceName');
@@ -188,10 +205,9 @@ class MirrorSideToolbar extends ConsumerWidget {
         noAudio: !settings.mirrorAudioEnabled,
       );
 
-      final session = await ref.read(scrcpyServiceProvider).start(
-        deviceId: deviceId,
-        options: options,
-      );
+      final session = await ref
+          .read(scrcpyServiceProvider)
+          .start(deviceId: deviceId, options: options);
       ref.read(scrcpySessionsProvider.notifier).add(session);
 
       if (context.mounted) {
@@ -251,12 +267,18 @@ class MirrorSideToolbar extends ConsumerWidget {
         children: [
           if (!isStandalone) ...[
             _ToolbarButton(
-              icon: Icon(Icons.open_in_new, color: isDark ? Colors.white70 : Colors.black87),
+              icon: Icon(
+                Icons.open_in_new,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
               tooltip: '独立窗口显示',
               onPressed: () => _openStandaloneMirror(context, ref, deviceId),
             ),
             _ToolbarButton(
-              icon: Icon(Icons.launch, color: isDark ? Colors.white70 : Colors.black87),
+              icon: Icon(
+                Icons.launch,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
               tooltip: '开启系统原生投屏(支持音频)',
               onPressed: () => _openExternalMirror(context, ref, deviceId),
             ),
@@ -264,7 +286,10 @@ class MirrorSideToolbar extends ConsumerWidget {
           ],
           // 1. Power key
           _ToolbarButton(
-            icon: Icon(CupertinoIcons.power, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              CupertinoIcons.power,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: context.l10n.t('power'),
             onPressed: () => actions.keyEvent(deviceId, 26),
           ),
@@ -272,33 +297,46 @@ class MirrorSideToolbar extends ConsumerWidget {
           _ToolbarButton(
             icon: Icon(
               isScreenOff ? Icons.mobile_off : Icons.smartphone,
-              color: isScreenOff ? Colors.orange : (isDark ? Colors.white70 : Colors.black87),
+              color: isScreenOff
+                  ? Colors.orange
+                  : (isDark ? Colors.white70 : Colors.black87),
             ),
             tooltip: context.l10n.t('screenPowerToggle'),
             onPressed: () async {
               final nextState = !isScreenOff;
               final success = await _setScreenPowerMode(deviceId, !nextState);
               if (success) {
-                ref.read(screenPowerOffProvider(deviceId).notifier).setOff(nextState);
+                ref
+                    .read(screenPowerOffProvider(deviceId).notifier)
+                    .setOff(nextState);
               }
             },
           ),
           const Divider(height: 12, indent: 8, endIndent: 8),
           // 3. Vol Up
           _ToolbarButton(
-            icon: Icon(CupertinoIcons.volume_up, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              CupertinoIcons.volume_up,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: context.l10n.t('volumeUp'),
             onPressed: () => actions.volumeUp(deviceId),
           ),
           // 4. Vol Down
           _ToolbarButton(
-            icon: Icon(CupertinoIcons.volume_down, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              CupertinoIcons.volume_down,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: context.l10n.t('volumeDown'),
             onPressed: () => actions.volumeDown(deviceId),
           ),
           // Notification Bar
           _ToolbarButton(
-            icon: Icon(CupertinoIcons.bell, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              CupertinoIcons.bell,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: context.l10n.t('notificationBar'),
             onPressed: () => _runAdbAction(
               context,
@@ -308,28 +346,83 @@ class MirrorSideToolbar extends ConsumerWidget {
           ),
           // Focus Window (Current Focus)
           _ToolbarButton(
-            icon: Icon(CupertinoIcons.viewfinder, color: isDark ? Colors.white70 : Colors.black87),
-            tooltip: context.l10n.t('focus'),
-            onPressed: () => _showAdbResult(
-              context,
-              ref,
-              actions.currentFocus(deviceId),
+            icon: Icon(
+              CupertinoIcons.scope,
+              color: isDark ? Colors.white70 : Colors.black87,
             ),
+            tooltip: context.l10n.t('focus'),
+            onPressed: () =>
+                _showAdbResult(context, ref, actions.currentFocus(deviceId)),
+          ),
+          // Clipboard Input Text T
+          _ToolbarButton(
+            icon: Text(
+              'T',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+            tooltip: '获取剪切板并输入文本',
+            onPressed: () async {
+              final clipboardData = await Clipboard.getData(
+                Clipboard.kTextPlain,
+              );
+              if (clipboardData != null &&
+                  clipboardData.text != null &&
+                  clipboardData.text!.isNotEmpty) {
+                final text = clipboardData.text!;
+                final message = ScrcpyKeycodeHelper.serializeTextEvent(text);
+                final success = await ScrcpyFlutter.sendControl(
+                  deviceId: deviceId,
+                  controlMessage: message,
+                );
+                if (!success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('发送剪切板文本失败，请确保投屏运行中'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('剪切板为空或获取失败'),
+                      backgroundColor: Colors.orange,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
           ),
           const Divider(height: 12, indent: 8, endIndent: 8),
           // 5. Screenshot
           _ToolbarButton(
-            icon: Icon(CupertinoIcons.camera, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              CupertinoIcons.camera,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: context.l10n.t('screenshot'),
             onPressed: () => _takeScreenshot(context, ref, deviceId),
           ),
           // 6. Screen Record
           _ToolbarButton(
             icon: Icon(
-              recordState.isRecording ? CupertinoIcons.stop : CupertinoIcons.videocam,
-              color: recordState.isRecording ? Colors.red : (isDark ? Colors.white70 : Colors.black87),
+              recordState.isRecording
+                  ? CupertinoIcons.stop
+                  : CupertinoIcons.videocam,
+              color: recordState.isRecording
+                  ? Colors.red
+                  : (isDark ? Colors.white70 : Colors.black87),
             ),
-            tooltip: recordState.isRecording ? context.l10n.t('stopRecord') : context.l10n.t('startRecord'),
+            tooltip: recordState.isRecording
+                ? context.l10n.t('stopRecord')
+                : context.l10n.t('startRecord'),
             isLoading: recordState.isStopping,
             badge: recordState.isRecording ? const _PulsingRecordBadge() : null,
             onPressed: () => _toggleScreenRecording(context, ref),
@@ -339,34 +432,52 @@ class MirrorSideToolbar extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 2),
               child: Text(
                 _formatDuration(recordState.durationSeconds),
-                style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
           // 7. Zoom/Layout Inspector
           _ToolbarButton(
-            icon: Icon(CupertinoIcons.zoom_in, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              CupertinoIcons.zoom_in,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: context.l10n.t('inspectLayout'),
             onPressed: () {
-              ref.read(selectedToolTabProvider.notifier).select(8); // Switch to Layout Tab
+              ref
+                  .read(selectedToolTabProvider.notifier)
+                  .select(8); // Switch to Layout Tab
             },
           ),
 
           // 10. Back
           _ToolbarButton(
-            icon: Icon(Icons.chevron_left, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              Icons.chevron_left,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: context.l10n.t('back'),
             onPressed: () => actions.keyEvent(deviceId, 4),
           ),
           // 11. Home
           _ToolbarButton(
-            icon: Icon(Icons.radio_button_unchecked, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              Icons.radio_button_unchecked,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: context.l10n.t('home'),
             onPressed: () => actions.keyEvent(deviceId, 3),
           ),
           // 12. Recents
           _ToolbarButton(
-            icon: Icon(Icons.crop_square, color: isDark ? Colors.white70 : Colors.black87),
+            icon: Icon(
+              Icons.crop_square,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
             tooltip: context.l10n.t('menuKey'), // Recents / Menu
             onPressed: () => actions.keyEvent(deviceId, 187),
           ),
@@ -383,7 +494,8 @@ class _PulsingRecordBadge extends StatefulWidget {
   State<_PulsingRecordBadge> createState() => _PulsingRecordBadgeState();
 }
 
-class _PulsingRecordBadgeState extends State<_PulsingRecordBadge> with SingleTickerProviderStateMixin {
+class _PulsingRecordBadgeState extends State<_PulsingRecordBadge>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -465,10 +577,7 @@ class _ToolbarButtonState extends State<_ToolbarButton> {
               IconButton(
                 iconSize: 20,
                 padding: const EdgeInsets.all(6),
-                constraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 32,
-                ),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 style: IconButton.styleFrom(
                   backgroundColor: _isHovered ? hoverBg : Colors.transparent,
                   shape: RoundedRectangleBorder(
@@ -479,19 +588,13 @@ class _ToolbarButtonState extends State<_ToolbarButton> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : widget.icon,
                 onPressed: widget.isLoading ? null : widget.onPressed,
               ),
               if (widget.badge != null)
-                Positioned(
-                  top: 2,
-                  right: 2,
-                  child: widget.badge!,
-                ),
+                Positioned(top: 2, right: 2, child: widget.badge!),
             ],
           ),
         ),

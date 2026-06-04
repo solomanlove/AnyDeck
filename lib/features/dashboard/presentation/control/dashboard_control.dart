@@ -69,7 +69,10 @@ class _QuickActionsPanel extends ConsumerWidget {
         ? ref.watch(deviceOverviewProvider(device.id))
         : const AsyncValue<DeviceOverview>.loading();
     final wifiEnabled = overviewAsync.value?.wifiEnabled ?? false;
-    final airplaneModeEnabled = overviewAsync.value?.airplaneModeEnabled ?? false;
+    final isRootAsync = ref.watch(isDeviceRootProvider(device.id));
+    final isRoot = isRootAsync.value ?? false;
+    final airplaneModeEnabled =
+        overviewAsync.value?.airplaneModeEnabled ?? false;
     final mobileDataEnabled = overviewAsync.value?.mobileDataEnabled ?? false;
     final talkbackEnabled = overviewAsync.value?.talkbackEnabled ?? false;
 
@@ -80,6 +83,50 @@ class _QuickActionsPanel extends ConsumerWidget {
           icon: CupertinoIcons.keyboard,
           label: context.l10n.t('inputText'),
           onPressed: () => _showInputTextDialog(context, ref, device.id),
+        ),
+
+        _ToggleActionButton(
+          iconOn: CupertinoIcons.lock_open_fill,
+          iconOff: CupertinoIcons.lock_fill,
+          label: isRoot ? context.l10n.t('rooted') : context.l10n.t('unrooted'),
+          value: isRoot,
+          onToggle: (on) async {
+            try {
+              _showSnack(
+                context,
+                on ? context.l10n.t('enteringRootMode') : '正在退出 Root 模式...',
+              );
+              final adb = ref.read(adbServiceProvider);
+              final res = await adb.run([
+                '-s',
+                device.id,
+                on ? 'root' : 'unroot',
+              ]);
+              if (!context.mounted) return;
+              if (res.isSuccess) {
+                _showSnack(
+                  context,
+                  res.stdout.isNotEmpty
+                      ? res.stdout.trim()
+                      : (on
+                            ? context.l10n.t('enterRootModeSuccess')
+                            : '已成功退出 Root 模式'),
+                );
+                await Future<void>.delayed(const Duration(milliseconds: 1500));
+                if (!context.mounted) return;
+                ref.invalidate(isDeviceRootProvider(device.id));
+              } else {
+                _showSnack(
+                  context,
+                  res.stderr.isNotEmpty ? res.stderr.trim() : '操作失败',
+                  isError: true,
+                );
+              }
+            } catch (e) {
+              if (!context.mounted) return;
+              _showSnack(context, e.toString(), isError: true);
+            }
+          },
         ),
 
         _ToggleActionButton(
@@ -100,7 +147,11 @@ class _QuickActionsPanel extends ConsumerWidget {
           label: context.l10n.t('airplaneModeToggle'),
           value: airplaneModeEnabled,
           onToggle: (on) async {
-            await _runAdbAction(context, ref, actions.setAirplaneMode(device.id, on));
+            await _runAdbAction(
+              context,
+              ref,
+              actions.setAirplaneMode(device.id, on),
+            );
             if (device.isOnline) {
               ref.invalidate(deviceOverviewProvider(device.id));
             }
@@ -112,7 +163,11 @@ class _QuickActionsPanel extends ConsumerWidget {
           label: context.l10n.t('mobileDataToggle'),
           value: mobileDataEnabled,
           onToggle: (on) async {
-            await _runAdbAction(context, ref, actions.setMobileData(device.id, on));
+            await _runAdbAction(
+              context,
+              ref,
+              actions.setMobileData(device.id, on),
+            );
             if (device.isOnline) {
               ref.invalidate(deviceOverviewProvider(device.id));
             }
@@ -124,7 +179,11 @@ class _QuickActionsPanel extends ConsumerWidget {
           label: context.l10n.t('talkbackToggle'),
           value: talkbackEnabled,
           onToggle: (on) async {
-            await _runAdbAction(context, ref, actions.setTalkback(device.id, on));
+            await _runAdbAction(
+              context,
+              ref,
+              actions.setTalkback(device.id, on),
+            );
             if (device.isOnline) {
               ref.invalidate(deviceOverviewProvider(device.id));
             }
@@ -230,7 +289,8 @@ class _LayoutHelperPanel extends ConsumerWidget {
         ? ref.watch(deviceOverviewProvider(device.id))
         : const AsyncValue<DeviceOverview>.loading();
     final showTouchesEnabled = overviewAsync.value?.showTouchesEnabled ?? false;
-    final pointerLocationEnabled = overviewAsync.value?.pointerLocationEnabled ?? false;
+    final pointerLocationEnabled =
+        overviewAsync.value?.pointerLocationEnabled ?? false;
     final demoModeEnabled = overviewAsync.value?.demoModeEnabled ?? false;
 
     return _ActionCard(
@@ -349,20 +409,14 @@ class _DeeplinkPanel extends ConsumerWidget {
         _ActionButton(
           icon: CupertinoIcons.settings,
           label: context.l10n.t('deeplinkSettings'),
-          onPressed: () => _runAdbAction(
-            context,
-            ref,
-            actions.openMainSettings(device.id),
-          ),
+          onPressed: () =>
+              _runAdbAction(context, ref, actions.openMainSettings(device.id)),
         ),
         _ActionButton(
           icon: CupertinoIcons.wifi,
           label: context.l10n.t('deeplinkWifi'),
-          onPressed: () => _runAdbAction(
-            context,
-            ref,
-            actions.openWifiSettings(device.id),
-          ),
+          onPressed: () =>
+              _runAdbAction(context, ref, actions.openWifiSettings(device.id)),
         ),
         _ActionButton(
           icon: CupertinoIcons.square_grid_2x2,
@@ -430,6 +484,5 @@ class _DeeplinkPanel extends ConsumerWidget {
     );
   }
 }
-
 
 /// 应用 tab 使用 StatefulWidget，因为筛选和选中项属于本地 UI 状态。

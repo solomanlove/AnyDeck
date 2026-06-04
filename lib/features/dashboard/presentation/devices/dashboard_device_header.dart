@@ -33,13 +33,13 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     final Color iconColor;
     if (status == 'device') {
       iconBgColor = const Color(0xFFE2F7EB); // Soft mint green
-      iconColor = const Color(0xFF2EC46B);   // Rich green
+      iconColor = const Color(0xFF2EC46B); // Rich green
     } else if (status == 'unauthorized') {
       iconBgColor = const Color(0xFFFFF3E0); // Soft orange
-      iconColor = const Color(0xFFE65100);   // Rich orange
+      iconColor = const Color(0xFFE65100); // Rich orange
     } else {
       iconBgColor = const Color(0xFFF5F5F5); // Soft gray
-      iconColor = const Color(0xFF9E9E9E);   // Gray
+      iconColor = const Color(0xFF9E9E9E); // Gray
     }
 
     final String? logoAsset = overviewAsync.hasValue
@@ -60,10 +60,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
             Colors.grey,
             BlendMode.saturation,
           ),
-          child: Opacity(
-            opacity: 0.6,
-            child: logoImage,
-          ),
+          child: Opacity(opacity: 0.6, child: logoImage),
         );
       }
       avatarChild = ClipRRect(
@@ -112,8 +109,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(width: 12),
-        _buildRootPill(context, ref, device.id, device.isOnline),
       ],
     );
 
@@ -131,7 +126,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                   color: const Color(0xff202124),
                   fontSize: 20,
                 ),
-              )
+              ),
             ],
           ),
           maxLines: 1,
@@ -157,7 +152,9 @@ class _SelectedDeviceHeader extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
         decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
+          border: Border(
+            bottom: BorderSide(color: Color(0xffeceef1), width: 1),
+          ),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -173,7 +170,9 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                     const SizedBox(width: 16),
                     IconButton(
                       icon: Icon(
-                        isMirrorActive ? CupertinoIcons.tv_fill : CupertinoIcons.tv,
+                        isMirrorActive
+                            ? CupertinoIcons.tv_fill
+                            : CupertinoIcons.tv,
                         color: isMirrorActive ? const Color(0xFF2EC46B) : null,
                       ),
                       tooltip: isMirrorActive ? '停止投屏' : '内嵌投屏',
@@ -203,9 +202,10 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                       tooltip: context.l10n.t('remoteController'),
                       onPressed: device.isOnline
                           ? () => showDialog<void>(
-                                context: context,
-                                builder: (_) => _RemoteControllerDialog(device: device),
-                              )
+                              context: context,
+                              builder: (_) =>
+                                  _RemoteControllerDialog(device: device),
+                            )
                           : null,
                     ),
                     const SizedBox(width: 8),
@@ -253,9 +253,10 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                   tooltip: context.l10n.t('remoteController'),
                   onPressed: device.isOnline
                       ? () => showDialog<void>(
-                            context: context,
-                            builder: (_) => _RemoteControllerDialog(device: device),
-                          )
+                          context: context,
+                          builder: (_) =>
+                              _RemoteControllerDialog(device: device),
+                        )
                       : null,
                 ),
                 const SizedBox(width: 8),
@@ -305,9 +306,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     controller.dispose();
 
     if (name != null && context.mounted) {
-      await ref
-          .read(deviceRegistryProvider.notifier)
-          .setAlias(device.id, name);
+      await ref.read(deviceRegistryProvider.notifier).setAlias(device.id, name);
     }
   }
 
@@ -342,11 +341,13 @@ class _SelectedDeviceHeader extends ConsumerWidget {
 
     // 2. Open the standalone mirroring window
     try {
-      final window = await DesktopMultiWindow.createWindow(jsonEncode({
-        'type': 'mirror',
-        'deviceId': device.id,
-        'deviceName': device.model ?? device.id,
-      }));
+      final window = await DesktopMultiWindow.createWindow(
+        jsonEncode({
+          'type': 'mirror',
+          'deviceId': device.id,
+          'deviceName': device.model ?? device.id,
+        }),
+      );
       await window.setFrame(const Offset(100, 100) & const Size(480, 800));
       await window.center();
       await window.setTitle('投屏 - ${device.model ?? device.id}');
@@ -379,10 +380,9 @@ class _SelectedDeviceHeader extends ConsumerWidget {
         noAudio: !settings.mirrorAudioEnabled,
       );
 
-      final session = await ref.read(scrcpyServiceProvider).start(
-        deviceId: deviceId,
-        options: options,
-      );
+      final session = await ref
+          .read(scrcpyServiceProvider)
+          .start(deviceId: deviceId, options: options);
       ref.read(scrcpySessionsProvider.notifier).add(session);
 
       if (context.mounted) {
@@ -394,78 +394,4 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       }
     }
   }
-
-  Widget _buildRootPill(BuildContext context, WidgetRef ref, String deviceId, bool isOnline) {
-    final isRootAsync = ref.watch(isDeviceRootProvider(deviceId));
-    return isRootAsync.when(
-      data: (isRoot) {
-        final text = isRoot ? context.l10n.t('rooted') : context.l10n.t('unrooted');
-        final color = isRoot ? const Color(0xFF2EC46B) : const Color(0xFFE65100);
-        final bgColor = isRoot ? const Color(0xFFE2F7EB) : const Color(0xFFFFF3E0);
-
-        return Tooltip(
-          message: isRoot ? context.l10n.t('rooted') : context.l10n.t('enterRootMode'),
-          child: Material(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              onTap: isOnline && !isRoot
-                  ? () => _toggleRoot(context, ref, deviceId)
-                  : null,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isRoot ? CupertinoIcons.lock_open_fill : CupertinoIcons.lock_fill,
-                      size: 12,
-                      color: color,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      text,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-      loading: () => const SizedBox(
-        width: 14,
-        height: 14,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
-      error: (_, stack) => const Icon(CupertinoIcons.question, size: 14, color: Colors.grey),
-    );
-  }
-
-  Future<void> _toggleRoot(BuildContext context, WidgetRef ref, String deviceId) async {
-    try {
-      _showSnack(context, context.l10n.t('enteringRootMode'));
-      final adb = ref.read(adbServiceProvider);
-      final res = await adb.run(['-s', deviceId, 'root']);
-      if (!context.mounted) return;
-      if (res.isSuccess) {
-        _showSnack(context, res.stdout.isNotEmpty ? res.stdout.trim() : context.l10n.t('enterRootModeSuccess'));
-        await Future<void>.delayed(const Duration(milliseconds: 1500));
-        if (!context.mounted) return;
-        ref.invalidate(isDeviceRootProvider(deviceId));
-      } else {
-        _showSnack(context, res.stderr.isNotEmpty ? res.stderr.trim() : 'Failed to enter root mode', isError: true);
-      }
-    } catch (e) {
-      if (!context.mounted) return;
-      _showSnack(context, e.toString(), isError: true);
-    }
-  }
 }
-

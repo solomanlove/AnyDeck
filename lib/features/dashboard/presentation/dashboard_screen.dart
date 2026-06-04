@@ -35,6 +35,7 @@ import '../../../core/providers/network_providers.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/scrcpy/scrcpy_session.dart';
 import 'package:scrcpy_flutter/scrcpy_flutter.dart';
+import '../../../core/scrcpy/scrcpy_keycode_helper.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/scrcpy/screen_record_provider.dart';
 import '../../../core/device_actions/device_action_service.dart';
@@ -45,7 +46,6 @@ import 'webpages/webpages_tab.dart';
 import 'layout/layout_tab.dart';
 import 'performance/performance_tab.dart';
 import 'network/network_tab.dart';
-
 
 part 'overview/dashboard_shell.dart';
 part 'widgets/dashboard_dialogs.dart';
@@ -118,7 +118,8 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> with WindowListener {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WindowListener {
   @override
   void initState() {
     super.initState();
@@ -208,7 +209,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WindowLi
     if (effectiveSelectedDevice != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (ref.read(lastActiveDeviceProvider) != effectiveSelectedDevice) {
-          ref.read(lastActiveDeviceProvider.notifier).state = effectiveSelectedDevice;
+          ref.read(lastActiveDeviceProvider.notifier).state =
+              effectiveSelectedDevice;
         }
       });
     }
@@ -224,10 +226,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WindowLi
         selectedDevice: effectiveSelectedDevice,
         child: IndexedStack(
           index: selectedDevice == null ? 0 : 1,
-          children: [
-            const _DashboardHomeContent(),
-            workspace,
-          ],
+          children: [const _DashboardHomeContent(), workspace],
         ),
       ),
     );
