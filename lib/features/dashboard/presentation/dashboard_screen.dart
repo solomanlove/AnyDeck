@@ -48,6 +48,7 @@ import 'performance/performance_tab.dart';
 import 'network/network_tab.dart';
 
 part 'overview/dashboard_shell.dart';
+part 'overview/dashboard_rail.dart';
 part 'widgets/dashboard_dialogs.dart';
 part 'widgets/remote_controller_dialog.dart';
 part 'devices/dashboard_emulators.dart';
