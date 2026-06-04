@@ -1,16 +1,22 @@
 part of '../dashboard_screen.dart';
 
+/// 模拟器列表面板组件。
+/// 用于管理和启动 Android 模拟器，支持以普通卡片组件嵌入主界面，或以独立子窗口形式运行。
 class EmulatorListPanel extends ConsumerStatefulWidget {
   const EmulatorListPanel({super.key, this.isStandalone = false});
 
+  /// 是否作为独立窗口运行
   final bool isStandalone;
 
+  /// 打开模拟器管理器的独立窗口。
   static Future<void> openStandaloneWindow(BuildContext context) async {
     final title = context.l10n.t('emulators');
     try {
+      // 创建一个新的类型为 'emulator_manager' 的子窗口
       final window = await DesktopMultiWindow.createWindow(jsonEncode({
         'type': 'emulator_manager',
       }));
+      // 设置窗口默认大小和位置
       await window.setFrame(const Offset(100, 100) & const Size(900, 600));
       await window.center();
       await window.setTitle(title);
@@ -25,10 +31,15 @@ class EmulatorListPanel extends ConsumerStatefulWidget {
 }
 
 class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
+  /// 用于搜索过滤模拟器列表的输入框控制器
   final TextEditingController _filterController = TextEditingController();
+  /// 当前过滤关键字
   String _filter = '';
+  /// 当前排序列，默认按名称 ('name') 排序
   String _sortColumn = 'name';
+  /// 是否升序排列
   bool _sortAscending = true;
+  /// 当前选中的模拟器的 AVD 名称
   String? _selectedName;
 
   @override
@@ -37,6 +48,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     super.dispose();
   }
 
+  /// 切换指定列的排序状态（升序、降序或切换排序列）
   void _toggleSort(String column) {
     setState(() {
       if (_sortColumn == column) {
@@ -48,6 +60,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     });
   }
 
+  /// 获取对应排序方向的图标
   Widget _getSortIcon(String column) {
     if (_sortColumn != column) {
       return const Padding(
@@ -67,14 +80,20 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // 独立窗口默认展开，主界面中则根据用户的折叠状态决定
     final isExpanded = widget.isStandalone ? true : ref.watch(_emulatorListExpandedProvider);
+    // 监听模拟器列表异步状态
     final emulatorsAsync = ref.watch(emulatorListProvider);
+    // 监听正在运行的模拟器与设备的映射状态
     final runningEmulatorsAsync = ref.watch(runningEmulatorsProvider);
+    // 监听正在启动中的模拟器集合
     final startingEmulators = ref.watch(startingEmulatorsProvider);
 
     final emulators = emulatorsAsync.value ?? [];
     final runningMap = runningEmulatorsAsync.value ?? {};
+    // 构建并排序过滤后的列表项
     final items = _buildItems(emulators, runningMap, startingEmulators);
+    // 获取当前选中的列表项
     final selectedItem = _selectedItem(items);
 
     return LayoutBuilder(
@@ -84,6 +103,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
 
         Widget contentWidget;
         if (emulatorsAsync.hasError) {
+          // 加载出错时的提示界面
           contentWidget = Center(
             child: _PanelMessage(
               icon: CupertinoIcons.exclamationmark_circle,
@@ -92,6 +112,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
             ),
           );
         } else if (emulatorsAsync.isLoading && emulators.isEmpty) {
+          // 正在扫描/加载中的界面
           contentWidget = Center(
             child: _PanelMessage(
               icon: CupertinoIcons.arrow_2_circlepath,
@@ -100,6 +121,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
             ),
           );
         } else if (items.isEmpty) {
+          // 列表为空时的提示界面
           contentWidget = Center(
             child: _PanelMessage(
               icon: CupertinoIcons.device_desktop,
@@ -110,6 +132,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
             ),
           );
         } else {
+          // 展示数据表格
           contentWidget = _EmulatorTable(
             items: items,
             selectedName: _selectedName,
@@ -134,6 +157,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
 
         final layoutWidget = contentWidget;
 
+        // 如果是独立窗口模式，使用定制的无 Card 边框布局
         if (widget.isStandalone) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,6 +233,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
           );
         }
 
+        // 主界面中嵌入的卡片布局
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -271,6 +296,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     );
   }
 
+  /// 过滤、排序并组装模拟器列表数据项
   List<_EmulatorItem> _buildItems(
     List<AndroidEmulator> emulators,
     Map<String, String> runningMap,
@@ -301,12 +327,14 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
         })
         .toList();
 
+    // 默认排在前面的策略：非停止状态 (running/starting) 排在停止状态 (stopped) 前面
     items.sort((a, b) {
       final aActive = a.status != 'stopped';
       final bActive = b.status != 'stopped';
       if (aActive && !bActive) return -1;
       if (!aActive && bActive) return 1;
 
+      // 按选中的排序列进行具体排序
       final cmp = switch (_sortColumn) {
         'resolution' => a.emulator.resolutionLabel.compareTo(
           b.emulator.resolutionLabel,
@@ -325,6 +353,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     return items;
   }
 
+  /// 获取当前选中的 _EmulatorItem 项
   _EmulatorItem? _selectedItem(List<_EmulatorItem> items) {
     final selectedName = _selectedName;
     if (selectedName == null) {
@@ -338,11 +367,13 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     return null;
   }
 
+  /// 刷新模拟器数据
   void _refreshEmulators() {
     ref.invalidate(emulatorListProvider);
     ref.invalidate(runningEmulatorsProvider);
   }
 
+  /// 弹出独立窗口展示列表，同时折叠主界面的面板
   Future<void> _popOutWindow() async {
     await EmulatorListPanel.openStandaloneWindow(context);
     if (ref.read(_emulatorListExpandedProvider)) {
@@ -350,6 +381,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     }
   }
 
+  /// 异步执行启动模拟器操作
   Future<void> _startEmulator(BuildContext context, String avdName) async {
     ref.read(startingEmulatorsProvider.notifier).start(avdName);
 
@@ -367,6 +399,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     }
   }
 
+  /// 清除指定模拟器的用户数据
   Future<void> _clearEmulatorData(
     BuildContext context,
     AndroidEmulator emulator,
@@ -414,6 +447,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     }
   }
 
+  /// 异步执行删除模拟器操作
   Future<void> _deleteEmulator(
     BuildContext context,
     AndroidEmulator emulator,
@@ -446,6 +480,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     }
   }
 
+  /// 打开模拟器的 AVD 所在本地文件夹
   Future<void> _openAvdFolder(
     BuildContext context,
     AndroidEmulator emulator,
@@ -461,586 +496,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   }
 }
 
-class _EmulatorPanelHeader extends StatelessWidget {
-  const _EmulatorPanelHeader({
-    required this.isExpanded,
-    required this.isCompact,
-    required this.filterController,
-    required this.filter,
-    required this.onToggleExpanded,
-    required this.onFilterChanged,
-    required this.onClearFilter,
-    required this.onStart,
-    required this.onClearData,
-    required this.onDelete,
-    required this.onOpenFolder,
-    required this.onRefresh,
-    this.onPopOut,
-  });
-
-  final bool isExpanded;
-  final bool isCompact;
-  final TextEditingController filterController;
-  final String filter;
-  final VoidCallback onToggleExpanded;
-  final ValueChanged<String> onFilterChanged;
-  final VoidCallback onClearFilter;
-  final VoidCallback? onStart;
-  final VoidCallback? onClearData;
-  final VoidCallback? onDelete;
-  final VoidCallback? onOpenFolder;
-  final VoidCallback onRefresh;
-  final VoidCallback? onPopOut;
-
-  @override
-  Widget build(BuildContext context) {
-    final title = InkWell(
-      onTap: onToggleExpanded,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                context.l10n.t('emulators'),
-                style: Theme.of(context).textTheme.titleLarge,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            AnimatedRotation(
-              turns: isExpanded ? 0.5 : 0.0,
-              duration: const Duration(milliseconds: 200),
-              child: const Icon(CupertinoIcons.chevron_down),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    final toolbar = _EmulatorToolbar(
-      onStart: onStart,
-      onClearData: onClearData,
-      onDelete: onDelete,
-      onOpenFolder: onOpenFolder,
-      onRefresh: onRefresh,
-      onPopOut: onPopOut,
-    );
-
-    if (!isExpanded) {
-      return Row(
-        children: [
-          Expanded(child: title),
-          toolbar,
-        ],
-      );
-    }
-
-    final filterField = _EmulatorFilterField(
-      controller: filterController,
-      filter: filter,
-      onChanged: onFilterChanged,
-      onClear: onClearFilter,
-    );
-
-    if (isCompact) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(child: title),
-              toolbar,
-            ],
-          ),
-          const SizedBox(height: 8),
-          filterField,
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(child: title),
-        SizedBox(width: 240, child: filterField),
-        const SizedBox(width: 8),
-        toolbar,
-      ],
-    );
-  }
-}
-
-class _EmulatorFilterField extends StatelessWidget {
-  const _EmulatorFilterField({
-    required this.controller,
-    required this.filter,
-    required this.onChanged,
-    required this.onClear,
-  });
-
-  final TextEditingController controller;
-  final String filter;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 42,
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          prefixIcon: const Icon(CupertinoIcons.search),
-          labelText: context.l10n.t('filterEmulator'),
-          suffixIcon: filter.isNotEmpty
-              ? IconButton(icon: const Icon(CupertinoIcons.clear), onPressed: onClear)
-              : null,
-        ),
-        onChanged: onChanged,
-      ),
-    );
-  }
-}
-
-class _EmulatorToolbar extends StatelessWidget {
-  const _EmulatorToolbar({
-    required this.onStart,
-    required this.onClearData,
-    required this.onDelete,
-    required this.onOpenFolder,
-    required this.onRefresh,
-    this.onPopOut,
-  });
-
-  final VoidCallback? onStart;
-  final VoidCallback? onClearData;
-  final VoidCallback? onDelete;
-  final VoidCallback? onOpenFolder;
-  final VoidCallback onRefresh;
-  final VoidCallback? onPopOut;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: context.l10n.t('launch'),
-          icon: const Icon(CupertinoIcons.play),
-          onPressed: onStart,
-        ),
-        IconButton(
-          tooltip: context.l10n.t('clearEmulatorData'),
-          icon: const Icon(CupertinoIcons.clear),
-          onPressed: onClearData,
-        ),
-        IconButton(
-          tooltip: context.l10n.t('deleteEmulator'),
-          icon: const Icon(CupertinoIcons.trash),
-          onPressed: onDelete,
-        ),
-        IconButton(
-          tooltip: context.l10n.t('openAvdFolder'),
-          icon: const Icon(CupertinoIcons.folder_open),
-          onPressed: onOpenFolder,
-        ),
-        if (onPopOut != null)
-          IconButton(
-            tooltip: '独立窗口显示',
-            icon: const Icon(Icons.open_in_new),
-            onPressed: onPopOut,
-          ),
-        Container(
-          height: 24,
-          width: 1,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          color: Theme.of(context).dividerColor,
-        ),
-        IconButton(
-          tooltip: context.l10n.t('refresh'),
-          icon: const Icon(CupertinoIcons.refresh),
-          onPressed: onRefresh,
-        ),
-      ],
-    );
-  }
-}
-
-class _EmulatorTable extends StatefulWidget {
-  const _EmulatorTable({
-    required this.items,
-    required this.selectedName,
-    required this.onSort,
-    required this.sortIconBuilder,
-    required this.onSelected,
-    required this.onDoubleTap,
-  });
-
-  final List<_EmulatorItem> items;
-  final String? selectedName;
-  final ValueChanged<String> onSort;
-  final Widget Function(String column) sortIconBuilder;
-  final ValueChanged<String> onSelected;
-  final ValueChanged<String> onDoubleTap;
-
-  @override
-  State<_EmulatorTable> createState() => _EmulatorTableState();
-}
-
-class _EmulatorTableState extends State<_EmulatorTable> {
-  final ScrollController _horizontalController = ScrollController();
-  final ScrollController _verticalController = ScrollController();
-
-  @override
-  void dispose() {
-    _horizontalController.dispose();
-    _verticalController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final widths = _EmulatorTableWidths.adaptive(constraints.maxWidth);
-        final tableWidth = max(widths.total, constraints.maxWidth);
-
-        return Scrollbar(
-          controller: _horizontalController,
-          notificationPredicate: (notification) =>
-              notification.metrics.axis == Axis.horizontal,
-          child: SingleChildScrollView(
-            controller: _horizontalController,
-            primary: false,
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              height: constraints.maxHeight,
-              child: Column(
-                children: [
-                  _EmulatorTableHeader(
-                    widths: widths,
-                    onSort: widget.onSort,
-                    sortIconBuilder: widget.sortIconBuilder,
-                  ),
-                  Expanded(
-                    child: Scrollbar(
-                      controller: _verticalController,
-                      child: ListView.builder(
-                        controller: _verticalController,
-                        primary: false,
-                        itemCount: widget.items.length,
-                        itemBuilder: (context, index) {
-                          final item = widget.items[index];
-                          return _EmulatorTableRow(
-                            item: item,
-                            widths: widths,
-                            selected: item.emulator.name == widget.selectedName,
-                            index: index,
-                            onSelected: () =>
-                                widget.onSelected(item.emulator.name),
-                            onDoubleTap: () =>
-                                widget.onDoubleTap(item.emulator.name),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _EmulatorTableWidths {
-  const _EmulatorTableWidths({
-    required this.name,
-    required this.resolution,
-    required this.sdk,
-    required this.abi,
-    required this.memory,
-    required this.storage,
-  });
-
-  final double name;
-  final double resolution;
-  final double sdk;
-  final double abi;
-  final double memory;
-  final double storage;
-
-  double get total => name + resolution + sdk + abi + memory + storage;
-
-  factory _EmulatorTableWidths.adaptive(double viewportWidth) {
-    const fixed = 180.0 + 130.0 + 210.0 + 110.0 + 110.0;
-    final name = max(280.0, viewportWidth - fixed);
-    return _EmulatorTableWidths(
-      name: name,
-      resolution: 180,
-      sdk: 130,
-      abi: 210,
-      memory: 110,
-      storage: 110,
-    );
-  }
-}
-
-class _EmulatorTableHeader extends StatelessWidget {
-  const _EmulatorTableHeader({
-    required this.widths,
-    required this.onSort,
-    required this.sortIconBuilder,
-  });
-
-  final _EmulatorTableWidths widths;
-  final ValueChanged<String> onSort;
-  final Widget Function(String column) sortIconBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = Theme.of(
-      context,
-    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold);
-    return Container(
-      height: 40,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor),
-        ),
-      ),
-      child: Row(
-        children: [
-          _EmulatorHeaderCell(
-            width: widths.name,
-            label: context.l10n.t('emulatorNameCol'),
-            style: style,
-            onTap: () => onSort('name'),
-            sortIcon: sortIconBuilder('name'),
-          ),
-          _EmulatorHeaderCell(
-            width: widths.resolution,
-            label: context.l10n.t('emulatorResolutionCol'),
-            style: style,
-            onTap: () => onSort('resolution'),
-            sortIcon: sortIconBuilder('resolution'),
-          ),
-          _EmulatorHeaderCell(
-            width: widths.sdk,
-            label: context.l10n.t('emulatorSdkCol'),
-            style: style,
-            onTap: () => onSort('sdk'),
-            sortIcon: sortIconBuilder('sdk'),
-          ),
-          _EmulatorHeaderCell(
-            width: widths.abi,
-            label: context.l10n.t('emulatorAbiCol'),
-            style: style,
-            onTap: () => onSort('abi'),
-            sortIcon: sortIconBuilder('abi'),
-          ),
-          _EmulatorHeaderCell(
-            width: widths.memory,
-            label: context.l10n.t('emulatorMemoryCol'),
-            style: style,
-            onTap: () => onSort('memory'),
-            sortIcon: sortIconBuilder('memory'),
-          ),
-          _EmulatorHeaderCell(
-            width: widths.storage,
-            label: context.l10n.t('emulatorStorageCol'),
-            style: style,
-            onTap: () => onSort('storage'),
-            sortIcon: sortIconBuilder('storage'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmulatorHeaderCell extends StatelessWidget {
-  const _EmulatorHeaderCell({
-    required this.width,
-    required this.label,
-    required this.style,
-    required this.onTap,
-    required this.sortIcon,
-  });
-
-  final double width;
-  final String label;
-  final TextStyle? style;
-  final VoidCallback onTap;
-  final Widget sortIcon;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  style: style,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              sortIcon,
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmulatorTableRow extends StatelessWidget {
-  const _EmulatorTableRow({
-    required this.item,
-    required this.widths,
-    required this.selected,
-    required this.index,
-    required this.onSelected,
-    required this.onDoubleTap,
-  });
-
-  final _EmulatorItem item;
-  final _EmulatorTableWidths widths;
-  final bool selected;
-  final int index;
-  final VoidCallback onSelected;
-  final VoidCallback onDoubleTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected
-        ? Theme.of(context).colorScheme.primaryContainer
-        : index.isOdd
-        ? Theme.of(
-            context,
-          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45)
-        : null;
-
-    return InkWell(
-      onTap: onSelected,
-      onDoubleTap: onDoubleTap,
-      child: Container(
-        height: 40,
-        color: color,
-        child: Row(
-          children: [
-            _EmulatorCell(
-              width: widths.name,
-              child: Row(
-                children: [
-                  _EmulatorStatusDot(status: item.status),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _EmulatorTableText(item.emulator.displayName),
-                  ),
-                ],
-              ),
-            ),
-            _EmulatorCell(
-              width: widths.resolution,
-              child: _EmulatorTableText(item.emulator.resolutionLabel),
-            ),
-            _EmulatorCell(
-              width: widths.sdk,
-              child: _EmulatorTableText(item.emulator.sdkVersionLabel),
-            ),
-            _EmulatorCell(
-              width: widths.abi,
-              child: _EmulatorTableText(item.emulator.abiLabel),
-            ),
-            _EmulatorCell(
-              width: widths.memory,
-              child: _EmulatorTableText(item.emulator.memoryLabel),
-            ),
-            _EmulatorCell(
-              width: widths.storage,
-              child: _EmulatorTableText(item.emulator.storageLabel),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmulatorCell extends StatelessWidget {
-  const _EmulatorCell({required this.width, required this.child});
-
-  final double width;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: child,
-      ),
-    );
-  }
-}
-
-class _EmulatorTableText extends StatelessWidget {
-  const _EmulatorTableText(this.value);
-
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: value,
-      waitDuration: const Duration(milliseconds: 600),
-      child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
-    );
-  }
-}
-
-class _EmulatorStatusDot extends StatelessWidget {
-  const _EmulatorStatusDot({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (color, label) = switch (status) {
-      'running' => (const Color(0xFF2E7D32), context.l10n.t('emulatorRunning')),
-      'starting' => (
-        const Color(0xFFE65100),
-        context.l10n.t('emulatorStarting'),
-      ),
-      _ => (const Color(0xFF9E9E9E), context.l10n.t('emulatorStopped')),
-    };
-
-    return Tooltip(
-      message: label,
-      child: Container(
-        width: 10,
-        height: 10,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-    );
-  }
-}
-
+/// 模拟器项数据包装类，合并模拟器配置和当前状态。
 class _EmulatorItem {
   const _EmulatorItem({
     required this.emulator,
@@ -1048,15 +504,19 @@ class _EmulatorItem {
     this.deviceId,
   });
 
+  /// 模拟器配置属性
   final AndroidEmulator emulator;
+  /// 模拟器运行状态 ('running', 'starting', 'stopped')
   final String status;
+  /// 如果运行中，对应的 ADB 设备 ID
   final String? deviceId;
 
+  /// 能否启动（仅 stopped 状态可启动）
   bool get canStart => status == 'stopped';
 
+  /// 能否清除数据（仅 stopped 状态可清除数据）
   bool get canClearData => status == 'stopped';
 
+  /// 能否被删除（仅 stopped 状态可删除）
   bool get canDelete => status == 'stopped';
 }
-
-/// 承载选中设备全部工具的工作区。

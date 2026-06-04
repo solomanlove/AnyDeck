@@ -51,6 +51,8 @@ part 'overview/dashboard_shell.dart';
 part 'widgets/dashboard_dialogs.dart';
 part 'widgets/remote_controller_dialog.dart';
 part 'devices/dashboard_emulators.dart';
+part 'devices/dashboard_emulators_header.dart';
+part 'devices/dashboard_emulators_table.dart';
 part 'devices/dashboard_emulator_details.dart';
 part 'overview/dashboard_workspace.dart';
 part 'devices/dashboard_device_header.dart';

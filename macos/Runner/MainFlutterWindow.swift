@@ -41,17 +41,67 @@ class MainFlutterWindow: NSWindow {
         name: "adb_manage/window",
         binaryMessenger: controller.engine.binaryMessenger
       )
-      windowChannel.setMethodCallHandler { [weak controller] call, result in
+      
+      var observers: [Any] = []
+      var observersRegistered = false
+      
+      windowChannel.setMethodCallHandler { [weak controller, weak windowChannel] call, result in
         guard let window = controller?.view.window else {
           result(FlutterError(code: "no_window", message: "Window not found", details: nil))
           return
         }
-        if call.method == "setAlwaysOnTop" {
+        
+        if !observersRegistered {
+          observersRegistered = true
+          
+          let enterObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didEnterFullScreenNotification,
+            object: window,
+            queue: nil
+          ) { [weak windowChannel] _ in
+            windowChannel?.invokeMethod("onWindowEnterFullScreen", arguments: nil)
+          }
+          observers.append(enterObserver)
+          
+          let exitObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didExitFullScreenNotification,
+            object: window,
+            queue: nil
+          ) { [weak windowChannel] _ in
+            windowChannel?.invokeMethod("onWindowLeaveFullScreen", arguments: nil)
+          }
+          observers.append(exitObserver)
+          
+          let closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: nil
+          ) { _ in
+            for observer in observers {
+              NotificationCenter.default.removeObserver(observer)
+            }
+          }
+          observers.append(closeObserver)
+        }
+        
+        if call.method == "initWindow" {
+          result(nil)
+        } else if call.method == "setAlwaysOnTop" {
           guard let alwaysOnTop = call.arguments as? Bool else {
             result(FlutterError(code: "invalid_argument", message: "Requires bool arguments", details: nil))
             return
           }
           window.level = alwaysOnTop ? .floating : .normal
+          result(nil)
+        } else if call.method == "setFullScreen" {
+          guard let fullscreen = call.arguments as? Bool else {
+            result(FlutterError(code: "invalid_argument", message: "Requires bool arguments", details: nil))
+            return
+          }
+          let isCurrentlyFullScreen = window.styleMask.contains(.fullScreen)
+          if isCurrentlyFullScreen != fullscreen {
+            window.toggleFullScreen(nil)
+          }
           result(nil)
         } else {
           result(FlutterMethodNotImplemented)
