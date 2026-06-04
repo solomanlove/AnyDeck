@@ -211,9 +211,21 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         ),
       );
     } else if (isMirrorActive) {
-      contentWidget = Stack(
+      contentWidget = Column(
         children: [
-          Positioned.fill(
+          if (!_isFullScreen)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: Center(
+                child: MirrorFloatingToolbar(
+                  deviceId: widget.deviceId,
+                  windowId: widget.windowId,
+                  isFullScreen: _isFullScreen,
+                  onToggleFullScreen: () => _toggleFullScreen(!_isFullScreen),
+                ),
+              ),
+            ),
+          Expanded(
             child: ClipRRect(
               child: Listener(
                 behavior: HitTestBehavior.translucent,
@@ -230,20 +242,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
               ),
             ),
           ),
-          if (!_isFullScreen)
-            Positioned(
-              top: 10,
-              left: 16,
-              right: 16,
-              child: Center(
-                child: MirrorFloatingToolbar(
-                  deviceId: widget.deviceId,
-                  windowId: widget.windowId,
-                  isFullScreen: _isFullScreen,
-                  onToggleFullScreen: () => _toggleFullScreen(!_isFullScreen),
-                ),
-              ),
-            ),
         ],
       );
     } else {
@@ -268,11 +266,10 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           children: [
             if (!_isFullScreen)
               Container(
-                height: 44, // 减小高度，由 56 降至 44
+                height: 36, // 调小高度以在 macOS 上更紧凑，确保标题上下居中
                 padding: EdgeInsets.only(
                   left: Platform.isMacOS ? 80 : 16,
                   right: 16,
-                  top: 4, // 让标题再距离上一些
                 ),
                 decoration: BoxDecoration(
                   color: headerBgColor,
