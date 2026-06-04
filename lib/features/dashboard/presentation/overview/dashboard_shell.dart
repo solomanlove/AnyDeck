@@ -32,7 +32,6 @@ class _WechatStyleShell extends ConsumerWidget {
   }
 }
 
-
 class _ContentTitleBar extends ConsumerWidget {
   const _ContentTitleBar({required this.title});
 
@@ -46,10 +45,18 @@ class _ContentTitleBar extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 28),
         decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(bottom: BorderSide(color: Color(0xffeceef1), width: 1)),
+          border: Border(
+            bottom: BorderSide(color: Color(0xffeceef1), width: 1),
+          ),
         ),
         child: Row(
           children: [
+            const Image(
+              image: AssetImage('assets/brand/app_logo.png'),
+              width: 28,
+              height: 28,
+            ),
+            const SizedBox(width: 10),
             Text(
               title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -145,7 +152,6 @@ class _ContentTitleBar extends ConsumerWidget {
                 ),
               ),
             ),
-
           ],
         ),
       ),
@@ -160,9 +166,7 @@ class _DashboardHomeContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
       padding: const EdgeInsets.all(24),
-      children: const [
-        _DeviceListPanel(),
-      ],
+      children: const [_DeviceListPanel()],
     );
   }
 }

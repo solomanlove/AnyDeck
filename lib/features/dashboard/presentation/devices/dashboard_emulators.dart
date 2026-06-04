@@ -13,9 +13,9 @@ class EmulatorListPanel extends ConsumerStatefulWidget {
     final title = context.l10n.t('emulators');
     try {
       // 创建一个新的类型为 'emulator_manager' 的子窗口
-      final window = await DesktopMultiWindow.createWindow(jsonEncode({
-        'type': 'emulator_manager',
-      }));
+      final window = await DesktopMultiWindow.createWindow(
+        jsonEncode({'type': 'emulator_manager'}),
+      );
       // 设置窗口默认大小和位置
       await window.setFrame(const Offset(100, 100) & const Size(900, 600));
       await window.center();
@@ -33,12 +33,16 @@ class EmulatorListPanel extends ConsumerStatefulWidget {
 class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   /// 用于搜索过滤模拟器列表的输入框控制器
   final TextEditingController _filterController = TextEditingController();
+
   /// 当前过滤关键字
   String _filter = '';
+
   /// 当前排序列，默认按名称 ('name') 排序
   String _sortColumn = 'name';
+
   /// 是否升序排列
   bool _sortAscending = true;
+
   /// 当前选中的模拟器的 AVD 名称
   String? _selectedName;
 
@@ -65,13 +69,19 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     if (_sortColumn != column) {
       return const Padding(
         padding: EdgeInsets.only(left: 4),
-        child: Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: Colors.grey),
+        child: Icon(
+          CupertinoIcons.chevron_up_chevron_down,
+          size: 14,
+          color: Colors.grey,
+        ),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Icon(
-        _sortAscending ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
+        _sortAscending
+            ? CupertinoIcons.chevron_up
+            : CupertinoIcons.chevron_down,
         size: 14,
         color: Theme.of(context).colorScheme.primary,
       ),
@@ -81,7 +91,9 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   @override
   Widget build(BuildContext context) {
     // 独立窗口默认展开，主界面中则根据用户的折叠状态决定
-    final isExpanded = widget.isStandalone ? true : ref.watch(_emulatorListExpandedProvider);
+    final isExpanded = widget.isStandalone
+        ? true
+        : ref.watch(_emulatorListExpandedProvider);
     // 监听模拟器列表异步状态
     final emulatorsAsync = ref.watch(emulatorListProvider);
     // 监听正在运行的模拟器与设备的映射状态
@@ -172,13 +184,21 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
                   color: Theme.of(context).colorScheme.surface,
                   border: Border(
                     bottom: BorderSide(
-                      color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.5),
                       width: 1,
                     ),
                   ),
                 ),
                 child: Row(
                   children: [
+                    Icon(
+                      CupertinoIcons.device_desktop,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
                       context.l10n.t('emulators'),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -194,7 +214,8 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
                           child: _EmulatorFilterField(
                             controller: _filterController,
                             filter: _filter,
-                            onChanged: (value) => setState(() => _filter = value),
+                            onChanged: (value) =>
+                                setState(() => _filter = value),
                             onClear: () {
                               _filterController.clear();
                               setState(() => _filter = '');
@@ -206,13 +227,21 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
                     const SizedBox(width: 16),
                     _EmulatorToolbar(
                       onStart: selectedItem != null && selectedItem.canStart
-                          ? () => _startEmulator(context, selectedItem.emulator.name)
+                          ? () => _startEmulator(
+                              context,
+                              selectedItem.emulator.name,
+                            )
                           : null,
-                      onClearData: selectedItem != null && selectedItem.canClearData
-                          ? () => _clearEmulatorData(context, selectedItem.emulator)
+                      onClearData:
+                          selectedItem != null && selectedItem.canClearData
+                          ? () => _clearEmulatorData(
+                              context,
+                              selectedItem.emulator,
+                            )
                           : null,
                       onDelete: selectedItem != null && selectedItem.canDelete
-                          ? () => _deleteEmulator(context, selectedItem.emulator)
+                          ? () =>
+                                _deleteEmulator(context, selectedItem.emulator)
                           : null,
                       onOpenFolder: selectedItem != null
                           ? () => _openAvdFolder(context, selectedItem.emulator)
@@ -282,10 +311,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
                     if (hasBoundedHeight)
                       Expanded(child: layoutWidget)
                     else
-                      SizedBox(
-                        height: 360,
-                        child: layoutWidget,
-                      ),
+                      SizedBox(height: 360, child: layoutWidget),
                   ],
                 ],
               ),
@@ -506,8 +532,10 @@ class _EmulatorItem {
 
   /// 模拟器配置属性
   final AndroidEmulator emulator;
+
   /// 模拟器运行状态 ('running', 'starting', 'stopped')
   final String status;
+
   /// 如果运行中，对应的 ADB 设备 ID
   final String? deviceId;
 

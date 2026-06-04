@@ -22,8 +22,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     );
 
     final overviewAsync = ref.watch(deviceOverviewProvider(device.id));
-    final textureId = ref.watch(activeEmbeddedMirrorProvider(device.id));
-    final isMirrorActive = textureId != null;
 
     final titleText = matchedDevice.displayName;
     final status = device.status;
@@ -169,19 +167,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                     SizedBox(width: 160, child: title),
                     const SizedBox(width: 16),
                     IconButton(
-                      icon: Icon(
-                        isMirrorActive
-                            ? CupertinoIcons.tv_fill
-                            : CupertinoIcons.tv,
-                        color: isMirrorActive ? const Color(0xFF2EC46B) : null,
-                      ),
-                      tooltip: isMirrorActive ? '停止投屏' : '内嵌投屏',
-                      onPressed: device.isOnline
-                          ? () => _toggleEmbeddedScrcpy(context, ref, device.id)
-                          : null,
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
                       icon: const Icon(CupertinoIcons.macwindow),
                       tooltip: '独立窗口投屏',
                       onPressed: device.isOnline
@@ -222,17 +207,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 Expanded(child: title),
                 const SizedBox(width: 16),
                 IconButton(
-                  icon: Icon(
-                    isMirrorActive ? CupertinoIcons.tv_fill : CupertinoIcons.tv,
-                    color: isMirrorActive ? const Color(0xFF2EC46B) : null,
-                  ),
-                  tooltip: isMirrorActive ? '停止投屏' : '内嵌投屏',
-                  onPressed: device.isOnline
-                      ? () => _toggleEmbeddedScrcpy(context, ref, device.id)
-                      : null,
-                ),
-                const SizedBox(width: 8),
-                IconButton(
                   icon: const Icon(CupertinoIcons.macwindow),
                   tooltip: '独立窗口投屏',
                   onPressed: device.isOnline
@@ -269,69 +243,12 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     );
   }
 
-  Future<void> _showRenameDialog(
-    BuildContext context,
-    WidgetRef ref,
-    RegisteredDevice device,
-  ) async {
-    final controller = TextEditingController(
-      text: device.customName ?? device.model ?? '',
-    );
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(context.l10n.t('editDeviceName')),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: context.l10n.t('enterDeviceName'),
-            ),
-            onSubmitted: (value) => Navigator.of(context).pop(value),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(context.l10n.t('cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(controller.text),
-              child: Text(context.l10n.t('confirm')),
-            ),
-          ],
-        );
-      },
-    );
-    controller.dispose();
-
-    if (name != null && context.mounted) {
-      await ref.read(deviceRegistryProvider.notifier).setAlias(device.id, name);
-    }
-  }
-
-  Future<void> _toggleEmbeddedScrcpy(
-    BuildContext context,
-    WidgetRef ref,
-    String deviceId,
-  ) async {
-    try {
-      await ref
-          .read(activeEmbeddedMirrorProvider(deviceId).notifier)
-          .toggleMirroring();
-    } on Object catch (error) {
-      if (context.mounted) {
-        _showSnack(context, error.toString(), isError: true);
-      }
-    }
-  }
-
   Future<void> _openStandaloneMirror(
     BuildContext context,
     WidgetRef ref,
     AdbDevice device,
   ) async {
-    // 1. If embedded mirroring is active in the main window, stop it first.
+    // 1. If mirroring is active, stop it first.
     final textureId = ref.read(activeEmbeddedMirrorProvider(device.id));
     if (textureId != null) {
       await ref

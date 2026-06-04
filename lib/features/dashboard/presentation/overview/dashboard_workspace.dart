@@ -19,52 +19,17 @@ class _WorkspacePanel extends ConsumerWidget {
     // 监听端口转发自动应用服务
     ref.watch(portForwardAutoApplyProvider);
 
-    final textureId = ref.watch(activeEmbeddedMirrorProvider(device.id));
-    final isMirrorActive = textureId != null;
-
     return LayoutBuilder(
       builder: (context, constraints) {
         // 同一个 workspace 可能处在有界的桌面 Row 中，也可能处在无界的
         // 移动端 ListView 中，因此 tab 卡片需要不同的高度策略。
         final hasBoundedHeight = constraints.hasBoundedHeight;
 
-        final Widget content;
-        if (isMirrorActive) {
-          content = Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                width: 360,
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xffeceef1), width: 1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(11),
-                  child: EmbeddedScrcpyViewer(deviceId: device.id),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Center(
-                child: MirrorSideToolbar(deviceId: device.id),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _ToolContentCard(
-                  device: device,
-                  sessions: sessions,
-                  tabIndex: tabIndex,
-                ),
-              ),
-            ],
-          );
-        } else {
-          content = _ToolContentCard(
-            device: device,
-            sessions: sessions,
-            tabIndex: tabIndex,
-          );
-        }
+        final content = _ToolContentCard(
+          device: device,
+          sessions: sessions,
+          tabIndex: tabIndex,
+        );
 
         return DropTarget(
           onDragDone: (details) =>
@@ -187,10 +152,7 @@ class _ToolContentCardState extends State<_ToolContentCard> {
     return Card(
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: IndexedStack(
-          index: widget.tabIndex,
-          children: children,
-        ),
+        child: IndexedStack(index: widget.tabIndex, children: children),
       ),
     );
   }

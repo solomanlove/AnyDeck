@@ -565,6 +565,12 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    Icon(
+                      CupertinoIcons.device_phone_portrait,
+                      size: 20,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
                       widget.deviceName,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
