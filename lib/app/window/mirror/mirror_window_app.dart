@@ -294,27 +294,33 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     double viewerW,
     double viewerH,
   ) async {
-    if (R <= 0 || R.isNaN || R.isInfinite) return;
+    if (R <= 0 || R.isNaN || R.isInfinite) {
+      return;
+    }
     if (viewerW <= 0 ||
         viewerH <= 0 ||
         viewerW.isNaN ||
         viewerW.isInfinite ||
         viewerH.isNaN ||
-        viewerH.isInfinite)
+        viewerH.isInfinite) {
       return;
+    }
 
     final Rect frame = await _getWindowFrame();
     if (frame.width.isNaN ||
         frame.width.isInfinite ||
         frame.height.isNaN ||
-        frame.height.isInfinite)
+        frame.height.isInfinite) {
       return;
+    }
 
     final double currentWindowW = frame.width;
     final double currentWindowH = frame.height;
 
     final double rc = viewerW / viewerH;
-    if (rc.isNaN || rc.isInfinite || rc <= 0) return;
+    if (rc.isNaN || rc.isInfinite || rc <= 0) {
+      return;
+    }
 
     double deltaW = 0;
     double deltaH = 0;
@@ -329,7 +335,12 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       deltaH = targetViewerH - viewerH;
     }
 
-    if (deltaW == 0 && deltaH == 0) return;
+    if (deltaW.abs() < 4 && deltaH.abs() < 4) {
+      return;
+    }
+    if (deltaW == 0 && deltaH == 0) {
+      return;
+    }
 
     final double newWindowW = currentWindowW + deltaW;
     final double newWindowH = currentWindowH + deltaH;
@@ -339,8 +350,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         newWindowW.isNaN ||
         newWindowW.isInfinite ||
         newWindowH.isNaN ||
-        newWindowH.isInfinite)
+        newWindowH.isInfinite) {
       return;
+    }
 
     // 保持窗口中心点不变进行缩放
     final double newLeft = frame.left - deltaW / 2;
@@ -349,8 +361,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     if (newLeft.isNaN ||
         newLeft.isInfinite ||
         newTop.isNaN ||
-        newTop.isInfinite)
+        newTop.isInfinite) {
       return;
+    }
 
     final windowController = WindowController.fromWindowId(widget.windowId);
     windowController

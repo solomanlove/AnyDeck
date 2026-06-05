@@ -1,5 +1,46 @@
 part of '../dashboard_screen.dart';
 
+const Size _defaultMirrorWindowSize = Size(480, 800);
+const double _mirrorWindowTopChromeHeight = 58;
+
+Size _resolveMirrorInitialWindowSize(String? resolution) {
+  final ratio = _parseMirrorAspectRatio(resolution);
+  if (ratio == null) return _defaultMirrorWindowSize;
+
+  final viewerMaxWidth = _defaultMirrorWindowSize.width;
+  final viewerMaxHeight =
+      _defaultMirrorWindowSize.height - _mirrorWindowTopChromeHeight;
+  final containerRatio = viewerMaxWidth / viewerMaxHeight;
+
+  final double viewerWidth;
+  final double viewerHeight;
+  if (containerRatio > ratio) {
+    viewerHeight = viewerMaxHeight;
+    viewerWidth = viewerHeight * ratio;
+  } else {
+    viewerWidth = viewerMaxWidth;
+    viewerHeight = viewerWidth / ratio;
+  }
+
+  return Size(
+    max(200, viewerWidth),
+    max(200, viewerHeight + _mirrorWindowTopChromeHeight),
+  );
+}
+
+double? _parseMirrorAspectRatio(String? resolution) {
+  if (resolution == null || resolution == '-') return null;
+  final match = RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(resolution);
+  if (match == null) return null;
+
+  final width = int.tryParse(match.group(1)!);
+  final height = int.tryParse(match.group(2)!);
+  if (width == null || height == null || width <= 0 || height <= 0) {
+    return null;
+  }
+  return width / height;
+}
+
 class _SelectedDeviceHeader extends ConsumerWidget {
   const _SelectedDeviceHeader({required this.device});
 
@@ -258,6 +299,12 @@ class _SelectedDeviceHeader extends ConsumerWidget {
 
     // 2. Open the standalone mirroring window
     try {
+      final overviewAsync = ref.read(deviceOverviewProvider(device.id));
+      final resolution = overviewAsync.maybeWhen(
+        data: (overview) => overview.physicalResolution,
+        orElse: () => null,
+      );
+      final initialSize = _resolveMirrorInitialWindowSize(resolution);
       final window = await DesktopMultiWindow.createWindow(
         jsonEncode({
           'type': 'mirror',
@@ -265,7 +312,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
           'deviceName': device.model ?? device.id,
         }),
       );
-      await window.setFrame(const Offset(100, 100) & const Size(480, 800));
+      await window.setFrame(Offset.zero & initialSize);
       await window.center();
       await window.setTitle('投屏 - ${device.model ?? device.id}');
       await window.show();

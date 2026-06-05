@@ -167,6 +167,12 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
         }
 
         // 2. 开启独立投屏窗口
+        final overviewAsync = ref.read(deviceOverviewProvider(device.id));
+        final resolution = overviewAsync.maybeWhen(
+          data: (overview) => overview.physicalResolution,
+          orElse: () => null,
+        );
+        final initialSize = _resolveMirrorInitialWindowSize(resolution);
         final window = await DesktopMultiWindow.createWindow(
           jsonEncode({
             'type': 'mirror',
@@ -174,7 +180,7 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
             'deviceName': device.displayName,
           }),
         );
-        await window.setFrame(const Offset(100, 100) & const Size(480, 800));
+        await window.setFrame(Offset.zero & initialSize);
         await window.center();
         await window.setTitle('投屏 - ${device.displayName}');
         await window.show();
