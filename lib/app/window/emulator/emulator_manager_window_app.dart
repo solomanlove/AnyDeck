@@ -36,9 +36,7 @@ class EmulatorManagerWindowApp extends ConsumerWidget {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: settings.themeMode,
-      home: const Scaffold(
-        body: EmulatorListPanel(isStandalone: true),
-      ),
+      home: const Scaffold(body: EmulatorListPanel(isStandalone: true)),
     );
   }
 }

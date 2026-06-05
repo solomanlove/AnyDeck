@@ -19,17 +19,9 @@ class StubAdbServiceForFocus extends AdbService {
     Duration timeout = const Duration(seconds: 15),
   }) async {
     if (command.contains('mCurrentFocus')) {
-      return AdbResult(
-        exitCode: 0,
-        stdout: focusOutput,
-        stderr: '',
-      );
+      return AdbResult(exitCode: 0, stdout: focusOutput, stderr: '');
     } else if (command.contains('dumpsys activity')) {
-      return AdbResult(
-        exitCode: 0,
-        stdout: activityOutput,
-        stderr: '',
-      );
+      return AdbResult(exitCode: 0, stdout: activityOutput, stderr: '');
     }
     return const AdbResult(exitCode: 0, stdout: '', stderr: '');
   }
@@ -39,7 +31,8 @@ void main() {
   group('Current Focus Fragment Parsing Tests', () {
     test('Should display only focus line if no fragments found', () async {
       final adb = StubAdbServiceForFocus(
-        focusOutput: 'mCurrentFocus=Window{2baae81 u0 com.xxxx.xxxx/com.xxxx.xxxx.ui.MainActivity}\n',
+        focusOutput:
+            'mCurrentFocus=Window{2baae81 u0 com.xxxx.xxxx/com.xxxx.xxxx.ui.MainActivity}\n',
         activityOutput: 'No fragments here',
       );
       final service = DeviceActionService(adb);
@@ -54,7 +47,8 @@ void main() {
 
     test('Should parse and display fragments when they exist', () async {
       final adb = StubAdbServiceForFocus(
-        focusOutput: 'mCurrentFocus=Window{2baae81 u0 com.xxxx.xxxx/com.xxxx.xxxx.ui.MainActivity}\n',
+        focusOutput:
+            'mCurrentFocus=Window{2baae81 u0 com.xxxx.xxxx/com.xxxx.xxxx.ui.MainActivity}\n',
         activityOutput: '''
 Added Fragments:
   #0: MainFragment{186a79e9 #0 id=0x7f0900cf}

@@ -7,7 +7,8 @@ class _AppPermissionsDialog extends ConsumerStatefulWidget {
   final AdbPackage package;
 
   @override
-  ConsumerState<_AppPermissionsDialog> createState() => _AppPermissionsDialogState();
+  ConsumerState<_AppPermissionsDialog> createState() =>
+      _AppPermissionsDialogState();
 }
 
 class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
@@ -31,10 +32,9 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
       _error = null;
     });
     try {
-      final perms = await ref.read(appPermissionServiceProvider).getPermissions(
-        widget.deviceId,
-        widget.package.name,
-      );
+      final perms = await ref
+          .read(appPermissionServiceProvider)
+          .getPermissions(widget.deviceId, widget.package.name);
       if (mounted) {
         setState(() {
           _permissions = perms;
@@ -64,7 +64,10 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
     _filteredPermissions = list;
   }
 
-  Future<void> _togglePermission(AdbAppPermission permission, bool targetValue) async {
+  Future<void> _togglePermission(
+    AdbAppPermission permission,
+    bool targetValue,
+  ) async {
     final name = permission.name;
     setState(() {
       _togglingPermissions.add(name);
@@ -73,17 +76,29 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
     try {
       final service = ref.read(appPermissionServiceProvider);
       final result = targetValue
-          ? await service.grantPermission(widget.deviceId, widget.package.name, name)
-          : await service.revokePermission(widget.deviceId, widget.package.name, name);
+          ? await service.grantPermission(
+              widget.deviceId,
+              widget.package.name,
+              name,
+            )
+          : await service.revokePermission(
+              widget.deviceId,
+              widget.package.name,
+              name,
+            );
 
       if (!mounted) return;
 
       if (result.isSuccess) {
         final actionMsg = targetValue
-            ? context.l10n.t('grantSuccess').replaceAll('{permission}', _getShortName(name))
-            : context.l10n.t('revokeSuccess').replaceAll('{permission}', _getShortName(name));
+            ? context.l10n
+                  .t('grantSuccess')
+                  .replaceAll('{permission}', _getShortName(name))
+            : context.l10n
+                  .t('revokeSuccess')
+                  .replaceAll('{permission}', _getShortName(name));
         _showSnack(context, actionMsg);
-        
+
         setState(() {
           final idx = _permissions.indexWhere((p) => p.name == name);
           if (idx != -1) {
@@ -97,8 +112,12 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
         });
       } else {
         final failMsg = targetValue
-            ? context.l10n.t('grantFailed').replaceAll('{error}', result.message)
-            : context.l10n.t('revokeFailed').replaceAll('{error}', result.message);
+            ? context.l10n
+                  .t('grantFailed')
+                  .replaceAll('{error}', result.message)
+            : context.l10n
+                  .t('revokeFailed')
+                  .replaceAll('{error}', result.message);
         _showSnack(context, failMsg, isError: true);
       }
     } catch (e) {
@@ -155,7 +174,7 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // 应用基本信息展示
             Row(
               children: [
@@ -164,13 +183,17 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
                   child: SizedBox(
                     width: 44,
                     height: 44,
-                    child: package.iconLocalPath != null &&
+                    child:
+                        package.iconLocalPath != null &&
                             File(package.iconLocalPath!).existsSync()
                         ? Image.file(
                             File(package.iconLocalPath!),
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) =>
-                                _FallbackIconLarge(package: package, theme: theme),
+                                _FallbackIconLarge(
+                                  package: package,
+                                  theme: theme,
+                                ),
                           )
                         : _FallbackIconLarge(package: package, theme: theme),
                   ),
@@ -214,7 +237,10 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
                     decoration: InputDecoration(
                       prefixIcon: const Icon(CupertinoIcons.search, size: 20),
                       hintText: context.l10n.t('searchPermission'),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -251,9 +277,7 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
             const SizedBox(height: 12),
 
             // 权限列表区域
-            Expanded(
-              child: _buildContent(context, theme),
-            ),
+            Expanded(child: _buildContent(context, theme)),
           ],
         ),
       ),
@@ -279,10 +303,16 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(CupertinoIcons.exclamationmark_circle, size: 40, color: theme.colorScheme.error),
+            Icon(
+              CupertinoIcons.exclamationmark_circle,
+              size: 40,
+              color: theme.colorScheme.error,
+            ),
             const SizedBox(height: 12),
             Text(
-              context.l10n.t('permissionsLoadFailed').replaceAll('{error}', _error!),
+              context.l10n
+                  .t('permissionsLoadFailed')
+                  .replaceAll('{error}', _error!),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.error,
@@ -328,23 +358,24 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
         final perm = _filteredPermissions[index];
         final shortName = _getShortName(perm.name);
         final isToggling = _togglingPermissions.contains(perm.name);
-        
+
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
           elevation: 0,
           color: theme.colorScheme.surfaceContainerLow,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: theme.dividerColor.withValues(alpha: 0.3),
-            ),
+            side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 4,
+            ),
             leading: Icon(
               perm.isRuntime ? CupertinoIcons.shield : CupertinoIcons.info,
-              color: perm.granted 
-                  ? theme.colorScheme.primary 
+              color: perm.granted
+                  ? theme.colorScheme.primary
                   : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
               size: 22,
             ),
@@ -363,26 +394,29 @@ class _AppPermissionsDialogState extends ConsumerState<_AppPermissionsDialog> {
             ),
             trailing: perm.isRuntime
                 ? (isToggling
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Switch(
-                        value: perm.granted,
-                        onChanged: (value) => _togglePermission(perm, value),
-                      ))
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Switch(
+                          value: perm.granted,
+                          onChanged: (value) => _togglePermission(perm, value),
+                        ))
                 : Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: perm.granted 
-                          ? theme.colorScheme.primaryContainer 
+                      color: perm.granted
+                          ? theme.colorScheme.primaryContainer
                           : theme.colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      perm.granted 
-                          ? context.l10n.t('permissionGranted') 
+                      perm.granted
+                          ? context.l10n.t('permissionGranted')
                           : context.l10n.t('permissionDenied'),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: perm.granted

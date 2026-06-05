@@ -23,6 +23,7 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _mirrorVideoBitrateKey = 'settings.mirrorVideoBitrate';
   static const _mirrorMaxSizeKey = 'settings.mirrorMaxSize';
   static const _mirrorAudioEnabledKey = 'settings.mirrorAudioEnabled';
+  static const _screenshotSavePathKey = 'settings.screenshotSavePath';
 
   @override
   AppSettings build() {
@@ -33,17 +34,26 @@ class AppSettingsController extends Notifier<AppSettings> {
   }
 
   void _setupMethodHandler() {
-    DesktopMultiWindow.setMethodHandler((MethodCall call, int fromWindowId) async {
+    DesktopMultiWindow.setMethodHandler((
+      MethodCall call,
+      int fromWindowId,
+    ) async {
       if (call.method == 'update_language') {
         final langCode = call.arguments as String;
         await setLanguage(AppLanguage.fromCode(langCode), broadcast: false);
+      } else if (call.method == 'update_save_path') {
+        final savePath = call.arguments as String;
+        await setScreenshotSavePath(savePath, broadcast: false);
       }
       return null;
     });
   }
 
   /// 更新当前语言，并持久化到下次启动。
-  Future<void> setLanguage(AppLanguage language, {bool broadcast = true}) async {
+  Future<void> setLanguage(
+    AppLanguage language, {
+    bool broadcast = true,
+  }) async {
     state = state.copyWith(language: language);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_languageKey, language.code);
@@ -111,6 +121,39 @@ class AppSettingsController extends Notifier<AppSettings> {
     await preferences.setBool(_mirrorAudioEnabledKey, value);
   }
 
+  /// 更新截图/录屏保存路径，并持久化和广播。
+  Future<void> setScreenshotSavePath(
+    String value, {
+    bool broadcast = true,
+  }) async {
+    state = state.copyWith(screenshotSavePath: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_screenshotSavePathKey, value);
+
+    if (broadcast) {
+      try {
+        final currentId = ref.read(windowIdProvider);
+
+        if (currentId == 0) {
+          // 主窗口：广播给所有子窗口
+          final subWindowIds = await DesktopMultiWindow.getAllSubWindowIds();
+          for (final windowId in subWindowIds) {
+            await DesktopMultiWindow.invokeMethod(
+              windowId,
+              'update_save_path',
+              value,
+            );
+          }
+        } else {
+          // 子窗口：发送到主窗口
+          await DesktopMultiWindow.invokeMethod(0, 'update_save_path', value);
+        }
+      } catch (e) {
+        debugPrint('Failed to broadcast save path change: $e');
+      }
+    }
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -120,10 +163,11 @@ class AppSettingsController extends Notifier<AppSettings> {
         preferences.getBool(_scrcpyAlwaysOnTopKey) ?? true;
     final mirrorVideoBitrate =
         preferences.getInt(_mirrorVideoBitrateKey) ?? 8000000;
-    final mirrorMaxSize =
-        preferences.getInt(_mirrorMaxSizeKey) ?? 1080;
+    final mirrorMaxSize = preferences.getInt(_mirrorMaxSizeKey) ?? 1080;
     final mirrorAudioEnabled =
         preferences.getBool(_mirrorAudioEnabledKey) ?? true;
+    final screenshotSavePath =
+        preferences.getString(_screenshotSavePathKey) ?? '';
     state = AppSettings(
       language: language,
       themeMode: themeMode,
@@ -131,6 +175,7 @@ class AppSettingsController extends Notifier<AppSettings> {
       mirrorVideoBitrate: mirrorVideoBitrate,
       mirrorMaxSize: mirrorMaxSize,
       mirrorAudioEnabled: mirrorAudioEnabled,
+      screenshotSavePath: screenshotSavePath,
     );
   }
 

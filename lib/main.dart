@@ -29,8 +29,12 @@ void main(List<String> args) async {
     } catch (_) {}
     if (data.type == KeyEventType.up) {
       final physicalKey = PhysicalKeyboardKey(data.physical);
-      if (!HardwareKeyboard.instance.physicalKeysPressed.contains(physicalKey)) {
-        debugPrint('[KeyAssertionFix] Suppressed mismatched KeyUpEvent for physicalKey: $physicalKey');
+      if (!HardwareKeyboard.instance.physicalKeysPressed.contains(
+        physicalKey,
+      )) {
+        debugPrint(
+          '[KeyAssertionFix] Suppressed mismatched KeyUpEvent for physicalKey: $physicalKey',
+        );
         return true; // 返回 true 表示事件已消费，不再向下游分发
       }
     }
@@ -48,22 +52,15 @@ void main(List<String> args) async {
       //投屏窗口
       runApp(
         ProviderScope(
-          overrides: [
-            windowIdProvider.overrideWithValue(windowId),
-          ],
-          child: MirrorWindowApp(
-            windowId: windowId,
-            argument: argument,
-          ),
+          overrides: [windowIdProvider.overrideWithValue(windowId)],
+          child: MirrorWindowApp(windowId: windowId, argument: argument),
         ),
       );
     } else {
       //模拟器管理窗口
       runApp(
         ProviderScope(
-          overrides: [
-            windowIdProvider.overrideWithValue(windowId),
-          ],
+          overrides: [windowIdProvider.overrideWithValue(windowId)],
           child: EmulatorManagerWindowApp(
             windowId: windowId,
             argument: argument,

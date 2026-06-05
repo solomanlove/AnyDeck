@@ -8,6 +8,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:scrcpy_flutter/scrcpy_flutter.dart';
+import 'package:desktop_drop/desktop_drop.dart';
+import 'package:file_selector/file_selector.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
@@ -357,6 +359,43 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         });
   }
 
+  Future<void> _handleDrop(List<XFile> files) async {
+    if (files.isEmpty) return;
+
+    final appService = ref.read(appManagementServiceProvider);
+
+    for (final file in files) {
+      final isApk = file.path.toLowerCase().endsWith('.apk');
+      if (!isApk) continue;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('正在安装: ${file.name}...'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      final result = await appService.installApk(widget.deviceId, file.path);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${file.name}: ${result.isSuccess ? "安装成功" : "安装失败: ${result.message}"}',
+          ),
+          backgroundColor: result.isSuccess
+              ? const Color(0xff09c47c)
+              : Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _startMirroring() async {
     if (!mounted) return;
     setState(() {
@@ -537,90 +576,86 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       backgroundColor: isDark
           ? const Color(0xff121212)
           : const Color(0xfff8f9fa),
-      body: KeyboardListener(
-        focusNode: _keyboardFocusNode,
-        onKeyEvent: (event) {
-          if (event is KeyDownEvent &&
-              event.logicalKey == LogicalKeyboardKey.escape) {
-            if (_isFullScreen) {
-              _toggleFullScreen(false);
+      body: DropTarget(
+        onDragDone: (details) => _handleDrop(details.files),
+        child: KeyboardListener(
+          focusNode: _keyboardFocusNode,
+          onKeyEvent: (event) {
+            if (event is KeyDownEvent &&
+                event.logicalKey == LogicalKeyboardKey.escape) {
+              if (_isFullScreen) {
+                _toggleFullScreen(false);
+              }
             }
-          }
-        },
-        child: Column(
-          children: [
-            if (!_isFullScreen)
-              Container(
-                height: 36, // 调小高度以在 macOS 上更紧凑，确保标题上下居中
-                padding: EdgeInsets.only(
-                  left: Platform.isMacOS ? 80 : 16,
-                  right: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: headerBgColor,
-                  border: Border(
-                    bottom: BorderSide(color: borderColor, width: 1),
+          },
+          child: Column(
+            children: [
+              if (!_isFullScreen)
+                Container(
+                  height: 36, // 调小高度以在 macOS 上更紧凑，确保标题上下居中
+                  padding: EdgeInsets.only(
+                    left: Platform.isMacOS ? 80 : 16,
+                    right: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: headerBgColor,
+                    border: Border(
+                      bottom: BorderSide(color: borderColor, width: 1),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.deviceName,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      MirrorToolbarButton(
+                        icon: Icon(
+                          _isAlwaysOnTop
+                              ? CupertinoIcons.pin_fill
+                              : CupertinoIcons.pin,
+                          color: _isAlwaysOnTop
+                              ? Colors.orange
+                              : (isDark ? Colors.white70 : Colors.black87),
+                        ),
+                        tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
+                        onPressed: _toggleAlwaysOnTop,
+                      ),
+                      const SizedBox(width: 4),
+                      MirrorToolbarButton(
+                        icon: Icon(
+                          _isFullScreen
+                              ? CupertinoIcons.fullscreen_exit
+                              : CupertinoIcons.fullscreen,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                        tooltip: _isFullScreen ? '退出全屏' : '全屏显示',
+                        onPressed: () => _toggleFullScreen(!_isFullScreen),
+                      ),
+                      const SizedBox(width: 4),
+                      MirrorToolbarButton(
+                        icon: Icon(
+                          CupertinoIcons.settings,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                        tooltip: '投屏画质设置',
+                        onPressed: () => showMirrorSettingsDialog(
+                          context: context,
+                          ref: ref,
+                          deviceId: widget.deviceId,
+                          windowId: widget.windowId,
+                          isAlwaysOnTop: _isAlwaysOnTop,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      CupertinoIcons.device_phone_portrait,
-                      size: 20,
-                      color: isDark ? Colors.white70 : Colors.black87,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      widget.deviceName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    MirrorToolbarButton(
-                      icon: Icon(
-                        _isAlwaysOnTop
-                            ? CupertinoIcons.pin_fill
-                            : CupertinoIcons.pin,
-                        color: _isAlwaysOnTop
-                            ? Colors.orange
-                            : (isDark ? Colors.white70 : Colors.black87),
-                      ),
-                      tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
-                      onPressed: _toggleAlwaysOnTop,
-                    ),
-                    const SizedBox(width: 4),
-                    MirrorToolbarButton(
-                      icon: Icon(
-                        _isFullScreen
-                            ? CupertinoIcons.fullscreen_exit
-                            : CupertinoIcons.fullscreen,
-                        color: isDark ? Colors.white70 : Colors.black87,
-                      ),
-                      tooltip: _isFullScreen ? '退出全屏' : '全屏显示',
-                      onPressed: () => _toggleFullScreen(!_isFullScreen),
-                    ),
-                    const SizedBox(width: 4),
-                    MirrorToolbarButton(
-                      icon: Icon(
-                        CupertinoIcons.settings,
-                        color: isDark ? Colors.white70 : Colors.black87,
-                      ),
-                      tooltip: '投屏画质设置',
-                      onPressed: () => showMirrorSettingsDialog(
-                        context: context,
-                        ref: ref,
-                        deviceId: widget.deviceId,
-                        windowId: widget.windowId,
-                        isAlwaysOnTop: _isAlwaysOnTop,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            Expanded(child: contentWidget),
-          ],
+              Expanded(child: contentWidget),
+            ],
+          ),
         ),
       ),
     );

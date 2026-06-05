@@ -17,7 +17,11 @@ class FileManagerService {
     // 第二选择：ls -lA (长格式，隐藏 . 和 ..)
     // 第三选择：ls -la (长格式，显示所有文件)
     const listTimeout = Duration(seconds: 5);
-    var result = await _adb.shellArgs(deviceId, ['ls', '-llA', remotePath], timeout: listTimeout);
+    var result = await _adb.shellArgs(deviceId, [
+      'ls',
+      '-llA',
+      remotePath,
+    ], timeout: listTimeout);
 
     bool shouldFallback(AdbResult res) {
       final err = res.stderr.toLowerCase();
@@ -28,10 +32,18 @@ class FileManagerService {
     }
 
     if (shouldFallback(result)) {
-      result = await _adb.shellArgs(deviceId, ['ls', '-lA', remotePath], timeout: listTimeout);
+      result = await _adb.shellArgs(deviceId, [
+        'ls',
+        '-lA',
+        remotePath,
+      ], timeout: listTimeout);
     }
     if (shouldFallback(result)) {
-      result = await _adb.shellArgs(deviceId, ['ls', '-la', remotePath], timeout: listTimeout);
+      result = await _adb.shellArgs(deviceId, [
+        'ls',
+        '-la',
+        remotePath,
+      ], timeout: listTimeout);
     }
 
     // 即使命令返回非零（如有些 root 目录部分文件无权限导致 ls 返回 1），

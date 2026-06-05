@@ -9,7 +9,8 @@ class _ScreenshotTab extends ConsumerStatefulWidget {
   ConsumerState<_ScreenshotTab> createState() => _ScreenshotTabState();
 }
 
-class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenRecordMixin {
+class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
+    with _ScreenRecordMixin {
   Uint8List? _screenshotBytes;
   bool _loading = false;
   String? _error;
@@ -20,17 +21,20 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
   int _imgWidth = 0;
   int _imgHeight = 0;
 
-  final TransformationController _transformationController = TransformationController();
+  final TransformationController _transformationController =
+      TransformationController();
   Size _viewportSize = const Size(400, 800);
 
   double get _fitScale {
-    if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0) return 1.0;
-    final rotatedW = (_rotation == 90 || _rotation == 270) ? _imgHeight : _imgWidth;
-    final rotatedH = (_rotation == 90 || _rotation == 270) ? _imgWidth : _imgHeight;
-    return min(
-      _viewportSize.width / rotatedW,
-      _viewportSize.height / rotatedH,
-    );
+    if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0)
+      return 1.0;
+    final rotatedW = (_rotation == 90 || _rotation == 270)
+        ? _imgHeight
+        : _imgWidth;
+    final rotatedH = (_rotation == 90 || _rotation == 270)
+        ? _imgWidth
+        : _imgHeight;
+    return min(_viewportSize.width / rotatedW, _viewportSize.height / rotatedH);
   }
 
   double get _minScale {
@@ -69,19 +73,30 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
   Future<void> _capture({bool isAuto = false}) async {
     if (_loading && !isAuto) return;
     setState(() {
-      _loading = !isAuto; // Auto-refresh in the background without blocking the UI
+      _loading =
+          !isAuto; // Auto-refresh in the background without blocking the UI
       _error = null;
     });
 
     try {
-      final bytes = await ref.read(adbServiceProvider).captureScreenshot(widget.device.id);
+      final bytes = await ref
+          .read(adbServiceProvider)
+          .captureScreenshot(widget.device.id);
       if (mounted) {
         setState(() {
           _screenshotBytes = bytes;
           _loading = false;
           if (bytes.length > 24) {
-            _imgWidth = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
-            _imgHeight = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+            _imgWidth =
+                (bytes[16] << 24) |
+                (bytes[17] << 16) |
+                (bytes[18] << 8) |
+                bytes[19];
+            _imgHeight =
+                (bytes[20] << 24) |
+                (bytes[21] << 16) |
+                (bytes[22] << 8) |
+                bytes[23];
           }
         });
         if (!isAuto) {
@@ -136,8 +151,12 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
 
   void _zoom1to1() {
     if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0) return;
-    final rotatedW = (_rotation == 90 || _rotation == 270) ? _imgHeight : _imgWidth;
-    final rotatedH = (_rotation == 90 || _rotation == 270) ? _imgWidth : _imgHeight;
+    final rotatedW = (_rotation == 90 || _rotation == 270)
+        ? _imgHeight
+        : _imgWidth;
+    final rotatedH = (_rotation == 90 || _rotation == 270)
+        ? _imgWidth
+        : _imgHeight;
 
     final offsetX = (_viewportSize.width - rotatedW) / 2;
     final offsetY = (_viewportSize.height - rotatedH) / 2;
@@ -150,8 +169,12 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
 
   void _zoomReset() {
     if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0) return;
-    final rotatedW = (_rotation == 90 || _rotation == 270) ? _imgHeight : _imgWidth;
-    final rotatedH = (_rotation == 90 || _rotation == 270) ? _imgWidth : _imgHeight;
+    final rotatedW = (_rotation == 90 || _rotation == 270)
+        ? _imgHeight
+        : _imgWidth;
+    final rotatedH = (_rotation == 90 || _rotation == 270)
+        ? _imgWidth
+        : _imgHeight;
 
     final scale = min(
       _viewportSize.width / rotatedW,
@@ -171,21 +194,24 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
   Future<void> _saveScreenshot() async {
     if (_screenshotBytes == null) return;
     try {
-      final location = await getSaveLocation(
-        acceptedTypeGroups: [
-          const XTypeGroup(label: 'PNG Image', extensions: ['png']),
-        ],
-        suggestedName: 'screenshot_${widget.device.id}_${DateTime.now().millisecondsSinceEpoch}.png',
+      final settings = ref.read(appSettingsProvider);
+      final hostPlatform = ref.read(hostPlatformServiceProvider);
+      final savePath = hostPlatform.generateScreenshotPath(
+        settings.screenshotSavePath,
+        widget.device.id,
       );
-      if (location == null) return;
-
-      final file = File(location.path);
+      final file = File(savePath);
+      await file.parent.create(recursive: true);
       await file.writeAsBytes(_screenshotBytes!);
+
+      final copied = await hostPlatform.copyImageToClipboard(_screenshotBytes!);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${context.l10n.t('saveSuccess')}: ${location.path}'),
+            content: Text(
+              '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
+            ),
             backgroundColor: const Color(0xff09c47c),
             behavior: SnackBarBehavior.floating,
           ),
@@ -231,13 +257,16 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
 
   @override
   Widget build(BuildContext context) {
-
     if (_error != null && _screenshotBytes == null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.red),
+            const Icon(
+              CupertinoIcons.exclamationmark_circle,
+              size: 48,
+              color: Colors.red,
+            ),
             const SizedBox(height: 16),
             Text(
               _error!,
@@ -264,7 +293,12 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
           height: 48,
           decoration: BoxDecoration(
             color: colorScheme.surface,
-            border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1)),
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor,
+                width: 1,
+              ),
+            ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
@@ -277,54 +311,70 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
               IconButton(
                 tooltip: context.l10n.t('save'),
                 icon: const Icon(CupertinoIcons.floppy_disk),
-                onPressed: (_screenshotBytes == null || isRecording) ? null : _saveScreenshot,
+                onPressed: (_screenshotBytes == null || isRecording)
+                    ? null
+                    : _saveScreenshot,
               ),
               IconButton(
                 tooltip: context.l10n.t('copy'),
                 icon: const Icon(CupertinoIcons.doc_on_doc),
-                onPressed: (_screenshotBytes == null || isRecording) ? null : _copyScreenshot,
+                onPressed: (_screenshotBytes == null || isRecording)
+                    ? null
+                    : _copyScreenshot,
               ),
               const VerticalDivider(width: 24, indent: 12, endIndent: 12),
               IconButton(
                 tooltip: context.l10n.t('rotateLeft'),
                 icon: const Icon(CupertinoIcons.rotate_left),
-                onPressed: (_screenshotBytes == null || isRecording) ? null : () {
-                  setState(() {
-                    _rotation = (_rotation - 90 + 360) % 360;
-                    _zoomReset();
-                  });
-                },
+                onPressed: (_screenshotBytes == null || isRecording)
+                    ? null
+                    : () {
+                        setState(() {
+                          _rotation = (_rotation - 90 + 360) % 360;
+                          _zoomReset();
+                        });
+                      },
               ),
               IconButton(
                 tooltip: context.l10n.t('rotateRight'),
                 icon: const Icon(CupertinoIcons.rotate_right),
-                onPressed: (_screenshotBytes == null || isRecording) ? null : () {
-                  setState(() {
-                    _rotation = (_rotation + 90) % 360;
-                    _zoomReset();
-                  });
-                },
+                onPressed: (_screenshotBytes == null || isRecording)
+                    ? null
+                    : () {
+                        setState(() {
+                          _rotation = (_rotation + 90) % 360;
+                          _zoomReset();
+                        });
+                      },
               ),
               const VerticalDivider(width: 24, indent: 12, endIndent: 12),
               IconButton(
                 tooltip: context.l10n.t('zoomIn'),
                 icon: const Icon(CupertinoIcons.zoom_in),
-                onPressed: (_screenshotBytes == null || isRecording) ? null : () => _zoom(1.2),
+                onPressed: (_screenshotBytes == null || isRecording)
+                    ? null
+                    : () => _zoom(1.2),
               ),
               IconButton(
                 tooltip: context.l10n.t('zoomOut'),
                 icon: const Icon(CupertinoIcons.zoom_out),
-                onPressed: (_screenshotBytes == null || isRecording) ? null : () => _zoom(0.8),
+                onPressed: (_screenshotBytes == null || isRecording)
+                    ? null
+                    : () => _zoom(0.8),
               ),
               IconButton(
                 tooltip: context.l10n.t('zoomReset'),
                 icon: const Icon(CupertinoIcons.resize),
-                onPressed: (_screenshotBytes == null || isRecording) ? null : _zoomReset,
+                onPressed: (_screenshotBytes == null || isRecording)
+                    ? null
+                    : _zoomReset,
               ),
               IconButton(
                 tooltip: context.l10n.t('zoom1to1'),
                 icon: const Icon(CupertinoIcons.fullscreen),
-                onPressed: (_screenshotBytes == null || isRecording) ? null : _zoom1to1,
+                onPressed: (_screenshotBytes == null || isRecording)
+                    ? null
+                    : _zoom1to1,
               ),
               const VerticalDivider(width: 24, indent: 12, endIndent: 12),
               IconButton(
@@ -333,11 +383,15 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
                   CupertinoIcons.clock,
                   color: _autoRefresh ? colorScheme.primary : null,
                 ),
-                onPressed: (_screenshotBytes == null || isRecording) ? null : _toggleAutoRefresh,
+                onPressed: (_screenshotBytes == null || isRecording)
+                    ? null
+                    : _toggleAutoRefresh,
               ),
               const VerticalDivider(width: 24, indent: 12, endIndent: 12),
               IconButton(
-                tooltip: isRecording ? context.l10n.t('stopRecord') : context.l10n.t('startRecord'),
+                tooltip: isRecording
+                    ? context.l10n.t('stopRecord')
+                    : context.l10n.t('startRecord'),
                 icon: Icon(
                   isRecording ? CupertinoIcons.stop : CupertinoIcons.videocam,
                   color: isRecording ? Colors.red : null,
@@ -379,7 +433,10 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
                 Positioned.fill(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final currentSize = Size(constraints.maxWidth, constraints.maxHeight);
+                      final currentSize = Size(
+                        constraints.maxWidth,
+                        constraints.maxHeight,
+                      );
                       if (_viewportSize != currentSize) {
                         _viewportSize = currentSize;
                         if (_screenshotBytes != null) {
@@ -393,12 +450,22 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
                         return const SizedBox.shrink();
                       }
 
-                      final rotatedW = (_rotation == 90 || _rotation == 270) ? _imgHeight.toDouble() : _imgWidth.toDouble();
-                      final rotatedH = (_rotation == 90 || _rotation == 270) ? _imgWidth.toDouble() : _imgHeight.toDouble();
+                      final rotatedW = (_rotation == 90 || _rotation == 270)
+                          ? _imgHeight.toDouble()
+                          : _imgWidth.toDouble();
+                      final rotatedH = (_rotation == 90 || _rotation == 270)
+                          ? _imgWidth.toDouble()
+                          : _imgHeight.toDouble();
 
                       final minScaleVal = _minScale;
-                      final marginX = max(400.0, (currentSize.width / minScaleVal - rotatedW) / 2);
-                      final marginY = max(400.0, (currentSize.height / minScaleVal - rotatedH) / 2);
+                      final marginX = max(
+                        400.0,
+                        (currentSize.width / minScaleVal - rotatedW) / 2,
+                      );
+                      final marginY = max(
+                        400.0,
+                        (currentSize.height / minScaleVal - rotatedH) / 2,
+                      );
 
                       return InteractiveViewer(
                         transformationController: _transformationController,
@@ -432,9 +499,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab> with _ScreenReco
                       color: _screenshotBytes == null
                           ? Colors.transparent
                           : Colors.black.withValues(alpha: 0.3),
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      child: const Center(child: CircularProgressIndicator()),
                     ),
                   ),
               ],

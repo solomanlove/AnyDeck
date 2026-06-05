@@ -160,7 +160,11 @@ class AdbService {
       final exitCode = await process.exitCode.timeout(timeout);
       final stderr = await stderrFuture;
       if (exitCode != 0) {
-        throw AdbException(stderr.isNotEmpty ? stderr : 'Failed to capture screenshot (exit code $exitCode)');
+        throw AdbException(
+          stderr.isNotEmpty
+              ? stderr
+              : 'Failed to capture screenshot (exit code $exitCode)',
+        );
       }
       return Uint8List.fromList(await stdoutFuture);
     } on TimeoutException {
@@ -206,7 +210,10 @@ class AdbService {
 
   /// 停止录屏（通过发送 SIGINT 信号使 screenrecord 正常保存文件）。
   Future<AdbResult> stopScreenRecord(String deviceId) {
-    return shell(deviceId, 'killall -2 screenrecord || pkill -2 -x screenrecord');
+    return shell(
+      deviceId,
+      'killall -2 screenrecord || pkill -2 -x screenrecord',
+    );
   }
 
   bool _sameDeviceList(List<AdbDevice> previous, List<AdbDevice> next) {

@@ -100,7 +100,7 @@ settings get global sysui_demo_allowed
 
       final properties = _parseGetProp(results[0].stdout);
       final serialFromAdb = _clean(results[1].stdout);
-      
+
       final basicSections = _parseSections(results[2].stdout);
       final settingsSections = _parseSections(results[3].stdout);
 
@@ -108,7 +108,9 @@ settings get global sysui_demo_allowed
       final cores = _clean(basicSections['NPROC'] ?? '');
       final size = _parseWmSize(basicSections['WMSIZE'] ?? '');
       final density = _parseWmDensity(basicSections['WMDENSITY'] ?? '');
-      final fontScale = _formatScale(_clean(settingsSections['FONTSCALE'] ?? ''));
+      final fontScale = _formatScale(
+        _clean(settingsSections['FONTSCALE'] ?? ''),
+      );
       final memory = _parseMemory(basicSections['MEMINFO'] ?? '');
       final storage = _parseStorage(basicSections['DF'] ?? '');
       final network = basicSections['IP'] ?? '';
@@ -118,13 +120,22 @@ settings get global sysui_demo_allowed
       final androidIdRaw = _clean(settingsSections['ANDROIDID'] ?? '');
       final airplaneModeOnRaw = _clean(settingsSections['AIRPLANEMODE'] ?? '');
       final mobileDataOnRaw = _clean(settingsSections['MOBILEDATA'] ?? '');
-      final accessibilityServicesRaw = (settingsSections['ACCESSIBILITY'] ?? '').trim();
-      final windowAnimRaw = _formatAnimScale(_clean(settingsSections['WINDOWANIM'] ?? ''));
-      final transitionAnimRaw = _formatAnimScale(_clean(settingsSections['TRANSITIONANIM'] ?? ''));
-      final animatorAnimRaw = _formatAnimScale(_clean(settingsSections['ANIMATORANIM'] ?? ''));
+      final accessibilityServicesRaw = (settingsSections['ACCESSIBILITY'] ?? '')
+          .trim();
+      final windowAnimRaw = _formatAnimScale(
+        _clean(settingsSections['WINDOWANIM'] ?? ''),
+      );
+      final transitionAnimRaw = _formatAnimScale(
+        _clean(settingsSections['TRANSITIONANIM'] ?? ''),
+      );
+      final animatorAnimRaw = _formatAnimScale(
+        _clean(settingsSections['ANIMATORANIM'] ?? ''),
+      );
       final hwuiProfile = properties['debug.hwui.profile']?.trim() ?? 'false';
       final showTouchesRaw = _clean(settingsSections['SHOWTOUCHES'] ?? '');
-      final pointerLocationRaw = _clean(settingsSections['POINTERLOCATION'] ?? '');
+      final pointerLocationRaw = _clean(
+        settingsSections['POINTERLOCATION'] ?? '',
+      );
       final demoModeRaw = _clean(settingsSections['DEMOMODE'] ?? '');
 
       final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
@@ -340,7 +351,9 @@ settings get global sysui_demo_allowed
 
   String _formatAnimScale(String raw) {
     final cleaned = raw.trim();
-    if (cleaned.isEmpty || cleaned == 'null' || cleaned == 'Setting not found') {
+    if (cleaned.isEmpty ||
+        cleaned == 'null' ||
+        cleaned == 'Setting not found') {
       return '1.0';
     }
     return cleaned;

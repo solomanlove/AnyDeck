@@ -43,13 +43,19 @@ class _PackageTableState extends State<_PackageTable> {
     if (_sortColumn != col) {
       return const Padding(
         padding: EdgeInsets.only(left: 4),
-        child: Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: Colors.grey),
+        child: Icon(
+          CupertinoIcons.chevron_up_chevron_down,
+          size: 14,
+          color: Colors.grey,
+        ),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Icon(
-        _sortAscending ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
+        _sortAscending
+            ? CupertinoIcons.chevron_up
+            : CupertinoIcons.chevron_down,
         size: 14,
         color: Theme.of(context).colorScheme.primary,
       ),
@@ -58,16 +64,22 @@ class _PackageTableState extends State<_PackageTable> {
 
   int _compareAppType(AdbPackage a, AdbPackage b) {
     final systemCmp = (a.system ? 1 : 0).compareTo(b.system ? 1 : 0);
-    return systemCmp != 0 ? systemCmp : (a.flutter ? 1 : 0).compareTo(b.flutter ? 1 : 0);
+    return systemCmp != 0
+        ? systemCmp
+        : (a.flutter ? 1 : 0).compareTo(b.flutter ? 1 : 0);
   }
 
   List<AdbPackage> _sortedPackages() {
     final sortedList = List<AdbPackage>.from(widget.packages);
     sortedList.sort((a, b) {
       final cmp = switch (_sortColumn) {
-        'appName' => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+        'appName' => a.displayName.toLowerCase().compareTo(
+          b.displayName.toLowerCase(),
+        ),
         'packageName' => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-        'version' => a.versionLabel.toLowerCase().compareTo(b.versionLabel.toLowerCase()),
+        'version' => a.versionLabel.toLowerCase().compareTo(
+          b.versionLabel.toLowerCase(),
+        ),
         'minSdk' => (a.minSdk ?? 0).compareTo(b.minSdk ?? 0),
         'targetSdk' => (a.targetSdk ?? 0).compareTo(b.targetSdk ?? 0),
         'storage' => (a.storageBytes ?? 0).compareTo(b.storageBytes ?? 0),
@@ -96,7 +108,9 @@ class _PackageTableState extends State<_PackageTable> {
           controller: _horizontalController,
           notificationPredicate: (n) => n.metrics.axis == Axis.horizontal,
           child: SingleChildScrollView(
-            key: PageStorageKey<String>('apps-table-horizontal-${widget.deviceId}'),
+            key: PageStorageKey<String>(
+              'apps-table-horizontal-${widget.deviceId}',
+            ),
             controller: _horizontalController,
             primary: false,
             scrollDirection: Axis.horizontal,
@@ -116,7 +130,9 @@ class _PackageTableState extends State<_PackageTable> {
                     child: Scrollbar(
                       controller: _verticalController,
                       child: ListView.builder(
-                        key: PageStorageKey<String>('apps-table-vertical-${widget.deviceId}'),
+                        key: PageStorageKey<String>(
+                          'apps-table-vertical-${widget.deviceId}',
+                        ),
                         controller: _verticalController,
                         primary: false,
                         itemCount: sorted.length,
@@ -164,7 +180,9 @@ class _PackageTableHeader extends StatelessWidget {
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
       ),
       child: Row(
         children: [
@@ -332,13 +350,19 @@ class _PackageTableRow extends ConsumerWidget {
             _PackageCell(
               width: widths.status,
               child: Chip(
-                label: Text(package.enabled ? context.l10n.t('enabled') : context.l10n.t('disabled')),
+                label: Text(
+                  package.enabled
+                      ? context.l10n.t('enabled')
+                      : context.l10n.t('disabled'),
+                ),
                 visualDensity: VisualDensity.compact,
               ),
             ),
             _PackageCell(
               width: widths.type,
-              child: _TableText('${package.system ? context.l10n.t('systemApp') : context.l10n.t('userApp')} / ${package.flutter ? context.l10n.t('flutterApp') : context.l10n.t('nativeApp')}'),
+              child: _TableText(
+                '${package.system ? context.l10n.t('systemApp') : context.l10n.t('userApp')} / ${package.flutter ? context.l10n.t('flutterApp') : context.l10n.t('nativeApp')}',
+              ),
             ),
           ],
         ),
@@ -422,7 +446,10 @@ class _AppNameCell extends StatelessWidget {
               if (package.debuggable) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1.5,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.errorContainer,
                     borderRadius: BorderRadius.circular(4),
@@ -451,7 +478,11 @@ class _AppNameCell extends StatelessWidget {
 }
 
 class _FallbackAppIcon extends StatelessWidget {
-  const _FallbackAppIcon({required this.icon, required this.system, required this.colorScheme});
+  const _FallbackAppIcon({
+    required this.icon,
+    required this.system,
+    required this.colorScheme,
+  });
   final IconData icon;
   final bool system;
   final ColorScheme colorScheme;
@@ -460,8 +491,16 @@ class _FallbackAppIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: 14,
-      backgroundColor: system ? colorScheme.surfaceContainerHighest : colorScheme.primaryContainer,
-      child: Icon(icon, size: 18, color: system ? colorScheme.onSurfaceVariant : colorScheme.onPrimaryContainer),
+      backgroundColor: system
+          ? colorScheme.surfaceContainerHighest
+          : colorScheme.primaryContainer,
+      child: Icon(
+        icon,
+        size: 18,
+        color: system
+            ? colorScheme.onSurfaceVariant
+            : colorScheme.onPrimaryContainer,
+      ),
     );
   }
 }

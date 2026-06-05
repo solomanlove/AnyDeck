@@ -6,13 +6,16 @@ class _SystemSettingsPanel extends ConsumerStatefulWidget {
   final AdbDevice device;
 
   @override
-  ConsumerState<_SystemSettingsPanel> createState() => _SystemSettingsPanelState();
+  ConsumerState<_SystemSettingsPanel> createState() =>
+      _SystemSettingsPanelState();
 }
 
 class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
   final TextEditingController _dpiController = TextEditingController();
-  final TextEditingController _fontScaleCustomController = TextEditingController();
-  final TextEditingController _displaySizeCustomController = TextEditingController();
+  final TextEditingController _fontScaleCustomController =
+      TextEditingController();
+  final TextEditingController _displaySizeCustomController =
+      TextEditingController();
 
   @override
   void dispose() {
@@ -51,14 +54,12 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
         backgroundColor: isActive ? theme.colorScheme.primary : null,
         foregroundColor: isActive ? theme.colorScheme.onPrimary : null,
         side: BorderSide(
-          color: isActive 
-              ? theme.colorScheme.primary 
+          color: isActive
+              ? theme.colorScheme.primary
               : theme.colorScheme.outline,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
       onPressed: onPressed,
       child: Text(
@@ -89,7 +90,8 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
         }
 
         // 解析字体缩放值
-        final double fontScaleNum = double.tryParse(overview.fontScale.replaceAll('x', '')) ?? 1.0;
+        final double fontScaleNum =
+            double.tryParse(overview.fontScale.replaceAll('x', '')) ?? 1.0;
 
         final actions = ref.read(deviceActionServiceProvider);
 
@@ -123,7 +125,8 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           ...[0.80, 1.00, 1.20, 1.40, 1.60].map((preset) {
-                            final isActive = (fontScaleNum - preset).abs() < 0.01;
+                            final isActive =
+                                (fontScaleNum - preset).abs() < 0.01;
                             return _buildPresetButton(
                               label: preset.toStringAsFixed(2),
                               isActive: isActive,
@@ -131,9 +134,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                                 await _runAdbAction(
                                   context,
                                   ref,
-                                  actions.setFontScale(widget.device.id, preset),
+                                  actions.setFontScale(
+                                    widget.device.id,
+                                    preset,
+                                  ),
                                 );
-                                ref.invalidate(deviceOverviewProvider(widget.device.id));
+                                ref.invalidate(
+                                  deviceOverviewProvider(widget.device.id),
+                                );
                               },
                             );
                           }),
@@ -141,11 +149,17 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                             width: 70,
                             child: TextField(
                               controller: _fontScaleCustomController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               textAlign: TextAlign.center,
                               decoration: const InputDecoration(
                                 isDense: true,
-                                contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 6,
+                                ),
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -157,16 +171,29 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                               ),
                             ),
                             onPressed: () async {
-                              final customVal = double.tryParse(_fontScaleCustomController.text);
-                              if (customVal != null && customVal >= 0.3 && customVal <= 4.0) {
+                              final customVal = double.tryParse(
+                                _fontScaleCustomController.text,
+                              );
+                              if (customVal != null &&
+                                  customVal >= 0.3 &&
+                                  customVal <= 4.0) {
                                 await _runAdbAction(
                                   context,
                                   ref,
-                                  actions.setFontScale(widget.device.id, customVal),
+                                  actions.setFontScale(
+                                    widget.device.id,
+                                    customVal,
+                                  ),
                                 );
-                                ref.invalidate(deviceOverviewProvider(widget.device.id));
+                                ref.invalidate(
+                                  deviceOverviewProvider(widget.device.id),
+                                );
                               } else {
-                                _showSnack(context, 'Invalid font scale (0.3 - 4.0)', isError: true);
+                                _showSnack(
+                                  context,
+                                  'Invalid font scale (0.3 - 4.0)',
+                                  isError: true,
+                                );
                               }
                             },
                             child: Text(context.l10n.t('setCustomLabel')),
@@ -197,17 +224,26 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                         children: [
                           _buildPresetButton(
                             label: context.l10n.t('resetLabel'),
-                            isActive: overview.resolution == overview.physicalResolution,
+                            isActive:
+                                overview.resolution ==
+                                overview.physicalResolution,
                             onPressed: () async {
                               await _runAdbAction(
                                 context,
                                 ref,
                                 actions.resetDisplaySize(widget.device.id),
                               );
-                              ref.invalidate(deviceOverviewProvider(widget.device.id));
+                              ref.invalidate(
+                                deviceOverviewProvider(widget.device.id),
+                              );
                             },
                           ),
-                          ...['480x800', '720x1280', '1080x1920', '1440x3200'].map((preset) {
+                          ...[
+                            '480x800',
+                            '720x1280',
+                            '1080x1920',
+                            '1440x3200',
+                          ].map((preset) {
                             final isActive = overview.rawResolution == preset;
                             return _buildPresetButton(
                               label: preset,
@@ -216,9 +252,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                                 await _runAdbAction(
                                   context,
                                   ref,
-                                  actions.setDisplaySize(widget.device.id, preset),
+                                  actions.setDisplaySize(
+                                    widget.device.id,
+                                    preset,
+                                  ),
                                 );
-                                ref.invalidate(deviceOverviewProvider(widget.device.id));
+                                ref.invalidate(
+                                  deviceOverviewProvider(widget.device.id),
+                                );
                               },
                             );
                           }),
@@ -230,7 +271,10 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                               decoration: const InputDecoration(
                                 isDense: true,
                                 hintText: 'WxH',
-                                contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 6,
+                                ),
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -242,16 +286,26 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                               ),
                             ),
                             onPressed: () async {
-                              final sizeVal = _displaySizeCustomController.text.trim();
+                              final sizeVal = _displaySizeCustomController.text
+                                  .trim();
                               if (RegExp(r'^\d+x\d+$').hasMatch(sizeVal)) {
                                 await _runAdbAction(
                                   context,
                                   ref,
-                                  actions.setDisplaySize(widget.device.id, sizeVal),
+                                  actions.setDisplaySize(
+                                    widget.device.id,
+                                    sizeVal,
+                                  ),
                                 );
-                                ref.invalidate(deviceOverviewProvider(widget.device.id));
+                                ref.invalidate(
+                                  deviceOverviewProvider(widget.device.id),
+                                );
                               } else {
-                                _showSnack(context, 'Invalid display size (Format: WxH)', isError: true);
+                                _showSnack(
+                                  context,
+                                  'Invalid display size (Format: WxH)',
+                                  isError: true,
+                                );
                               }
                             },
                             child: Text(context.l10n.t('setCustomLabel')),
@@ -283,9 +337,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                                 await _runAdbAction(
                                   context,
                                   ref,
-                                  actions.setDisplayDensity(widget.device.id, target),
+                                  actions.setDisplayDensity(
+                                    widget.device.id,
+                                    target,
+                                  ),
                                 );
-                                ref.invalidate(deviceOverviewProvider(widget.device.id));
+                                ref.invalidate(
+                                  deviceOverviewProvider(widget.device.id),
+                                );
                               }
                             },
                     ),
@@ -302,13 +361,20 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                         ),
                         onSubmitted: (val) async {
                           final numVal = int.tryParse(val);
-                          if (numVal != null && numVal >= 80 && numVal <= 1000) {
+                          if (numVal != null &&
+                              numVal >= 80 &&
+                              numVal <= 1000) {
                             await _runAdbAction(
                               context,
                               ref,
-                              actions.setDisplayDensity(widget.device.id, numVal),
+                              actions.setDisplayDensity(
+                                widget.device.id,
+                                numVal,
+                              ),
                             );
-                            ref.invalidate(deviceOverviewProvider(widget.device.id));
+                            ref.invalidate(
+                              deviceOverviewProvider(widget.device.id),
+                            );
                           }
                         },
                       ),
@@ -323,9 +389,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                                 await _runAdbAction(
                                   context,
                                   ref,
-                                  actions.setDisplayDensity(widget.device.id, target),
+                                  actions.setDisplayDensity(
+                                    widget.device.id,
+                                    target,
+                                  ),
                                 );
-                                ref.invalidate(deviceOverviewProvider(widget.device.id));
+                                ref.invalidate(
+                                  deviceOverviewProvider(widget.device.id),
+                                );
                               }
                             },
                     ),
@@ -344,7 +415,9 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                             ref,
                             actions.setDisplayDensity(widget.device.id, numVal),
                           );
-                          ref.invalidate(deviceOverviewProvider(widget.device.id));
+                          ref.invalidate(
+                            deviceOverviewProvider(widget.device.id),
+                          );
                         }
                       },
                       child: Text(context.l10n.t('send')),
@@ -362,7 +435,9 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                           ref,
                           actions.resetDisplayDensity(widget.device.id),
                         );
-                        ref.invalidate(deviceOverviewProvider(widget.device.id));
+                        ref.invalidate(
+                          deviceOverviewProvider(widget.device.id),
+                        );
                       },
                       child: Text(context.l10n.t('displayDensityReset')),
                     ),
@@ -391,9 +466,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                             await _runAdbAction(
                               context,
                               ref,
-                              actions.setHwuiProfile(widget.device.id, 'visual_bars'),
+                              actions.setHwuiProfile(
+                                widget.device.id,
+                                'visual_bars',
+                              ),
                             );
-                            ref.invalidate(deviceOverviewProvider(widget.device.id));
+                            ref.invalidate(
+                              deviceOverviewProvider(widget.device.id),
+                            );
                           },
                         ),
                         _buildPresetButton(
@@ -405,7 +485,9 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                               ref,
                               actions.setHwuiProfile(widget.device.id, 'false'),
                             );
-                            ref.invalidate(deviceOverviewProvider(widget.device.id));
+                            ref.invalidate(
+                              deviceOverviewProvider(widget.device.id),
+                            );
                           },
                         ),
                       ],
@@ -437,7 +519,9 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                               ref,
                               actions.setHwuiProfile(widget.device.id, 'true'),
                             );
-                            ref.invalidate(deviceOverviewProvider(widget.device.id));
+                            ref.invalidate(
+                              deviceOverviewProvider(widget.device.id),
+                            );
                           },
                         ),
                         _buildPresetButton(
@@ -449,7 +533,9 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                               ref,
                               actions.setHwuiProfile(widget.device.id, 'false'),
                             );
-                            ref.invalidate(deviceOverviewProvider(widget.device.id));
+                            ref.invalidate(
+                              deviceOverviewProvider(widget.device.id),
+                            );
                           },
                         ),
                       ],
@@ -477,9 +563,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                           await _runAdbAction(
                             context,
                             ref,
-                            actions.setWindowAnimationScale(widget.device.id, val),
+                            actions.setWindowAnimationScale(
+                              widget.device.id,
+                              val,
+                            ),
                           );
-                          ref.invalidate(deviceOverviewProvider(widget.device.id));
+                          ref.invalidate(
+                            deviceOverviewProvider(widget.device.id),
+                          );
                         }
                       },
                     ),
@@ -492,9 +583,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                           await _runAdbAction(
                             context,
                             ref,
-                            actions.setTransitionAnimationScale(widget.device.id, val),
+                            actions.setTransitionAnimationScale(
+                              widget.device.id,
+                              val,
+                            ),
                           );
-                          ref.invalidate(deviceOverviewProvider(widget.device.id));
+                          ref.invalidate(
+                            deviceOverviewProvider(widget.device.id),
+                          );
                         }
                       },
                     ),
@@ -507,9 +603,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                           await _runAdbAction(
                             context,
                             ref,
-                            actions.setAnimatorDurationScale(widget.device.id, val),
+                            actions.setAnimatorDurationScale(
+                              widget.device.id,
+                              val,
+                            ),
                           );
-                          ref.invalidate(deviceOverviewProvider(widget.device.id));
+                          ref.invalidate(
+                            deviceOverviewProvider(widget.device.id),
+                          );
                         }
                       },
                     ),
@@ -526,9 +627,18 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                           context,
                           ref,
                           Future.wait([
-                            actions.setWindowAnimationScale(widget.device.id, 0.0),
-                            actions.setTransitionAnimationScale(widget.device.id, 0.0),
-                            actions.setAnimatorDurationScale(widget.device.id, 0.0),
+                            actions.setWindowAnimationScale(
+                              widget.device.id,
+                              0.0,
+                            ),
+                            actions.setTransitionAnimationScale(
+                              widget.device.id,
+                              0.0,
+                            ),
+                            actions.setAnimatorDurationScale(
+                              widget.device.id,
+                              0.0,
+                            ),
                           ]).then(
                             (results) => results.firstWhere(
                               (r) => !r.isSuccess,
@@ -536,7 +646,9 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                             ),
                           ),
                         );
-                        ref.invalidate(deviceOverviewProvider(widget.device.id));
+                        ref.invalidate(
+                          deviceOverviewProvider(widget.device.id),
+                        );
                       },
                     ),
                     const SizedBox(width: 8),
@@ -548,9 +660,18 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                           context,
                           ref,
                           Future.wait([
-                            actions.setWindowAnimationScale(widget.device.id, 1.0),
-                            actions.setTransitionAnimationScale(widget.device.id, 1.0),
-                            actions.setAnimatorDurationScale(widget.device.id, 1.0),
+                            actions.setWindowAnimationScale(
+                              widget.device.id,
+                              1.0,
+                            ),
+                            actions.setTransitionAnimationScale(
+                              widget.device.id,
+                              1.0,
+                            ),
+                            actions.setAnimatorDurationScale(
+                              widget.device.id,
+                              1.0,
+                            ),
                           ]).then(
                             (results) => results.firstWhere(
                               (r) => !r.isSuccess,
@@ -558,7 +679,9 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                             ),
                           ),
                         );
-                        ref.invalidate(deviceOverviewProvider(widget.device.id));
+                        ref.invalidate(
+                          deviceOverviewProvider(widget.device.id),
+                        );
                       },
                     ),
                   ],

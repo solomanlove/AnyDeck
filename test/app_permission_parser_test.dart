@@ -16,7 +16,11 @@ class FakeAdbServiceForPermission extends AdbService {
     if (argStr.contains('am get-current-user')) {
       return const AdbResult(exitCode: 0, stdout: '0\n', stderr: '');
     } else if (argStr.contains('dumpsys package')) {
-      return const AdbResult(exitCode: 0, stdout: _mockDumpsysOutput, stderr: '');
+      return const AdbResult(
+        exitCode: 0,
+        stdout: _mockDumpsysOutput,
+        stderr: '',
+      );
     }
     return const AdbResult(exitCode: 0, stdout: '', stderr: '');
   }
@@ -38,29 +42,35 @@ const _mockDumpsysOutput = '''
 ''';
 
 void main() {
-  test('Parses dumpsys package output correctly to AdbAppPermission list', () async {
-    final adbService = FakeAdbServiceForPermission();
-    final permissionService = AppPermissionService(adbService);
+  test(
+    'Parses dumpsys package output correctly to AdbAppPermission list',
+    () async {
+      final adbService = FakeAdbServiceForPermission();
+      final permissionService = AppPermissionService(adbService);
 
-    final permissions = await permissionService.getPermissions('device_id', 'com.example.app');
+      final permissions = await permissionService.getPermissions(
+        'device_id',
+        'com.example.app',
+      );
 
-    expect(permissions, hasLength(4));
+      expect(permissions, hasLength(4));
 
-    // Verify ordering is alphabetical
-    expect(permissions[0].name, 'android.permission.ACCESS_FINE_LOCATION');
-    expect(permissions[0].granted, isTrue);
-    expect(permissions[0].isRuntime, isTrue);
+      // Verify ordering is alphabetical
+      expect(permissions[0].name, 'android.permission.ACCESS_FINE_LOCATION');
+      expect(permissions[0].granted, isTrue);
+      expect(permissions[0].isRuntime, isTrue);
 
-    expect(permissions[1].name, 'android.permission.CAMERA');
-    expect(permissions[1].granted, isFalse);
-    expect(permissions[1].isRuntime, isTrue);
+      expect(permissions[1].name, 'android.permission.CAMERA');
+      expect(permissions[1].granted, isFalse);
+      expect(permissions[1].isRuntime, isTrue);
 
-    expect(permissions[2].name, 'android.permission.INTERNET');
-    expect(permissions[2].granted, isTrue);
-    expect(permissions[2].isRuntime, isFalse);
+      expect(permissions[2].name, 'android.permission.INTERNET');
+      expect(permissions[2].granted, isTrue);
+      expect(permissions[2].isRuntime, isFalse);
 
-    expect(permissions[3].name, 'android.permission.WAKE_LOCK');
-    expect(permissions[3].granted, isTrue);
-    expect(permissions[3].isRuntime, isFalse);
-  });
+      expect(permissions[3].name, 'android.permission.WAKE_LOCK');
+      expect(permissions[3].granted, isTrue);
+      expect(permissions[3].isRuntime, isFalse);
+    },
+  );
 }

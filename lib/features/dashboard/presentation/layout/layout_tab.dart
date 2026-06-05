@@ -45,7 +45,9 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
   final Set<LayoutNode> _expandedNodes = {};
 
   double get _deviceLogicalDensity {
-    final overview = ref.watch(cachedDeviceOverviewProvider(widget.device.id)).value;
+    final overview = ref
+        .watch(cachedDeviceOverviewProvider(widget.device.id))
+        .value;
     if (overview == null) return 1.0;
     final densityStr = overview.logicalDensity;
     final match = RegExp(r'^([0-9.]+)\s*x').firstMatch(densityStr);
@@ -54,6 +56,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
     }
     return 1.0;
   }
+
   final TransformationController _transformationController =
       TransformationController();
   Size _lastViewportSize = const Size(400, 800);
@@ -62,8 +65,12 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
     if (_decodedImage == null) return 1.0;
     final imgW = _decodedImage!.width.toDouble();
     final imgH = _decodedImage!.height.toDouble();
-    final rotatedW = (_rotationAngle == 90 || _rotationAngle == 270) ? imgH : imgW;
-    final rotatedH = (_rotationAngle == 90 || _rotationAngle == 270) ? imgW : imgH;
+    final rotatedW = (_rotationAngle == 90 || _rotationAngle == 270)
+        ? imgH
+        : imgW;
+    final rotatedH = (_rotationAngle == 90 || _rotationAngle == 270)
+        ? imgW
+        : imgH;
     return min(
       _lastViewportSize.width / rotatedW,
       _lastViewportSize.height / rotatedH,
@@ -214,11 +221,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
             ),
           ),
           // 树结构展示区（显示 Loading）
-          const Expanded(
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
-          ),
+          const Expanded(child: Center(child: CircularProgressIndicator())),
         ],
       ),
     );
@@ -417,7 +420,11 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.red),
+              const Icon(
+                CupertinoIcons.exclamationmark_circle,
+                size: 48,
+                color: Colors.red,
+              ),
               const SizedBox(height: 16),
               Text(
                 '${context.l10n.t('getLayoutFailed')}\n$_error',
@@ -539,9 +546,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
               Expanded(
                 flex: _showProperties ? 4 : 6,
                 child: _decodedImage == null
-                    ? const Center(
-                        child: CircularProgressIndicator(),
-                      )
+                    ? const Center(child: CircularProgressIndicator())
                     : LayoutScreenPreview(
                         rootNode: _rootNode,
                         decodedImage: _decodedImage!,

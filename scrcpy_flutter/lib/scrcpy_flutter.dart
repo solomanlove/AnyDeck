@@ -28,21 +28,18 @@ class ScrcpyFlutter {
 
   /// Stops mirroring and releases all resources for the given [deviceId].
   static Future<void> stopMirroring({required String deviceId}) async {
-    await _channel.invokeMethod('stopMirroring', {
-      'deviceId': deviceId,
-    });
+    await _channel.invokeMethod('stopMirroring', {'deviceId': deviceId});
   }
 
   /// Returns the current decoded video stream width and height for a given [deviceId].
-  static Future<Map<String, int>?> getVideoSize({required String deviceId}) async {
+  static Future<Map<String, int>?> getVideoSize({
+    required String deviceId,
+  }) async {
     final Map? size = await _channel.invokeMethod<Map>('getVideoSize', {
       'deviceId': deviceId,
     });
     if (size == null) return null;
-    return {
-      'width': size['width'] as int,
-      'height': size['height'] as int,
-    };
+    return {'width': size['width'] as int, 'height': size['height'] as int};
   }
 
   /// Sends a serialized control message (bytes) to the scrcpy server control socket.

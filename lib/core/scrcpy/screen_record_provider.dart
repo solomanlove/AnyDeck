@@ -52,24 +52,25 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
     try {
       // 1. Delete old recording file on device if it exists
       try {
-        await ref.read(fileManagerServiceProvider).delete(
-          deviceId,
-          '/sdcard/adb_screenrecord_temp.mp4',
-        );
+        await ref
+            .read(fileManagerServiceProvider)
+            .delete(deviceId, '/sdcard/adb_screenrecord_temp.mp4');
       } catch (_) {}
 
       // 2. Start recording
-      _process = await ref.read(adbServiceProvider).startScreenRecord(
-        deviceId,
-        '/sdcard/adb_screenrecord_temp.mp4',
-      );
+      _process = await ref
+          .read(adbServiceProvider)
+          .startScreenRecord(deviceId, '/sdcard/adb_screenrecord_temp.mp4');
 
       // Handle early exit
       _process!.exitCode.then((code) {
         if (state.isRecording && !state.isStopping) {
           _timer?.cancel();
           _process = null;
-          state = const ScreenRecordState(isRecording: false, durationSeconds: 0);
+          state = const ScreenRecordState(
+            isRecording: false,
+            durationSeconds: 0,
+          );
         }
       });
 
@@ -84,7 +85,8 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
       _timer?.cancel();
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         state = state.copyWith(durationSeconds: state.durationSeconds + 1);
-        if (state.durationSeconds >= 180) { // 3 min limit
+        if (state.durationSeconds >= 180) {
+          // 3 min limit
           stop(); // Force stop
         }
       });
@@ -124,11 +126,16 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
       _process = null;
       rethrow;
     } finally {
-      state = const ScreenRecordState(isRecording: false, durationSeconds: 0, isStopping: false);
+      state = const ScreenRecordState(
+        isRecording: false,
+        durationSeconds: 0,
+        isStopping: false,
+      );
     }
   }
 }
 
-final screenRecordProvider = NotifierProvider.family<ScreenRecordNotifier, ScreenRecordState, String>(
-  ScreenRecordNotifier.new,
-);
+final screenRecordProvider =
+    NotifierProvider.family<ScreenRecordNotifier, ScreenRecordState, String>(
+      ScreenRecordNotifier.new,
+    );

@@ -64,12 +64,17 @@ class EmbeddedScrcpyService {
     // 1. Resolve and push scrcpy-server.jar
     final serverJar = await _extractScrcpyServerJar();
     if (!File(serverJar).existsSync()) {
-      throw Exception('scrcpy-server not found on host. Failed to extract asset.');
+      throw Exception(
+        'scrcpy-server not found on host. Failed to extract asset.',
+      );
     }
 
     final pushRes = await _adbService.run([
-      '-s', deviceId,
-      'push', serverJar, '/data/local/tmp/scrcpy-server.jar'
+      '-s',
+      deviceId,
+      'push',
+      serverJar,
+      '/data/local/tmp/scrcpy-server.jar',
     ]);
     if (!pushRes.isSuccess) {
       throw Exception('Failed to push scrcpy-server.jar: ${pushRes.stderr}');
@@ -78,8 +83,11 @@ class EmbeddedScrcpyService {
     // 2. Allocate free port and setup forward tunnel
     final localPort = await _findFreePort();
     final forwardRes = await _adbService.run([
-      '-s', deviceId,
-      'forward', 'tcp:$localPort', 'localabstract:scrcpy_00000000'
+      '-s',
+      deviceId,
+      'forward',
+      'tcp:$localPort',
+      'localabstract:scrcpy_00000000',
     ]);
     if (!forwardRes.isSuccess) {
       throw Exception('Failed to setup adb forward: ${forwardRes.stderr}');
@@ -92,10 +100,13 @@ class EmbeddedScrcpyService {
     // 3. Start scrcpy-server process on Android
     final adbPath = _adbService.executable;
     final serverProcess = await Process.start(adbPath, [
-      '-s', deviceId,
+      '-s',
+      deviceId,
       'shell',
       'CLASSPATH=/data/local/tmp/scrcpy-server.jar',
-      'app_process', '/', 'com.genymobile.scrcpy.Server',
+      'app_process',
+      '/',
+      'com.genymobile.scrcpy.Server',
       '4.0',
       'scid=0',
       'log_level=verbose',
@@ -139,7 +150,13 @@ class EmbeddedScrcpyService {
     } catch (e) {
       // Cleanup on failure
       serverProcess.kill();
-      await _adbService.run(['-s', deviceId, 'forward', '--remove', 'tcp:$localPort']);
+      await _adbService.run([
+        '-s',
+        deviceId,
+        'forward',
+        '--remove',
+        'tcp:$localPort',
+      ]);
       rethrow;
     }
   }
@@ -155,7 +172,13 @@ class EmbeddedScrcpyService {
     }
 
     session.serverProcess.kill();
-    await _adbService.run(['-s', deviceId, 'forward', '--remove', 'tcp:${session.port}']);
+    await _adbService.run([
+      '-s',
+      deviceId,
+      'forward',
+      '--remove',
+      'tcp:${session.port}',
+    ]);
   }
 
   void stopAll() {
@@ -220,7 +243,7 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
       rethrow;
     }
   }
-  
+
   Future<void> forceStop() async {
     final service = ref.read(embeddedScrcpyServiceProvider);
     if (service.isActive(deviceId)) {
@@ -231,6 +254,7 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
   }
 }
 
-final activeEmbeddedMirrorProvider = NotifierProvider.family<ActiveEmbeddedMirrorNotifier, int?, String>(
-  ActiveEmbeddedMirrorNotifier.new,
-);
+final activeEmbeddedMirrorProvider =
+    NotifierProvider.family<ActiveEmbeddedMirrorNotifier, int?, String>(
+      ActiveEmbeddedMirrorNotifier.new,
+    );

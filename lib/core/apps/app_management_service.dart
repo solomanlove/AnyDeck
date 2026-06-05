@@ -52,7 +52,8 @@ class AppManagementService {
   }
 
   Future<AdbResult> _getDumpsysMetadata(String deviceId) async {
-    const dumpsysCmd = 'dumpsys package packages | grep -E "Package \\[|versionName=|versionCode=|minSdk=|targetSdk=|maxSdk=|pkgFlags=\\["';
+    const dumpsysCmd =
+        'dumpsys package packages | grep -E "Package \\[|versionName=|versionCode=|minSdk=|targetSdk=|maxSdk=|pkgFlags=\\["';
     try {
       final filteredResult = await _adb.shell(
         deviceId,
@@ -277,9 +278,13 @@ class AppManagementService {
             : currentPackages.length;
         final chunk = currentPackages.sublist(i, end);
 
-        final chunkFile = await _writePackageListFileForChunk(deviceId, chunk, i);
+        final chunkFile = await _writePackageListFileForChunk(
+          deviceId,
+          chunk,
+          i,
+        );
         final remoteChunkPath = '$_remotePackageListPath.$i';
-        
+
         final pushListResult = await _adb.run([
           '-s',
           deviceId,
@@ -352,7 +357,9 @@ class AppManagementService {
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }
-    final file = File('${dir.path}/${_safeFileSegment(deviceId)}_chunk_$index.txt');
+    final file = File(
+      '${dir.path}/${_safeFileSegment(deviceId)}_chunk_$index.txt',
+    );
     await file.writeAsString(
       chunk.map((package) => package.name).join('\n'),
       flush: true,

@@ -27,6 +27,7 @@ class AppSettings {
     this.mirrorVideoBitrate = 8000000,
     this.mirrorMaxSize = 1080,
     this.mirrorAudioEnabled = true,
+    this.screenshotSavePath = '',
   });
 
   final AppLanguage language;
@@ -35,6 +36,7 @@ class AppSettings {
   final int mirrorVideoBitrate;
   final int mirrorMaxSize;
   final bool mirrorAudioEnabled;
+  final String screenshotSavePath;
 
   /// 创建新的不可变设置对象，未指定字段沿用当前值。
   AppSettings copyWith({
@@ -44,6 +46,7 @@ class AppSettings {
     int? mirrorVideoBitrate,
     int? mirrorMaxSize,
     bool? mirrorAudioEnabled,
+    String? screenshotSavePath,
   }) {
     return AppSettings(
       language: language ?? this.language,
@@ -52,6 +55,7 @@ class AppSettings {
       mirrorVideoBitrate: mirrorVideoBitrate ?? this.mirrorVideoBitrate,
       mirrorMaxSize: mirrorMaxSize ?? this.mirrorMaxSize,
       mirrorAudioEnabled: mirrorAudioEnabled ?? this.mirrorAudioEnabled,
+      screenshotSavePath: screenshotSavePath ?? this.screenshotSavePath,
     );
   }
 }

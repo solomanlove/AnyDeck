@@ -21,9 +21,9 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
 
   Future<void> _startRecording() async {
     if (_isRecording) return;
-    
+
     final state = this as _ScreenshotTabState;
-    
+
     // Stop auto-refresh if enabled to prevent conflict
     if (state._autoRefresh) {
       state._toggleAutoRefresh();
@@ -32,16 +32,17 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
     try {
       // Pre-clean up any leftover temporary recording file
       try {
-        await ref.read(fileManagerServiceProvider).delete(
-          widget.device.id,
-          '/sdcard/adb_screenrecord_temp.mp4',
-        );
+        await ref
+            .read(fileManagerServiceProvider)
+            .delete(widget.device.id, '/sdcard/adb_screenrecord_temp.mp4');
       } catch (_) {}
 
-      _recordProcess = await ref.read(adbServiceProvider).startScreenRecord(
-        widget.device.id,
-        '/sdcard/adb_screenrecord_temp.mp4',
-      );
+      _recordProcess = await ref
+          .read(adbServiceProvider)
+          .startScreenRecord(
+            widget.device.id,
+            '/sdcard/adb_screenrecord_temp.mp4',
+          );
 
       final errorBuffer = StringBuffer();
       _recordProcess!.stderr.transform(utf8.decoder).listen((data) {
@@ -50,7 +51,7 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
 
       bool exitedEarly = false;
       int? exitCode;
-      
+
       _recordProcess!.exitCode.then((code) {
         exitedEarly = true;
         exitCode = code;
@@ -63,7 +64,9 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
       await Future.delayed(const Duration(milliseconds: 600));
       if (exitedEarly) {
         final err = errorBuffer.toString().trim();
-        throw Exception(err.isNotEmpty ? err : 'screenrecord exited with code $exitCode');
+        throw Exception(
+          err.isNotEmpty ? err : 'screenrecord exited with code $exitCode',
+        );
       }
 
       setState(() {
@@ -76,7 +79,8 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
         setState(() {
           _recordDuration++;
         });
-        if (_recordDuration >= 180) { // 3-minute limit
+        if (_recordDuration >= 180) {
+          // 3-minute limit
           _stopRecording();
         }
       });
@@ -84,7 +88,7 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
       _recordProcess?.kill();
       _recordProcess = null;
       _isRecording = false;
-      
+
       if (mounted) {
         showDialog(
           context: context,
@@ -105,10 +109,10 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
 
   void _handleRecordEndedEarly(int code, String errorMsg) {
     if (!mounted) return;
-    
+
     // exit code 130 is SIGINT termination, which is normal stop
     final isNormal = code == 0 || code == 130;
-    
+
     if (_isRecording && !isNormal && !_isManuallyStopping) {
       setState(() {
         _isRecording = false;
@@ -116,10 +120,12 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
         _recordTimer = null;
         _recordProcess = null;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${context.l10n.t('recordFailed')}: ${errorMsg.trim()} ($code)'),
+          content: Text(
+            '${context.l10n.t('recordFailed')}: ${errorMsg.trim()} ($code)',
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -158,39 +164,49 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
 
       if (!mounted) return;
 
-      // 3. Prompt save location
-      final location = await getSaveLocation(
-        acceptedTypeGroups: [
-          const XTypeGroup(label: 'MP4 Video', extensions: ['mp4']),
-        ],
-        suggestedName: 'screenrecord_${widget.device.id}_${DateTime.now().millisecondsSinceEpoch}.mp4',
+      // 3. Save directly
+      final settings = ref.read(appSettingsProvider);
+      final hostPlatform = ref.read(hostPlatformServiceProvider);
+      final localSavePath = hostPlatform.generateRecordPath(
+        settings.screenshotSavePath,
+        widget.device.id,
       );
+      final file = File(localSavePath);
+      await file.parent.create(recursive: true);
 
-      if (location != null) {
-        setState(() {
-          state._loading = true;
-        });
+      setState(() {
+        state._loading = true;
+      });
 
-        // 4. Pull file
-        final pullResult = await ref.read(fileManagerServiceProvider).pull(
-          widget.device.id,
-          '/sdcard/adb_screenrecord_temp.mp4',
-          location.path,
-        );
+      // 4. Pull file
+      final pullResult = await ref
+          .read(fileManagerServiceProvider)
+          .pull(
+            widget.device.id,
+            '/sdcard/adb_screenrecord_temp.mp4',
+            localSavePath,
+          );
 
-        if (pullResult.isSuccess) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(context.l10n.t('recordSuccess').replaceAll('{path}', location.path)),
-                backgroundColor: const Color(0xff09c47c),
-                behavior: SnackBarBehavior.floating,
+      if (pullResult.isSuccess) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.l10n
+                    .t('recordSuccess')
+                    .replaceAll('{path}', localSavePath),
               ),
-            );
-          }
-        } else {
-          throw Exception(pullResult.stderr.isNotEmpty ? pullResult.stderr : 'File transfer failed');
+              backgroundColor: const Color(0xff09c47c),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
+      } else {
+        throw Exception(
+          pullResult.stderr.isNotEmpty
+              ? pullResult.stderr
+              : 'File transfer failed',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -205,10 +221,9 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
     } finally {
       // 5. Clean up device temporary file
       try {
-        await ref.read(fileManagerServiceProvider).delete(
-          widget.device.id,
-          '/sdcard/adb_screenrecord_temp.mp4',
-        );
+        await ref
+            .read(fileManagerServiceProvider)
+            .delete(widget.device.id, '/sdcard/adb_screenrecord_temp.mp4');
       } catch (e) {
         debugPrint('Failed to delete temp record file on device: $e');
       }

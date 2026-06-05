@@ -246,24 +246,24 @@ class _HighlightedText extends StatelessWidget {
 
     final queryLower = query.toLowerCase();
     final textLower = text.toLowerCase();
-    
+
     final spans = <TextSpan>[];
     var start = 0;
-    
+
     final activeBg = Colors.orange.withValues(alpha: 0.4);
     final inactiveBg = Colors.yellow.withValues(alpha: 0.4);
-    
+
     while (true) {
       final index = textLower.indexOf(queryLower, start);
       if (index == -1) {
         spans.add(TextSpan(text: text.substring(start)));
         break;
       }
-      
+
       if (index > start) {
         spans.add(TextSpan(text: text.substring(start, index)));
       }
-      
+
       final matchText = text.substring(index, index + query.length);
       spans.add(
         TextSpan(
@@ -274,7 +274,7 @@ class _HighlightedText extends StatelessWidget {
           ),
         ),
       );
-      
+
       start = index + query.length;
     }
 
@@ -312,7 +312,9 @@ class _LogcatSearchPanel extends StatefulWidget {
 }
 
 class _LogcatSearchPanelState extends State<_LogcatSearchPanel> {
-  final FocusNode _keyboardFocusNode = FocusNode(debugLabel: 'SearchPanelKeyboard');
+  final FocusNode _keyboardFocusNode = FocusNode(
+    debugLabel: 'SearchPanelKeyboard',
+  );
 
   @override
   void dispose() {
@@ -389,7 +391,9 @@ class _LogcatSearchPanelState extends State<_LogcatSearchPanel> {
               countText,
               style: TextStyle(
                 fontSize: 12,
-                color: widget.matchIndices.isEmpty && widget.controller.text.isNotEmpty
+                color:
+                    widget.matchIndices.isEmpty &&
+                        widget.controller.text.isNotEmpty
                     ? colorScheme.error
                     : colorScheme.onSurfaceVariant,
               ),
@@ -438,10 +442,7 @@ class _SearchIconButton extends StatelessWidget {
         onPressed: onPressed,
         visualDensity: VisualDensity.compact,
         padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(
-          minWidth: 26,
-          minHeight: 26,
-        ),
+        constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
       ),
     );
   }

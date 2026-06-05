@@ -26,7 +26,10 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (hasChecked) ...[
-              _buildBatchActionsToolbar(context, items.where((d) => d.isChecked).toList()),
+              _buildBatchActionsToolbar(
+                context,
+                items.where((d) => d.isChecked).toList(),
+              ),
               const SizedBox(height: 16),
             ],
             _buildTableHeader(context, isCompact, allChecked, hasChecked),
@@ -178,7 +181,11 @@ extension _DeviceListPanelView on _DeviceListPanelState {
             const SizedBox(width: 10),
             const SizedBox(
               width: 40,
-              child: Icon(CupertinoIcons.settings, size: 16, color: Colors.grey),
+              child: Icon(
+                CupertinoIcons.settings,
+                size: 16,
+                color: Colors.grey,
+              ),
             ),
           ],
         ],
@@ -190,13 +197,19 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     if (_sortColumn != column) {
       return const Padding(
         padding: EdgeInsets.only(left: 4),
-        child: Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: Colors.grey),
+        child: Icon(
+          CupertinoIcons.chevron_up_chevron_down,
+          size: 14,
+          color: Colors.grey,
+        ),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Icon(
-        _sortAscending ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
+        _sortAscending
+            ? CupertinoIcons.chevron_up
+            : CupertinoIcons.chevron_down,
         size: 14,
         color: Theme.of(context).colorScheme.primary,
       ),

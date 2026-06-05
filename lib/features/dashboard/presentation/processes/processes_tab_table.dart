@@ -324,7 +324,11 @@ class _ProcessTableState extends State<_ProcessTable> {
 
   Widget _buildFallbackIcon(AdbPackage package) {
     if (package.name.isEmpty) {
-      return const Icon(CupertinoIcons.device_phone_portrait, color: Colors.grey, size: 20);
+      return const Icon(
+        CupertinoIcons.device_phone_portrait,
+        color: Colors.grey,
+        size: 20,
+      );
     }
     final icon = package.flutter
         ? CupertinoIcons.square_grid_2x2

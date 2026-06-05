@@ -76,8 +76,8 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
     final icon = package.flutter
         ? CupertinoIcons.square_grid_2x2
         : package.system
-            ? CupertinoIcons.settings
-            : CupertinoIcons.device_phone_portrait;
+        ? CupertinoIcons.settings
+        : CupertinoIcons.device_phone_portrait;
     final iconPath = package.iconLocalPath;
 
     return MouseRegion(
@@ -99,14 +99,14 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
               color: widget.selected
                   ? colorScheme.primaryContainer.withValues(alpha: 0.8)
                   : _isHovered
-                      ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
-                      : colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+                  ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
               border: Border.all(
                 color: widget.selected
                     ? colorScheme.primary
                     : _isHovered
-                        ? colorScheme.outlineVariant.withValues(alpha: 0.8)
-                        : colorScheme.outlineVariant.withValues(alpha: 0.3),
+                    ? colorScheme.outlineVariant.withValues(alpha: 0.8)
+                    : colorScheme.outlineVariant.withValues(alpha: 0.3),
                 width: 1.5,
               ),
               borderRadius: BorderRadius.circular(12),
@@ -157,7 +157,10 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
                         top: -4,
                         right: -4,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [

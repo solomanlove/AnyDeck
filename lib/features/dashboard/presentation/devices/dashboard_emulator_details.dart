@@ -1,7 +1,5 @@
 part of '../dashboard_screen.dart';
 
-
-
 class EmulatorFullConfigDialog extends StatefulWidget {
   const EmulatorFullConfigDialog({
     super.key,
@@ -13,7 +11,8 @@ class EmulatorFullConfigDialog extends StatefulWidget {
   final Map<String, String> config;
 
   @override
-  State<EmulatorFullConfigDialog> createState() => EmulatorFullConfigDialogState();
+  State<EmulatorFullConfigDialog> createState() =>
+      EmulatorFullConfigDialogState();
 }
 
 class EmulatorFullConfigDialogState extends State<EmulatorFullConfigDialog> {
@@ -51,11 +50,15 @@ class EmulatorFullConfigDialogState extends State<EmulatorFullConfigDialog> {
               children: [
                 Text(
                   context.l10n.t('emulatorDetails'),
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   widget.emulatorName,
-                  style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -107,7 +110,9 @@ class EmulatorFullConfigDialogState extends State<EmulatorFullConfigDialog> {
                     flex: 5,
                     child: Text(
                       context.l10n.t('configKey'),
-                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -115,7 +120,9 @@ class EmulatorFullConfigDialogState extends State<EmulatorFullConfigDialog> {
                     flex: 5,
                     child: Text(
                       context.l10n.t('configValue'),
-                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -129,21 +136,32 @@ class EmulatorFullConfigDialogState extends State<EmulatorFullConfigDialog> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(CupertinoIcons.search, size: 48, color: colorScheme.outline),
+                          Icon(
+                            CupertinoIcons.search,
+                            size: 48,
+                            color: colorScheme.outline,
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             context.l10n.t('noConfigMatches'),
-                            style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.outline),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.outline,
+                            ),
                           ),
                         ],
                       ),
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
                       itemCount: entries.length,
                       separatorBuilder: (context, index) => Divider(
                         height: 1,
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.3,
+                        ),
                       ),
                       itemBuilder: (context, index) {
                         final entry = entries[index];
@@ -218,10 +236,16 @@ class _EmulatorConfigRow extends StatelessWidget {
                   icon: const Icon(CupertinoIcons.doc_on_doc, size: 14),
                   tooltip: context.l10n.t('copyConfig'),
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: '$configKey=$configValue'));
+                    Clipboard.setData(
+                      ClipboardData(text: '$configKey=$configValue'),
+                    );
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(context.l10n.t('copiedToClipboard').replaceAll('{label}', configKey)),
+                        content: Text(
+                          context.l10n
+                              .t('copiedToClipboard')
+                              .replaceAll('{label}', configKey),
+                        ),
                         duration: const Duration(seconds: 1),
                         behavior: SnackBarBehavior.floating,
                       ),

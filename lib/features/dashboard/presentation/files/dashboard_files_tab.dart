@@ -98,7 +98,10 @@ class _FilesTab extends ConsumerWidget {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(CupertinoIcons.pencil, size: 14),
+                                  icon: const Icon(
+                                    CupertinoIcons.pencil,
+                                    size: 14,
+                                  ),
                                   onPressed: () {
                                     ref
                                         .read(fileNavigationProvider.notifier)
@@ -154,17 +157,17 @@ class _FilesTab extends ConsumerWidget {
                   tooltip: '网格视图',
                   icon: const Icon(CupertinoIcons.square_grid_2x2, size: 20),
                   isSelected: navState.isGridView,
-                  selectedIcon: const Icon(CupertinoIcons.square_grid_2x2_fill, size: 20),
+                  selectedIcon: const Icon(
+                    CupertinoIcons.square_grid_2x2_fill,
+                    size: 20,
+                  ),
                   onPressed: () {
                     ref.read(fileNavigationProvider.notifier).setGridView(true);
                   },
                 ),
                 IconButton(
                   tooltip: '列表视图',
-                  icon: const Icon(
-                    CupertinoIcons.list_bullet,
-                    size: 20,
-                  ),
+                  icon: const Icon(CupertinoIcons.list_bullet, size: 20),
                   isSelected: !navState.isGridView,
                   selectedIcon: const Icon(
                     CupertinoIcons.list_bullet,
@@ -240,7 +243,14 @@ class _FilesTab extends ConsumerWidget {
 
                   // Client-side sorting
                   filtered = List<RemoteFile>.from(filtered)
-                    ..sort((a, b) => _compareFiles(a, b, navState.sortColumn, navState.sortAscending));
+                    ..sort(
+                      (a, b) => _compareFiles(
+                        a,
+                        b,
+                        navState.sortColumn,
+                        navState.sortAscending,
+                      ),
+                    );
 
                   if (filtered.isEmpty) {
                     return _PanelMessage(
@@ -274,7 +284,13 @@ class _FilesTab extends ConsumerWidget {
                                   .read(fileNavigationProvider.notifier)
                                   .navigateTo(_joinRemotePath(path, file.name));
                             } else if (_isPreviewableTextFile(file.name)) {
-                              _previewTextFile(context, ref, device.id, path, file);
+                              _previewTextFile(
+                                context,
+                                ref,
+                                device.id,
+                                path,
+                                file,
+                              );
                             }
                           },
                         );
@@ -296,7 +312,13 @@ class _FilesTab extends ConsumerWidget {
                                 .read(fileNavigationProvider.notifier)
                                 .navigateTo(_joinRemotePath(path, file.name));
                           } else if (_isPreviewableTextFile(file.name)) {
-                            _previewTextFile(context, ref, device.id, path, file);
+                            _previewTextFile(
+                              context,
+                              ref,
+                              device.id,
+                              path,
+                              file,
+                            );
                           }
                         },
                       );
@@ -397,18 +419,24 @@ class _FilesTab extends ConsumerWidget {
         padding: const EdgeInsets.only(left: 4),
         child: Icon(
           isSorted
-              ? (navState.sortAscending ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down)
+              ? (navState.sortAscending
+                    ? CupertinoIcons.chevron_up
+                    : CupertinoIcons.chevron_down)
               : CupertinoIcons.chevron_up_chevron_down,
           size: 14,
           color: isSorted
               ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              : Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
         ),
       );
 
       final cellContent = Row(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: alignRight
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           Flexible(
             child: Text(
@@ -459,7 +487,12 @@ class _FilesTab extends ConsumerWidget {
           buildHeaderCell(label: '权限', column: 'permissions', width: 120),
           buildHeaderCell(label: '修改日期', column: 'date', width: 180),
           buildHeaderCell(label: '类型', column: 'type', width: 80),
-          buildHeaderCell(label: '大小', column: 'size', width: 100, alignRight: true),
+          buildHeaderCell(
+            label: '大小',
+            column: 'size',
+            width: 100,
+            alignRight: true,
+          ),
           const SizedBox(width: 80), // spacer for inline actions
         ],
       ),
@@ -510,8 +543,24 @@ class _FilesTab extends ConsumerWidget {
 bool _isPreviewableTextFile(String fileName) {
   final ext = fileName.split('.').last.toLowerCase();
   return const {
-    'txt', 'log', 'json', 'xml', 'yaml', 'yml', 'ini', 'conf', 'properties',
-    'sh', 'py', 'js', 'ts', 'html', 'css', 'md', 'csv', 'sql'
+    'txt',
+    'log',
+    'json',
+    'xml',
+    'yaml',
+    'yml',
+    'ini',
+    'conf',
+    'properties',
+    'sh',
+    'py',
+    'js',
+    'ts',
+    'html',
+    'css',
+    'md',
+    'csv',
+    'sql',
   }.contains(ext);
 }
 
@@ -552,7 +601,7 @@ Future<void> _previewTextFile(
       localDir.createSync(recursive: true);
     }
     final localPath = '${localDir.path}/${file.name}';
-    
+
     final service = ref.read(fileManagerServiceProvider);
     final result = await service.pull(deviceId, remoteFilePath, localPath);
 
@@ -580,7 +629,9 @@ Future<void> _previewTextFile(
 
     if (fileLength > limit) {
       isTruncated = true;
-      final bytes = await ioFile.openRead(0, limit).reduce((a, b) => [...a, ...b]);
+      final bytes = await ioFile
+          .openRead(0, limit)
+          .reduce((a, b) => [...a, ...b]);
       try {
         content = utf8.decode(bytes, allowMalformed: true);
       } catch (_) {
@@ -674,7 +725,9 @@ class _TextPreviewDialogState extends ConsumerState<_TextPreviewDialog> {
             // Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.5,
+              ),
               child: Row(
                 children: [
                   Icon(CupertinoIcons.doc, color: theme.colorScheme.primary),
@@ -704,7 +757,9 @@ class _TextPreviewDialogState extends ConsumerState<_TextPreviewDialog> {
                     icon: const Icon(CupertinoIcons.square_arrow_up, size: 20),
                     onPressed: () async {
                       try {
-                        final opened = await ref.read(hostPlatformServiceProvider).openFile(widget.localPath);
+                        final opened = await ref
+                            .read(hostPlatformServiceProvider)
+                            .openFile(widget.localPath);
                         if (!opened) {
                           throw Exception('System failed to open file');
                         }
@@ -727,10 +782,17 @@ class _TextPreviewDialogState extends ConsumerState<_TextPreviewDialog> {
             if (widget.isTruncated)
               Container(
                 color: Colors.amber.withValues(alpha: 0.15),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
-                    const Icon(CupertinoIcons.exclamationmark_triangle, color: Colors.amber, size: 20),
+                    const Icon(
+                      CupertinoIcons.exclamationmark_triangle,
+                      color: Colors.amber,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -774,7 +836,9 @@ class _TextPreviewDialogState extends ConsumerState<_TextPreviewDialog> {
             // Footer Info
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.3,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -801,10 +865,7 @@ class _TextPreviewDialogState extends ConsumerState<_TextPreviewDialog> {
 }
 
 class _PathTextField extends StatefulWidget {
-  const _PathTextField({
-    required this.initialPath,
-    required this.onSubmitted,
-  });
+  const _PathTextField({required this.initialPath, required this.onSubmitted});
 
   final String initialPath;
   final ValueChanged<String> onSubmitted;

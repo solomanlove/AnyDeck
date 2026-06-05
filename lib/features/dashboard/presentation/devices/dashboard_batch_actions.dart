@@ -2,14 +2,18 @@ part of '../dashboard_screen.dart';
 
 /// 批量操作状态管理与UI实现
 extension _DeviceListPanelBatchActions on _DeviceListPanelState {
-
-  Widget _buildBatchActionsToolbar(BuildContext context, List<RegisteredDevice> checkedDevices) {
+  Widget _buildBatchActionsToolbar(
+    BuildContext context,
+    List<RegisteredDevice> checkedDevices,
+  ) {
     final online = checkedDevices.where((d) => d.isOnline).toList();
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
@@ -19,9 +23,9 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
         children: [
           Text(
             '${context.l10n.t('batchActions')} (${online.length}):',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -30,69 +34,112 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: online.isEmpty ? null : () => _handleBatchMirror(context, online),
+                  onPressed: online.isEmpty
+                      ? null
+                      : () => _handleBatchMirror(context, online),
                   icon: const Icon(CupertinoIcons.tv, size: 16),
                   label: Text(context.l10n.t('batchMirror')),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: online.isEmpty ? null : () => _handleBatchScreenshot(context, online),
+                  onPressed: online.isEmpty
+                      ? null
+                      : () => _handleBatchScreenshot(context, online),
                   icon: const Icon(CupertinoIcons.camera, size: 16),
                   label: Text(context.l10n.t('batchScreenshot')),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: online.isEmpty ? null : () => _handleBatchRecord(context, online),
+                  onPressed: online.isEmpty
+                      ? null
+                      : () => _handleBatchRecord(context, online),
                   icon: const Icon(CupertinoIcons.videocam, size: 16),
                   label: Text(context.l10n.t('batchRecord')),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: online.isEmpty ? null : () => _handleBatchInstall(context, online),
+                  onPressed: online.isEmpty
+                      ? null
+                      : () => _handleBatchInstall(context, online),
                   icon: const Icon(CupertinoIcons.square_arrow_down, size: 16),
                   label: Text(context.l10n.t('batchInstall')),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: online.isEmpty ? null : () => _handleBatchPush(context, online),
+                  onPressed: online.isEmpty
+                      ? null
+                      : () => _handleBatchPush(context, online),
                   icon: const Icon(CupertinoIcons.folder_badge_plus, size: 16),
                   label: Text(context.l10n.t('batchPush')),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: online.isEmpty ? null : () => _handleBatchScript(context, online),
+                  onPressed: online.isEmpty
+                      ? null
+                      : () => _handleBatchScript(context, online),
                   icon: const Icon(CupertinoIcons.doc_text, size: 16),
                   label: Text(context.l10n.t('batchScript')),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: online.isEmpty ? null : () => _handleBatchSchedule(context, online),
+                  onPressed: online.isEmpty
+                      ? null
+                      : () => _handleBatchSchedule(context, online),
                   icon: const Icon(CupertinoIcons.clock, size: 16),
                   label: Text(context.l10n.t('batchSchedule')),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: checkedDevices.isEmpty ? null : () => _deleteSelectedDevices(context, checkedDevices.length),
+                  onPressed: checkedDevices.isEmpty
+                      ? null
+                      : () => _deleteSelectedDevices(
+                          context,
+                          checkedDevices.length,
+                        ),
                   icon: const Icon(CupertinoIcons.trash, size: 16),
                   label: Text(context.l10n.t('deleteSelectedDevices')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.redAccent,
                     side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ],
@@ -158,9 +205,14 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
         title: '批量截取屏幕',
         devices: devices,
         action: (device) async {
-          final bytes = await ref.read(adbServiceProvider).captureScreenshot(device.id);
+          final bytes = await ref
+              .read(adbServiceProvider)
+              .captureScreenshot(device.id);
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final cleanName = device.displayName.replaceAll(RegExp(r'[^\w\-_]'), '_');
+          final cleanName = device.displayName.replaceAll(
+            RegExp(r'[^\w\-_]'),
+            '_',
+          );
           final filename = 'screenshot_${cleanName}_$timestamp.png';
           final file = File('$directoryPath/$filename');
           await file.writeAsBytes(bytes);
@@ -200,11 +252,17 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
         title: '批量安装应用',
         devices: devices,
         action: (device) async {
-          final res = await ref.read(appManagementServiceProvider).installApk(device.id, file.path);
+          final res = await ref
+              .read(appManagementServiceProvider)
+              .installApk(device.id, file.path);
           if (res.isSuccess) {
             return '安装成功';
           } else {
-            throw Exception(res.stderr.isNotEmpty ? res.stderr.trim() : '安装失败 (代码 ${res.exitCode})');
+            throw Exception(
+              res.stderr.isNotEmpty
+                  ? res.stderr.trim()
+                  : '安装失败 (代码 ${res.exitCode})',
+            );
           }
         },
       ),
@@ -216,7 +274,9 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
     BuildContext context,
     List<RegisteredDevice> devices,
   ) async {
-    final targetPathController = TextEditingController(text: '/sdcard/Download/');
+    final targetPathController = TextEditingController(
+      text: '/sdcard/Download/',
+    );
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -268,8 +328,12 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
           final buffer = StringBuffer();
           for (final file in files) {
             final filename = file.name;
-            final remoteFile = targetPath.endsWith('/') ? '$targetPath$filename' : '$targetPath/$filename';
-            final res = await ref.read(fileManagerServiceProvider).push(device.id, file.path, remoteFile);
+            final remoteFile = targetPath.endsWith('/')
+                ? '$targetPath$filename'
+                : '$targetPath/$filename';
+            final res = await ref
+                .read(fileManagerServiceProvider)
+                .push(device.id, file.path, remoteFile);
             if (!res.isSuccess) {
               throw Exception('推送 $filename 失败: ${res.stderr}');
             }
@@ -305,7 +369,8 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  hintText: 'echo "Hello World"\npm list packages\ngetprop ro.product.model',
+                  hintText:
+                      'echo "Hello World"\npm list packages\ngetprop ro.product.model',
                 ),
               ),
               const SizedBox(height: 8),
@@ -315,7 +380,10 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
                   icon: const Icon(CupertinoIcons.folder_open, size: 16),
                   label: const Text('从本地脚本文件导入'),
                   onPressed: () async {
-                    const group = XTypeGroup(label: 'Script', extensions: ['sh', 'txt', 'bat']);
+                    const group = XTypeGroup(
+                      label: 'Script',
+                      extensions: ['sh', 'txt', 'bat'],
+                    );
                     final file = await openFile(acceptedTypeGroups: [group]);
                     if (file != null) {
                       final content = await File(file.path).readAsString();
@@ -353,11 +421,17 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
         title: '批量执行脚本',
         devices: devices,
         action: (device) async {
-          final res = await ref.read(adbServiceProvider).shell(device.id, script);
+          final res = await ref
+              .read(adbServiceProvider)
+              .shell(device.id, script);
           if (res.isSuccess) {
             return res.stdout.isEmpty ? '执行完成 (无输出)' : res.stdout.trim();
           } else {
-            throw Exception(res.stderr.isNotEmpty ? res.stderr.trim() : '执行失败 (代码 ${res.exitCode})');
+            throw Exception(
+              res.stderr.isNotEmpty
+                  ? res.stderr.trim()
+                  : '执行失败 (代码 ${res.exitCode})',
+            );
           }
         },
       ),
@@ -386,10 +460,9 @@ class _BatchItemProgress {
   _BatchItemStatus status;
   String message;
 
-  _BatchItemProgress({
-    required this.device,
-  }) : status = _BatchItemStatus.pending,
-       message = '';
+  _BatchItemProgress({required this.device})
+    : status = _BatchItemStatus.pending,
+      message = '';
 }
 
 class _BatchProgressDialog extends ConsumerStatefulWidget {
@@ -404,7 +477,8 @@ class _BatchProgressDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_BatchProgressDialog> createState() => _BatchProgressDialogState();
+  ConsumerState<_BatchProgressDialog> createState() =>
+      _BatchProgressDialogState();
 }
 
 class _BatchProgressDialogState extends ConsumerState<_BatchProgressDialog> {
@@ -440,7 +514,10 @@ class _BatchProgressDialogState extends ConsumerState<_BatchProgressDialog> {
           if (mounted) {
             setState(() {
               _items[index].status = _BatchItemStatus.failed;
-              _items[index].message = e.toString().replaceFirst('Exception: ', '');
+              _items[index].message = e.toString().replaceFirst(
+                'Exception: ',
+                '',
+              );
             });
           }
         }
@@ -471,7 +548,11 @@ class _BatchProgressDialogState extends ConsumerState<_BatchProgressDialog> {
                 separatorBuilder: (context, index) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final item = _items[index];
-                  Widget statusIcon = const Icon(CupertinoIcons.clock, color: Colors.grey, size: 18);
+                  Widget statusIcon = const Icon(
+                    CupertinoIcons.clock,
+                    color: Colors.grey,
+                    size: 18,
+                  );
                   if (item.status == _BatchItemStatus.running) {
                     statusIcon = const SizedBox(
                       width: 16,
@@ -479,9 +560,17 @@ class _BatchProgressDialogState extends ConsumerState<_BatchProgressDialog> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     );
                   } else if (item.status == _BatchItemStatus.success) {
-                    statusIcon = const Icon(CupertinoIcons.check_mark_circled_solid, color: Colors.green, size: 18);
+                    statusIcon = const Icon(
+                      CupertinoIcons.check_mark_circled_solid,
+                      color: Colors.green,
+                      size: 18,
+                    );
                   } else if (item.status == _BatchItemStatus.failed) {
-                    statusIcon = const Icon(CupertinoIcons.exclamationmark_circle_fill, color: Colors.red, size: 18);
+                    statusIcon = const Icon(
+                      CupertinoIcons.exclamationmark_circle_fill,
+                      color: Colors.red,
+                      size: 18,
+                    );
                   }
 
                   return Padding(
@@ -497,15 +586,17 @@ class _BatchProgressDialogState extends ConsumerState<_BatchProgressDialog> {
                             children: [
                               Text(
                                 item.device.displayName,
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 item.message.isEmpty ? '等待执行...' : item.message,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: item.status == _BatchItemStatus.failed 
-                                      ? Colors.red 
+                                  color: item.status == _BatchItemStatus.failed
+                                      ? Colors.red
                                       : colorScheme.onSurfaceVariant,
                                 ),
                               ),
@@ -582,16 +673,14 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
       try {
         // Pre-clean up any leftover temporary recording file
         try {
-          await ref.read(fileManagerServiceProvider).delete(
-            device.id,
-            '/sdcard/adb_batch_record_temp.mp4',
-          );
+          await ref
+              .read(fileManagerServiceProvider)
+              .delete(device.id, '/sdcard/adb_batch_record_temp.mp4');
         } catch (_) {}
 
-        final process = await ref.read(adbServiceProvider).startScreenRecord(
-          device.id,
-          '/sdcard/adb_batch_record_temp.mp4',
-        );
+        final process = await ref
+            .read(adbServiceProvider)
+            .startScreenRecord(device.id, '/sdcard/adb_batch_record_temp.mp4');
         _processes[device.id] = process;
         _statuses[device.id] = '正在录制...';
       } catch (e) {
@@ -603,7 +692,8 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
       setState(() {
         _duration++;
       });
-      if (_duration >= 180) { // 3-minute limit
+      if (_duration >= 180) {
+        // 3-minute limit
         _stopAll();
       }
     });
@@ -626,10 +716,13 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
     // 2. Wait for host process wrapper exits
     for (final entry in _processes.entries) {
       try {
-        await entry.value.exitCode.timeout(const Duration(seconds: 5), onTimeout: () {
-          entry.value.kill();
-          return 0;
-        });
+        await entry.value.exitCode.timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            entry.value.kill();
+            return 0;
+          },
+        );
       } catch (_) {}
     }
 
@@ -643,23 +736,24 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
     if (directoryPath != null) {
       for (final device in widget.devices) {
         if (!_processes.containsKey(device.id)) continue;
-        
+
         setState(() {
           _statuses[device.id] = '正在下载视频文件...';
         });
 
         try {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final cleanName = device.displayName.replaceAll(RegExp(r'[^\w\-_]'), '_');
+          final cleanName = device.displayName.replaceAll(
+            RegExp(r'[^\w\-_]'),
+            '_',
+          );
           final filename = 'screenrecord_${cleanName}_$timestamp.mp4';
           final localPath = '$directoryPath/$filename';
-          
-          final pullRes = await ref.read(fileManagerServiceProvider).pull(
-            device.id,
-            '/sdcard/adb_batch_record_temp.mp4',
-            localPath,
-          );
-          
+
+          final pullRes = await ref
+              .read(fileManagerServiceProvider)
+              .pull(device.id, '/sdcard/adb_batch_record_temp.mp4', localPath);
+
           if (pullRes.isSuccess) {
             _statuses[device.id] = '已保存: $filename';
           } else {
@@ -671,10 +765,9 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
 
         // Cleanup temp file on device
         try {
-          await ref.read(fileManagerServiceProvider).delete(
-            device.id,
-            '/sdcard/adb_batch_record_temp.mp4',
-          );
+          await ref
+              .read(fileManagerServiceProvider)
+              .delete(device.id, '/sdcard/adb_batch_record_temp.mp4');
         } catch (_) {}
       }
     } else {
@@ -682,10 +775,9 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
       for (final device in widget.devices) {
         _statuses[device.id] = '用户取消保存';
         try {
-          await ref.read(fileManagerServiceProvider).delete(
-            device.id,
-            '/sdcard/adb_batch_record_temp.mp4',
-          );
+          await ref
+              .read(fileManagerServiceProvider)
+              .delete(device.id, '/sdcard/adb_batch_record_temp.mp4');
         } catch (_) {}
       }
     }
@@ -731,7 +823,7 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
                   final device = widget.devices[index];
                   final status = _statuses[device.id] ?? '等待录制...';
                   final isErr = status.contains('失败') || status.contains('出错');
-                  
+
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Column(
@@ -830,18 +922,29 @@ class ScheduledTasksNotifier extends Notifier<List<ScheduledTask>> {
   void cancelTask(String id) {
     _timers[id]?.cancel();
     _timers.remove(id);
-    state = state.map((t) => t.id == id ? t.copyWithStatus('cancelled', '已取消') : t).toList();
+    state = state
+        .map((t) => t.id == id ? t.copyWithStatus('cancelled', '已取消') : t)
+        .toList();
   }
 
-  Future<void> _executeTask(String id, Future<String> Function() execute) async {
+  Future<void> _executeTask(
+    String id,
+    Future<String> Function() execute,
+  ) async {
     _timers.remove(id);
-    state = state.map((t) => t.id == id ? t.copyWithStatus('running', '正在执行...') : t).toList();
+    state = state
+        .map((t) => t.id == id ? t.copyWithStatus('running', '正在执行...') : t)
+        .toList();
 
     try {
       final summary = await execute();
-      state = state.map((t) => t.id == id ? t.copyWithStatus('completed', summary) : t).toList();
+      state = state
+          .map((t) => t.id == id ? t.copyWithStatus('completed', summary) : t)
+          .toList();
     } catch (e) {
-      state = state.map((t) => t.id == id ? t.copyWithStatus('failed', '执行出错: $e') : t).toList();
+      state = state
+          .map((t) => t.id == id ? t.copyWithStatus('failed', '执行出错: $e') : t)
+          .toList();
     }
   }
 }
@@ -861,9 +964,10 @@ extension ScheduledTaskExtension on ScheduledTask {
   }
 }
 
-final scheduledTasksProvider = NotifierProvider<ScheduledTasksNotifier, List<ScheduledTask>>(
-  ScheduledTasksNotifier.new,
-);
+final scheduledTasksProvider =
+    NotifierProvider<ScheduledTasksNotifier, List<ScheduledTask>>(
+      ScheduledTasksNotifier.new,
+    );
 
 class _BatchScheduleDialog extends ConsumerStatefulWidget {
   final List<RegisteredDevice> devices;
@@ -871,13 +975,15 @@ class _BatchScheduleDialog extends ConsumerStatefulWidget {
   const _BatchScheduleDialog({required this.devices});
 
   @override
-  ConsumerState<_BatchScheduleDialog> createState() => _BatchScheduleDialogState();
+  ConsumerState<_BatchScheduleDialog> createState() =>
+      _BatchScheduleDialogState();
 }
 
 class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
   int _delayMinutes = 1;
-  String _selectedAction = 'screenshot'; // 'screenshot', 'install', 'push', 'script'
-  
+  String _selectedAction =
+      'screenshot'; // 'screenshot', 'install', 'push', 'script'
+
   // Custom action parameters
   String _apkPath = '';
   List<String> _pushFilePaths = [];
@@ -921,10 +1027,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
               const SizedBox(height: 12),
               Expanded(
                 child: TabBarView(
-                  children: [
-                    _buildCreateTaskTab(),
-                    _buildTaskListTab(tasks),
-                  ],
+                  children: [_buildCreateTaskTab(), _buildTaskListTab(tasks)],
                 ),
               ),
             ],
@@ -952,10 +1055,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
               DropdownButton<int>(
                 value: _delayMinutes,
                 items: [1, 2, 5, 10, 30, 60].map((m) {
-                  return DropdownMenuItem<int>(
-                    value: m,
-                    child: Text('$m 分钟后'),
-                  );
+                  return DropdownMenuItem<int>(value: m, child: Text('$m 分钟后'));
                 }).toList(),
                 onChanged: (val) {
                   if (val != null) setState(() => _delayMinutes = val);
@@ -1029,7 +1129,9 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
               onPressed: () async {
                 final files = await openFiles();
                 if (files.isNotEmpty) {
-                  setState(() => _pushFilePaths = files.map((f) => f.path).toList());
+                  setState(
+                    () => _pushFilePaths = files.map((f) => f.path).toList(),
+                  );
                 }
               },
               icon: const Icon(CupertinoIcons.folder_open),
@@ -1037,7 +1139,10 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
             ),
             if (_pushFilePaths.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text('已选择 ${_pushFilePaths.length} 个文件', style: const TextStyle(fontSize: 12)),
+              Text(
+                '已选择 ${_pushFilePaths.length} 个文件',
+                style: const TextStyle(fontSize: 12),
+              ),
             ],
             const SizedBox(height: 12),
             TextField(
@@ -1076,7 +1181,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
         final task = tasks[idx];
         final remaining = task.scheduledTime.difference(DateTime.now());
         final isPending = task.status == 'pending';
-        
+
         String timeDisplay = '已执行';
         if (remaining.inSeconds > 0) {
           timeDisplay = '剩余 ${remaining.inSeconds} 秒';
@@ -1088,16 +1193,26 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('状态: ${task.status} (${task.result})'),
-              Text('设备数: ${task.targetDeviceIds.length} 台 | 计划执行时间: ${task.scheduledTime.toLocal()}'),
+              Text(
+                '设备数: ${task.targetDeviceIds.length} 台 | 计划执行时间: ${task.scheduledTime.toLocal()}',
+              ),
             ],
           ),
-          trailing: isPending 
+          trailing: isPending
               ? ElevatedButton(
-                  onPressed: () => ref.read(scheduledTasksProvider.notifier).cancelTask(task.id),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+                  onPressed: () => ref
+                      .read(scheduledTasksProvider.notifier)
+                      .cancelTask(task.id),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('取消'),
                 )
-              : Text(timeDisplay, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              : Text(
+                  timeDisplay,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
         );
       },
     );
@@ -1107,7 +1222,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
     final targetDevices = widget.devices;
     final scheduledTime = DateTime.now().add(Duration(minutes: _delayMinutes));
     final id = DateTime.now().millisecondsSinceEpoch.toString();
-    
+
     String title = '';
     Future<String> Function() execute;
     dynamic payload;
@@ -1116,7 +1231,8 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
       case 'screenshot':
         title = '批量截图';
         execute = () async {
-          final home = Platform.environment['HOME'] ?? Directory.systemTemp.path;
+          final home =
+              Platform.environment['HOME'] ?? Directory.systemTemp.path;
           final saveDir = '$home/Downloads';
           final dir = Directory(saveDir);
           if (!dir.existsSync()) {
@@ -1125,7 +1241,9 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
           int success = 0;
           for (final d in targetDevices) {
             try {
-              final bytes = await ref.read(adbServiceProvider).captureScreenshot(d.id);
+              final bytes = await ref
+                  .read(adbServiceProvider)
+                  .captureScreenshot(d.id);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               final file = File('$saveDir/screenshot_${d.id}_$timestamp.png');
               await file.writeAsBytes(bytes);
@@ -1144,7 +1262,9 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
           int success = 0;
           for (final d in targetDevices) {
             try {
-              final res = await ref.read(appManagementServiceProvider).installApk(d.id, _apkPath);
+              final res = await ref
+                  .read(appManagementServiceProvider)
+                  .installApk(d.id, _apkPath);
               if (res.isSuccess) success++;
             } catch (_) {}
           }
@@ -1163,8 +1283,12 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
             bool devOk = true;
             for (final f in _pushFilePaths) {
               final filename = f.split('/').last;
-              final remoteFile = targetPath.endsWith('/') ? '$targetPath$filename' : '$targetPath/$filename';
-              final res = await ref.read(fileManagerServiceProvider).push(d.id, f, remoteFile);
+              final remoteFile = targetPath.endsWith('/')
+                  ? '$targetPath$filename'
+                  : '$targetPath/$filename';
+              final res = await ref
+                  .read(fileManagerServiceProvider)
+                  .push(d.id, f, remoteFile);
               if (!res.isSuccess) devOk = false;
             }
             if (devOk) success++;
@@ -1181,14 +1305,16 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
           int success = 0;
           for (final d in targetDevices) {
             try {
-              final res = await ref.read(adbServiceProvider).shell(d.id, _scriptText);
+              final res = await ref
+                  .read(adbServiceProvider)
+                  .shell(d.id, _scriptText);
               if (res.isSuccess) success++;
             } catch (_) {}
           }
           return '$success台执行完成';
         };
         break;
-      
+
       default:
         return;
     }
@@ -1203,7 +1329,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
     );
 
     ref.read(scheduledTasksProvider.notifier).scheduleTask(task, execute);
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

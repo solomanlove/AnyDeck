@@ -18,7 +18,8 @@ class HostPlatformService {
         ]);
         return result.exitCode == 0;
       } else if (Platform.isWindows) {
-        final psCommand = 'Add-Type -AssemblyName System.Windows.Forms, System.Drawing; '
+        final psCommand =
+            'Add-Type -AssemblyName System.Windows.Forms, System.Drawing; '
             '[System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile("${tempFile.path}"))';
         final result = await Process.run('powershell', ['-Command', psCommand]);
         return result.exitCode == 0;
@@ -92,7 +93,11 @@ class HostPlatformService {
       if (Platform.isMacOS) {
         await Process.run('open', ['-a', 'Terminal', dirPath]);
       } else if (Platform.isWindows) {
-        await Process.run('cmd.exe', ['/c', 'start', 'cmd.exe'], workingDirectory: dirPath);
+        await Process.run('cmd.exe', [
+          '/c',
+          'start',
+          'cmd.exe',
+        ], workingDirectory: dirPath);
       } else if (Platform.isLinux) {
         await Process.run('x-terminal-emulator', [], workingDirectory: dirPath);
       } else {
@@ -103,5 +108,43 @@ class HostPlatformService {
       debugPrint('Failed to open terminal in directory $dirPath: $e');
       return false;
     }
+  }
+
+  /// 获取实际的保存目录。如果用户设定的路径不存在或为空，则回退到 Downloads 目录，再回退到 Home 目录。
+  String getSaveDirectory(String configuredPath) {
+    if (configuredPath.isNotEmpty) {
+      final dir = Directory(configuredPath);
+      if (dir.existsSync()) {
+        return dir.path;
+      }
+    }
+    final home =
+        Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '';
+    if (home.isEmpty) return '.';
+    final downloads = Directory('$home/Downloads');
+    if (downloads.existsSync()) {
+      return downloads.path;
+    }
+    return home;
+  }
+
+  /// 在保存目录中生成截图的唯一绝对路径。
+  String generateScreenshotPath(String configuredPath, String deviceId) {
+    final dir = getSaveDirectory(configuredPath);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    // 移除 deviceId 中不符合文件名规范的字符
+    final safeDeviceId = deviceId.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    return '$dir/screenshot_${safeDeviceId}_$timestamp.png';
+  }
+
+  /// 在保存目录中生成录屏视频的唯一绝对路径。
+  String generateRecordPath(String configuredPath, String deviceId) {
+    final dir = getSaveDirectory(configuredPath);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    // 移除 deviceId 中不符合文件名规范的字符
+    final safeDeviceId = deviceId.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    return '$dir/screenrecord_${safeDeviceId}_$timestamp.mp4';
   }
 }

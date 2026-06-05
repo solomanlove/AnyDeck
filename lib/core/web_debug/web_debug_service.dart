@@ -74,13 +74,15 @@ class WebDebugService {
         final port = await _getOrForwardPort(deviceId, socketName);
         final rawTargets = await _fetchTargets(port);
         for (final raw in rawTargets) {
-          allTargets.add(WebpageTarget.fromJson(
-            json: raw,
-            packageName: packageName,
-            pid: pid,
-            socketName: socketName,
-            port: port,
-          ));
+          allTargets.add(
+            WebpageTarget.fromJson(
+              json: raw,
+              packageName: packageName,
+              pid: pid,
+              socketName: socketName,
+              port: port,
+            ),
+          );
         }
       } catch (_) {
         // 如果单个 socket 转发或数据获取失败，跳过以避免阻断其他 sockets
@@ -126,7 +128,9 @@ class WebDebugService {
     final client = HttpClient();
     client.connectionTimeout = const Duration(seconds: 2);
     try {
-      final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/json/list'));
+      final request = await client.getUrl(
+        Uri.parse('http://127.0.0.1:$port/json/list'),
+      );
       final response = await request.close();
       if (response.statusCode == 200) {
         final content = await response.transform(utf8.decoder).join();
@@ -138,7 +142,9 @@ class WebDebugService {
     } catch (_) {
       // 兼容一些老版本 Chrome/WebView 的 /json 接口
       try {
-        final request = await client.getUrl(Uri.parse('http://127.0.0.1:$port/json'));
+        final request = await client.getUrl(
+          Uri.parse('http://127.0.0.1:$port/json'),
+        );
         final response = await request.close();
         if (response.statusCode == 200) {
           final content = await response.transform(utf8.decoder).join();
@@ -160,7 +166,10 @@ class WebDebugService {
       return _packageNameCache[pid]!;
     }
     try {
-      final result = await _adb.shellArgs(deviceId, ['cat', '/proc/$pid/cmdline']);
+      final result = await _adb.shellArgs(deviceId, [
+        'cat',
+        '/proc/$pid/cmdline',
+      ]);
       if (result.isSuccess && result.stdout.trim().isNotEmpty) {
         final name = result.stdout.split('\x00').first.trim();
         if (name.isNotEmpty) {
@@ -193,11 +202,15 @@ class WebDebugService {
   }
 
   /// 打开调试器检查特定的网页。
-  Future<void> openInspector(WebpageTarget target, bool useLocalDebugger) async {
+  Future<void> openInspector(
+    WebpageTarget target,
+    bool useLocalDebugger,
+  ) async {
     String url;
     if (useLocalDebugger) {
       // 使用本地内置调试器 URL
-      url = 'devtools://devtools/bundled/inspector.html?ws=127.0.0.1:${target.port}/devtools/page/${target.id}';
+      url =
+          'devtools://devtools/bundled/inspector.html?ws=127.0.0.1:${target.port}/devtools/page/${target.id}';
     } else {
       if (target.devtoolsFrontendUrl.isNotEmpty) {
         url = target.devtoolsFrontendUrl;
@@ -207,12 +220,16 @@ class WebDebugService {
         if (match != null) {
           final oldWs = match.group(1);
           if (oldWs != null) {
-            url = url.replaceFirst(oldWs, '127.0.0.1:${target.port}/devtools/page/${target.id}');
+            url = url.replaceFirst(
+              oldWs,
+              '127.0.0.1:${target.port}/devtools/page/${target.id}',
+            );
           }
         }
       } else {
         // 缺省的在线 DevTools 调试前端
-        url = 'https://chrome-devtools-frontend.appspot.com/serve_rev/@d1ef8f1176b6ef009d73d6e53a32f6b3cf59a68e/inspector.html?ws=127.0.0.1:${target.port}/devtools/page/${target.id}';
+        url =
+            'https://chrome-devtools-frontend.appspot.com/serve_rev/@d1ef8f1176b6ef009d73d6e53a32f6b3cf59a68e/inspector.html?ws=127.0.0.1:${target.port}/devtools/page/${target.id}';
       }
     }
 

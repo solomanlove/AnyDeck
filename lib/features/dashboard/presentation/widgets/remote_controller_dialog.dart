@@ -10,9 +10,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
     final actions = ref.read(deviceActionServiceProvider);
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: Colors.white,
       child: Container(
         width: 320,
@@ -58,22 +56,33 @@ class _RemoteControllerDialog extends ConsumerWidget {
                         icon: CupertinoIcons.power,
                         tooltip: context.l10n.t('power'),
                         color: const Color(0xFFE0E2E7),
-                        iconColor: const Color(0xFFF38BA8), // soft premium red for power
-                        onPressed: () => _runAdb(context, ref, actions.keyEvent(device.id, 26)),
+                        iconColor: const Color(
+                          0xFFF38BA8,
+                        ), // soft premium red for power
+                        onPressed: () => _runAdb(
+                          context,
+                          ref,
+                          actions.keyEvent(device.id, 26),
+                        ),
                       ),
                       _buildCircularButton(
                         icon: CupertinoIcons.volume_down,
                         tooltip: context.l10n.t('volumeDown'),
                         color: const Color(0xFFE0E2E7),
                         iconColor: const Color(0xFF5F6B6E),
-                        onPressed: () => _runAdb(context, ref, actions.volumeDown(device.id)),
+                        onPressed: () => _runAdb(
+                          context,
+                          ref,
+                          actions.volumeDown(device.id),
+                        ),
                       ),
                       _buildCircularButton(
                         icon: CupertinoIcons.volume_up,
                         tooltip: context.l10n.t('volumeUp'),
                         color: const Color(0xFFE0E2E7),
                         iconColor: const Color(0xFF5F6B6E),
-                        onPressed: () => _runAdb(context, ref, actions.volumeUp(device.id)),
+                        onPressed: () =>
+                            _runAdb(context, ref, actions.volumeUp(device.id)),
                       ),
                     ],
                   ),
@@ -90,21 +99,33 @@ class _RemoteControllerDialog extends ConsumerWidget {
                         tooltip: context.l10n.t('home'),
                         color: const Color(0xFFE0E2E7),
                         iconColor: const Color(0xFF5F6B6E),
-                        onPressed: () => _runAdb(context, ref, actions.keyEvent(device.id, 3)),
+                        onPressed: () => _runAdb(
+                          context,
+                          ref,
+                          actions.keyEvent(device.id, 3),
+                        ),
                       ),
                       _buildCapsuleButton(
                         icon: Icons.arrow_left_rounded,
                         tooltip: context.l10n.t('back'),
                         color: const Color(0xFFD3D5DC),
                         iconColor: const Color(0xFF1E1E2E),
-                        onPressed: () => _runAdb(context, ref, actions.keyEvent(device.id, 4)),
+                        onPressed: () => _runAdb(
+                          context,
+                          ref,
+                          actions.keyEvent(device.id, 4),
+                        ),
                       ),
                       _buildCircularButton(
                         icon: CupertinoIcons.square,
                         tooltip: 'Recents',
                         color: const Color(0xFFE0E2E7),
                         iconColor: const Color(0xFF5F6B6E),
-                        onPressed: () => _runAdb(context, ref, actions.keyEvent(device.id, 187)),
+                        onPressed: () => _runAdb(
+                          context,
+                          ref,
+                          actions.keyEvent(device.id, 187),
+                        ),
                       ),
                     ],
                   ),
@@ -169,7 +190,11 @@ class _RemoteControllerDialog extends ConsumerWidget {
     );
   }
 
-  Widget _buildDPad(BuildContext context, WidgetRef ref, DeviceActionService actions) {
+  Widget _buildDPad(
+    BuildContext context,
+    WidgetRef ref,
+    DeviceActionService actions,
+  ) {
     return Container(
       width: 190,
       height: 190,
@@ -189,7 +214,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
             height: 50,
             child: _buildDPadSector(
               tooltip: 'Up',
-              onPressed: () => _runAdb(context, ref, actions.keyEvent(device.id, 19)),
+              onPressed: () =>
+                  _runAdb(context, ref, actions.keyEvent(device.id, 19)),
             ),
           ),
           // Down
@@ -200,7 +226,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
             height: 50,
             child: _buildDPadSector(
               tooltip: 'Down',
-              onPressed: () => _runAdb(context, ref, actions.keyEvent(device.id, 20)),
+              onPressed: () =>
+                  _runAdb(context, ref, actions.keyEvent(device.id, 20)),
             ),
           ),
           // Left
@@ -211,7 +238,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
             width: 50,
             child: _buildDPadSector(
               tooltip: 'Left',
-              onPressed: () => _runAdb(context, ref, actions.keyEvent(device.id, 21)),
+              onPressed: () =>
+                  _runAdb(context, ref, actions.keyEvent(device.id, 21)),
             ),
           ),
           // Right
@@ -222,7 +250,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
             width: 50,
             child: _buildDPadSector(
               tooltip: 'Right',
-              onPressed: () => _runAdb(context, ref, actions.keyEvent(device.id, 22)),
+              onPressed: () =>
+                  _runAdb(context, ref, actions.keyEvent(device.id, 22)),
             ),
           ),
 
@@ -232,7 +261,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
             shape: const CircleBorder(),
             elevation: 2,
             child: InkWell(
-              onTap: () => _runAdb(context, ref, actions.keyEvent(device.id, 23)),
+              onTap: () =>
+                  _runAdb(context, ref, actions.keyEvent(device.id, 23)),
               customBorder: const CircleBorder(),
               hoverColor: const Color(0xFFECEEF2),
               child: const SizedBox(
@@ -256,7 +286,10 @@ class _RemoteControllerDialog extends ConsumerWidget {
     );
   }
 
-  Widget _buildDPadSector({required String tooltip, required VoidCallback onPressed}) {
+  Widget _buildDPadSector({
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
     return Tooltip(
       message: tooltip,
       child: InkWell(
@@ -277,7 +310,11 @@ class _RemoteControllerDialog extends ConsumerWidget {
     );
   }
 
-  Future<void> _runAdb(BuildContext context, WidgetRef ref, Future<AdbResult> actionFuture) async {
+  Future<void> _runAdb(
+    BuildContext context,
+    WidgetRef ref,
+    Future<AdbResult> actionFuture,
+  ) async {
     try {
       final res = await actionFuture;
       if (!res.isSuccess && context.mounted) {

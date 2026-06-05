@@ -27,11 +27,19 @@ class PerformanceTopStatusRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(CupertinoIcons.power, size: 18, color: theme.colorScheme.primary),
+              Icon(
+                CupertinoIcons.power,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
               const SizedBox(width: 6),
               Text(
                 '已开机 $uptime',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xff202124)),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Color(0xff202124),
+                ),
               ),
             ],
           ),
@@ -39,13 +47,21 @@ class PerformanceTopStatusRow extends StatelessWidget {
             children: [
               Text(
                 '$batteryLevel%',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xff202124)),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Color(0xff202124),
+                ),
               ),
               const SizedBox(width: 4),
               Icon(
-                isCharging ? CupertinoIcons.battery_charging : CupertinoIcons.battery_100,
+                isCharging
+                    ? CupertinoIcons.battery_charging
+                    : CupertinoIcons.battery_100,
                 size: 20,
-                color: isCharging ? const Color(0xff00c853) : const Color(0xff5f6b6e),
+                color: isCharging
+                    ? const Color(0xff00c853)
+                    : const Color(0xff5f6b6e),
               ),
             ],
           ),
@@ -85,7 +101,11 @@ class CpuOverviewCard extends StatelessWidget {
               children: [
                 const Text(
                   'CPU',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xff202124)),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: Color(0xff202124),
+                  ),
                 ),
                 Text(
                   '${overallCpuUsage.toStringAsFixed(0)}%',
@@ -146,8 +166,8 @@ class CpuCoresGrid extends StatelessWidget {
     final double childAspectRatio = crossAxisCount == 4
         ? 1.8
         : crossAxisCount == 2
-            ? 2.2
-            : 3.5;
+        ? 2.2
+        : 3.5;
 
     final theme = Theme.of(context);
 
@@ -182,7 +202,11 @@ class CpuCoresGrid extends StatelessWidget {
                   children: [
                     Text(
                       'CPU${core.id} ${core.frequencyMHz.toStringAsFixed(0)}MHz',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xff5f6b6e)),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        color: Color(0xff5f6b6e),
+                      ),
                     ),
                     Text(
                       '${core.usage.toStringAsFixed(0)}%',
@@ -248,7 +272,11 @@ class MemoryOverviewCard extends StatelessWidget {
               children: [
                 Text(
                   '内存 ${memoryUsagePercent.toStringAsFixed(0)}%',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xff202124)),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: Color(0xff202124),
+                  ),
                 ),
                 Text(
                   '${usedMemoryMB.toStringAsFixed(0)}MB',
@@ -315,7 +343,11 @@ class FpsOverviewCard extends StatelessWidget {
                   child: Text(
                     'FPS $appDisplayName',
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xff202124)),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: Color(0xff202124),
+                    ),
                   ),
                 ),
                 Text(

@@ -51,7 +51,8 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   double _fps = 0;
 
   // 统一的 ADB Shell 命令文本 (不需要在 Dart 中转义 $)
-  static const String _unifiedCommand = r'''cat /proc/uptime; echo "---"; dumpsys battery; echo "---"; cat /proc/meminfo; echo "---"; dumpsys window | grep mCurrentFocus; echo "---"; cat /proc/stat | grep "^cpu"; echo "---"; for i in $(seq 0 32); do if [ -d "/sys/devices/system/cpu/cpu$i" ]; then freq_file="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; if [ -f "$freq_file" ]; then cat "$freq_file"; else echo "0"; fi; fi; done; echo "---"; focusLine=$(dumpsys window | grep mCurrentFocus); tmp=${focusLine%%/*}; pkg=${tmp##* }; pkg=${pkg##*{}; if [ "$pkg" != "null" ] && [[ "$pkg" != *"="* ]]; then dumpsys gfxinfo $pkg | grep "Total frames rendered:"; fi''';
+  static const String _unifiedCommand =
+      r'''cat /proc/uptime; echo "---"; dumpsys battery; echo "---"; cat /proc/meminfo; echo "---"; dumpsys window | grep mCurrentFocus; echo "---"; cat /proc/stat | grep "^cpu"; echo "---"; for i in $(seq 0 32); do if [ -d "/sys/devices/system/cpu/cpu$i" ]; then freq_file="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; if [ -f "$freq_file" ]; then cat "$freq_file"; else echo "0"; fi; fi; done; echo "---"; focusLine=$(dumpsys window | grep mCurrentFocus); tmp=${focusLine%%/*}; pkg=${tmp##* }; pkg=${pkg##*{}; if [ "$pkg" != "null" ] && [[ "$pkg" != *"="* ]]; then dumpsys gfxinfo $pkg | grep "Total frames rendered:"; fi''';
 
   @override
   void initState() {
@@ -64,7 +65,8 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   @override
   void didUpdateWidget(covariant PerformanceTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.device.id != oldWidget.device.id || widget.device.isOnline != oldWidget.device.isOnline) {
+    if (widget.device.id != oldWidget.device.id ||
+        widget.device.isOnline != oldWidget.device.isOnline) {
       _stopPolling();
       _clearHistory();
       if (widget.device.isOnline) {
@@ -153,27 +155,52 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
       _lastFps = snapshot.fps;
 
       // 生成时间戳 Label (格式 HH:mm:ss)
-      final timeStr = '${snapshot.timestamp.hour.toString().padLeft(2, '0')}:'
+      final timeStr =
+          '${snapshot.timestamp.hour.toString().padLeft(2, '0')}:'
           '${snapshot.timestamp.minute.toString().padLeft(2, '0')}:'
           '${snapshot.timestamp.second.toString().padLeft(2, '0')}';
 
       // 1. 更新整体 CPU 历史列表
-      _historyOverallCpu.add(ChartDataPoint(value: snapshot.overallCpuUsage, label: timeStr, timestamp: snapshot.timestamp));
+      _historyOverallCpu.add(
+        ChartDataPoint(
+          value: snapshot.overallCpuUsage,
+          label: timeStr,
+          timestamp: snapshot.timestamp,
+        ),
+      );
       if (_historyOverallCpu.length > 90) _historyOverallCpu.removeAt(0);
 
       // 2. 更新每个核心 CPU 历史列表
       for (final core in snapshot.cores) {
         final list = _historyCores.putIfAbsent(core.id, () => []);
-        list.add(ChartDataPoint(value: core.usage, label: timeStr, timestamp: snapshot.timestamp));
+        list.add(
+          ChartDataPoint(
+            value: core.usage,
+            label: timeStr,
+            timestamp: snapshot.timestamp,
+          ),
+        );
         if (list.length > 20) list.removeAt(0);
       }
 
       // 3. 更新内存历史列表
-      _historyMemory.add(ChartDataPoint(value: snapshot.memoryUsagePercent, label: timeStr, timestamp: snapshot.timestamp));
+      _historyMemory.add(
+        ChartDataPoint(
+          value: snapshot.memoryUsagePercent,
+          label: timeStr,
+          timestamp: snapshot.timestamp,
+        ),
+      );
       if (_historyMemory.length > 90) _historyMemory.removeAt(0);
 
       // 4. 更新 FPS 历史列表
-      _historyFps.add(ChartDataPoint(value: snapshot.fps, label: timeStr, timestamp: snapshot.timestamp));
+      _historyFps.add(
+        ChartDataPoint(
+          value: snapshot.fps,
+          label: timeStr,
+          timestamp: snapshot.timestamp,
+        ),
+      );
       if (_historyFps.length > 90) _historyFps.removeAt(0);
 
       setState(() {
@@ -206,8 +233,8 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
         child: Text(
           context.l10n.t('deviceOffline'),
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
+            color: Theme.of(context).colorScheme.error,
+          ),
         ),
       );
     }
@@ -232,11 +259,18 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.red),
+              const Icon(
+                CupertinoIcons.exclamationmark_circle,
+                size: 48,
+                color: Colors.red,
+              ),
               const SizedBox(height: 16),
               Text(
                 '数据获取失败: $_errorMsg',
-                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
@@ -258,7 +292,9 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
       (p) => p.name == _foregroundAppPackage,
       orElse: () => AdbPackage(name: _foregroundAppPackage, system: false),
     );
-    final appDisplayName = matchedPkg.name.isEmpty ? '无活动窗口' : matchedPkg.displayName;
+    final appDisplayName = matchedPkg.name.isEmpty
+        ? '无活动窗口'
+        : matchedPkg.displayName;
 
     return RefreshIndicator(
       onRefresh: _pollData,
@@ -281,10 +317,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
           const SizedBox(height: 16),
 
           // CPU 多核细节网格
-          CpuCoresGrid(
-            cores: _cores,
-            historyCores: _historyCores,
-          ),
+          CpuCoresGrid(cores: _cores, historyCores: _historyCores),
           const SizedBox(height: 16),
 
           // 内存卡片

@@ -23,7 +23,7 @@ class NetworkTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     // 如果设备离线，展示离线提示
     if (!device.isOnline) {
       return Center(
@@ -39,16 +39,18 @@ class NetworkTab extends ConsumerWidget {
             Text(
               context.l10n.t('deviceOffline'),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
       );
     }
 
-    final activeForwardsAsync = ref.watch(activePortForwardsProvider(device.id));
+    final activeForwardsAsync = ref.watch(
+      activePortForwardsProvider(device.id),
+    );
     final presets = ref.watch(portForwardPresetsProvider);
 
     // 触发自动应用（如果在宿主层没有注册，也可以放在这里兜底）
@@ -69,7 +71,8 @@ class NetworkTab extends ConsumerWidget {
                 IconButton(
                   tooltip: context.l10n.t('refresh'),
                   icon: const Icon(CupertinoIcons.refresh),
-                  onPressed: () => ref.invalidate(activePortForwardsProvider(device.id)),
+                  onPressed: () =>
+                      ref.invalidate(activePortForwardsProvider(device.id)),
                 ),
                 IconButton(
                   tooltip: context.l10n.t('addPortForward'),
@@ -243,7 +246,9 @@ class NetworkTab extends ConsumerWidget {
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -256,10 +261,17 @@ class NetworkTab extends ConsumerWidget {
               children: [
                 Text(
                   'Device: ${item.displayDevicePort}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                const Icon(CupertinoIcons.arrow_right, size: 14, color: Colors.grey),
+                const Icon(
+                  CupertinoIcons.arrow_right,
+                  size: 14,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 12),
                 Text(
                   'Local: ${item.displayLocalPort}',
@@ -272,11 +284,23 @@ class NetworkTab extends ConsumerWidget {
               ],
             ),
             trailing: IconButton(
-              icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent, size: 18),
+              icon: const Icon(
+                CupertinoIcons.trash,
+                color: Colors.redAccent,
+                size: 18,
+              ),
               onPressed: () async {
                 final adb = ref.read(adbServiceProvider);
-                final devPort = item.devicePort.startsWith('tcp:') ? item.devicePort : 'tcp:${item.devicePort}';
-                final result = await adb.run(['-s', device.id, 'reverse', '--remove', devPort]);
+                final devPort = item.devicePort.startsWith('tcp:')
+                    ? item.devicePort
+                    : 'tcp:${item.devicePort}';
+                final result = await adb.run([
+                  '-s',
+                  device.id,
+                  'reverse',
+                  '--remove',
+                  devPort,
+                ]);
                 if (result.isSuccess) {
                   ref.invalidate(activePortForwardsProvider(device.id));
                 } else {
@@ -346,15 +370,22 @@ class NetworkTab extends ConsumerWidget {
                     '${item.devicePort} -> ${item.localPort}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? Colors.grey[400] : const Color(0xff6b7280),
+                      color: isDark
+                          ? Colors.grey[400]
+                          : const Color(0xff6b7280),
                     ),
                   ),
                   if (item.autoApply) ...[
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -377,9 +408,19 @@ class NetworkTab extends ConsumerWidget {
                 TextButton.icon(
                   onPressed: () async {
                     final adb = ref.read(adbServiceProvider);
-                    final devPort = item.devicePort.startsWith('tcp:') ? item.devicePort : 'tcp:${item.devicePort}';
-                    final locPort = item.localPort.startsWith('tcp:') ? item.localPort : 'tcp:${item.localPort}';
-                    final result = await adb.run(['-s', device.id, 'reverse', devPort, locPort]);
+                    final devPort = item.devicePort.startsWith('tcp:')
+                        ? item.devicePort
+                        : 'tcp:${item.devicePort}';
+                    final locPort = item.localPort.startsWith('tcp:')
+                        ? item.localPort
+                        : 'tcp:${item.localPort}';
+                    final result = await adb.run([
+                      '-s',
+                      device.id,
+                      'reverse',
+                      devPort,
+                      locPort,
+                    ]);
                     if (result.isSuccess) {
                       ref.invalidate(activePortForwardsProvider(device.id));
                       if (context.mounted) {
@@ -394,7 +435,9 @@ class NetworkTab extends ConsumerWidget {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('${context.l10n.t('reverseFailed')}: ${result.message}'),
+                            content: Text(
+                              '${context.l10n.t('reverseFailed')}: ${result.message}',
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -405,16 +448,29 @@ class NetworkTab extends ConsumerWidget {
                   label: Text(context.l10n.t('apply')),
                   style: TextButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.primary,
-                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(CupertinoIcons.trash, color: Colors.grey, size: 18),
+                  icon: const Icon(
+                    CupertinoIcons.trash,
+                    color: Colors.grey,
+                    size: 18,
+                  ),
                   onPressed: () async {
-                    await ref.read(portForwardPresetsProvider.notifier).deletePreset(item);
+                    await ref
+                        .read(portForwardPresetsProvider.notifier)
+                        .deletePreset(item);
                   },
                 ),
               ],

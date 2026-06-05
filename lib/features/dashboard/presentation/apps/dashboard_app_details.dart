@@ -92,13 +92,17 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
                                 ? Image.file(
                                     File(package.iconLocalPath!),
                                     fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        _FallbackIconLarge(
-                                          package: package,
-                                          theme: theme,
-                                        ),
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            _FallbackIconLarge(
+                                              package: package,
+                                              theme: theme,
+                                            ),
                                   )
-                                : _FallbackIconLarge(package: package, theme: theme),
+                                : _FallbackIconLarge(
+                                    package: package,
+                                    theme: theme,
+                                  ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -136,9 +140,18 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
                     const SizedBox(height: 24),
                     const Divider(height: 1),
                     const SizedBox(height: 8),
-                    _DetailItem(label: '系统应用', value: package.system ? '是' : '否'),
-                    _DetailItem(label: '可调试 (Debuggable)', value: package.debuggable ? '是' : '否'),
-                    _DetailItem(label: '最小 SDK 版本', value: _sdkLabel(package.minSdk)),
+                    _DetailItem(
+                      label: '系统应用',
+                      value: package.system ? '是' : '否',
+                    ),
+                    _DetailItem(
+                      label: '可调试 (Debuggable)',
+                      value: package.debuggable ? '是' : '否',
+                    ),
+                    _DetailItem(
+                      label: '最小 SDK 版本',
+                      value: _sdkLabel(package.minSdk),
+                    ),
                     _DetailItem(
                       label: '目标 SDK 版本',
                       value: _sdkLabel(package.targetSdk),
@@ -170,9 +183,18 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
 
                         return Column(
                           children: [
-                            _DetailItem(label: '应用大小', value: getValue('appSize')),
-                            _DetailItem(label: '数据大小', value: getValue('dataSize')),
-                            _DetailItem(label: '缓存大小', value: getValue('cacheSize')),
+                            _DetailItem(
+                              label: '应用大小',
+                              value: getValue('appSize'),
+                            ),
+                            _DetailItem(
+                              label: '数据大小',
+                              value: getValue('dataSize'),
+                            ),
+                            _DetailItem(
+                              label: '缓存大小',
+                              value: getValue('cacheSize'),
+                            ),
                           ],
                         );
                       },
@@ -184,7 +206,10 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
                           package.signatureMd5 != null &&
                               package.signatureMd5!.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(CupertinoIcons.doc_on_doc, size: 16),
+                              icon: const Icon(
+                                CupertinoIcons.doc_on_doc,
+                                size: 16,
+                              ),
                               onPressed: () {
                                 Clipboard.setData(
                                   ClipboardData(text: package.signatureMd5!),

@@ -60,7 +60,9 @@ class LayoutPropertiesTable extends StatelessWidget {
     String formatValue(double pxValue) {
       if (useDp) {
         final dpValue = pxValue / deviceScale;
-        final dpStr = dpValue.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+        final dpStr = dpValue
+            .toStringAsFixed(1)
+            .replaceAll(RegExp(r'\.0$'), '');
         return '${pxValue.round()} px ($dpStr dp)';
       } else {
         return '${pxValue.round()} px';
@@ -80,10 +82,22 @@ class LayoutPropertiesTable extends StatelessWidget {
         _PropertyItem(key: 'height', value: formatValue(rect.height)),
       ],
       if (rect != null && parentRect != null) ...[
-        _PropertyItem(key: 'layout_margin_left', value: formatValue(rect.left - parentRect.left)),
-        _PropertyItem(key: 'layout_margin_top', value: formatValue(rect.top - parentRect.top)),
-        _PropertyItem(key: 'layout_margin_right', value: formatValue(parentRect.right - rect.right)),
-        _PropertyItem(key: 'layout_margin_bottom', value: formatValue(parentRect.bottom - rect.bottom)),
+        _PropertyItem(
+          key: 'layout_margin_left',
+          value: formatValue(rect.left - parentRect.left),
+        ),
+        _PropertyItem(
+          key: 'layout_margin_top',
+          value: formatValue(rect.top - parentRect.top),
+        ),
+        _PropertyItem(
+          key: 'layout_margin_right',
+          value: formatValue(parentRect.right - rect.right),
+        ),
+        _PropertyItem(
+          key: 'layout_margin_bottom',
+          value: formatValue(parentRect.bottom - rect.bottom),
+        ),
       ],
       _PropertyItem(
         key: 'checkable',
@@ -155,7 +169,11 @@ class LayoutPropertiesTable extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(CupertinoIcons.list_bullet, size: 18, color: Colors.blueGrey),
+                const Icon(
+                  CupertinoIcons.list_bullet,
+                  size: 18,
+                  color: Colors.blueGrey,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   context.l10n.t('properties'),

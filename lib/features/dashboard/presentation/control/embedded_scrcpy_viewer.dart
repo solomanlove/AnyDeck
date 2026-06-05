@@ -16,7 +16,8 @@ class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
   final String deviceId;
 
   @override
-  ConsumerState<EmbeddedScrcpyViewer> createState() => _EmbeddedScrcpyViewerState();
+  ConsumerState<EmbeddedScrcpyViewer> createState() =>
+      _EmbeddedScrcpyViewerState();
 }
 
 class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
@@ -60,20 +61,26 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   void _startSizePolling() {
     _sizePollTimer?.cancel();
-    _sizePollTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) async {
+    _sizePollTimer = Timer.periodic(const Duration(milliseconds: 200), (
+      timer,
+    ) async {
       if (!mounted) {
         timer.cancel();
         return;
       }
       try {
-        final size = await ScrcpyFlutter.getVideoSize(deviceId: widget.deviceId);
+        final size = await ScrcpyFlutter.getVideoSize(
+          deviceId: widget.deviceId,
+        );
         if (size != null && size['width']! > 0 && size['height']! > 0) {
           setState(() {
             _videoWidth = size['width'];
             _videoHeight = size['height'];
           });
           timer.cancel();
-          debugPrint('[EmbeddedScrcpy] Polled video size successfully: ${_videoWidth}x$_videoHeight');
+          debugPrint(
+            '[EmbeddedScrcpy] Polled video size successfully: ${_videoWidth}x$_videoHeight',
+          );
         }
       } catch (e) {
         // Ignored
@@ -145,7 +152,8 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _sendTouchEvent(PointerEvent event, int action, String? resolution) {
-    final renderBox = _textureKey.currentContext?.findRenderObject() as RenderBox?;
+    final renderBox =
+        _textureKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
     final localPosition = renderBox.globalToLocal(event.position);
@@ -168,10 +176,16 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       }
     }
 
-    final x = (localPosition.dx / size.width * realW).clamp(0.0, realW.toDouble()).toInt();
-    final y = (localPosition.dy / size.height * realH).clamp(0.0, realH.toDouble()).toInt();
+    final x = (localPosition.dx / size.width * realW)
+        .clamp(0.0, realW.toDouble())
+        .toInt();
+    final y = (localPosition.dy / size.height * realH)
+        .clamp(0.0, realH.toDouble())
+        .toInt();
 
-    debugPrint('[EmbeddedScrcpy] Touch: action=$action, x=$x, y=$y, realW=$realW, realH=$realH, resolution=$resolution, polledSize=${_videoWidth}x$_videoHeight');
+    debugPrint(
+      '[EmbeddedScrcpy] Touch: action=$action, x=$x, y=$y, realW=$realW, realH=$realH, resolution=$resolution, polledSize=${_videoWidth}x$_videoHeight',
+    );
 
     final message = _serializeTouchEvent(
       action: action,
@@ -184,13 +198,17 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       buttons: 0,
     );
 
-    ScrcpyFlutter.sendControl(deviceId: widget.deviceId, controlMessage: message).then((success) {
+    ScrcpyFlutter.sendControl(
+      deviceId: widget.deviceId,
+      controlMessage: message,
+    ).then((success) {
       debugPrint('[EmbeddedScrcpy] sendControl Touch success = $success');
     });
   }
 
   void _sendScrollEvent(PointerScrollEvent event, String? resolution) {
-    final renderBox = _textureKey.currentContext?.findRenderObject() as RenderBox?;
+    final renderBox =
+        _textureKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
     final localPosition = renderBox.globalToLocal(event.position);
@@ -213,14 +231,23 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       }
     }
 
-    final x = (localPosition.dx / size.width * realW).clamp(0.0, realW.toDouble()).toInt();
-    final y = (localPosition.dy / size.height * realH).clamp(0.0, realH.toDouble()).toInt();
+    final x = (localPosition.dx / size.width * realW)
+        .clamp(0.0, realW.toDouble())
+        .toInt();
+    final y = (localPosition.dy / size.height * realH)
+        .clamp(0.0, realH.toDouble())
+        .toInt();
 
     // In scrcpy scroll delta is normalized between -1.0 and 1.0.
     final hScroll = (event.scrollDelta.dx / 40.0).clamp(-1.0, 1.0);
-    final vScroll = (-event.scrollDelta.dy / 40.0).clamp(-1.0, 1.0); // Android scroll is inverted
+    final vScroll = (-event.scrollDelta.dy / 40.0).clamp(
+      -1.0,
+      1.0,
+    ); // Android scroll is inverted
 
-    debugPrint('[EmbeddedScrcpy] Scroll: x=$x, y=$y, realW=$realW, realH=$realH, hScroll=$hScroll, vScroll=$vScroll, polledSize=${_videoWidth}x$_videoHeight');
+    debugPrint(
+      '[EmbeddedScrcpy] Scroll: x=$x, y=$y, realW=$realW, realH=$realH, hScroll=$hScroll, vScroll=$vScroll, polledSize=${_videoWidth}x$_videoHeight',
+    );
 
     final message = _serializeScrollEvent(
       x: x,
@@ -231,7 +258,10 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       vScroll: vScroll,
     );
 
-    ScrcpyFlutter.sendControl(deviceId: widget.deviceId, controlMessage: message).then((success) {
+    ScrcpyFlutter.sendControl(
+      deviceId: widget.deviceId,
+      controlMessage: message,
+    ).then((success) {
       debugPrint('[EmbeddedScrcpy] sendControl Scroll success = $success');
     });
   }
@@ -257,7 +287,10 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
     if (androidKeycode != null) {
       final keyboard = HardwareKeyboard.instance;
-      final hasModifiers = keyboard.isControlPressed || keyboard.isAltPressed || keyboard.isMetaPressed;
+      final hasModifiers =
+          keyboard.isControlPressed ||
+          keyboard.isAltPressed ||
+          keyboard.isMetaPressed;
 
       if (ScrcpyKeycodeHelper.isControlKey(key) || hasModifiers) {
         final metaState = ScrcpyKeycodeHelper.getAndroidMetaState(event);
@@ -271,7 +304,9 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
           deviceId: widget.deviceId,
           controlMessage: message,
         ).then((success) {
-          debugPrint('[EmbeddedScrcpy] Sent keycode event: key=$key, action=$action, success=$success');
+          debugPrint(
+            '[EmbeddedScrcpy] Sent keycode event: key=$key, action=$action, success=$success',
+          );
         });
         return KeyEventResult.handled;
       }
@@ -293,7 +328,9 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
         deviceId: widget.deviceId,
         controlMessage: message,
       ).then((success) {
-        debugPrint('[EmbeddedScrcpy] Sent text event: text="$text", success=$success');
+        debugPrint(
+          '[EmbeddedScrcpy] Sent text event: text="$text", success=$success',
+        );
       });
       _textController.value = TextEditingValue.empty;
     }
@@ -303,13 +340,17 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     _focusNode.requestFocus();
     if (event.buttons == kSecondaryMouseButton) {
       _ignoredPointers.add(event.pointer);
-      ref.read(deviceActionServiceProvider).keyEvent(widget.deviceId, 4); // KEYCODE_BACK
+      ref
+          .read(deviceActionServiceProvider)
+          .keyEvent(widget.deviceId, 4); // KEYCODE_BACK
       debugPrint('[EmbeddedScrcpy] Intercepted right click -> Back');
       return;
     }
     if (event.buttons == kMiddleMouseButton) {
       _ignoredPointers.add(event.pointer);
-      ref.read(deviceActionServiceProvider).keyEvent(widget.deviceId, 3); // KEYCODE_HOME
+      ref
+          .read(deviceActionServiceProvider)
+          .keyEvent(widget.deviceId, 3); // KEYCODE_HOME
       debugPrint('[EmbeddedScrcpy] Intercepted middle click -> Home');
       return;
     }
@@ -343,13 +384,17 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     _lastPanOffset = Offset.zero;
   }
 
-  void _handlePanZoomUpdate(PointerPanZoomUpdateEvent event, String? resolution) {
+  void _handlePanZoomUpdate(
+    PointerPanZoomUpdateEvent event,
+    String? resolution,
+  ) {
     final delta = event.pan - _lastPanOffset;
     _lastPanOffset = event.pan;
 
     if (delta.dx == 0 && delta.dy == 0) return;
 
-    final renderBox = _textureKey.currentContext?.findRenderObject() as RenderBox?;
+    final renderBox =
+        _textureKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
     final localPosition = renderBox.globalToLocal(event.position);
@@ -372,14 +417,23 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       }
     }
 
-    final x = (localPosition.dx / size.width * realW).clamp(0.0, realW.toDouble()).toInt();
-    final y = (localPosition.dy / size.height * realH).clamp(0.0, realH.toDouble()).toInt();
+    final x = (localPosition.dx / size.width * realW)
+        .clamp(0.0, realW.toDouble())
+        .toInt();
+    final y = (localPosition.dy / size.height * realH)
+        .clamp(0.0, realH.toDouble())
+        .toInt();
 
     // Scale delta similarly to scrollDelta
     final hScroll = (delta.dx / 40.0).clamp(-1.0, 1.0);
-    final vScroll = (-delta.dy / 40.0).clamp(-1.0, 1.0); // Android scroll is inverted
+    final vScroll = (-delta.dy / 40.0).clamp(
+      -1.0,
+      1.0,
+    ); // Android scroll is inverted
 
-    debugPrint('[EmbeddedScrcpy] PanScroll: x=$x, y=$y, realW=$realW, realH=$realH, hScroll=$hScroll, vScroll=$vScroll');
+    debugPrint(
+      '[EmbeddedScrcpy] PanScroll: x=$x, y=$y, realW=$realW, realH=$realH, hScroll=$hScroll, vScroll=$vScroll',
+    );
 
     final message = _serializeScrollEvent(
       x: x,
@@ -390,7 +444,10 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       vScroll: vScroll,
     );
 
-    ScrcpyFlutter.sendControl(deviceId: widget.deviceId, controlMessage: message).then((success) {
+    ScrcpyFlutter.sendControl(
+      deviceId: widget.deviceId,
+      controlMessage: message,
+    ).then((success) {
       debugPrint('[EmbeddedScrcpy] sendControl PanScroll success = $success');
     });
   }
@@ -401,16 +458,18 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     final overviewAsync = ref.watch(deviceOverviewProvider(widget.deviceId));
 
     if (textureId == null) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     final resolution = overviewAsync.maybeWhen(
       data: (overview) => overview.physicalResolution,
       orElse: () => null,
     );
-    final aspectRatio = (_videoWidth != null && _videoHeight != null && _videoWidth! > 0 && _videoHeight! > 0)
+    final aspectRatio =
+        (_videoWidth != null &&
+            _videoHeight != null &&
+            _videoWidth! > 0 &&
+            _videoHeight! > 0)
         ? _videoWidth! / _videoHeight!
         : _getAspectRatio(resolution);
 
@@ -447,7 +506,8 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
                 onPointerUp: (e) => _handlePointerUp(e, resolution),
                 onPointerCancel: (e) => _handlePointerCancel(e, resolution),
                 onPointerPanZoomStart: _handlePanZoomStart,
-                onPointerPanZoomUpdate: (e) => _handlePanZoomUpdate(e, resolution),
+                onPointerPanZoomUpdate: (e) =>
+                    _handlePanZoomUpdate(e, resolution),
                 onPointerSignal: (signal) {
                   if (signal is PointerScrollEvent) {
                     _sendScrollEvent(signal, resolution);

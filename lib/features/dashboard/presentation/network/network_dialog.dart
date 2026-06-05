@@ -12,7 +12,8 @@ class AddPortForwardDialog extends ConsumerStatefulWidget {
   final String deviceId;
 
   @override
-  ConsumerState<AddPortForwardDialog> createState() => _AddPortForwardDialogState();
+  ConsumerState<AddPortForwardDialog> createState() =>
+      _AddPortForwardDialogState();
 }
 
 class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
@@ -61,11 +62,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.swap_horiz,
-                    color: primaryColor,
-                    size: 32,
-                  ),
+                  Icon(Icons.swap_horiz, color: primaryColor, size: 32),
                   const SizedBox(width: 12),
                   Text(
                     context.l10n.t('addPortForward'),
@@ -87,7 +84,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                 ),
               ),
               const SizedBox(height: 20),
-              Divider(color: isDark ? Colors.grey[800] : const Color(0xffe5e7eb)),
+              Divider(
+                color: isDark ? Colors.grey[800] : const Color(0xffe5e7eb),
+              ),
               const SizedBox(height: 16),
 
               // 端口输入行
@@ -104,7 +103,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.grey[300] : const Color(0xff4b5563),
+                            color: isDark
+                                ? Colors.grey[300]
+                                : const Color(0xff4b5563),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -112,7 +113,11 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           controller: _devicePortController,
                           keyboardType: TextInputType.number,
                           style: const TextStyle(fontWeight: FontWeight.w500),
-                          decoration: _inputDecoration(isDark, primaryColor, '8081'),
+                          decoration: _inputDecoration(
+                            isDark,
+                            primaryColor,
+                            '8081',
+                          ),
                         ),
                       ],
                     ),
@@ -135,7 +140,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.grey[300] : const Color(0xff4b5563),
+                            color: isDark
+                                ? Colors.grey[300]
+                                : const Color(0xff4b5563),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -143,7 +150,11 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           controller: _localPortController,
                           keyboardType: TextInputType.number,
                           style: const TextStyle(fontWeight: FontWeight.w500),
-                          decoration: _inputDecoration(isDark, primaryColor, '8081'),
+                          decoration: _inputDecoration(
+                            isDark,
+                            primaryColor,
+                            '8081',
+                          ),
                         ),
                       ],
                     ),
@@ -172,7 +183,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                 ],
               ),
               const SizedBox(height: 20),
-              Divider(color: isDark ? Colors.grey[800] : const Color(0xffe5e7eb)),
+              Divider(
+                color: isDark ? Colors.grey[800] : const Color(0xffe5e7eb),
+              ),
               const SizedBox(height: 16),
 
               // 保存为预设复选框
@@ -182,7 +195,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                   setState(() {
                     _saveAsPreset = val;
                     if (val && _presetNameController.text.isEmpty) {
-                      _presetNameController.text = 'Preset ${_devicePortController.text}';
+                      _presetNameController.text =
+                          'Preset ${_devicePortController.text}';
                     }
                   });
                 },
@@ -213,7 +227,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                             const SizedBox(height: 16),
                             _customCheckbox(
                               value: _autoApplyOnConnect,
-                              onChanged: (val) => setState(() => _autoApplyOnConnect = val),
+                              onChanged: (val) =>
+                                  setState(() => _autoApplyOnConnect = val),
                               label: context.l10n.t('autoApplyOnConnect'),
                               isDark: isDark,
                               primaryColor: primaryColor,
@@ -233,14 +248,23 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                      backgroundColor: isDark ? const Color(0xff334155) : const Color(0xfff3f4f6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      backgroundColor: isDark
+                          ? const Color(0xff334155)
+                          : const Color(0xfff3f4f6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: Text(
                       context.l10n.t('cancel'),
                       style: TextStyle(
-                        color: isDark ? Colors.grey[200] : const Color(0xff1f2937),
+                        color: isDark
+                            ? Colors.grey[200]
+                            : const Color(0xff1f2937),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -253,17 +277,30 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                       if (devPort.isEmpty || locPort.isEmpty) return;
 
                       final adb = ref.read(adbServiceProvider);
-                      final fullDevPort = devPort.startsWith('tcp:') ? devPort : 'tcp:$devPort';
-                      final fullLocPort = locPort.startsWith('tcp:') ? locPort : 'tcp:$locPort';
+                      final fullDevPort = devPort.startsWith('tcp:')
+                          ? devPort
+                          : 'tcp:$devPort';
+                      final fullLocPort = locPort.startsWith('tcp:')
+                          ? locPort
+                          : 'tcp:$locPort';
 
-                      final result = await adb.run(['-s', widget.deviceId, 'reverse', fullDevPort, fullLocPort]);
+                      final result = await adb.run([
+                        '-s',
+                        widget.deviceId,
+                        'reverse',
+                        fullDevPort,
+                        fullLocPort,
+                      ]);
                       if (result.isSuccess) {
                         // 强制刷新列表
-                        ref.invalidate(activePortForwardsProvider(widget.deviceId));
+                        ref.invalidate(
+                          activePortForwardsProvider(widget.deviceId),
+                        );
 
                         // 如果勾选了保存为预设
                         if (_saveAsPreset) {
-                          final name = _presetNameController.text.trim().isNotEmpty
+                          final name =
+                              _presetNameController.text.trim().isNotEmpty
                               ? _presetNameController.text.trim()
                               : 'Preset $devPort';
                           final preset = PortForwardPreset(
@@ -272,7 +309,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                             localPort: locPort,
                             autoApply: _autoApplyOnConnect,
                           );
-                          await ref.read(portForwardPresetsProvider.notifier).savePreset(preset);
+                          await ref
+                              .read(portForwardPresetsProvider.notifier)
+                              .savePreset(preset);
                         }
 
                         if (context.mounted) {
@@ -284,7 +323,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('${context.l10n.t('reverseFailed')}: ${result.message}'),
+                              content: Text(
+                                '${context.l10n.t('reverseFailed')}: ${result.message}',
+                              ),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -292,9 +333,14 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                       }
                     },
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
                       backgroundColor: primaryColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text(
                       'Add', // Exact mockup label
@@ -373,7 +419,11 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
               height: 22,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(6),
-                color: value ? primaryColor : (isDark ? const Color(0xff334155) : const Color(0xffe5e7eb)),
+                color: value
+                    ? primaryColor
+                    : (isDark
+                          ? const Color(0xff334155)
+                          : const Color(0xffe5e7eb)),
               ),
               child: value
                   ? const Icon(Icons.check, size: 16, color: Colors.white)
@@ -394,20 +444,31 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
     );
   }
 
-  InputDecoration _inputDecoration(bool isDark, Color focusedColor, String hint) {
+  InputDecoration _inputDecoration(
+    bool isDark,
+    Color focusedColor,
+    String hint,
+  ) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: isDark ? Colors.grey[600] : Colors.grey[400], fontSize: 14),
+      hintStyle: TextStyle(
+        color: isDark ? Colors.grey[600] : Colors.grey[400],
+        fontSize: 14,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       filled: true,
       fillColor: isDark ? const Color(0xff0f172a) : const Color(0xfff9fafb),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: isDark ? const Color(0xff475569) : const Color(0xffe5e7eb)),
+        borderSide: BorderSide(
+          color: isDark ? const Color(0xff475569) : const Color(0xffe5e7eb),
+        ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: isDark ? const Color(0xff475569) : const Color(0xffe5e7eb)),
+        borderSide: BorderSide(
+          color: isDark ? const Color(0xff475569) : const Color(0xffe5e7eb),
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

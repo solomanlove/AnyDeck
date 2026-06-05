@@ -75,7 +75,13 @@ class _PowerPanel extends ConsumerWidget {
                         icon: CupertinoIcons.refresh,
                         label: context.l10n.t('reboot'),
                         tooltip: context.l10n.t('rebootTooltip'),
-                        onPressed: () => _handleReboot(context, ref, actions, null, context.l10n.t('reboot')),
+                        onPressed: () => _handleReboot(
+                          context,
+                          ref,
+                          actions,
+                          null,
+                          context.l10n.t('reboot'),
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -84,7 +90,13 @@ class _PowerPanel extends ConsumerWidget {
                         icon: CupertinoIcons.wrench,
                         label: context.l10n.t('rebootRecovery'),
                         tooltip: context.l10n.t('rebootRecoveryTooltip'),
-                        onPressed: () => _handleReboot(context, ref, actions, 'recovery', context.l10n.t('rebootRecovery')),
+                        onPressed: () => _handleReboot(
+                          context,
+                          ref,
+                          actions,
+                          'recovery',
+                          context.l10n.t('rebootRecovery'),
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -93,7 +105,13 @@ class _PowerPanel extends ConsumerWidget {
                         icon: Icons.memory,
                         label: context.l10n.t('rebootBootloader'),
                         tooltip: context.l10n.t('rebootBootloaderTooltip'),
-                        onPressed: () => _handleReboot(context, ref, actions, 'bootloader', context.l10n.t('rebootBootloader')),
+                        onPressed: () => _handleReboot(
+                          context,
+                          ref,
+                          actions,
+                          'bootloader',
+                          context.l10n.t('rebootBootloader'),
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -102,7 +120,13 @@ class _PowerPanel extends ConsumerWidget {
                         icon: CupertinoIcons.arrow_down_circle,
                         label: context.l10n.t('rebootSideload'),
                         tooltip: context.l10n.t('rebootSideloadTooltip'),
-                        onPressed: () => _handleReboot(context, ref, actions, 'sideload', context.l10n.t('rebootSideload')),
+                        onPressed: () => _handleReboot(
+                          context,
+                          ref,
+                          actions,
+                          'sideload',
+                          context.l10n.t('rebootSideload'),
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -110,7 +134,9 @@ class _PowerPanel extends ConsumerWidget {
                       child: _PowerButton(
                         icon: CupertinoIcons.arrow_down_circle,
                         label: context.l10n.t('rebootSideloadAutoReboot'),
-                        tooltip: context.l10n.t('rebootSideloadAutoRebootTooltip'),
+                        tooltip: context.l10n.t(
+                          'rebootSideloadAutoRebootTooltip',
+                        ),
                         onPressed: () => _handleReboot(
                           context,
                           ref,

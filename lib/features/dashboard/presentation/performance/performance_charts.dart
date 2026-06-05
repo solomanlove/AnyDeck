@@ -101,28 +101,37 @@ class _LineChartPainter extends CustomPainter {
 
     // 水平分割线
     canvas.drawLine(Offset(0, 0), Offset(width, 0), gridPaint); // 100%
-    canvas.drawLine(Offset(0, height / 2), Offset(width, height / 2), gridPaint); // 50%
+    canvas.drawLine(
+      Offset(0, height / 2),
+      Offset(width, height / 2),
+      gridPaint,
+    ); // 50%
     canvas.drawLine(Offset(0, height), Offset(width, height), gridPaint); // 0%
 
     // 纵向时间网格 (根据时间戳每隔 10 秒绘制一条垂直网格线并附带时间戳标签)
     final latestTime = data.last.timestamp ?? DateTime.now();
     final startTime = latestTime.subtract(Duration(seconds: windowSize));
-    
+
     final int startUnix = startTime.millisecondsSinceEpoch ~/ 1000;
     final int firstBoundaryUnix = ((startUnix ~/ 10) + 1) * 10;
-    DateTime boundary = DateTime.fromMillisecondsSinceEpoch(firstBoundaryUnix * 1000);
+    DateTime boundary = DateTime.fromMillisecondsSinceEpoch(
+      firstBoundaryUnix * 1000,
+    );
 
-    while (boundary.isBefore(latestTime) || boundary.isAtSameMomentAs(latestTime)) {
-      final double offsetSeconds = latestTime.difference(boundary).inMilliseconds / 1000.0;
+    while (boundary.isBefore(latestTime) ||
+        boundary.isAtSameMomentAs(latestTime)) {
+      final double offsetSeconds =
+          latestTime.difference(boundary).inMilliseconds / 1000.0;
       final double x = width - (offsetSeconds / windowSize) * width;
-      
+
       if (x >= 0 && x <= width) {
         canvas.drawLine(Offset(x, 0), Offset(x, height), gridPaint);
-        
-        final timeStr = '${boundary.hour.toString().padLeft(2, '0')}:'
+
+        final timeStr =
+            '${boundary.hour.toString().padLeft(2, '0')}:'
             '${boundary.minute.toString().padLeft(2, '0')}:'
             '${boundary.second.toString().padLeft(2, '0')}';
-            
+
         final textSpan = TextSpan(
           text: timeStr,
           style: const TextStyle(
@@ -135,27 +144,39 @@ class _LineChartPainter extends CustomPainter {
           text: textSpan,
           textDirection: TextDirection.ltr,
         )..layout();
-        
+
         double textX = x - textPainter.width / 2;
         textX = textX.clamp(4.0, width - textPainter.width - 4.0);
-        
+
         textPainter.paint(canvas, Offset(textX, 4));
       }
-      
+
       boundary = boundary.add(const Duration(seconds: 10));
     }
 
     // 绘制坐标轴文字
-    const textStyle = TextStyle(color: Color(0xff80868b), fontSize: 10, fontWeight: FontWeight.w500);
+    const textStyle = TextStyle(
+      color: Color(0xff80868b),
+      fontSize: 10,
+      fontWeight: FontWeight.w500,
+    );
     _drawText(canvas, '${maxVal.toInt()}$unit', Offset(6, 4), textStyle);
-    _drawText(canvas, '${(maxVal / 2).toInt()}$unit', Offset(6, height / 2 - 6), textStyle);
+    _drawText(
+      canvas,
+      '${(maxVal / 2).toInt()}$unit',
+      Offset(6, height / 2 - 6),
+      textStyle,
+    );
 
     // 计算折线点坐标
     final List<Offset> points = [];
     for (int i = 0; i < data.length; i++) {
       final point = data[i];
-      final pointTime = point.timestamp ?? latestTime.subtract(Duration(seconds: data.length - 1 - i));
-      final double offsetSeconds = latestTime.difference(pointTime).inMilliseconds / 1000.0;
+      final pointTime =
+          point.timestamp ??
+          latestTime.subtract(Duration(seconds: data.length - 1 - i));
+      final double offsetSeconds =
+          latestTime.difference(pointTime).inMilliseconds / 1000.0;
       final double x = width - (offsetSeconds / windowSize) * width;
       final double y = height - (point.value / maxVal * height);
       points.add(Offset(x.clamp(0.0, width), y.clamp(0.0, height)));
@@ -231,12 +252,17 @@ class _LineChartPainter extends CustomPainter {
       }
 
       // 2. 绘制选中数据点发光圆圈
-      canvas.drawCircle(targetPoint, 6.0, Paint()..color = lineColor.withValues(alpha: 0.3));
+      canvas.drawCircle(
+        targetPoint,
+        6.0,
+        Paint()..color = lineColor.withValues(alpha: 0.3),
+      );
       canvas.drawCircle(targetPoint, 4.0, Paint()..color = lineColor);
       canvas.drawCircle(targetPoint, 2.0, Paint()..color = Colors.white);
 
       // 3. 绘制 Tooltip 箱子
-      final tooltipText = '${targetData.value.toStringAsFixed(1)}$unit\n${targetData.label}';
+      final tooltipText =
+          '${targetData.value.toStringAsFixed(1)}$unit\n${targetData.label}';
       final textSpan = TextSpan(
         style: const TextStyle(
           color: Colors.white,

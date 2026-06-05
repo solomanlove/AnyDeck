@@ -137,8 +137,14 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
 
         final minScaleVal = min(max(0.01, fitScale * 0.8), 1.0);
 
-        final marginX = max(400.0, (viewportWidth / minScaleVal - rotatedW) / 2);
-        final marginY = max(400.0, (viewportHeight / minScaleVal - rotatedH) / 2);
+        final marginX = max(
+          400.0,
+          (viewportWidth / minScaleVal - rotatedW) / 2,
+        );
+        final marginY = max(
+          400.0,
+          (viewportHeight / minScaleVal - rotatedH) / 2,
+        );
 
         // 根据当前的旋转角度，将视口局部坐标映射回设备的原生坐标
         Offset localToNative(Offset localPoint) {
@@ -175,7 +181,9 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
               width: rotatedW,
               height: rotatedH,
               child: MouseRegion(
-                cursor: widget.enableClickSelect ? SystemMouseCursors.click : MouseCursor.defer,
+                cursor: widget.enableClickSelect
+                    ? SystemMouseCursors.click
+                    : MouseCursor.defer,
                 onHover: (event) {
                   if (!widget.enableClickSelect) return;
                   final RenderBox viewportBox =
@@ -207,10 +215,7 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
                     final nativePoint = localToNative(localPoint);
                     final node = widget.rootNode == null
                         ? null
-                        : _findDeepestNodeAt(
-                            widget.rootNode!,
-                            nativePoint,
-                          );
+                        : _findDeepestNodeAt(widget.rootNode!, nativePoint);
                     widget.onNodeSelected(node);
 
                     final x = nativePoint.dx.round();
@@ -349,13 +354,17 @@ class _ScreenPreviewPainter extends CustomPainter {
     }
 
     // 5. 绘制 Selected 与 Hovered 节点之间的几何间距
-    if (selectedNode != null && hoveredNode != null && hoveredNode != selectedNode) {
+    if (selectedNode != null &&
+        hoveredNode != null &&
+        hoveredNode != selectedNode) {
       final r1 = selectedNode!.rect;
       final r2 = hoveredNode!.rect;
       if (r1 != null && r2 != null) {
         // 检查包含/嵌套关系 (Nested Relationship)
-        final isR1InsideR2 = r2.contains(r1.topLeft) && r2.contains(r1.bottomRight);
-        final isR2InsideR1 = r1.contains(r2.topLeft) && r1.contains(r2.bottomRight);
+        final isR1InsideR2 =
+            r2.contains(r1.topLeft) && r2.contains(r1.bottomRight);
+        final isR2InsideR1 =
+            r1.contains(r2.topLeft) && r1.contains(r2.bottomRight);
 
         if (isR1InsideR2 || isR2InsideR1) {
           // ==================== 内边距 (Internal Spacing) ====================

@@ -22,7 +22,10 @@ class CpuStat {
   });
 
   factory CpuStat.parse(String line) {
-    final parts = line.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = line
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
     if (parts.length < 5) {
       return const CpuStat(idle: 0, nonIdle: 0, total: 0);
     }
@@ -117,7 +120,8 @@ class PerformanceSnapshot {
             final int hours = (totalSecs % 86400) ~/ 3600;
             final int minutes = (totalSecs % 3600) ~/ 60;
             final int secs = totalSecs % 60;
-            uptime = '${days > 0 ? '$days:' : ''}'
+            uptime =
+                '${days > 0 ? '$days:' : ''}'
                 '${hours.toString().padLeft(2, '0')}:'
                 '${minutes.toString().padLeft(2, '0')}:'
                 '${secs.toString().padLeft(2, '0')}';
@@ -177,7 +181,9 @@ class PerformanceSnapshot {
         availableMemoryMB = free + cached + buffers;
       }
       usedMemoryMB = max(0, totalMemoryMB - availableMemoryMB);
-      memoryUsagePercent = totalMemoryMB > 0 ? (usedMemoryMB / totalMemoryMB * 100.0) : 0;
+      memoryUsagePercent = totalMemoryMB > 0
+          ? (usedMemoryMB / totalMemoryMB * 100.0)
+          : 0;
     }
 
     // 4. 解析 前台应用 (Section 3)
@@ -185,7 +191,10 @@ class PerformanceSnapshot {
       final focusLine = sections[3].trim();
       if (focusLine.isNotEmpty && !focusLine.contains('mCurrentFocus=null')) {
         final tmp = focusLine.split('/').first;
-        final parts = tmp.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+        final parts = tmp
+            .split(RegExp(r'\s+'))
+            .where((p) => p.isNotEmpty)
+            .toList();
         if (parts.isNotEmpty) {
           var pkg = parts.last;
           if (pkg.contains('{')) {
@@ -202,7 +211,11 @@ class PerformanceSnapshot {
     // 提前拿到频率列表，方便在解析 Section 4 时注入每个 Core 的 Freq。
     final List<double> frequenciesMHz = [];
     if (sections.length > 5) {
-      final lines = sections[5].split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+      final lines = sections[5]
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
       for (final line in lines) {
         final khz = double.tryParse(line) ?? 0.0;
         frequenciesMHz.add(khz / 1000.0);
@@ -211,7 +224,11 @@ class PerformanceSnapshot {
 
     // 6. 解析 CPU /proc/stat (Section 4)
     if (sections.length > 4) {
-      final lines = sections[4].split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+      final lines = sections[4]
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
       for (final line in lines) {
         final match = RegExp(r'^(cpu[0-9]*)\s+').firstMatch(line);
         if (match != null) {
@@ -234,8 +251,12 @@ class PerformanceSnapshot {
             overallCpuUsage = usage;
           } else {
             final coreId = int.tryParse(key.replaceAll('cpu', '')) ?? 0;
-            final freq = coreId < frequenciesMHz.length ? frequenciesMHz[coreId] : 0.0;
-            cores.add(CpuCoreSnapshot(id: coreId, usage: usage, frequencyMHz: freq));
+            final freq = coreId < frequenciesMHz.length
+                ? frequenciesMHz[coreId]
+                : 0.0;
+            cores.add(
+              CpuCoreSnapshot(id: coreId, usage: usage, frequencyMHz: freq),
+            );
           }
         }
       }
@@ -244,7 +265,9 @@ class PerformanceSnapshot {
     // 7. 解析 FPS (Section 6)
     if (sections.length > 6) {
       final gfxLine = sections[6].trim();
-      final match = RegExp(r'Total frames rendered:\s*(\d+)').firstMatch(gfxLine);
+      final match = RegExp(
+        r'Total frames rendered:\s*(\d+)',
+      ).firstMatch(gfxLine);
       if (match != null) {
         totalFrames = int.tryParse(match.group(1)!) ?? 0;
       }

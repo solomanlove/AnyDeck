@@ -72,7 +72,10 @@ class LayoutInspectorService {
 
   Future<Uint8List> captureScreenshot(String deviceId) async {
     try {
-      return await _adb.captureScreenshot(deviceId, timeout: _screenshotTimeout);
+      return await _adb.captureScreenshot(
+        deviceId,
+        timeout: _screenshotTimeout,
+      );
     } on AdbException catch (e) {
       throw LayoutInspectorException(e.message);
     }

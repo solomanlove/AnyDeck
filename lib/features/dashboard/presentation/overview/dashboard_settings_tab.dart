@@ -131,6 +131,51 @@ class _SettingsTab extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const Divider(height: 24),
+                    // Save path option selector
+                    _buildSettingRow(
+                      context,
+                      label: context.l10n.t('saveDirectory'),
+                      subtitle: settings.screenshotSavePath.isEmpty
+                          ? context.l10n.t('notSetDefaultPath')
+                          : settings.screenshotSavePath,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (settings.screenshotSavePath.isNotEmpty) ...[
+                            IconButton(
+                              tooltip: '打开文件夹',
+                              icon: const Icon(
+                                CupertinoIcons.folder_open,
+                                size: 20,
+                              ),
+                              onPressed: () {
+                                ref
+                                    .read(hostPlatformServiceProvider)
+                                    .openDirectory(settings.screenshotSavePath);
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: brandGreen,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () async {
+                              final path = await getDirectoryPath();
+                              if (path != null) {
+                                await controller.setScreenshotSavePath(path);
+                              }
+                            },
+                            child: Text(context.l10n.t('choose')),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -218,10 +263,22 @@ class _SettingsTab extends ConsumerWidget {
                             value: 0,
                             child: Text(context.l10n.t('originalUnlimited')),
                           ),
-                          const DropdownMenuItem(value: 720, child: Text('720p')),
-                          const DropdownMenuItem(value: 1080, child: Text('1080p')),
-                          const DropdownMenuItem(value: 1440, child: Text('1440p')),
-                          const DropdownMenuItem(value: 1920, child: Text('1920p')),
+                          const DropdownMenuItem(
+                            value: 720,
+                            child: Text('720p'),
+                          ),
+                          const DropdownMenuItem(
+                            value: 1080,
+                            child: Text('1080p'),
+                          ),
+                          const DropdownMenuItem(
+                            value: 1440,
+                            child: Text('1440p'),
+                          ),
+                          const DropdownMenuItem(
+                            value: 1920,
+                            child: Text('1920p'),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) {

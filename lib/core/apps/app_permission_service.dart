@@ -29,11 +29,11 @@ class AppPermissionService {
     String packageName,
   ) async {
     final currentUser = await _currentUserId(deviceId);
-    final result = await _adb.shellArgs(
-      deviceId,
-      ['dumpsys', 'package', packageName],
-      timeout: _metadataTimeout,
-    );
+    final result = await _adb.shellArgs(deviceId, [
+      'dumpsys',
+      'package',
+      packageName,
+    ], timeout: _metadataTimeout);
     if (!result.isSuccess) {
       throw Exception(result.message);
     }
@@ -124,7 +124,8 @@ class AppPermissionService {
       }
 
       if (inRequestedBlock) {
-        if (trimmed.startsWith('android.permission.') || trimmed.contains('.')) {
+        if (trimmed.startsWith('android.permission.') ||
+            trimmed.contains('.')) {
           requested.add(trimmed);
         }
       } else if (inInstallBlock && leadingSpaces >= 6) {

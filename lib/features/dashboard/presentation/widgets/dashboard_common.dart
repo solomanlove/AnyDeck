@@ -33,10 +33,7 @@ class _RotatingWidgetState extends State<_RotatingWidget>
 
   @override
   Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _controller,
-      child: widget.child,
-    );
+    return RotationTransition(turns: _controller, child: widget.child);
   }
 }
 
@@ -55,7 +52,11 @@ class _PanelMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget iconWidget = Icon(icon, size: 36, color: Theme.of(context).colorScheme.primary);
+    Widget iconWidget = Icon(
+      icon,
+      size: 36,
+      color: Theme.of(context).colorScheme.primary,
+    );
     if (animateIcon) {
       iconWidget = _RotatingWidget(child: iconWidget);
     }
@@ -282,7 +283,9 @@ void _showSnack(BuildContext context, String message, {bool isError = false}) {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isError ? CupertinoIcons.exclamationmark_circle_fill : CupertinoIcons.checkmark_circle_fill,
+                        isError
+                            ? CupertinoIcons.exclamationmark_circle_fill
+                            : CupertinoIcons.checkmark_circle_fill,
                         color: accentColor,
                         size: 30,
                       ),
@@ -346,8 +349,10 @@ Future<void> _openLocalTerminal(BuildContext context, WidgetRef ref) async {
         dirPath = adbFile.parent.path;
       }
     }
-    
-    final opened = await ref.read(hostPlatformServiceProvider).openTerminal(dirPath);
+
+    final opened = await ref
+        .read(hostPlatformServiceProvider)
+        .openTerminal(dirPath);
     if (!opened) {
       throw Exception('Open terminal command failed');
     }
@@ -360,4 +365,3 @@ Future<void> _openLocalTerminal(BuildContext context, WidgetRef ref) async {
     }
   }
 }
-

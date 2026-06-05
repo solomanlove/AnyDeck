@@ -64,7 +64,11 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
       flex: 3,
       child: Row(
         children: [
-          const Icon(CupertinoIcons.info_circle, color: Color(0xFF26A69A), size: 18),
+          const Icon(
+            CupertinoIcons.info_circle,
+            color: Color(0xFF26A69A),
+            size: 18,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -156,7 +160,9 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           if (device.isNetwork) ...[
             IconButton(
               icon: Icon(
-                device.isOnline ? CupertinoIcons.bolt_slash : CupertinoIcons.link,
+                device.isOnline
+                    ? CupertinoIcons.bolt_slash
+                    : CupertinoIcons.link,
                 color: device.isOnline ? Colors.red : Colors.green,
               ),
               tooltip: device.isOnline

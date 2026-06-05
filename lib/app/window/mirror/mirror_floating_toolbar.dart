@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
 import '../../../core/device_actions/device_action_service.dart';
@@ -11,6 +10,7 @@ import '../../../core/scrcpy/screen_record_provider.dart';
 import '../../../core/scrcpy/scrcpy_keycode_helper.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../app/l10n/app_localizations.dart';
+import '../../settings/app_settings_controller.dart';
 
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   const MirrorFloatingToolbar({
@@ -28,7 +28,6 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
 }
 
 class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
-
   Future<bool> _setScreenPowerMode(String deviceId, bool powerOn) async {
     final buffer = ByteData(2);
     buffer.setUint8(0, 10); // CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE
@@ -46,22 +45,25 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
           .read(adbServiceProvider)
           .captureScreenshot(deviceId);
 
-      final location = await getSaveLocation(
-        acceptedTypeGroups: [
-          const XTypeGroup(label: 'PNG Image', extensions: ['png']),
-        ],
-        suggestedName:
-            'screenshot_${deviceId}_${DateTime.now().millisecondsSinceEpoch}.png',
+      final settings = ref.read(appSettingsProvider);
+      final hostPlatform = ref.read(hostPlatformServiceProvider);
+      final savePath = hostPlatform.generateScreenshotPath(
+        settings.screenshotSavePath,
+        deviceId,
       );
-      if (location == null) return;
-
-      final file = File(location.path);
+      final file = File(savePath);
+      await file.parent.create(recursive: true);
       await file.writeAsBytes(bytes);
+
+      // 复制到剪切板
+      final copied = await hostPlatform.copyImageToClipboard(bytes);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${context.l10n.t('saveSuccess')}: ${location.path}'),
+            content: Text(
+              '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
+            ),
             backgroundColor: const Color(0xff09c47c),
             behavior: SnackBarBehavior.floating,
           ),
@@ -91,40 +93,39 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         final remotePath = await recordNotifier.stop();
         if (remotePath == null) return;
 
-        final location = await getSaveLocation(
-          acceptedTypeGroups: [
-            const XTypeGroup(label: 'MP4 Video', extensions: ['mp4']),
-          ],
-          suggestedName:
-              'screenrecord_${widget.deviceId}_${DateTime.now().millisecondsSinceEpoch}.mp4',
+        final settings = ref.read(appSettingsProvider);
+        final hostPlatform = ref.read(hostPlatformServiceProvider);
+        final localSavePath = hostPlatform.generateRecordPath(
+          settings.screenshotSavePath,
+          widget.deviceId,
         );
+        final file = File(localSavePath);
+        await file.parent.create(recursive: true);
 
-        if (location != null) {
-          final pullResult = await ref
-              .read(fileManagerServiceProvider)
-              .pull(widget.deviceId, remotePath, location.path);
+        final pullResult = await ref
+            .read(fileManagerServiceProvider)
+            .pull(widget.deviceId, remotePath, localSavePath);
 
-          if (pullResult.isSuccess) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    context.l10n
-                        .t('recordSuccess')
-                        .replaceAll('{path}', location.path),
-                  ),
-                  backgroundColor: const Color(0xff09c47c),
-                  behavior: SnackBarBehavior.floating,
+        if (pullResult.isSuccess) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  context.l10n
+                      .t('recordSuccess')
+                      .replaceAll('{path}', localSavePath),
                 ),
-              );
-            }
-          } else {
-            throw Exception(
-              pullResult.stderr.isNotEmpty
-                  ? pullResult.stderr
-                  : 'File transfer failed',
+                backgroundColor: const Color(0xff09c47c),
+                behavior: SnackBarBehavior.floating,
+              ),
             );
           }
+        } else {
+          throw Exception(
+            pullResult.stderr.isNotEmpty
+                ? pullResult.stderr
+                : 'File transfer failed',
+          );
         }
       } catch (e) {
         if (context.mounted) {
@@ -165,8 +166,6 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     final s = (seconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -223,11 +222,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 );
                 if (success) {
                   ref
-                      .read(
-                    screenPowerOffProvider(
-                      widget.deviceId,
-                    ).notifier,
-                  )
+                      .read(screenPowerOffProvider(widget.deviceId).notifier)
                       .setOff(nextState);
                 }
               },
@@ -287,8 +282,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
               tooltip: context.l10n.t('notificationBar'),
-              onPressed: () =>
-                  actions.openNotificationBar(widget.deviceId),
+              onPressed: () => actions.openNotificationBar(widget.deviceId),
             ),
             MirrorToolbarButton(
               icon: Text(
@@ -308,8 +302,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                     clipboardData.text != null &&
                     clipboardData.text!.isNotEmpty) {
                   final text = clipboardData.text!;
-                  final message =
-                  ScrcpyKeycodeHelper.serializeTextEvent(text);
+                  final message = ScrcpyKeycodeHelper.serializeTextEvent(text);
                   final success = await ScrcpyFlutter.sendControl(
                     deviceId: widget.deviceId,
                     controlMessage: message,
@@ -345,8 +338,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
               tooltip: context.l10n.t('screenshot'),
-              onPressed: () =>
-                  _takeScreenshot(context, widget.deviceId),
+              onPressed: () => _takeScreenshot(context, widget.deviceId),
             ),
             MirrorToolbarButton(
               icon: Icon(

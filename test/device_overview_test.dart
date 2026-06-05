@@ -130,7 +130,10 @@ void main() {
       expect(decoded.mobileDataEnabled, overview.mobileDataEnabled);
       expect(decoded.talkbackEnabled, overview.talkbackEnabled);
       expect(decoded.windowAnimationScale, overview.windowAnimationScale);
-      expect(decoded.transitionAnimationScale, overview.transitionAnimationScale);
+      expect(
+        decoded.transitionAnimationScale,
+        overview.transitionAnimationScale,
+      );
       expect(decoded.animatorDurationScale, overview.animatorDurationScale);
       expect(decoded.rawResolution, overview.rawResolution);
       expect(decoded.hwuiProfile, overview.hwuiProfile);

@@ -33,7 +33,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
           final terminalState = ref.read(adbTerminalProvider);
-          final activeSession = terminalState.getActiveSession(widget.device.id);
+          final activeSession = terminalState.getActiveSession(
+            widget.device.id,
+          );
           if (activeSession == null) return KeyEventResult.ignored;
 
           final notifier = ref.read(adbTerminalProvider.notifier);
@@ -297,7 +299,11 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(CupertinoIcons.chevron_left_slash_chevron_right, size: 48, color: Colors.grey),
+            const Icon(
+              CupertinoIcons.chevron_left_slash_chevron_right,
+              size: 48,
+              color: Colors.grey,
+            ),
             const SizedBox(height: 16),
             Text(
               context.l10n.t('noActiveTerminal'),
@@ -326,9 +332,15 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     AdbTerminalSession session,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final consoleBg = isDark ? const Color(0xFF1E1E2E) : const Color(0xFFF5F5F7);
-    final promptColor = isDark ? const Color(0xFF89B4FA) : const Color(0xFF1D4ED8); // 柔和蓝 vs 深蓝
-    final inputColor = isDark ? const Color(0xFFA6E3A1) : const Color(0xFF111827); // 浅绿 vs 墨黑
+    final consoleBg = isDark
+        ? const Color(0xFF1E1E2E)
+        : const Color(0xFFF5F5F7);
+    final promptColor = isDark
+        ? const Color(0xFF89B4FA)
+        : const Color(0xFF1D4ED8); // 柔和蓝 vs 深蓝
+    final inputColor = isDark
+        ? const Color(0xFFA6E3A1)
+        : const Color(0xFF111827); // 浅绿 vs 墨黑
     final hintColor = isDark ? Colors.white24 : Colors.black26;
 
     return Card(
@@ -378,7 +390,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                             ),
                             border: InputBorder.none,
                             isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 4,
+                            ),
                           ),
                           onSubmitted: (text) =>
                               _handleSendCommand(session.id, text),
@@ -396,7 +410,8 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                     TextSpan(
                       children: [
                         TextSpan(
-                          text: '${(widget.device.product ?? widget.device.model ?? 'shell').toLowerCase()}:/ \$ ',
+                          text:
+                              '${(widget.device.product ?? widget.device.model ?? 'shell').toLowerCase()}:/ \$ ',
                           style: TextStyle(
                             color: promptColor,
                             fontWeight: FontWeight.bold,
@@ -452,13 +467,21 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
   Color _getTerminalLineColor(TerminalLineType type, bool isDark) {
     switch (type) {
       case TerminalLineType.stdout:
-        return isDark ? const Color(0xFFCDD6F4) : const Color(0xFF374151); // 柔白 vs 深灰
+        return isDark
+            ? const Color(0xFFCDD6F4)
+            : const Color(0xFF374151); // 柔白 vs 深灰
       case TerminalLineType.stderr:
-        return isDark ? const Color(0xFFF38BA8) : const Color(0xFFDC2626); // 粉红 vs 鲜红
+        return isDark
+            ? const Color(0xFFF38BA8)
+            : const Color(0xFFDC2626); // 粉红 vs 鲜红
       case TerminalLineType.input:
-        return isDark ? const Color(0xFFA6E3A1) : const Color(0xFF111827); // 浅绿 vs 纯黑
+        return isDark
+            ? const Color(0xFFA6E3A1)
+            : const Color(0xFF111827); // 浅绿 vs 纯黑
       case TerminalLineType.info:
-        return isDark ? const Color(0xFFFAB387) : const Color(0xFFD97706); // 橙黄 vs 褐黄
+        return isDark
+            ? const Color(0xFFFAB387)
+            : const Color(0xFFD97706); // 橙黄 vs 褐黄
     }
   }
 }

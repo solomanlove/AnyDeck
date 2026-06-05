@@ -55,9 +55,7 @@ class _DeviceOverviewPanel extends ConsumerWidget {
                   device: device,
                   onRefresh: () => device.isOnline
                       ? ref.invalidate(deviceOverviewProvider(device.id))
-                      : ref.invalidate(
-                          cachedDeviceOverviewProvider(device.id),
-                        ),
+                      : ref.invalidate(cachedDeviceOverviewProvider(device.id)),
                 ),
                 const SizedBox(height: 8),
                 _OverviewGrid(items: _buildOverviewItems(context, data)),
@@ -198,11 +196,7 @@ class _OverviewHeader extends StatelessWidget {
         if (constraints.maxWidth < 360) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              title,
-              const SizedBox(height: 8),
-              actions,
-            ],
+            children: [title, const SizedBox(height: 8), actions],
           );
         }
 
@@ -339,10 +333,14 @@ class _OverviewItemData extends StatelessWidget {
           height: 1.4,
         ),
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey[900]!.withAlpha(242) : Colors.black.withAlpha(217),
+          color: isDark
+              ? Colors.grey[900]!.withAlpha(242)
+              : Colors.black.withAlpha(217),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isDark ? Colors.white.withAlpha(31) : Colors.white.withAlpha(51),
+            color: isDark
+                ? Colors.white.withAlpha(31)
+                : Colors.white.withAlpha(51),
             width: 1,
           ),
           boxShadow: [

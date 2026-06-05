@@ -300,11 +300,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     _updateSession(
       deviceId,
       sessionId,
-      (s) => s.copyWith(
-        lines: [],
-        isRunning: true,
-        process: null,
-      ),
+      (s) => s.copyWith(lines: [], isRunning: true, process: null),
     );
 
     try {

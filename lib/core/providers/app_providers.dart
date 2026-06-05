@@ -171,7 +171,11 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       if (isDisposed) return;
       state = AsyncValue.data(initialPackages);
 
-      await for (final updatedPackages in service.enrichPackagesWithIconsProgressive(deviceId, initialPackages)) {
+      await for (final updatedPackages
+          in service.enrichPackagesWithIconsProgressive(
+            deviceId,
+            initialPackages,
+          )) {
         if (isDisposed) return;
         state = AsyncValue.data(updatedPackages);
       }
@@ -203,17 +207,19 @@ final deviceOverviewProvider = StreamProvider.autoDispose
     });
 
 /// 单台设备的 adb shell 是否拥有 root 权限。
-final isDeviceRootProvider = FutureProvider.autoDispose
-    .family<bool, String>((ref, deviceId) async {
-      final adb = ref.watch(adbServiceProvider);
-      try {
-        final result = await adb.shell(deviceId, 'id');
-        if (result.isSuccess) {
-          return result.stdout.contains('uid=0');
-        }
-      } catch (_) {}
-      return false;
-    });
+final isDeviceRootProvider = FutureProvider.autoDispose.family<bool, String>((
+  ref,
+  deviceId,
+) async {
+  final adb = ref.watch(adbServiceProvider);
+  try {
+    final result = await adb.shell(deviceId, 'id');
+    if (result.isSuccess) {
+      return result.stdout.contains('uid=0');
+    }
+  } catch (_) {}
+  return false;
+});
 
 /// 离线设备的本地手机信息概览缓存。
 final cachedDeviceOverviewProvider = FutureProvider.autoDispose
@@ -1415,7 +1421,7 @@ class ScreenPowerOffNotifier extends Notifier<bool> {
   }
 }
 
-final screenPowerOffProvider = NotifierProvider.family<ScreenPowerOffNotifier, bool, String>(
-  ScreenPowerOffNotifier.new,
-);
-
+final screenPowerOffProvider =
+    NotifierProvider.family<ScreenPowerOffNotifier, bool, String>(
+      ScreenPowerOffNotifier.new,
+    );

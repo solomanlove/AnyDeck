@@ -1,6 +1,5 @@
 part of 'terminal_tab.dart';
 
-
 /// 常用调试命令收藏侧边栏
 class _FavoriteCommandsPanel extends ConsumerWidget {
   final AdbDevice device;
@@ -50,7 +49,10 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
               Tooltip(
                 message: context.l10n.t('resetFavorites'),
                 child: IconButton(
-                  icon: const Icon(CupertinoIcons.arrow_counterclockwise, size: 16),
+                  icon: const Icon(
+                    CupertinoIcons.arrow_counterclockwise,
+                    size: 16,
+                  ),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   splashRadius: 16,

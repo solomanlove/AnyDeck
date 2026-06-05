@@ -13,14 +13,19 @@ class _EmulatorTable extends StatefulWidget {
 
   /// 模拟器数据列表项
   final List<_EmulatorItem> items;
+
   /// 当前选中模拟器的名称
   final String? selectedName;
+
   /// 点击表头排序的回调
   final ValueChanged<String> onSort;
+
   /// 根据排序列生成排序图标的回调
   final Widget Function(String column) sortIconBuilder;
+
   /// 单击选中行的回调
   final ValueChanged<String> onSelected;
+
   /// 双击行的回调 (例如双击查看详情)
   final ValueChanged<String> onDoubleTap;
 
@@ -115,14 +120,19 @@ class _EmulatorTableWidths {
 
   /// 模拟器名称列宽
   final double name;
+
   /// 分辨率列宽
   final double resolution;
+
   /// SDK 版本列宽
   final double sdk;
+
   /// ABI 架构列宽
   final double abi;
+
   /// 内存列宽
   final double memory;
+
   /// 存储空间列宽
   final double storage;
 
@@ -154,17 +164,18 @@ class _EmulatorTableHeader extends StatelessWidget {
 
   /// 列宽定义
   final _EmulatorTableWidths widths;
+
   /// 排序回调
   final ValueChanged<String> onSort;
+
   /// 排序图标生成器
   final Widget Function(String column) sortIconBuilder;
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context)
-        .textTheme
-        .titleSmall
-        ?.copyWith(fontWeight: FontWeight.bold);
+    final style = Theme.of(
+      context,
+    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold);
 
     return Container(
       height: 40,
@@ -242,12 +253,16 @@ class _EmulatorHeaderCell extends StatelessWidget {
 
   /// 宽度
   final double width;
+
   /// 表头标签文本
   final String label;
+
   /// 文本样式
   final TextStyle? style;
+
   /// 点击回调
   final VoidCallback onTap;
+
   /// 排序状态图标
   final Widget sortIcon;
 
@@ -291,14 +306,19 @@ class _EmulatorTableRow extends StatelessWidget {
 
   /// 模拟器项数据
   final _EmulatorItem item;
+
   /// 列宽定义
   final _EmulatorTableWidths widths;
+
   /// 是否被选中
   final bool selected;
+
   /// 行的索引，用于交替背景色
   final int index;
+
   /// 单击选中行回调
   final VoidCallback onSelected;
+
   /// 双击行回调
   final VoidCallback onDoubleTap;
 
@@ -308,11 +328,10 @@ class _EmulatorTableRow extends StatelessWidget {
     final color = selected
         ? Theme.of(context).colorScheme.primaryContainer
         : index.isOdd
-            ? Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
-                .withValues(alpha: 0.45)
-            : null;
+        ? Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45)
+        : null;
 
     return InkWell(
       onTap: onSelected,
@@ -412,18 +431,12 @@ class _EmulatorStatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
-      'running' => (
-          const Color(0xFF2E7D32),
-          context.l10n.t('emulatorRunning'),
-        ),
+      'running' => (const Color(0xFF2E7D32), context.l10n.t('emulatorRunning')),
       'starting' => (
-          const Color(0xFFE65100),
-          context.l10n.t('emulatorStarting'),
-        ),
-      _ => (
-          const Color(0xFF9E9E9E),
-          context.l10n.t('emulatorStopped'),
-        ),
+        const Color(0xFFE65100),
+        context.l10n.t('emulatorStarting'),
+      ),
+      _ => (const Color(0xFF9E9E9E), context.l10n.t('emulatorStopped')),
     };
 
     return Tooltip(

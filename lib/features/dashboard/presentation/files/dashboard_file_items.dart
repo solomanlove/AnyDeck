@@ -325,7 +325,12 @@ class _RemoteFileActions extends ConsumerWidget {
   }
 }
 
-int _compareFiles(RemoteFile left, RemoteFile right, String sortColumn, bool sortAscending) {
+int _compareFiles(
+  RemoteFile left,
+  RemoteFile right,
+  String sortColumn,
+  bool sortAscending,
+) {
   // 文件夹始终排在前面
   if (left.isFolder != right.isFolder) {
     return left.isFolder ? -1 : 1;
@@ -390,9 +395,9 @@ class _FileSortMenuButton extends ConsumerWidget {
           child: Text(
             '排序字段',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                  fontWeight: FontWeight.bold,
-                ),
+              color: Theme.of(context).colorScheme.outline,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         ...columns.entries.map((e) {
@@ -402,9 +407,13 @@ class _FileSortMenuButton extends ConsumerWidget {
             child: Row(
               children: [
                 Icon(
-                  isSelected ? CupertinoIcons.largecircle_fill_circle : CupertinoIcons.circle,
+                  isSelected
+                      ? CupertinoIcons.largecircle_fill_circle
+                      : CupertinoIcons.circle,
                   size: 16,
-                  color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
                 ),
                 const SizedBox(width: 8),
                 Text(e.value),
@@ -418,9 +427,9 @@ class _FileSortMenuButton extends ConsumerWidget {
           child: Text(
             '排序顺序',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                  fontWeight: FontWeight.bold,
-                ),
+              color: Theme.of(context).colorScheme.outline,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         PopupMenuItem<String>(
@@ -428,9 +437,13 @@ class _FileSortMenuButton extends ConsumerWidget {
           child: Row(
             children: [
               Icon(
-                navState.sortAscending ? CupertinoIcons.largecircle_fill_circle : CupertinoIcons.circle,
+                navState.sortAscending
+                    ? CupertinoIcons.largecircle_fill_circle
+                    : CupertinoIcons.circle,
                 size: 16,
-                color: navState.sortAscending ? Theme.of(context).colorScheme.primary : null,
+                color: navState.sortAscending
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
               ),
               const SizedBox(width: 8),
               const Text('升序'),
@@ -442,9 +455,13 @@ class _FileSortMenuButton extends ConsumerWidget {
           child: Row(
             children: [
               Icon(
-                !navState.sortAscending ? CupertinoIcons.largecircle_fill_circle : CupertinoIcons.circle,
+                !navState.sortAscending
+                    ? CupertinoIcons.largecircle_fill_circle
+                    : CupertinoIcons.circle,
                 size: 16,
-                color: !navState.sortAscending ? Theme.of(context).colorScheme.primary : null,
+                color: !navState.sortAscending
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
               ),
               const SizedBox(width: 8),
               const Text('降序'),

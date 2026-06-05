@@ -73,7 +73,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
               _buildToolbarButton(
                 icon: CupertinoIcons.zoom_in,
                 onPressed: (_isGridView && _gridItemSize < 160.0)
-                    ? () => setState(() => _gridItemSize = min(160.0, _gridItemSize + 15.0))
+                    ? () => setState(
+                        () => _gridItemSize = min(160.0, _gridItemSize + 15.0),
+                      )
                     : null,
                 active: false,
                 tooltip: context.l10n.t('zoomIn'),
@@ -81,7 +83,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
               _buildToolbarButton(
                 icon: CupertinoIcons.zoom_out,
                 onPressed: (_isGridView && _gridItemSize > 70.0)
-                    ? () => setState(() => _gridItemSize = max(70.0, _gridItemSize - 15.0))
+                    ? () => setState(
+                        () => _gridItemSize = max(70.0, _gridItemSize - 15.0),
+                      )
                     : null,
                 active: false,
                 tooltip: context.l10n.t('zoomOut'),
@@ -151,16 +155,18 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                               deviceId: widget.device.id,
                               packages: filtered,
                               selectedPackage: _selectedPackage,
-                              onSelected: (packageName) =>
-                                  setState(() => _selectedPackage = packageName),
+                              onSelected: (packageName) => setState(
+                                () => _selectedPackage = packageName,
+                              ),
                               gridItemSize: _gridItemSize,
                             )
                           : _PackageTable(
                               deviceId: widget.device.id,
                               packages: filtered,
                               selectedPackage: _selectedPackage,
-                              onSelected: (packageName) =>
-                                  setState(() => _selectedPackage = packageName),
+                              onSelected: (packageName) => setState(
+                                () => _selectedPackage = packageName,
+                              ),
                             ),
                     ),
                   ],
