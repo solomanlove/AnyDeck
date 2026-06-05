@@ -104,11 +104,14 @@ class _ToolContentCard extends StatefulWidget {
 class _ToolContentCardState extends State<_ToolContentCard> {
   // 记录已经访问并初始化的 tab 索引，实现懒加载
   final Set<int> _initializedTabs = {};
+  late int _currentToolIndex;
 
   @override
   void initState() {
     super.initState();
-    _initializedTabs.add(widget.tabIndex);
+    // 确保初始索引在有效范围内 (0-11)
+    _currentToolIndex = widget.tabIndex < 12 ? widget.tabIndex : 0;
+    _initializedTabs.add(_currentToolIndex);
   }
 
   @override
@@ -118,7 +121,11 @@ class _ToolContentCardState extends State<_ToolContentCard> {
     if (oldWidget.device.id != widget.device.id) {
       _initializedTabs.clear();
     }
-    _initializedTabs.add(widget.tabIndex);
+    // 当 widget.tabIndex 为 12 (即设置 Tab) 时，忽略更新，保持当前展示的工具 Tab 状态不变，规避 IndexedStack 越界崩溃
+    if (widget.tabIndex < 12) {
+      _currentToolIndex = widget.tabIndex;
+      _initializedTabs.add(_currentToolIndex);
+    }
   }
 
   @override
@@ -149,11 +156,9 @@ class _ToolContentCardState extends State<_ToolContentCard> {
       };
     });
 
-    return Card(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: IndexedStack(index: widget.tabIndex, children: children),
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: IndexedStack(index: _currentToolIndex, children: children),
     );
   }
 }

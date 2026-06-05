@@ -12,8 +12,6 @@ class _SettingsTab extends ConsumerWidget {
     // Primary brand green
     const brandGreen = Color(0xff09c47c);
 
-    final isEn = context.l10n.t('languageCode') == 'en';
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
@@ -53,9 +51,7 @@ class _SettingsTab extends ConsumerWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            isEn
-                                ? 'Manage application preferences and configurations'
-                                : '管理应用全局配置和偏好设置',
+                            context.l10n.t('settingsDesc'),
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -70,16 +66,14 @@ class _SettingsTab extends ConsumerWidget {
                 // Card 1: 常规设置 (General Settings)
                 _buildSectionCard(
                   context,
-                  title: isEn ? 'General Settings' : '常规设置',
+                  title: context.l10n.t('generalSettings'),
                   icon: CupertinoIcons.circle_grid_hex,
                   children: [
                     // Language option selector
                     _buildSettingRow(
                       context,
                       label: context.l10n.t('language'),
-                      subtitle: isEn
-                          ? 'Choose application language'
-                          : '选择应用显示语言',
+                      subtitle: context.l10n.t('chooseLanguage'),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -104,9 +98,7 @@ class _SettingsTab extends ConsumerWidget {
                     _buildSettingRow(
                       context,
                       label: context.l10n.t('theme'),
-                      subtitle: isEn
-                          ? 'Select interface theme mode'
-                          : '选择界面主题模式',
+                      subtitle: context.l10n.t('selectThemeMode'),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -146,15 +138,13 @@ class _SettingsTab extends ConsumerWidget {
                 // Card 2: 投屏设置 (Screen Mirroring Settings)
                 _buildSectionCard(
                   context,
-                  title: isEn ? 'Screen Mirroring Settings' : '投屏设置',
+                  title: context.l10n.t('mirrorSettings'),
                   icon: CupertinoIcons.device_phone_portrait,
                   children: [
                     _buildSettingRow(
                       context,
-                      label: isEn ? 'Always on Top' : '投屏窗口最前',
-                      subtitle: isEn
-                          ? 'Keep mirroring window on top of others'
-                          : '保持投屏窗口置顶显示',
+                      label: context.l10n.t('mirrorAlwaysOnTop'),
+                      subtitle: context.l10n.t('mirrorAlwaysOnTopDesc'),
                       child: Switch.adaptive(
                         activeThumbColor: brandGreen,
                         activeTrackColor: brandGreen.withValues(alpha: 0.5),
@@ -166,10 +156,8 @@ class _SettingsTab extends ConsumerWidget {
                     const Divider(height: 24),
                     _buildSettingRow(
                       context,
-                      label: isEn ? 'Audio Forwarding' : '音频转发',
-                      subtitle: isEn
-                          ? 'Forward android audio to computer speakers'
-                          : '将安卓设备音频转发到电脑扬声器',
+                      label: context.l10n.t('audioForwarding'),
+                      subtitle: context.l10n.t('audioForwardingDesc'),
                       child: Switch.adaptive(
                         activeThumbColor: brandGreen,
                         activeTrackColor: brandGreen.withValues(alpha: 0.5),
@@ -181,10 +169,8 @@ class _SettingsTab extends ConsumerWidget {
                     const Divider(height: 24),
                     _buildSettingRow(
                       context,
-                      label: isEn ? 'Video Bitrate' : '传输码率',
-                      subtitle: isEn
-                          ? 'Adjust mirroring video quality'
-                          : '调整投屏视频传输码率品质',
+                      label: context.l10n.t('videoBitrate'),
+                      subtitle: context.l10n.t('videoBitrateDesc'),
                       child: DropdownButton<int>(
                         value: settings.mirrorVideoBitrate,
                         underline: const SizedBox.shrink(),
@@ -221,23 +207,21 @@ class _SettingsTab extends ConsumerWidget {
                     const Divider(height: 24),
                     _buildSettingRow(
                       context,
-                      label: isEn ? 'Max Resolution' : '最大分辨率限制',
-                      subtitle: isEn
-                          ? 'Limit maximum projection resolution'
-                          : '限制投屏的最大分辨率高度',
+                      label: context.l10n.t('maxResolution'),
+                      subtitle: context.l10n.t('maxResolutionDesc'),
                       child: DropdownButton<int>(
                         value: settings.mirrorMaxSize,
                         underline: const SizedBox.shrink(),
                         icon: const Icon(CupertinoIcons.chevron_down, size: 16),
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 0,
-                            child: Text('Original / 无限制'),
+                            child: Text(context.l10n.t('originalUnlimited')),
                           ),
-                          DropdownMenuItem(value: 720, child: Text('720p')),
-                          DropdownMenuItem(value: 1080, child: Text('1080p')),
-                          DropdownMenuItem(value: 1440, child: Text('1440p')),
-                          DropdownMenuItem(value: 1920, child: Text('1920p')),
+                          const DropdownMenuItem(value: 720, child: Text('720p')),
+                          const DropdownMenuItem(value: 1080, child: Text('1080p')),
+                          const DropdownMenuItem(value: 1440, child: Text('1440p')),
+                          const DropdownMenuItem(value: 1920, child: Text('1920p')),
                         ],
                         onChanged: (val) {
                           if (val != null) {
@@ -253,7 +237,7 @@ class _SettingsTab extends ConsumerWidget {
                 // Card 3: 关于与支持 (About & Support)
                 _buildSectionCard(
                   context,
-                  title: isEn ? 'About & Info' : '关于与说明',
+                  title: context.l10n.t('aboutAndSupport'),
                   icon: CupertinoIcons.info_circle,
                   children: [
                     ListTile(
