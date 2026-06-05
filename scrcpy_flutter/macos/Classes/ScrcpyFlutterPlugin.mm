@@ -18,6 +18,7 @@ static void scrcpy_frame_callback(void* opaque, const uint8_t* rgbaBuf, int widt
 @implementation ScrcpyFlutterPlugin {
     id<FlutterTextureRegistry> _textureRegistry;
     std::map<std::string, ScrcpySessionData> _sessions;
+    __weak id<FlutterPluginRegistrar> _registrar;
 }
 
 + (void)registerWithRegistrar:(id<FlutterPluginRegistrar>)registrar {
@@ -32,9 +33,31 @@ static void scrcpy_frame_callback(void* opaque, const uint8_t* rgbaBuf, int widt
     self = [super init];
     if (self) {
         _textureRegistry = [registrar textures];
+        _registrar = registrar;
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(windowWillClose:)
+                                                     name:NSWindowWillCloseNotification
+                                                   object:nil];
     }
     return self;
 }
+
+- (void)windowWillClose:(NSNotification *)notification {
+    NSWindow* closingWindow = notification.object;
+    if (closingWindow && [_registrar view] && [_registrar view].window == closingWindow) {
+        [self stopAllSessions];
+    }
+}
+
+- (void)stopAllSessions {
+    for (auto& pair : _sessions) {
+        pair.second.decoder->Stop();
+        [pair.second.texture dispose];
+    }
+    _sessions.clear();
+}
+
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     if ([@"startMirroring" isEqualToString:call.method]) {
@@ -156,11 +179,8 @@ static void scrcpy_frame_callback(void* opaque, const uint8_t* rgbaBuf, int widt
 }
 
 - (void)dealloc {
-    for (auto& pair : _sessions) {
-        pair.second.decoder->Stop();
-        [pair.second.texture dispose];
-    }
-    _sessions.clear();
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [self stopAllSessions];
 }
 
 @end

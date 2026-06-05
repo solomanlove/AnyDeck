@@ -27,6 +27,9 @@
 
 - (void)updateFrame:(const uint8_t *)rgbaBuffer width:(int)width height:(int)height {
     @synchronized(self) {
+        if (_textureId == 0) {
+            return;
+        }
         if (!_pixelBuffer || _width != width || _height != height) {
             if (_pixelBuffer) {
                 CVPixelBufferRelease(_pixelBuffer);

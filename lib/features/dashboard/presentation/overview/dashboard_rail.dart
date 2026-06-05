@@ -147,17 +147,18 @@ class _PrimaryRail extends ConsumerWidget {
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final bool renderNarrow = constraints.maxWidth < 130;
             int visibleToolCount = _visibleToolCount(
               railHeight: constraints.maxHeight,
               toolCount: tools.length,
-              isNarrow: isNarrow,
+              isNarrow: renderNarrow,
               hasOverflow: false,
             );
             if (visibleToolCount < tools.length) {
               visibleToolCount = _visibleToolCount(
                 railHeight: constraints.maxHeight,
                 toolCount: tools.length,
-                isNarrow: isNarrow,
+                isNarrow: renderNarrow,
                 hasOverflow: true,
               );
             }
@@ -188,7 +189,7 @@ class _PrimaryRail extends ConsumerWidget {
                           },
                           child: MouseRegion(
                             cursor: SystemMouseCursors.click,
-                            child: isNarrow
+                            child: renderNarrow
                                 ? SizedBox(
                                     width: _logoSize,
                                     height: _logoSize,
@@ -233,7 +234,7 @@ class _PrimaryRail extends ConsumerWidget {
                           ),
                         ),
                         SizedBox(
-                          height: isNarrow
+                          height: renderNarrow
                               ? (hasOverflowTools
                                     ? _compactLogoToolGap
                                     : _fullLogoToolGap)
@@ -249,7 +250,7 @@ class _PrimaryRail extends ConsumerWidget {
                     selected:
                         selectedDevice != null && selectedTool == tool.tabIndex,
                     tooltip: tool.label,
-                    isNarrow: isNarrow,
+                    isNarrow: renderNarrow,
                     onPressed: canInteract
                         ? () => handleTap(tool.tabIndex)
                         : null,
@@ -261,13 +262,13 @@ class _PrimaryRail extends ConsumerWidget {
                     selectedTool: selectedTool,
                     enabled: canInteract,
                     onSelected: handleTap,
-                    isNarrow: isNarrow,
+                    isNarrow: renderNarrow,
                   ),
                 const Spacer(),
                 _RailButton(
                   icon: CupertinoIcons.settings,
                   tooltip: context.l10n.t('settings'),
-                  isNarrow: isNarrow,
+                  isNarrow: renderNarrow,
                   selected: selectedTool == 12,
                   onPressed: () {
                     ref.read(selectedToolTabProvider.notifier).select(12);
@@ -506,7 +507,7 @@ class _RailButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               child: Container(
                 height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.only(left: 10),
                 child: Row(
                   children: [
                     Icon(icon, size: 24, color: color),
