@@ -7,6 +7,7 @@ import '../../../../app/l10n/app_localizations.dart';
 import '../../../../core/adb/adb_device.dart';
 import '../../../../core/web_debug/webpage_target.dart';
 import '../../../../core/providers/app_providers.dart';
+import '../widgets/dashboard_snack.dart';
 
 /// 网页调试标签页。
 
@@ -86,91 +87,13 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
       await ref.read(webTargetsProvider(widget.device.id).future);
     } catch (e) {
       if (mounted && !silent) {
-        _showSnack(context, e.toString(), isError: true);
+        DashboardSnack.show(context, e.toString(), isError: true);
       }
     } finally {
       if (mounted && !silent) {
         setState(() => _refreshing = false);
       }
     }
-  }
-
-  void _showSnack(
-    BuildContext context,
-    String message, {
-    bool isError = false,
-  }) {
-    final overlay = Overlay.maybeOf(context);
-    if (overlay == null) return;
-
-    final media = MediaQuery.of(context);
-    final accentColor = isError
-        ? Theme.of(context).colorScheme.error
-        : const Color(0xff00c853);
-    final textStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
-      color: const Color(0xff171a21),
-      fontWeight: FontWeight.w600,
-    );
-
-    late final OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (context) {
-        return Positioned(
-          top: media.padding.top + 16,
-          left: 16,
-          right: 16,
-          child: IgnorePointer(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: media.size.width - 64),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xffd7dce5)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x26000000),
-                        blurRadius: 12,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isError
-                              ? CupertinoIcons.exclamationmark_circle_fill
-                              : CupertinoIcons.checkmark_circle_fill,
-                          color: accentColor,
-                          size: 30,
-                        ),
-                        const SizedBox(width: 12),
-                        Flexible(child: Text(message, style: textStyle)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    overlay.insert(entry);
-    Timer(const Duration(seconds: 2), () {
-      if (entry.mounted) {
-        entry.remove();
-      }
-    });
   }
 
   Future<void> _inspectTarget() async {
@@ -184,13 +107,13 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
       final latestTarget = await _resolveLatestTarget(target);
       if (latestTarget == null) {
         if (mounted) {
-          _showSnack(context, '网页调试目标已失效，请刷新后重试', isError: true);
+          DashboardSnack.show(context, '网页调试目标已失效，请刷新后重试', isError: true);
         }
         return;
       }
       if (latestTarget.isAttached) {
         if (mounted) {
-          _showSnack(
+          DashboardSnack.show(
             context,
             context.l10n.t('webDebugTargetAttached'),
             isError: true,
@@ -200,11 +123,11 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
       }
       await service.openInspector(latestTarget, useLocal);
       if (mounted) {
-        _showSnack(context, '正在尝试开启调试器...');
+        DashboardSnack.show(context, '正在尝试开启调试器...');
       }
     } catch (e) {
       if (mounted) {
-        _showSnack(context, '启动调试器失败: $e', isError: true);
+        DashboardSnack.show(context, '启动调试器失败: $e', isError: true);
       }
     }
   }
@@ -238,7 +161,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
       await service.openBrowser(target.url);
     } catch (e) {
       if (mounted) {
-        _showSnack(context, '在浏览器中打开链接失败: $e', isError: true);
+        DashboardSnack.show(context, '在浏览器中打开链接失败: $e', isError: true);
       }
     }
   }

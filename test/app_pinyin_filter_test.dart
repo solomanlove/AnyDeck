@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,7 @@ import 'package:adb_manage/core/apps/adb_package.dart';
 import 'package:adb_manage/core/providers/app_providers.dart';
 import 'package:adb_manage/core/device_info/device_overview.dart';
 import 'package:adb_manage/core/emulator/android_emulator.dart';
+import 'fake_adb_service.dart';
 
 class MockPackagesNotifier extends PackagesNotifier {
   MockPackagesNotifier(this.packages) : super('');
@@ -64,6 +66,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          adbServiceProvider.overrideWithValue(FakeAdbService()),
           devicesProvider.overrideWith(
             (ref) => Stream.value(<AdbDevice>[mockDevice]),
           ),
@@ -126,7 +129,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // 2. 切换到 "应用" tab (index 2)
-    final appsTabFinder = find.byIcon(Icons.apps_outlined);
+    final appsTabFinder = find.byWidgetPredicate(
+      (w) => w is Icon && w.icon == CupertinoIcons.square_grid_2x2 && w.size == 24.0,
+    );
     expect(appsTabFinder, findsOneWidget);
     await tester.tap(appsTabFinder);
     await tester.pumpAndSettle();

@@ -188,106 +188,60 @@ class _EmulatorTableHeader extends StatelessWidget {
       child: Row(
         children: [
           // 模拟器名称表头单元格
-          _EmulatorHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.name,
             label: context.l10n.t('emulatorNameCol'),
             style: style,
             onTap: () => onSort('name'),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             sortIcon: sortIconBuilder('name'),
           ),
           // 分辨率表头单元格
-          _EmulatorHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.resolution,
             label: context.l10n.t('emulatorResolutionCol'),
             style: style,
             onTap: () => onSort('resolution'),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             sortIcon: sortIconBuilder('resolution'),
           ),
           // SDK表头单元格
-          _EmulatorHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.sdk,
             label: context.l10n.t('emulatorSdkCol'),
             style: style,
             onTap: () => onSort('sdk'),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             sortIcon: sortIconBuilder('sdk'),
           ),
           // ABI架构表头单元格
-          _EmulatorHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.abi,
             label: context.l10n.t('emulatorAbiCol'),
             style: style,
             onTap: () => onSort('abi'),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             sortIcon: sortIconBuilder('abi'),
           ),
           // 内存容量表头单元格
-          _EmulatorHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.memory,
             label: context.l10n.t('emulatorMemoryCol'),
             style: style,
             onTap: () => onSort('memory'),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             sortIcon: sortIconBuilder('memory'),
           ),
           // 存储容量表头单元格
-          _EmulatorHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.storage,
             label: context.l10n.t('emulatorStorageCol'),
             style: style,
             onTap: () => onSort('storage'),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             sortIcon: sortIconBuilder('storage'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// 表头单个单元格组件，支持点击排序。
-class _EmulatorHeaderCell extends StatelessWidget {
-  const _EmulatorHeaderCell({
-    required this.width,
-    required this.label,
-    required this.style,
-    required this.onTap,
-    required this.sortIcon,
-  });
-
-  /// 宽度
-  final double width;
-
-  /// 表头标签文本
-  final String label;
-
-  /// 文本样式
-  final TextStyle? style;
-
-  /// 点击回调
-  final VoidCallback onTap;
-
-  /// 排序状态图标
-  final Widget sortIcon;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  style: style,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              sortIcon,
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -186,56 +186,56 @@ class _PackageTableHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _PackageHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.appName,
             label: context.l10n.t('appName'),
             style: style,
             sortIcon: sortIconBuilder('appName'),
             onTap: () => onSort('appName'),
           ),
-          _PackageHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.packageName,
             label: context.l10n.t('packageName'),
             style: style,
             sortIcon: sortIconBuilder('packageName'),
             onTap: () => onSort('packageName'),
           ),
-          _PackageHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.version,
             label: context.l10n.t('version'),
             style: style,
             sortIcon: sortIconBuilder('version'),
             onTap: () => onSort('version'),
           ),
-          _PackageHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.minSdk,
             label: context.l10n.t('minSdkVersion'),
             style: style,
             sortIcon: sortIconBuilder('minSdk'),
             onTap: () => onSort('minSdk'),
           ),
-          _PackageHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.targetSdk,
             label: context.l10n.t('targetMaxSdk'),
             style: style,
             sortIcon: sortIconBuilder('targetSdk'),
             onTap: () => onSort('targetSdk'),
           ),
-          _PackageHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.storage,
             label: context.l10n.t('storageUsed'),
             style: style,
             sortIcon: sortIconBuilder('storage'),
             onTap: () => onSort('storage'),
           ),
-          _PackageHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.status,
             label: context.l10n.t('status'),
             style: style,
             sortIcon: sortIconBuilder('status'),
             onTap: () => onSort('status'),
           ),
-          _PackageHeaderCell(
+          DashboardSortableHeaderCell(
             width: widths.type,
             label: context.l10n.t('appType'),
             style: style,
@@ -243,52 +243,6 @@ class _PackageTableHeader extends StatelessWidget {
             onTap: () => onSort('type'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PackageHeaderCell extends StatelessWidget {
-  const _PackageHeaderCell({
-    required this.width,
-    required this.label,
-    required this.style,
-    required this.sortIcon,
-    required this.onTap,
-  });
-
-  final double width;
-  final String label;
-  final TextStyle? style;
-  final Widget sortIcon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    label,
-                    style: style,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                sortIcon,
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

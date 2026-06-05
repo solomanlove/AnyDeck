@@ -27,10 +27,13 @@ alwaysApply: true
 # 代码编写约束 (CRITICAL)
 - **局部修改与风格一致**：每次改动代码时，**绝对不能改动任何与当前修改目标无关的代码**。必须保持原有文件中的其他代码、注释、排版、格式和缩进风格完全一致。禁止任何与当前任务无关的重构、格式化或风格替换，以防污染 Git Diff 历史。
 - **文件行数限制**：新增或重构后的 Dart 文件**禁止超过 500 行**。对于超过 500 行的 UI 文件，必须按样式、功能或自定义 Widget 拆分至独立文件，或者将逻辑剥离到 Riverpod Notifier 中。
+- **工具类与拆分优先**：发现重复 UI、重复 Result 处理、重复路径/格式化/解析逻辑时，先查已有公共 helper、service、extension 或 widget；没有合适入口时，再新增职责单一的小工具类或拆分文件，禁止在多个 Tab 内复制粘贴同一段实现。
 - **术语与双语支持**：
   - 代码注释和文档必须默认使用**中文**。
   - API、CLI 参数、类名、协议方法等术语保留 **English** 原文（例如 ViewModel, Provider, Hook, CLI, Channel）。
 - **组件复用**：修改 UI 时，优先收口公共组件（如自定义的 LoadingIndicator, CustomButton 等）或共享 Helper，避免在多处重复手写相似的 UI 组件。
+- **不可变 Widget 优先**：Flutter UI 默认优先使用 `const StatelessWidget`、纯函数式 helper 或 immutable 数据模型。只有确实需要 `TextEditingController`、`FocusNode`、`AnimationController`、订阅释放、滚动控制器等生命周期资源时，才使用 `StatefulWidget` / `ConsumerStatefulWidget`。
+- **注释边界**：新增工具类、跨文件 helper、复杂异步流程必须加简短中文注释说明职责和边界；简单属性赋值、显而易见的 UI 拼装不写噪音注释。
 - **防重复/安全调用**：
   - 涉及到 ADB 命令、脚本执行或投屏切换时，必须设置合理的 Timeout（一般为 15 秒）。
   - UI 操作应加入 Loading 状态或对按钮进行防重复点击处理。

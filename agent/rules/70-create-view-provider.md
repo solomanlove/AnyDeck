@@ -16,6 +16,9 @@ alwaysApply: false
 
 ## 2. 代码编写自检清单
 - [ ] **文件行数校验**：单个 Dart 文件的总行数必须控制在 **500 行以内**。超过此上限应立刻拆分子组件。
+- [ ] **重复代码校验**：新增页面前必须先用 `rg` 搜索是否已有类似 Widget、Dialog、Snack、表格 Header、ADB service 方法或格式化 helper；存在可复用入口时优先接入公共工具类。
+- [ ] **不可变 Widget 优先**：无内部生命周期资源的展示组件必须优先写成 `const StatelessWidget` 或纯 helper；不要为了局部 UI 状态随意引入 `StatefulWidget`。确实需要 controller / animation / focus / stream 释放时，再使用 Stateful 并在 `dispose` 中回收。
+- [ ] **合理拆分与注释**：样式组件、数据处理、命令执行、Dialog/Toast 等职责必须拆开；新增公共 helper 要有一句中文职责注释，复杂异步流程要标明资源释放或性能保护点。
 - [ ] **多语言适配**：所有文案是否均已通过 `AppLocalizations` 访问，不存在硬编码中英文文本。
 - [ ] **多窗口适配**：如果此页面包含全局配置修改，修改处是否已经通过 MethodChannel 进行了跨 Isolate 状态更新广播。
 - [ ] **进程生命周期管理**：若页面或 Provider 启动了后台子进程（如 ADB stream、录屏、投屏），是否已经在 Widget `dispose` 或 Provider `onDispose` 中执行了 `process.kill()` 彻底回收进程。

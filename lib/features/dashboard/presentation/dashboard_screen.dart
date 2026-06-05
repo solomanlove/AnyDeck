@@ -42,6 +42,8 @@ import 'webpages/webpages_tab.dart';
 import 'layout/layout_tab.dart';
 import 'performance/performance_tab.dart';
 import 'network/network_tab.dart';
+import 'widgets/dashboard_snack.dart';
+import 'widgets/dashboard_table_header.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';
@@ -63,6 +65,9 @@ part 'apps/dashboard_apps_table.dart';
 part 'apps/dashboard_apps_grid.dart';
 part 'apps/dashboard_apps_actions.dart';
 part 'files/dashboard_files_tab.dart';
+part 'files/dashboard_file_preview.dart';
+part 'files/dashboard_file_path_field.dart';
+part 'files/dashboard_files_table_header.dart';
 part 'files/dashboard_file_items.dart';
 part 'logcat/dashboard_logcat.dart';
 part 'logcat/dashboard_logcat_toolbar.dart';
@@ -207,7 +212,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     if (effectiveSelectedDevice != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (ref.read(lastActiveDeviceProvider) != effectiveSelectedDevice) {
+        final current = ref.read(lastActiveDeviceProvider);
+        if (_hasDeviceSnapshotChanged(effectiveSelectedDevice!, current)) {
           ref.read(lastActiveDeviceProvider.notifier).state =
               effectiveSelectedDevice;
         }

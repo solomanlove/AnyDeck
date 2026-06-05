@@ -26,8 +26,9 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
   Size _viewportSize = const Size(400, 800);
 
   double get _fitScale {
-    if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0)
+    if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0) {
       return 1.0;
+    }
     final rotatedW = (_rotation == 90 || _rotation == 270)
         ? _imgHeight
         : _imgWidth;

@@ -133,35 +133,20 @@ class _ProcessTableState extends State<_ProcessTable> {
 
     Widget headerCell(String column, String label, double width) {
       final isSorted = widget.sortColumn == column;
-      return InkWell(
+      return DashboardSortableHeaderCell(
+        label: label,
         onTap: () => widget.onSort(column),
-        child: Container(
-          width: width,
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.centerLeft,
-          child: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  style: headerStyle,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (isSorted) ...[
-                const SizedBox(width: 4),
-                Icon(
-                  widget.sortAscending
-                      ? CupertinoIcons.arrow_up
-                      : CupertinoIcons.arrow_down,
-                  size: 14,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ],
-            ],
-          ),
-        ),
+        width: width,
+        height: 48,
+        style: headerStyle,
+        sortIcon: isSorted
+            ? DashboardSortIcon(
+                active: true,
+                ascending: widget.sortAscending,
+                ascendingIcon: CupertinoIcons.arrow_up,
+                descendingIcon: CupertinoIcons.arrow_down,
+              )
+            : null,
       );
     }
 
