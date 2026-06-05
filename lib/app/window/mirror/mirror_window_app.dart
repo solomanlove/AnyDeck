@@ -94,6 +94,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     super.initState();
     _keyboardFocusNode = FocusNode(debugLabel: 'MirrorWindowKeyboard');
     _isAlwaysOnTop = ref.read(appSettingsProvider).scrcpyAlwaysOnTop;
+
     if (Platform.isMacOS) {
       _windowChannel.setMethodCallHandler((call) async {
         if (call.method == 'onWindowEnterFullScreen') {
@@ -538,14 +539,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       contentWidget = Column(
         children: [
           if (!_isFullScreen)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
-              child: SizedBox(
-                width: double.infinity,
-                child: MirrorFloatingToolbar(
-                  deviceId: widget.deviceId,
-                  windowId: widget.windowId,
-                ),
+            SizedBox(
+              width: double.infinity,
+              child: MirrorFloatingToolbar(
+                deviceId: widget.deviceId,
+                windowId: widget.windowId,
               ),
             ),
           Expanded(
@@ -592,7 +590,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
             children: [
               if (!_isFullScreen)
                 Container(
-                  height: 36, // 调小高度以在 macOS 上更紧凑，确保标题上下居中
+                  height: 30, // 调小高度以在 macOS 上更紧凑，确保标题上下居中
                   padding: EdgeInsets.only(
                     left: Platform.isMacOS ? 80 : 16,
                     right: 16,

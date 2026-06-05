@@ -480,7 +480,7 @@ class _MirrorToolbarButtonState extends State<MirrorToolbarButton> {
     return Tooltip(
       message: widget.tooltip,
       preferBelow: false,
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 4),
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
@@ -492,8 +492,8 @@ class _MirrorToolbarButtonState extends State<MirrorToolbarButton> {
             alignment: Alignment.center,
             children: [
               IconButton(
-                iconSize: 18,
-                padding: const EdgeInsets.all(4),
+                iconSize: 14,
+                padding: const EdgeInsets.all(2),
                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 style: IconButton.styleFrom(
                   backgroundColor: _isHovered ? hoverBg : Colors.transparent,

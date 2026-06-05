@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:ui';
+import 'dart:isolate';
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,11 +45,46 @@ void main(List<String> args) async {
 
   if (args.firstOrNull == 'multi_window') {
     final windowId = int.parse(args[1]);
-    final argument = args[2].isEmpty
-        ? const <String, dynamic>{}
-        : jsonDecode(args[2]) as Map<String, dynamic>;
+    final Map<String, dynamic> argument;
+    if (args[2].isEmpty) {
+      argument = const <String, dynamic>{};
+    } else if (args[2].startsWith('{')) {
+      argument = jsonDecode(args[2]) as Map<String, dynamic>;
+    } else {
+      argument = <String, dynamic>{};
+      for (final part in args[2].split('&')) {
+        final kv = part.split('=');
+        if (kv.length == 2) {
+          argument[Uri.decodeComponent(kv[0])] = Uri.decodeComponent(kv[1]);
+        }
+      }
+    }
 
     final type = argument['type'] as String?;
+    final windowName = type == 'mirror' ? 'mirror_window_$windowId' : 'emulator_window_$windowId';
+    PlatformDispatcher.instance.setIsolateDebugName(windowName);
+
+    // 获取当前子窗口 of VM Service URI 和 Isolate ID 并输出，用于在 DevTools 中连接调试
+    developer.Service.getInfo().then((info) {
+      final uri = info.serverUri;
+      if (uri != null) {
+        final isolateId = developer.Service.getIsolateId(Isolate.current);
+        if (isolateId != null) {
+          final encodedUri = Uri.encodeComponent(uri.toString());
+          final encodedIsolateId = Uri.encodeComponent(isolateId);
+          debugPrint('\n======================================================');
+          debugPrint('[$windowName] Sub-window Isolate Info:');
+          debugPrint('Isolate Name: $windowName');
+          debugPrint('Isolate ID: $isolateId');
+          debugPrint('VM Service URI: $uri');
+          debugPrint('\nConstructed DevTools Link (assuming default port 9100):');
+          debugPrint('http://127.0.0.1:9100/#/inspector?uri=$encodedUri&isolateId=$encodedIsolateId');
+          debugPrint('\n*(Note: If your DevTools port is not 9100, replace "127.0.0.1:9100" in the link above with the actual DevTools port from your browser)*');
+          debugPrint('======================================================\n');
+        }
+      }
+    });
+
     if (type == 'mirror') {
       //投屏窗口
       runApp(
