@@ -146,7 +146,9 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isError ? CupertinoIcons.exclamationmark_circle_fill : CupertinoIcons.checkmark_circle_fill,
+                          isError
+                              ? CupertinoIcons.exclamationmark_circle_fill
+                              : CupertinoIcons.checkmark_circle_fill,
                           color: accentColor,
                           size: 30,
                         ),
@@ -179,7 +181,24 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
     final service = ref.read(webDebugServiceProvider);
 
     try {
-      await service.openInspector(target, useLocal);
+      final latestTarget = await _resolveLatestTarget(target);
+      if (latestTarget == null) {
+        if (mounted) {
+          _showSnack(context, '网页调试目标已失效，请刷新后重试', isError: true);
+        }
+        return;
+      }
+      if (latestTarget.isAttached) {
+        if (mounted) {
+          _showSnack(
+            context,
+            context.l10n.t('webDebugTargetAttached'),
+            isError: true,
+          );
+        }
+        return;
+      }
+      await service.openInspector(latestTarget, useLocal);
       if (mounted) {
         _showSnack(context, '正在尝试开启调试器...');
       }
@@ -188,6 +207,25 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
         _showSnack(context, '启动调试器失败: $e', isError: true);
       }
     }
+  }
+
+  Future<WebpageTarget?> _resolveLatestTarget(WebpageTarget target) async {
+    ref.invalidate(webTargetsProvider(widget.device.id));
+    final targets = await ref.read(webTargetsProvider(widget.device.id).future);
+    for (final item in targets) {
+      if (item.socketName == target.socketName && item.id == target.id) {
+        ref.read(selectedWebTargetProvider.notifier).state = item;
+        return item;
+      }
+    }
+    for (final item in targets) {
+      if (item.socketName == target.socketName) {
+        ref.read(selectedWebTargetProvider.notifier).state = item;
+        return item;
+      }
+    }
+    ref.read(selectedWebTargetProvider.notifier).state = null;
+    return null;
   }
 
   Future<void> _openInBrowser() async {
@@ -312,15 +350,25 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
               IconButton(
                 icon: const Icon(CupertinoIcons.ant),
                 style: IconButton.styleFrom(
-                  backgroundColor: _selectedTarget != null
+                  backgroundColor:
+                      _selectedTarget != null &&
+                          _selectedTarget?.isAttached != true
                       ? Theme.of(context).colorScheme.primaryContainer
                       : null,
-                  foregroundColor: _selectedTarget != null
+                  foregroundColor:
+                      _selectedTarget != null &&
+                          _selectedTarget?.isAttached != true
                       ? Theme.of(context).colorScheme.onPrimaryContainer
                       : null,
                 ),
-                tooltip: context.l10n.t('inspectWebpage'),
-                onPressed: _selectedTarget != null ? _inspectTarget : null,
+                tooltip: _selectedTarget?.isAttached == true
+                    ? context.l10n.t('webDebugTargetAttached')
+                    : context.l10n.t('inspectWebpage'),
+                onPressed:
+                    _selectedTarget != null &&
+                        _selectedTarget?.isAttached != true
+                    ? _inspectTarget
+                    : null,
               ),
               const SizedBox(width: 8),
               // 浏览器打开按钮 (Globe 图标)

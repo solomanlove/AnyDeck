@@ -212,7 +212,12 @@ class _WebpageTableState extends State<_WebpageTable> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.centerLeft,
               child: Chip(
-                label: Text(target.type, style: const TextStyle(fontSize: 11)),
+                label: Text(
+                  target.isAttached
+                      ? context.l10n.t('webpageAttached')
+                      : target.type,
+                  style: const TextStyle(fontSize: 11),
+                ),
                 padding: EdgeInsets.zero,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),

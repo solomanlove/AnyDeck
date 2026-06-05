@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:adb_manage/core/adb/adb_service.dart';
+import 'package:adb_manage/core/web_debug/web_debug_service.dart';
 import 'package:adb_manage/core/web_debug/webpage_target.dart';
 
 void main() {
@@ -9,8 +11,11 @@ void main() {
         'title': '北京环球度假区',
         'url': 'https://www.universalbeijingresort.com/',
         'type': 'page',
-        'devtoolsFrontendUrl': 'https://chrome-devtools-frontend.appspot.com/serve_rev/@d1ef/inspector.html?ws=localhost:53123/devtools/page/BFDBA256BDE16CA5260CCBEAF3130F6C',
-        'webSocketDebuggerUrl': 'ws://localhost:53123/devtools/page/BFDBA256BDE16CA5260CCBEAF3130F6C',
+        'description': '{"attached":true}',
+        'devtoolsFrontendUrl':
+            'https://chrome-devtools-frontend.appspot.com/serve_rev/@d1ef/inspector.html?ws=localhost:53123/devtools/page/BFDBA256BDE16CA5260CCBEAF3130F6C',
+        'webSocketDebuggerUrl':
+            'ws://localhost:53123/devtools/page/BFDBA256BDE16CA5260CCBEAF3130F6C',
       };
 
       final target = WebpageTarget.fromJson(
@@ -31,6 +36,7 @@ void main() {
       expect(target.port, 53123);
       expect(target.devtoolsFrontendUrl, json['devtoolsFrontendUrl']);
       expect(target.webSocketDebuggerUrl, json['webSocketDebuggerUrl']);
+      expect(target.isAttached, true);
 
       final encoded = target.toJson();
       expect(encoded['id'], target.id);
@@ -59,6 +65,77 @@ void main() {
       expect(target.type, '');
       expect(target.devtoolsFrontendUrl, '');
       expect(target.webSocketDebuggerUrl, '');
+      expect(target.isAttached, false);
+    });
+  });
+
+  group('WebDebugService inspector URL', () {
+    test('normalizes relative devtools frontend URL to forwarded localhost', () {
+      final service = WebDebugService(AdbService(executable: 'adb'));
+      final target = WebpageTarget(
+        id: 'PAGE_ID',
+        title: 'Test',
+        url: 'https://example.com',
+        type: 'page',
+        packageName: 'com.example.app',
+        pid: '1234',
+        socketName: 'webview_devtools_remote_1234',
+        devtoolsFrontendUrl:
+            '/devtools/inspector.html?ws=localhost/devtools/page/PAGE_ID',
+        webSocketDebuggerUrl: 'ws://localhost/devtools/page/PAGE_ID',
+        isAttached: false,
+        port: 53123,
+      );
+
+      expect(
+        service.buildInspectorUrl(target, false),
+        'http://127.0.0.1:53123/devtools/inspector.html?ws=127.0.0.1:53123/devtools/page/PAGE_ID',
+      );
+    });
+
+    test('rewrites absolute devtools frontend URL websocket endpoint', () {
+      final service = WebDebugService(AdbService(executable: 'adb'));
+      final target = WebpageTarget(
+        id: 'PAGE_ID',
+        title: 'Test',
+        url: 'https://example.com',
+        type: 'page',
+        packageName: 'com.example.app',
+        pid: '1234',
+        socketName: 'webview_devtools_remote_1234',
+        devtoolsFrontendUrl:
+            'https://chrome-devtools-frontend.appspot.com/serve_rev/@rev/inspector.html?ws=localhost:9222/devtools/page/PAGE_ID',
+        webSocketDebuggerUrl: 'ws://localhost:9222/devtools/page/PAGE_ID',
+        isAttached: false,
+        port: 53123,
+      );
+
+      expect(
+        service.buildInspectorUrl(target, false),
+        'https://chrome-devtools-frontend.appspot.com/serve_rev/@rev/inspector.html?ws=127.0.0.1:53123/devtools/page/PAGE_ID',
+      );
+    });
+
+    test('uses bundled Chrome devtools URL when local debugger is enabled', () {
+      final service = WebDebugService(AdbService(executable: 'adb'));
+      final target = WebpageTarget(
+        id: 'PAGE_ID',
+        title: 'Test',
+        url: 'https://example.com',
+        type: 'page',
+        packageName: 'com.example.app',
+        pid: '1234',
+        socketName: 'webview_devtools_remote_1234',
+        devtoolsFrontendUrl: '',
+        webSocketDebuggerUrl: '',
+        isAttached: false,
+        port: 53123,
+      );
+
+      expect(
+        service.buildInspectorUrl(target, true),
+        'devtools://devtools/bundled/inspector.html?ws=127.0.0.1:53123/devtools/page/PAGE_ID',
+      );
     });
   });
 }

@@ -171,10 +171,22 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       if (isDisposed) return;
       state = AsyncValue.data(initialPackages);
 
+      List<AdbPackage> refreshedPackages;
+      try {
+        refreshedPackages = await service.refreshPackages(
+          deviceId,
+          refreshIconsInBackground: false,
+        );
+      } catch (_) {
+        return;
+      }
+      if (isDisposed) return;
+      state = AsyncValue.data(refreshedPackages);
+
       await for (final updatedPackages
           in service.enrichPackagesWithIconsProgressive(
             deviceId,
-            initialPackages,
+            refreshedPackages,
           )) {
         if (isDisposed) return;
         state = AsyncValue.data(updatedPackages);

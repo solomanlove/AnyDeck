@@ -71,6 +71,7 @@ class WebDebugService {
           : '未知应用';
 
       try {
+        await _removeStaleForwards(deviceId, socketName);
         final port = await _getOrForwardPort(deviceId, socketName);
         final rawTargets = await _fetchTargets(port);
         for (final raw in rawTargets) {
@@ -112,6 +113,34 @@ class WebDebugService {
       return port;
     } else {
       throw Exception('Adb forward failed: ${result.message}');
+    }
+  }
+
+  /// 清理同一 socket 的历史端口转发，避免旧 App 实例或旧刷新残留影响连接。
+  Future<void> _removeStaleForwards(String deviceId, String socketName) async {
+    final result = await _adb.run(['-s', deviceId, 'forward', '--list']);
+    if (!result.isSuccess) {
+      return;
+    }
+
+    final knownPort = _forwardedPorts['$deviceId:$socketName'];
+    for (final line in result.stdout.split('\n')) {
+      final parts = line.trim().split(RegExp(r'\s+'));
+      if (parts.length < 3 || parts[0] != deviceId) {
+        continue;
+      }
+      final local = parts[1];
+      final remote = parts[2];
+      if (remote != 'localabstract:$socketName' || !local.startsWith('tcp:')) {
+        continue;
+      }
+      final port = int.tryParse(local.substring(4));
+      if (port == null || port == knownPort) {
+        continue;
+      }
+      try {
+        await _adb.run(['-s', deviceId, 'forward', '--remove', local]);
+      } catch (_) {}
     }
   }
 
@@ -206,56 +235,100 @@ class WebDebugService {
     WebpageTarget target,
     bool useLocalDebugger,
   ) async {
-    String url;
+    await openBrowser(buildInspectorUrl(target, useLocalDebugger));
+  }
+
+  /// 构造本机可连接的 DevTools 调试 URL。
+  String buildInspectorUrl(WebpageTarget target, bool useLocalDebugger) {
+    final wsEndpoint = _localWebSocketEndpoint(target);
     if (useLocalDebugger) {
       // 使用本地内置调试器 URL
-      url =
-          'devtools://devtools/bundled/inspector.html?ws=127.0.0.1:${target.port}/devtools/page/${target.id}';
-    } else {
-      if (target.devtoolsFrontendUrl.isNotEmpty) {
-        url = target.devtoolsFrontendUrl;
-        // 重写 WebSocket 端口和主机以匹配转发的本地端口
-        final wsPattern = RegExp(r'ws=([^&]+)');
-        final match = wsPattern.firstMatch(url);
-        if (match != null) {
-          final oldWs = match.group(1);
-          if (oldWs != null) {
-            url = url.replaceFirst(
-              oldWs,
-              '127.0.0.1:${target.port}/devtools/page/${target.id}',
-            );
-          }
-        }
-      } else {
-        // 缺省的在线 DevTools 调试前端
-        url =
-            'https://chrome-devtools-frontend.appspot.com/serve_rev/@d1ef8f1176b6ef009d73d6e53a32f6b3cf59a68e/inspector.html?ws=127.0.0.1:${target.port}/devtools/page/${target.id}';
-      }
+      return 'devtools://devtools/bundled/inspector.html?ws=$wsEndpoint';
     }
 
-    await openBrowser(url);
+    if (target.devtoolsFrontendUrl.isNotEmpty) {
+      // Android/WebView 常返回 /devtools/... 相对路径，必须补成本机转发端口。
+      return _replaceWebSocketEndpoint(
+        _normalizeFrontendUrl(target.devtoolsFrontendUrl, target.port),
+        wsEndpoint,
+      );
+    }
+
+    // 缺省的在线 DevTools 调试前端
+    return 'https://chrome-devtools-frontend.appspot.com/serve_rev/@d1ef8f1176b6ef009d73d6e53a32f6b3cf59a68e/inspector.html?ws=$wsEndpoint';
+  }
+
+  String _localWebSocketEndpoint(WebpageTarget target) {
+    final parsed = Uri.tryParse(target.webSocketDebuggerUrl);
+    final path = parsed != null && parsed.path.isNotEmpty
+        ? parsed.path
+        : '/devtools/page/${target.id}';
+    final query = parsed != null && parsed.hasQuery ? '?${parsed.query}' : '';
+    return '127.0.0.1:${target.port}$path$query';
+  }
+
+  String _normalizeFrontendUrl(String url, int port) {
+    if (url.startsWith('/')) {
+      return 'http://127.0.0.1:$port$url';
+    }
+    if (url.startsWith('devtools://')) {
+      return url;
+    }
+
+    final parsed = Uri.tryParse(url);
+    if (parsed != null && parsed.hasScheme) {
+      return url;
+    }
+    return 'http://127.0.0.1:$port/$url';
+  }
+
+  String _replaceWebSocketEndpoint(String url, String wsEndpoint) {
+    final wsPattern = RegExp(r'([?&]ws=)([^&]+)');
+    if (wsPattern.hasMatch(url)) {
+      return url.replaceFirstMapped(
+        wsPattern,
+        (match) => '${match.group(1)}$wsEndpoint',
+      );
+    }
+
+    final separator = url.contains('?') ? '&' : '?';
+    return '$url${separator}ws=$wsEndpoint';
   }
 
   /// 在本机的默认浏览器中打开指定链接。
   Future<void> openBrowser(String url) async {
+    late final ProcessResult result;
     if (Platform.isMacOS) {
       if (url.startsWith('devtools://')) {
-        await Process.run('open', ['-a', 'Google Chrome', url]);
+        result = await Process.run('open', ['-a', 'Google Chrome', url]);
       } else {
-        await Process.run('open', [url]);
+        result = await Process.run('open', [url]);
       }
     } else if (Platform.isWindows) {
       if (url.startsWith('devtools://')) {
-        await Process.run('cmd', ['/c', 'start', 'chrome', url]);
+        result = await Process.run('cmd', ['/c', 'start', 'chrome', url]);
       } else {
-        await Process.run('cmd', ['/c', 'start', '', url]);
+        result = await Process.run('cmd', ['/c', 'start', '', url]);
       }
     } else if (Platform.isLinux) {
       if (url.startsWith('devtools://')) {
-        await Process.run('google-chrome', [url]);
+        result = await Process.run('google-chrome', [url]);
       } else {
-        await Process.run('xdg-open', [url]);
+        result = await Process.run('xdg-open', [url]);
       }
+    } else {
+      throw UnsupportedError('当前平台不支持自动打开浏览器');
+    }
+
+    if (result.exitCode != 0) {
+      final stderr = result.stderr.toString().trim();
+      final stdout = result.stdout.toString().trim();
+      final message = stderr.isNotEmpty
+          ? stderr
+          : stdout.isNotEmpty
+          ? stdout
+          : 'exit code ${result.exitCode}';
+      throw Exception(message);
     }
   }
 }

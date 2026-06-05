@@ -36,18 +36,23 @@ class AppManagementService {
         return cached;
       }
     }
-    return refreshPackages(deviceId);
+    return _readFastPackagesFromDevice(deviceId);
   }
 
   /// 强制从手机读取已安装应用元数据，并写入本地缓存。
-  Future<List<AdbPackage>> refreshPackages(String deviceId) async {
+  Future<List<AdbPackage>> refreshPackages(
+    String deviceId, {
+    bool refreshIconsInBackground = true,
+  }) async {
     final cachedPackages = await _loadPackageCache(deviceId);
     final packages = _restoreCachedPresentationData(
       await _readPackagesFromDevice(deviceId),
       cachedPackages,
     );
     await _savePackageCache(deviceId, packages);
-    unawaited(_refreshPackageIconCache(deviceId, packages));
+    if (refreshIconsInBackground) {
+      unawaited(_refreshPackageIconCache(deviceId, packages));
+    }
     return packages;
   }
 
@@ -166,6 +171,73 @@ class AppManagementService {
         ),
       );
     return sortedPackages;
+  }
+
+  Future<List<AdbPackage>> _readFastPackagesFromDevice(String deviceId) async {
+    final results = await Future.wait<AdbResult>([
+      _adb.shellArgs(deviceId, [
+        'pm',
+        'list',
+        'packages',
+        '-f',
+        '-U',
+        '--user',
+        '0',
+      ], timeout: _quickTimeout),
+      _adb.shellArgs(deviceId, [
+        'pm',
+        'list',
+        'packages',
+        '-s',
+        '--user',
+        '0',
+      ], timeout: _quickTimeout),
+      _adb.shellArgs(deviceId, [
+        'pm',
+        'list',
+        'packages',
+        '-f',
+        '-U',
+        '-d',
+        '--user',
+        '0',
+      ], timeout: _quickTimeout),
+    ]);
+
+    final packageListResult = results[0];
+    if (!packageListResult.isSuccess) {
+      throw Exception(packageListResult.message);
+    }
+
+    final listedPackages = _mergeListedPackages(
+      _parsePackageList(packageListResult.stdout),
+      results[2].isSuccess
+          ? _parsePackageList(results[2].stdout)
+          : const <_ListedPackage>[],
+    );
+    final systemPackages = results[1].isSuccess
+        ? _parsePackageNames(results[1].stdout)
+        : <String>{};
+    final disabledPackages = results[2].isSuccess
+        ? _parsePackageList(
+            results[2].stdout,
+          ).map((package) => package.name).toSet()
+        : <String>{};
+
+    final packages = listedPackages
+        .map(
+          (listed) => AdbPackage(
+            name: listed.name,
+            apkPath: listed.apkPath,
+            enabled: !disabledPackages.contains(listed.name),
+            system:
+                systemPackages.contains(listed.name) ||
+                _looksLikeSystemPath(listed.apkPath),
+          ),
+        )
+        .toList(growable: false);
+
+    return packages..sort(_comparePackages);
   }
 
   List<AdbPackage> _restoreCachedPresentationData(
@@ -392,22 +464,6 @@ class AppManagementService {
     final file = File('${dir.path}/package_icon_helper.dex');
     await file.writeAsBytes(
       bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
-      flush: true,
-    );
-    return file;
-  }
-
-  Future<File> _writePackageListFile(
-    String deviceId,
-    List<AdbPackage> packages,
-  ) async {
-    final dir = Directory('${Directory.systemTemp.path}/adb_manage_packages');
-    if (!dir.existsSync()) {
-      dir.createSync(recursive: true);
-    }
-    final file = File('${dir.path}/${_safeFileSegment(deviceId)}.txt');
-    await file.writeAsString(
-      packages.map((package) => package.name).join('\n'),
       flush: true,
     );
     return file;

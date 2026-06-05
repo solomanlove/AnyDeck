@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// 网页调试使用的已连接设备 Web 目标元数据。
 class WebpageTarget {
   const WebpageTarget({
@@ -10,6 +12,7 @@ class WebpageTarget {
     required this.socketName,
     required this.devtoolsFrontendUrl,
     required this.webSocketDebuggerUrl,
+    required this.isAttached,
     required this.port,
   });
 
@@ -40,6 +43,9 @@ class WebpageTarget {
   /// WebSocket 调试端点 URL
   final String webSocketDebuggerUrl;
 
+  /// 当前网页是否已经被 DevTools 调试会话占用
+  final bool isAttached;
+
   /// 转发到的本地 TCP 端口
   final int port;
 
@@ -60,8 +66,21 @@ class WebpageTarget {
       socketName: socketName,
       devtoolsFrontendUrl: json['devtoolsFrontendUrl'] as String? ?? '',
       webSocketDebuggerUrl: json['webSocketDebuggerUrl'] as String? ?? '',
+      isAttached: _parseAttached(json['description']),
       port: port,
     );
+  }
+
+  static bool _parseAttached(Object? description) {
+    if (description is! String || description.isEmpty) {
+      return false;
+    }
+    try {
+      final decoded = jsonDecode(description);
+      return decoded is Map && decoded['attached'] == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -75,6 +94,7 @@ class WebpageTarget {
       'socketName': socketName,
       'devtoolsFrontendUrl': devtoolsFrontendUrl,
       'webSocketDebuggerUrl': webSocketDebuggerUrl,
+      'isAttached': isAttached,
       'port': port,
     };
   }
