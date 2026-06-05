@@ -80,6 +80,7 @@ part 'devices/dashboard_devices_actions.dart';
 part 'devices/dashboard_batch_actions.dart';
 part 'screenshot/dashboard_screenshot_tab.dart';
 part 'screenshot/dashboard_screenshot_recording.dart';
+part 'overview/dashboard_settings_tab.dart';
 
 class _EmulatorListExpandedNotifier extends Notifier<bool> {
   @override
@@ -213,18 +214,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       });
     }
 
+    final selectedTool = ref.watch(selectedToolTabProvider);
     final workspace = _WorkspacePanel(
       selectedDevice: effectiveSelectedDevice ?? lastActiveDevice,
       sessions: sessions,
     );
+
+    final int stackIndex;
+    if (selectedTool == 12) {
+      stackIndex = 2;
+    } else if (effectiveSelectedDevice == null) {
+      stackIndex = 0;
+    } else {
+      stackIndex = 1;
+    }
 
     return Scaffold(
       body: _WechatStyleShell(
         title: appBarTitle,
         selectedDevice: effectiveSelectedDevice,
         child: IndexedStack(
-          index: selectedDevice == null ? 0 : 1,
-          children: [const _DashboardHomeContent(), workspace],
+          index: stackIndex,
+          children: [
+            const _DashboardHomeContent(),
+            workspace,
+            const _SettingsTab(),
+          ],
         ),
       ),
     );

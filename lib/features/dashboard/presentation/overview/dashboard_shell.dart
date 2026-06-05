@@ -13,6 +13,7 @@ class _WechatStyleShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final selectedTool = ref.watch(selectedToolTabProvider);
     return Row(
       children: [
         _PrimaryRail(selectedDevice: selectedDevice),
@@ -21,7 +22,8 @@ class _WechatStyleShell extends ConsumerWidget {
             decoration: const BoxDecoration(color: Color(0xfffbfbfc)),
             child: Column(
               children: [
-                if (selectedDevice == null) _ContentTitleBar(title: title),
+                if (selectedDevice == null && selectedTool != 12)
+                  _ContentTitleBar(title: title),
                 Expanded(child: child),
               ],
             ),

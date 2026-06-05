@@ -24,7 +24,8 @@ class _PrimaryRail extends ConsumerWidget {
         ? (hasOverflow ? _compactLogoToolGap : _fullLogoToolGap)
         : 12.0;
 
-    final availableHeight = railHeight -
+    final availableHeight =
+        railHeight -
         _topSpacing -
         logoSize -
         logoToolGap -
@@ -48,7 +49,7 @@ class _PrimaryRail extends ConsumerWidget {
     final registeredDevices = ref.watch(deviceRegistryProvider);
     final hasOnlineDevice = registeredDevices.any((d) => d.isOnline);
     final canInteract = selectedDevice != null || hasOnlineDevice;
-    
+
     // 响应式判断：窗口宽度小于1000为窄屏，仅显示Icon；大于等于1000为宽屏，显示Icon+文字
     final bool isNarrow = MediaQuery.of(context).size.width < 1000;
     final double railWidth = isNarrow ? 76.0 : 180.0;
@@ -177,7 +178,10 @@ class _PrimaryRail extends ConsumerWidget {
                         GestureDetector(
                           onTap: () {
                             ref
-                                    .read(userClearedDeviceSelectionProvider.notifier)
+                                    .read(
+                                      userClearedDeviceSelectionProvider
+                                          .notifier,
+                                    )
                                     .state =
                                 true;
                             ref.read(selectedDeviceProvider.notifier).clear();
@@ -189,18 +193,24 @@ class _PrimaryRail extends ConsumerWidget {
                                     width: _logoSize,
                                     height: _logoSize,
                                     child: const Image(
-                                      image: AssetImage('assets/brand/app_logo.png'),
+                                      image: AssetImage(
+                                        'assets/brand/app_logo.png',
+                                      ),
                                     ),
                                   )
                                 : Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
                                     child: Row(
                                       children: [
                                         const SizedBox(
                                           width: 36,
                                           height: 36,
                                           child: Image(
-                                            image: AssetImage('assets/brand/app_logo.png'),
+                                            image: AssetImage(
+                                              'assets/brand/app_logo.png',
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 10),
@@ -224,7 +234,9 @@ class _PrimaryRail extends ConsumerWidget {
                         ),
                         SizedBox(
                           height: isNarrow
-                              ? (hasOverflowTools ? _compactLogoToolGap : _fullLogoToolGap)
+                              ? (hasOverflowTools
+                                    ? _compactLogoToolGap
+                                    : _fullLogoToolGap)
                               : 12.0,
                         ),
                       ],
@@ -256,10 +268,10 @@ class _PrimaryRail extends ConsumerWidget {
                   icon: CupertinoIcons.settings,
                   tooltip: context.l10n.t('settings'),
                   isNarrow: isNarrow,
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) => const _SettingsDialog(),
-                  ),
+                  selected: selectedTool == 12,
+                  onPressed: () {
+                    ref.read(selectedToolTabProvider.notifier).select(12);
+                  },
                 ),
                 const SizedBox(height: _bottomSpacing),
               ],
@@ -320,10 +332,7 @@ class _RailMoreButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               side: const BorderSide(color: Color(0xffeceef1), width: 1),
             ),
-            constraints: const BoxConstraints(
-              minWidth: 68,
-              maxWidth: 68,
-            ),
+            constraints: const BoxConstraints(minWidth: 68, maxWidth: 68),
             itemBuilder: (context) => [
               for (final tool in tools)
                 PopupMenuItem<int>(
@@ -370,10 +379,7 @@ class _RailMoreButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             side: const BorderSide(color: Color(0xffeceef1), width: 1),
           ),
-          constraints: const BoxConstraints(
-            minWidth: 160,
-            maxWidth: 200,
-          ),
+          constraints: const BoxConstraints(minWidth: 160, maxWidth: 200),
           itemBuilder: (context) => [
             for (final tool in tools)
               PopupMenuItem<int>(
@@ -422,10 +428,7 @@ class _RailMoreButton extends StatelessWidget {
                       context.l10n.t('moreTools'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: color,
-                      ),
+                      style: TextStyle(fontSize: 14, color: color),
                     ),
                   ),
                 ],
