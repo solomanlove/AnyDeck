@@ -301,7 +301,7 @@ class _PackageTableRow extends ConsumerWidget {
         _showAppDetailsDialog(context, ref, deviceId, package);
       },
       child: Container(
-        height: 72,
+        height: 42,
         color: selected ? Theme.of(context).colorScheme.primaryContainer : null,
         child: Row(
           children: [
@@ -359,10 +359,7 @@ class _PackageCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Align(alignment: Alignment.centerLeft, child: child),
-      ),
+      child: Align(alignment: Alignment.centerLeft, child: child),
     );
   }
 }

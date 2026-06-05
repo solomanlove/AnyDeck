@@ -22,25 +22,20 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           hasBoundedHeight: hasBoundedHeight,
         );
 
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (hasChecked) ...[
-                  _buildBatchActionsToolbar(context, items.where((d) => d.isChecked).toList()),
-                  const SizedBox(height: 16),
-                ],
-                _buildTableHeader(context, isCompact, allChecked, hasChecked),
-                const SizedBox(height: 8),
-                if (hasBoundedHeight)
-                  Expanded(child: contentWidget)
-                else
-                  contentWidget,
-              ],
-            ),
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (hasChecked) ...[
+              _buildBatchActionsToolbar(context, items.where((d) => d.isChecked).toList()),
+              const SizedBox(height: 16),
+            ],
+            _buildTableHeader(context, isCompact, allChecked, hasChecked),
+            const SizedBox(height: 8),
+            if (hasBoundedHeight)
+              Expanded(child: contentWidget)
+            else
+              contentWidget,
+          ],
         );
       },
     );

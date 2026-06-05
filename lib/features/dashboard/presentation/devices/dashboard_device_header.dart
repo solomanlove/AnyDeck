@@ -208,7 +208,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 const SizedBox(width: 16),
                 IconButton(
                   icon: const Icon(CupertinoIcons.macwindow),
-                  tooltip: '独立窗口投屏',
+                  tooltip: '投屏',
                   onPressed: device.isOnline
                       ? () => _openStandaloneMirror(context, ref, device)
                       : null,

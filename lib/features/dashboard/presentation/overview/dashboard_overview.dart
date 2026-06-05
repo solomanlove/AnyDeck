@@ -209,7 +209,6 @@ class _OverviewHeader extends StatelessWidget {
         return Row(
           children: [
             Expanded(child: title),
-            const SizedBox(width: 12),
             actions,
           ],
         );
@@ -278,52 +277,49 @@ class _OverviewItemData extends StatelessWidget {
           context.l10n.t('copiedToClipboard').replaceAll('{label}', label),
         );
       },
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final iconWidth = min(18.0, constraints.maxWidth);
-                final showLabel = constraints.maxWidth >= 56;
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final iconWidth = min(18.0, constraints.maxWidth);
+              final showLabel = constraints.maxWidth >= 56;
 
-                final color = Theme.of(context).colorScheme.onSurfaceVariant;
-                return Row(
-                  children: [
-                    SizedBox(
-                      width: iconWidth,
-                      height: 18,
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: Icon(icon, size: 18, color: color),
+              final color = Theme.of(context).colorScheme.onSurfaceVariant;
+              return Row(
+                children: [
+                  SizedBox(
+                    width: iconWidth,
+                    height: 18,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: Icon(icon, size: 18, color: color),
+                    ),
+                  ),
+                  if (showLabel) ...[
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleSmall?.copyWith(color: color),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (showLabel) ...[
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          label,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleSmall?.copyWith(color: color),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
                   ],
-                );
-              },
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleMedium,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
 

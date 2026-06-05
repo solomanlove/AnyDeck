@@ -166,10 +166,7 @@ class _DashboardHomeContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: const [_DeviceListPanel()],
-    );
+    return _DeviceListPanel();
   }
 }
 

@@ -534,7 +534,7 @@ const _localizedValues = {
     'screenPowerOnTip': '物理屏幕已开启',
   },
   'en': {
-    'appTitle': 'Phone Manager',
+    'appTitle': 'Manager',
     'settings': 'Settings',
     'settingsDesc': 'Manage application preferences and configurations',
     'generalSettings': 'General Settings',
