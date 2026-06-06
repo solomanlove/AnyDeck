@@ -406,30 +406,60 @@ class _FilesTab extends ConsumerWidget {
     String remotePath,
   ) async {
     final service = ref.read(fileManagerServiceProvider);
+    final appService = ref.read(appManagementServiceProvider);
+    final transferNotifier = ref.read(transferListProvider.notifier);
+
     for (final file in files) {
-      if (file.path.toLowerCase().endsWith('.apk')) {
-        final result = await ref
-            .read(appManagementServiceProvider)
-            .installApk(device.id, file.path);
+      final isApk = file.path.toLowerCase().endsWith('.apk');
+      final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+
+      transferNotifier.addTask(TransferTask(
+        id: taskId,
+        name: file.name,
+        deviceId: device.id,
+        isApk: isApk,
+      ));
+
+      try {
+        final result = isApk
+            ? await appService.installApk(device.id, file.path)
+            : await service.push(device.id, file.path, remotePath);
+
+        transferNotifier.updateTask(
+          id: taskId,
+          isDone: true,
+          isSuccess: result.isSuccess,
+          error: result.isSuccess ? null : result.message,
+        );
+
         if (!context.mounted) {
           return;
         }
+
+        final message = isApk
+            ? (result.isSuccess
+                ? context.l10n.t('apkInstallSuccess').replaceAll('{name}', file.name)
+                : context.l10n.t('apkInstallFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message))
+            : (result.isSuccess
+                ? context.l10n.t('fileUploadSuccess').replaceAll('{name}', file.name)
+                : context.l10n.t('fileUploadFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message));
+
         _showSnack(
           context,
-          '${file.name}: ${result.message}',
+          message,
           isError: !result.isSuccess,
         );
-        continue;
+      } catch (e) {
+        transferNotifier.updateTask(
+          id: taskId,
+          isDone: true,
+          isSuccess: false,
+          error: e.toString(),
+        );
+        if (context.mounted) {
+          _showSnack(context, '${file.name}: $e', isError: true);
+        }
       }
-      final result = await service.push(device.id, file.path, remotePath);
-      if (!context.mounted) {
-        return;
-      }
-      _showSnack(
-        context,
-        '${file.name}: ${result.message}',
-        isError: !result.isSuccess,
-      );
     }
     ref.invalidate(
       remoteFilesProvider(

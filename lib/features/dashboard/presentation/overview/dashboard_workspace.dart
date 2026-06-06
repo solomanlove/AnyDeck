@@ -31,9 +31,9 @@ class _WorkspacePanel extends ConsumerWidget {
           tabIndex: tabIndex,
         );
 
-        return DropTarget(
-          onDragDone: (details) =>
-              _handleDrop(context, ref, device, details.files),
+        return DragDropTargetOverlay(
+          onDragDone: (files) =>
+              _handleDrop(context, ref, device, files),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -62,20 +62,59 @@ class _WorkspacePanel extends ConsumerWidget {
     final appService = ref.read(appManagementServiceProvider);
     final fileService = ref.read(fileManagerServiceProvider);
     final remotePath = ref.read(remotePathProvider);
+    final transferNotifier = ref.read(transferListProvider.notifier);
 
     for (final file in files) {
       final isApk = file.path.toLowerCase().endsWith('.apk');
-      final result = isApk
-          ? await appService.installApk(device.id, file.path)
-          : await fileService.push(device.id, file.path, remotePath);
-      if (!context.mounted) {
-        return;
+      final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+
+      transferNotifier.addTask(TransferTask(
+        id: taskId,
+        name: file.name,
+        deviceId: device.id,
+        isApk: isApk,
+      ));
+
+      try {
+        final result = isApk
+            ? await appService.installApk(device.id, file.path)
+            : await fileService.push(device.id, file.path, remotePath);
+
+        transferNotifier.updateTask(
+          id: taskId,
+          isDone: true,
+          isSuccess: result.isSuccess,
+          error: result.isSuccess ? null : result.message,
+        );
+
+        if (!context.mounted) {
+          return;
+        }
+
+        final message = isApk
+            ? (result.isSuccess
+                ? context.l10n.t('apkInstallSuccess').replaceAll('{name}', file.name)
+                : context.l10n.t('apkInstallFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message))
+            : (result.isSuccess
+                ? context.l10n.t('fileUploadSuccess').replaceAll('{name}', file.name)
+                : context.l10n.t('fileUploadFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message));
+
+        _showSnack(
+          context,
+          message,
+          isError: !result.isSuccess,
+        );
+      } catch (e) {
+        transferNotifier.updateTask(
+          id: taskId,
+          isDone: true,
+          isSuccess: false,
+          error: e.toString(),
+        );
+        if (context.mounted) {
+          _showSnack(context, '${file.name}: $e', isError: true);
+        }
       }
-      _showSnack(
-        context,
-        '${file.name}: ${result.message}',
-        isError: !result.isSuccess,
-      );
     }
     ref.invalidate(packagesProvider(device.id));
     ref.invalidate(

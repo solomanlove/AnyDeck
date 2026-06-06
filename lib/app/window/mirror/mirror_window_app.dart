@@ -8,7 +8,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:scrcpy_flutter/scrcpy_flutter.dart';
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -17,6 +16,9 @@ import '../../theme/app_theme.dart';
 import '../../../features/dashboard/presentation/control/embedded_scrcpy_viewer.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/providers/transfer_provider.dart';
+import '../../../features/dashboard/presentation/widgets/drag_drop_target_overlay.dart';
+import '../../../features/dashboard/presentation/widgets/dashboard_snack.dart';
 import 'mirror_floating_toolbar.dart';
 import 'mirror_settings_dialog.dart';
 
@@ -172,13 +174,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       }
     }
     if (fullscreen && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('已进入全屏，按 ESC 或双击屏幕可退出全屏'),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      DashboardSnack.show(context, '已进入全屏，按 ESC 或双击屏幕可退出全屏');
     }
   }
 
@@ -377,36 +373,71 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     if (files.isEmpty) return;
 
     final appService = ref.read(appManagementServiceProvider);
+    final fileService = ref.read(fileManagerServiceProvider);
+    final transferNotifier = ref.read(transferListProvider.notifier);
 
     for (final file in files) {
       final isApk = file.path.toLowerCase().endsWith('.apk');
-      if (!isApk) continue;
+      final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+      
+      transferNotifier.addTask(TransferTask(
+        id: taskId,
+        name: file.name,
+        deviceId: widget.deviceId,
+        isApk: isApk,
+      ));
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('正在安装: ${file.name}...'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
+        DashboardSnack.show(
+          context,
+          isApk
+              ? context.l10n.t('installingApk')
+              : context.l10n.t('uploadingFile'),
         );
       }
 
-      final result = await appService.installApk(widget.deviceId, file.path);
+      try {
+        final result = isApk
+            ? await appService.installApk(widget.deviceId, file.path)
+            : await fileService.push(widget.deviceId, file.path, '/sdcard/Download/');
+        
+        transferNotifier.updateTask(
+          id: taskId,
+          isDone: true,
+          isSuccess: result.isSuccess,
+          error: result.isSuccess ? null : result.message,
+        );
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${file.name}: ${result.isSuccess ? "安装成功" : "安装失败: ${result.message}"}',
-          ),
-          backgroundColor: result.isSuccess
-              ? const Color(0xff09c47c)
-              : Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        final message = isApk
+            ? (result.isSuccess
+                ? context.l10n.t('apkInstallSuccess').replaceAll('{name}', file.name)
+                : context.l10n.t('apkInstallFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message))
+            : (result.isSuccess
+                ? context.l10n.t('fileUploadSuccess').replaceAll('{name}', file.name)
+                : context.l10n.t('fileUploadFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message));
+
+        DashboardSnack.show(
+          context,
+          message,
+          isError: !result.isSuccess,
+        );
+      } catch (e) {
+        transferNotifier.updateTask(
+          id: taskId,
+          isDone: true,
+          isSuccess: false,
+          error: e.toString(),
+        );
+        if (mounted) {
+          DashboardSnack.show(
+            context,
+            '${file.name}: $e',
+            isError: true,
+          );
+        }
+      }
     }
   }
 
@@ -587,8 +618,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       backgroundColor: isDark
           ? const Color(0xff121212)
           : const Color(0xfff8f9fa),
-      body: DropTarget(
-        onDragDone: (details) => _handleDrop(details.files),
+      body: DragDropTargetOverlay(
+        onDragDone: (files) => _handleDrop(files),
         child: KeyboardListener(
           focusNode: _keyboardFocusNode,
           onKeyEvent: (event) {
