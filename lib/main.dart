@@ -43,7 +43,10 @@ void main(List<String> args) async {
     return originalOnKeyData?.call(data) ?? false;
   };
 
+  //如果是多窗口
   if (args.firstOrNull == 'multi_window') {
+    //打印下日志
+    debugPrint('多窗口参数$args');
     final windowId = int.parse(args[1]);
     final Map<String, dynamic> argument;
     if (args[2].isEmpty) {

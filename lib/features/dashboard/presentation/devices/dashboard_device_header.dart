@@ -197,49 +197,49 @@ class _SelectedDeviceHeader extends ConsumerWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            if (constraints.maxWidth < 260) {
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    avatar,
-                    const SizedBox(width: 14),
-                    SizedBox(width: 160, child: title),
-                    const SizedBox(width: 16),
-                    IconButton(
-                      icon: const Icon(CupertinoIcons.macwindow),
-                      tooltip: '独立窗口投屏',
-                      onPressed: device.isOnline
-                          ? () => _openStandaloneMirror(context, ref, device)
-                          : null,
-                    ),
-                    // const SizedBox(width: 8),
-                    // IconButton(
-                    //   icon: const Icon(Icons.open_in_new),
-                    //   tooltip: '系统原生投屏(支持音频)',
-                    //   onPressed: device.isOnline
-                    //       ? () => _openExternalMirror(context, ref, device.id)
-                    //       : null,
-                    // ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.settings_remote),
-                      tooltip: context.l10n.t('remoteController'),
-                      onPressed: device.isOnline
-                          ? () => showDialog<void>(
-                              context: context,
-                              builder: (_) =>
-                                  _RemoteControllerDialog(device: device),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 8),
-                    closeButton,
-                  ],
-                ),
-              );
-            }
+            // if (constraints.maxWidth < 260) {
+            //   return SingleChildScrollView(
+            //     scrollDirection: Axis.horizontal,
+            //     child: Row(
+            //       mainAxisSize: MainAxisSize.min,
+            //       children: [
+            //         avatar,
+            //         const SizedBox(width: 14),
+            //         SizedBox(width: 160, child: title),
+            //         const SizedBox(width: 16),
+            //         IconButton(
+            //           icon: const Icon(Icons.cast),
+            //           tooltip: '独立窗口投屏',
+            //           onPressed: device.isOnline
+            //               ? () => _openStandaloneMirror(context, ref, device)
+            //               : null,
+            //         ),
+            //         // const SizedBox(width: 8),
+            //         // IconButton(
+            //         //   icon: const Icon(Icons.open_in_new),
+            //         //   tooltip: '系统原生投屏(支持音频)',
+            //         //   onPressed: device.isOnline
+            //         //       ? () => _openExternalMirror(context, ref, device.id)
+            //         //       : null,
+            //         // ),
+            //         const SizedBox(width: 8),
+            //         IconButton(
+            //           icon: const Icon(Icons.settings_remote),
+            //           tooltip: context.l10n.t('remoteController'),
+            //           onPressed: device.isOnline
+            //               ? () => showDialog<void>(
+            //                   context: context,
+            //                   builder: (_) =>
+            //                       _RemoteControllerDialog(device: device),
+            //                 )
+            //               : null,
+            //         ),
+            //         const SizedBox(width: 8),
+            //         closeButton,
+            //       ],
+            //     ),
+            //   );
+            // }
 
             return Row(
               children: [
@@ -248,7 +248,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 Expanded(child: title),
                 const SizedBox(width: 16),
                 IconButton(
-                  icon: const Icon(CupertinoIcons.macwindow),
+                  icon: const Icon(Icons.cast),
                   tooltip: '投屏',
                   onPressed: device.isOnline
                       ? () => _openStandaloneMirror(context, ref, device)
