@@ -12,7 +12,7 @@ class DashboardSnack {
     String message, {
     bool isError = false,
   }) {
-    final overlay = Overlay.maybeOf(context);
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) {
       return;
     }

@@ -77,6 +77,7 @@ void showMirrorSettingsDialog({
 
   showDialog<void>(
     context: context,
+    useRootNavigator: true,
     builder: (BuildContext context) {
       return StatefulBuilder(
         builder: (context, setDialogState) {

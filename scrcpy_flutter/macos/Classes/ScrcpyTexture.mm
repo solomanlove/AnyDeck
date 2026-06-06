@@ -26,6 +26,7 @@
 }
 
 - (void)updateFrame:(const uint8_t *)rgbaBuffer width:(int)width height:(int)height {
+    int64_t textureId = 0;
     @synchronized(self) {
         if (_textureId == 0) {
             return;
@@ -69,8 +70,14 @@
         }
         
         CVPixelBufferUnlockBaseAddress(_pixelBuffer, 0);
-        
-        [_textureRegistry textureFrameAvailable:_textureId];
+        textureId = _textureId;
+    }
+
+    if (textureId != 0) {
+        id<FlutterTextureRegistry> textureRegistry = _textureRegistry;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [textureRegistry textureFrameAvailable:textureId];
+        });
     }
 }
 
