@@ -8,6 +8,7 @@ import '../adb/adb_service.dart';
 import '../apps/adb_package.dart';
 import '../apps/app_management_service.dart';
 import '../apps/app_permission_service.dart';
+import '../cache/cache_cleanup_service.dart';
 import '../device_actions/device_action_service.dart';
 import '../device_info/device_info_service.dart';
 import '../device_info/device_overview.dart';
@@ -77,6 +78,11 @@ final processServiceProvider = Provider<ProcessService>((ref) {
 /// 宿主机系统平台服务，负责处理与宿主机 OS 交互的操作。
 final hostPlatformServiceProvider = Provider<HostPlatformService>((ref) {
   return HostPlatformService();
+});
+
+/// 本机缓存清理服务，只处理 AdbManage 自有缓存目录。
+final cacheCleanupServiceProvider = Provider<CacheCleanupService>((ref) {
+  return CacheCleanupService();
 });
 
 /// 单台设备的当前运行进程列表。

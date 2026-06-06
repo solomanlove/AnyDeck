@@ -88,6 +88,7 @@ part 'devices/dashboard_batch_actions.dart';
 part 'screenshot/dashboard_screenshot_tab.dart';
 part 'screenshot/dashboard_screenshot_recording.dart';
 part 'overview/dashboard_settings_tab.dart';
+part 'overview/dashboard_cache_settings.dart';
 
 class _EmulatorListExpandedNotifier extends Notifier<bool> {
   @override

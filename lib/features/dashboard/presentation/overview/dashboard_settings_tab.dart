@@ -176,6 +176,8 @@ class _SettingsTab extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const Divider(height: 24),
+                    _buildCacheSettingRow(context, ref, brandGreen),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -388,31 +390,56 @@ class _SettingsTab extends ConsumerWidget {
     required Widget child,
   }) {
     final theme = Theme.of(context);
-    return Row(
+    final textColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
+        Text(
+          label,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              textColumn,
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: child,
                 ),
               ),
             ],
-          ),
-        ),
-        const SizedBox(width: 16),
-        child,
-      ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: textColumn),
+            const SizedBox(width: 16),
+            Flexible(
+              flex: 0,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: child,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
