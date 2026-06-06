@@ -186,6 +186,9 @@ class _PrimaryRail extends ConsumerWidget {
                                     .state =
                                 true;
                             ref.read(selectedDeviceProvider.notifier).clear();
+                            ref
+                                .read(selectedToolTabProvider.notifier)
+                                .select(0);
                           },
                           child: MouseRegion(
                             cursor: SystemMouseCursors.click,
