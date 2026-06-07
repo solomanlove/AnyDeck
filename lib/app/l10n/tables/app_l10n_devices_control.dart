@@ -49,6 +49,9 @@ const devicesControlZh = {
   'pairFailed': '配对失败',
   'connecting': '正在连接...',
   'pairing': '正在配对...',
+  'qrImageCaptionPrefix': '若要配对',
+  'qrImageCaptionDevice': 'Android 11+ 设备',
+  'qrImageCaptionAction': '请从设备上扫描二维码',
   'qrInstruction': '请在手机的“开发者选项 -> 无线调试 -> 使用二维码配对设备”中扫描此二维码。',
   'codeInstruction': '请在手机的“开发者选项 -> 无线调试 -> 使用配对码配对设备”中查看配对信息。',
   'pairingPort': '配对端口',
@@ -174,6 +177,9 @@ const devicesControlEn = {
   'pairFailed': 'Pairing failed',
   'connecting': 'Connecting...',
   'pairing': 'Pairing...',
+  'qrImageCaptionPrefix': 'To pair an',
+  'qrImageCaptionDevice': 'Android 11+ device',
+  'qrImageCaptionAction': 'scan the QR code from your device',
   'qrInstruction':
       'Please scan this QR code in phone\'s "Developer options -> Wireless debugging -> Pair device with QR code".',
   'codeInstruction':

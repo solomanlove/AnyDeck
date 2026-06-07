@@ -175,17 +175,58 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
                                 ),
                               ],
                             ),
-                            child: QrImageView(
-                              data: 'WIFI:T:ADB;S:$_ssid;P:$_password;;',
-                              version: QrVersions.auto,
-                              size: 180,
-                              eyeStyle: const QrEyeStyle(
-                                eyeShape: QrEyeShape.square,
-                                color: Colors.black,
-                              ),
-                              dataModuleStyle: const QrDataModuleStyle(
-                                dataModuleShape: QrDataModuleShape.square,
-                                color: Colors.black,
+                            child: SizedBox(
+                              width: 260,
+                              child: Column(
+                                children: [
+                                  Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: context.l10n.t(
+                                            'qrImageCaptionPrefix',
+                                          ),
+                                        ),
+                                        const TextSpan(text: ' '),
+                                        TextSpan(
+                                          text: context.l10n.t(
+                                            'qrImageCaptionDevice',
+                                          ),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const TextSpan(text: '\n'),
+                                        TextSpan(
+                                          text: context.l10n.t(
+                                            'qrImageCaptionAction',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          color: const Color(0xff202124),
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.32,
+                                        ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  QrImageView(
+                                    data: 'WIFI:T:ADB;S:$_ssid;P:$_password;;',
+                                    version: QrVersions.auto,
+                                    size: 180,
+                                    eyeStyle: const QrEyeStyle(
+                                      eyeShape: QrEyeShape.square,
+                                      color: Colors.black,
+                                    ),
+                                    dataModuleStyle: const QrDataModuleStyle(
+                                      dataModuleShape: QrDataModuleShape.square,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
