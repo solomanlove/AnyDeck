@@ -41,4 +41,3 @@ class RemoteFile {
     return '${bytes.toStringAsFixed(i == 0 ? 0 : 1)} ${suffixes[i]}';
   }
 }
-

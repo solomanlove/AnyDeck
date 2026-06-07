@@ -251,7 +251,9 @@ class _ToolbarCheckbox extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: onChanged != null ? const Color(0xff5f6368) : Colors.grey[400],
+            color: onChanged != null
+                ? const Color(0xff5f6368)
+                : Colors.grey[400],
           ),
         ),
       ],

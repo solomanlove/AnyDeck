@@ -243,7 +243,10 @@ void main() {
     expect(_railIcon(CupertinoIcons.square_grid_2x2), findsOneWidget);
     expect(_railIcon(CupertinoIcons.folder), findsOneWidget);
     expect(_railIcon(CupertinoIcons.doc_text), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.chevron_left_slash_chevron_right), findsOneWidget);
+    expect(
+      _railIcon(CupertinoIcons.chevron_left_slash_chevron_right),
+      findsOneWidget,
+    );
     expect(_railIcon(CupertinoIcons.list_bullet), findsOneWidget);
     expect(_railIcon(CupertinoIcons.globe), findsOneWidget);
     expect(_railIcon(CupertinoIcons.ellipsis), findsNothing);
@@ -254,8 +257,14 @@ void main() {
   ) async {
     await _pumpDashboard(tester, size: const Size(700, 900));
 
-    expect(_railIcon(CupertinoIcons.device_phone_portrait, size: null), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.square_grid_2x2, size: null), findsOneWidget);
+    expect(
+      _railIcon(CupertinoIcons.device_phone_portrait, size: null),
+      findsOneWidget,
+    );
+    expect(
+      _railIcon(CupertinoIcons.square_grid_2x2, size: null),
+      findsOneWidget,
+    );
     expect(_settingsButton(size: null), findsOneWidget);
     expect(_railIcon(CupertinoIcons.ellipsis, size: 28.0), findsNothing);
   });
@@ -270,7 +279,10 @@ void main() {
     expect(_railIcon(CupertinoIcons.square_grid_2x2), findsOneWidget);
     expect(_railIcon(CupertinoIcons.folder), findsOneWidget);
     expect(_railIcon(CupertinoIcons.doc_text), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.chevron_left_slash_chevron_right), findsNothing);
+    expect(
+      _railIcon(CupertinoIcons.chevron_left_slash_chevron_right),
+      findsNothing,
+    );
     expect(_railIcon(CupertinoIcons.list_bullet), findsNothing);
     expect(_railIcon(CupertinoIcons.globe), findsNothing);
     expect(_railIcon(CupertinoIcons.ellipsis), findsOneWidget);
@@ -278,7 +290,10 @@ void main() {
     await tester.tap(_railIcon(CupertinoIcons.ellipsis));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right), findsWidgets);
+    expect(
+      find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right),
+      findsWidgets,
+    );
     expect(find.byIcon(CupertinoIcons.list_bullet), findsWidgets);
     expect(find.byIcon(CupertinoIcons.globe), findsWidgets);
   });
@@ -300,7 +315,10 @@ void main() {
 
     expect(find.byIcon(CupertinoIcons.folder), findsWidgets);
     expect(find.byIcon(CupertinoIcons.doc_text), findsWidgets);
-    expect(find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right), findsWidgets);
+    expect(
+      find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right),
+      findsWidgets,
+    );
     expect(find.byIcon(CupertinoIcons.list_bullet), findsWidgets);
     expect(find.byIcon(CupertinoIcons.globe), findsWidgets);
   });
@@ -321,7 +339,10 @@ void main() {
     await _pumpDashboard(tester, size: const Size(160, 800), selectedTool: 0);
 
     expect(tester.takeException(), isNull);
-    expect(_railIcon(CupertinoIcons.device_phone_portrait, size: null), findsOneWidget);
+    expect(
+      _railIcon(CupertinoIcons.device_phone_portrait, size: null),
+      findsOneWidget,
+    );
   });
 
   testWidgets('selected device status follows registry refresh', (
@@ -362,7 +383,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final container = ProviderScope.containerOf(tester.element(find.byType(DashboardScreen)));
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DashboardScreen)),
+    );
     expect(container.read(selectedDeviceProvider)?.status, 'device');
   });
 

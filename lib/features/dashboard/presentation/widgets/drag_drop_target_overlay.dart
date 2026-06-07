@@ -19,7 +19,8 @@ class DragDropTargetOverlay extends ConsumerStatefulWidget {
   final Function(List<XFile> files) onDragDone;
 
   @override
-  ConsumerState<DragDropTargetOverlay> createState() => _DragDropTargetOverlayState();
+  ConsumerState<DragDropTargetOverlay> createState() =>
+      _DragDropTargetOverlayState();
 }
 
 class _DragDropTargetOverlayState extends ConsumerState<DragDropTargetOverlay> {
@@ -68,8 +69,9 @@ class _DragDropTargetOverlayState extends ConsumerState<DragDropTargetOverlay> {
                           vertical: 36,
                         ),
                         decoration: BoxDecoration(
-                          color: (isDark ? const Color(0xff1e1e1e) : Colors.white)
-                              .withValues(alpha: 0.9),
+                          color:
+                              (isDark ? const Color(0xff1e1e1e) : Colors.white)
+                                  .withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
@@ -89,10 +91,9 @@ class _DragDropTargetOverlayState extends ConsumerState<DragDropTargetOverlay> {
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withValues(alpha: 0.1),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -104,9 +105,7 @@ class _DragDropTargetOverlayState extends ConsumerState<DragDropTargetOverlay> {
                             const SizedBox(height: 20),
                             Text(
                               context.l10n.t('dropToInstallOrUpload'),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 0.5,
@@ -154,8 +153,9 @@ class _TransferTasksPanel extends ConsumerWidget {
       child: Container(
         width: panelWidth,
         decoration: BoxDecoration(
-          color: (isDark ? const Color(0xff252629) : Colors.white)
-              .withValues(alpha: 0.95),
+          color: (isDark ? const Color(0xff252629) : Colors.white).withValues(
+            alpha: 0.95,
+          ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -196,7 +196,10 @@ class _TransferTasksPanel extends ConsumerWidget {
                 ),
                 if (activeCount > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
@@ -230,9 +233,7 @@ class _TransferTasksPanel extends ConsumerWidget {
                     statusWidget = const SizedBox(
                       width: 14,
                       height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     );
                     statusText = task.isApk
                         ? context.l10n.t('installingApk')
@@ -261,7 +262,9 @@ class _TransferTasksPanel extends ConsumerWidget {
                   return Row(
                     children: [
                       Icon(
-                        task.isApk ? CupertinoIcons.app_badge : CupertinoIcons.doc,
+                        task.isApk
+                            ? CupertinoIcons.app_badge
+                            : CupertinoIcons.doc,
                         size: 20,
                         color: theme.colorScheme.primary,
                       ),

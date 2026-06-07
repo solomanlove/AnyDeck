@@ -123,6 +123,23 @@ const devicesControlZh = {
   'rebootSideloadTooltip': '重启并直接进入 Sideload 刷机接收模式（需要设备支持该快捷指令）',
   'rebootSideloadAutoRebootTooltip':
       '重启进入 Sideload 模式。在刷写包（sideload）完成后设备会自动重启返回系统',
+  'wifiPasswordTitle': '已保存的 Wi-Fi 密码',
+  'wifiPasswordSsid': '无线名称 (SSID)',
+  'wifiPasswordKey': '密码',
+  'wifiPasswordSecurity': '安全性',
+  'wifiPasswordNoRoot': '获取 Wi-Fi 密码需要 Root 权限',
+  'wifiPasswordNoRootDetail':
+      '请在手机的开发者选项中启用 Root 模式，或执行 adb root 让 adb 服务以 root 身份运行，然后再重试。',
+  'wifiPasswordEmpty': '没有找到已保存的 Wi-Fi 记录',
+  'wifiPasswordSearchHint': '搜索 SSID...',
+  'wifiPasswordCopySuccess': '密码已复制到剪贴板',
+  'wifiPasswordCopySsidSuccess': 'SSID 已复制到剪贴板',
+  'wifiPasswordAction': '查看已保存的 WiFi 密码',
+  'showPassword': '显示密码',
+  'hidePassword': '隐藏密码',
+  'checkingRoot': '正在检查 Root 权限...',
+  'loadingWifiPasswords': '正在加载 WiFi 密码...',
+  'wifiPasswordTips': '仅展示曾连接成功过的 Wi-Fi 记录。由于系统限制，非 Root 设备无法读取密码。',
 };
 
 const devicesControlEn = {
@@ -256,4 +273,22 @@ const devicesControlEn = {
       'Reboot and enter Sideload mode directly to receive zip packages via adb sideload',
   'rebootSideloadAutoRebootTooltip':
       'Reboot and enter Sideload mode. The device will auto-reboot to system once sideloading completes',
+  'wifiPasswordTitle': 'Saved Wi-Fi Passwords',
+  'wifiPasswordSsid': 'SSID',
+  'wifiPasswordKey': 'Password',
+  'wifiPasswordSecurity': 'Security',
+  'wifiPasswordNoRoot': 'Viewing Wi-Fi passwords requires root access',
+  'wifiPasswordNoRootDetail':
+      'Please enable Root mode in Developer options, or run "adb root" to grant root privilege to adb daemon, then try again.',
+  'wifiPasswordEmpty': 'No saved Wi-Fi configurations found',
+  'wifiPasswordSearchHint': 'Search SSID...',
+  'wifiPasswordCopySuccess': 'Password copied to clipboard',
+  'wifiPasswordCopySsidSuccess': 'SSID copied to clipboard',
+  'wifiPasswordAction': 'View Saved WiFi Passwords',
+  'showPassword': 'Show Password',
+  'hidePassword': 'Hide Password',
+  'checkingRoot': 'Checking root status...',
+  'loadingWifiPasswords': 'Loading WiFi passwords...',
+  'wifiPasswordTips':
+      'Only displays previously connected Wi-Fi records. Due to system limits, non-Root devices cannot read passwords.',
 };

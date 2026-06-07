@@ -11,8 +11,10 @@ class PortForward {
   final String devicePort;
   final String localPort;
 
-  String get displayDevicePort => devicePort.startsWith('tcp:') ? devicePort.substring(4) : devicePort;
-  String get displayLocalPort => localPort.startsWith('tcp:') ? localPort.substring(4) : localPort;
+  String get displayDevicePort =>
+      devicePort.startsWith('tcp:') ? devicePort.substring(4) : devicePort;
+  String get displayLocalPort =>
+      localPort.startsWith('tcp:') ? localPort.substring(4) : localPort;
 
   @override
   bool operator ==(Object other) {
@@ -40,11 +42,11 @@ class PortForwardPreset {
   final bool autoApply;
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'devicePort': devicePort,
-        'localPort': localPort,
-        'autoApply': autoApply,
-      };
+    'name': name,
+    'devicePort': devicePort,
+    'localPort': localPort,
+    'autoApply': autoApply,
+  };
 
   factory PortForwardPreset.fromJson(Map<String, dynamic> json) =>
       PortForwardPreset(
@@ -89,13 +91,13 @@ List<PortForward> parseReverseList(String stdout) {
 /// 实时获取设备的端口转发列表的 Provider
 final activePortForwardsProvider = FutureProvider.autoDispose
     .family<List<PortForward>, String>((ref, deviceId) async {
-  final adb = ref.watch(adbServiceProvider);
-  final result = await adb.run(['-s', deviceId, 'reverse', '--list']);
-  if (!result.isSuccess) {
-    return [];
-  }
-  return parseReverseList(result.stdout);
-});
+      final adb = ref.watch(adbServiceProvider);
+      final result = await adb.run(['-s', deviceId, 'reverse', '--list']);
+      if (!result.isSuccess) {
+        return [];
+      }
+      return parseReverseList(result.stdout);
+    });
 
 /// 预设列表状态管理 Notifier
 class PortForwardPresetsNotifier extends Notifier<List<PortForwardPreset>> {
@@ -128,7 +130,8 @@ class PortForwardPresetsNotifier extends Notifier<List<PortForwardPreset>> {
     updated.removeWhere(
       (p) =>
           p.name == preset.name ||
-          (p.devicePort == preset.devicePort && p.localPort == preset.localPort),
+          (p.devicePort == preset.devicePort &&
+              p.localPort == preset.localPort),
     );
     updated.add(preset);
     state = updated;
@@ -169,8 +172,8 @@ class PortForwardPresetsNotifier extends Notifier<List<PortForwardPreset>> {
 /// 预设列表的 Provider
 final portForwardPresetsProvider =
     NotifierProvider<PortForwardPresetsNotifier, List<PortForwardPreset>>(
-  PortForwardPresetsNotifier.new,
-);
+      PortForwardPresetsNotifier.new,
+    );
 
 /// 监听设备选中以自动应用端口转发的 Provider
 final portForwardAutoApplyProvider = Provider.autoDispose<void>((ref) {

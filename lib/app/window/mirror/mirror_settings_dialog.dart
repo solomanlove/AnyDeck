@@ -26,9 +26,7 @@ Future<void> launchExternalMirror({
   );
 
   // 2. 停止内嵌投屏
-  await ref
-      .read(activeEmbeddedMirrorProvider(deviceId).notifier)
-      .forceStop();
+  await ref.read(activeEmbeddedMirrorProvider(deviceId).notifier).forceStop();
 
   // 3. 启动外部投屏
   try {

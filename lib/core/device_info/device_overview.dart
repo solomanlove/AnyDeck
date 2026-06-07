@@ -124,7 +124,8 @@ class DeviceOverview {
       mobileDataEnabled: json['mobileDataEnabled'] as bool? ?? false,
       talkbackEnabled: json['talkbackEnabled'] as bool? ?? false,
       windowAnimationScale: json['windowAnimationScale'] as String? ?? '1.0',
-      transitionAnimationScale: json['transitionAnimationScale'] as String? ?? '1.0',
+      transitionAnimationScale:
+          json['transitionAnimationScale'] as String? ?? '1.0',
       animatorDurationScale: json['animatorDurationScale'] as String? ?? '1.0',
       rawResolution: json['rawResolution'] as String? ?? '-',
       hwuiProfile: json['hwuiProfile'] as String? ?? 'false',
@@ -190,12 +191,15 @@ class DeviceOverview {
       mobileDataEnabled: mobileDataEnabled ?? this.mobileDataEnabled,
       talkbackEnabled: talkbackEnabled ?? this.talkbackEnabled,
       windowAnimationScale: windowAnimationScale ?? this.windowAnimationScale,
-      transitionAnimationScale: transitionAnimationScale ?? this.transitionAnimationScale,
-      animatorDurationScale: animatorDurationScale ?? this.animatorDurationScale,
+      transitionAnimationScale:
+          transitionAnimationScale ?? this.transitionAnimationScale,
+      animatorDurationScale:
+          animatorDurationScale ?? this.animatorDurationScale,
       rawResolution: rawResolution ?? this.rawResolution,
       hwuiProfile: hwuiProfile ?? this.hwuiProfile,
       showTouchesEnabled: showTouchesEnabled ?? this.showTouchesEnabled,
-      pointerLocationEnabled: pointerLocationEnabled ?? this.pointerLocationEnabled,
+      pointerLocationEnabled:
+          pointerLocationEnabled ?? this.pointerLocationEnabled,
       demoModeEnabled: demoModeEnabled ?? this.demoModeEnabled,
     );
   }

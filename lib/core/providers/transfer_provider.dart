@@ -20,11 +20,7 @@ class TransferTask {
     this.isSuccess = false,
   });
 
-  TransferTask copyWith({
-    String? error,
-    bool? isDone,
-    bool? isSuccess,
-  }) {
+  TransferTask copyWith({String? error, bool? isDone, bool? isSuccess}) {
     return TransferTask(
       id: id,
       name: name,

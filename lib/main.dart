@@ -64,7 +64,9 @@ void main(List<String> args) async {
     }
 
     final type = argument['type'] as String?;
-    final windowName = type == 'mirror' ? 'mirror_window_$windowId' : 'emulator_window_$windowId';
+    final windowName = type == 'mirror'
+        ? 'mirror_window_$windowId'
+        : 'emulator_window_$windowId';
     PlatformDispatcher.instance.setIsolateDebugName(windowName);
 
     // 获取当前子窗口 of VM Service URI 和 Isolate ID 并输出，用于在 DevTools 中连接调试
@@ -75,15 +77,25 @@ void main(List<String> args) async {
         if (isolateId != null) {
           final encodedUri = Uri.encodeComponent(uri.toString());
           final encodedIsolateId = Uri.encodeComponent(isolateId);
-          debugPrint('\n======================================================');
+          debugPrint(
+            '\n======================================================',
+          );
           debugPrint('[$windowName] Sub-window Isolate Info:');
           debugPrint('Isolate Name: $windowName');
           debugPrint('Isolate ID: $isolateId');
           debugPrint('VM Service URI: $uri');
-          debugPrint('\nConstructed DevTools Link (assuming default port 9100):');
-          debugPrint('http://127.0.0.1:9100/#/inspector?uri=$encodedUri&isolateId=$encodedIsolateId');
-          debugPrint('\n*(Note: If your DevTools port is not 9100, replace "127.0.0.1:9100" in the link above with the actual DevTools port from your browser)*');
-          debugPrint('======================================================\n');
+          debugPrint(
+            '\nConstructed DevTools Link (assuming default port 9100):',
+          );
+          debugPrint(
+            'http://127.0.0.1:9100/#/inspector?uri=$encodedUri&isolateId=$encodedIsolateId',
+          );
+          debugPrint(
+            '\n*(Note: If your DevTools port is not 9100, replace "127.0.0.1:9100" in the link above with the actual DevTools port from your browser)*',
+          );
+          debugPrint(
+            '======================================================\n',
+          );
         }
       }
     });

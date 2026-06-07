@@ -379,13 +379,15 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     for (final file in files) {
       final isApk = file.path.toLowerCase().endsWith('.apk');
       final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-      
-      transferNotifier.addTask(TransferTask(
-        id: taskId,
-        name: file.name,
-        deviceId: widget.deviceId,
-        isApk: isApk,
-      ));
+
+      transferNotifier.addTask(
+        TransferTask(
+          id: taskId,
+          name: file.name,
+          deviceId: widget.deviceId,
+          isApk: isApk,
+        ),
+      );
 
       if (mounted) {
         DashboardSnack.show(
@@ -399,8 +401,12 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       try {
         final result = isApk
             ? await appService.installApk(widget.deviceId, file.path)
-            : await fileService.push(widget.deviceId, file.path, '/sdcard/Download/');
-        
+            : await fileService.push(
+                widget.deviceId,
+                file.path,
+                '/sdcard/Download/',
+              );
+
         transferNotifier.updateTask(
           id: taskId,
           isDone: true,
@@ -412,17 +418,23 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
         final message = isApk
             ? (result.isSuccess
-                ? context.l10n.t('apkInstallSuccess').replaceAll('{name}', file.name)
-                : context.l10n.t('apkInstallFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message))
+                  ? context.l10n
+                        .t('apkInstallSuccess')
+                        .replaceAll('{name}', file.name)
+                  : context.l10n
+                        .t('apkInstallFailed')
+                        .replaceAll('{name}', file.name)
+                        .replaceAll('{error}', result.message))
             : (result.isSuccess
-                ? context.l10n.t('fileUploadSuccess').replaceAll('{name}', file.name)
-                : context.l10n.t('fileUploadFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message));
+                  ? context.l10n
+                        .t('fileUploadSuccess')
+                        .replaceAll('{name}', file.name)
+                  : context.l10n
+                        .t('fileUploadFailed')
+                        .replaceAll('{name}', file.name)
+                        .replaceAll('{error}', result.message));
 
-        DashboardSnack.show(
-          context,
-          message,
-          isError: !result.isSuccess,
-        );
+        DashboardSnack.show(context, message, isError: !result.isSuccess);
       } catch (e) {
         transferNotifier.updateTask(
           id: taskId,
@@ -431,11 +443,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           error: e.toString(),
         );
         if (mounted) {
-          DashboardSnack.show(
-            context,
-            '${file.name}: $e',
-            isError: true,
-          );
+          DashboardSnack.show(context, '${file.name}: $e', isError: true);
         }
       }
     }

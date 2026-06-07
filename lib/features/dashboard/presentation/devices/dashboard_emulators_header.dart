@@ -20,28 +20,40 @@ class _EmulatorPanelHeader extends StatelessWidget {
 
   /// 面板是否已展开
   final bool isExpanded;
+
   /// 是否为紧凑布局（屏幕宽度较小时使用）
   final bool isCompact;
+
   /// 过滤输入框的控制器
   final TextEditingController filterController;
+
   /// 当前过滤文本内容
   final String filter;
+
   /// 切换展开/折叠状态的回调
   final VoidCallback onToggleExpanded;
+
   /// 过滤文本变化时的回调
   final ValueChanged<String> onFilterChanged;
+
   /// 清除过滤文本的回调
   final VoidCallback onClearFilter;
+
   /// 启动模拟器的回调
   final VoidCallback? onStart;
+
   /// 清除模拟器数据的回调
   final VoidCallback? onClearData;
+
   /// 删除模拟器的回调
   final VoidCallback? onDelete;
+
   /// 打开 AVD 目录的回调
   final VoidCallback? onOpenFolder;
+
   /// 刷新模拟器列表的回调
   final VoidCallback onRefresh;
+
   /// 独立窗口显示的回调
   final VoidCallback? onPopOut;
 
@@ -143,10 +155,13 @@ class _EmulatorFilterField extends StatelessWidget {
 
   /// 输入框控制器
   final TextEditingController controller;
+
   /// 当前过滤文本内容
   final String filter;
+
   /// 文本变化时的回调
   final ValueChanged<String> onChanged;
+
   /// 清除文本的回调
   final VoidCallback onClear;
 
@@ -185,14 +200,19 @@ class _EmulatorToolbar extends StatelessWidget {
 
   /// 启动模拟器
   final VoidCallback? onStart;
+
   /// 清除数据
   final VoidCallback? onClearData;
+
   /// 删除模拟器
   final VoidCallback? onDelete;
+
   /// 打开 AVD 文件夹
   final VoidCallback? onOpenFolder;
+
   /// 刷新列表
   final VoidCallback onRefresh;
+
   /// 弹出独立窗口
   final VoidCallback? onPopOut;
 

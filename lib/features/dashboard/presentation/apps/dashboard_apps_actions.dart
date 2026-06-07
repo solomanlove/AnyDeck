@@ -53,11 +53,10 @@ class _PackageActions extends ConsumerWidget {
               final permissionService = ref.read(appPermissionServiceProvider);
               _showSnack(context, context.l10n.t('revokingAll'));
 
-              final count =
-                  await permissionService.revokeAllRuntimePermissions(
-                    deviceId,
-                    packageName,
-                  );
+              final count = await permissionService.revokeAllRuntimePermissions(
+                deviceId,
+                packageName,
+              );
 
               if (!context.mounted) return;
 

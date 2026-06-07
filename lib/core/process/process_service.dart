@@ -90,8 +90,7 @@ class ProcessService {
     final cpuIdx = headers.indexWhere((t) => t.contains('CPU'));
     final timeIdx = headers.indexWhere((t) => t.contains('TIME'));
     final argsIdx = headers.indexWhere(
-      (t) =>
-          t == 'ARGS' || t == 'NAME' || t == 'CMD' || t == 'COMMAND',
+      (t) => t == 'ARGS' || t == 'NAME' || t == 'CMD' || t == 'COMMAND',
     );
 
     if (pidIdx == -1 ||

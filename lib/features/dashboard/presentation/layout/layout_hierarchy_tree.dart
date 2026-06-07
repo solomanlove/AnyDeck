@@ -339,7 +339,9 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
                         widget.onNodeExpansionChanged(widget.node, !isExpanded);
                       },
                       child: Icon(
-                        isExpanded ? CupertinoIcons.chevron_down : CupertinoIcons.chevron_right,
+                        isExpanded
+                            ? CupertinoIcons.chevron_down
+                            : CupertinoIcons.chevron_right,
                         size: 16,
                         color: Colors.grey[700],
                       ),

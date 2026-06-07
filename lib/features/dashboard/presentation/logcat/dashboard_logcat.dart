@@ -55,7 +55,9 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
       });
       if (query.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          final entries = ref.read(logcatControllerProvider.notifier).visibleEntries();
+          final entries = ref
+              .read(logcatControllerProvider.notifier)
+              .visibleEntries();
           final queryLower = query.toLowerCase();
           final matches = <int>[];
           for (var i = 0; i < entries.length; i++) {
@@ -135,7 +137,8 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
 
     final targetOffset = entryIndex * estimatedHeight;
     final viewportHeight = _verticalController.position.viewportDimension;
-    final alignedOffset = targetOffset - (viewportHeight / 2) + (estimatedHeight / 2);
+    final alignedOffset =
+        targetOffset - (viewportHeight / 2) + (estimatedHeight / 2);
     final clampedOffset = alignedOffset.clamp(
       0.0,
       _verticalController.position.maxScrollExtent,
@@ -179,7 +182,8 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
       activeMatchIndex = 0;
     }
 
-    final activeEntryIndex = (activeMatchIndex >= 0 && activeMatchIndex < matchIndices.length)
+    final activeEntryIndex =
+        (activeMatchIndex >= 0 && activeMatchIndex < matchIndices.length)
         ? matchIndices[activeMatchIndex]
         : -1;
 
@@ -287,7 +291,8 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
                                     entries: entries,
                                     controller: _verticalController,
                                     wrapLines: state.wrapLines,
-                                    textForEntry: (entry) => entry.message.isEmpty
+                                    textForEntry: (entry) =>
+                                        entry.message.isEmpty
                                         ? entry.rawLine
                                         : entry.message,
                                     searchQuery: query,

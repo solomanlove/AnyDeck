@@ -48,6 +48,8 @@ class _ControlTabState extends ConsumerState<_ControlTab> {
         const SizedBox(height: 16),
         _SystemSettingsPanel(device: widget.device),
         const SizedBox(height: 16),
+        _WifiPasswordsPanel(device: widget.device),
+        const SizedBox(height: 16),
         _PowerPanel(device: widget.device),
       ],
     );
@@ -481,6 +483,53 @@ class _DeeplinkPanel extends ConsumerWidget {
       ref
           .read(deviceActionServiceProvider)
           .openCustomDeeplink(deviceId, url.trim()),
+    );
+  }
+}
+
+class _WifiPasswordsPanel extends ConsumerWidget {
+  const _WifiPasswordsPanel({required this.device});
+
+  final AdbDevice device;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isRootAsync = ref.watch(isDeviceRootProvider(device.id));
+    final isRoot = isRootAsync.value ?? false;
+
+    return _ActionCard(
+      title: context.l10n.t('wifiPasswordTitle'),
+      children: [
+        _ActionButton(
+          icon: CupertinoIcons.wifi,
+          label: context.l10n.t('wifiPasswordAction'),
+          onPressed: () {
+            showDialog<void>(
+              context: context,
+              builder: (context) => _WifiPasswordsDialog(deviceId: device.id),
+            );
+          },
+        ),
+        if (!isRoot && !isRootAsync.isLoading)
+          Padding(
+            padding: const EdgeInsets.only(left: 8, top: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  CupertinoIcons.info_circle,
+                  size: 16,
+                  color: Colors.orange,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  context.l10n.t('wifiPasswordNoRoot'),
+                  style: const TextStyle(color: Colors.orange, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

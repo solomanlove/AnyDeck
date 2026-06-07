@@ -413,12 +413,14 @@ class _FilesTab extends ConsumerWidget {
       final isApk = file.path.toLowerCase().endsWith('.apk');
       final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
 
-      transferNotifier.addTask(TransferTask(
-        id: taskId,
-        name: file.name,
-        deviceId: device.id,
-        isApk: isApk,
-      ));
+      transferNotifier.addTask(
+        TransferTask(
+          id: taskId,
+          name: file.name,
+          deviceId: device.id,
+          isApk: isApk,
+        ),
+      );
 
       try {
         final result = isApk
@@ -438,17 +440,23 @@ class _FilesTab extends ConsumerWidget {
 
         final message = isApk
             ? (result.isSuccess
-                ? context.l10n.t('apkInstallSuccess').replaceAll('{name}', file.name)
-                : context.l10n.t('apkInstallFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message))
+                  ? context.l10n
+                        .t('apkInstallSuccess')
+                        .replaceAll('{name}', file.name)
+                  : context.l10n
+                        .t('apkInstallFailed')
+                        .replaceAll('{name}', file.name)
+                        .replaceAll('{error}', result.message))
             : (result.isSuccess
-                ? context.l10n.t('fileUploadSuccess').replaceAll('{name}', file.name)
-                : context.l10n.t('fileUploadFailed').replaceAll('{name}', file.name).replaceAll('{error}', result.message));
+                  ? context.l10n
+                        .t('fileUploadSuccess')
+                        .replaceAll('{name}', file.name)
+                  : context.l10n
+                        .t('fileUploadFailed')
+                        .replaceAll('{name}', file.name)
+                        .replaceAll('{error}', result.message));
 
-        _showSnack(
-          context,
-          message,
-          isError: !result.isSuccess,
-        );
+        _showSnack(context, message, isError: !result.isSuccess);
       } catch (e) {
         transferNotifier.updateTask(
           id: taskId,

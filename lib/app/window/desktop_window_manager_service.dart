@@ -39,9 +39,11 @@ class DesktopWindowManagerService {
     // 2. 初始化 tray_manager (系统托盘)
     try {
       await trayManager.setIcon(
-        Platform.isWindows ? 'assets/brand/app_logo.png' : 'assets/brand/app_logo.png',
+        Platform.isWindows
+            ? 'assets/brand/app_logo.png'
+            : 'assets/brand/app_logo.png',
       );
-      
+
       final menuItems = [
         MenuItem(key: 'show_window', label: '显示窗口'),
         MenuItem.separator(),
@@ -90,5 +92,4 @@ class _AppTrayListener extends TrayListener {
   }
 }
 
-class _AppWindowListener extends WindowListener {
-}
+class _AppWindowListener extends WindowListener {}

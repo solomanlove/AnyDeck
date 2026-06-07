@@ -42,7 +42,8 @@ class FakeAdbService extends AdbService {
     Duration timeout = const Duration(seconds: 15),
   }) async {
     final command = args.join(' ');
-    if (command == 'getprop ro.serialno' || command == 'getprop ro.boot.serialno') {
+    if (command == 'getprop ro.serialno' ||
+        command == 'getprop ro.boot.serialno') {
       return AdbResult(exitCode: 0, stdout: deviceId, stderr: '');
     }
     return const AdbResult(exitCode: 0, stdout: '', stderr: '');
@@ -64,7 +65,7 @@ class FakeAdbService extends AdbService {
       0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05,
       0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00,
       0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42,
-      0x60, 0x82
+      0x60, 0x82,
     ]);
   }
 }
