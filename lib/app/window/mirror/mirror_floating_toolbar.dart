@@ -20,7 +20,7 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   });
 
   final String deviceId;
-  final int windowId;
+  final String windowId;
 
   @override
   ConsumerState<MirrorFloatingToolbar> createState() =>

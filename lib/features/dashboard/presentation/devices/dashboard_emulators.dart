@@ -13,14 +13,11 @@ class EmulatorListPanel extends ConsumerStatefulWidget {
     final title = context.l10n.t('emulators');
     try {
       // 创建一个新的类型为 'emulator_manager' 的子窗口
-      final window = await DesktopMultiWindow.createWindow(
-        jsonEncode({'type': 'emulator_manager'}),
+      await createAdbManageWindow(
+        arguments: {'type': 'emulator_manager'},
+        frame: const Offset(100, 100) & const Size(900, 600),
+        title: title,
       );
-      // 设置窗口默认大小和位置
-      await window.setFrame(const Offset(100, 100) & const Size(900, 600));
-      await window.center();
-      await window.setTitle(title);
-      await window.show();
     } catch (e) {
       debugPrint('Failed to open multi-window: $e');
     }

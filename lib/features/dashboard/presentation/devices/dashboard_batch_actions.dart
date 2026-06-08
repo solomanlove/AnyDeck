@@ -173,17 +173,15 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
           orElse: () => null,
         );
         final initialSize = _resolveMirrorInitialWindowSize(resolution);
-        final window = await DesktopMultiWindow.createWindow(
-          jsonEncode({
+        await createAdbManageWindow(
+          arguments: {
             'type': 'mirror',
             'deviceId': device.id,
             'deviceName': device.displayName,
-          }),
+          },
+          frame: Offset.zero & initialSize,
+          title: '投屏 - ${device.displayName}',
         );
-        await window.setFrame(Offset.zero & initialSize);
-        await window.center();
-        await window.setTitle('投屏 - ${device.displayName}');
-        await window.show();
         started++;
       } catch (e) {
         debugPrint('Mirror failed for ${device.id}: $e');

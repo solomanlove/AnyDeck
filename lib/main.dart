@@ -10,6 +10,7 @@ import 'app/adb_manage_app.dart';
 import 'app/window/desktop_window_manager_service.dart';
 import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
+import 'app/window/multi_window_compat.dart';
 
 import 'app/settings/app_settings_controller.dart';
 
@@ -47,7 +48,7 @@ void main(List<String> args) async {
   if (args.firstOrNull == 'multi_window') {
     //打印下日志
     debugPrint('多窗口参数$args');
-    final windowId = int.parse(args[1]);
+    final windowId = args[1];
     final Map<String, dynamic> argument;
     if (args[2].isEmpty) {
       argument = const <String, dynamic>{};
@@ -101,6 +102,7 @@ void main(List<String> args) async {
     });
 
     if (type == 'mirror') {
+      await configureCurrentAdbManageSubWindow(argument);
       //投屏窗口
       runApp(
         ProviderScope(
@@ -109,6 +111,7 @@ void main(List<String> args) async {
         ),
       );
     } else {
+      await configureCurrentAdbManageSubWindow(argument);
       //模拟器管理窗口
       runApp(
         ProviderScope(

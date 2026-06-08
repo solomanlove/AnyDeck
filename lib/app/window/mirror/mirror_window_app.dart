@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 import 'package:file_selector/file_selector.dart';
 
@@ -30,7 +29,7 @@ class MirrorWindowApp extends ConsumerWidget {
     required this.argument,
   });
 
-  final int windowId;
+  final String windowId;
   final Map<String, dynamic> argument;
 
   @override
@@ -72,7 +71,7 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
 
   final String deviceId;
   final String deviceName;
-  final int windowId;
+  final String windowId;
 
   @override
   ConsumerState<MirrorWindowContent> createState() =>
@@ -361,9 +360,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       return;
     }
 
-    final windowController = WindowController.fromWindowId(widget.windowId);
-    windowController
-        .setFrame(Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH))
+    windowManager
+        .setBounds(Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH))
         .catchError((e) {
           debugPrint('Failed to set window frame: $e');
         });
@@ -641,66 +639,74 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           child: Column(
             children: [
               if (!_isFullScreen)
-                Container(
-                  height: 30, // 调小高度以在 macOS 上更紧凑，确保标题上下居中
-                  padding: EdgeInsets.only(
-                    left: Platform.isMacOS ? 80 : 16,
-                    right: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: headerBgColor,
-                    border: Border(
-                      bottom: BorderSide(color: borderColor, width: 1),
+                DragToMoveArea(
+                  child: Container(
+                    height: 30,
+                    padding: EdgeInsets.only(
+                      left: Platform.isMacOS ? 80 : 16,
+                      right: 16,
                     ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        widget.deviceName,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                    decoration: BoxDecoration(
+                      color: headerBgColor,
+                      border: Border(
+                        bottom: BorderSide(color: borderColor, width: 1),
                       ),
-                      const Spacer(),
-                      MirrorToolbarButton(
-                        icon: Icon(
-                          _isAlwaysOnTop
-                              ? CupertinoIcons.pin_fill
-                              : CupertinoIcons.pin,
-                          color: _isAlwaysOnTop
-                              ? Colors.orange
-                              : (isDark ? Colors.white70 : Colors.black87),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              widget.deviceName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         ),
-                        tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
-                        onPressed: _toggleAlwaysOnTop,
-                      ),
-                      const SizedBox(width: 4),
-                      MirrorToolbarButton(
-                        icon: Icon(
-                          _isFullScreen
-                              ? CupertinoIcons.fullscreen_exit
-                              : CupertinoIcons.fullscreen,
-                          color: isDark ? Colors.white70 : Colors.black87,
+                        const SizedBox(width: 12),
+                        MirrorToolbarButton(
+                          icon: Icon(
+                            _isAlwaysOnTop
+                                ? CupertinoIcons.pin_fill
+                                : CupertinoIcons.pin,
+                            color: _isAlwaysOnTop
+                                ? Colors.orange
+                                : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                          tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
+                          onPressed: _toggleAlwaysOnTop,
                         ),
-                        tooltip: _isFullScreen ? '退出全屏' : '全屏显示',
-                        onPressed: () => _toggleFullScreen(!_isFullScreen),
-                      ),
-                      const SizedBox(width: 4),
-                      MirrorToolbarButton(
-                        icon: Icon(
-                          CupertinoIcons.settings,
-                          color: isDark ? Colors.white70 : Colors.black87,
+                        const SizedBox(width: 4),
+                        MirrorToolbarButton(
+                          icon: Icon(
+                            _isFullScreen
+                                ? CupertinoIcons.fullscreen_exit
+                                : CupertinoIcons.fullscreen,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
+                          tooltip: _isFullScreen ? '退出全屏' : '全屏显示',
+                          onPressed: () => _toggleFullScreen(!_isFullScreen),
                         ),
-                        tooltip: '投屏画质设置',
-                        onPressed: () => showMirrorSettingsDialog(
-                          context: context,
-                          ref: ref,
-                          deviceId: widget.deviceId,
-                          windowId: widget.windowId,
-                          isAlwaysOnTop: _isAlwaysOnTop,
+                        const SizedBox(width: 4),
+                        MirrorToolbarButton(
+                          icon: Icon(
+                            CupertinoIcons.settings,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
+                          tooltip: '投屏画质设置',
+                          onPressed: () => showMirrorSettingsDialog(
+                            context: context,
+                            ref: ref,
+                            deviceId: widget.deviceId,
+                            windowId: widget.windowId,
+                            isAlwaysOnTop: _isAlwaysOnTop,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               Expanded(child: contentWidget),

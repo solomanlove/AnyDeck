@@ -305,17 +305,15 @@ class _SelectedDeviceHeader extends ConsumerWidget {
         orElse: () => null,
       );
       final initialSize = _resolveMirrorInitialWindowSize(resolution);
-      final window = await DesktopMultiWindow.createWindow(
-        jsonEncode({
+      await createAdbManageWindow(
+        arguments: {
           'type': 'mirror',
           'deviceId': device.id,
           'deviceName': device.model ?? device.id,
-        }),
+        },
+        frame: Offset.zero & initialSize,
+        title: '投屏 - ${device.model ?? device.id}',
       );
-      await window.setFrame(Offset.zero & initialSize);
-      await window.center();
-      await window.setTitle('投屏 - ${device.model ?? device.id}');
-      await window.show();
     } catch (e) {
       debugPrint('Failed to open standalone mirror window: $e');
     }

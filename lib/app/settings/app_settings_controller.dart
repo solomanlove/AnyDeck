@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,8 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings.dart';
 
-/// 全局唯一的窗口 ID Provider，默认为 0（主窗口）。
-final windowIdProvider = Provider<int>((ref) => 0);
+/// 全局唯一的窗口 ID Provider，主窗口默认为空字符串。
+final windowIdProvider = Provider<String>((ref) => '');
 
 /// 通过 SharedPreferences 持久化的应用设置 Riverpod 状态。
 final appSettingsProvider =
@@ -24,6 +26,10 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _mirrorMaxSizeKey = 'settings.mirrorMaxSize';
   static const _mirrorAudioEnabledKey = 'settings.mirrorAudioEnabled';
   static const _screenshotSavePathKey = 'settings.screenshotSavePath';
+  static const _mainSettingsChannel = WindowMethodChannel(
+    'adb_manage/settings_main',
+    mode: ChannelMode.unidirectional,
+  );
 
   @override
   AppSettings build() {
@@ -34,19 +40,32 @@ class AppSettingsController extends Notifier<AppSettings> {
   }
 
   void _setupMethodHandler() {
-    DesktopMultiWindow.setMethodHandler((
-      MethodCall call,
-      int fromWindowId,
-    ) async {
-      if (call.method == 'update_language') {
-        final langCode = call.arguments as String;
-        await setLanguage(AppLanguage.fromCode(langCode), broadcast: false);
-      } else if (call.method == 'update_save_path') {
-        final savePath = call.arguments as String;
-        await setScreenshotSavePath(savePath, broadcast: false);
-      }
-      return null;
-    });
+    final currentId = ref.read(windowIdProvider);
+    if (currentId.isEmpty) {
+      unawaited(_mainSettingsChannel.setMethodCallHandler(_handleSettingsCall));
+      return;
+    }
+
+    unawaited(
+      WindowController.fromCurrentEngine()
+          .then((controller) {
+            return controller.setWindowMethodHandler(_handleSettingsCall);
+          })
+          .catchError((e) {
+            debugPrint('Failed to register multi-window settings handler: $e');
+          }),
+    );
+  }
+
+  Future<dynamic> _handleSettingsCall(MethodCall call) async {
+    if (call.method == 'update_language') {
+      final langCode = call.arguments as String;
+      await setLanguage(AppLanguage.fromCode(langCode), broadcast: false);
+    } else if (call.method == 'update_save_path') {
+      final savePath = call.arguments as String;
+      await setScreenshotSavePath(savePath, broadcast: false);
+    }
+    return null;
   }
 
   /// 更新当前语言，并持久化到下次启动。
@@ -60,26 +79,7 @@ class AppSettingsController extends Notifier<AppSettings> {
 
     if (broadcast) {
       try {
-        final currentId = ref.read(windowIdProvider);
-
-        if (currentId == 0) {
-          // 主窗口：广播给所有子窗口
-          final subWindowIds = await DesktopMultiWindow.getAllSubWindowIds();
-          for (final windowId in subWindowIds) {
-            await DesktopMultiWindow.invokeMethod(
-              windowId,
-              'update_language',
-              language.code,
-            );
-          }
-        } else {
-          // 子窗口：发送到主窗口
-          await DesktopMultiWindow.invokeMethod(
-            0,
-            'update_language',
-            language.code,
-          );
-        }
+        await _broadcastSettingChange('update_language', language.code);
       } catch (e) {
         debugPrint('Failed to broadcast language change: $e');
       }
@@ -132,22 +132,7 @@ class AppSettingsController extends Notifier<AppSettings> {
 
     if (broadcast) {
       try {
-        final currentId = ref.read(windowIdProvider);
-
-        if (currentId == 0) {
-          // 主窗口：广播给所有子窗口
-          final subWindowIds = await DesktopMultiWindow.getAllSubWindowIds();
-          for (final windowId in subWindowIds) {
-            await DesktopMultiWindow.invokeMethod(
-              windowId,
-              'update_save_path',
-              value,
-            );
-          }
-        } else {
-          // 子窗口：发送到主窗口
-          await DesktopMultiWindow.invokeMethod(0, 'update_save_path', value);
-        }
+        await _broadcastSettingChange('update_save_path', value);
       } catch (e) {
         debugPrint('Failed to broadcast save path change: $e');
       }
@@ -186,5 +171,20 @@ class AppSettingsController extends Notifier<AppSettings> {
       'dark' => ThemeMode.dark,
       _ => ThemeMode.system,
     };
+  }
+
+  Future<void> _broadcastSettingChange(String method, Object value) async {
+    final currentId = ref.read(windowIdProvider);
+    if (currentId.isNotEmpty) {
+      await _mainSettingsChannel.invokeMethod(method, value);
+    }
+
+    final windows = await WindowController.getAll();
+    for (final window in windows) {
+      if (window.windowId == currentId || window.arguments.isEmpty) {
+        continue;
+      }
+      await window.invokeMethod(method, value);
+    }
   }
 }

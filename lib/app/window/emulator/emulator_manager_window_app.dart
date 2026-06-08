@@ -15,7 +15,7 @@ class EmulatorManagerWindowApp extends ConsumerWidget {
     required this.argument,
   });
 
-  final int windowId;
+  final String windowId;
   final Map<String, dynamic> argument;
 
   @override

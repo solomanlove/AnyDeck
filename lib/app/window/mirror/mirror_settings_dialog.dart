@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../settings/app_settings_controller.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
@@ -12,7 +12,7 @@ Future<void> launchExternalMirror({
   required BuildContext context,
   required WidgetRef ref,
   required String deviceId,
-  required int windowId,
+  required String windowId,
   required bool isAlwaysOnTop,
 }) async {
   // 1. 获取当前设置
@@ -46,7 +46,7 @@ Future<void> launchExternalMirror({
     }
 
     // 4. 关闭当前独立投屏窗口
-    await WindowController.fromWindowId(windowId).close();
+    await windowManager.close();
   } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -65,7 +65,7 @@ void showMirrorSettingsDialog({
   required BuildContext context,
   required WidgetRef ref,
   required String deviceId,
-  required int windowId,
+  required String windowId,
   required bool isAlwaysOnTop,
 }) {
   final settings = ref.read(appSettingsProvider);

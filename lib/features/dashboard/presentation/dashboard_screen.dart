@@ -17,6 +17,7 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/settings/app_settings.dart';
 import '../../../app/settings/app_settings_controller.dart';
+import '../../../app/window/multi_window_compat.dart';
 import '../../../core/adb/adb_device.dart';
 import '../../../core/adb/adb_result.dart';
 import '../../../core/apps/adb_package.dart';
@@ -144,8 +145,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   @override
   void onWindowClose() async {
     try {
-      final subWindowIds = await DesktopMultiWindow.getAllSubWindowIds();
-      if (subWindowIds.isNotEmpty) {
+      final windows = await WindowController.getAll();
+      if (windows.length > 1) {
         await windowManager.hide();
         return;
       }
