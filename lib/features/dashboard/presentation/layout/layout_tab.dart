@@ -41,7 +41,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
   bool _showBorders = false;
   bool _enableClickSelect = false;
   int _rotationAngle = 0;
-  bool _useDp = false;
+  bool _useDp = true;
   final Set<LayoutNode> _expandedNodes = {};
 
   double get _deviceLogicalDensity {
@@ -506,7 +506,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
           },
           onUseDpChanged: (val) {
             setState(() {
-              _useDp = val ?? false;
+              _useDp = val ?? true;
             });
           },
         ),

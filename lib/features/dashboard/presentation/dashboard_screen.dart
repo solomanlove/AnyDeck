@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -35,6 +36,8 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/network_providers.dart';
 import '../../../core/providers/transfer_provider.dart';
 import 'widgets/drag_drop_target_overlay.dart';
+import 'widgets/liquid_glass_background.dart';
+import 'package:glassmorphism/glassmorphism.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/scrcpy/scrcpy_session.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';

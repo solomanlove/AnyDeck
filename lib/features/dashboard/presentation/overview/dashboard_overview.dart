@@ -57,8 +57,14 @@ class _DeviceOverviewPanel extends ConsumerWidget {
                       ? ref.invalidate(deviceOverviewProvider(device.id))
                       : ref.invalidate(cachedDeviceOverviewProvider(device.id)),
                 ),
-                const SizedBox(height: 8),
-                _OverviewGrid(items: _buildOverviewItems(context, data)),
+                const SizedBox(height: 16),
+                _GlassSectionCard(
+                  title: context.l10n.t('overviewTitle'),
+                  icon: CupertinoIcons.info_circle,
+                  children: [
+                    _OverviewGrid(items: _buildOverviewItems(context, data)),
+                  ],
+                ),
               ],
             ),
     );

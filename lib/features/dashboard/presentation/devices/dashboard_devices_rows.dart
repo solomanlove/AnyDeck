@@ -64,12 +64,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
       flex: 3,
       child: Row(
         children: [
-          const Icon(
-            CupertinoIcons.info_circle,
-            color: Color(0xFF26A69A),
-            size: 18,
-          ),
-          const SizedBox(width: 8),
           Expanded(
             child: Text(
               device.connectionMethodDisplay,

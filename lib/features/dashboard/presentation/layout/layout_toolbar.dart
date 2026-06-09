@@ -171,12 +171,6 @@ class LayoutToolbar extends StatelessWidget {
             value: enableClickSelect,
             onChanged: showBorders ? onEnableClickSelectChanged : null,
           ),
-          const SizedBox(width: 8),
-          _ToolbarCheckbox(
-            label: context.l10n.t('useDp'),
-            value: useDp,
-            onChanged: hasLayout ? onUseDpChanged : null,
-          ),
           const Spacer(),
           if (resolutionText != null)
             Padding(

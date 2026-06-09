@@ -22,6 +22,43 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           hasBoundedHeight: hasBoundedHeight,
         );
 
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+
+        Widget panelCard = ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.white.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.04),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (sortedItems.isNotEmpty) ...[
+                    _buildTableHeader(context, isCompact, allChecked, hasChecked),
+                    const SizedBox(height: 4),
+                  ],
+                  if (hasBoundedHeight)
+                    Expanded(child: contentWidget)
+                  else
+                    contentWidget,
+                ],
+              ),
+            ),
+          ),
+        );
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -32,12 +69,10 @@ extension _DeviceListPanelView on _DeviceListPanelState {
               ),
               const SizedBox(height: 16),
             ],
-            _buildTableHeader(context, isCompact, allChecked, hasChecked),
-            const SizedBox(height: 8),
             if (hasBoundedHeight)
-              Expanded(child: contentWidget)
+              Expanded(child: panelCard)
             else
-              contentWidget,
+              panelCard,
           ],
         );
       },

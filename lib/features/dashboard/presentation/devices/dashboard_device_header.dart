@@ -151,6 +151,10 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       ],
     );
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final titleTextColor = isDark ? const Color(0xffeceff1) : const Color(0xff202124);
+
     final title = Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,9 +164,9 @@ class _SelectedDeviceHeader extends ConsumerWidget {
             children: [
               TextSpan(
                 text: titleText,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w900,
-                  color: const Color(0xff202124),
+                  color: titleTextColor,
                   fontSize: 20,
                 ),
               ),
@@ -186,16 +190,40 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     );
 
     return DragToMoveArea(
-      child: Container(
+      child: GlassmorphicContainer(
+        width: double.infinity,
         height: 80,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            bottom: BorderSide(color: Color(0xffeceef1), width: 1),
-          ),
+        borderRadius: 0,
+        blur: 15,
+        alignment: Alignment.center,
+        border: 0,
+        linearGradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.40),
+            isDark ? Colors.white.withValues(alpha: 0.01) : Colors.white.withValues(alpha: 0.15),
+          ],
         ),
-        child: LayoutBuilder(
+        borderGradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.04),
+            isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+          ],
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.03),
+                width: 1,
+              ),
+            ),
+          ),
+          child: LayoutBuilder(
           builder: (context, constraints) {
             // if (constraints.maxWidth < 260) {
             //   return SingleChildScrollView(
@@ -281,7 +309,8 @@ class _SelectedDeviceHeader extends ConsumerWidget {
           },
         ),
       ),
-    );
+    ),
+  );
   }
 
   Future<void> _openStandaloneMirror(

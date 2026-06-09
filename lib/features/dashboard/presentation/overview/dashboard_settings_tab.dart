@@ -13,7 +13,7 @@ class _SettingsTab extends ConsumerWidget {
     const brandGreen = Color(0xff09c47c);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
         child: Align(
@@ -348,38 +348,10 @@ class _SettingsTab extends ConsumerWidget {
     required IconData icon,
     required List<Widget> children,
   }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: const Color(0xff09c47c), size: 20),
-                const SizedBox(width: 10),
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            ...children,
-          ],
-        ),
-      ),
+    return _GlassSectionCard(
+      title: title,
+      icon: icon,
+      children: children,
     );
   }
 

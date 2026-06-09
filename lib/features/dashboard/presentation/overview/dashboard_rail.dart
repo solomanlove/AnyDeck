@@ -139,12 +139,20 @@ class _PrimaryRail extends ConsumerWidget {
       }
     }
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
       width: railWidth,
-      color: const Color(0xffe1e4e5),
-      child: SafeArea(
+      decoration: BoxDecoration(
+        color: isDark ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.20),
+      ),
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final bool renderNarrow = constraints.maxWidth < 130;
@@ -283,7 +291,9 @@ class _PrimaryRail extends ConsumerWidget {
           },
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }
 
@@ -318,9 +328,21 @@ class _RailMoreButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final selected =
         hasSelectedDevice && tools.any((tool) => tool.tabIndex == selectedTool);
-    final color = selected ? const Color(0xff09c47c) : const Color(0xff5f6b6e);
+
+    final defaultColor = isDark ? const Color(0xffeceff1) : const Color(0xff455a64);
+    final color = selected ? const Color(0xff09c47c) : defaultColor;
+
+    final activeBgColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white.withValues(alpha: 0.35);
+
+    final popupBgColor = isDark ? const Color(0xff1e222b) : const Color(0xfff5f6f8);
+    final popupBorderColor = isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xffeceef1);
 
     if (isNarrow) {
       return Padding(
@@ -330,11 +352,11 @@ class _RailMoreButton extends StatelessWidget {
             tooltip: context.l10n.t('moreTools'),
             onSelected: enabled ? onSelected : null,
             offset: const Offset(66, 0),
-            color: const Color(0xfff5f6f8),
+            color: popupBgColor,
             elevation: 3,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: Color(0xffeceef1), width: 1),
+              side: BorderSide(color: popupBorderColor, width: 1),
             ),
             constraints: const BoxConstraints(minWidth: 68, maxWidth: 68),
             itemBuilder: (context) => [
@@ -350,7 +372,7 @@ class _RailMoreButton extends StatelessWidget {
                       size: 26,
                       color: tool.tabIndex == selectedTool
                           ? const Color(0xff09c47c)
-                          : const Color(0xff5f6b6e),
+                          : defaultColor,
                     ),
                   ),
                 ),
@@ -360,7 +382,7 @@ class _RailMoreButton extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: selected
-                    ? Colors.white.withValues(alpha: 0.56)
+                    ? activeBgColor
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -377,11 +399,11 @@ class _RailMoreButton extends StatelessWidget {
           tooltip: context.l10n.t('moreTools'),
           onSelected: enabled ? onSelected : null,
           offset: const Offset(164, 0),
-          color: const Color(0xfff5f6f8),
+          color: popupBgColor,
           elevation: 3,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xffeceef1), width: 1),
+            side: BorderSide(color: popupBorderColor, width: 1),
           ),
           constraints: const BoxConstraints(minWidth: 160, maxWidth: 200),
           itemBuilder: (context) => [
@@ -397,7 +419,7 @@ class _RailMoreButton extends StatelessWidget {
                       size: 20,
                       color: tool.tabIndex == selectedTool
                           ? const Color(0xff09c47c)
-                          : const Color(0xff5f6b6e),
+                          : defaultColor,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -407,7 +429,7 @@ class _RailMoreButton extends StatelessWidget {
                           fontSize: 13,
                           color: tool.tabIndex == selectedTool
                               ? const Color(0xff09c47c)
-                              : const Color(0xff5f6b6e),
+                              : defaultColor,
                         ),
                       ),
                     ),
@@ -417,7 +439,7 @@ class _RailMoreButton extends StatelessWidget {
           ],
           child: Material(
             color: selected
-                ? Colors.white.withValues(alpha: 0.56)
+                ? activeBgColor
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             child: Container(
@@ -462,14 +484,21 @@ class _RailButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final Color color;
     if (onPressed == null) {
-      color = const Color(0xff8b9a9e);
+      color = isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e);
     } else if (selected) {
       color = const Color(0xff09c47c);
     } else {
-      color = const Color(0xff5f6b6e);
+      color = isDark ? const Color(0xffeceff1) : const Color(0xff455a64);
     }
+
+    final activeBgColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white.withValues(alpha: 0.35);
 
     if (isNarrow) {
       return Tooltip(
@@ -484,9 +513,9 @@ class _RailButton extends StatelessWidget {
               style: IconButton.styleFrom(
                 foregroundColor: color,
                 backgroundColor: selected
-                    ? Colors.white.withValues(alpha: 0.56)
+                    ? activeBgColor
                     : Colors.transparent,
-                disabledForegroundColor: const Color(0xff8b9a9e),
+                disabledForegroundColor: isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -502,7 +531,7 @@ class _RailButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
           child: Material(
             color: selected
-                ? Colors.white.withValues(alpha: 0.56)
+                ? activeBgColor
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             child: InkWell(
