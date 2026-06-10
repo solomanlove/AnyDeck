@@ -552,7 +552,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           ],
         ),
       );
-    } else if (_errorMessage != null) {
+    }
+    else if (_errorMessage != null) {
       contentWidget = Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -585,7 +586,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           ),
         ),
       );
-    } else if (isMirrorActive) {
+    }
+    else if (isMirrorActive) {
       contentWidget = Column(
         children: [
           if (!_isFullScreen)
@@ -616,7 +618,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           ),
         ],
       );
-    } else {
+    }
+    else {
       contentWidget = const Center(child: Text('未连接或投屏已停止'));
     }
 
@@ -644,7 +647,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                     height: 30,
                     padding: EdgeInsets.only(
                       left: Platform.isMacOS ? 80 : 16,
-                      right: 16,
                     ),
                     decoration: BoxDecoration(
                       color: headerBgColor,
@@ -653,7 +655,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                       ),
                     ),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(
                           child: Text(
@@ -665,7 +666,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                 .copyWith(fontSize: 16),
                           ),
                         ),
-                        const SizedBox(width: 12),
                         MirrorToolbarButton(
                           icon: Icon(
                             _isAlwaysOnTop
@@ -678,7 +678,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                           tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
                           onPressed: _toggleAlwaysOnTop,
                         ),
-                        const SizedBox(width: 4),
                         MirrorToolbarButton(
                           icon: Icon(
                             _isFullScreen
@@ -689,7 +688,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                           tooltip: _isFullScreen ? '退出全屏' : '全屏显示',
                           onPressed: () => _toggleFullScreen(!_isFullScreen),
                         ),
-                        const SizedBox(width: 4),
                         MirrorToolbarButton(
                           icon: Icon(
                             CupertinoIcons.settings,
