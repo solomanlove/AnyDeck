@@ -252,6 +252,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             MirrorToolbarButton(
               icon: Icon(
                 Icons.chevron_left,
+                size: 18,
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
               tooltip: context.l10n.t('back'),

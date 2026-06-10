@@ -656,14 +656,13 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(
-                          child: Center(
-                            child: Text(
-                              widget.deviceName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
+                          child: Text(
+                            widget.deviceName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold)
+                                .copyWith(fontSize: 16),
                           ),
                         ),
                         const SizedBox(width: 12),
