@@ -346,6 +346,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 recordState.isRecording
                     ? CupertinoIcons.stop
                     : CupertinoIcons.videocam,
+                size: 22,
                 color: recordState.isRecording
                     ? Colors.red
                     : (isDark ? Colors.white70 : Colors.black87),
