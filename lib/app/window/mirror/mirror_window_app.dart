@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -6,20 +5,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:scrcpy_flutter/scrcpy_flutter.dart';
-import 'package:file_selector/file_selector.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../../features/dashboard/presentation/control/embedded_scrcpy_viewer.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
-import '../../../core/providers/app_providers.dart';
-import '../../../core/providers/transfer_provider.dart';
 import '../../../features/dashboard/presentation/widgets/drag_drop_target_overlay.dart';
-import '../../../features/dashboard/presentation/widgets/dashboard_snack.dart';
 import 'mirror_floating_toolbar.dart';
 import 'mirror_settings_dialog.dart';
+import 'mirror_window_controller.dart';
 
 /// 投屏独立窗口应用入口。
 class MirrorWindowApp extends ConsumerWidget {
@@ -65,6 +60,7 @@ class MirrorWindowApp extends ConsumerWidget {
   }
 }
 
+/// 投屏独立窗口内容组件，继承自 ConsumerStatefulWidget 以支持 Riverpod。
 class MirrorWindowContent extends ConsumerStatefulWidget {
   const MirrorWindowContent({
     super.key,
@@ -86,468 +82,83 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
       _MirrorWindowContentState();
 }
 
+/// 投屏窗口的 UI 状态类，混入 WindowListener 以响应桌面窗口交互事件。
 class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     with WindowListener {
-  String? _errorMessage;
-  bool _isLoading = true;
-  bool _isFullScreen = false;
-  bool _isAlwaysOnTop = false;
+  
+  /// 投屏业务控制器
+  late final MirrorWindowController _controller;
+  
+  /// 用于捕获键盘事件的 FocusNode
   late final FocusNode _keyboardFocusNode;
+  
+  /// 记录上一次鼠标按下的时间，用于辅助判定双击事件
   DateTime? _lastPointerDownTime;
+  
+  /// 用于获取投屏窗口实际渲染尺寸的 Key
   final GlobalKey _viewerKey = GlobalKey();
-  double? _lastFittedAspectRatio;
-
-  static const _windowChannel = MethodChannel('adb_manage/window');
 
   @override
   void initState() {
     super.initState();
     _keyboardFocusNode = FocusNode(debugLabel: 'MirrorWindowKeyboard');
-    _isAlwaysOnTop = ref.read(appSettingsProvider).scrcpyAlwaysOnTop;
 
-    if (Platform.isMacOS) {
-      _windowChannel.setMethodCallHandler((call) async {
-        if (call.method == 'onWindowEnterFullScreen') {
-          if (mounted) {
-            setState(() {
-              _isFullScreen = true;
-            });
-          }
-        } else if (call.method == 'onWindowLeaveFullScreen') {
-          if (mounted) {
-            setState(() {
-              _isFullScreen = false;
-            });
-          }
-        }
-      });
-      _windowChannel.invokeMethod('initWindow').catchError((e) {
-        debugPrint('Failed to initialize subwindow listeners: $e');
-      });
-    } else {
+    // 实例化业务逻辑控制器
+    _controller = MirrorWindowController(
+      ref: ref,
+      deviceId: widget.deviceId,
+      windowId: widget.windowId,
+      newDisplay: widget.newDisplay,
+      startApp: widget.startApp,
+    );
+
+    // 监听控制器状态变化，更新 UI
+    _controller.addListener(_onControllerChanged);
+
+    // 非 macOS 平台需要注册窗口监听器
+    if (!Platform.isMacOS) {
       windowManager.addListener(this);
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _startMirroring();
-      try {
-        await _windowChannel.invokeMethod('setAlwaysOnTop', _isAlwaysOnTop);
-      } catch (e) {
-        debugPrint('Failed to set always on top in initState: $e');
-      }
+
+    // 初始化控制器
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.init(_viewerKey);
     });
   }
 
   @override
   void dispose() {
-    if (Platform.isMacOS) {
-      _windowChannel.setMethodCallHandler(null);
-    } else {
+    // 移除监听并释放控制器资源
+    _controller.removeListener(_onControllerChanged);
+    _controller.disposeController();
+
+    if (!Platform.isMacOS) {
       windowManager.removeListener(this);
     }
     _keyboardFocusNode.dispose();
     super.dispose();
   }
 
+  /// 监听控制器属性变动时的回调
+  void _onControllerChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  // ==================== WindowListener 接口实现 ====================
+
   @override
   void onWindowEnterFullScreen() {
-    setState(() {
-      _isFullScreen = true;
-    });
+    _controller.onWindowEnterFullScreen();
   }
 
   @override
   void onWindowLeaveFullScreen() {
-    setState(() {
-      _isFullScreen = false;
-    });
+    _controller.onWindowLeaveFullScreen();
   }
 
-  void _toggleFullScreen(bool fullscreen) async {
-    if (mounted) {
-      setState(() {
-        _isFullScreen = fullscreen;
-      });
-    }
-    if (Platform.isMacOS) {
-      try {
-        await _windowChannel.invokeMethod('setFullScreen', fullscreen);
-      } catch (e) {
-        debugPrint('Failed to set fullscreen on macOS: $e');
-      }
-    } else {
-      try {
-        await windowManager.setFullScreen(fullscreen);
-      } catch (e) {
-        debugPrint('Failed to set fullscreen: $e');
-      }
-    }
-    if (fullscreen && mounted) {
-      DashboardSnack.show(context, '已进入全屏，按 ESC 或双击屏幕可退出全屏');
-    }
-  }
-
-  Future<void> _toggleAlwaysOnTop() async {
-    final nextState = !_isAlwaysOnTop;
-    try {
-      await _windowChannel.invokeMethod('setAlwaysOnTop', nextState);
-      setState(() {
-        _isAlwaysOnTop = nextState;
-      });
-    } catch (e) {
-      debugPrint('Failed to toggle always on top: $e');
-    }
-  }
-
-  double _getAspectRatio(String? resolutionStr) {
-    if (resolutionStr == null || resolutionStr == '-') return 9 / 16;
-    final match = RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(resolutionStr);
-    if (match != null) {
-      final w = int.parse(match.group(1)!);
-      final h = int.parse(match.group(2)!);
-      if (w > 0 && h > 0) {
-        return w / h;
-      }
-    }
-    return 9 / 16;
-  }
-
-  void _handleDoubleTap(PointerDownEvent e) async {
-    final overviewAsync = ref.read(deviceOverviewProvider(widget.deviceId));
-    final resolution = overviewAsync.maybeWhen(
-      data: (overview) => overview.physicalResolution,
-      orElse: () => null,
-    );
-    double aspectRatio = _getAspectRatio(resolution);
-
-    try {
-      final size = await ScrcpyFlutter.getVideoSize(deviceId: widget.deviceId);
-      if (size != null && size['width']! > 0 && size['height']! > 0) {
-        aspectRatio = size['width']! / size['height']!;
-      }
-    } catch (_) {}
-
-    final renderBox =
-        _viewerKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-    final viewerSize = renderBox.size;
-    final double viewerW = viewerSize.width;
-    final double viewerH = viewerSize.height;
-    if (viewerW <= 0 || viewerH <= 0) return;
-
-    final localPos = renderBox.globalToLocal(e.position);
-    final containerRatio = viewerW / viewerH;
-
-    bool isOnBlackBorder = false;
-    if (containerRatio > aspectRatio) {
-      // 左右有黑边
-      final textureW = viewerH * aspectRatio;
-      final leftBorder = (viewerW - textureW) / 2;
-      final rightBorder = (viewerW + textureW) / 2;
-      if (localPos.dx < leftBorder || localPos.dx > rightBorder) {
-        isOnBlackBorder = true;
-      }
-    } else if (containerRatio < aspectRatio) {
-      // 上下有黑边
-      final textureH = viewerW / aspectRatio;
-      final topBorder = (viewerH - textureH) / 2;
-      final bottomBorder = (viewerH + textureH) / 2;
-      if (localPos.dy < topBorder || localPos.dy > bottomBorder) {
-        isOnBlackBorder = true;
-      }
-    }
-
-    if (isOnBlackBorder) {
-      if (_isFullScreen) {
-        _toggleFullScreen(false);
-      } else {
-        Future.delayed(const Duration(milliseconds: 50), () {
-          if (mounted) {
-            _fitWindowToAspectRatio(aspectRatio, viewerW, viewerH);
-          }
-        });
-      }
-    } else {
-      debugPrint(
-        '[MirrorWindow] Double tap on device screen, ignore fullscreen toggle.',
-      );
-    }
-  }
-
-  Future<Rect> _getWindowFrame() async {
-    if (Platform.isMacOS) {
-      try {
-        final res = await _windowChannel.invokeMethod('getWindowFrame');
-        if (res is Map) {
-          final left = (res['left'] as num).toDouble();
-          final top = (res['top'] as num).toDouble();
-          final width = (res['width'] as num).toDouble();
-          final height = (res['height'] as num).toDouble();
-          return Rect.fromLTWH(left, top, width, height);
-        }
-      } catch (e) {
-        debugPrint('Failed to get window frame on macOS: $e');
-      }
-      return const Rect.fromLTWH(100, 100, 480, 800);
-    } else {
-      return await windowManager.getBounds();
-    }
-  }
-
-  Future<void> _fitWindowToAspectRatio(
-    double R,
-    double viewerW,
-    double viewerH,
-  ) async {
-    if (R <= 0 || R.isNaN || R.isInfinite) {
-      return;
-    }
-    if (viewerW <= 0 ||
-        viewerH <= 0 ||
-        viewerW.isNaN ||
-        viewerW.isInfinite ||
-        viewerH.isNaN ||
-        viewerH.isInfinite) {
-      return;
-    }
-
-    final Rect frame = await _getWindowFrame();
-    if (frame.width.isNaN ||
-        frame.width.isInfinite ||
-        frame.height.isNaN ||
-        frame.height.isInfinite) {
-      return;
-    }
-
-    final double currentWindowW = frame.width;
-    final double currentWindowH = frame.height;
-
-    final double rc = viewerW / viewerH;
-    if (rc.isNaN || rc.isInfinite || rc <= 0) {
-      return;
-    }
-
-    double deltaW = 0;
-    double deltaH = 0;
-
-    if (rc > R) {
-      // 左右有黑边，需要减小窗口宽度
-      final targetViewerW = viewerH * R;
-      deltaW = targetViewerW - viewerW;
-    } else if (rc < R) {
-      // 上下有黑边，需要减小窗口高度
-      final targetViewerH = viewerW / R;
-      deltaH = targetViewerH - viewerH;
-    }
-
-    if (deltaW.abs() < 4 && deltaH.abs() < 4) {
-      return;
-    }
-    if (deltaW == 0 && deltaH == 0) {
-      return;
-    }
-
-    final double newWindowW = currentWindowW + deltaW;
-    final double newWindowH = currentWindowH + deltaH;
-
-    if (newWindowW < 200 ||
-        newWindowH < 200 ||
-        newWindowW.isNaN ||
-        newWindowW.isInfinite ||
-        newWindowH.isNaN ||
-        newWindowH.isInfinite) {
-      return;
-    }
-
-    // 保持窗口中心点不变进行缩放
-    final double newLeft = frame.left - deltaW / 2;
-    final double newTop = frame.top - deltaH / 2;
-
-    if (newLeft.isNaN ||
-        newLeft.isInfinite ||
-        newTop.isNaN ||
-        newTop.isInfinite) {
-      return;
-    }
-
-    if (Platform.isMacOS) {
-      _windowChannel.invokeMethod('setWindowFrame', {
-        'left': newLeft,
-        'top': newTop,
-        'width': newWindowW,
-        'height': newWindowH,
-      }).catchError((e) {
-        debugPrint('Failed to set window frame on macOS: $e');
-      });
-    } else {
-      windowManager
-          .setBounds(Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH))
-          .catchError((e) {
-            debugPrint('Failed to set window frame: $e');
-          });
-    }
-  }
-
-  Future<void> _handleDrop(List<XFile> files) async {
-    if (files.isEmpty) return;
-
-    final appService = ref.read(appManagementServiceProvider);
-    final fileService = ref.read(fileManagerServiceProvider);
-    final transferNotifier = ref.read(transferListProvider.notifier);
-
-    for (final file in files) {
-      final isApk = file.path.toLowerCase().endsWith('.apk');
-      final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-
-      transferNotifier.addTask(
-        TransferTask(
-          id: taskId,
-          name: file.name,
-          deviceId: widget.deviceId,
-          isApk: isApk,
-        ),
-      );
-
-      if (mounted) {
-        DashboardSnack.show(
-          context,
-          isApk
-              ? context.l10n.t('installingApk')
-              : context.l10n.t('uploadingFile'),
-        );
-      }
-
-      try {
-        final result = isApk
-            ? await appService.installApk(widget.deviceId, file.path)
-            : await fileService.push(
-                widget.deviceId,
-                file.path,
-                '/sdcard/Download/',
-              );
-
-        transferNotifier.updateTask(
-          id: taskId,
-          isDone: true,
-          isSuccess: result.isSuccess,
-          error: result.isSuccess ? null : result.message,
-        );
-
-        if (!mounted) return;
-
-        final message = isApk
-            ? (result.isSuccess
-                  ? context.l10n
-                        .t('apkInstallSuccess')
-                        .replaceAll('{name}', file.name)
-                  : context.l10n
-                        .t('apkInstallFailed')
-                        .replaceAll('{name}', file.name)
-                        .replaceAll('{error}', result.message))
-            : (result.isSuccess
-                  ? context.l10n
-                        .t('fileUploadSuccess')
-                        .replaceAll('{name}', file.name)
-                  : context.l10n
-                        .t('fileUploadFailed')
-                        .replaceAll('{name}', file.name)
-                        .replaceAll('{error}', result.message));
-
-        DashboardSnack.show(context, message, isError: !result.isSuccess);
-      } catch (e) {
-        transferNotifier.updateTask(
-          id: taskId,
-          isDone: true,
-          isSuccess: false,
-          error: e.toString(),
-        );
-        if (mounted) {
-          DashboardSnack.show(context, '${file.name}: $e', isError: true);
-        }
-      }
-    }
-  }
-
-  Future<void> _startMirroring() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final activeMirror = ref.read(
-        activeEmbeddedMirrorProvider(widget.deviceId),
-      );
-      if (activeMirror == null) {
-        await ref
-            .read(activeEmbeddedMirrorProvider(widget.deviceId).notifier)
-            .toggleMirroring(
-              newDisplay: widget.newDisplay,
-              startApp: widget.startApp,
-            );
-      }
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        _scheduleAutoFit();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = e.toString();
-        });
-      }
-    }
-  }
-
-  void _scheduleAutoFit() {
-    Timer.periodic(const Duration(milliseconds: 500), (timer) async {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
-      double? currentAspectRatio;
-      try {
-        final size = await ScrcpyFlutter.getVideoSize(
-          deviceId: widget.deviceId,
-        );
-        if (size != null && size['width']! > 0 && size['height']! > 0) {
-          currentAspectRatio = size['width']! / size['height']!;
-        }
-      } catch (_) {}
-
-      if (currentAspectRatio == null) {
-        final overviewAsync = ref.read(deviceOverviewProvider(widget.deviceId));
-        final resolution = overviewAsync.maybeWhen(
-          data: (overview) => overview.physicalResolution,
-          orElse: () => null,
-        );
-        currentAspectRatio = _getAspectRatio(resolution);
-      }
-
-      final renderBox =
-          _viewerKey.currentContext?.findRenderObject() as RenderBox?;
-      if (renderBox != null) {
-        final viewerSize = renderBox.size;
-        final double viewerW = viewerSize.width;
-        final double viewerH = viewerSize.height;
-        if (viewerW > 0 && viewerH > 0) {
-          if (_lastFittedAspectRatio == null ||
-              (currentAspectRatio - _lastFittedAspectRatio!).abs() > 0.05) {
-            _lastFittedAspectRatio = currentAspectRatio;
-            Future.delayed(const Duration(milliseconds: 50), () {
-              if (mounted) {
-                _fitWindowToAspectRatio(currentAspectRatio!, viewerW, viewerH);
-              }
-            });
-          }
-        }
-      }
-    });
-  }
+  // ==================== 界面渲染 (UI Build) ====================
 
   @override
   Widget build(BuildContext context) {
@@ -562,8 +173,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         ? const Color(0xff2d2d2d)
         : const Color(0xffeceef1);
 
+    // 根据控制器状态组装核心内容区域
     Widget contentWidget;
-    if (_isLoading) {
+    if (_controller.isLoading) {
       contentWidget = const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -575,7 +187,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         ),
       );
     }
-    else if (_errorMessage != null) {
+    else if (_controller.errorMessage != null) {
       contentWidget = Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -592,7 +204,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
               ),
               const SizedBox(height: 8),
               Text(
-                _errorMessage!,
+                _controller.errorMessage!,
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
@@ -600,7 +212,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: _startMirroring,
+                onPressed: _controller.startMirroring,
                 icon: const Icon(Icons.refresh),
                 label: const Text('重试'),
               ),
@@ -612,7 +224,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     else if (isMirrorActive) {
       contentWidget = Column(
         children: [
-          if (!_isFullScreen && widget.startApp == null)
+          // 非全屏且非单应用模式下，展示顶部浮动操作栏
+          if (!_controller.isFullScreen && widget.startApp == null)
             SizedBox(
               width: double.infinity,
               child: MirrorFloatingToolbar(
@@ -627,10 +240,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                 behavior: HitTestBehavior.translucent,
                 onPointerDown: (e) {
                   final now = DateTime.now();
+                  // 判定双击
                   if (_lastPointerDownTime != null &&
                       now.difference(_lastPointerDownTime!) <
                           const Duration(milliseconds: 300)) {
-                    _handleDoubleTap(e);
+                    _controller.handleDoubleTap(context, e);
                   }
                   _lastPointerDownTime = now;
                 },
@@ -650,20 +264,23 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           ? const Color(0xff121212)
           : const Color(0xfff8f9fa),
       body: DragDropTargetOverlay(
-        onDragDone: (files) => _handleDrop(files),
+        // 支持将 APK 或普通文件拖拽入投屏窗口进行安装/上传
+        onDragDone: (files) => _controller.handleDrop(context, files),
         child: KeyboardListener(
           focusNode: _keyboardFocusNode,
           onKeyEvent: (event) {
+            // 全屏状态下按 ESC 退出全屏
             if (event is KeyDownEvent &&
                 event.logicalKey == LogicalKeyboardKey.escape) {
-              if (_isFullScreen) {
-                _toggleFullScreen(false);
+              if (_controller.isFullScreen) {
+                _controller.toggleFullScreen(context, false);
               }
             }
           },
           child: Column(
             children: [
-              if (!_isFullScreen)
+              // 非全屏状态下渲染窗口自定义拖拽标题栏
+              if (!_controller.isFullScreen)
                 DragToMoveArea(
                   child: Container(
                     height: 30,
@@ -688,28 +305,34 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                 .copyWith(fontSize: 16),
                           ),
                         ),
+                        // 窗口置顶按钮
                         MirrorToolbarButton(
                           icon: Icon(
-                            _isAlwaysOnTop
+                            _controller.isAlwaysOnTop
                                 ? CupertinoIcons.pin_fill
                                 : CupertinoIcons.pin,
-                            color: _isAlwaysOnTop
+                            color: _controller.isAlwaysOnTop
                                 ? Colors.orange
                                 : (isDark ? Colors.white70 : Colors.black87),
                           ),
-                          tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
-                          onPressed: _toggleAlwaysOnTop,
+                          tooltip: _controller.isAlwaysOnTop ? '取消置顶' : '置顶窗口',
+                          onPressed: _controller.toggleAlwaysOnTop,
                         ),
+                        // 窗口全屏按钮
                         MirrorToolbarButton(
                           icon: Icon(
-                            _isFullScreen
+                            _controller.isFullScreen
                                 ? CupertinoIcons.fullscreen_exit
                                 : CupertinoIcons.fullscreen,
                             color: isDark ? Colors.white70 : Colors.black87,
                           ),
-                          tooltip: _isFullScreen ? '退出全屏' : '全屏显示',
-                          onPressed: () => _toggleFullScreen(!_isFullScreen),
+                          tooltip: _controller.isFullScreen ? '退出全屏' : '全屏显示',
+                          onPressed: () => _controller.toggleFullScreen(
+                            context,
+                            !_controller.isFullScreen,
+                          ),
                         ),
+                        // 投屏高级设置按钮
                         MirrorToolbarButton(
                           icon: Icon(
                             CupertinoIcons.settings,
@@ -721,7 +344,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                             ref: ref,
                             deviceId: widget.deviceId,
                             windowId: widget.windowId,
-                            isAlwaysOnTop: _isAlwaysOnTop,
+                            isAlwaysOnTop: _controller.isAlwaysOnTop,
                           ),
                         ),
                       ],
