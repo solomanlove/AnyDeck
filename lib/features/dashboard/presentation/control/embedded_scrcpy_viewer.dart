@@ -61,7 +61,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   void _startSizePolling() {
     _sizePollTimer?.cancel();
-    _sizePollTimer = Timer.periodic(const Duration(milliseconds: 200), (
+    _sizePollTimer = Timer.periodic(const Duration(milliseconds: 500), (
       timer,
     ) async {
       if (!mounted) {
@@ -73,14 +73,15 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
           deviceId: widget.deviceId,
         );
         if (size != null && size['width']! > 0 && size['height']! > 0) {
-          setState(() {
-            _videoWidth = size['width'];
-            _videoHeight = size['height'];
-          });
-          timer.cancel();
-          debugPrint(
-            '[EmbeddedScrcpy] Polled video size successfully: ${_videoWidth}x$_videoHeight',
-          );
+          if (_videoWidth != size['width'] || _videoHeight != size['height']) {
+            setState(() {
+              _videoWidth = size['width'];
+              _videoHeight = size['height'];
+            });
+            debugPrint(
+              '[EmbeddedScrcpy] Video size changed/updated: ${_videoWidth}x$_videoHeight',
+            );
+          }
         }
       } catch (e) {
         // Ignored

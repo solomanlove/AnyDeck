@@ -377,6 +377,7 @@ void ScrcpyDecoder::DecodeLoop() {
             if (packet_->size > 0) {
                 int send_res = avcodec_send_packet(codec_ctx_, packet_);
                 if (send_res < 0) {
+                    std::cout << "[ScrcpyDecoder] avcodec_send_packet error: " << send_res << std::endl;
                     continue;
                 }
 

@@ -98,6 +98,77 @@ class _PackageActions extends ConsumerWidget {
           ),
           const SizedBox(width: 2),
           IconButton(
+            tooltip: context.l10n.t('appMirroring'),
+            icon: const Icon(Icons.cast),
+            onPressed: () async {
+              // 1. 如果内嵌投屏处于活跃状态，先停止内嵌投屏
+              final textureId = ref.read(activeEmbeddedMirrorProvider(deviceId));
+              if (textureId != null) {
+                await ref
+                    .read(activeEmbeddedMirrorProvider(deviceId).notifier)
+                    .forceStop();
+              }
+
+              // 2. 打开独立的内嵌投屏窗口并传入包名和副屏参数
+              try {
+                final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
+                final resolution = overviewAsync.maybeWhen(
+                  data: (overview) => overview.physicalResolution,
+                  orElse: () => null,
+                );
+                
+                // 默认使用 1080x1920 竖屏作为虚拟副屏的初始分辨率，
+                // 如果能获取到设备的物理分辨率，则保持相同的宽度，并根据比例自适应或者直接使用竖屏比例
+                String vdResolution = '1080x1920';
+                if (resolution != null && resolution.contains('x')) {
+                  final parts = resolution.split('x');
+                  if (parts.length == 2) {
+                    final w = int.tryParse(parts[0].trim());
+                    final h = int.tryParse(parts[1].trim());
+                    if (w != null && h != null) {
+                      // 确保是竖屏比例，即较小的数在前，较大的数在后
+                      final minSide = w < h ? w : h;
+                      final maxSide = w > h ? w : h;
+                      // 限制最大边在合适范围内，比如 1920
+                      double scale = 1.0;
+                      if (maxSide > 1920) {
+                        scale = 1920 / maxSide;
+                      }
+                      final targetW = ((minSide * scale).toInt() ~/ 2) * 2; // 确保偶数
+                      final targetH = ((maxSide * scale).toInt() ~/ 2) * 2;
+                      vdResolution = '${targetW}x$targetH';
+                    }
+                  }
+                }
+
+                final initialSize = _resolveMirrorInitialWindowSize(resolution);
+
+                await createAdbManageWindow(
+                  arguments: {
+                    'type': 'mirror',
+                    'deviceId': deviceId,
+                    'deviceName': package.displayName, // 窗口标题显示应用名
+                    'newDisplay': vdResolution,
+                    'startApp': packageName,
+                  },
+                  frame: Offset.zero & initialSize,
+                  title: '投屏 - ${package.displayName}',
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  _showSnack(
+                    context,
+                    context.l10n
+                        .t('appMirroringFailed')
+                        .replaceAll('{error}', e.toString()),
+                    isError: true,
+                  );
+                }
+              }
+            },
+          ),
+          const SizedBox(width: 2),
+          IconButton(
             tooltip: context.l10n.t('forceStop'),
             icon: const Icon(CupertinoIcons.stop),
             onPressed: () => _runAdbAction(

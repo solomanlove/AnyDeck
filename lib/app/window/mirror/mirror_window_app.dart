@@ -37,6 +37,8 @@ class MirrorWindowApp extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final deviceId = argument['deviceId'] as String? ?? '';
     final deviceName = argument['deviceName'] as String? ?? 'Device';
+    final newDisplay = argument['newDisplay'] as String?;
+    final startApp = argument['startApp'] as String?;
 
     return MaterialApp(
       onGenerateTitle: (context) => deviceName,
@@ -56,6 +58,8 @@ class MirrorWindowApp extends ConsumerWidget {
         deviceId: deviceId,
         deviceName: deviceName,
         windowId: windowId,
+        newDisplay: newDisplay,
+        startApp: startApp,
       ),
     );
   }
@@ -67,11 +71,15 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
     required this.deviceId,
     required this.deviceName,
     required this.windowId,
+    this.newDisplay,
+    this.startApp,
   });
 
   final String deviceId;
   final String deviceName;
   final String windowId;
+  final String? newDisplay;
+  final String? startApp;
 
   @override
   ConsumerState<MirrorWindowContent> createState() =>
@@ -87,6 +95,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   late final FocusNode _keyboardFocusNode;
   DateTime? _lastPointerDownTime;
   final GlobalKey _viewerKey = GlobalKey();
+  double? _lastFittedAspectRatio;
 
   static const _windowChannel = MethodChannel('adb_manage/window');
 
@@ -360,11 +369,22 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       return;
     }
 
-    windowManager
-        .setBounds(Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH))
-        .catchError((e) {
-          debugPrint('Failed to set window frame: $e');
-        });
+    if (Platform.isMacOS) {
+      _windowChannel.invokeMethod('setWindowFrame', {
+        'left': newLeft,
+        'top': newTop,
+        'width': newWindowW,
+        'height': newWindowH,
+      }).catchError((e) {
+        debugPrint('Failed to set window frame on macOS: $e');
+      });
+    } else {
+      windowManager
+          .setBounds(Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH))
+          .catchError((e) {
+            debugPrint('Failed to set window frame: $e');
+          });
+    }
   }
 
   Future<void> _handleDrop(List<XFile> files) async {
@@ -461,7 +481,10 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       if (activeMirror == null) {
         await ref
             .read(activeEmbeddedMirrorProvider(widget.deviceId).notifier)
-            .toggleMirroring();
+            .toggleMirroring(
+              newDisplay: widget.newDisplay,
+              startApp: widget.startApp,
+            );
       }
       if (mounted) {
         setState(() {
@@ -480,29 +503,30 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   }
 
   void _scheduleAutoFit() {
-    int attempts = 0;
-    Timer.periodic(const Duration(milliseconds: 200), (timer) async {
+    Timer.periodic(const Duration(milliseconds: 500), (timer) async {
       if (!mounted) {
         timer.cancel();
         return;
       }
-      attempts++;
 
-      final overviewAsync = ref.read(deviceOverviewProvider(widget.deviceId));
-      final resolution = overviewAsync.maybeWhen(
-        data: (overview) => overview.physicalResolution,
-        orElse: () => null,
-      );
-      double aspectRatio = _getAspectRatio(resolution);
-
+      double? currentAspectRatio;
       try {
         final size = await ScrcpyFlutter.getVideoSize(
           deviceId: widget.deviceId,
         );
         if (size != null && size['width']! > 0 && size['height']! > 0) {
-          aspectRatio = size['width']! / size['height']!;
+          currentAspectRatio = size['width']! / size['height']!;
         }
       } catch (_) {}
+
+      if (currentAspectRatio == null) {
+        final overviewAsync = ref.read(deviceOverviewProvider(widget.deviceId));
+        final resolution = overviewAsync.maybeWhen(
+          data: (overview) => overview.physicalResolution,
+          orElse: () => null,
+        );
+        currentAspectRatio = _getAspectRatio(resolution);
+      }
 
       final renderBox =
           _viewerKey.currentContext?.findRenderObject() as RenderBox?;
@@ -511,18 +535,16 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         final double viewerW = viewerSize.width;
         final double viewerH = viewerSize.height;
         if (viewerW > 0 && viewerH > 0) {
-          timer.cancel();
-          Future.delayed(const Duration(milliseconds: 50), () {
-            if (mounted) {
-              _fitWindowToAspectRatio(aspectRatio, viewerW, viewerH);
-            }
-          });
-          return;
+          if (_lastFittedAspectRatio == null ||
+              (currentAspectRatio - _lastFittedAspectRatio!).abs() > 0.05) {
+            _lastFittedAspectRatio = currentAspectRatio;
+            Future.delayed(const Duration(milliseconds: 50), () {
+              if (mounted) {
+                _fitWindowToAspectRatio(currentAspectRatio!, viewerW, viewerH);
+              }
+            });
+          }
         }
-      }
-
-      if (attempts >= 15) {
-        timer.cancel();
       }
     });
   }
@@ -590,7 +612,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     else if (isMirrorActive) {
       contentWidget = Column(
         children: [
-          if (!_isFullScreen)
+          if (!_isFullScreen && widget.startApp == null)
             SizedBox(
               width: double.infinity,
               child: MirrorFloatingToolbar(

@@ -6,6 +6,9 @@ class ScrcpyLaunchOptions {
     this.maxFps,
     this.alwaysOnTop = true,
     this.noAudio = false,
+    this.newDisplay,
+    this.noVdSystemDecorations = false,
+    this.startApp,
   });
 
   final int maxSize;
@@ -13,6 +16,9 @@ class ScrcpyLaunchOptions {
   final int? maxFps;
   final bool alwaysOnTop;
   final bool noAudio;
+  final String? newDisplay;
+  final bool noVdSystemDecorations;
+  final String? startApp;
 
   /// 为单台设备构建 scrcpy 参数列表。
   List<String> toArgs(String deviceId) {
@@ -26,6 +32,9 @@ class ScrcpyLaunchOptions {
       if (maxFps != null) ...['--max-fps', maxFps.toString()],
       if (alwaysOnTop) '--always-on-top',
       if (noAudio) '--no-audio',
+      if (newDisplay != null) ...['--new-display', newDisplay!],
+      if (noVdSystemDecorations) '--no-vd-system-decorations',
+      if (startApp != null) ...['--start-app', startApp!],
     ];
   }
 }

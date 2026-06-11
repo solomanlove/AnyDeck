@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import '../process/tool_path_resolver.dart';
@@ -16,8 +17,22 @@ class ScrcpyService {
   Future<ScrcpySession> start({
     required String deviceId,
     ScrcpyLaunchOptions options = const ScrcpyLaunchOptions(),
+    String? adbPath,
   }) async {
-    final process = await Process.start(executable, options.toArgs(deviceId));
+    final process = await Process.start(
+      executable,
+      options.toArgs(deviceId),
+      environment: adbPath != null ? {'ADB': adbPath} : null,
+    );
+
+    // 转发标准输出与标准错误输出，便于调试定位运行问题
+    process.stdout.transform(utf8.decoder).listen((data) {
+      stdout.write('[scrcpy stdout] $data');
+    });
+    process.stderr.transform(utf8.decoder).listen((data) {
+      stderr.write('[scrcpy stderr] $data');
+    });
+
     final session = ScrcpySession(
       id: '${deviceId}_${DateTime.now().microsecondsSinceEpoch}',
       deviceId: deviceId,

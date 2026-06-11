@@ -95,6 +95,17 @@ class MainFlutterWindow: NSWindow {
             "height": frame.size.height
           ]
           result(frameDict)
+        } else if call.method == "setWindowFrame" {
+          guard let args = call.arguments as? [String: Any],
+                let left = args["left"] as? Double,
+                let top = args["top"] as? Double,
+                let width = args["width"] as? Double,
+                let height = args["height"] as? Double else {
+            result(FlutterError(code: "invalid_argument", message: "Requires left, top, width, height arguments", details: nil))
+            return
+          }
+          window.setFrame(NSRect(x: left, y: top, width: width, height: height), display: true, animate: false)
+          result(nil)
         } else if call.method == "setAlwaysOnTop" {
           guard let alwaysOnTop = call.arguments as? Bool else {
             result(FlutterError(code: "invalid_argument", message: "Requires bool arguments", details: nil))
