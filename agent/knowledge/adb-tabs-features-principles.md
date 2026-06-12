@@ -84,6 +84,10 @@
    - 查询权限：使用 `adb shell dumpsys package <package>` 输出应用的权限列表，解析 `requested permissions` 以及 `install permissions` / `runtime permissions`。
    - 动态赋权：`adb shell pm grant <package> <permission>`
    - 撤销权限：`adb shell pm revoke <package> <permission>`
+5. **本地持久化缓存与秒开设计**：
+   - **全量加载持久化**：在渐进式提取流（`enrichPackagesWithIconsProgressive`）执行完成时，将包含图标本地路径、展示名、签名等已 enrichment 完整的应用列表序列化为 JSON 字符串并存入 `SharedPreferences` 本地。
+   - **二次秒开**：当重新打开此设备或进入 Tab 时，若本地缓存存在且非空，直接读取并显示缓存中的全量数据，实现界面零延迟瞬间加载。
+   - **主动清退与回写**：在手动刷新应用列表、拖拽 APK 执行安装、卸载应用或冻结/解冻应用时，主动清除本地的 SharedPreferences 缓存，重新触发完整的元数据与图标渐进式提取，并在拉取完后自动回写更新缓存。
 
 ---
 

@@ -123,6 +123,7 @@ class _WorkspacePanel extends ConsumerWidget {
         }
       }
     }
+    await ref.read(appManagementServiceProvider).clearPackageCache(device.id);
     ref.invalidate(packagesProvider(device.id));
     ref.invalidate(
       remoteFilesProvider(

@@ -173,6 +173,16 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
 
     try {
       final service = ref.read(appManagementServiceProvider);
+
+      // 1. 优先尝试从本地持久化缓存加载以实现秒开
+      final cached = await service.loadPackageCache(deviceId);
+      if (cached != null && cached.isNotEmpty) {
+        if (isDisposed) return;
+        state = AsyncValue.data(cached);
+        return;
+      }
+
+      // 2. 无缓存时，执行正常的快速读取与渐进式提取流程
       final initialPackages = await service.listPackages(deviceId);
       if (isDisposed) return;
       state = AsyncValue.data(initialPackages);
@@ -189,6 +199,7 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       if (isDisposed) return;
       state = AsyncValue.data(refreshedPackages);
 
+      List<AdbPackage>? finalPackages;
       await for (final updatedPackages
           in service.enrichPackagesWithIconsProgressive(
             deviceId,
@@ -196,6 +207,12 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
           )) {
         if (isDisposed) return;
         state = AsyncValue.data(updatedPackages);
+        finalPackages = updatedPackages;
+      }
+
+      // 3. 所有应用（及图标）加载完毕，将最终结果持久化到本地缓存
+      if (finalPackages != null && !isDisposed) {
+        await service.savePackageCache(deviceId, finalPackages);
       }
     } catch (err, stack) {
       if (!isDisposed) {

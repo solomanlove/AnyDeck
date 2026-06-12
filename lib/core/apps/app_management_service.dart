@@ -326,6 +326,19 @@ class AppManagementService {
     return '$_packageCachePrefix.$deviceId';
   }
 
+  Future<List<AdbPackage>?> loadPackageCache(String deviceId) {
+    return _loadPackageCache(deviceId);
+  }
+
+  Future<void> savePackageCache(String deviceId, List<AdbPackage> packages) {
+    return _savePackageCache(deviceId, packages);
+  }
+
+  Future<void> clearPackageCache(String deviceId) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_packageCacheKey(deviceId));
+  }
+
   int _comparePackages(AdbPackage left, AdbPackage right) {
     return left.displayName.toLowerCase().compareTo(
       right.displayName.toLowerCase(),

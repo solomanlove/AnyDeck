@@ -250,16 +250,15 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     }
   }
 
-  /// 手动刷新时强制读取手机数据，并覆盖本地应用列表缓存。
+  /// 手动刷新时清空本地缓存，并触发重新渐进式提取应用列表。
   Future<void> _refreshPackages() async {
     if (_refreshingPackages) {
       return;
     }
     setState(() => _refreshingPackages = true);
     try {
-      await ref
-          .read(appManagementServiceProvider)
-          .refreshPackages(widget.device.id);
+      final service = ref.read(appManagementServiceProvider);
+      await service.clearPackageCache(widget.device.id);
       ref.invalidate(packagesProvider(widget.device.id));
     } catch (error) {
       if (mounted) {

@@ -244,7 +244,7 @@ class _PackageActions extends ConsumerWidget {
                   );
                 }
                 if (result.isSuccess) {
-                  await service.refreshPackages(deviceId);
+                  await service.clearPackageCache(deviceId);
                   ref.invalidate(packagesProvider(deviceId));
                 }
               }
@@ -271,7 +271,7 @@ class _PackageActions extends ConsumerWidget {
                   );
                 }
                 if (result.isSuccess) {
-                  await service.refreshPackages(deviceId);
+                  await service.clearPackageCache(deviceId);
                   ref.invalidate(packagesProvider(deviceId));
                 }
               }
