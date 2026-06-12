@@ -1348,6 +1348,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       _models.remove(removeId);
       _products.remove(removeId);
       _ipAddresses.remove(removeId);
+
+      // 清除该设备的所有本地缓存信息 (包括概览缓存、包列表缓存、包图标缓存等)
+      await ref.read(deviceInfoServiceProvider).clearDeviceCache(removeId);
+      await ref.read(appManagementServiceProvider).clearDeviceCache(removeId);
     }
 
     await _saveHistory();

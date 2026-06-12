@@ -37,6 +37,16 @@ class DeviceInfoService {
     return null;
   }
 
+  /// 清理设备概览信息的本地缓存。
+  Future<void> clearDeviceCache(String deviceId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_overviewKeyPrefix$deviceId');
+    } catch (_) {
+      // 允许清理失败时不抛出异常
+    }
+  }
+
   /// 并行加载所有概览字段，避免 dashboard 阻塞。
   Future<DeviceOverview> loadOverview(String deviceId) async {
     try {

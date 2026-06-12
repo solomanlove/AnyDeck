@@ -339,6 +339,38 @@ class AppManagementService {
     await preferences.remove(_packageCacheKey(deviceId));
   }
 
+  /// 清除某个设备的所有相关本地缓存，包括包列表缓存和本机的本地图标缓存目录，以及临时 chunk 文件。
+  Future<void> clearDeviceCache(String deviceId) async {
+    // 1. 清除 package 信息的 SharedPreferences 缓存
+    await clearPackageCache(deviceId);
+
+    // 2. 清除本机的本地图标缓存文件夹
+    try {
+      final iconDir = _localIconCacheDir(deviceId);
+      if (iconDir.existsSync()) {
+        await iconDir.delete(recursive: true);
+      }
+    } catch (_) {
+      // 允许清理本地图标目录失败时不抛出异常
+    }
+
+    // 3. 清除临时 chunk 文件
+    try {
+      final chunkDir = Directory('${Directory.systemTemp.path}/adb_manage_packages');
+      if (chunkDir.existsSync()) {
+        final safeId = _safeFileSegment(deviceId);
+        final list = chunkDir.listSync();
+        for (final file in list) {
+          if (file is File && file.path.contains('${safeId}_chunk_')) {
+            await file.delete();
+          }
+        }
+      }
+    } catch (_) {
+      // 允许清理临时文件失败时不抛出异常
+    }
+  }
+
   int _comparePackages(AdbPackage left, AdbPackage right) {
     return left.displayName.toLowerCase().compareTo(
       right.displayName.toLowerCase(),
