@@ -140,6 +140,28 @@ const devicesControlZh = {
   'checkingRoot': '正在检查 Root 权限...',
   'loadingWifiPasswords': '正在加载 WiFi 密码...',
   'wifiPasswordTips': '仅展示曾连接成功过的 Wi-Fi 记录。由于系统限制，非 Root 设备无法读取密码。',
+  'certManagerTitle': '证书管理',
+  'certManagerDesc': '方便地向手机导入用户凭证或系统受信任的根证书',
+  'importUserCert': '导入用户证书',
+  'importSystemCert': '导入系统证书',
+  'certUserTitle': '导入用户证书',
+  'certSystemTitle': '导入系统证书 (需要 Root)',
+  'selectCertFile': '选择证书文件',
+  'selectedFile': '已选择文件',
+  'pleaseSelectFile': '请先选择证书文件',
+  'certPushSuccess': '证书推送成功！已保存至：',
+  'certInstallStart': '已发送证书安装指令，请在手机上操作。',
+  'certUserGuide':
+      '注意：如果系统界面没有自动弹出，请在手机上打开：“设置 -> 安全 -> 更多安全设置 -> 加密与凭据 -> 从存储设备安装 -> CA 证书” (或搜索“凭据”相关菜单)，并选择上述文件进行安装。',
+  'certSystemHashPrompt': '请输入证书的主题哈希值 (8位十六进制，例如 9a5ba575)：',
+  'certSystemHashTip':
+      '提示：如果您的电脑安装了 openssl，本软件会自动计算哈希。若计算失败或未安装 openssl，您可以使用 `openssl x509 -inform PEM -subject_hash_old -in <证书路径> -noout` 手动计算并填写。',
+  'certSystemNoRoot': '此操作需要 Root 权限！您的设备当前未开启 Root。',
+  'certSystemInstallSuccess': '系统证书导入成功！(临时挂载模式，重启手机后失效)',
+  'certSystemInstallFailed': '系统证书导入失败：',
+  'certInstall': '安装',
+  'certSubjectHash': '主题哈希',
+  'certSupportedFormats': '支持格式：',
 };
 
 const devicesControlEn = {
@@ -291,4 +313,30 @@ const devicesControlEn = {
   'loadingWifiPasswords': 'Loading WiFi passwords...',
   'wifiPasswordTips':
       'Only displays previously connected Wi-Fi records. Due to system limits, non-Root devices cannot read passwords.',
+  'certManagerTitle': 'Certificate Manager',
+  'certManagerDesc':
+      'Conveniently import user credentials or system trusted root certificates',
+  'importUserCert': 'Import User Cert',
+  'importSystemCert': 'Import System Cert',
+  'certUserTitle': 'Import User Certificate',
+  'certSystemTitle': 'Import System Certificate (Root Required)',
+  'selectCertFile': 'Select Certificate File',
+  'selectedFile': 'Selected file',
+  'pleaseSelectFile': 'Please select a certificate file first',
+  'certPushSuccess': 'Certificate pushed successfully! Saved to: ',
+  'certInstallStart':
+      'Certificate installation command sent, please check your device.',
+  'certUserGuide':
+      'Note: If the system prompt does not appear, please go to: "Settings -> Security -> Encryption & credentials -> Install a certificate -> CA certificate" (or search for credentials settings) and choose the file above.',
+  'certSystemHashPrompt':
+      'Enter certificate subject hash (8-char hex, e.g., 9a5ba575):',
+  'certSystemHashTip':
+      'Tip: If openssl is installed, we will compute the hash automatically. Otherwise, run `openssl x509 -inform PEM -subject_hash_old -in <path> -noout` and type the hash here.',
+  'certSystemNoRoot': 'Root access is required! Your device is not rooted.',
+  'certSystemInstallSuccess':
+      'System certificate installed! (Temporary overlay mode, resets on reboot)',
+  'certSystemInstallFailed': 'Failed to install system certificate: ',
+  'certInstall': 'Install',
+  'certSubjectHash': 'Subject Hash',
+  'certSupportedFormats': 'Supported formats: ',
 };

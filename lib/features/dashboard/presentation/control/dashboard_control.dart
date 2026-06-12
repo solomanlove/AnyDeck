@@ -50,6 +50,8 @@ class _ControlTabState extends ConsumerState<_ControlTab> {
         const SizedBox(height: 16),
         _WifiPasswordsPanel(device: widget.device),
         const SizedBox(height: 16),
+        _CertificatePanel(device: widget.device),
+        const SizedBox(height: 16),
         _PowerPanel(device: widget.device),
       ],
     );

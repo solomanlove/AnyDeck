@@ -11,6 +11,7 @@
 ```text
 agent/rules/
 agent/skills/index.md
+agent/knowledge/index.md
 ```
 
 
