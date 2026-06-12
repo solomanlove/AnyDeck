@@ -95,6 +95,7 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: widget.selected
                   ? colorScheme.primaryContainer.withValues(alpha: 0.8)
@@ -119,112 +120,113 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
                   ),
               ],
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Stack(
               children: [
-                // App Icon
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: SizedBox(
-                        width: iconSize,
-                        height: iconSize,
-                        child: iconPath != null && File(iconPath).existsSync()
-                            ? Image.file(
-                                File(iconPath),
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    _FallbackGridIcon(
-                                      icon: icon,
-                                      system: package.system,
-                                      colorScheme: colorScheme,
-                                      size: iconSize,
-                                    ),
-                              )
-                            : _FallbackGridIcon(
-                                icon: icon,
-                                system: package.system,
-                                colorScheme: colorScheme,
-                                size: iconSize,
-                              ),
-                      ),
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // App Icon (应用图标)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            width: iconSize,
+                            height: iconSize,
+                            child: iconPath != null && File(iconPath).existsSync()
+                                ? Image.file(
+                                    File(iconPath),
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        _FallbackGridIcon(
+                                          icon: icon,
+                                          system: package.system,
+                                          colorScheme: colorScheme,
+                                          size: iconSize,
+                                        ),
+                                  )
+                                : _FallbackGridIcon(
+                                    icon: icon,
+                                    system: package.system,
+                                    colorScheme: colorScheme,
+                                    size: iconSize,
+                                  ),
+                          ),
+                        ),
+                        SizedBox(height: max(6.0, widget.size * 0.06)),
+                        // App Name (应用名称)
+                        Text(
+                          package.displayName,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: labelFontSize,
+                            color: widget.selected
+                              ? colorScheme.onPrimaryContainer
+                              : colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        // Size or Version (应用大小或版本)
+                        Text(
+                          package.storageBytes != null && package.storageBytes! > 0
+                              ? package.storageLabel
+                              : package.versionLabel,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: secondaryFontSize,
+                            color: widget.selected
+                              ? colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
+                              : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
                     ),
-                    if (package.debuggable)
-                      Positioned(
-                        top: -4,
-                        right: -4,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                colorScheme.error,
-                                colorScheme.error.withValues(alpha: 0.85),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(6),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
+                  ),
+                ),
+                // DEBUG 调试斜角标，类似于 Flutter 的 Debug Banner 样式
+                if (package.debuggable)
+                  Positioned(
+                    top: 5,
+                    right: -18,
+                    child: Transform.rotate(
+                      angle: 0.785398, // 旋转 45 度 (pi / 4)
+                      child: Container(
+                        width: 60,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              colorScheme.error,
+                              colorScheme.error.withValues(alpha: 0.85),
                             ],
-                            border: Border.all(
-                              color: colorScheme.surface,
-                              width: 1.5,
-                            ),
                           ),
-                          child: const Text(
-                            'DEBUG',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 7.5,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
                             ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 2.5),
+                        child: const Text(
+                          'DEBUG',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 7.0,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
-                  ],
-                ),
-                SizedBox(height: max(6.0, widget.size * 0.06)),
-                // App Name
-                Text(
-                  package.displayName,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: labelFontSize,
-                    color: widget.selected
-                        ? colorScheme.onPrimaryContainer
-                        : colorScheme.onSurface,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                // Size or Version
-                Text(
-                  package.storageBytes != null && package.storageBytes! > 0
-                      ? package.storageLabel
-                      : package.versionLabel,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: secondaryFontSize,
-                    color: widget.selected
-                        ? colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
-                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                  ),
-                ),
               ],
             ),
           ),

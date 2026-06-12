@@ -189,6 +189,12 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
           if (filter.isEmpty) {
             return true;
           }
+
+          // 如果搜索关键词中包含 'debug'，则匹配所有带 DEBUG 标签（debuggable 为 true）的应用
+          if (filter.contains('debug') && package.debuggable) {
+            return true;
+          }
+
           final nameMatch = package.name.toLowerCase().contains(filter);
           final displayNameMatch = package.displayName.toLowerCase().contains(
             filter,
