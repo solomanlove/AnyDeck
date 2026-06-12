@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/network_util.dart';
 import '../adb/adb_device.dart';
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
@@ -233,11 +234,21 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       // 1. 优先尝试从本地持久化缓存加载，以实现零延迟即时展示
       final cached = await service.loadFromCache(deviceId);
       if (cached != null) {
+        if (cached.ipAddress != '-' && cached.ipAddress.isNotEmpty) {
+          Future.microtask(() {
+            ref.read(deviceRegistryProvider.notifier).updateDeviceIp(deviceId, cached.ipAddress);
+          });
+        }
         yield cached;
       }
 
       // 2. 执行 ADB 查询获取最新设备信息并更新
       final fresh = await service.loadOverview(deviceId);
+      if (fresh.ipAddress != '-' && fresh.ipAddress.isNotEmpty) {
+        Future.microtask(() {
+          ref.read(deviceRegistryProvider.notifier).updateDeviceIp(deviceId, fresh.ipAddress);
+        });
+      }
       yield fresh;
     });
 
@@ -591,6 +602,7 @@ class RegisteredDevice {
     this.isChecked = false,
     this.connections = const [],
     this.serial,
+    this.ipAddress,
   });
 
   final String id;
@@ -603,9 +615,23 @@ class RegisteredDevice {
   final bool isChecked;
   final List<String> connections;
   final String? serial;
+  final String? ipAddress;
 
   bool get isNetwork =>
       id.contains(':') || id.contains('.') || id == '127.0.0.1';
+
+  String? get wifiIp {
+    if (ipAddress != null && ipAddress!.isNotEmpty && ipAddress != '-') {
+      return ipAddress;
+    }
+    if (isNetwork) {
+      final parts = id.split(':');
+      if (parts.isNotEmpty) {
+        return parts.first;
+      }
+    }
+    return null;
+  }
 
   String get displayName {
     if (customName != null && customName!.isNotEmpty) {
@@ -646,6 +672,7 @@ class RegisteredDevice {
     bool? isChecked,
     List<String>? connections,
     String? serial,
+    String? ipAddress,
   }) {
     return RegisteredDevice(
       id: id ?? this.id,
@@ -658,6 +685,7 @@ class RegisteredDevice {
       isChecked: isChecked ?? this.isChecked,
       connections: connections ?? this.connections,
       serial: serial ?? this.serial,
+      ipAddress: ipAddress ?? this.ipAddress,
     );
   }
 }
@@ -673,11 +701,13 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   static const _aliasesKey = 'devices.aliases';
   static const _modelsKey = 'devices.models';
   static const _productsKey = 'devices.products';
+  static const _ipsKey = 'devices.ips';
 
   List<String> _historyIds = [];
   Map<String, String> _aliases = {};
   Map<String, String> _models = {};
   Map<String, String> _products = {};
+  Map<String, String> _ipAddresses = {};
   Set<String> _checkedIds = {};
   Map<String, String> _serialMap = {};
   List<AdbDevice> _lastActiveDevices = [];
@@ -747,6 +777,15 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       } catch (_) {}
     }
 
+    final ipsJson = prefs.getString(_ipsKey);
+    Map<String, String> ips = {};
+    if (ipsJson != null) {
+      try {
+        final decoded = Map<String, dynamic>.from(jsonDecode(ipsJson));
+        ips = decoded.map((key, value) => MapEntry(key, value.toString()));
+      } catch (_) {}
+    }
+
     _historyIds = history;
     _aliases = aliases;
     _models = models;
@@ -776,11 +815,18 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
                 cachedSerial != '-') {
               serialMap[id] = cachedSerial;
             }
+            final cachedIp = decoded['ipAddress']?.toString();
+            if (cachedIp != null &&
+                cachedIp.isNotEmpty &&
+                cachedIp != '-') {
+              ips[id] = cachedIp;
+            }
           } catch (_) {}
         }
       }
     }
     _serialMap = serialMap;
+    _ipAddresses = ips;
 
     state = _mergeDevices(activeDevices);
   }
@@ -896,6 +942,26 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         } else {
           _serialMap[id] = id;
         }
+
+        // 如果不是网络连接设备，获取并缓存其 IP 地址
+        if (!_isNetworkId(id)) {
+          final ip = await _fetchDeviceIpAddress(id);
+          if (ip != null && ip.isNotEmpty) {
+            _ipAddresses[id] = ip;
+            final currentSerial = _serialMap[id] ?? id;
+            if (currentSerial != id) {
+              _ipAddresses[currentSerial] = ip;
+            }
+            await _saveIps();
+          } else {
+            _ipAddresses[id] = '-';
+            final currentSerial = _serialMap[id] ?? id;
+            if (currentSerial != id) {
+              _ipAddresses[currentSerial] = '-';
+            }
+            await _saveIps();
+          }
+        }
       } catch (_) {
         _serialMap[id] = id;
       } finally {
@@ -907,6 +973,82 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         }
       }
     });
+  }
+
+  Future<String?> _fetchDeviceIpAddress(String id) async {
+    // 优先尝试从本设备的概览缓存获取 IP
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheKey = 'devices.overview.$id';
+      final jsonStr = prefs.getString(cacheKey);
+      if (jsonStr != null) {
+        final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+        final cachedIp = decoded['ipAddress']?.toString();
+        if (cachedIp != null && cachedIp.isNotEmpty && cachedIp != '-') {
+          return cachedIp;
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final adb = ref.read(adbServiceProvider);
+      // 1. 尝试通过 ip route 获取
+      final routeResult = await adb.shellArgs(id, ['ip', 'route']);
+      if (routeResult.isSuccess) {
+        final ip = _parseIpFromIpRoute(routeResult.stdout);
+        if (ip != null) return ip;
+      }
+
+      // 2. 尝试通过 ip addr show wlan0 获取
+      final wlanResult = await adb.shellArgs(id, ['ip', 'addr', 'show', 'wlan0']);
+      if (wlanResult.isSuccess) {
+        final ip = _parseIpFromIpAddr(wlanResult.stdout);
+        if (ip != null) return ip;
+      }
+
+      // 3. 尝试通过 ip addr show 兜底获取
+      final addrResult = await adb.shellArgs(id, ['ip', 'addr', 'show']);
+      if (addrResult.isSuccess) {
+        final ip = _parseIpFromIpAddr(addrResult.stdout);
+        if (ip != null) return ip;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String? _parseIpFromIpRoute(String output) {
+    final regExp = RegExp(r'dev\s+(\S+)\s+.*?\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b');
+    for (final line in output.split('\n')) {
+      final match = regExp.firstMatch(line);
+      if (match != null) {
+        final ip = match.group(2);
+        if (ip != null && ip != '127.0.0.1' && !ip.endsWith('.0')) {
+          return ip;
+        }
+      }
+    }
+    return null;
+  }
+
+  String? _parseIpFromIpAddr(String output) {
+    final regExp = RegExp(r'inet\s+(\d+\.\d+\.\d+\.\d+)');
+    for (final line in output.split('\n')) {
+      final match = regExp.firstMatch(line);
+      if (match != null) {
+        final ip = match.group(1);
+        if (ip != null && ip != '127.0.0.1') {
+          return ip;
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<void> _saveIps() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_ipsKey, jsonEncode(_ipAddresses));
+    } catch (_) {}
   }
 
   Future<void> _saveHistory() async {
@@ -963,10 +1105,16 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       _saveModelsAndProducts();
     }
 
-    // 触发获取新在线无线设备的序列号
+    // 触发获取新在线设备(或无缓存的IP)的序列号和 IP
     for (final device in activeDevices) {
+      final hasSerial = _serialMap.containsKey(device.id);
+      final isNet = _isNetworkId(device.id);
+      final hasIp = isNet ||
+          (_ipAddresses.containsKey(device.id) &&
+              _ipAddresses[device.id] != null &&
+              _ipAddresses[device.id] != '-');
       if (device.isOnline &&
-          !_serialMap.containsKey(device.id) &&
+          (!hasSerial || !hasIp) &&
           !_pendingFetchIds.contains(device.id)) {
         _pendingFetchIds.add(device.id);
         _fetchAndCacheSerial(device.id);
@@ -981,6 +1129,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       final serial = _serialMap[id] ?? id;
       final cachedModel = _models[id];
       final cachedProduct = _products[id];
+      final ipAddress = _ipAddresses[serial] ?? _ipAddresses[id];
 
       if (active != null) {
         allCandidates.add(
@@ -995,6 +1144,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             isChecked: isChecked,
             connections: [id],
             serial: serial,
+            ipAddress: ipAddress,
           ),
         );
       } else {
@@ -1009,6 +1159,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             isChecked: isChecked,
             connections: [id],
             serial: serial,
+            ipAddress: ipAddress,
           ),
         );
       }
@@ -1071,6 +1222,16 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           }
         }
 
+        String? mergedIp = best.ipAddress;
+        if (mergedIp == null || mergedIp.isEmpty || mergedIp == '-') {
+          for (final c in candidates) {
+            if (c.ipAddress != null && c.ipAddress!.isNotEmpty && c.ipAddress != '-') {
+              mergedIp = c.ipAddress;
+              break;
+            }
+          }
+        }
+
         // When the merged device is online, we filter the connection IDs to only active (online) connections.
         // Otherwise, we show all historical offline connections.
         final connectionIds = best.isOnline
@@ -1085,12 +1246,33 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             product: mergedProduct,
             connections: connectionIds,
             serial: serial,
+            ipAddress: mergedIp,
           ),
         );
       }
     });
 
     return merged;
+  }
+
+  /// 概览信息加载成功后触发同步更新设备注册表中的 IP 缓存并更新状态
+  void updateDeviceIp(String id, String ip) {
+    if (ip == '-' || ip.isEmpty) return;
+
+    final currentIp = _ipAddresses[id];
+    if (currentIp == ip) return; // 无变化则不重复更新，避免 UI 抖动
+
+    _ipAddresses[id] = ip;
+    final serial = _serialMap[id] ?? id;
+    if (serial != id) {
+      _ipAddresses[serial] = ip;
+    }
+
+    _saveIps(); // 异步持久化到 SharedPreferences
+
+    // 触发更新 state，让 UI 重新渲染
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    state = _mergeDevices(activeDevices);
   }
 
   Future<void> setAlias(String id, String alias) async {
@@ -1165,11 +1347,13 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       _aliases.remove(removeId);
       _models.remove(removeId);
       _products.remove(removeId);
+      _ipAddresses.remove(removeId);
     }
 
     await _saveHistory();
     await _saveAliases();
     await _saveModelsAndProducts();
+    await _saveIps();
 
     var activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     activeDevices = activeDevices
@@ -1221,7 +1405,47 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   }
 
   Future<AdbResult> connectDevice(String address) async {
+    // 提取 IP 地址
+    String ipAddress = address;
+    if (address.contains(':')) {
+      ipAddress = address.split(':').first;
+    }
+
+    // 1. 先判断方法一：是否在同一局域网网段
+    final isSameSegment = await NetworkLanMatcher.isSameSubnet(ipAddress);
+    if (!isSameSegment) {
+      // 如果网段不同，进入方法二：尝试 Ping 测试
+      final isPingable = await NetworkLanMatcher.pingDevice(ipAddress);
+      if (!isPingable) {
+        return const AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: '连接失败：手机与电脑不在同一网段，且局域网 Ping 测试不通，请检查是否连接了相同的 WiFi。',
+        );
+      }
+    }
+
+    // 2. 执行连接
     final result = await ref.read(deviceActionServiceProvider).connect(address);
+
+    // 3. 如果点击连接发现不联通，再判断方法二（进行诊断）
+    if (!result.isSuccess) {
+      final isPingable = await NetworkLanMatcher.pingDevice(ipAddress);
+      if (!isPingable) {
+        return const AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: '连接失败：虽然在同一网段，但局域网网络 Ping 测试不联通，请检查手机 WiFi 状态或 AP 隔离设置。',
+        );
+      } else {
+        return const AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: '连接失败：设备在局域网内网络连通，但手机 ADB 无线端口（5555）未响应，请检查手机端是否允许调试。',
+        );
+      }
+    }
+
     await _refreshRegistryAfterAdbCommand();
     return result;
   }
@@ -1232,6 +1456,57 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         .disconnect(address);
     await _refreshRegistryAfterAdbCommand();
     return result;
+  }
+
+  Future<AdbResult> connectWireless(String usbDeviceId, String ipAddress, [int port = 5555]) async {
+    // 1. 先判断方法一：是否在同一局域网网段
+    final isSameSegment = await NetworkLanMatcher.isSameSubnet(ipAddress);
+    if (!isSameSegment) {
+      // 如果网段不同，进入方法二：尝试 Ping 测试
+      final isPingable = await NetworkLanMatcher.pingDevice(ipAddress);
+      if (!isPingable) {
+        return const AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: '连接失败：手机与电脑不在同一网段，且局域网 Ping 测试不通，请检查是否连接了相同的 WiFi。',
+        );
+      }
+    }
+
+    final adb = ref.read(adbServiceProvider);
+    
+    // 2. 将 USB 设备切换为 TCP/IP 监听模式，开启指定端口（默认 5555）
+    final tcpipResult = await adb.run(['-s', usbDeviceId, 'tcpip', port.toString()]);
+    if (!tcpipResult.isSuccess) {
+      return tcpipResult;
+    }
+    
+    // 3. 延迟等待 1 秒，以确保手机端的 TCP/IP 服务成功启动
+    await Future.delayed(const Duration(seconds: 1));
+    
+    // 4. 执行 adb connect 连接到该局域网 IP
+    final connectResult = await adb.run(['connect', '$ipAddress:$port']);
+
+    // 5. 如果点击连接发现不联通，再判断方法二（进行诊断）
+    if (!connectResult.isSuccess) {
+      final isPingable = await NetworkLanMatcher.pingDevice(ipAddress);
+      if (!isPingable) {
+        return const AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: '连接失败：虽然在同一网段，但局域网网络 Ping 测试不联通，请检查手机 WiFi 状态或 AP 隔离设置。',
+        );
+      } else {
+        return const AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: '连接失败：设备在局域网内网络连通，但手机 ADB 无线端口未响应，请检查手机端是否允许调试或重新插拔 USB。',
+        );
+      }
+    }
+
+    await _refreshRegistryAfterAdbCommand();
+    return connectResult;
   }
 
   /// 主动刷新设备列表，并立即同步到设备注册表。
@@ -1286,6 +1561,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   Future<void> _syncActiveDevices() async {
     final activeDevices = await ref.read(adbServiceProvider).listDevices();
     _lastActiveDevices = activeDevices;
+    // 重新从持久化和概览缓存中加载最新的数据
+    await _loadFromPrefs();
     state = _mergeDevices(activeDevices);
   }
 

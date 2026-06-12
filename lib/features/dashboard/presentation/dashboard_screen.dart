@@ -35,6 +35,7 @@ import '../../../core/logcat/logcat_state.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/network_providers.dart';
 import '../../../core/providers/transfer_provider.dart';
+import '../../../core/utils/network_util.dart';
 import 'widgets/drag_drop_target_overlay.dart';
 import 'widgets/liquid_glass_background.dart';
 import 'package:glassmorphism/glassmorphism.dart';

@@ -11,6 +11,7 @@ class _DeviceListPanel extends ConsumerStatefulWidget {
 class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
   String _sortColumn = 'id';
   bool _sortAscending = true;
+  final Map<String, Future<bool>> _subnetFutures = {};
 
   void _toggleSort(String column) {
     setState(() {
