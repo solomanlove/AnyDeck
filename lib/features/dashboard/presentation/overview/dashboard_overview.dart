@@ -12,7 +12,6 @@ class _OverviewTab extends StatelessWidget {
 }
 
 /// 展示当前设备身份和 adb 状态的顶部单行 Header，同时包含 scrcpy 投屏控制。
-
 class _DeviceOverviewPanel extends ConsumerWidget {
   const _DeviceOverviewPanel({required this.device});
 
@@ -202,7 +201,7 @@ class _OverviewHeader extends StatelessWidget {
         if (constraints.maxWidth < 360) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [title, const SizedBox(height: 8), actions],
+            children: [title, actions],
           );
         }
 
@@ -301,9 +300,8 @@ class _OverviewItemData extends StatelessWidget {
                     Expanded(
                       child: Text(
                         label,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleSmall?.copyWith(color: color),
+                        style: Theme.of(context,).textTheme.titleSmall
+                            ?.copyWith(color: color),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
