@@ -162,6 +162,40 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: context.l10n.t(
+                                    'qrImageCaptionPrefix',
+                                  ),
+                                ),
+                                const TextSpan(text: ' '),
+                                TextSpan(
+                                  text: context.l10n.t(
+                                    'qrImageCaptionDevice',
+                                  ),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const TextSpan(text: '\n'),
+                                TextSpan(
+                                  text: context.l10n.t(
+                                    'qrImageCaptionAction',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(
+                              color: const Color(0xff202124),
+                              fontWeight: FontWeight.w600,
+                              height: 1.32,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -169,64 +203,23 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 20,
+                                  offset: const Offset(1, 4),
                                 ),
                               ],
                             ),
-                            child: SizedBox(
-                              width: 260,
-                              child: Column(
-                                children: [
-                                  Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: context.l10n.t(
-                                            'qrImageCaptionPrefix',
-                                          ),
-                                        ),
-                                        const TextSpan(text: ' '),
-                                        TextSpan(
-                                          text: context.l10n.t(
-                                            'qrImageCaptionDevice',
-                                          ),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const TextSpan(text: '\n'),
-                                        TextSpan(
-                                          text: context.l10n.t(
-                                            'qrImageCaptionAction',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(
-                                          color: const Color(0xff202124),
-                                          fontWeight: FontWeight.w600,
-                                          height: 1.32,
-                                        ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  QrImageView(
-                                    data: 'WIFI:T:ADB;S:$_ssid;P:$_password;;',
-                                    version: QrVersions.auto,
-                                    size: 180,
-                                    eyeStyle: const QrEyeStyle(
-                                      eyeShape: QrEyeShape.square,
-                                      color: Colors.black,
-                                    ),
-                                    dataModuleStyle: const QrDataModuleStyle(
-                                      dataModuleShape: QrDataModuleShape.square,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ],
+                            child: QrImageView(
+                              data: 'WIFI:T:ADB;S:$_ssid;P:$_password;;',
+                              version: QrVersions.auto,
+                              size: 180,
+                              eyeStyle: const QrEyeStyle(
+                                eyeShape: QrEyeShape.square,
+                                color: Colors.black,
+                              ),
+                              dataModuleStyle: const QrDataModuleStyle(
+                                dataModuleShape: QrDataModuleShape.square,
+                                color: Colors.black,
                               ),
                             ),
                           ),
@@ -289,7 +282,7 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
                         const SizedBox(height: 16),
                         FilledButton.icon(
                           onPressed: _isPairing ? null : _manualPair,
-                          icon: const Icon(CupertinoIcons.lock),
+                          icon: const Icon(CupertinoIcons.link),
                           label: Text(context.l10n.t('connect')),
                         ),
                       ],
