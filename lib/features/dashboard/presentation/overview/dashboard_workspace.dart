@@ -182,7 +182,7 @@ class _ToolContentCardState extends State<_ToolContentCard> {
         return const SizedBox.shrink();
       }
       return switch (index) {
-        0 => _ToolTabScrollView(child: _OverviewTab(device: widget.device)),
+        0 => _OverviewTab(device: widget.device),
         1 => _ToolTabScrollView(
           child: _ControlTab(device: widget.device, sessions: widget.sessions),
         ),
@@ -248,5 +248,3 @@ class _ToolTabScrollViewState extends State<_ToolTabScrollView> {
     );
   }
 }
-
-/// 概览 tab，只承载选中设备的只读手机信息。

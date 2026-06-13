@@ -47,44 +47,46 @@ class _DeviceOverviewPanel extends ConsumerWidget {
               title: context.l10n.t('overviewTitle'),
               subtitle: context.l10n.t('noCachedOverview'),
             )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _OverviewHeader(
-                  device: device,
-                  onRefresh: () => device.isOnline
-                      ? ref.invalidate(deviceOverviewProvider(device.id))
-                      : ref.invalidate(cachedDeviceOverviewProvider(device.id)),
-                ),
-                const SizedBox(height: 16),
-                _buildCategorySection(
-                  context,
-                  title: context.l10n.t('basicInfo'),
-                  icon: CupertinoIcons.device_phone_portrait,
-                  items: _buildBasicInfoItems(context, data),
-                ),
-                const SizedBox(height: 16),
-                _buildCategorySection(
-                  context,
-                  title: context.l10n.t('systemHardware'),
-                  icon: CupertinoIcons.settings,
-                  items: _buildSystemHardwareItems(context, data),
-                ),
-                const SizedBox(height: 16),
-                _buildCategorySection(
-                  context,
-                  title: context.l10n.t('screenDisplay'),
-                  icon: CupertinoIcons.tv,
-                  items: _buildScreenDisplayItems(context, data),
-                ),
-                const SizedBox(height: 16),
-                _buildCategorySection(
-                  context,
-                  title: context.l10n.t('networkConnectivity'),
-                  icon: CupertinoIcons.wifi,
-                  items: _buildNetworkConnectivityItems(context, data),
-                ),
-              ],
+          : _ToolTabScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _OverviewHeader(
+                    device: device,
+                    onRefresh: () => device.isOnline
+                        ? ref.invalidate(deviceOverviewProvider(device.id))
+                        : ref.invalidate(cachedDeviceOverviewProvider(device.id)),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildCategorySection(
+                    context,
+                    title: context.l10n.t('basicInfo'),
+                    icon: CupertinoIcons.device_phone_portrait,
+                    items: _buildBasicInfoItems(context, data),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildCategorySection(
+                    context,
+                    title: context.l10n.t('systemHardware'),
+                    icon: CupertinoIcons.settings,
+                    items: _buildSystemHardwareItems(context, data),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildCategorySection(
+                    context,
+                    title: context.l10n.t('screenDisplay'),
+                    icon: CupertinoIcons.tv,
+                    items: _buildScreenDisplayItems(context, data),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildCategorySection(
+                    context,
+                    title: context.l10n.t('networkConnectivity'),
+                    icon: CupertinoIcons.wifi,
+                    items: _buildNetworkConnectivityItems(context, data),
+                  ),
+                ],
+              ),
             ),
     );
   }
