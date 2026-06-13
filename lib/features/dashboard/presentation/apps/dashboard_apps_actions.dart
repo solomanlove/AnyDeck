@@ -208,6 +208,18 @@ class _PackageActions extends ConsumerWidget {
             },
           ),
           const SizedBox(width: 2),
+          IconButton(
+            tooltip: context.l10n.t('backupAppData'),
+            icon: const Icon(CupertinoIcons.archivebox),
+            onPressed: () => _backupAppData(context, ref, deviceId, package),
+          ),
+          const SizedBox(width: 2),
+          IconButton(
+            tooltip: context.l10n.t('restoreAppData'),
+            icon: const Icon(Icons.restore),
+            onPressed: () => _restoreAppData(context, ref, deviceId, package),
+          ),
+          const SizedBox(width: 2),
           // 冻结/解冻按钮：根据应用当前启用状态显示对应操作
           IconButton(
             tooltip: package.enabled
@@ -324,6 +336,80 @@ class _PackageActions extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _backupAppData(
+  BuildContext context,
+  WidgetRef ref,
+  String deviceId,
+  AdbPackage package,
+) async {
+  final directory = await getDirectoryPath();
+  if (directory == null || !context.mounted) {
+    return;
+  }
+
+  _showSnack(context, context.l10n.t('backupAppDataRunning'));
+  final service = ref.read(appDataBackupServiceProvider);
+  final result = await service.backupData(
+    deviceId,
+    package.name,
+    directory,
+    displayName: package.displayName,
+    versionName: package.versionName,
+  );
+
+  if (!context.mounted) {
+    return;
+  }
+  final message = result.isSuccess
+      ? context.l10n
+            .t('backupAppDataSuccess')
+            .replaceAll('{path}', result.stdout)
+      : context.l10n
+            .t('backupAppDataFailed')
+            .replaceAll('{error}', result.message);
+  _showSnack(context, message, isError: !result.isSuccess);
+}
+
+Future<void> _restoreAppData(
+  BuildContext context,
+  WidgetRef ref,
+  String deviceId,
+  AdbPackage package,
+) async {
+  final confirmed = await _confirm(
+    context,
+    context.l10n
+        .t('restoreAppDataConfirm')
+        .replaceAll('{package}', package.name),
+  );
+  if (!confirmed || !context.mounted) {
+    return;
+  }
+
+  final file = await openFile(
+    acceptedTypeGroups: const [
+      XTypeGroup(label: 'App data backup', extensions: ['ab', 'tar']),
+    ],
+  );
+  if (file == null || !context.mounted) {
+    return;
+  }
+
+  _showSnack(context, context.l10n.t('restoreAppDataRunning'));
+  final service = ref.read(appDataBackupServiceProvider);
+  final result = await service.restoreData(deviceId, package.name, file.path);
+
+  if (!context.mounted) {
+    return;
+  }
+  final message = result.isSuccess
+      ? context.l10n.t('restoreAppDataSuccess')
+      : context.l10n
+            .t('restoreAppDataFailed')
+            .replaceAll('{error}', result.message);
+  _showSnack(context, message, isError: !result.isSuccess);
 }
 
 /// `/` 及其子目录的远程文件浏览器。

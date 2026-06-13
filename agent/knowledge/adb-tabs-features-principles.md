@@ -80,6 +80,10 @@
    - **停止**：`adb shell am force-stop <package>` 结束进程。
    - **清空数据**：`adb shell pm clear <package>` 重置应用状态（清空沙盒存储与数据库）。
    - **卸载**：`adb shell pm uninstall <package>`。
+   - **备份/恢复应用数据**：由 `AppDataBackupService` 根据 Android API 级别和权限能力选择策略。
+     - Android 11 及以下（API <= 30）：优先使用 legacy `adb backup -f <local.ab> -noapk <package>` 与 `adb restore <local.ab>`，需要用户在手机端确认，且应用 `allowBackup=false` 时可能得到空备份。
+     - Android 12+（API >= 31）：legacy `adb backup` 已弱化/移除，优先使用 `adb exec-out run-as <package> tar -C /data/data/<package> -cf - .` 备份 debuggable 应用，恢复时使用 `adb exec-in run-as <package> tar -C /data/data/<package> -xf -`。
+     - 非 debuggable 应用或正式包：通常需要 Root，Root fallback 会通过 `su -c tar` 在 `/data/local/tmp` 中中转 tar 包，并在恢复后执行 `chown` 与 `restorecon` 修复数据目录属主和 SELinux context。
 4. **权限查看与动态配置**：
    - 查询权限：使用 `adb shell dumpsys package <package>` 输出应用的权限列表，解析 `requested permissions` 以及 `install permissions` / `runtime permissions`。
    - 动态赋权：`adb shell pm grant <package> <permission>`

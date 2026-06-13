@@ -6,6 +6,7 @@ import '../utils/network_util.dart';
 import '../adb/adb_device.dart';
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
+import '../apps/app_data_backup_service.dart';
 import '../apps/adb_package.dart';
 import '../apps/app_management_service.dart';
 import '../apps/app_permission_service.dart';
@@ -42,6 +43,11 @@ final deviceActionServiceProvider = Provider<DeviceActionService>((ref) {
 /// 应用管理门面，负责安装、卸载、启动和列表读取。
 final appManagementServiceProvider = Provider<AppManagementService>((ref) {
   return AppManagementService(ref.watch(adbServiceProvider));
+});
+
+/// 应用数据备份门面，负责按系统版本选择 adb backup、run-as 或 Root tar。
+final appDataBackupServiceProvider = Provider<AppDataBackupService>((ref) {
+  return AppDataBackupService(ref.watch(adbServiceProvider));
 });
 
 /// 应用权限管理门面，负责查询、授予和撤销应用权限。
