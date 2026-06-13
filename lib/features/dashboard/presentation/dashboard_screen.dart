@@ -44,6 +44,7 @@ import '../../../core/scrcpy/scrcpy_session.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/device_actions/device_action_service.dart';
 import '../../../core/device_actions/wifi_credentials.dart';
+import 'control/device_settings_popup.dart';
 import 'terminal/terminal_tab.dart';
 import 'processes/processes_tab.dart';
 import 'webpages/webpages_tab.dart';

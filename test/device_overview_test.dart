@@ -99,6 +99,7 @@ void main() {
         animatorDurationScale: '1.0',
         rawResolution: '1080x2400',
         hwuiProfile: 'false',
+        layoutBoundsEnabled: false,
         showTouchesEnabled: false,
         pointerLocationEnabled: false,
         demoModeEnabled: false,
@@ -129,6 +130,7 @@ void main() {
       expect(decoded.airplaneModeEnabled, overview.airplaneModeEnabled);
       expect(decoded.mobileDataEnabled, overview.mobileDataEnabled);
       expect(decoded.talkbackEnabled, overview.talkbackEnabled);
+      expect(decoded.layoutBoundsEnabled, overview.layoutBoundsEnabled);
       expect(decoded.windowAnimationScale, overview.windowAnimationScale);
       expect(
         decoded.transitionAnimationScale,

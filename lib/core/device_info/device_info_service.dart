@@ -88,6 +88,8 @@ echo "===ANIMATORANIM==="
 settings get global animator_duration_scale
 echo "===SHOWTOUCHES==="
 settings get system show_touches
+echo "===LAYOUTBOUNDS==="
+settings get global debug_layout
 echo "===POINTERLOCATION==="
 settings get system pointer_location
 echo "===DEMOMODE==="
@@ -147,6 +149,7 @@ settings get global sysui_demo_allowed
         settingsSections['POINTERLOCATION'] ?? '',
       );
       final demoModeRaw = _clean(settingsSections['DEMOMODE'] ?? '');
+      final layoutBoundsRaw = _clean(settingsSections['LAYOUTBOUNDS'] ?? '');
 
       final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
       final deviceCode = _firstValue(properties, [
@@ -203,6 +206,9 @@ settings get global sysui_demo_allowed
         animatorDurationScale: animatorAnimRaw,
         rawResolution: size.current,
         hwuiProfile: hwuiProfile,
+        layoutBoundsEnabled:
+            layoutBoundsRaw == '1' ||
+            properties['debug.layout']?.trim() == 'true',
         showTouchesEnabled: showTouchesRaw == '1',
         pointerLocationEnabled: pointerLocationRaw == '1',
         demoModeEnabled: demoModeRaw == '1',

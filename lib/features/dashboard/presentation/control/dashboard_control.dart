@@ -84,6 +84,13 @@ class _QuickActionsPanel extends ConsumerWidget {
       title: context.l10n.t('deviceActions'),
       children: [
         _ActionButton(
+          icon: CupertinoIcons.device_phone_portrait,
+          label: context.l10n.t('deviceSettings'),
+          onPressed: () =>
+              showDeviceSettingsPopup(context: context, deviceId: device.id),
+        ),
+
+        _ActionButton(
           icon: CupertinoIcons.keyboard,
           label: context.l10n.t('inputText'),
           onPressed: () => _showInputTextDialog(context, ref, device.id),
@@ -304,6 +311,7 @@ class _LayoutHelperPanel extends ConsumerWidget {
           iconOn: CupertinoIcons.square_grid_2x2,
           iconOff: CupertinoIcons.rectangle,
           label: context.l10n.t('layoutBoundsToggle'),
+          value: overviewAsync.value?.layoutBoundsEnabled ?? false,
           onToggle: (on) => _runAdbAction(
             context,
             ref,

@@ -11,6 +11,7 @@ import '../../../core/scrcpy/scrcpy_keycode_helper.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
+import '../../../features/dashboard/presentation/control/device_settings_popup.dart';
 
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   const MirrorFloatingToolbar({
@@ -397,6 +398,17 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   );
                 }
               },
+            ),
+            MirrorToolbarButton(
+              icon: DeviceSettingsIcon(
+                color: isDark ? Colors.white70 : Colors.black87,
+                size: 18,
+              ),
+              tooltip: context.l10n.t('deviceSettings'),
+              onPressed: () => showDeviceSettingsPopup(
+                context: context,
+                deviceId: widget.deviceId,
+              ),
             ),
           ],
         ),

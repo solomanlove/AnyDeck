@@ -28,6 +28,7 @@ class DeviceOverview {
     required this.animatorDurationScale,
     required this.rawResolution,
     required this.hwuiProfile,
+    required this.layoutBoundsEnabled,
     required this.showTouchesEnabled,
     required this.pointerLocationEnabled,
     required this.demoModeEnabled,
@@ -60,6 +61,7 @@ class DeviceOverview {
   final String animatorDurationScale;
   final String rawResolution;
   final String hwuiProfile;
+  final bool layoutBoundsEnabled;
   final bool showTouchesEnabled;
   final bool pointerLocationEnabled;
   final bool demoModeEnabled;
@@ -93,6 +95,7 @@ class DeviceOverview {
       'animatorDurationScale': animatorDurationScale,
       'rawResolution': rawResolution,
       'hwuiProfile': hwuiProfile,
+      'layoutBoundsEnabled': layoutBoundsEnabled,
       'showTouchesEnabled': showTouchesEnabled,
       'pointerLocationEnabled': pointerLocationEnabled,
       'demoModeEnabled': demoModeEnabled,
@@ -129,6 +132,7 @@ class DeviceOverview {
       animatorDurationScale: json['animatorDurationScale'] as String? ?? '1.0',
       rawResolution: json['rawResolution'] as String? ?? '-',
       hwuiProfile: json['hwuiProfile'] as String? ?? 'false',
+      layoutBoundsEnabled: json['layoutBoundsEnabled'] as bool? ?? false,
       showTouchesEnabled: json['showTouchesEnabled'] as bool? ?? false,
       pointerLocationEnabled: json['pointerLocationEnabled'] as bool? ?? false,
       demoModeEnabled: json['demoModeEnabled'] as bool? ?? false,
@@ -163,6 +167,7 @@ class DeviceOverview {
     String? animatorDurationScale,
     String? rawResolution,
     String? hwuiProfile,
+    bool? layoutBoundsEnabled,
     bool? showTouchesEnabled,
     bool? pointerLocationEnabled,
     bool? demoModeEnabled,
@@ -197,6 +202,7 @@ class DeviceOverview {
           animatorDurationScale ?? this.animatorDurationScale,
       rawResolution: rawResolution ?? this.rawResolution,
       hwuiProfile: hwuiProfile ?? this.hwuiProfile,
+      layoutBoundsEnabled: layoutBoundsEnabled ?? this.layoutBoundsEnabled,
       showTouchesEnabled: showTouchesEnabled ?? this.showTouchesEnabled,
       pointerLocationEnabled:
           pointerLocationEnabled ?? this.pointerLocationEnabled,

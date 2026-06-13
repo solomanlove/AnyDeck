@@ -89,6 +89,7 @@ const _mockOverview = DeviceOverview(
   animatorDurationScale: '1.0',
   rawResolution: '1080x2400',
   hwuiProfile: 'false',
+  layoutBoundsEnabled: false,
   showTouchesEnabled: false,
   pointerLocationEnabled: false,
   demoModeEnabled: false,
