@@ -137,16 +137,40 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WindowListener {
+  bool _isExitDialogOpen = false;
+  static const _windowChannel = MethodChannel('adb_manage/window');
+
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    _windowChannel.setMethodCallHandler(_handleWindowMethodCall);
   }
 
   @override
   void dispose() {
+    _windowChannel.setMethodCallHandler(null);
     windowManager.removeListener(this);
     super.dispose();
+  }
+
+  Future<void> _handleWindowMethodCall(MethodCall call) async {
+    if (call.method == 'requestAppExit') {
+      _showExitConfirmDialog();
+    }
+  }
+
+  void _showExitConfirmDialog() {
+    if (!mounted) return;
+    if (_isExitDialogOpen) return;
+    _isExitDialogOpen = true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _ExitConfirmDialog(),
+    ).then((_) {
+      _isExitDialogOpen = false;
+    });
   }
 
   @override
@@ -161,12 +185,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       debugPrint('Failed to get sub-window IDs: $e');
     }
 
-    if (!mounted) return;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const _ExitConfirmDialog(),
-    );
+    _showExitConfirmDialog();
   }
 
   @override
@@ -256,17 +275,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       stackIndex = 1;
     }
 
-    return Scaffold(
-      body: _WechatStyleShell(
-        title: appBarTitle,
-        selectedDevice: effectiveSelectedDevice,
-        child: IndexedStack(
-          index: stackIndex,
-          children: [
-            const _DashboardHomeContent(),
-            workspace,
-            const _SettingsTab(),
-          ],
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.keyQ, meta: true): _showExitConfirmDialog,
+        const SingleActivator(LogicalKeyboardKey.keyQ, control: true): _showExitConfirmDialog,
+      },
+      child: Scaffold(
+        body: _WechatStyleShell(
+          title: appBarTitle,
+          selectedDevice: effectiveSelectedDevice,
+          child: IndexedStack(
+            index: stackIndex,
+            children: [
+              const _DashboardHomeContent(),
+              workspace,
+              const _SettingsTab(),
+            ],
+          ),
         ),
       ),
     );
