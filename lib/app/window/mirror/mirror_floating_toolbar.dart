@@ -13,6 +13,7 @@ import '../../../app/l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../../features/dashboard/presentation/control/device_settings_popup.dart';
 import 'mirror_back_long_press_handler.dart';
+import 'mirror_volume_long_press_handler.dart';
 
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   const MirrorFloatingToolbar({
@@ -31,6 +32,7 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
 
 class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
   late final MirrorBackLongPressHandler _backLongPressHandler;
+  late final MirrorVolumeLongPressHandler _volumeLongPressHandler;
 
   @override
   void initState() {
@@ -39,11 +41,16 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
       ref: ref,
       deviceId: widget.deviceId,
     );
+    _volumeLongPressHandler = MirrorVolumeLongPressHandler(
+      ref: ref,
+      deviceId: widget.deviceId,
+    );
   }
 
   @override
   void dispose() {
     _backLongPressHandler.cancel();
+    _volumeLongPressHandler.cancel();
     super.dispose();
   }
 
@@ -255,7 +262,16 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
               tooltip: context.l10n.t('volumeUp'),
-              onPressed: () => actions.volumeUp(widget.deviceId),
+              onPressed: () {
+                if (_volumeLongPressHandler.shouldSuppressVolumeUp) {
+                  return;
+                }
+                actions.volumeUp(widget.deviceId);
+              },
+              onPointerDown: () =>
+                  _volumeLongPressHandler.handleVolumeUpPointerDown(context),
+              onPointerUp: _volumeLongPressHandler.handleVolumeUpPointerUp,
+              onPointerCancel: _volumeLongPressHandler.handleVolumeUpPointerUp,
             ),
             MirrorToolbarButton(
               icon: Icon(
@@ -263,7 +279,16 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
               tooltip: context.l10n.t('volumeDown'),
-              onPressed: () => actions.volumeDown(widget.deviceId),
+              onPressed: () {
+                if (_volumeLongPressHandler.shouldSuppressVolumeDown) {
+                  return;
+                }
+                actions.volumeDown(widget.deviceId);
+              },
+              onPointerDown: () =>
+                  _volumeLongPressHandler.handleVolumeDownPointerDown(context),
+              onPointerUp: _volumeLongPressHandler.handleVolumeDownPointerUp,
+              onPointerCancel: _volumeLongPressHandler.handleVolumeDownPointerUp,
             ),
             const _VerticalDivider(),
 

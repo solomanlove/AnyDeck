@@ -201,6 +201,24 @@ class DeviceActionService {
   Future<AdbResult> volumeDown(String deviceId) =>
       _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_VOLUME_DOWN']);
 
+  /// 将媒体音量设为最大。
+  Future<AdbResult> volumeMax(String deviceId) async {
+    final res = await _adb.shellArgs(deviceId, ['cmd', 'media_session', 'volume', '--stream', '3', '--set', '30']);
+    if (res.isSuccess) {
+      return res;
+    }
+    return _adb.shellArgs(deviceId, ['media', 'volume', '--stream', '3', '--set', '30']);
+  }
+
+  /// 将媒体音量设为静音（0）。
+  Future<AdbResult> volumeMute(String deviceId) async {
+    final res = await _adb.shellArgs(deviceId, ['cmd', 'media_session', 'volume', '--stream', '3', '--set', '0']);
+    if (res.isSuccess) {
+      return res;
+    }
+    return _adb.shellArgs(deviceId, ['media', 'volume', '--stream', '3', '--set', '0']);
+  }
+
   /// 模拟菜单键。
   Future<AdbResult> menuKey(String deviceId) =>
       _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_MENU']);
