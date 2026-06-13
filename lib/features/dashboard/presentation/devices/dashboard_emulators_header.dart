@@ -107,14 +107,6 @@ class _EmulatorPanelHeader extends StatelessWidget {
       );
     }
 
-    // 构建过滤搜索框
-    final filterField = _EmulatorFilterField(
-      controller: filterController,
-      filter: filter,
-      onChanged: onFilterChanged,
-      onClear: onClearFilter,
-    );
-
     // 紧凑布局下，标题/工具栏和搜索框分两行排列
     if (isCompact) {
       return Column(
@@ -126,8 +118,6 @@ class _EmulatorPanelHeader extends StatelessWidget {
               toolbar,
             ],
           ),
-          const SizedBox(height: 8),
-          filterField,
         ],
       );
     }
@@ -136,53 +126,9 @@ class _EmulatorPanelHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: title),
-        SizedBox(width: 240, child: filterField),
         const SizedBox(width: 8),
         toolbar,
       ],
-    );
-  }
-}
-
-/// 模拟器列表过滤搜索输入框。
-class _EmulatorFilterField extends StatelessWidget {
-  const _EmulatorFilterField({
-    required this.controller,
-    required this.filter,
-    required this.onChanged,
-    required this.onClear,
-  });
-
-  /// 输入框控制器
-  final TextEditingController controller;
-
-  /// 当前过滤文本内容
-  final String filter;
-
-  /// 文本变化时的回调
-  final ValueChanged<String> onChanged;
-
-  /// 清除文本的回调
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 42,
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          prefixIcon: const Icon(CupertinoIcons.search),
-          labelText: context.l10n.t('filterEmulator'),
-          suffixIcon: filter.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(CupertinoIcons.clear),
-                  onPressed: onClear,
-                )
-              : null,
-        ),
-        onChanged: onChanged,
-      ),
     );
   }
 }
@@ -224,45 +170,44 @@ class _EmulatorToolbar extends StatelessWidget {
         // 启动按钮
         IconButton(
           tooltip: context.l10n.t('launch'),
-          icon: const Icon(CupertinoIcons.play),
+          padding: EdgeInsets.zero,
+          icon: const Icon(CupertinoIcons.play,size: 18,),
           onPressed: onStart,
         ),
         // 清除数据按钮
         IconButton(
           tooltip: context.l10n.t('clearEmulatorData'),
-          icon: const Icon(CupertinoIcons.clear),
+          padding: EdgeInsets.zero,
+          icon: const Icon(CupertinoIcons.clear,size: 18,),
           onPressed: onClearData,
         ),
         // 删除模拟器按钮
         IconButton(
           tooltip: context.l10n.t('deleteEmulator'),
-          icon: const Icon(CupertinoIcons.trash),
+          padding: EdgeInsets.zero,
+          icon: const Icon(CupertinoIcons.trash,size: 18,),
           onPressed: onDelete,
         ),
         // 打开 AVD 目录按钮
         IconButton(
           tooltip: context.l10n.t('openAvdFolder'),
-          icon: const Icon(CupertinoIcons.folder_open),
+          padding: EdgeInsets.zero,
+          icon: const Icon(CupertinoIcons.folder_open,size: 18,),
           onPressed: onOpenFolder,
         ),
         // 弹出窗口按钮 (如果提供了回调)
         if (onPopOut != null)
           IconButton(
             tooltip: '独立窗口显示',
-            icon: const Icon(Icons.open_in_new),
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.open_in_new,size: 18,),
             onPressed: onPopOut,
           ),
-        // 分割线
-        Container(
-          height: 24,
-          width: 1,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          color: Theme.of(context).dividerColor,
-        ),
         // 刷新列表按钮
         IconButton(
           tooltip: context.l10n.t('refresh'),
-          icon: const Icon(CupertinoIcons.refresh),
+          padding: EdgeInsets.zero,
+          icon: const Icon(CupertinoIcons.refresh,size: 18,),
           onPressed: onRefresh,
         ),
       ],

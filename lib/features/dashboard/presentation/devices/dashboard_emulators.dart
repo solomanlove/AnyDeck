@@ -168,94 +168,139 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
 
         // 如果是独立窗口模式，使用定制的无 Card 边框布局
         if (widget.isStandalone) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 56,
-                padding: EdgeInsets.only(
-                  left: Platform.isMacOS ? 80 : 16,
-                  right: 16,
-                ),
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final glassBgColor = isDark
+              ? Colors.black.withValues(alpha: 0.18)
+              : Colors.white.withValues(alpha: 0.28);
+          final glassBorderColor = isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.04);
+          final cardColor = isDark
+              ? Colors.white.withValues(alpha: 0.03)
+              : Colors.white.withValues(alpha: 0.35);
+
+          final tableCard = ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.5),
-                      width: 1,
-                    ),
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: glassBorderColor,
+                    width: 1.5,
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.device_desktop,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      context.l10n.t('emulators'),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                child: layoutWidget,
+              ),
+            ),
+          );
+
+          return BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              decoration: BoxDecoration(
+                color: glassBgColor,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DragToMoveArea(
+                    child: GlassmorphicContainer(
+                      width: double.infinity,
+                      height: 30,
+                      borderRadius: 0,
+                      blur: 15,
+                      alignment: Alignment.center,
+                      border: 0,
+                      linearGradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.04)
+                              : Colors.white.withValues(alpha: 0.40),
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.01)
+                              : Colors.white.withValues(alpha: 0.15),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: SizedBox(
-                          width: 240,
-                          child: _EmulatorFilterField(
-                            controller: _filterController,
-                            filter: _filter,
-                            onChanged: (value) =>
-                                setState(() => _filter = value),
-                            onClear: () {
-                              _filterController.clear();
-                              setState(() => _filter = '');
-                            },
+                      borderGradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.04),
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : Colors.black.withValues(alpha: 0.02),
+                        ],
+                      ),
+                      child: Container(
+                        padding: EdgeInsets.only(
+                          left: Platform.isMacOS ? 80 : 28,
+                          right: 28,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : Colors.black.withValues(alpha: 0.03),
+                              width: 1,
+                            ),
                           ),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              context.l10n.t('emulators'),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? const Color(0xffeceff1)
+                                    : const Color(0xff202124),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(child: SizedBox()),
+                            _EmulatorToolbar(
+                              onStart: selectedItem != null && selectedItem.canStart
+                                  ? () => _startEmulator(
+                                      context,
+                                      selectedItem.emulator.name,
+                                    )
+                                  : null,
+                              onClearData:
+                                  selectedItem != null && selectedItem.canClearData
+                                  ? () => _clearEmulatorData(
+                                      context,
+                                      selectedItem.emulator,
+                                    )
+                                  : null,
+                              onDelete: selectedItem != null && selectedItem.canDelete
+                                  ? () =>
+                                        _deleteEmulator(context, selectedItem.emulator)
+                                  : null,
+                              onOpenFolder: selectedItem != null
+                                  ? () => _openAvdFolder(context, selectedItem.emulator)
+                                  : null,
+                              onRefresh: _refreshEmulators,
+                              onPopOut: null,
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    _EmulatorToolbar(
-                      onStart: selectedItem != null && selectedItem.canStart
-                          ? () => _startEmulator(
-                              context,
-                              selectedItem.emulator.name,
-                            )
-                          : null,
-                      onClearData:
-                          selectedItem != null && selectedItem.canClearData
-                          ? () => _clearEmulatorData(
-                              context,
-                              selectedItem.emulator,
-                            )
-                          : null,
-                      onDelete: selectedItem != null && selectedItem.canDelete
-                          ? () =>
-                                _deleteEmulator(context, selectedItem.emulator)
-                          : null,
-                      onOpenFolder: selectedItem != null
-                          ? () => _openAvdFolder(context, selectedItem.emulator)
-                          : null,
-                      onRefresh: _refreshEmulators,
-                      onPopOut: null,
-                    ),
-                  ],
-                ),
+                  ),
+                  Expanded(
+                    child: tableCard,
+                  ),
+                ],
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: layoutWidget,
-                ),
-              ),
-            ],
+            ),
           );
         }
 

@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../../features/dashboard/presentation/widgets/liquid_glass_background.dart';
 
 /// 模拟器管理独立窗口的应用入口。
 class EmulatorManagerWindowApp extends ConsumerWidget {
@@ -36,7 +37,11 @@ class EmulatorManagerWindowApp extends ConsumerWidget {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: settings.themeMode,
-      home: const Scaffold(body: EmulatorListPanel(isStandalone: true)),
+      home: const Scaffold(
+        body: LiquidGlassBackground(
+          child: EmulatorListPanel(isStandalone: true),
+        ),
+      ),
     );
   }
 }

@@ -180,7 +180,9 @@ class _EmulatorTableHeader extends StatelessWidget {
     return Container(
       height: 40,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: Border(
           bottom: BorderSide(color: Theme.of(context).dividerColor),
         ),
