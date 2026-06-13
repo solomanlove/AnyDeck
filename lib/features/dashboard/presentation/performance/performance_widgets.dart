@@ -35,10 +35,12 @@ class PerformanceTopStatusRow extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 '已开机 $uptime',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: Color(0xff202124),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[200]
+                      : const Color(0xff202124),
                 ),
               ),
             ],
@@ -47,10 +49,12 @@ class PerformanceTopStatusRow extends StatelessWidget {
             children: [
               Text(
                 '$batteryLevel%',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: Color(0xff202124),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[200]
+                      : const Color(0xff202124),
                 ),
               ),
               const SizedBox(width: 4),
@@ -84,11 +88,14 @@ class CpuOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xffeceef1)),
+        side: BorderSide(
+          color: isDark ? const Color(0xff334155) : const Color(0xffeceef1),
+        ),
       ),
       color: Theme.of(context).cardColor,
       child: Padding(
@@ -99,12 +106,12 @@ class CpuOverviewCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'CPU',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
-                    color: Color(0xff202124),
+                    color: isDark ? Colors.grey[200] : const Color(0xff202124),
                   ),
                 ),
                 Text(
@@ -185,11 +192,14 @@ class CpuCoresGrid extends StatelessWidget {
         final core = cores[index];
         final coreHistory = historyCores[core.id] ?? [];
 
+        final isDark = theme.brightness == Brightness.dark;
         return Card(
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: Color(0xffeceef1)),
+            side: BorderSide(
+              color: isDark ? const Color(0xff334155) : const Color(0xffeceef1),
+            ),
           ),
           color: theme.cardColor,
           child: Padding(
@@ -202,10 +212,10 @@ class CpuCoresGrid extends StatelessWidget {
                   children: [
                     Text(
                       'CPU${core.id} ${core.frequencyMHz.toStringAsFixed(0)}MHz',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 11,
-                        color: Color(0xff5f6b6e),
+                        color: isDark ? Colors.grey[400] : const Color(0xff5f6b6e),
                       ),
                     ),
                     Text(
@@ -255,11 +265,14 @@ class MemoryOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xffeceef1)),
+        side: BorderSide(
+          color: isDark ? const Color(0xff334155) : const Color(0xffeceef1),
+        ),
       ),
       color: Theme.of(context).cardColor,
       child: Padding(
@@ -272,10 +285,10 @@ class MemoryOverviewCard extends StatelessWidget {
               children: [
                 Text(
                   '内存 ${memoryUsagePercent.toStringAsFixed(0)}%',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
-                    color: Color(0xff202124),
+                    color: isDark ? Colors.grey[200] : const Color(0xff202124),
                   ),
                 ),
                 Text(
@@ -324,11 +337,14 @@ class FpsOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xffeceef1)),
+        side: BorderSide(
+          color: isDark ? const Color(0xff334155) : const Color(0xffeceef1),
+        ),
       ),
       color: Theme.of(context).cardColor,
       child: Padding(
@@ -343,10 +359,10 @@ class FpsOverviewCard extends StatelessWidget {
                   child: Text(
                     'FPS $appDisplayName',
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
-                      color: Color(0xff202124),
+                      color: isDark ? Colors.grey[200] : const Color(0xff202124),
                     ),
                   ),
                 ),

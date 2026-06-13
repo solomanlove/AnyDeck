@@ -286,6 +286,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
     }
 
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       children: [
@@ -293,7 +294,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xfff7f9fa),
+            color: isDark ? const Color(0xff1f2937) : const Color(0xfff7f9fa),
             border: Border(
               bottom: BorderSide(
                 color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
@@ -322,9 +323,12 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
                     : _copyScreenshot,
               ),
               const SizedBox(width: 8),
-              const SizedBox(
+              SizedBox(
                 height: 20,
-                child: VerticalDivider(width: 1, color: Colors.grey),
+                child: VerticalDivider(
+                  width: 1,
+                  color: isDark ? Colors.grey[700] : Colors.grey[400],
+                ),
               ),
               const SizedBox(width: 8),
               _ToolbarButton(
@@ -352,9 +356,12 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
                       },
               ),
               const SizedBox(width: 8),
-              const SizedBox(
+              SizedBox(
                 height: 20,
-                child: VerticalDivider(width: 1, color: Colors.grey),
+                child: VerticalDivider(
+                  width: 1,
+                  color: isDark ? Colors.grey[700] : Colors.grey[400],
+                ),
               ),
               const SizedBox(width: 8),
               _ToolbarButton(
@@ -381,8 +388,8 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
                     decoration: BoxDecoration(
                       border: Border.all(
                         color: (_screenshotBytes == null || isRecording)
-                            ? Colors.grey[300]!
-                            : Colors.grey[400]!,
+                            ? (isDark ? Colors.grey[800]! : Colors.grey[300]!)
+                            : (isDark ? Colors.grey[600]! : Colors.grey[400]!),
                       ),
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -392,8 +399,8 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: (_screenshotBytes == null || isRecording)
-                            ? Colors.grey[400]
-                            : Colors.blueGrey,
+                            ? (isDark ? Colors.grey[700] : Colors.grey[400])
+                            : (isDark ? Colors.grey[300] : Colors.blueGrey),
                       ),
                     ),
                   ),
@@ -408,9 +415,12 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
                     : _zoomReset,
               ),
               const SizedBox(width: 8),
-              const SizedBox(
+              SizedBox(
                 height: 20,
-                child: VerticalDivider(width: 1, color: Colors.grey),
+                child: VerticalDivider(
+                  width: 1,
+                  color: isDark ? Colors.grey[700] : Colors.grey[400],
+                ),
               ),
               const SizedBox(width: 8),
               _ToolbarButton(
@@ -422,9 +432,12 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
                     : _toggleAutoRefresh,
               ),
               const SizedBox(width: 8),
-              const SizedBox(
+              SizedBox(
                 height: 20,
-                child: VerticalDivider(width: 1, color: Colors.grey),
+                child: VerticalDivider(
+                  width: 1,
+                  color: isDark ? Colors.grey[700] : Colors.grey[400],
+                ),
               ),
               const SizedBox(width: 8),
               _ToolbarButton(

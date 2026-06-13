@@ -34,9 +34,10 @@ class LayoutPropertiesTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (selectedNode == null) {
       return Container(
-        color: Colors.white,
+        color: isDark ? const Color(0xff111827) : Colors.white,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -152,7 +153,7 @@ class LayoutPropertiesTable extends StatelessWidget {
     ];
 
     return Container(
-      color: Colors.white,
+      color: isDark ? const Color(0xff111827) : Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -160,7 +161,7 @@ class LayoutPropertiesTable extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xfff7f9fa),
+              color: isDark ? const Color(0xff1f2937) : const Color(0xfff7f9fa),
               border: Border(
                 bottom: BorderSide(
                   color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
@@ -169,18 +170,18 @@ class LayoutPropertiesTable extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   CupertinoIcons.list_bullet,
                   size: 18,
-                  color: Colors.blueGrey,
+                  color: isDark ? Colors.grey[300] : Colors.blueGrey,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   context.l10n.t('properties'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: Colors.blueGrey,
+                    color: isDark ? Colors.grey[300] : Colors.blueGrey,
                   ),
                 ),
               ],
@@ -210,7 +211,9 @@ class LayoutPropertiesTable extends StatelessWidget {
                           horizontal: 16,
                           vertical: 10,
                         ),
-                        color: isEven ? const Color(0xfffafbfc) : Colors.white,
+                        color: isEven
+                            ? (isDark ? const Color(0xff1e293b) : const Color(0xfffafbfc))
+                            : (isDark ? const Color(0xff111827) : Colors.white),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -219,11 +222,11 @@ class LayoutPropertiesTable extends StatelessWidget {
                               flex: 3,
                               child: Text(
                                 prop.key,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'monospace',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xff5f6368),
+                                  color: isDark ? Colors.grey[400] : const Color(0xff5f6368),
                                 ),
                               ),
                             ),
@@ -242,10 +245,10 @@ class LayoutPropertiesTable extends StatelessWidget {
                                         color: prop.isBool
                                             ? (prop.value == 'true'
                                                   ? const Color(0xff09c47c)
-                                                  : Colors.red[600])
+                                                  : (isDark ? Colors.red[300] : Colors.red[600]))
                                             : (prop.value.isEmpty
-                                                  ? Colors.grey[400]
-                                                  : const Color(0xff202124)),
+                                                  ? (isDark ? Colors.grey[600] : Colors.grey[400])
+                                                  : (isDark ? Colors.grey[200] : const Color(0xff202124))),
                                         fontWeight: prop.isBool
                                             ? FontWeight.bold
                                             : FontWeight.normal,

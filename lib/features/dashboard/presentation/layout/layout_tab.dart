@@ -185,8 +185,13 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
   }
 
   Widget _buildHierarchyTreePlaceholder() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xff111827) : Colors.white;
+    final headerColor = isDark ? const Color(0xff1f2937) : const Color(0xfff7f9fa);
+    final labelColor = isDark ? Colors.grey[300] : Colors.blueGrey;
+
     return Container(
-      color: Colors.white,
+      color: backgroundColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -194,7 +199,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xfff7f9fa),
+              color: headerColor,
               border: Border(
                 bottom: BorderSide(
                   color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
@@ -203,18 +208,18 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   CupertinoIcons.square_stack_3d_up,
                   size: 18,
-                  color: Colors.blueGrey,
+                  color: labelColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   context.l10n.t('nodeHierarchy'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: Colors.blueGrey,
+                    color: labelColor,
                   ),
                 ),
               ],

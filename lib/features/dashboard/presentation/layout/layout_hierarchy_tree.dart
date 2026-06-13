@@ -41,8 +41,13 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xff111827) : Colors.white;
+    final headerColor = isDark ? const Color(0xff1f2937) : const Color(0xfff7f9fa);
+    final labelColor = isDark ? Colors.grey[300] : Colors.blueGrey;
+
     return Container(
-      color: Colors.white,
+      color: backgroundColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -50,7 +55,7 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xfff7f9fa),
+              color: headerColor,
               border: Border(
                 bottom: BorderSide(
                   color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
@@ -59,18 +64,18 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   CupertinoIcons.square_stack_3d_up,
                   size: 18,
-                  color: Colors.blueGrey,
+                  color: labelColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   context.l10n.t('nodeHierarchy'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: Colors.blueGrey,
+                    color: labelColor,
                   ),
                 ),
               ],
@@ -199,6 +204,11 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
   }
 
   Widget _buildSyntaxHighlightedNode(LayoutNode node) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final classColor = isDark ? const Color(0xffc792ea) : const Color(0xff881280);
+    final attrKeyColor = isDark ? const Color(0xfff78c6c) : const Color(0xff994500);
+    final attrValueColor = isDark ? const Color(0xffc3e88d) : const Color(0xff1a1aa6);
+
     final spans = <TextSpan>[];
     spans.add(
       const TextSpan(
@@ -209,8 +219,8 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
     spans.add(
       TextSpan(
         text: node.className.split('.').last,
-        style: const TextStyle(
-          color: Color(0xff881280),
+        style: TextStyle(
+          color: classColor,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -222,7 +232,7 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
       spans.add(
         TextSpan(
           text: key,
-          style: const TextStyle(color: Color(0xff994500)),
+          style: TextStyle(color: attrKeyColor),
         ),
       );
       spans.add(
@@ -234,7 +244,7 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
       spans.add(
         TextSpan(
           text: value,
-          style: const TextStyle(color: Color(0xff1a1aa6)),
+          style: TextStyle(color: attrValueColor),
         ),
       );
       spans.add(
@@ -343,7 +353,9 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
                             ? CupertinoIcons.chevron_down
                             : CupertinoIcons.chevron_right,
                         size: 16,
-                        color: Colors.grey[700],
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[700],
                       ),
                     )
                   else
@@ -375,8 +387,10 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
                       ),
                       TextSpan(
                         text: widget.node.className.split('.').last,
-                        style: const TextStyle(
-                          color: Color(0xff881280),
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xffc792ea)
+                              : const Color(0xff881280),
                           fontWeight: FontWeight.bold,
                         ),
                       ),

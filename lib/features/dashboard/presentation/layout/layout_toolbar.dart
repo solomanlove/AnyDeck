@@ -56,10 +56,11 @@ class LayoutToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xfff7f9fa),
+        color: isDark ? const Color(0xff1f2937) : const Color(0xfff7f9fa),
         border: Border(
           bottom: BorderSide(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
@@ -139,15 +140,17 @@ class LayoutToolbar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[400]!),
+                  border: Border.all(
+                    color: isDark ? Colors.grey[600]! : Colors.grey[400]!,
+                  ),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
+                child: Text(
                   '1:1',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blueGrey,
+                    color: isDark ? Colors.grey[300] : Colors.blueGrey,
                   ),
                 ),
               ),
@@ -226,6 +229,7 @@ class _ToolbarCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -242,8 +246,8 @@ class _ToolbarCheckbox extends StatelessWidget {
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: onChanged != null
-                ? const Color(0xff5f6368)
-                : Colors.grey[400],
+                ? (isDark ? Colors.grey[300] : const Color(0xff5f6368))
+                : (isDark ? Colors.grey[600] : Colors.grey[400]),
           ),
         ),
       ],

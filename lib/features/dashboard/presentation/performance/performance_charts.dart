@@ -62,6 +62,7 @@ class _InteractiveLineChartState extends State<InteractiveLineChart> {
           hoverPosition: _hoverPosition,
           unit: widget.unit,
           windowSize: widget.windowSize,
+          isDark: Theme.of(context).brightness == Brightness.dark,
         ),
       ),
     );
@@ -77,6 +78,7 @@ class _LineChartPainter extends CustomPainter {
     required this.hoverPosition,
     required this.unit,
     required this.windowSize,
+    required this.isDark,
   });
 
   final List<ChartDataPoint> data;
@@ -86,6 +88,7 @@ class _LineChartPainter extends CustomPainter {
   final Offset? hoverPosition;
   final String unit;
   final int windowSize;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -97,7 +100,7 @@ class _LineChartPainter extends CustomPainter {
 
     // 绘制背景网格
     final gridPaint = Paint()
-      ..color = const Color(0xffeceef1)
+      ..color = isDark ? const Color(0xff334155) : const Color(0xffeceef1)
       ..strokeWidth = 1.0;
 
     // 水平分割线
@@ -135,8 +138,8 @@ class _LineChartPainter extends CustomPainter {
 
         final textSpan = TextSpan(
           text: timeStr,
-          style: const TextStyle(
-            color: Color(0xff80868b),
+          style: TextStyle(
+            color: isDark ? Colors.grey[400] : const Color(0xff80868b),
             fontSize: 9,
             fontWeight: FontWeight.w400,
           ),
@@ -156,8 +159,8 @@ class _LineChartPainter extends CustomPainter {
     }
 
     // 绘制坐标轴文字
-    const textStyle = TextStyle(
-      color: Color(0xff80868b),
+    final textStyle = TextStyle(
+      color: isDark ? Colors.grey[400] : const Color(0xff80868b),
       fontSize: 10,
       fontWeight: FontWeight.w500,
     );
