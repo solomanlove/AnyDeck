@@ -64,6 +64,18 @@ class AppSettingsController extends Notifier<AppSettings> {
     } else if (call.method == 'update_save_path') {
       final savePath = call.arguments as String;
       await setScreenshotSavePath(savePath, broadcast: false);
+    } else if (call.method == 'update_always_on_top') {
+      final value = call.arguments as bool;
+      await setScrcpyAlwaysOnTop(value, broadcast: false);
+    } else if (call.method == 'update_video_bitrate') {
+      final value = call.arguments as int;
+      await setMirrorVideoBitrate(value, broadcast: false);
+    } else if (call.method == 'update_max_size') {
+      final value = call.arguments as int;
+      await setMirrorMaxSize(value, broadcast: false);
+    } else if (call.method == 'update_audio_enabled') {
+      final value = call.arguments as bool;
+      await setMirrorAudioEnabled(value, broadcast: false);
     }
     return null;
   }
@@ -94,31 +106,59 @@ class AppSettingsController extends Notifier<AppSettings> {
   }
 
   /// 更新投屏窗口是否保持最前，并持久化。
-  Future<void> setScrcpyAlwaysOnTop(bool value) async {
+  Future<void> setScrcpyAlwaysOnTop(bool value, {bool broadcast = true}) async {
     state = state.copyWith(scrcpyAlwaysOnTop: value);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_scrcpyAlwaysOnTopKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_always_on_top', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast always on top change: $e');
+      }
+    }
   }
 
   /// 更新投屏视频比特率，并持久化。
-  Future<void> setMirrorVideoBitrate(int value) async {
+  Future<void> setMirrorVideoBitrate(int value, {bool broadcast = true}) async {
     state = state.copyWith(mirrorVideoBitrate: value);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setInt(_mirrorVideoBitrateKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_video_bitrate', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast video bitrate change: $e');
+      }
+    }
   }
 
   /// 更新投屏最佳尺寸，并持久化。
-  Future<void> setMirrorMaxSize(int value) async {
+  Future<void> setMirrorMaxSize(int value, {bool broadcast = true}) async {
     state = state.copyWith(mirrorMaxSize: value);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setInt(_mirrorMaxSizeKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_max_size', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast max size change: $e');
+      }
+    }
   }
 
   /// 更新投屏音频转发状态，并持久化。
-  Future<void> setMirrorAudioEnabled(bool value) async {
+  Future<void> setMirrorAudioEnabled(bool value, {bool broadcast = true}) async {
     state = state.copyWith(mirrorAudioEnabled: value);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_mirrorAudioEnabledKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_audio_enabled', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast audio enabled change: $e');
+      }
+    }
   }
 
   /// 更新截图/录屏保存路径，并持久化和广播。

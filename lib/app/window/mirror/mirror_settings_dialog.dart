@@ -71,7 +71,17 @@ void showMirrorSettingsDialog({
   final settings = ref.read(appSettingsProvider);
   int selectedBitrate = settings.mirrorVideoBitrate;
   int selectedMaxSize = settings.mirrorMaxSize;
-  bool selectedAudio = settings.mirrorAudioEnabled;
+
+  final overview = ref.read(deviceOverviewProvider(deviceId)).asData?.value;
+  int sdkVersion = 0;
+  if (overview != null) {
+    final match = RegExp(r'API\s+(\d+)').firstMatch(overview.androidVersion);
+    if (match != null) {
+      sdkVersion = int.tryParse(match.group(1) ?? '') ?? 0;
+    }
+  }
+  final isAudioSupported = sdkVersion == 0 || sdkVersion >= 30;
+  bool selectedAudio = isAudioSupported ? settings.mirrorAudioEnabled : false;
 
   showDialog<void>(
     context: context,
@@ -173,16 +183,31 @@ void showMirrorSettingsDialog({
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('音频转发 (Audio Forwarding)', style: titleStyle),
+                      Expanded(
+                        child: Text('音频转发 (Audio Forwarding)', style: titleStyle),
+                      ),
                       Switch(
                         value: selectedAudio,
                         activeTrackColor: Theme.of(context).colorScheme.primary,
-                        onChanged: (val) {
-                          setDialogState(() => selectedAudio = val);
-                        },
+                        onChanged: isAudioSupported
+                            ? (val) {
+                                setDialogState(() => selectedAudio = val);
+                              }
+                            : null,
                       ),
                     ],
                   ),
+                  if (!isAudioSupported) ...[
+                    const SizedBox(height: 4),
+                    const Text(
+                      '提示：当前设备系统版本较低 (Android 10及以下)，系统限制不支持音频转发。',
+                      style: TextStyle(
+                        color: Colors.orangeAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                   // const SizedBox(height: 6),
                   // const Text(
                   //   '注意：当前内嵌投屏窗口因底层限制无法直接播放音频。如需使用音频转发到电脑播放，请使用外部原生投屏。',

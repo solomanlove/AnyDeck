@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scrcpy_flutter/scrcpy_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adb/adb_service.dart';
 import '../providers/app_providers.dart';
-import '../../app/settings/app_settings_controller.dart';
 
 class EmbeddedScrcpySession {
   EmbeddedScrcpySession({
@@ -26,10 +26,9 @@ class EmbeddedScrcpySession {
 }
 
 class EmbeddedScrcpyService {
-  EmbeddedScrcpyService(this._adbService, this._ref);
+  EmbeddedScrcpyService(this._adbService);
 
   final AdbService _adbService;
-  final Ref _ref;
   final Map<String, EmbeddedScrcpySession> _sessions = {};
 
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
@@ -97,9 +96,29 @@ class EmbeddedScrcpyService {
       throw Exception('Failed to setup adb forward: ${forwardRes.stderr}');
     }
 
-    final settings = _ref.read(appSettingsProvider);
-    final bitrate = settings.mirrorVideoBitrate;
-    final maxSize = settings.mirrorMaxSize;
+    // 读取设备 SDK 版本以做音频转发降级保护 (Android 10及以下系统限制不支持)
+    int sdkVersion = 0;
+    try {
+      final sdkRes = await _adbService.run([
+        '-s',
+        deviceId,
+        'shell',
+        'getprop',
+        'ro.build.version.sdk',
+      ]);
+      if (sdkRes.isSuccess) {
+        sdkVersion = int.tryParse(sdkRes.stdout.trim()) ?? 0;
+      }
+    } catch (e) {
+      stdout.writeln('Failed to get device SDK version: $e');
+    }
+    final bool isAudioSupported = sdkVersion >= 30; // Android 11+ (API 30+)
+
+    // 确保从 SharedPreferences 中获取最新的设置，防止 Isolate 异步加载延迟
+    final prefs = await SharedPreferences.getInstance();
+    final bool mirrorAudioEnabled = (prefs.getBool('settings.mirrorAudioEnabled') ?? true) && isAudioSupported;
+    final int bitrate = prefs.getInt('settings.mirrorVideoBitrate') ?? 8000000;
+    final int maxSize = prefs.getInt('settings.mirrorMaxSize') ?? 1080;
 
     // 3. Start scrcpy-server process on Android
     final adbPath = _adbService.executable;
@@ -114,7 +133,7 @@ class EmbeddedScrcpyService {
       '4.0',
       'scid=0',
       'log_level=verbose',
-      'audio=${settings.mirrorAudioEnabled ? "true" : "false"}',
+      'audio=${mirrorAudioEnabled ? "true" : "false"}',
       'video_bit_rate=$bitrate',
       if (maxSize > 0) 'max_size=$maxSize',
       'control=true',
@@ -164,7 +183,7 @@ class EmbeddedScrcpyService {
       textureId = await ScrcpyFlutter.startMirroring(
         deviceId: deviceId,
         port: localPort,
-        audio: settings.mirrorAudioEnabled,
+        audio: mirrorAudioEnabled,
       );
 
       final session = EmbeddedScrcpySession(
@@ -375,7 +394,7 @@ class EmbeddedScrcpyService {
 // Riverpod Provider definitions
 final embeddedScrcpyServiceProvider = Provider<EmbeddedScrcpyService>((ref) {
   final adbService = ref.watch(adbServiceProvider);
-  final service = EmbeddedScrcpyService(adbService, ref);
+  final service = EmbeddedScrcpyService(adbService);
   ref.onDispose(service.stopAll);
   return service;
 });

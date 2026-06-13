@@ -301,8 +301,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold)
-                                .copyWith(fontSize: 16),
+                                ?.copyWith(fontSize: 16),
                           ),
                         ),
                         // 窗口置顶按钮
