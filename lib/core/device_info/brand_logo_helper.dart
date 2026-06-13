@@ -8,7 +8,7 @@ class BrandLogoHelper {
     }
 
     if (name.contains('xiaomi') || name.contains('redmi')) {
-      return 'assets/brand/xiaomi_logo2.png';
+      return 'assets/brand/xiaomi_logo.png';
     }
     if (name.contains('huawei')) {
       return 'assets/brand/huawei_logo.png';
