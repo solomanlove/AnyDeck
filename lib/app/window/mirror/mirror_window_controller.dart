@@ -129,8 +129,11 @@ class MirrorWindowController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      // 启动定时自适应窗口大小
-      _scheduleAutoFit();
+      // 只有普通主屏投屏需要监听手机横竖屏并重启 stream。
+      // 单 App 虚拟副屏(newDisplay)的方向由 scrcpy video size 决定，不能用主屏 displayFrame 判断。
+      if (newDisplay == null) {
+        _scheduleAutoFit();
+      }
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
@@ -357,6 +360,7 @@ class MirrorWindowController extends ChangeNotifier {
 
   /// 周期轮询横竖屏变化，仅重启视频流，不自动改变窗口外框尺寸。
   void _scheduleAutoFit() {
+    if (newDisplay != null) return;
     _autoFitTimer?.cancel();
     _autoFitTimer = Timer.periodic(const Duration(milliseconds: 250), (
       timer,
