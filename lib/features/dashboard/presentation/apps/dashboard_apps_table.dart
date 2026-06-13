@@ -144,6 +144,7 @@ class _PackageTableState extends State<_PackageTable> {
                             selected: package.name == widget.selectedPackage,
                             widths: widths,
                             onSelected: () => widget.onSelected(package.name),
+                            index: index,
                           );
                         },
                       ),
@@ -176,12 +177,22 @@ class _PackageTableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.titleSmall;
+    final textTheme = Theme.of(context).textTheme;
+    final style = textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.bold,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
     return Container(
       height: 48,
       decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor),
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
       ),
       child: Row(
@@ -249,6 +260,7 @@ class _PackageTableRow extends ConsumerWidget {
     required this.selected,
     required this.widths,
     required this.onSelected,
+    required this.index,
   });
 
   final String deviceId;
@@ -256,9 +268,18 @@ class _PackageTableRow extends ConsumerWidget {
   final bool selected;
   final _PackageTableWidths widths;
   final VoidCallback onSelected;
+  final int index;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final Color? rowColor = selected
+        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
+        : index % 2 == 0
+        ? null
+        : Theme.of(
+            context,
+          ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.5);
+
     return InkWell(
       onTap: onSelected,
       onDoubleTap: () {
@@ -267,7 +288,15 @@ class _PackageTableRow extends ConsumerWidget {
       },
       child: Container(
         height: 56,
-        color: selected ? Theme.of(context).colorScheme.primaryContainer : null,
+        decoration: BoxDecoration(
+          color: rowColor,
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+              width: 0.5,
+            ),
+          ),
+        ),
         child: Row(
           children: [
             _PackageCell(
@@ -280,15 +309,24 @@ class _PackageTableRow extends ConsumerWidget {
             ),
             _PackageCell(
               width: widths.minSdk,
-              child: Text(_sdkLabel(package.minSdk)),
+              child: Text(
+                _sdkLabel(package.minSdk),
+                style: const TextStyle(fontSize: 13),
+              ),
             ),
             _PackageCell(
               width: widths.targetSdk,
-              child: Text(_targetMaxSdkLabel(package)),
+              child: Text(
+                _targetMaxSdkLabel(package),
+                style: const TextStyle(fontSize: 13),
+              ),
             ),
             _PackageCell(
               width: widths.storage,
-              child: Text(package.storageLabel),
+              child: Text(
+                package.storageLabel,
+                style: const TextStyle(fontSize: 13),
+              ),
             ),
             _PackageCell(
               width: widths.status,
@@ -297,6 +335,7 @@ class _PackageTableRow extends ConsumerWidget {
                   package.enabled
                       ? context.l10n.t('enabled')
                       : context.l10n.t('disabled'),
+                  style: const TextStyle(fontSize: 12),
                 ),
                 visualDensity: VisualDensity.compact,
               ),
@@ -324,9 +363,11 @@ class _PackageCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       width: width,
-      child: Align(alignment: Alignment.centerLeft, child: child),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      alignment: Alignment.centerLeft,
+      child: child,
     );
   }
 }
@@ -349,12 +390,11 @@ class _AppNameCell extends StatelessWidget {
 
     return Row(
       children: [
-        const SizedBox(width: 8),
         ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           child: SizedBox(
-            width: 38,
-            height: 38,
+            width: 28,
+            height: 28,
             child: iconPath != null && File(iconPath).existsSync()
                 ? Image.file(
                     File(iconPath),
@@ -373,7 +413,7 @@ class _AppNameCell extends StatelessWidget {
                   ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,8 +430,8 @@ class _AppNameCell extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
                         ),
                       ),
                     ),
@@ -402,7 +442,7 @@ class _AppNameCell extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                         horizontal: 4,
                         vertical: 1.5,
-                  ),
+                      ),
                       decoration: BoxDecoration(
                         color: colorScheme.errorContainer,
                         borderRadius: BorderRadius.circular(4),
@@ -432,7 +472,7 @@ class _AppNameCell extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
                   ),
                 ),
@@ -463,12 +503,12 @@ class _FallbackAppIcon extends StatelessWidget {
         color: system
             ? colorScheme.surfaceContainerHighest
             : colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Center(
         child: Icon(
           icon,
-          size: 22,
+          size: 16,
           color: system
               ? colorScheme.onSurfaceVariant
               : colorScheme.onPrimaryContainer,
@@ -487,7 +527,12 @@ class _TableText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: value,
-      child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
+      child: Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 13),
+      ),
     );
   }
 }

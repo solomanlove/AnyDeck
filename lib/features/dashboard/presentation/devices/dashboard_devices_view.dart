@@ -131,18 +131,14 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       );
     }
 
-    return ListView.separated(
+    return ListView.builder(
       shrinkWrap: !hasBoundedHeight,
       physics: hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
       itemCount: sortedItems.length,
-      separatorBuilder: (context, index) => Divider(
-        height: 1,
-        color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-      ),
       itemBuilder: (context, index) {
         final device = sortedItems[index];
         final isSelected = ref.watch(selectedDeviceProvider)?.id == device.id;
-        return _buildDeviceRow(context, device, isSelected, isCompact);
+        return _buildDeviceRow(context, device, isSelected, isCompact, index);
       },
     );
   }
@@ -155,16 +151,23 @@ extension _DeviceListPanelView on _DeviceListPanelState {
   ) {
     final titleStyle = Theme.of(
       context,
-    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold);
+    ).textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.bold,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: Theme.of(
           context,
         ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1),
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
       ),
       child: Row(

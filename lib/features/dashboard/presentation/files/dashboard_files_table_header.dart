@@ -26,7 +26,7 @@ extension _FilesTabTableHeader on _FilesTab {
         flex: flex,
         style: textStyle,
         alignRight: alignRight,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         borderRadius: BorderRadius.circular(4),
         sortIcon: DashboardSortIcon(
           active: isSorted,
@@ -36,14 +36,15 @@ extension _FilesTabTableHeader on _FilesTab {
     }
 
     return Container(
-      padding: const EdgeInsets.only(left: 8, right: 16, top: 8, bottom: 8),
+      height: 48,
+      padding: const EdgeInsets.only(left: 8, right: 16),
       decoration: BoxDecoration(
         color: Theme.of(
           context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
             width: 1,
           ),
         ),

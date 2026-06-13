@@ -175,16 +175,22 @@ class _EmulatorTableHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = Theme.of(
       context,
-    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold);
+    ).textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.bold,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
 
     return Container(
-      height: 40,
+      height: 48,
       decoration: BoxDecoration(
         color: Theme.of(
           context,
         ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor),
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
       ),
       child: Row(
@@ -281,20 +287,28 @@ class _EmulatorTableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 选中时使用高亮色，未选中时奇偶行背景交替
-    final color = selected
-        ? Theme.of(context).colorScheme.primaryContainer
-        : index.isOdd
-        ? Theme.of(
+    final Color? rowColor = selected
+        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
+        : index % 2 == 0
+        ? null
+        : Theme.of(
             context,
-          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45)
-        : null;
+          ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.5);
 
     return InkWell(
       onTap: onSelected,
       onDoubleTap: onDoubleTap,
       child: Container(
-        height: 40,
-        color: color,
+        height: 56,
+        decoration: BoxDecoration(
+          color: rowColor,
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+              width: 0.5,
+            ),
+          ),
+        ),
         child: Row(
           children: [
             // 名称列包含状态圆点与名称
@@ -351,12 +365,11 @@ class _EmulatorCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       width: width,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: child,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      alignment: Alignment.centerLeft,
+      child: child,
     );
   }
 }
@@ -372,7 +385,12 @@ class _EmulatorTableText extends StatelessWidget {
     return Tooltip(
       message: value,
       waitDuration: const Duration(milliseconds: 600),
-      child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
+      child: Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 13),
+      ),
     );
   }
 }

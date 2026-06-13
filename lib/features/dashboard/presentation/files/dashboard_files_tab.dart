@@ -303,6 +303,7 @@ class _FilesTab extends ConsumerWidget {
                     itemBuilder: (context, index) {
                       final file = filtered[index];
                       return _FileRow(
+                        index: index,
                         file: file,
                         deviceId: device.id,
                         currentPath: path,

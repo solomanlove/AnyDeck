@@ -114,12 +114,14 @@ class _FileGridItemState extends State<_FileGridItem> {
 /// 单个文件行，支持悬停高亮和显示操作按钮。
 class _FileRow extends StatefulWidget {
   const _FileRow({
+    required this.index,
     required this.file,
     required this.deviceId,
     required this.currentPath,
     required this.onTap,
   });
 
+  final int index;
   final RemoteFile file;
   final String deviceId;
   final String currentPath;
@@ -136,7 +138,7 @@ class _FileRowState extends State<_FileRow> {
   Widget build(BuildContext context) {
     final file = widget.file;
     final theme = Theme.of(context);
-    final cellStyle = theme.textTheme.bodyMedium;
+    final cellStyle = theme.textTheme.bodyMedium?.copyWith(fontSize: 13);
 
     // 类型翻译
     String typeLabel = '文件';
@@ -148,20 +150,25 @@ class _FileRowState extends State<_FileRow> {
 
     final remoteFilePath = _joinRemotePath(widget.currentPath, file.name);
 
+    final Color? rowColor = widget.index % 2 == 0
+        ? null
+        : Theme.of(
+            context,
+          ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.5);
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
       child: InkWell(
         onTap: widget.onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: _hovering
-                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.08)
-                : null,
+            color: rowColor,
             border: Border(
               bottom: BorderSide(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
                 width: 0.5,
               ),
             ),

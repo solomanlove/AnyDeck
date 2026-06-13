@@ -8,55 +8,67 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     RegisteredDevice device,
     bool isSelected,
     bool isCompact,
+    int index,
   ) {
-    return Material(
-      color: isSelected
-          ? Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.4)
-          : Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          // 清除用户主动清空的选择状态，并选中当前点击的设备
-          ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
-          ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          child: Row(
-            children: [
-              if (!isCompact) ...[
-                SizedBox(
-                  width: 45,
-                  child: Checkbox(
-                    value: device.isChecked,
-                    onChanged: (_) {
-                      // 切换该设备的勾选状态
-                      ref
-                          .read(deviceRegistryProvider.notifier)
-                          .toggleCheck(device.id);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-              ],
-              const SizedBox(width: 10),
-              _buildIdentifierCell(context, device),
-              const SizedBox(width: 10),
-              _buildNameCell(context, device),
-              const SizedBox(width: 10),
-              _buildStatusCell(context, device),
-              const SizedBox(width: 10),
-              _buildActionsCell(context, device),
-              if (!isCompact) ...[
-                const SizedBox(width: 10),
-                const SizedBox(
-                  width: 40,
-                  child: Icon(CupertinoIcons.chevron_right, color: Colors.grey),
-                ),
-              ],
-            ],
+    final Color? rowColor = isSelected
+        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
+        : index % 2 == 0
+        ? null
+        : Theme.of(
+            context,
+          ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.5);
+
+    return InkWell(
+      onTap: () {
+        // 清除用户主动清空的选择状态，并选中当前点击的设备
+        ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
+        ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
+      },
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: rowColor,
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+              width: 0.5,
+            ),
           ),
+        ),
+        child: Row(
+          children: [
+            if (!isCompact) ...[
+              SizedBox(
+                width: 45,
+                child: Checkbox(
+                  value: device.isChecked,
+                  onChanged: (_) {
+                    // 切换该设备的勾选状态
+                    ref
+                        .read(deviceRegistryProvider.notifier)
+                        .toggleCheck(device.id);
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            const SizedBox(width: 10),
+            _buildIdentifierCell(context, device),
+            const SizedBox(width: 10),
+            _buildNameCell(context, device),
+            const SizedBox(width: 10),
+            _buildStatusCell(context, device),
+            const SizedBox(width: 10),
+            _buildActionsCell(context, device),
+            if (!isCompact) ...[
+              const SizedBox(width: 10),
+              const SizedBox(
+                width: 40,
+                child: Icon(CupertinoIcons.chevron_right, color: Colors.grey),
+              ),
+            ],
+          ],
         ),
       ),
     );
