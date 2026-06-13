@@ -6,9 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
+import '../../../../core/device_info/device_display_frame.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../../core/scrcpy/scrcpy_keycode_helper.dart';
+import 'embedded_scrcpy_geometry.dart';
+import 'embedded_scrcpy_texture_surface.dart';
 
 class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
   const EmbeddedScrcpyViewer({
@@ -32,7 +35,11 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   int? _videoWidth;
   int? _videoHeight;
+  DeviceDisplayFrame? _displayFrame;
+  int? _activeTextureId;
   Timer? _sizePollTimer;
+  int _sizePollTick = 0;
+  bool _isPollingSize = false;
 
   // Track pointers to ignore (e.g. right-click or middle-click)
   final Set<int> _ignoredPointers = {};
@@ -42,7 +49,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   late final FocusNode _focusNode;
   late final TextEditingController _textController;
-  
+
   /// 是否正在拦截 ESC 按键的抬起事件
   bool _interceptingEscape = false;
 
@@ -71,45 +78,79 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   void _startSizePolling() {
     _sizePollTimer?.cancel();
-    _sizePollTimer = Timer.periodic(const Duration(milliseconds: 500), (
+    _sizePollTimer = Timer.periodic(const Duration(milliseconds: 250), (
       timer,
     ) async {
       if (!mounted) {
         timer.cancel();
         return;
       }
+      if (_isPollingSize) return;
+      _isPollingSize = true;
       try {
+        var changed = false;
+        var videoSizeChanged = false;
         final size = await ScrcpyFlutter.getVideoSize(
           deviceId: widget.deviceId,
         );
         if (size != null && size['width']! > 0 && size['height']! > 0) {
           if (_videoWidth != size['width'] || _videoHeight != size['height']) {
-            setState(() {
-              _videoWidth = size['width'];
-              _videoHeight = size['height'];
-            });
-            debugPrint(
-              '[EmbeddedScrcpy] Video size changed/updated: ${_videoWidth}x$_videoHeight',
-            );
+            _videoWidth = size['width'];
+            _videoHeight = size['height'];
+            changed = true;
+            videoSizeChanged = true;
           }
+        }
+
+        // 默认每 4 tick (即 1 秒) 轮询一次 displayFrame，但如果视频大小改变了则立即强制刷新
+        if (videoSizeChanged || _sizePollTick % 4 == 0) {
+          final displayFrame = await DeviceDisplayFrame.read(
+            ref.read(adbServiceProvider),
+            widget.deviceId,
+          );
+          if (displayFrame != null &&
+              (_displayFrame?.width != displayFrame.width ||
+                  _displayFrame?.height != displayFrame.height ||
+                  _displayFrame?.rotation != displayFrame.rotation)) {
+            _displayFrame = displayFrame;
+            changed = true;
+          }
+        }
+
+        _sizePollTick++;
+        if (changed && mounted) {
+          setState(() {});
         }
       } catch (e) {
         // Ignored
+      } finally {
+        _isPollingSize = false;
       }
     });
   }
 
-  double _getAspectRatio(String? resolutionStr) {
-    if (resolutionStr == null || resolutionStr == '-') return 9 / 16;
-    final match = RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(resolutionStr);
-    if (match != null) {
-      final w = int.parse(match.group(1)!);
-      final h = int.parse(match.group(2)!);
-      if (w > 0 && h > 0) {
-        return w / h;
-      }
-    }
-    return 9 / 16;
+  void _resetStreamGeometryIfNeeded(int? textureId) {
+    if (_activeTextureId == textureId) return;
+    _activeTextureId = textureId;
+    _videoWidth = null;
+    _videoHeight = null;
+    _displayFrame = null;
+    _sizePollTick = 0;
+    _ignoredPointers.clear();
+  }
+
+  List<int>? _mapPointerToVideo(PointerEvent event, String? resolution) {
+    final renderBox =
+        _textureKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return null;
+
+    return ScrcpyVideoGeometry.mapPointerToVideo(
+      event: event,
+      renderBox: renderBox,
+      resolution: resolution,
+      videoWidth: _videoWidth,
+      videoHeight: _videoHeight,
+    );
   }
 
   Uint8List _serializeTouchEvent({
@@ -163,36 +204,12 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _sendTouchEvent(PointerEvent event, int action, String? resolution) {
-    final renderBox =
-        _textureKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-
-    final localPosition = renderBox.globalToLocal(event.position);
-    final size = renderBox.size;
-
-    int realW = _videoWidth ?? size.width.toInt();
-    int realH = _videoHeight ?? size.height.toInt();
-
-    if (_videoWidth == null || _videoHeight == null) {
-      if (resolution != null && resolution != '-') {
-        final match = RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(resolution);
-        if (match != null) {
-          final w = int.parse(match.group(1)!);
-          final h = int.parse(match.group(2)!);
-          if (w > 0 && h > 0) {
-            realW = w;
-            realH = h;
-          }
-        }
-      }
-    }
-
-    final x = (localPosition.dx / size.width * realW)
-        .clamp(0.0, realW.toDouble())
-        .toInt();
-    final y = (localPosition.dy / size.height * realH)
-        .clamp(0.0, realH.toDouble())
-        .toInt();
+    final mapped = _mapPointerToVideo(event, resolution);
+    if (mapped == null) return;
+    final x = mapped[0];
+    final y = mapped[1];
+    final realW = mapped[2];
+    final realH = mapped[3];
 
     debugPrint(
       '[EmbeddedScrcpy] Touch: action=$action, x=$x, y=$y, realW=$realW, realH=$realH, resolution=$resolution, polledSize=${_videoWidth}x$_videoHeight',
@@ -218,36 +235,12 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _sendScrollEvent(PointerScrollEvent event, String? resolution) {
-    final renderBox =
-        _textureKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-
-    final localPosition = renderBox.globalToLocal(event.position);
-    final size = renderBox.size;
-
-    int realW = _videoWidth ?? size.width.toInt();
-    int realH = _videoHeight ?? size.height.toInt();
-
-    if (_videoWidth == null || _videoHeight == null) {
-      if (resolution != null && resolution != '-') {
-        final match = RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(resolution);
-        if (match != null) {
-          final w = int.parse(match.group(1)!);
-          final h = int.parse(match.group(2)!);
-          if (w > 0 && h > 0) {
-            realW = w;
-            realH = h;
-          }
-        }
-      }
-    }
-
-    final x = (localPosition.dx / size.width * realW)
-        .clamp(0.0, realW.toDouble())
-        .toInt();
-    final y = (localPosition.dy / size.height * realH)
-        .clamp(0.0, realH.toDouble())
-        .toInt();
+    final mapped = _mapPointerToVideo(event, resolution);
+    if (mapped == null) return;
+    final x = mapped[0];
+    final y = mapped[1];
+    final realW = mapped[2];
+    final realH = mapped[3];
 
     // In scrcpy scroll delta is normalized between -1.0 and 1.0.
     final hScroll = (event.scrollDelta.dx / 40.0).clamp(-1.0, 1.0);
@@ -420,36 +413,12 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
     if (delta.dx == 0 && delta.dy == 0) return;
 
-    final renderBox =
-        _textureKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-
-    final localPosition = renderBox.globalToLocal(event.position);
-    final size = renderBox.size;
-
-    int realW = _videoWidth ?? size.width.toInt();
-    int realH = _videoHeight ?? size.height.toInt();
-
-    if (_videoWidth == null || _videoHeight == null) {
-      if (resolution != null && resolution != '-') {
-        final match = RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(resolution);
-        if (match != null) {
-          final w = int.parse(match.group(1)!);
-          final h = int.parse(match.group(2)!);
-          if (w > 0 && h > 0) {
-            realW = w;
-            realH = h;
-          }
-        }
-      }
-    }
-
-    final x = (localPosition.dx / size.width * realW)
-        .clamp(0.0, realW.toDouble())
-        .toInt();
-    final y = (localPosition.dy / size.height * realH)
-        .clamp(0.0, realH.toDouble())
-        .toInt();
+    final mapped = _mapPointerToVideo(event, resolution);
+    if (mapped == null) return;
+    final x = mapped[0];
+    final y = mapped[1];
+    final realW = mapped[2];
+    final realH = mapped[3];
 
     // Scale delta similarly to scrollDelta
     final hScroll = (delta.dx / 40.0).clamp(-1.0, 1.0);
@@ -482,6 +451,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   @override
   Widget build(BuildContext context) {
     final textureId = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
+    _resetStreamGeometryIfNeeded(textureId);
     final overviewAsync = ref.watch(deviceOverviewProvider(widget.deviceId));
 
     if (textureId == null) {
@@ -492,20 +462,18 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       data: (overview) => overview.physicalResolution,
       orElse: () => null,
     );
-    final aspectRatio =
-        (_videoWidth != null &&
-            _videoHeight != null &&
-            _videoWidth! > 0 &&
-            _videoHeight! > 0)
-        ? _videoWidth! / _videoHeight!
-        : _getAspectRatio(resolution);
+    final aspectRatio = ScrcpyVideoGeometry.resolveDisplayAwareAspectRatio(
+      videoWidth: _videoWidth,
+      videoHeight: _videoHeight,
+      displayFrame: _displayFrame,
+      fallbackResolution: resolution,
+    );
 
     return Container(
       color: const Color(0xff121212),
       alignment: Alignment.center,
       child: Stack(
         children: [
-          // Hidden text field off-screen to capture computer input method (IME) text and key events
           Positioned(
             left: -999,
             top: -999,
@@ -523,26 +491,21 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
               keyboardType: TextInputType.text,
             ),
           ),
-          Center(
-            child: AspectRatio(
-              aspectRatio: aspectRatio,
-              child: Listener(
-                key: _textureKey,
-                onPointerDown: (e) => _handlePointerDown(e, resolution),
-                onPointerMove: (e) => _handlePointerMove(e, resolution),
-                onPointerUp: (e) => _handlePointerUp(e, resolution),
-                onPointerCancel: (e) => _handlePointerCancel(e, resolution),
-                onPointerPanZoomStart: _handlePanZoomStart,
-                onPointerPanZoomUpdate: (e) =>
-                    _handlePanZoomUpdate(e, resolution),
-                onPointerSignal: (signal) {
-                  if (signal is PointerScrollEvent) {
-                    _sendScrollEvent(signal, resolution);
-                  }
-                },
-                child: Texture(textureId: textureId),
-              ),
-            ),
+          EmbeddedScrcpyTextureSurface(
+            textureKey: _textureKey,
+            textureId: textureId,
+            aspectRatio: aspectRatio,
+            onPointerDown: (e) => _handlePointerDown(e, resolution),
+            onPointerMove: (e) => _handlePointerMove(e, resolution),
+            onPointerUp: (e) => _handlePointerUp(e, resolution),
+            onPointerCancel: (e) => _handlePointerCancel(e, resolution),
+            onPointerPanZoomStart: _handlePanZoomStart,
+            onPointerPanZoomUpdate: (e) => _handlePanZoomUpdate(e, resolution),
+            onPointerSignal: (signal) {
+              if (signal is PointerScrollEvent) {
+                _sendScrollEvent(signal, resolution);
+              }
+            },
           ),
         ],
       ),
