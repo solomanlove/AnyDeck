@@ -3,7 +3,6 @@ part of '../dashboard_screen.dart';
 class _PackageTableWidths {
   const _PackageTableWidths({
     required this.appName,
-    required this.packageName,
     required this.version,
     required this.minSdk,
     required this.targetSdk,
@@ -34,13 +33,12 @@ class _PackageTableWidths {
     }
 
     final appName = max(
-      headerWidth('appName'),
-      contentWidth(packages.map((package) => package.displayName)),
-    ).clamp(160.0, 320.0);
-    final packageName = max(
-      headerWidth('packageName'),
+      max(
+        headerWidth('appName'),
+        contentWidth(packages.map((package) => package.displayName)),
+      ),
       contentWidth(packages.map((package) => package.name)),
-    ).clamp(240.0, 520.0);
+    ).clamp(200.0, 360.0);
     final version = max(
       headerWidth('version'),
       contentWidth(packages.map((package) => package.versionLabel)),
@@ -78,7 +76,6 @@ class _PackageTableWidths {
     ).clamp(128.0, 164.0);
     final base = _PackageTableWidths(
       appName: appName + _PackageCell.horizontalPadding + 38,
-      packageName: packageName + _PackageCell.horizontalPadding,
       version: version + _PackageCell.horizontalPadding,
       minSdk: minSdk + _PackageCell.horizontalPadding,
       targetSdk: targetSdk + _PackageCell.horizontalPadding + 38,
@@ -88,25 +85,20 @@ class _PackageTableWidths {
     );
 
     if (base.total > viewportWidth) {
-      var overflow = base.total - viewportWidth;
-      final packageShrink = min(overflow, base.packageName - 244.0);
-      overflow -= packageShrink;
+      final overflow = base.total - viewportWidth;
       final appNameShrink = min(overflow, base.appName - 222.0);
       return base.copyWith(
         appName: base.appName - appNameShrink,
-        packageName: base.packageName - packageShrink,
       );
     }
 
     final spareWidth = viewportWidth - base.total;
     return base.copyWith(
-      appName: base.appName + spareWidth * 0.4,
-      packageName: base.packageName + spareWidth * 0.6,
+      appName: base.appName + spareWidth,
     );
   }
 
   final double appName;
-  final double packageName;
   final double version;
   final double minSdk;
   final double targetSdk;
@@ -116,7 +108,6 @@ class _PackageTableWidths {
 
   double get total =>
       appName +
-      packageName +
       version +
       minSdk +
       targetSdk +
@@ -124,10 +115,9 @@ class _PackageTableWidths {
       status +
       type;
 
-  _PackageTableWidths copyWith({double? appName, double? packageName}) {
+  _PackageTableWidths copyWith({double? appName}) {
     return _PackageTableWidths(
       appName: appName ?? this.appName,
-      packageName: packageName ?? this.packageName,
       version: version,
       minSdk: minSdk,
       targetSdk: targetSdk,

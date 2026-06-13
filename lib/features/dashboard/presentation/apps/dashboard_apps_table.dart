@@ -194,13 +194,6 @@ class _PackageTableHeader extends StatelessWidget {
             onTap: () => onSort('appName'),
           ),
           DashboardSortableHeaderCell(
-            width: widths.packageName,
-            label: context.l10n.t('packageName'),
-            style: style,
-            sortIcon: sortIconBuilder('packageName'),
-            onTap: () => onSort('packageName'),
-          ),
-          DashboardSortableHeaderCell(
             width: widths.version,
             label: context.l10n.t('version'),
             style: style,
@@ -273,17 +266,13 @@ class _PackageTableRow extends ConsumerWidget {
         _showAppDetailsDialog(context, ref, deviceId, package);
       },
       child: Container(
-        height: 42,
+        height: 56,
         color: selected ? Theme.of(context).colorScheme.primaryContainer : null,
         child: Row(
           children: [
             _PackageCell(
               width: widths.appName,
               child: _AppNameCell(package: package),
-            ),
-            _PackageCell(
-              width: widths.packageName,
-              child: _TableText(package.name),
             ),
             _PackageCell(
               width: widths.version,
@@ -342,6 +331,7 @@ class _PackageCell extends StatelessWidget {
   }
 }
 
+/// 展示应用名称和包名，并且呈现圆角矩形的应用图标（类似 ListTile 结构）
 class _AppNameCell extends StatelessWidget {
   const _AppNameCell({required this.package});
 
@@ -359,11 +349,12 @@ class _AppNameCell extends StatelessWidget {
 
     return Row(
       children: [
+        const SizedBox(width: 8),
         ClipRRect(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           child: SizedBox(
-            width: 28,
-            height: 28,
+            width: 38,
+            height: 38,
             child: iconPath != null && File(iconPath).existsSync()
                 ? Image.file(
                     File(iconPath),
@@ -382,47 +373,70 @@ class _AppNameCell extends StatelessWidget {
                   ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Flexible(
-                child: Tooltip(
-                  message: package.displayName,
-                  child: Text(
-                    package.displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Tooltip(
+                      message: package.displayName,
+                      child: Text(
+                        package.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (package.debuggable) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1.5,
+                  ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: colorScheme.error.withValues(alpha: 0.3),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        'DEBUG',
+                        style: TextStyle(
+                          color: colorScheme.onErrorContainer,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Tooltip(
+                message: package.name,
+                child: Text(
+                  package.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
                   ),
                 ),
               ),
-              if (package.debuggable) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 1.5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: colorScheme.error.withValues(alpha: 0.3),
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Text(
-                    'DEBUG',
-                    style: TextStyle(
-                      color: colorScheme.onErrorContainer,
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -431,6 +445,7 @@ class _AppNameCell extends StatelessWidget {
   }
 }
 
+/// 默认的圆角矩形应用占位图标
 class _FallbackAppIcon extends StatelessWidget {
   const _FallbackAppIcon({
     required this.icon,
@@ -443,17 +458,21 @@ class _FallbackAppIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 14,
-      backgroundColor: system
-          ? colorScheme.surfaceContainerHighest
-          : colorScheme.primaryContainer,
-      child: Icon(
-        icon,
-        size: 18,
+    return Container(
+      decoration: BoxDecoration(
         color: system
-            ? colorScheme.onSurfaceVariant
-            : colorScheme.onPrimaryContainer,
+            ? colorScheme.surfaceContainerHighest
+            : colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Icon(
+          icon,
+          size: 22,
+          color: system
+              ? colorScheme.onSurfaceVariant
+              : colorScheme.onPrimaryContainer,
+        ),
       ),
     );
   }

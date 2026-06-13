@@ -236,6 +236,7 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
   }
 }
 
+/// 网格视图中默认的圆角矩形占位图标
 class _FallbackGridIcon extends StatelessWidget {
   const _FallbackGridIcon({
     required this.icon,
@@ -251,17 +252,23 @@ class _FallbackGridIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundColor: system
-          ? colorScheme.surfaceContainerHighest
-          : colorScheme.primaryContainer,
-      child: Icon(
-        icon,
-        size: size * 0.6,
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
         color: system
-            ? colorScheme.onSurfaceVariant
-            : colorScheme.onPrimaryContainer,
+            ? colorScheme.surfaceContainerHighest
+            : colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Icon(
+          icon,
+          size: size * 0.6,
+          color: system
+              ? colorScheme.onSurfaceVariant
+              : colorScheme.onPrimaryContainer,
+        ),
       ),
     );
   }
