@@ -241,12 +241,6 @@ class _PrimaryRail extends ConsumerWidget {
                                             context.l10n.t('appTitle'),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w900,
-                                              color: Color(0xff202124),
-                                              letterSpacing: 0.5,
-                                            ),
                                           ),
                                         ),
                                       ],
