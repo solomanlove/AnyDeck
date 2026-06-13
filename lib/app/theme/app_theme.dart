@@ -6,6 +6,9 @@ ThemeData buildAppTheme(Brightness brightness) {
   final colorScheme = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: brightness,
+  ).copyWith(
+    primary: seed,
+    onPrimary: Colors.white,
   );
   final isDark = brightness == Brightness.dark;
 
