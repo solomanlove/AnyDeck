@@ -58,12 +58,6 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                 ],
               ),
               const SizedBox(width: 8),
-              FilledButton.icon(
-                icon: const Icon(CupertinoIcons.square_arrow_down),
-                label: Text(context.l10n.t('installApk')),
-                onPressed: _installApk,
-              ),
-              const SizedBox(width: 8),
               IconButton(
                 tooltip: context.l10n.t('refreshPackages'),
                 icon: const Icon(CupertinoIcons.refresh),
@@ -102,6 +96,12 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                 onPressed: () => setState(() => _isGridView = false),
                 active: !_isGridView,
                 tooltip: context.l10n.t('listView'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                icon: const Icon(CupertinoIcons.square_arrow_down),
+                label: Text(context.l10n.t('installApk')),
+                onPressed: _installApk,
               ),
             ],
           ),
@@ -293,12 +293,6 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
           color: active
               ? theme.colorScheme.secondaryContainer.withValues(alpha: 0.5)
               : Colors.transparent,
-          border: Border.all(
-            color: active
-                ? theme.colorScheme.outline.withValues(alpha: 0.3)
-                : Colors.transparent,
-            width: 1,
-          ),
           borderRadius: BorderRadius.circular(6),
         ),
         child: IconButton(
@@ -307,9 +301,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
           style: IconButton.styleFrom(
             minimumSize: const Size(36, 36),
             padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
+            // shape: RoundedRectangleBorder(
+            //   borderRadius: BorderRadius.circular(6),
+            // ),
           ),
         ),
       ),

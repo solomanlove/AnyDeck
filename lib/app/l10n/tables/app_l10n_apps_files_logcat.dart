@@ -1,6 +1,6 @@
 /// apps_files_logcat 模块文案表。新增 key 时必须同时补齐 zh/en。
 const appsFilesLogcatZh = {
-  'filterPackage': '筛选包名',
+  'filterPackage': '筛选',
   'hideSystemApps': '隐藏系统应用',
   'appCount': '共 {visible}/{total} 个应用',
   'appName': '名称',
@@ -117,7 +117,7 @@ const appsFilesLogcatZh = {
 };
 
 const appsFilesLogcatEn = {
-  'filterPackage': 'Filter package',
+  'filterPackage': 'Filter',
   'hideSystemApps': 'Hide system apps',
   'appCount': '{visible}/{total} apps',
   'appName': 'Name',
