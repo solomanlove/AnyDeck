@@ -81,7 +81,7 @@ class _PackageTableWidths {
       packageName: packageName + _PackageCell.horizontalPadding,
       version: version + _PackageCell.horizontalPadding,
       minSdk: minSdk + _PackageCell.horizontalPadding,
-      targetSdk: targetSdk + _PackageCell.horizontalPadding,
+      targetSdk: targetSdk + _PackageCell.horizontalPadding + 38,
       storage: storage + _PackageCell.horizontalPadding,
       status: status + _PackageCell.horizontalPadding,
       type: type + _PackageCell.horizontalPadding,

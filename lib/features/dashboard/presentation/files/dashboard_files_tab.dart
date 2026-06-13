@@ -193,7 +193,7 @@ class _FilesTab extends ConsumerWidget {
                         .toggleShowHiddenFiles();
                   },
                 ),
-                const _FileSortMenuButton(),
+                //const _FileSortMenuButton(),
                 const SizedBox(width: 8),
                 FilledButton.icon(
                   icon: const Icon(CupertinoIcons.cloud_upload),

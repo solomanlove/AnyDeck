@@ -64,7 +64,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                 onPressed: _installApk,
               ),
               const SizedBox(width: 8),
-              IconButton.filledTonal(
+              IconButton(
                 tooltip: context.l10n.t('refreshPackages'),
                 icon: const Icon(CupertinoIcons.refresh),
                 onPressed: _refreshingPackages ? null : _refreshPackages,
