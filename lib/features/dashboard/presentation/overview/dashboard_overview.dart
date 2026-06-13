@@ -57,20 +57,74 @@ class _DeviceOverviewPanel extends ConsumerWidget {
                       : ref.invalidate(cachedDeviceOverviewProvider(device.id)),
                 ),
                 const SizedBox(height: 16),
-                _GlassSectionCard(
-                  title: context.l10n.t('overviewTitle'),
-                  icon: CupertinoIcons.info_circle,
-                  children: [
-                    _OverviewGrid(items: _buildOverviewItems(context, data)),
-                  ],
+                _buildCategorySection(
+                  context,
+                  title: context.l10n.t('basicInfo'),
+                  icon: CupertinoIcons.device_phone_portrait,
+                  items: _buildBasicInfoItems(context, data),
+                ),
+                const SizedBox(height: 16),
+                _buildCategorySection(
+                  context,
+                  title: context.l10n.t('systemHardware'),
+                  icon: CupertinoIcons.settings,
+                  items: _buildSystemHardwareItems(context, data),
+                ),
+                const SizedBox(height: 16),
+                _buildCategorySection(
+                  context,
+                  title: context.l10n.t('screenDisplay'),
+                  icon: CupertinoIcons.tv,
+                  items: _buildScreenDisplayItems(context, data),
+                ),
+                const SizedBox(height: 16),
+                _buildCategorySection(
+                  context,
+                  title: context.l10n.t('networkConnectivity'),
+                  icon: CupertinoIcons.wifi,
+                  items: _buildNetworkConnectivityItems(context, data),
                 ),
               ],
             ),
     );
   }
 
-  /// 将概览字段映射为图标、标签和值组件。
-  List<_OverviewItemData> _buildOverviewItems(
+  /// 构建分类卡片 Section。
+  Widget _buildCategorySection(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required List<_OverviewItemData> items,
+  }) {
+    final theme = Theme.of(context);
+    return _GlassSectionCard(
+      title: title,
+      icon: icon,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: const Color(0xff09c47c),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _OverviewGrid(items: items),
+      ],
+    );
+  }
+
+  /// 获取基本信息概览列表。
+  List<_OverviewItemData> _buildBasicInfoItems(
     BuildContext context,
     DeviceOverview overview,
   ) {
@@ -100,6 +154,15 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         label: context.l10n.t('androidId'),
         value: overview.androidId,
       ),
+    ];
+  }
+
+  /// 获取系统与硬件概览列表。
+  List<_OverviewItemData> _buildSystemHardwareItems(
+    BuildContext context,
+    DeviceOverview overview,
+  ) {
+    return [
       _OverviewItemData(
         icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('androidVersion'),
@@ -128,6 +191,15 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         label: context.l10n.t('memory'),
         value: overview.memory,
       ),
+    ];
+  }
+
+  /// 获取屏幕与显示概览列表。
+  List<_OverviewItemData> _buildScreenDisplayItems(
+    BuildContext context,
+    DeviceOverview overview,
+  ) {
+    return [
       _OverviewItemData(
         icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('physicalResolution'),
@@ -156,6 +228,15 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         label: context.l10n.t('fontScale'),
         value: overview.fontScale,
       ),
+    ];
+  }
+
+  /// 获取网络与连接概览列表。
+  List<_OverviewItemData> _buildNetworkConnectivityItems(
+    BuildContext context,
+    DeviceOverview overview,
+  ) {
+    return [
       _OverviewItemData(
         icon: CupertinoIcons.wifi,
         label: context.l10n.t('wifi'),
@@ -226,9 +307,9 @@ class _OverviewGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 900
+        final columns = constraints.maxWidth >= 600
             ? 3
-            : constraints.maxWidth >= 620
+            : constraints.maxWidth >= 400
             ? 2
             : 1;
         final spacing = 12.0;
@@ -284,7 +365,7 @@ class _OverviewItemData extends StatelessWidget {
               final iconWidth = min(18.0, constraints.maxWidth);
               final showLabel = constraints.maxWidth >= 56;
 
-              final color = Theme.of(context).colorScheme.onSurfaceVariant;
+              final color = Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6);
               return Row(
                 children: [
                   SizedBox(

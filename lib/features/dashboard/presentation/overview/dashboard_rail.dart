@@ -48,7 +48,17 @@ class _PrimaryRail extends ConsumerWidget {
     final selectedTool = ref.watch(selectedToolTabProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);
     final hasOnlineDevice = registeredDevices.any((d) => d.isOnline);
-    final canInteract = selectedDevice != null || hasOnlineDevice;
+
+    // 判断当前Tab是否可用：如果手机离线，仅开放主页(0)、控制(1)、应用(2)
+    bool isToolEnabled(int tabIndex) {
+      if (selectedDevice == null) {
+        return hasOnlineDevice;
+      }
+      if (selectedDevice!.isOnline) {
+        return true;
+      }
+      return tabIndex == 0 || tabIndex == 1 || tabIndex == 2;
+    }
 
     // 响应式判断：窗口宽度小于1000为窄屏，仅显示Icon；大于等于1000为宽屏，显示Icon+文字
     final bool isNarrow = MediaQuery.of(context).size.width < 1000;
@@ -262,7 +272,7 @@ class _PrimaryRail extends ConsumerWidget {
                         selectedDevice != null && selectedTool == tool.tabIndex,
                     tooltip: tool.label,
                     isNarrow: renderNarrow,
-                    onPressed: canInteract
+                    onPressed: isToolEnabled(tool.tabIndex)
                         ? () => handleTap(tool.tabIndex)
                         : null,
                   ),
@@ -271,7 +281,7 @@ class _PrimaryRail extends ConsumerWidget {
                     tools: overflowTools,
                     hasSelectedDevice: selectedDevice != null,
                     selectedTool: selectedTool,
-                    enabled: canInteract,
+                    isToolEnabled: isToolEnabled,
                     onSelected: handleTap,
                     isNarrow: renderNarrow,
                   ),
@@ -314,7 +324,7 @@ class _RailMoreButton extends StatelessWidget {
     required this.tools,
     required this.hasSelectedDevice,
     required this.selectedTool,
-    required this.enabled,
+    required this.isToolEnabled,
     required this.onSelected,
     required this.isNarrow,
   });
@@ -322,7 +332,7 @@ class _RailMoreButton extends StatelessWidget {
   final List<_RailToolItem> tools;
   final bool hasSelectedDevice;
   final int selectedTool;
-  final bool enabled;
+  final bool Function(int) isToolEnabled;
   final ValueChanged<int> onSelected;
   final bool isNarrow;
 
@@ -334,8 +344,14 @@ class _RailMoreButton extends StatelessWidget {
     final selected =
         hasSelectedDevice && tools.any((tool) => tool.tabIndex == selectedTool);
 
+    // Ellipsis button is enabled only if at least one tool in the overflow is enabled
+    final anyEnabled = tools.any((tool) => isToolEnabled(tool.tabIndex));
+
     final defaultColor = isDark ? const Color(0xffeceff1) : const Color(0xff455a64);
-    final color = selected ? const Color(0xff09c47c) : defaultColor;
+    final disabledColor = isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e);
+    final color = !anyEnabled
+        ? disabledColor
+        : (selected ? const Color(0xff09c47c) : defaultColor);
 
     final activeBgColor = isDark
         ? Colors.white.withValues(alpha: 0.12)
@@ -350,7 +366,8 @@ class _RailMoreButton extends StatelessWidget {
         child: Center(
           child: PopupMenuButton<int>(
             tooltip: context.l10n.t('moreTools'),
-            onSelected: enabled ? onSelected : null,
+            onSelected: anyEnabled ? onSelected : null,
+            enabled: anyEnabled,
             offset: const Offset(66, 0),
             color: popupBgColor,
             elevation: 3,
@@ -363,7 +380,7 @@ class _RailMoreButton extends StatelessWidget {
               for (final tool in tools)
                 PopupMenuItem<int>(
                   value: tool.tabIndex,
-                  enabled: enabled,
+                  enabled: isToolEnabled(tool.tabIndex),
                   padding: EdgeInsets.zero,
                   height: 52,
                   child: Center(
@@ -372,7 +389,7 @@ class _RailMoreButton extends StatelessWidget {
                       size: 26,
                       color: tool.tabIndex == selectedTool
                           ? const Color(0xff09c47c)
-                          : defaultColor,
+                          : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
                     ),
                   ),
                 ),
@@ -397,7 +414,8 @@ class _RailMoreButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
         child: PopupMenuButton<int>(
           tooltip: context.l10n.t('moreTools'),
-          onSelected: enabled ? onSelected : null,
+          onSelected: anyEnabled ? onSelected : null,
+          enabled: anyEnabled,
           offset: const Offset(164, 0),
           color: popupBgColor,
           elevation: 3,
@@ -410,7 +428,7 @@ class _RailMoreButton extends StatelessWidget {
             for (final tool in tools)
               PopupMenuItem<int>(
                 value: tool.tabIndex,
-                enabled: enabled,
+                enabled: isToolEnabled(tool.tabIndex),
                 height: 40,
                 child: Row(
                   children: [
@@ -419,7 +437,7 @@ class _RailMoreButton extends StatelessWidget {
                       size: 20,
                       color: tool.tabIndex == selectedTool
                           ? const Color(0xff09c47c)
-                          : defaultColor,
+                          : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -429,7 +447,7 @@ class _RailMoreButton extends StatelessWidget {
                           fontSize: 13,
                           color: tool.tabIndex == selectedTool
                               ? const Color(0xff09c47c)
-                              : defaultColor,
+                              : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
                         ),
                       ),
                     ),

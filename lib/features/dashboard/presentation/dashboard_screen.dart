@@ -229,6 +229,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ref.read(lastActiveDeviceProvider.notifier).state =
               effectiveSelectedDevice;
         }
+
+        // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)或设置(12) Tab，则自动重定向回主页 Tab
+        if (!effectiveSelectedDevice.isOnline) {
+          final selectedTool = ref.read(selectedToolTabProvider);
+          if (selectedTool != 0 && selectedTool != 1 && selectedTool != 2 && selectedTool != 12) {
+            ref.read(selectedToolTabProvider.notifier).select(0);
+          }
+        }
       });
     }
 
