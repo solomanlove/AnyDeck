@@ -332,6 +332,33 @@ class _SettingsTab extends ConsumerWidget {
                         builder: (_) => const _SoftwareManualDialog(),
                       ),
                     ),
+                    const Divider(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(
+                        CupertinoIcons.info_circle,
+                        color: brandGreen,
+                      ),
+                      title: Text(context.l10n.t('appVersion')),
+                      subtitle: const Text('v1.0.0'),
+                      trailing: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brandGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                        ),
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          builder: (_) => const _UpdateCheckDialog(),
+                        ),
+                        child: Text(context.l10n.t('checkUpdate')),
+                      ),
+                    ),
                   ],
                 ),
               ],

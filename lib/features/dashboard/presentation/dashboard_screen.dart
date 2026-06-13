@@ -56,6 +56,7 @@ import 'widgets/dashboard_table_header.dart';
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';
 part 'widgets/dashboard_dialogs.dart';
+part 'widgets/dashboard_update_dialog.dart';
 part 'widgets/remote_controller_dialog.dart';
 part 'devices/dashboard_emulators.dart';
 part 'devices/dashboard_emulators_header.dart';
