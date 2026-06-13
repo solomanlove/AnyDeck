@@ -200,6 +200,9 @@ class PerformanceSnapshot {
           if (pkg.contains('{')) {
             pkg = pkg.split('{').last;
           }
+          if (pkg.contains('}')) {
+            pkg = pkg.split('}').first;
+          }
           if (!pkg.contains('=')) {
             foregroundAppPackage = pkg;
           }

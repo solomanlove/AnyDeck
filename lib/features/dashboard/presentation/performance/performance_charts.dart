@@ -93,6 +93,7 @@ class _LineChartPainter extends CustomPainter {
 
     final double width = size.width;
     final double height = size.height;
+    final double chartHeight = height - 18; // 预留底部 18px 绘制时间轴标签
 
     // 绘制背景网格
     final gridPaint = Paint()
@@ -100,13 +101,13 @@ class _LineChartPainter extends CustomPainter {
       ..strokeWidth = 1.0;
 
     // 水平分割线
-    canvas.drawLine(Offset(0, 0), Offset(width, 0), gridPaint); // 100%
+    canvas.drawLine(const Offset(0, 2), Offset(width, 2), gridPaint); // 100%
     canvas.drawLine(
-      Offset(0, height / 2),
-      Offset(width, height / 2),
+      Offset(0, chartHeight / 2),
+      Offset(width, chartHeight / 2),
       gridPaint,
     ); // 50%
-    canvas.drawLine(Offset(0, height), Offset(width, height), gridPaint); // 0%
+    canvas.drawLine(Offset(0, chartHeight), Offset(width, chartHeight), gridPaint); // 0%
 
     // 纵向时间网格 (根据时间戳每隔 10 秒绘制一条垂直网格线并附带时间戳标签)
     final latestTime = data.last.timestamp ?? DateTime.now();
@@ -125,7 +126,7 @@ class _LineChartPainter extends CustomPainter {
       final double x = width - (offsetSeconds / windowSize) * width;
 
       if (x >= 0 && x <= width) {
-        canvas.drawLine(Offset(x, 0), Offset(x, height), gridPaint);
+        canvas.drawLine(Offset(x, 0), Offset(x, chartHeight), gridPaint);
 
         final timeStr =
             '${boundary.hour.toString().padLeft(2, '0')}:'
@@ -148,7 +149,7 @@ class _LineChartPainter extends CustomPainter {
         double textX = x - textPainter.width / 2;
         textX = textX.clamp(4.0, width - textPainter.width - 4.0);
 
-        textPainter.paint(canvas, Offset(textX, 4));
+        textPainter.paint(canvas, Offset(textX, chartHeight + 4));
       }
 
       boundary = boundary.add(const Duration(seconds: 10));
@@ -160,11 +161,17 @@ class _LineChartPainter extends CustomPainter {
       fontSize: 10,
       fontWeight: FontWeight.w500,
     );
-    _drawText(canvas, '${maxVal.toInt()}$unit', Offset(6, 4), textStyle);
+    _drawText(canvas, '${maxVal.toInt()}$unit', const Offset(6, 4), textStyle);
     _drawText(
       canvas,
       '${(maxVal / 2).toInt()}$unit',
-      Offset(6, height / 2 - 6),
+      Offset(6, chartHeight / 2 - 6),
+      textStyle,
+    );
+    _drawText(
+      canvas,
+      '0$unit',
+      Offset(6, chartHeight - 12),
       textStyle,
     );
 
@@ -178,20 +185,20 @@ class _LineChartPainter extends CustomPainter {
       final double offsetSeconds =
           latestTime.difference(pointTime).inMilliseconds / 1000.0;
       final double x = width - (offsetSeconds / windowSize) * width;
-      final double y = height - (point.value / maxVal * height);
-      points.add(Offset(x.clamp(0.0, width), y.clamp(0.0, height)));
+      final double y = chartHeight - (point.value / maxVal * chartHeight);
+      points.add(Offset(x.clamp(0.0, width), y.clamp(2.0, chartHeight)));
     }
 
     // 绘制面积渐变填充
     if (points.length > 1) {
       final fillPath = Path()
-        ..moveTo(points.first.dx, height)
+        ..moveTo(points.first.dx, chartHeight)
         ..lineTo(points.first.dx, points.first.dy);
 
       for (int i = 1; i < points.length; i++) {
         fillPath.lineTo(points[i].dx, points[i].dy);
       }
-      fillPath.lineTo(points.last.dx, height);
+      fillPath.lineTo(points.last.dx, chartHeight);
       fillPath.close();
 
       final fillPaint = Paint()
@@ -199,7 +206,7 @@ class _LineChartPainter extends CustomPainter {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: gradientColors,
-        ).createShader(Rect.fromLTRB(0, 0, width, height));
+        ).createShader(Rect.fromLTRB(0, 0, width, chartHeight));
 
       canvas.drawPath(fillPath, fillPaint);
     }
@@ -242,7 +249,7 @@ class _LineChartPainter extends CustomPainter {
       double startY = 0;
       const dashWidth = 4.0;
       const dashSpace = 4.0;
-      while (startY < height) {
+      while (startY < chartHeight) {
         canvas.drawLine(
           Offset(targetPoint.dx, startY),
           Offset(targetPoint.dx, startY + dashWidth),
@@ -287,7 +294,7 @@ class _LineChartPainter extends CustomPainter {
       }
       double tooltipY = targetPoint.dy - tooltipH / 2;
       if (tooltipY < 4) tooltipY = 4;
-      if (tooltipY + tooltipH > height - 4) tooltipY = height - tooltipH - 4;
+      if (tooltipY + tooltipH > chartHeight - 4) tooltipY = chartHeight - tooltipH - 4;
 
       final rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(tooltipX, tooltipY, tooltipW, tooltipH),

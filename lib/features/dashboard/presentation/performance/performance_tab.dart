@@ -51,8 +51,10 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   double _fps = 0;
 
   // 统一的 ADB Shell 命令文本 (不需要在 Dart 中转义 $)
+  // 优化点：不依赖 seq 命令，使用兼容性更好的 for 循环；使用 POSIX case 过滤不合法的包名；增加 || true / ; true 确保命令即使部分没有输出或 grep 未命中也不会返回非零退出码导致判定失败。
   static const String _unifiedCommand =
-      r'''cat /proc/uptime; echo "---"; dumpsys battery; echo "---"; cat /proc/meminfo; echo "---"; dumpsys window | grep mCurrentFocus; echo "---"; cat /proc/stat | grep "^cpu"; echo "---"; for i in $(seq 0 32); do if [ -d "/sys/devices/system/cpu/cpu$i" ]; then freq_file="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; if [ -f "$freq_file" ]; then cat "$freq_file"; else echo "0"; fi; fi; done; echo "---"; focusLine=$(dumpsys window | grep mCurrentFocus); tmp=${focusLine%%/*}; pkg=${tmp##* }; pkg=${pkg##*{}; if [ "$pkg" != "null" ] && [[ "$pkg" != *"="* ]]; then dumpsys gfxinfo $pkg | grep "Total frames rendered:"; fi''';
+      r'''cat /proc/uptime; echo "---"; dumpsys battery; echo "---"; cat /proc/meminfo; echo "---"; dumpsys window | grep mCurrentFocus || true; echo "---"; cat /proc/stat | grep "^cpu"; echo "---"; for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32; do if [ -d "/sys/devices/system/cpu/cpu$i" ]; then freq_file="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; if [ -f "$freq_file" ]; then cat "$freq_file"; else echo "0"; fi; fi; done; echo "---"; focusLine=$(dumpsys window | grep mCurrentFocus || true); tmp=${focusLine%%/*}; pkg=${tmp##* }; pkg=${pkg##*{}; pkg=${pkg%%\}}; case "$pkg" in *.*) case "$pkg" in *[\{\}\/\=\ ]*) pkg="" ;; esac ;; *) pkg="" ;; esac; if [ -n "$pkg" ]; then dumpsys gfxinfo "$pkg" | grep "Total frames rendered:" || true; fi; true''';
+
 
   @override
   void initState() {

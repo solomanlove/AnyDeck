@@ -76,19 +76,20 @@ class _BarChartPainter extends CustomPainter {
 
     final double width = size.width;
     final double height = size.height;
+    final double chartHeight = height - 18; // 预留底部 18px 绘制时间轴标签
 
     // 绘制背景网格
     final gridPaint = Paint()
       ..color = const Color(0xffeceef1)
       ..strokeWidth = 1.0;
 
-    canvas.drawLine(Offset(0, 0), Offset(width, 0), gridPaint); // 60
+    canvas.drawLine(const Offset(0, 2), Offset(width, 2), gridPaint); // 60
     canvas.drawLine(
-      Offset(0, height / 2),
-      Offset(width, height / 2),
+      Offset(0, chartHeight / 2),
+      Offset(width, chartHeight / 2),
       gridPaint,
     ); // 30
-    canvas.drawLine(Offset(0, height), Offset(width, height), gridPaint); // 0
+    canvas.drawLine(Offset(0, chartHeight), Offset(width, chartHeight), gridPaint); // 0
 
     // 纵向时间网格 (根据时间戳每隔 10 秒绘制一条垂直网格线并附带时间戳标签)
     final latestTime = data.last.timestamp ?? DateTime.now();
@@ -107,7 +108,7 @@ class _BarChartPainter extends CustomPainter {
       final double x = width - (offsetSeconds / windowSize) * width;
 
       if (x >= 0 && x <= width) {
-        canvas.drawLine(Offset(x, 0), Offset(x, height), gridPaint);
+        canvas.drawLine(Offset(x, 0), Offset(x, chartHeight), gridPaint);
 
         final timeStr =
             '${boundary.hour.toString().padLeft(2, '0')}:'
@@ -130,7 +131,7 @@ class _BarChartPainter extends CustomPainter {
         double textX = x - textPainter.width / 2;
         textX = textX.clamp(4.0, width - textPainter.width - 4.0);
 
-        textPainter.paint(canvas, Offset(textX, 4));
+        textPainter.paint(canvas, Offset(textX, chartHeight + 4));
       }
 
       boundary = boundary.add(const Duration(seconds: 10));
@@ -142,11 +143,17 @@ class _BarChartPainter extends CustomPainter {
       fontSize: 10,
       fontWeight: FontWeight.w500,
     );
-    _drawText(canvas, '${maxVal.toInt()}$unit', Offset(6, 4), textStyle);
+    _drawText(canvas, '${maxVal.toInt()}$unit', const Offset(6, 4), textStyle);
     _drawText(
       canvas,
       '${(maxVal / 2).toInt()}$unit',
-      Offset(6, height / 2 - 6),
+      Offset(6, chartHeight / 2 - 6),
+      textStyle,
+    );
+    _drawText(
+      canvas,
+      '0$unit',
+      Offset(6, chartHeight - 12),
       textStyle,
     );
 
@@ -183,11 +190,11 @@ class _BarChartPainter extends CustomPainter {
           latestTime.difference(pointTime).inMilliseconds / 1000.0;
 
       final double x = width - (offsetSeconds + 1) * slotW + spaceW / 2;
-      final double y = height - (point.value / maxVal * height);
+      final double y = chartHeight - (point.value / maxVal * chartHeight);
 
       if (x >= -barW && x <= width) {
         final rect = RRect.fromRectAndRadius(
-          Rect.fromLTRB(x, y.clamp(0.0, height), x + barW, height),
+          Rect.fromLTRB(x, y.clamp(2.0, chartHeight), x + barW, chartHeight),
           const Radius.circular(2),
         );
 
@@ -206,7 +213,7 @@ class _BarChartPainter extends CustomPainter {
                       : barColor.withValues(alpha: 0.3),
                 ],
               ).createShader(
-                Rect.fromLTRB(x, y.clamp(0.0, height), x + barW, height),
+                Rect.fromLTRB(x, y.clamp(2.0, chartHeight), x + barW, chartHeight),
               );
 
         canvas.drawRRect(rect, paint);
@@ -225,7 +232,7 @@ class _BarChartPainter extends CustomPainter {
           latestTime.difference(pointTime).inMilliseconds / 1000.0;
       final double x = width - (offsetSeconds + 0.5) * slotW;
       final val = targetData.value;
-      final y = height - (val / maxVal * height);
+      final y = chartHeight - (val / maxVal * chartHeight);
 
       // 绘制柱子高亮圆球
       canvas.drawCircle(Offset(x, y), 4.0, Paint()..color = barColor);
@@ -256,7 +263,7 @@ class _BarChartPainter extends CustomPainter {
       }
       double tooltipY = y - tooltipH / 2;
       if (tooltipY < 4) tooltipY = 4;
-      if (tooltipY + tooltipH > height - 4) tooltipY = height - tooltipH - 4;
+      if (tooltipY + tooltipH > chartHeight - 4) tooltipY = chartHeight - tooltipH - 4;
 
       final rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(tooltipX, tooltipY, tooltipW, tooltipH),
