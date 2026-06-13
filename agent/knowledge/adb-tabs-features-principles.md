@@ -254,3 +254,25 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
 3. **自动应用逻辑**：
    - 监听 `selectedDeviceProvider` 设备状态流。
    - 当设备检测为 online 时，自动读取保存在 SharedPreferences 中的 `PortForwardPreset`，对于标记为 `autoApply = true` 的预设，循环在后台调用 `adb reverse`。
+
+---
+
+## 12. 设置 (Settings Tab)
+
+### 功能说明
+管理全局应用配置和偏好设置。包含常规设置（中英文语言切换、外观主题跟随系统/浅色/深色切换、截图及录屏默认保存路径配置、缓存清理）、投屏选项设置（窗口置顶显示、音频转发开启/关闭、传输码率与最大分辨率控制），以及关于与说明信息（作者介绍、软件说明书、软件版本信息与在线检查更新）。
+
+### 底层原理与机制
+1. **全局偏好设置持久化 (AppSettings)**：
+   - 数据实体由 `AppSettings` 类承载，控制状态使用 Riverpod Notifier `AppSettingsController` 进行统一管理。
+   - 所有用户偏好选项（如主题模式、分辨率限制、是否音频转发等）皆通过 `SharedPreferences` 持久化存储在宿主机本地。
+   - 在多窗口或子进程场景中，使用 `WindowMethodChannel` 跨引擎通知广播机制（如 `update_language`、`update_save_path`）实现全窗口的全局状态乐观更新。
+2. **应用临时缓存清理机制**：
+   - 临时图标缓存及预览文件通过 `CacheCleanupService` 进行深度清理。
+   - 统计缓存大小与文件数量，并通过 `replaceAll` 动态刷新 localized 文案提示清理成果。
+3. **版本信息与交互式更新机制 (Update Dialog)**：
+   - **当前版本渲染**：在界面“关于与支持”卡片下方追加版本 Tile 呈现静态常量版本（当前为 `v1.0.0`）。
+   - **交互式更新检测器 (`_UpdateCheckDialog`)**：
+     - **状态流转换**：`Checking`（动画旋转器） $\rightarrow$ `HasUpdate`（显示 v1.0.1 升级日志） $\rightarrow$ `Downloading`（展示进度百分比、动态速率及下载大小） $\rightarrow$ `Installing`（加载安装） $\rightarrow$ `Success`（更新成功）。
+     - **动画支持**：旋转动画采用 `RotationTransition` 及 `AnimationController` 实现，以 2 秒为周期无限循环旋转；下载进度利用 `Timer.periodic` 步进更新。
+     - **双语多态设计**：包含独立的中文与英文文案对照（如 `updateSuccessDesc` 与 `downloadComplete`），消除硬编码，在语言切换时自动更新相应状态文案。
