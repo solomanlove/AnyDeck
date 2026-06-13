@@ -38,7 +38,7 @@ dependencies:
   # 二维码
   qr_flutter: ^4.1.0
   # 窗口管理
-  window_manager: ^0.4.3
+  window_manager: ^0.5.1
   # 多窗口管理
   desktop_multi_window: ^0.3.0
   # 任务盘管理

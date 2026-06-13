@@ -15,7 +15,7 @@ PODS:
     - FlutterMacOS
   - tray_manager (0.0.1):
     - FlutterMacOS
-  - window_manager (0.2.0):
+  - window_manager (0.5.0):
     - FlutterMacOS
 
 DEPENDENCIES:
@@ -55,10 +55,10 @@ SPEC CHECKSUMS:
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   scrcpy_flutter: e2293226c287168d1da84ebf0905ffbc75f98d3a
-  screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
+  screen_retriever_macos: c5508cc3c66ff0d4db650480cf0ab691e220d933
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
-  tray_manager: a104b5c81b578d83f3c3d0f40a997c8b10810166
-  window_manager: 1d01fa7ac65a6e6f83b965471b1a7fdd3f06166c
+  tray_manager: 19c369010e59c073f13b82354d78a35f7972d609
+  window_manager: b729e31d38fb04905235df9ea896128991cad99e
 
 PODFILE CHECKSUM: e85b854909840332609a896a6f31ccfc7b6c44d0
 
