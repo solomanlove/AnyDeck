@@ -318,34 +318,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     WidgetRef ref,
     AdbDevice device,
   ) async {
-    // 1. If mirroring is active, stop it first.
-    final textureId = ref.read(activeEmbeddedMirrorProvider(device.id));
-    if (textureId != null) {
-      await ref
-          .read(activeEmbeddedMirrorProvider(device.id).notifier)
-          .forceStop();
-    }
-
-    // 2. Open the standalone mirroring window
-    try {
-      final overviewAsync = ref.read(deviceOverviewProvider(device.id));
-      final resolution = overviewAsync.maybeWhen(
-        data: (overview) => overview.physicalResolution,
-        orElse: () => null,
-      );
-      final initialSize = _resolveMirrorInitialWindowSize(resolution);
-      await createAdbManageWindow(
-        arguments: {
-          'type': 'mirror',
-          'deviceId': device.id,
-          'deviceName': device.displayName,
-        },
-        frame: Offset.zero & initialSize,
-        title: '投屏 - ${device.displayName}',
-      );
-    } catch (e) {
-      debugPrint('Failed to open standalone mirror window: $e');
-    }
+    await openStandaloneMirrorWindow(context, ref, device);
   }
 
   // ignore: unused_element
@@ -385,5 +358,41 @@ class _SelectedDeviceHeader extends ConsumerWidget {
         _showSnack(context, '启动外部原生投屏失败: $e', isError: true);
       }
     }
+  }
+}
+
+/// 打开独立投屏窗口的全局辅助方法
+Future<void> openStandaloneMirrorWindow(
+  BuildContext context,
+  WidgetRef ref,
+  AdbDevice device,
+) async {
+  // 1. If mirroring is active, stop it first.
+  final textureId = ref.read(activeEmbeddedMirrorProvider(device.id));
+  if (textureId != null) {
+    await ref
+        .read(activeEmbeddedMirrorProvider(device.id).notifier)
+        .forceStop();
+  }
+
+  // 2. Open the standalone mirroring window
+  try {
+    final overviewAsync = ref.read(deviceOverviewProvider(device.id));
+    final resolution = overviewAsync.maybeWhen(
+      data: (overview) => overview.physicalResolution,
+      orElse: () => null,
+    );
+    final initialSize = _resolveMirrorInitialWindowSize(resolution);
+    await createAdbManageWindow(
+      arguments: {
+        'type': 'mirror',
+        'deviceId': device.id,
+        'deviceName': device.displayName,
+      },
+      frame: Offset.zero & initialSize,
+      title: '投屏 - ${device.displayName}',
+    );
+  } catch (e) {
+    debugPrint('Failed to open standalone mirror window: $e');
   }
 }

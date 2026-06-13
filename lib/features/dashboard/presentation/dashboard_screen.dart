@@ -158,6 +158,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Future<void> _handleWindowMethodCall(MethodCall call) async {
     if (call.method == 'requestAppExit') {
       _showExitConfirmDialog();
+    } else if (call.method == 'openEmulatorManager') {
+      EmulatorListPanel.openStandaloneWindow(context);
+    } else if (call.method == 'openMirrorWindow') {
+      final selectedDevice = ref.read(selectedDeviceProvider);
+      if (selectedDevice != null && selectedDevice.isOnline) {
+        openStandaloneMirrorWindow(context, ref, selectedDevice);
+      } else {
+        if (mounted) {
+          _showSnack(
+            context,
+            '请先连接并选择一个在线设备进行投屏',
+            isError: true,
+          );
+        }
+      }
     }
   }
 

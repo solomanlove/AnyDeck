@@ -32,6 +32,10 @@ class MainFlutterWindow: NSWindow {
       result(nil)
     }
 
+    if let app = NSApplication.shared.delegate as? FlutterAppDelegate {
+      app.mainFlutterWindow = self
+    }
+
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     FlutterMultiWindowPlugin.setOnWindowCreatedCallback { controller in
@@ -87,6 +91,13 @@ class MainFlutterWindow: NSWindow {
         if call.method == "initWindow" {
           window.collectionBehavior.insert(.fullScreenPrimary)
           result(nil)
+        } else if call.method == "setWindowTitle" {
+          guard let title = call.arguments as? String else {
+            result(FlutterError(code: "invalid_argument", message: "setWindowTitle requires a string title", details: nil))
+            return
+          }
+          window.title = title
+          result(nil)
         } else if call.method == "getWindowFrame" {
           let frame = window.frame
           let frameDict: [String: Any] = [
@@ -140,6 +151,8 @@ class MainFlutterWindow: NSWindow {
     guard let mainMenu = NSApp.mainMenu else {
       return
     }
+
+    setupCustomWindowMenuItems()
 
     let isChinese = title == "手机管理"
 
@@ -294,6 +307,14 @@ class MainFlutterWindow: NSWindow {
         if submenu.items.count > 0 { submenu.items[0].title = isChinese ? "最小化" : "Minimize" }
         if submenu.items.count > 1 { submenu.items[1].title = isChinese ? "缩放" : "Zoom" }
         if submenu.items.count > 3 { submenu.items[3].title = isChinese ? "前置全部窗口" : "Bring All to Front" }
+        
+        for item in submenu.items {
+          if item.action == #selector(openEmulatorManagerClicked(_:)) {
+            item.title = isChinese ? "模拟器管理窗口" : "Simulator Management Window"
+          } else if item.action == #selector(openMirrorWindowClicked(_:)) {
+            item.title = isChinese ? "投屏窗口" : "Screen Casting Window"
+          }
+        }
       }
     }
 
@@ -304,6 +325,58 @@ class MainFlutterWindow: NSWindow {
       if let submenu = helpMenuItem.submenu {
         submenu.title = isChinese ? "帮助" : "Help"
       }
+    }
+  }
+
+  @objc func openEmulatorManagerClicked(_ sender: Any) {
+    if let controller = self.contentViewController as? FlutterViewController {
+      let channel = FlutterMethodChannel(
+        name: "adb_manage/window",
+        binaryMessenger: controller.engine.binaryMessenger
+      )
+      channel.invokeMethod("openEmulatorManager", arguments: nil)
+    }
+  }
+
+  @objc func openMirrorWindowClicked(_ sender: Any) {
+    if let controller = self.contentViewController as? FlutterViewController {
+      let channel = FlutterMethodChannel(
+        name: "adb_manage/window",
+        binaryMessenger: controller.engine.binaryMessenger
+      )
+      channel.invokeMethod("openMirrorWindow", arguments: nil)
+    }
+  }
+
+  private func setupCustomWindowMenuItems() {
+    guard let mainMenu = NSApp.mainMenu, mainMenu.items.count > 3,
+          let submenu = mainMenu.items[3].submenu else {
+      return
+    }
+    
+    let hasCustomItems = submenu.items.contains { item in
+      item.action == #selector(openEmulatorManagerClicked(_:)) ||
+      item.action == #selector(openMirrorWindowClicked(_:))
+    }
+    
+    if !hasCustomItems {
+      submenu.addItem(NSMenuItem.separator())
+      
+      let emulatorItem = NSMenuItem(
+        title: "模拟器管理窗口",
+        action: #selector(openEmulatorManagerClicked(_:)),
+        keyEquivalent: ""
+      )
+      emulatorItem.target = self
+      submenu.addItem(emulatorItem)
+      
+      let mirrorItem = NSMenuItem(
+        title: "投屏窗口",
+        action: #selector(openMirrorWindowClicked(_:)),
+        keyEquivalent: ""
+      )
+      mirrorItem.target = self
+      submenu.addItem(mirrorItem)
     }
   }
 }

@@ -14,7 +14,31 @@ Future<WindowController> createAdbManageWindow({
   required Map<String, dynamic> arguments,
   Rect? frame,
   String? title,
-}) {
+}) async {
+  final type = arguments['type'] as String?;
+  final deviceId = arguments['deviceId'] as String?;
+  if (type != null) {
+    try {
+      final windows = await WindowController.getAll();
+      for (final window in windows) {
+        if (window.arguments.isEmpty) continue;
+        try {
+          final windowArgs = jsonDecode(window.arguments);
+          if (windowArgs is Map && windowArgs['type'] == type) {
+            if (deviceId == null || windowArgs['deviceId'] == deviceId) {
+              await window.show();
+              return window;
+            }
+          }
+        } catch (e) {
+          debugPrint('Failed to parse window arguments: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to check existing windows: $e');
+    }
+  }
+
   final windowArguments = <String, dynamic>{...arguments};
   if (frame != null) {
     windowArguments[_windowFrameKey] = {
