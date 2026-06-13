@@ -338,10 +338,10 @@ class _SelectedDeviceHeader extends ConsumerWidget {
         arguments: {
           'type': 'mirror',
           'deviceId': device.id,
-          'deviceName': device.model ?? device.id,
+          'deviceName': device.displayName,
         },
         frame: Offset.zero & initialSize,
-        title: '投屏 - ${device.model ?? device.id}',
+        title: '投屏 - ${device.displayName}',
       );
     } catch (e) {
       debugPrint('Failed to open standalone mirror window: $e');
