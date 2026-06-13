@@ -257,7 +257,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
               ),
               const SizedBox(width: 12),
               // 刷新按钮
-              IconButton.filledTonal(
+              IconButton(
                 tooltip: '手动刷新网页列表',
                 icon: _refreshing
                     ? const SizedBox(

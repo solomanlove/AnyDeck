@@ -176,12 +176,8 @@ class LayoutToolbar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: Text(
-                resolutionText!,
-                style: const TextStyle(
-                  color: Colors.blueGrey,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+                resolutionText ?? '',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
         ],

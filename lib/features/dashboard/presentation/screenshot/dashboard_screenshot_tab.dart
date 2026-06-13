@@ -291,42 +291,45 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
       children: [
         // 顶部控制工具栏
         Container(
-          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: colorScheme.surface,
+            color: const Color(0xfff7f9fa),
             border: Border(
               bottom: BorderSide(
-                color: Theme.of(context).dividerColor,
-                width: 1,
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
               ),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              IconButton(
+              _ToolbarButton(
+                icon: CupertinoIcons.refresh,
                 tooltip: context.l10n.t('refresh'),
-                icon: const Icon(CupertinoIcons.refresh),
                 onPressed: (_loading || isRecording) ? null : () => _capture(),
               ),
-              IconButton(
+              _ToolbarButton(
+                icon: CupertinoIcons.floppy_disk,
                 tooltip: context.l10n.t('save'),
-                icon: const Icon(CupertinoIcons.floppy_disk),
                 onPressed: (_screenshotBytes == null || isRecording)
                     ? null
                     : _saveScreenshot,
               ),
-              IconButton(
+              _ToolbarButton(
+                icon: CupertinoIcons.doc_on_doc,
                 tooltip: context.l10n.t('copy'),
-                icon: const Icon(CupertinoIcons.doc_on_doc),
                 onPressed: (_screenshotBytes == null || isRecording)
                     ? null
                     : _copyScreenshot,
               ),
-              const VerticalDivider(width: 24, indent: 12, endIndent: 12),
-              IconButton(
+              const SizedBox(width: 8),
+              const SizedBox(
+                height: 20,
+                child: VerticalDivider(width: 1, color: Colors.grey),
+              ),
+              const SizedBox(width: 8),
+              _ToolbarButton(
+                icon: CupertinoIcons.rotate_left,
                 tooltip: context.l10n.t('rotateLeft'),
-                icon: const Icon(CupertinoIcons.rotate_left),
                 onPressed: (_screenshotBytes == null || isRecording)
                     ? null
                     : () {
@@ -336,9 +339,9 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
                         });
                       },
               ),
-              IconButton(
+              _ToolbarButton(
+                icon: CupertinoIcons.rotate_right,
                 tooltip: context.l10n.t('rotateRight'),
-                icon: const Icon(CupertinoIcons.rotate_right),
                 onPressed: (_screenshotBytes == null || isRecording)
                     ? null
                     : () {
@@ -348,55 +351,88 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
                         });
                       },
               ),
-              const VerticalDivider(width: 24, indent: 12, endIndent: 12),
-              IconButton(
+              const SizedBox(width: 8),
+              const SizedBox(
+                height: 20,
+                child: VerticalDivider(width: 1, color: Colors.grey),
+              ),
+              const SizedBox(width: 8),
+              _ToolbarButton(
+                icon: CupertinoIcons.zoom_in,
                 tooltip: context.l10n.t('zoomIn'),
-                icon: const Icon(CupertinoIcons.zoom_in),
                 onPressed: (_screenshotBytes == null || isRecording)
                     ? null
                     : () => _zoom(1.2),
               ),
-              IconButton(
+              _ToolbarButton(
+                icon: CupertinoIcons.zoom_out,
                 tooltip: context.l10n.t('zoomOut'),
-                icon: const Icon(CupertinoIcons.zoom_out),
                 onPressed: (_screenshotBytes == null || isRecording)
                     ? null
                     : () => _zoom(0.8),
               ),
-              IconButton(
+              Tooltip(
+                message: context.l10n.t('zoom1to1'),
+                child: InkWell(
+                  onTap: (_screenshotBytes == null || isRecording) ? null : _zoom1to1,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: (_screenshotBytes == null || isRecording)
+                            ? Colors.grey[300]!
+                            : Colors.grey[400]!,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '1:1',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: (_screenshotBytes == null || isRecording)
+                            ? Colors.grey[400]
+                            : Colors.blueGrey,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              _ToolbarButton(
+                icon: CupertinoIcons.arrow_counterclockwise,
                 tooltip: context.l10n.t('zoomReset'),
-                icon: const Icon(CupertinoIcons.resize),
                 onPressed: (_screenshotBytes == null || isRecording)
                     ? null
                     : _zoomReset,
               ),
-              IconButton(
-                tooltip: context.l10n.t('zoom1to1'),
-                icon: const Icon(CupertinoIcons.fullscreen),
-                onPressed: (_screenshotBytes == null || isRecording)
-                    ? null
-                    : _zoom1to1,
+              const SizedBox(width: 8),
+              const SizedBox(
+                height: 20,
+                child: VerticalDivider(width: 1, color: Colors.grey),
               ),
-              const VerticalDivider(width: 24, indent: 12, endIndent: 12),
-              IconButton(
+              const SizedBox(width: 8),
+              _ToolbarButton(
+                icon: CupertinoIcons.clock,
                 tooltip: context.l10n.t('autoRefresh'),
-                icon: Icon(
-                  CupertinoIcons.clock,
-                  color: _autoRefresh ? colorScheme.primary : null,
-                ),
+                color: _autoRefresh ? colorScheme.primary : null,
                 onPressed: (_screenshotBytes == null || isRecording)
                     ? null
                     : _toggleAutoRefresh,
               ),
-              const VerticalDivider(width: 24, indent: 12, endIndent: 12),
-              IconButton(
+              const SizedBox(width: 8),
+              const SizedBox(
+                height: 20,
+                child: VerticalDivider(width: 1, color: Colors.grey),
+              ),
+              const SizedBox(width: 8),
+              _ToolbarButton(
+                icon: isRecording ? CupertinoIcons.stop : CupertinoIcons.videocam,
                 tooltip: isRecording
                     ? context.l10n.t('stopRecord')
                     : context.l10n.t('startRecord'),
-                icon: Icon(
-                  isRecording ? CupertinoIcons.stop : CupertinoIcons.videocam,
-                  color: isRecording ? Colors.red : null,
-                ),
+                color: isRecording ? Colors.red : null,
                 onPressed: _loading
                     ? null
                     : (isRecording ? _stopRecording : _startRecording),
@@ -508,6 +544,36 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 截图工具栏按钮，保持与布局分析工具栏按钮一致的尺寸和样式。
+class _ToolbarButton extends StatelessWidget {
+  const _ToolbarButton({
+    required this.icon,
+    required this.tooltip,
+    this.onPressed,
+    this.color,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        icon: Icon(icon, size: 20, color: color),
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          padding: const EdgeInsets.all(6),
+          minimumSize: const Size(32, 32),
+        ),
+      ),
     );
   }
 }

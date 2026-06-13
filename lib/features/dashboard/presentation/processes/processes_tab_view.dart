@@ -95,7 +95,7 @@ extension _ProcessesTabView on _ProcessesTabState {
                 error: (_, error) => const Text('加载失败'),
               ),
               const Spacer(),
-              IconButton.filledTonal(
+              IconButton(
                 tooltip: '手动刷新进程',
                 icon: _refreshing
                     ? const SizedBox(

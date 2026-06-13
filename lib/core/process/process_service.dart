@@ -41,7 +41,27 @@ class ProcessService {
   }
 
   /// 结束设备上指定 PID 的进程。
-  Future<AdbResult> killProcess(String deviceId, String pid) {
+  /// 如果提供了 [processName] 且看起来像应用包名，会优先使用 `am force-stop` 结束应用，
+  /// 从而解决非 Root 设备上由于权限问题导致 `kill -9` 报 "Operation not permitted" 的错误。
+  Future<AdbResult> killProcess(String deviceId, String pid, {String? processName}) async {
+    if (processName != null) {
+      final cleanName = processName.trim();
+      final basePackage = cleanName.contains(':') ? cleanName.split(':').first : cleanName;
+
+      // 匹配典型的 Android 应用包名格式 (例如 com.example.app)
+      final packageRegex = RegExp(r'^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$');
+      if (packageRegex.hasMatch(basePackage) &&
+          !cleanName.startsWith('/') &&
+          !cleanName.startsWith('[')) {
+        // 对于应用进程，优先使用 am force-stop，这在非 Root 环境下也能成功运行
+        final stopResult = await _adb.shellArgs(deviceId, ['am', 'force-stop', basePackage]);
+        if (stopResult.isSuccess) {
+          return stopResult;
+        }
+      }
+    }
+
+    // 回退到常规的 kill -9 命令
     return _adb.shellArgs(deviceId, ['kill', '-9', pid]);
   }
 
