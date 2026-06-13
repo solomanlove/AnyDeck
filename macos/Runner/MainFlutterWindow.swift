@@ -85,6 +85,7 @@ class MainFlutterWindow: NSWindow {
         }
         
         if call.method == "initWindow" {
+          window.collectionBehavior.insert(.fullScreenPrimary)
           result(nil)
         } else if call.method == "getWindowFrame" {
           let frame = window.frame
@@ -118,6 +119,7 @@ class MainFlutterWindow: NSWindow {
             result(FlutterError(code: "invalid_argument", message: "Requires bool arguments", details: nil))
             return
           }
+          window.collectionBehavior.insert(.fullScreenPrimary)
           let isCurrentlyFullScreen = window.styleMask.contains(.fullScreen)
           if isCurrentlyFullScreen != fullscreen {
             window.toggleFullScreen(nil)

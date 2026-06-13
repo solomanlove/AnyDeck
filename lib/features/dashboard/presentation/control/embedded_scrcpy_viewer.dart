@@ -11,9 +11,16 @@ import '../../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../../core/scrcpy/scrcpy_keycode_helper.dart';
 
 class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
-  const EmbeddedScrcpyViewer({super.key, required this.deviceId});
+  const EmbeddedScrcpyViewer({
+    super.key,
+    required this.deviceId,
+    this.isFullScreen = false,
+    this.onEscapePressed,
+  });
 
   final String deviceId;
+  final bool isFullScreen;
+  final VoidCallback? onEscapePressed;
 
   @override
   ConsumerState<EmbeddedScrcpyViewer> createState() =>
@@ -35,6 +42,9 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   late final FocusNode _focusNode;
   late final TextEditingController _textController;
+  
+  /// 是否正在拦截 ESC 按键的抬起事件
+  bool _interceptingEscape = false;
 
   @override
   void initState() {
@@ -272,6 +282,23 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       return KeyEventResult.ignored;
     }
 
+    final key = event.logicalKey;
+    // 如果按键为 ESC 且处于全屏，拦截所有事件（按下、抬起等）防止其发送给 Android 设备或导致状态不同步
+    if (key == LogicalKeyboardKey.escape) {
+      if (event is KeyDownEvent) {
+        if (widget.isFullScreen) {
+          _interceptingEscape = true;
+          widget.onEscapePressed?.call();
+          return KeyEventResult.handled;
+        }
+      } else if (event is KeyUpEvent) {
+        if (_interceptingEscape) {
+          _interceptingEscape = false;
+          return KeyEventResult.handled;
+        }
+      }
+    }
+
     int? action;
     if (event is KeyDownEvent) {
       action = 0;
@@ -283,7 +310,6 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
     if (action == null) return KeyEventResult.ignored;
 
-    final key = event.logicalKey;
     final androidKeycode = ScrcpyKeycodeHelper.getAndroidKeycode(key);
 
     if (androidKeycode != null) {

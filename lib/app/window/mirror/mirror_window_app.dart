@@ -143,6 +143,14 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   void _onControllerChanged() {
     if (mounted) {
       setState(() {});
+      // 如果进入了全屏，确保键盘焦点不丢失，主动在后帧请求根焦点，使得 ESC 监听有效
+      if (_controller.isFullScreen) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _controller.isFullScreen) {
+            _keyboardFocusNode.requestFocus();
+          }
+        });
+      }
     }
   }
 
@@ -248,7 +256,15 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                   }
                   _lastPointerDownTime = now;
                 },
-                child: EmbeddedScrcpyViewer(deviceId: widget.deviceId),
+                child: EmbeddedScrcpyViewer(
+                  deviceId: widget.deviceId,
+                  isFullScreen: _controller.isFullScreen,
+                  onEscapePressed: () {
+                    if (_controller.isFullScreen) {
+                      _controller.toggleFullScreen(context, false);
+                    }
+                  },
+                ),
               ),
             ),
           ),
