@@ -9,6 +9,9 @@
 #include <vector>
 #include <AudioToolbox/AudioToolbox.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdocumentation"
+#pragma clang diagnostic ignored "-Wdocumentation-html"
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -16,6 +19,7 @@ extern "C" {
 #include <libavutil/imgutils.h>
 #include <libswresample/swresample.h>
 }
+#pragma clang diagnostic pop
 
 typedef void (*ScrcpyFrameCallback)(void* opaque, const uint8_t* rgbaBuf, int width, int height);
 
