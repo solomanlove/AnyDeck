@@ -27,7 +27,7 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _mirrorAudioEnabledKey = 'settings.mirrorAudioEnabled';
   static const _screenshotSavePathKey = 'settings.screenshotSavePath';
   static const _mainSettingsChannel = WindowMethodChannel(
-    'adb_manage/settings_main',
+    'any_deck/settings_main',
     mode: ChannelMode.unidirectional,
   );
 

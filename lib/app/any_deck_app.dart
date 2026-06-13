@@ -11,9 +11,9 @@ import 'theme/app_theme.dart';
 import 'window/desktop_window_title_service.dart';
 
 /// 应用根组件，统一装配路由、本地化和主题设置。
-class AdbManageApp extends ConsumerWidget {
+class AnyDeckApp extends ConsumerWidget {
 
-  const AdbManageApp({super.key});
+  const AnyDeckApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

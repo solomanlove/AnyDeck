@@ -1,6 +1,6 @@
-import 'package:adb_manage/core/adb/adb_result.dart';
-import 'package:adb_manage/core/adb/adb_service.dart';
-import 'package:adb_manage/core/apps/app_management_service.dart';
+import 'package:any_deck/core/adb/adb_result.dart';
+import 'package:any_deck/core/adb/adb_service.dart';
+import 'package:any_deck/core/apps/app_management_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

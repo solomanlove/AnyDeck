@@ -106,7 +106,7 @@ static void my_application_activate(GApplication* application) {
   g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
   FlMethodChannel* window_channel = fl_method_channel_new(
       fl_engine_get_binary_messenger(fl_view_get_engine(view)),
-      "adb_manage/window", FL_METHOD_CODEC(codec));
+      "any_deck/window", FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(
       window_channel, window_method_call_cb, title_state, nullptr);
   g_object_set_data_full(G_OBJECT(window), "window-title-channel",

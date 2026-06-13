@@ -93,7 +93,7 @@ final hostPlatformServiceProvider = Provider<HostPlatformService>((ref) {
   return HostPlatformService();
 });
 
-/// 本机缓存清理服务，只处理 AdbManage 自有缓存目录。
+/// 本机缓存清理服务，只处理 AnyDeck 自有缓存目录。
 final cacheCleanupServiceProvider = Provider<CacheCleanupService>((ref) {
   return CacheCleanupService();
 });

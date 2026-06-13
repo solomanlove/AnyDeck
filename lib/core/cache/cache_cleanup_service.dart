@@ -1,6 +1,6 @@
 import 'dart:io';
 
-/// 清理 AdbManage 自有缓存目录，不触碰 SharedPreferences 和用户选择的保存路径。
+/// 清理 AnyDeck 自有缓存目录，不触碰 SharedPreferences 和用户选择的保存路径。
 class CacheCleanupService {
   Future<CacheCleanupResult> clearCacheFolders() async {
     final targets = _cacheTargets();
@@ -31,11 +31,11 @@ class CacheCleanupService {
   List<FileSystemEntity> _cacheTargets() {
     final home = Platform.environment['HOME'];
     final targets = <String>{
-      if (home != null && home.isNotEmpty) '$home/Library/Caches/AdbManage',
-      '${Directory.systemTemp.path}/AdbManage',
-      '${Directory.systemTemp.path}/adb_manage_packages',
-      '${Directory.systemTemp.path}/adb_manage_helper',
-      '${Directory.systemTemp.path}/adb_manage_scrcpy',
+      if (home != null && home.isNotEmpty) '$home/Library/Caches/AnyDeck',
+      '${Directory.systemTemp.path}/AnyDeck',
+      '${Directory.systemTemp.path}/any_deck_packages',
+      '${Directory.systemTemp.path}/any_deck_helper',
+      '${Directory.systemTemp.path}/any_deck_scrcpy',
     };
     return targets.map(Directory.new).toList(growable: false);
   }

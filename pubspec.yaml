@@ -1,4 +1,4 @@
-name: adb_manage
+name: any_deck
 description: "A lightweight Flutter Desktop toolbox for adb and scrcpy workflows."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.

@@ -16,7 +16,7 @@ class AppManagementService {
   static const _cacheSchemaVersion = 3;
   static const _packageCachePrefix = 'apps.packages.v3';
   static const _helperAssetPath = 'assets/android/package_icon_helper.dex';
-  static const _remoteBaseDir = '/data/local/tmp/adb_manage';
+  static const _remoteBaseDir = '/data/local/tmp/any_deck';
   static const _remoteDexPath = '$_remoteBaseDir/package_icon_helper.dex';
   static const _remotePackageListPath = '$_remoteBaseDir/packages.txt';
   static const _quickTimeout = Duration(seconds: 8);
@@ -356,7 +356,7 @@ class AppManagementService {
 
     // 3. 清除临时 chunk 文件
     try {
-      final chunkDir = Directory('${Directory.systemTemp.path}/adb_manage_packages');
+      final chunkDir = Directory('${Directory.systemTemp.path}/any_deck_packages');
       if (chunkDir.existsSync()) {
         final safeId = _safeFileSegment(deviceId);
         final list = chunkDir.listSync();
@@ -470,7 +470,7 @@ class AppManagementService {
     List<AdbPackage> chunk,
     int index,
   ) async {
-    final dir = Directory('${Directory.systemTemp.path}/adb_manage_packages');
+    final dir = Directory('${Directory.systemTemp.path}/any_deck_packages');
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }
@@ -502,7 +502,7 @@ class AppManagementService {
 
   Future<File> _writeHelperAssetToTemp() async {
     final bytes = await rootBundle.load(_helperAssetPath);
-    final dir = Directory('${Directory.systemTemp.path}/adb_manage_helper');
+    final dir = Directory('${Directory.systemTemp.path}/any_deck_helper');
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }
@@ -603,11 +603,11 @@ class AppManagementService {
     final home = Platform.environment['HOME'];
     if (home != null && home.isNotEmpty) {
       return Directory(
-        '$home/Library/Caches/AdbManage/package_icons/${_safeFileSegment(deviceId)}',
+        '$home/Library/Caches/AnyDeck/package_icons/${_safeFileSegment(deviceId)}',
       );
     }
     return Directory(
-      '${Directory.systemTemp.path}/AdbManage/package_icons/${_safeFileSegment(deviceId)}',
+      '${Directory.systemTemp.path}/AnyDeck/package_icons/${_safeFileSegment(deviceId)}',
     );
   }
 

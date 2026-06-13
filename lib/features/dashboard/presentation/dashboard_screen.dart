@@ -139,7 +139,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WindowListener {
   bool _isExitDialogOpen = false;
-  static const _windowChannel = MethodChannel('adb_manage/window');
+  static const _windowChannel = MethodChannel('any_deck/window');
 
   @override
   void initState() {

@@ -1,7 +1,7 @@
 import 'dart:typed_data';
-import 'package:adb_manage/core/adb/adb_device.dart';
-import 'package:adb_manage/core/adb/adb_result.dart';
-import 'package:adb_manage/core/adb/adb_service.dart';
+import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/adb_result.dart';
+import 'package:any_deck/core/adb/adb_service.dart';
 
 class FakeAdbService extends AdbService {
   FakeAdbService() : super(executable: 'adb');

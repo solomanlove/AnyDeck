@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'app/adb_manage_app.dart';
+import 'app/any_deck_app.dart';
 import 'app/window/desktop_window_manager_service.dart';
 import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
@@ -128,5 +128,5 @@ void main(List<String> args) async {
 
   await DesktopWindowManagerService.initialize();
   //主窗口
-  runApp(const ProviderScope(child: AdbManageApp()));
+  runApp(const ProviderScope(child: AnyDeckApp()));
 }

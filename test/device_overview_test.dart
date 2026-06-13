@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:adb_manage/core/device_info/device_overview.dart';
-import 'package:adb_manage/core/device_info/device_info_service.dart';
-import 'package:adb_manage/core/adb/adb_service.dart';
-import 'package:adb_manage/core/adb/adb_result.dart';
+import 'package:any_deck/core/device_info/device_overview.dart';
+import 'package:any_deck/core/device_info/device_info_service.dart';
+import 'package:any_deck/core/adb/adb_service.dart';
+import 'package:any_deck/core/adb/adb_result.dart';
 
 class StubAdbService extends AdbService {
   StubAdbService({this.shouldFail = false});

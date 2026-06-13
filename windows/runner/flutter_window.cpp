@@ -35,7 +35,7 @@ bool FlutterWindow::OnCreate() {
   });
   window_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-          flutter_controller_->engine()->messenger(), "adb_manage/window",
+          flutter_controller_->engine()->messenger(), "any_deck/window",
           &flutter::StandardMethodCodec::GetInstance());
   window_channel_->SetMethodCallHandler(
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,

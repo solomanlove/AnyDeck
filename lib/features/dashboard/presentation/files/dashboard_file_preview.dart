@@ -59,7 +59,7 @@ Future<void> _previewTextFile(
   try {
     final remoteFilePath = _joinRemotePath(currentPath, file.name);
     final tempDir = Directory.systemTemp.path;
-    final localDir = Directory('$tempDir/AdbManage/previews');
+    final localDir = Directory('$tempDir/AnyDeck/previews');
     if (!localDir.existsSync()) {
       localDir.createSync(recursive: true);
     }

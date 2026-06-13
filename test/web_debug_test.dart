@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:adb_manage/core/adb/adb_service.dart';
-import 'package:adb_manage/core/web_debug/web_debug_service.dart';
-import 'package:adb_manage/core/web_debug/webpage_target.dart';
+import 'package:any_deck/core/adb/adb_service.dart';
+import 'package:any_deck/core/web_debug/web_debug_service.dart';
+import 'package:any_deck/core/web_debug/webpage_target.dart';
 
 void main() {
   group('WebpageTarget Serialization & Parsing', () {

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:adb_manage/core/adb/adb_service.dart';
-import 'package:adb_manage/core/adb/adb_result.dart';
-import 'package:adb_manage/core/device_actions/device_action_service.dart';
+import 'package:any_deck/core/adb/adb_service.dart';
+import 'package:any_deck/core/adb/adb_result.dart';
+import 'package:any_deck/core/device_actions/device_action_service.dart';
 
 class StubAdbServiceForFocus extends AdbService {
   StubAdbServiceForFocus({

@@ -10,7 +10,7 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     let windowChannel = FlutterMethodChannel(
-      name: "adb_manage/window",
+      name: "any_deck/window",
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
     windowChannel.setMethodCallHandler { [weak self] call, result in
@@ -42,7 +42,7 @@ class MainFlutterWindow: NSWindow {
       RegisterGeneratedPlugins(registry: controller)
       
       let windowChannel = FlutterMethodChannel(
-        name: "adb_manage/window",
+        name: "any_deck/window",
         binaryMessenger: controller.engine.binaryMessenger
       )
       
@@ -154,7 +154,7 @@ class MainFlutterWindow: NSWindow {
 
     setupCustomWindowMenuItems()
 
-    let isChinese = title == "手机管理"
+    let isChinese = Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true
 
     // 1. App Menu (first item)
     if mainMenu.items.count > 0 {
@@ -331,7 +331,7 @@ class MainFlutterWindow: NSWindow {
   @objc func openEmulatorManagerClicked(_ sender: Any) {
     if let controller = self.contentViewController as? FlutterViewController {
       let channel = FlutterMethodChannel(
-        name: "adb_manage/window",
+        name: "any_deck/window",
         binaryMessenger: controller.engine.binaryMessenger
       )
       channel.invokeMethod("openEmulatorManager", arguments: nil)
@@ -341,7 +341,7 @@ class MainFlutterWindow: NSWindow {
   @objc func openMirrorWindowClicked(_ sender: Any) {
     if let controller = self.contentViewController as? FlutterViewController {
       let channel = FlutterMethodChannel(
-        name: "adb_manage/window",
+        name: "any_deck/window",
         binaryMessenger: controller.engine.binaryMessenger
       )
       channel.invokeMethod("openMirrorWindow", arguments: nil)

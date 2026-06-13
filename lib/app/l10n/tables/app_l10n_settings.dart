@@ -1,6 +1,6 @@
 /// settings 模块文案表。新增 key 时必须同时补齐 zh/en。
 const settingsZh = {
-  'appTitle': '手机管理',
+  'appTitle': 'AnyDeck',
   'settings': '设置',
   'settingsDesc': '管理应用全局配置和偏好设置',
   'generalSettings': '常规设置',
@@ -44,7 +44,7 @@ const settingsZh = {
   'softwareManual': '软件说明书',
   'softwareOverviewTitle': '软件定位',
   'softwareOverview':
-      'AdbManage 是面向 Android 开发和 QA 的 Flutter Desktop 工具箱，用于集中管理设备、应用、文件、日志、终端和投屏流程。',
+      'AnyDeck 是面向 Android 开发和 QA 的 Flutter Desktop 工具箱，用于集中管理设备、应用、文件、日志、终端和投屏流程。',
   'softwareRequirementsTitle': '使用前准备',
   'softwareRequirements': '本机需要可用的 adb；投屏功能需要安装 scrcpy；无线连接需在手机端开启开发者选项和无线调试。',
   'softwareWorkflowTitle': '基础流程',
@@ -65,13 +65,13 @@ const settingsZh = {
   'installing': '正在准备安装...',
   'updateSuccess': '更新成功',
   'restartApp': '重启应用',
-  'updateSuccessDesc': 'AdbManage 已成功更新至 v1.0.1。',
+  'updateSuccessDesc': 'AnyDeck 已成功更新至 v1.0.1。',
   'downloadComplete': '下载完成',
   'updateLogDetail': '1. 优化无线 ADB 连接体验与稳定性\n2. 新增证书管理及导入功能\n3. 修复深色模式下部分界面的颜色偏差\n4. 提升性能，减少内存占用',
 };
 
 const settingsEn = {
-  'appTitle': 'Manager',
+  'appTitle': 'AnyDeck',
   'settings': 'Settings',
   'settingsDesc': 'Manage application preferences and configurations',
   'generalSettings': 'General Settings',
@@ -83,7 +83,7 @@ const settingsEn = {
   'clearingCache': 'Clearing',
   'clearCacheConfirmTitle': 'Clear cache folders?',
   'clearCacheConfirmMessage':
-      'This deletes AdbManage local caches and temporary files. App settings and user-saved files are kept.',
+      'This deletes AnyDeck local caches and temporary files. App settings and user-saved files are kept.',
   'clearCacheSuccess': 'Cache cleared: freed {size}, deleted {count} files',
   'clearCacheFailed': 'Failed to clear cache: {error}',
   'choose': 'Choose',
@@ -117,7 +117,7 @@ const settingsEn = {
   'softwareManual': 'Software Manual',
   'softwareOverviewTitle': 'Overview',
   'softwareOverview':
-      'AdbManage is a Flutter Desktop toolbox for Android developers and QA engineers. It centralizes device, app, file, logcat, terminal, and screen mirroring workflows.',
+      'AnyDeck is a Flutter Desktop toolbox for Android developers and QA engineers. It centralizes device, app, file, logcat, terminal, and screen mirroring workflows.',
   'softwareRequirementsTitle': 'Requirements',
   'softwareRequirements':
       'A working adb installation is required. Screen mirroring requires scrcpy. Wireless connection requires Developer options and Wireless debugging enabled on the phone.',
@@ -140,7 +140,7 @@ const settingsEn = {
   'installing': 'Preparing installation...',
   'updateSuccess': 'Update Successful',
   'restartApp': 'Restart App',
-  'updateSuccessDesc': 'AdbManage has been updated to v1.0.1 successfully.',
+  'updateSuccessDesc': 'AnyDeck has been updated to v1.0.1 successfully.',
   'downloadComplete': 'Completed',
   'updateLogDetail': '1. Optimize wireless ADB connection experience and stability\n2. Add certificate management and import capabilities\n3. Fix color deviations in some interfaces under dark mode\n4. Enhance overall performance and reduce memory usage',
 };

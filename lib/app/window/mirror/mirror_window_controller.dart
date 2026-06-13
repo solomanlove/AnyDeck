@@ -54,7 +54,7 @@ class MirrorWindowController extends ChangeNotifier {
   late final GlobalKey _viewerKey;
 
   /// 用于 macOS 原生窗口通讯的 MethodChannel
-  static const _windowChannel = MethodChannel('adb_manage/window');
+  static const _windowChannel = MethodChannel('any_deck/window');
 
   /// 自动缩放的周期定时器
   Timer? _autoFitTimer;

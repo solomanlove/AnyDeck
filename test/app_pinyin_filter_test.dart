@@ -3,12 +3,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:adb_manage/app/adb_manage_app.dart';
-import 'package:adb_manage/core/adb/adb_device.dart';
-import 'package:adb_manage/core/apps/adb_package.dart';
-import 'package:adb_manage/core/providers/app_providers.dart';
-import 'package:adb_manage/core/device_info/device_overview.dart';
-import 'package:adb_manage/core/emulator/android_emulator.dart';
+import 'package:any_deck/app/any_deck_app.dart';
+import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/apps/adb_package.dart';
+import 'package:any_deck/core/providers/app_providers.dart';
+import 'package:any_deck/core/device_info/device_overview.dart';
+import 'package:any_deck/core/emulator/android_emulator.dart';
 import 'fake_adb_service.dart';
 
 class MockPackagesNotifier extends PackagesNotifier {
@@ -117,7 +117,7 @@ void main() {
             (ref) => Future.value(<String, String>{}),
           ),
         ],
-        child: const AdbManageApp(),
+        child: const AnyDeckApp(),
       ),
     );
 

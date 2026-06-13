@@ -1,5 +1,5 @@
-import 'package:adb_manage/core/adb/adb_result.dart';
-import 'package:adb_manage/core/adb/adb_service.dart';
+import 'package:any_deck/core/adb/adb_result.dart';
+import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class FakeAdbService extends AdbService {

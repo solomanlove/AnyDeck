@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 class DesktopWindowTitleService {
   DesktopWindowTitleService._();
 
-  static const _channel = MethodChannel('adb_manage/window');
+  static const _channel = MethodChannel('any_deck/window');
 
   /// 设置当前桌面窗口标题；移动端或未注册原生通道时静默跳过。
   static Future<void> setTitle(String title) async {

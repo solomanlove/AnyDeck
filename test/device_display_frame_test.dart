@@ -1,4 +1,4 @@
-import 'package:adb_manage/core/device_info/device_display_frame.dart';
+import 'package:any_deck/core/device_info/device_display_frame.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -34,7 +34,7 @@ class AppDelegate: FlutterAppDelegate {
         
         if let controller = mainWin.contentViewController as? FlutterViewController {
           let channel = FlutterMethodChannel(
-            name: "adb_manage/window",
+            name: "any_deck/window",
             binaryMessenger: controller.engine.binaryMessenger
           )
           channel.invokeMethod("requestAppExit", arguments: nil)

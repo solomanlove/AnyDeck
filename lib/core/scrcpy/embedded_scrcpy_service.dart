@@ -36,7 +36,7 @@ class EmbeddedScrcpyService {
 
   Future<String> _extractScrcpyServerJar() async {
     final bytes = await rootBundle.load('assets/scrcpy/scrcpy-server.jar');
-    final dir = Directory('${Directory.systemTemp.path}/adb_manage_scrcpy');
+    final dir = Directory('${Directory.systemTemp.path}/any_deck_scrcpy');
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }

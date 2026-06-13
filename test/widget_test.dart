@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:adb_manage/app/adb_manage_app.dart';
-import 'package:adb_manage/core/adb/adb_device.dart';
-import 'package:adb_manage/core/apps/adb_package.dart';
-import 'package:adb_manage/core/device_info/device_overview.dart';
-import 'package:adb_manage/core/emulator/android_emulator.dart';
-import 'package:adb_manage/core/providers/app_providers.dart';
-import 'package:adb_manage/core/process/process_service.dart';
-import 'package:adb_manage/core/web_debug/webpage_target.dart';
+import 'package:any_deck/app/any_deck_app.dart';
+import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/apps/adb_package.dart';
+import 'package:any_deck/core/device_info/device_overview.dart';
+import 'package:any_deck/core/emulator/android_emulator.dart';
+import 'package:any_deck/core/providers/app_providers.dart';
+import 'package:any_deck/core/process/process_service.dart';
+import 'package:any_deck/core/web_debug/webpage_target.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:adb_manage/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:any_deck/features/dashboard/presentation/dashboard_screen.dart';
 
 import 'fake_adb_service.dart';
 
@@ -173,7 +173,7 @@ Future<void> _pumpDashboard(
           (ref) => Future.value(<String, String>{}),
         ),
       ],
-      child: const AdbManageApp(),
+      child: const AnyDeckApp(),
     ),
   );
   await tester.pumpAndSettle();
@@ -225,11 +225,11 @@ void main() {
             (ref) => Future.value(<String, String>{}),
           ),
         ],
-        child: const AdbManageApp(),
+        child: const AnyDeckApp(),
       ),
     );
 
-    expect(find.text('手机管理'), findsNWidgets(2));
+    expect(find.text('AnyDeck'), findsNWidgets(2));
     expect(find.text('设备标识'), findsOneWidget);
     expect(find.text('选择设备'), findsNothing);
   });
@@ -379,7 +379,7 @@ void main() {
             (ref) => Future.value(<String, String>{}),
           ),
         ],
-        child: const AdbManageApp(),
+        child: const AnyDeckApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -427,7 +427,7 @@ void main() {
             (ref) => Future.value(<String, String>{}),
           ),
         ],
-        child: const AdbManageApp(),
+        child: const AnyDeckApp(),
       ),
     );
     await tester.pumpAndSettle();
