@@ -12,6 +12,7 @@ import '../apps/app_management_service.dart';
 import '../apps/app_permission_service.dart';
 import '../cache/cache_cleanup_service.dart';
 import '../device_actions/device_action_service.dart';
+import '../device_actions/foreground_app_service.dart';
 import '../device_info/device_info_service.dart';
 import '../device_info/device_overview.dart';
 import '../emulator/android_emulator.dart';
@@ -38,6 +39,11 @@ final adbServiceProvider = Provider<AdbService>((ref) {
 /// 设备操作门面，负责 key event、开关和 shell 读取。
 final deviceActionServiceProvider = Provider<DeviceActionService>((ref) {
   return DeviceActionService(ref.watch(adbServiceProvider));
+});
+
+/// 前台应用识别门面，负责投屏窗口长按返回键的应用判断与强停。
+final foregroundAppServiceProvider = Provider<ForegroundAppService>((ref) {
+  return ForegroundAppService(ref.watch(adbServiceProvider));
 });
 
 /// 应用管理门面，负责安装、卸载、启动和列表读取。

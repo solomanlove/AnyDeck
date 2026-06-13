@@ -51,7 +51,8 @@
      - 视频码率：`--video-bit-rate <4M/8M>`
      - 息屏投屏：`--stay-awake` (投屏时开启物理保持唤醒) 或通过控制端口发送指令将 Android 设备的物理屏幕熄灭。
      - 进程生命周期：通过 Riverpod `ref.onDispose` 统一关闭底层 `scrcpy` 进程，防止僵尸后台残留。
-   - **手机快捷设置弹窗**：投屏独立窗口标题栏和控制 Tab 共用 `DeviceSettingsPopup`。弹窗通过 `deviceOverviewProvider` 读取当前字体缩放、显示密度、布局边界、点按反馈状态；写入侧复用 `DeviceActionService` 的 `setFontScale`、`setDisplayDensity`、`toggleLayoutBounds`、`setShowTouches`、`setDarkMode`，执行成功后刷新 `deviceOverviewProvider`，避免重复手写 adb 命令。
+   - **手机快捷设置弹窗**：投屏独立窗口工具栏和控制 Tab 共用 `DeviceSettingsPopup`。弹窗通过 `deviceOverviewProvider` 读取当前字体缩放、显示密度、布局边界、点按反馈状态；写入侧复用 `DeviceActionService` 的 `setFontScale`、`setDisplayDensity`、`toggleLayoutBounds`、`setShowTouches`、`setDarkMode`，执行成功后刷新 `deviceOverviewProvider`，避免重复手写 adb 命令。
+   - **返回键长按强停**：投屏工具栏返回键短按仍发送 `KEYCODE_BACK`。长按时先通过 `dumpsys window | grep mCurrentFocus` 获取前台包名并在窗口内提示应用名；若继续按住且前台不是 HOME/Launcher，则执行 `am force-stop <package>`。桌面包通过系统 HOME resolve 和常见 launcher 包名识别，只提示“桌面”，不执行强停。
 3. **已存 Wi-Fi 密码读取 (需 Root)**：
    - 依次检测三代 Android 系统配置路径，以 `cat` 命令读取其内容并在 Host 端进行 XML/conf 解析：
      - Android 11+ 路径：`/data/misc/apexdata/com.android.wifi/WifiConfigStore.xml`

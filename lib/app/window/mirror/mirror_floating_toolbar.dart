@@ -12,6 +12,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../../features/dashboard/presentation/control/device_settings_popup.dart';
+import 'mirror_back_long_press_handler.dart';
 
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   const MirrorFloatingToolbar({
@@ -29,6 +30,23 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
 }
 
 class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
+  late final MirrorBackLongPressHandler _backLongPressHandler;
+
+  @override
+  void initState() {
+    super.initState();
+    _backLongPressHandler = MirrorBackLongPressHandler(
+      ref: ref,
+      deviceId: widget.deviceId,
+    );
+  }
+
+  @override
+  void dispose() {
+    _backLongPressHandler.cancel();
+    super.dispose();
+  }
+
   Future<bool> _setScreenPowerMode(String deviceId, bool powerOn) async {
     final buffer = ByteData(2);
     buffer.setUint8(0, 10); // CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE
@@ -257,7 +275,16 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
               tooltip: context.l10n.t('back'),
-              onPressed: () => actions.keyEvent(widget.deviceId, 4),
+              onPressed: () {
+                if (_backLongPressHandler.shouldSuppressBack) {
+                  return;
+                }
+                actions.keyEvent(widget.deviceId, 4);
+              },
+              onPointerDown: () =>
+                  _backLongPressHandler.handlePointerDown(context),
+              onPointerUp: _backLongPressHandler.handlePointerUp,
+              onPointerCancel: _backLongPressHandler.handlePointerUp,
             ),
             MirrorToolbarButton(
               icon: Icon(
@@ -467,6 +494,9 @@ class MirrorToolbarButton extends StatefulWidget {
     required this.onPressed,
     this.isLoading = false,
     this.badge,
+    this.onPointerDown,
+    this.onPointerUp,
+    this.onPointerCancel,
   });
 
   final Widget icon;
@@ -474,6 +504,9 @@ class MirrorToolbarButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final Widget? badge;
+  final VoidCallback? onPointerDown;
+  final VoidCallback? onPointerUp;
+  final VoidCallback? onPointerCancel;
 
   @override
   State<MirrorToolbarButton> createState() => _MirrorToolbarButtonState();
@@ -502,31 +535,39 @@ class _MirrorToolbarButtonState extends State<MirrorToolbarButton> {
           scale: _isHovered ? 1.15 : 1.0,
           duration: const Duration(milliseconds: 100),
           curve: Curves.easeOut,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                iconSize: 14,
-                padding: const EdgeInsets.all(2),
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                style: IconButton.styleFrom(
-                  backgroundColor: _isHovered ? hoverBg : Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
+          child: Listener(
+            onPointerDown: (_) => widget.onPointerDown?.call(),
+            onPointerUp: (_) => widget.onPointerUp?.call(),
+            onPointerCancel: (_) => widget.onPointerCancel?.call(),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  iconSize: 14,
+                  padding: const EdgeInsets.all(2),
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
                   ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: _isHovered ? hoverBg : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  icon: widget.isLoading
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : widget.icon,
+                  onPressed: widget.isLoading ? null : widget.onPressed,
                 ),
-                icon: widget.isLoading
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : widget.icon,
-                onPressed: widget.isLoading ? null : widget.onPressed,
-              ),
-              if (widget.badge != null)
-                Positioned(top: 2, right: 2, child: widget.badge!),
-            ],
+                if (widget.badge != null)
+                  Positioned(top: 2, right: 2, child: widget.badge!),
+              ],
+            ),
           ),
         ),
       ),
