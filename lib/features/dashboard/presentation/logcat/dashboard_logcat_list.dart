@@ -7,6 +7,7 @@ class _CompactLogcatList extends StatefulWidget {
     required this.wrapLines,
     required this.searchQuery,
     required this.activeEntryIndex,
+    required this.maxLogLength,
   });
 
   final List<LogcatEntry> entries;
@@ -14,6 +15,7 @@ class _CompactLogcatList extends StatefulWidget {
   final bool wrapLines;
   final String searchQuery;
   final int activeEntryIndex;
+  final int maxLogLength;
 
   @override
   State<_CompactLogcatList> createState() => _CompactLogcatListState();
@@ -32,18 +34,13 @@ class _CompactLogcatListState extends State<_CompactLogcatList> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final messageWidth = widget.wrapLines
-            ? max(1.0, constraints.maxWidth - 176)
-            : _estimatedLogTextWidth(
-                widget.entries.map(
-                  (entry) =>
-                      entry.message.isEmpty ? entry.rawLine : entry.message,
-                ),
-                minWidth: max(560, constraints.maxWidth - 176),
-                maxWidth: 5200,
-                charWidth: 8,
-              );
-        final contentWidth = max(constraints.maxWidth, 176 + messageWidth);
+        final double messageWidth = widget.wrapLines
+            ? max(1.0, constraints.maxWidth - 176.0)
+            : (widget.maxLogLength * 8.0 + 24.0).clamp(
+                max(560.0, constraints.maxWidth - 176.0),
+                5200.0,
+              ).toDouble();
+        final double contentWidth = max(constraints.maxWidth, 176.0 + messageWidth);
 
         return SelectionArea(
           child: Scrollbar(
@@ -144,6 +141,7 @@ class _LogcatTextList extends StatefulWidget {
     this.useLevelColor = false,
     required this.searchQuery,
     required this.activeEntryIndex,
+    required this.maxLogLength,
   });
 
   final List<LogcatEntry> entries;
@@ -153,6 +151,7 @@ class _LogcatTextList extends StatefulWidget {
   final bool useLevelColor;
   final String searchQuery;
   final int activeEntryIndex;
+  final int maxLogLength;
 
   @override
   State<_LogcatTextList> createState() => _LogcatTextListState();
@@ -171,14 +170,12 @@ class _LogcatTextListState extends State<_LogcatTextList> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final contentWidth = widget.wrapLines
+        final double contentWidth = widget.wrapLines
             ? constraints.maxWidth
-            : _estimatedLogTextWidth(
-                widget.entries.map(widget.textForEntry),
-                minWidth: constraints.maxWidth,
-                maxWidth: 6000,
-                charWidth: 8,
-              );
+            : (widget.maxLogLength * 8.0 + 24.0).clamp(
+                constraints.maxWidth,
+                6000.0,
+              ).toDouble();
         return SelectionArea(
           child: Scrollbar(
             controller: _horizontalController,

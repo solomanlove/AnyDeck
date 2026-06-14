@@ -158,11 +158,18 @@ class FileManagerService {
       nameTokenIndex = 8;
     }
 
-    if (nameTokenIndex >= tokens.length) {
-      return null;
+    // 通过顺序扫描原始行来精确定位文件名的起始索引，以完美保留连续空格
+    var currentIndex = 0;
+    for (var i = 0; i < nameTokenIndex; i++) {
+      final token = tokens[i];
+      final tokenPos = line.indexOf(token, currentIndex);
+      if (tokenPos == -1) {
+        return null;
+      }
+      currentIndex = tokenPos + token.length;
     }
+    final fullName = line.substring(currentIndex).trimLeft();
 
-    final fullName = tokens.sublist(nameTokenIndex).join(' ');
     String name = fullName;
     String? linkTarget;
     if (type == RemoteFileType.link && fullName.contains(' -> ')) {

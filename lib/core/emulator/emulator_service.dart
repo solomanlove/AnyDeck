@@ -143,7 +143,7 @@ class EmulatorService {
   }
 
   Future<AndroidEmulator> _loadEmulator(String name) async {
-    final directory = _resolveAvdDirectory(name);
+    final directory = await _resolveAvdDirectory(name);
     final config = await _readConfig(directory);
     return AndroidEmulator(
       name: name,
@@ -157,15 +157,15 @@ class EmulatorService {
     );
   }
 
-  Directory? _resolveAvdDirectory(String name) {
+  Future<Directory?> _resolveAvdDirectory(String name) async {
     final home = avdHome;
     if (home == null) {
       return null;
     }
 
     final metadata = File('$home/$name.ini');
-    if (metadata.existsSync()) {
-      final values = _parseConfig(metadata.readAsStringSync());
+    if (await metadata.exists()) {
+      final values = _parseConfig(await metadata.readAsString());
       final path = values['path'];
       if (path != null && path.isNotEmpty) {
         return Directory(path);
@@ -173,7 +173,7 @@ class EmulatorService {
     }
 
     final fallback = Directory('$home/$name.avd');
-    return fallback.existsSync() ? fallback : fallback;
+    return await fallback.exists() ? fallback : fallback;
   }
 
   Future<Map<String, String>> _readConfig(Directory? directory) async {

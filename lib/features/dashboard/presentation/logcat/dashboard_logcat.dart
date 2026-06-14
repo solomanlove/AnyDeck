@@ -285,6 +285,7 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
                                     textForEntry: (entry) => entry.rawLine,
                                     searchQuery: query,
                                     activeEntryIndex: activeEntryIndex,
+                                    maxLogLength: controller.maxLogLength,
                                   )
                                 : state.viewMode == LogcatViewMode.plain
                                 ? _LogcatTextList(
@@ -297,6 +298,7 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
                                         : entry.message,
                                     searchQuery: query,
                                     activeEntryIndex: activeEntryIndex,
+                                    maxLogLength: controller.maxLogLength,
                                   )
                                 : state.viewMode == LogcatViewMode.compact
                                 ? _CompactLogcatList(
@@ -305,6 +307,7 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
                                     wrapLines: state.wrapLines,
                                     searchQuery: query,
                                     activeEntryIndex: activeEntryIndex,
+                                    maxLogLength: controller.maxLogLength,
                                   )
                                 : _StructuredLogcatTable(
                                     entries: entries,
@@ -312,6 +315,7 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
                                     wrapLines: state.wrapLines,
                                     searchQuery: query,
                                     activeEntryIndex: activeEntryIndex,
+                                    maxLogLength: controller.maxLogLength,
                                   ),
                             if (_searchBarVisible)
                               Positioned(

@@ -23,6 +23,11 @@ class LogcatController extends Notifier<LogcatState> {
   Timer? _pidMapTimer;
   String? _deviceId;
   Map<String, String> _pidPackages = const {};
+  final List<LogcatEntry> _pendingEntries = [];
+  Timer? _batchTimer;
+  int _maxLogLength = 0;
+
+  int get maxLogLength => _maxLogLength;
 
   @override
   LogcatState build() {
@@ -78,6 +83,10 @@ class LogcatController extends Notifier<LogcatState> {
   Future<void> _releaseProcess({required bool updateState}) async {
     _pidMapTimer?.cancel();
     _pidMapTimer = null;
+    _batchTimer?.cancel();
+    _batchTimer = null;
+    _pendingEntries.clear();
+    _maxLogLength = 0;
     await _subscription?.cancel();
     await _errorSubscription?.cancel();
     _subscription = null;
@@ -92,16 +101,27 @@ class LogcatController extends Notifier<LogcatState> {
 
   /// 清空可见日志缓冲区，但不重启 logcat。
   void clear() {
+    _pendingEntries.clear();
+    _batchTimer?.cancel();
+    _batchTimer = null;
+    _maxLogLength = 0;
     state = state.copyWith(entries: []);
   }
 
   /// 导入 Android Studio 或 adb 导出的文本日志。
   void importText(String text) {
+    _maxLogLength = 0;
     final entries = const LineSplitter()
         .convert(text)
         .where((line) => line.trim().isNotEmpty)
         .map((line) => parseLogcatLine(line, pidPackages: _pidPackages))
         .toList(growable: false);
+    for (final entry in entries) {
+      final len = entry.message.isEmpty ? entry.rawLine.length : entry.message.length;
+      if (len > _maxLogLength) {
+        _maxLogLength = len;
+      }
+    }
     state = state.copyWith(entries: _trimEntries(entries));
   }
 
@@ -256,8 +276,20 @@ class LogcatController extends Notifier<LogcatState> {
       return;
     }
     final entry = parseLogcatLine(line, pidPackages: _pidPackages);
-    final next = _trimEntries([...state.entries, entry]);
-    state = state.copyWith(entries: next);
+    final len = entry.message.isEmpty ? entry.rawLine.length : entry.message.length;
+    if (len > _maxLogLength) {
+      _maxLogLength = len;
+    }
+    _pendingEntries.add(entry);
+
+    _batchTimer ??= Timer(const Duration(milliseconds: 100), () {
+      if (_pendingEntries.isEmpty) return;
+      final currentEntries = state.entries;
+      final next = [...currentEntries, ..._pendingEntries];
+      _pendingEntries.clear();
+      _batchTimer = null;
+      state = state.copyWith(entries: _trimEntries(next));
+    });
   }
 
   List<LogcatEntry> _trimEntries(List<LogcatEntry> entries) {

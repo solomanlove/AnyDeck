@@ -45,7 +45,7 @@ enum LogcatViewMode { standard, compact, plain, raw }
 
 /// 结构化后的单行 Logcat。
 class LogcatEntry {
-  const LogcatEntry({
+  LogcatEntry({
     required this.rawLine,
     this.timestamp = '',
     this.pid = '',
@@ -54,7 +54,16 @@ class LogcatEntry {
     this.tag = '',
     this.packageName = '',
     this.message = '',
-  });
+  }) : searchableText = [
+          timestamp,
+          pid,
+          tid,
+          level.label,
+          tag,
+          packageName,
+          message,
+          rawLine,
+        ].join(' ');
 
   final String rawLine;
   final String timestamp;
@@ -64,25 +73,13 @@ class LogcatEntry {
   final String tag;
   final String packageName;
   final String message;
+  final String searchableText;
 
   String get pidTid {
     if (pid.isEmpty && tid.isEmpty) {
       return '';
     }
     return '$pid-$tid';
-  }
-
-  String get searchableText {
-    return [
-      timestamp,
-      pid,
-      tid,
-      level.label,
-      tag,
-      packageName,
-      message,
-      rawLine,
-    ].join(' ');
   }
 
   LogcatEntry copyWithPackage(String packageName) {

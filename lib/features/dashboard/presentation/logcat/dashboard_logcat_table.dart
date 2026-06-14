@@ -7,6 +7,7 @@ class _StructuredLogcatTable extends StatefulWidget {
     required this.wrapLines,
     required this.searchQuery,
     required this.activeEntryIndex,
+    required this.maxLogLength,
   });
 
   final List<LogcatEntry> entries;
@@ -14,6 +15,7 @@ class _StructuredLogcatTable extends StatefulWidget {
   final bool wrapLines;
   final String searchQuery;
   final int activeEntryIndex;
+  final int maxLogLength;
 
   @override
   State<_StructuredLogcatTable> createState() => _StructuredLogcatTableState();
@@ -34,7 +36,7 @@ class _StructuredLogcatTableState extends State<_StructuredLogcatTable> {
       builder: (context, constraints) {
         final widths = _LogcatTableWidths.adaptive(
           constraints.maxWidth,
-          widget.entries,
+          widget.maxLogLength,
         );
         return SelectionArea(
           child: Scrollbar(
@@ -100,17 +102,13 @@ class _LogcatTableWidths {
 
   factory _LogcatTableWidths.adaptive(
     double viewportWidth,
-    List<LogcatEntry> entries,
+    int maxLogLength,
   ) {
     const base = 112.0 + 96.0 + 180.0 + 220.0 + 42.0 + 560.0;
     final extra = max(0.0, viewportWidth - base);
-    final messageWidth = _estimatedLogTextWidth(
-      entries.map(
-        (entry) => entry.message.isEmpty ? entry.rawLine : entry.message,
-      ),
-      minWidth: 560 + extra * 0.60,
-      maxWidth: 5200,
-      charWidth: 8,
+    final double messageWidth = (maxLogLength * 8.0 + 24.0).clamp(
+      560.0 + extra * 0.60,
+      5200.0,
     );
     return _LogcatTableWidths(
       time: 112,

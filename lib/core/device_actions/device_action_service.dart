@@ -16,7 +16,13 @@ class DeviceActionService {
 
   /// 通过 Android input 命令输入文本，空格需要替换为 `%s`。
   Future<AdbResult> inputText(String deviceId, String text) {
-    final escaped = text.trim().replaceAll(' ', '%s');
+    // 1. 转义 Android shell 中的特殊控制字符，防止命令注入与解析错误
+    final escapedShell = text.replaceAllMapped(
+      RegExp(r'''([`;$&|<>*?#()\[\]{}\\!~'"\u0000])'''),
+      (match) => '\\${match.group(1)}',
+    );
+    // 2. 替换空格为 input text 所支持的 %s 标识符
+    final escaped = escapedShell.trim().replaceAll(' ', '%s');
     return _adb.shellArgs(deviceId, ['input', 'text', escaped]);
   }
 
@@ -409,15 +415,20 @@ class DeviceActionService {
       ]);
 
   /// 打开自定义 Applink/Deeplink 链接。
-  Future<AdbResult> openCustomDeeplink(String deviceId, String uri) =>
-      _adb.shellArgs(deviceId, [
-        'am',
-        'start',
-        '-a',
-        'android.intent.action.VIEW',
-        '-d',
-        uri,
-      ]);
+  Future<AdbResult> openCustomDeeplink(String deviceId, String uri) {
+    final escapedUri = uri.replaceAllMapped(
+      RegExp(r'''([`;$&|<>*?#()\[\]{}\\!~'"])'''),
+      (match) => '\\${match.group(1)}',
+    );
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'android.intent.action.VIEW',
+      '-d',
+      escapedUri,
+    ]);
+  }
 
   /// setprop/settings 写入后通知 ActivityManager 重新加载 system properties。
   Future<void> _refreshSystemProperties(String deviceId) =>

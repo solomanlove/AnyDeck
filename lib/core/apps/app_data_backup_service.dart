@@ -322,8 +322,17 @@ class AppDataBackupService {
     try {
       process = await Process.start(_adb.executable, args);
       final stderrFuture = process.stderr.transform(utf8.decoder).join();
-      await File(localPath).openRead().pipe(process.stdin);
-      final exitCode = await process.exitCode.timeout(_operationTimeout);
+      
+      // 异步进行管道写入，防止阻塞整体超时流程
+      final pipeFuture = File(localPath).openRead().pipe(process.stdin);
+      
+      // 等待写入和进程退出，应用整体超时保护
+      await Future.wait([
+        pipeFuture.catchError((_) => null), // 忽略管道写入异常（如进程中途退出）
+        process.exitCode,
+      ]).timeout(_operationTimeout);
+
+      final exitCode = await process.exitCode;
       final stderr = await stderrFuture;
       return AdbResult(exitCode: exitCode, stdout: '命令执行完成', stderr: stderr);
     } on TimeoutException {

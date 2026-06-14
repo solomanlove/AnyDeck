@@ -106,7 +106,9 @@ final processesProvider = FutureProvider.autoDispose
 
 /// 网页调试服务。
 final webDebugServiceProvider = Provider<WebDebugService>((ref) {
-  return WebDebugService(ref.watch(adbServiceProvider));
+  final service = WebDebugService(ref.watch(adbServiceProvider));
+  ref.onDispose(service.disposeAll);
+  return service;
 });
 
 /// 单台设备的运行网页调试目标列表。

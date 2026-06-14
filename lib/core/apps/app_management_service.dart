@@ -369,6 +369,13 @@ class AppManagementService {
     } catch (_) {
       // 允许清理临时文件失败时不抛出异常
     }
+
+    // 4. 清理 Android 设备端的临时图标与 DEX 缓存目录
+    try {
+      unawaited(_adb.shell(deviceId, 'rm -rf $_remoteBaseDir'));
+    } catch (_) {
+      // 允许清理远程临时目录失败
+    }
   }
 
   int _comparePackages(AdbPackage left, AdbPackage right) {

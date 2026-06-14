@@ -185,22 +185,6 @@ String _compactLogcatTime(String timestamp) {
   return parts.isEmpty ? timestamp : parts.last;
 }
 
-double _estimatedLogTextWidth(
-  Iterable<String> values, {
-  required double minWidth,
-  required double maxWidth,
-  required double charWidth,
-}) {
-  var longest = 0;
-  for (final value in values) {
-    if (value.length > longest) {
-      longest = value.length;
-    }
-  }
-  final estimated = longest * charWidth + 24;
-  return estimated.clamp(minWidth, maxWidth).toDouble();
-}
-
 Color _levelForeground(LogcatLevel level) {
   return switch (level) {
     LogcatLevel.verbose => const Color(0xff4b5563),

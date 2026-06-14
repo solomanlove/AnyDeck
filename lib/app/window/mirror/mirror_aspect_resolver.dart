@@ -49,6 +49,7 @@ class MirrorAspectResolver {
     required double Function(String?) fallbackAspect,
   }) async {
     double? videoAspect;
+    bool sizeChanged = false;
     try {
       final size = await ScrcpyFlutter.getVideoSize(deviceId: deviceId);
       if (size != null && size['width']! > 0 && size['height']! > 0) {
@@ -58,13 +59,16 @@ class MirrorAspectResolver {
         if (_lastVideoWidth != w || _lastVideoHeight != h) {
           _lastVideoWidth = w;
           _lastVideoHeight = h;
+          sizeChanged = true;
         }
         videoAspect = w / h;
       }
     } catch (_) {}
 
-    // 横竖屏切换需要尽快感知 displayFrame，外层已避免重入。
-    await _refreshDisplayFrame(ref, deviceId);
+    // 仅在 displayFrame 为空，或视频流实际分辨率改变时才拉取 dumpsys display
+    if (_displayFrame == null || sizeChanged) {
+      await _refreshDisplayFrame(ref, deviceId);
+    }
 
     final displayFrame = _displayFrame;
     var hasOrientationMismatch = false;

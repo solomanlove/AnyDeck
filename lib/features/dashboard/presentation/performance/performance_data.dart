@@ -121,10 +121,10 @@ class PerformanceSnapshot {
             final int minutes = (totalSecs % 3600) ~/ 60;
             final int secs = totalSecs % 60;
             uptime =
-                '${days > 0 ? '$days:' : ''}'
-                '${hours.toString().padLeft(2, '0')}:'
-                '${minutes.toString().padLeft(2, '0')}:'
-                '${secs.toString().padLeft(2, '0')}';
+                '${days > 0 ? '$days天' : ''}'
+                '${hours.toString().padLeft(2, '0')}时'
+                '${minutes.toString().padLeft(2, '0')}分'
+                '${secs.toString().padLeft(2, '0')}秒';
           }
         }
       }
@@ -134,12 +134,13 @@ class PerformanceSnapshot {
     if (sections.length > 1) {
       final lines = sections[1].split('\n');
       for (final line in lines) {
-        if (line.contains('level:')) {
-          batteryLevel = int.tryParse(line.split(':').last.trim()) ?? 100;
-        } else if (line.contains('status:')) {
-          final status = int.tryParse(line.split(':').last.trim()) ?? 1;
+        final trimmed = line.trim();
+        if (trimmed.startsWith('level:')) {
+          batteryLevel = int.tryParse(trimmed.split(':').last.trim()) ?? 100;
+        } else if (trimmed.startsWith('status:')) {
+          final status = int.tryParse(trimmed.split(':').last.trim()) ?? 1;
           isCharging = (status == 2 || status == 5);
-        } else if (line.contains('powered: true')) {
+        } else if (trimmed.contains('powered: true')) {
           isCharging = true;
         }
       }

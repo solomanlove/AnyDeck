@@ -230,6 +230,31 @@ class WebDebugService {
     }
   }
 
+  /// 清理整个服务建立的所有本地端口转发。
+  void disposeAll() {
+    final portsCopy = Map<String, int>.from(_forwardedPorts);
+    for (final entry in portsCopy.entries) {
+      final key = entry.key;
+      final port = entry.value;
+      final parts = key.split(':');
+      if (parts.isNotEmpty) {
+        final deviceId = parts[0];
+        try {
+          unawaited(
+            Process.run(_adb.executable, [
+              '-s',
+              deviceId,
+              'forward',
+              '--remove',
+              'tcp:$port',
+            ]).catchError((_) => ProcessResult(0, 0, '', '')),
+          );
+        } catch (_) {}
+      }
+    }
+    _forwardedPorts.clear();
+  }
+
   /// 打开调试器检查特定的网页。
   Future<void> openInspector(
     WebpageTarget target,
