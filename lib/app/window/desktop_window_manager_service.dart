@@ -24,8 +24,8 @@ class DesktopWindowManagerService {
     windowManager.addListener(_windowListener);
 
     const windowOptions = WindowOptions(
-      size: Size(1100, 750),
-      minimumSize: Size(900, 600), // 限制最小窗口尺寸
+      size: Size(1100, 780),// 初始窗口大小
+      minimumSize: Size(700, 400), // 限制最小窗口尺寸
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
