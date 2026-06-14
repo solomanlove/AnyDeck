@@ -8,10 +8,12 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
+import '../../settings/app_settings.dart';
 import '../../theme/app_theme.dart';
 import '../../../features/dashboard/presentation/control/embedded_scrcpy_viewer.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/apps/adb_package.dart';
 import '../../../features/dashboard/presentation/widgets/drag_drop_target_overlay.dart';
 import 'mirror_floating_toolbar.dart';
 import 'mirror_settings_dialog.dart';
@@ -178,6 +180,28 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       }
     });
 
+    // 监听包列表加载状态，以同步最新的前台应用信息
+    ref.listen<AsyncValue<List<AdbPackage>>>(
+      packagesProvider(widget.deviceId),
+      (previous, next) {
+        if (next is AsyncData<List<AdbPackage>>) {
+          _controller.updateForegroundPackageFromList(next.value);
+        }
+      },
+    );
+
+    // 监听应用设置变更，以同步更新定时器配置
+    ref.listen<AppSettings>(
+      appSettingsProvider,
+      (previous, next) {
+        if (previous == null ||
+            previous.autoIdentifyForegroundApp != next.autoIdentifyForegroundApp ||
+            previous.autoIdentifyInterval != next.autoIdentifyInterval) {
+          _controller.updateAutoIdentifyTimer(next);
+        }
+      },
+    );
+
     final textureId = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
     final isMirrorActive = textureId != null;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -263,6 +287,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                     _controller.handleDoubleTap(context, e);
                   }
                   _lastPointerDownTime = now;
+                  _controller.triggerIdentifyForegroundApp();
                 },
                 child: EmbeddedScrcpyViewer(
                   deviceId: widget.deviceId,
@@ -320,12 +345,37 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            widget.deviceName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontSize: 16),
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  widget.deviceName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.headlineSmall
+                                      ?.copyWith(fontSize: 16),
+                                ),
+                              ),
+                              if (_controller.currentForegroundPackage != null &&
+                                  _controller.currentForegroundPackage!.iconLocalPath != null &&
+                                  File(_controller.currentForegroundPackage!.iconLocalPath!).existsSync()) ...[
+                                const SizedBox(width: 8),
+                                Tooltip(
+                                  message: _controller.currentForegroundPackage!.displayName,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Image.file(
+                                      File(_controller.currentForegroundPackage!.iconLocalPath!),
+                                      width: 18,
+                                      height: 18,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) =>
+                                          const SizedBox.shrink(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                         // 窗口置顶按钮

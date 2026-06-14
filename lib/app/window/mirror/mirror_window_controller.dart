@@ -8,7 +8,9 @@ import 'package:file_selector/file_selector.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
+import '../../settings/app_settings.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/apps/adb_package.dart';
 import '../../../core/providers/transfer_provider.dart';
 import '../../../features/dashboard/presentation/widgets/dashboard_snack.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
@@ -50,6 +52,13 @@ class MirrorWindowController extends ChangeNotifier {
   bool _isAlwaysOnTop = false;
   bool get isAlwaysOnTop => _isAlwaysOnTop;
 
+  Timer? _identifyTimer;
+  Timer? _autoIdentifyTimer;
+  String? _currentPackageName;
+  AdbPackage? _currentForegroundPackage;
+  AdbPackage? get currentForegroundPackage => _currentForegroundPackage;
+  bool _isIdentifyingApp = false;
+
   /// 用于获取投屏 Viewer 尺寸的全局 Key
   late final GlobalKey _viewerKey;
 
@@ -58,19 +67,16 @@ class MirrorWindowController extends ChangeNotifier {
 
   /// 自动缩放的周期定时器
   Timer? _autoFitTimer;
-
   final MirrorAspectResolver _aspectResolver = MirrorAspectResolver();
   bool _isResolvingAspect = false;
   bool _isRestartingForRotation = false;
   DateTime? _lastStreamRestartAt;
   DateTime? _resumeAspectDetectionAt;
-
   // ==================== 初始化与销毁 (Init & Dispose) ====================
 
   /// 初始化控制器，绑定视图 Key 并启动投屏相关逻辑
   void init(GlobalKey viewerKey) {
     _viewerKey = viewerKey;
-
     // 从全局配置中读取是否默认置顶
     _isAlwaysOnTop = ref.read(appSettingsProvider).scrcpyAlwaysOnTop;
 
@@ -99,6 +105,8 @@ class MirrorWindowController extends ChangeNotifier {
 
     // 异步启动投屏服务
     startMirroring();
+    // 初始化自动识别定时器
+    updateAutoIdentifyTimer(ref.read(appSettingsProvider));
   }
 
   /// 释放控制器持有的资源
@@ -106,6 +114,8 @@ class MirrorWindowController extends ChangeNotifier {
     if (Platform.isMacOS) {
       _windowChannel.setMethodCallHandler(null);
     }
+    _identifyTimer?.cancel();
+    _autoIdentifyTimer?.cancel();
     _autoFitTimer?.cancel();
     forceStopMirroring();
   }
@@ -144,6 +154,9 @@ class MirrorWindowController extends ChangeNotifier {
       if (newDisplay == null) {
         _scheduleAutoFit();
       }
+
+      // 初始化识别前台应用
+      identifyForegroundApp();
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
@@ -351,6 +364,59 @@ class MirrorWindowController extends ChangeNotifier {
       }
     }
   }
+  void triggerIdentifyForegroundApp() {
+    _identifyTimer?.cancel();
+    _identifyTimer = Timer(const Duration(milliseconds: 300), identifyForegroundApp);
+  }
+  Future<void> identifyForegroundApp() async {
+    if (_isIdentifyingApp) return;
+    final isOnline = ref.read(deviceOnlineProvider(deviceId));
+    if (!isOnline || _isLoading || errorMessage != null) return;
+    _isIdentifyingApp = true;
+    try {
+      final appInfo = await ref.read(foregroundAppServiceProvider).foregroundApp(deviceId);
+      _currentPackageName = appInfo.packageName;
+      if (_currentPackageName!.isEmpty) {
+        _currentForegroundPackage = null;
+      } else {
+        final pkgs = ref.read(packagesProvider(deviceId)).value ??
+            await ref.read(appManagementServiceProvider).loadPackageCache(deviceId);
+        if (pkgs != null && pkgs.isNotEmpty) {
+          final matched = pkgs.firstWhere(
+            (p) => p.name == _currentPackageName,
+            orElse: () => AdbPackage(name: _currentPackageName!),
+          );
+          _currentForegroundPackage = matched.iconLocalPath != null ? matched : null;
+        } else {
+          _currentForegroundPackage = null;
+        }
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to identify foreground app: $e');
+    } finally {
+      _isIdentifyingApp = false;
+    }
+  }
+  void updateAutoIdentifyTimer(AppSettings settings) {
+    _autoIdentifyTimer?.cancel();
+    _autoIdentifyTimer = settings.autoIdentifyForegroundApp
+        ? Timer.periodic(Duration(seconds: settings.autoIdentifyInterval), (_) => identifyForegroundApp())
+        : null;
+  }
+  /// 更新前台应用详情
+  void updateForegroundPackageFromList(List<AdbPackage> packages) {
+    if (_currentPackageName == null || _currentPackageName!.isEmpty) {
+      _currentForegroundPackage = null;
+    } else {
+      final matched = packages.firstWhere(
+        (p) => p.name == _currentPackageName,
+        orElse: () => AdbPackage(name: _currentPackageName!),
+      );
+      _currentForegroundPackage = matched.iconLocalPath != null ? matched : null;
+    }
+    notifyListeners();
+  }
 
   // ==================== 内部私有方法 (Private Methods) ====================
 
@@ -406,7 +472,6 @@ class MirrorWindowController extends ChangeNotifier {
       }
     });
   }
-
   Future<void> _restartForStreamMismatch() async {
     if (_isRestartingForRotation) return;
     final now = DateTime.now();

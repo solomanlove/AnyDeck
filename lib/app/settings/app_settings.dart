@@ -28,6 +28,8 @@ class AppSettings {
     this.mirrorMaxSize = 1080,
     this.mirrorAudioEnabled = true,
     this.screenshotSavePath = '',
+    this.autoIdentifyForegroundApp = false,
+    this.autoIdentifyInterval = 3,
   });
 
   final AppLanguage language;
@@ -37,6 +39,8 @@ class AppSettings {
   final int mirrorMaxSize;
   final bool mirrorAudioEnabled;
   final String screenshotSavePath;
+  final bool autoIdentifyForegroundApp;
+  final int autoIdentifyInterval;
 
   /// 创建新的不可变设置对象，未指定字段沿用当前值。
   AppSettings copyWith({
@@ -47,6 +51,8 @@ class AppSettings {
     int? mirrorMaxSize,
     bool? mirrorAudioEnabled,
     String? screenshotSavePath,
+    bool? autoIdentifyForegroundApp,
+    int? autoIdentifyInterval,
   }) {
     return AppSettings(
       language: language ?? this.language,
@@ -56,6 +62,8 @@ class AppSettings {
       mirrorMaxSize: mirrorMaxSize ?? this.mirrorMaxSize,
       mirrorAudioEnabled: mirrorAudioEnabled ?? this.mirrorAudioEnabled,
       screenshotSavePath: screenshotSavePath ?? this.screenshotSavePath,
+      autoIdentifyForegroundApp: autoIdentifyForegroundApp ?? this.autoIdentifyForegroundApp,
+      autoIdentifyInterval: autoIdentifyInterval ?? this.autoIdentifyInterval,
     );
   }
 }

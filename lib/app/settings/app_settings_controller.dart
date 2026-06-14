@@ -28,6 +28,8 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _mirrorMaxSizeKey = 'settings.mirrorMaxSize';
   static const _mirrorAudioEnabledKey = 'settings.mirrorAudioEnabled';
   static const _screenshotSavePathKey = 'settings.screenshotSavePath';
+  static const _autoIdentifyForegroundAppKey = 'settings.autoIdentifyForegroundApp';
+  static const _autoIdentifyIntervalKey = 'settings.autoIdentifyInterval';
   static const _mainSettingsChannel = WindowMethodChannel(
     'any_deck/settings_main',
     mode: ChannelMode.unidirectional,
@@ -78,6 +80,12 @@ class AppSettingsController extends Notifier<AppSettings> {
     } else if (call.method == 'update_audio_enabled') {
       final value = call.arguments as bool;
       await setMirrorAudioEnabled(value, broadcast: false);
+    } else if (call.method == 'update_auto_identify_app') {
+      final value = call.arguments as bool;
+      await setAutoIdentifyForegroundApp(value, broadcast: false);
+    } else if (call.method == 'update_auto_identify_interval') {
+      final value = call.arguments as int;
+      await setAutoIdentifyInterval(value, broadcast: false);
     }
     return null;
   }
@@ -185,6 +193,32 @@ class AppSettingsController extends Notifier<AppSettings> {
     }
   }
 
+  Future<void> setAutoIdentifyForegroundApp(bool value, {bool broadcast = true}) async {
+    state = state.copyWith(autoIdentifyForegroundApp: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_autoIdentifyForegroundAppKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_auto_identify_app', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast auto identify app change: $e');
+      }
+    }
+  }
+
+  Future<void> setAutoIdentifyInterval(int value, {bool broadcast = true}) async {
+    state = state.copyWith(autoIdentifyInterval: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(_autoIdentifyIntervalKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_auto_identify_interval', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast auto identify interval change: $e');
+      }
+    }
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -199,6 +233,10 @@ class AppSettingsController extends Notifier<AppSettings> {
         preferences.getBool(_mirrorAudioEnabledKey) ?? true;
     final screenshotSavePath =
         preferences.getString(_screenshotSavePathKey) ?? '';
+    final autoIdentifyForegroundApp =
+        preferences.getBool(_autoIdentifyForegroundAppKey) ?? false;
+    final autoIdentifyInterval =
+        preferences.getInt(_autoIdentifyIntervalKey) ?? 3;
     state = AppSettings(
       language: language,
       themeMode: themeMode,
@@ -207,6 +245,8 @@ class AppSettingsController extends Notifier<AppSettings> {
       mirrorMaxSize: mirrorMaxSize,
       mirrorAudioEnabled: mirrorAudioEnabled,
       screenshotSavePath: screenshotSavePath,
+      autoIdentifyForegroundApp: autoIdentifyForegroundApp,
+      autoIdentifyInterval: autoIdentifyInterval,
     );
 
     if (ref.read(windowIdProvider).isEmpty) {
