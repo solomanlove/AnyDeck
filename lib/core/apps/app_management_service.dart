@@ -63,11 +63,11 @@ class AppManagementService {
   ) async {
     final script = '''
 pkg="$packageName"
-line=\$(pm list packages -f -U --user 0 2>/dev/null | grep -E "=\$pkg\\\$")
+line=\$(pm list packages -f -U --user 0 2>/dev/null | grep -E "=\$pkg([[:space:]]|\\\$)" | head -n 1)
 if [ -n "\$line" ]; then
   line=\${line#package:}
-  path_pkg=\${line% uid:*}
-  path=\${path_pkg%=\$pkg}
+  line=\${line%% *}
+  path=\${line%=\$pkg}
   
   is_system=0
   if pm list packages -s --user 0 2>/dev/null | grep -qE "^package:\$pkg\\\$"; then
