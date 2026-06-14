@@ -14,9 +14,14 @@ import 'performance_data.dart';
 import 'performance_widgets.dart';
 
 class PerformanceTab extends ConsumerStatefulWidget {
-  const PerformanceTab({super.key, required this.device});
+  const PerformanceTab({
+    super.key,
+    required this.device,
+    required this.isVisible,
+  });
 
   final AdbDevice device;
+  final bool isVisible;
 
   @override
   ConsumerState<PerformanceTab> createState() => _PerformanceTabState();
@@ -62,7 +67,8 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   @override
   void initState() {
     super.initState();
-    if (widget.device.isOnline) {
+    // 只有在设备在线且当前 Tab 可见时才开启轮询
+    if (widget.device.isOnline && widget.isVisible) {
       _startPolling();
     }
   }
@@ -70,11 +76,17 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   @override
   void didUpdateWidget(covariant PerformanceTab oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 当设备切换、在线状态改变或可见性改变时，重新处理轮询状态
     if (widget.device.id != oldWidget.device.id ||
-        widget.device.isOnline != oldWidget.device.isOnline) {
+        widget.device.isOnline != oldWidget.device.isOnline ||
+        widget.isVisible != oldWidget.isVisible) {
       _stopPolling();
-      _clearHistory();
-      if (widget.device.isOnline) {
+      // 如果切换了不同的设备，清空历史性能数据
+      if (widget.device.id != oldWidget.device.id) {
+        _clearHistory();
+      }
+      // 只有在设备在线且当前性能 tab 可见时才开启轮询
+      if (widget.device.isOnline && widget.isVisible) {
         _startPolling();
       } else {
         setState(() {
@@ -139,7 +151,8 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
 
   Future<void> _pollData() async {
     final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
-    if (!isOnline || !widget.device.isOnline) {
+    // 如果不在线或不可见，停止轮询并返回
+    if (!isOnline || !widget.device.isOnline || !widget.isVisible) {
       _stopPolling();
       return;
     }

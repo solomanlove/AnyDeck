@@ -202,7 +202,10 @@ class _ToolContentCardState extends State<_ToolContentCard> {
         7 => WebpagesTab(device: widget.device),
         8 => LayoutTab(device: widget.device),
         9 => _ScreenshotTab(device: widget.device),
-        10 => PerformanceTab(device: widget.device),
+        10 => PerformanceTab(
+          device: widget.device,
+          isVisible: _currentToolIndex == 10,
+        ),
         11 => NetworkTab(device: widget.device),
         _ => const SizedBox.shrink(),
       };

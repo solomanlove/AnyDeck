@@ -27,6 +27,7 @@ enum HeartbeatPhase {
 class AdbHeartbeatController {
   final AdbService _adbService;
   final bool isSubWindow;
+  final bool isDeviceListVisible;
   
   // 广播流控制器，向外部订阅者分发设备列表
   final StreamController<List<AdbDevice>> _streamController = StreamController<List<AdbDevice>>.broadcast();
@@ -41,8 +42,9 @@ class AdbHeartbeatController {
   AdbHeartbeatController({
     required AdbService adbService,
     this.isSubWindow = false,
+    this.isDeviceListVisible = true,
   }) : _adbService = adbService {
-    if (!isSubWindow) {
+    if (!isSubWindow && isDeviceListVisible) {
       // 启动时立即执行一次心跳，建立初始状态
       trigger();
     }
@@ -56,7 +58,7 @@ class AdbHeartbeatController {
 
   /// 主动唤醒/重置心跳到密集状态 (Peak)
   void trigger() {
-    if (_isDisposed || isSubWindow) return;
+    if (_isDisposed || isSubWindow || !isDeviceListVisible) return;
     _lastTriggerTime = DateTime.now();
     _phase = HeartbeatPhase.peak;
     
@@ -73,7 +75,7 @@ class AdbHeartbeatController {
 
   /// 执行单次心跳检测（获取最新设备列表）
   Future<void> _poll() async {
-    if (_isDisposed || _isPolling || isSubWindow) return;
+    if (_isDisposed || _isPolling || isSubWindow || !isDeviceListVisible) return;
     _isPolling = true;
 
     try {
