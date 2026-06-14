@@ -87,11 +87,20 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
       backgroundColor: cardColor,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       title: Row(
         children: [
-          Icon(Icons.settings, color: isDark ? Colors.white70 : Colors.black87),
+          Icon(
+            Icons.settings,
+            color: isDark ? Colors.white70 : Colors.black87,
+            size: 20,
+          ),
           const SizedBox(width: 8),
-          Text(context.l10n.t('deviceSettings')),
+          Text(
+            context.l10n.t('deviceSettings'),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
       content: ConstrainedBox(
@@ -361,7 +370,7 @@ class _ShortcutSettingButton extends StatelessWidget {
       label: Text(
         action.label,
         overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.bodySmall,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
       ),
       onPressed: action.onPressed,
     );
@@ -424,7 +433,7 @@ class _SliderSettingRow extends StatelessWidget {
               child: Text(
                 valueText,
                 textAlign: TextAlign.right,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
               ),
             ),
             SizedBox(width: 40, child: trailing),
@@ -452,6 +461,13 @@ class _SettingLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(label, style: Theme.of(context).textTheme.titleMedium);
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ) ??
+          const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+    );
   }
 }

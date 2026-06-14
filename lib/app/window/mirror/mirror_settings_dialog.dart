@@ -95,21 +95,36 @@ void showMirrorSettingsDialog({
               : const Color(0xffffffff);
           final titleStyle = Theme.of(
             context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold);
+          ).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              );
+          final dropdownStyle = Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(
+                fontSize: 13,
+              );
 
           return AlertDialog(
             backgroundColor: cardColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
+            titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             title: Row(
               children: [
                 Icon(
                   Icons.settings,
                   color: isDark ? Colors.white70 : Colors.black87,
+                  size: 20,
                 ),
                 const SizedBox(width: 8),
-                const Text('投屏画质设置'),
+                const Text(
+                  '投屏画质设置',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             content: SingleChildScrollView(
@@ -123,6 +138,7 @@ void showMirrorSettingsDialog({
                     value: selectedBitrate,
                     isExpanded: true,
                     dropdownColor: cardColor,
+                    style: dropdownStyle,
                     items: const [
                       DropdownMenuItem(
                         value: 2000000,
@@ -158,6 +174,7 @@ void showMirrorSettingsDialog({
                     value: selectedMaxSize,
                     isExpanded: true,
                     dropdownColor: cardColor,
+                    style: dropdownStyle,
                     items: const [
                       DropdownMenuItem(value: 0, child: Text('原始大小 (无限制)')),
                       DropdownMenuItem(
@@ -257,7 +274,10 @@ void showMirrorSettingsDialog({
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('取消', style: TextStyle(color: Colors.grey)),
+                child: const Text(
+                  '取消',
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -294,7 +314,7 @@ void showMirrorSettingsDialog({
                       .read(activeEmbeddedMirrorProvider(deviceId).notifier)
                       .restartMirroring();
                 },
-                child: const Text('保存并应用'),
+                child: const Text('保存并应用', style: TextStyle(fontSize: 13)),
               ),
             ],
           );
