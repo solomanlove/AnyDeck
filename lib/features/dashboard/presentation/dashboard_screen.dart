@@ -53,6 +53,7 @@ import 'performance/performance_tab.dart';
 import 'network/network_tab.dart';
 import 'widgets/dashboard_snack.dart';
 import 'widgets/dashboard_table_header.dart';
+import 'widgets/device_power_actions.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';

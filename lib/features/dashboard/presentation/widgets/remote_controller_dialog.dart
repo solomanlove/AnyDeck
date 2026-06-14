@@ -64,7 +64,13 @@ class _RemoteControllerDialog extends ConsumerWidget {
                         onPressed: () => _runAdb(
                           context,
                           ref,
-                          actions.keyEvent(device.id, 26),
+                          pressPowerKeyAndResetScreenPower(
+                            actions: actions,
+                            deviceId: device.id,
+                            screenPowerOffNotifier: ref.read(
+                              screenPowerOffProvider(device.id).notifier,
+                            ),
+                          ),
                         ),
                       ),
                       _buildCircularButton(

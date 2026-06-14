@@ -12,6 +12,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../../features/dashboard/presentation/control/device_settings_popup.dart';
+import '../../../features/dashboard/presentation/widgets/device_power_actions.dart';
 import 'mirror_back_long_press_handler.dart';
 import 'mirror_volume_long_press_handler.dart';
 
@@ -230,7 +231,13 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
               tooltip: context.l10n.t('power'),
-              onPressed: () => actions.keyEvent(widget.deviceId, 26),
+              onPressed: () => pressPowerKeyAndResetScreenPower(
+                actions: actions,
+                deviceId: widget.deviceId,
+                screenPowerOffNotifier: ref.read(
+                  screenPowerOffProvider(widget.deviceId).notifier,
+                ),
+              ),
             ),
             MirrorToolbarButton(
               icon: Icon(
