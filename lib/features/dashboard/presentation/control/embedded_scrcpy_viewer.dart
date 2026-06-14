@@ -64,7 +64,6 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     );
     _textController = TextEditingController();
     _textController.addListener(_onTextChanged);
-    _startSizePolling();
   }
 
   @override
@@ -85,6 +84,14 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
         timer.cancel();
         return;
       }
+
+      final isOnline = ref.read(deviceOnlineProvider(widget.deviceId));
+      if (!isOnline) {
+        timer.cancel();
+        _sizePollTimer = null;
+        return;
+      }
+
       if (_isPollingSize) return;
       _isPollingSize = true;
       try {
@@ -137,6 +144,13 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     _displayFrame = null;
     _sizePollTick = 0;
     _ignoredPointers.clear();
+
+    _sizePollTimer?.cancel();
+    _sizePollTimer = null;
+
+    if (textureId != null) {
+      _startSizePolling();
+    }
   }
 
   List<int>? _mapPointerToVideo(PointerEvent event, String? resolution) {

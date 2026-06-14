@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 
 import '../../../../app/l10n/app_localizations.dart';
 import '../../../../core/adb/adb_device.dart';
@@ -24,6 +26,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   Timer? _timer;
   bool _isLoading = true;
   String? _errorMsg;
+  bool _wasMirrorWindowOpen = false;
 
   // 缓存 CPU 计数器状态
   final Map<String, CpuStat> _cpuStats = {};
@@ -112,8 +115,39 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
     _lastFps = 0.0;
   }
 
+  Future<bool> _isMirrorWindowOpen() async {
+    try {
+      final windows = await WindowController.getAll();
+      for (final window in windows) {
+        if (window.arguments.isEmpty) continue;
+        try {
+          final args = jsonDecode(window.arguments);
+          if (args is Map &&
+              args['type'] == 'mirror' &&
+              args['deviceId'] == widget.device.id) {
+            return true;
+          }
+        } catch (e) {
+          debugPrint('Failed to parse window arguments: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to check windows: $e');
+    }
+    return false;
+  }
+
   Future<void> _pollData() async {
-    if (!widget.device.isOnline) {
+    final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
+    if (!isOnline || !widget.device.isOnline) {
+      _stopPolling();
+      return;
+    }
+
+    final isWindowOpen = await _isMirrorWindowOpen();
+    if (isWindowOpen) {
+      _wasMirrorWindowOpen = true;
+    } else if (_wasMirrorWindowOpen) {
       _stopPolling();
       return;
     }
@@ -125,6 +159,10 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
       if (!mounted) return;
 
       if (!result.isSuccess) {
+        final errorMsg = (result.stderr + result.stdout).toLowerCase();
+        if (errorMsg.contains('not found') || errorMsg.contains('offline')) {
+          _stopPolling();
+        }
         setState(() {
           _errorMsg = result.stderr.isNotEmpty ? result.stderr : 'ADB 命令执行失败';
           _isLoading = false;

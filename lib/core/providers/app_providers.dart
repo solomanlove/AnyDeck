@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/settings/app_settings_controller.dart';
+
 import '../utils/network_util.dart';
 import '../adb/adb_device.dart';
 import '../adb/adb_heartbeat_controller.dart';
@@ -171,7 +173,11 @@ class UseLocalDebuggerNotifier extends Notifier<bool> {
 /// 自适应心跳控制器 Provider。
 final adbHeartbeatControllerProvider = Provider.autoDispose<AdbHeartbeatController>((ref) {
   final adbService = ref.watch(adbServiceProvider);
-  final controller = AdbHeartbeatController(adbService: adbService);
+  final isSub = ref.watch(windowIdProvider).isNotEmpty;
+  final controller = AdbHeartbeatController(
+    adbService: adbService,
+    isSubWindow: isSub,
+  );
   ref.onDispose(() => controller.dispose());
   return controller;
 });
@@ -765,6 +771,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   Map<String, String> _serialMap = {};
   List<AdbDevice> _lastActiveDevices = [];
   final Set<String> _pendingFetchIds = {};
+  final Set<String> _attemptedFetchIds = {};
   bool _isDisposed = false;
 
   bool _isNetworkId(String id) {
@@ -1021,6 +1028,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         _serialMap[id] = id;
       } finally {
         _pendingFetchIds.remove(id);
+        _attemptedFetchIds.add(id);
         if (!_isDisposed) {
           final activeDevices =
               ref.read(devicesProvider).value ?? _lastActiveDevices;
@@ -1161,6 +1169,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     }
 
     // 触发获取新在线设备(或无缓存的IP)的序列号和 IP
+    final activeIds = activeDevices.map((d) => d.id).toSet();
+    _attemptedFetchIds.removeWhere((id) => !activeIds.contains(id));
+
     for (final device in activeDevices) {
       final hasSerial = _serialMap.containsKey(device.id);
       final isNet = _isNetworkId(device.id);
@@ -1170,7 +1181,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               _ipAddresses[device.id] != '-');
       if (device.isOnline &&
           (!hasSerial || !hasIp) &&
-          !_pendingFetchIds.contains(device.id)) {
+          !_pendingFetchIds.contains(device.id) &&
+          !_attemptedFetchIds.contains(device.id)) {
         _pendingFetchIds.add(device.id);
         _fetchAndCacheSerial(device.id);
       }
@@ -1620,6 +1632,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   }
 
   Future<void> _syncActiveDevices() async {
+    _attemptedFetchIds.clear();
     final activeDevices = await ref.read(adbServiceProvider).listDevices();
     _lastActiveDevices = activeDevices;
     // 重新从持久化和概览缓存中加载最新的数据

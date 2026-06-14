@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:window_manager/window_manager.dart';
 import 'adb_device.dart';
 import 'adb_service.dart';
 
@@ -24,6 +26,7 @@ enum HeartbeatPhase {
 /// 能够根据用户活跃度、设备插拔变化来智能降频或升频，避免多余的 CPU 背景消耗
 class AdbHeartbeatController {
   final AdbService _adbService;
+  final bool isSubWindow;
   
   // 广播流控制器，向外部订阅者分发设备列表
   final StreamController<List<AdbDevice>> _streamController = StreamController<List<AdbDevice>>.broadcast();
@@ -35,9 +38,14 @@ class AdbHeartbeatController {
   bool _isDisposed = false;
   bool _isPolling = false;
 
-  AdbHeartbeatController({required AdbService adbService}) : _adbService = adbService {
-    // 启动时立即执行一次心跳，建立初始状态
-    trigger();
+  AdbHeartbeatController({
+    required AdbService adbService,
+    this.isSubWindow = false,
+  }) : _adbService = adbService {
+    if (!isSubWindow) {
+      // 启动时立即执行一次心跳，建立初始状态
+      trigger();
+    }
   }
 
   /// 获取设备列表数据流
@@ -48,7 +56,7 @@ class AdbHeartbeatController {
 
   /// 主动唤醒/重置心跳到密集状态 (Peak)
   void trigger() {
-    if (_isDisposed) return;
+    if (_isDisposed || isSubWindow) return;
     _lastTriggerTime = DateTime.now();
     _phase = HeartbeatPhase.peak;
     
@@ -65,8 +73,22 @@ class AdbHeartbeatController {
 
   /// 执行单次心跳检测（获取最新设备列表）
   Future<void> _poll() async {
-    if (_isDisposed || _isPolling) return;
+    if (_isDisposed || _isPolling || isSubWindow) return;
     _isPolling = true;
+
+    try {
+      if (!kIsWeb) {
+        final isVisible = await windowManager.isVisible();
+        final isMinimized = await windowManager.isMinimized();
+        if (!isVisible || isMinimized) {
+          _isPolling = false;
+          _updatePhaseAndSchedule();
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to check window visibility in heartbeat: $e');
+    }
 
     try {
       final devices = await _adbService.listDevices();

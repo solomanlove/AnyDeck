@@ -107,6 +107,16 @@ class MirrorWindowController extends ChangeNotifier {
       _windowChannel.setMethodCallHandler(null);
     }
     _autoFitTimer?.cancel();
+    forceStopMirroring();
+  }
+
+  /// 强制停止投屏并清理 adb/scrcpy 会话
+  Future<void> forceStopMirroring() async {
+    try {
+      await ref.read(activeEmbeddedMirrorProvider(deviceId).notifier).forceStop();
+    } catch (e) {
+      debugPrint('Failed to force stop mirroring: $e');
+    }
   }
 
   // ==================== 核心逻辑方法 (Logic Methods) ====================
@@ -365,6 +375,13 @@ class MirrorWindowController extends ChangeNotifier {
     _autoFitTimer = Timer.periodic(const Duration(milliseconds: 250), (
       timer,
     ) async {
+      final isOnline = ref.read(deviceOnlineProvider(deviceId));
+      if (!isOnline) {
+        _autoFitTimer?.cancel();
+        _autoFitTimer = null;
+        return;
+      }
+
       if (_isResolvingAspect) return;
       final resumeAt = _resumeAspectDetectionAt;
       if (resumeAt != null && DateTime.now().isBefore(resumeAt)) return;

@@ -11,6 +11,7 @@ import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../../features/dashboard/presentation/control/embedded_scrcpy_viewer.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
+import '../../../core/providers/app_providers.dart';
 import '../../../features/dashboard/presentation/widgets/drag_drop_target_overlay.dart';
 import 'mirror_floating_toolbar.dart';
 import 'mirror_settings_dialog.dart';
@@ -170,6 +171,13 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
   @override
   Widget build(BuildContext context) {
+    // 监听设备在线状态，若设备断开则强制停止投屏
+    ref.listen<bool>(deviceOnlineProvider(widget.deviceId), (previous, next) {
+      if (!next) {
+        _controller.forceStopMirroring();
+      }
+    });
+
     final textureId = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
     final isMirrorActive = textureId != null;
     final isDark = Theme.of(context).brightness == Brightness.dark;
