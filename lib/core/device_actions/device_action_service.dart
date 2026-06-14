@@ -5,6 +5,12 @@ import '../adb/adb_service.dart';
 class DeviceActionService {
   DeviceActionService(this._adb);
 
+  static const int _streamSystem = 1;
+  static const int _streamRing = 2;
+  static const int _streamMusic = 3;
+  static const int _streamAlarm = 4;
+  static const int _streamNotification = 5;
+
   final AdbService _adb;
 
   /// 连接 adb TCP/IP 地址，例如 `192.168.1.10:5555`。
@@ -207,22 +213,145 @@ class DeviceActionService {
   Future<AdbResult> volumeDown(String deviceId) =>
       _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_VOLUME_DOWN']);
 
-  /// 将媒体音量设为最大。
+  /// 将手机主要音频流设为最大，并退出静音模式。
   Future<AdbResult> volumeMax(String deviceId) async {
-    final res = await _adb.shellArgs(deviceId, ['cmd', 'media_session', 'volume', '--stream', '3', '--set', '30']);
-    if (res.isSuccess) {
-      return res;
+    final ringerResult = await _adb.shellArgs(deviceId, [
+      'cmd',
+      'audio',
+      'set-ringer-mode',
+      'NORMAL',
+    ]);
+    final volumeResult = await _setStreamsToBoundary(
+      deviceId,
+      streams: const [
+        _streamMusic,
+        _streamRing,
+        _streamNotification,
+        _streamSystem,
+        _streamAlarm,
+      ],
+      useMax: true,
+    );
+    if (volumeResult.isSuccess) {
+      return volumeResult;
     }
-    return _adb.shellArgs(deviceId, ['media', 'volume', '--stream', '3', '--set', '30']);
+    if (!ringerResult.isSuccess) {
+      return ringerResult;
+    }
+    return _fallbackVolumeMax(deviceId);
   }
 
-  /// 将媒体音量设为静音（0）。
+  /// 将手机主要音频流设为静音，并进入系统静音模式。
   Future<AdbResult> volumeMute(String deviceId) async {
-    final res = await _adb.shellArgs(deviceId, ['cmd', 'media_session', 'volume', '--stream', '3', '--set', '0']);
-    if (res.isSuccess) {
-      return res;
+    final volumeResult = await _setStreamsToBoundary(
+      deviceId,
+      streams: const [
+        _streamMusic,
+        _streamRing,
+        _streamNotification,
+        _streamSystem,
+      ],
+      useMax: false,
+    );
+    final ringerResult = await _adb.shellArgs(deviceId, [
+      'cmd',
+      'audio',
+      'set-ringer-mode',
+      'SILENT',
+    ]);
+    if (volumeResult.isSuccess || ringerResult.isSuccess) {
+      return volumeResult.isSuccess ? volumeResult : ringerResult;
     }
-    return _adb.shellArgs(deviceId, ['media', 'volume', '--stream', '3', '--set', '0']);
+    return _fallbackVolumeMute(deviceId);
+  }
+
+  /// 使用 AudioManager 真实 min/max 设置音量，避免 media_session 返回成功但设备无变化。
+  Future<AdbResult> _setStreamsToBoundary(
+    String deviceId, {
+    required List<int> streams,
+    required bool useMax,
+  }) async {
+    final changedStreams = <String>[];
+    final failedMessages = <String>[];
+
+    for (final stream in streams) {
+      final boundaryResult = await _adb.shellArgs(deviceId, [
+        'cmd',
+        'audio',
+        useMax ? 'get-max-volume' : 'get-min-volume',
+        '$stream',
+      ]);
+      final boundary = _parseAudioCommandValue(boundaryResult.stdout);
+      if (!boundaryResult.isSuccess || boundary == null) {
+        failedMessages.add('stream $stream: ${boundaryResult.message}');
+        continue;
+      }
+
+      final setResult = await _adb.shellArgs(deviceId, [
+        'cmd',
+        'audio',
+        'set-volume',
+        '$stream',
+        '$boundary',
+      ]);
+      if (!setResult.isSuccess) {
+        failedMessages.add('stream $stream: ${setResult.message}');
+        continue;
+      }
+
+      final currentResult = await _adb.shellArgs(deviceId, [
+        'cmd',
+        'audio',
+        'get-stream-volume',
+        '$stream',
+      ]);
+      final current = _parseAudioCommandValue(currentResult.stdout);
+      if (currentResult.isSuccess && current == boundary) {
+        changedStreams.add('stream $stream=$boundary');
+      } else {
+        failedMessages.add('stream $stream: 校验失败(${currentResult.message})');
+      }
+    }
+
+    if (changedStreams.isNotEmpty) {
+      return AdbResult(
+        exitCode: 0,
+        stdout: changedStreams.join('\n'),
+        stderr: failedMessages.join('\n'),
+      );
+    }
+    return AdbResult(
+      exitCode: 1,
+      stdout: '',
+      stderr: failedMessages.isEmpty ? '音量设置失败' : failedMessages.join('\n'),
+    );
+  }
+
+  int? _parseAudioCommandValue(String output) {
+    final match = RegExp(r'->\s*(-?\d+)').firstMatch(output);
+    return int.tryParse(match?.group(1) ?? '');
+  }
+
+  Future<AdbResult> _fallbackVolumeMax(String deviceId) async {
+    AdbResult? lastResult;
+    for (var i = 0; i < 30; i += 1) {
+      lastResult = await volumeUp(deviceId);
+      if (!lastResult.isSuccess) {
+        return lastResult;
+      }
+    }
+    return lastResult ?? const AdbResult(exitCode: 1, stdout: '', stderr: '');
+  }
+
+  Future<AdbResult> _fallbackVolumeMute(String deviceId) async {
+    AdbResult? lastResult;
+    for (var i = 0; i < 30; i += 1) {
+      lastResult = await volumeDown(deviceId);
+      if (!lastResult.isSuccess) {
+        return lastResult;
+      }
+    }
+    return lastResult ?? const AdbResult(exitCode: 1, stdout: '', stderr: '');
   }
 
   /// 模拟菜单键。
