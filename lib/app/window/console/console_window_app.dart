@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../../features/dashboard/presentation/widgets/liquid_glass_background.dart';
+import '../window_close_shortcut.dart';
 import 'console_window_panel.dart';
 
 /// 控制台独立窗口的应用入口。
@@ -37,9 +38,9 @@ class ConsoleWindowApp extends ConsumerWidget {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: settings.themeMode,
-      home: const Scaffold(
-        body: LiquidGlassBackground(
-          child: ConsoleWindowPanel(),
+      home: const WindowCloseShortcut(
+        child: Scaffold(
+          body: LiquidGlassBackground(child: ConsoleWindowPanel()),
         ),
       ),
     );
