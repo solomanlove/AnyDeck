@@ -444,16 +444,51 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 if (context.mounted) {
                   showDialog<void>(
                     context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('当前焦点窗口'),
-                      content: SelectableText(res.stdout),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('确定'),
+                    builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      final cardColor = isDark
+                          ? const Color(0xff1e1e1e)
+                          : const Color(0xffffffff);
+                      return AlertDialog(
+                        backgroundColor: cardColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                      ],
-                    ),
+                        titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        title: Row(
+                          children: [
+                            Icon(
+                              CupertinoIcons.scope,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '当前焦点窗口',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        content: SelectableText(
+                          res.stdout,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              '确定',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   );
                 }
               },
