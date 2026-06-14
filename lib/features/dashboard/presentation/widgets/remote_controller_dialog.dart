@@ -8,10 +8,12 @@ class _RemoteControllerDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = ref.read(deviceActionServiceProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xff1e293b) : Colors.white,
       child: Container(
         width: 320,
         padding: const EdgeInsets.all(20),
@@ -24,10 +26,10 @@ class _RemoteControllerDialog extends ConsumerWidget {
               children: [
                 Text(
                   context.l10n.t('remoteController'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF1E1E2E),
+                    color: isDark ? const Color(0xffeceff1) : const Color(0xFF1E1E2E),
                   ),
                 ),
                 IconButton(
@@ -42,7 +44,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             // Outer grey frame resembling a real remote control
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFECEEF2),
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFECEEF2),
                 borderRadius: BorderRadius.circular(20),
               ),
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -55,7 +57,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.power,
                         tooltip: context.l10n.t('power'),
-                        color: const Color(0xFFE0E2E7),
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
                         iconColor: const Color(
                           0xFFF38BA8,
                         ), // soft premium red for power
@@ -68,8 +70,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.volume_down,
                         tooltip: context.l10n.t('volumeDown'),
-                        color: const Color(0xFFE0E2E7),
-                        iconColor: const Color(0xFF5F6B6E),
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
+                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF5F6B6E),
                         onPressed: () => _runAdb(
                           context,
                           ref,
@@ -79,8 +81,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.volume_up,
                         tooltip: context.l10n.t('volumeUp'),
-                        color: const Color(0xFFE0E2E7),
-                        iconColor: const Color(0xFF5F6B6E),
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
+                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF5F6B6E),
                         onPressed: () =>
                             _runAdb(context, ref, actions.volumeUp(device.id)),
                       ),
@@ -88,7 +90,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
                   ),
                   const SizedBox(height: 32),
                   // Row 2: D-Pad
-                  _buildDPad(context, ref, actions),
+                  _buildDPad(context, ref, actions, isDark),
                   const SizedBox(height: 32),
                   // Row 3: Home, Back (Capsule), Recents
                   Row(
@@ -97,8 +99,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.circle,
                         tooltip: context.l10n.t('home'),
-                        color: const Color(0xFFE0E2E7),
-                        iconColor: const Color(0xFF5F6B6E),
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
+                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF5F6B6E),
                         onPressed: () => _runAdb(
                           context,
                           ref,
@@ -108,8 +110,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCapsuleButton(
                         icon: Icons.arrow_left_rounded,
                         tooltip: context.l10n.t('back'),
-                        color: const Color(0xFFD3D5DC),
-                        iconColor: const Color(0xFF1E1E2E),
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFD3D5DC),
+                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF1E1E2E),
                         onPressed: () => _runAdb(
                           context,
                           ref,
@@ -119,8 +121,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.square,
                         tooltip: 'Recents',
-                        color: const Color(0xFFE0E2E7),
-                        iconColor: const Color(0xFF5F6B6E),
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
+                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF5F6B6E),
                         onPressed: () => _runAdb(
                           context,
                           ref,
@@ -194,12 +196,13 @@ class _RemoteControllerDialog extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     DeviceActionService actions,
+    bool isDark,
   ) {
     return Container(
       width: 190,
       height: 190,
-      decoration: const BoxDecoration(
-        color: Color(0xFFD4D6DD),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFD4D6DD),
         shape: BoxShape.circle,
       ),
       child: Stack(
@@ -213,6 +216,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             right: 55,
             height: 50,
             child: _buildDPadSector(
+              isDark: isDark,
               tooltip: 'Up',
               onPressed: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 19)),
@@ -225,6 +229,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             right: 55,
             height: 50,
             child: _buildDPadSector(
+              isDark: isDark,
               tooltip: 'Down',
               onPressed: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 20)),
@@ -237,6 +242,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             bottom: 55,
             width: 50,
             child: _buildDPadSector(
+              isDark: isDark,
               tooltip: 'Left',
               onPressed: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 21)),
@@ -249,6 +255,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             bottom: 55,
             width: 50,
             child: _buildDPadSector(
+              isDark: isDark,
               tooltip: 'Right',
               onPressed: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 22)),
@@ -257,15 +264,15 @@ class _RemoteControllerDialog extends ConsumerWidget {
 
           // Center OK button
           Material(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF334155) : Colors.white,
             shape: const CircleBorder(),
             elevation: 2,
             child: InkWell(
               onTap: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 23)),
               customBorder: const CircleBorder(),
-              hoverColor: const Color(0xFFECEEF2),
-              child: const SizedBox(
+              hoverColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFECEEF2),
+              child: SizedBox(
                 width: 84,
                 height: 84,
                 child: Center(
@@ -274,7 +281,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E1E2E),
+                      color: isDark ? const Color(0xffeceff1) : const Color(0xFF1E1E2E),
                     ),
                   ),
                 ),
@@ -287,6 +294,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
   }
 
   Widget _buildDPadSector({
+    required bool isDark,
     required String tooltip,
     required VoidCallback onPressed,
   }) {
@@ -300,8 +308,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
           child: Container(
             width: 6,
             height: 6,
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E1E2E),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xffeceff1) : const Color(0xFF1E1E2E),
               shape: BoxShape.circle,
             ),
           ),

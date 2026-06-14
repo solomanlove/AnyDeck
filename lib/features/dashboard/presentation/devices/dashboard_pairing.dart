@@ -127,6 +127,7 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return AlertDialog(
       title: Text(context.l10n.t('pairDeviceTitle')),
@@ -189,7 +190,9 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
                             ),
                             style: theme.textTheme.titleMedium
                                 ?.copyWith(
-                              color: const Color(0xff202124),
+                              color: isDark
+                                  ? const Color(0xffeceff1)
+                                  : const Color(0xff202124),
                               fontWeight: FontWeight.w600,
                               height: 1.32,
                             ),
