@@ -80,7 +80,12 @@ class LogService extends Notifier<List<String>> {
       _logChannel.invokeMethod('log_from_sub', logMsg);
     } else {
       // 主窗口直接本地记录并向所有子窗口发起广播
-      _addAndBroadcastLog(logMsg);
+      // 使用 Future.microtask 确保状态更新在微任务中执行，避免在 Provider 构建期修改状态导致 Assertion Error
+      Future.microtask(() {
+        if (ref.mounted) {
+          _addAndBroadcastLog(logMsg);
+        }
+      });
     }
   }
 

@@ -337,6 +337,43 @@ class _PackageActions extends ConsumerWidget {
               }
             },
           ),
+          const SizedBox(width: 2),
+          IconButton(
+            tooltip: context.l10n.t('refreshSingleApp'),
+            icon: const Icon(CupertinoIcons.arrow_2_circlepath),
+            onPressed: () async {
+              _showSnack(
+                context,
+                context.l10n
+                    .t('refreshingApp')
+                    .replaceAll('{package}', package.displayName),
+              );
+              try {
+                await ref
+                    .read(packagesProvider(deviceId).notifier)
+                    .refreshSinglePackage(packageName);
+                if (context.mounted) {
+                  _showSnack(
+                    context,
+                    context.l10n
+                        .t('refreshSingleAppSuccess')
+                        .replaceAll('{package}', package.displayName),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  _showSnack(
+                    context,
+                    context.l10n
+                        .t('refreshSingleAppFailed')
+                        .replaceAll('{package}', package.displayName)
+                        .replaceAll('{error}', e.toString()),
+                    isError: true,
+                  );
+                }
+              }
+            },
+          ),
         ],
       ),
     ),

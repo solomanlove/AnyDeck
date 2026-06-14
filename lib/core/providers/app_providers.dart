@@ -264,6 +264,32 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       }
     }
   }
+
+  /// 刷新单个应用的最新状态，并更新 state 与本地缓存。
+  Future<void> refreshSinglePackage(String packageName) async {
+    final current = state.value;
+    if (current == null) return;
+
+    final service = ref.read(appManagementServiceProvider);
+    final updated = await service.getSinglePackageInfo(deviceId, packageName);
+
+    final List<AdbPackage> newList;
+    if (updated == null) {
+      // 如果应用已被卸载或无法获取信息，从列表中移除它
+      newList = current.where((p) => p.name != packageName).toList();
+    } else {
+      // 否则，在列表中替换为最新信息
+      final index = current.indexWhere((p) => p.name == packageName);
+      if (index != -1) {
+        newList = List<AdbPackage>.from(current)..[index] = updated;
+      } else {
+        newList = List<AdbPackage>.from(current)..add(updated);
+      }
+    }
+
+    state = AsyncValue.data(newList);
+    await service.savePackageCache(deviceId, newList);
+  }
 }
 
 /// 用于响应式监听设备是否在线的 Provider。

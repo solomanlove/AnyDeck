@@ -56,6 +56,164 @@ class AppManagementService {
     return packages;
   }
 
+  /// 强制从手机读取单个应用的最新元数据（包括图标等）。
+  Future<AdbPackage?> getSinglePackageInfo(
+    String deviceId,
+    String packageName,
+  ) async {
+    final script = '''
+pkg="$packageName"
+line=\$(pm list packages -f -U --user 0 2>/dev/null | grep -E "=\$pkg\\\$")
+if [ -n "\$line" ]; then
+  line=\${line#package:}
+  path_pkg=\${line% uid:*}
+  path=\${path_pkg%=\$pkg}
+  
+  is_system=0
+  if pm list packages -s --user 0 2>/dev/null | grep -qE "^package:\$pkg\\\$"; then
+    is_system=1
+  fi
+  
+  is_disabled=0
+  if pm list packages -d --user 0 2>/dev/null | grep -qE "^package:\$pkg\\\$"; then
+    is_disabled=1
+  fi
+  
+  size=\$(du -sk "\$path" 2>/dev/null | awk '{print \$1}')
+  
+  is_flutter=0
+  dir=\$(dirname "\$path")
+  if [ -n "\$path" ] && [ -d "\$dir" ] && [ -n "\$(find "\$dir" -name libflutter.so 2>/dev/null)" ]; then
+    is_flutter=1
+  fi
+  
+  echo "path:\$path"
+  echo "system:\$is_system"
+  echo "disabled:\$is_disabled"
+  echo "size:\${size:-0}"
+  echo "flutter:\$is_flutter"
+fi
+''';
+
+    final results = await Future.wait<AdbResult>([
+      _adb.shell(deviceId, script, timeout: _quickTimeout),
+      _adb.shell(
+        deviceId,
+        'dumpsys package $packageName | grep -E "Package \\[|versionName=|versionCode=|minSdk=|targetSdk=|maxSdk=|pkgFlags=\\["',
+        timeout: _metadataTimeout,
+      ),
+    ]);
+
+    final basicResult = results[0];
+    if (!basicResult.isSuccess || basicResult.stdout.trim().isEmpty) {
+      return null;
+    }
+
+    String? apkPath;
+    bool system = false;
+    bool enabled = true;
+    int? storageBytes;
+    bool flutter = false;
+
+    for (final line in basicResult.stdout.split('\n')) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('path:')) {
+        apkPath = trimmed.substring(5).trim();
+      } else if (trimmed.startsWith('system:')) {
+        system = trimmed.substring(7).trim() == '1';
+      } else if (trimmed.startsWith('disabled:')) {
+        enabled = trimmed.substring(9).trim() != '1';
+      } else if (trimmed.startsWith('size:')) {
+        final kb = int.tryParse(trimmed.substring(5).trim());
+        if (kb != null) {
+          storageBytes = kb * 1024;
+        }
+      } else if (trimmed.startsWith('flutter:')) {
+        flutter = trimmed.substring(8).trim() == '1';
+      }
+    }
+
+    if (apkPath == null || apkPath.isEmpty) {
+      return null;
+    }
+
+    final dumpOutput = results[1].isSuccess ? results[1].stdout : '';
+    final dumpMetadataMap = _parsePackageDump(dumpOutput);
+    final metadata = dumpMetadataMap[packageName];
+
+    var newPackage = AdbPackage(
+      name: packageName,
+      label: metadata?.label,
+      apkPath: apkPath,
+      versionName: metadata?.versionName,
+      versionCode: metadata?.versionCode,
+      minSdk: metadata?.minSdk,
+      targetSdk: metadata?.targetSdk,
+      maxSdk: metadata?.maxSdk,
+      storageBytes: storageBytes,
+      enabled: enabled,
+      system: system || metadata?.system == true || _looksLikeSystemPath(apkPath),
+      flutter: flutter,
+      debuggable: metadata?.debuggable == true,
+    );
+
+    try {
+      await _ensureIconHelperPushed(deviceId);
+      final userId = await _currentUserId(deviceId);
+
+      final chunkFile = await _writePackageListFileForChunk(
+        deviceId,
+        [newPackage],
+        9999,
+      );
+      final remoteChunkPath = '$_remotePackageListPath.single';
+
+      final pushListResult = await _adb.run([
+        '-s',
+        deviceId,
+        'push',
+        chunkFile.path,
+        remoteChunkPath,
+      ], timeout: _fileTransferTimeout);
+
+      if (pushListResult.isSuccess) {
+        final result = await _adb.shell(
+          deviceId,
+          'CLASSPATH=$_remoteDexPath app_process /system/bin '
+          'com.adbmanage.helper.PackageIconHelper '
+          '$remoteChunkPath $userId',
+          timeout: _metadataTimeout,
+        );
+
+        unawaited(_adb.shell(deviceId, 'rm -f $remoteChunkPath'));
+
+        if (result.isSuccess) {
+          final iconInfos = _parseIconHelperOutput(result.stdout);
+          final iconInfo = iconInfos[packageName];
+          if (iconInfo != null) {
+            final iconLocalPath = await _pullIconIfNeeded(deviceId, iconInfo);
+            newPackage = newPackage.copyWith(
+              label: iconInfo.label.isEmpty ? null : iconInfo.label,
+              iconLocalPath: iconLocalPath,
+              iconRemotePath: iconInfo.remotePath.isEmpty
+                  ? null
+                  : iconInfo.remotePath,
+              signatureMd5: iconInfo.signatureMd5.isEmpty
+                  ? null
+                  : iconInfo.signatureMd5,
+              firstInstallTime: iconInfo.firstInstallTime,
+              lastUpdateTime: iconInfo.lastUpdateTime,
+            );
+          }
+        }
+      }
+    } catch (_) {
+      // 允许读取图标失败
+    }
+
+    return newPackage;
+  }
+
   Future<AdbResult> _getDumpsysMetadata(String deviceId) async {
     const dumpsysCmd =
         'dumpsys package packages | grep -E "Package \\[|versionName=|versionCode=|minSdk=|targetSdk=|maxSdk=|pkgFlags=\\["';
