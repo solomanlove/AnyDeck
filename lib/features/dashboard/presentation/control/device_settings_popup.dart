@@ -147,6 +147,12 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
             _runAction(actions.openDeviceInfoSettings(widget.deviceId)),
       ),
       _ShortcutSettingAction(
+        icon: CupertinoIcons.globe,
+        label: context.l10n.t('deeplinkLanguages'),
+        onPressed: () =>
+            _runAction(actions.openLocaleSettings(widget.deviceId)),
+      ),
+      _ShortcutSettingAction(
         icon: CupertinoIcons.square_grid_2x2,
         label: context.l10n.t('deeplinkApps'),
         onPressed: () =>
