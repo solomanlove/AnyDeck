@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings.dart';
+import '../window/desktop_window_title_service.dart';
+import '../window/desktop_window_manager_service.dart';
 
 /// 全局唯一的窗口 ID Provider，主窗口默认为空字符串。
 final windowIdProvider = Provider<String>((ref) => '');
@@ -80,7 +82,6 @@ class AppSettingsController extends Notifier<AppSettings> {
     return null;
   }
 
-  /// 更新当前语言，并持久化到下次启动。
   Future<void> setLanguage(
     AppLanguage language, {
     bool broadcast = true,
@@ -88,6 +89,11 @@ class AppSettingsController extends Notifier<AppSettings> {
     state = state.copyWith(language: language);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_languageKey, language.code);
+
+    if (ref.read(windowIdProvider).isEmpty) {
+      unawaited(DesktopWindowTitleService.setMenuLanguage(language.code));
+      unawaited(DesktopWindowManagerService.updateTrayMenu(language.code));
+    }
 
     if (broadcast) {
       try {
@@ -202,6 +208,11 @@ class AppSettingsController extends Notifier<AppSettings> {
       mirrorAudioEnabled: mirrorAudioEnabled,
       screenshotSavePath: screenshotSavePath,
     );
+
+    if (ref.read(windowIdProvider).isEmpty) {
+      unawaited(DesktopWindowTitleService.setMenuLanguage(language.code));
+      unawaited(DesktopWindowManagerService.updateTrayMenu(language.code));
+    }
   }
 
   /// 将本地存储的枚举名称映射回 Flutter 的 ThemeMode。

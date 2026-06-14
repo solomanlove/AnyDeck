@@ -22,4 +22,20 @@ class DesktopWindowTitleService {
       // 非桌面目标或测试环境没有原生 Runner，忽略即可。
     }
   }
+
+  /// 设置原生菜单语言；移动端或未注册原生通道时静默跳过。
+  static Future<void> setMenuLanguage(String languageCode) async {
+    if (kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.fuchsia) {
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod<void>('setMenuLanguage', languageCode);
+    } on MissingPluginException {
+      // 非桌面目标或测试环境没有原生 Runner，忽略即可。
+    }
+  }
 }

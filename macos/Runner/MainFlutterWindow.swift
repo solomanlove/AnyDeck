@@ -3,6 +3,8 @@ import FlutterMacOS
 import desktop_multi_window
 
 class MainFlutterWindow: NSWindow {
+  private var isChineseMode = true
+
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
@@ -14,22 +16,38 @@ class MainFlutterWindow: NSWindow {
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
     windowChannel.setMethodCallHandler { [weak self] call, result in
-      guard call.method == "setWindowTitle" else {
-        result(FlutterMethodNotImplemented)
-        return
-      }
-      guard let title = call.arguments as? String else {
-        result(
-          FlutterError(
-            code: "invalid_argument",
-            message: "setWindowTitle requires a string title",
-            details: nil
+      if call.method == "setWindowTitle" {
+        guard let title = call.arguments as? String else {
+          result(
+            FlutterError(
+              code: "invalid_argument",
+              message: "setWindowTitle requires a string title",
+              details: nil
+            )
           )
-        )
-        return
+          return
+        }
+        self?.syncSystemTitle(title)
+        result(nil)
+      } else if call.method == "setMenuLanguage" {
+        guard let langCode = call.arguments as? String else {
+          result(
+            FlutterError(
+              code: "invalid_argument",
+              message: "setMenuLanguage requires a string languageCode",
+              details: nil
+            )
+          )
+          return
+        }
+        self?.isChineseMode = (langCode == "zh")
+        if let title = self?.title {
+          self?.syncSystemTitle(title)
+        }
+        result(nil)
+      } else {
+        result(FlutterMethodNotImplemented)
       }
-      self?.syncSystemTitle(title)
-      result(nil)
     }
 
     if let app = NSApplication.shared.delegate as? FlutterAppDelegate {
@@ -154,7 +172,7 @@ class MainFlutterWindow: NSWindow {
 
     setupCustomWindowMenuItems()
 
-    let isChinese = Bundle.main.preferredLocalizations.first?.hasPrefix("zh") == true
+    let isChinese = self.isChineseMode
 
     // 1. App Menu (first item)
     if mainMenu.items.count > 0 {

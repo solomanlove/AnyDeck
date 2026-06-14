@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:any_deck/app/l10n/app_localized_values.dart';
 
 /// 桌面端窗口与系统托盘管理服务。
 class DesktopWindowManagerService {
@@ -44,15 +46,46 @@ class DesktopWindowManagerService {
             : 'assets/brand/app_logo.png',
       );
 
+      String langCode = 'zh';
+      try {
+        final preferences = await SharedPreferences.getInstance();
+        final savedCode = preferences.getString('settings.language');
+        if (savedCode == 'en' || savedCode == 'zh') {
+          langCode = savedCode!;
+        }
+      } catch (_) {}
+
+      final showLabel = localizedValues[langCode]?['trayShowWindow'] ?? (langCode == 'en' ? 'Show Window' : '显示窗口');
+      final exitLabel = localizedValues[langCode]?['trayExit'] ?? (langCode == 'en' ? 'Exit' : '退出');
+
       final menuItems = [
-        MenuItem(key: 'show_window', label: '显示窗口'),
+        MenuItem(key: 'show_window', label: showLabel),
         MenuItem.separator(),
-        MenuItem(key: 'exit_app', label: '退出'),
+        MenuItem(key: 'exit_app', label: exitLabel),
       ];
       await trayManager.setContextMenu(Menu(items: menuItems));
       trayManager.addListener(_trayListener);
     } catch (e) {
       debugPrint('Tray initialization failed: $e');
+    }
+  }
+
+  /// 动态更新托盘菜单语言。
+  static Future<void> updateTrayMenu(String langCode) async {
+    if (kIsWeb || Platform.isAndroid || Platform.isIOS) return;
+
+    try {
+      final showLabel = localizedValues[langCode]?['trayShowWindow'] ?? (langCode == 'en' ? 'Show Window' : '显示窗口');
+      final exitLabel = localizedValues[langCode]?['trayExit'] ?? (langCode == 'en' ? 'Exit' : '退出');
+
+      final menuItems = [
+        MenuItem(key: 'show_window', label: showLabel),
+        MenuItem.separator(),
+        MenuItem(key: 'exit_app', label: exitLabel),
+      ];
+      await trayManager.setContextMenu(Menu(items: menuItems));
+    } catch (e) {
+      debugPrint('Tray update failed: $e');
     }
   }
 

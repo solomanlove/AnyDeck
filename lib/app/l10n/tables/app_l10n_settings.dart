@@ -68,6 +68,8 @@ const settingsZh = {
   'updateSuccessDesc': 'AnyDeck 已成功更新至 v1.0.1。',
   'downloadComplete': '下载完成',
   'updateLogDetail': '1. 优化无线 ADB 连接体验与稳定性\n2. 新增证书管理及导入功能\n3. 修复深色模式下部分界面的颜色偏差\n4. 提升性能，减少内存占用',
+  'trayShowWindow': '显示窗口',
+  'trayExit': '退出',
 };
 
 const settingsEn = {
@@ -143,4 +145,6 @@ const settingsEn = {
   'updateSuccessDesc': 'AnyDeck has been updated to v1.0.1 successfully.',
   'downloadComplete': 'Completed',
   'updateLogDetail': '1. Optimize wireless ADB connection experience and stability\n2. Add certificate management and import capabilities\n3. Fix color deviations in some interfaces under dark mode\n4. Enhance overall performance and reduce memory usage',
+  'trayShowWindow': 'Show Window',
+  'trayExit': 'Exit',
 };
