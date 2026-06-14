@@ -10,18 +10,23 @@ class _PackageActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final service = ref.read(appManagementServiceProvider);
     final packageName = package.name;
+    final isOnline = ref.watch(deviceOnlineProvider(deviceId));
 
-    return IconButtonTheme(
-      data: IconButtonThemeData(
-        style: IconButton.styleFrom(
-          minimumSize: const Size.square(36),
-          padding: EdgeInsets.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    return AbsorbPointer(
+      absorbing: !isOnline,
+      child: Opacity(
+        opacity: isOnline ? 1.0 : 0.5,
+        child: IconButtonTheme(
+          data: IconButtonThemeData(
+            style: IconButton.styleFrom(
+              minimumSize: const Size.square(36),
+              padding: EdgeInsets.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
           IconButton(
             tooltip: context.l10n.t('appDetails'),
             icon: const Icon(CupertinoIcons.info),
@@ -333,6 +338,8 @@ class _PackageActions extends ConsumerWidget {
             },
           ),
         ],
+      ),
+    ),
       ),
     );
   }

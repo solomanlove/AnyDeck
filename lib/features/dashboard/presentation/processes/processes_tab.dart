@@ -75,10 +75,16 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
-    if (_autoRefresh && widget.device.isOnline) {
+    final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
+    if (_autoRefresh && isOnline) {
       _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-        if (mounted && !_refreshing && widget.device.isOnline) {
-          _refreshProcesses(silent: true);
+        if (mounted && !_refreshing) {
+          final stillOnline = ref.read(deviceOnlineProvider(widget.device.id));
+          if (stillOnline) {
+            _refreshProcesses(silent: true);
+          } else {
+            _stopRefreshTimer();
+          }
         }
       });
     }
@@ -353,5 +359,11 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
   }
 
   @override
-  Widget build(BuildContext context) => _buildProcessesTab(context);
+  Widget build(BuildContext context) {
+    final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
+    if (!isOnline) {
+      _stopRefreshTimer();
+    }
+    return _buildProcessesTab(context);
+  }
 }

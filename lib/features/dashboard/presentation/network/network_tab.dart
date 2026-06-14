@@ -23,9 +23,10 @@ class NetworkTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOnline = ref.watch(deviceOnlineProvider(device.id));
 
     // 如果设备离线，展示离线提示
-    if (!device.isOnline) {
+    if (!isOnline) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

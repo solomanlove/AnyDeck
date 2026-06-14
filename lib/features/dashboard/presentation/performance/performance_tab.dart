@@ -230,7 +230,9 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.device.isOnline) {
+    final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
+    if (!isOnline) {
+      _stopPolling();
       return Center(
         child: Text(
           context.l10n.t('deviceOffline'),

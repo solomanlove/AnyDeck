@@ -22,6 +22,8 @@ class _PowerPanel extends ConsumerWidget {
         ? const Color(0xfffbbd08)
         : const Color(0xff856404);
 
+    final isOnline = ref.watch(deviceOnlineProvider(device.id));
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -75,13 +77,13 @@ class _PowerPanel extends ConsumerWidget {
                         icon: CupertinoIcons.refresh,
                         label: context.l10n.t('reboot'),
                         tooltip: context.l10n.t('rebootTooltip'),
-                        onPressed: () => _handleReboot(
+                        onPressed: isOnline ? () => _handleReboot(
                           context,
                           ref,
                           actions,
                           null,
                           context.l10n.t('reboot'),
-                        ),
+                        ) : null,
                       ),
                     ),
                     SizedBox(
@@ -90,13 +92,13 @@ class _PowerPanel extends ConsumerWidget {
                         icon: CupertinoIcons.wrench,
                         label: context.l10n.t('rebootRecovery'),
                         tooltip: context.l10n.t('rebootRecoveryTooltip'),
-                        onPressed: () => _handleReboot(
+                        onPressed: isOnline ? () => _handleReboot(
                           context,
                           ref,
                           actions,
                           'recovery',
                           context.l10n.t('rebootRecovery'),
-                        ),
+                        ) : null,
                       ),
                     ),
                     SizedBox(
@@ -105,13 +107,13 @@ class _PowerPanel extends ConsumerWidget {
                         icon: Icons.memory,
                         label: context.l10n.t('rebootBootloader'),
                         tooltip: context.l10n.t('rebootBootloaderTooltip'),
-                        onPressed: () => _handleReboot(
+                        onPressed: isOnline ? () => _handleReboot(
                           context,
                           ref,
                           actions,
                           'bootloader',
                           context.l10n.t('rebootBootloader'),
-                        ),
+                        ) : null,
                       ),
                     ),
                     SizedBox(
@@ -120,13 +122,13 @@ class _PowerPanel extends ConsumerWidget {
                         icon: CupertinoIcons.arrow_down_circle,
                         label: context.l10n.t('rebootSideload'),
                         tooltip: context.l10n.t('rebootSideloadTooltip'),
-                        onPressed: () => _handleReboot(
+                        onPressed: isOnline ? () => _handleReboot(
                           context,
                           ref,
                           actions,
                           'sideload',
                           context.l10n.t('rebootSideload'),
-                        ),
+                        ) : null,
                       ),
                     ),
                     SizedBox(
@@ -137,13 +139,13 @@ class _PowerPanel extends ConsumerWidget {
                         tooltip: context.l10n.t(
                           'rebootSideloadAutoRebootTooltip',
                         ),
-                        onPressed: () => _handleReboot(
+                        onPressed: isOnline ? () => _handleReboot(
                           context,
                           ref,
                           actions,
                           'sideload-auto-reboot',
                           context.l10n.t('rebootSideloadAutoReboot'),
-                        ),
+                        ) : null,
                       ),
                     ),
                   ],
@@ -184,7 +186,7 @@ class _PowerButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final String tooltip;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +196,9 @@ class _PowerButton extends StatelessWidget {
     final backgroundColor = isDark
         ? theme.colorScheme.surfaceContainerHigh
         : const Color(0xfff3f4f6);
-    final foregroundColor = theme.colorScheme.onSurface;
+    final foregroundColor = onPressed == null
+        ? theme.colorScheme.onSurface.withValues(alpha: 0.3)
+        : theme.colorScheme.onSurface;
 
     return Tooltip(
       message: tooltip,

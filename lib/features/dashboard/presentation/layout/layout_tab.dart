@@ -418,6 +418,20 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
+    if (!isOnline) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(CupertinoIcons.bolt_slash, size: 48, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('手机离线，无法获取布局层次'),
+          ],
+        ),
+      );
+    }
+
     if (_error != null && !_loading) {
       return Center(
         child: Padding(

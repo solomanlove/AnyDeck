@@ -340,3 +340,40 @@ class _GlassSectionCard extends StatelessWidget {
     );
   }
 }
+
+/// 统一的离线提示警告横幅组件
+Widget _buildOfflineWarningBanner(BuildContext context, String message) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    margin: const EdgeInsets.only(bottom: 16),
+    decoration: BoxDecoration(
+      color: isDark
+          ? Colors.orange.withValues(alpha: 0.15)
+          : Colors.orange.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: isDark
+            ? Colors.orange.withValues(alpha: 0.3)
+            : Colors.orange.withValues(alpha: 0.2),
+        width: 1.5,
+      ),
+    ),
+    child: Row(
+      children: [
+        const Icon(CupertinoIcons.exclamationmark_triangle, color: Colors.orange),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(
+              color: Colors.orange,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}

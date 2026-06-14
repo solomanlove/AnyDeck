@@ -37,22 +37,40 @@ class _ControlTabState extends ConsumerState<_ControlTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _QuickActionsPanel(device: widget.device),
-        const SizedBox(height: 16),
-        _DeeplinkPanel(device: widget.device),
-        const SizedBox(height: 16),
-        _LayoutHelperPanel(device: widget.device),
-        const SizedBox(height: 16),
-        _SystemSettingsPanel(device: widget.device),
-        const SizedBox(height: 16),
-        _WifiPasswordsPanel(device: widget.device),
-        const SizedBox(height: 16),
-        _CertificatePanel(device: widget.device),
-        const SizedBox(height: 16),
-        _PowerPanel(device: widget.device),
+        if (!isOnline)
+          _buildOfflineWarningBanner(
+            context,
+            '设备已离线，进入只读模式。控制操作已被禁用，当前仅展示缓存状态。',
+          ),
+        AbsorbPointer(
+          absorbing: !isOnline,
+          child: Opacity(
+            opacity: isOnline ? 1.0 : 0.6,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _QuickActionsPanel(device: widget.device),
+                const SizedBox(height: 16),
+                _DeeplinkPanel(device: widget.device),
+                const SizedBox(height: 16),
+                _LayoutHelperPanel(device: widget.device),
+                const SizedBox(height: 16),
+                _SystemSettingsPanel(device: widget.device),
+                const SizedBox(height: 16),
+                _WifiPasswordsPanel(device: widget.device),
+                const SizedBox(height: 16),
+                _CertificatePanel(device: widget.device),
+                const SizedBox(height: 16),
+                _PowerPanel(device: widget.device),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/network_util.dart';
 import '../adb/adb_device.dart';
+import '../adb/adb_heartbeat_controller.dart';
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import '../apps/app_data_backup_service.dart';
@@ -167,9 +168,18 @@ class UseLocalDebuggerNotifier extends Notifier<bool> {
   }
 }
 
-/// 自动轮询的实时 adb 设备列表。
+/// 自适应心跳控制器 Provider。
+final adbHeartbeatControllerProvider = Provider.autoDispose<AdbHeartbeatController>((ref) {
+  final adbService = ref.watch(adbServiceProvider);
+  final controller = AdbHeartbeatController(adbService: adbService);
+  ref.onDispose(() => controller.dispose());
+  return controller;
+});
+
+/// 自动轮询的实时 adb 设备列表（接入自适应心跳机制）。
 final devicesProvider = StreamProvider.autoDispose<List<AdbDevice>>((ref) {
-  return ref.watch(adbServiceProvider).trackDevices();
+  final controller = ref.watch(adbHeartbeatControllerProvider);
+  return controller.deviceStream;
 });
 
 /// 单台设备的已安装应用列表。
@@ -243,6 +253,13 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
   }
 }
 
+/// 用于响应式监听设备是否在线的 Provider。
+final deviceOnlineProvider = Provider.autoDispose.family<bool, String>((ref, deviceId) {
+  final activeDevicesAsync = ref.watch(devicesProvider);
+  final activeDevices = activeDevicesAsync.value ?? [];
+  return activeDevices.any((d) => d.id == deviceId && d.isOnline);
+});
+
 /// 单台设备的手机信息概览。
 final deviceOverviewProvider = StreamProvider.autoDispose
     .family<DeviceOverview, String>((ref, deviceId) async* {
@@ -262,6 +279,15 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         yield cached;
       }
 
+      // 检查设备是否在线（使用 ref.watch，以支持响应式状态变化）
+      final isOnline = ref.watch(deviceOnlineProvider(deviceId));
+      if (!isOnline) {
+        if (cached == null) {
+          yield DeviceOverview.fromJson({});
+        }
+        return;
+      }
+
       // 2. 执行 ADB 查询获取最新设备信息并更新
       final fresh = await service.loadOverview(deviceId);
       if (fresh.ipAddress != '-' && fresh.ipAddress.isNotEmpty) {
@@ -277,6 +303,9 @@ final isDeviceRootProvider = FutureProvider.autoDispose.family<bool, String>((
   ref,
   deviceId,
 ) async {
+  final isOnline = ref.watch(deviceOnlineProvider(deviceId));
+  if (!isOnline) return false;
+
   final adb = ref.watch(adbServiceProvider);
   try {
     final result = await adb.shell(deviceId, 'id');
@@ -293,9 +322,13 @@ final cachedDeviceOverviewProvider = FutureProvider.autoDispose
       return ref.watch(deviceInfoServiceProvider).loadFromCache(deviceId);
     });
 
-/// 按设备和路径缓存的远程目录内容。
+/// 按设备 and 路径缓存的远程目录内容。
 final remoteFilesProvider = FutureProvider.autoDispose
-    .family<List<RemoteFile>, RemoteDirectoryRequest>((ref, request) {
+    .family<List<RemoteFile>, RemoteDirectoryRequest>((ref, request) async {
+      final isOnline = ref.watch(deviceOnlineProvider(request.deviceId));
+      if (!isOnline) {
+        return <RemoteFile>[];
+      }
       return ref
           .watch(fileManagerServiceProvider)
           .listFiles(request.deviceId, request.path);
@@ -1538,6 +1571,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   /// 主动刷新设备列表，并立即同步到设备注册表。
   Future<AdbResult> refreshDevices() async {
     try {
+      ref.read(adbHeartbeatControllerProvider).trigger();
       await _syncActiveDevices();
       return const AdbResult(
         exitCode: 0,
@@ -1580,6 +1614,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
   Future<void> _refreshRegistryAfterAdbCommand() async {
     try {
+      ref.read(adbHeartbeatControllerProvider).trigger();
       await _syncActiveDevices();
     } catch (_) {}
   }

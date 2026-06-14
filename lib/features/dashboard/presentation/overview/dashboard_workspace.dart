@@ -58,6 +58,11 @@ class _WorkspacePanel extends ConsumerWidget {
     if (files.isEmpty) {
       return;
     }
+    final isOnline = ref.read(deviceOnlineProvider(device.id));
+    if (!isOnline) {
+      _showSnack(context, '设备已离线，无法进行文件拖拽或安装操作', isError: true);
+      return;
+    }
     final appService = ref.read(appManagementServiceProvider);
     final fileService = ref.read(fileManagerServiceProvider);
     final remotePath = ref.read(remotePathProvider);

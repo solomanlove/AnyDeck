@@ -258,6 +258,21 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
+    if (!isOnline) {
+      _autoRefreshTimer?.cancel();
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(CupertinoIcons.bolt_slash, size: 48, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('手机离线，无法获取截图和录屏'),
+          ],
+        ),
+      );
+    }
+
     if (_error != null && _screenshotBytes == null) {
       return Center(
         child: Column(

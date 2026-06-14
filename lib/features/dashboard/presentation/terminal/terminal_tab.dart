@@ -110,6 +110,20 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
+    if (!isOnline) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(CupertinoIcons.bolt_slash, size: 48, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('手机离线，无法使用终端调试功能'),
+          ],
+        ),
+      );
+    }
+
     final terminalState = ref.watch(adbTerminalProvider);
     final activeSession = terminalState.getActiveSession(widget.device.id);
 

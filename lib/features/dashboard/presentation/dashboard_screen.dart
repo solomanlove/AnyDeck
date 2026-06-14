@@ -155,6 +155,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     super.dispose();
   }
 
+  @override
+  void onWindowFocus() {
+    ref.read(adbHeartbeatControllerProvider).trigger();
+  }
+
   Future<void> _handleWindowMethodCall(MethodCall call) async {
     if (call.method == 'requestAppExit') {
       _showExitConfirmDialog();

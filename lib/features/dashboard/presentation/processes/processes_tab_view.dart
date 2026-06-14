@@ -3,7 +3,8 @@ part of 'processes_tab.dart';
 /// 进程管理页的主布局，和进程筛选/排序状态分离维护。
 extension _ProcessesTabView on _ProcessesTabState {
   Widget _buildProcessesTab(BuildContext context) {
-    if (!widget.device.isOnline) {
+    final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
+    if (!isOnline) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

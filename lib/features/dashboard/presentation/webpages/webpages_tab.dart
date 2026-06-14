@@ -52,10 +52,16 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
-    if (_autoRefresh) {
+    final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
+    if (_autoRefresh && isOnline) {
       _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
         if (mounted && !_refreshing) {
-          _refreshTargets(silent: true);
+          final stillOnline = ref.read(deviceOnlineProvider(widget.device.id));
+          if (stillOnline) {
+            _refreshTargets(silent: true);
+          } else {
+            _stopRefreshTimer();
+          }
         }
       });
     }
@@ -179,6 +185,21 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
+    if (!isOnline) {
+      _stopRefreshTimer();
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(CupertinoIcons.bolt_slash, size: 48, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('手机离线，无法读取网页调试列表'),
+          ],
+        ),
+      );
+    }
+
     final targetsAsync = ref.watch(webTargetsProvider(widget.device.id));
     final useLocalDebugger = ref.watch(useLocalDebuggerProvider);
 
