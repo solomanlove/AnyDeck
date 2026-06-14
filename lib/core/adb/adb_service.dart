@@ -9,14 +9,18 @@ import 'adb_result.dart';
 
 /// adb 薄封装，集中处理进程执行和设备列表解析。
 class AdbService {
-  AdbService({String? executable})
-    : executable = executable ?? resolveToolPath('adb');
+  AdbService({
+    String? executable,
+    void Function(String message, {String tag, String level})? onLog,
+  })  : executable = executable ?? resolveToolPath('adb'),
+        _onLog = onLog;
 
   static final RegExp _deviceLinePattern = RegExp(
     r'^(.*?)\s+(device|offline|unauthorized|recovery|sideload|bootloader|host|no permissions)(?:\s+(.*))?$',
   );
 
   final String executable;
+  final void Function(String message, {String tag, String level})? _onLog;
 
   /// 获取已连接设备列表；adb 不可用时抛出异常。
   Future<List<AdbDevice>> listDevices() async {
@@ -42,17 +46,23 @@ class AdbService {
     List<String> args, {
     Duration timeout = const Duration(seconds: 15),
   }) async {
+    final cmdStr = 'adb ${args.join(' ')}';
+    _onLog?.call(cmdStr, tag: 'adb', level: 'I');
     Process? process;
     try {
       process = await Process.start(executable, args);
       final stdoutFuture = process.stdout.transform(utf8.decoder).join();
       final stderrFuture = process.stderr.transform(utf8.decoder).join();
       final exitCode = await process.exitCode.timeout(timeout);
-      return AdbResult(
+      final result = AdbResult(
         exitCode: exitCode,
         stdout: await stdoutFuture,
         stderr: await stderrFuture,
       );
+      if (!result.isSuccess && result.stderr.isNotEmpty) {
+        _onLog?.call('Command failed: ${result.stderr.trim()}', tag: 'adb', level: 'E');
+      }
+      return result;
     } on TimeoutException {
       process?.kill();
       await process?.exitCode.timeout(
@@ -62,12 +72,15 @@ class AdbService {
           return 124;
         },
       );
+      final errorMsg = 'adb命令超时(${timeout.inSeconds}s): $cmdStr';
+      _onLog?.call(errorMsg, tag: 'adb', level: 'E');
       return AdbResult(
         exitCode: 124,
         stdout: '',
-        stderr: 'adb命令超时(${timeout.inSeconds}s): adb ${args.join(' ')}',
+        stderr: errorMsg,
       );
     } on ProcessException catch (error) {
+      _onLog?.call('Process error: ${error.message}', tag: 'adb', level: 'E');
       return AdbResult(exitCode: 127, stdout: '', stderr: error.message);
     }
   }
@@ -143,6 +156,8 @@ class AdbService {
     String deviceId, {
     Duration timeout = const Duration(seconds: 15),
   }) async {
+    final cmdStr = 'adb -s $deviceId exec-out screencap -p';
+    _onLog?.call(cmdStr, tag: 'adb', level: 'I');
     Process? process;
     try {
       process = await Process.start(executable, [
@@ -160,11 +175,11 @@ class AdbService {
       final exitCode = await process.exitCode.timeout(timeout);
       final stderr = await stderrFuture;
       if (exitCode != 0) {
-        throw AdbException(
-          stderr.isNotEmpty
-              ? stderr
-              : 'Failed to capture screenshot (exit code $exitCode)',
-        );
+        final err = stderr.isNotEmpty
+            ? stderr
+            : 'Failed to capture screenshot (exit code $exitCode)';
+        _onLog?.call('Screenshot failed: $err', tag: 'adb', level: 'E');
+        throw AdbException(err);
       }
       return Uint8List.fromList(await stdoutFuture);
     } on TimeoutException {
@@ -176,8 +191,10 @@ class AdbService {
           return 124;
         },
       );
+      _onLog?.call('Screenshot command timeout', tag: 'adb', level: 'E');
       throw AdbException('adb截图命令超时(${timeout.inSeconds}s)');
     } on ProcessException catch (error) {
+      _onLog?.call('Screenshot process error: ${error.message}', tag: 'adb', level: 'E');
       throw AdbException(error.message);
     }
   }
@@ -205,6 +222,7 @@ class AdbService {
       args.addAll(['--size', size]);
     }
     args.add(remotePath);
+    _onLog?.call('adb ${args.join(' ')}', tag: 'adb', level: 'I');
     return Process.start(executable, args);
   }
 

@@ -10,6 +10,7 @@ import 'app/any_deck_app.dart';
 import 'app/window/desktop_window_manager_service.dart';
 import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
+import 'app/window/console/console_window_app.dart';
 import 'app/window/multi_window_compat.dart';
 
 import 'app/settings/app_settings_controller.dart';
@@ -67,7 +68,9 @@ void main(List<String> args) async {
     final type = argument['type'] as String?;
     final windowName = type == 'mirror'
         ? 'mirror_window_$windowId'
-        : 'emulator_window_$windowId';
+        : type == 'console'
+            ? 'console_window_$windowId'
+            : 'emulator_window_$windowId';
     PlatformDispatcher.instance.setIsolateDebugName(windowName);
 
     // 获取当前子窗口 of VM Service URI 和 Isolate ID 并输出，用于在 DevTools 中连接调试
@@ -108,6 +111,15 @@ void main(List<String> args) async {
         ProviderScope(
           overrides: [windowIdProvider.overrideWithValue(windowId)],
           child: MirrorWindowApp(windowId: windowId, argument: argument),
+        ),
+      );
+    } else if (type == 'console') {
+      await configureCurrentAdbManageSubWindow(argument);
+      //控制台窗口
+      runApp(
+        ProviderScope(
+          overrides: [windowIdProvider.overrideWithValue(windowId)],
+          child: ConsoleWindowApp(windowId: windowId, argument: argument),
         ),
       );
     } else {

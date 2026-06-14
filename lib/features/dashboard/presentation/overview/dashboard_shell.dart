@@ -194,6 +194,20 @@ class _ContentTitleBar extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               IconButton(
+                tooltip: context.l10n.t('console'),
+                icon: const Icon(CupertinoIcons.doc_plaintext),
+                iconSize: 30,
+                color: iconColor,
+                onPressed: () => _openConsoleWindow(context),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(48, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
                 tooltip: context.l10n.t('restartAdb'),
                 icon: const Icon(CupertinoIcons.ant),
                 iconSize: 30,
@@ -211,6 +225,19 @@ class _ContentTitleBar extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+Future<void> _openConsoleWindow(BuildContext context) async {
+  final title = context.l10n.t('console');
+  try {
+    await createAdbManageWindow(
+      arguments: const {'type': 'console'},
+      frame: const Offset(150, 150) & const Size(850, 550),
+      title: title,
+    );
+  } catch (e) {
+    debugPrint('Failed to open console window: $e');
   }
 }
 

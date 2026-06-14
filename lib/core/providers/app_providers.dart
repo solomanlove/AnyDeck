@@ -31,9 +31,15 @@ import '../process/process_service.dart';
 import '../web_debug/webpage_target.dart';
 import '../web_debug/web_debug_service.dart';
 
+import '../logging/log_service.dart';
+
 /// 所有命令型 provider 共享的 adb 服务实例。
 final adbServiceProvider = Provider<AdbService>((ref) {
-  return AdbService();
+  return AdbService(
+    onLog: (message, {tag = 'adb', level = 'I'}) {
+      ref.read(logHistoryProvider.notifier).log(message, tag: tag, level: level);
+    },
+  );
 });
 
 /// 设备操作门面，负责 key event、开关和 shell 读取。
