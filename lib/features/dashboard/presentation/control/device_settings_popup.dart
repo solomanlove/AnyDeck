@@ -80,44 +80,35 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
   @override
   Widget build(BuildContext context) {
     final overviewAsync = ref.watch(deviceOverviewProvider(widget.deviceId));
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xff1e1e1e) : Colors.white;
 
-    return Dialog(
+    return AlertDialog(
+      backgroundColor: cardColor,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: colorScheme.outlineVariant),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Icon(Icons.settings, color: isDark ? Colors.white70 : Colors.black87),
+          const SizedBox(width: 8),
+          Text(context.l10n.t('deviceSettings')),
+        ],
       ),
-      child: ConstrainedBox(
+      content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _DeviceSettingsHeader(title: context.l10n.t('deviceSettings')),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                child: overviewAsync.when(
-                  loading: () => const SizedBox(
-                    height: 180,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (error, stack) => SizedBox(
-                    height: 180,
-                    child: Center(
-                      child: Text(
-                        error.toString(),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                  data: (overview) => _buildSettings(context, overview),
-                ),
+        child: SingleChildScrollView(
+          child: overviewAsync.when(
+            loading: () => const SizedBox(
+              height: 180,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, stack) => SizedBox(
+              height: 180,
+              child: Center(
+                child: Text(error.toString(), textAlign: TextAlign.center),
               ),
-            ],
+            ),
+            data: (overview) => _buildSettings(context, overview),
           ),
         ),
       ),
@@ -132,10 +123,45 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
         _fontScaleIndex ?? _nearestFontScaleIndex(fontScale).toDouble();
     final dpi = _parseDpi(overview.resolution);
     final densityIndex = _densityIndex ?? _nearestDensityIndex(dpi).toDouble();
+    final shortcutActions = [
+      _ShortcutSettingAction(
+        icon: Icons.developer_mode,
+        label: context.l10n.t('deeplinkDeveloperOptions'),
+        onPressed: () =>
+            _runAction(actions.openDeveloperSettings(widget.deviceId)),
+      ),
+      _ShortcutSettingAction(
+        icon: CupertinoIcons.wifi,
+        label: context.l10n.t('deeplinkWifi'),
+        onPressed: () => _runAction(actions.openWifiSettings(widget.deviceId)),
+      ),
+      _ShortcutSettingAction(
+        icon: CupertinoIcons.settings,
+        label: context.l10n.t('deeplinkSettings'),
+        onPressed: () => _runAction(actions.openMainSettings(widget.deviceId)),
+      ),
+      _ShortcutSettingAction(
+        icon: CupertinoIcons.info_circle,
+        label: context.l10n.t('deeplinkDeviceInfo'),
+        onPressed: () =>
+            _runAction(actions.openDeviceInfoSettings(widget.deviceId)),
+      ),
+      _ShortcutSettingAction(
+        icon: CupertinoIcons.square_grid_2x2,
+        label: context.l10n.t('deeplinkApps'),
+        onPressed: () =>
+            _runAction(actions.openManageApplicationsSettings(widget.deviceId)),
+      ),
+    ];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _ShortcutSettingGrid(
+          title: context.l10n.t('deeplink'),
+          actions: shortcutActions,
+        ),
+        const SizedBox(height: 14),
         _SwitchSettingRow(
           label: context.l10n.t('darkLightToggle'),
           value: _darkModeEnabled,
@@ -144,7 +170,7 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
             await _runAction(actions.setDarkMode(widget.deviceId, value));
           },
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         _SliderSettingRow(
           label: context.l10n.t('fontScaleLabel'),
           value: fontIndex,
@@ -160,7 +186,7 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
             }
           },
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
         _SliderSettingRow(
           label: context.l10n.t('displaySizeQuickLabel'),
           value: densityIndex,
@@ -184,28 +210,28 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
             icon: const Icon(CupertinoIcons.refresh, size: 18),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         _SwitchSettingRow(
           label: context.l10n.t('layoutBoundsToggle'),
           value: overview.layoutBoundsEnabled,
           onChanged: (value) =>
               _runAction(actions.toggleLayoutBounds(widget.deviceId, value)),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         _SwitchSettingRow(
           label: context.l10n.t('showTouchesToggle'),
           value: overview.showTouchesEnabled,
           onChanged: (value) =>
               _runAction(actions.setShowTouches(widget.deviceId, value)),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         _SwitchSettingRow(
           label: context.l10n.t('pointerLocationToggle'),
           value: overview.pointerLocationEnabled,
           onChanged: (value) =>
               _runAction(actions.setPointerLocation(widget.deviceId, value)),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         _SwitchSettingRow(
           label: context.l10n.t('demoModeToggle'),
           value: overview.demoModeEnabled,
@@ -215,6 +241,18 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
       ],
     );
   }
+}
+
+class _ShortcutSettingAction {
+  const _ShortcutSettingAction({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
 }
 
 class DeviceSettingsIcon extends StatelessWidget {
@@ -273,31 +311,53 @@ Future<void> showDeviceSettingsPopup({
   );
 }
 
-class _DeviceSettingsHeader extends StatelessWidget {
-  const _DeviceSettingsHeader({required this.title});
+class _ShortcutSettingGrid extends StatelessWidget {
+  const _ShortcutSettingGrid({required this.title, required this.actions});
 
   final String title;
+  final List<_ShortcutSettingAction> actions;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SettingLabel(title),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final action in actions)
+              _ShortcutSettingButton(action: action),
+          ],
         ),
+      ],
+    );
+  }
+}
+
+class _ShortcutSettingButton extends StatelessWidget {
+  const _ShortcutSettingButton({required this.action});
+
+  final _ShortcutSettingAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        minimumSize: const Size(0, 34),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: Theme.of(
-          context,
-        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+      icon: Icon(action.icon, size: 16),
+      label: Text(
+        action.label,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall,
       ),
+      onPressed: action.onPressed,
     );
   }
 }
