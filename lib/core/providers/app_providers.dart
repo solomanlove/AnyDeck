@@ -26,6 +26,7 @@ import '../logcat/logcat_controller.dart';
 import '../logcat/logcat_state.dart';
 import '../scrcpy/scrcpy_service.dart';
 import '../scrcpy/scrcpy_session.dart';
+import '../scrcpy/embedded_scrcpy_service.dart';
 import '../terminal/adb_terminal_session.dart';
 import '../terminal/favorite_commands.dart';
 import '../emulator/emulator_service.dart';
@@ -294,6 +295,11 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
 
 /// 用于响应式监听设备是否在线的 Provider。
 final deviceOnlineProvider = Provider.autoDispose.family<bool, String>((ref, deviceId) {
+  final isSub = ref.watch(windowIdProvider).isNotEmpty;
+  if (isSub) {
+    // 子 Isolate 下心跳轮询被禁用，通过是否包含激活的投屏 Session 来判断在线状态
+    return ref.watch(activeEmbeddedMirrorProvider(deviceId)) != null;
+  }
   final activeDevicesAsync = ref.watch(devicesProvider);
   final activeDevices = activeDevicesAsync.value ?? [];
   return activeDevices.any((d) => d.id == deviceId && d.isOnline);

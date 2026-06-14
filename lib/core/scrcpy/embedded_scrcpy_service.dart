@@ -33,6 +33,7 @@ class EmbeddedScrcpyService {
 
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
   int? getTextureId(String deviceId) => _sessions[deviceId]?.textureId;
+  Process? getServerProcess(String deviceId) => _sessions[deviceId]?.serverProcess;
 
   Future<String> _extractScrcpyServerJar() async {
     final bytes = await rootBundle.load('assets/scrcpy/scrcpy-server.jar');
@@ -408,7 +409,24 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
   int? build() {
     // Keep provider alive so session state is preserved when UI rebuilds or switch tabs
     ref.keepAlive();
-    return ref.watch(embeddedScrcpyServiceProvider).getTextureId(deviceId);
+    final textureId = ref.watch(embeddedScrcpyServiceProvider).getTextureId(deviceId);
+    if (textureId != null) {
+      // 避免在 build 中直接修改 state 或进行副作用，使用 microtask 延迟注册进程监听
+      Future.microtask(() => _listenToProcessExit(textureId));
+    }
+    return textureId;
+  }
+
+  void _listenToProcessExit(int textureId) {
+    final service = ref.read(embeddedScrcpyServiceProvider);
+    final process = service.getServerProcess(deviceId);
+    process?.exitCode.then((code) {
+      // 如果当前的投屏状态依然是这个 textureId，且进程已退出，说明是连接断开，自动执行清理
+      if (state == textureId) {
+        service.stop(deviceId);
+        state = null;
+      }
+    });
   }
 
   Future<void> toggleMirroring({String? newDisplay, String? startApp}) async {
@@ -425,6 +443,7 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
           startApp: startApp,
         );
         state = textureId;
+        _listenToProcessExit(textureId);
       } catch (e) {
         state = null;
         rethrow;
@@ -448,6 +467,7 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
         startApp: startApp,
       );
       state = textureId;
+      _listenToProcessExit(textureId);
     } catch (e) {
       state = null;
       rethrow;

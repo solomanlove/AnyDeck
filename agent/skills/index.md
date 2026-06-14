@@ -31,6 +31,7 @@
 | --- | --- | --- | --- | --- |
 | `doc-requirement-spec` | 需求交接文档 | active | 生成给后续 AI 或开发者接手的技术实现与变更细节文档 | `生成交接文档`、`需求技术规格书` |
 | `doc-test-impact-spec` | 测试与回归影响文档 | active | 生成改动影响范围、边缘测试用例、回归路径及 adb 模拟测试命令 | `生成测试影响范围`、`怎么验证这个修改` |
+| `doc-git-commit` | Git 规范化提交 | active | 查看以往 git 消息风格并总结实际问题，规范化生成 commit message 提交代码 | `提交代码`、`git commit`、`帮我写commit message` |
 
 ## 推荐技能组合
 
