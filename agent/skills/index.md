@@ -13,7 +13,7 @@
 
 | Skill | 中文名 | 状态 | 用途 | 典型触发语 |
 | --- | --- | --- | --- | --- |
-| `adb-feature-orchestrator` | 功能开发总编排 | active | 需求总入口，编排上下文、页面开发规划、同质化检查、性能评估、多窗口同步及回归分析 | `我要开发个新功能`、`新增一个功能板块`、`重构xxx模块` |
+| `adb-feature-orchestrator` | 功能开发总编排 | active | 需求总入口与代码修改总纲。包含每次修改代码的 5 大维度自查清单（投屏、国际化、明暗主题、性能、安全），编排开发规划、同质化检查与多窗口同步 | `我要开发个新功能`、`新增一个功能板块`、`重构xxx模块`、`修改代码` |
 
 ### 2. 能力与检查类技能 (Capabilities)
 
@@ -50,8 +50,17 @@ adb-feature-orchestrator -> adb-project-context -> adb-process-management -> adb
 adb-feature-orchestrator -> adb-process-management -> adb-performance-review -> doc-test-impact-spec
 ```
 
+## 核心代码修改自查维度 (Critical Code Change Checklist)
+在修改或开发代码时，必须强制对照 `adb-feature-orchestrator` 中的以下五个核心维度进行评估：
+1. **投屏功能 (Screen Mirroring)**：是否破坏投屏流畅度、手势映射、键盘输入、Isolate 通信或物理屏幕亮灭还原？
+2. **中英文国际化 (Chinese-English Localization)**：严禁硬编码文案，所有可见文案必须录入 l10n，且同步主/子窗口的多语言状态。
+3. **暗黑和白天模式 (Dark/Light Modes)**：UI 在明暗两套主题下配色必须自适应，且确保可读性，不得硬编码固定色值。
+4. **性能 (Performance)**：避免高频/过度 UI rebuild (使用 select)，对大量日志或终端文本使用虚拟列表 + 节流防抖，避免僵尸进程。
+5. **安全 (Security)**：防范 ADB 参数拼接注入，保证 MethodChannel 参数及 SharedPreferences 读写安全性。
+
 ## 新增 Skill 规则
 新增技能文档前必须先确认：
 1. 预估此逻辑或规范会在项目开发中被**重复调取 3 次以上**。
 2. 现有技能列表（包含 Core Rules）无法清晰覆盖该场景。
 3. 包含了需要长期沉淀的特定系统命令、复杂数据结构或第三方插件协议（例如 scrcpy 协议或 MethodChannel 协议）。
+
