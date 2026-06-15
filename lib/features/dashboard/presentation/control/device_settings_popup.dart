@@ -176,7 +176,7 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
           title: context.l10n.t('deeplink'),
           actions: shortcutActions,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _SwitchSettingRow(
           label: context.l10n.t('darkLightToggle'),
           value: _darkModeEnabled,
@@ -185,7 +185,35 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
             await _runAction(actions.setDarkMode(widget.deviceId, value));
           },
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 8),
+        _SwitchSettingRow(
+          label: context.l10n.t('layoutBoundsToggle'),
+          value: overview.layoutBoundsEnabled,
+          onChanged: (value) =>
+              _runAction(actions.toggleLayoutBounds(widget.deviceId, value)),
+        ),
+        const SizedBox(height: 8),
+        _SwitchSettingRow(
+          label: context.l10n.t('showTouchesToggle'),
+          value: overview.showTouchesEnabled,
+          onChanged: (value) =>
+              _runAction(actions.setShowTouches(widget.deviceId, value)),
+        ),
+        const SizedBox(height: 8),
+        _SwitchSettingRow(
+          label: context.l10n.t('pointerLocationToggle'),
+          value: overview.pointerLocationEnabled,
+          onChanged: (value) =>
+              _runAction(actions.setPointerLocation(widget.deviceId, value)),
+        ),
+        const SizedBox(height: 8),
+        _SwitchSettingRow(
+          label: context.l10n.t('demoModeToggle'),
+          value: overview.demoModeEnabled,
+          onChanged: (value) =>
+              _runAction(actions.setDemoMode(widget.deviceId, value)),
+        ),
+        const SizedBox(height: 16),
         _SliderSettingRow(
           label: context.l10n.t('fontScaleLabel'),
           value: fontIndex,
@@ -201,7 +229,7 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
             }
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         _SliderSettingRow(
           label: context.l10n.t('displaySizeQuickLabel'),
           value: densityIndex,
@@ -224,34 +252,6 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
                 _runAction(actions.resetDisplayDensity(widget.deviceId)),
             icon: const Icon(CupertinoIcons.refresh, size: 18),
           ),
-        ),
-        const SizedBox(height: 14),
-        _SwitchSettingRow(
-          label: context.l10n.t('layoutBoundsToggle'),
-          value: overview.layoutBoundsEnabled,
-          onChanged: (value) =>
-              _runAction(actions.toggleLayoutBounds(widget.deviceId, value)),
-        ),
-        const SizedBox(height: 10),
-        _SwitchSettingRow(
-          label: context.l10n.t('showTouchesToggle'),
-          value: overview.showTouchesEnabled,
-          onChanged: (value) =>
-              _runAction(actions.setShowTouches(widget.deviceId, value)),
-        ),
-        const SizedBox(height: 10),
-        _SwitchSettingRow(
-          label: context.l10n.t('pointerLocationToggle'),
-          value: overview.pointerLocationEnabled,
-          onChanged: (value) =>
-              _runAction(actions.setPointerLocation(widget.deviceId, value)),
-        ),
-        const SizedBox(height: 10),
-        _SwitchSettingRow(
-          label: context.l10n.t('demoModeToggle'),
-          value: overview.demoModeEnabled,
-          onChanged: (value) =>
-              _runAction(actions.setDemoMode(widget.deviceId, value)),
         ),
       ],
     );
@@ -393,7 +393,14 @@ class _SwitchSettingRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: _SettingLabel(label)),
-        Switch(value: value, onChanged: onChanged),
+        Transform.scale(
+          scale: 0.8,
+          child: Switch(
+            value: value,
+            onChanged: onChanged,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
       ],
     );
   }
@@ -433,7 +440,9 @@ class _SliderSettingRow extends StatelessWidget {
               child: Text(
                 valueText,
                 textAlign: TextAlign.right,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontSize: 11),
               ),
             ),
             SizedBox(width: 40, child: trailing),
@@ -463,7 +472,8 @@ class _SettingLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+      style:
+          Theme.of(context).textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.bold,
             fontSize: 13,
           ) ??
