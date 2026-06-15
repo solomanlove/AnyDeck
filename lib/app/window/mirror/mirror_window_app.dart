@@ -100,6 +100,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   /// 用于获取投屏窗口实际渲染尺寸的 Key
   final GlobalKey _viewerKey = GlobalKey();
 
+  /// 前台应用图标悬浮状态，用于悬浮动画与高亮样式
+  bool _isIconHovered = false;
+
   @override
   void initState() {
     super.initState();
@@ -404,36 +407,58 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              if (_controller.currentForegroundPackage !=
-                                      null &&
-                                  _controller
-                                          .currentForegroundPackage!
-                                          .iconLocalPath !=
-                                      null &&
-                                  File(
-                                    _controller
-                                        .currentForegroundPackage!
-                                        .iconLocalPath!,
-                                  ).existsSync()) ...[
+                              if (_controller.currentForegroundPackage != null) ...[
                                 const SizedBox(width: 8),
                                 Tooltip(
-                                  message: _controller
-                                      .currentForegroundPackage!
-                                      .displayName,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: Image.file(
-                                      File(
-                                        _controller
-                                            .currentForegroundPackage!
-                                            .iconLocalPath!,
+                                  message: context.l10n.t('appMirroring'),
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    onEnter: (_) => setState(() => _isIconHovered = true),
+                                    onExit: (_) => setState(() => _isIconHovered = false),
+                                    child: AnimatedScale(
+                                      scale: _isIconHovered ? 1.2 : 1.0,
+                                      duration: const Duration(milliseconds: 100),
+                                      child: GestureDetector(
+                                        onTap: () => _controller.openAppMirrorWindow(context),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                              color: _isIconHovered
+                                                  ? Colors.orange.withValues(alpha: 0.8)
+                                                  : Colors.transparent,
+                                              width: 1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: (_controller.currentForegroundPackage!.iconLocalPath != null &&
+                                                    File(_controller.currentForegroundPackage!.iconLocalPath!).existsSync())
+                                                ? Image.file(
+                                                    File(
+                                                      _controller
+                                                          .currentForegroundPackage!
+                                                          .iconLocalPath!,
+                                                    ),
+                                                    width: 18,
+                                                    height: 18,
+                                                    fit: BoxFit.contain,
+                                                    errorBuilder:
+                                                        (context, error, stackTrace) =>
+                                                            Icon(
+                                                              CupertinoIcons.app,
+                                                              size: 16,
+                                                              color: isDark ? Colors.white70 : Colors.black87,
+                                                             ),
+                                                   )
+                                                : Icon(
+                                                    CupertinoIcons.app,
+                                                    size: 16,
+                                                    color: isDark ? Colors.white70 : Colors.black87,
+                                                  ),
+                                          ),
+                                        ),
                                       ),
-                                      width: 18,
-                                      height: 18,
-                                      fit: BoxFit.contain,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const SizedBox.shrink(),
                                     ),
                                   ),
                                 ),

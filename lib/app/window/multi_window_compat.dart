@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,49 @@ import 'desktop_window_title_service.dart';
 
 const _windowFrameKey = '_windowFrame';
 const _windowTitleKey = '_windowTitle';
+
+const Size defaultMirrorWindowSize = Size(480, 800);
+const double mirrorWindowTopChromeHeight = 58;
+
+/// 根据设备分辨率解析投屏初始窗口大小。
+Size resolveMirrorInitialWindowSize(String? resolution) {
+  final ratio = parseMirrorAspectRatio(resolution);
+  if (ratio == null) return defaultMirrorWindowSize;
+
+  final viewerMaxWidth = defaultMirrorWindowSize.width;
+  final viewerMaxHeight =
+      defaultMirrorWindowSize.height - mirrorWindowTopChromeHeight;
+  final containerRatio = viewerMaxWidth / viewerMaxHeight;
+
+  final double viewerWidth;
+  final double viewerHeight;
+  if (containerRatio > ratio) {
+    viewerHeight = viewerMaxHeight;
+    viewerWidth = viewerHeight * ratio;
+  } else {
+    viewerWidth = viewerMaxWidth;
+    viewerHeight = viewerWidth / ratio;
+  }
+
+  return Size(
+    max(200.0, viewerWidth),
+    max(200.0, viewerHeight + mirrorWindowTopChromeHeight),
+  );
+}
+
+/// 解析投屏画面宽高比。
+double? parseMirrorAspectRatio(String? resolution) {
+  if (resolution == null || resolution == '-') return null;
+  final match = RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(resolution);
+  if (match == null) return null;
+
+  final width = int.tryParse(match.group(1)!);
+  final height = int.tryParse(match.group(2)!);
+  if (width == null || height == null || width <= 0 || height <= 0) {
+    return null;
+  }
+  return width / height;
+}
 
 /// 封装 desktop_multi_window 0.3.x 的窗口参数，保持业务入口只传语义化数据。
 Future<WindowController> createAdbManageWindow({
@@ -26,8 +70,11 @@ Future<WindowController> createAdbManageWindow({
           final windowArgs = jsonDecode(window.arguments);
           if (windowArgs is Map && windowArgs['type'] == type) {
             if (deviceId == null || windowArgs['deviceId'] == deviceId) {
-              await window.show();
-              return window;
+              if (windowArgs['newDisplay'] == arguments['newDisplay'] &&
+                  windowArgs['startApp'] == arguments['startApp']) {
+                await window.show();
+                return window;
+              }
             }
           }
         } catch (e) {

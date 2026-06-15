@@ -61,18 +61,20 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: children),
-          ],
+    // 将普通卡片背景替换为与主页一致的毛玻璃卡片背景
+    return _GlassSectionCard(
+      title: title,
+      icon: CupertinoIcons.play,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
-      ),
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, runSpacing: 8, children: children),
+      ],
     );
   }
 }

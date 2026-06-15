@@ -149,7 +149,7 @@ class _PackageActions extends ConsumerWidget {
                   }
                 }
 
-                final initialSize = _resolveMirrorInitialWindowSize(resolution);
+                final initialSize = _resolveMirrorInitialWindowSize(vdResolution);
 
                 await createAdbManageWindow(
                   arguments: {

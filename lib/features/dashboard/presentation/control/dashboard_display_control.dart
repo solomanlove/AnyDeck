@@ -95,17 +95,18 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
 
         final actions = ref.read(deviceActionServiceProvider);
 
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.t('systemSettings'),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 16),
+        // 将普通卡片背景替换为与主页一致的毛玻璃卡片背景
+        return _GlassSectionCard(
+          title: context.l10n.t('systemSettings'),
+          icon: CupertinoIcons.settings,
+          children: [
+            Text(
+              context.l10n.t('systemSettings'),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
 
                 // 1. 字体缩放 (Font Scale)
                 Row(
@@ -686,9 +687,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+          ],
         );
       },
     );

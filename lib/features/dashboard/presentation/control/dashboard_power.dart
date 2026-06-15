@@ -24,16 +24,17 @@ class _PowerPanel extends ConsumerWidget {
 
     final isOnline = ref.watch(deviceOnlineProvider(device.id));
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.t('powerTitle'),
-              style: theme.textTheme.titleMedium,
-            ),
+    // 将普通卡片背景替换为与主页一致的毛玻璃卡片背景
+    return _GlassSectionCard(
+      title: context.l10n.t('powerTitle'),
+      icon: CupertinoIcons.power,
+      children: [
+        Text(
+          context.l10n.t('powerTitle'),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -152,9 +153,7 @@ class _PowerPanel extends ConsumerWidget {
                 );
               },
             ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 

@@ -31,8 +31,16 @@ class ForegroundAppService {
       throw Exception(focusResult.message);
     }
 
-    final packageName = _parsePackageFromFocusLine(focusResult.stdout.trim());
-    if (packageName.isEmpty || await _isHomePackage(deviceId, packageName)) {
+    final lines = focusResult.stdout.split('\n');
+    final packages = <String>[];
+    for (final line in lines) {
+      final pkg = _parsePackageFromFocusLine(line.trim());
+      if (pkg.isNotEmpty && !packages.contains(pkg)) {
+        packages.add(pkg);
+      }
+    }
+
+    if (packages.isEmpty) {
       return const ForegroundAppInfo(
         packageName: '',
         displayName: '桌面',
@@ -40,10 +48,27 @@ class ForegroundAppService {
       );
     }
 
-    final displayName = await _readApplicationLabel(deviceId, packageName);
+    String selectedPackage = '';
+    for (final pkg in packages.reversed) {
+      if (await _isHomePackage(deviceId, pkg)) {
+        continue;
+      }
+      selectedPackage = pkg;
+      break;
+    }
+
+    if (selectedPackage.isEmpty) {
+      return const ForegroundAppInfo(
+        packageName: '',
+        displayName: '桌面',
+        isHome: true,
+      );
+    }
+
+    final displayName = await _readApplicationLabel(deviceId, selectedPackage);
     return ForegroundAppInfo(
-      packageName: packageName,
-      displayName: displayName.isEmpty ? packageName : displayName,
+      packageName: selectedPackage,
+      displayName: displayName.isEmpty ? selectedPackage : displayName,
       isHome: false,
     );
   }

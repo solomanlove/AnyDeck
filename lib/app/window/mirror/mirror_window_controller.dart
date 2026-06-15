@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
@@ -16,6 +17,7 @@ import '../../../features/dashboard/presentation/widgets/dashboard_snack.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import 'mirror_aspect_resolver.dart';
 import 'mirror_window_frame_adapter.dart';
+import '../multi_window_compat.dart';
 
 /// 投屏独立窗口的业务逻辑与状态控制器。
 /// 采用 ChangeNotifier 实现，将功能逻辑与 UI 界面彻底剥离。
@@ -165,6 +167,9 @@ class MirrorWindowController extends ChangeNotifier {
 
       // 初始化识别前台应用
       identifyForegroundApp();
+
+      // 启动时自动适配窗口大小以消除黑边
+      _autoFitWindowOnStart();
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
@@ -389,14 +394,31 @@ class MirrorWindowController extends ChangeNotifier {
       } else {
         final pkgs = ref.read(packagesProvider(deviceId)).value ??
             await ref.read(appManagementServiceProvider).loadPackageCache(deviceId);
+        
+        AdbPackage? matched;
         if (pkgs != null && pkgs.isNotEmpty) {
-          final matched = pkgs.firstWhere(
-            (p) => p.name == _currentPackageName,
-            orElse: () => AdbPackage(name: _currentPackageName!),
-          );
-          _currentForegroundPackage = matched.iconLocalPath != null ? matched : null;
+          final idx = pkgs.indexWhere((p) => p.name == _currentPackageName);
+          if (idx != -1) {
+            matched = pkgs[idx];
+          }
+        }
+
+        if (matched != null && matched.iconLocalPath != null) {
+          _currentForegroundPackage = matched;
         } else {
-          _currentForegroundPackage = null;
+          _currentForegroundPackage = matched ?? AdbPackage(name: _currentPackageName!, label: _currentPackageName);
+          
+          // 异步从设备拉取该应用的图标与元数据
+          final targetPkgName = _currentPackageName;
+          unawaited(() async {
+            try {
+              final singleInfo = await ref.read(appManagementServiceProvider).getSinglePackageInfo(deviceId, targetPkgName!);
+              if (singleInfo != null && singleInfo.iconLocalPath != null && _currentPackageName == targetPkgName) {
+                _currentForegroundPackage = singleInfo;
+                notifyListeners();
+              }
+            } catch (_) {}
+          }());
         }
       }
       notifyListeners();
@@ -421,7 +443,23 @@ class MirrorWindowController extends ChangeNotifier {
         (p) => p.name == _currentPackageName,
         orElse: () => AdbPackage(name: _currentPackageName!),
       );
-      _currentForegroundPackage = matched.iconLocalPath != null ? matched : null;
+      if (matched.iconLocalPath != null) {
+        _currentForegroundPackage = matched;
+      } else {
+        _currentForegroundPackage = matched;
+        
+        // 异步从设备拉取该应用的图标与元数据
+        final targetPkgName = _currentPackageName;
+        unawaited(() async {
+          try {
+            final singleInfo = await ref.read(appManagementServiceProvider).getSinglePackageInfo(deviceId, targetPkgName!);
+            if (singleInfo != null && singleInfo.iconLocalPath != null && _currentPackageName == targetPkgName) {
+              _currentForegroundPackage = singleInfo;
+              notifyListeners();
+            }
+          } catch (_) {}
+        }());
+      }
     }
     notifyListeners();
   }
@@ -502,6 +540,126 @@ class MirrorWindowController extends ChangeNotifier {
       debugPrint('Failed to restart mirroring after rotation change: $e');
     } finally {
       _isRestartingForRotation = false;
+    }
+  }
+
+  /// 启动时自动适配窗口大小以消除黑边。
+  void _autoFitWindowOnStart() {
+    int attempts = 0;
+    Timer.periodic(const Duration(milliseconds: 200), (timer) async {
+      attempts++;
+      if (attempts > 25) { // 最多尝试 5 秒
+        timer.cancel();
+        return;
+      }
+
+      if (_isFullScreen) {
+        timer.cancel();
+        return;
+      }
+
+      final renderBox = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox == null) return;
+      final viewerSize = renderBox.size;
+      final double viewerW = viewerSize.width;
+      final double viewerH = viewerSize.height;
+      if (viewerW <= 0 || viewerH <= 0) return;
+
+      // 仅当 scrcpy 视频流尺寸已经成功加载时才继续，这避免了前期的 adb 命令拥堵
+      Map<dynamic, dynamic>? size;
+      try {
+        size = await ScrcpyFlutter.getVideoSize(deviceId: deviceId);
+      } catch (_) {}
+      if (size == null || size['width'] == null || size['width'] <= 0 || size['height'] == null || size['height'] <= 0) {
+        return;
+      }
+
+      timer.cancel(); // 已经获取到流尺寸，立即取消定时器，确保 adb 只执行一次
+
+      final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
+      final resolution = overviewAsync.maybeWhen(
+        data: (overview) => overview.physicalResolution,
+        orElse: () => null,
+      );
+
+      final aspectRatio = await _aspectResolver.resolveNow(
+        ref: ref,
+        deviceId: deviceId,
+        resolution: resolution,
+        fallbackAspect: _getAspectRatio,
+      );
+
+      if (aspectRatio > 0) {
+        await MirrorWindowFrameAdapter.fitWindowToAspectRatio(
+          windowChannel: _windowChannel,
+          aspectRatio: aspectRatio,
+          viewerW: viewerW,
+          viewerH: viewerH,
+        );
+      }
+    });
+  }
+
+  /// 打开前台应用的新投屏窗口，自动适配大小。
+  Future<void> openAppMirrorWindow(BuildContext context) async {
+    final package = _currentForegroundPackage;
+    if (package == null) return;
+
+    final windowTitle = context.l10n
+        .t('screenMirrorTitle')
+        .replaceAll('{name}', package.displayName);
+
+    try {
+      final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
+      final resolution = overviewAsync.maybeWhen(
+        data: (overview) => overview.physicalResolution,
+        orElse: () => null,
+      );
+
+      String vdResolution = '1080x1920';
+      if (resolution != null && resolution.contains('x')) {
+        final parts = resolution.split('x');
+        if (parts.length == 2) {
+          final w = int.tryParse(parts[0].trim());
+          final h = int.tryParse(parts[1].trim());
+          if (w != null && h != null) {
+            final minSide = w < h ? w : h;
+            final maxSide = w > h ? w : h;
+            double scale = 1.0;
+            if (maxSide > 1920) {
+              scale = 1920 / maxSide;
+            }
+            final targetW = ((minSide * scale).toInt() ~/ 2) * 2;
+            final targetH = ((maxSide * scale).toInt() ~/ 2) * 2;
+            vdResolution = '${targetW}x$targetH';
+          }
+        }
+      }
+
+      final initialSize = resolveMirrorInitialWindowSize(vdResolution);
+
+      await createAdbManageWindow(
+        arguments: {
+          'type': 'mirror',
+          'deviceId': deviceId,
+          'deviceName': package.displayName,
+          'newDisplay': vdResolution,
+          'startApp': package.name,
+        },
+        frame: Offset.zero & initialSize,
+        title: windowTitle,
+      );
+    } catch (e) {
+      if (context.mounted) {
+        DashboardSnack.show(
+          context,
+          context.l10n
+              .t('appMirroringFailed')
+              .replaceAll('{name}', package.displayName)
+              .replaceAll('{error}', e.toString()),
+          isError: true,
+        );
+      }
     }
   }
 }
