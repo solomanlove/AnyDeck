@@ -172,6 +172,17 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(appSettingsProvider);
+    final overviewAsync = ref.watch(deviceOverviewProvider(widget.deviceId));
+    final sdkVersion = overviewAsync.maybeWhen(
+      data: (overview) {
+        final match = RegExp(r'API\s+(\d+)').firstMatch(overview.androidVersion);
+        return match != null ? (int.tryParse(match.group(1) ?? '') ?? 0) : 0;
+      },
+      orElse: () => 0,
+    );
+    final isAudioForwarded = (sdkVersion >= 30) && settings.mirrorAudioEnabled;
+
     // 监听设备在线状态，若设备断开则强制停止投屏
     ref.listen<bool>(deviceOnlineProvider(widget.deviceId), (previous, next) {
       if (!next) {
@@ -251,7 +262,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: _controller.startMirroring,
+                onPressed: _controller.restartMirroring,
                 icon: const Icon(Icons.refresh),
                 label: Text(context.l10n.t('retry')),
               ),
@@ -302,7 +313,23 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         ],
       );
     } else {
-      contentWidget = Center(child: Text(context.l10n.t('mirrorStopped')));
+      contentWidget = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              context.l10n.t('mirrorStopped'),
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _controller.restartMirroring,
+              icon: const Icon(Icons.refresh),
+              label: Text(context.l10n.t('retry')),
+            ),
+          ],
+        ),
+      );
     }
 
     return Scaffold(
@@ -343,14 +370,38 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                           child: Row(
                             children: [
                               Flexible(
-                                child: Text(
-                                  widget.deviceName,
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: widget.deviceName,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineSmall
+                                            ?.copyWith(fontSize: 16),
+                                      ),
+                                      if (isAudioForwarded)
+                                        WidgetSpan(
+                                          alignment: PlaceholderAlignment.top,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(left: 4),
+                                            child: Tooltip(
+                                              message: context.l10n.t('audioForwardingTooltip'),
+                                              child: Container(
+                                                width: 6,
+                                                height: 6,
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.red,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(fontSize: 16),
                                 ),
                               ),
                               if (_controller.currentForegroundPackage !=
@@ -389,6 +440,16 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                               ],
                             ],
                           ),
+                        ),
+                        // 重新连接/刷新按钮
+                        MirrorToolbarButton(
+                          icon: Icon(
+                            CupertinoIcons.refresh,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                            size: 16,
+                          ),
+                          tooltip: context.l10n.t('retry'),
+                          onPressed: _controller.restartMirroring,
                         ),
                         // 窗口置顶按钮
                         MirrorToolbarButton(

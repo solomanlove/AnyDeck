@@ -129,7 +129,15 @@ class MirrorWindowController extends ChangeNotifier {
     }
   }
 
-  // ==================== 核心逻辑方法 (Logic Methods) ====================
+  /// 强制重启投屏服务（用于刷新/重新连接）
+  Future<void> restartMirroring() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    await forceStopMirroring();
+    await Future.delayed(const Duration(milliseconds: 300));
+    await startMirroring();
+  }
 
   /// 开始/重试启动投屏服务
   Future<void> startMirroring() async {

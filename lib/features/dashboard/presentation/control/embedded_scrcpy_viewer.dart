@@ -64,6 +64,11 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     );
     _textController = TextEditingController();
     _textController.addListener(_onTextChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
+    });
   }
 
   @override
@@ -150,6 +155,11 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
     if (textureId != null) {
       _startSizePolling();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _focusNode.requestFocus();
+        }
+      });
     }
   }
 
@@ -488,21 +498,22 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       alignment: Alignment.center,
       child: Stack(
         children: [
-          Positioned(
-            left: -999,
-            top: -999,
-            width: 1,
-            height: 1,
-            child: TextField(
-              controller: _textController,
-              focusNode: _focusNode,
-              autofocus: true,
-              maxLines: 1,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                counterText: '',
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: 0.0,
+                child: TextField(
+                  controller: _textController,
+                  focusNode: _focusNode,
+                  autofocus: true,
+                  maxLines: 1,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    counterText: '',
+                  ),
+                  keyboardType: TextInputType.text,
+                ),
               ),
-              keyboardType: TextInputType.text,
             ),
           ),
           EmbeddedScrcpyTextureSurface(

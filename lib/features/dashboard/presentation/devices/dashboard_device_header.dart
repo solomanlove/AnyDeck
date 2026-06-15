@@ -63,6 +63,16 @@ class _SelectedDeviceHeader extends ConsumerWidget {
     );
 
     final overviewAsync = ref.watch(deviceOverviewProvider(device.id));
+    final settings = ref.watch(appSettingsProvider);
+    final overview = overviewAsync.asData?.value;
+    int sdkVersion = 0;
+    if (overview != null) {
+      final match = RegExp(r'API\s+(\d+)').firstMatch(overview.androidVersion);
+      if (match != null) {
+        sdkVersion = int.tryParse(match.group(1) ?? '') ?? 0;
+      }
+    }
+    final isAudioForwarded = (sdkVersion >= 30) && settings.mirrorAudioEnabled;
 
     final titleText = matchedDevice.displayName;
     final status = device.status;
@@ -170,6 +180,24 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                   fontSize: 20,
                 ),
               ),
+              if (isAudioForwarded)
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.top,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Tooltip(
+                      message: context.l10n.t('audioForwardingTooltip'),
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
           maxLines: 1,
