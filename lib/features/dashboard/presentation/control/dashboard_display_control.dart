@@ -842,7 +842,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
         ),
         const SizedBox(height: 6),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
             borderRadius: BorderRadius.circular(8),
@@ -856,7 +856,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
               borderRadius: BorderRadius.circular(12),
               dropdownColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               icon: Padding(
-                padding: const EdgeInsets.only(left: 8),
+                padding: const EdgeInsets.only(left: 5),
                 child: Icon(
                   CupertinoIcons.chevron_down,
                   size: 14,

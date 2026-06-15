@@ -81,6 +81,11 @@ class _PrimaryRail extends ConsumerWidget {
         label: context.l10n.t('apps'),
       ),
       _RailToolItem(
+        tabIndex: 6,
+        icon: CupertinoIcons.list_bullet,
+        label: context.l10n.t('processes'),
+      ),
+      _RailToolItem(
         tabIndex: 3,
         icon: CupertinoIcons.folder,
         label: context.l10n.t('files'),
@@ -94,11 +99,6 @@ class _PrimaryRail extends ConsumerWidget {
         tabIndex: 5,
         icon: CupertinoIcons.chevron_left_slash_chevron_right,
         label: context.l10n.t('terminal'),
-      ),
-      _RailToolItem(
-        tabIndex: 6,
-        icon: CupertinoIcons.list_bullet,
-        label: context.l10n.t('processes'),
       ),
       _RailToolItem(
         tabIndex: 7,
