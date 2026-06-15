@@ -105,6 +105,14 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
     });
   }
 
+  void _toggleShowAllTargets(bool? value) {
+    if (value == null) return;
+    final current = ref.read(showAllWebTargetsProvider);
+    if (current == value) return;
+    ref.read(selectedWebTargetProvider.notifier).state = null;
+    ref.read(showAllWebTargetsProvider.notifier).toggle();
+  }
+
   Future<void> _refreshTargets({bool silent = false}) async {
     if (_refreshing) return;
     if (!silent) {
@@ -230,6 +238,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
 
     final targetsAsync = ref.watch(webTargetsProvider(widget.device.id));
     final useLocalDebugger = ref.watch(useLocalDebuggerProvider);
+    final showAllTargets = ref.watch(showAllWebTargetsProvider);
 
     // 同步选中的网页目标状态
     _selectedTarget = ref.watch(selectedWebTargetProvider);
@@ -325,6 +334,17 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                         ref.read(useLocalDebuggerProvider.notifier).toggle(),
                   ),
                   Text(context.l10n.t('useLocalDebugger')),
+                ],
+              ),
+              const SizedBox(width: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(
+                    value: showAllTargets,
+                    onChanged: _toggleShowAllTargets,
+                  ),
+                  Text(context.l10n.t('showAllWebTargets')),
                 ],
               ),
               const SizedBox(width: 12),

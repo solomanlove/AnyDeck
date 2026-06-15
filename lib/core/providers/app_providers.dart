@@ -125,8 +125,9 @@ final webDebugServiceProvider = Provider<WebDebugService>((ref) {
 final webTargetsProvider = FutureProvider.autoDispose
     .family<List<WebpageTarget>, String>((ref, deviceId) async {
       final service = ref.watch(webDebugServiceProvider);
+      final showAllTargets = ref.watch(showAllWebTargetsProvider);
       await Future<void>.delayed(Duration.zero);
-      return service.scanTargets(deviceId);
+      return service.scanTargets(deviceId, includeAllTargets: showAllTargets);
     });
 
 /// 选中的网页目标。
@@ -151,6 +152,34 @@ final useLocalDebuggerProvider =
 
 class UseLocalDebuggerNotifier extends Notifier<bool> {
   static const _key = 'web_debug.use_local_debugger';
+
+  @override
+  bool build() {
+    _load();
+    return true;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool(_key) ?? true;
+  }
+
+  Future<void> toggle() async {
+    final next = !state;
+    state = next;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_key, next);
+  }
+}
+
+/// 是否显示 Stetho、app 等全部 DevTools 调试目标。
+final showAllWebTargetsProvider =
+    NotifierProvider<ShowAllWebTargetsNotifier, bool>(
+      ShowAllWebTargetsNotifier.new,
+    );
+
+class ShowAllWebTargetsNotifier extends Notifier<bool> {
+  static const _key = 'web_debug.show_all_targets';
 
   @override
   bool build() {

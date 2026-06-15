@@ -18,7 +18,10 @@ class WebDebugService {
   final Map<String, String> _packageNameCache = {};
 
   /// 扫描指定设备上所有的 debug 网页目标。
-  Future<List<WebpageTarget>> scanTargets(String deviceId) async {
+  Future<List<WebpageTarget>> scanTargets(
+    String deviceId, {
+    bool includeAllTargets = false,
+  }) async {
     // 1. 读取手机的 unix sockets 列表以查找 devtools
     final result = await _adb.shellArgs(deviceId, ['cat', '/proc/net/unix']);
     if (!result.isSuccess) {
@@ -63,6 +66,11 @@ class WebDebugService {
     // 3. 逐个请求 sockets 列表并组装网页目标
     final allTargets = <WebpageTarget>[];
     for (final socketName in activeSockets) {
+      if (!includeAllTargets &&
+          !socketName.startsWith('webview_devtools_remote_')) {
+        continue;
+      }
+
       // 提取 PID 并尝试加载包名
       final pidMatch = RegExp(r'\d+$').firstMatch(socketName);
       final pid = pidMatch?.group(0) ?? '';
@@ -75,6 +83,9 @@ class WebDebugService {
         final port = await _getOrForwardPort(deviceId, socketName);
         final rawTargets = await _fetchTargets(port);
         for (final raw in rawTargets) {
+          if (!includeAllTargets && raw['type'] != 'page') {
+            continue;
+          }
           allTargets.add(
             WebpageTarget.fromJson(
               json: raw,
@@ -157,36 +168,39 @@ class WebDebugService {
     final client = HttpClient();
     client.connectionTimeout = const Duration(seconds: 2);
     try {
-      final request = await client.getUrl(
-        Uri.parse('http://127.0.0.1:$port/json/list'),
-      );
-      final response = await request.close();
-      if (response.statusCode == 200) {
-        final content = await response.transform(utf8.decoder).join();
-        final decoded = jsonDecode(content);
-        if (decoded is List) {
-          return List<Map<String, dynamic>>.from(decoded);
+      for (final path in const ['/json/list', '/json']) {
+        final targets = await _fetchTargetsFromPath(client, port, path);
+        if (targets != null) {
+          return targets;
         }
       }
-    } catch (_) {
-      // 兼容一些老版本 Chrome/WebView 的 /json 接口
-      try {
-        final request = await client.getUrl(
-          Uri.parse('http://127.0.0.1:$port/json'),
-        );
-        final response = await request.close();
-        if (response.statusCode == 200) {
-          final content = await response.transform(utf8.decoder).join();
-          final decoded = jsonDecode(content);
-          if (decoded is List) {
-            return List<Map<String, dynamic>>.from(decoded);
-          }
-        }
-      } catch (_) {}
     } finally {
       client.close();
     }
     return [];
+  }
+
+  /// 读取单个 DevTools JSON endpoint；无效响应交给调用方尝试 fallback。
+  Future<List<Map<String, dynamic>>?> _fetchTargetsFromPath(
+    HttpClient client,
+    int port,
+    String path,
+  ) async {
+    try {
+      final request = await client.getUrl(
+        Uri.parse('http://127.0.0.1:$port$path'),
+      );
+      final response = await request.close();
+      if (response.statusCode != 200) {
+        return null;
+      }
+      final content = await response.transform(utf8.decoder).join();
+      final decoded = jsonDecode(content);
+      if (decoded is List) {
+        return List<Map<String, dynamic>>.from(decoded);
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// 获取 PID 对应的包名并缓存。

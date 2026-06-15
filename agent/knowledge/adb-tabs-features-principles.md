@@ -177,12 +177,14 @@
 1. **调试套接字自动侦测**：
    - Android WebView 调试暴露的是 Linux Unix Sockets。运行 `adb shell cat /proc/net/unix`，寻找路径中以 `@` 开头并包含 `devtools_remote` 的套接字（如 `@webview_devtools_remote_1234`，其中 1234 为进程 PID）。
    - 解析 PID 并读取 `/proc/<pid>/cmdline` 获取对应应用的包名（如 `com.android.chrome` 或自定义 App）。
+   - 默认采用 AYA Mode：只展示 `webview_devtools_remote_` socket 且 `type == page` 的网页目标，避免 Stetho/app target 干扰普通 H5 调试；用户开启“显示全部目标”后才展示全部 DevTools target。
 2. **动态 TCP 端口映射代理**：
    - 检索本机可用端口（`ServerSocket.bind(..., 0)` 获取动态端口）。
    - 执行 `adb forward tcp:<localPort> localabstract:<socketName>` 将本地端口转发至手机套接字。
 3. **调试协议请求获取**：
    - 发送 HttpClient GET 请求至 `http://127.0.0.1:<localPort>/json/list`（对极老版本 fallback 至 `/json`）。
    - 得到网页列表的 JSON 数组，包含：`title`、`url`、`webSocketDebuggerUrl`、`id` 等。
+   - AYA 的实现直接请求 `/json`，因此本项目必须在 `/json/list` 返回非 200、非 JSON 数组或读取异常时继续 fallback 到 `/json`，否则部分手机 WebView/Chrome 目标会被误判为空。
 4. **远程调试器启动机制**：
    - 拼接 DevTools URL：
      - 若选择本地调试器：`devtools://devtools/bundled/inspector.html?ws=127.0.0.1:<localPort>/devtools/page/<id>`
