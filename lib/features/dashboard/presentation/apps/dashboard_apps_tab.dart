@@ -37,7 +37,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
           if (!isOnline)
             _buildOfflineWarningBanner(
               context,
-              '设备已离线，进入只读模式。应用操作与刷新已被禁用，当前仅展示缓存列表。',
+              context.l10n.t('offlineAppsWarning'),
             ),
           Row(
             children: [
@@ -67,7 +67,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
               IconButton(
                 tooltip: context.l10n.t('refreshPackages'),
                 icon: const Icon(CupertinoIcons.refresh),
-                onPressed: (isOnline && !_refreshingPackages) ? _refreshPackages : null,
+                onPressed: (isOnline && !_refreshingPackages)
+                    ? _refreshPackages
+                    : null,
               ),
               const SizedBox(width: 8),
               _buildToolbarButton(

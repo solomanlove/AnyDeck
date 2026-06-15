@@ -175,7 +175,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         if (mounted) {
           _showSnack(
             context,
-            '请先连接并选择一个在线设备进行投屏',
+            context.l10n.t('selectDeviceToMirror'),
             isError: true,
           );
         }
@@ -276,7 +276,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)或设置(12) Tab，则自动重定向回主页 Tab
         if (!effectiveSelectedDevice.isOnline) {
           final selectedTool = ref.read(selectedToolTabProvider);
-          if (selectedTool != 0 && selectedTool != 1 && selectedTool != 2 && selectedTool != 12) {
+          if (selectedTool != 0 &&
+              selectedTool != 1 &&
+              selectedTool != 2 &&
+              selectedTool != 12) {
             ref.read(selectedToolTabProvider.notifier).select(0);
           }
         }
@@ -300,8 +303,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.keyQ, meta: true): _showExitConfirmDialog,
-        const SingleActivator(LogicalKeyboardKey.keyQ, control: true): _showExitConfirmDialog,
+        const SingleActivator(LogicalKeyboardKey.keyQ, meta: true):
+            _showExitConfirmDialog,
+        const SingleActivator(LogicalKeyboardKey.keyQ, control: true):
+            _showExitConfirmDialog,
       },
       child: Scaffold(
         body: _WechatStyleShell(

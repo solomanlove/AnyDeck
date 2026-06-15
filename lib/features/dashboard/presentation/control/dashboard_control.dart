@@ -45,7 +45,7 @@ class _ControlTabState extends ConsumerState<_ControlTab> {
         if (!isOnline)
           _buildOfflineWarningBanner(
             context,
-            '设备已离线，进入只读模式。控制操作已被禁用，当前仅展示缓存状态。',
+            context.l10n.t('offlineControlWarning'),
           ),
         AbsorbPointer(
           absorbing: !isOnline,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../settings/app_settings_controller.dart';
+import '../../l10n/app_localizations.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/providers/app_providers.dart';
@@ -38,7 +39,7 @@ Future<void> launchExternalMirror({
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('已启动系统原生投屏，音频已同步转发到电脑播放'),
+          content: Text(context.l10n.t('externalMirrorStarted')),
           backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
         ),
@@ -51,7 +52,11 @@ Future<void> launchExternalMirror({
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('启动外部原生投屏失败: $e'),
+          content: Text(
+            context.l10n
+                .t('startExternalMirrorFailed')
+                .replaceAll('{error}', e.toString()),
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -93,17 +98,13 @@ void showMirrorSettingsDialog({
           final cardColor = isDark
               ? const Color(0xff1e1e1e)
               : const Color(0xffffffff);
-          final titleStyle = Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              );
+          final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          );
           final dropdownStyle = Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(
-                fontSize: 13,
-              );
+          ).textTheme.bodyMedium?.copyWith(fontSize: 13);
 
           return AlertDialog(
             backgroundColor: cardColor,
@@ -121,9 +122,12 @@ void showMirrorSettingsDialog({
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  '投屏画质设置',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                Text(
+                  context.l10n.t('mirrorQualitySettings'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -132,33 +136,33 @@ void showMirrorSettingsDialog({
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('视频比特率 (Video Bitrate)', style: titleStyle),
+                  Text(context.l10n.t('videoBitrateLabel'), style: titleStyle),
                   const SizedBox(height: 8),
                   DropdownButton<int>(
                     value: selectedBitrate,
                     isExpanded: true,
                     dropdownColor: cardColor,
                     style: dropdownStyle,
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 2000000,
-                        child: Text('2 Mbps (极低/流畅)'),
+                        child: Text(context.l10n.t('bitrate2Mbps')),
                       ),
                       DropdownMenuItem(
                         value: 4000000,
-                        child: Text('4 Mbps (低)'),
+                        child: Text(context.l10n.t('bitrate4Mbps')),
                       ),
                       DropdownMenuItem(
                         value: 8000000,
-                        child: Text('8 Mbps (默认/推荐)'),
+                        child: Text(context.l10n.t('bitrate8Mbps')),
                       ),
                       DropdownMenuItem(
                         value: 16000000,
-                        child: Text('16 Mbps (超清)'),
+                        child: Text(context.l10n.t('bitrate16Mbps')),
                       ),
                       DropdownMenuItem(
                         value: 32000000,
-                        child: Text('32 Mbps (极清/高带宽)'),
+                        child: Text(context.l10n.t('bitrate32Mbps')),
                       ),
                     ],
                     onChanged: (val) {
@@ -168,26 +172,29 @@ void showMirrorSettingsDialog({
                     },
                   ),
                   const SizedBox(height: 20),
-                  Text('最佳尺寸 (Max Size / 分辨率)', style: titleStyle),
+                  Text(context.l10n.t('maxSizeLabel'), style: titleStyle),
                   const SizedBox(height: 8),
                   DropdownButton<int>(
                     value: selectedMaxSize,
                     isExpanded: true,
                     dropdownColor: cardColor,
                     style: dropdownStyle,
-                    items: const [
-                      DropdownMenuItem(value: 0, child: Text('原始大小 (无限制)')),
+                    items: [
+                      DropdownMenuItem(
+                        value: 0,
+                        child: Text(context.l10n.t('sizeOriginal')),
+                      ),
                       DropdownMenuItem(
                         value: 720,
-                        child: Text('720p (1280x720)'),
+                        child: const Text('720p (1280x720)'),
                       ),
                       DropdownMenuItem(
                         value: 1080,
-                        child: Text('1080p (1920x1080, 默认)'),
+                        child: const Text('1080p (1920x1080, 默认)'),
                       ),
                       DropdownMenuItem(
                         value: 1440,
-                        child: Text('1440p (2K / 2560x1440)'),
+                        child: const Text('1440p (2K / 2560x1440)'),
                       ),
                     ],
                     onChanged: (val) {
@@ -201,7 +208,10 @@ void showMirrorSettingsDialog({
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text('音频转发 (Audio Forwarding)', style: titleStyle),
+                        child: Text(
+                          context.l10n.t('audioForwardingLabel'),
+                          style: titleStyle,
+                        ),
                       ),
                       Switch(
                         value: selectedAudio,
@@ -216,9 +226,9 @@ void showMirrorSettingsDialog({
                   ),
                   if (!isAudioSupported) ...[
                     const SizedBox(height: 4),
-                    const Text(
-                      '提示：当前设备系统版本较低 (Android 10及以下)，系统限制不支持音频转发。',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.t('audioForwardingNotSupported'),
+                      style: const TextStyle(
                         color: Colors.orangeAccent,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -264,9 +274,9 @@ void showMirrorSettingsDialog({
                   //   },
                   // ),
                   const SizedBox(height: 12),
-                  const Text(
-                    '注：修改设置后保存，投屏服务将自动重启以应用新画质。',
-                    style: TextStyle(color: Colors.grey, fontSize: 11),
+                  Text(
+                    context.l10n.t('mirrorSettingsNote'),
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
                   ),
                 ],
               ),
@@ -274,9 +284,9 @@ void showMirrorSettingsDialog({
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text(
-                  '取消',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                child: Text(
+                  context.l10n.t('cancel'),
+                  style: const TextStyle(color: Colors.grey, fontSize: 13),
                 ),
               ),
               ElevatedButton(
@@ -301,9 +311,11 @@ void showMirrorSettingsDialog({
                   // 提示并重启
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('正在重载投屏画质设置...'),
-                        duration: Duration(milliseconds: 1500),
+                      SnackBar(
+                        content: Text(
+                          context.l10n.t('reloadingMirrorSettings'),
+                        ),
+                        duration: const Duration(milliseconds: 1500),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -314,7 +326,10 @@ void showMirrorSettingsDialog({
                       .read(activeEmbeddedMirrorProvider(deviceId).notifier)
                       .restartMirroring();
                 },
-                child: const Text('保存并应用', style: TextStyle(fontSize: 13)),
+                child: Text(
+                  context.l10n.t('saveAndApply'),
+                  style: const TextStyle(fontSize: 13),
+                ),
               ),
             ],
           );

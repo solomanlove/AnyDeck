@@ -277,7 +277,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 const SizedBox(width: 16),
                 IconButton(
                   icon: const Icon(Icons.cast),
-                  tooltip: '投屏',
+                  tooltip: context.l10n.t('screenMirror'),
                   onPressed: device.isOnline
                       ? () => _openStandaloneMirror(context, ref, device)
                       : null,
@@ -367,6 +367,10 @@ Future<void> openStandaloneMirrorWindow(
   WidgetRef ref,
   AdbDevice device,
 ) async {
+  final windowTitle = context.l10n
+      .t('screenMirrorTitle')
+      .replaceAll('{name}', device.displayName);
+
   // 1. If mirroring is active, stop it first.
   final textureId = ref.read(activeEmbeddedMirrorProvider(device.id));
   if (textureId != null) {
@@ -390,7 +394,7 @@ Future<void> openStandaloneMirrorWindow(
         'deviceName': device.displayName,
       },
       frame: Offset.zero & initialSize,
-      title: '投屏 - ${device.displayName}',
+      title: windowTitle,
     );
   } catch (e) {
     debugPrint('Failed to open standalone mirror window: $e');

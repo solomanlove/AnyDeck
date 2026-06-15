@@ -164,6 +164,11 @@ const devicesControlZh = {
   'certInstall': '安装',
   'certSubjectHash': '主题哈希',
   'certSupportedFormats': '支持格式：',
+  'screenMirror': '投屏',
+  'screenMirrorTitle': '投屏 - {name}',
+  'selectDeviceToMirror': '请先连接并选择一个在线设备进行投屏',
+  'offlineControlWarning': '设备已离线，进入只读模式。控制操作已被禁用，当前仅展示缓存状态。',
+  'offlineDragInstallWarning': '设备已离线，无法进行文件拖拽或安装操作',
 };
 
 const devicesControlEn = {
@@ -343,4 +348,12 @@ const devicesControlEn = {
   'certInstall': 'Install',
   'certSubjectHash': 'Subject Hash',
   'certSupportedFormats': 'Supported formats: ',
+  'screenMirror': 'Screen Mirror',
+  'screenMirrorTitle': 'Mirror - {name}',
+  'selectDeviceToMirror':
+      'Please connect and select an online device to start screen mirroring.',
+  'offlineControlWarning':
+      'Device is offline, entering read-only mode. Control actions are disabled; showing cached state.',
+  'offlineDragInstallWarning':
+      'Device is offline, file drag-and-drop or installation is not available.',
 };

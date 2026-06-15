@@ -222,26 +222,46 @@ class _SettingsTab extends ConsumerWidget {
                         value: settings.autoIdentifyInterval,
                         underline: const SizedBox.shrink(),
                         icon: const Icon(CupertinoIcons.chevron_down, size: 16),
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 1,
-                            child: Text('1 秒'),
+                            child: Text(
+                              context.l10n
+                                  .t('secondsFormat')
+                                  .replaceAll('{value}', '1'),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 2,
-                            child: Text('2 秒'),
+                            child: Text(
+                              context.l10n
+                                  .t('secondsFormat')
+                                  .replaceAll('{value}', '2'),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 3,
-                            child: Text('3 秒'),
+                            child: Text(
+                              context.l10n
+                                  .t('secondsFormat')
+                                  .replaceAll('{value}', '3'),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 5,
-                            child: Text('5 秒'),
+                            child: Text(
+                              context.l10n
+                                  .t('secondsFormat')
+                                  .replaceAll('{value}', '5'),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 10,
-                            child: Text('10 秒'),
+                            child: Text(
+                              context.l10n
+                                  .t('secondsFormat')
+                                  .replaceAll('{value}', '10'),
+                            ),
                           ),
                         ],
                         onChanged: settings.autoIdentifyForegroundApp
@@ -403,7 +423,9 @@ class _SettingsTab extends ConsumerWidget {
                           ),
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                         ),
                         onPressed: () => showDialog<void>(
                           context: context,

@@ -180,7 +180,9 @@ class _FilesTab extends ConsumerWidget {
                   },
                 ),
                 IconButton(
-                  tooltip: navState.showHiddenFiles ? '隐藏隐藏文件' : '显示隐藏文件',
+                  tooltip: navState.showHiddenFiles
+                      ? context.l10n.t('hideHiddenFiles')
+                      : context.l10n.t('showHiddenFiles'),
                   icon: Icon(
                     navState.showHiddenFiles
                         ? CupertinoIcons.eye

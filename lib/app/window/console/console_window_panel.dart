@@ -75,7 +75,9 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
   /// 构建带语法高亮的单条日志 TextSpan
   TextSpan _buildLogSpan(String line, bool isDark) {
     // 匹配类似: "15:50:31.722 I adb: init"
-    final match = RegExp(r'^(\d{2}:\d{2}:\d{2}\.\d{3})\s+([IWE])\s+(.*?)$').firstMatch(line);
+    final match = RegExp(
+      r'^(\d{2}:\d{2}:\d{2}\.\d{3})\s+([IWE])\s+(.*?)$',
+    ).firstMatch(line);
     final TextStyle defaultStyle = TextStyle(
       fontFamily: Platform.isMacOS ? 'Menlo' : 'Consolas',
       fontSize: 12.0,
@@ -102,16 +104,11 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
       children: [
         TextSpan(
           text: '$time ',
-          style: TextStyle(
-            color: isDark ? Colors.grey[500] : Colors.grey[600],
-          ),
+          style: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[600]),
         ),
         TextSpan(
           text: '$level ',
-          style: TextStyle(
-            color: levelColor,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: levelColor, fontWeight: FontWeight.bold),
         ),
         TextSpan(text: '$content\n'),
       ],
@@ -215,7 +212,8 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                     children: [
                       Text(
                         context.l10n.t('console'),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: isDark
                                   ? const Color(0xffeceff1)
@@ -231,13 +229,20 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                           controller: _searchController,
                           style: const TextStyle(fontSize: 12),
                           decoration: InputDecoration(
-                            hintText: '搜索日志...',
+                            hintText: context.l10n.t('searchLogsHint'),
                             hintStyle: TextStyle(
-                              color: isDark ? Colors.grey[600] : Colors.grey[400],
+                              color: isDark
+                                  ? Colors.grey[600]
+                                  : Colors.grey[400],
                               fontSize: 12,
                             ),
-                            prefixIcon: const Icon(CupertinoIcons.search, size: 14),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                            prefixIcon: const Icon(
+                              CupertinoIcons.search,
+                              size: 14,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 0,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
@@ -268,10 +273,12 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                             },
                           ),
                           Text(
-                            '隐藏心跳',
+                            context.l10n.t('hideHeartbeats'),
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark ? Colors.grey[300] : Colors.grey[700],
+                              color: isDark
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
                             ),
                           ),
                         ],
@@ -290,10 +297,12 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                             },
                           ),
                           Text(
-                            '自动滚动',
+                            context.l10n.t('autoScroll'),
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark ? Colors.grey[300] : Colors.grey[700],
+                              color: isDark
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
                             ),
                           ),
                         ],
@@ -301,13 +310,13 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                       const SizedBox(width: 12),
                       // 复制日志按钮
                       IconButton(
-                        tooltip: '复制全部',
+                        tooltip: context.l10n.t('copyAll'),
                         icon: const Icon(CupertinoIcons.doc_on_doc, size: 18),
                         onPressed: () => _copyAllLogs(filteredLogs),
                       ),
                       // 清空日志按钮
                       IconButton(
-                        tooltip: '清空',
+                        tooltip: context.l10n.t('clear'),
                         icon: const Icon(CupertinoIcons.trash, size: 18),
                         onPressed: () {
                           ref.read(logHistoryProvider.notifier).clear();

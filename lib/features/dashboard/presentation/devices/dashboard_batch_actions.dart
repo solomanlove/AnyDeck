@@ -155,8 +155,10 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
     BuildContext context,
     List<RegisteredDevice> devices,
   ) async {
+    final titleTemplate = context.l10n.t('screenMirrorTitle');
     int started = 0;
     for (final device in devices) {
+      final windowTitle = titleTemplate.replaceAll('{name}', device.displayName);
       try {
         // 1. 如果该设备在主窗口已经开启了内嵌投屏，先停止它
         final textureId = ref.read(activeEmbeddedMirrorProvider(device.id));
@@ -180,7 +182,7 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
             'deviceName': device.displayName,
           },
           frame: Offset.zero & initialSize,
-          title: '投屏 - ${device.displayName}',
+          title: windowTitle,
         );
         started++;
       } catch (e) {

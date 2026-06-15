@@ -118,6 +118,9 @@ const appsFilesLogcatZh = {
   'logcatSearchPrev': '上一个',
   'logcatSearchNext': '下一个',
   'logcatNoMatches': '无匹配项',
+  'offlineAppsWarning': '设备已离线，进入只读模式。应用操作与刷新已被禁用，当前仅展示缓存列表。',
+  'showHiddenFiles': '显示隐藏文件',
+  'hideHiddenFiles': '隐藏隐藏文件',
 };
 
 const appsFilesLogcatEn = {
@@ -149,7 +152,8 @@ const appsFilesLogcatEn = {
   'noPackages': 'No packages',
   'appDetails': 'App details',
   'appMirroring': 'App Screen Mirroring',
-  'appMirroringSuccess': 'Successfully started app screen mirroring for {package}',
+  'appMirroringSuccess':
+      'Successfully started app screen mirroring for {package}',
   'appMirroringFailed': 'Failed to start app screen mirroring: {error}',
   'openSystemAppInfo': 'Open app info on device',
   'launch': 'Launch',
@@ -245,4 +249,8 @@ const appsFilesLogcatEn = {
   'logcatSearchPrev': 'Previous match',
   'logcatSearchNext': 'Next match',
   'logcatNoMatches': 'No matches',
+  'offlineAppsWarning':
+      'Device is offline, entering read-only mode. App actions and refresh are disabled; showing cached list.',
+  'showHiddenFiles': 'Show Hidden Files',
+  'hideHiddenFiles': 'Hide Hidden Files',
 };

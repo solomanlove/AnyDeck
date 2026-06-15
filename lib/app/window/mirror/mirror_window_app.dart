@@ -88,16 +88,15 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
 /// 投屏窗口的 UI 状态类，混入 WindowListener 以响应桌面窗口交互事件。
 class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     with WindowListener {
-  
   /// 投屏业务控制器
   late final MirrorWindowController _controller;
-  
+
   /// 用于捕获键盘事件的 FocusNode
   late final FocusNode _keyboardFocusNode;
-  
+
   /// 记录上一次鼠标按下的时间，用于辅助判定双击事件
   DateTime? _lastPointerDownTime;
-  
+
   /// 用于获取投屏窗口实际渲染尺寸的 Key
   final GlobalKey _viewerKey = GlobalKey();
 
@@ -191,16 +190,14 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     );
 
     // 监听应用设置变更，以同步更新定时器配置
-    ref.listen<AppSettings>(
-      appSettingsProvider,
-      (previous, next) {
-        if (previous == null ||
-            previous.autoIdentifyForegroundApp != next.autoIdentifyForegroundApp ||
-            previous.autoIdentifyInterval != next.autoIdentifyInterval) {
-          _controller.updateAutoIdentifyTimer(next);
-        }
-      },
-    );
+    ref.listen<AppSettings>(appSettingsProvider, (previous, next) {
+      if (previous == null ||
+          previous.autoIdentifyForegroundApp !=
+              next.autoIdentifyForegroundApp ||
+          previous.autoIdentifyInterval != next.autoIdentifyInterval) {
+        _controller.updateAutoIdentifyTimer(next);
+      }
+    });
 
     final textureId = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
     final isMirrorActive = textureId != null;
@@ -216,18 +213,20 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     // 根据控制器状态组装核心内容区域
     Widget contentWidget;
     if (_controller.isLoading) {
-      contentWidget = const Center(
+      contentWidget = Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('正在启动投屏服务...', style: TextStyle(fontSize: 14)),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              context.l10n.t('startingMirrorService'),
+              style: const TextStyle(fontSize: 14),
+            ),
           ],
         ),
       );
-    }
-    else if (_controller.errorMessage != null) {
+    } else if (_controller.errorMessage != null) {
       contentWidget = Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -237,7 +236,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
               const Icon(Icons.error_outline, color: Colors.red, size: 48),
               const SizedBox(height: 16),
               Text(
-                '投屏启动失败',
+                context.l10n.t('mirrorStartFailed'),
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -254,14 +253,13 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
               ElevatedButton.icon(
                 onPressed: _controller.startMirroring,
                 icon: const Icon(Icons.refresh),
-                label: const Text('重试'),
+                label: Text(context.l10n.t('retry')),
               ),
             ],
           ),
         ),
       );
-    }
-    else if (isMirrorActive) {
+    } else if (isMirrorActive) {
       contentWidget = Column(
         children: [
           // 非全屏且非单应用模式下，展示顶部浮动操作栏
@@ -303,9 +301,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           ),
         ],
       );
-    }
-    else {
-      contentWidget = const Center(child: Text('未连接或投屏已停止'));
+    } else {
+      contentWidget = Center(child: Text(context.l10n.t('mirrorStopped')));
     }
 
     return Scaffold(
@@ -333,9 +330,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                 DragToMoveArea(
                   child: Container(
                     height: 30,
-                    padding: EdgeInsets.only(
-                      left: Platform.isMacOS ? 80 : 16,
-                    ),
+                    padding: EdgeInsets.only(left: Platform.isMacOS ? 80 : 16),
                     decoration: BoxDecoration(
                       color: headerBgColor,
                       border: Border(
@@ -352,25 +347,42 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                   widget.deviceName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.headlineSmall
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
                                       ?.copyWith(fontSize: 16),
                                 ),
                               ),
-                              if (_controller.currentForegroundPackage != null &&
-                                  _controller.currentForegroundPackage!.iconLocalPath != null &&
-                                  File(_controller.currentForegroundPackage!.iconLocalPath!).existsSync()) ...[
+                              if (_controller.currentForegroundPackage !=
+                                      null &&
+                                  _controller
+                                          .currentForegroundPackage!
+                                          .iconLocalPath !=
+                                      null &&
+                                  File(
+                                    _controller
+                                        .currentForegroundPackage!
+                                        .iconLocalPath!,
+                                  ).existsSync()) ...[
                                 const SizedBox(width: 8),
                                 Tooltip(
-                                  message: _controller.currentForegroundPackage!.displayName,
+                                  message: _controller
+                                      .currentForegroundPackage!
+                                      .displayName,
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(4),
                                     child: Image.file(
-                                      File(_controller.currentForegroundPackage!.iconLocalPath!),
+                                      File(
+                                        _controller
+                                            .currentForegroundPackage!
+                                            .iconLocalPath!,
+                                      ),
                                       width: 18,
                                       height: 18,
                                       fit: BoxFit.contain,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          const SizedBox.shrink(),
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const SizedBox.shrink(),
                                     ),
                                   ),
                                 ),
@@ -388,7 +400,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                 ? Colors.orange
                                 : (isDark ? Colors.white70 : Colors.black87),
                           ),
-                          tooltip: _controller.isAlwaysOnTop ? '取消置顶' : '置顶窗口',
+                          tooltip: _controller.isAlwaysOnTop
+                              ? context.l10n.t('unpinAlwaysOnTop')
+                              : context.l10n.t('pinAlwaysOnTop'),
                           onPressed: _controller.toggleAlwaysOnTop,
                         ),
                         // 窗口全屏按钮
@@ -399,7 +413,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                 : CupertinoIcons.fullscreen,
                             color: isDark ? Colors.white70 : Colors.black87,
                           ),
-                          tooltip: _controller.isFullScreen ? '退出全屏' : '全屏显示',
+                          tooltip: _controller.isFullScreen
+                              ? context.l10n.t('exitFullScreen')
+                              : context.l10n.t('enterFullScreen'),
                           onPressed: () => _controller.toggleFullScreen(
                             context,
                             !_controller.isFullScreen,
@@ -411,7 +427,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                             CupertinoIcons.settings,
                             color: isDark ? Colors.white70 : Colors.black87,
                           ),
-                          tooltip: '投屏画质设置',
+                          tooltip: context.l10n.t('mirrorQualitySettings'),
                           onPressed: () => showMirrorSettingsDialog(
                             context: context,
                             ref: ref,

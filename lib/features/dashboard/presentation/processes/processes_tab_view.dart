@@ -5,13 +5,13 @@ extension _ProcessesTabView on _ProcessesTabState {
   Widget _buildProcessesTab(BuildContext context) {
     final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
     if (!isOnline) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(CupertinoIcons.bolt_slash, size: 48, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('手机离线，无法读取进程列表'),
+            const Icon(CupertinoIcons.bolt_slash, size: 48, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(context.l10n.t('offlineProcessWarning')),
           ],
         ),
       );
@@ -92,12 +92,12 @@ extension _ProcessesTabView on _ProcessesTabState {
                     ),
                   );
                 },
-                loading: () => const Text('读取中...'),
-                error: (_, error) => const Text('加载失败'),
+                loading: () => Text(context.l10n.t('reading')),
+                error: (_, error) => Text(context.l10n.t('loadFailed')),
               ),
               const Spacer(),
               IconButton(
-                tooltip: '手动刷新进程',
+                tooltip: context.l10n.t('refreshProcessesTooltip'),
                 icon: _refreshing
                     ? const SizedBox(
                         width: 18,
@@ -118,7 +118,7 @@ extension _ProcessesTabView on _ProcessesTabState {
                       ? Theme.of(context).colorScheme.onErrorContainer
                       : null,
                 ),
-                tooltip: '结束选中的进程',
+                tooltip: context.l10n.t('killSelectedProcess'),
                 onPressed: _selectedPid != null ? _killProcess : null,
               ),
             ],
@@ -128,13 +128,13 @@ extension _ProcessesTabView on _ProcessesTabState {
           // Process Table
           Expanded(
             child: processesAsync.when(
-              loading: () => const Center(
+              loading: () => Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('正在加载手机进程列表...'),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(context.l10n.t('loadingProcessList')),
                   ],
                 ),
               ),
@@ -148,11 +148,15 @@ extension _ProcessesTabView on _ProcessesTabState {
                       color: Colors.red,
                     ),
                     const SizedBox(height: 16),
-                    Text('加载进程列表失败: $error'),
+                    Text(
+                      context.l10n
+                          .t('loadProcessListFailed')
+                          .replaceAll('{error}', error.toString()),
+                    ),
                     const SizedBox(height: 12),
                     FilledButton(
                       onPressed: () => _refreshProcesses(),
-                      child: const Text('重试'),
+                      child: Text(context.l10n.t('retry')),
                     ),
                   ],
                 ),
@@ -161,17 +165,17 @@ extension _ProcessesTabView on _ProcessesTabState {
                 final filtered = _sortAndFilterProcesses(items, packages);
 
                 if (filtered.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           CupertinoIcons.list_bullet,
                           size: 48,
                           color: Colors.grey,
                         ),
-                        SizedBox(height: 16),
-                        Text('未发现匹配的运行进程'),
+                        const SizedBox(height: 16),
+                        Text(context.l10n.t('noMatchingProcesses')),
                       ],
                     ),
                   );

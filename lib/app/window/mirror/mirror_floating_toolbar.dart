@@ -295,7 +295,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               onPointerDown: () =>
                   _volumeLongPressHandler.handleVolumeDownPointerDown(context),
               onPointerUp: _volumeLongPressHandler.handleVolumeDownPointerUp,
-              onPointerCancel: _volumeLongPressHandler.handleVolumeDownPointerUp,
+              onPointerCancel:
+                  _volumeLongPressHandler.handleVolumeDownPointerUp,
             ),
             const _VerticalDivider(),
 
@@ -354,7 +355,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   color: isDark ? Colors.white70 : Colors.black87,
                 ),
               ),
-              tooltip: '获取剪切板并输入文本',
+              tooltip: context.l10n.t('getClipboardInput'),
               onPressed: () async {
                 final clipboardData = await Clipboard.getData(
                   Clipboard.kTextPlain,
@@ -370,8 +371,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   );
                   if (!success && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('发送剪切板文本失败，请确保投屏运行中'),
+                      SnackBar(
+                        content: Text(context.l10n.t('sendClipboardFailed')),
                         backgroundColor: Colors.red,
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -380,8 +381,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 } else {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('剪切板为空或获取失败'),
+                      SnackBar(
+                        content: Text(context.l10n.t('clipboardEmpty')),
                         backgroundColor: Colors.orange,
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -445,7 +446,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   showDialog<void>(
                     context: context,
                     builder: (context) {
-                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      final isDark =
+                          Theme.of(context).brightness == Brightness.dark;
                       final cardColor = isDark
                           ? const Color(0xff1e1e1e)
                           : const Color(0xffffffff);
@@ -455,8 +457,18 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        contentPadding: const EdgeInsets.fromLTRB(
+                          16,
+                          8,
+                          16,
+                          16,
+                        ),
+                        actionsPadding: const EdgeInsets.fromLTRB(
+                          16,
+                          0,
+                          16,
+                          12,
+                        ),
                         title: Row(
                           children: [
                             Icon(
@@ -465,9 +477,9 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                               size: 20,
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              '当前焦点窗口',
-                              style: TextStyle(
+                            Text(
+                              context.l10n.t('currentFocusWindow'),
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -481,9 +493,9 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text(
-                              '确定',
-                              style: TextStyle(fontSize: 13),
+                            child: Text(
+                              context.l10n.t('ok'),
+                              style: const TextStyle(fontSize: 13),
                             ),
                           ),
                         ],

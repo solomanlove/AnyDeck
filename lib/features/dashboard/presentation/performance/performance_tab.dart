@@ -63,7 +63,6 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   static const String _unifiedCommand =
       r'''focusLine=$(dumpsys window | grep mCurrentFocus || true); cat /proc/uptime; echo "---"; dumpsys battery; echo "---"; cat /proc/meminfo; echo "---"; echo "$focusLine"; echo "---"; cat /proc/stat | grep "^cpu"; echo "---"; for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32; do if [ -d "/sys/devices/system/cpu/cpu$i" ]; then freq_file="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; if [ -f "$freq_file" ]; then cat "$freq_file"; else echo "0"; fi; fi; done; echo "---"; tmp=${focusLine%%/*}; pkg=${tmp##* }; pkg=${pkg##*{}; pkg=${pkg%%\}}; case "$pkg" in *.*) case "$pkg" in *[\{\}\/\=\ ]*) pkg="" ;; esac ;; *) pkg="" ;; esac; if [ -n "$pkg" ]; then dumpsys gfxinfo "$pkg" | grep "Total frames rendered:" || true; fi; true''';
 
-
   @override
   void initState() {
     super.initState();
@@ -177,7 +176,9 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
           _stopPolling();
         }
         setState(() {
-          _errorMsg = result.stderr.isNotEmpty ? result.stderr : 'ADB 命令执行失败';
+          _errorMsg = result.stderr.isNotEmpty
+              ? result.stderr
+              : 'ADB shell failed';
           _isLoading = false;
         });
         return;
@@ -295,13 +296,16 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
     }
 
     if (_isLoading && _historyOverallCpu.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('正在初始化性能数据面板...', style: TextStyle(color: Color(0xff5f6b6e))),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              context.l10n.t('initPerformancePanel'),
+              style: const TextStyle(color: Color(0xff5f6b6e)),
+            ),
           ],
         ),
       );
@@ -321,7 +325,9 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
               ),
               const SizedBox(height: 16),
               Text(
-                '数据获取失败: $_errorMsg',
+                context.l10n
+                    .t('fetchPerformanceDataFailed')
+                    .replaceAll('{error}', _errorMsg ?? ''),
                 style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.w600,
@@ -331,7 +337,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
               const SizedBox(height: 12),
               FilledButton.icon(
                 icon: const Icon(CupertinoIcons.refresh),
-                label: const Text('重试连接'),
+                label: Text(context.l10n.t('reconnectRetry')),
                 onPressed: _startPolling,
               ),
             ],
@@ -348,7 +354,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
       orElse: () => AdbPackage(name: _foregroundAppPackage, system: false),
     );
     final appDisplayName = matchedPkg.name.isEmpty
-        ? '无活动窗口'
+        ? context.l10n.t('noActiveWindow')
         : matchedPkg.displayName;
 
     return RefreshIndicator(

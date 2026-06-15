@@ -106,6 +106,9 @@ class _PackageActions extends ConsumerWidget {
             tooltip: context.l10n.t('appMirroring'),
             icon: const Icon(Icons.cast),
             onPressed: () async {
+              final windowTitle = context.l10n
+                  .t('screenMirrorTitle')
+                  .replaceAll('{name}', package.displayName);
               // 1. 如果内嵌投屏处于活跃状态，先停止内嵌投屏
               final textureId = ref.read(activeEmbeddedMirrorProvider(deviceId));
               if (textureId != null) {
@@ -157,7 +160,7 @@ class _PackageActions extends ConsumerWidget {
                     'startApp': packageName,
                   },
                   frame: Offset.zero & initialSize,
-                  title: '投屏 - ${package.displayName}',
+                  title: windowTitle,
                 );
               } catch (e) {
                 if (context.mounted) {

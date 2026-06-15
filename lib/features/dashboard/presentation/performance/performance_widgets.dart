@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'performance_charts.dart';
 import 'performance_bar_chart.dart';
 import 'performance_data.dart';
+import '../../../../app/l10n/app_localizations.dart';
 
 /// 顶部开机时间和电量状态组件。
 class PerformanceTopStatusRow extends StatelessWidget {
@@ -34,7 +35,7 @@ class PerformanceTopStatusRow extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                '已开机 $uptime',
+                context.l10n.t('uptimeFormat').replaceAll('{uptime}', uptime),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
@@ -215,7 +216,9 @@ class CpuCoresGrid extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 11,
-                        color: isDark ? Colors.grey[400] : const Color(0xff5f6b6e),
+                        color: isDark
+                            ? Colors.grey[400]
+                            : const Color(0xff5f6b6e),
                       ),
                     ),
                     Text(
@@ -284,7 +287,12 @@ class MemoryOverviewCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '内存 ${memoryUsagePercent.toStringAsFixed(0)}%',
+                  context.l10n
+                      .t('memoryPercentFormat')
+                      .replaceAll(
+                        '{percent}',
+                        memoryUsagePercent.toStringAsFixed(0),
+                      ),
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -357,12 +365,16 @@ class FpsOverviewCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'FPS $appDisplayName',
+                    context.l10n
+                        .t('fpsFormat')
+                        .replaceAll('{app}', appDisplayName),
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
-                      color: isDark ? Colors.grey[200] : const Color(0xff202124),
+                      color: isDark
+                          ? Colors.grey[200]
+                          : const Color(0xff202124),
                     ),
                   ),
                 ),

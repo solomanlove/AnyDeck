@@ -60,7 +60,11 @@ class _WorkspacePanel extends ConsumerWidget {
     }
     final isOnline = ref.read(deviceOnlineProvider(device.id));
     if (!isOnline) {
-      _showSnack(context, '设备已离线，无法进行文件拖拽或安装操作', isError: true);
+      _showSnack(
+        context,
+        context.l10n.t('offlineDragInstallWarning'),
+        isError: true,
+      );
       return;
     }
     final appService = ref.read(appManagementServiceProvider);

@@ -113,7 +113,11 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
       final latestTarget = await _resolveLatestTarget(target);
       if (latestTarget == null) {
         if (mounted) {
-          DashboardSnack.show(context, '网页调试目标已失效，请刷新后重试', isError: true);
+          DashboardSnack.show(
+            context,
+            context.l10n.t('webpageTargetInvalid'),
+            isError: true,
+          );
         }
         return;
       }
@@ -129,11 +133,17 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
       }
       await service.openInspector(latestTarget, useLocal);
       if (mounted) {
-        DashboardSnack.show(context, '正在尝试开启调试器...');
+        DashboardSnack.show(context, context.l10n.t('attemptingStartDebugger'));
       }
     } catch (e) {
       if (mounted) {
-        DashboardSnack.show(context, '启动调试器失败: $e', isError: true);
+        DashboardSnack.show(
+          context,
+          context.l10n
+              .t('startDebuggerFailed')
+              .replaceAll('{error}', e.toString()),
+          isError: true,
+        );
       }
     }
   }
@@ -167,7 +177,13 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
       await service.openBrowser(target.url);
     } catch (e) {
       if (mounted) {
-        DashboardSnack.show(context, '在浏览器中打开链接失败: $e', isError: true);
+        DashboardSnack.show(
+          context,
+          context.l10n
+              .t('openInBrowserFailed')
+              .replaceAll('{error}', e.toString()),
+          isError: true,
+        );
       }
     }
   }
@@ -188,13 +204,13 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
     final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
     if (!isOnline) {
       _stopRefreshTimer();
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(CupertinoIcons.bolt_slash, size: 48, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('手机离线，无法读取网页调试列表'),
+            const Icon(CupertinoIcons.bolt_slash, size: 48, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(context.l10n.t('offlineWebpagesWarning')),
           ],
         ),
       );
@@ -279,7 +295,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
               const SizedBox(width: 12),
               // 刷新按钮
               IconButton(
-                tooltip: '手动刷新网页列表',
+                tooltip: context.l10n.t('refreshWebpagesTooltip'),
                 icon: _refreshing
                     ? const SizedBox(
                         width: 18,
@@ -336,13 +352,13 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
           // 网页列表表格
           Expanded(
             child: targetsAsync.when(
-              loading: () => const Center(
+              loading: () => Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('正在加载手机网页调试目标...'),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(context.l10n.t('loadingWebpages')),
                   ],
                 ),
               ),
@@ -356,11 +372,15 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                       color: Colors.red,
                     ),
                     const SizedBox(height: 16),
-                    Text('加载网页列表失败: $error'),
+                    Text(
+                      context.l10n
+                          .t('loadWebpagesFailed')
+                          .replaceAll('{error}', error.toString()),
+                    ),
                     const SizedBox(height: 12),
                     FilledButton(
                       onPressed: () => _refreshTargets(),
-                      child: const Text('重试'),
+                      child: Text(context.l10n.t('retry')),
                     ),
                   ],
                 ),
