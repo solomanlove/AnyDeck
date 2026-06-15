@@ -9,7 +9,6 @@ import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
-import '../../settings/app_settings.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/apps/adb_package.dart';
 import '../../../core/providers/transfer_provider.dart';
@@ -55,7 +54,6 @@ class MirrorWindowController extends ChangeNotifier {
   bool get isAlwaysOnTop => _isAlwaysOnTop;
 
   Timer? _identifyTimer;
-  Timer? _autoIdentifyTimer;
   String? _currentPackageName;
   AdbPackage? _currentForegroundPackage;
   AdbPackage? get currentForegroundPackage => _currentForegroundPackage;
@@ -107,8 +105,6 @@ class MirrorWindowController extends ChangeNotifier {
 
     // 异步启动投屏服务
     startMirroring();
-    // 初始化自动识别定时器
-    updateAutoIdentifyTimer(ref.read(appSettingsProvider));
   }
 
   /// 释放控制器持有的资源
@@ -117,7 +113,6 @@ class MirrorWindowController extends ChangeNotifier {
       _windowChannel.setMethodCallHandler(null);
     }
     _identifyTimer?.cancel();
-    _autoIdentifyTimer?.cancel();
     _autoFitTimer?.cancel();
     forceStopMirroring();
   }
@@ -379,7 +374,9 @@ class MirrorWindowController extends ChangeNotifier {
   }
   void triggerIdentifyForegroundApp() {
     _identifyTimer?.cancel();
-    _identifyTimer = Timer(const Duration(milliseconds: 300), identifyForegroundApp);
+    final settings = ref.read(appSettingsProvider);
+    // 使用设置中的秒数作为防抖时间，避免频繁点击导致 ADB 进程拥堵
+    _identifyTimer = Timer(Duration(seconds: settings.autoIdentifyInterval), identifyForegroundApp);
   }
   Future<void> identifyForegroundApp() async {
     if (_isIdentifyingApp) return;
@@ -427,12 +424,6 @@ class MirrorWindowController extends ChangeNotifier {
     } finally {
       _isIdentifyingApp = false;
     }
-  }
-  void updateAutoIdentifyTimer(AppSettings settings) {
-    _autoIdentifyTimer?.cancel();
-    _autoIdentifyTimer = settings.autoIdentifyForegroundApp
-        ? Timer.periodic(Duration(seconds: settings.autoIdentifyInterval), (_) => identifyForegroundApp())
-        : null;
   }
   /// 更新前台应用详情
   void updateForegroundPackageFromList(List<AdbPackage> packages) {

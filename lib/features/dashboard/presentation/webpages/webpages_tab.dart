@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/l10n/app_localizations.dart';
@@ -137,16 +138,6 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
           DashboardSnack.show(
             context,
             context.l10n.t('webpageTargetInvalid'),
-            isError: true,
-          );
-        }
-        return;
-      }
-      if (latestTarget.isAttached) {
-        if (mounted) {
-          DashboardSnack.show(
-            context,
-            context.l10n.t('webDebugTargetAttached'),
             isError: true,
           );
         }
@@ -354,25 +345,15 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
               IconButton(
                 icon: const Icon(CupertinoIcons.ant, size: 20),
                 style: IconButton.styleFrom(
-                  backgroundColor:
-                      _selectedTarget != null &&
-                          _selectedTarget?.isAttached != true
+                  backgroundColor: _selectedTarget != null
                       ? Theme.of(context).colorScheme.primaryContainer
                       : null,
-                  foregroundColor:
-                      _selectedTarget != null &&
-                          _selectedTarget?.isAttached != true
+                  foregroundColor: _selectedTarget != null
                       ? Theme.of(context).colorScheme.onPrimaryContainer
                       : null,
                 ),
-                tooltip: _selectedTarget?.isAttached == true
-                    ? context.l10n.t('webDebugTargetAttached')
-                    : context.l10n.t('inspectWebpage'),
-                onPressed:
-                    _selectedTarget != null &&
-                        _selectedTarget?.isAttached != true
-                    ? _inspectTarget
-                    : null,
+                tooltip: context.l10n.t('inspectWebpage'),
+                onPressed: _selectedTarget != null ? _inspectTarget : null,
               ),
               const SizedBox(width: 8),
               // 浏览器打开按钮 (Globe 图标)

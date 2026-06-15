@@ -15,16 +15,19 @@ import '../../../features/dashboard/presentation/control/device_settings_popup.d
 import '../../../features/dashboard/presentation/widgets/device_power_actions.dart';
 import 'mirror_back_long_press_handler.dart';
 import 'mirror_volume_long_press_handler.dart';
+import 'mirror_window_controller.dart';
 
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   const MirrorFloatingToolbar({
     super.key,
     required this.deviceId,
     required this.windowId,
+    required this.controller,
   });
 
   final String deviceId;
   final String windowId;
+  final MirrorWindowController controller;
 
   @override
   ConsumerState<MirrorFloatingToolbar> createState() =>
@@ -441,6 +444,9 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               ),
               tooltip: context.l10n.t('focus'),
               onPressed: () async {
+                // 手动点击前台窗口图标触发识别前台应用
+                widget.controller.identifyForegroundApp();
+
                 final res = await actions.currentFocus(widget.deviceId);
                 if (context.mounted) {
                   showDialog<void>(

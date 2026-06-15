@@ -8,7 +8,6 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
-import '../../settings/app_settings.dart';
 import '../../theme/app_theme.dart';
 import '../../../features/dashboard/presentation/control/embedded_scrcpy_viewer.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
@@ -203,15 +202,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       },
     );
 
-    // 监听应用设置变更，以同步更新定时器配置
-    ref.listen<AppSettings>(appSettingsProvider, (previous, next) {
-      if (previous == null ||
-          previous.autoIdentifyForegroundApp !=
-              next.autoIdentifyForegroundApp ||
-          previous.autoIdentifyInterval != next.autoIdentifyInterval) {
-        _controller.updateAutoIdentifyTimer(next);
-      }
-    });
 
     final textureId = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
     final isMirrorActive = textureId != null;
@@ -283,6 +273,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
               child: MirrorFloatingToolbar(
                 deviceId: widget.deviceId,
                 windowId: widget.windowId,
+                controller: _controller,
               ),
             ),
           Expanded(
@@ -299,7 +290,10 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                     _controller.handleDoubleTap(context, e);
                   }
                   _lastPointerDownTime = now;
-                  _controller.triggerIdentifyForegroundApp();
+                  // 只有开启了自动识别设置，点击手机画面时才触发自动防抖识别
+                  if (settings.autoIdentifyForegroundApp) {
+                    _controller.triggerIdentifyForegroundApp();
+                  }
                 },
                 child: EmbeddedScrcpyViewer(
                   deviceId: widget.deviceId,

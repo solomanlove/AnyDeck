@@ -56,6 +56,59 @@ class _WebpageTableState extends State<_WebpageTable> {
     super.dispose();
   }
 
+  /// 显示右键上下文菜单，支持复制 URL 地址
+  void _showContextMenu(
+    BuildContext context,
+    Offset position,
+    WebpageTarget target,
+  ) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final popupBgColor =
+        isDark ? const Color(0xff1e222b) : const Color(0xfff5f6f8);
+    final popupBorderColor =
+        isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xffeceef1);
+
+    final result = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx,
+        position.dy,
+      ),
+      color: popupBgColor,
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: popupBorderColor, width: 1),
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: 'copy_url',
+          height: 38,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(CupertinoIcons.doc_on_doc, size: 14),
+              const SizedBox(width: 8),
+              Text(
+                context.l10n.t('copyUrl'),
+                style: const TextStyle(fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (result == 'copy_url' && context.mounted) {
+      await Clipboard.setData(ClipboardData(text: target.url));
+      if (context.mounted) {
+        DashboardSnack.show(context, context.l10n.t('copySuccess'));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tableWidth = widget.widths.total;
@@ -148,6 +201,9 @@ class _WebpageTableState extends State<_WebpageTable> {
 
     return InkWell(
       onTap: () => widget.onSelected(target),
+      onSecondaryTapDown: (details) {
+        _showContextMenu(context, details.globalPosition, target);
+      },
       child: Container(
         height: 56,
         decoration: BoxDecoration(
