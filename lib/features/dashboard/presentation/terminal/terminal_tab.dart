@@ -213,71 +213,73 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                 final session = sessions[index];
                 final isActive = session.id == activeSessionId;
 
-                return Material(
-                  color: isActive
-                      ? Theme.of(
-                          context,
-                        ).colorScheme.primaryContainer.withValues(alpha: 0.5)
-                      : Colors.transparent,
-                  child: InkWell(
-                    onTap: () =>
-                        notifier.selectSession(widget.device.id, session.id),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          right: BorderSide(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.2),
-                          ),
-                          bottom: isActive
-                              ? BorderSide(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  width: 2,
-                                )
-                              : BorderSide.none,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            CupertinoIcons.chevron_left_slash_chevron_right,
-                            size: 16,
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+                  child: Material(
+                    color: isActive
+                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () =>
+                          notifier.selectSession(widget.device.id, session.id),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
                             color: isActive
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.grey,
+                                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+                                : Colors.transparent,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            context.l10n
-                                .t('terminalTabLabel')
-                                .replaceAll('{index}', '${index + 1}'),
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isActive
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              CupertinoIcons.chevron_left_slash_chevron_right,
+                              size: 14,
                               color: isActive
-                                  ? Theme.of(
-                                      context,
-                                    ).colorScheme.onPrimaryContainer
-                                  : null,
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(CupertinoIcons.xmark, size: 12),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            splashRadius: 12,
-                            onPressed: () => notifier.closeSession(
-                              widget.device.id,
-                              session.id,
+                            const SizedBox(width: 6),
+                            Text(
+                              context.l10n
+                                  .t('terminalTabLabel')
+                                  .replaceAll('{index}', '${index + 1}'),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: isActive
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isActive
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(4),
+                              onTap: () => notifier.closeSession(
+                                widget.device.id,
+                                session.id,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(
+                                  CupertinoIcons.xmark,
+                                  size: 10,
+                                  color: isActive
+                                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)
+                                      : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
