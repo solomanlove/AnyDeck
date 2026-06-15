@@ -200,28 +200,44 @@ class _CompactDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      initialValue: value,
-      isDense: true,
-      isExpanded: true,
-      decoration: const InputDecoration(
+    return SizedBox(
+      height: 38,
+      child: DropdownButtonFormField<T>(
+        initialValue: value,
         isDense: true,
-        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        border: OutlineInputBorder(),
-      ),
-      items: items.entries
-          .map(
-            (entry) => DropdownMenuItem<T>(
-              value: entry.key,
-              child: Text(entry.value, overflow: TextOverflow.ellipsis),
+        isExpanded: true,
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
             ),
-          )
-          .toList(growable: false),
-      onChanged: (value) {
-        if (value != null) {
-          onChanged(value);
-        }
-      },
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+          ),
+        ),
+        items: items.entries
+            .map(
+              (entry) => DropdownMenuItem<T>(
+                value: entry.key,
+                child: Text(entry.value, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(growable: false),
+        onChanged: (value) {
+          if (value != null) {
+            onChanged(value);
+          }
+        },
+      ),
     );
   }
 }
@@ -330,40 +346,56 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
           ),
       ],
       builder: (context, controller, child) {
-        return TextField(
-          controller: widget.controller,
-          focusNode: _focusNode,
-          minLines: 1,
-          maxLines: 1,
-          style: const TextStyle(fontSize: 13),
-          decoration: InputDecoration(
-            isDense: true,
-            prefixIcon: widget.prefixIcon == null
-                ? null
-                : Icon(widget.prefixIcon, size: 16),
-            prefixIconConstraints: const BoxConstraints(minWidth: 32),
-            suffixIcon: widget.history.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: context.l10n.t('logcatFilterHistory'),
-                    icon: const Icon(CupertinoIcons.chevron_down, size: 18),
-                    onPressed: _openHistory,
-                  ),
-            suffixIconConstraints: const BoxConstraints(minWidth: 30),
-            hintText: widget.hintText,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 9,
+        return SizedBox(
+          height: 38,
+          child: TextField(
+            controller: widget.controller,
+            focusNode: _focusNode,
+            minLines: 1,
+            maxLines: 1,
+            style: const TextStyle(fontSize: 13),
+            decoration: InputDecoration(
+              isDense: true,
+              prefixIcon: widget.prefixIcon == null
+                  ? null
+                  : Icon(widget.prefixIcon, size: 16),
+              prefixIconConstraints: const BoxConstraints(minWidth: 32),
+              suffixIcon: widget.history.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: context.l10n.t('logcatFilterHistory'),
+                      icon: const Icon(CupertinoIcons.chevron_down, size: 16),
+                      onPressed: _openHistory,
+                    ),
+              suffixIconConstraints: const BoxConstraints(minWidth: 30),
+              hintText: widget.hintText,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
             ),
-            border: const OutlineInputBorder(),
+            textInputAction: TextInputAction.done,
+            onTap: _openHistory,
+            onChanged: widget.onChanged,
+            onSubmitted: (value) {
+              widget.onSubmitted(value);
+              _focusNode.unfocus();
+            },
           ),
-          textInputAction: TextInputAction.done,
-          onTap: _openHistory,
-          onChanged: widget.onChanged,
-          onSubmitted: (value) {
-            widget.onSubmitted(value);
-            _focusNode.unfocus();
-          },
         );
       },
     );
@@ -385,21 +417,11 @@ class _LogcatIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Tooltip(
       message: tooltip,
-      child: IconButton.filledTonal(
-        style: IconButton.styleFrom(
-          fixedSize: const Size(36, 36),
-          minimumSize: const Size(36, 36),
-          backgroundColor: selected
-              ? colorScheme.primaryContainer
-              : colorScheme.surfaceContainerHighest,
-          foregroundColor: selected
-              ? colorScheme.onPrimaryContainer
-              : colorScheme.onSurfaceVariant,
-        ),
-        icon: Icon(icon, size: 18),
+      child: IconButton(
+        isSelected: selected,
+        icon: Icon(icon, size: 20),
         onPressed: onPressed,
       ),
     );

@@ -42,16 +42,39 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _filterController,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(CupertinoIcons.search),
-                    labelText: context.l10n.t('filterPackage'),
+                child: SizedBox(
+                  height: 38,
+                  child: TextField(
+                    controller: _filterController,
+                    onChanged: (value) => setState(() => _filter = value),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(
+                        CupertinoIcons.line_horizontal_3_decrease,
+                        size: 16,
+                      ),
+                      hintText: context.l10n.t('filterPackage'),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  onChanged: (value) => setState(() => _filter = value),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -66,44 +89,48 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
               const SizedBox(width: 8),
               IconButton(
                 tooltip: context.l10n.t('refreshPackages'),
-                icon: const Icon(CupertinoIcons.refresh),
+                icon: const Icon(CupertinoIcons.refresh, size: 20),
                 onPressed: (isOnline && !_refreshingPackages)
                     ? _refreshPackages
                     : null,
               ),
-              const SizedBox(width: 8),
-              _buildToolbarButton(
-                icon: CupertinoIcons.zoom_in,
+              IconButton(
+                tooltip: context.l10n.t('zoomIn'),
+                icon: const Icon(CupertinoIcons.zoom_in, size: 20),
                 onPressed: (_isGridView && _gridItemSize < 160.0)
                     ? () => setState(
                         () => _gridItemSize = min(160.0, _gridItemSize + 15.0),
                       )
                     : null,
-                active: false,
-                tooltip: context.l10n.t('zoomIn'),
               ),
-              _buildToolbarButton(
-                icon: CupertinoIcons.zoom_out,
+              IconButton(
+                tooltip: context.l10n.t('zoomOut'),
+                icon: const Icon(CupertinoIcons.zoom_out, size: 20),
                 onPressed: (_isGridView && _gridItemSize > 70.0)
                     ? () => setState(
                         () => _gridItemSize = max(70.0, _gridItemSize - 15.0),
                       )
                     : null,
-                active: false,
-                tooltip: context.l10n.t('zoomOut'),
               ),
-              _buildDivider(),
-              _buildToolbarButton(
-                icon: CupertinoIcons.square_grid_2x2,
-                onPressed: () => setState(() => _isGridView = true),
-                active: _isGridView,
+              IconButton(
                 tooltip: context.l10n.t('gridView'),
+                icon: const Icon(CupertinoIcons.square_grid_2x2, size: 20),
+                isSelected: _isGridView,
+                selectedIcon: const Icon(
+                  CupertinoIcons.square_grid_2x2_fill,
+                  size: 20,
+                ),
+                onPressed: () => setState(() => _isGridView = true),
               ),
-              _buildToolbarButton(
-                icon: CupertinoIcons.list_bullet,
-                onPressed: () => setState(() => _isGridView = false),
-                active: !_isGridView,
+              IconButton(
                 tooltip: context.l10n.t('listView'),
+                icon: const Icon(CupertinoIcons.list_bullet, size: 20),
+                isSelected: !_isGridView,
+                selectedIcon: const Icon(
+                  CupertinoIcons.list_bullet,
+                  size: 20,
+                ),
+                onPressed: () => setState(() => _isGridView = false),
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
@@ -285,54 +312,6 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     }
   }
 
-  Widget _buildToolbarButton({
-    required IconData icon,
-    required VoidCallback? onPressed,
-    required bool active,
-    required String tooltip,
-  }) {
-    final theme = Theme.of(context);
-    return Tooltip(
-      message: tooltip,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: active
-              ? theme.colorScheme.secondaryContainer.withValues(alpha: 0.5)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: IconButton(
-          icon: Icon(icon, size: 20),
-          onPressed: onPressed,
-          style: IconButton.styleFrom(
-            minimumSize: const Size(36, 36),
-            padding: EdgeInsets.zero,
-            // shape: RoundedRectangleBorder(
-            //   borderRadius: BorderRadius.circular(6),
-            // ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: SizedBox(
-        height: 20,
-        width: 1,
-        child: VerticalDivider(
-          color: theme.dividerColor.withValues(alpha: 0.6),
-          width: 1,
-          thickness: 1,
-        ),
-      ),
-    );
-  }
 }
 
 /// 桌面风格的应用表格，包含元数据列和行操作。

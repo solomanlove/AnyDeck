@@ -231,22 +231,45 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
             children: [
               Expanded(
                 flex: 4,
-                child: TextField(
-                  controller: _filterController,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(CupertinoIcons.search),
-                    labelText: context.l10n.t('filterWebpage'),
-                    suffixIcon: _filter.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(CupertinoIcons.clear),
-                            onPressed: () {
-                              _filterController.clear();
-                              setState(() => _filter = '');
-                            },
-                          )
-                        : null,
+                child: SizedBox(
+                  height: 38,
+                  child: TextField(
+                    controller: _filterController,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(
+                        CupertinoIcons.line_horizontal_3_decrease,
+                        size: 16,
+                      ),
+                      hintText: context.l10n.t('filterWebpage'),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      suffixIcon: _filter.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(CupertinoIcons.clear, size: 16),
+                              onPressed: () {
+                                _filterController.clear();
+                                setState(() => _filter = '');
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) => setState(() => _filter = value),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  onChanged: (value) => setState(() => _filter = value),
                 ),
               ),
               const SizedBox(width: 12),
@@ -302,13 +325,13 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(CupertinoIcons.refresh),
+                    : const Icon(CupertinoIcons.refresh, size: 20),
                 onPressed: _refreshing ? null : () => _refreshTargets(),
               ),
               const SizedBox(width: 8),
               // 调试按钮 (Bug 图标)
               IconButton(
-                icon: const Icon(CupertinoIcons.ant),
+                icon: const Icon(CupertinoIcons.ant, size: 20),
                 style: IconButton.styleFrom(
                   backgroundColor:
                       _selectedTarget != null &&
@@ -333,7 +356,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
               const SizedBox(width: 8),
               // 浏览器打开按钮 (Globe 图标)
               IconButton(
-                icon: const Icon(CupertinoIcons.globe),
+                icon: const Icon(CupertinoIcons.globe, size: 20),
                 style: IconButton.styleFrom(
                   backgroundColor: _selectedTarget != null
                       ? Theme.of(context).colorScheme.secondaryContainer

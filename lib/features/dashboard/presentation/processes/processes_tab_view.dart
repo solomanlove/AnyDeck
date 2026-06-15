@@ -31,22 +31,45 @@ extension _ProcessesTabView on _ProcessesTabState {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _filterController,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(CupertinoIcons.search),
-                    labelText: context.l10n.t('filterPackage'),
-                    suffixIcon: _filter.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(CupertinoIcons.clear),
-                            onPressed: () {
-                              _filterController.clear();
-                              _updateState(() => _filter = '');
-                            },
-                          )
-                        : null,
+                child: SizedBox(
+                  height: 38,
+                  child: TextField(
+                    controller: _filterController,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(
+                        CupertinoIcons.line_horizontal_3_decrease,
+                        size: 16,
+                      ),
+                      hintText: context.l10n.t('filterPackage'),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      suffixIcon: _filter.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(CupertinoIcons.clear, size: 16),
+                              onPressed: () {
+                                _filterController.clear();
+                                _updateState(() => _filter = '');
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) => _updateState(() => _filter = value),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  onChanged: (value) => _updateState(() => _filter = value),
                 ),
               ),
               const SizedBox(width: 12),
@@ -62,7 +85,7 @@ extension _ProcessesTabView on _ProcessesTabState {
                 ],
               ),
               const SizedBox(width: 16),
-              Row(
+               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Checkbox(value: _autoRefresh, onChanged: _toggleAutoRefresh),
@@ -73,13 +96,7 @@ extension _ProcessesTabView on _ProcessesTabState {
                   ),
                 ],
               ),
-              const SizedBox(width: 8),
-              Container(
-                height: 24,
-                width: 1,
-                color: Theme.of(context).dividerColor,
-              ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               processesAsync.when(
                 data: (items) {
                   final filtered = _sortAndFilterProcesses(items, packages);
@@ -104,12 +121,12 @@ extension _ProcessesTabView on _ProcessesTabState {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(CupertinoIcons.refresh),
+                    : const Icon(CupertinoIcons.refresh, size: 20),
                 onPressed: _refreshing ? null : () => _refreshProcesses(),
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(CupertinoIcons.xmark),
+                icon: const Icon(CupertinoIcons.xmark, size: 20),
                 style: IconButton.styleFrom(
                   backgroundColor: _selectedPid != null
                       ? Theme.of(context).colorScheme.errorContainer
