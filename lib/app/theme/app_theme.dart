@@ -18,6 +18,9 @@ ThemeData buildAppTheme(Brightness brightness) {
     scaffoldBackgroundColor: isDark
         ? const Color(0xff0f172a)
         : const Color(0xfff7f8fb),
+    canvasColor: isDark
+        ? const Color(0xff1e293b)
+        : Colors.white,
     visualDensity: VisualDensity.standard,
     dialogTheme: DialogThemeData(
       backgroundColor: isDark ? const Color(0xff1e293b) : Colors.white,

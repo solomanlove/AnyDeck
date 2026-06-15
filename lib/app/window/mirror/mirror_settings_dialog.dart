@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -138,70 +139,96 @@ void showMirrorSettingsDialog({
                 children: [
                   Text(context.l10n.t('videoBitrateLabel'), style: titleStyle),
                   const SizedBox(height: 8),
-                  DropdownButton<int>(
-                    value: selectedBitrate,
-                    isExpanded: true,
-                    dropdownColor: cardColor,
-                    style: dropdownStyle,
-                    items: [
-                      DropdownMenuItem(
-                        value: 2000000,
-                        child: Text(context.l10n.t('bitrate2Mbps')),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
                       ),
-                      DropdownMenuItem(
-                        value: 4000000,
-                        child: Text(context.l10n.t('bitrate4Mbps')),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: selectedBitrate,
+                        isExpanded: true,
+                        dropdownColor: cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        icon: const Icon(CupertinoIcons.chevron_down, size: 16),
+                        style: dropdownStyle,
+                        items: [
+                          DropdownMenuItem(
+                            value: 2000000,
+                            child: Text(context.l10n.t('bitrate2Mbps')),
+                          ),
+                          DropdownMenuItem(
+                            value: 4000000,
+                            child: Text(context.l10n.t('bitrate4Mbps')),
+                          ),
+                          DropdownMenuItem(
+                            value: 8000000,
+                            child: Text(context.l10n.t('bitrate8Mbps')),
+                          ),
+                          DropdownMenuItem(
+                            value: 16000000,
+                            child: Text(context.l10n.t('bitrate16Mbps')),
+                          ),
+                          DropdownMenuItem(
+                            value: 32000000,
+                            child: Text(context.l10n.t('bitrate32Mbps')),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedBitrate = val);
+                          }
+                        },
                       ),
-                      DropdownMenuItem(
-                        value: 8000000,
-                        child: Text(context.l10n.t('bitrate8Mbps')),
-                      ),
-                      DropdownMenuItem(
-                        value: 16000000,
-                        child: Text(context.l10n.t('bitrate16Mbps')),
-                      ),
-                      DropdownMenuItem(
-                        value: 32000000,
-                        child: Text(context.l10n.t('bitrate32Mbps')),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() => selectedBitrate = val);
-                      }
-                    },
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(context.l10n.t('maxSizeLabel'), style: titleStyle),
                   const SizedBox(height: 8),
-                  DropdownButton<int>(
-                    value: selectedMaxSize,
-                    isExpanded: true,
-                    dropdownColor: cardColor,
-                    style: dropdownStyle,
-                    items: [
-                      DropdownMenuItem(
-                        value: 0,
-                        child: Text(context.l10n.t('sizeOriginal')),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
                       ),
-                      DropdownMenuItem(
-                        value: 720,
-                        child: const Text('720p (1280x720)'),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: selectedMaxSize,
+                        isExpanded: true,
+                        dropdownColor: cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        icon: const Icon(CupertinoIcons.chevron_down, size: 16),
+                        style: dropdownStyle,
+                        items: [
+                          DropdownMenuItem(
+                            value: 0,
+                            child: Text(context.l10n.t('sizeOriginal')),
+                          ),
+                          DropdownMenuItem(
+                            value: 720,
+                            child: const Text('720p (1280x720)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 1080,
+                            child: const Text('1080p (1920x1080, 默认)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 1440,
+                            child: const Text('1440p (2K / 2560x1440)'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedMaxSize = val);
+                          }
+                        },
                       ),
-                      DropdownMenuItem(
-                        value: 1080,
-                        child: const Text('1080p (1920x1080, 默认)'),
-                      ),
-                      DropdownMenuItem(
-                        value: 1440,
-                        child: const Text('1440p (2K / 2560x1440)'),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() => selectedMaxSize = val);
-                      }
-                    },
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Row(

@@ -1058,23 +1058,50 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
             children: [
               const Text('延时执行时间: '),
               const SizedBox(width: 8),
-              DropdownButton<int>(
-                value: _delayMinutes,
-                items: [1, 2, 5, 10, 30, 60].map((m) {
-                  return DropdownMenuItem<int>(value: m, child: Text('$m 分钟后'));
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _delayMinutes = val);
-                },
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _delayMinutes,
+                    borderRadius: BorderRadius.circular(12),
+                    icon: const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Icon(CupertinoIcons.chevron_down, size: 16),
+                    ),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    items: [1, 2, 5, 10, 30, 60].map((m) {
+                      return DropdownMenuItem<int>(value: m, child: Text('$m 分钟后'));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _delayMinutes = val);
+                    },
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _selectedAction,
+            borderRadius: BorderRadius.circular(12),
+            icon: const Icon(CupertinoIcons.chevron_down, size: 16),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
             decoration: const InputDecoration(
               labelText: '执行操作',
-              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+              ),
             ),
             items: const [
               DropdownMenuItem(value: 'screenshot', child: Text('批量截图')),

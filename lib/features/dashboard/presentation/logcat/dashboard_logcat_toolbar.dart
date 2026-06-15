@@ -206,6 +206,9 @@ class _CompactDropdown<T> extends StatelessWidget {
         initialValue: value,
         isDense: true,
         isExpanded: true,
+        borderRadius: BorderRadius.circular(12),
+        icon: const Icon(CupertinoIcons.chevron_down, size: 16),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
         decoration: InputDecoration(
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -228,7 +231,11 @@ class _CompactDropdown<T> extends StatelessWidget {
             .map(
               (entry) => DropdownMenuItem<T>(
                 value: entry.key,
-                child: Text(entry.value, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  entry.value,
+                  style: const TextStyle(fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             )
             .toList(growable: false),

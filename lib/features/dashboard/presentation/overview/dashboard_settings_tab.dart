@@ -221,6 +221,10 @@ class _SettingsTab extends ConsumerWidget {
                       child: DropdownButton<int>(
                         value: settings.autoIdentifyInterval,
                         underline: const SizedBox.shrink(),
+                        borderRadius: BorderRadius.circular(12),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                         icon: const Icon(CupertinoIcons.chevron_down, size: 16),
                         items: [
                           DropdownMenuItem(
@@ -294,6 +298,10 @@ class _SettingsTab extends ConsumerWidget {
                       child: DropdownButton<int>(
                         value: settings.mirrorVideoBitrate,
                         underline: const SizedBox.shrink(),
+                        borderRadius: BorderRadius.circular(12),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                         icon: const Icon(CupertinoIcons.chevron_down, size: 16),
                         items: const [
                           DropdownMenuItem(
@@ -332,6 +340,10 @@ class _SettingsTab extends ConsumerWidget {
                       child: DropdownButton<int>(
                         value: settings.mirrorMaxSize,
                         underline: const SizedBox.shrink(),
+                        borderRadius: BorderRadius.circular(12),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                         icon: const Icon(CupertinoIcons.chevron_down, size: 16),
                         items: [
                           DropdownMenuItem(

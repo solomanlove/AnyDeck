@@ -720,16 +720,35 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 4),
-        DropdownButton<double>(
-          value: effectiveVal,
-          onChanged: onChanged,
-          items: options.entries.map((entry) {
-            return DropdownMenuItem<double>(
-              value: entry.key,
-              child: Text(entry.value),
-            );
-          }).toList(),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<double>(
+              value: effectiveVal,
+              borderRadius: BorderRadius.circular(12),
+              icon: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(CupertinoIcons.chevron_down, size: 16),
+              ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              onChanged: onChanged,
+              items: options.entries.map((entry) {
+                return DropdownMenuItem<double>(
+                  value: entry.key,
+                  child: Text(entry.value),
+                );
+              }).toList(),
+            ),
+          ),
         ),
       ],
     );
