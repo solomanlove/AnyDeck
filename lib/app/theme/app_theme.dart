@@ -51,6 +51,35 @@ ThemeData buildAppTheme(Brightness brightness) {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       isDense: true,
     ),
+    checkboxTheme: CheckboxThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+      ),
+      checkColor: WidgetStateProperty.all(Colors.white),
+      fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return colorScheme.primary;
+        }
+        return Colors.transparent;
+      }),
+      side: WidgetStateBorderSide.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return BorderSide(color: colorScheme.primary, width: 1.5);
+        }
+        return BorderSide(
+          color: isDark ? const Color(0xff475569) : const Color(0xffcbd5e1),
+          width: 1.5,
+        );
+      }),
+    ),
+    radioTheme: RadioThemeData(
+      fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return colorScheme.primary;
+        }
+        return isDark ? const Color(0xff475569) : const Color(0xffcbd5e1);
+      }),
+    ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         foregroundColor: isDark ? Colors.white : const Color(0xff1f2937),
