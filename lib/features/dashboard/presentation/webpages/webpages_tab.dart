@@ -15,8 +15,13 @@ part 'webpages_table.dart';
 
 class WebpagesTab extends ConsumerStatefulWidget {
   final AdbDevice device;
+  final bool isVisible;
 
-  const WebpagesTab({super.key, required this.device});
+  const WebpagesTab({
+    super.key,
+    required this.device,
+    required this.isVisible,
+  });
 
   @override
   ConsumerState<WebpagesTab> createState() => _WebpagesTabState();
@@ -34,13 +39,27 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
   @override
   void initState() {
     super.initState();
-    _startRefreshTimer();
+    if (widget.isVisible) {
+      _startRefreshTimer();
+    }
     // 监听设备切换，自动清空选中状态
     Future.microtask(() {
       if (mounted) {
         ref.read(selectedWebTargetProvider.notifier).state = null;
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant WebpagesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.device.id != oldWidget.device.id ||
+        widget.isVisible != oldWidget.isVisible) {
+      _stopRefreshTimer();
+      if (widget.device.isOnline && widget.isVisible) {
+        _startRefreshTimer();
+      }
+    }
   }
 
   @override
@@ -52,12 +71,13 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
+    if (!widget.isVisible) return;
     final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
     if (_autoRefresh && isOnline) {
       _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
         if (mounted && !_refreshing) {
           final stillOnline = ref.read(deviceOnlineProvider(widget.device.id));
-          if (stillOnline) {
+          if (stillOnline && widget.isVisible) {
             _refreshTargets(silent: true);
           } else {
             _stopRefreshTimer();
@@ -69,6 +89,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
 
   void _stopRefreshTimer() {
     _refreshTimer?.cancel();
+    _refreshTimer = null;
   }
 
   void _toggleAutoRefresh(bool? value) {

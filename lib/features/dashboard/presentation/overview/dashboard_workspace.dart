@@ -203,7 +203,10 @@ class _ToolContentCardState extends State<_ToolContentCard> {
           child: TerminalTab(device: widget.device),
         ),
         6 => ProcessesTab(device: widget.device),
-        7 => WebpagesTab(device: widget.device),
+        7 => WebpagesTab(
+          device: widget.device,
+          isVisible: _currentToolIndex == 7,
+        ),
         8 => LayoutTab(device: widget.device),
         9 => _ScreenshotTab(device: widget.device),
         10 => PerformanceTab(
