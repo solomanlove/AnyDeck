@@ -146,7 +146,7 @@ const toolsMirrorZh = {
   'externalMirrorStarted': '已启动系统原生投屏，音频已同步转发到电脑播放',
   'startExternalMirrorFailed': '启动外部原生投屏失败: {error}',
   'reloadingMirrorSettings': '正在重载投屏画质设置...',
-  'mirrorQualitySettings': '投屏画质设置',
+  'mirrorQualitySettings': '投屏设置',
   'videoBitrateLabel': '视频比特率 (Video Bitrate)',
   'maxSizeLabel': '最佳尺寸 (Max Size / 分辨率)',
   'audioForwardingLabel': '音频转发 (Audio Forwarding)',
@@ -326,7 +326,7 @@ const toolsMirrorEn = {
   'startExternalMirrorFailed':
       'Failed to start system native screen mirroring: {error}',
   'reloadingMirrorSettings': 'Reloading mirror quality settings...',
-  'mirrorQualitySettings': 'Screen Mirroring Quality Settings',
+  'mirrorQualitySettings': 'Mirroring Settings',
   'videoBitrateLabel': 'Video Bitrate',
   'maxSizeLabel': 'Max Size / Resolution',
   'audioForwardingLabel': 'Audio Forwarding',
