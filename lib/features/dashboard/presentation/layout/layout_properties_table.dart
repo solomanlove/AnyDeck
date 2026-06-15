@@ -37,7 +37,9 @@ class LayoutPropertiesTable extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (selectedNode == null) {
       return Container(
-        color: isDark ? const Color(0xff111827) : Colors.white,
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.02)
+            : Colors.white.withValues(alpha: 0.2),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -153,7 +155,9 @@ class LayoutPropertiesTable extends StatelessWidget {
     ];
 
     return Container(
-      color: isDark ? const Color(0xff111827) : Colors.white,
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.02)
+          : Colors.white.withValues(alpha: 0.2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -161,10 +165,12 @@ class LayoutPropertiesTable extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xff1f2937) : const Color(0xfff7f9fa),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.02),
               border: Border(
                 bottom: BorderSide(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
                 ),
               ),
             ),
@@ -212,8 +218,10 @@ class LayoutPropertiesTable extends StatelessWidget {
                           vertical: 10,
                         ),
                         color: isEven
-                            ? (isDark ? const Color(0xff1e293b) : const Color(0xfffafbfc))
-                            : (isDark ? const Color(0xff111827) : Colors.white),
+                            ? (isDark
+                                ? Colors.white.withValues(alpha: 0.02)
+                                : Colors.black.withValues(alpha: 0.01))
+                            : Colors.transparent,
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

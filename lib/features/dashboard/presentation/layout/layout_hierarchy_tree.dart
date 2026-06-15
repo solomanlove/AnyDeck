@@ -42,8 +42,12 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark ? const Color(0xff111827) : Colors.white;
-    final headerColor = isDark ? const Color(0xff1f2937) : const Color(0xfff7f9fa);
+    final backgroundColor = isDark
+        ? Colors.white.withValues(alpha: 0.02)
+        : Colors.white.withValues(alpha: 0.2);
+    final headerColor = isDark
+        ? Colors.white.withValues(alpha: 0.05)
+        : Colors.black.withValues(alpha: 0.02);
     final labelColor = isDark ? Colors.grey[300] : Colors.blueGrey;
 
     return Container(
@@ -58,7 +62,7 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
               color: headerColor,
               border: Border(
                 bottom: BorderSide(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
                 ),
               ),
             ),

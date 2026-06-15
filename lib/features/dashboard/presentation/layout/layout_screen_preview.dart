@@ -167,7 +167,7 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
         }
 
         return Container(
-          color: const Color(0xff181818),
+          color: Colors.transparent,
           child: InteractiveViewer(
             transformationController: widget.transformationController,
             boundaryMargin: EdgeInsets.symmetric(
