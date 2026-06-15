@@ -13,9 +13,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:lpinyin/lpinyin.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:desktop_multi_window/desktop_multi_window.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+
 import '../../../app/settings/app_settings.dart';
 import '../../../app/settings/app_settings_controller.dart';
 import '../../../app/window/multi_window_compat.dart';
@@ -140,7 +140,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WindowListener {
-  bool _isExitDialogOpen = false;
   static const _windowChannel = MethodChannel('any_deck/window');
 
   @override
@@ -163,9 +162,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   Future<void> _handleWindowMethodCall(MethodCall call) async {
-    if (call.method == 'requestAppExit') {
-      _showExitConfirmDialog();
-    } else if (call.method == 'openEmulatorManager') {
+    if (call.method == 'openEmulatorManager') {
       EmulatorListPanel.openStandaloneWindow(context);
     } else if (call.method == 'openMirrorWindow') {
       final selectedDevice = ref.read(selectedDeviceProvider);
@@ -180,35 +177,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           );
         }
       }
+    } else if (call.method == 'openConsoleWindow') {
+      _openConsoleWindow(context);
+    } else if (call.method == 'openPreferences') {
+      ref.read(selectedToolTabProvider.notifier).select(12);
     }
   }
 
-  void _showExitConfirmDialog() {
-    if (!mounted) return;
-    if (_isExitDialogOpen) return;
-    _isExitDialogOpen = true;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const _ExitConfirmDialog(),
-    ).then((_) {
-      _isExitDialogOpen = false;
-    });
+  Future<void> _exitApp() async {
+    // 退出应用，先解除关闭拦截，然后销毁窗口并退出进程
+    await windowManager.setPreventClose(false);
+    await windowManager.destroy();
+    exit(0);
   }
 
   @override
   void onWindowClose() async {
-    try {
-      final windows = await WindowController.getAll();
-      if (windows.length > 1) {
-        await windowManager.hide();
-        return;
-      }
-    } catch (e) {
-      debugPrint('Failed to get sub-window IDs: $e');
-    }
-
-    _showExitConfirmDialog();
+    // 点击关闭按钮默认最小化（隐藏窗口到系统托盘）
+    await windowManager.hide();
   }
 
   @override
@@ -304,9 +290,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.keyQ, meta: true):
-            _showExitConfirmDialog,
+            _exitApp,
         const SingleActivator(LogicalKeyboardKey.keyQ, control: true):
-            _showExitConfirmDialog,
+            _exitApp,
+        const SingleActivator(LogicalKeyboardKey.comma, meta: true): () {
+          ref.read(selectedToolTabProvider.notifier).select(12);
+        },
+        const SingleActivator(LogicalKeyboardKey.comma, control: true): () {
+          ref.read(selectedToolTabProvider.notifier).select(12);
+        },
       },
       child: Scaffold(
         body: _WechatStyleShell(

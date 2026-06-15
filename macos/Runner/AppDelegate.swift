@@ -20,30 +20,8 @@ class AppDelegate: FlutterAppDelegate {
     return true
   }
 
+  // 当收到退出请求时（如 Command+Q），直接退出应用
   override func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-    var hasMainWindow = false
-    for window in sender.windows {
-      if let mainWin = window as? MainFlutterWindow {
-        hasMainWindow = true
-        if !mainWin.isVisible {
-          mainWin.makeKeyAndOrderFront(nil)
-          NSApp.activate(ignoringOtherApps: true)
-        } else {
-          mainWin.makeKeyAndOrderFront(nil)
-        }
-        
-        if let controller = mainWin.contentViewController as? FlutterViewController {
-          let channel = FlutterMethodChannel(
-            name: "any_deck/window",
-            binaryMessenger: controller.engine.binaryMessenger
-          )
-          channel.invokeMethod("requestAppExit", arguments: nil)
-        }
-      }
-    }
-    if hasMainWindow {
-      return .terminateCancel
-    }
     return .terminateNow
   }
 

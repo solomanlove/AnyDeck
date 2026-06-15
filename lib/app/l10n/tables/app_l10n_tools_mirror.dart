@@ -97,10 +97,7 @@ const toolsMirrorZh = {
   'terminalDir': '打开 ADB 目录终端',
   'gridView': '网格模式',
   'listView': '列表模式',
-  'confirmExitTitle': '确定要退出吗？',
-  'exitDirectly': '直接退出',
-  'minimizeToTray': '最小化到托盘',
-  'cancelExit': '取消退出',
+
   'batchActions': '批量操作',
   'batchMirror': '开始镜像',
   'batchScreenshot': '截取屏幕',
@@ -274,10 +271,7 @@ const toolsMirrorEn = {
   'terminalDir': 'Open Terminal in ADB Dir',
   'gridView': 'Grid View',
   'listView': 'List View',
-  'confirmExitTitle': 'Are you sure you want to exit?',
-  'exitDirectly': 'Exit',
-  'minimizeToTray': 'Minimize to tray',
-  'cancelExit': 'Cancel',
+
   'batchActions': 'Batch Operations',
   'batchMirror': 'Mirroring',
   'batchScreenshot': 'Screenshot',

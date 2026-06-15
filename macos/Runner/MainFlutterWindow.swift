@@ -331,6 +331,8 @@ class MainFlutterWindow: NSWindow {
             item.title = isChinese ? "模拟器管理窗口" : "Simulator Management Window"
           } else if item.action == #selector(openMirrorWindowClicked(_:)) {
             item.title = isChinese ? "投屏窗口" : "Screen Casting Window"
+          } else if item.action == #selector(openConsoleWindowClicked(_:)) {
+            item.title = isChinese ? "控制台窗口" : "Console Window"
           }
         }
       }
@@ -366,7 +368,35 @@ class MainFlutterWindow: NSWindow {
     }
   }
 
+  @objc func openConsoleWindowClicked(_ sender: Any) {
+    if let controller = self.contentViewController as? FlutterViewController {
+      let channel = FlutterMethodChannel(
+        name: "any_deck/window",
+        binaryMessenger: controller.engine.binaryMessenger
+      )
+      channel.invokeMethod("openConsoleWindow", arguments: nil)
+    }
+  }
+
+  @objc func openPreferencesClicked(_ sender: Any) {
+    if let controller = self.contentViewController as? FlutterViewController {
+      let channel = FlutterMethodChannel(
+        name: "any_deck/window",
+        binaryMessenger: controller.engine.binaryMessenger
+      )
+      channel.invokeMethod("openPreferences", arguments: nil)
+    }
+  }
+
   private func setupCustomWindowMenuItems() {
+    // 绑定系统偏好设置/设置菜单项的行为，使得 Command+, 能正常传递给 Flutter
+    if let mainMenu = NSApp.mainMenu, mainMenu.items.count > 0,
+       let appMenu = mainMenu.items[0].submenu, appMenu.items.count > 2 {
+      let preferencesItem = appMenu.items[2]
+      preferencesItem.target = self
+      preferencesItem.action = #selector(openPreferencesClicked(_:))
+    }
+
     guard let mainMenu = NSApp.mainMenu, mainMenu.items.count > 3,
           let submenu = mainMenu.items[3].submenu else {
       return
@@ -374,7 +404,8 @@ class MainFlutterWindow: NSWindow {
     
     let hasCustomItems = submenu.items.contains { item in
       item.action == #selector(openEmulatorManagerClicked(_:)) ||
-      item.action == #selector(openMirrorWindowClicked(_:))
+      item.action == #selector(openMirrorWindowClicked(_:)) ||
+      item.action == #selector(openConsoleWindowClicked(_:))
     }
     
     if !hasCustomItems {
@@ -395,6 +426,14 @@ class MainFlutterWindow: NSWindow {
       )
       mirrorItem.target = self
       submenu.addItem(mirrorItem)
+
+      let consoleItem = NSMenuItem(
+        title: "控制台窗口",
+        action: #selector(openConsoleWindowClicked(_:)),
+        keyEquivalent: ""
+      )
+      consoleItem.target = self
+      submenu.addItem(consoleItem)
     }
   }
 }
