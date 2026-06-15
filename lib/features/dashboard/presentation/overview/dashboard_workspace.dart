@@ -202,7 +202,10 @@ class _ToolContentCardState extends State<_ToolContentCard> {
           padding: const EdgeInsets.all(16),
           child: TerminalTab(device: widget.device),
         ),
-        6 => ProcessesTab(device: widget.device),
+        6 => ProcessesTab(
+          device: widget.device,
+          isVisible: _currentToolIndex == 6,
+        ),
         7 => WebpagesTab(
           device: widget.device,
           isVisible: _currentToolIndex == 7,

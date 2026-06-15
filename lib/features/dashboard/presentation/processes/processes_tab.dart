@@ -18,8 +18,13 @@ part 'processes_tab_table.dart';
 
 class ProcessesTab extends ConsumerStatefulWidget {
   final AdbDevice device;
+  final bool isVisible;
 
-  const ProcessesTab({super.key, required this.device});
+  const ProcessesTab({
+    super.key,
+    required this.device,
+    required this.isVisible,
+  });
 
   @override
   ConsumerState<ProcessesTab> createState() => _ProcessesTabState();
@@ -42,7 +47,10 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
   @override
   void initState() {
     super.initState();
-    _startRefreshTimer();
+    // 仅在当前 tab 可见时启动定时器
+    if (widget.isVisible) {
+      _startRefreshTimer();
+    }
   }
 
   @override
@@ -61,8 +69,14 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
       return;
     }
 
-    if (!oldWidget.device.isOnline || oldWidget.device.id != widget.device.id) {
-      _startRefreshTimer();
+    // 当设备切换、在线状态改变或可见性改变时，重新处理轮询状态
+    if (widget.device.id != oldWidget.device.id ||
+        widget.device.isOnline != oldWidget.device.isOnline ||
+        widget.isVisible != oldWidget.isVisible) {
+      _stopRefreshTimer();
+      if (widget.device.isOnline && widget.isVisible) {
+        _startRefreshTimer();
+      }
     }
   }
 
@@ -75,12 +89,13 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
+    if (!widget.isVisible) return;
     final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
     if (_autoRefresh && isOnline) {
       _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
         if (mounted && !_refreshing) {
           final stillOnline = ref.read(deviceOnlineProvider(widget.device.id));
-          if (stillOnline) {
+          if (stillOnline && widget.isVisible) {
             _refreshProcesses(silent: true);
           } else {
             _stopRefreshTimer();
@@ -92,6 +107,7 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
 
   void _stopRefreshTimer() {
     _refreshTimer?.cancel();
+    _refreshTimer = null;
   }
 
   void _toggleAutoRefresh(bool? value) {
