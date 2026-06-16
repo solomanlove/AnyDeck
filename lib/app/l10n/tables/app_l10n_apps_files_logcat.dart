@@ -121,6 +121,9 @@ const appsFilesLogcatZh = {
   'offlineAppsWarning': '设备已离线，进入只读模式。应用操作与刷新已被禁用，当前仅展示缓存列表。',
   'showHiddenFiles': '显示隐藏文件',
   'hideHiddenFiles': '隐藏隐藏文件',
+  'searchHistory': '历史搜索',
+  'clearHistory': '清空历史',
+  'filterDebugOnly': '筛选 debug 应用',
 };
 
 const appsFilesLogcatEn = {
@@ -253,4 +256,7 @@ const appsFilesLogcatEn = {
       'Device is offline, entering read-only mode. App actions and refresh are disabled; showing cached list.',
   'showHiddenFiles': 'Show Hidden Files',
   'hideHiddenFiles': 'Hide Hidden Files',
+  'searchHistory': 'Search History',
+  'clearHistory': 'Clear History',
+  'filterDebugOnly': 'Filter debug apps',
 };
