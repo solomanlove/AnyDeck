@@ -216,7 +216,7 @@ class _PrimaryRail extends ConsumerWidget {
                                     height: _logoSize,
                                     child: const Image(
                                       image: AssetImage(
-                                        'assets/brand/app_logo.png',
+                                        AppIcons.appLogo,
                                       ),
                                     ),
                                   )
@@ -231,7 +231,7 @@ class _PrimaryRail extends ConsumerWidget {
                                           height: 36,
                                           child: Image(
                                             image: AssetImage(
-                                              'assets/brand/app_logo.png',
+                                              AppIcons.appLogo,
                                             ),
                                           ),
                                         ),

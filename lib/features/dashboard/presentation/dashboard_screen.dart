@@ -15,6 +15,7 @@ import 'package:lpinyin/lpinyin.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_icon.dart';
 
 import '../../../app/settings/app_settings.dart';
 import '../../../app/settings/app_settings_controller.dart';

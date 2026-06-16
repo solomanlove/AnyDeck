@@ -106,7 +106,7 @@ class _ContentTitleBar extends ConsumerWidget {
           child: Row(
             children: [
               const Image(
-                image: AssetImage('assets/brand/app_logo.png'),
+                image: AssetImage(AppIcons.appLogo),
                 width: 28,
                 height: 28,
               ),

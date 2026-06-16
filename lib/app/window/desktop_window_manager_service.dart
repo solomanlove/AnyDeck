@@ -6,6 +6,7 @@ import 'package:tray_manager/tray_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:any_deck/app/l10n/app_localized_values.dart';
 import 'package:any_deck/app/window/multi_window_compat.dart';
+import 'package:any_deck/app/theme/app_icon.dart';
 
 /// 桌面端窗口与系统托盘管理服务。
 class DesktopWindowManagerService {
@@ -41,7 +42,7 @@ class DesktopWindowManagerService {
 
     // 2. 初始化 tray_manager (系统托盘)
     try {
-      await trayManager.setIcon('assets/brand/app_logo.png');
+      await trayManager.setIcon(AppIcons.appLogo);
 
       String langCode = 'zh';
       try {
