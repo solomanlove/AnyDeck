@@ -300,6 +300,36 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     }
 
     final key = event.logicalKey;
+
+    // 检查是否为 Command+V (Mac) 或 Control+V (其他 OS) 的粘贴快捷键
+    final isV = key == LogicalKeyboardKey.keyV;
+    final isPaste =
+        isV &&
+        (HardwareKeyboard.instance.isMetaPressed ||
+            HardwareKeyboard.instance.isControlPressed);
+
+    if (isPaste) {
+      if (event is KeyDownEvent) {
+        Clipboard.getData(Clipboard.kTextPlain).then((clipboardData) {
+          if (clipboardData != null &&
+              clipboardData.text != null &&
+              clipboardData.text!.isNotEmpty) {
+            final text = clipboardData.text!;
+            final message = ScrcpyKeycodeHelper.serializeTextEvent(text);
+            ScrcpyFlutter.sendControl(
+              deviceId: widget.deviceId,
+              controlMessage: message,
+            ).then((success) {
+              debugPrint(
+                '[EmbeddedScrcpy] Command/Control+V Paste Success: $success',
+              );
+            });
+          }
+        });
+      }
+      return KeyEventResult.handled;
+    }
+
     // 如果按键为 ESC 且处于全屏，拦截所有事件（按下、抬起等）防止其发送给 Android 设备或导致状态不同步
     if (key == LogicalKeyboardKey.escape) {
       if (event is KeyDownEvent) {
