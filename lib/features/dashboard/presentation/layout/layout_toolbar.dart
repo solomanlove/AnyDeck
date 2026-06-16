@@ -58,7 +58,7 @@ class LayoutToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withValues(alpha: 0.05)
@@ -241,7 +241,6 @@ class _ToolbarCheckbox extends StatelessWidget {
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
         ),
-        const SizedBox(width: 4),
         Text(
           label,
           style: TextStyle(

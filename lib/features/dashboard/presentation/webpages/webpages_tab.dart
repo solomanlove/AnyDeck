@@ -294,23 +294,6 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                 ),
               ),
               const SizedBox(width: 12),
-              // 展示当前选中目标的 Title
-              Expanded(
-                flex: 3,
-                child: Text(
-                  _selectedTarget != null
-                      ? _selectedTarget!.title.isNotEmpty
-                            ? _selectedTarget!.title
-                            : _selectedTarget!.url
-                      : '',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 12),
               // 自动刷新
               Row(
                 mainAxisSize: MainAxisSize.min,
