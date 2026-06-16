@@ -2,7 +2,7 @@
 
 ## 背景
 
-`script/generate_app_window_run_configs.sh` 用于生成 AdbManage App 非投屏子窗口的 Android Studio / IntelliJ Flutter Run Configuration。该脚本只写入 `.idea/runConfigurations/`，不启动 App、不依赖 ADB。
+`script/generate_app_window_run_configs.sh` 用于生成 AdbManage App 子窗口的 Android Studio / IntelliJ Flutter Run Configuration。该脚本只写入 `.idea/runConfigurations/`，不启动 App；投屏子窗口配置会读取 `adb devices -l` 中状态为 `device` 的在线设备。
 
 ## 生成文件
 
@@ -10,10 +10,11 @@
 | --- | --- | --- |
 | `.idea/runConfigurations/debug_emulator_window.xml` | `模拟器子窗口` | `type=emulator_manager` |
 | `.idea/runConfigurations/debug_console_window.xml` | `控制台子窗口` | `type=console` |
+| `.idea/runConfigurations/mirror_window_<serial>.xml` | `投屏子窗口 - <deviceName>` | `type=mirror&deviceId=<serial>` |
 
 ## 参数机制
 
-两个配置都通过 Flutter 的 `--dart-entrypoint-args` 调用 `lib/main.dart` 的多窗口入口：
+所有配置都通过 Flutter 的 `--dart-entrypoint-args` 调用 `lib/main.dart` 的多窗口入口：
 
 ```bash
 --dart-entrypoint-args multi_window
@@ -22,6 +23,8 @@
 ```
 
 `lib/main.dart` 会把非 `mirror`、非 `console` 的类型交给 `EmulatorManagerWindowApp`，但模拟器管理窗口的业务类型应保持为 `emulator_manager`，与主窗口菜单和 `createAdbManageWindow()` 的参数一致。
+
+投屏配置会为每台在线设备生成一个独立入口；如果没有在线设备，脚本仍会生成模拟器管理窗口和控制台窗口配置，并跳过投屏配置。
 
 ## 使用方式
 

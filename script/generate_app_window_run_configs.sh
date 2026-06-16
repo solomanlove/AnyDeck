@@ -19,7 +19,46 @@ show_usage() {
   echo "生成内容:"
   echo "模拟器子窗口 -> type=emulator_manager"
   echo "控制台子窗口 -> type=console"
+  echo "投屏子窗口 -> type=mirror，按 adb devices -l 中在线设备逐台生成"
   echo "=========================================="
+}
+
+load_mirror_devices() {
+  MIRROR_DEVICES=()
+
+  if ! command -v adb >/dev/null 2>&1; then
+    echo "警告：未找到 adb，跳过投屏子窗口配置生成。"
+    return
+  fi
+
+  local adb_output=""
+  if ! adb_output="$(adb devices -l 2>&1)"; then
+    echo "警告：执行 adb devices -l 失败，跳过投屏子窗口配置生成。"
+    echo "$adb_output"
+    return
+  fi
+
+  local line=""
+  while IFS= read -r line; do
+    if [[ "$line" == "List of devices attached"* || -z "$line" ]]; then
+      continue
+    fi
+
+    local device_id
+    local state
+    local model
+    device_id="$(printf '%s' "$line" | awk '{print $1}')"
+    state="$(printf '%s' "$line" | awk '{print $2}')"
+    if [[ "$state" != "device" ]]; then
+      continue
+    fi
+
+    model="$(printf '%s' "$line" | sed -n 's/.* model:\([^ ]*\).*/\1/p')"
+    if [[ -z "$model" ]]; then
+      model="$device_id"
+    fi
+    MIRROR_DEVICES+=("$device_id|$model")
+  done <<< "$adb_output"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -46,13 +85,17 @@ fi
 
 mkdir -p "$RUN_CONFIG_DIR"
 
-python3 - "$RUN_CONFIG_DIR" <<'PY'
+load_mirror_devices
+
+python3 - "$RUN_CONFIG_DIR" "${MIRROR_DEVICES[@]}" <<'PY'
 import os
+import re
 import sys
 from urllib.parse import quote
 from xml.sax.saxutils import escape
 
 output_dir = sys.argv[1]
+mirror_devices = sys.argv[2:]
 
 configs = [
     {
@@ -74,6 +117,23 @@ configs = [
         },
     },
 ]
+
+for device in mirror_devices:
+    device_id, device_name = device.split("|", 1)
+    safe_device_id = re.sub(r"[^0-9A-Za-z_.-]+", "_", device_id)
+    configs.append(
+        {
+            "file": f"mirror_window_{safe_device_id}.xml",
+            "name": f"投屏子窗口 - {device_name}",
+            "window_id": f"debug_mirror_window_{safe_device_id}",
+            "params": {
+                "type": "mirror",
+                "deviceId": device_id,
+                "deviceName": device_name,
+                "_windowTitle": device_name,
+            },
+        }
+    )
 
 
 def build_argument(params):
@@ -107,5 +167,7 @@ for config in configs:
     with open(path, "w", encoding="utf-8") as file:
         file.write(build_xml(config))
     print(f"{config['name']}: {path}")
+if not mirror_devices:
+    print("未发现在线 ADB 设备，未生成投屏子窗口配置。")
 print("==========================================")
 PY
