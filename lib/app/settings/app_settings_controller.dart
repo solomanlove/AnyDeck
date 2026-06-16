@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_settings.dart';
 import '../window/desktop_window_title_service.dart';
 import '../window/desktop_window_manager_service.dart';
+import '../window/sub_window_method_dispatcher.dart';
 
 /// 全局唯一的窗口 ID Provider，主窗口默认为空字符串。
 final windowIdProvider = Provider<String>((ref) => '');
@@ -50,15 +51,7 @@ class AppSettingsController extends Notifier<AppSettings> {
       return;
     }
 
-    unawaited(
-      WindowController.fromCurrentEngine()
-          .then((controller) {
-            return controller.setWindowMethodHandler(_handleSettingsCall);
-          })
-          .catchError((e) {
-            debugPrint('Failed to register multi-window settings handler: $e');
-          }),
-    );
+    SubWindowMethodDispatcher.registerHandler(_handleSettingsCall);
   }
 
   Future<dynamic> _handleSettingsCall(MethodCall call) async {
@@ -86,6 +79,10 @@ class AppSettingsController extends Notifier<AppSettings> {
     } else if (call.method == 'update_auto_identify_interval') {
       final value = call.arguments as int;
       await setAutoIdentifyInterval(value, broadcast: false);
+    } else if (call.method == 'update_themeMode') {
+      final themeName = call.arguments as String;
+      final themeMode = _themeModeFromName(themeName);
+      await setThemeMode(themeMode, broadcast: false);
     }
     return null;
   }
@@ -113,10 +110,17 @@ class AppSettingsController extends Notifier<AppSettings> {
   }
 
   /// 更新当前主题模式，并持久化到下次启动。
-  Future<void> setThemeMode(ThemeMode themeMode) async {
+  Future<void> setThemeMode(ThemeMode themeMode, {bool broadcast = true}) async {
     state = state.copyWith(themeMode: themeMode);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_themeModeKey, themeMode.name);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_themeMode', themeMode.name);
+      } catch (e) {
+        debugPrint('Failed to broadcast theme mode change: $e');
+      }
+    }
   }
 
   /// 更新投屏窗口是否保持最前，并持久化。

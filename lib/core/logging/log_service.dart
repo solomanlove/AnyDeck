@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import '../../app/settings/app_settings_controller.dart';
+import '../../app/window/sub_window_method_dispatcher.dart';
 
 /// 全局日志历史提供者，维护一个字符串日志列表。
 final logHistoryProvider = NotifierProvider<LogService, List<String>>(LogService.new);
@@ -32,13 +33,7 @@ class LogService extends Notifier<List<String>> {
     }
 
     // 子窗口则监听主Isolate通过 `WindowController.invokeMethod` 广播进来的日志数据
-    unawaited(
-      WindowController.fromCurrentEngine().then((controller) {
-        return controller.setWindowMethodHandler(_handleLogCall);
-      }).catchError((e) {
-        debugPrint('Failed to register sub-window log handler: $e');
-      }),
-    );
+    SubWindowMethodDispatcher.registerHandler(_handleLogCall);
   }
 
   /// 处理跨 Isolate 消息的回调。
