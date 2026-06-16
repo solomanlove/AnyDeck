@@ -277,9 +277,11 @@ class _HistoryTextField extends StatefulWidget {
 }
 
 class _HistoryTextFieldState extends State<_HistoryTextField> {
-  final MenuController _menuController = MenuController();
+  final GlobalKey _textFieldKey = GlobalKey();
+  final LayerLink _layerLink = LayerLink();
   late final FocusNode _focusNode;
   late final bool _ownsFocusNode;
+  OverlayEntry? _overlayEntry;
 
   @override
   void initState() {
@@ -291,6 +293,7 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
 
   @override
   void dispose() {
+    _hideOverlay();
     _focusNode.removeListener(_handleFocusChanged);
     if (_ownsFocusNode) {
       _focusNode.dispose();
@@ -298,9 +301,24 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(_HistoryTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.history != oldWidget.history) {
+      if (widget.history.isEmpty) {
+        _hideOverlay();
+      } else {
+        _overlayEntry?.markNeedsBuild();
+      }
+    }
+  }
+
   void _handleFocusChanged() {
-    if (!_focusNode.hasFocus) {
+    if (_focusNode.hasFocus) {
+      _openHistory();
+    } else {
       widget.onSubmitted(widget.controller.text);
+      _hideOverlay();
     }
   }
 
@@ -310,51 +328,168 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
       offset: widget.controller.text.length,
     );
     widget.onSelected(value);
-    _menuController.close();
+    _hideOverlay();
+    _focusNode.unfocus();
   }
 
   void _openHistory() {
     if (widget.history.isNotEmpty) {
-      _menuController.open();
+      _showOverlay();
     }
+  }
+
+  void _toggleHistory() {
+    if (_overlayEntry != null) {
+      _hideOverlay();
+      _focusNode.unfocus();
+    } else {
+      _focusNode.requestFocus();
+      _openHistory();
+    }
+  }
+
+  void _showOverlay() {
+    if (_overlayEntry != null) {
+      _overlayEntry?.markNeedsBuild();
+      return;
+    }
+    if (!mounted || widget.history.isEmpty) return;
+
+    final overlayState = Overlay.of(context);
+    _overlayEntry = OverlayEntry(
+      builder: (context) {
+        return CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 42),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: _getTextFieldWidth(),
+              child: TapRegion(
+                groupId: 'logcat_history_filter_region_${identityHashCode(this)}',
+                onTapOutside: (event) {
+                  _hideOverlay();
+                  _focusNode.unfocus();
+                },
+                child: _buildDropdownOverlayContent(),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlayState.insert(_overlayEntry!);
+  }
+
+  void _hideOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  double _getTextFieldWidth() {
+    final renderBox = _textFieldKey.currentContext?.findRenderObject() as RenderBox?;
+    return renderBox?.size.width ?? 280.0;
+  }
+
+  Widget _buildDropdownOverlayContent() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      elevation: 8,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      color: isDark ? const Color(0xff1e293b) : Colors.white,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
+            width: 1,
+          ),
+        ),
+        constraints: const BoxConstraints(
+          maxHeight: 250,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                context.l10n.t('searchHistory'),
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: widget.history.length,
+                itemBuilder: (context, index) {
+                  final item = widget.history[index];
+                  return InkWell(
+                    onTap: () {
+                      _selectHistory(item);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      child: Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.clock,
+                            size: 14,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(CupertinoIcons.clear, size: 14),
+                            onPressed: () {
+                              widget.onHistoryRemoved(item);
+                              if (widget.controller.text == item) {
+                                widget.controller.clear();
+                                widget.onChanged('');
+                              }
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            splashRadius: 16,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return MenuAnchor(
-      controller: _menuController,
-      menuChildren: [
-        for (final item in widget.history)
-          SizedBox(
-            width: 280,
-            child: MenuItemButton(
-              onPressed: () => _selectHistory(item),
-              child: Row(
-                children: [
-                  Expanded(child: Text(item, overflow: TextOverflow.ellipsis)),
-                  IconButton(
-                    tooltip: context.l10n.t('logcatRemoveHistory'),
-                    icon: const Icon(CupertinoIcons.xmark, size: 16),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      widget.onHistoryRemoved(item);
-                      if (widget.controller.text == item) {
-                        widget.controller.clear();
-                        widget.onChanged('');
-                      }
-                      if (widget.history.length <= 1) {
-                        _menuController.close();
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-      builder: (context, controller, child) {
-        return SizedBox(
-          height: 38,
+    return SizedBox(
+      key: _textFieldKey,
+      height: 38,
+      child: TapRegion(
+        groupId: 'logcat_history_filter_region_${identityHashCode(this)}',
+        child: CompositedTransformTarget(
+          link: _layerLink,
           child: TextField(
             controller: widget.controller,
             focusNode: _focusNode,
@@ -372,7 +507,7 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
                   : IconButton(
                       tooltip: context.l10n.t('logcatFilterHistory'),
                       icon: const Icon(CupertinoIcons.chevron_down, size: 16),
-                      onPressed: _openHistory,
+                      onPressed: _toggleHistory,
                     ),
               suffixIconConstraints: const BoxConstraints(minWidth: 30),
               hintText: widget.hintText,
@@ -400,11 +535,12 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
             onChanged: widget.onChanged,
             onSubmitted: (value) {
               widget.onSubmitted(value);
+              _hideOverlay();
               _focusNode.unfocus();
             },
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
