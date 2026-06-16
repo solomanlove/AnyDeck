@@ -165,7 +165,7 @@ APP_PATH=""
 OUTPUT_PATH=""
 RUN_AFTER_GENERATE=true
 IDEA_RUN_CONFIG=false
-RUN_CONFIG_NAME="Debug - 投屏子窗口"
+RUN_CONFIG_NAME="投屏子窗口"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
