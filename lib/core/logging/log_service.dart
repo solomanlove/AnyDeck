@@ -72,7 +72,7 @@ class LogService extends Notifier<List<String>> {
     final currentId = ref.read(windowIdProvider);
     if (currentId.isNotEmpty) {
       // 子窗口不直接维护日志状态，而是通过单向通道调用主窗口来汇总
-      _logChannel.invokeMethod('log_from_sub', logMsg);
+      unawaited(_sendLogFromSub(logMsg));
     } else {
       // 主窗口直接本地记录并向所有子窗口发起广播
       // 使用 Future.microtask 确保状态更新在微任务中执行，避免在 Provider 构建期修改状态导致 Assertion Error
@@ -88,9 +88,31 @@ class LogService extends Notifier<List<String>> {
   void clear() {
     final currentId = ref.read(windowIdProvider);
     if (currentId.isNotEmpty) {
-      _logChannel.invokeMethod('clear_from_sub');
+      unawaited(_clearFromSub());
     } else {
       _clearAndBroadcast();
+    }
+  }
+
+  /// 子窗口向主窗口上报日志；脚本直启子窗口时没有主窗口通道，降级为本地记录。
+  Future<void> _sendLogFromSub(String logMsg) async {
+    try {
+      await _logChannel.invokeMethod('log_from_sub', logMsg);
+    } catch (e) {
+      if (ref.mounted) {
+        _addLocalLog(logMsg);
+      }
+    }
+  }
+
+  /// 子窗口请求主窗口清空日志；脚本直启子窗口时没有主窗口通道，降级为本地清空。
+  Future<void> _clearFromSub() async {
+    try {
+      await _logChannel.invokeMethod('clear_from_sub');
+    } catch (e) {
+      if (ref.mounted) {
+        state = [];
+      }
     }
   }
 
@@ -118,11 +140,7 @@ class LogService extends Notifier<List<String>> {
   /// 仅在主窗口执行：将日志持久存储到状态中并向所有子窗口（控制台）分发。
   void _addAndBroadcastLog(String logMsg) async {
     // 限制最大日志量为 1000 条，防止长时间运行导致内存泄漏
-    var newLogs = [...state, logMsg];
-    if (newLogs.length > 1000) {
-      newLogs = newLogs.sublist(newLogs.length - 1000);
-    }
-    state = newLogs;
+    _addLocalLog(logMsg);
 
     try {
       final windows = await WindowController.getAll();
@@ -141,6 +159,15 @@ class LogService extends Notifier<List<String>> {
     } catch (e) {
       debugPrint('Failed to broadcast log: $e');
     }
+  }
+
+  /// 本地保存日志并限制最大数量，供主窗口和脚本直启子窗口共用。
+  void _addLocalLog(String logMsg) {
+    var newLogs = [...state, logMsg];
+    if (newLogs.length > 1000) {
+      newLogs = newLogs.sublist(newLogs.length - 1000);
+    }
+    state = newLogs;
   }
 
   /// 在控制台子窗口启动时，向主窗口拉取所有已记录的历史日志。

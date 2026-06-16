@@ -91,17 +91,11 @@ class MirrorWindowController extends ChangeNotifier {
           notifyListeners();
         }
       });
-      _windowChannel.invokeMethod('initWindow').catchError((e) {
-        debugPrint('Failed to initialize subwindow listeners on macOS: $e');
-      });
+      unawaited(_invokeNativeWindowMethod('initWindow'));
     }
 
     // 设置初始置顶状态
-    _windowChannel.invokeMethod('setAlwaysOnTop', _isAlwaysOnTop).catchError((
-      e,
-    ) {
-      debugPrint('Failed to set always on top in controller init: $e');
-    });
+    unawaited(_setAlwaysOnTop(_isAlwaysOnTop));
 
     // 异步启动投屏服务
     startMirroring();
@@ -177,13 +171,11 @@ class MirrorWindowController extends ChangeNotifier {
     _isFullScreen = fullscreen;
     notifyListeners();
 
+    var handled = false;
     if (Platform.isMacOS) {
-      try {
-        await _windowChannel.invokeMethod('setFullScreen', fullscreen);
-      } catch (e) {
-        debugPrint('Failed to set fullscreen on macOS: $e');
-      }
-    } else {
+      handled = await _invokeNativeWindowMethod('setFullScreen', fullscreen);
+    }
+    if (!handled) {
       try {
         await windowManager.setFullScreen(fullscreen);
       } catch (e) {
@@ -212,12 +204,43 @@ class MirrorWindowController extends ChangeNotifier {
   /// 切换窗口置顶状态
   Future<void> toggleAlwaysOnTop() async {
     final nextState = !_isAlwaysOnTop;
-    try {
-      await _windowChannel.invokeMethod('setAlwaysOnTop', nextState);
+    final updated = await _setAlwaysOnTop(nextState);
+    if (updated) {
       _isAlwaysOnTop = nextState;
       notifyListeners();
+    }
+  }
+
+  /// 设置窗口置顶；脚本直启时 macOS 自定义 channel 可能缺失，降级为 window_manager。
+  Future<bool> _setAlwaysOnTop(bool value) async {
+    var handled = false;
+    if (Platform.isMacOS) {
+      handled = await _invokeNativeWindowMethod('setAlwaysOnTop', value);
+    }
+    if (handled) return true;
+
+    try {
+      await windowManager.setAlwaysOnTop(value);
+      return true;
     } catch (e) {
-      debugPrint('Failed to toggle always on top: $e');
+      debugPrint('Failed to set always on top: $e');
+      return false;
+    }
+  }
+
+  /// 调用 macOS 原生窗口通道；通道缺失说明当前不是 desktop_multi_window 创建的子窗口。
+  Future<bool> _invokeNativeWindowMethod(
+    String method, [
+    Object? arguments,
+  ]) async {
+    try {
+      await _windowChannel.invokeMethod(method, arguments);
+      return true;
+    } on MissingPluginException {
+      return false;
+    } catch (e) {
+      debugPrint('Failed to invoke window method $method: $e');
+      return false;
     }
   }
 

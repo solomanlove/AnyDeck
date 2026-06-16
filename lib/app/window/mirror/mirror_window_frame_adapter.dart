@@ -19,17 +19,14 @@ class MirrorWindowFrameAdapter {
           final height = (res['height'] as num).toDouble();
           return Rect.fromLTWH(left, top, width, height);
         }
+      } on MissingPluginException {
+        return _getWindowManagerBounds();
       } catch (e) {
         debugPrint('Failed to get window frame on macOS: $e');
       }
       return null;
     }
-    try {
-      return await windowManager.getBounds();
-    } catch (e) {
-      debugPrint('Failed to get window bounds via windowManager: $e');
-      return null;
-    }
+    return _getWindowManagerBounds();
   }
 
   static Future<void> fitWindowToAspectRatio({
@@ -43,7 +40,9 @@ class MirrorWindowFrameAdapter {
     }
 
     final frame = await getWindowFrame(windowChannel);
-    if (frame == null || !_isValid(frame.width) || !_isValid(frame.height)) return;
+    if (frame == null || !_isValid(frame.width) || !_isValid(frame.height)) {
+      return;
+    }
 
     final containerRatio = viewerW / viewerH;
     if (!_isValid(containerRatio)) return;
@@ -67,26 +66,49 @@ class MirrorWindowFrameAdapter {
     if (!_isValid(newLeft) || !_isValid(newTop)) return;
 
     if (Platform.isMacOS) {
-      windowChannel
-          .invokeMethod('setWindowFrame', {
-            'left': newLeft,
-            'top': newTop,
-            'width': newWindowW,
-            'height': newWindowH,
-          })
-          .catchError((e) {
-            debugPrint('Failed to set window frame on macOS: $e');
-          });
+      try {
+        final frameArgs = {
+          'left': newLeft,
+          'top': newTop,
+          'width': newWindowW,
+          'height': newWindowH,
+        };
+        await windowChannel.invokeMethod('setWindowFrame', frameArgs);
+        return;
+      } on MissingPluginException {
+        // 脚本直启投屏窗口时没有 desktop_multi_window 子窗口原生 channel。
+      } catch (e) {
+        debugPrint('Failed to set window frame on macOS: $e');
+        return;
+      }
+      await _setWindowManagerBounds(
+        Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH),
+      );
     } else {
-      windowManager
-          .setBounds(Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH))
-          .catchError((e) {
-            debugPrint('Failed to set window frame: $e');
-          });
+      await _setWindowManagerBounds(
+        Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH),
+      );
     }
   }
 
   static bool _isValid(double value) {
     return value > 0 && !value.isNaN && !value.isInfinite;
+  }
+
+  static Future<Rect?> _getWindowManagerBounds() async {
+    try {
+      return await windowManager.getBounds();
+    } catch (e) {
+      debugPrint('Failed to get window bounds via windowManager: $e');
+      return null;
+    }
+  }
+
+  static Future<void> _setWindowManagerBounds(Rect bounds) async {
+    try {
+      await windowManager.setBounds(bounds);
+    } catch (e) {
+      debugPrint('Failed to set window frame: $e');
+    }
   }
 }
