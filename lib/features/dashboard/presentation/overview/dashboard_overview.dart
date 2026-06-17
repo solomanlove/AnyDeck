@@ -57,33 +57,33 @@ class _DeviceOverviewPanel extends ConsumerWidget {
                         ? ref.invalidate(deviceOverviewProvider(device.id))
                         : ref.invalidate(cachedDeviceOverviewProvider(device.id)),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   _buildCategorySection(
                     context,
                     title: context.l10n.t('basicInfo'),
                     icon: CupertinoIcons.device_phone_portrait,
                     items: _buildBasicInfoItems(context, data),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   _buildCategorySection(
                     context,
                     title: context.l10n.t('systemHardware'),
                     icon: CupertinoIcons.settings,
                     items: _buildSystemHardwareItems(context, data),
                   ),
-                  const SizedBox(height: 16),
-                  _buildCategorySection(
-                    context,
-                    title: context.l10n.t('screenDisplay'),
-                    icon: CupertinoIcons.tv,
-                    items: _buildScreenDisplayItems(context, data),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   _buildCategorySection(
                     context,
                     title: context.l10n.t('networkConnectivity'),
                     icon: CupertinoIcons.wifi,
                     items: _buildNetworkConnectivityItems(context, data),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCategorySection(
+                    context,
+                    title: context.l10n.t('screenDisplay'),
+                    icon: CupertinoIcons.tv,
+                    items: _buildScreenDisplayItems(context, data),
                   ),
                 ],
               ),
@@ -280,14 +280,6 @@ class _OverviewHeader extends StatelessWidget {
           icon: const Icon(CupertinoIcons.refresh),
           onPressed: onRefresh,
         );
-
-        if (constraints.maxWidth < 360) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [title, actions],
-          );
-        }
-
         return Row(
           children: [
             Expanded(child: title),
