@@ -75,9 +75,11 @@
    - 第三方应用列表：`adb shell pm list packages -f -3`
    - 系统预装应用：`adb shell pm list packages -f -s`
    - 返回的数据格式包含 APK 物理路径与包名，如 `package:/data/app/.../base.apk=com.example.app`。
-2. **图标渐进式加载（性能优化）**：
+2. **图标按需加载（性能优化）**：
    - **首屏秒开**：通过 `listPackages` 优先加载基础包名列表。
-   - **异步提取**：后台建立独立流任务 `enrichPackagesWithIconsProgressive`，通过 `pm path <package>` 定位 APK，并利用 Host 端工具读取 APK 的 Manifest 资源文件，提取图标字节流，分批 yield 刷新 UI。
+   - **默认不批量刷新图标**：切换到 Apps Tab 时只展示缓存或基础列表，避免进入页面就触发全设备 APK 图标提取。
+   - **手动全量刷新**：点击“刷新全部应用图标”后，后台建立独立流任务 `enrichPackagesWithIconsProgressive`，通过 `pm path <package>` 定位 APK，并利用 Host 端工具读取 APK 的 Manifest 资源文件，提取图标字节流，分批 yield 刷新 UI。
+   - **单应用详情刷新**：点击某个应用时只调用 `getSinglePackageInfo` 刷新该包的详情、图标、签名与安装时间，并回写当前列表缓存。
 3. **生命周期与数据管理**：
    - **启动**：调用 `adb shell monkey -p <package> 1`（利用 monkey 启动默认 Activity）或 `am start -n <package>/<activity>`。
    - **停止**：`adb shell am force-stop <package>` 结束进程。
@@ -92,9 +94,9 @@
    - 动态赋权：`adb shell pm grant <package> <permission>`
    - 撤销权限：`adb shell pm revoke <package> <permission>`
 5. **本地持久化缓存与秒开设计**：
-   - **全量加载持久化**：在渐进式提取流（`enrichPackagesWithIconsProgressive`）执行完成时，将包含图标本地路径、展示名、签名等已 enrichment 完整的应用列表序列化为 JSON 字符串并存入 `SharedPreferences` 本地。
-   - **二次秒开**：当重新打开此设备或进入 Tab 时，若本地缓存存在且非空，直接读取并显示缓存中的全量数据，实现界面零延迟瞬间加载。
-   - **主动清退与回写**：在手动刷新应用列表、拖拽 APK 执行安装、卸载应用或冻结/解冻应用时，主动清除本地的 SharedPreferences 缓存，重新触发完整的元数据与图标渐进式提取，并在拉取完后自动回写更新缓存。
+   - **全量加载持久化**：手动全量刷新完成时，将包含图标本地路径、展示名、签名等已 enrichment 完整的应用列表序列化为 JSON 字符串并存入 `SharedPreferences` 本地。
+   - **二次秒开**：当重新打开此设备或进入 Tab 时，若本地缓存存在且非空，直接读取并显示缓存数据，不自动重新批量刷新图标。
+   - **主动清退与回写**：在手动刷新全部应用图标、拖拽 APK 执行安装、卸载应用或冻结/解冻应用时，主动清除本地的 SharedPreferences 缓存，再按当前操作重新读取元数据并回写缓存。
 
 ---
 

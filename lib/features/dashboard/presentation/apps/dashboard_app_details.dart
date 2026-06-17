@@ -23,7 +23,20 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final package = widget.package;
+    final package = ref.watch(
+      packagesProvider(widget.deviceId).select((packages) {
+        final items = packages.value;
+        if (items == null) {
+          return widget.package;
+        }
+        for (final item in items) {
+          if (item.name == widget.package.name) {
+            return item;
+          }
+        }
+        return widget.package;
+      }),
+    );
     final theme = Theme.of(context);
 
     String formatEpoch(int? epochMs) {
@@ -91,6 +104,7 @@ class _AppDetailsDialogState extends ConsumerState<_AppDetailsDialog> {
                                     File(package.iconLocalPath!).existsSync()
                                 ? Image.file(
                                     File(package.iconLocalPath!),
+                                    key: ValueKey(package.iconLocalPath),
                                     fit: BoxFit.contain,
                                     errorBuilder:
                                         (context, error, stackTrace) =>

@@ -256,43 +256,39 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
         return;
       }
 
-      // 2. 无缓存时，执行正常的快速读取与渐进式提取流程
+      // 2. 无缓存时，只读取基础列表，避免切到 Apps Tab 就批量刷新图标。
       final initialPackages = await service.listPackages(deviceId);
       if (isDisposed) return;
       state = AsyncValue.data(initialPackages);
-
-      List<AdbPackage> refreshedPackages;
-      try {
-        refreshedPackages = await service.refreshPackages(
-          deviceId,
-          refreshIconsInBackground: false,
-        );
-      } catch (_) {
-        return;
-      }
-      if (isDisposed) return;
-      state = AsyncValue.data(refreshedPackages);
-
-      List<AdbPackage>? finalPackages;
-      await for (final updatedPackages
-          in service.enrichPackagesWithIconsProgressive(
-            deviceId,
-            refreshedPackages,
-          )) {
-        if (isDisposed) return;
-        state = AsyncValue.data(updatedPackages);
-        finalPackages = updatedPackages;
-      }
-
-      // 3. 所有应用（及图标）加载完毕，将最终结果持久化到本地缓存
-      if (finalPackages != null && !isDisposed) {
-        await service.savePackageCache(deviceId, finalPackages);
-      }
     } catch (err, stack) {
       if (!isDisposed) {
         state = AsyncValue.error(err, stack);
       }
     }
+  }
+
+  /// 手动刷新全部应用时，重新读取元数据并分批加载所有应用图标。
+  Future<void> refreshAllPackagesWithIcons() async {
+    final service = ref.read(appManagementServiceProvider);
+    await service.clearPackageCache(deviceId);
+
+    final refreshedPackages = await service.refreshPackages(
+      deviceId,
+      refreshIconsInBackground: false,
+    );
+    state = AsyncValue.data(refreshedPackages);
+
+    var finalPackages = refreshedPackages;
+    await for (final updatedPackages
+        in service.enrichPackagesWithIconsProgressive(
+          deviceId,
+          refreshedPackages,
+        )) {
+      state = AsyncValue.data(updatedPackages);
+      finalPackages = updatedPackages;
+    }
+
+    await service.savePackageCache(deviceId, finalPackages);
   }
 
   /// 刷新单个应用的最新状态，并更新 state 与本地缓存。

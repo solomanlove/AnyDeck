@@ -18,6 +18,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
   String? _selectedPackage;
   bool _isGridView = false;
   double _gridItemSize = 100.0;
+  final Set<String> _refreshingPackageDetails = <String>{};
 
   final FocusNode _filterFocusNode = FocusNode();
   final LayerLink _filterLayerLink = LayerLink();
@@ -441,18 +442,14 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                               deviceId: widget.device.id,
                               packages: filtered,
                               selectedPackage: _selectedPackage,
-                              onSelected: (packageName) => setState(
-                                () => _selectedPackage = packageName,
-                              ),
+                              onSelected: _selectPackage,
                               gridItemSize: _gridItemSize,
                             )
                           : _PackageTable(
                               deviceId: widget.device.id,
                               packages: filtered,
                               selectedPackage: _selectedPackage,
-                              onSelected: (packageName) => setState(
-                                () => _selectedPackage = packageName,
-                              ),
+                              onSelected: _selectPackage,
                             ),
                     ),
                   ],
@@ -523,6 +520,28 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     return null;
   }
 
+  /// 选中应用时按需刷新该应用详情和图标，避免进入 Apps Tab 后批量拉取图标。
+  Future<void> _selectPackage(String packageName) async {
+    setState(() => _selectedPackage = packageName);
+    if (!ref.read(deviceOnlineProvider(widget.device.id))) {
+      return;
+    }
+    if (!_refreshingPackageDetails.add(packageName)) {
+      return;
+    }
+    try {
+      await ref
+          .read(packagesProvider(widget.device.id).notifier)
+          .refreshSinglePackage(packageName);
+    } catch (error) {
+      if (mounted) {
+        _showSnack(context, error.toString(), isError: true);
+      }
+    } finally {
+      _refreshingPackageDetails.remove(packageName);
+    }
+  }
+
   /// 打开宿主机文件选择器并安装选中的 APK。
   Future<void> _installApk() async {
     const group = XTypeGroup(label: 'APK', extensions: ['apk']);
@@ -542,16 +561,16 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     }
   }
 
-  /// 手动刷新时清空本地缓存，并触发重新渐进式提取应用列表。
+  /// 手动刷新全部应用时，清空本地缓存并分批加载所有应用图标。
   Future<void> _refreshPackages() async {
     if (_refreshingPackages) {
       return;
     }
     setState(() => _refreshingPackages = true);
     try {
-      final service = ref.read(appManagementServiceProvider);
-      await service.clearPackageCache(widget.device.id);
-      ref.invalidate(packagesProvider(widget.device.id));
+      await ref
+          .read(packagesProvider(widget.device.id).notifier)
+          .refreshAllPackagesWithIcons();
     } catch (error) {
       if (mounted) {
         _showSnack(context, error.toString(), isError: true);
