@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../settings/app_settings_controller.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widget/app_toast.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/providers/app_providers.dart';
@@ -38,12 +39,10 @@ Future<void> launchExternalMirror({
     ref.read(scrcpySessionsProvider.notifier).add(session);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.t('externalMirrorStarted')),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        context.l10n.t('externalMirrorStarted'),
+        type: AppToastType.info,
       );
     }
 
@@ -51,16 +50,12 @@ Future<void> launchExternalMirror({
     await windowManager.close();
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n
-                .t('startExternalMirrorFailed')
-                .replaceAll('{error}', e.toString()),
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        context.l10n
+            .t('startExternalMirrorFailed')
+            .replaceAll('{error}', e.toString()),
+        isError: true,
       );
     }
   }
@@ -337,14 +332,10 @@ void showMirrorSettingsDialog({
 
                   // 提示并重启
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          context.l10n.t('reloadingMirrorSettings'),
-                        ),
-                        duration: const Duration(milliseconds: 1500),
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    AppToast.show(
+                      context,
+                      context.l10n.t('reloadingMirrorSettings'),
+                      type: AppToastType.info,
                     );
                   }
 

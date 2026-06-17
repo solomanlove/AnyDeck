@@ -12,8 +12,8 @@ import '../../settings/app_settings_controller.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/apps/adb_package.dart';
 import '../../../core/providers/transfer_provider.dart';
-import '../../../features/dashboard/presentation/widgets/dashboard_snack.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
+import '../../widget/app_toast.dart';
 import 'mirror_aspect_resolver.dart';
 import 'mirror_window_frame_adapter.dart';
 import '../multi_window_compat.dart';
@@ -197,7 +197,7 @@ class MirrorWindowController extends ChangeNotifier {
 
     // 仅在进入全屏时弹出提示信息
     if (fullscreen && context.mounted) {
-      DashboardSnack.show(context, '已进入全屏，按 ESC 或双击屏幕可退出全屏');
+      AppToast.show(context, '已进入全屏，按 ESC 或双击屏幕可退出全屏');
     }
   }
 
@@ -371,7 +371,7 @@ class MirrorWindowController extends ChangeNotifier {
       );
 
       if (context.mounted) {
-        DashboardSnack.show(
+        AppToast.show(
           context,
           isApk
               ? context.l10n.t('installingApk')
@@ -414,7 +414,7 @@ class MirrorWindowController extends ChangeNotifier {
                         .replaceAll('{name}', file.name)
                         .replaceAll('{error}', result.message));
 
-        DashboardSnack.show(context, message, isError: !result.isSuccess);
+        AppToast.show(context, message, isError: !result.isSuccess);
       } catch (e) {
         transferNotifier.updateTask(
           id: taskId,
@@ -423,7 +423,7 @@ class MirrorWindowController extends ChangeNotifier {
           error: e.toString(),
         );
         if (context.mounted) {
-          DashboardSnack.show(context, '${file.name}: $e', isError: true);
+          AppToast.show(context, '${file.name}: $e', isError: true);
         }
       }
     }
@@ -764,7 +764,7 @@ class MirrorWindowController extends ChangeNotifier {
       );
     } catch (e) {
       if (context.mounted) {
-        DashboardSnack.show(
+        AppToast.show(
           context,
           context.l10n
               .t('appMirroringFailed')

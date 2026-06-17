@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/device_actions/foreground_app_service.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../widget/app_toast.dart';
 
 /// 处理投屏工具栏返回键长按：先提示前台应用，持续按住则强停非桌面应用。
 class MirrorBackLongPressHandler {
@@ -109,13 +110,6 @@ class MirrorBackLongPressHandler {
     String message, {
     bool isError = false,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : const Color(0xff09c47c),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(milliseconds: 1400),
-      ),
-    );
+    AppToast.show(context, message, isError: isError);
   }
 }

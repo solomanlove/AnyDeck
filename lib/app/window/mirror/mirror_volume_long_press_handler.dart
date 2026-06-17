@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../widget/app_toast.dart';
 
 /// 处理投屏工具栏音量键长按逻辑：
 /// 长按音量+：音量变成最大
@@ -123,13 +124,6 @@ class MirrorVolumeLongPressHandler {
     String message, {
     bool isError = false,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : const Color(0xff09c47c),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(milliseconds: 1400),
-      ),
-    );
+    AppToast.show(context, message, isError: isError);
   }
 }

@@ -10,6 +10,7 @@ import '../../../core/scrcpy/screen_record_provider.dart';
 import '../../../core/scrcpy/scrcpy_keycode_helper.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../app/l10n/app_localizations.dart';
+import '../../widget/app_toast.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../../features/dashboard/presentation/control/device_settings_popup.dart';
 import '../../../features/dashboard/presentation/widgets/device_power_actions.dart';
@@ -90,25 +91,14 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
       final copied = await hostPlatform.copyImageToClipboard(bytes);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
-            ),
-            backgroundColor: const Color(0xff09c47c),
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppToast.show(
+          context,
+          '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
         );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${context.l10n.t('error')}: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppToast.show(context, '${context.l10n.t('error')}: $e', isError: true);
       }
     }
   }
@@ -139,16 +129,11 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
 
         if (pullResult.isSuccess) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  context.l10n
-                      .t('recordSuccess')
-                      .replaceAll('{path}', localSavePath),
-                ),
-                backgroundColor: const Color(0xff09c47c),
-                behavior: SnackBarBehavior.floating,
-              ),
+            AppToast.show(
+              context,
+              context.l10n
+                  .t('recordSuccess')
+                  .replaceAll('{path}', localSavePath),
             );
           }
         } else {
@@ -160,12 +145,10 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${context.l10n.t('recordFailed')}: $e'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
+          AppToast.show(
+            context,
+            '${context.l10n.t('recordFailed')}: $e',
+            isError: true,
           );
         }
       } finally {
@@ -180,12 +163,10 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         await recordNotifier.start();
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${context.l10n.t('recordFailed')}: $e'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
+          AppToast.show(
+            context,
+            '${context.l10n.t('recordFailed')}: $e',
+            isError: true,
           );
         }
       }
@@ -373,22 +354,18 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                     controlMessage: message,
                   );
                   if (!success && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(context.l10n.t('sendClipboardFailed')),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    AppToast.show(
+                      context,
+                      context.l10n.t('sendClipboardFailed'),
+                      isError: true,
                     );
                   }
                 } else {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(context.l10n.t('clipboardEmpty')),
-                        backgroundColor: Colors.orange,
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    AppToast.show(
+                      context,
+                      context.l10n.t('clipboardEmpty'),
+                      type: AppToastType.warning,
                     );
                   }
                 }
