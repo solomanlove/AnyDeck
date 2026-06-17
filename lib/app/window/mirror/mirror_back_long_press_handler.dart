@@ -9,6 +9,8 @@ import '../../l10n/app_localizations.dart';
 import '../../widget/app_toast.dart';
 
 typedef ForegroundAppDisplayNameResolver = String? Function(String packageName);
+typedef ForegroundAppForceStopSuccessCallback =
+    void Function(String packageName);
 
 /// 处理投屏工具栏返回键长按：先提示前台应用，持续按住则强停非桌面应用。
 class MirrorBackLongPressHandler {
@@ -16,11 +18,13 @@ class MirrorBackLongPressHandler {
     required this.ref,
     required this.deviceId,
     required this.displayNameResolver,
+    required this.onForceStopSuccess,
   });
 
   final WidgetRef ref;
   final String deviceId;
   final ForegroundAppDisplayNameResolver displayNameResolver;
+  final ForegroundAppForceStopSuccessCallback onForceStopSuccess;
 
   Timer? _previewTimer;
   Timer? _forceStopTimer;
@@ -113,6 +117,9 @@ class MirrorBackLongPressHandler {
         return;
       }
       final displayName = _resolveDisplayName(info);
+      if (result.isSuccess) {
+        onForceStopSuccess(info.packageName);
+      }
       _showFloatingMessage(
         context,
         result.isSuccess

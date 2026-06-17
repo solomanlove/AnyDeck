@@ -80,6 +80,16 @@ class MirrorWindowController extends ChangeNotifier {
     return label;
   }
 
+  /// 强停前台应用成功后清理标题栏 app icon 状态。
+  void clearForegroundAppIfMatches(String packageName) {
+    if (_currentPackageName != packageName) {
+      return;
+    }
+    _currentPackageName = null;
+    _currentForegroundPackage = null;
+    notifyListeners();
+  }
+
   /// 用于获取投屏 Viewer 尺寸的全局 Key
   late final GlobalKey _viewerKey;
 
