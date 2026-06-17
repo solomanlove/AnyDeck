@@ -42,7 +42,7 @@ class DesktopWindowManagerService {
 
     // 2. 初始化 tray_manager (系统托盘)
     try {
-      await trayManager.setIcon(AppIcons.appLogo);
+      await trayManager.setIcon(AppIcons.appTrayIcon, isTemplate: Platform.isMacOS, iconSize: 18);
 
       String langCode = 'zh';
       try {

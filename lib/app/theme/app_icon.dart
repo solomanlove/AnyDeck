@@ -3,6 +3,7 @@ class AppIcons {
   // App logo
   static const String appLogo = 'assets/brand/app_logo.png';
   static const String appLogoSvg = 'assets/brand/app_logo.svg';
+  static const String appTrayIcon = 'assets/brand/app_tray_icon.png';
 
   // 手机品牌logo
   static const String xiaomi = 'assets/brand/xiaomi_logo.png';
