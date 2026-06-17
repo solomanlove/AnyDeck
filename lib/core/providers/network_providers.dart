@@ -2,7 +2,58 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../adb/adb_service.dart';
+import '../utils/network_util.dart';
 import 'app_providers.dart';
+
+/// 设备 HTTP 代理配置，rawValue 保留 adb 原始读取结果便于兼容不同 ROM。
+class DeviceProxyConfig {
+  const DeviceProxyConfig({
+    required this.host,
+    required this.port,
+    required this.rawValue,
+    required this.isEnabled,
+  });
+
+  final String host;
+  final int? port;
+  final String rawValue;
+  final bool isEnabled;
+
+  String get address => isEnabled && port != null ? '$host:$port' : '';
+}
+
+/// 不区分设备的 HTTP 代理默认输入值。
+class DeviceProxyDefaults {
+  const DeviceProxyDefaults({required this.host, required this.port});
+
+  final String host;
+  final int port;
+}
+
+/// 读取全局代理默认值；未持久化时使用当前电脑的局域网 IPv4。
+Future<DeviceProxyDefaults> loadDeviceProxyDefaults() async {
+  final prefs = await SharedPreferences.getInstance();
+  final savedHost = prefs.getString(_deviceProxyHostKey)?.trim();
+  final savedPort = prefs.getInt(_deviceProxyPortKey);
+  final host = savedHost != null && savedHost.isNotEmpty
+      ? savedHost
+      : await NetworkLanMatcher.preferredHostIpv4() ?? '127.0.0.1';
+  return DeviceProxyDefaults(host: host, port: savedPort ?? 8888);
+}
+
+/// 保存最近一次成功应用的代理输入，作为所有设备共享的下次默认值。
+Future<void> saveDeviceProxyDefaults({
+  required String host,
+  required int port,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(_deviceProxyHostKey, host);
+  await prefs.setInt(_deviceProxyPortKey, port);
+}
+
+const _deviceProxyHostKey = 'network.device_proxy.host';
+const _deviceProxyPortKey = 'network.device_proxy.port';
 
 /// 端口转发数据模型
 class PortForward {
@@ -88,6 +139,36 @@ List<PortForward> parseReverseList(String stdout) {
   return list;
 }
 
+/// 解析 Android global http_proxy 字段，兼容空值、null、:0 等未设置状态。
+DeviceProxyConfig parseDeviceHttpProxy(String stdout) {
+  final rawValue = stdout.trim();
+  if (rawValue.isEmpty || rawValue == 'null' || rawValue == ':0') {
+    return DeviceProxyConfig(
+      host: '',
+      port: null,
+      rawValue: rawValue,
+      isEnabled: false,
+    );
+  }
+
+  final separator = rawValue.lastIndexOf(':');
+  if (separator <= 0 || separator >= rawValue.length - 1) {
+    return DeviceProxyConfig(
+      host: rawValue,
+      port: null,
+      rawValue: rawValue,
+      isEnabled: rawValue.isNotEmpty,
+    );
+  }
+
+  return DeviceProxyConfig(
+    host: rawValue.substring(0, separator),
+    port: int.tryParse(rawValue.substring(separator + 1)),
+    rawValue: rawValue,
+    isEnabled: true,
+  );
+}
+
 /// 实时获取设备的端口转发列表的 Provider
 final activePortForwardsProvider = FutureProvider.autoDispose
     .family<List<PortForward>, String>((ref, deviceId) async {
@@ -98,6 +179,175 @@ final activePortForwardsProvider = FutureProvider.autoDispose
       }
       return parseReverseList(result.stdout);
     });
+
+/// 读取当前设备的全局 HTTP 代理状态。
+final deviceHttpProxyProvider = FutureProvider.autoDispose
+    .family<DeviceProxyConfig, String>((ref, deviceId) async {
+      final adb = ref.watch(adbServiceProvider);
+      await _readAndroidSdkVersion(adb, deviceId);
+      final httpProxy = await _readSettingsValue(adb, deviceId, 'http_proxy');
+      final proxy = parseDeviceHttpProxy(httpProxy);
+      if (proxy.isEnabled) {
+        return proxy;
+      }
+
+      final legacyHost = await _readSettingsValue(
+        adb,
+        deviceId,
+        'global_http_proxy_host',
+      );
+      final legacyPort = await _readSettingsValue(
+        adb,
+        deviceId,
+        'global_http_proxy_port',
+      );
+      final port = int.tryParse(legacyPort.trim());
+      if (legacyHost.trim().isNotEmpty &&
+          legacyHost.trim() != 'null' &&
+          port != null) {
+        return DeviceProxyConfig(
+          host: legacyHost.trim(),
+          port: port,
+          rawValue: '${legacyHost.trim()}:$port',
+          isEnabled: true,
+        );
+      }
+
+      return proxy;
+    });
+
+/// 设备 HTTP 代理操作控制器，state 用于标记按钮加载状态。
+class DeviceProxyController extends Notifier<bool> {
+  DeviceProxyController(this.deviceId);
+
+  final String deviceId;
+
+  @override
+  bool build() => false;
+
+  Future<void> apply({required String host, required int port}) async {
+    state = true;
+    try {
+      final adb = ref.read(adbServiceProvider);
+      await _readAndroidSdkVersion(adb, deviceId);
+      await _runSettingsCommand(adb, [
+        'put',
+        'global',
+        'http_proxy',
+        '$host:$port',
+      ]);
+      await _runSettingsCommand(adb, [
+        'put',
+        'global',
+        'global_http_proxy_host',
+        host,
+      ]);
+      await _runSettingsCommand(adb, [
+        'put',
+        'global',
+        'global_http_proxy_port',
+        '$port',
+      ]);
+      await _runStaticShellCommand(
+        adb,
+        'settings put global global_http_proxy_exclusion_list ""',
+      );
+      ref.invalidate(deviceHttpProxyProvider(deviceId));
+    } finally {
+      state = false;
+    }
+  }
+
+  Future<void> clear() async {
+    state = true;
+    try {
+      final adb = ref.read(adbServiceProvider);
+      await _readAndroidSdkVersion(adb, deviceId);
+      await _runSettingsCommand(adb, ['put', 'global', 'http_proxy', ':0']);
+      await _runStaticShellCommand(
+        adb,
+        'settings put global global_http_proxy_host ""',
+      );
+      await _runSettingsCommand(adb, [
+        'put',
+        'global',
+        'global_http_proxy_port',
+        '0',
+      ]);
+      await _runStaticShellCommand(
+        adb,
+        'settings put global global_http_proxy_exclusion_list ""',
+      );
+      ref.invalidate(deviceHttpProxyProvider(deviceId));
+    } finally {
+      state = false;
+    }
+  }
+
+  Future<void> _runSettingsCommand(
+    AdbService adb,
+    List<String> settingsArgs,
+  ) async {
+    final result = await adb.run([
+      '-s',
+      deviceId,
+      'shell',
+      'settings',
+      ...settingsArgs,
+    ]);
+    if (!result.isSuccess) {
+      throw Exception(result.message);
+    }
+  }
+
+  Future<void> _runStaticShellCommand(AdbService adb, String command) async {
+    final result = await adb.shell(deviceId, command);
+    if (!result.isSuccess) {
+      throw Exception(result.message);
+    }
+  }
+}
+
+/// 当前设备 HTTP 代理操作状态。
+final deviceProxyControllerProvider =
+    NotifierProvider.family<DeviceProxyController, bool, String>(
+      DeviceProxyController.new,
+    );
+
+/// 读取 Android SDK 级别，确保后续兼容分支基于设备真实系统版本执行。
+Future<int?> _readAndroidSdkVersion(AdbService adb, String deviceId) async {
+  final result = await adb.run([
+    '-s',
+    deviceId,
+    'shell',
+    'getprop',
+    'ro.build.version.sdk',
+  ]);
+  if (!result.isSuccess) {
+    throw Exception(result.message);
+  }
+  return int.tryParse(result.stdout.trim());
+}
+
+Future<String> _readSettingsValue(
+  AdbService adb,
+  String deviceId,
+  String key,
+) async {
+  final result = await adb.run([
+    '-s',
+    deviceId,
+    'shell',
+    'settings',
+    'get',
+    'global',
+    key,
+  ]);
+  if (!result.isSuccess) {
+    throw Exception(result.message);
+  }
+  return result.stdout;
+}
 
 /// 预设列表状态管理 Notifier
 class PortForwardPresetsNotifier extends Notifier<List<PortForwardPreset>> {

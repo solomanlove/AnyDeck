@@ -252,17 +252,26 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
 ## 11. 网络 (Network Tab)
 
 ### 功能说明
-管理反向代理端口转发规则。允许查看当前正生效的活跃代理映射；支持用户手动添加映射预设；支持在目标设备连入网络或被选中时，自动在后台应用预设的网络路由反向映射，免去开发者手动输入命令的麻烦。
+管理设备 HTTP 代理与反向代理端口转发规则。允许查看、设置、清除当前 Android 设备的系统级 HTTP proxy；允许查看当前正生效的活跃代理映射；支持用户手动添加映射预设；支持在目标设备连入网络或被选中时，自动在后台应用预设的网络路由反向映射，免去开发者手动输入命令的麻烦。
 
 ### 底层原理与命令
-1. **反向端口映射（ADB Reverse）**：
+1. **设备 HTTP 代理（Global Settings）**：
+   - SDK 读取：`adb -s <deviceId> shell getprop ro.build.version.sdk`。用于确认设备系统版本，后续命令仍优先走跨版本更稳定的 `settings global`。
+   - 当前代理读取：`adb -s <deviceId> shell settings get global http_proxy`。返回空值、`null` 或 `:0` 时视为未设置代理。
+   - 代理设置：`adb -s <deviceId> shell settings put global http_proxy <host>:<port>`。
+   - 代理清除：`adb -s <deviceId> shell settings put global http_proxy :0`。
+   - 兼容补写：设置代理时同步维护 `global_http_proxy_host`、`global_http_proxy_port`、`global_http_proxy_exclusion_list`，用于覆盖部分旧系统或厂商 ROM 对 legacy key 的读取差异。
+   - 默认输入：代理地址优先读取 SharedPreferences 中的 `network.device_proxy.host`；没有持久化记录时，使用宿主机当前非回环私有 IPv4。端口优先读取 `network.device_proxy.port`，缺省为 `8888`。
+   - 持久化策略：仅在代理成功应用到设备后保存 host/port，作为所有设备共享的下次默认值，不按 deviceId 区分。
+   - 能力边界：仅支持设备级 HTTP proxy，不支持账号密码、SOCKS、PAC 或单应用代理；极旧 ROM 或厂商拦截 `settings` 写入时，保留 ADB 原始错误给 UI 展示，不做 Root/sqlite 强制修改。
+2. **反向端口映射（ADB Reverse）**：
    - 命令执行：`adb -s <deviceId> reverse tcp:<devicePort> tcp:<localPort>`。将手机端对 `<devicePort>` 的网络请求通过 USB 传输线反向代理转发至宿主机的 `<localPort>` 端口上。
    - 适用场景：适用于手机端混合 App / 调试网页访问电脑本地开发服务器（如前端 localhost:3000、React Native 8081 端口）。
-2. **反向端口管理**：
+3. **反向端口管理**：
    - 列表获取：`adb -s <deviceId> reverse --list`
    - 解析格式：如 `127.0.0.1 tcp:8081 tcp:8081` 拆分为本地端口与设备端口。
    - 移除规则：`adb -s <deviceId> reverse --remove tcp:<devicePort>`。
-3. **自动应用逻辑**：
+4. **自动应用逻辑**：
    - 监听 `selectedDeviceProvider` 设备状态流。
    - 当设备检测为 online 时，自动读取保存在 SharedPreferences 中的 `PortForwardPreset`，对于标记为 `autoApply = true` 的预设，循环在后台调用 `adb reverse`。
 

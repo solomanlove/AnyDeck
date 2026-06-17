@@ -7,6 +7,7 @@ import '../../../../app/l10n/app_localizations.dart';
 import '../../../../core/adb/adb_device.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/providers/network_providers.dart';
+import 'device_proxy_panel.dart';
 import 'network_dialog.dart';
 
 class NetworkTab extends ConsumerWidget {
@@ -65,6 +66,10 @@ class NetworkTab extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // 设备 HTTP 代理部分 (Device HTTP Proxy)
+            DeviceProxyPanel(deviceId: device.id),
+            const SizedBox(height: 36),
+
             // 端口转发部分 (Port Forwarding)
             _buildSectionHeader(
               context: context,
