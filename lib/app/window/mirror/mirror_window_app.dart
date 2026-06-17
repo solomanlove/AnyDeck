@@ -227,6 +227,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
     // 根据控制器状态组装核心内容区域
     Widget contentWidget;
+    //加载中
     if (_controller.isLoading) {
       contentWidget = Center(
         child: Column(
@@ -241,7 +242,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           ],
         ),
       );
-    } else if (_controller.errorMessage != null) {
+    }
+    //加载出错了
+    else if (_controller.errorMessage != null) {
       contentWidget = Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -274,7 +277,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           ),
         ),
       );
-    } else if (isMirrorActive) {
+    }
+    //投屏正常
+    else if (isMirrorActive) {
       contentWidget = Column(
         children: [
           // 非全屏状态下展示顶部浮动操作栏
@@ -320,7 +325,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           ),
         ],
       );
-    } else {
+    }
+    //停止投屏或者设备断开
+    else {
       contentWidget = Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -17,6 +17,7 @@ import 'mirror_back_long_press_handler.dart';
 import 'mirror_volume_long_press_handler.dart';
 import 'mirror_window_controller.dart';
 
+///投屏窗口中工具栏
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   const MirrorFloatingToolbar({
     super.key,
