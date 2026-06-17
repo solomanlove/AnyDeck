@@ -100,7 +100,7 @@ const devicesControlZh = {
   'boundsOn': '布局边界开',
   'boundsOff': '布局边界关',
   'layoutBoundsToggle': '布局边界',
-  'showTouchesToggle': '显示点按反馈',
+  'showTouchesToggle': '点按反馈',
   'pointerLocationToggle': '指针位置',
   'demoModeToggle': '演示模式',
   'darkMode': '深色',

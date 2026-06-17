@@ -170,48 +170,67 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
     ];
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ShortcutSettingGrid(
           title: context.l10n.t('deeplink'),
           actions: shortcutActions,
         ),
-        const SizedBox(height: 12),
-        _SwitchSettingRow(
-          label: context.l10n.t('darkLightToggle'),
-          value: _darkModeEnabled,
-          onChanged: (value) async {
-            setState(() => _darkModeEnabled = value);
-            await _runAction(actions.setDarkMode(widget.deviceId, value));
-          },
-        ),
-        const SizedBox(height: 8),
-        _SwitchSettingRow(
-          label: context.l10n.t('layoutBoundsToggle'),
-          value: overview.layoutBoundsEnabled,
-          onChanged: (value) =>
-              _runAction(actions.toggleLayoutBounds(widget.deviceId, value)),
-        ),
-        const SizedBox(height: 8),
-        _SwitchSettingRow(
-          label: context.l10n.t('showTouchesToggle'),
-          value: overview.showTouchesEnabled,
-          onChanged: (value) =>
-              _runAction(actions.setShowTouches(widget.deviceId, value)),
-        ),
-        const SizedBox(height: 8),
-        _SwitchSettingRow(
-          label: context.l10n.t('pointerLocationToggle'),
-          value: overview.pointerLocationEnabled,
-          onChanged: (value) =>
-              _runAction(actions.setPointerLocation(widget.deviceId, value)),
-        ),
-        const SizedBox(height: 8),
-        _SwitchSettingRow(
-          label: context.l10n.t('demoModeToggle'),
-          value: overview.demoModeEnabled,
-          onChanged: (value) =>
-              _runAction(actions.setDemoMode(widget.deviceId, value)),
+        const SizedBox(height: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SettingLabel(context.l10n.t('layoutHelper')),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _ToggleSettingButton(
+                  iconOn: CupertinoIcons.moon_fill,
+                  iconOff: CupertinoIcons.sun_max,
+                  label: context.l10n.t('darkLightToggle'),
+                  value: _darkModeEnabled,
+                  onChanged: (value) async {
+                    setState(() => _darkModeEnabled = value);
+                    await _runAction(actions.setDarkMode(widget.deviceId, value));
+                  },
+                ),
+                _ToggleSettingButton(
+                  iconOn: CupertinoIcons.square_grid_2x2_fill,
+                  iconOff: CupertinoIcons.square,
+                  label: context.l10n.t('layoutBoundsToggle'),
+                  value: overview.layoutBoundsEnabled,
+                  onChanged: (value) =>
+                      _runAction(actions.toggleLayoutBounds(widget.deviceId, value)),
+                ),
+                _ToggleSettingButton(
+                  iconOn: CupertinoIcons.hand_point_left_fill,
+                  iconOff: CupertinoIcons.hand_point_left,
+                  label: context.l10n.t('showTouchesToggle'),
+                  value: overview.showTouchesEnabled,
+                  onChanged: (value) =>
+                      _runAction(actions.setShowTouches(widget.deviceId, value)),
+                ),
+                _ToggleSettingButton(
+                  iconOn: CupertinoIcons.pencil,
+                  iconOff: CupertinoIcons.pencil,
+                  label: context.l10n.t('pointerLocationToggle'),
+                  value: overview.pointerLocationEnabled,
+                  onChanged: (value) =>
+                      _runAction(actions.setPointerLocation(widget.deviceId, value)),
+                ),
+                _ToggleSettingButton(
+                  iconOn: CupertinoIcons.play_rectangle_fill,
+                  iconOff: CupertinoIcons.play_rectangle,
+                  label: context.l10n.t('demoModeToggle'),
+                  value: overview.demoModeEnabled,
+                  onChanged: (value) =>
+                      _runAction(actions.setDemoMode(widget.deviceId, value)),
+                ),
+              ],
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         _SliderSettingRow(
@@ -377,32 +396,68 @@ class _ShortcutSettingButton extends StatelessWidget {
   }
 }
 
-class _SwitchSettingRow extends StatelessWidget {
-  const _SwitchSettingRow({
+/// 带状态切换的水平图标按钮组件，适用于布局辅助中的各种快捷开关。
+/// 激活状态采用 FilledButton.icon 样式，未激活状态采用 OutlinedButton.icon 样式（左右结构，风格与快捷直达按钮一致）。
+class _ToggleSettingButton extends StatelessWidget {
+  const _ToggleSettingButton({
+    required this.iconOn,
+    required this.iconOff,
     required this.label,
     required this.value,
     required this.onChanged,
   });
 
+  final IconData iconOn;
+  final IconData iconOff;
   final String label;
   final bool value;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _SettingLabel(label)),
-        Transform.scale(
-          scale: 0.8,
-          child: Switch(
-            value: value,
-            onChanged: onChanged,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelStyle = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(fontSize: 11, fontWeight: FontWeight.bold);
+
+    if (value) {
+      return FilledButton.icon(
+        style: FilledButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          minimumSize: const Size(0, 34),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
         ),
-      ],
-    );
+        icon: Icon(iconOn, size: 16),
+        label: Text(
+          label,
+          overflow: TextOverflow.ellipsis,
+          style: labelStyle,
+        ),
+        onPressed: () => onChanged(false),
+      );
+    } else {
+      return OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          minimumSize: const Size(0, 34),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          side: BorderSide(color: colorScheme.primary),
+          foregroundColor: colorScheme.primary,
+        ),
+        icon: Icon(iconOff, size: 16),
+        label: Text(
+          label,
+          overflow: TextOverflow.ellipsis,
+          style: labelStyle,
+        ),
+        onPressed: () => onChanged(true),
+      );
+    }
   }
 }
 
