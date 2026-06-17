@@ -46,6 +46,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     _backLongPressHandler = MirrorBackLongPressHandler(
       ref: ref,
       deviceId: widget.deviceId,
+      displayNameResolver: widget.controller.foregroundAppNameWithIcon,
     );
     _volumeLongPressHandler = MirrorVolumeLongPressHandler(
       ref: ref,

@@ -5,14 +5,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/device_actions/foreground_app_service.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widget/app_toast.dart';
+
+typedef ForegroundAppDisplayNameResolver = String? Function(String packageName);
 
 /// 处理投屏工具栏返回键长按：先提示前台应用，持续按住则强停非桌面应用。
 class MirrorBackLongPressHandler {
-  MirrorBackLongPressHandler({required this.ref, required this.deviceId});
+  MirrorBackLongPressHandler({
+    required this.ref,
+    required this.deviceId,
+    required this.displayNameResolver,
+  });
 
   final WidgetRef ref;
   final String deviceId;
+  final ForegroundAppDisplayNameResolver displayNameResolver;
 
   Timer? _previewTimer;
   Timer? _forceStopTimer;
@@ -62,13 +70,24 @@ class MirrorBackLongPressHandler {
       if (!context.mounted || !_pointerDown) {
         return;
       }
+      final displayName = _resolveDisplayName(info);
       _showFloatingMessage(
         context,
-        info.isHome ? '桌面' : '当前应用：${info.displayName}',
+        info.isHome
+            ? context.l10n.t('homeScreen')
+            : context.l10n
+                  .t('currentForegroundApp')
+                  .replaceAll('{app}', displayName),
       );
     } catch (e) {
       if (context.mounted && _pointerDown) {
-        _showFloatingMessage(context, '获取当前应用失败: $e', isError: true);
+        _showFloatingMessage(
+          context,
+          context.l10n
+              .t('getCurrentAppFailed')
+              .replaceAll('{error}', e.toString()),
+          isError: true,
+        );
       }
     }
   }
@@ -85,7 +104,7 @@ class MirrorBackLongPressHandler {
         return;
       }
       if (info.isHome || info.packageName.isEmpty) {
-        _showFloatingMessage(context, '桌面');
+        _showFloatingMessage(context, context.l10n.t('homeScreen'));
         return;
       }
 
@@ -93,16 +112,37 @@ class MirrorBackLongPressHandler {
       if (!context.mounted || !_pointerDown) {
         return;
       }
+      final displayName = _resolveDisplayName(info);
       _showFloatingMessage(
         context,
-        result.isSuccess ? '已强停：${info.displayName}' : '强停失败：${result.message}',
+        result.isSuccess
+            ? context.l10n
+                  .t('forceStopAppSuccess')
+                  .replaceAll('{app}', displayName)
+            : context.l10n
+                  .t('forceStopAppFailed')
+                  .replaceAll('{error}', result.message),
         isError: !result.isSuccess,
       );
     } catch (e) {
       if (context.mounted && _pointerDown) {
-        _showFloatingMessage(context, '强停失败: $e', isError: true);
+        _showFloatingMessage(
+          context,
+          context.l10n
+              .t('forceStopAppFailed')
+              .replaceAll('{error}', e.toString()),
+          isError: true,
+        );
       }
     }
+  }
+
+  String _resolveDisplayName(ForegroundAppInfo info) {
+    final resolved = displayNameResolver(info.packageName)?.trim();
+    if (resolved != null && resolved.isNotEmpty) {
+      return resolved;
+    }
+    return info.displayName;
   }
 
   void _showFloatingMessage(

@@ -63,6 +63,23 @@ class MirrorWindowController extends ChangeNotifier {
   AdbPackage? get currentForegroundPackage => _currentForegroundPackage;
   bool _isIdentifyingApp = false;
 
+  /// 当已成功获取前台应用 icon 时，返回更友好的应用名称。
+  String? foregroundAppNameWithIcon(String packageName) {
+    final package = _currentForegroundPackage;
+    final iconPath = package?.iconLocalPath;
+    final label = package?.label?.trim();
+    if (package == null ||
+        package.name != packageName ||
+        iconPath == null ||
+        iconPath.isEmpty ||
+        !File(iconPath).existsSync() ||
+        label == null ||
+        label.isEmpty) {
+      return null;
+    }
+    return label;
+  }
+
   /// 用于获取投屏 Viewer 尺寸的全局 Key
   late final GlobalKey _viewerKey;
 
