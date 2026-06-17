@@ -339,17 +339,16 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               tooltip: context.l10n.t('menuKey'),
               onPressed: () => actions.keyEvent(widget.deviceId, 187),
             ),
-            const _VerticalDivider(),
-
+            // const _VerticalDivider(),
             // Group 4: 通知栏, T
-            MirrorToolbarButton(
-              icon: Icon(
-                CupertinoIcons.bell,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-              tooltip: context.l10n.t('notificationBar'),
-              onPressed: () => actions.openNotificationBar(widget.deviceId),
-            ),
+            // MirrorToolbarButton(
+            //   icon: Icon(
+            //     CupertinoIcons.bell,
+            //     color: isDark ? Colors.white70 : Colors.black87,
+            //   ),
+            //   tooltip: context.l10n.t('notificationBar'),
+            //   onPressed: () => actions.openNotificationBar(widget.deviceId),
+            // ),
             MirrorToolbarButton(
               icon: Text(
                 'T',
@@ -398,46 +397,6 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             const _VerticalDivider(),
 
             // Group 5: 截图, 录屏, 前台窗口
-            MirrorToolbarButton(
-              icon: Icon(
-                CupertinoIcons.camera,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-              tooltip: context.l10n.t('screenshot'),
-              onPressed: () => _takeScreenshot(context, widget.deviceId),
-            ),
-            MirrorToolbarButton(
-              icon: Icon(
-                recordState.isRecording
-                    ? CupertinoIcons.stop
-                    : CupertinoIcons.videocam,
-                size: 22,
-                color: recordState.isRecording
-                    ? Colors.red
-                    : (isDark ? Colors.white70 : Colors.black87),
-              ),
-              tooltip: recordState.isRecording
-                  ? context.l10n.t('stopRecord')
-                  : context.l10n.t('startRecord'),
-              isLoading: recordState.isStopping,
-              badge: recordState.isRecording
-                  ? const _PulsingRecordBadge()
-                  : null,
-              onPressed: () => _toggleScreenRecording(context),
-            ),
-            if (recordState.isRecording) ...[
-              Padding(
-                padding: const EdgeInsets.only(left: 4, right: 8),
-                child: Text(
-                  _formatDuration(recordState.durationSeconds),
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
             MirrorToolbarButton(
               icon: Icon(
                 CupertinoIcons.scope,
@@ -512,6 +471,47 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 }
               },
             ),
+            MirrorToolbarButton(
+              icon: Icon(
+                CupertinoIcons.camera,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+              tooltip: context.l10n.t('screenshot'),
+              onPressed: () => _takeScreenshot(context, widget.deviceId),
+            ),
+            MirrorToolbarButton(
+              icon: Icon(
+                recordState.isRecording
+                    ? CupertinoIcons.stop
+                    : CupertinoIcons.videocam,
+                size: 22,
+                color: recordState.isRecording
+                    ? Colors.red
+                    : (isDark ? Colors.white70 : Colors.black87),
+              ),
+              tooltip: recordState.isRecording
+                  ? context.l10n.t('stopRecord')
+                  : context.l10n.t('startRecord'),
+              isLoading: recordState.isStopping,
+              badge: recordState.isRecording
+                  ? const _PulsingRecordBadge()
+                  : null,
+              onPressed: () => _toggleScreenRecording(context),
+            ),
+            if (recordState.isRecording) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 4, right: 8),
+                child: Text(
+                  _formatDuration(recordState.durationSeconds),
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+
             MirrorToolbarButton(
               icon: DeviceSettingsIcon(
                 color: isDark ? Colors.white70 : Colors.black87,
@@ -666,12 +666,14 @@ class _VerticalDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: 1,
-      height: 16,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      color: isDark ? Colors.white24 : Colors.black12,
-    );
+    return Container();
+    //分割线
+    // final isDark = Theme.of(context).brightness == Brightness.dark;
+    // return Container(
+    //   width: 1,
+    //   height: 16,
+    //   margin: const EdgeInsets.symmetric(horizontal: 8),
+    //   color: isDark ? Colors.white24 : Colors.black12,
+    // );
   }
 }
