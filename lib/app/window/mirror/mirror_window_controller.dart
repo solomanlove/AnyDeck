@@ -21,6 +21,8 @@ import '../multi_window_compat.dart';
 /// 投屏独立窗口的业务逻辑与状态控制器。
 /// 采用 ChangeNotifier 实现，将功能逻辑与 UI 界面彻底剥离。
 class MirrorWindowController extends ChangeNotifier {
+  static const Size _minimumWindowSize = Size(320, 420);
+
   final WidgetRef ref;
   final String deviceId;
   final String windowId;
@@ -48,6 +50,8 @@ class MirrorWindowController extends ChangeNotifier {
   /// 窗口是否处于全屏状态
   bool _isFullScreen = false;
   bool get isFullScreen => _isFullScreen;
+  bool _isNativeFullScreen = false;
+  bool _isNativeMaximized = false;
 
   /// 窗口是否置顶
   bool _isAlwaysOnTop = false;
@@ -67,8 +71,10 @@ class MirrorWindowController extends ChangeNotifier {
 
   /// 自动缩放的周期定时器
   Timer? _autoFitTimer;
+  Timer? _resizeSettleTimer;
   final MirrorAspectResolver _aspectResolver = MirrorAspectResolver();
   bool _isResolvingAspect = false;
+  bool _isApplyingWindowAutoFit = false;
   bool _isRestartingForRotation = false;
   DateTime? _lastStreamRestartAt;
   DateTime? _resumeAspectDetectionAt;
@@ -84,11 +90,9 @@ class MirrorWindowController extends ChangeNotifier {
     if (Platform.isMacOS) {
       _windowChannel.setMethodCallHandler((call) async {
         if (call.method == 'onWindowEnterFullScreen') {
-          _isFullScreen = true;
-          notifyListeners();
+          onWindowEnterFullScreen();
         } else if (call.method == 'onWindowLeaveFullScreen') {
-          _isFullScreen = false;
-          notifyListeners();
+          onWindowLeaveFullScreen();
         }
       });
       unawaited(_invokeNativeWindowMethod('initWindow'));
@@ -96,6 +100,7 @@ class MirrorWindowController extends ChangeNotifier {
 
     // 设置初始置顶状态
     unawaited(_setAlwaysOnTop(_isAlwaysOnTop));
+    unawaited(windowManager.setMinimumSize(_minimumWindowSize));
 
     // 异步启动投屏服务
     startMirroring();
@@ -108,6 +113,8 @@ class MirrorWindowController extends ChangeNotifier {
     }
     _identifyTimer?.cancel();
     _autoFitTimer?.cancel();
+    _resizeSettleTimer?.cancel();
+    unawaited(_setWindowAspectRatio(0));
     forceStopMirroring();
   }
 
@@ -169,6 +176,11 @@ class MirrorWindowController extends ChangeNotifier {
   /// 切换窗口全屏状态
   void toggleFullScreen(BuildContext context, bool fullscreen) async {
     _isFullScreen = fullscreen;
+    if (fullscreen) {
+      unawaited(_setWindowAspectRatio(0));
+    } else {
+      unawaited(_fitWindowToCurrentAspect());
+    }
     notifyListeners();
 
     var handled = false;
@@ -191,14 +203,40 @@ class MirrorWindowController extends ChangeNotifier {
 
   /// 外部窗口管理器通知：进入全屏
   void onWindowEnterFullScreen() {
-    _isFullScreen = true;
+    _isNativeFullScreen = true;
+    unawaited(_setWindowAspectRatio(0));
     notifyListeners();
   }
 
   /// 外部窗口管理器通知：离开全屏
   void onWindowLeaveFullScreen() {
-    _isFullScreen = false;
+    _isNativeFullScreen = false;
+    if (_isFullScreen) {
+      _isFullScreen = false;
+    }
+    unawaited(_fitWindowToCurrentAspect());
     notifyListeners();
+  }
+
+  /// 外部窗口管理器通知：原生最大化时不进入应用沉浸全屏。
+  void onWindowMaximize() {
+    _isNativeMaximized = true;
+    unawaited(_setWindowAspectRatio(0));
+  }
+
+  /// 外部窗口管理器通知：退出原生最大化后重新贴合并锁定比例。
+  void onWindowUnmaximize() {
+    _isNativeMaximized = false;
+    unawaited(_fitWindowToCurrentAspect());
+  }
+
+  /// 用户拖动缩放结束后做一次收敛，抵消固定标题栏/工具栏高度带来的黑边。
+  void onWindowResized() {
+    if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
+    _resizeSettleTimer?.cancel();
+    _resizeSettleTimer = Timer(const Duration(milliseconds: 80), () {
+      unawaited(_fitWindowToCurrentAspect());
+    });
   }
 
   /// 切换窗口置顶状态
@@ -299,12 +337,7 @@ class MirrorWindowController extends ChangeNotifier {
       } else {
         // 非全屏下双击黑边，自动缩放窗口以贴合设备宽高比
         Future.delayed(const Duration(milliseconds: 50), () {
-          MirrorWindowFrameAdapter.fitWindowToAspectRatio(
-            windowChannel: _windowChannel,
-            aspectRatio: aspectRatio,
-            viewerW: viewerW,
-            viewerH: viewerH,
-          );
+          unawaited(_fitWindowToCurrentAspect(aspectRatio: aspectRatio));
         });
       }
     } else {
@@ -550,6 +583,7 @@ class MirrorWindowController extends ChangeNotifier {
       _resumeAspectDetectionAt = DateTime.now().add(
         const Duration(milliseconds: 1200),
       );
+      _autoFitWindowOnStart();
     } catch (e) {
       debugPrint('Failed to restart mirroring after rotation change: $e');
     } finally {
@@ -589,29 +623,94 @@ class MirrorWindowController extends ChangeNotifier {
       }
 
       timer.cancel(); // 已经获取到流尺寸，立即取消定时器，确保 adb 只执行一次
-
-      final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
-      final resolution = overviewAsync.maybeWhen(
-        data: (overview) => overview.physicalResolution,
-        orElse: () => null,
-      );
-
-      final aspectRatio = await _aspectResolver.resolveNow(
-        ref: ref,
-        deviceId: deviceId,
-        resolution: resolution,
-        fallbackAspect: _getAspectRatio,
-      );
-
-      if (aspectRatio > 0) {
-        await MirrorWindowFrameAdapter.fitWindowToAspectRatio(
-          windowChannel: _windowChannel,
-          aspectRatio: aspectRatio,
-          viewerW: viewerW,
-          viewerH: viewerH,
-        );
-      }
+      await _fitWindowToCurrentAspect(viewerW: viewerW, viewerH: viewerH);
     });
+  }
+
+  /// 按当前 scrcpy 画面比例修正独立窗口尺寸，避免拉伸 Texture 导致触控坐标偏移。
+  Future<void> _fitWindowToCurrentAspect({
+    double? aspectRatio,
+    double? viewerW,
+    double? viewerH,
+  }) async {
+    if (_isApplyingWindowAutoFit ||
+        _isFullScreen ||
+        _isNativeFullScreen ||
+        _isNativeMaximized) {
+      return;
+    }
+    if (ref.read(activeEmbeddedMirrorProvider(deviceId)) == null) return;
+
+    final renderBox =
+        _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+    final viewerSize = renderBox?.size;
+    final width = viewerW ?? viewerSize?.width ?? 0;
+    final height = viewerH ?? viewerSize?.height ?? 0;
+    if (width <= 0 || height <= 0) return;
+
+    _isApplyingWindowAutoFit = true;
+    try {
+      final targetAspect = aspectRatio ?? await _resolveCurrentAspectRatio();
+      if (targetAspect <= 0) return;
+      await _setWindowAspectRatio(0);
+      await MirrorWindowFrameAdapter.fitWindowToAspectRatio(
+        windowChannel: _windowChannel,
+        aspectRatio: targetAspect,
+        viewerW: width,
+        viewerH: height,
+      );
+      await _lockWindowAspectRatioForChrome(targetAspect);
+    } finally {
+      _isApplyingWindowAutoFit = false;
+    }
+  }
+
+  /// 用“投屏画面比例 + 标题栏/工具栏高度”锁定窗口缩放比例。
+  Future<void> _lockWindowAspectRatioForChrome(double contentAspect) async {
+    if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      final size = await windowManager.getSize();
+      if (size.width > 0 && contentAspect > 0) {
+        final lockedHeight =
+            size.width / contentAspect + mirrorWindowTopChromeHeight;
+        if (lockedHeight > 0) {
+          await _setWindowAspectRatio(size.width / lockedHeight);
+          return;
+        }
+      }
+      if (size.width > 0 && size.height > 0) {
+        await _setWindowAspectRatio(size.width / size.height);
+        return;
+      }
+    } catch (e) {
+      debugPrint('Failed to get window size for aspect lock: $e');
+    }
+    final frame = await MirrorWindowFrameAdapter.getWindowFrame(_windowChannel);
+    if (frame == null || frame.width <= 0 || frame.height <= 0) return;
+    await _setWindowAspectRatio(frame.width / frame.height);
+  }
+
+  Future<void> _setWindowAspectRatio(double aspectRatio) async {
+    try {
+      await windowManager.setAspectRatio(aspectRatio);
+    } catch (e) {
+      debugPrint('Failed to set window aspect ratio: $e');
+    }
+  }
+
+  Future<double> _resolveCurrentAspectRatio() async {
+    final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
+    final resolution = overviewAsync.maybeWhen(
+      data: (overview) => overview.physicalResolution,
+      orElse: () => null,
+    );
+    return _aspectResolver.resolveNow(
+      ref: ref,
+      deviceId: deviceId,
+      resolution: resolution,
+      fallbackAspect: _getAspectRatio,
+    );
   }
 
   /// 打开前台应用的新投屏窗口，自动适配大小。

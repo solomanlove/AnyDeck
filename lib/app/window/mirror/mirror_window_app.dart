@@ -119,10 +119,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     // 监听控制器状态变化，更新 UI
     _controller.addListener(_onControllerChanged);
 
-    // 非 macOS 平台需要注册窗口监听器
-    if (!Platform.isMacOS) {
-      windowManager.addListener(this);
-    }
+    // 监听窗口状态变化，用于同步全屏状态和比例锁定
+    windowManager.addListener(this);
 
     // 初始化控制器
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -136,9 +134,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     _controller.removeListener(_onControllerChanged);
     _controller.disposeController();
 
-    if (!Platform.isMacOS) {
-      windowManager.removeListener(this);
-    }
+    windowManager.removeListener(this);
     _keyboardFocusNode.dispose();
     super.dispose();
   }
@@ -168,6 +164,21 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   @override
   void onWindowLeaveFullScreen() {
     _controller.onWindowLeaveFullScreen();
+  }
+
+  @override
+  void onWindowMaximize() {
+    _controller.onWindowMaximize();
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    _controller.onWindowUnmaximize();
+  }
+
+  @override
+  void onWindowResized() {
+    _controller.onWindowResized();
   }
 
   // ==================== 界面渲染 (UI Build) ====================
@@ -266,8 +277,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     } else if (isMirrorActive) {
       contentWidget = Column(
         children: [
-          // 非全屏且非单应用模式下，展示顶部浮动操作栏
-          if (!_controller.isFullScreen && widget.startApp == null)
+          // 非全屏状态下展示顶部浮动操作栏
+          if (!_controller.isFullScreen)
             SizedBox(
               width: double.infinity,
               child: MirrorFloatingToolbar(
@@ -401,7 +412,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              if (_controller.currentForegroundPackage != null) ...[
+                              if (widget.startApp == null && _controller.currentForegroundPackage != null) ...[
                                 const SizedBox(width: 8),
                                 Tooltip(
                                   message: context.l10n.t('appMirroring'),

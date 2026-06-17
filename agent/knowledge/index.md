@@ -13,6 +13,7 @@
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览、控制、应用、文件、日志、终端、进程、网页调试、布局分析、性能监控、网络/端口转发等 12 个 Tab 页的功能设计与底层 ADB 命令及系统级原理 | `dashboard/` (主面板各 Tab) |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录无线调试底层 TCP/IP 监听模式切换、多级 IP 地址自动探测机制（`ip route`/`ip addr`）、合并去重架构与连接操作链路设计 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
+| `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口比例适配、原生比例锁定、以及单 App 投屏工具栏/icon 显示规则 | `app/window/mirror/` |
 | `adb-app-window-run-config-script` | App 子窗口 Run Configuration 生成脚本 | active | 记录 `script/generate_app_window_run_configs.sh` 如何生成模拟器管理窗口和控制台窗口的 IDE Flutter 运行入口 | `script/`, `.idea/runConfigurations/`, `app/window/` |
 
 ## 新增知识库规则
