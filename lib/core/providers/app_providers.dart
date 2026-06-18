@@ -48,7 +48,11 @@ final adbServiceProvider = Provider<AdbService>((ref) {
 
 /// 设备操作门面，负责 key event、开关和 shell 读取。
 final deviceActionServiceProvider = Provider<DeviceActionService>((ref) {
-  return DeviceActionService(ref.watch(adbServiceProvider));
+  return DeviceActionService(
+    ref.watch(adbServiceProvider),
+    sdkVersionResolver: (deviceId) =>
+        ref.read(deviceSdkVersionProvider(deviceId)),
+  );
 });
 
 /// 前台应用识别门面，负责投屏窗口长按返回键的应用判断与强停。

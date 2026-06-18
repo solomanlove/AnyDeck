@@ -46,6 +46,7 @@
      - Home 键：`input keyevent 3` (`KEYCODE_HOME`)
      - 电源键：`input keyevent 26` (`KEYCODE_POWER`)
      - 音量加/减/静音：`input keyevent 24` / `25` / `164`
+   - 投屏工具栏音量键支持长按快捷操作：长按音量+ 将媒体流设置到最大，长按音量- 将媒体流设置为 0。实现时优先读取 `deviceSdkVersionProvider(deviceId)`，再按 Android 版本选择底层命令：Android 11+ 使用 `cmd media_session volume --stream 3 --set <value>`，Android 8-10 使用 `media volume --stream 3 --set <value>`，Android 8 以下使用 `service call audio` 候选 transaction code 并保留 keyevent 连续调整兜底。
 2. **Scrcpy 投屏集成 (External / Embedded)**：
    - **启动控制**：利用 `Process.start` 启动宿主机已安装的官方 `scrcpy` 执行文件，传入设备 ID 参数 `-s <deviceId>`。
    - **参数配制项**：通过命令行选项控制镜像属性：

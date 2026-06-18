@@ -1,17 +1,29 @@
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 
+typedef DeviceSdkVersionResolver = int? Function(String deviceId);
+
 /// 设备控制命令集合，将 UI 操作映射到 adb shell 调用。
 class DeviceActionService {
-  DeviceActionService(this._adb);
+  DeviceActionService(
+    this._adb, {
+    DeviceSdkVersionResolver? sdkVersionResolver,
+  }) : _sdkVersionResolver = sdkVersionResolver;
 
-  static const int _streamSystem = 1;
-  static const int _streamRing = 2;
   static const int _streamMusic = 3;
-  static const int _streamAlarm = 4;
-  static const int _streamNotification = 5;
+  static const int _fallbackMaxMediaVolume = 15;
+  static const List<int> _audioServiceSetStreamVolumeCodes = [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+  ];
 
   final AdbService _adb;
+  final DeviceSdkVersionResolver? _sdkVersionResolver;
 
   /// 连接 adb TCP/IP 地址，例如 `192.168.1.10:5555`。
   Future<AdbResult> connect(String address) => _adb.run(['connect', address]);
@@ -221,15 +233,8 @@ class DeviceActionService {
       'set-ringer-mode',
       'NORMAL',
     ]);
-    final volumeResult = await _setStreamsToBoundary(
+    final volumeResult = await _setMediaVolumeToBoundary(
       deviceId,
-      streams: const [
-        _streamMusic,
-        _streamRing,
-        _streamNotification,
-        _streamSystem,
-        _streamAlarm,
-      ],
       useMax: true,
     );
     if (volumeResult.isSuccess) {
@@ -243,14 +248,8 @@ class DeviceActionService {
 
   /// 将手机主要音频流设为静音，并进入系统静音模式。
   Future<AdbResult> volumeMute(String deviceId) async {
-    final volumeResult = await _setStreamsToBoundary(
+    final volumeResult = await _setMediaVolumeToBoundary(
       deviceId,
-      streams: const [
-        _streamMusic,
-        _streamRing,
-        _streamNotification,
-        _streamSystem,
-      ],
       useMax: false,
     );
     final ringerResult = await _adb.shellArgs(deviceId, [
@@ -259,67 +258,138 @@ class DeviceActionService {
       'set-ringer-mode',
       'SILENT',
     ]);
-    if (volumeResult.isSuccess || ringerResult.isSuccess) {
-      return volumeResult.isSuccess ? volumeResult : ringerResult;
+    if (volumeResult.isSuccess) {
+      return volumeResult;
     }
-    return _fallbackVolumeMute(deviceId);
+    final fallbackResult = await _fallbackVolumeMute(deviceId);
+    if (fallbackResult.isSuccess) {
+      return fallbackResult;
+    }
+    if (ringerResult.isSuccess) {
+      return ringerResult;
+    }
+    return volumeResult;
   }
 
-  /// 使用 AudioManager 真实 min/max 设置音量，避免 media_session 返回成功但设备无变化。
-  Future<AdbResult> _setStreamsToBoundary(
+  /// 根据 Android SDK 选择底层音量命令，长按音量键只控制媒体流。
+  Future<AdbResult> _setMediaVolumeToBoundary(
     String deviceId, {
-    required List<int> streams,
     required bool useMax,
   }) async {
-    final changedStreams = <String>[];
+    final sdkVersion = await _resolveSdkVersion(deviceId);
+    if (sdkVersion != null && sdkVersion >= 30) {
+      return _setMediaSessionVolume(deviceId, useMax: useMax);
+    }
+    if (sdkVersion != null && sdkVersion >= 26) {
+      return _setMediaCommandVolume(deviceId, useMax: useMax);
+    }
+    if (sdkVersion != null) {
+      return _setAudioServiceCallVolume(deviceId, useMax: useMax);
+    }
+
+    final modernResult = await _setMediaSessionVolume(deviceId, useMax: useMax);
+    if (modernResult.isSuccess) return modernResult;
+    final mediaResult = await _setMediaCommandVolume(deviceId, useMax: useMax);
+    if (mediaResult.isSuccess) return mediaResult;
+    return _setAudioServiceCallVolume(deviceId, useMax: useMax);
+  }
+
+  Future<int?> _resolveSdkVersion(String deviceId) async {
+    final cachedSdk = _sdkVersionResolver?.call(deviceId);
+    if (cachedSdk != null && cachedSdk > 0) {
+      return cachedSdk;
+    }
+
+    final result = await _adb.shellArgs(deviceId, [
+      'getprop',
+      'ro.build.version.sdk',
+    ]);
+    if (!result.isSuccess) return null;
+    final sdk = int.tryParse(result.stdout.trim());
+    return sdk != null && sdk > 0 ? sdk : null;
+  }
+
+  Future<AdbResult> _setMediaSessionVolume(
+    String deviceId, {
+    required bool useMax,
+  }) async {
+    final target = useMax
+        ? await _readMediaSessionMaxVolume(deviceId)
+        : 0;
+    return _adb.shellArgs(deviceId, [
+      'cmd',
+      'media_session',
+      'volume',
+      '--stream',
+      '$_streamMusic',
+      '--set',
+      '$target',
+    ]);
+  }
+
+  Future<int> _readMediaSessionMaxVolume(String deviceId) async {
+    final result = await _adb.shellArgs(deviceId, [
+      'cmd',
+      'media_session',
+      'volume',
+      '--stream',
+      '$_streamMusic',
+      '--get',
+    ]);
+    return _parseMaxVolume(result.stdout) ?? _fallbackMaxMediaVolume;
+  }
+
+  Future<AdbResult> _setMediaCommandVolume(
+    String deviceId, {
+    required bool useMax,
+  }) async {
+    final target = useMax ? await _readMediaCommandMaxVolume(deviceId) : 0;
+    return _adb.shellArgs(deviceId, [
+      'media',
+      'volume',
+      '--stream',
+      '$_streamMusic',
+      '--set',
+      '$target',
+    ]);
+  }
+
+  Future<int> _readMediaCommandMaxVolume(String deviceId) async {
+    final result = await _adb.shellArgs(deviceId, [
+      'media',
+      'volume',
+      '--stream',
+      '$_streamMusic',
+      '--get',
+    ]);
+    return _parseMaxVolume(result.stdout) ?? _fallbackMaxMediaVolume;
+  }
+
+  Future<AdbResult> _setAudioServiceCallVolume(
+    String deviceId, {
+    required bool useMax,
+  }) async {
+    final target = useMax ? _fallbackMaxMediaVolume : 0;
     final failedMessages = <String>[];
-
-    for (final stream in streams) {
-      final boundaryResult = await _adb.shellArgs(deviceId, [
-        'cmd',
+    for (final code in _audioServiceSetStreamVolumeCodes) {
+      final result = await _adb.shellArgs(deviceId, [
+        'service',
+        'call',
         'audio',
-        useMax ? 'get-max-volume' : 'get-min-volume',
-        '$stream',
+        '$code',
+        'i32',
+        '$_streamMusic',
+        'i32',
+        '$target',
+        'i32',
+        '0',
       ]);
-      final boundary = _parseAudioCommandValue(boundaryResult.stdout);
-      if (!boundaryResult.isSuccess || boundary == null) {
-        failedMessages.add('stream $stream: ${boundaryResult.message}');
-        continue;
+      if (_isAudioCommandSuccess(result)) {
+        return result;
       }
-
-      final setResult = await _adb.shellArgs(deviceId, [
-        'cmd',
-        'audio',
-        'set-volume',
-        '$stream',
-        '$boundary',
-      ]);
-      if (!setResult.isSuccess) {
-        failedMessages.add('stream $stream: ${setResult.message}');
-        continue;
-      }
-
-      final currentResult = await _adb.shellArgs(deviceId, [
-        'cmd',
-        'audio',
-        'get-stream-volume',
-        '$stream',
-      ]);
-      final current = _parseAudioCommandValue(currentResult.stdout);
-      if (currentResult.isSuccess && current == boundary) {
-        changedStreams.add('stream $stream=$boundary');
-      } else {
-        failedMessages.add('stream $stream: 校验失败(${currentResult.message})');
-      }
+      failedMessages.add('service call audio $code: ${result.message}');
     }
 
-    if (changedStreams.isNotEmpty) {
-      return AdbResult(
-        exitCode: 0,
-        stdout: changedStreams.join('\n'),
-        stderr: failedMessages.join('\n'),
-      );
-    }
     return AdbResult(
       exitCode: 1,
       stdout: '',
@@ -327,9 +397,32 @@ class DeviceActionService {
     );
   }
 
-  int? _parseAudioCommandValue(String output) {
-    final match = RegExp(r'->\s*(-?\d+)').firstMatch(output);
-    return int.tryParse(match?.group(1) ?? '');
+  int? _parseMaxVolume(String output) {
+    final rangeMatch = RegExp(
+      r'\[\s*(-?\d+)\s*\.\.\s*(-?\d+)\s*\]',
+    ).firstMatch(output);
+    if (rangeMatch != null) {
+      return int.tryParse(rangeMatch.group(2) ?? '');
+    }
+
+    final values = RegExp(r'-?\d+')
+        .allMatches(output)
+        .map((match) => int.tryParse(match.group(0) ?? ''))
+        .whereType<int>()
+        .where((value) => value > 0)
+        .toList();
+    if (values.isEmpty) return null;
+    values.sort();
+    return values.last;
+  }
+
+  bool _isAudioCommandSuccess(AdbResult result) {
+    if (!result.isSuccess) return false;
+    final message = '${result.stdout}\n${result.stderr}'.toLowerCase();
+    return !message.contains('exception') &&
+        !message.contains('unknown') &&
+        !message.contains('not found') &&
+        !message.contains('invalid');
   }
 
   Future<AdbResult> _fallbackVolumeMax(String deviceId) async {
