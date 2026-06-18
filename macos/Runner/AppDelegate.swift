@@ -20,7 +20,7 @@ class AppDelegate: FlutterAppDelegate {
     return true
   }
 
-  // 当收到退出请求时（如 Command+Q），直接退出应用
+  // 真正收到退出请求时直接退出；Command+Q 的双按确认由 Flutter 主窗口处理。
   override func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     return .terminateNow
   }

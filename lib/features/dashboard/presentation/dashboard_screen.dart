@@ -20,6 +20,7 @@ import '../../../app/theme/app_icon.dart';
 import '../../../app/settings/app_settings.dart';
 import '../../../app/settings/app_settings_controller.dart';
 import '../../../app/window/multi_window_compat.dart';
+import '../../../app/window/window_close_shortcut.dart';
 import '../../../core/adb/adb_device.dart';
 import '../../../core/adb/adb_result.dart';
 import '../../../core/apps/adb_package.dart';
@@ -143,6 +144,9 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WindowListener {
   static const _windowChannel = MethodChannel('any_deck/window');
+  static const _quitShortcutInterval = Duration(seconds: 2);
+
+  DateTime? _lastQuitShortcutAt;
 
   @override
   void initState() {
@@ -191,6 +195,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     await windowManager.setPreventClose(false);
     await windowManager.destroy();
     exit(0);
+  }
+
+  void _handleQuitShortcut() {
+    final now = DateTime.now();
+    final lastPressedAt = _lastQuitShortcutAt;
+    if (lastPressedAt != null &&
+        now.difference(lastPressedAt) <= _quitShortcutInterval) {
+      _lastQuitShortcutAt = null;
+      unawaited(_exitApp());
+      return;
+    }
+
+    _lastQuitShortcutAt = now;
+    DashboardSnack.show(context, context.l10n.t('pressCommandQAgainToQuit'));
   }
 
   @override
@@ -292,9 +310,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.keyQ, meta: true):
-            _exitApp,
+            _handleQuitShortcut,
         const SingleActivator(LogicalKeyboardKey.keyQ, control: true):
-            _exitApp,
+            _handleQuitShortcut,
         const SingleActivator(LogicalKeyboardKey.comma, meta: true): () {
           ref.read(selectedToolTabProvider.notifier).select(12);
         },
@@ -302,17 +320,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ref.read(selectedToolTabProvider.notifier).select(12);
         },
       },
-      child: Scaffold(
-        body: _WechatStyleShell(
-          title: appBarTitle,
-          selectedDevice: effectiveSelectedDevice,
-          child: IndexedStack(
-            index: stackIndex,
-            children: [
-              const _DashboardHomeContent(),
-              workspace,
-              const _SettingsTab(),
-            ],
+      child: MainWindowCloseShortcut(
+        child: Scaffold(
+          body: _WechatStyleShell(
+            title: appBarTitle,
+            selectedDevice: effectiveSelectedDevice,
+            child: IndexedStack(
+              index: stackIndex,
+              children: [
+                const _DashboardHomeContent(),
+                workspace,
+                const _SettingsTab(),
+              ],
+            ),
           ),
         ),
       ),

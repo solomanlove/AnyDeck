@@ -208,7 +208,9 @@ class MainFlutterWindow: NSWindow {
         }
         // Quit (index 10)
         if submenu.items.count > 10 {
-          submenu.items[10].title = isChinese ? "退出 \(title)" : "Quit \(title)"
+          let quitItem = submenu.items[10]
+          quitItem.title = isChinese ? "退出 \(title)" : "Quit \(title)"
+          quitItem.keyEquivalent = ""
         }
       }
     }

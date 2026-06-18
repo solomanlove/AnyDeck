@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
+import '../window_close_shortcut.dart';
 import '../../../features/dashboard/presentation/control/embedded_scrcpy_viewer.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/providers/app_providers.dart';
@@ -51,12 +52,14 @@ class MirrorWindowApp extends ConsumerWidget {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: settings.themeMode,
-      home: MirrorWindowContent(
-        deviceId: deviceId,
-        deviceName: deviceName,
-        windowId: windowId,
-        newDisplay: newDisplay,
-        startApp: startApp,
+      home: WindowCloseShortcut(
+        child: MirrorWindowContent(
+          deviceId: deviceId,
+          deviceName: deviceName,
+          windowId: windowId,
+          newDisplay: newDisplay,
+          startApp: startApp,
+        ),
       ),
     );
   }

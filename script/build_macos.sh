@@ -76,6 +76,8 @@ APP_NAME=$(basename "$APP_PATH")
 echo "找到应用包: $APP_NAME"
 echo "源路径: $APP_PATH"
 
+"$SCRIPT_DIR/fix_macos_app_policy.sh" "$APP_PATH"
+
 # 创建目标的 Products 目录
 mkdir -p "$PRODUCT_DEST_DIR"
 
@@ -88,6 +90,7 @@ fi
 
 echo "正在复制到: $PRODUCT_DEST_DIR/"
 cp -R "$APP_PATH" "$PRODUCT_DEST_DIR/"
+"$SCRIPT_DIR/fix_macos_app_policy.sh" "$PRODUCT_DEST_DIR/$APP_NAME"
 
 echo "=========================================="
 echo "打包与分发完成！"

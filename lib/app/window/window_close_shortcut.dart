@@ -19,3 +19,21 @@ class WindowCloseShortcut extends StatelessWidget {
     );
   }
 }
+
+/// 为主窗口提供 macOS 标准关闭快捷键，实际行为由主窗口 close listener 决定。
+class MainWindowCloseShortcut extends StatelessWidget {
+  const MainWindowCloseShortcut({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.keyW, meta: true):
+            windowManager.close,
+      },
+      child: Focus(autofocus: true, child: child),
+    );
+  }
+}
