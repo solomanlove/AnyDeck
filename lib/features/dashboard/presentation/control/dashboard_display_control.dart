@@ -127,6 +127,49 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
     );
   }
 
+  // DPI 步进按钮使用同一个 Material 承载边框和 ink，确保 hover 水波纹贴合到边框。
+  Widget _buildDpiStepButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required bool isDark,
+  }) {
+    final theme = Theme.of(context);
+    final borderColor = isDark ? Colors.white12 : Colors.black12;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+      side: BorderSide(color: borderColor),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Material(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.04)
+            : Colors.black.withValues(alpha: 0.02),
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          customBorder: shape,
+          onTap: onPressed,
+          hoverColor: theme.colorScheme.primary.withValues(alpha: 0.08),
+          splashColor: theme.colorScheme.primary.withValues(alpha: 0.16),
+          highlightColor: theme.colorScheme.primary.withValues(alpha: 0.10),
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            child: Icon(
+              icon,
+              size: 16,
+              color: onPressed == null
+                  ? theme.disabledColor
+                  : (isDark ? Colors.white70 : Colors.black87),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final overviewAsync = widget.device.isOnline
@@ -384,42 +427,28 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isDark ? Colors.white12 : Colors.black12,
-                    ),
+                _buildDpiStepButton(
+                  icon: CupertinoIcons.minus,
+                  isDark: isDark,
+                  onPressed: currentDpi == null
+                      ? null
+                      : () async {
+                          final target = currentDpi - 10;
+                          if (target > 80) {
+                            await _runAdbAction(
+                              context,
+                              ref,
+                              actions.setDisplayDensity(
+                                widget.device.id,
+                                target,
+                              ),
+                            );
+                            ref.invalidate(
+                              deviceOverviewProvider(widget.device.id),
+                            );
+                          }
+                        },
                   ),
-                  child: IconButton(
-                    icon: const Icon(CupertinoIcons.minus, size: 16),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
-                    onPressed: currentDpi == null
-                        ? null
-                        : () async {
-                            final target = currentDpi - 10;
-                            if (target > 80) {
-                              await _runAdbAction(
-                                context,
-                                ref,
-                                actions.setDisplayDensity(
-                                  widget.device.id,
-                                  target,
-                                ),
-                              );
-                              ref.invalidate(
-                                deviceOverviewProvider(widget.device.id),
-                              );
-                            }
-                          },
-                  ),
-                ),
                 const SizedBox(width: 4),
                 SizedBox(
                   width: 70,
@@ -450,42 +479,28 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isDark ? Colors.white12 : Colors.black12,
-                    ),
+                _buildDpiStepButton(
+                  icon: CupertinoIcons.plus,
+                  isDark: isDark,
+                  onPressed: currentDpi == null
+                      ? null
+                      : () async {
+                          final target = currentDpi + 10;
+                          if (target < 1000) {
+                            await _runAdbAction(
+                              context,
+                              ref,
+                              actions.setDisplayDensity(
+                                widget.device.id,
+                                target,
+                              ),
+                            );
+                            ref.invalidate(
+                              deviceOverviewProvider(widget.device.id),
+                            );
+                          }
+                        },
                   ),
-                  child: IconButton(
-                    icon: const Icon(CupertinoIcons.plus, size: 16),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
-                    onPressed: currentDpi == null
-                        ? null
-                        : () async {
-                            final target = currentDpi + 10;
-                            if (target < 1000) {
-                              await _runAdbAction(
-                                context,
-                                ref,
-                                actions.setDisplayDensity(
-                                  widget.device.id,
-                                  target,
-                                ),
-                              );
-                              ref.invalidate(
-                                deviceOverviewProvider(widget.device.id),
-                              );
-                            }
-                          },
-                  ),
-                ),
                 const SizedBox(width: 12),
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
