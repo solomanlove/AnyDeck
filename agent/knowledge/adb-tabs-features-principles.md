@@ -14,6 +14,8 @@
 1. **秒开设计（本地缓存）**：
    - 优先尝试从本地持久化（`SharedPreferences`）加载历史缓存的设备信息进行即时渲染，以防 ADB 刚连上时接口查询延迟导致页面白屏。
    - 随后异步发起 ADB 查询，并在获取到最新数据后静默刷新 UI，同步更新缓存。
+   - 连接列表由 `deviceRegistryProvider` 维护轻量缓存，在线设备被发现后会立即异步读取 `getprop ro.build.version.release` 与 `getprop ro.build.version.sdk`，并持久化 `androidVersion`（格式 `Android <release> (API <sdk>)`）和 `sdkVersion`。后续再补齐 `serial`、`model`、`product` 和 Wi-Fi IP，且 USB/Wi-Fi 合并后会保留同一份版本缓存。
+   - 概览页的 Android 版本展示优先复用 `deviceRegistryProvider` 的全局版本值，不再依赖概览页首次查询版本；其他业务逻辑应通过 `deviceAndroidVersionProvider(deviceId)` 或 `deviceSdkVersionProvider(deviceId)` 读取版本，避免重复执行版本查询命令。
 2. **核心属性查询命令**：
    - **系统属性**：利用 `adb shell getprop <key>` 读取。
      - 品牌：`ro.product.brand`

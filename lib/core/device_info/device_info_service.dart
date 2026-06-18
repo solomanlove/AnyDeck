@@ -48,7 +48,10 @@ class DeviceInfoService {
   }
 
   /// 并行加载所有概览字段，避免 dashboard 阻塞。
-  Future<DeviceOverview> loadOverview(String deviceId) async {
+  Future<DeviceOverview> loadOverview(
+    String deviceId, {
+    String? androidVersion,
+  }) async {
     try {
       final basicScript = '''
 echo "===UNAME==="
@@ -182,7 +185,7 @@ settings get global sysui_demo_allowed
           'ro.boot.serialno',
         ], fallback: serialFromAdb),
         androidId: androidIdRaw,
-        androidVersion:
+        androidVersion: androidVersion ??
             'Android ${_firstValue(properties, ['ro.build.version.release'])}'
             ' (API ${_firstValue(properties, ['ro.build.version.sdk'])})',
         kernelVersion: kernel,

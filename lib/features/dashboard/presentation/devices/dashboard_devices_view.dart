@@ -203,6 +203,14 @@ extension _DeviceListPanelView on _DeviceListPanelState {
             onTap: () => _toggleSort('name'),
           ),
           const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: Text(
+              context.l10n.t('deviceAndroidVersionCol'),
+              style: titleStyle,
+            ),
+          ),
+          const SizedBox(width: 10),
           _SortableHeaderCell(
             flex: 2,
             label: context.l10n.t('deviceStatusCol'),

@@ -58,6 +58,8 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             const SizedBox(width: 10),
             _buildNameCell(context, device),
             const SizedBox(width: 10),
+            _buildAndroidVersionCell(context, device),
+            const SizedBox(width: 10),
             _buildStatusCell(context, device),
             const SizedBox(width: 10),
             _buildActionsCell(context, device),
@@ -205,6 +207,22 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             onPressed: () => _showRenameDialog(context, device),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 构建设备系统版本列，展示 Android release 与 API 级别。
+  Widget _buildAndroidVersionCell(
+    BuildContext context,
+    RegisteredDevice device,
+  ) {
+    final version = device.androidVersion;
+    return Expanded(
+      flex: 2,
+      child: Text(
+        version == null || version.isEmpty ? '-' : version,
+        style: const TextStyle(fontSize: 12, color: Colors.grey),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

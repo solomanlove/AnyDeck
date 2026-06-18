@@ -64,14 +64,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
 
     final overviewAsync = ref.watch(deviceOverviewProvider(device.id));
     final settings = ref.watch(appSettingsProvider);
-    final overview = overviewAsync.asData?.value;
-    int sdkVersion = 0;
-    if (overview != null) {
-      final match = RegExp(r'API\s+(\d+)').firstMatch(overview.androidVersion);
-      if (match != null) {
-        sdkVersion = int.tryParse(match.group(1) ?? '') ?? 0;
-      }
-    }
+    final sdkVersion = ref.watch(deviceSdkVersionProvider(device.id)) ?? 0;
     final isAudioForwarded = (sdkVersion >= 30) && settings.mirrorAudioEnabled;
 
     final titleText = matchedDevice.displayName;

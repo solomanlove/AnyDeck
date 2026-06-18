@@ -73,14 +73,7 @@ void showMirrorSettingsDialog({
   int selectedBitrate = settings.mirrorVideoBitrate;
   int selectedMaxSize = settings.mirrorMaxSize;
 
-  final overview = ref.read(deviceOverviewProvider(deviceId)).asData?.value;
-  int sdkVersion = 0;
-  if (overview != null) {
-    final match = RegExp(r'API\s+(\d+)').firstMatch(overview.androidVersion);
-    if (match != null) {
-      sdkVersion = int.tryParse(match.group(1) ?? '') ?? 0;
-    }
-  }
+  final sdkVersion = ref.read(deviceSdkVersionProvider(deviceId)) ?? 0;
   final isAudioSupported = sdkVersion == 0 || sdkVersion >= 30;
   bool selectedAudio = isAudioSupported ? settings.mirrorAudioEnabled : false;
 

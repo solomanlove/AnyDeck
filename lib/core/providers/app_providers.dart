@@ -338,15 +338,36 @@ final deviceOverviewProvider = StreamProvider.autoDispose
 
       final service = ref.watch(deviceInfoServiceProvider);
 
+      final registryAndroidVersion = ref.watch(
+        deviceAndroidVersionProvider(deviceId),
+      );
+
       // 1. 优先尝试从本地持久化缓存加载，以实现零延迟即时展示
       final cached = await service.loadFromCache(deviceId);
       if (cached != null) {
-        if (cached.ipAddress != '-' && cached.ipAddress.isNotEmpty) {
+        final displayCached = registryAndroidVersion != null
+            ? cached.copyWith(androidVersion: registryAndroidVersion)
+            : cached;
+        if (displayCached.androidVersion != '-' &&
+            displayCached.androidVersion.isNotEmpty) {
           Future.microtask(() {
-            ref.read(deviceRegistryProvider.notifier).updateDeviceIp(deviceId, cached.ipAddress);
+            ref
+                .read(deviceRegistryProvider.notifier)
+                .updateDeviceAndroidVersion(
+                  deviceId,
+                  displayCached.androidVersion,
+                );
           });
         }
-        yield cached;
+        if (displayCached.ipAddress != '-' &&
+            displayCached.ipAddress.isNotEmpty) {
+          Future.microtask(() {
+            ref
+                .read(deviceRegistryProvider.notifier)
+                .updateDeviceIp(deviceId, displayCached.ipAddress);
+          });
+        }
+        yield displayCached;
       }
 
       // 检查设备是否在线（使用 ref.watch，以支持响应式状态变化）
@@ -359,10 +380,22 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       }
 
       // 2. 执行 ADB 查询获取最新设备信息并更新
-      final fresh = await service.loadOverview(deviceId);
+      final fresh = await service.loadOverview(
+        deviceId,
+        androidVersion: ref.read(deviceAndroidVersionProvider(deviceId)),
+      );
+      if (fresh.androidVersion != '-' && fresh.androidVersion.isNotEmpty) {
+        Future.microtask(() {
+          ref
+              .read(deviceRegistryProvider.notifier)
+              .updateDeviceAndroidVersion(deviceId, fresh.androidVersion);
+        });
+      }
       if (fresh.ipAddress != '-' && fresh.ipAddress.isNotEmpty) {
         Future.microtask(() {
-          ref.read(deviceRegistryProvider.notifier).updateDeviceIp(deviceId, fresh.ipAddress);
+          ref
+              .read(deviceRegistryProvider.notifier)
+              .updateDeviceIp(deviceId, fresh.ipAddress);
         });
       }
       yield fresh;
@@ -726,6 +759,8 @@ class RegisteredDevice {
     this.connections = const [],
     this.serial,
     this.ipAddress,
+    this.androidVersion,
+    this.sdkVersion,
   });
 
   final String id;
@@ -739,6 +774,8 @@ class RegisteredDevice {
   final List<String> connections;
   final String? serial;
   final String? ipAddress;
+  final String? androidVersion;
+  final int? sdkVersion;
 
   bool get isNetwork =>
       id.contains(':') || id.contains('.') || id == '127.0.0.1';
@@ -796,6 +833,8 @@ class RegisteredDevice {
     List<String>? connections,
     String? serial,
     String? ipAddress,
+    String? androidVersion,
+    int? sdkVersion,
   }) {
     return RegisteredDevice(
       id: id ?? this.id,
@@ -809,6 +848,8 @@ class RegisteredDevice {
       connections: connections ?? this.connections,
       serial: serial ?? this.serial,
       ipAddress: ipAddress ?? this.ipAddress,
+      androidVersion: androidVersion ?? this.androidVersion,
+      sdkVersion: sdkVersion ?? this.sdkVersion,
     );
   }
 }
@@ -819,18 +860,50 @@ final deviceRegistryProvider =
       DeviceRegistryNotifier.new,
     );
 
+/// 全局设备 Android 版本字符串，格式如 `Android 10 (API 29)`。
+final deviceAndroidVersionProvider = Provider.autoDispose
+    .family<String?, String>((ref, deviceId) {
+      final devices = ref.watch(deviceRegistryProvider);
+      for (final device in devices) {
+        if (device.id == deviceId ||
+            device.serial == deviceId ||
+            device.connections.contains(deviceId)) {
+          return device.androidVersion;
+        }
+      }
+      return null;
+    });
+
+/// 全局设备 SDK 版本号，供投屏、备份、音量等逻辑直接判断系统能力。
+final deviceSdkVersionProvider =
+    Provider.autoDispose.family<int?, String>((ref, deviceId) {
+      final devices = ref.watch(deviceRegistryProvider);
+      for (final device in devices) {
+        if (device.id == deviceId ||
+            device.serial == deviceId ||
+            device.connections.contains(deviceId)) {
+          return device.sdkVersion;
+        }
+      }
+      return null;
+    });
+
 class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   static const _historyKey = 'devices.history';
   static const _aliasesKey = 'devices.aliases';
   static const _modelsKey = 'devices.models';
   static const _productsKey = 'devices.products';
   static const _ipsKey = 'devices.ips';
+  static const _androidVersionsKey = 'devices.androidVersions';
+  static const _sdkVersionsKey = 'devices.sdkVersions';
 
   List<String> _historyIds = [];
   Map<String, String> _aliases = {};
   Map<String, String> _models = {};
   Map<String, String> _products = {};
   Map<String, String> _ipAddresses = {};
+  Map<String, String> _androidVersions = {};
+  Map<String, int> _sdkVersions = {};
   Set<String> _checkedIds = {};
   Map<String, String> _serialMap = {};
   List<AdbDevice> _lastActiveDevices = [];
@@ -910,10 +983,36 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       } catch (_) {}
     }
 
+    final androidVersionsJson = prefs.getString(_androidVersionsKey);
+    Map<String, String> androidVersions = {};
+    if (androidVersionsJson != null) {
+      try {
+        final decoded = Map<String, dynamic>.from(
+          jsonDecode(androidVersionsJson),
+        );
+        androidVersions = decoded.map(
+          (key, value) => MapEntry(key, value.toString()),
+        );
+      } catch (_) {}
+    }
+
+    final sdkVersionsJson = prefs.getString(_sdkVersionsKey);
+    Map<String, int> sdkVersions = {};
+    if (sdkVersionsJson != null) {
+      try {
+        final decoded = Map<String, dynamic>.from(jsonDecode(sdkVersionsJson));
+        sdkVersions = decoded.map(
+          (key, value) => MapEntry(key, int.tryParse(value.toString()) ?? 0),
+        )..removeWhere((_, value) => value <= 0);
+      } catch (_) {}
+    }
+
     _historyIds = history;
     _aliases = aliases;
     _models = models;
     _products = products;
+    _androidVersions = androidVersions;
+    _sdkVersions = sdkVersions;
 
     // 加载缓存的序列号映射
     final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
@@ -921,6 +1020,23 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     final allIds = {...history, ...activeDevices.map((d) => d.id)};
     final serialMap = <String, String>{};
     for (final id in allIds) {
+      final jsonStr = prefs.getString('devices.overview.$id');
+      if (jsonStr != null) {
+        try {
+          final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+          final cachedVersion = decoded['androidVersion']?.toString();
+          if (cachedVersion != null &&
+              cachedVersion.isNotEmpty &&
+              cachedVersion != '-') {
+            androidVersions[id] = cachedVersion;
+            final cachedSdk = _parseSdkVersion(cachedVersion);
+            if (cachedSdk != null) {
+              sdkVersions[id] = cachedSdk;
+            }
+          }
+        } catch (_) {}
+      }
+
       if (!_isNetworkId(id)) {
         serialMap[id] = id;
       } else {
@@ -929,7 +1045,6 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           serialMap[id] = serial;
         }
 
-        final jsonStr = prefs.getString('devices.overview.$id');
         if (jsonStr != null) {
           try {
             final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
@@ -938,6 +1053,14 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
                 cachedSerial.isNotEmpty &&
                 cachedSerial != '-') {
               serialMap[id] = cachedSerial;
+              final cachedVersion = androidVersions[id];
+              if (cachedVersion != null && cachedVersion.isNotEmpty) {
+                androidVersions[cachedSerial] = cachedVersion;
+              }
+              final cachedSdk = sdkVersions[id];
+              if (cachedSdk != null) {
+                sdkVersions[cachedSerial] = cachedSdk;
+              }
             }
             final cachedIp = decoded['ipAddress']?.toString();
             if (cachedIp != null &&
@@ -959,6 +1082,21 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     Future.microtask(() async {
       try {
         final adb = ref.read(adbServiceProvider);
+        final androidVersion = await _fetchAndroidVersion(id);
+        if (androidVersion != null) {
+          _cacheAndroidVersion(
+            id,
+            androidVersion.label,
+            androidVersion.sdk,
+          );
+          await _saveAndroidVersions();
+          if (!_isDisposed) {
+            final activeDevices =
+                ref.read(devicesProvider).value ?? _lastActiveDevices;
+            state = _mergeDevices(activeDevices);
+          }
+        }
+
         // Try shell getprop ro.serialno first as it returns the real hardware serial number for wireless/network devices.
         var result = await adb.shellArgs(id, ['getprop', 'ro.serialno']);
         if (_isDisposed) return;
@@ -983,6 +1121,11 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
         if (serial.isNotEmpty && serial != 'unknown' && serial != '-') {
           _serialMap[id] = serial;
+          final cachedVersion = _androidVersions[id];
+          final cachedSdk = _sdkVersions[id];
+          if (cachedVersion != null && cachedSdk != null) {
+            _cacheAndroidVersion(id, cachedVersion, cachedSdk);
+          }
 
           final prefs = await SharedPreferences.getInstance();
           final cacheKey = 'devices.overview.$id';
@@ -1102,6 +1245,52 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     });
   }
 
+  Future<({String label, int sdk})?> _fetchAndroidVersion(String id) async {
+    try {
+      final adb = ref.read(adbServiceProvider);
+      final releaseResult = await adb.shellArgs(id, [
+        'getprop',
+        'ro.build.version.release',
+      ]);
+      if (_isDisposed) return null;
+      final sdkResult = await adb.shellArgs(id, [
+        'getprop',
+        'ro.build.version.sdk',
+      ]);
+      if (_isDisposed) return null;
+
+      final release = releaseResult.isSuccess
+          ? releaseResult.stdout.trim()
+          : '';
+      final sdk = sdkResult.isSuccess ? sdkResult.stdout.trim() : '';
+      final sdkVersion = int.tryParse(sdk);
+      if (release.isEmpty ||
+          release == 'unknown' ||
+          sdkVersion == null ||
+          sdkVersion <= 0) {
+        return null;
+      }
+      return (label: 'Android $release (API $sdkVersion)', sdk: sdkVersion);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int? _parseSdkVersion(String androidVersion) {
+    final match = RegExp(r'API\s+(\d+)').firstMatch(androidVersion);
+    return match == null ? null : int.tryParse(match.group(1) ?? '');
+  }
+
+  void _cacheAndroidVersion(String id, String androidVersion, int sdkVersion) {
+    _androidVersions[id] = androidVersion;
+    _sdkVersions[id] = sdkVersion;
+    final currentSerial = _serialMap[id] ?? id;
+    if (currentSerial != id) {
+      _androidVersions[currentSerial] = androidVersion;
+      _sdkVersions[currentSerial] = sdkVersion;
+    }
+  }
+
   Future<String?> _fetchDeviceIpAddress(String id) async {
     // 优先尝试从本设备的概览缓存获取 IP
     try {
@@ -1178,6 +1367,14 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     } catch (_) {}
   }
 
+  Future<void> _saveAndroidVersions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_androidVersionsKey, jsonEncode(_androidVersions));
+      await prefs.setString(_sdkVersionsKey, jsonEncode(_sdkVersions));
+    } catch (_) {}
+  }
+
   Future<void> _saveHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_historyKey, _historyIds);
@@ -1232,7 +1429,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       _saveModelsAndProducts();
     }
 
-    // 触发获取新在线设备(或无缓存的IP)的序列号和 IP
+    // 触发获取新在线设备(或无缓存的IP/系统版本)的序列号、IP 和 Android 版本。
     final activeIds = activeDevices.map((d) => d.id).toSet();
     _attemptedFetchIds.removeWhere((id) => !activeIds.contains(id));
 
@@ -1243,8 +1440,15 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           (_ipAddresses.containsKey(device.id) &&
               _ipAddresses[device.id] != null &&
               _ipAddresses[device.id] != '-');
+      final serial = _serialMap[device.id] ?? device.id;
+      final hasAndroidVersion =
+          _androidVersions.containsKey(device.id) ||
+          _androidVersions.containsKey(serial);
+      final hasSdkVersion =
+          _sdkVersions.containsKey(device.id) ||
+          _sdkVersions.containsKey(serial);
       if (device.isOnline &&
-          (!hasSerial || !hasIp) &&
+          (!hasSerial || !hasIp || !hasAndroidVersion || !hasSdkVersion) &&
           !_pendingFetchIds.contains(device.id) &&
           !_attemptedFetchIds.contains(device.id)) {
         _pendingFetchIds.add(device.id);
@@ -1261,6 +1465,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       final cachedModel = _models[id];
       final cachedProduct = _products[id];
       final ipAddress = _ipAddresses[serial] ?? _ipAddresses[id];
+      final androidVersion = _androidVersions[serial] ?? _androidVersions[id];
+      final sdkVersion = _sdkVersions[serial] ?? _sdkVersions[id];
 
       if (active != null) {
         allCandidates.add(
@@ -1276,6 +1482,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             connections: [id],
             serial: serial,
             ipAddress: ipAddress,
+            androidVersion: androidVersion,
+            sdkVersion: sdkVersion,
           ),
         );
       } else {
@@ -1291,6 +1499,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             connections: [id],
             serial: serial,
             ipAddress: ipAddress,
+            androidVersion: androidVersion,
+            sdkVersion: sdkVersion,
           ),
         );
       }
@@ -1356,8 +1566,30 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         String? mergedIp = best.ipAddress;
         if (mergedIp == null || mergedIp.isEmpty || mergedIp == '-') {
           for (final c in candidates) {
-            if (c.ipAddress != null && c.ipAddress!.isNotEmpty && c.ipAddress != '-') {
+            if (c.ipAddress != null &&
+                c.ipAddress!.isNotEmpty &&
+                c.ipAddress != '-') {
               mergedIp = c.ipAddress;
+              break;
+            }
+          }
+        }
+
+        String? mergedAndroidVersion = best.androidVersion;
+        if (mergedAndroidVersion == null || mergedAndroidVersion.isEmpty) {
+          for (final c in candidates) {
+            if (c.androidVersion != null && c.androidVersion!.isNotEmpty) {
+              mergedAndroidVersion = c.androidVersion;
+              break;
+            }
+          }
+        }
+
+        int? mergedSdkVersion = best.sdkVersion;
+        if (mergedSdkVersion == null) {
+          for (final c in candidates) {
+            if (c.sdkVersion != null) {
+              mergedSdkVersion = c.sdkVersion;
               break;
             }
           }
@@ -1378,12 +1610,44 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             connections: connectionIds,
             serial: serial,
             ipAddress: mergedIp,
+            androidVersion: mergedAndroidVersion,
+            sdkVersion: mergedSdkVersion,
           ),
         );
       }
     });
 
     return merged;
+  }
+
+  /// 概览信息加载成功后触发同步更新设备注册表中的 Android 版本缓存并更新状态。
+  void updateDeviceAndroidVersion(String id, String androidVersion) {
+    if (androidVersion == '-' || androidVersion.isEmpty) return;
+
+    final serial = _serialMap[id] ?? id;
+    final currentVersion = _androidVersions[serial] ?? _androidVersions[id];
+    final sdkVersion = _parseSdkVersion(androidVersion);
+    final currentSdk = _sdkVersions[serial] ?? _sdkVersions[id];
+    if (currentVersion == androidVersion &&
+        (sdkVersion == null || currentSdk == sdkVersion)) {
+      return;
+    }
+
+    _androidVersions[id] = androidVersion;
+    if (sdkVersion != null) {
+      _sdkVersions[id] = sdkVersion;
+    }
+    if (serial != id) {
+      _androidVersions[serial] = androidVersion;
+      if (sdkVersion != null) {
+        _sdkVersions[serial] = sdkVersion;
+      }
+    }
+
+    _saveAndroidVersions();
+
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    state = _mergeDevices(activeDevices);
   }
 
   /// 概览信息加载成功后触发同步更新设备注册表中的 IP 缓存并更新状态
@@ -1479,6 +1743,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       _models.remove(removeId);
       _products.remove(removeId);
       _ipAddresses.remove(removeId);
+      _androidVersions.remove(removeId);
+      _sdkVersions.remove(removeId);
 
       // 清除该设备的所有本地缓存信息 (包括概览缓存、包列表缓存、包图标缓存等)
       await ref.read(deviceInfoServiceProvider).clearDeviceCache(removeId);
@@ -1489,6 +1755,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     await _saveAliases();
     await _saveModelsAndProducts();
     await _saveIps();
+    await _saveAndroidVersions();
 
     var activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     activeDevices = activeDevices
