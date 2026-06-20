@@ -30,7 +30,7 @@ void main() {
       result.disconnectedDeviceId,
       'adb-5002ba00-9wYbHj._adb-tls-connect._tcp',
     );
-    expect(result.message, 'adb已断开');
+    expect(result.message, '已断开');
   });
 
   test('parses mdns device ids containing spaces', () async {

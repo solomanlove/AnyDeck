@@ -33,7 +33,7 @@ class AdbResult {
   /// 面向 SnackBar 或弹窗展示的最佳可读消息。
   String get message {
     if (isDeviceDisconnected) {
-      return 'adb已断开';
+      return '已断开';
     }
     if (stdout.trim().isNotEmpty) {
       return stdout.trim();

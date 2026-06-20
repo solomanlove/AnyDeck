@@ -153,8 +153,8 @@ class _DeviceOverviewPanel extends ConsumerWidget {
       ),
       _OverviewItemData(
         icon: CupertinoIcons.person_crop_square,
-        label: context.l10n.t('androidId'),
-        value: overview.androidId,
+        label: overview.brand == 'Apple' ? 'iOS UDID' : context.l10n.t('androidId'),
+        value: overview.brand == 'Apple' ? overview.serial : overview.androidId,
       ),
     ];
   }
@@ -167,9 +167,9 @@ class _DeviceOverviewPanel extends ConsumerWidget {
     return [
       _OverviewItemData(
         icon: CupertinoIcons.device_phone_portrait,
-        label: context.l10n.t('androidVersion'),
+        label: overview.brand == 'Apple' ? 'iOS 版本' : context.l10n.t('androidVersion'),
         value: overview.androidVersion,
-        tooltip: AndroidVersionHelper.getApiMappingTooltip(
+        tooltip: overview.brand == 'Apple' ? null : AndroidVersionHelper.getApiMappingTooltip(
           context.l10n.t('androidApiMapping'),
         ),
       ),

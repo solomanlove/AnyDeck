@@ -17,6 +17,7 @@ import '../../widget/app_toast.dart';
 import 'mirror_aspect_resolver.dart';
 import 'mirror_window_frame_adapter.dart';
 import '../multi_window_compat.dart';
+import '../../../core/ios/ios_mirror_service.dart';
 
 /// 投屏独立窗口的业务逻辑与状态控制器。
 /// 采用 ChangeNotifier 实现，将功能逻辑与 UI 界面彻底剥离。
@@ -28,6 +29,7 @@ class MirrorWindowController extends ChangeNotifier {
   final String windowId;
   final String? newDisplay;
   final String? startApp;
+  final bool isIos;
 
   MirrorWindowController({
     required this.ref,
@@ -35,6 +37,7 @@ class MirrorWindowController extends ChangeNotifier {
     required this.windowId,
     this.newDisplay,
     this.startApp,
+    this.isIos = false,
   });
 
   // ==================== 状态属性 (State Properties) ====================
@@ -148,7 +151,11 @@ class MirrorWindowController extends ChangeNotifier {
   /// 强制停止投屏并清理 adb/scrcpy 会话
   Future<void> forceStopMirroring() async {
     try {
-      await ref.read(activeEmbeddedMirrorProvider(deviceId).notifier).forceStop();
+      if (isIos) {
+        await ref.read(activeIosMirrorProvider(deviceId).notifier).forceStop();
+      } else {
+        await ref.read(activeEmbeddedMirrorProvider(deviceId).notifier).forceStop();
+      }
     } catch (e) {
       debugPrint('Failed to force stop mirroring: $e');
     }
@@ -171,28 +178,37 @@ class MirrorWindowController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 检查当前设备是否已经有激活的投屏通道
-      final activeMirror = ref.read(activeEmbeddedMirrorProvider(deviceId));
-      if (activeMirror == null) {
-        // 激活投屏
-        await ref
-            .read(activeEmbeddedMirrorProvider(deviceId).notifier)
-            .toggleMirroring(newDisplay: newDisplay, startApp: startApp);
+      if (isIos) {
+        final activeMirror = ref.read(activeIosMirrorProvider(deviceId));
+        if (activeMirror == null) {
+          await ref.read(activeIosMirrorProvider(deviceId).notifier).toggleMirroring();
+        }
+      } else {
+        // 检查当前设备是否已经有激活的投屏通道
+        final activeMirror = ref.read(activeEmbeddedMirrorProvider(deviceId));
+        if (activeMirror == null) {
+          // 激活投屏
+          await ref
+              .read(activeEmbeddedMirrorProvider(deviceId).notifier)
+              .toggleMirroring(newDisplay: newDisplay, startApp: startApp);
+        }
       }
       _isLoading = false;
       notifyListeners();
 
-      // 只有普通主屏投屏需要监听手机横竖屏并重启 stream。
-      // 单 App 虚拟副屏(newDisplay)的方向由 scrcpy video size 决定，不能用主屏 displayFrame 判断。
-      if (newDisplay == null) {
-        _scheduleAutoFit();
+      if (!isIos) {
+        // 只有普通主屏投屏需要监听手机横竖屏并重启 stream。
+        // 单 App 虚拟副屏(newDisplay)的方向由 scrcpy video size 决定，不能用主屏 displayFrame 判断。
+        if (newDisplay == null) {
+          _scheduleAutoFit();
+        }
+
+        // 初始化识别前台应用
+        identifyForegroundApp();
+
+        // 启动时自动适配窗口大小以消除黑边
+        _autoFitWindowOnStart();
       }
-
-      // 初始化识别前台应用
-      identifyForegroundApp();
-
-      // 启动时自动适配窗口大小以消除黑边
-      _autoFitWindowOnStart();
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
@@ -666,7 +682,10 @@ class MirrorWindowController extends ChangeNotifier {
         _isNativeMaximized) {
       return;
     }
-    if (ref.read(activeEmbeddedMirrorProvider(deviceId)) == null) return;
+    final activeMirror = isIos
+        ? ref.read(activeIosMirrorProvider(deviceId))
+        : ref.read(activeEmbeddedMirrorProvider(deviceId));
+    if (activeMirror == null) return;
 
     final renderBox =
         _viewerKey.currentContext?.findRenderObject() as RenderBox?;

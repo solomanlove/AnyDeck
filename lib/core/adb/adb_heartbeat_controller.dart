@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:window_manager/window_manager.dart';
+import '../ios/ios_device_service.dart';
 import 'adb_device.dart';
 import 'adb_service.dart';
 
@@ -26,6 +27,7 @@ enum HeartbeatPhase {
 /// 能够根据用户活跃度、设备插拔变化来智能降频或升频，避免多余的 CPU 背景消耗
 class AdbHeartbeatController {
   final AdbService _adbService;
+  final IosDeviceService? _iosDeviceService;
   final bool isSubWindow;
   final bool isDeviceListVisible;
   
@@ -41,9 +43,11 @@ class AdbHeartbeatController {
 
   AdbHeartbeatController({
     required AdbService adbService,
+    IosDeviceService? iosDeviceService,
     this.isSubWindow = false,
     this.isDeviceListVisible = true,
-  }) : _adbService = adbService {
+  }) : _adbService = adbService,
+       _iosDeviceService = iosDeviceService {
     if (!isSubWindow && isDeviceListVisible) {
       // 启动时立即执行一次心跳，建立初始状态
       trigger();
@@ -93,7 +97,12 @@ class AdbHeartbeatController {
     }
 
     try {
-      final devices = await _adbService.listDevices();
+      final androidDevices = await _adbService.listDevices();
+      List<AdbDevice> iosDevices = [];
+      if (_iosDeviceService != null) {
+        iosDevices = await _iosDeviceService.listDevices();
+      }
+      final devices = [...androidDevices, ...iosDevices];
       if (_isDisposed) return;
 
       // 比对最新的设备列表与上次列表是否有变化
@@ -178,7 +187,8 @@ class AdbHeartbeatController {
       if (left.id != right.id ||
           left.status != right.status ||
           left.model != right.model ||
-          left.product != right.product) {
+          left.product != right.product ||
+          left.isIos != right.isIos) {
         return false;
       }
     }

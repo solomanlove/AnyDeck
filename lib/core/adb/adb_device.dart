@@ -6,6 +6,7 @@ class AdbDevice {
     this.model,
     this.product,
     this.transportId,
+    this.isIos = false,
   });
 
   final String id;
@@ -13,6 +14,7 @@ class AdbDevice {
   final String? model;
   final String? product;
   final String? transportId;
+  final bool isIos;
 
   /// adb 状态为 device 时，才表示设备可执行 shell 命令。
   bool get isOnline => status == 'device';

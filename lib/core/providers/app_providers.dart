@@ -36,6 +36,7 @@ import '../web_debug/webpage_target.dart';
 import '../web_debug/web_debug_service.dart';
 
 import '../logging/log_service.dart';
+import '../ios/ios_mirror_service.dart';
 
 /// 所有命令型 provider 共享的 adb 服务实例。
 final adbServiceProvider = Provider<AdbService>((ref) {
@@ -207,6 +208,7 @@ class ShowAllWebTargetsNotifier extends Notifier<bool> {
 /// 自适应心跳控制器 Provider。
 final adbHeartbeatControllerProvider = Provider.autoDispose<AdbHeartbeatController>((ref) {
   final adbService = ref.watch(adbServiceProvider);
+  final iosDeviceService = ref.watch(iosDeviceServiceProvider);
   final isSub = ref.watch(windowIdProvider).isNotEmpty;
   
   // 主窗口下，当没有选择设备且未展示设置页面时（即处于设备管理列表“主页”），才应该运行心跳
@@ -216,6 +218,7 @@ final adbHeartbeatControllerProvider = Provider.autoDispose<AdbHeartbeatControll
 
   final controller = AdbHeartbeatController(
     adbService: adbService,
+    iosDeviceService: iosDeviceService,
     isSubWindow: isSub,
     isDeviceListVisible: isDeviceListVisible,
   );
@@ -327,7 +330,8 @@ final deviceOnlineProvider = Provider.autoDispose.family<bool, String>((ref, dev
   final isSub = ref.watch(windowIdProvider).isNotEmpty;
   if (isSub) {
     // 子 Isolate 下心跳轮询被禁用，通过是否包含激活的投屏 Session 来判断在线状态
-    return ref.watch(activeEmbeddedMirrorProvider(deviceId)) != null;
+    return ref.watch(activeIosMirrorProvider(deviceId)) != null ||
+        ref.watch(activeEmbeddedMirrorProvider(deviceId)) != null;
   }
   final activeDevicesAsync = ref.watch(devicesProvider);
   final activeDevices = activeDevicesAsync.value ?? [];
@@ -339,6 +343,53 @@ final deviceOverviewProvider = StreamProvider.autoDispose
     .family<DeviceOverview, String>((ref, deviceId) async* {
       // 保持 Provider 活跃，防止 tab 切换时销毁重建导致重新 loading
       ref.keepAlive();
+
+      final registeredDevices = ref.watch(deviceRegistryProvider);
+      final matchedDevice = registeredDevices.firstWhere(
+        (d) => d.id == deviceId,
+        orElse: () => RegisteredDevice(
+          id: deviceId,
+          status: 'offline',
+          isOnline: false,
+        ),
+      );
+
+      if (matchedDevice.isIos) {
+        yield DeviceOverview(
+          name: matchedDevice.displayName,
+          brand: 'Apple',
+          model: matchedDevice.model ?? 'iPhone',
+          serial: matchedDevice.id,
+          androidId: '-',
+          androidVersion: matchedDevice.androidVersion ?? (matchedDevice.product != null && matchedDevice.product!.isNotEmpty ? 'iOS ${matchedDevice.product}' : 'iOS'),
+          kernelVersion: 'Darwin',
+          processor: '-',
+          storage: '-',
+          memory: '-',
+          physicalResolution: '-',
+          resolution: '-',
+          logicalDensity: '-',
+          refreshRate: '-',
+          fontScale: '-',
+          wifi: '-',
+          wifiEnabled: false,
+          ipAddress: '-',
+          macAddress: '-',
+          airplaneModeEnabled: false,
+          mobileDataEnabled: false,
+          talkbackEnabled: false,
+          windowAnimationScale: '1.0',
+          transitionAnimationScale: '1.0',
+          animatorDurationScale: '1.0',
+          rawResolution: '-',
+          hwuiProfile: 'false',
+          layoutBoundsEnabled: false,
+          showTouchesEnabled: false,
+          pointerLocationEnabled: false,
+          demoModeEnabled: false,
+        );
+        return;
+      }
 
       final service = ref.watch(deviceInfoServiceProvider);
 
@@ -765,6 +816,7 @@ class RegisteredDevice {
     this.ipAddress,
     this.androidVersion,
     this.sdkVersion,
+    this.isIos = false,
   });
 
   final String id;
@@ -780,6 +832,7 @@ class RegisteredDevice {
   final String? ipAddress;
   final String? androidVersion;
   final int? sdkVersion;
+  final bool isIos;
 
   bool get isNetwork =>
       id.contains(':') || id.contains('.') || id == '127.0.0.1';
@@ -823,6 +876,7 @@ class RegisteredDevice {
     model: model,
     product: product,
     transportId: transportId,
+    isIos: isIos,
   );
 
   RegisteredDevice copyWith({
@@ -839,6 +893,7 @@ class RegisteredDevice {
     String? ipAddress,
     String? androidVersion,
     int? sdkVersion,
+    bool? isIos,
   }) {
     return RegisteredDevice(
       id: id ?? this.id,
@@ -854,6 +909,7 @@ class RegisteredDevice {
       ipAddress: ipAddress ?? this.ipAddress,
       androidVersion: androidVersion ?? this.androidVersion,
       sdkVersion: sdkVersion ?? this.sdkVersion,
+      isIos: isIos ?? this.isIos,
     );
   }
 }
@@ -1488,6 +1544,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             ipAddress: ipAddress,
             androidVersion: androidVersion,
             sdkVersion: sdkVersion,
+            isIos: active.isIos,
           ),
         );
       } else {
@@ -1505,6 +1562,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             ipAddress: ipAddress,
             androidVersion: androidVersion,
             sdkVersion: sdkVersion,
+            isIos: cachedModel != null && (cachedModel.contains('iPhone') || cachedModel.contains('iPad') || cachedModel.contains('Apple') || cachedModel.contains('iOS') || id.length == 40 || (id.length == 25 && id.indexOf('-') == 8)),
           ),
         );
       }

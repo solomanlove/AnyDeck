@@ -14,6 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:any_deck/features/dashboard/presentation/dashboard_screen.dart';
 
 import 'fake_adb_service.dart';
+import 'package:any_deck/core/ios/ios_device_service.dart';
+import 'package:any_deck/core/ios/ios_mirror_service.dart';
 
 class MockPackagesNotifier extends PackagesNotifier {
   MockPackagesNotifier(this.packages) : super('');
@@ -151,6 +153,7 @@ Future<void> _pumpDashboard(
       key: UniqueKey(),
       overrides: [
         adbServiceProvider.overrideWithValue(FakeAdbService()),
+        iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
         devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
         deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
         selectedDeviceProvider.overrideWith(_FixedSelectedDeviceNotifier.new),
@@ -217,6 +220,7 @@ void main() {
       ProviderScope(
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
+          iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
           devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),
@@ -362,6 +366,7 @@ void main() {
       ProviderScope(
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
+          iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
           devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
           deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
           selectedDeviceProvider.overrideWith(_StaleSelectedDeviceNotifier.new),
@@ -406,6 +411,7 @@ void main() {
       ProviderScope(
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
+          iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
           devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
           deviceRegistryProvider.overrideWith(
             _OfflineDeviceRegistryNotifier.new,
@@ -436,4 +442,13 @@ void main() {
     expect(find.byIcon(Icons.refresh), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
+}
+
+class FakeIosDeviceService extends IosDeviceService {
+  FakeIosDeviceService() : super();
+
+  @override
+  Future<List<AdbDevice>> listDevices() async {
+    return [];
+  }
 }

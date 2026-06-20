@@ -44,6 +44,7 @@ import 'package:glassmorphism/glassmorphism.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/scrcpy/scrcpy_session.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
+import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/device_actions/device_action_service.dart';
 import '../../../core/device_actions/wifi_credentials.dart';
 import 'control/device_settings_popup.dart';

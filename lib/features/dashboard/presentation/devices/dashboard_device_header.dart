@@ -393,11 +393,18 @@ Future<void> openStandaloneMirrorWindow(
       .replaceAll('{name}', device.displayName);
 
   // 1. If mirroring is active, stop it first.
-  final textureId = ref.read(activeEmbeddedMirrorProvider(device.id));
-  if (textureId != null) {
-    await ref
-        .read(activeEmbeddedMirrorProvider(device.id).notifier)
-        .forceStop();
+  if (device.isIos) {
+    final activeIos = ref.read(activeIosMirrorProvider(device.id));
+    if (activeIos != null) {
+      await ref.read(activeIosMirrorProvider(device.id).notifier).forceStop();
+    }
+  } else {
+    final textureId = ref.read(activeEmbeddedMirrorProvider(device.id));
+    if (textureId != null) {
+      await ref
+          .read(activeEmbeddedMirrorProvider(device.id).notifier)
+          .forceStop();
+    }
   }
 
   // 2. Open the standalone mirroring window
@@ -413,6 +420,7 @@ Future<void> openStandaloneMirrorWindow(
         'type': 'mirror',
         'deviceId': device.id,
         'deviceName': device.displayName,
+        'isIos': device.isIos,
       },
       frame: Offset.zero & initialSize,
       title: windowTitle,

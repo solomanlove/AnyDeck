@@ -12,6 +12,8 @@ import '../../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../../core/scrcpy/scrcpy_keycode_helper.dart';
 import 'embedded_scrcpy_geometry.dart';
 import 'embedded_scrcpy_texture_surface.dart';
+import '../../../../core/ios/ios_mirror_service.dart';
+import 'ios_mirror_viewer.dart';
 
 class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
   const EmbeddedScrcpyViewer({
@@ -504,6 +506,22 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   @override
   Widget build(BuildContext context) {
+    final registeredDevices = ref.watch(deviceRegistryProvider);
+    final isIos = registeredDevices.any((d) => d.id == widget.deviceId && d.isIos) ||
+        (widget.deviceId.length == 40 && !widget.deviceId.contains(RegExp(r'[^a-fA-F0-9]'))) ||
+        (widget.deviceId.length == 25 && widget.deviceId.indexOf('-') == 8);
+
+    if (isIos) {
+      final port = ref.watch(activeIosMirrorProvider(widget.deviceId));
+      if (port == null) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return IosMirrorViewer(
+        deviceId: widget.deviceId,
+        port: port,
+      );
+    }
+
     final textureId = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
     _resetStreamGeometryIfNeeded(textureId);
     final overviewAsync = ref.watch(deviceOverviewProvider(widget.deviceId));

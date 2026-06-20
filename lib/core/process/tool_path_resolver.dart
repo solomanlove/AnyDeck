@@ -32,6 +32,12 @@ String resolveToolPath(String toolName) {
     ],
     if (toolName == 'scrcpy') '/opt/homebrew/bin/scrcpy',
     if (toolName == 'scrcpy') '/usr/local/bin/scrcpy',
+    if (toolName == 'go-ios' || toolName == 'ios') ...[
+      '/opt/homebrew/bin/ios',
+      '/usr/local/bin/ios',
+      '/opt/homebrew/bin/go-ios',
+      '/usr/local/bin/go-ios',
+    ],
     '/opt/homebrew/bin/$toolName',
     '/usr/local/bin/$toolName',
     '/usr/bin/$toolName',
