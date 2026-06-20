@@ -328,7 +328,7 @@ class _GlassSectionCard extends StatelessWidget {
               width: 1.5,
             ),
           ),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

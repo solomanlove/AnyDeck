@@ -1,43 +1,5 @@
 part of '../dashboard_screen.dart';
 
-/// 作者信息弹窗，保持设置页内的轻量信息入口。
-class _AuthorInfoDialog extends StatelessWidget {
-  const _AuthorInfoDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(context.l10n.t('authorInfo')),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _InfoLine(
-              label: context.l10n.t('authorNameLabel'),
-              value: context.l10n.t('authorName'),
-            ),
-            const SizedBox(height: 8),
-            _InfoLine(
-              label: context.l10n.t('authorRoleLabel'),
-              value: context.l10n.t('authorRole'),
-            ),
-            const SizedBox(height: 16),
-            Text(context.l10n.t('authorDescription')),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.l10n.t('close')),
-        ),
-      ],
-    );
-  }
-}
-
 /// 软件说明书弹窗，覆盖启动前准备和常用调试流程。
 class _SoftwareManualDialog extends StatelessWidget {
   const _SoftwareManualDialog();

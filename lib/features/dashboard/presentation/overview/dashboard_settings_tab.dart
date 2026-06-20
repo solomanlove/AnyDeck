@@ -387,23 +387,6 @@ class _SettingsTab extends ConsumerWidget {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(
-                        CupertinoIcons.person,
-                        color: brandGreen,
-                      ),
-                      title: Text(context.l10n.t('authorInfo')),
-                      trailing: const Icon(
-                        CupertinoIcons.chevron_right,
-                        size: 16,
-                      ),
-                      onTap: () => showDialog<void>(
-                        context: context,
-                        builder: (_) => const _AuthorInfoDialog(),
-                      ),
-                    ),
-                    const Divider(height: 16),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(
                         CupertinoIcons.book,
                         color: brandGreen,
                       ),
@@ -434,10 +417,6 @@ class _SettingsTab extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
                         ),
                         onPressed: () => showDialog<void>(
                           context: context,

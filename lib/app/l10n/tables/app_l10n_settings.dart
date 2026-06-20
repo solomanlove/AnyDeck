@@ -39,18 +39,12 @@ const settingsZh = {
   'themeSystem': '跟随系统',
   'themeLight': '浅色模式',
   'themeDark': '深色模式',
-  'authorInfo': '作者信息',
-  'authorNameLabel': '作者',
-  'authorName': 'shijie',
-  'authorRoleLabel': '定位',
-  'authorRole': 'Android 开发调试工具维护者',
-  'authorDescription': '专注于 ADB、scrcpy 和 Android QA 调试流程的轻量桌面工具建设。',
   'softwareManual': '软件说明书',
   'softwareOverviewTitle': '软件定位',
   'softwareOverview':
       'AnyDeck 是面向 Android 开发和 QA 的 Flutter Desktop 工具箱，用于集中管理设备、应用、文件、日志、终端和投屏流程。',
   'softwareRequirementsTitle': '使用前准备',
-  'softwareRequirements': '本机需要可用的 adb；投屏功能需要安装 scrcpy；无线连接需在手机端开启开发者选项和无线调试。',
+  'softwareRequirements': '本机需要可用的 adb；无线连接需在手机端开启开发者选项和无线调试。',
   'softwareWorkflowTitle': '基础流程',
   'softwareWorkflow':
       '1. 连接 USB 设备或通过 TCP/IP、二维码、配对码连接无线设备。\n2. 在设备列表中选择目标设备。\n3. 使用概览、控制、应用、文件、Logcat、终端或 scrcpy 功能完成调试。',
@@ -133,13 +127,6 @@ const settingsEn = {
   'themeSystem': 'System',
   'themeLight': 'Light',
   'themeDark': 'Dark',
-  'authorInfo': 'Author Info',
-  'authorNameLabel': 'Author',
-  'authorName': 'shijie',
-  'authorRoleLabel': 'Role',
-  'authorRole': 'Android debugging toolbox maintainer',
-  'authorDescription':
-      'Focused on lightweight desktop tooling for ADB, scrcpy, and Android QA workflows.',
   'softwareManual': 'Software Manual',
   'softwareOverviewTitle': 'Overview',
   'softwareOverview':
