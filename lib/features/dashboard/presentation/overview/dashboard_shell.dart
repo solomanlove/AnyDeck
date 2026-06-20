@@ -105,14 +105,8 @@ class _ContentTitleBar extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              const Image(
-                image: AssetImage(AppIcons.appLogo),
-                width: 28,
-                height: 28,
-              ),
-              const SizedBox(width: 10),
               Text(
-                title,
+                "设备管理",
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: titleColor,

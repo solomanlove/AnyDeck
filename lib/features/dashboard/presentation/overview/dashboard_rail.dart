@@ -226,12 +226,15 @@ class _PrimaryRail extends ConsumerWidget {
                                     ),
                                     child: Row(
                                       children: [
-                                        const SizedBox(
-                                          width: 36,
-                                          height: 36,
-                                          child: Image(
-                                            image: AssetImage(
-                                              AppIcons.appLogo,
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8), // 所有角都圆角
+                                          child: const SizedBox(
+                                            width: 36,
+                                            height: 36,
+                                            child: Image(
+                                              image: AssetImage(
+                                                AppIcons.appLogo,
+                                              ),
                                             ),
                                           ),
                                         ),
