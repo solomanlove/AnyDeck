@@ -12,11 +12,13 @@ AnyDeck is a lightweight desktop developer toolbox for Android debugging and scr
 
 ## 📷 Screenshots & Demos
 
-*(Replace these placeholders with actual screenshots of your running application)*
-
-| 📱 Device Overview | 📺 Screen Mirroring | 📁 File Manager |
+| Device Overview | Device Control | Device List |
 | :---: | :---: | :---: |
-| ![Overview](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/overview.png) | ![Mirroring](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/mirror.png) | ![File Manager](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/files.png) |
+| ![Device Overview](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/home.png) | ![Device Control](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/control.png) | ![Device List](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/devices.png) |
+| Screen Mirroring | Application Manager | File Manager |
+| ![Screen Mirroring](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/mirror.png) | ![Application Manager](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/Apps.png) | ![File Manager](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/files.png) |
+| Live Logcat | Performance Monitor | Process Manager |
+| ![Live Logcat](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/logcat.png) | ![Performance Monitor](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/performance.png) | ![Process Manager](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/process.png) |
 
 ---
 
