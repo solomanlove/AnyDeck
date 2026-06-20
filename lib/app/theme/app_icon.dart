@@ -14,4 +14,5 @@ class AppIcons {
   static const String samsung = 'assets/brand/samsung_logo.png';
   static const String oneplus = 'assets/brand/oneplus_logo.png';
   static const String google = 'assets/brand/google_logo.png';
+  static const String apple = 'assets/brand/apple_logo.png';
 }

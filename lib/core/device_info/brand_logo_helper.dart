@@ -34,6 +34,9 @@ class BrandLogoHelper {
     if (name.contains('google')) {
       return AppIcons.google;
     }
+    if (name.contains('apple') || name.contains('iphone') || name.contains('ios')) {
+      return AppIcons.apple;
+    }
 
     return null;
   }
