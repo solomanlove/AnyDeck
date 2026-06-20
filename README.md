@@ -16,7 +16,7 @@ AnyDeck is a lightweight desktop developer toolbox for Android debugging and scr
 
 | 📱 Device Overview | 📺 Screen Mirroring | 📁 File Manager |
 | :---: | :---: | :---: |
-| ![Overview](https://raw.githubusercontent.com/username/AnyDeck/main/docs/screenshots/overview.png) | ![Mirroring](https://raw.githubusercontent.com/username/AnyDeck/main/docs/screenshots/mirror.png) | ![File Manager](https://raw.githubusercontent.com/username/AnyDeck/main/docs/screenshots/files.png) |
+| ![Overview](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/overview.png) | ![Mirroring](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/mirror.png) | ![File Manager](https://raw.githubusercontent.com/solomanlove/AnyDeck/main/docs/screenshots/files.png) |
 
 ---
 

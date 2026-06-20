@@ -93,7 +93,7 @@ BEGIN
             VALUE "FileDescription", "AnyDeck" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "AnyDeck" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 shijie. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 solomanlove. All rights reserved." "\0"
             VALUE "OriginalFilename", "any_deck.exe" "\0"
             VALUE "ProductName", "AnyDeck" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
