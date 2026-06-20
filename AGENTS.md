@@ -1,4 +1,4 @@
-# AGENTS.md instructions for /Users/shijie/Documents/AdbManage
+# AGENTS.md instructions for this repository
 
 ## Role (角色)
 

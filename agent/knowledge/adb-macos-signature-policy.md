@@ -23,8 +23,8 @@ xattr -lr build/macos/Build/Products/Debug/AnyDeck.app | rg 'provenance|quaranti
 
 ```bash
 codesign --verify --strict --verbose=4 \
-  /Users/shijie/development/flutter/bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework/macos-arm64_x86_64/FlutterMacOS.framework
-xattr -lr /Users/shijie/development/flutter/bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework | rg 'provenance|quarantine'
+  $FLUTTER_ROOT/bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework/macos-arm64_x86_64/FlutterMacOS.framework
+xattr -lr $FLUTTER_ROOT/bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework | rg 'provenance|quarantine'
 ```
 
 ## 自动修复入口

@@ -64,7 +64,7 @@
      - 旧版本 Linux conf 路径：`/data/misc/wifi/wpa_supplicant.conf`
    - 解析其中的 `<Network>` 结构块（或 `network={...}` 块），提取 `SSID`、`PreSharedKey`/`WEPKey` 以获取 Wi-Fi 密码。
 4. **证书快速导入**：
-   - 参见 [证书管理机制](file:///Users/shijie/Documents/AdbManage/agent/knowledge/adb-cert-management.md)。用户证书调用 `com.android.certinstaller/.CertInstallerMain` Intent 调起系统安装；系统证书（需要 Root）使用 Subject Hash 命名并拷贝到 `/system/etc/security/cacerts/`。Android 10+ 使用 `tmpfs` 挂载，Android 14+ 需利用 `nsenter` 绑定挂载 Conscrypt APEX 目录。
+   - 参见 [证书管理机制](./adb-cert-management.md)。用户证书调用 `com.android.certinstaller/.CertInstallerMain` Intent 调起系统安装；系统证书（需要 Root）使用 Subject Hash 命名并拷贝到 `/system/etc/security/cacerts/`。Android 10+ 使用 `tmpfs` 挂载，Android 14+ 需利用 `nsenter` 绑定挂载 Conscrypt APEX 目录。
 
 ---
 
