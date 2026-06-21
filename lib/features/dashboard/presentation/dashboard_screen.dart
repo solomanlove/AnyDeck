@@ -280,8 +280,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               effectiveSelectedDevice;
         }
 
-        // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)或设置(12) Tab，则自动重定向回主页 Tab
-        if (!effectiveSelectedDevice.isOnline) {
+        // 当手机是 iOS 时，如果当前选择的不是主页(0)或设置(12) Tab，则自动重定向回主页 Tab
+        if (effectiveSelectedDevice.isIos) {
+          final selectedTool = ref.read(selectedToolTabProvider);
+          if (selectedTool != 0 && selectedTool != 12) {
+            ref.read(selectedToolTabProvider.notifier).select(0);
+          }
+        } else if (!effectiveSelectedDevice.isOnline) {
+          // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)或设置(12) Tab，则自动重定向回主页 Tab
           final selectedTool = ref.read(selectedToolTabProvider);
           if (selectedTool != 0 &&
               selectedTool != 1 &&

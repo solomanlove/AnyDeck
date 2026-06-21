@@ -186,6 +186,7 @@ const devicesControlZh = {
   'selectDeviceToMirror': '请先连接并选择一个在线设备进行投屏',
   'offlineControlWarning': '设备已离线，进入只读模式。控制操作已被禁用，当前仅展示缓存状态。',
   'offlineDragInstallWarning': '设备已离线，无法进行文件拖拽或安装操作',
+  'iosDragInstallWarning': 'iOS 设备暂不支持拖拽安装及文件上传',
 };
 
 const devicesControlEn = {
@@ -390,4 +391,6 @@ const devicesControlEn = {
       'Device is offline, entering read-only mode. Control actions are disabled; showing cached state.',
   'offlineDragInstallWarning':
       'Device is offline, file drag-and-drop or installation is not available.',
+  'iosDragInstallWarning':
+      'File drag-and-drop or installation is not supported on iOS devices.',
 };

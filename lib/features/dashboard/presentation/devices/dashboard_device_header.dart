@@ -311,18 +311,20 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 //       ? () => _openExternalMirror(context, ref, device.id)
                 //       : null,
                 // ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.settings_remote),
-                  tooltip: context.l10n.t('remoteController'),
-                  onPressed: device.isOnline
-                      ? () => showDialog<void>(
-                          context: context,
-                          builder: (_) =>
-                              _RemoteControllerDialog(device: device),
-                        )
-                      : null,
-                ),
+                if (!device.isIos) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.settings_remote),
+                    tooltip: context.l10n.t('remoteController'),
+                    onPressed: device.isOnline
+                        ? () => showDialog<void>(
+                            context: context,
+                            builder: (_) =>
+                                _RemoteControllerDialog(device: device),
+                          )
+                        : null,
+                  ),
+                ],
                 const SizedBox(width: 8),
                 closeButton,
               ],

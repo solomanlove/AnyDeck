@@ -58,6 +58,14 @@ class _WorkspacePanel extends ConsumerWidget {
     if (files.isEmpty) {
       return;
     }
+    if (device.isIos) {
+      _showSnack(
+        context,
+        context.l10n.t('iosDragInstallWarning'),
+        isError: true,
+      );
+      return;
+    }
     final isOnline = ref.read(deviceOnlineProvider(device.id));
     if (!isOnline) {
       _showSnack(

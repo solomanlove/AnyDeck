@@ -49,10 +49,13 @@ class _PrimaryRail extends ConsumerWidget {
     final registeredDevices = ref.watch(deviceRegistryProvider);
     final hasOnlineDevice = registeredDevices.any((d) => d.isOnline);
 
-    // 判断当前Tab是否可用：如果手机离线，仅开放主页(0)、控制(1)、应用(2)
+    // 判断当前Tab是否可用：如果手机离线，仅开放主页(0)、控制(1)、应用(2)；如果是 iOS，仅开放主页(0)
     bool isToolEnabled(int tabIndex) {
       if (selectedDevice == null) {
         return hasOnlineDevice;
+      }
+      if (selectedDevice!.isIos) {
+        return tabIndex == 0;
       }
       if (selectedDevice!.isOnline) {
         return true;
@@ -64,67 +67,70 @@ class _PrimaryRail extends ConsumerWidget {
     final bool isNarrow = MediaQuery.of(context).size.width < 1000;
     final double railWidth = isNarrow ? 76.0 : 180.0;
 
+    final isIos = selectedDevice != null && selectedDevice!.isIos;
     final tools = [
       _RailToolItem(
         tabIndex: 0,
         icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('overview'),
       ),
-      _RailToolItem(
-        tabIndex: 1,
-        icon: CupertinoIcons.slider_horizontal_3,
-        label: context.l10n.t('control'),
-      ),
-      _RailToolItem(
-        tabIndex: 2,
-        icon: CupertinoIcons.square_grid_2x2,
-        label: context.l10n.t('apps'),
-      ),
-      _RailToolItem(
-        tabIndex: 6,
-        icon: CupertinoIcons.list_bullet,
-        label: context.l10n.t('processes'),
-      ),
-      _RailToolItem(
-        tabIndex: 3,
-        icon: CupertinoIcons.folder,
-        label: context.l10n.t('files'),
-      ),
-      _RailToolItem(
-        tabIndex: 4,
-        icon: CupertinoIcons.doc_text,
-        label: context.l10n.t('logcat'),
-      ),
-      _RailToolItem(
-        tabIndex: 5,
-        icon: CupertinoIcons.chevron_left_slash_chevron_right,
-        label: context.l10n.t('terminal'),
-      ),
-      _RailToolItem(
-        tabIndex: 7,
-        icon: CupertinoIcons.globe,
-        label: context.l10n.t('webpages'),
-      ),
-      _RailToolItem(
-        tabIndex: 8,
-        icon: CupertinoIcons.square_stack_3d_up,
-        label: context.l10n.t('layout'),
-      ),
-      _RailToolItem(
-        tabIndex: 9,
-        icon: CupertinoIcons.camera,
-        label: context.l10n.t('screenshot'),
-      ),
-      _RailToolItem(
-        tabIndex: 10,
-        icon: CupertinoIcons.speedometer,
-        label: context.l10n.t('performance'),
-      ),
-      _RailToolItem(
-        tabIndex: 11,
-        icon: CupertinoIcons.wifi,
-        label: context.l10n.t('network'),
-      ),
+      if (!isIos) ...[
+        _RailToolItem(
+          tabIndex: 1,
+          icon: CupertinoIcons.slider_horizontal_3,
+          label: context.l10n.t('control'),
+        ),
+        _RailToolItem(
+          tabIndex: 2,
+          icon: CupertinoIcons.square_grid_2x2,
+          label: context.l10n.t('apps'),
+        ),
+        _RailToolItem(
+          tabIndex: 6,
+          icon: CupertinoIcons.list_bullet,
+          label: context.l10n.t('processes'),
+        ),
+        _RailToolItem(
+          tabIndex: 3,
+          icon: CupertinoIcons.folder,
+          label: context.l10n.t('files'),
+        ),
+        _RailToolItem(
+          tabIndex: 4,
+          icon: CupertinoIcons.doc_text,
+          label: context.l10n.t('logcat'),
+        ),
+        _RailToolItem(
+          tabIndex: 5,
+          icon: CupertinoIcons.chevron_left_slash_chevron_right,
+          label: context.l10n.t('terminal'),
+        ),
+        _RailToolItem(
+          tabIndex: 7,
+          icon: CupertinoIcons.globe,
+          label: context.l10n.t('webpages'),
+        ),
+        _RailToolItem(
+          tabIndex: 8,
+          icon: CupertinoIcons.square_stack_3d_up,
+          label: context.l10n.t('layout'),
+        ),
+        _RailToolItem(
+          tabIndex: 9,
+          icon: CupertinoIcons.camera,
+          label: context.l10n.t('screenshot'),
+        ),
+        _RailToolItem(
+          tabIndex: 10,
+          icon: CupertinoIcons.speedometer,
+          label: context.l10n.t('performance'),
+        ),
+        _RailToolItem(
+          tabIndex: 11,
+          icon: CupertinoIcons.wifi,
+          label: context.l10n.t('network'),
+        ),
+      ],
     ];
 
     void handleTap(int tabIndex) {
