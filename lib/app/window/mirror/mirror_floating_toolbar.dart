@@ -73,30 +73,47 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     );
   }
 
-  Future<void> _takeScreenshot(BuildContext context, String deviceId) async {
+  Future<void> _takeScreenshot(BuildContext context, String deviceId, {required bool saveToFile}) async {
     try {
       final bytes = await ref
           .read(adbServiceProvider)
           .captureScreenshot(deviceId);
 
-      final settings = ref.read(appSettingsProvider);
       final hostPlatform = ref.read(hostPlatformServiceProvider);
-      final savePath = hostPlatform.generateScreenshotPath(
-        settings.screenshotSavePath,
-        deviceId,
-      );
-      final file = File(savePath);
-      await file.parent.create(recursive: true);
-      await file.writeAsBytes(bytes);
 
       // 复制到剪切板
       final copied = await hostPlatform.copyImageToClipboard(bytes);
 
-      if (context.mounted) {
-        AppToast.show(
-          context,
-          '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
+      if (saveToFile) {
+        final settings = ref.read(appSettingsProvider);
+        final savePath = hostPlatform.generateScreenshotPath(
+          settings.screenshotSavePath,
+          deviceId,
         );
+        final file = File(savePath);
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(bytes);
+
+        if (context.mounted) {
+          AppToast.show(
+            context,
+            '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
+          );
+        }
+      } else {
+        if (context.mounted) {
+          if (copied) {
+            AppToast.show(context, context.l10n.t('copySuccess'));
+          } else {
+            AppToast.show(
+              context,
+              context.l10n.locale.languageCode == 'zh'
+                  ? '复制至剪贴板失败'
+                  : 'Failed to copy to clipboard',
+              isError: true,
+            );
+          }
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -455,8 +472,17 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 CupertinoIcons.camera,
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
-              tooltip: context.l10n.t('screenshot'),
-              onPressed: () => _takeScreenshot(context, widget.deviceId),
+              tooltip: context.l10n.t('screenshotTooltip'),
+              onPressed: () => _takeScreenshot(
+                context,
+                widget.deviceId,
+                saveToFile: false,
+              ),
+              onLongPress: () => _takeScreenshot(
+                context,
+                widget.deviceId,
+                saveToFile: true,
+              ),
             ),
             MirrorToolbarButton(
               icon: Icon(
@@ -562,6 +588,7 @@ class MirrorToolbarButton extends StatefulWidget {
     this.onPointerDown,
     this.onPointerUp,
     this.onPointerCancel,
+    this.onLongPress,
   });
 
   final Widget icon;
@@ -572,6 +599,7 @@ class MirrorToolbarButton extends StatefulWidget {
   final VoidCallback? onPointerDown;
   final VoidCallback? onPointerUp;
   final VoidCallback? onPointerCancel;
+  final VoidCallback? onLongPress;
 
   @override
   State<MirrorToolbarButton> createState() => _MirrorToolbarButtonState();
@@ -607,27 +635,30 @@ class _MirrorToolbarButtonState extends State<MirrorToolbarButton> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                IconButton(
-                  iconSize: 14,
-                  padding: const EdgeInsets.all(2),
-                  constraints: const BoxConstraints(
-                    minWidth: 28,
-                    minHeight: 28,
-                  ),
-                  style: IconButton.styleFrom(
-                    backgroundColor: _isHovered ? hoverBg : Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
+                GestureDetector(
+                  onLongPress: widget.isLoading ? null : widget.onLongPress,
+                  child: IconButton(
+                    iconSize: 14,
+                    padding: const EdgeInsets.all(2),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
                     ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: _isHovered ? hoverBg : Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    icon: widget.isLoading
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : widget.icon,
+                    onPressed: widget.isLoading ? null : widget.onPressed,
                   ),
-                  icon: widget.isLoading
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : widget.icon,
-                  onPressed: widget.isLoading ? null : widget.onPressed,
                 ),
                 if (widget.badge != null)
                   Positioned(top: 2, right: 2, child: widget.badge!),
