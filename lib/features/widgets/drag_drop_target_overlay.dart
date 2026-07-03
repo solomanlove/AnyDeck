@@ -8,6 +8,8 @@ import 'package:file_selector/file_selector.dart';
 import '../../../../app/l10n/app_localizations.dart';
 import '../../../../core/providers/transfer_provider.dart';
 
+/// 拖拽目标覆盖层组件。
+/// 用于在桌面端支持将外部 APK 或文件拖拽至应用窗口以进行安装或上传。
 class DragDropTargetOverlay extends ConsumerStatefulWidget {
   const DragDropTargetOverlay({
     super.key,
@@ -15,7 +17,10 @@ class DragDropTargetOverlay extends ConsumerStatefulWidget {
     required this.onDragDone,
   });
 
+  /// 被包裹的底层子组件，即被放置于此覆盖层下方的视图内容。
   final Widget child;
+
+  /// 拖拽完成时的回调函数，返回拖拽的文件列表。
   final Function(List<XFile> files) onDragDone;
 
   @override
@@ -24,24 +29,29 @@ class DragDropTargetOverlay extends ConsumerStatefulWidget {
 }
 
 class _DragDropTargetOverlayState extends ConsumerState<DragDropTargetOverlay> {
+  // 标识当前是否有文件正被拖拽在窗口上方
   bool _isDragging = false;
 
   @override
   Widget build(BuildContext context) {
+    // 监听全局传输任务列表（例如 APK 安装或文件上传）
     final transferTasks = ref.watch(transferListProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return DropTarget(
+      // 拖拽文件进入窗口区域
       onDragEntered: (details) {
         setState(() {
           _isDragging = true;
         });
       },
+      // 拖拽离开窗口区域
       onDragExited: (details) {
         setState(() {
           _isDragging = false;
         });
       },
+      // 拖拽在窗口内松手完成放置
       onDragDone: (details) {
         setState(() {
           _isDragging = false;
@@ -51,7 +61,7 @@ class _DragDropTargetOverlayState extends ConsumerState<DragDropTargetOverlay> {
       child: Stack(
         children: [
           widget.child,
-          // Drag Shadow / Overlay indicating user can drop
+          // 拖拽遮罩层：提示用户可以松手来安装 APK 或上传文件
           if (_isDragging)
             Positioned.fill(
               child: AnimatedOpacity(
@@ -120,7 +130,7 @@ class _DragDropTargetOverlayState extends ConsumerState<DragDropTargetOverlay> {
                 ),
               ),
             ),
-          // Floating active transfers list
+          // 悬浮的任务传输面板：悬浮于窗口右上角，展示正在运行的任务及历史状态
           if (transferTasks.isNotEmpty)
             Positioned(
               top: 80,
@@ -133,9 +143,12 @@ class _DragDropTargetOverlayState extends ConsumerState<DragDropTargetOverlay> {
   }
 }
 
+/// 浮动的文件传输与 APK 安装任务面板。
+/// 在右上角悬浮展示当前所有的传输任务及其状态（进行中、成功、失败）。
 class _TransferTasksPanel extends ConsumerWidget {
   const _TransferTasksPanel({required this.tasks});
 
+  /// 当前要展示的所有任务列表。
   final List<TransferTask> tasks;
 
   @override
@@ -143,8 +156,10 @@ class _TransferTasksPanel extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // 统计进行中的活跃任务数
     final activeCount = tasks.where((t) => !t.isDone).length;
 
+    // 根据屏幕宽度自适应计算面板宽度
     final screenWidth = MediaQuery.of(context).size.width;
     final panelWidth = screenWidth < 360 ? screenWidth - 32 : 320.0;
 
@@ -174,6 +189,7 @@ class _TransferTasksPanel extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 面板标题区域
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -194,6 +210,7 @@ class _TransferTasksPanel extends ConsumerWidget {
                     ),
                   ],
                 ),
+                // 如果有活跃中的传输任务，显示活跃任务的角标数量
                 if (activeCount > 0)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -216,6 +233,7 @@ class _TransferTasksPanel extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 12),
+            // 传输任务列表
             Flexible(
               child: ListView.separated(
                 shrinkWrap: true,
@@ -229,7 +247,9 @@ class _TransferTasksPanel extends ConsumerWidget {
                   String statusText;
                   Color statusColor;
 
+                  // 根据任务的当前状态判断应显示的文本、图标以及颜色
                   if (!task.isDone) {
+                    // 正在进行中
                     statusWidget = const SizedBox(
                       width: 14,
                       height: 14,
@@ -240,6 +260,7 @@ class _TransferTasksPanel extends ConsumerWidget {
                         : context.l10n.t('uploadingFile');
                     statusColor = theme.colorScheme.onSurfaceVariant;
                   } else if (task.isSuccess) {
+                    // 传输/安装成功
                     statusWidget = const Icon(
                       CupertinoIcons.checkmark_circle_fill,
                       color: Colors.green,
@@ -250,6 +271,7 @@ class _TransferTasksPanel extends ConsumerWidget {
                         : context.l10n.t('uploadSuccess');
                     statusColor = Colors.green;
                   } else {
+                    // 发生错误
                     statusWidget = const Icon(
                       CupertinoIcons.xmark_circle_fill,
                       color: Colors.red,
@@ -261,6 +283,7 @@ class _TransferTasksPanel extends ConsumerWidget {
 
                   return Row(
                     children: [
+                      // 根据任务类型显示对应的图标（APK使用应用角标图标，普通文件使用文档图标）
                       Icon(
                         task.isApk
                             ? CupertinoIcons.app_badge
@@ -273,6 +296,7 @@ class _TransferTasksPanel extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // 任务名称（如文件名）
                             Text(
                               task.name,
                               style: theme.textTheme.bodyMedium?.copyWith(
@@ -282,6 +306,7 @@ class _TransferTasksPanel extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
+                            // 当前状态描述文本
                             Text(
                               statusText,
                               style: theme.textTheme.bodySmall?.copyWith(
@@ -294,6 +319,7 @@ class _TransferTasksPanel extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
+                      // 右侧的状态指示图标/进度条
                       statusWidget,
                     ],
                   );
