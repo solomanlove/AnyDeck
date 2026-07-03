@@ -123,7 +123,7 @@ class _DragDropTargetOverlayState extends ConsumerState<DragDropTargetOverlay> {
           // Floating active transfers list
           if (transferTasks.isNotEmpty)
             Positioned(
-              bottom: 24,
+              top: 80,
               right: MediaQuery.of(context).size.width < 400 ? 16 : 24,
               child: _TransferTasksPanel(tasks: transferTasks),
             ),
