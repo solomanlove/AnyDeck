@@ -4,10 +4,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/adb/adb_device.dart';
-import '../../../../core/web_debug/webpage_target.dart';
-import '../../../../core/providers/app_providers.dart';
+import '../../app/l10n/app_localizations.dart';
+import '../../core/adb/adb_device.dart';
+import '../../core/web_debug/webpage_target.dart';
+import '../../core/providers/app_providers.dart';
 import '../widgets/dashboard_snack.dart';
 
 /// 网页调试标签页。

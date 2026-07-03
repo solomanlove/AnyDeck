@@ -7,11 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_selector/file_selector.dart';
 
-import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/adb/adb_device.dart';
-import '../../../../core/layout_inspector/layout_inspector_service.dart';
-import '../../../../core/layout_inspector/layout_node.dart';
-import '../../../../core/providers/app_providers.dart';
+import '../../app/l10n/app_localizations.dart';
+import '../../core/adb/adb_device.dart';
+import '../../core/layout_inspector/layout_inspector_service.dart';
+import '../../core/layout_inspector/layout_node.dart';
+import '../../core/providers/app_providers.dart';
 import 'layout_screen_preview.dart';
 import 'layout_hierarchy_tree.dart';
 import 'layout_properties_table.dart';

@@ -3,7 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'performance_charts.dart';
 import 'performance_bar_chart.dart';
 import 'performance_data.dart';
-import '../../../../app/l10n/app_localizations.dart';
+import '../../app/l10n/app_localizations.dart';
 
 /// 顶部开机时间和电量状态组件。
 class PerformanceTopStatusRow extends StatelessWidget {

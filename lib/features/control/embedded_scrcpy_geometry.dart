@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/device_info/device_display_frame.dart';
+import '../../core/device_info/device_display_frame.dart';
 
 /// scrcpy 视频画面在 Flutter 容器中的比例、尺寸和触控坐标换算工具。
 class ScrcpyVideoGeometry {

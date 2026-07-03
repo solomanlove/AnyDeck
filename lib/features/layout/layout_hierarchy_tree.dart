@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/layout_inspector/layout_node.dart';
+import '../../app/l10n/app_localizations.dart';
+import '../../core/layout_inspector/layout_node.dart';
 
 /// 渲染左侧树状 XML 节点结构，支持由父组件驱动的展开、折叠、高亮与悬停。
 class LayoutHierarchyTree extends StatefulWidget {

@@ -4,8 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/providers/network_providers.dart';
+import '../../app/l10n/app_localizations.dart';
+import '../../core/providers/network_providers.dart';
 
 /// Network Tab 中的设备 HTTP 代理快捷设置面板。
 class DeviceProxyPanel extends ConsumerStatefulWidget {

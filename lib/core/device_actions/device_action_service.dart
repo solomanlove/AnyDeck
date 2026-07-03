@@ -636,6 +636,73 @@ class DeviceActionService {
         'android.settings.MANAGE_APPLICATIONS_SETTINGS',
       ]);
 
+  /// 打开工程模式（测试设置）。
+  Future<AdbResult> openTestingSettings(String deviceId) async {
+    // 获取设备品牌以针对小米/红米/POCO机型优先跳转 MIUI CIT 工程模式
+    final brandResult = await _adb.shellArgs(deviceId, ['getprop', 'ro.product.brand']);
+    final brand = brandResult.stdout.trim().toLowerCase();
+
+    if (brand.contains('xiaomi') || brand.contains('redmi') || brand.contains('poco')) {
+      final miuiCitResult = await _adb.shellArgs(deviceId, [
+        'am',
+        'start',
+        '-n',
+        'com.miui.cit/com.miui.cit.home.HomeActivity',
+      ]);
+      if (miuiCitResult.isSuccess) return miuiCitResult;
+    }
+
+    final result = await _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-n',
+      'com.android.settings/.Settings\$TestingSettingsActivity',
+    ]);
+    if (result.isSuccess) return result;
+
+    final r1 = await _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-n',
+      'com.android.settings/.RadioInfo',
+    ]);
+    if (r1.isSuccess) return r1;
+
+    final r2 = await _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-n',
+      'com.android.phone/com.android.phone.settings.RadioInfo',
+    ]);
+    if (r2.isSuccess) return r2;
+
+    // 最后的备用兜底尝试
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-n',
+      'com.miui.cit/com.miui.cit.home.HomeActivity',
+    ]);
+  }
+
+  /// 打开 Google 服务设置。
+  Future<AdbResult> openGoogleSettings(String deviceId) async {
+    final result = await _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-a',
+      'com.google.android.gms.SETTINGS',
+    ]);
+    if (result.isSuccess) return result;
+
+    return _adb.shellArgs(deviceId, [
+      'am',
+      'start',
+      '-n',
+      'com.google.android.gms/com.google.android.gms.app.settings.GoogleSettingsActivity',
+    ]);
+  }
+
   /// 打开自定义 Applink/Deeplink 链接。
   Future<AdbResult> openCustomDeeplink(String deviceId, String uri) {
     final escapedUri = uri.replaceAllMapped(

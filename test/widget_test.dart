@@ -11,7 +11,7 @@ import 'package:any_deck/core/web_debug/webpage_target.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:any_deck/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:any_deck/features/dashboard_screen.dart';
 
 import 'fake_adb_service.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';

@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/adb/adb_device.dart';
-import '../../../../core/providers/app_providers.dart';
-import '../../../../core/providers/network_providers.dart';
+import '../../app/l10n/app_localizations.dart';
+import '../../core/adb/adb_device.dart';
+import '../../core/providers/app_providers.dart';
+import '../../core/providers/network_providers.dart';
 import 'device_proxy_panel.dart';
 import 'network_dialog.dart';
 

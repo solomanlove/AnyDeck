@@ -5,8 +5,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
-import '../../../features/dashboard/presentation/dashboard_screen.dart';
-import '../../../features/dashboard/presentation/widgets/liquid_glass_background.dart';
+import '../../../features/dashboard_screen.dart';
+import '../../../features/widgets/liquid_glass_background.dart';
 import '../window_close_shortcut.dart';
 
 /// 模拟器管理独立窗口的应用入口。

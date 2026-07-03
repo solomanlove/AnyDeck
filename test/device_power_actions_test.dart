@@ -2,7 +2,7 @@ import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/device_actions/device_action_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
-import 'package:any_deck/features/dashboard/presentation/widgets/device_power_actions.dart';
+import 'package:any_deck/features/widgets/device_power_actions.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

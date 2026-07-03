@@ -3,11 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/adb/adb_device.dart';
-import '../../../../core/providers/app_providers.dart';
-import '../../../../core/terminal/adb_terminal_session.dart';
-import '../../../../core/terminal/favorite_commands.dart';
+import '../../app/l10n/app_localizations.dart';
+import '../../core/adb/adb_device.dart';
+import '../../core/providers/app_providers.dart';
+import '../../core/terminal/adb_terminal_session.dart';
+import '../../core/terminal/favorite_commands.dart';
 
 part 'terminal_favorites.dart';
 

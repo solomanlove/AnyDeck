@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import '../../../../core/layout_inspector/layout_node.dart';
+import '../../core/layout_inspector/layout_node.dart';
 
 /// 渲染手机屏幕截图，支持 InteractiveViewer 缩放和平移，以及旋转度数下的坐标映射。
 class LayoutScreenPreview extends StatefulWidget {

@@ -4,10 +4,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/adb/adb_result.dart';
-import '../../../../core/device_info/device_overview.dart';
-import '../../../../core/providers/app_providers.dart';
+import '../../app/l10n/app_localizations.dart';
+import '../../core/adb/adb_result.dart';
+import '../../core/device_info/device_overview.dart';
+import '../../core/providers/app_providers.dart';
 import '../widgets/dashboard_snack.dart';
 
 /// 投屏窗口与控制 Tab 复用的手机快捷设置弹窗。

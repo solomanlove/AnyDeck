@@ -6,13 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
-import '../../../../core/device_info/device_display_frame.dart';
-import '../../../../core/providers/app_providers.dart';
-import '../../../../core/scrcpy/embedded_scrcpy_service.dart';
-import '../../../../core/scrcpy/scrcpy_keycode_helper.dart';
+import '../../core/device_info/device_display_frame.dart';
+import '../../core/providers/app_providers.dart';
+import '../../core/scrcpy/embedded_scrcpy_service.dart';
+import '../../core/scrcpy/scrcpy_keycode_helper.dart';
 import 'embedded_scrcpy_geometry.dart';
 import 'embedded_scrcpy_texture_surface.dart';
-import '../../../../core/ios/ios_mirror_service.dart';
+import '../../core/ios/ios_mirror_service.dart';
 import 'ios_mirror_viewer.dart';
 
 class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {

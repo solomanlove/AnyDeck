@@ -5,10 +5,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 
-import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/adb/adb_device.dart';
-import '../../../../core/providers/app_providers.dart';
-import '../../../../core/apps/adb_package.dart';
+import '../../app/l10n/app_localizations.dart';
+import '../../core/adb/adb_device.dart';
+import '../../core/providers/app_providers.dart';
+import '../../core/apps/adb_package.dart';
 import 'performance_charts.dart';
 import 'performance_data.dart';
 import 'performance_widgets.dart';

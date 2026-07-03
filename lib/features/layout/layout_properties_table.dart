@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/layout_inspector/layout_node.dart';
+import '../../app/l10n/app_localizations.dart';
+import '../../core/layout_inspector/layout_node.dart';
 
 /// 渲染右侧属性面板，展示当前选中的 XML 节点的所有详细属性，并支持点击复制。
 class LayoutPropertiesTable extends StatelessWidget {

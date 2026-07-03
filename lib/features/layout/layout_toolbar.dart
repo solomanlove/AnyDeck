@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
-import '../../../../app/l10n/app_localizations.dart';
+import '../../app/l10n/app_localizations.dart';
 
 /// 布局分析顶部工具栏，集中处理刷新、保存、展开和缩放控制。
 class LayoutToolbar extends StatelessWidget {
