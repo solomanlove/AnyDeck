@@ -29,9 +29,8 @@ A new Flutter plugin project.
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'HEADER_SEARCH_PATHS' => '"/opt/homebrew/opt/ffmpeg/include"',
-    'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Libs"',
-    'OTHER_LDFLAGS' => '$(inherited) -lavcodec -lavformat -lavutil -lswscale -lswresample'
+    'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Libs"'
   }
-  s.vendored_libraries = 'Libs/*.dylib'
+  s.vendored_libraries = 'Libs/*.dylib', 'Libs/*.a'
   s.swift_version = '5.0'
 end
