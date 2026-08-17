@@ -173,6 +173,14 @@ class _DeviceOverviewPanel extends ConsumerWidget {
           context.l10n.t('androidApiMapping'),
         ),
       ),
+      if (overview.brand != 'Apple')
+        _OverviewItemData(
+          icon: CupertinoIcons.device_phone_portrait,
+          label: context.l10n.t('customOs'),
+          value: overview.customOs.isEmpty || overview.customOs == '-'
+              ? context.l10n.t('customOsUnknown')
+              : overview.customOs,
+        ),
       _OverviewItemData(
         icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('kernelVersion'),

@@ -51,7 +51,8 @@ class StubAdbService extends AdbService {
             '[ro.product.cpu.abi]: [arm64-v8a]\n'
             '[ro.product.device]: [alioth]\n'
             '[ro.build.version.release]: [13]\n'
-            '[ro.build.version.sdk]: [33]\n',
+            '[ro.build.version.sdk]: [33]\n'
+            '[ro.miui.ui.version.name]: [V14]\n',
         stderr: '',
       );
     }
@@ -78,6 +79,7 @@ void main() {
         serial: '5002ba00',
         androidId: 'abcdef1234567890',
         androidVersion: 'Android 13 (API 33)',
+        customOs: 'MIUI V14',
         kernelVersion: '4.19.157',
         processor: 'alioth 6 cores (arm64-v8a)',
         storage: '202.92G / 225.43G',
@@ -114,6 +116,7 @@ void main() {
       expect(decoded.serial, overview.serial);
       expect(decoded.androidId, overview.androidId);
       expect(decoded.androidVersion, overview.androidVersion);
+      expect(decoded.customOs, overview.customOs);
       expect(decoded.kernelVersion, overview.kernelVersion);
       expect(decoded.processor, overview.processor);
       expect(decoded.storage, overview.storage);
@@ -160,6 +163,7 @@ void main() {
         final overview = await service.loadOverview('device1');
         expect(overview.name, 'Redmi K40');
         expect(overview.brand, 'Redmi');
+        expect(overview.customOs, 'MIUI V14');
 
         // 2. Load while offline (should fallback to cached value)
         final offlineAdb = StubAdbService(shouldFail: true);
@@ -168,6 +172,7 @@ void main() {
         final cachedOverview = await offlineService.loadOverview('device1');
         expect(cachedOverview.name, 'Redmi K40');
         expect(cachedOverview.brand, 'Redmi');
+        expect(cachedOverview.customOs, 'MIUI V14');
       },
     );
 

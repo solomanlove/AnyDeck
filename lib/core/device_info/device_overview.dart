@@ -7,6 +7,7 @@ class DeviceOverview {
     required this.serial,
     required this.androidId,
     required this.androidVersion,
+    this.customOs = '-',
     required this.kernelVersion,
     required this.processor,
     required this.storage,
@@ -40,6 +41,7 @@ class DeviceOverview {
   final String serial;
   final String androidId;
   final String androidVersion;
+  final String customOs;
   final String kernelVersion;
   final String processor;
   final String storage;
@@ -74,6 +76,7 @@ class DeviceOverview {
       'serial': serial,
       'androidId': androidId,
       'androidVersion': androidVersion,
+      'customOs': customOs,
       'kernelVersion': kernelVersion,
       'processor': processor,
       'storage': storage,
@@ -110,6 +113,7 @@ class DeviceOverview {
       serial: json['serial'] as String? ?? '-',
       androidId: json['androidId'] as String? ?? '-',
       androidVersion: json['androidVersion'] as String? ?? '-',
+      customOs: json['customOs'] as String? ?? '-',
       kernelVersion: json['kernelVersion'] as String? ?? '-',
       processor: json['processor'] as String? ?? '-',
       storage: json['storage'] as String? ?? '-',
@@ -146,6 +150,7 @@ class DeviceOverview {
     String? serial,
     String? androidId,
     String? androidVersion,
+    String? customOs,
     String? kernelVersion,
     String? processor,
     String? storage,
@@ -179,6 +184,7 @@ class DeviceOverview {
       serial: serial ?? this.serial,
       androidId: androidId ?? this.androidId,
       androidVersion: androidVersion ?? this.androidVersion,
+      customOs: customOs ?? this.customOs,
       kernelVersion: kernelVersion ?? this.kernelVersion,
       processor: processor ?? this.processor,
       storage: storage ?? this.storage,

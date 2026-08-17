@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
+import 'android_version_helper.dart';
 import 'device_overview.dart';
 
 /// 通过 adb shell 命令收集只读 Android 设备信息。
@@ -185,9 +186,17 @@ settings get global sysui_demo_allowed
           'ro.boot.serialno',
         ], fallback: serialFromAdb),
         androidId: androidIdRaw,
-        androidVersion: androidVersion ??
-            'Android ${_firstValue(properties, ['ro.build.version.release'])}'
-            ' (API ${_firstValue(properties, ['ro.build.version.sdk'])})',
+        androidVersion: () {
+          if (androidVersion != null &&
+              androidVersion.isNotEmpty &&
+              androidVersion != '-') {
+            return androidVersion;
+          }
+          final release = _firstValue(properties, ['ro.build.version.release']);
+          final sdk = _firstValue(properties, ['ro.build.version.sdk']);
+          return 'Android $release (API $sdk)';
+        }(),
+        customOs: AndroidVersionHelper.getCustomOsVersion(properties) ?? '-',
         kernelVersion: kernel,
         processor: _formatProcessor(deviceCode, cores, abi),
         storage: storage,
@@ -232,15 +241,7 @@ settings get global sysui_demo_allowed
 
   /// 解析 Android getprop 的 `[key]: [value]` 输出。
   Map<String, String> _parseGetProp(String output) {
-    final properties = <String, String>{};
-    final pattern = RegExp(r'^\[(.+?)\]: \[(.*)\]$');
-    for (final line in output.split('\n')) {
-      final match = pattern.firstMatch(line.trim());
-      if (match != null) {
-        properties[match.group(1)!] = match.group(2)!;
-      }
-    }
-    return properties;
+    return AndroidVersionHelper.parseGetProp(output);
   }
 
   /// 返回第一个非空且不是 unknown 的属性值。

@@ -37,4 +37,121 @@ class AndroidVersionHelper {
     });
     return sb.toString();
   }
+
+  /// 解析 Android getprop 的 `[key]: [value]` 输出。
+  static Map<String, String> parseGetProp(String output) {
+    final properties = <String, String>{};
+    final pattern = RegExp(r'^\[(.+?)\]: \[(.*)\]$');
+    for (final line in output.split('\n')) {
+      final match = pattern.firstMatch(line.trim());
+      if (match != null) {
+        properties[match.group(1)!] = match.group(2)!;
+      }
+    }
+    return properties;
+  }
+
+  /// 根据 getprop 属性检测厂商系统及其版本，未命中时交由 UI 展示统一兜底文案。
+  static String? getCustomOsVersion(Map<String, String> properties) {
+    final harmonyVersion = _firstNonEmpty(properties, [
+      'ro.huawei.build.version.harmony',
+      'hw_sc.build.platform.version',
+    ]);
+    if (harmonyVersion != null) {
+      return _withName('HarmonyOS', harmonyVersion);
+    }
+
+    final magicVersion = _firstNonEmpty(properties, [
+      'ro.honor.build.version.magic',
+      'ro.build.version.magic',
+    ]);
+    if (magicVersion != null) {
+      return _withName('MagicOS', magicVersion);
+    }
+
+    final emuiVersion = _firstNonEmpty(properties, ['ro.build.version.emui']);
+    if (emuiVersion != null) {
+      return _withName(
+        'EMUI',
+        emuiVersion.replaceFirst(
+          RegExp(r'^EmotionUI_', caseSensitive: false),
+          '',
+        ),
+      );
+    }
+
+    final hyperOsVersion = _firstNonEmpty(properties, [
+      'ro.mi.os.version.name',
+    ]);
+    if (hyperOsVersion != null) {
+      return _withName('HyperOS', hyperOsVersion);
+    }
+    final miuiVersion = _firstNonEmpty(properties, ['ro.miui.ui.version.name']);
+    if (miuiVersion != null) {
+      return _withName('MIUI', miuiVersion);
+    }
+
+    final oxygenOsVersion = _firstNonEmpty(properties, [
+      'ro.oxygen.version',
+      'ro.oxygen.version.display',
+    ]);
+    if (oxygenOsVersion != null) {
+      return _withName('OxygenOS', oxygenOsVersion);
+    }
+    final realmeUiVersion = _firstNonEmpty(properties, [
+      'ro.build.version.realmeui',
+    ]);
+    if (realmeUiVersion != null) {
+      return _withName('realme UI', realmeUiVersion);
+    }
+    final colorOsVersion = _firstNonEmpty(properties, [
+      'ro.build.version.opporom',
+      'ro.build.version.coloros',
+      'ro.rom.different.version',
+    ]);
+    if (colorOsVersion != null) {
+      return _withName('ColorOS', colorOsVersion);
+    }
+
+    final vivoOsName = _firstNonEmpty(properties, ['ro.vivo.os.name']);
+    final vivoOsVersion = _firstNonEmpty(properties, ['ro.vivo.os.version']);
+    if (vivoOsName != null) {
+      return vivoOsVersion == null
+          ? vivoOsName
+          : _withName(vivoOsName, vivoOsVersion);
+    }
+    if (vivoOsVersion != null) {
+      return _withName('OriginOS/Funtouch OS', vivoOsVersion);
+    }
+
+    final displayId = _firstNonEmpty(properties, ['ro.build.display.id']);
+    if (displayId != null && displayId.toLowerCase().contains('flyme')) {
+      return displayId;
+    }
+
+    return null;
+  }
+
+  static String? _firstNonEmpty(
+    Map<String, String> properties,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = properties[key]?.trim();
+      if (value != null &&
+          value.isNotEmpty &&
+          value.toLowerCase() != 'unknown') {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  static String _withName(String name, String version) {
+    final cleanVersion = version.trim();
+    if (cleanVersion.toLowerCase().startsWith(name.toLowerCase())) {
+      return cleanVersion;
+    }
+    return '$name $cleanVersion';
+  }
 }
