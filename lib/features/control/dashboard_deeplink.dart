@@ -108,14 +108,17 @@ class _DeeplinkPanel extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(context.l10n.t('deeplinkCustomTitle')),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'https://... 或 myapp://...',
-            labelText: context.l10n.t('deeplinkCustomHint'),
+        content: SizedBox(
+          width: 480,
+          child: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: 'https://... 或 myapp://...',
+              labelText: context.l10n.t('deeplinkCustomHint'),
+            ),
+            onSubmitted: (value) => Navigator.of(context).pop(value),
           ),
-          onSubmitted: (value) => Navigator.of(context).pop(value),
         ),
         actions: [
           TextButton(
