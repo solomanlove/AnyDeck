@@ -156,7 +156,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                   padding: const EdgeInsets.all(24),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final useHorizontalLayout = constraints.maxWidth >= 850;
+                      final useHorizontalLayout = constraints.maxWidth >= 720;
 
                       final summaryCard = SizedBox(
                         width: useHorizontalLayout ? 300 : double.infinity,
@@ -605,7 +605,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                           children: [
                             summaryCard,
                             const SizedBox(height: 24),
-                            Expanded(child: tabbedContent),
+                            tabbedContent,
                           ],
                         );
                       }
@@ -653,9 +653,10 @@ class _AppDetailSummaryCard extends StatelessWidget {
         ),
       ),
       padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Center(
             child: Column(
               children: [
@@ -746,6 +747,7 @@ class _AppDetailSummaryCard extends StatelessWidget {
               valueColor: colorScheme.error,
             ),
         ],
+      ),
       ),
     );
   }
