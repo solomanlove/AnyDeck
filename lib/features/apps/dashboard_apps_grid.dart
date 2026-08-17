@@ -85,10 +85,7 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onSelected,
-        onDoubleTap: () {
-          widget.onSelected();
-          _showAppDetailsDialog(context, ref, widget.deviceId, package);
-        },
+        onDoubleTap: widget.onSelected,
         child: AnimatedScale(
           scale: _isHovered ? 1.04 : 1.0,
           duration: const Duration(milliseconds: 150),

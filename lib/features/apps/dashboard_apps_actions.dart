@@ -31,7 +31,7 @@ class _PackageActions extends ConsumerWidget {
             tooltip: context.l10n.t('appDetails'),
             icon: const Icon(CupertinoIcons.info),
             onPressed: () {
-              _showAppDetailsDialog(context, ref, deviceId, package);
+              ref.read(selectedAppPackageProvider.notifier).state = package.name;
             },
           ),
           const SizedBox(width: 2),

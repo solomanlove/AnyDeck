@@ -282,10 +282,7 @@ class _PackageTableRow extends ConsumerWidget {
 
     return InkWell(
       onTap: onSelected,
-      onDoubleTap: () {
-        onSelected();
-        _showAppDetailsDialog(context, ref, deviceId, package);
-      },
+      onDoubleTap: onSelected,
       child: Container(
         height: 56,
         decoration: BoxDecoration(

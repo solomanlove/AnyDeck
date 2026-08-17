@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import 'adb_package.dart';
+import 'adb_package_detail.dart';
 
 /// 基于 adb 和 PackageManager 实现的应用管理能力。
 class AppManagementService {
@@ -212,6 +213,37 @@ fi
     }
 
     return newPackage;
+  }
+
+  /// 获取应用的详细包组件与动态库（LibChecker 功能）。
+  Future<AdbPackageDetail> getPackageDetailedInfo(
+    String deviceId,
+    String packageName,
+  ) async {
+    await _ensureIconHelperPushed(deviceId);
+    final userId = await _currentUserId(deviceId);
+
+    final result = await _adb.shell(
+      deviceId,
+      'CLASSPATH=$_remoteDexPath app_process /system/bin '
+      'com.adbmanage.helper.PackageIconHelper '
+      '--details $packageName $userId',
+      timeout: _metadataTimeout,
+    );
+
+    if (!result.isSuccess) {
+      throw Exception('获取应用详细信息失败: ${result.stderr}');
+    }
+
+    try {
+      final jsonMap = jsonDecode(result.stdout.trim()) as Map<String, Object?>;
+      if (jsonMap.containsKey('error')) {
+        throw Exception(jsonMap['error'] as String);
+      }
+      return AdbPackageDetail.fromJson(jsonMap);
+    } catch (e) {
+      throw Exception('解析应用详细信息失败: $e\n原始输出: ${result.stdout}');
+    }
   }
 
   Future<AdbResult> _getDumpsysMetadata(String deviceId) async {

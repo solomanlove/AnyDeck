@@ -49,12 +49,16 @@ public final class PackageIconHelper {
      */
     public static void main(String[] args) {
         if (args.length < 2) {
-            System.err.println("Usage: PackageIconHelper <package-file> <user-id>");
+            System.err.println("Usage: PackageIconHelper <package-file> <user-id> OR PackageIconHelper --details <package-name> <user-id>");
             return;
         }
 
         try {
-            new PackageIconHelper(Integer.parseInt(args[1])).run(args[0]);
+            if (args[0].equals("--details") && args.length >= 3) {
+                new PackageIconHelper(Integer.parseInt(args[2])).printPackageDetails(args[1]);
+            } else {
+                new PackageIconHelper(Integer.parseInt(args[1])).run(args[0]);
+            }
         } catch (Throwable throwable) {
             throwable.printStackTrace(System.err);
         }
@@ -221,6 +225,287 @@ public final class PackageIconHelper {
                 flags,
                 userId
         );
+    }
+
+    private PackageInfo getPackageInfoWithFlags(String packageName, int flags) throws Exception {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return (PackageInfo) getPackageInfoMethod.invoke(
+                    packageManager,
+                    packageName,
+                    (long) flags,
+                    userId
+            );
+        }
+        return (PackageInfo) getPackageInfoMethod.invoke(
+                packageManager,
+                packageName,
+                flags,
+                userId
+        );
+    }
+
+    private void printPackageDetails(String packageName) throws Exception {
+        int flags = 1 | 2 | 4 | 8 | 64 | 4096 | 128; // GET_ACTIVITIES | GET_RECEIVERS | GET_SERVICES | GET_PROVIDERS | GET_SIGNATURES | GET_PERMISSIONS | GET_META_DATA
+        PackageInfo packageInfo = null;
+        try {
+            packageInfo = getPackageInfoWithFlags(packageName, flags);
+        } catch (Throwable e) {
+            System.out.println("{\"error\":\"Failed to get package info: " + escapeJson(e.getMessage()) + "\"}");
+            return;
+        }
+
+        ApplicationInfo appInfo = packageInfo.applicationInfo;
+        String primaryCpuAbi = null;
+        String secondaryCpuAbi = null;
+        try {
+            java.lang.reflect.Field primaryField = ApplicationInfo.class.getField("primaryCpuAbi");
+            primaryCpuAbi = (String) primaryField.get(appInfo);
+            java.lang.reflect.Field secondaryField = ApplicationInfo.class.getField("secondaryCpuAbi");
+            secondaryCpuAbi = (String) secondaryField.get(appInfo);
+        } catch (Throwable ignored) {}
+
+        java.util.List<String> supportedAbis = new java.util.ArrayList<>();
+        java.util.List<String> libs = new java.util.ArrayList<>();
+        java.util.List<String> dexFiles = new java.util.ArrayList<>();
+        boolean isFlutter = false;
+        boolean isReactNative = false;
+        boolean isKotlin = false;
+        boolean isCompose = false;
+        boolean isXamarin = false;
+        boolean isUnity = false;
+
+        if (appInfo.sourceDir != null) {
+            try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(appInfo.sourceDir)) {
+                java.util.Enumeration<? extends java.util.zip.ZipEntry> entries = zipFile.entries();
+                while (entries.hasMoreElements()) {
+                    java.util.zip.ZipEntry entry = entries.nextElement();
+                    String name = entry.getName();
+                    if (name.startsWith("classes") && name.endsWith(".dex")) {
+                        dexFiles.add(name + ":" + entry.getSize());
+                    }
+                    if (name.startsWith("lib/")) {
+                        String[] parts = name.split("/");
+                        if (parts.length >= 3) {
+                            String abi = parts[1];
+                            if (!supportedAbis.contains(abi)) {
+                                supportedAbis.add(abi);
+                            }
+                            String soName = parts[parts.length - 1];
+                            if (soName.endsWith(".so") && !libs.contains(soName)) {
+                                libs.add(soName);
+                            }
+                        }
+                    }
+                    if (name.startsWith("assets/flutter_assets/")) {
+                        isFlutter = true;
+                    }
+                    if (name.equals("assets/index.android.bundle")) {
+                        isReactNative = true;
+                    }
+                    if (name.startsWith("kotlin/") || (name.startsWith("META-INF/") && name.endsWith(".kotlin_module"))) {
+                        isKotlin = true;
+                    }
+                    if (name.startsWith("META-INF/androidx.compose.")) {
+                        isCompose = true;
+                    }
+                    if (name.startsWith("assemblies/") || name.contains("libmonodroid") || name.contains("libmono")) {
+                        isXamarin = true;
+                    }
+                    if (name.contains("libunity")) {
+                        isUnity = true;
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        if (appInfo.nativeLibraryDir != null) {
+            File libDir = new File(appInfo.nativeLibraryDir);
+            if (libDir.exists() && libDir.isDirectory()) {
+                File[] files = libDir.listFiles();
+                if (files != null) {
+                    for (File f : files) {
+                        if (f.isFile() && f.getName().endsWith(".so") && !libs.contains(f.getName())) {
+                            libs.add(f.getName());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Frameworks list
+        java.util.List<String> frameworks = new java.util.ArrayList<>();
+        if (isFlutter) frameworks.add("Flutter");
+        if (isReactNative) frameworks.add("React Native");
+        if (isKotlin) frameworks.add("Kotlin");
+        if (isCompose) frameworks.add("Jetpack Compose");
+        if (isXamarin) frameworks.add("Xamarin");
+        if (isUnity) frameworks.add("Unity");
+
+        // Format metadata
+        StringBuilder metaJson = new StringBuilder();
+        metaJson.append("{");
+        android.os.Bundle metaData = appInfo.metaData;
+        if (metaData != null) {
+            boolean first = true;
+            for (String key : metaData.keySet()) {
+                Object val = metaData.get(key);
+                if (val != null) {
+                    if (!first) metaJson.append(",");
+                    first = false;
+                    metaJson.append("\"").append(escapeJson(key)).append("\":\"").append(escapeJson(val.toString())).append("\"");
+                }
+            }
+        }
+        metaJson.append("}");
+
+        // Format permissions
+        StringBuilder permJson = new StringBuilder();
+        permJson.append("[");
+        if (packageInfo.requestedPermissions != null) {
+            for (int i = 0; i < packageInfo.requestedPermissions.length; i++) {
+                String permName = packageInfo.requestedPermissions[i];
+                boolean granted = false;
+                if (packageInfo.requestedPermissionsFlags != null && i < packageInfo.requestedPermissionsFlags.length) {
+                    granted = (packageInfo.requestedPermissionsFlags[i] & 2) != 0;
+                }
+                if (i > 0) permJson.append(",");
+                permJson.append("{\"name\":\"").append(escapeJson(permName)).append("\",\"granted\":").append(granted).append("}");
+            }
+        }
+        permJson.append("]");
+
+        // Activities
+        StringBuilder actJson = new StringBuilder();
+        actJson.append("[");
+        if (packageInfo.activities != null) {
+            for (int i = 0; i < packageInfo.activities.length; i++) {
+                android.content.pm.ActivityInfo info = packageInfo.activities[i];
+                if (i > 0) actJson.append(",");
+                actJson.append("{\"name\":\"").append(escapeJson(info.name))
+                       .append("\",\"exported\":").append(info.exported)
+                       .append(",\"permission\":").append(info.permission == null ? "null" : "\"" + escapeJson(info.permission) + "\"")
+                       .append("}");
+            }
+        }
+        actJson.append("]");
+
+        // Services
+        StringBuilder srvJson = new StringBuilder();
+        srvJson.append("[");
+        if (packageInfo.services != null) {
+            for (int i = 0; i < packageInfo.services.length; i++) {
+                android.content.pm.ServiceInfo info = packageInfo.services[i];
+                if (i > 0) srvJson.append(",");
+                srvJson.append("{\"name\":\"").append(escapeJson(info.name))
+                       .append("\",\"exported\":").append(info.exported)
+                       .append(",\"permission\":").append(info.permission == null ? "null" : "\"" + escapeJson(info.permission) + "\"")
+                       .append("}");
+            }
+        }
+        srvJson.append("]");
+
+        // Receivers
+        StringBuilder rcvJson = new StringBuilder();
+        rcvJson.append("[");
+        if (packageInfo.receivers != null) {
+            for (int i = 0; i < packageInfo.receivers.length; i++) {
+                android.content.pm.ActivityInfo info = packageInfo.receivers[i];
+                if (i > 0) rcvJson.append(",");
+                rcvJson.append("{\"name\":\"").append(escapeJson(info.name))
+                       .append("\",\"exported\":").append(info.exported)
+                       .append(",\"permission\":").append(info.permission == null ? "null" : "\"" + escapeJson(info.permission) + "\"")
+                       .append("}");
+            }
+        }
+        rcvJson.append("]");
+
+        // Providers
+        StringBuilder prvJson = new StringBuilder();
+        prvJson.append("[");
+        if (packageInfo.providers != null) {
+            for (int i = 0; i < packageInfo.providers.length; i++) {
+                android.content.pm.ProviderInfo info = packageInfo.providers[i];
+                if (i > 0) prvJson.append(",");
+                prvJson.append("{\"name\":\"").append(escapeJson(info.name))
+                       .append("\",\"exported\":").append(info.exported)
+                       .append(",\"authority\":").append(info.authority == null ? "null" : "\"" + escapeJson(info.authority) + "\"")
+                       .append("}");
+            }
+        }
+        prvJson.append("]");
+
+        String sigMd5 = getSignatureMd5(packageInfo);
+
+        // Build main JSON
+        StringBuilder json = new StringBuilder();
+        json.append("{");
+        json.append("\"packageName\":\"").append(escapeJson(packageName)).append("\",");
+        json.append("\"primaryCpuAbi\":").append(primaryCpuAbi == null ? "null" : "\"" + escapeJson(primaryCpuAbi) + "\"").append(",");
+        json.append("\"secondaryCpuAbi\":").append(secondaryCpuAbi == null ? "null" : "\"" + escapeJson(secondaryCpuAbi) + "\"").append(",");
+        
+        json.append("\"supportedAbis\":[");
+        for (int i = 0; i < supportedAbis.size(); i++) {
+            if (i > 0) json.append(",");
+            json.append("\"").append(escapeJson(supportedAbis.get(i))).append("\"");
+        }
+        json.append("],");
+
+        json.append("\"frameworks\":[");
+        for (int i = 0; i < frameworks.size(); i++) {
+            if (i > 0) json.append(",");
+            json.append("\"").append(escapeJson(frameworks.get(i))).append("\"");
+        }
+        json.append("],");
+
+        json.append("\"libs\":[");
+        for (int i = 0; i < libs.size(); i++) {
+            if (i > 0) json.append(",");
+            json.append("\"").append(escapeJson(libs.get(i))).append("\"");
+        }
+        json.append("],");
+
+        json.append("\"dexFiles\":[");
+        for (int i = 0; i < dexFiles.size(); i++) {
+            if (i > 0) json.append(",");
+            String[] parts = dexFiles.get(i).split(":");
+            json.append("{\"name\":\"").append(escapeJson(parts[0])).append("\",\"size\":").append(parts[1]).append("}");
+        }
+        json.append("],");
+
+        json.append("\"activities\":").append(actJson.toString()).append(",");
+        json.append("\"services\":").append(srvJson.toString()).append(",");
+        json.append("\"receivers\":").append(rcvJson.toString()).append(",");
+        json.append("\"providers\":").append(prvJson.toString()).append(",");
+        json.append("\"permissions\":").append(permJson.toString()).append(",");
+        json.append("\"metadata\":").append(metaJson.toString()).append(",");
+        json.append("\"signatureMd5\":\"").append(sigMd5).append("\"");
+        json.append("}");
+
+        System.out.println(json.toString());
+    }
+
+    private static String escapeJson(String str) {
+        if (str == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < str.length(); i++) {
+            char ch = str.charAt(i);
+            switch (ch) {
+                case '"': sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\b': sb.append("\\b"); break;
+                case '\f': sb.append("\\f"); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                default:
+                    if (ch < ' ') {
+                        sb.append(String.format("\\u%04x", (int) ch));
+                    } else {
+                        sb.append(ch);
+                    }
+            }
+        }
+        return sb.toString();
     }
 
     /**

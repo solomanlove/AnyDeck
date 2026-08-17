@@ -253,19 +253,6 @@ IconData _fileIcon(RemoteFile file) {
   };
 }
 
-void _showAppDetailsDialog(
-  BuildContext context,
-  WidgetRef ref,
-  String deviceId,
-  AdbPackage package,
-) {
-  showDialog(
-    context: context,
-    builder: (context) {
-      return _AppDetailsDialog(deviceId: deviceId, package: package);
-    },
-  );
-}
 
 Future<void> _openLocalTerminal(BuildContext context, WidgetRef ref) async {
   try {
