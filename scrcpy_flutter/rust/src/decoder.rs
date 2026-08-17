@@ -276,6 +276,10 @@ unsafe fn run_decode_loop(
         let pts = u64::from_be_bytes(header[0..8].try_into().unwrap()) as i64;
         let size = u32::from_be_bytes(header[8..12].try_into().unwrap()) as usize;
 
+        if size > 32 * 1024 * 1024 {
+            return Err(format!("[rust_scrcpy] Video frame size {} exceeds safety threshold 32MB", size));
+        }
+
         if size == 0 {
             continue;
         }
@@ -331,6 +335,10 @@ unsafe fn run_audio_loop(
 
         let pts = u64::from_be_bytes(header[0..8].try_into().unwrap());
         let size = u32::from_be_bytes(header[8..12].try_into().unwrap()) as usize;
+
+        if size > 10 * 1024 * 1024 {
+            return Err(format!("[rust_scrcpy] Audio frame size {} exceeds safety threshold 10MB", size));
+        }
 
         if size == 0 {
             continue;
