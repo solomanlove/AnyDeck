@@ -10,6 +10,7 @@ cd "$PROJECT_DIR/rust"
 # 导出手动指定的 FFmpeg 头文件与 AnyDeck 本地内置的动态库路径，确保 Rust 静态库与 App 运行时的 ABI 完全一致
 export FFMPEG_INCLUDE_DIR="/opt/homebrew/opt/ffmpeg/include"
 export FFMPEG_LIB_DIR="$PROJECT_DIR/macos/Libs"
+export MACOSX_DEPLOYMENT_TARGET="11.0"
 
 # 修复 macOS bindgen 编译时的 Clang 路径问题，指向正确的 macOS SDK 和我们的自定义占位头文件目录
 SDK_PATH=$(xcrun --show-sdk-path)
