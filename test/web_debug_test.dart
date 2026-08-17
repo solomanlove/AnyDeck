@@ -88,7 +88,7 @@ void main() {
       );
 
       expect(
-        service.buildInspectorUrl(target, false),
+        service.buildInspectorUrl(target),
         'http://127.0.0.1:53123/devtools/inspector.html?ws=127.0.0.1:53123/devtools/page/PAGE_ID',
       );
     });
@@ -111,12 +111,12 @@ void main() {
       );
 
       expect(
-        service.buildInspectorUrl(target, false),
+        service.buildInspectorUrl(target),
         'https://chrome-devtools-frontend.appspot.com/serve_rev/@rev/inspector.html?ws=127.0.0.1:53123/devtools/page/PAGE_ID',
       );
     });
 
-    test('uses bundled Chrome devtools URL when local debugger is enabled', () {
+    test('uses hosted Chrome devtools URL when frontend URL is missing', () {
       final service = WebDebugService(AdbService(executable: 'adb'));
       final target = WebpageTarget(
         id: 'PAGE_ID',
@@ -133,8 +133,8 @@ void main() {
       );
 
       expect(
-        service.buildInspectorUrl(target, true),
-        'devtools://devtools/bundled/inspector.html?ws=127.0.0.1:53123/devtools/page/PAGE_ID',
+        service.buildInspectorUrl(target),
+        'https://chrome-devtools-frontend.appspot.com/serve_rev/@d1ef8f1176b6ef009d73d6e53a32f6b3cf59a68e/inspector.html?ws=127.0.0.1:53123/devtools/page/PAGE_ID',
       );
     });
   });

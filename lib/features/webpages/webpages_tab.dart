@@ -136,7 +136,6 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
     final target = _selectedTarget;
     if (target == null) return;
 
-    final useLocal = ref.read(useLocalDebuggerProvider);
     final service = ref.read(webDebugServiceProvider);
 
     try {
@@ -151,7 +150,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
         }
         return;
       }
-      await service.openInspector(latestTarget, useLocal);
+      await service.openInspector(latestTarget);
       if (mounted) {
         DashboardSnack.show(context, context.l10n.t('attemptingStartDebugger'));
       }
@@ -237,7 +236,6 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
     }
 
     final targetsAsync = ref.watch(webTargetsProvider(widget.device.id));
-    final useLocalDebugger = ref.watch(useLocalDebuggerProvider);
     final showAllTargets = ref.watch(showAllWebTargetsProvider);
 
     // 同步选中的网页目标状态
@@ -304,19 +302,6 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                         .t('autoRefreshInterval')
                         .replaceAll('{seconds}', '5'),
                   ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              // 使用本地调试器 Checkbox
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Checkbox(
-                    value: useLocalDebugger,
-                    onChanged: (_) =>
-                        ref.read(useLocalDebuggerProvider.notifier).toggle(),
-                  ),
-                  Text(context.l10n.t('useLocalDebugger')),
                 ],
               ),
               const SizedBox(width: 8),

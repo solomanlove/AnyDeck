@@ -270,21 +270,13 @@ class WebDebugService {
   }
 
   /// 打开调试器检查特定的网页。
-  Future<void> openInspector(
-    WebpageTarget target,
-    bool useLocalDebugger,
-  ) async {
-    await openBrowser(buildInspectorUrl(target, useLocalDebugger));
+  Future<void> openInspector(WebpageTarget target) async {
+    await _openChrome(buildInspectorUrl(target));
   }
 
   /// 构造本机可连接的 DevTools 调试 URL。
-  String buildInspectorUrl(WebpageTarget target, bool useLocalDebugger) {
+  String buildInspectorUrl(WebpageTarget target) {
     final wsEndpoint = _localWebSocketEndpoint(target);
-    if (useLocalDebugger) {
-      // 使用本地内置调试器 URL
-      return 'devtools://devtools/bundled/inspector.html?ws=$wsEndpoint';
-    }
-
     if (target.devtoolsFrontendUrl.isNotEmpty) {
       // Android/WebView 常返回 /devtools/... 相对路径，必须补成本机转发端口。
       return _replaceWebSocketEndpoint(
@@ -293,7 +285,7 @@ class WebDebugService {
       );
     }
 
-    // 缺省的在线 DevTools 调试前端
+    // 设备未返回 frontend URL 时，使用 Google 托管的 DevTools 前端兜底。
     return 'https://chrome-devtools-frontend.appspot.com/serve_rev/@d1ef8f1176b6ef009d73d6e53a32f6b3cf59a68e/inspector.html?ws=$wsEndpoint';
   }
 
@@ -334,31 +326,38 @@ class WebDebugService {
     return '$url${separator}ws=$wsEndpoint';
   }
 
+  /// DevTools 前端依赖 Chrome 内部协议和能力，不能交给系统默认浏览器。
+  Future<void> _openChrome(String url) async {
+    late final ProcessResult result;
+    if (Platform.isMacOS) {
+      result = await Process.run('open', ['-a', 'Google Chrome', url]);
+    } else if (Platform.isWindows) {
+      result = await Process.run('cmd', ['/c', 'start', 'chrome', url]);
+    } else if (Platform.isLinux) {
+      result = await Process.run('google-chrome', [url]);
+    } else {
+      throw UnsupportedError('当前平台不支持自动打开 Chrome DevTools');
+    }
+    _throwIfProcessFailed(result);
+  }
+
   /// 在本机的默认浏览器中打开指定链接。
   Future<void> openBrowser(String url) async {
     late final ProcessResult result;
     if (Platform.isMacOS) {
-      if (url.startsWith('devtools://')) {
-        result = await Process.run('open', ['-a', 'Google Chrome', url]);
-      } else {
-        result = await Process.run('open', [url]);
-      }
+      result = await Process.run('open', [url]);
     } else if (Platform.isWindows) {
-      if (url.startsWith('devtools://')) {
-        result = await Process.run('cmd', ['/c', 'start', 'chrome', url]);
-      } else {
-        result = await Process.run('cmd', ['/c', 'start', '', url]);
-      }
+      result = await Process.run('cmd', ['/c', 'start', '', url]);
     } else if (Platform.isLinux) {
-      if (url.startsWith('devtools://')) {
-        result = await Process.run('google-chrome', [url]);
-      } else {
-        result = await Process.run('xdg-open', [url]);
-      }
+      result = await Process.run('xdg-open', [url]);
     } else {
       throw UnsupportedError('当前平台不支持自动打开浏览器');
     }
 
+    _throwIfProcessFailed(result);
+  }
+
+  void _throwIfProcessFailed(ProcessResult result) {
     if (result.exitCode != 0) {
       final stderr = result.stderr.toString().trim();
       final stdout = result.stdout.toString().trim();

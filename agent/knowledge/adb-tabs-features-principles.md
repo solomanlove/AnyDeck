@@ -192,14 +192,16 @@
    - 发送 HttpClient GET 请求至 `http://127.0.0.1:<localPort>/json/list`（对极老版本 fallback 至 `/json`）。
    - 得到网页列表的 JSON 数组，包含：`title`、`url`、`webSocketDebuggerUrl`、`id` 等。
    - AYA 的实现直接请求 `/json`，因此本项目必须在 `/json/list` 返回非 200、非 JSON 数组或读取异常时继续 fallback 到 `/json`，否则部分手机 WebView/Chrome 目标会被误判为空。
+   - “类型”列与 AYA 保持一致，始终显示 `/json` 返回的原始 `type`（通常为 `page`）；`attached` 仅作为连接状态元数据，不替换类型内容。
 4. **远程调试器启动机制**：
    - 拼接 DevTools URL：
-     - 若选择本地调试器：`devtools://devtools/bundled/inspector.html?ws=127.0.0.1:<localPort>/devtools/page/<id>`
-     - 若选择在线前端：`https://chrome-devtools-frontend.appspot.com/serve_rev/.../inspector.html?ws=127.0.0.1:<localPort>/devtools/page/<id>`
+     - 优先使用设备返回的 `devtoolsFrontendUrl`，并把其中的 WebSocket endpoint 重写为本机 ADB forward 地址。
+     - 设备未返回 frontend URL 时，使用 `https://chrome-devtools-frontend.appspot.com/serve_rev/.../inspector.html?ws=127.0.0.1:<localPort>/devtools/page/<id>` 兜底。
    - 跨平台调起浏览器进程：
      - macOS：`open -a "Google Chrome" <devtoolsUrl>`
      - Windows：`cmd /c start chrome <devtoolsUrl>`
      - Linux：`google-chrome <devtoolsUrl>`
+   - DevTools 前端必须明确交给 Chrome 启动；仅“打开原网页”动作使用系统默认浏览器。网页 Tab 不再提供本地调试器开关，调试按钮 tooltip 会提示浏览器需要能够访问 Google，否则在线 DevTools 前端可能无法加载。
 5. **垃圾端口自动回收**：
    - 当设备断开连接或用户切出该 Tab 时，自动遍历 `_forwardedPorts` 缓存，执行 `adb forward --remove tcp:<localPort>` 清理转发规则，释放网络端口资源。
 

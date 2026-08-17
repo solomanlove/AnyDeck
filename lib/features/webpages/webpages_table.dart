@@ -269,9 +269,7 @@ class _WebpageTableState extends State<_WebpageTable> {
               alignment: Alignment.centerLeft,
               child: Chip(
                 label: Text(
-                  target.isAttached
-                      ? context.l10n.t('webpageAttached')
-                      : target.type,
+                  target.type,
                   style: const TextStyle(fontSize: 11),
                 ),
                 padding: EdgeInsets.zero,

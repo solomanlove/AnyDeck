@@ -149,34 +149,6 @@ class SelectedWebTargetNotifier extends Notifier<WebpageTarget?> {
   set state(WebpageTarget? value) => super.state = value;
 }
 
-/// 是否使用本地调试器。
-final useLocalDebuggerProvider =
-    NotifierProvider<UseLocalDebuggerNotifier, bool>(
-      UseLocalDebuggerNotifier.new,
-    );
-
-class UseLocalDebuggerNotifier extends Notifier<bool> {
-  static const _key = 'web_debug.use_local_debugger';
-
-  @override
-  bool build() {
-    _load();
-    return true;
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getBool(_key) ?? true;
-  }
-
-  Future<void> toggle() async {
-    final next = !state;
-    state = next;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_key, next);
-  }
-}
-
 /// 是否显示 Stetho、app 等全部 DevTools 调试目标。
 final showAllWebTargetsProvider =
     NotifierProvider<ShowAllWebTargetsNotifier, bool>(
