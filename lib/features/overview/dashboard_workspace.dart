@@ -15,6 +15,8 @@ class _WorkspacePanel extends ConsumerWidget {
     }
 
     final tabIndex = ref.watch(selectedToolTabProvider);
+    final selectedApp = ref.watch(selectedAppPackageProvider);
+    final showHeader = !(tabIndex == 2 && selectedApp != null);
 
     // 监听端口转发自动应用服务
     ref.watch(portForwardAutoApplyProvider);
@@ -36,7 +38,7 @@ class _WorkspacePanel extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SelectedDeviceHeader(device: device),
+              if (showHeader) _SelectedDeviceHeader(device: device),
               if (hasBoundedHeight)
                 Expanded(child: content)
               else

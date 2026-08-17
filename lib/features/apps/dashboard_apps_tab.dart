@@ -266,6 +266,34 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
   Widget build(BuildContext context) {
     final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
     final packages = ref.watch(packagesProvider(widget.device.id));
+    final selectedPkgName = ref.watch(selectedAppPackageProvider);
+
+    if (selectedPkgName != null) {
+      final selectedPackage = packages.maybeWhen(
+        data: (items) {
+          try {
+            return items.firstWhere((p) => p.name == selectedPkgName);
+          } catch (_) {
+            return null;
+          }
+        },
+        orElse: () => null,
+      );
+
+      if (selectedPackage != null) {
+        return _AppFunctionsView(
+          deviceId: widget.device.id,
+          package: selectedPackage,
+          onBack: () {
+            ref.read(selectedAppPackageProvider.notifier).state = null;
+          },
+        );
+      } else if (packages.hasValue) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(selectedAppPackageProvider.notifier).state = null;
+        });
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -523,6 +551,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
   /// 选中应用时按需刷新该应用详情和图标，避免进入 Apps Tab 后批量拉取图标。
   Future<void> _selectPackage(String packageName) async {
     setState(() => _selectedPackage = packageName);
+    ref.read(selectedAppPackageProvider.notifier).state = packageName;
     if (!ref.read(deviceOnlineProvider(widget.device.id))) {
       return;
     }

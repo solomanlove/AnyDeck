@@ -496,6 +496,20 @@ final selectedDeviceProvider =
       SelectedDeviceNotifier.new,
     );
 
+/// 当前选中的应用包名。
+final selectedAppPackageProvider =
+    NotifierProvider<SelectedAppPackageNotifier, String?>(
+      SelectedAppPackageNotifier.new,
+    );
+
+class SelectedAppPackageNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  @override
+  set state(String? value) => super.state = value;
+}
+
 /// 用户是否手动清空了选中的设备（例如点击了 logo）
 final userClearedDeviceSelectionProvider =
     NotifierProvider<UserClearedDeviceSelectionNotifier, bool>(
@@ -527,6 +541,7 @@ class SelectedDeviceNotifier extends Notifier<AdbDevice?> {
     if (old != null && old.id != device.id) {
       ref.read(webDebugServiceProvider).removeForwards(old.id);
     }
+    ref.read(selectedAppPackageProvider.notifier).state = null;
     state = device;
   }
 
@@ -536,6 +551,7 @@ class SelectedDeviceNotifier extends Notifier<AdbDevice?> {
     if (old != null) {
       ref.read(webDebugServiceProvider).removeForwards(old.id);
     }
+    ref.read(selectedAppPackageProvider.notifier).state = null;
     state = null;
   }
 }

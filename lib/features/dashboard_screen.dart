@@ -96,6 +96,7 @@ part 'logcat/dashboard_logcat_widgets.dart';
 part 'widgets/dashboard_common.dart';
 part 'apps/dashboard_app_details.dart';
 part 'apps/dashboard_app_permissions.dart';
+part 'apps/dashboard_app_functions_view.dart';
 part 'devices/dashboard_pairing.dart';
 part 'devices/dashboard_devices_panel.dart';
 part 'devices/dashboard_devices_view.dart';
