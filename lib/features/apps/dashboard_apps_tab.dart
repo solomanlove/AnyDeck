@@ -91,7 +91,8 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
   }
 
   double _getTextFieldWidth() {
-    final renderBox = _textFieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final renderBox =
+        _textFieldKey.currentContext?.findRenderObject() as RenderBox?;
     return renderBox?.size.width ?? 300.0;
   }
 
@@ -120,9 +121,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
             width: 1,
           ),
         ),
-        constraints: const BoxConstraints(
-          maxHeight: 300,
-        ),
+        constraints: const BoxConstraints(maxHeight: 300),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -134,13 +133,21 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                 _filterFocusNode.unfocus();
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -164,7 +171,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                     Icon(
                       CupertinoIcons.chevron_right,
                       size: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                     ),
                   ],
                 ),
@@ -173,7 +182,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
             if (history.isNotEmpty) ...[
               Divider(
                 height: 1,
-                color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
+                color: isDark
+                    ? const Color(0xff334155)
+                    : const Color(0xffe2e8f0),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 8, 4),
@@ -183,7 +194,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                     Text(
                       context.l10n.t('searchHistory'),
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -192,7 +205,10 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                         ref.read(appsSearchHistoryProvider.notifier).clear();
                       },
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
@@ -221,13 +237,19 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                         _filterFocusNode.unfocus();
                       },
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         child: Row(
                           children: [
                             Icon(
                               CupertinoIcons.clock,
                               size: 14,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.5),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -241,12 +263,17 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                             IconButton(
                               icon: const Icon(CupertinoIcons.clear, size: 14),
                               onPressed: () {
-                                ref.read(appsSearchHistoryProvider.notifier).remove(item);
+                                ref
+                                    .read(appsSearchHistoryProvider.notifier)
+                                    .remove(item);
                               },
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                               splashRadius: 16,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.5),
                             ),
                           ],
                         ),
@@ -321,7 +348,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                         onSubmitted: (value) {
                           final val = value.trim();
                           if (val.isNotEmpty) {
-                            ref.read(appsSearchHistoryProvider.notifier).add(val);
+                            ref
+                                .read(appsSearchHistoryProvider.notifier)
+                                .add(val);
                           }
                           _hideFilterOverlay();
                         },
@@ -332,31 +361,38 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                           ),
                           hintText: context.l10n.t('filterPackage'),
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ),
                           suffixIcon: _filter.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(CupertinoIcons.clear, size: 16),
+                                  icon: const Icon(
+                                    CupertinoIcons.clear,
+                                    size: 16,
+                                  ),
                                   onPressed: () {
                                     _filterController.clear();
                                     setState(() {
                                       _filter = '';
                                     });
-                                    _refreshPackages();
                                   },
                                 )
                               : null,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide(
-                              color: Theme.of(context).colorScheme.outlineVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant
+                                  .withValues(alpha: 0.5),
                             ),
                           ),
                         ),
@@ -418,10 +454,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                 tooltip: context.l10n.t('listView'),
                 icon: const Icon(CupertinoIcons.list_bullet, size: 20),
                 isSelected: !_isGridView,
-                selectedIcon: const Icon(
-                  CupertinoIcons.list_bullet,
-                  size: 20,
-                ),
+                selectedIcon: const Icon(CupertinoIcons.list_bullet, size: 20),
                 onPressed: () => setState(() => _isGridView = false),
               ),
               const SizedBox(width: 8),
@@ -622,7 +655,6 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
       }
     }
   }
-
 }
 
 /// 桌面风格的应用表格，包含元数据列和行操作。

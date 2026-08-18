@@ -42,7 +42,9 @@ import '../ios/ios_mirror_service.dart';
 final adbServiceProvider = Provider<AdbService>((ref) {
   return AdbService(
     onLog: (message, {tag = 'adb', level = 'I'}) {
-      ref.read(logHistoryProvider.notifier).log(message, tag: tag, level: level);
+      ref
+          .read(logHistoryProvider.notifier)
+          .log(message, tag: tag, level: level);
     },
   );
 });
@@ -178,25 +180,27 @@ class ShowAllWebTargetsNotifier extends Notifier<bool> {
 }
 
 /// 自适应心跳控制器 Provider。
-final adbHeartbeatControllerProvider = Provider.autoDispose<AdbHeartbeatController>((ref) {
-  final adbService = ref.watch(adbServiceProvider);
-  final iosDeviceService = ref.watch(iosDeviceServiceProvider);
-  final isSub = ref.watch(windowIdProvider).isNotEmpty;
-  
-  // 主窗口下，当没有选择设备且未展示设置页面时（即处于设备管理列表“主页”），才应该运行心跳
-  final selectedDevice = ref.watch(selectedDeviceProvider);
-  final selectedTool = ref.watch(selectedToolTabProvider);
-  final isDeviceListVisible = !isSub && selectedDevice == null && selectedTool != 12;
+final adbHeartbeatControllerProvider =
+    Provider.autoDispose<AdbHeartbeatController>((ref) {
+      final adbService = ref.watch(adbServiceProvider);
+      final iosDeviceService = ref.watch(iosDeviceServiceProvider);
+      final isSub = ref.watch(windowIdProvider).isNotEmpty;
 
-  final controller = AdbHeartbeatController(
-    adbService: adbService,
-    iosDeviceService: iosDeviceService,
-    isSubWindow: isSub,
-    isDeviceListVisible: isDeviceListVisible,
-  );
-  ref.onDispose(() => controller.dispose());
-  return controller;
-});
+      // 主窗口下，当没有选择设备且未展示设置页面时（即处于设备管理列表“主页”），才应该运行心跳
+      final selectedDevice = ref.watch(selectedDeviceProvider);
+      final selectedTool = ref.watch(selectedToolTabProvider);
+      final isDeviceListVisible =
+          !isSub && selectedDevice == null && selectedTool != 12;
+
+      final controller = AdbHeartbeatController(
+        adbService: adbService,
+        iosDeviceService: iosDeviceService,
+        isSubWindow: isSub,
+        isDeviceListVisible: isDeviceListVisible,
+      );
+      ref.onDispose(() => controller.dispose());
+      return controller;
+    });
 
 /// 自动轮询的实时 adb 设备列表（接入自适应心跳机制）。
 final devicesProvider = StreamProvider.autoDispose<List<AdbDevice>>((ref) {
@@ -216,6 +220,7 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
 
   @override
   AsyncValue<List<AdbPackage>> build() {
+    ref.keepAlive();
     _load();
     return const AsyncValue.loading();
   }
@@ -298,7 +303,10 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
 }
 
 /// 用于响应式监听设备是否在线的 Provider。
-final deviceOnlineProvider = Provider.autoDispose.family<bool, String>((ref, deviceId) {
+final deviceOnlineProvider = Provider.autoDispose.family<bool, String>((
+  ref,
+  deviceId,
+) {
   final isSub = ref.watch(windowIdProvider).isNotEmpty;
   if (isSub) {
     // 子 Isolate 下心跳轮询被禁用，通过是否包含激活的投屏 Session 来判断在线状态
@@ -319,11 +327,8 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       final registeredDevices = ref.watch(deviceRegistryProvider);
       final matchedDevice = registeredDevices.firstWhere(
         (d) => d.id == deviceId,
-        orElse: () => RegisteredDevice(
-          id: deviceId,
-          status: 'offline',
-          isOnline: false,
-        ),
+        orElse: () =>
+            RegisteredDevice(id: deviceId, status: 'offline', isOnline: false),
       );
 
       if (matchedDevice.isIos) {
@@ -333,7 +338,12 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           model: matchedDevice.model ?? 'iPhone',
           serial: matchedDevice.id,
           androidId: '-',
-          androidVersion: matchedDevice.androidVersion ?? (matchedDevice.product != null && matchedDevice.product!.isNotEmpty ? 'iOS ${matchedDevice.product}' : 'iOS'),
+          androidVersion:
+              matchedDevice.androidVersion ??
+              (matchedDevice.product != null &&
+                      matchedDevice.product!.isNotEmpty
+                  ? 'iOS ${matchedDevice.product}'
+                  : 'iOS'),
           kernelVersion: 'Darwin',
           processor: '-',
           storage: '-',
@@ -933,18 +943,20 @@ final deviceAndroidVersionProvider = Provider.autoDispose
     });
 
 /// 全局设备 SDK 版本号，供投屏、备份、音量等逻辑直接判断系统能力。
-final deviceSdkVersionProvider =
-    Provider.autoDispose.family<int?, String>((ref, deviceId) {
-      final devices = ref.watch(deviceRegistryProvider);
-      for (final device in devices) {
-        if (device.id == deviceId ||
-            device.serial == deviceId ||
-            device.connections.contains(deviceId)) {
-          return device.sdkVersion;
-        }
-      }
-      return null;
-    });
+final deviceSdkVersionProvider = Provider.autoDispose.family<int?, String>((
+  ref,
+  deviceId,
+) {
+  final devices = ref.watch(deviceRegistryProvider);
+  for (final device in devices) {
+    if (device.id == deviceId ||
+        device.serial == deviceId ||
+        device.connections.contains(deviceId)) {
+      return device.sdkVersion;
+    }
+  }
+  return null;
+});
 
 class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   static const _historyKey = 'devices.history';
@@ -1121,9 +1133,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               }
             }
             final cachedIp = decoded['ipAddress']?.toString();
-            if (cachedIp != null &&
-                cachedIp.isNotEmpty &&
-                cachedIp != '-') {
+            if (cachedIp != null && cachedIp.isNotEmpty && cachedIp != '-') {
               ips[id] = cachedIp;
             }
           } catch (_) {}
@@ -1142,11 +1152,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         final adb = ref.read(adbServiceProvider);
         final androidVersion = await _fetchAndroidVersion(id);
         if (androidVersion != null) {
-          _cacheAndroidVersion(
-            id,
-            androidVersion.label,
-            androidVersion.sdk,
-          );
+          _cacheAndroidVersion(id, androidVersion.label, androidVersion.sdk);
           await _saveAndroidVersions();
           if (!_isDisposed) {
             final activeDevices =
@@ -1374,7 +1380,12 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       }
 
       // 2. 尝试通过 ip addr show wlan0 获取
-      final wlanResult = await adb.shellArgs(id, ['ip', 'addr', 'show', 'wlan0']);
+      final wlanResult = await adb.shellArgs(id, [
+        'ip',
+        'addr',
+        'show',
+        'wlan0',
+      ]);
       if (wlanResult.isSuccess) {
         final ip = _parseIpFromIpAddr(wlanResult.stdout);
         if (ip != null) return ip;
@@ -1391,7 +1402,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   }
 
   String? _parseIpFromIpRoute(String output) {
-    final regExp = RegExp(r'dev\s+(\S+)\s+.*?\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b');
+    final regExp = RegExp(
+      r'dev\s+(\S+)\s+.*?\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b',
+    );
     for (final line in output.split('\n')) {
       final match = regExp.firstMatch(line);
       if (match != null) {
@@ -1494,7 +1507,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     for (final device in activeDevices) {
       final hasSerial = _serialMap.containsKey(device.id);
       final isNet = _isNetworkId(device.id);
-      final hasIp = isNet ||
+      final hasIp =
+          isNet ||
           (_ipAddresses.containsKey(device.id) &&
               _ipAddresses[device.id] != null &&
               _ipAddresses[device.id] != '-');
@@ -1560,7 +1574,14 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             ipAddress: ipAddress,
             androidVersion: androidVersion,
             sdkVersion: sdkVersion,
-            isIos: cachedModel != null && (cachedModel.contains('iPhone') || cachedModel.contains('iPad') || cachedModel.contains('Apple') || cachedModel.contains('iOS') || id.length == 40 || (id.length == 25 && id.indexOf('-') == 8)),
+            isIos:
+                cachedModel != null &&
+                (cachedModel.contains('iPhone') ||
+                    cachedModel.contains('iPad') ||
+                    cachedModel.contains('Apple') ||
+                    cachedModel.contains('iOS') ||
+                    id.length == 40 ||
+                    (id.length == 25 && id.indexOf('-') == 8)),
           ),
         );
       }
@@ -1920,7 +1941,11 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     return result;
   }
 
-  Future<AdbResult> connectWireless(String usbDeviceId, String ipAddress, [int port = 5555]) async {
+  Future<AdbResult> connectWireless(
+    String usbDeviceId,
+    String ipAddress, [
+    int port = 5555,
+  ]) async {
     // 1. 先判断方法一：是否在同一局域网网段
     final isSameSegment = await NetworkLanMatcher.isSameSubnet(ipAddress);
     if (!isSameSegment) {
@@ -1936,16 +1961,21 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     }
 
     final adb = ref.read(adbServiceProvider);
-    
+
     // 2. 将 USB 设备切换为 TCP/IP 监听模式，开启指定端口（默认 5555）
-    final tcpipResult = await adb.run(['-s', usbDeviceId, 'tcpip', port.toString()]);
+    final tcpipResult = await adb.run([
+      '-s',
+      usbDeviceId,
+      'tcpip',
+      port.toString(),
+    ]);
     if (!tcpipResult.isSuccess) {
       return tcpipResult;
     }
-    
+
     // 3. 延迟等待 1 秒，以确保手机端的 TCP/IP 服务成功启动
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // 4. 执行 adb connect 连接到该局域网 IP
     final connectResult = await adb.run(['connect', '$ipAddress:$port']);
 

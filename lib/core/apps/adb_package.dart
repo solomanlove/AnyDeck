@@ -119,9 +119,15 @@ class AdbPackage {
       signatureMd5: signatureMd5 ?? this.signatureMd5,
       firstInstallTime: firstInstallTime ?? this.firstInstallTime,
       lastUpdateTime: lastUpdateTime ?? this.lastUpdateTime,
-      debuggable: debuggable ?? this.debuggable,
     );
   }
+
+  /// 是否已经加载过详情/图标。
+  bool get isLoaded =>
+      iconLocalPath != null ||
+      label != null ||
+      signatureMd5 != null ||
+      firstInstallTime != null;
 
   String get displayName {
     final value = label?.trim();

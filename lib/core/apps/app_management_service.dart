@@ -62,7 +62,8 @@ class AppManagementService {
     String deviceId,
     String packageName,
   ) async {
-    final script = '''
+    final script =
+        '''
 pkg="$packageName"
 line=\$(pm list packages -f -U --user 0 2>/dev/null | grep -E "=\$pkg([[:space:]]|\\\$)" | head -n 1)
 if [ -n "\$line" ]; then
@@ -153,7 +154,8 @@ fi
       maxSdk: metadata?.maxSdk,
       storageBytes: storageBytes,
       enabled: enabled,
-      system: system || metadata?.system == true || _looksLikeSystemPath(apkPath),
+      system:
+          system || metadata?.system == true || _looksLikeSystemPath(apkPath),
       flutter: flutter,
       debuggable: metadata?.debuggable == true,
     );
@@ -162,11 +164,9 @@ fi
       await _ensureIconHelperPushed(deviceId);
       final userId = await _currentUserId(deviceId);
 
-      final chunkFile = await _writePackageListFileForChunk(
-        deviceId,
-        [newPackage],
-        9999,
-      );
+      final chunkFile = await _writePackageListFileForChunk(deviceId, [
+        newPackage,
+      ], 9999);
       final remoteChunkPath = '$_remotePackageListPath.single';
 
       final pushListResult = await _adb.run([
@@ -354,12 +354,7 @@ fi
         })
         .toList(growable: false);
 
-    final sortedPackages = packages
-      ..sort(
-        (left, right) => left.displayName.toLowerCase().compareTo(
-          right.displayName.toLowerCase(),
-        ),
-      );
+    final sortedPackages = packages..sort(_comparePackages);
     return sortedPackages;
   }
 
@@ -546,7 +541,9 @@ fi
 
     // 3. 清除临时 chunk 文件
     try {
-      final chunkDir = Directory('${Directory.systemTemp.path}/any_deck_packages');
+      final chunkDir = Directory(
+        '${Directory.systemTemp.path}/any_deck_packages',
+      );
       if (chunkDir.existsSync()) {
         final safeId = _safeFileSegment(deviceId);
         final list = chunkDir.listSync();
@@ -569,6 +566,12 @@ fi
   }
 
   int _comparePackages(AdbPackage left, AdbPackage right) {
+    if (left.isLoaded && !right.isLoaded) {
+      return -1;
+    }
+    if (!left.isLoaded && right.isLoaded) {
+      return 1;
+    }
     return left.displayName.toLowerCase().compareTo(
       right.displayName.toLowerCase(),
     );

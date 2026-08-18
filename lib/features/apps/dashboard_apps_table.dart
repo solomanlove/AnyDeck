@@ -72,6 +72,12 @@ class _PackageTableState extends State<_PackageTable> {
   List<AdbPackage> _sortedPackages() {
     final sortedList = List<AdbPackage>.from(widget.packages);
     sortedList.sort((a, b) {
+      if (a.isLoaded && !b.isLoaded) {
+        return -1;
+      }
+      if (!a.isLoaded && b.isLoaded) {
+        return 1;
+      }
       final cmp = switch (_sortColumn) {
         'appName' => a.displayName.toLowerCase().compareTo(
           b.displayName.toLowerCase(),
