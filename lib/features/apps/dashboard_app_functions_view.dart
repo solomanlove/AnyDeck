@@ -1011,7 +1011,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
   }
 }
 
-class _AppDetailSummaryCard extends StatelessWidget {
+class _AppDetailSummaryCard extends StatefulWidget {
   const _AppDetailSummaryCard({
     required this.package,
     required this.cardBg,
@@ -1025,18 +1025,200 @@ class _AppDetailSummaryCard extends StatelessWidget {
   final AdbPackageDetail? detail;
 
   @override
+  State<_AppDetailSummaryCard> createState() => _AppDetailSummaryCardState();
+}
+
+class _AppDetailSummaryCardState extends State<_AppDetailSummaryCard> {
+  Future<String?>? _packerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPackerDetection();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AppDetailSummaryCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.detail != oldWidget.detail) {
+      _initPackerDetection();
+    }
+  }
+
+  void _initPackerDetection() {
+    if (widget.detail != null) {
+      _packerFuture = _detectPacker(widget.detail!);
+    } else {
+      _packerFuture = null;
+    }
+  }
+
+  Future<String?> _detectPacker(AdbPackageDetail detail) async {
+    // 1. 尝试通过本地 rules.db 查询 (最全面的社区特征数据库)
+    try {
+      final docDir = await getApplicationSupportDirectory();
+      final dbFile = File('${docDir.path}/rules.db');
+
+      if (!dbFile.existsSync()) {
+        final data = await rootBundle.load('assets/rules/rules.db');
+        final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        await dbFile.writeAsBytes(bytes);
+      }
+
+      final db = sqlite3.open(dbFile.path);
+      try {
+        for (final libEntry in detail.libs) {
+          final libName = libEntry.split(':')[0];
+          final results = db.select(
+            'SELECT label FROM rules_table WHERE name = ? AND type = 0 LIMIT 1',
+            [libName],
+          );
+          if (results.isNotEmpty) {
+            final label = results.first['label'] as String?;
+            if (label != null && label.isNotEmpty) {
+              final lowerLabel = label.toLowerCase();
+              if (lowerLabel.contains('加固') ||
+                  lowerLabel.contains('安全') ||
+                  lowerLabel.contains('易盾') ||
+                  lowerLabel.contains('乐固') ||
+                  lowerLabel.contains('御安全') ||
+                  lowerLabel.contains('爱加密')) {
+                return label;
+              }
+            }
+          }
+        }
+      } finally {
+        db.dispose();
+      }
+    } catch (e) {
+      print('加固检测查询数据库失败: $e');
+    }
+
+    // 2. 数据库未查到或失败，执行本地规则匹配（兜底，包含常见加固 .so 文件）
+    for (final libEntry in detail.libs) {
+      final libName = libEntry.split(':')[0].toLowerCase();
+
+      if (libName.contains('jiagu') || libName.contains('x86bridge')) {
+        return '360加固';
+      }
+      if (libName.contains('secshell') || 
+          libName.contains('sec.so') || 
+          libName.contains('secexe.so') || 
+          libName.contains('dexjni') || 
+          libName.contains('dexhelper')) {
+        return '梆梆加固';
+      }
+      if (libName.contains('baiduprotect')) {
+        return '百度加固';
+      }
+      if (libName.contains('nesec') || libName.contains('netsecsdk') || libName.contains('netmobsec') || libName.contains('nethtprotect')) {
+        return '网易易盾';
+      }
+      if (libName.contains('ijm') || libName.contains('exec.so') || libName.contains('execmain') || libName.contains('execoat')) {
+        return '爱加密';
+      }
+      if (libName.contains('chaosvmp') || libName.contains('ddog.so') || libName.contains('edog.so') || libName.contains('fdog.so') || libName.contains('hdog.so') || libName.contains('vdog.so') || libName.contains('xloader.so')) {
+        return '娜迦加固';
+      }
+      if (libName.contains('x3g.so')) {
+        return '顶象加固';
+      }
+      if (libName.contains('basec.so') || libName.contains('secenh')) {
+        return 'CFCA 加固';
+      }
+      if (libName.contains('apkprotect')) {
+        return 'APKProtect加固';
+      }
+      if (libName.contains('ros.so') || libName.contains('vfs.so')) {
+        return '深思数盾加固';
+      }
+      if (libName.contains('sgmain') || libName.contains('sgsecuritybody') || libName.contains('mobisec') || libName.contains('stee.so')) {
+        return '阿里聚安全';
+      }
+      if (libName.contains('shell-super') || libName.contains('shella.so') || libName.contains('shellx.so') || libName.contains('tup.so') || libName.contains('txc.so') || libName.contains('turing.so') || libName.contains('pyc.so')) {
+        return '腾讯御安全 / 腾讯乐固';
+      }
+    }
+
+    // 3. 检查组件类名 (以防 native 库没有提取成功，或无 so 纯 DEX 壳的情况)
+    final allComponents = [
+      ...detail.activities,
+      ...detail.services,
+      ...detail.receivers,
+      ...detail.providers,
+    ];
+
+    for (final comp in allComponents) {
+      final name = comp.name;
+      if (name.contains('com.stub.StubApp')) {
+        return '360加固';
+      }
+      if (name.contains('com.secshell.')) {
+        return '梆梆加固';
+      }
+      if (name.contains('com.tencent.StubShell.')) {
+        return '腾讯乐固';
+      }
+      if (name.contains('com.baidu.protect.')) {
+        return '百度加固';
+      }
+      if (name.contains('com.ali.mobisecwrapper.')) {
+        return '阿里聚安全';
+      }
+      if (name.contains('com.ijiami.')) {
+        return '爱加密';
+      }
+      if (name.contains('com.netease.nis.')) {
+        return '网易易盾';
+      }
+      if (name.contains('com.sangfor.protect.')) {
+        return '深信服加固';
+      }
+      if (name.contains('com.apkprotect.')) {
+        return 'APKProtect加固';
+      }
+    }
+
+    // 4. 检查是否有未识别但符合加固常见命名特征的 .so 库 (标记为未知加固)
+    for (final libEntry in detail.libs) {
+      final libName = libEntry.split(':')[0].toLowerCase();
+      if (libName.contains('protect') ||
+          libName.contains('guard') ||
+          libName.contains('stub') ||
+          libName.contains('dexshell') ||
+          libName.contains('shield')) {
+        return '未知加固';
+      }
+    }
+
+    // 5. 检查是否有未识别但符合加固外壳常见命名特征的类名
+    for (final comp in allComponents) {
+      final name = comp.name.toLowerCase();
+      if (name.contains('wrapperapplication') ||
+          name.contains('stubapplication') ||
+          name.contains('superapplication') ||
+          name.contains('applicationwrapper')) {
+        return '未知加固';
+      }
+    }
+
+    return null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final iconPath = package.iconLocalPath;
+    final iconPath = widget.package.iconLocalPath;
 
     return Container(
       decoration: BoxDecoration(
-        color: cardBg,
+        color: widget.cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark
+          color: widget.isDark
               ? Colors.white.withValues(alpha: 0.08)
               : Colors.black.withValues(alpha: 0.04),
           width: 1,
@@ -1061,16 +1243,16 @@ class _AppDetailSummaryCard extends StatelessWidget {
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) =>
                                   _FallbackIconLarge(
-                                    package: package,
+                                    package: widget.package,
                                     theme: theme,
                                   ),
                             )
-                          : _FallbackIconLarge(package: package, theme: theme),
+                          : _FallbackIconLarge(package: widget.package, theme: theme),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    package.displayName,
+                    widget.package.displayName,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -1080,7 +1262,7 @@ class _AppDetailSummaryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    package.versionLabel,
+                    widget.package.versionLabel,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant.withValues(
                         alpha: 0.8,
@@ -1088,20 +1270,20 @@ class _AppDetailSummaryCard extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  if (detail != null) ...[
+                  if (widget.detail != null) ...[
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
                       alignment: WrapAlignment.center,
                       children: [
-                        if (detail!.supportedAbis.isNotEmpty)
+                        if (widget.detail!.supportedAbis.isNotEmpty)
                           _Badge(
-                            label: detail!.supportedAbis.join(', '),
+                            label: widget.detail!.supportedAbis.join(', '),
                             color: Colors.blue.shade50,
                             textColor: Colors.blue.shade800,
                           ),
-                        for (final fw in detail!.frameworks)
+                        for (final fw in widget.detail!.frameworks)
                           _Badge(
                             label: fw,
                             color: Colors.green.shade50,
@@ -1117,23 +1299,23 @@ class _AppDetailSummaryCard extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 16),
 
-            _SummaryItem(label: "包名", value: package.name, canCopy: true),
+            _SummaryItem(label: "包名", value: widget.package.name, canCopy: true),
             _SummaryItem(
               label: "最低支持系统版本",
-              value: package.minSdk != null
-                  ? "Android ${package.minSdk} (API ${package.minSdk})"
+              value: widget.package.minSdk != null
+                  ? "Android ${widget.package.minSdk} (API ${widget.package.minSdk})"
                   : "-",
             ),
             _SummaryItem(
               label: "最大支持系统版本",
-              value: package.targetSdk != null
-                  ? "Android ${package.targetSdk} (API ${package.targetSdk})"
+              value: widget.package.targetSdk != null
+                  ? "Android ${widget.package.targetSdk} (API ${widget.package.targetSdk})"
                   : "-",
             ),
             _SummaryItem(
               label: "安装时间",
               value: (() {
-                final ms = package.firstInstallTime;
+                final ms = widget.package.firstInstallTime;
                 if (ms == null || ms <= 0) return '-';
                 final dt = DateTime.fromMillisecondsSinceEpoch(ms);
                 return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
@@ -1142,30 +1324,45 @@ class _AppDetailSummaryCard extends StatelessWidget {
             _SummaryItem(
               label: "更新时间",
               value: (() {
-                final ms = package.lastUpdateTime;
+                final ms = widget.package.lastUpdateTime;
                 if (ms == null || ms <= 0) return '-';
                 final dt = DateTime.fromMillisecondsSinceEpoch(ms);
                 return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
               })(),
             ),
-            _SummaryItem(label: "安装大小", value: package.storageLabel),
+            _SummaryItem(label: "安装大小", value: widget.package.storageLabel),
             _SummaryItem(
               label: "类型",
               value:
-                  "${package.system ? '系统应用' : '用户应用'} / ${package.flutter ? 'Flutter' : '原生'}",
+                  "${widget.package.system ? '系统应用' : '用户应用'} / ${widget.package.flutter ? 'Flutter' : '原生'}",
             ),
             _SummaryItem(
               label: "状态",
-              value: package.enabled ? "已启用" : "已停用",
-              valueColor: package.enabled
+              value: widget.package.enabled ? "已启用" : "已停用",
+              valueColor: widget.package.enabled
                   ? const Color(0xFF2EC46B)
                   : const Color(0xFFE53935),
             ),
-            if (package.debuggable)
+            if (widget.package.debuggable)
               _SummaryItem(
                 label: "调试模式",
                 value: "DEBUG",
                 valueColor: colorScheme.error,
+              ),
+            if (_packerFuture != null)
+              FutureBuilder<String?>(
+                future: _packerFuture,
+                builder: (context, snapshot) {
+                  final packer = snapshot.data;
+                  if (packer != null) {
+                    return _SummaryItem(
+                      label: "加固状态",
+                      value: packer,
+                      valueColor: Colors.orange.shade700,
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
           ],
         ),
