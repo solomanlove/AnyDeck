@@ -41,10 +41,7 @@ class AdbComponentInfo {
 
 /// 表示单个 DEX 文件的信息。
 class AdbDexFileInfo {
-  const AdbDexFileInfo({
-    required this.name,
-    required this.size,
-  });
+  const AdbDexFileInfo({required this.name, required this.size});
 
   final String name;
   final int size;
@@ -57,19 +54,13 @@ class AdbDexFileInfo {
   }
 
   Map<String, Object?> toJson() {
-    return {
-      'name': name,
-      'size': size,
-    };
+    return {'name': name, 'size': size};
   }
 }
 
 /// 表示单个申请权限的信息及其授权状态。
 class AdbPermissionInfo {
-  const AdbPermissionInfo({
-    required this.name,
-    required this.granted,
-  });
+  const AdbPermissionInfo({required this.name, required this.granted});
 
   final String name;
   final bool granted;
@@ -82,10 +73,7 @@ class AdbPermissionInfo {
   }
 
   Map<String, Object?> toJson() {
-    return {
-      'name': name,
-      'granted': granted,
-    };
+    return {'name': name, 'granted': granted};
   }
 
   String get shortName {
@@ -114,6 +102,7 @@ class AdbPackageDetail {
     required this.permissions,
     required this.metadata,
     required this.signatureMd5,
+    this.extractNativeLibs,
   });
 
   final String packageName;
@@ -130,38 +119,45 @@ class AdbPackageDetail {
   final List<AdbPermissionInfo> permissions;
   final Map<String, String> metadata;
   final String signatureMd5;
+  final bool? extractNativeLibs;
 
   factory AdbPackageDetail.fromJson(Map<String, Object?> json) {
     final abis = (json['supportedAbis'] as List?)?.cast<String>() ?? [];
     final fws = (json['frameworks'] as List?)?.cast<String>() ?? [];
     final libraries = (json['libs'] as List?)?.cast<String>() ?? [];
 
-    final dexList = (json['dexFiles'] as List?)
+    final dexList =
+        (json['dexFiles'] as List?)
             ?.map((e) => AdbDexFileInfo.fromJson(e as Map<String, Object?>))
             .toList() ??
         [];
 
-    final acts = (json['activities'] as List?)
+    final acts =
+        (json['activities'] as List?)
             ?.map((e) => AdbComponentInfo.fromJson(e as Map<String, Object?>))
             .toList() ??
         [];
 
-    final srvs = (json['services'] as List?)
+    final srvs =
+        (json['services'] as List?)
             ?.map((e) => AdbComponentInfo.fromJson(e as Map<String, Object?>))
             .toList() ??
         [];
 
-    final rcvs = (json['receivers'] as List?)
+    final rcvs =
+        (json['receivers'] as List?)
             ?.map((e) => AdbComponentInfo.fromJson(e as Map<String, Object?>))
             .toList() ??
         [];
 
-    final prvs = (json['providers'] as List?)
+    final prvs =
+        (json['providers'] as List?)
             ?.map((e) => AdbComponentInfo.fromJson(e as Map<String, Object?>))
             .toList() ??
         [];
 
-    final perms = (json['permissions'] as List?)
+    final perms =
+        (json['permissions'] as List?)
             ?.map((e) => AdbPermissionInfo.fromJson(e as Map<String, Object?>))
             .toList() ??
         [];
@@ -183,6 +179,7 @@ class AdbPackageDetail {
       permissions: perms,
       metadata: meta,
       signatureMd5: json['signatureMd5'] as String? ?? '',
+      extractNativeLibs: json['extractNativeLibs'] as bool?,
     );
   }
 
@@ -202,6 +199,7 @@ class AdbPackageDetail {
       'permissions': permissions.map((e) => e.toJson()).toList(),
       'metadata': metadata,
       'signatureMd5': signatureMd5,
+      'extractNativeLibs': extractNativeLibs,
     };
   }
 }

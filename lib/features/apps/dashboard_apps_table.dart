@@ -62,13 +62,6 @@ class _PackageTableState extends State<_PackageTable> {
     );
   }
 
-  int _compareAppType(AdbPackage a, AdbPackage b) {
-    final systemCmp = (a.system ? 1 : 0).compareTo(b.system ? 1 : 0);
-    return systemCmp != 0
-        ? systemCmp
-        : (a.flutter ? 1 : 0).compareTo(b.flutter ? 1 : 0);
-  }
-
   List<AdbPackage> _sortedPackages() {
     final sortedList = List<AdbPackage>.from(widget.packages);
     sortedList.sort((a, b) {
@@ -89,8 +82,6 @@ class _PackageTableState extends State<_PackageTable> {
         'minSdk' => (a.minSdk ?? 0).compareTo(b.minSdk ?? 0),
         'targetSdk' => (a.targetSdk ?? 0).compareTo(b.targetSdk ?? 0),
         'storage' => (a.storageBytes ?? 0).compareTo(b.storageBytes ?? 0),
-        'status' => (a.enabled ? 1 : 0).compareTo(b.enabled ? 1 : 0),
-        'type' => _compareAppType(a, b),
         _ => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
       };
       return _sortAscending ? cmp : -cmp;
@@ -238,20 +229,6 @@ class _PackageTableHeader extends StatelessWidget {
             sortIcon: sortIconBuilder('storage'),
             onTap: () => onSort('storage'),
           ),
-          DashboardSortableHeaderCell(
-            width: widths.status,
-            label: context.l10n.t('status'),
-            style: style,
-            sortIcon: sortIconBuilder('status'),
-            onTap: () => onSort('status'),
-          ),
-          DashboardSortableHeaderCell(
-            width: widths.type,
-            label: context.l10n.t('appType'),
-            style: style,
-            sortIcon: sortIconBuilder('type'),
-            onTap: () => onSort('type'),
-          ),
         ],
       ),
     );
@@ -329,24 +306,6 @@ class _PackageTableRow extends ConsumerWidget {
               child: Text(
                 package.storageLabel,
                 style: const TextStyle(fontSize: 13),
-              ),
-            ),
-            _PackageCell(
-              width: widths.status,
-              child: Chip(
-                label: Text(
-                  package.enabled
-                      ? context.l10n.t('enabled')
-                      : context.l10n.t('disabled'),
-                  style: const TextStyle(fontSize: 12),
-                ),
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-            _PackageCell(
-              width: widths.type,
-              child: _TableText(
-                '${package.system ? context.l10n.t('systemApp') : context.l10n.t('userApp')} / ${package.flutter ? context.l10n.t('flutterApp') : context.l10n.t('nativeApp')}',
               ),
             ),
           ],

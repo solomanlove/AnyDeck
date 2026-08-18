@@ -7,8 +7,6 @@ class _PackageTableWidths {
     required this.minSdk,
     required this.targetSdk,
     required this.storage,
-    required this.status,
-    required this.type,
   });
 
   factory _PackageTableWidths.adaptive({
@@ -55,33 +53,12 @@ class _PackageTableWidths {
       headerWidth('storageUsed'),
       contentWidth(packages.map((package) => package.storageLabel)),
     ).clamp(104.0, 136.0);
-    final status = max(
-      headerWidth('status'),
-      contentWidth(
-        packages.map(
-          (package) => package.enabled ? l10n.t('enabled') : l10n.t('disabled'),
-        ),
-      ),
-    ).clamp(104.0, 128.0);
-    final type = max(
-      headerWidth('appType'),
-      contentWidth(
-        packages.map(
-          (package) => [
-            package.system ? l10n.t('systemApp') : l10n.t('userApp'),
-            package.flutter ? l10n.t('flutterApp') : l10n.t('nativeApp'),
-          ].join(' / '),
-        ),
-      ),
-    ).clamp(128.0, 164.0);
     final base = _PackageTableWidths(
       appName: appName + _PackageCell.horizontalPadding + 38,
       version: version + _PackageCell.horizontalPadding,
       minSdk: minSdk + _PackageCell.horizontalPadding,
       targetSdk: targetSdk + _PackageCell.horizontalPadding + 38,
       storage: storage + _PackageCell.horizontalPadding,
-      status: status + _PackageCell.horizontalPadding,
-      type: type + _PackageCell.horizontalPadding,
     );
 
     if (base.total > viewportWidth) {
@@ -103,17 +80,13 @@ class _PackageTableWidths {
   final double minSdk;
   final double targetSdk;
   final double storage;
-  final double status;
-  final double type;
 
   double get total =>
       appName +
       version +
       minSdk +
       targetSdk +
-      storage +
-      status +
-      type;
+      storage;
 
   _PackageTableWidths copyWith({double? appName}) {
     return _PackageTableWidths(
@@ -122,8 +95,6 @@ class _PackageTableWidths {
       minSdk: minSdk,
       targetSdk: targetSdk,
       storage: storage,
-      status: status,
-      type: type,
     );
   }
 }

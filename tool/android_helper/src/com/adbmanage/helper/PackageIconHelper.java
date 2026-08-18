@@ -257,12 +257,16 @@ public final class PackageIconHelper {
         ApplicationInfo appInfo = packageInfo.applicationInfo;
         String primaryCpuAbi = null;
         String secondaryCpuAbi = null;
+        boolean extractNativeLibs = false;
         try {
             java.lang.reflect.Field primaryField = ApplicationInfo.class.getField("primaryCpuAbi");
             primaryCpuAbi = (String) primaryField.get(appInfo);
             java.lang.reflect.Field secondaryField = ApplicationInfo.class.getField("secondaryCpuAbi");
             secondaryCpuAbi = (String) secondaryField.get(appInfo);
         } catch (Throwable ignored) {}
+        if (Build.VERSION.SDK_INT >= 23) {
+            extractNativeLibs = (appInfo.flags & 0x10000000) != 0;
+        }
 
         java.util.List<String> supportedAbis = new java.util.ArrayList<>();
         java.util.List<String> libs = new java.util.ArrayList<>();
@@ -291,8 +295,18 @@ public final class PackageIconHelper {
                                 supportedAbis.add(abi);
                             }
                             String soName = parts[parts.length - 1];
-                            if (soName.endsWith(".so") && !libs.contains(soName)) {
-                                libs.add(soName);
+                            if (soName.endsWith(".so")) {
+                                String entryKey = soName + ":";
+                                boolean found = false;
+                                for (String existing : libs) {
+                                    if (existing.startsWith(entryKey)) {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (!found) {
+                                    libs.add(soName + ":" + entry.getSize());
+                                }
                             }
                         }
                     }
@@ -324,8 +338,24 @@ public final class PackageIconHelper {
                 File[] files = libDir.listFiles();
                 if (files != null) {
                     for (File f : files) {
-                        if (f.isFile() && f.getName().endsWith(".so") && !libs.contains(f.getName())) {
-                            libs.add(f.getName());
+                        if (f.isFile() && f.getName().endsWith(".so")) {
+                            String entryKey = f.getName() + ":";
+                            boolean found = false;
+                            for (int idx = 0; idx < libs.size(); idx++) {
+                                String existing = libs.get(idx);
+                                if (existing.startsWith(entryKey)) {
+                                    found = true;
+                                    String[] sParts = existing.split(":");
+                                    long size = sParts.length > 1 ? Long.parseLong(sParts[1]) : 0;
+                                    if (size <= 0 && f.length() > 0) {
+                                        libs.set(idx, f.getName() + ":" + f.length());
+                                    }
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                libs.add(f.getName() + ":" + f.length());
+                            }
                         }
                     }
                 }
@@ -439,6 +469,7 @@ public final class PackageIconHelper {
         // Build main JSON
         StringBuilder json = new StringBuilder();
         json.append("{");
+        json.append("\"extractNativeLibs\":").append(extractNativeLibs).append(",");
         json.append("\"packageName\":\"").append(escapeJson(packageName)).append("\",");
         json.append("\"primaryCpuAbi\":").append(primaryCpuAbi == null ? "null" : "\"" + escapeJson(primaryCpuAbi) + "\"").append(",");
         json.append("\"secondaryCpuAbi\":").append(secondaryCpuAbi == null ? "null" : "\"" + escapeJson(secondaryCpuAbi) + "\"").append(",");
