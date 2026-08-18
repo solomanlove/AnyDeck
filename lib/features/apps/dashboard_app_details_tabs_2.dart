@@ -59,7 +59,17 @@ class _LibsTabState extends State<_LibsTab> {
     final filtered = widget.libs.where((lib) {
       final parts = lib.split(':');
       final libName = parts[0];
-      return libName.toLowerCase().contains(_query.toLowerCase());
+      if (libName.toLowerCase().contains(_query.toLowerCase())) {
+        return true;
+      }
+      final match = _matchKnownLib(libName);
+      if (match != null) {
+        final label = match['name'] ?? '';
+        if (label.toLowerCase().contains(_query.toLowerCase())) {
+          return true;
+        }
+      }
+      return false;
     }).toList();
 
     return Column(
@@ -108,7 +118,9 @@ class _LibsTabState extends State<_LibsTab> {
                       title: Text(libName),
                       subtitle: match != null
                           ? Text(
-                              '${match['name']} (${match['desc']})',
+                              match['desc'] != null && match['desc']!.isNotEmpty
+                                  ? '${match['name']} (${match['desc']})'
+                                  : match['name']!,
                               style: const TextStyle(
                                 color: Colors.green,
                                 fontSize: 12,
@@ -214,7 +226,7 @@ class _LibsTabState extends State<_LibsTab> {
           final row = results.first;
           final label = row['label'] as String?;
           if (label != null && label.isNotEmpty) {
-            return {'name': label, 'desc': '规则库已识别'};
+            return {'name': label, 'desc': ''};
           }
         }
       } catch (e) {
