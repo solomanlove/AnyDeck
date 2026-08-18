@@ -371,6 +371,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
 
       // 1. 优先尝试从本地持久化缓存加载，以实现零延迟即时展示
       final cached = await service.loadFromCache(deviceId);
+      if (!ref.mounted) return;
       if (cached != null) {
         final displayCached = registryAndroidVersion != null
             ? cached.copyWith(androidVersion: registryAndroidVersion)
@@ -378,20 +379,24 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         if (displayCached.androidVersion != '-' &&
             displayCached.androidVersion.isNotEmpty) {
           Future.microtask(() {
-            ref
-                .read(deviceRegistryProvider.notifier)
-                .updateDeviceAndroidVersion(
-                  deviceId,
-                  displayCached.androidVersion,
-                );
+            if (ref.mounted) {
+              ref
+                  .read(deviceRegistryProvider.notifier)
+                  .updateDeviceAndroidVersion(
+                    deviceId,
+                    displayCached.androidVersion,
+                  );
+            }
           });
         }
         if (displayCached.ipAddress != '-' &&
             displayCached.ipAddress.isNotEmpty) {
           Future.microtask(() {
-            ref
-                .read(deviceRegistryProvider.notifier)
-                .updateDeviceIp(deviceId, displayCached.ipAddress);
+            if (ref.mounted) {
+              ref
+                  .read(deviceRegistryProvider.notifier)
+                  .updateDeviceIp(deviceId, displayCached.ipAddress);
+            }
           });
         }
         yield displayCached;
@@ -411,18 +416,23 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         deviceId,
         androidVersion: ref.read(deviceAndroidVersionProvider(deviceId)),
       );
+      if (!ref.mounted) return;
       if (fresh.androidVersion != '-' && fresh.androidVersion.isNotEmpty) {
         Future.microtask(() {
-          ref
-              .read(deviceRegistryProvider.notifier)
-              .updateDeviceAndroidVersion(deviceId, fresh.androidVersion);
+          if (ref.mounted) {
+            ref
+                .read(deviceRegistryProvider.notifier)
+                .updateDeviceAndroidVersion(deviceId, fresh.androidVersion);
+          }
         });
       }
       if (fresh.ipAddress != '-' && fresh.ipAddress.isNotEmpty) {
         Future.microtask(() {
-          ref
-              .read(deviceRegistryProvider.notifier)
-              .updateDeviceIp(deviceId, fresh.ipAddress);
+          if (ref.mounted) {
+            ref
+                .read(deviceRegistryProvider.notifier)
+                .updateDeviceIp(deviceId, fresh.ipAddress);
+          }
         });
       }
       yield fresh;

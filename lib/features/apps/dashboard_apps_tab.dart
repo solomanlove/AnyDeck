@@ -333,6 +333,18 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                           hintText: context.l10n.t('filterPackage'),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                          suffixIcon: _filter.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(CupertinoIcons.clear, size: 16),
+                                  onPressed: () {
+                                    _filterController.clear();
+                                    setState(() {
+                                      _filter = '';
+                                    });
+                                    _refreshPackages();
+                                  },
+                                )
+                              : null,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide(

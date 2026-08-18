@@ -151,7 +151,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
               final error = snapshot.error;
 
               return DefaultTabController(
-                length: 9,
+                length: 10,
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: LayoutBuilder(
@@ -185,6 +185,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                 Tab(text: '权限${detail != null ? ' (${detail.permissions.length})' : ''}'),
                                 Tab(text: '元数据${detail != null ? ' (${detail.metadata.length})' : ''}'),
                                 Tab(text: 'DEX${detail != null ? ' (${detail.dexFiles.length})' : ''}'),
+                                Tab(text: context.l10n.t('appSignature')),
                               ],
                             ),
                             const SizedBox(height: 16),
@@ -583,6 +584,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                       ),
                                       _MetadataTab(metadata: detail.metadata),
                                       _DexTab(dexFiles: detail.dexFiles),
+                                      _SignatureTab(signatureMd5: detail.signatureMd5),
                                     ],
                                   );
                                 },

@@ -124,6 +124,13 @@ const appsFilesLogcatZh = {
   'searchHistory': '历史搜索',
   'clearHistory': '清空历史',
   'filterDebugOnly': '筛选 debug 应用',
+  'appSignature': '应用签名',
+  'signatureMd5': '证书 MD5 (标准格式)',
+  'signatureMd5Raw': '证书 MD5 (原始格式)',
+  'copySignatureSuccess': '已复制签名证书 MD5',
+  'signatureHelpTitle': '签名机制说明',
+  'signatureHelpContent': '应用签名证书用于验证应用的唯一性、真实性与完整性。Android 系统使用签名来验证应用包的更新是否来自同一开发者。相同包名但签名不同的应用将无法直接覆盖安装。',
+  'noSignatureInfo': '未检测到签名信息',
 };
 
 const appsFilesLogcatEn = {
@@ -259,4 +266,11 @@ const appsFilesLogcatEn = {
   'searchHistory': 'Search History',
   'clearHistory': 'Clear History',
   'filterDebugOnly': 'Filter debug apps',
+  'appSignature': 'Signature',
+  'signatureMd5': 'Certificate MD5 (Standard)',
+  'signatureMd5Raw': 'Certificate MD5 (Raw)',
+  'copySignatureSuccess': 'Signature MD5 copied to clipboard',
+  'signatureHelpTitle': 'Signature Info',
+  'signatureHelpContent': 'The application signature certificate verifies the identity, authenticity, and integrity of the app. Android uses signatures to ensure updates come from the same developer. Apps with the same package name but different signatures cannot overwrite each other.',
+  'noSignatureInfo': 'No signature info detected',
 };
