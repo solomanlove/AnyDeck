@@ -12,6 +12,7 @@
 | `adb-desktop-window-shortcuts` | 桌面独立窗口快捷键机制 | active | 记录控制台窗口、模拟器管理窗口等独立子窗口的本地快捷键关闭策略与职责边界 | `app/window/` (桌面多窗口) |
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览、控制、应用、文件、日志、终端、进程、网页调试、布局分析、性能监控、网络/端口转发等 12 个 Tab 页的功能设计与底层 ADB 命令及系统级原理 | `dashboard/` (主面板各 Tab) |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录无线调试底层 TCP/IP 监听模式切换、多级 IP 地址自动探测机制（`ip route`/`ip addr`）、合并去重架构与连接操作链路设计 | `dashboard/devices/` (设备控制行) |
+| `devices_manager` | 设备唯一标识判断机制 | active | 记录底层以 AdbDevice.id 为通信路由、并在 DeviceRegistryNotifier 中根据 hardware serial 进行多连接合并与物理去重的设备管理判定机制 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
 | `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口比例适配、原生比例锁定、以及单 App 投屏工具栏/icon 显示规则 | `app/window/mirror/` |
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、USB 投屏原理（MJPEG 字节流解析）、多窗口 Isolate 隔离下的状态同步与测试桩设计 | `core/ios/`, `app/window/mirror/` |
