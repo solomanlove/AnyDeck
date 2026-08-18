@@ -327,8 +327,9 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                         );
                                                       }
                                                       if (result.isSuccess) {
-                                                        await service.clearPackageCache(deviceId);
-                                                        ref.invalidate(packagesProvider(deviceId));
+                                                        await ref
+                                                            .read(packagesProvider(deviceId).notifier)
+                                                            .refreshSinglePackage(packageName);
                                                       }
                                                     }
                                                   } : null,
@@ -545,8 +546,9 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                         );
                                                       }
                                                       if (result.isSuccess) {
-                                                        await service.clearPackageCache(deviceId);
-                                                        ref.invalidate(packagesProvider(deviceId));
+                                                        await ref
+                                                            .read(packagesProvider(deviceId).notifier)
+                                                            .refreshSinglePackage(packageName);
                                                       }
                                                     }
                                                   } : null,

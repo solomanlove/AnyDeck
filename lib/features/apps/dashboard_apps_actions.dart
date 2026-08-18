@@ -264,79 +264,10 @@ class _PackageActions extends ConsumerWidget {
                   );
                 }
                 if (result.isSuccess) {
-                  await service.clearPackageCache(deviceId);
-                  ref.invalidate(packagesProvider(deviceId));
+                  await ref
+                      .read(packagesProvider(deviceId).notifier)
+                      .refreshSinglePackage(packageName);
                 }
-              }
-            },
-          ),
-          const SizedBox(width: 2),
-          IconButton(
-            tooltip: context.l10n.t('uninstall'),
-            icon: const Icon(CupertinoIcons.trash),
-            onPressed: () async {
-              final confirmed = await _confirm(
-                context,
-                context.l10n
-                    .t('uninstallPackage')
-                    .replaceAll('{package}', packageName),
-              );
-              if (confirmed && context.mounted) {
-                final result = await service.uninstall(deviceId, packageName);
-                if (context.mounted) {
-                  _showSnack(
-                    context,
-                    result.message,
-                    isError: !result.isSuccess,
-                  );
-                }
-                if (result.isSuccess) {
-                  await service.clearPackageCache(deviceId);
-                  ref.invalidate(packagesProvider(deviceId));
-                }
-              }
-            },
-          ),
-          const SizedBox(width: 2),
-          IconButton(
-            tooltip: context.l10n.t('exportApk'),
-            icon: const Icon(CupertinoIcons.cloud_download),
-            onPressed: () async {
-              final directory = await getDirectoryPath();
-              if (directory == null || !context.mounted) {
-                return;
-              }
-              final safeLabel = package.displayName.replaceAll(
-                RegExp(r'[\\/:*?"<>|]'),
-                '_',
-              );
-              final versionStr = package.versionName != null
-                  ? '_v${package.versionName}'
-                  : '';
-              final fileName = '$safeLabel$versionStr.apk';
-              final localSavePath = '$directory/$fileName';
-
-              _showSnack(context, context.l10n.t('exporting'));
-
-              final result = await service.exportApk(
-                deviceId,
-                packageName,
-                localSavePath,
-                apkPath: package.apkPath,
-              );
-
-              if (context.mounted) {
-                final successMsg = context.l10n
-                    .t('exportSuccess')
-                    .replaceAll('{path}', localSavePath);
-                final failMsg = context.l10n
-                    .t('exportFailed')
-                    .replaceAll('{error}', result.message);
-                _showSnack(
-                  context,
-                  result.isSuccess ? successMsg : failMsg,
-                  isError: !result.isSuccess,
-                );
               }
             },
           ),
