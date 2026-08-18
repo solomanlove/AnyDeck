@@ -50,8 +50,12 @@ dependencies:
   # 玻璃效果
   glassmorphism: ^3.0.0
 
-  #日志
+  # 日志
   logging: ^1.2.0
+
+  # SQLite 支持与文件路径获取
+  sqlite3: ^2.4.4
+  path_provider: ^2.1.3
 
 dev_dependencies:
   flutter_test:
@@ -74,3 +78,4 @@ flutter:
     - assets/android/package_icon_helper.dex
     - assets/brand/
     - assets/scrcpy/
+    - assets/rules/

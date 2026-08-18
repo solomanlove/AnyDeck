@@ -11,6 +11,48 @@ class _LibsTab extends StatefulWidget {
 
 class _LibsTabState extends State<_LibsTab> {
   String _query = '';
+  Database? _db;
+  bool _dbLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDb();
+  }
+
+  Future<void> _initDb() async {
+    try {
+      final docDir = await getApplicationSupportDirectory();
+      final dbFile = File('${docDir.path}/rules.db');
+
+      // 自动检查：若本地可写目录无 rules.db，则从 assets 拷贝释放
+      if (!dbFile.existsSync()) {
+        final data = await rootBundle.load('assets/rules/rules.db');
+        final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        await dbFile.writeAsBytes(bytes);
+      }
+
+      if (mounted) {
+        setState(() {
+          _db = sqlite3.open(dbFile.path);
+          _dbLoaded = true;
+        });
+      }
+    } catch (e) {
+      print('初始化 rules.db 数据库错误: $e');
+      if (mounted) {
+        setState(() {
+          _dbLoaded = true;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _db?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +202,26 @@ class _LibsTabState extends State<_LibsTab> {
         return {'name': rule.name, 'desc': rule.desc};
       }
     }
+
+    // 2. 本地 SQLite 数据库查询
+    if (_dbLoaded && _db != null) {
+      try {
+        final ResultSet results = _db!.select(
+          'SELECT label FROM rules_table WHERE name = ? AND type = 0 LIMIT 1',
+          [name],
+        );
+        if (results.isNotEmpty) {
+          final row = results.first;
+          final label = row['label'] as String?;
+          if (label != null && label.isNotEmpty) {
+            return {'name': label, 'desc': '规则库已识别'};
+          }
+        }
+      } catch (e) {
+        print('查询 SQLite 数据库失败: $e');
+      }
+    }
+
     return null;
   }
 }
