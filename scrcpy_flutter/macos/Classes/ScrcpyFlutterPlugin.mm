@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <condition_variable>
 #include <iostream>
 #include <AudioToolbox/AudioToolbox.h>
 
@@ -22,9 +23,10 @@ extern "C" {
 }
 #endif
 
+// 音频播放器类，负责管理 macOS AudioQueue 并播放 PCM 音频数据
 class ScrcpyAudioPlayer {
 public:
-    ScrcpyAudioPlayer() {
+    ScrcpyAudioPlayer() : running_(true) {
         AudioStreamBasicDescription asbd;
         std::memset(&asbd, 0, sizeof(asbd));
         asbd.mSampleRate = 48000.0;
@@ -38,9 +40,10 @@ public:
 
         OSStatus status = AudioQueueNewOutput(&asbd, AudioQueueCallback, this, nullptr, nullptr, 0, &audio_queue_);
         if (status == noErr) {
-            for (int i = 0; i < 3; ++i) {
+            // 分配 15 个缓存区，每个大小为 65536 字节，防止音频数据包被截断或因网络抖动造成饥饿/卡顿
+            for (int i = 0; i < 15; ++i) {
                 AudioQueueBufferRef buf = nullptr;
-                AudioQueueAllocateBuffer(audio_queue_, 8192, &buf);
+                AudioQueueAllocateBuffer(audio_queue_, 65536, &buf);
                 if (buf) {
                     free_buffers_.push_back(buf);
                 }
@@ -53,22 +56,33 @@ public:
     }
 
     ~ScrcpyAudioPlayer() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (audio_queue_) {
-            AudioQueueStop(audio_queue_, true);
-            for (auto buf : free_buffers_) {
-                AudioQueueFreeBuffer(audio_queue_, buf);
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            running_ = false;
+            if (audio_queue_) {
+                AudioQueueStop(audio_queue_, true);
+                for (auto buf : free_buffers_) {
+                    AudioQueueFreeBuffer(audio_queue_, buf);
+                }
+                free_buffers_.clear();
+                AudioQueueDispose(audio_queue_, true);
+                audio_queue_ = nullptr;
             }
-            free_buffers_.clear();
-            AudioQueueDispose(audio_queue_, true);
-            audio_queue_ = nullptr;
         }
+        // 唤醒所有正在等待空闲缓冲区的线程
+        cv_.notify_all();
         std::cout << "[ScrcpyAudioPlayer] AudioQueue destroyed" << std::endl;
     }
 
     void PlayPCM(const uint8_t* data, int len) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (!audio_queue_ || free_buffers_.empty()) return;
+        std::unique_lock<std::mutex> lock(mutex_);
+        // 使用条件变量同步：当空闲缓存区用尽时，阻塞当前解码线程，直到 AudioQueue 播放完毕并释放出可用缓冲区
+        // 从而实现无丢包播放，消除由于丢帧断续导致的爆音和刺耳杂音
+        cv_.wait(lock, [this]() {
+            return !running_ || !audio_queue_ || !free_buffers_.empty();
+        });
+
+        if (!running_ || !audio_queue_ || free_buffers_.empty()) return;
 
         AudioQueueBufferRef buf = free_buffers_.back();
         free_buffers_.pop_back();
@@ -81,8 +95,12 @@ public:
     }
 
     void ReleaseBuffer(AudioQueueBufferRef buffer) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        free_buffers_.push_back(buffer);
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            free_buffers_.push_back(buffer);
+        }
+        // 释放缓冲区后唤醒等待中的解码线程
+        cv_.notify_one();
     }
 
 private:
@@ -94,6 +112,8 @@ private:
     AudioQueueRef audio_queue_{nullptr};
     std::vector<AudioQueueBufferRef> free_buffers_;
     std::mutex mutex_;
+    std::condition_variable cv_;
+    bool running_{true};
 };
 
 struct ScrcpySessionContext {
@@ -337,16 +357,25 @@ void rust_helper_decode_audio_packet(
 
     if (is_config) {
         if (ctx->codec_ctx && ctx->codec) {
-            ctx->codec_ctx->sample_rate = 48000;
-            ctx->codec_ctx->request_sample_fmt = AV_SAMPLE_FMT_FLTP;
-            if (ctx->codec_ctx->extradata) {
-                av_free(ctx->codec_ctx->extradata);
-                ctx->codec_ctx->extradata = nullptr;
+            // 配置包到来时，释放旧的解码器上下文以应用新的 extradata 参数
+            avcodec_free_context(&ctx->codec_ctx);
+            // 同时清理重采样器，以便下一帧使用正确参数重建
+            if (ctx->swr_ctx) {
+                swr_free(&ctx->swr_ctx);
+                ctx->swr_ctx = nullptr;
             }
-            ctx->codec_ctx->extradata = (uint8_t *)av_mallocz(size + AV_INPUT_BUFFER_PADDING_SIZE);
-            if (ctx->codec_ctx->extradata) {
-                std::memcpy(ctx->codec_ctx->extradata, data, size);
-                ctx->codec_ctx->extradata_size = size;
+            ctx->codec_ctx = avcodec_alloc_context3(ctx->codec);
+            if (ctx->codec_ctx) {
+                ctx->codec_ctx->sample_rate = 48000;
+                ctx->codec_ctx->request_sample_fmt = AV_SAMPLE_FMT_FLTP;
+                ctx->codec_ctx->extradata = (uint8_t *)av_mallocz(size + AV_INPUT_BUFFER_PADDING_SIZE);
+                if (ctx->codec_ctx->extradata) {
+                    std::memcpy(ctx->codec_ctx->extradata, data, size);
+                    ctx->codec_ctx->extradata_size = size;
+                }
+                if (avcodec_open2(ctx->codec_ctx, ctx->codec, nullptr) < 0) {
+                    std::cout << "[ScrcpyFlutterPlugin] Failed to re-open audio codec with extradata" << std::endl;
+                }
             }
         }
         return;
@@ -361,14 +390,33 @@ void rust_helper_decode_audio_packet(
 
     if (!ctx->codec_ctx || !ctx->packet || !ctx->frame) return;
 
+    // 清理 AVPacket，防止前一帧的数据和 side_data 污染当前包
+    av_packet_unref(ctx->packet);
     ctx->packet->data = const_cast<uint8_t*>(data);
     ctx->packet->size = size;
     ctx->packet->pts = pts;
 
     int send_res = avcodec_send_packet(ctx->codec_ctx, ctx->packet);
-    if (send_res < 0) return;
+    if (send_res < 0) {
+        char errbuf[256];
+        av_strerror(send_res, errbuf, sizeof(errbuf));
+        std::cerr << "[ScrcpyFlutterPlugin] avcodec_send_packet error: " << errbuf << " (" << send_res << ")" << std::endl;
+        return;
+    }
 
-    while (avcodec_receive_frame(ctx->codec_ctx, ctx->frame) >= 0) {
+    // 循环获取解码后的音频帧并送入重采样器
+    while (true) {
+        int receive_res = avcodec_receive_frame(ctx->codec_ctx, ctx->frame);
+        if (receive_res == AVERROR(EAGAIN) || receive_res == AVERROR_EOF) {
+            break;
+        } else if (receive_res < 0) {
+            char errbuf[256];
+            av_strerror(receive_res, errbuf, sizeof(errbuf));
+            std::cerr << "[ScrcpyFlutterPlugin] avcodec_receive_frame error: " << errbuf << " (" << receive_res << ")" << std::endl;
+            break;
+        }
+
+        // 初始化或根据帧格式重建 SwrContext 重采样器，支持安全的回退参数
         if (!ctx->swr_ctx) {
             AVChannelLayout out_ch_layout;
             av_channel_layout_default(&out_ch_layout, 2);
@@ -376,9 +424,14 @@ void rust_helper_decode_audio_packet(
             AVChannelLayout in_ch_layout;
             if (ctx->frame->ch_layout.nb_channels > 0) {
                 av_channel_layout_copy(&in_ch_layout, &ctx->frame->ch_layout);
+            } else if (ctx->codec_ctx && ctx->codec_ctx->ch_layout.nb_channels > 0) {
+                av_channel_layout_copy(&in_ch_layout, &ctx->codec_ctx->ch_layout);
             } else {
                 av_channel_layout_default(&in_ch_layout, 2);
             }
+
+            AVSampleFormat in_sample_fmt = (ctx->frame->format != AV_SAMPLE_FMT_NONE) ? (AVSampleFormat)ctx->frame->format : (ctx->codec_ctx ? ctx->codec_ctx->sample_fmt : AV_SAMPLE_FMT_FLTP);
+            int in_sample_rate = ctx->frame->sample_rate > 0 ? ctx->frame->sample_rate : (ctx->codec_ctx ? ctx->codec_ctx->sample_rate : 48000);
 
             int ret = swr_alloc_set_opts2(
                 &ctx->swr_ctx,
@@ -386,8 +439,8 @@ void rust_helper_decode_audio_packet(
                 AV_SAMPLE_FMT_S16,
                 48000,
                 &in_ch_layout,
-                (AVSampleFormat)ctx->frame->format,
-                ctx->frame->sample_rate,
+                in_sample_fmt,
+                in_sample_rate,
                 0,
                 nullptr
             );
