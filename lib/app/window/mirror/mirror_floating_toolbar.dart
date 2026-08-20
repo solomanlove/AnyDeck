@@ -65,16 +65,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     super.dispose();
   }
 
-  Future<bool> _setScreenPowerMode(String deviceId, bool powerOn) async {
-    final buffer = ByteData(2);
-    buffer.setUint8(0, 10); // CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE
-    buffer.setUint8(1, powerOn ? 2 : 0); // 2 = normal (on), 0 = off
-    final message = buffer.buffer.asUint8List();
-    return ScrcpyFlutter.sendControl(
-      deviceId: deviceId,
-      controlMessage: message,
-    );
-  }
+
 
   Future<void> _takeScreenshot(BuildContext context, String deviceId, {required bool saveToFile}) async {
     try {
@@ -268,17 +259,10 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                     : (isDark ? Colors.white70 : Colors.black87),
               ),
               tooltip: context.l10n.t('screenPowerToggle'),
-              onPressed: () async {
-                final nextState = !isScreenOff;
-                final success = await _setScreenPowerMode(
-                  widget.deviceId,
-                  !nextState,
-                );
-                if (success) {
-                  ref
-                      .read(screenPowerOffProvider(widget.deviceId).notifier)
-                      .setOff(nextState);
-                }
+              onPressed: () {
+                ref
+                    .read(screenPowerOffProvider(widget.deviceId).notifier)
+                    .toggleScreenPower(!isScreenOff);
               },
             ),
             const _VerticalDivider(),

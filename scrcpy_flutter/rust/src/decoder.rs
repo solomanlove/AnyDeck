@@ -79,8 +79,8 @@ impl ScrcpyDecoder {
         }
         self.running.store(true, Ordering::SeqCst);
 
-        // Connect sockets with retry loop
-        let mut streams = None;
+        // 解析主机地址与端口
+        let mut connected_streams = None;
         let addr = format!("{}:{}", self.host, self.port);
         let resolved_addr = match addr.to_socket_addrs().and_then(|mut iter| {
             iter.next().ok_or(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid address"))
@@ -93,22 +93,17 @@ impl ScrcpyDecoder {
             }
         };
 
+        // 阶段 1: 建立 TCP 套接字连接（最多尝试 30 次以等待 adb 端口映射就绪）
         for retry in 0..30 {
             if !self.running.load(Ordering::SeqCst) {
                 return false;
             }
             println!("[rust_scrcpy] Connection attempt #{}...", retry + 1);
             match connect_sockets(resolved_addr, self.audio_enabled) {
-                Ok((mut v, a, c)) => {
-                    // Try reading dummy byte
-                    let mut dummy = [0u8; 1];
-                    if v.read_exact(&mut dummy).is_ok() {
-                        println!("[rust_scrcpy] Dummy byte read: {}", dummy[0]);
-                        streams = Some((v, a, c));
-                        break;
-                    } else {
-                        println!("[rust_scrcpy] Dummy byte read failed, retrying in 200ms...");
-                    }
+                Ok((v, a, c)) => {
+                    println!("[rust_scrcpy] TCP sockets connected successfully.");
+                    connected_streams = Some((v, a, c));
+                    break;
                 }
                 Err(e) => {
                     println!("[rust_scrcpy] Connection failed: {}, retrying in 200ms...", e);
@@ -117,7 +112,7 @@ impl ScrcpyDecoder {
             thread::sleep(Duration::from_millis(200));
         }
 
-        let (video_stream, audio_stream, control_stream) = match streams {
+        let (mut video_stream, audio_stream, control_stream) = match connected_streams {
             Some(s) => s,
             None => {
                 println!("[rust_scrcpy] Failed to connect to scrcpy server after multiple retries.");
@@ -125,6 +120,41 @@ impl ScrcpyDecoder {
                 return false;
             }
         };
+
+        // 阶段 2: 保持当前 Socket 连接，循环等待读取 Dummy Byte（最多等待 15 秒以适应服务端启动延迟）
+        let mut dummy_read_success = false;
+        let mut dummy = [0u8; 1];
+        for dummy_retry in 0..15 {
+            if !self.running.load(Ordering::SeqCst) {
+                self.running.store(false, Ordering::SeqCst);
+                return false;
+            }
+            println!("[rust_scrcpy] Reading dummy byte (attempt {}/15)...", dummy_retry + 1);
+            match video_stream.read_exact(&mut dummy) {
+                Ok(_) => {
+                    println!("[rust_scrcpy] Dummy byte read successfully: {}", dummy[0]);
+                    dummy_read_success = true;
+                    break;
+                }
+                Err(e) => {
+                    if e.kind() == std::io::ErrorKind::WouldBlock || e.kind() == std::io::ErrorKind::TimedOut {
+                        // 读取超时是非致命的，说明服务端仍在初始化。不关闭 Socket 继续等待。
+                        println!("[rust_scrcpy] Dummy byte read timeout, waiting...");
+                        continue;
+                    } else {
+                        // 其他错误（如连接重置、断开）代表连接已失效
+                        println!("[rust_scrcpy] Dummy byte read fatal error: {}", e);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if !dummy_read_success {
+            println!("[rust_scrcpy] Failed to read dummy byte from server.");
+            self.running.store(false, Ordering::SeqCst);
+            return false;
+        }
 
         // Cache the control stream
         {

@@ -82,6 +82,8 @@ const settingsZh = {
   'hideHeartbeats': '隐藏心跳',
   'autoScroll': '自动滚动',
   'copyAll': '复制全部',
+  'autoPowerOffScreen': '操作时自动息屏',
+  'autoPowerOffScreenDesc': '在投屏窗口操作后1秒自动熄灭物理手机屏幕，点击物理屏幕再次亮屏',
 };
 
 const settingsEn = {
@@ -172,4 +174,6 @@ const settingsEn = {
   'hideHeartbeats': 'Hide heartbeats',
   'autoScroll': 'Auto scroll',
   'copyAll': 'Copy All',
+  'autoPowerOffScreen': 'Auto Turn Off Screen',
+  'autoPowerOffScreenDesc': 'Automatically turn off physical screen 1s after interaction, tap physical screen to wake up',
 };

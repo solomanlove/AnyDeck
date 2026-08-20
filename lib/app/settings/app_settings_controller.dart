@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,7 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _autoIdentifyForegroundAppKey = 'settings.autoIdentifyForegroundApp';
   static const _autoIdentifyIntervalKey = 'settings.autoIdentifyInterval';
   static const _forceHostRecordingKey = 'settings.forceHostRecording';
+  static const _autoPowerOffScreenKey = 'settings.autoPowerOffScreen';
   static const _mainSettingsChannel = WindowMethodChannel(
     'any_deck/settings_main',
     mode: ChannelMode.unidirectional,
@@ -56,6 +58,7 @@ class AppSettingsController extends Notifier<AppSettings> {
   }
 
   Future<dynamic> _handleSettingsCall(MethodCall call) async {
+    stdout.writeln('[SettingsController] _handleSettingsCall: method=${call.method}, args=${call.arguments}, currentWindowId=${ref.read(windowIdProvider)}');
     if (call.method == 'update_language') {
       final langCode = call.arguments as String;
       await setLanguage(AppLanguage.fromCode(langCode), broadcast: false);
@@ -83,6 +86,9 @@ class AppSettingsController extends Notifier<AppSettings> {
     } else if (call.method == 'update_force_host_recording') {
       final value = call.arguments as bool;
       await setForceHostRecording(value, broadcast: false);
+    } else if (call.method == 'update_auto_power_off_screen') {
+      final value = call.arguments as bool;
+      await setAutoPowerOffScreen(value, broadcast: false);
     } else if (call.method == 'update_themeMode') {
       final themeName = call.arguments as String;
       final themeMode = _themeModeFromName(themeName);
@@ -240,6 +246,20 @@ class AppSettingsController extends Notifier<AppSettings> {
     }
   }
 
+  Future<void> setAutoPowerOffScreen(bool value, {bool broadcast = true}) async {
+    stdout.writeln('[SettingsController] setAutoPowerOffScreen: value=$value, broadcast=$broadcast, currentWindowId=${ref.read(windowIdProvider)}');
+    state = state.copyWith(autoPowerOffScreen: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_autoPowerOffScreenKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_auto_power_off_screen', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast auto power off screen change: $e');
+      }
+    }
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -260,6 +280,8 @@ class AppSettingsController extends Notifier<AppSettings> {
         preferences.getInt(_autoIdentifyIntervalKey) ?? 3;
     final forceHostRecording =
         preferences.getBool(_forceHostRecordingKey) ?? false;
+    final autoPowerOffScreen =
+        preferences.getBool(_autoPowerOffScreenKey) ?? true;
     state = AppSettings(
       language: language,
       themeMode: themeMode,
@@ -271,6 +293,7 @@ class AppSettingsController extends Notifier<AppSettings> {
       autoIdentifyForegroundApp: autoIdentifyForegroundApp,
       autoIdentifyInterval: autoIdentifyInterval,
       forceHostRecording: forceHostRecording,
+      autoPowerOffScreen: autoPowerOffScreen,
     );
 
     if (ref.read(windowIdProvider).isEmpty) {

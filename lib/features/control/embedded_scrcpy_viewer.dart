@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import '../../core/device_info/device_display_frame.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../core/scrcpy/scrcpy_keycode_helper.dart';
+import '../../app/settings/app_settings_controller.dart';
 import 'embedded_scrcpy_geometry.dart';
 import 'embedded_scrcpy_texture_surface.dart';
 import '../../core/ios/ios_mirror_service.dart';
@@ -40,6 +42,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   DeviceDisplayFrame? _displayFrame;
   int? _activeTextureId;
   Timer? _sizePollTimer;
+  Timer? _autoPowerOffTimer;
   int _sizePollTick = 0;
   bool _isPollingSize = false;
 
@@ -75,11 +78,24 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   @override
   void dispose() {
+    _autoPowerOffTimer?.cancel();
     _sizePollTimer?.cancel();
     _textController.removeListener(_onTextChanged);
     _textController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _startAutoPowerOffTimer() {
+    if (_autoPowerOffTimer?.isActive ?? false) {
+      return;
+    }
+    stdout.writeln('[AutoPowerOff] Timer scheduled.');
+    _autoPowerOffTimer = Timer(const Duration(seconds: 1), () async {
+      if (!mounted) return;
+      stdout.writeln('[AutoPowerOff] Timer triggered. toggling screen power off.');
+      ref.read(screenPowerOffProvider(widget.deviceId).notifier).toggleScreenPower(true);
+    });
   }
 
   void _startSizePolling() {
@@ -414,6 +430,16 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   void _handlePointerDown(PointerDownEvent event, String? resolution) {
     _focusNode.requestFocus();
+
+    final settings = ref.read(appSettingsProvider);
+    stdout.writeln('[AutoPowerOff] Pointer down. autoPowerOffScreen=${settings.autoPowerOffScreen}, isScreenOff=${ref.read(screenPowerOffProvider(widget.deviceId))}');
+    if (settings.autoPowerOffScreen) {
+      final isScreenOff = ref.read(screenPowerOffProvider(widget.deviceId));
+      if (!isScreenOff) {
+        _startAutoPowerOffTimer();
+      }
+    }
+
     if (event.buttons == kSecondaryMouseButton) {
       _ignoredPointers.add(event.pointer);
       ref

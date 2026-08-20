@@ -57,6 +57,8 @@ class ScrcpyService {
         '--no-window',
         '--record',
         localSavePath,
+        // 使用 AAC 音频编码，确保录制出的 MP4 文件在 macOS QuickTime Player 等播放器中能正常播放音频
+        '--audio-codec=aac',
       ],
     );
     return process;

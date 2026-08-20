@@ -203,6 +203,19 @@ class _SettingsTab extends ConsumerWidget {
                     const Divider(height: 24),
                     _buildSettingRow(
                       context,
+                      label: context.l10n.t('autoPowerOffScreen'),
+                      subtitle: context.l10n.t('autoPowerOffScreenDesc'),
+                      child: Switch.adaptive(
+                        activeThumbColor: brandGreen,
+                        activeTrackColor: brandGreen.withValues(alpha: 0.5),
+                        value: settings.autoPowerOffScreen,
+                        onChanged: (val) =>
+                            controller.setAutoPowerOffScreen(val),
+                      ),
+                    ),
+                    const Divider(height: 24),
+                    _buildSettingRow(
+                      context,
                       label: context.l10n.t('autoIdentifyForegroundApp'),
                       subtitle: context.l10n.t('autoIdentifyForegroundAppDesc'),
                       child: Switch.adaptive(
