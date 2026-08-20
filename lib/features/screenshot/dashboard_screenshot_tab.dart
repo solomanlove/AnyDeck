@@ -17,18 +17,7 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
   int _rotation = 0; // 0, 90, 180, 270
   bool _autoRefresh = false;
   Timer? _autoRefreshTimer;
-  bool _isScreenRecordSupported = true;
 
-  Future<void> _checkScreenRecordSupport() async {
-    final supported = await ref
-        .read(adbServiceProvider)
-        .isScreenRecordSupported(widget.device.id);
-    if (mounted) {
-      setState(() {
-        _isScreenRecordSupported = supported;
-      });
-    }
-  }
 
   int _imgWidth = 0;
   int _imgHeight = 0;
@@ -57,7 +46,6 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
   @override
   void initState() {
     super.initState();
-    _checkScreenRecordSupport();
     _capture();
   }
 
@@ -79,8 +67,6 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
       _imgWidth = 0;
       _imgHeight = 0;
       _rotation = 0;
-      _isScreenRecordSupported = true;
-      _checkScreenRecordSupport();
       _transformationController.value = Matrix4.identity();
       _capture();
     }
@@ -472,17 +458,11 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
               const SizedBox(width: 8),
               _ToolbarButton(
                 icon: isRecording ? CupertinoIcons.stop : CupertinoIcons.videocam,
-                tooltip: !_isScreenRecordSupported
-                    ? (context.l10n.locale.languageCode == 'zh'
-                        ? '该设备不支持录屏（华为/荣耀等机型未内置此命令）'
-                        : 'Screen recording is not supported on this device')
-                    : (isRecording
-                        ? context.l10n.t('stopRecord')
-                        : context.l10n.t('startRecord')),
-                color: !_isScreenRecordSupported
-                    ? Colors.grey
-                    : (isRecording ? Colors.red : null),
-                onPressed: _loading || !_isScreenRecordSupported
+                tooltip: isRecording
+                    ? context.l10n.t('stopRecord')
+                    : context.l10n.t('startRecord'),
+                color: isRecording ? Colors.red : null,
+                onPressed: _loading
                     ? null
                     : (isRecording ? _stopRecording : _startRecording),
               ),
