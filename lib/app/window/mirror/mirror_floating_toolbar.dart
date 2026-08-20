@@ -133,9 +133,23 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
 
     if (recordState.isRecording) {
       try {
-        final remotePath = await recordNotifier.stop();
-        if (remotePath == null) return;
+        final recordResult = await recordNotifier.stop();
+        if (recordResult == null) return;
 
+        if (recordResult.startsWith('local:')) {
+          final localSavePath = recordResult.substring(6);
+          if (context.mounted) {
+            AppToast.show(
+              context,
+              context.l10n
+                  .t('recordSuccess')
+                  .replaceAll('{path}', localSavePath),
+            );
+          }
+          return;
+        }
+
+        final remotePath = recordResult;
         final settings = ref.read(appSettingsProvider);
         final hostPlatform = ref.read(hostPlatformServiceProvider);
         final localSavePath = hostPlatform.generateRecordPath(
