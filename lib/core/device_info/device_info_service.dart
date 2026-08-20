@@ -168,6 +168,7 @@ settings get global sysui_demo_allowed
 
       final overview = DeviceOverview(
         name: _firstValue(properties, [
+          'ro.config.marketing_name', // 华为/荣耀等设备的营销名称/产品名称
           'ro.product.marketname',
           'ro.product.vendor.marketname',
           'ro.product.model',

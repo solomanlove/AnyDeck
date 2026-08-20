@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_providers.dart';
@@ -50,6 +51,14 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
     if (state.isRecording) return;
 
     try {
+      // 0. Check if device supports screenrecord
+      final isSupported = await ref
+          .read(adbServiceProvider)
+          .isScreenRecordSupported(deviceId);
+      if (!isSupported) {
+        throw Exception('设备不支持 screenrecord 录屏（部分华为/荣耀等机型未内置此命令）');
+      }
+
       // 1. Delete old recording file on device if it exists
       try {
         await ref
@@ -62,8 +71,17 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
           .read(adbServiceProvider)
           .startScreenRecord(deviceId, '/sdcard/adb_screenrecord_temp.mp4');
 
-      // Handle early exit
+      final errorBuffer = StringBuffer();
+      _process!.stderr.transform(utf8.decoder).listen((data) {
+        errorBuffer.write(data);
+      });
+
+      bool exitedEarly = false;
+      int? exitCode;
+
       _process!.exitCode.then((code) {
+        exitedEarly = true;
+        exitCode = code;
         if (state.isRecording && !state.isStopping) {
           _timer?.cancel();
           _process = null;
@@ -76,8 +94,12 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
 
       // Wait a short time to verify it didn't crash immediately
       await Future.delayed(const Duration(milliseconds: 600));
-      if (_process == null) {
-        throw Exception('screenrecord process exited early');
+      if (exitedEarly) {
+        _process = null;
+        final err = errorBuffer.toString().trim();
+        throw Exception(
+          err.isNotEmpty ? err : 'screenrecord exited with code $exitCode',
+        );
       }
 
       state = const ScreenRecordState(isRecording: true, durationSeconds: 0);

@@ -6,9 +6,10 @@ import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 
 class StubAdbService extends AdbService {
-  StubAdbService({this.shouldFail = false});
+  StubAdbService({this.shouldFail = false, this.getpropOutput});
 
   final bool shouldFail;
+  final String? getpropOutput;
 
   @override
   Future<AdbResult> run(
@@ -42,9 +43,9 @@ class StubAdbService extends AdbService {
       );
     }
     if (args.contains('getprop')) {
-      return const AdbResult(
+      return AdbResult(
         exitCode: 0,
-        stdout:
+        stdout: getpropOutput ??
             '[ro.product.marketname]: [Redmi K40]\n'
             '[ro.product.brand]: [Redmi]\n'
             '[ro.product.model]: [M2012K11AC]\n'
@@ -184,6 +185,25 @@ void main() {
         () => service.loadOverview('non_existent_device'),
         throwsException,
       );
+    });
+
+    test('should parse marketing name for Huawei devices using ro.config.marketing_name', () async {
+      final huaweiAdb = StubAdbService(
+        getpropOutput:
+            '[ro.config.marketing_name]: [HUAWEI nova 9 SE]\n'
+            '[ro.product.brand]: [HUAWEI]\n'
+            '[ro.product.model]: [JLN-AL00]\n'
+            '[ro.product.cpu.abi]: [arm64-v8a]\n'
+            '[ro.product.device]: [HWJLN]\n'
+            '[ro.build.version.release]: [12]\n'
+            '[ro.build.version.sdk]: [31]\n',
+      );
+      final service = DeviceInfoService(huaweiAdb);
+      final overview = await service.loadOverview('huawei_device');
+
+      expect(overview.name, 'HUAWEI nova 9 SE');
+      expect(overview.brand, 'HUAWEI');
+      expect(overview.model, 'JLN-AL00');
     });
   });
 }

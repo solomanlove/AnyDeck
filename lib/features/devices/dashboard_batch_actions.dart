@@ -677,6 +677,14 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
 
     for (final device in widget.devices) {
       try {
+        // Check if device supports screenrecord
+        final isSupported = await ref
+            .read(adbServiceProvider)
+            .isScreenRecordSupported(device.id);
+        if (!isSupported) {
+          throw Exception('设备不支持 screenrecord 录屏（部分华为/荣耀等机型未内置此命令）');
+        }
+
         // Pre-clean up any leftover temporary recording file
         try {
           await ref

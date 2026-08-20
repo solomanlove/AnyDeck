@@ -532,11 +532,24 @@ static void scrcpy_audio_callback(void* opaque, const uint8_t* pcmBuf, int len) 
 }
 
 - (void)stopAllSessions {
+    struct StopRequest {
+        RustScrcpyDecoderContext* decoder;
+        ScrcpySessionContext* rawContext;
+    };
+    std::vector<StopRequest> requests;
+    
     for (auto& pair : _sessions) {
-        rust_scrcpy_stop(pair.second.decoder);
         [pair.second.context->texture dispose];
+        requests.push_back({pair.second.decoder, pair.second.context.release()});
     }
     _sessions.clear();
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        for (auto& req : requests) {
+            rust_scrcpy_stop(req.decoder);
+            delete req.rawContext;
+        }
+    });
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -606,9 +619,15 @@ static void scrcpy_audio_callback(void* opaque, const uint8_t* pcmBuf, int len) 
         std::string devId = [deviceId UTF8String];
         auto it = _sessions.find(devId);
         if (it != _sessions.end()) {
-            rust_scrcpy_stop(it->second.decoder);
             [it->second.context->texture dispose];
+            RustScrcpyDecoderContext* decoder = it->second.decoder;
+            ScrcpySessionContext* rawContext = it->second.context.release();
             _sessions.erase(it);
+            
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                rust_scrcpy_stop(decoder);
+                delete rawContext;
+            });
         }
         result(nil);
         

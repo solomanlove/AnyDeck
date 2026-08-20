@@ -30,6 +30,14 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
     }
 
     try {
+      // Check if device supports screenrecord
+      final isSupported = await ref
+          .read(adbServiceProvider)
+          .isScreenRecordSupported(widget.device.id);
+      if (!isSupported) {
+        throw Exception('设备不支持 screenrecord 录屏（部分华为/荣耀等机型未内置此命令）');
+      }
+
       // Pre-clean up any leftover temporary recording file
       try {
         await ref
@@ -124,7 +132,10 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${context.l10n.t('recordFailed')}: ${errorMsg.trim()} ($code)',
+            context.l10n.t('recordFailed').replaceAll(
+                  '{error}',
+                  '${errorMsg.trim()} ($code)',
+                ),
           ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
@@ -212,7 +223,9 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${context.l10n.t('recordFailed')}: $e'),
+            content: Text(
+              context.l10n.t('recordFailed').replaceAll('{error}', '$e'),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),

@@ -226,11 +226,17 @@ class AdbService {
     return Process.start(executable, args);
   }
 
+  /// 检查设备是否支持 screenrecord 命令
+  Future<bool> isScreenRecordSupported(String deviceId) async {
+    final result = await shell(deviceId, 'which screenrecord');
+    return result.isSuccess && result.stdout.trim().isNotEmpty;
+  }
+
   /// 停止录屏（通过发送 SIGINT 信号使 screenrecord 正常保存文件）。
   Future<AdbResult> stopScreenRecord(String deviceId) {
     return shell(
       deviceId,
-      'killall -2 screenrecord || pkill -2 -x screenrecord',
+      'pkill -2 -f screenrecord || pkill -2 screenrecord || killall -2 screenrecord || (pid=\$(pidof screenrecord) && [ -n "\$pid" ] && kill -2 \$pid)',
     );
   }
 

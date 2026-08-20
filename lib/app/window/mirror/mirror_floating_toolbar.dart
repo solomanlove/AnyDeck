@@ -39,10 +39,23 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
 class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
   late final MirrorBackLongPressHandler _backLongPressHandler;
   late final MirrorVolumeLongPressHandler _volumeLongPressHandler;
+  bool _isScreenRecordSupported = true;
+
+  Future<void> _checkScreenRecordSupport() async {
+    final supported = await ref
+        .read(adbServiceProvider)
+        .isScreenRecordSupported(widget.deviceId);
+    if (mounted) {
+      setState(() {
+        _isScreenRecordSupported = supported;
+      });
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _checkScreenRecordSupport();
     _backLongPressHandler = MirrorBackLongPressHandler(
       ref: ref,
       deviceId: widget.deviceId,
@@ -53,6 +66,15 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
       ref: ref,
       deviceId: widget.deviceId,
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant MirrorFloatingToolbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.deviceId != widget.deviceId) {
+      _isScreenRecordSupported = true;
+      _checkScreenRecordSupport();
+    }
   }
 
   @override
@@ -166,7 +188,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         if (context.mounted) {
           AppToast.show(
             context,
-            '${context.l10n.t('recordFailed')}: $e',
+            context.l10n.t('recordFailed').replaceAll('{error}', '$e'),
             isError: true,
           );
         }
@@ -184,7 +206,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         if (context.mounted) {
           AppToast.show(
             context,
-            '${context.l10n.t('recordFailed')}: $e',
+            context.l10n.t('recordFailed').replaceAll('{error}', '$e'),
             isError: true,
           );
         }
@@ -490,18 +512,26 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                     ? CupertinoIcons.stop
                     : CupertinoIcons.videocam,
                 size: 22,
-                color: recordState.isRecording
-                    ? Colors.red
-                    : (isDark ? Colors.white70 : Colors.black87),
+                color: !_isScreenRecordSupported
+                    ? Colors.grey
+                    : (recordState.isRecording
+                        ? Colors.red
+                        : (isDark ? Colors.white70 : Colors.black87)),
               ),
-              tooltip: recordState.isRecording
-                  ? context.l10n.t('stopRecord')
-                  : context.l10n.t('startRecord'),
+              tooltip: !_isScreenRecordSupported
+                  ? (context.l10n.locale.languageCode == 'zh'
+                      ? '该设备不支持录屏（华为/荣耀等机型未内置此命令）'
+                      : 'Screen recording is not supported on this device')
+                  : (recordState.isRecording
+                      ? context.l10n.t('stopRecord')
+                      : context.l10n.t('startRecord')),
               isLoading: recordState.isStopping,
               badge: recordState.isRecording
                   ? const _PulsingRecordBadge()
                   : null,
-              onPressed: () => _toggleScreenRecording(context),
+              onPressed: !_isScreenRecordSupported
+                  ? null
+                  : () => _toggleScreenRecording(context),
             ),
             if (recordState.isRecording) ...[
               Padding(
