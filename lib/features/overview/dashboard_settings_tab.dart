@@ -378,6 +378,30 @@ class _SettingsTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
 
+                // Card 2.5: 录屏设置 (Screen Recording Settings)
+                _buildSectionCard(
+                  context,
+                  title: context.l10n.locale.languageCode == 'zh' ? '录屏设置' : 'Screen Recording Settings',
+                  icon: CupertinoIcons.videocam,
+                  children: [
+                    _buildSettingRow(
+                      context,
+                      label: context.l10n.locale.languageCode == 'zh' ? '强制电脑本地录制' : 'Force PC Local Recording',
+                      subtitle: context.l10n.locale.languageCode == 'zh'
+                          ? '默认采用动态决策（根据设备自动选择最佳方式）；开启后将强制使用电脑端 scrcpy 进行本地录制。'
+                          : 'Use dynamic decision by default. Enable to force host-side recording using scrcpy.',
+                      child: Switch.adaptive(
+                        activeThumbColor: brandGreen,
+                        activeTrackColor: brandGreen.withValues(alpha: 0.5),
+                        value: settings.forceHostRecording,
+                        onChanged: (val) =>
+                            controller.setForceHostRecording(val),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
                 // Card 3: 关于与支持 (About & Support)
                 _buildSectionCard(
                   context,

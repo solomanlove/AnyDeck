@@ -44,6 +44,24 @@ class ScrcpyService {
     return session;
   }
 
+  /// 启动 scrcpy 的电脑本地录制进程（无窗口，直接录制到本地文件）。
+  Future<Process> startRecording({
+    required String deviceId,
+    required String localSavePath,
+  }) async {
+    final process = await Process.start(
+      executable,
+      [
+        '-s',
+        deviceId,
+        '--no-window',
+        '--record',
+        localSavePath,
+      ],
+    );
+    return process;
+  }
+
   /// 按 session id 停止单个已跟踪的 scrcpy 进程。
   Future<void> stop(String sessionId) async {
     _processes.remove(sessionId)?.kill();

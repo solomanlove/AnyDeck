@@ -6,6 +6,8 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
   int _recordDuration = 0;
   Timer? _recordTimer;
   bool _isManuallyStopping = false;
+  bool _isHostRecording = false;
+  String? _localRecordPath;
 
   bool get isRecording => _isRecording;
   bool get isManuallyStopping => _isManuallyStopping;
@@ -14,7 +16,9 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
   void _cleanupRecord() {
     _recordTimer?.cancel();
     if (_isRecording) {
-      ref.read(adbServiceProvider).stopScreenRecord(widget.device.id);
+      if (!_isHostRecording) {
+        ref.read(adbServiceProvider).stopScreenRecord(widget.device.id);
+      }
       _recordProcess?.kill();
     }
   }
@@ -30,27 +34,42 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
     }
 
     try {
+      final settings = ref.read(appSettingsProvider);
       // Check if device supports screenrecord
       final isSupported = await ref
           .read(adbServiceProvider)
           .isScreenRecordSupported(widget.device.id);
-      if (!isSupported) {
-        throw Exception('设备不支持 screenrecord 录屏（部分华为/荣耀等机型未内置此命令）');
+
+      _isHostRecording = settings.forceHostRecording || !isSupported;
+
+      if (_isHostRecording) {
+        final hostPlatform = ref.read(hostPlatformServiceProvider);
+        _localRecordPath = hostPlatform.generateRecordPath(
+          settings.screenshotSavePath,
+          widget.device.id,
+        );
+        final file = File(_localRecordPath!);
+        await file.parent.create(recursive: true);
+
+        _recordProcess = await ref.read(scrcpyServiceProvider).startRecording(
+          deviceId: widget.device.id,
+          localSavePath: _localRecordPath!,
+        );
+      } else {
+        // Pre-clean up any leftover temporary recording file
+        try {
+          await ref
+              .read(fileManagerServiceProvider)
+              .delete(widget.device.id, '/sdcard/adb_screenrecord_temp.mp4');
+        } catch (_) {}
+
+        _recordProcess = await ref
+            .read(adbServiceProvider)
+            .startScreenRecord(
+              widget.device.id,
+              '/sdcard/adb_screenrecord_temp.mp4',
+            );
       }
-
-      // Pre-clean up any leftover temporary recording file
-      try {
-        await ref
-            .read(fileManagerServiceProvider)
-            .delete(widget.device.id, '/sdcard/adb_screenrecord_temp.mp4');
-      } catch (_) {}
-
-      _recordProcess = await ref
-          .read(adbServiceProvider)
-          .startScreenRecord(
-            widget.device.id,
-            '/sdcard/adb_screenrecord_temp.mp4',
-          );
 
       final errorBuffer = StringBuffer();
       _recordProcess!.stderr.transform(utf8.decoder).listen((data) {
@@ -73,7 +92,7 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
       if (exitedEarly) {
         final err = errorBuffer.toString().trim();
         throw Exception(
-          err.isNotEmpty ? err : 'screenrecord exited with code $exitCode',
+          err.isNotEmpty ? err : 'Process exited with code $exitCode',
         );
       }
 
@@ -156,56 +175,20 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
     final state = this as _ScreenshotTabState;
 
     try {
-      // 1. Send stop command (SIGINT) to device
-      await ref.read(adbServiceProvider).stopScreenRecord(widget.device.id);
+      if (_isHostRecording) {
+        if (_recordProcess != null) {
+          _recordProcess?.kill();
+          await _recordProcess!.exitCode;
+        }
+        _recordProcess = null;
 
-      // 2. Wait for process exit on host
-      if (_recordProcess != null) {
-        await _recordProcess!.exitCode.timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {
-            _recordProcess?.kill();
-            return 0;
-          },
-        );
-      }
-
-      // Small delay for device file write completion
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (!mounted) return;
-
-      // 3. Save directly
-      final settings = ref.read(appSettingsProvider);
-      final hostPlatform = ref.read(hostPlatformServiceProvider);
-      final localSavePath = hostPlatform.generateRecordPath(
-        settings.screenshotSavePath,
-        widget.device.id,
-      );
-      final file = File(localSavePath);
-      await file.parent.create(recursive: true);
-
-      setState(() {
-        state._loading = true;
-      });
-
-      // 4. Pull file
-      final pullResult = await ref
-          .read(fileManagerServiceProvider)
-          .pull(
-            widget.device.id,
-            '/sdcard/adb_screenrecord_temp.mp4',
-            localSavePath,
-          );
-
-      if (pullResult.isSuccess) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 context.l10n
                     .t('recordSuccess')
-                    .replaceAll('{path}', localSavePath),
+                    .replaceAll('{path}', _localRecordPath ?? ''),
               ),
               backgroundColor: const Color(0xff09c47c),
               behavior: SnackBarBehavior.floating,
@@ -213,11 +196,79 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
           );
         }
       } else {
-        throw Exception(
-          pullResult.stderr.isNotEmpty
-              ? pullResult.stderr
-              : 'File transfer failed',
+        // 1. Send stop command (SIGINT) to device
+        await ref.read(adbServiceProvider).stopScreenRecord(widget.device.id);
+
+        // 2. Wait for process exit on host
+        if (_recordProcess != null) {
+          await _recordProcess!.exitCode.timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              _recordProcess?.kill();
+              return 0;
+            },
+          );
+        }
+        _recordProcess = null;
+
+        // Small delay for device file write completion
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (!mounted) return;
+
+        // 3. Save directly
+        final settings = ref.read(appSettingsProvider);
+        final hostPlatform = ref.read(hostPlatformServiceProvider);
+        final localSavePath = hostPlatform.generateRecordPath(
+          settings.screenshotSavePath,
+          widget.device.id,
         );
+        final file = File(localSavePath);
+        await file.parent.create(recursive: true);
+
+        setState(() {
+          state._loading = true;
+        });
+
+        // 4. Pull file
+        final pullResult = await ref
+            .read(fileManagerServiceProvider)
+            .pull(
+              widget.device.id,
+              '/sdcard/adb_screenrecord_temp.mp4',
+              localSavePath,
+            );
+
+        if (pullResult.isSuccess) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  context.l10n
+                      .t('recordSuccess')
+                      .replaceAll('{path}', localSavePath),
+                ),
+                backgroundColor: const Color(0xff09c47c),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } else {
+          throw Exception(
+            pullResult.stderr.isNotEmpty
+                ? pullResult.stderr
+                : 'File transfer failed',
+          );
+        }
+
+        // 5. Clean up device temporary file
+        try {
+          await ref
+              .read(fileManagerServiceProvider)
+              .delete(widget.device.id, '/sdcard/adb_screenrecord_temp.mp4');
+        } catch (e) {
+          debugPrint('Failed to delete temp record file on device: $e');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -232,15 +283,6 @@ mixin _ScreenRecordMixin on ConsumerState<_ScreenshotTab> {
         );
       }
     } finally {
-      // 5. Clean up device temporary file
-      try {
-        await ref
-            .read(fileManagerServiceProvider)
-            .delete(widget.device.id, '/sdcard/adb_screenrecord_temp.mp4');
-      } catch (e) {
-        debugPrint('Failed to delete temp record file on device: $e');
-      }
-
       if (mounted) {
         setState(() {
           _isRecording = false;

@@ -647,6 +647,8 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
   Timer? _timer;
   bool _stopping = false;
   final Map<String, String> _statuses = {};
+  final Map<String, bool> _isHostRecordingMap = {};
+  final Map<String, String> _localRecordPaths = {};
 
   @override
   void initState() {
@@ -660,10 +662,18 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
     if (_recording) {
       // Emergency clean up of remaining recording processes
       for (final device in widget.devices) {
-        ref.read(adbServiceProvider).stopScreenRecord(device.id);
+        if (_isHostRecordingMap[device.id] != true) {
+          ref.read(adbServiceProvider).stopScreenRecord(device.id);
+        }
       }
       for (final p in _processes.values) {
         p.kill();
+      }
+      // Cleanup any host temp files
+      for (final path in _localRecordPaths.values) {
+        try {
+          File(path).deleteSync();
+        } catch (_) {}
       }
     }
     super.dispose();
@@ -675,27 +685,47 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
       _duration = 0;
     });
 
+    final settings = ref.read(appSettingsProvider);
+
     for (final device in widget.devices) {
       try {
         // Check if device supports screenrecord
         final isSupported = await ref
             .read(adbServiceProvider)
             .isScreenRecordSupported(device.id);
-        if (!isSupported) {
-          throw Exception('设备不支持 screenrecord 录屏（部分华为/荣耀等机型未内置此命令）');
+        
+        final useHostRecord = settings.forceHostRecording || !isSupported;
+        _isHostRecordingMap[device.id] = useHostRecord;
+
+        if (useHostRecord) {
+          final tempDir = Directory.systemTemp.path;
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final cleanName = device.displayName.replaceAll(RegExp(r'[^\w\-_]'), '_');
+          final filename = 'screenrecord_${cleanName}_$timestamp.mp4';
+          final tempPath = '$tempDir/$filename';
+          _localRecordPaths[device.id] = tempPath;
+
+          final file = File(tempPath);
+          await file.parent.create(recursive: true);
+
+          final process = await ref.read(scrcpyServiceProvider).startRecording(
+            deviceId: device.id,
+            localSavePath: tempPath,
+          );
+          _processes[device.id] = process;
+        } else {
+          // Pre-clean up any leftover temporary recording file
+          try {
+            await ref
+                .read(fileManagerServiceProvider)
+                .delete(device.id, '/sdcard/adb_batch_record_temp.mp4');
+          } catch (_) {}
+
+          final process = await ref
+              .read(adbServiceProvider)
+              .startScreenRecord(device.id, '/sdcard/adb_batch_record_temp.mp4');
+          _processes[device.id] = process;
         }
-
-        // Pre-clean up any leftover temporary recording file
-        try {
-          await ref
-              .read(fileManagerServiceProvider)
-              .delete(device.id, '/sdcard/adb_batch_record_temp.mp4');
-        } catch (_) {}
-
-        final process = await ref
-            .read(adbServiceProvider)
-            .startScreenRecord(device.id, '/sdcard/adb_batch_record_temp.mp4');
-        _processes[device.id] = process;
         _statuses[device.id] = '正在录制...';
       } catch (e) {
         _statuses[device.id] = '录制启动失败: $e';
@@ -720,9 +750,9 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
       _stopping = true;
     });
 
-    // 1. Send SIGINT (kill -2) to all devices to properly finish recording
+    // 1. Send SIGINT (kill -2) to all devices to properly finish recording (if not host-recording)
     for (final device in widget.devices) {
-      if (_processes.containsKey(device.id)) {
+      if (_processes.containsKey(device.id) && _isHostRecordingMap[device.id] != true) {
         await ref.read(adbServiceProvider).stopScreenRecord(device.id);
       }
     }
@@ -730,13 +760,18 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
     // 2. Wait for host process wrapper exits
     for (final entry in _processes.entries) {
       try {
-        await entry.value.exitCode.timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {
-            entry.value.kill();
-            return 0;
-          },
-        );
+        if (_isHostRecordingMap[entry.key] == true) {
+          entry.value.kill();
+          await entry.value.exitCode;
+        } else {
+          await entry.value.exitCode.timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              entry.value.kill();
+              return 0;
+            },
+          );
+        }
       } catch (_) {}
     }
 
@@ -752,7 +787,7 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
         if (!_processes.containsKey(device.id)) continue;
 
         setState(() {
-          _statuses[device.id] = '正在下载视频文件...';
+          _statuses[device.id] = '正在保存视频文件...';
         });
 
         try {
@@ -764,35 +799,55 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
           final filename = 'screenrecord_${cleanName}_$timestamp.mp4';
           final localPath = '$directoryPath/$filename';
 
-          final pullRes = await ref
-              .read(fileManagerServiceProvider)
-              .pull(device.id, '/sdcard/adb_batch_record_temp.mp4', localPath);
-
-          if (pullRes.isSuccess) {
-            _statuses[device.id] = '已保存: $filename';
+          if (_isHostRecordingMap[device.id] == true) {
+            final tempPath = _localRecordPaths[device.id];
+            if (tempPath != null && File(tempPath).existsSync()) {
+              await File(tempPath).rename(localPath);
+              _statuses[device.id] = '已保存: $filename';
+            } else {
+              _statuses[device.id] = '本地视频文件丢失';
+            }
           } else {
-            _statuses[device.id] = '下载失败: ${pullRes.stderr}';
+            final pullRes = await ref
+                .read(fileManagerServiceProvider)
+                .pull(device.id, '/sdcard/adb_batch_record_temp.mp4', localPath);
+
+            if (pullRes.isSuccess) {
+              _statuses[device.id] = '已保存: $filename';
+            } else {
+              _statuses[device.id] = '下载失败: ${pullRes.stderr}';
+            }
+
+            // Cleanup temp file on device
+            try {
+              await ref
+                  .read(fileManagerServiceProvider)
+                  .delete(device.id, '/sdcard/adb_batch_record_temp.mp4');
+            } catch (_) {}
           }
         } catch (e) {
           _statuses[device.id] = '出错: $e';
         }
-
-        // Cleanup temp file on device
-        try {
-          await ref
-              .read(fileManagerServiceProvider)
-              .delete(device.id, '/sdcard/adb_batch_record_temp.mp4');
-        } catch (_) {}
       }
     } else {
-      // User cancelled directory selection, clean up device temp records anyway
+      // User cancelled directory selection, clean up temp records anyway
       for (final device in widget.devices) {
         _statuses[device.id] = '用户取消保存';
-        try {
-          await ref
-              .read(fileManagerServiceProvider)
-              .delete(device.id, '/sdcard/adb_batch_record_temp.mp4');
-        } catch (_) {}
+        
+        if (_isHostRecordingMap[device.id] == true) {
+          final tempPath = _localRecordPaths[device.id];
+          if (tempPath != null) {
+            try {
+              await File(tempPath).delete();
+            } catch (_) {}
+          }
+        } else {
+          try {
+            await ref
+                .read(fileManagerServiceProvider)
+                .delete(device.id, '/sdcard/adb_batch_record_temp.mp4');
+          } catch (_) {}
+        }
       }
     }
 

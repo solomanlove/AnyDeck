@@ -31,6 +31,7 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _screenshotSavePathKey = 'settings.screenshotSavePath';
   static const _autoIdentifyForegroundAppKey = 'settings.autoIdentifyForegroundApp';
   static const _autoIdentifyIntervalKey = 'settings.autoIdentifyInterval';
+  static const _forceHostRecordingKey = 'settings.forceHostRecording';
   static const _mainSettingsChannel = WindowMethodChannel(
     'any_deck/settings_main',
     mode: ChannelMode.unidirectional,
@@ -79,6 +80,9 @@ class AppSettingsController extends Notifier<AppSettings> {
     } else if (call.method == 'update_auto_identify_interval') {
       final value = call.arguments as int;
       await setAutoIdentifyInterval(value, broadcast: false);
+    } else if (call.method == 'update_force_host_recording') {
+      final value = call.arguments as bool;
+      await setForceHostRecording(value, broadcast: false);
     } else if (call.method == 'update_themeMode') {
       final themeName = call.arguments as String;
       final themeMode = _themeModeFromName(themeName);
@@ -223,6 +227,19 @@ class AppSettingsController extends Notifier<AppSettings> {
     }
   }
 
+  Future<void> setForceHostRecording(bool value, {bool broadcast = true}) async {
+    state = state.copyWith(forceHostRecording: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_forceHostRecordingKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_force_host_recording', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast force host recording change: $e');
+      }
+    }
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -241,6 +258,8 @@ class AppSettingsController extends Notifier<AppSettings> {
         preferences.getBool(_autoIdentifyForegroundAppKey) ?? false;
     final autoIdentifyInterval =
         preferences.getInt(_autoIdentifyIntervalKey) ?? 3;
+    final forceHostRecording =
+        preferences.getBool(_forceHostRecordingKey) ?? false;
     state = AppSettings(
       language: language,
       themeMode: themeMode,
@@ -251,6 +270,7 @@ class AppSettingsController extends Notifier<AppSettings> {
       screenshotSavePath: screenshotSavePath,
       autoIdentifyForegroundApp: autoIdentifyForegroundApp,
       autoIdentifyInterval: autoIdentifyInterval,
+      forceHostRecording: forceHostRecording,
     );
 
     if (ref.read(windowIdProvider).isEmpty) {
