@@ -180,6 +180,8 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
             'type': 'mirror',
             'deviceId': device.id,
             'deviceName': device.displayName,
+            'isIos': device.isIos,
+            'isHarmony': device.isHarmony,
           },
           frame: Offset.zero & initialSize,
           title: windowTitle,

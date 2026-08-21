@@ -19,6 +19,7 @@ import 'mirror_floating_toolbar.dart';
 import 'mirror_settings_dialog.dart';
 import 'mirror_window_controller.dart';
 import '../../../core/ios/ios_mirror_service.dart';
+import '../../../core/harmony/harmony_mirror_service.dart';
 
 /// 投屏独立窗口应用入口。
 class MirrorWindowApp extends ConsumerWidget {
@@ -61,6 +62,7 @@ class MirrorWindowApp extends ConsumerWidget {
           newDisplay: newDisplay,
           startApp: startApp,
           isIos: argument['isIos'] as bool? ?? false,
+          isHarmony: argument['isHarmony'] as bool? ?? false,
         ),
       ),
     );
@@ -77,6 +79,7 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
     this.newDisplay,
     this.startApp,
     this.isIos = false,
+    this.isHarmony = false,
   });
 
   final String deviceId;
@@ -85,6 +88,7 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
   final String? newDisplay;
   final String? startApp;
   final bool isIos;
+  final bool isHarmony;
 
   @override
   ConsumerState<MirrorWindowContent> createState() =>
@@ -122,6 +126,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       newDisplay: widget.newDisplay,
       startApp: widget.startApp,
       isIos: widget.isIos,
+      isHarmony: widget.isHarmony,
     );
 
     // 监听控制器状态变化，更新 UI
@@ -220,7 +225,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         (widget.deviceId.length == 25 && widget.deviceId.indexOf('-') == 8);
     final isMirrorActive = isIos
         ? ref.watch(activeIosMirrorProvider(widget.deviceId)) != null
-        : ref.watch(activeEmbeddedMirrorProvider(widget.deviceId)) != null;
+        : (widget.isHarmony
+            ? ref.watch(activeHarmonyMirrorProvider(widget.deviceId)) != null
+            : ref.watch(activeEmbeddedMirrorProvider(widget.deviceId)) != null);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final headerBgColor = isDark

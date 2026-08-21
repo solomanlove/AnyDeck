@@ -18,6 +18,7 @@ import 'mirror_aspect_resolver.dart';
 import 'mirror_window_frame_adapter.dart';
 import '../multi_window_compat.dart';
 import '../../../core/ios/ios_mirror_service.dart';
+import '../../../core/harmony/harmony_mirror_service.dart';
 
 /// 投屏独立窗口的业务逻辑与状态控制器。
 /// 采用 ChangeNotifier 实现，将功能逻辑与 UI 界面彻底剥离。
@@ -30,6 +31,7 @@ class MirrorWindowController extends ChangeNotifier {
   final String? newDisplay;
   final String? startApp;
   final bool isIos;
+  final bool isHarmony;
 
   MirrorWindowController({
     required this.ref,
@@ -38,6 +40,7 @@ class MirrorWindowController extends ChangeNotifier {
     this.newDisplay,
     this.startApp,
     this.isIos = false,
+    this.isHarmony = false,
   });
 
   // ==================== 状态属性 (State Properties) ====================
@@ -153,6 +156,8 @@ class MirrorWindowController extends ChangeNotifier {
     try {
       if (isIos) {
         await ref.read(activeIosMirrorProvider(deviceId).notifier).forceStop();
+      } else if (isHarmony) {
+        await ref.read(activeHarmonyMirrorProvider(deviceId).notifier).forceStop();
       } else {
         await ref.read(activeEmbeddedMirrorProvider(deviceId).notifier).forceStop();
       }
@@ -183,6 +188,11 @@ class MirrorWindowController extends ChangeNotifier {
         if (activeMirror == null) {
           await ref.read(activeIosMirrorProvider(deviceId).notifier).toggleMirroring();
         }
+      } else if (isHarmony) {
+        final activeMirror = ref.read(activeHarmonyMirrorProvider(deviceId));
+        if (activeMirror == null) {
+          await ref.read(activeHarmonyMirrorProvider(deviceId).notifier).toggleMirroring();
+        }
       } else {
         // 检查当前设备是否已经有激活的投屏通道
         final activeMirror = ref.read(activeEmbeddedMirrorProvider(deviceId));
@@ -196,7 +206,7 @@ class MirrorWindowController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      if (!isIos) {
+      if (!isIos && !isHarmony) {
         // 只有普通主屏投屏需要监听手机横竖屏并重启 stream。
         // 单 App 虚拟副屏(newDisplay)的方向由 scrcpy video size 决定，不能用主屏 displayFrame 判断。
         if (newDisplay == null) {
@@ -619,9 +629,15 @@ class MirrorWindowController extends ChangeNotifier {
     _isRestartingForRotation = true;
     _lastStreamRestartAt = now;
     try {
-      await ref
-          .read(activeEmbeddedMirrorProvider(deviceId).notifier)
-          .restartMirroring(newDisplay: newDisplay, startApp: startApp);
+      if (isHarmony) {
+        await ref
+            .read(activeHarmonyMirrorProvider(deviceId).notifier)
+            .restartMirroring();
+      } else {
+        await ref
+            .read(activeEmbeddedMirrorProvider(deviceId).notifier)
+            .restartMirroring(newDisplay: newDisplay, startApp: startApp);
+      }
       _aspectResolver.resetAfterStreamRestart();
       _resumeAspectDetectionAt = DateTime.now().add(
         const Duration(milliseconds: 1200),
@@ -684,7 +700,9 @@ class MirrorWindowController extends ChangeNotifier {
     }
     final activeMirror = isIos
         ? ref.read(activeIosMirrorProvider(deviceId))
-        : ref.read(activeEmbeddedMirrorProvider(deviceId));
+        : (isHarmony
+            ? ref.read(activeHarmonyMirrorProvider(deviceId))
+            : ref.read(activeEmbeddedMirrorProvider(deviceId)));
     if (activeMirror == null) return;
 
     final renderBox =

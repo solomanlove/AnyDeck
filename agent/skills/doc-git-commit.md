@@ -32,3 +32,5 @@ git log -n 10 --oneline
 ```bash
 git commit -m "fix: 1、修复多窗口 Isolate 下 deviceOnlineProvider 始终为 false 导致投屏点击失效的问题；2、优化 scrcpy 服务进程退出时的生命周期自动清理"
 ```
+
+### 4. 使用中文注释

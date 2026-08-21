@@ -24,6 +24,9 @@ class DeviceInfoService {
     }
   }
 
+  /// 保存概览到本地缓存
+  Future<void> saveToCache(String deviceId, DeviceOverview overview) => _saveToCache(deviceId, overview);
+
   Future<DeviceOverview?> loadFromCache(String deviceId) async {
     try {
       final prefs = await SharedPreferences.getInstance();

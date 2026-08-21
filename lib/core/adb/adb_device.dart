@@ -7,6 +7,7 @@ class AdbDevice {
     this.product,
     this.transportId,
     this.isIos = false,
+    this.isHarmony = false,
   });
 
   final String id;
@@ -15,6 +16,7 @@ class AdbDevice {
   final String? product;
   final String? transportId;
   final bool isIos;
+  final bool isHarmony;
 
   /// adb 状态为 device 时，才表示设备可执行 shell 命令。
   bool get isOnline => status == 'device';

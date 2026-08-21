@@ -15,6 +15,7 @@ import '../../app/settings/app_settings_controller.dart';
 import 'embedded_scrcpy_geometry.dart';
 import 'embedded_scrcpy_texture_surface.dart';
 import '../../core/ios/ios_mirror_service.dart';
+import '../../core/harmony/harmony_mirror_service.dart';
 import 'ios_mirror_viewer.dart';
 
 class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
@@ -548,7 +549,11 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       );
     }
 
-    final textureId = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
+    final isHarmony = registeredDevices.any((d) => d.id == widget.deviceId && d.isHarmony);
+
+    final textureId = isHarmony
+        ? ref.watch(activeHarmonyMirrorProvider(widget.deviceId))
+        : ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
     _resetStreamGeometryIfNeeded(textureId);
     final overviewAsync = ref.watch(deviceOverviewProvider(widget.deviceId));
 

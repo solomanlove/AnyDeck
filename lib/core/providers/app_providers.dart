@@ -41,6 +41,8 @@ import '../web_debug/web_debug_service.dart';
 
 import '../logging/log_service.dart';
 import '../ios/ios_mirror_service.dart';
+import '../harmony/hdc_service.dart';
+import '../harmony/harmony_mirror_service.dart';
 
 /// 所有命令型 provider 共享的 adb 服务实例。
 final adbServiceProvider = Provider<AdbService>((ref) {
@@ -51,6 +53,25 @@ final adbServiceProvider = Provider<AdbService>((ref) {
           .log(message, tag: tag, level: level);
     },
   );
+});
+
+/// 所有命令型 provider 共享的 hdc 服务实例。
+final hdcServiceProvider = Provider<HdcService>((ref) {
+  return HdcService(
+    onLog: (message, {tag = 'hdc', level = 'I'}) {
+      ref
+          .read(logHistoryProvider.notifier)
+          .log(message, tag: tag, level: level);
+    },
+  );
+});
+
+/// 鸿蒙镜像（投屏）管理服务实例。
+final harmonyMirrorServiceProvider = Provider<HarmonyMirrorService>((ref) {
+  final hdcService = ref.watch(hdcServiceProvider);
+  final service = HarmonyMirrorService(hdcService);
+  ref.onDispose(service.stopAll);
+  return service;
 });
 
 /// 设备操作门面，负责 key event、开关和 shell 读取。
@@ -188,6 +209,7 @@ final adbHeartbeatControllerProvider =
     Provider.autoDispose<AdbHeartbeatController>((ref) {
       final adbService = ref.watch(adbServiceProvider);
       final iosDeviceService = ref.watch(iosDeviceServiceProvider);
+      final hdcService = ref.watch(hdcServiceProvider);
       final isSub = ref.watch(windowIdProvider).isNotEmpty;
 
       // 主窗口下，当没有选择设备且未展示设置页面时（即处于设备管理列表“主页”），才应该运行心跳
@@ -199,6 +221,7 @@ final adbHeartbeatControllerProvider =
       final controller = AdbHeartbeatController(
         adbService: adbService,
         iosDeviceService: iosDeviceService,
+        hdcService: hdcService,
         isSubWindow: isSub,
         isDeviceListVisible: isDeviceListVisible,
       );
@@ -328,12 +351,123 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       // 保持 Provider 活跃，防止 tab 切换时销毁重建导致重新 loading
       ref.keepAlive();
 
+      final service = ref.watch(deviceInfoServiceProvider);
       final registeredDevices = ref.watch(deviceRegistryProvider);
       final matchedDevice = registeredDevices.firstWhere(
         (d) => d.id == deviceId,
         orElse: () =>
             RegisteredDevice(id: deviceId, status: 'offline', isOnline: false),
       );
+
+      if (matchedDevice.isHarmony) {
+        final cached = await service.loadFromCache(deviceId);
+        if (cached != null) {
+          yield cached;
+        }
+
+        final isOnline = ref.watch(deviceOnlineProvider(deviceId));
+        if (!isOnline) {
+          if (cached == null) {
+            yield DeviceOverview.fromJson({'serial': deviceId});
+          }
+          return;
+        }
+
+        final hdc = ref.read(hdcServiceProvider);
+        final paramRes = await hdc.shell(
+          deviceId,
+          'param get const.ohos.fullname ; param get const.ohos.apiversion ; param get const.product.brand ; param get const.product.model ; param get const.product.name ; param get const.product.software.version',
+        );
+
+        String name = matchedDevice.displayName;
+        String brand = 'HUAWEI';
+        String model = 'HarmonyOS Device';
+        String systemVersion = 'HarmonyOS NEXT';
+
+        if (paramRes.isSuccess && paramRes.stdout.isNotEmpty) {
+          final lines = const LineSplitter().convert(paramRes.stdout.trim());
+          if (lines.length >= 6) {
+            final fullname = lines[0].trim();
+            final apiVer = lines[1].trim();
+            final devBrand = lines[2].trim();
+            final devModel = lines[3].trim();
+            final devName = lines[4].trim();
+            final devSoft = lines[5].trim();
+
+            if (devName.isNotEmpty && !devName.contains('fail')) name = devName;
+            if (devBrand.isNotEmpty && !devBrand.contains('fail')) brand = devBrand;
+            if (devModel.isNotEmpty && !devModel.contains('fail')) model = devModel;
+
+            final verSuffix = (devSoft.isNotEmpty && !devSoft.contains('fail')) ? ' ($devSoft)' : '';
+            if (fullname.isNotEmpty && !fullname.contains('fail')) {
+              systemVersion = '$fullname (API $apiVer)$verSuffix';
+            } else {
+              systemVersion = 'HarmonyOS NEXT (API $apiVer)$verSuffix';
+            }
+          }
+        }
+
+        // Get screen resolution & refresh rate
+        final screenRes = await hdc.shell(deviceId, 'hidumper -s RenderService -a screen');
+        String physicalRes = '-';
+        String refreshRate = '-';
+        if (screenRes.isSuccess && screenRes.stdout.isNotEmpty) {
+          final out = screenRes.stdout;
+          final resMatch = RegExp(r'physical resolution=([0-9]+x[0-9]+)').firstMatch(out);
+          if (resMatch != null) {
+            physicalRes = resMatch.group(1) ?? '-';
+          }
+          final rateMatch = RegExp(r'activeMode: [0-9]+x[0-9]+, refreshRate=([0-9]+)').firstMatch(out);
+          if (rateMatch != null) {
+            refreshRate = '${rateMatch.group(1)} Hz';
+          }
+        }
+
+        final fresh = DeviceOverview(
+          name: name,
+          brand: brand,
+          model: model,
+          serial: deviceId,
+          androidId: '-',
+          androidVersion: systemVersion,
+          kernelVersion: 'OpenHarmony',
+          processor: '-',
+          storage: '-',
+          memory: '-',
+          physicalResolution: physicalRes,
+          resolution: physicalRes,
+          logicalDensity: '-',
+          refreshRate: refreshRate,
+          fontScale: '-',
+          wifi: '-',
+          wifiEnabled: false,
+          ipAddress: '-',
+          macAddress: '-',
+          airplaneModeEnabled: false,
+          mobileDataEnabled: false,
+          talkbackEnabled: false,
+          windowAnimationScale: '1.0',
+          transitionAnimationScale: '1.0',
+          animatorDurationScale: '1.0',
+          rawResolution: physicalRes,
+          hwuiProfile: 'false',
+          layoutBoundsEnabled: false,
+          showTouchesEnabled: false,
+          pointerLocationEnabled: false,
+          demoModeEnabled: false,
+        );
+
+        // Update system version in device list registry so it registers immediately
+        Future.microtask(() {
+          if (ref.mounted) {
+            ref.read(deviceRegistryProvider.notifier).updateDeviceAndroidVersion(deviceId, systemVersion);
+          }
+        });
+
+        await service.saveToCache(deviceId, fresh);
+        yield fresh;
+        return;
+      }
 
       if (matchedDevice.isIos) {
         yield DeviceOverview(
@@ -376,8 +510,6 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         );
         return;
       }
-
-      final service = ref.watch(deviceInfoServiceProvider);
 
       final registryAndroidVersion = ref.watch(
         deviceAndroidVersionProvider(deviceId),
@@ -829,6 +961,7 @@ class RegisteredDevice {
     this.androidVersion,
     this.sdkVersion,
     this.isIos = false,
+    this.isHarmony = false,
   });
 
   final String id;
@@ -845,6 +978,7 @@ class RegisteredDevice {
   final String? androidVersion;
   final int? sdkVersion;
   final bool isIos;
+  final bool isHarmony;
 
   bool get isNetwork =>
       id.contains(':') || id.contains('.') || id == '127.0.0.1';
@@ -889,6 +1023,7 @@ class RegisteredDevice {
     product: product,
     transportId: transportId,
     isIos: isIos,
+    isHarmony: isHarmony,
   );
 
   RegisteredDevice copyWith({
@@ -906,6 +1041,7 @@ class RegisteredDevice {
     String? androidVersion,
     int? sdkVersion,
     bool? isIos,
+    bool? isHarmony,
   }) {
     return RegisteredDevice(
       id: id ?? this.id,
@@ -922,6 +1058,7 @@ class RegisteredDevice {
       androidVersion: androidVersion ?? this.androidVersion,
       sdkVersion: sdkVersion ?? this.sdkVersion,
       isIos: isIos ?? this.isIos,
+      isHarmony: isHarmony ?? this.isHarmony,
     );
   }
 }
@@ -1152,6 +1289,13 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
   void _fetchAndCacheSerial(String id) {
     Future.microtask(() async {
+      final activeDevs = ref.read(devicesProvider).value ?? _lastActiveDevices;
+      final dev = activeDevs.firstWhere((d) => d.id == id, orElse: () => AdbDevice(id: id, status: 'offline', model: '', product: ''));
+      if (dev.isHarmony) {
+        _fetchAndCacheHarmony(id);
+        return;
+      }
+
       try {
         final adb = ref.read(adbServiceProvider);
         final androidVersion = await _fetchAndroidVersion(id);
@@ -1311,6 +1455,83 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         }
       }
     });
+  }
+
+  void _fetchAndCacheHarmony(String id) {
+    Future.microtask(() async {
+      try {
+        final hdc = ref.read(hdcServiceProvider);
+        final paramRes = await hdc.shell(
+          id,
+          'param get const.ohos.fullname ; param get const.ohos.apiversion ; param get const.product.brand ; param get const.product.model ; param get const.product.name ; param get const.product.software.version',
+        );
+        if (_isDisposed) return;
+
+        String systemVersion = 'HarmonyOS NEXT';
+        int sdkVersion = 23; // 默认 API 23
+
+        if (paramRes.isSuccess && paramRes.stdout.isNotEmpty) {
+          final lines = const LineSplitter().convert(paramRes.stdout.trim());
+          if (lines.length >= 2) {
+            final fullname = lines[0].trim();
+            final apiVerStr = lines[1].trim();
+            final parsedApi = int.tryParse(apiVerStr) ?? 0;
+            if (parsedApi > 0) {
+              sdkVersion = parsedApi;
+            }
+            if (fullname.isNotEmpty && !fullname.contains('fail')) {
+              systemVersion = '$fullname (API $sdkVersion)';
+            } else {
+              systemVersion = 'HarmonyOS NEXT (API $sdkVersion)';
+            }
+          }
+        }
+
+        _serialMap[id] = id;
+        _androidVersions[id] = systemVersion;
+        _sdkVersions[id] = sdkVersion;
+        await _saveAndroidVersions();
+
+        // 尝试获取 IP 地址
+        final ifconfigRes = await hdc.shell(id, 'ifconfig');
+        if (_isDisposed) return;
+        if (ifconfigRes.isSuccess && ifconfigRes.stdout.isNotEmpty) {
+          final ip = _parseIpFromIfconfig(ifconfigRes.stdout);
+          if (ip != null && ip.isNotEmpty) {
+            _ipAddresses[id] = ip;
+            await _saveIps();
+          }
+        }
+
+        if (!_isDisposed) {
+          final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+          state = _mergeDevices(activeDevices);
+        }
+      } catch (_) {
+        _serialMap[id] = id;
+      } finally {
+        _pendingFetchIds.remove(id);
+        _attemptedFetchIds.add(id);
+        if (!_isDisposed) {
+          final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+          state = _mergeDevices(activeDevices);
+        }
+      }
+    });
+  }
+
+  String? _parseIpFromIfconfig(String output) {
+    final regExp = RegExp(r'inet addr:(\d+\.\d+\.\d+\.\d+)');
+    for (final line in output.split('\n')) {
+      final match = regExp.firstMatch(line);
+      if (match != null) {
+        final ip = match.group(1);
+        if (ip != null && ip != '127.0.0.1') {
+          return ip;
+        }
+      }
+    }
+    return null;
   }
 
   Future<({String label, int sdk})?> _fetchAndroidVersion(String id) async {
@@ -1561,6 +1782,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             androidVersion: androidVersion,
             sdkVersion: sdkVersion,
             isIos: active.isIos,
+            isHarmony: active.isHarmony,
           ),
         );
       } else {
@@ -1586,6 +1808,11 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
                     cachedModel.contains('iOS') ||
                     id.length == 40 ||
                     (id.length == 25 && id.indexOf('-') == 8)),
+            isHarmony:
+                cachedProduct == 'HarmonyOS NEXT' ||
+                (cachedModel != null &&
+                    (cachedModel.contains('HarmonyOS') ||
+                        cachedModel.contains('HOS'))),
           ),
         );
       }

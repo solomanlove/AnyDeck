@@ -38,6 +38,17 @@ String resolveToolPath(String toolName) {
       '/opt/homebrew/bin/go-ios',
       '/usr/local/bin/go-ios',
     ],
+    if (toolName == 'hdc') ...[
+      if (Platform.environment['HUAWEI_SDK_HOME'] != null)
+        '${Platform.environment['HUAWEI_SDK_HOME']}/openharmony/toolchains/hdc',
+      if (Platform.environment['OHOS_SDK_HOME'] != null)
+        '${Platform.environment['OHOS_SDK_HOME']}/openharmony/toolchains/hdc',
+      if (home != null) ...[
+        '$home/Library/Huawei/Sdk/openharmony/toolchains/hdc',
+        '$home/AppData/Local/Huawei/Sdk/openharmony/toolchains/hdc',
+        '$home/AppData/Local/Huawei/Sdk/openharmony/toolchains/hdc.exe',
+      ]
+    ],
     '/opt/homebrew/bin/$toolName',
     '/usr/local/bin/$toolName',
     '/usr/bin/$toolName',

@@ -587,6 +587,11 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                                 _resolveMirrorInitialWindowSize(
                                                                   vdResolution,
                                                                 );
+                                                            final devReg = ref.read(deviceRegistryProvider);
+                                                            final matchingDev = devReg.firstWhere(
+                                                              (d) => d.id == deviceId,
+                                                              orElse: () => RegisteredDevice(id: deviceId, status: 'unknown', isOnline: false),
+                                                            );
                                                             await createAdbManageWindow(
                                                               arguments: {
                                                                 'type':
@@ -600,6 +605,8 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                                     vdResolution,
                                                                 'startApp':
                                                                     packageName,
+                                                                'isIos': matchingDev.isIos,
+                                                                'isHarmony': matchingDev.isHarmony,
                                                               },
                                                               frame:
                                                                   Offset.zero &

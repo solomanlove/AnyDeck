@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:window_manager/window_manager.dart';
 import '../ios/ios_device_service.dart';
+import '../harmony/hdc_service.dart';
 import 'adb_device.dart';
 import 'adb_service.dart';
 
@@ -28,6 +29,7 @@ enum HeartbeatPhase {
 class AdbHeartbeatController {
   final AdbService _adbService;
   final IosDeviceService? _iosDeviceService;
+  final HdcService? _hdcService;
   final bool isSubWindow;
   final bool isDeviceListVisible;
   
@@ -44,10 +46,12 @@ class AdbHeartbeatController {
   AdbHeartbeatController({
     required AdbService adbService,
     IosDeviceService? iosDeviceService,
+    HdcService? hdcService,
     this.isSubWindow = false,
     this.isDeviceListVisible = true,
   }) : _adbService = adbService,
-       _iosDeviceService = iosDeviceService {
+       _iosDeviceService = iosDeviceService,
+       _hdcService = hdcService {
     if (!isSubWindow && isDeviceListVisible) {
       // 启动时立即执行一次心跳，建立初始状态
       trigger();
@@ -102,7 +106,11 @@ class AdbHeartbeatController {
       if (_iosDeviceService != null) {
         iosDevices = await _iosDeviceService.listDevices();
       }
-      final devices = [...androidDevices, ...iosDevices];
+      List<AdbDevice> harmonyDevices = [];
+      if (_hdcService != null) {
+        harmonyDevices = await _hdcService.listDevices();
+      }
+      final devices = [...androidDevices, ...iosDevices, ...harmonyDevices];
       if (_isDisposed) return;
 
       // 比对最新的设备列表与上次列表是否有变化

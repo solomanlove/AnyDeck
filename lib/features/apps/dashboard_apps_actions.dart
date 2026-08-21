@@ -151,6 +151,12 @@ class _PackageActions extends ConsumerWidget {
 
                 final initialSize = _resolveMirrorInitialWindowSize(vdResolution);
 
+                final devReg = ref.read(deviceRegistryProvider);
+                final matchingDev = devReg.firstWhere(
+                  (d) => d.id == deviceId,
+                  orElse: () => RegisteredDevice(id: deviceId, status: 'unknown', isOnline: false),
+                );
+
                 await createAdbManageWindow(
                   arguments: {
                     'type': 'mirror',
@@ -158,6 +164,8 @@ class _PackageActions extends ConsumerWidget {
                     'deviceName': package.displayName, // 窗口标题显示应用名
                     'newDisplay': vdResolution,
                     'startApp': packageName,
+                    'isIos': matchingDev.isIos,
+                    'isHarmony': matchingDev.isHarmony,
                   },
                   frame: Offset.zero & initialSize,
                   title: windowTitle,
