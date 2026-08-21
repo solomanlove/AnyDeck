@@ -114,8 +114,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   /// 前台应用图标悬浮状态，用于悬浮动画与高亮样式
   bool _isIconHovered = false;
 
-  /// 投屏画面悬浮状态，仅在进入/离开画面时更新，避免鼠标移动触发高频 rebuild。
-  bool _isViewerHovered = false;
+  /// 设备标题悬浮状态，仅在进入/离开标题时更新，避免鼠标移动触发高频 rebuild。
+  bool _isTitleHovered = false;
 
   @override
   void initState() {
@@ -310,59 +310,55 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
             ),
           Expanded(
             child: ClipRRect(
-              child: MouseRegion(
-                onEnter: (_) => setState(() => _isViewerHovered = true),
-                onExit: (_) => setState(() => _isViewerHovered = false),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Listener(
-                      key: _viewerKey,
-                      behavior: HitTestBehavior.translucent,
-                      onPointerDown: (e) {
-                        final now = DateTime.now();
-                        // 判定双击
-                        if (_lastPointerDownTime != null &&
-                            now.difference(_lastPointerDownTime!) <
-                                const Duration(milliseconds: 300)) {
-                          _controller.handleDoubleTap(context, e);
-                        }
-                        _lastPointerDownTime = now;
-                        // 只有开启了自动识别设置，点击手机画面时才触发自动防抖识别
-                        if (settings.autoIdentifyForegroundApp) {
-                          _controller.triggerIdentifyForegroundApp();
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Listener(
+                    key: _viewerKey,
+                    behavior: HitTestBehavior.translucent,
+                    onPointerDown: (e) {
+                      final now = DateTime.now();
+                      // 判定双击
+                      if (_lastPointerDownTime != null &&
+                          now.difference(_lastPointerDownTime!) <
+                              const Duration(milliseconds: 300)) {
+                        _controller.handleDoubleTap(context, e);
+                      }
+                      _lastPointerDownTime = now;
+                      // 只有开启了自动识别设置，点击手机画面时才触发自动防抖识别
+                      if (settings.autoIdentifyForegroundApp) {
+                        _controller.triggerIdentifyForegroundApp();
+                      }
+                    },
+                    child: EmbeddedScrcpyViewer(
+                      deviceId: widget.deviceId,
+                      isFullScreen: _controller.isFullScreen,
+                      onEscapePressed: () {
+                        if (_controller.isFullScreen) {
+                          _controller.toggleFullScreen(context, false);
                         }
                       },
-                      child: EmbeddedScrcpyViewer(
-                        deviceId: widget.deviceId,
-                        isFullScreen: _controller.isFullScreen,
-                        onEscapePressed: () {
-                          if (_controller.isFullScreen) {
-                            _controller.toggleFullScreen(context, false);
-                          }
-                        },
+                    ),
+                  ),
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: IgnorePointer(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 160),
+                        child: _isTitleHovered && !_controller.isFullScreen
+                            ? MirrorDeviceInfoOverlay(
+                                key: const ValueKey('deviceInfo'),
+                                deviceId: widget.deviceId,
+                                deviceName: widget.deviceName,
+                              )
+                            : const SizedBox.shrink(
+                                key: ValueKey('deviceInfoHidden'),
+                              ),
                       ),
                     ),
-                    Positioned(
-                      top: 16,
-                      left: 16,
-                      child: IgnorePointer(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 160),
-                          child: _isViewerHovered
-                              ? MirrorDeviceInfoOverlay(
-                                  key: const ValueKey('deviceInfo'),
-                                  deviceId: widget.deviceId,
-                                  deviceName: widget.deviceName,
-                                )
-                              : const SizedBox.shrink(
-                                  key: ValueKey('deviceInfoHidden'),
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -428,38 +424,42 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                           child: Row(
                             children: [
                               Flexible(
-                                child: Text.rich(
-                                  TextSpan(
-                                    children: [
-                                      TextSpan(
-                                        text: widget.deviceName,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineSmall
-                                            ?.copyWith(fontSize: 16),
-                                      ),
-                                      if (isAudioForwarded)
-                                        WidgetSpan(
-                                          alignment: PlaceholderAlignment.top,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(left: 4),
-                                            child: Tooltip(
-                                              message: context.l10n.t('audioForwardingTooltip'),
-                                              child: Container(
-                                                width: 6,
-                                                height: 6,
-                                                decoration: const BoxDecoration(
-                                                  color: Colors.red,
-                                                  shape: BoxShape.circle,
+                                child: MouseRegion(
+                                  onEnter: (_) => setState(() => _isTitleHovered = true),
+                                  onExit: (_) => setState(() => _isTitleHovered = false),
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: widget.deviceName,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headlineSmall
+                                              ?.copyWith(fontSize: 16),
+                                        ),
+                                        if (isAudioForwarded)
+                                          WidgetSpan(
+                                            alignment: PlaceholderAlignment.top,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(left: 4),
+                                              child: Tooltip(
+                                                message: context.l10n.t('audioForwardingTooltip'),
+                                                child: Container(
+                                                  width: 6,
+                                                  height: 6,
+                                                  decoration: const BoxDecoration(
+                                                    color: Colors.red,
+                                                    shape: BoxShape.circle,
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                    ],
+                                      ],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               if (widget.startApp == null && _controller.currentForegroundPackage != null) ...[

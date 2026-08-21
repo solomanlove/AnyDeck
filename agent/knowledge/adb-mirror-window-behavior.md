@@ -29,11 +29,11 @@
 - `AppToast` 通过 `OverlayEntry` 渲染在当前窗口居中位置，不依赖 `ScaffoldMessenger`，适合投屏子窗口、设置弹窗返回后的提示、拖拽安装/上传结果、截图/录屏结果、剪贴板发送失败、返回键和音量键长按提示。
 - 新增投屏提示时优先按语义选择 `AppToastType.success`、`error`、`warning`、`info`，只有需要兼容旧调用时才使用 `isError` 参数。
 
-## 投屏画面设备信息悬浮层
+## 投屏标题设备信息悬浮层
 
-- 鼠标进入投屏画面时，左上角展示设备名称、brand/model、分辨率与刷新率、RAM、系统版本和 `/data` 已用/总存储；鼠标离开后隐藏。
+- 鼠标进入投屏标题栏中的设备名称时，画面左上角展示设备名称、brand/model、分辨率与刷新率、RAM、系统版本和 `/data` 已用/总存储；鼠标离开设备名称后隐藏，投屏画面本身不触发展示。
 - 数据统一读取 `deviceOverviewProvider(deviceId)`，优先显示 `SharedPreferences` 中的设备概览缓存，再异步刷新，禁止在 `onHover` 中重复执行 ADB command。
-- 悬浮层使用 `IgnorePointer`，不能拦截投屏画面的点击、拖拽、右键返回或中键 Home；hover 状态只在 `MouseRegion.onEnter/onExit` 更新，避免鼠标移动造成高频 rebuild。
+- 悬浮层使用 `IgnorePointer`，不能拦截投屏画面的点击、拖拽、右键返回或中键 Home；hover 状态只由设备名称的 `MouseRegion.onEnter/onExit` 更新，避免鼠标移动造成高频 rebuild。
 - 信息卡颜色取自 `ThemeData.colorScheme`，字段名复用 l10n 的 `memory`、`storage` 和 `reading`，保证子窗口的 Dark/Light Mode 与中英文切换一致。
 
 ## HarmonyOS 工具栏控制
