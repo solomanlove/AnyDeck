@@ -16,6 +16,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/apps/adb_package.dart';
 import '../../../features/widgets/drag_drop_target_overlay.dart';
 import 'mirror_floating_toolbar.dart';
+import 'mirror_device_info_overlay.dart';
 import 'mirror_settings_dialog.dart';
 import 'mirror_window_controller.dart';
 import '../../../core/ios/ios_mirror_service.dart';
@@ -112,6 +113,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
   /// 前台应用图标悬浮状态，用于悬浮动画与高亮样式
   bool _isIconHovered = false;
+
+  /// 投屏画面悬浮状态，仅在进入/离开画面时更新，避免鼠标移动触发高频 rebuild。
+  bool _isViewerHovered = false;
 
   @override
   void initState() {
@@ -306,31 +310,58 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
             ),
           Expanded(
             child: ClipRRect(
-              child: Listener(
-                key: _viewerKey,
-                behavior: HitTestBehavior.translucent,
-                onPointerDown: (e) {
-                  final now = DateTime.now();
-                  // 判定双击
-                  if (_lastPointerDownTime != null &&
-                      now.difference(_lastPointerDownTime!) <
-                          const Duration(milliseconds: 300)) {
-                    _controller.handleDoubleTap(context, e);
-                  }
-                  _lastPointerDownTime = now;
-                  // 只有开启了自动识别设置，点击手机画面时才触发自动防抖识别
-                  if (settings.autoIdentifyForegroundApp) {
-                    _controller.triggerIdentifyForegroundApp();
-                  }
-                },
-                child: EmbeddedScrcpyViewer(
-                  deviceId: widget.deviceId,
-                  isFullScreen: _controller.isFullScreen,
-                  onEscapePressed: () {
-                    if (_controller.isFullScreen) {
-                      _controller.toggleFullScreen(context, false);
-                    }
-                  },
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _isViewerHovered = true),
+                onExit: (_) => setState(() => _isViewerHovered = false),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Listener(
+                      key: _viewerKey,
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: (e) {
+                        final now = DateTime.now();
+                        // 判定双击
+                        if (_lastPointerDownTime != null &&
+                            now.difference(_lastPointerDownTime!) <
+                                const Duration(milliseconds: 300)) {
+                          _controller.handleDoubleTap(context, e);
+                        }
+                        _lastPointerDownTime = now;
+                        // 只有开启了自动识别设置，点击手机画面时才触发自动防抖识别
+                        if (settings.autoIdentifyForegroundApp) {
+                          _controller.triggerIdentifyForegroundApp();
+                        }
+                      },
+                      child: EmbeddedScrcpyViewer(
+                        deviceId: widget.deviceId,
+                        isFullScreen: _controller.isFullScreen,
+                        onEscapePressed: () {
+                          if (_controller.isFullScreen) {
+                            _controller.toggleFullScreen(context, false);
+                          }
+                        },
+                      ),
+                    ),
+                    Positioned(
+                      top: 16,
+                      left: 16,
+                      child: IgnorePointer(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 160),
+                          child: _isViewerHovered
+                              ? MirrorDeviceInfoOverlay(
+                                  key: const ValueKey('deviceInfo'),
+                                  deviceId: widget.deviceId,
+                                  deviceName: widget.deviceName,
+                                )
+                              : const SizedBox.shrink(
+                                  key: ValueKey('deviceInfoHidden'),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
