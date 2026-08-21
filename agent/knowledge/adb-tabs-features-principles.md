@@ -312,6 +312,7 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
    - 在多窗口或子进程场景中，使用 `WindowMethodChannel` 跨引擎通知广播机制（如 `update_language`、`update_save_path`）实现全窗口的全局状态乐观更新。
 2. **应用临时缓存清理机制**：
    - 临时图标缓存及预览文件通过 `CacheCleanupService` 进行深度清理。
+   - 设置页“打开缓存”与“清空缓存”共用 `CacheCleanupService.cacheFolders()` 作为路径 source-of-truth；只存在一个目录时直接调用 `HostPlatformService.openDirectory()`，存在多个目录时按缓存用途与完整路径弹窗选择，不存在目录时仅提示且不创建空目录。
    - 统计缓存大小与文件数量，并通过 `replaceAll` 动态刷新 localized 文案提示清理成果。
 3. **版本信息与交互式更新机制 (Update Dialog)**：
    - **当前版本渲染**：在界面“关于与支持”卡片下方追加版本 Tile 呈现静态常量版本（当前为 `v1.0.0`）。
