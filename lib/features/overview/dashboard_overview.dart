@@ -199,13 +199,19 @@ class _DeviceOverviewPanel extends ConsumerWidget {
     return [
       _OverviewItemData(
         icon: CupertinoIcons.device_phone_portrait,
-        label: overview.brand == 'Apple' ? 'iOS 版本' : context.l10n.t('androidVersion'),
+        label: device.isHarmony
+            ? context.l10n.t('harmonyOsVersion')
+            : overview.brand == 'Apple'
+            ? 'iOS 版本'
+            : context.l10n.t('androidVersion'),
         value: overview.androidVersion,
-        tooltip: overview.brand == 'Apple' ? null : AndroidVersionHelper.getApiMappingTooltip(
-          context.l10n.t('androidApiMapping'),
-        ),
+        tooltip: device.isHarmony || overview.brand == 'Apple'
+            ? null
+            : AndroidVersionHelper.getApiMappingTooltip(
+                context.l10n.t('androidApiMapping'),
+              ),
       ),
-      if (overview.brand != 'Apple')
+      if (!device.isHarmony && overview.brand != 'Apple')
         _OverviewItemData(
           icon: CupertinoIcons.device_phone_portrait,
           label: context.l10n.t('customOs'),

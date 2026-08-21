@@ -8,7 +8,7 @@
 ## 1. 概览 (Overview Tab)
 
 ### 功能说明
-展示当前选中 Android 设备的系统基础信息与硬件配置，包含设备名称、品牌、型号、序列号、Android ID、Android 版本与 API 级别、内核版本、处理器芯片、内存/存储容量、屏幕物理与逻辑分辨率、刷新率、字体缩放、网络 Wi-Fi SSID 以及 IP 和 MAC 地址。支持点击卡片内的任意属性值，一键复制到剪贴板。
+展示当前选中设备的系统基础信息与硬件配置；Android、iOS 与纯血 HarmonyOS NEXT 按各自平台能力展示对应字段。支持点击卡片内的任意属性值，一键复制到剪贴板。
 
 ### 底层原理与命令
 1. **秒开设计（本地缓存）**：
@@ -18,6 +18,7 @@
    - 概览页的 Android 版本展示优先复用 `deviceRegistryProvider` 的全局版本值，不再依赖概览页首次查询版本；其他业务逻辑应通过 `deviceAndroidVersionProvider(deviceId)` 或 `deviceSdkVersionProvider(deviceId)` 读取版本，避免重复执行版本查询命令。
    - 概览页“厂商系统”由 `DeviceInfoService` 已执行的整包 `getprop` 结果解析，不新增 ADB 子进程。`AndroidVersionHelper.getCustomOsVersion` 统一识别 HarmonyOS、MagicOS、EMUI、HyperOS、MIUI、ColorOS、OxygenOS、realme UI、OriginOS/Funtouch OS 和 Flyme；识别结果通过 `DeviceOverview.customOs` 缓存并展示，未命中时由 l10n 显示原生 Android/未检测到的兜底说明。
    - `androidVersion` 仅保留 Android release 与 API Level，厂商系统独立展示，避免同一信息在两个概览卡片重复出现。旧版 Overview 缓存没有 `customOs` 时按 `-` 兼容读取，设备在线刷新后自动补齐。
+   - Overview UI 以 `AdbDevice.isHarmony` 为纯血鸿蒙设备的 source-of-truth。HarmonyOS NEXT 将 HDC 已写入 `DeviceOverview.androidVersion` 的系统版本显示为“鸿蒙系统版本”，不展示 Android API mapping tooltip；同时不构建“厂商系统”字段，避免出现“原生 Android（或未检测到）”误导提示。Android 与 iOS 的现有版本展示不受影响。
 2. **核心属性查询命令**：
    - **系统属性**：利用 `adb shell getprop <key>` 读取。
      - 品牌：`ro.product.brand`
