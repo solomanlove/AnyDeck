@@ -132,8 +132,13 @@
    - 先按 `RemoteFileType` 区分目录和链接，普通文件再按小写扩展名映射图片、视频、音频、PDF、Office 文档、压缩包、APK/AAB 与源码等类别，未知扩展名回退为通用文件 icon。
    - icon 颜色优先使用 Flutter `ColorScheme` 语义色，兼容 Light/Dark mode；类型识别只参与 UI 展示，不改变文件操作和 ADB 命令。
 6. **Desktop 选择与打开交互**：
-   - 表格和网格视图都遵循“单击选择、双击打开”：单击只写入 `fileSelectionProvider` 并显示选中高亮，不触发 ADB 请求；双击目录才调用 `fileNavigationProvider.navigateTo()` 进入子目录，双击可预览文本文件时沿用原预览链路。
+   - 表格和网格视图都遵循“单击选择、双击打开”：单击只写入 `fileSelectionProvider` 并显示选中高亮，不触发 ADB 请求；双击目录才调用 `fileNavigationProvider.navigateTo()` 进入子目录，双击可预览文件时进入通用预览链路。
    - 选中记录同时包含 `deviceId` 和完整远程路径，避免不同设备或同名目录之间错误复用高亮状态。
+7. **通用文件预览**：
+   - 双击或选中文件后按 Space 时，`FilePreviewController` 使用参数数组启动 `adb -s <deviceId> pull <remotePath> <tempPath>`，拉取完成后通过 `HostPlatformService.openFile()` 交给 macOS、Windows 或 Linux 的系统默认应用打开；不使用 MTP，也不在 Flutter 内存中加载大文件内容。
+   - Loading 遮罩支持按钮或 Esc 取消，取消时直接终止当前 ADB 子进程并删除残缺文件；单次拉取最多等待 5 分钟，Provider 销毁时也会回收进程。
+   - 预览缓存位于 `${Directory.systemTemp}/AnyDeck/previews`，缓存键组合 `deviceId + remotePath + size + modifiedDate`，本地文件名附带散列前缀，避免跨设备、同名路径和远端文件更新后的错误复用；内存 LRU 最多保留 20 个文件，设置页现有缓存清理会覆盖该目录。
+   - 本地缓存文件名会替换 Windows/macOS 不兼容字符；Windows 打开文件直接向 `explorer` 传递参数，不经过 `cmd /c`，避免远程文件名中的 shell 字符被解释执行。
 
 ---
 

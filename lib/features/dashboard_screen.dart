@@ -62,6 +62,7 @@ import 'widgets/dashboard_table_header.dart';
 import 'widgets/device_power_actions.dart';
 import 'apps/controller/apps_search_history_controller.dart';
 import 'files/controller/file_favorite_folders_controller.dart';
+import 'files/controller/file_preview_controller.dart';
 import 'files/controller/file_selection_controller.dart';
 
 part 'overview/dashboard_shell.dart';
@@ -93,6 +94,7 @@ part 'files/dashboard_files_tab.dart';
 part 'files/dashboard_file_quick_access.dart';
 part 'files/dashboard_file_type_icon.dart';
 part 'files/dashboard_file_interactions.dart';
+part 'files/dashboard_file_breadcrumbs.dart';
 part 'files/dashboard_file_preview.dart';
 part 'files/dashboard_file_path_field.dart';
 part 'files/dashboard_files_table_header.dart';

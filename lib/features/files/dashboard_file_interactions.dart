@@ -5,7 +5,7 @@ void _selectRemoteFile(WidgetRef ref, String deviceId, String remotePath) {
   ref.read(fileSelectionProvider.notifier).select(deviceId, remotePath);
 }
 
-/// 双击文件条目时执行原有打开行为：目录进入下级，文本文件打开预览。
+/// 双击文件条目时执行打开行为：目录进入下级，可预览文件交给系统默认应用。
 void _openRemoteFile(
   BuildContext context,
   WidgetRef ref,
@@ -17,7 +17,7 @@ void _openRemoteFile(
   _selectRemoteFile(ref, deviceId, remotePath);
   if (file.isFolder) {
     ref.read(fileNavigationProvider.notifier).navigateTo(remotePath);
-  } else if (_isPreviewableTextFile(file.name)) {
-    _previewTextFile(context, ref, deviceId, currentPath, file);
+  } else if (FilePreviewController.isPreviewable(file)) {
+    unawaited(_previewRemoteFile(context, ref, deviceId, currentPath, file));
   }
 }

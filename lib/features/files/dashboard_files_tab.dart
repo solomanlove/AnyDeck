@@ -90,7 +90,7 @@ class _FilesTab extends ConsumerWidget {
                                   child: SingleChildScrollView(
                                     scrollDirection: Axis.horizontal,
                                     child: Row(
-                                      children: _buildBreadcrumbs(
+                                      children: _buildFileBreadcrumbs(
                                         context,
                                         ref,
                                         path,
@@ -264,19 +264,62 @@ class _FilesTab extends ConsumerWidget {
                   }
 
                   if (navState.isGridView) {
-                    return GridView.builder(
-                      padding: const EdgeInsets.only(top: 8),
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 110,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.8,
-                          ),
+                    return _FilePreviewShortcut(
+                      files: filtered,
+                      selectedFile: selectedFile,
+                      deviceId: device.id,
+                      currentPath: path,
+                      child: GridView.builder(
+                        padding: const EdgeInsets.only(top: 8),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 110,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.8,
+                            ),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final file = filtered[index];
+                          return _FileGridItem(
+                            file: file,
+                            deviceId: device.id,
+                            currentPath: path,
+                            selected:
+                                selectedFile?.matches(
+                                  device.id,
+                                  _joinRemotePath(path, file.name),
+                                ) ??
+                                false,
+                            onSelected: () => _selectRemoteFile(
+                              ref,
+                              device.id,
+                              _joinRemotePath(path, file.name),
+                            ),
+                            onOpened: () => _openRemoteFile(
+                              context,
+                              ref,
+                              device.id,
+                              path,
+                              file,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }
+
+                  return _FilePreviewShortcut(
+                    files: filtered,
+                    selectedFile: selectedFile,
+                    deviceId: device.id,
+                    currentPath: path,
+                    child: ListView.builder(
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final file = filtered[index];
-                        return _FileGridItem(
+                        return _FileRow(
+                          index: index,
                           file: file,
                           deviceId: device.id,
                           currentPath: path,
@@ -300,38 +343,7 @@ class _FilesTab extends ConsumerWidget {
                           ),
                         );
                       },
-                    );
-                  }
-
-                  return ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final file = filtered[index];
-                      return _FileRow(
-                        index: index,
-                        file: file,
-                        deviceId: device.id,
-                        currentPath: path,
-                        selected:
-                            selectedFile?.matches(
-                              device.id,
-                              _joinRemotePath(path, file.name),
-                            ) ??
-                            false,
-                        onSelected: () => _selectRemoteFile(
-                          ref,
-                          device.id,
-                          _joinRemotePath(path, file.name),
-                        ),
-                        onOpened: () => _openRemoteFile(
-                          context,
-                          ref,
-                          device.id,
-                          path,
-                          file,
-                        ),
-                      );
-                    },
+                    ),
                   );
                 },
               ),
@@ -347,73 +359,8 @@ class _FilesTab extends ConsumerWidget {
       onSelected: (shortcutPath) => ref
           .read(fileNavigationProvider.notifier)
           .navigateTo(shortcutPath),
-      child: content,
+      child: Stack(children: [content, const _FilePreviewLoadingOverlay()]),
     );
-  }
-
-  List<Widget> _buildBreadcrumbs(
-    BuildContext context,
-    WidgetRef ref,
-    String path,
-  ) {
-    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
-    final list = <Widget>[];
-
-    // Root segment
-    list.add(
-      TextButton(
-        onPressed: () {
-          ref.read(fileNavigationProvider.notifier).navigateTo('/');
-        },
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Text(
-          context.l10n.t('storage'),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-      ),
-    );
-
-    var currentAccPath = '/';
-    for (final segment in segments) {
-      list.add(
-        Text(
-          ' > ',
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            fontSize: 12,
-          ),
-        ),
-      );
-      currentAccPath += '$segment/';
-      final segmentPath = currentAccPath;
-      list.add(
-        TextButton(
-          onPressed: () {
-            ref.read(fileNavigationProvider.notifier).navigateTo(segmentPath);
-          },
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: Text(
-            segment,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      );
-    }
-
-    return list;
   }
 
   /// 上传拖入或选中的文件；APK 会执行安装而不是复制。

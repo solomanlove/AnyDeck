@@ -71,16 +71,18 @@ class HostPlatformService {
       return false;
     }
     try {
+      ProcessResult result;
       if (Platform.isMacOS) {
-        await Process.run('open', [file.path]);
+        result = await Process.run('open', [file.path]);
       } else if (Platform.isWindows) {
-        await Process.run('cmd', ['/c', 'start', '', file.path]);
+        // 避免通过 cmd /c 解释 Android 文件名中的 &, | 等 shell 字符。
+        result = await Process.run('explorer', [file.path]);
       } else if (Platform.isLinux) {
-        await Process.run('xdg-open', [file.path]);
+        result = await Process.run('xdg-open', [file.path]);
       } else {
         return false;
       }
-      return true;
+      return result.exitCode == 0;
     } catch (e) {
       debugPrint('Failed to open file $filePath: $e');
       return false;

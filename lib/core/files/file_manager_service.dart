@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import 'remote_file.dart';
@@ -94,6 +96,15 @@ class FileManagerService {
       remotePath,
       localPath,
     ], timeout: _fileTransferTimeout);
+  }
+
+  /// 启动由上层管理生命周期的下载进程，用于支持预览取消。
+  Future<Process> startPull(
+    String deviceId,
+    String remotePath,
+    String localPath,
+  ) {
+    return _adb.start(['-s', deviceId, 'pull', remotePath, localPath]);
   }
 
   /// 递归删除远程文件路径。

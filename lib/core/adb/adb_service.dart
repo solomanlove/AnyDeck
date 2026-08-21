@@ -22,6 +22,12 @@ class AdbService {
   final String executable;
   final void Function(String message, {String tag, String level})? _onLog;
 
+  /// 启动需要由上层持有并主动取消的 adb 进程。
+  Future<Process> start(List<String> args) {
+    _onLog?.call('adb ${args.join(' ')}', tag: 'adb', level: 'I');
+    return Process.start(executable, args);
+  }
+
   /// 获取已连接设备列表；adb 不可用时抛出异常。
   Future<List<AdbDevice>> listDevices() async {
     final result = await run(['devices', '-l']);
