@@ -57,6 +57,14 @@ class _PrimaryRail extends ConsumerWidget {
       if (selectedDevice!.isIos) {
         return tabIndex == 0;
       }
+      // 鸿蒙 NEXT（纯血鸿蒙）不支持 ADB 协议，仅开放：
+      // 主页(0)、控制(1)、截图(9)
+      if (selectedDevice!.isHarmony) {
+        if (!selectedDevice!.isOnline) {
+          return tabIndex == 0;
+        }
+        return tabIndex == 0 || tabIndex == 1 || tabIndex == 9;
+      }
       if (selectedDevice!.isOnline) {
         return true;
       }

@@ -130,6 +130,9 @@ class _DeviceOverviewPanel extends ConsumerWidget {
     BuildContext context,
     DeviceOverview overview,
   ) {
+    // 构建 ID 行：鸿蒙优先显示 HarmonyOS UDID；iOS 显示 UDID；Android 显示 Android ID
+    final idItem = _buildIdItem(context, overview);
+
     return [
       _OverviewItemData(
         icon: CupertinoIcons.device_phone_portrait,
@@ -151,12 +154,41 @@ class _DeviceOverviewPanel extends ConsumerWidget {
         label: context.l10n.t('serial'),
         value: overview.serial,
       ),
-      _OverviewItemData(
-        icon: CupertinoIcons.person_crop_square,
-        label: overview.brand == 'Apple' ? 'iOS UDID' : context.l10n.t('androidId'),
-        value: overview.brand == 'Apple' ? overview.serial : overview.androidId,
-      ),
+      ?idItem,
     ];
+  }
+
+  /// 根据设备类型构建 ID 行：
+  /// - 鸿蒙：显示 HarmonyOS UDID（serial），若为空则隐藏
+  /// - iOS：显示 iOS UDID
+  /// - Android：显示 Android ID
+  _OverviewItemData? _buildIdItem(BuildContext context, DeviceOverview overview) {
+    if (device.isHarmony) {
+      // 鸿蒙设备优先展示 UDID（即 HDC 设备 ID / serial）
+      final udid = overview.serial;
+      if (udid.isEmpty || udid == '-') {
+        // 无 HarmonyOS UDID，隐藏该行
+        return null;
+      }
+      return _OverviewItemData(
+        icon: CupertinoIcons.person_crop_square,
+        label: 'HarmonyOS UDID',
+        value: udid,
+      );
+    }
+    if (overview.brand == 'Apple') {
+      return _OverviewItemData(
+        icon: CupertinoIcons.person_crop_square,
+        label: 'iOS UDID',
+        value: overview.serial,
+      );
+    }
+    // Android ID
+    return _OverviewItemData(
+      icon: CupertinoIcons.person_crop_square,
+      label: context.l10n.t('androidId'),
+      value: overview.androidId,
+    );
   }
 
   /// 获取系统与硬件概览列表。
