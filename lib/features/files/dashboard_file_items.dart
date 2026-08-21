@@ -55,11 +55,7 @@ class _FileGridItemState extends State<_FileGridItem> {
                     Icon(
                       _fileIcon(file),
                       size: 40,
-                      color: file.isFolder
-                          ? Colors.amber
-                          : file.isLink
-                          ? Colors.teal
-                          : theme.colorScheme.onSurfaceVariant,
+                      color: _fileIconColor(context, file),
                     ),
                     const SizedBox(height: 8),
                     Tooltip(
@@ -183,11 +179,7 @@ class _FileRowState extends State<_FileRow> {
                     Icon(
                       _fileIcon(file),
                       size: 20,
-                      color: file.isFolder
-                          ? Colors.amber
-                          : file.isLink
-                          ? Colors.teal
-                          : theme.colorScheme.onSurfaceVariant,
+                      color: _fileIconColor(context, file),
                     ),
                     const SizedBox(width: 10),
                     Expanded(

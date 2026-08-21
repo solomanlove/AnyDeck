@@ -244,16 +244,6 @@ String _joinRemotePath(String base, String name) {
   return '$normalized$name';
 }
 
-/// 根据解析出的远程文件类型选择图标。
-IconData _fileIcon(RemoteFile file) {
-  return switch (file.type) {
-    RemoteFileType.folder => CupertinoIcons.folder,
-    RemoteFileType.link => CupertinoIcons.link,
-    RemoteFileType.file => CupertinoIcons.doc,
-  };
-}
-
-
 Future<void> _openLocalTerminal(BuildContext context, WidgetRef ref) async {
   try {
     final adbPath = ref.read(adbServiceProvider).executable;

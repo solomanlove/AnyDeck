@@ -109,7 +109,7 @@
 ## 4. 文件 (Files Tab)
 
 ### 功能说明
-设备沙盒与外部存储的文件浏览器，支持以表格和网格视图呈现。提供基础的目录跳转历史记录（前进、后退、返回上级目录、手动编辑绝对路径）、显示隐藏文件开关、目录与文件的增删查改。支持设备间的双向文件传输：提供下载（Pull）到本地、上传（Push）到设备；并深度集成桌面拖拽功能（Drag & Drop）。
+设备沙盒与外部存储的文件浏览器，支持以表格和网格视图呈现，并按目录、链接、图片、视频、音频、文档、压缩包、Android 安装包、源码等类型显示差异化 icon。提供基础的目录跳转历史记录（前进、后退、返回上级目录、手动编辑绝对路径）、显示隐藏文件开关、目录与文件的增删查改。左侧快捷栏可直接访问 Internal Storage、DCIM、Download、Pictures、Music、Movies、Documents 等 Android 公共目录，也支持把当前目录保存为设备级常用文件夹；窄窗口会自动收缩为图标模式。支持设备间的双向文件传输：提供下载（Pull）到本地、上传（Push）到设备；并深度集成桌面拖拽功能（Drag & Drop）。
 
 ### 底层原理与命令
 1. **文件目录列表解析**：
@@ -124,6 +124,13 @@
    - **APK 软件安装**：当拖入的文件以后缀 `.apk` 结尾时，系统判定为应用安装行为，后台异步执行 `adb install -r <apkPath>`。
    - **常规文件推送**：对于其他格式文件，判定为推送文件行为，执行 `adb push <filePath> <currentRemoteDirectory>`。
    - **状态反馈**：通过 `transferListProvider` 记录文件传输状态，提供全局浮动 loading 和 localized 成功/失败通知。
+4. **公共目录快捷入口**：
+   - Internal Storage 使用 `/storage/emulated/0`，其他入口分别映射到其下的 `DCIM`、`Download`、`Pictures`、`Music`、`Movies`、`Documents` 标准目录。
+   - 点击快捷入口统一调用 `fileNavigationProvider.navigateTo()`，因此会复用现有前进、后退、面包屑和目录缓存链路，不创建额外 ADB 命令入口。
+   - 自定义常用文件夹按当前 `deviceId` 保存到 SharedPreferences 的 `files.favoriteFolders.v1`，每台设备最多 20 个；添加、删除只维护本地快捷入口，不改动 Android 设备目录。
+5. **文件类型 icon**：
+   - 先按 `RemoteFileType` 区分目录和链接，普通文件再按小写扩展名映射图片、视频、音频、PDF、Office 文档、压缩包、APK/AAB 与源码等类别，未知扩展名回退为通用文件 icon。
+   - icon 颜色优先使用 Flutter `ColorScheme` 语义色，兼容 Light/Dark mode；类型识别只参与 UI 展示，不改变文件操作和 ADB 命令。
 
 ---
 

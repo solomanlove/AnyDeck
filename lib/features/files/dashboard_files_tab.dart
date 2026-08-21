@@ -13,7 +13,7 @@ class _FilesTab extends ConsumerWidget {
     final filesAsync = ref.watch(remoteFilesProvider(request));
     final filterQuery = ref.watch(fileFilterQueryProvider);
 
-    return DropTarget(
+    final content = DropTarget(
       onDragDone: (details) => _pushFiles(context, ref, details.files, path),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -332,6 +332,15 @@ class _FilesTab extends ConsumerWidget {
           ],
         ),
       ),
+    );
+
+    return _FileQuickAccessLayout(
+      deviceId: device.id,
+      currentPath: path,
+      onSelected: (shortcutPath) => ref
+          .read(fileNavigationProvider.notifier)
+          .navigateTo(shortcutPath),
+      child: content,
     );
   }
 
