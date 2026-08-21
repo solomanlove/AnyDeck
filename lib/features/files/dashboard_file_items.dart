@@ -174,7 +174,6 @@ class _FileRowState extends State<_FileRow> {
         onTap: widget.onSelected,
         onDoubleTap: widget.onOpened,
         child: Container(
-          height: 56,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: rowColor,
