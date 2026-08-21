@@ -6,6 +6,7 @@ class _PackageGrid extends ConsumerWidget {
     required this.packages,
     required this.selectedPackage,
     required this.onSelected,
+    required this.onOpened,
     required this.gridItemSize,
   });
 
@@ -13,6 +14,7 @@ class _PackageGrid extends ConsumerWidget {
   final List<AdbPackage> packages;
   final String? selectedPackage;
   final ValueChanged<String> onSelected;
+  final ValueChanged<String> onOpened;
   final double gridItemSize;
 
   @override
@@ -33,6 +35,7 @@ class _PackageGrid extends ConsumerWidget {
           package: package,
           selected: package.name == selectedPackage,
           onSelected: () => onSelected(package.name),
+          onOpened: () => onOpened(package.name),
           size: gridItemSize,
         );
       },
@@ -46,6 +49,7 @@ class _PackageGridItem extends ConsumerStatefulWidget {
     required this.package,
     required this.selected,
     required this.onSelected,
+    required this.onOpened,
     required this.size,
   });
 
@@ -53,6 +57,7 @@ class _PackageGridItem extends ConsumerStatefulWidget {
   final AdbPackage package;
   final bool selected;
   final VoidCallback onSelected;
+  final VoidCallback onOpened;
   final double size;
 
   @override
@@ -85,7 +90,7 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onSelected,
-        onDoubleTap: widget.onSelected,
+        onDoubleTap: widget.onOpened,
         child: AnimatedScale(
           scale: _isHovered ? 1.04 : 1.0,
           duration: const Duration(milliseconds: 150),

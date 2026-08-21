@@ -516,6 +516,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                               packages: filtered,
                               selectedPackage: _selectedPackage,
                               onSelected: _selectPackage,
+                              onOpened: _openPackage,
                               gridItemSize: _gridItemSize,
                             )
                           : _PackageTable(
@@ -523,6 +524,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                               packages: filtered,
                               selectedPackage: _selectedPackage,
                               onSelected: _selectPackage,
+                              onOpened: _openPackage,
                             ),
                     ),
                   ],
@@ -593,10 +595,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     return null;
   }
 
-  /// 选中应用时按需刷新该应用详情和图标，避免进入 Apps Tab 后批量拉取图标。
+  /// 单击选中应用时按需刷新详情和图标，但不进入应用详情页。
   Future<void> _selectPackage(String packageName) async {
     setState(() => _selectedPackage = packageName);
-    ref.read(selectedAppPackageProvider.notifier).state = packageName;
     if (!ref.read(deviceOnlineProvider(widget.device.id))) {
       return;
     }
@@ -614,6 +615,12 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     } finally {
       _refreshingPackageDetails.remove(packageName);
     }
+  }
+
+  /// 双击应用时复用现有详情页入口，并保留当前列表选中态。
+  void _openPackage(String packageName) {
+    unawaited(_selectPackage(packageName));
+    ref.read(selectedAppPackageProvider.notifier).state = packageName;
   }
 
   /// 打开宿主机文件选择器并安装选中的 APK。

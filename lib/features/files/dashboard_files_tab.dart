@@ -12,6 +12,7 @@ class _FilesTab extends ConsumerWidget {
     final request = RemoteDirectoryRequest(deviceId: device.id, path: path);
     final filesAsync = ref.watch(remoteFilesProvider(request));
     final filterQuery = ref.watch(fileFilterQueryProvider);
+    final selectedFile = ref.watch(fileSelectionProvider);
 
     final content = DropTarget(
       onDragDone: (details) => _pushFiles(context, ref, details.files, path),
@@ -279,21 +280,24 @@ class _FilesTab extends ConsumerWidget {
                           file: file,
                           deviceId: device.id,
                           currentPath: path,
-                          onTap: () {
-                            if (file.isFolder) {
-                              ref
-                                  .read(fileNavigationProvider.notifier)
-                                  .navigateTo(_joinRemotePath(path, file.name));
-                            } else if (_isPreviewableTextFile(file.name)) {
-                              _previewTextFile(
-                                context,
-                                ref,
+                          selected:
+                              selectedFile?.matches(
                                 device.id,
-                                path,
-                                file,
-                              );
-                            }
-                          },
+                                _joinRemotePath(path, file.name),
+                              ) ??
+                              false,
+                          onSelected: () => _selectRemoteFile(
+                            ref,
+                            device.id,
+                            _joinRemotePath(path, file.name),
+                          ),
+                          onOpened: () => _openRemoteFile(
+                            context,
+                            ref,
+                            device.id,
+                            path,
+                            file,
+                          ),
                         );
                       },
                     );
@@ -308,21 +312,24 @@ class _FilesTab extends ConsumerWidget {
                         file: file,
                         deviceId: device.id,
                         currentPath: path,
-                        onTap: () {
-                          if (file.isFolder) {
-                            ref
-                                .read(fileNavigationProvider.notifier)
-                                .navigateTo(_joinRemotePath(path, file.name));
-                          } else if (_isPreviewableTextFile(file.name)) {
-                            _previewTextFile(
-                              context,
-                              ref,
+                        selected:
+                            selectedFile?.matches(
                               device.id,
-                              path,
-                              file,
-                            );
-                          }
-                        },
+                              _joinRemotePath(path, file.name),
+                            ) ??
+                            false,
+                        onSelected: () => _selectRemoteFile(
+                          ref,
+                          device.id,
+                          _joinRemotePath(path, file.name),
+                        ),
+                        onOpened: () => _openRemoteFile(
+                          context,
+                          ref,
+                          device.id,
+                          path,
+                          file,
+                        ),
                       );
                     },
                   );

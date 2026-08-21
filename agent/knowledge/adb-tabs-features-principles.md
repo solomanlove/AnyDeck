@@ -85,7 +85,7 @@
    - **首屏秒开**：通过 `listPackages` 优先加载基础包名列表。
    - **默认不批量刷新图标**：切换到 Apps Tab 时只展示缓存或基础列表，避免进入页面就触发全设备 APK 图标提取。
    - **手动全量刷新**：点击“刷新全部应用图标”后，后台建立独立流任务 `enrichPackagesWithIconsProgressive`，通过 `pm path <package>` 定位 APK，并利用 Host 端工具读取 APK 的 Manifest 资源文件，提取图标字节流，分批 yield 刷新 UI。
-   - **单应用详情刷新**：点击某个应用时只调用 `getSinglePackageInfo` 刷新该包的详情、图标、签名与安装时间，并回写当前列表缓存。
+   - **单应用详情刷新**：单击某个应用时只更新选中态，并调用 `getSinglePackageInfo` 刷新该包的详情、图标、签名与安装时间后回写列表缓存；双击才通过 `selectedAppPackageProvider` 进入应用详情页。
 3. **生命周期与数据管理**：
    - **启动**：调用 `adb shell monkey -p <package> 1`（利用 monkey 启动默认 Activity）或 `am start -n <package>/<activity>`。
    - **停止**：`adb shell am force-stop <package>` 结束进程。
@@ -131,6 +131,9 @@
 5. **文件类型 icon**：
    - 先按 `RemoteFileType` 区分目录和链接，普通文件再按小写扩展名映射图片、视频、音频、PDF、Office 文档、压缩包、APK/AAB 与源码等类别，未知扩展名回退为通用文件 icon。
    - icon 颜色优先使用 Flutter `ColorScheme` 语义色，兼容 Light/Dark mode；类型识别只参与 UI 展示，不改变文件操作和 ADB 命令。
+6. **Desktop 选择与打开交互**：
+   - 表格和网格视图都遵循“单击选择、双击打开”：单击只写入 `fileSelectionProvider` 并显示选中高亮，不触发 ADB 请求；双击目录才调用 `fileNavigationProvider.navigateTo()` 进入子目录，双击可预览文本文件时沿用原预览链路。
+   - 选中记录同时包含 `deviceId` 和完整远程路径，避免不同设备或同名目录之间错误复用高亮状态。
 
 ---
 

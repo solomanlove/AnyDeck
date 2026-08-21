@@ -6,12 +6,14 @@ class _PackageTable extends StatefulWidget {
     required this.packages,
     required this.selectedPackage,
     required this.onSelected,
+    required this.onOpened,
   });
 
   final String deviceId;
   final List<AdbPackage> packages;
   final String? selectedPackage;
   final ValueChanged<String> onSelected;
+  final ValueChanged<String> onOpened;
 
   @override
   State<_PackageTable> createState() => _PackageTableState();
@@ -136,11 +138,11 @@ class _PackageTableState extends State<_PackageTable> {
                         itemBuilder: (context, index) {
                           final package = sorted[index];
                           return _PackageTableRow(
-                            deviceId: widget.deviceId,
                             package: package,
                             selected: package.name == widget.selectedPackage,
                             widths: widths,
                             onSelected: () => widget.onSelected(package.name),
+                            onOpened: () => widget.onOpened(package.name),
                             index: index,
                           );
                         },
@@ -230,86 +232,6 @@ class _PackageTableHeader extends StatelessWidget {
             onTap: () => onSort('storage'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// 单个应用数据行。
-class _PackageTableRow extends ConsumerWidget {
-  const _PackageTableRow({
-    required this.deviceId,
-    required this.package,
-    required this.selected,
-    required this.widths,
-    required this.onSelected,
-    required this.index,
-  });
-
-  final String deviceId;
-  final AdbPackage package;
-  final bool selected;
-  final _PackageTableWidths widths;
-  final VoidCallback onSelected;
-  final int index;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final Color? rowColor = selected
-        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
-        : index % 2 == 0
-        ? null
-        : Theme.of(
-            context,
-          ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.5);
-
-    return InkWell(
-      onTap: onSelected,
-      onDoubleTap: onSelected,
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          color: rowColor,
-          border: Border(
-            bottom: BorderSide(
-              color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
-              width: 0.5,
-            ),
-          ),
-        ),
-        child: Row(
-          children: [
-            _PackageCell(
-              width: widths.appName,
-              child: _AppNameCell(package: package),
-            ),
-            _PackageCell(
-              width: widths.version,
-              child: _TableText(package.versionLabel),
-            ),
-            _PackageCell(
-              width: widths.minSdk,
-              child: Text(
-                _sdkLabel(package.minSdk),
-                style: const TextStyle(fontSize: 13),
-              ),
-            ),
-            _PackageCell(
-              width: widths.targetSdk,
-              child: Text(
-                _targetMaxSdkLabel(package),
-                style: const TextStyle(fontSize: 13),
-              ),
-            ),
-            _PackageCell(
-              width: widths.storage,
-              child: Text(
-                package.storageLabel,
-                style: const TextStyle(fontSize: 13),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -5,13 +5,17 @@ class _FileGridItem extends StatefulWidget {
     required this.file,
     required this.deviceId,
     required this.currentPath,
-    required this.onTap,
+    required this.selected,
+    required this.onSelected,
+    required this.onOpened,
   });
 
   final RemoteFile file;
   final String deviceId;
   final String currentPath;
-  final VoidCallback onTap;
+  final bool selected;
+  final VoidCallback onSelected;
+  final VoidCallback onOpened;
 
   @override
   State<_FileGridItem> createState() => _FileGridItemState();
@@ -30,16 +34,21 @@ class _FileGridItemState extends State<_FileGridItem> {
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
       child: InkWell(
-        onTap: widget.onTap,
+        onTap: widget.onSelected,
+        onDoubleTap: widget.onOpened,
         borderRadius: BorderRadius.circular(8),
         child: Container(
           decoration: BoxDecoration(
-            color: _hovering
+            color: widget.selected
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.55)
+                : _hovering
                 ? theme.colorScheme.primaryContainer.withValues(alpha: 0.08)
                 : null,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: _hovering
+              color: widget.selected
+                  ? theme.colorScheme.primary
+                  : _hovering
                   ? theme.colorScheme.primary.withValues(alpha: 0.15)
                   : Colors.transparent,
             ),
@@ -114,14 +123,18 @@ class _FileRow extends StatefulWidget {
     required this.file,
     required this.deviceId,
     required this.currentPath,
-    required this.onTap,
+    required this.selected,
+    required this.onSelected,
+    required this.onOpened,
   });
 
   final int index;
   final RemoteFile file;
   final String deviceId;
   final String currentPath;
-  final VoidCallback onTap;
+  final bool selected;
+  final VoidCallback onSelected;
+  final VoidCallback onOpened;
 
   @override
   State<_FileRow> createState() => _FileRowState();
@@ -146,7 +159,9 @@ class _FileRowState extends State<_FileRow> {
 
     final remoteFilePath = _joinRemotePath(widget.currentPath, file.name);
 
-    final Color? rowColor = widget.index % 2 == 0
+    final Color? rowColor = widget.selected
+        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
+        : widget.index % 2 == 0
         ? null
         : Theme.of(
             context,
@@ -156,7 +171,8 @@ class _FileRowState extends State<_FileRow> {
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
       child: InkWell(
-        onTap: widget.onTap,
+        onTap: widget.onSelected,
+        onDoubleTap: widget.onOpened,
         child: Container(
           height: 56,
           padding: const EdgeInsets.symmetric(horizontal: 16),
