@@ -36,13 +36,17 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
   Timer? _timer;
   Process? _process;
   bool _isHostRecording = false;
+  bool _isHarmonyRecording = false;
   String? _localRecordPath;
+  String? _harmonyRecordFileName;
 
   @override
   ScreenRecordState build() {
     ref.onDispose(() {
       _timer?.cancel();
-      if (_process != null) {
+      if (_isHarmonyRecording) {
+        unawaited(ref.read(hdcServiceProvider).stopScreenRecord(deviceId));
+      } else if (_process != null) {
         if (!_isHostRecording) {
           ref.read(adbServiceProvider).stopScreenRecord(deviceId);
         }
@@ -58,13 +62,34 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
     try {
       final settings = ref.read(appSettingsProvider);
       // 0. Check if device supports screenrecord
-      final isSupported = await ref
-          .read(adbServiceProvider)
-          .isScreenRecordSupported(deviceId);
-      
-      _isHostRecording = settings.forceHostRecording || !isSupported;
+      final isHarmony = ref
+          .read(deviceRegistryProvider)
+          .any((device) => device.id == deviceId && device.isHarmony);
+      if (isHarmony) {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        _harmonyRecordFileName = 'anydeck_record_$timestamp.mp4';
+        final hostPlatform = ref.read(hostPlatformServiceProvider);
+        _localRecordPath = hostPlatform.generateRecordPath(
+          settings.screenshotSavePath,
+          deviceId,
+        );
+        await File(_localRecordPath!).parent.create(recursive: true);
+        final result = await ref
+            .read(hdcServiceProvider)
+            .startScreenRecord(deviceId, _harmonyRecordFileName!);
+        if (!result.isSuccess) {
+          throw Exception(result.message);
+        }
+        _isHarmonyRecording = true;
+        _isHostRecording = false;
+      } else {
+        final isSupported = await ref
+            .read(adbServiceProvider)
+            .isScreenRecordSupported(deviceId);
+        _isHostRecording = settings.forceHostRecording || !isSupported;
+      }
 
-      if (_isHostRecording) {
+      if (!isHarmony && _isHostRecording) {
         final hostPlatform = ref.read(hostPlatformServiceProvider);
         _localRecordPath = hostPlatform.generateRecordPath(
           settings.screenshotSavePath,
@@ -77,7 +102,7 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
           deviceId: deviceId,
           localSavePath: _localRecordPath!,
         );
-      } else {
+      } else if (!isHarmony) {
         // 1. Delete old recording file on device if it exists
         try {
           await ref
@@ -91,35 +116,36 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
             .startScreenRecord(deviceId, '/sdcard/adb_screenrecord_temp.mp4');
       }
 
-      final errorBuffer = StringBuffer();
-      _process!.stderr.transform(utf8.decoder).listen((data) {
-        errorBuffer.write(data);
-      });
+      if (_process != null) {
+        final errorBuffer = StringBuffer();
+        _process!.stderr.transform(utf8.decoder).listen((data) {
+          errorBuffer.write(data);
+        });
 
-      bool exitedEarly = false;
-      int? exitCode;
+        bool exitedEarly = false;
+        int? exitCode;
+        _process!.exitCode.then((code) {
+          exitedEarly = true;
+          exitCode = code;
+          if (state.isRecording && !state.isStopping) {
+            _timer?.cancel();
+            _process = null;
+            state = const ScreenRecordState(
+              isRecording: false,
+              durationSeconds: 0,
+            );
+          }
+        });
 
-      _process!.exitCode.then((code) {
-        exitedEarly = true;
-        exitCode = code;
-        if (state.isRecording && !state.isStopping) {
-          _timer?.cancel();
+        // Wait a short time to verify it didn't crash immediately
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (exitedEarly) {
           _process = null;
-          state = const ScreenRecordState(
-            isRecording: false,
-            durationSeconds: 0,
+          final err = errorBuffer.toString().trim();
+          throw Exception(
+            err.isNotEmpty ? err : 'Process exited with code $exitCode',
           );
         }
-      });
-
-      // Wait a short time to verify it didn't crash immediately
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (exitedEarly) {
-        _process = null;
-        final err = errorBuffer.toString().trim();
-        throw Exception(
-          err.isNotEmpty ? err : 'Process exited with code $exitCode',
-        );
       }
 
       state = const ScreenRecordState(isRecording: true, durationSeconds: 0);
@@ -135,6 +161,7 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
     } catch (e) {
       _process?.kill();
       _process = null;
+      _isHarmonyRecording = false;
       state = const ScreenRecordState(isRecording: false, durationSeconds: 0);
       rethrow;
     }
@@ -148,7 +175,20 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
     _timer = null;
 
     try {
-      if (_isHostRecording) {
+      if (_isHarmonyRecording) {
+        final hdc = ref.read(hdcServiceProvider);
+        final stopResult = await hdc.stopScreenRecord(deviceId);
+        if (!stopResult.isSuccess) {
+          throw Exception(stopResult.message);
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        await hdc.receiveScreenRecord(
+          deviceId,
+          _harmonyRecordFileName!,
+          _localRecordPath!,
+        );
+        return 'local:$_localRecordPath';
+      } else if (_isHostRecording) {
         if (_process != null) {
           _process?.kill();
           await _process!.exitCode;
@@ -177,6 +217,7 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
       _process = null;
       rethrow;
     } finally {
+      _isHarmonyRecording = false;
       state = const ScreenRecordState(
         isRecording: false,
         durationSeconds: 0,

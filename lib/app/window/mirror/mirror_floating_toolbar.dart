@@ -69,9 +69,9 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
 
   Future<void> _takeScreenshot(BuildContext context, String deviceId, {required bool saveToFile}) async {
     try {
-      final bytes = await ref
-          .read(adbServiceProvider)
-          .captureScreenshot(deviceId);
+      final bytes = widget.controller.isHarmony
+          ? await ref.read(hdcServiceProvider).captureScreenshot(deviceId)
+          : await ref.read(adbServiceProvider).captureScreenshot(deviceId);
 
       final hostPlatform = ref.read(hostPlatformServiceProvider);
 
@@ -368,11 +368,16 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                     clipboardData.text != null &&
                     clipboardData.text!.isNotEmpty) {
                   final text = clipboardData.text!;
-                  final message = ScrcpyKeycodeHelper.serializeTextEvent(text);
-                  final success = await ScrcpyFlutter.sendControl(
-                    deviceId: widget.deviceId,
-                    controlMessage: message,
-                  );
+                  final success = widget.controller.isHarmony
+                      ? (await ref
+                                .read(hdcServiceProvider)
+                                .inputText(widget.deviceId, text))
+                            .isSuccess
+                      : await ScrcpyFlutter.sendControl(
+                          deviceId: widget.deviceId,
+                          controlMessage:
+                              ScrcpyKeycodeHelper.serializeTextEvent(text),
+                        );
                   if (!success && context.mounted) {
                     AppToast.show(
                       context,
@@ -401,10 +406,16 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               ),
               tooltip: context.l10n.t('focus'),
               onPressed: () async {
-                // 手动点击前台窗口图标触发识别前台应用
-                widget.controller.identifyForegroundApp();
+                if (!widget.controller.isHarmony) {
+                  // Android 设备同步刷新标题栏的前台应用 icon。
+                  widget.controller.identifyForegroundApp();
+                }
 
-                final res = await actions.currentFocus(widget.deviceId);
+                final res = widget.controller.isHarmony
+                    ? await ref
+                          .read(hdcServiceProvider)
+                          .currentFocus(widget.deviceId)
+                    : await actions.currentFocus(widget.deviceId);
                 if (context.mounted) {
                   showDialog<void>(
                     context: context,

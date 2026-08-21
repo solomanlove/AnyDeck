@@ -1,14 +1,20 @@
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
+import '../harmony/hdc_service.dart';
 
 typedef DeviceSdkVersionResolver = int? Function(String deviceId);
+typedef DeviceHarmonyResolver = bool Function(String deviceId);
 
 /// 设备控制命令集合，将 UI 操作映射到 adb shell 调用。
 class DeviceActionService {
   DeviceActionService(
     this._adb, {
+    HdcService? hdc,
     DeviceSdkVersionResolver? sdkVersionResolver,
-  }) : _sdkVersionResolver = sdkVersionResolver;
+    DeviceHarmonyResolver? isHarmonyResolver,
+  }) : _hdc = hdc,
+       _sdkVersionResolver = sdkVersionResolver,
+       _isHarmonyResolver = isHarmonyResolver;
 
   static const int _streamMusic = 3;
   static const int _fallbackMaxMediaVolume = 15;
@@ -23,7 +29,9 @@ class DeviceActionService {
   ];
 
   final AdbService _adb;
+  final HdcService? _hdc;
   final DeviceSdkVersionResolver? _sdkVersionResolver;
+  final DeviceHarmonyResolver? _isHarmonyResolver;
 
   /// 连接 adb TCP/IP 地址，例如 `192.168.1.10:5555`。
   Future<AdbResult> connect(String address) => _adb.run(['connect', address]);
@@ -112,8 +120,12 @@ class DeviceActionService {
   }
 
   /// 模拟电源键，用于亮屏或熄屏。
-  Future<AdbResult> standby(String deviceId) =>
-      _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_POWER']);
+  Future<AdbResult> standby(String deviceId) {
+    if ((_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null) {
+      return _hdc.injectKey(deviceId, 18);
+    }
+    return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_POWER']);
+  }
 
   /// 通过 cmd uimode 切换系统夜间模式。
   Future<AdbResult> setDarkMode(String deviceId, bool enabled) => _adb
@@ -214,19 +226,58 @@ class DeviceActionService {
   }
 
   /// 向选中设备发送 Android key code。
-  Future<AdbResult> keyEvent(String deviceId, int keyCode) =>
-      _adb.shellArgs(deviceId, ['input', 'keyevent', keyCode.toString()]);
+  Future<AdbResult> keyEvent(String deviceId, int keyCode) async {
+    final isHarmony = _isHarmonyResolver?.call(deviceId) ?? false;
+    if (isHarmony && _hdc != null) {
+      final harmonyKeyCode = _harmonyKeyCodes[keyCode];
+      if (harmonyKeyCode == null) {
+        return AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: 'HarmonyOS 暂不支持 Android key code $keyCode',
+        );
+      }
+      return _hdc.injectKey(deviceId, harmonyKeyCode);
+    }
+    return _adb.shellArgs(deviceId, ['input', 'keyevent', keyCode.toString()]);
+  }
+
+  static const Map<int, int> _harmonyKeyCodes = {
+    3: 1, // Android HOME -> HarmonyOS HOME
+    4: 2, // Android BACK -> HarmonyOS BACK
+    19: 2012, // DPAD_UP
+    20: 2013, // DPAD_DOWN
+    21: 2014, // DPAD_LEFT
+    22: 2015, // DPAD_RIGHT
+    23: 2016, // DPAD_CENTER
+    24: 16, // VOLUME_UP
+    25: 17, // VOLUME_DOWN
+    26: 18, // POWER
+    82: 2067, // MENU
+    187: 10011, // APP_SWITCH -> RECENT
+  };
 
   /// 通过 Android 具名 key code 调高当前音频流音量。
-  Future<AdbResult> volumeUp(String deviceId) =>
-      _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_VOLUME_UP']);
+  Future<AdbResult> volumeUp(String deviceId) {
+    if ((_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null) {
+      return _hdc.injectKey(deviceId, 16);
+    }
+    return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_VOLUME_UP']);
+  }
 
   /// 通过 Android 具名 key code 调低当前音频流音量。
-  Future<AdbResult> volumeDown(String deviceId) =>
-      _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_VOLUME_DOWN']);
+  Future<AdbResult> volumeDown(String deviceId) {
+    if ((_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null) {
+      return _hdc.injectKey(deviceId, 17);
+    }
+    return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_VOLUME_DOWN']);
+  }
 
   /// 将手机主要音频流设为最大，并退出静音模式。
   Future<AdbResult> volumeMax(String deviceId) async {
+    if ((_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null) {
+      return _hdc.injectKey(deviceId, 16, repeat: 30);
+    }
     final ringerResult = await _adb.shellArgs(deviceId, [
       'cmd',
       'audio',
@@ -248,6 +299,9 @@ class DeviceActionService {
 
   /// 将手机主要音频流设为静音，并进入系统静音模式。
   Future<AdbResult> volumeMute(String deviceId) async {
+    if ((_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null) {
+      return _hdc.injectKey(deviceId, 17, repeat: 30);
+    }
     final volumeResult = await _setMediaVolumeToBoundary(
       deviceId,
       useMax: false,

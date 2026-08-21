@@ -78,8 +78,13 @@ final harmonyMirrorServiceProvider = Provider<HarmonyMirrorService>((ref) {
 final deviceActionServiceProvider = Provider<DeviceActionService>((ref) {
   return DeviceActionService(
     ref.watch(adbServiceProvider),
+    hdc: ref.watch(hdcServiceProvider),
     sdkVersionResolver: (deviceId) =>
         ref.read(deviceSdkVersionProvider(deviceId)),
+    isHarmonyResolver: (deviceId) {
+      final registered = ref.read(deviceRegistryProvider);
+      return registered.any((d) => d.id == deviceId && d.isHarmony);
+    },
   );
 });
 
@@ -376,7 +381,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         final hdc = ref.read(hdcServiceProvider);
         final paramRes = await hdc.shell(
           deviceId,
-          'param get const.ohos.fullname ; param get const.ohos.apiversion ; param get const.product.brand ; param get const.product.model ; param get const.product.name ; param get const.product.software.version',
+          'param get const.ohos.fullname ; param get const.ohos.apiversion ; param get const.product.brand ; param get const.product.model ; param get const.product.name ; param get const.product.software.version ; param get const.product.marketing_name',
         );
 
         String name = matchedDevice.displayName;
@@ -393,8 +398,13 @@ final deviceOverviewProvider = StreamProvider.autoDispose
             final devModel = lines[3].trim();
             final devName = lines[4].trim();
             final devSoft = lines[5].trim();
+            final marketingName = lines.length >= 7 ? lines[6].trim() : '';
 
-            if (devName.isNotEmpty && !devName.contains('fail')) name = devName;
+            if (marketingName.isNotEmpty && !marketingName.contains('fail')) {
+              name = marketingName;
+            } else if (devName.isNotEmpty && !devName.contains('fail')) {
+              name = devName;
+            }
             if (devBrand.isNotEmpty && !devBrand.contains('fail')) brand = devBrand;
             if (devModel.isNotEmpty && !devModel.contains('fail')) model = devModel;
 
@@ -461,6 +471,8 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         Future.microtask(() {
           if (ref.mounted) {
             ref.read(deviceRegistryProvider.notifier).updateDeviceAndroidVersion(deviceId, systemVersion);
+            // 将真实设备名（marketing_name）同步回写到注册表，使列表和标题栏显示正确名称
+            ref.read(deviceRegistryProvider.notifier).updateDeviceModel(deviceId, name);
           }
         });
 
@@ -1010,7 +1022,8 @@ class RegisteredDevice {
     final name = (model != null && model!.isNotEmpty)
         ? model!.replaceAll('_', ' ')
         : id;
-    if (serial != null && serial!.isNotEmpty) {
+    // 鸿蒙设备 serial 与 id 相同（HDC Device ID），不重复追加
+    if (serial != null && serial!.isNotEmpty && serial != id) {
       return '$name($serial)';
     }
     return name;
@@ -1766,12 +1779,20 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       final sdkVersion = _sdkVersions[serial] ?? _sdkVersions[id];
 
       if (active != null) {
+        // 对鸿蒙设备，若 _models 缓存中已有真实设备名（非通用占位符），优先使用
+        final effectiveModel =
+            (active.isHarmony &&
+                cachedModel != null &&
+                cachedModel.isNotEmpty &&
+                !cachedModel.startsWith('HarmonyOS NEXT Device'))
+            ? cachedModel
+            : (active.model ?? cachedModel);
         allCandidates.add(
           RegisteredDevice(
             id: id,
             customName: customName,
             status: active.status,
-            model: active.model ?? cachedModel,
+            model: effectiveModel,
             product: active.product ?? cachedProduct,
             transportId: active.transportId,
             isOnline: active.isOnline,
@@ -1957,6 +1978,27 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     }
 
     _saveAndroidVersions();
+
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    state = _mergeDevices(activeDevices);
+  }
+
+  /// 概览信息加载成功后触发同步更新设备注册表中的设备型号名称（供鸿蒙真实 marketing_name 回写）。
+  void updateDeviceModel(String id, String modelName) {
+    if (modelName.isEmpty || modelName == '-') return;
+    // 通用占位名不回写，避免覆盖已有真实名称
+    if (modelName.startsWith('HarmonyOS NEXT Device')) return;
+
+    final current = _models[id];
+    if (current == modelName) return;
+
+    _models[id] = modelName;
+    final serial = _serialMap[id] ?? id;
+    if (serial != id) {
+      _models[serial] = modelName;
+    }
+
+    _saveModelsAndProducts();
 
     final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
@@ -2468,6 +2510,19 @@ class ScreenPowerOffNotifier extends Notifier<bool> {
   Future<void> toggleScreenPower(bool off) async {
     if (state == off) return;
     
+    final isHarmony = ref
+        .read(deviceRegistryProvider)
+        .any((device) => device.id == deviceId && device.isHarmony);
+    if (isHarmony) {
+      final result = await ref
+          .read(hdcServiceProvider)
+          .setScreenPower(deviceId, powerOn: !off);
+      if (result.isSuccess) {
+        state = off;
+      }
+      return;
+    }
+
     final adb = ref.read(adbServiceProvider);
 
     if (off) {

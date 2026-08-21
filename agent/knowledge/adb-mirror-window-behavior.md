@@ -28,3 +28,12 @@
 - 投屏独立窗口内的轻提示统一使用 `lib/app/widget/app_toast.dart` 中的 `AppToast.show(...)`。
 - `AppToast` 通过 `OverlayEntry` 渲染在当前窗口居中位置，不依赖 `ScaffoldMessenger`，适合投屏子窗口、设置弹窗返回后的提示、拖拽安装/上传结果、截图/录屏结果、剪贴板发送失败、返回键和音量键长按提示。
 - 新增投屏提示时优先按语义选择 `AppToastType.success`、`error`、`warning`、`info`，只有需要兼容旧调用时才使用 `isError` 参数。
+
+## HarmonyOS 工具栏控制
+
+- HarmonyOS NEXT 投屏只复用 scrcpy 的视频渲染协议，系统控制必须走 `HdcService`，不能把 Android ADB command 或 scrcpy control message 直接发给鸿蒙设备。
+- Android key code 到 OpenHarmony key code 的核心映射为：`HOME 3 -> 1`、`BACK 4 -> 2`、`VOLUME_UP 24 -> 16`、`VOLUME_DOWN 25 -> 17`、`POWER 26 -> 18`、`APP_SWITCH 187 -> RECENT 10011`。
+- 剪贴板文本输入优先使用 API 18+ 的 `uitest uiInput text`，可覆盖当前焦点输入框和 Unicode 文本；旧系统命令失败时，仅对 ASCII 文本回退到 `uinput -K -t`。
+- 物理屏幕亮灭分别使用 `power-shell wakeup` 与 `power-shell suspend`；截图优先使用 `uitest screenCap`，失败时回退 `snapshot_display`。
+- 录屏通过系统 `com.huawei.hmos.screenrecorder.ServiceExtAbility` 启停，停止后使用 `mediatool query` 定位媒体文件；返回 `file://` URI 时先用 `mediatool recv` 导出到 `/data/local/tmp`，再通过 `hdc file recv` 下载到电脑。
+- 前台窗口详情使用 `hidumper -s WindowManagerService -a '-a'`，Android 的 `dumpsys window` 只保留给 ADB 设备。
