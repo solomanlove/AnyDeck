@@ -81,9 +81,13 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
     });
 
     try {
-      final bytes = await ref
-          .read(adbServiceProvider)
-          .captureScreenshot(widget.device.id);
+      final bytes = widget.device.isHarmony
+          ? await ref
+                .read(hdcServiceProvider)
+                .captureScreenshot(widget.device.id)
+          : await ref
+                .read(adbServiceProvider)
+                .captureScreenshot(widget.device.id);
       if (mounted) {
         setState(() {
           _screenshotBytes = bytes;
