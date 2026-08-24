@@ -7,7 +7,12 @@
 ## 比例适配
 
 - 启动投屏后，控制器会等待 scrcpy video size 可用，再调用 `MirrorWindowFrameAdapter.fitWindowToAspectRatio()` 修正外层窗口尺寸。
-- 启动或横竖屏变化后，控制器会先解除 `windowManager.setAspectRatio(0)`，再做一次窗口贴合，最后用 `windowWidth / (windowWidth / contentAspect + mirrorWindowTopChromeHeight)` 调用 `windowManager.setAspectRatio(...)` 锁定后续拖拽缩放；`mirrorWindowTopChromeHeight` 是自定义标题栏和顶部工具栏的固定高度，不能从当前 `windowHeight - viewerHeight` 动态反推，否则会被已有黑边和原生 frame/content 差异污染。
+- Android 主屏横竖屏切换必须复用现有 socket、decoder 和 Flutter Texture，禁止因 `dumpsys display` 与视频帧方向短暂不一致而重启 scrcpy session；Viewer 以 `getVideoSize()` 返回的最新解码帧尺寸更新画面比例与触控坐标。
+- macOS native decoder 必须使用每个 `AVFrame.width/height` 做 `sws_getCachedContext()` 转换；尺寸变化时仅由 `ScrcpyTexture` 原地重建 `CVPixelBuffer`。scrcpy 启动 metadata 中的宽高只是初始值，不能用于整个会话，否则旋转后的帧会按旧尺寸转换并迫使上层重连。
+- scrcpy 4.0 在旋转后会在原 video socket 写入 12-byte session metadata：首个 `u32` 最高位为 session flag，随后是新 `width` 和 `height`。Rust client 必须先识别该 header 并跳过 payload 读取；如果按普通的 `PTS + packet size` 解析，会把新高度误认为 packet size、读乱字节边界并以超大 frame 错误退出。
+- 独立窗口不再额外运行 250ms 方向检测与 `dumpsys display` 轮询；`EmbeddedScrcpyViewer` 每 100ms 读取一次 native Texture 尺寸以快速更新比例。只有首帧尚未到达时才每秒读取一次 `displayFrame` 作为占位比例，避免投屏期间持续执行 ADB command。
+- video size 变化时以 `textureId + width×height` 作为 `EmbeddedScrcpyTextureSurface` 的 Key，只重建 Flutter Texture widget/layer 以强制重新 layout；native `textureId`、decoder 和 socket 保持不变，避免 macOS external Texture 在第二次方向切换时沿用上一方向的布局缓存。
+- 启动、双击黑边或用户缩放收敛时，控制器会先解除 `windowManager.setAspectRatio(0)`，再做一次窗口贴合，最后用 `windowWidth / (windowWidth / contentAspect + mirrorWindowTopChromeHeight)` 调用 `windowManager.setAspectRatio(...)` 锁定后续拖拽缩放；`mirrorWindowTopChromeHeight` 是自定义标题栏和顶部工具栏的固定高度，不能从当前 `windowHeight - viewerHeight` 动态反推，否则会被已有黑边和原生 frame/content 差异污染。
 - 用户手动拖动缩放窗口时，由原生窗口管理器维护比例，不在 Dart 层高频调用 `setWindowFrame` / `setBounds`，避免持续刷 `Resize timed out`。
 - 用户拖动缩放结束后会延迟做一次收敛贴合，用于抵消标题栏和工具栏固定高度造成的极端尺寸黑边。
 - 投屏窗口设置最小窗口尺寸，避免缩得过小时标题栏右侧按钮和设备标题互相挤压。

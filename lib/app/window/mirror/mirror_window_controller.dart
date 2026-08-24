@@ -102,15 +102,9 @@ class MirrorWindowController extends ChangeNotifier {
   /// 用于 macOS 原生窗口通讯的 MethodChannel
   static const _windowChannel = MethodChannel('any_deck/window');
 
-  /// 自动缩放的周期定时器
-  Timer? _autoFitTimer;
   Timer? _resizeSettleTimer;
   final MirrorAspectResolver _aspectResolver = MirrorAspectResolver();
-  bool _isResolvingAspect = false;
   bool _isApplyingWindowAutoFit = false;
-  bool _isRestartingForRotation = false;
-  DateTime? _lastStreamRestartAt;
-  DateTime? _resumeAspectDetectionAt;
   // ==================== 初始化与销毁 (Init & Dispose) ====================
 
   /// 初始化控制器，绑定视图 Key 并启动投屏相关逻辑
@@ -145,7 +139,6 @@ class MirrorWindowController extends ChangeNotifier {
       _windowChannel.setMethodCallHandler(null);
     }
     _identifyTimer?.cancel();
-    _autoFitTimer?.cancel();
     _resizeSettleTimer?.cancel();
     unawaited(_setWindowAspectRatio(0));
     forceStopMirroring();
@@ -207,12 +200,6 @@ class MirrorWindowController extends ChangeNotifier {
       notifyListeners();
 
       if (!isIos && !isHarmony) {
-        // 只有普通主屏投屏需要监听手机横竖屏并重启 stream。
-        // 单 App 虚拟副屏(newDisplay)的方向由 scrcpy video size 决定，不能用主屏 displayFrame 判断。
-        if (newDisplay == null) {
-          _scheduleAutoFit();
-        }
-
         // 初始化识别前台应用
         identifyForegroundApp();
 
@@ -578,76 +565,6 @@ class MirrorWindowController extends ChangeNotifier {
       }
     }
     return 9 / 16;
-  }
-
-  /// 周期轮询横竖屏变化，仅重启视频流，不自动改变窗口外框尺寸。
-  void _scheduleAutoFit() {
-    if (newDisplay != null) return;
-    _autoFitTimer?.cancel();
-    _autoFitTimer = Timer.periodic(const Duration(milliseconds: 250), (
-      timer,
-    ) async {
-      final isOnline = ref.read(deviceOnlineProvider(deviceId));
-      if (!isOnline) {
-        _autoFitTimer?.cancel();
-        _autoFitTimer = null;
-        return;
-      }
-
-      if (_isResolvingAspect) return;
-      final resumeAt = _resumeAspectDetectionAt;
-      if (resumeAt != null && DateTime.now().isBefore(resumeAt)) return;
-      _isResolvingAspect = true;
-      try {
-        final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
-        final resolution = overviewAsync.maybeWhen(
-          data: (overview) => overview.physicalResolution,
-          orElse: () => null,
-        );
-        final aspectResult = await _aspectResolver.resolveForAutoFit(
-          ref: ref,
-          deviceId: deviceId,
-          resolution: resolution,
-          fallbackAspect: _getAspectRatio,
-        );
-        if (aspectResult.shouldRestartStream) {
-          unawaited(_restartForStreamMismatch());
-        }
-      } finally {
-        _isResolvingAspect = false;
-      }
-    });
-  }
-  Future<void> _restartForStreamMismatch() async {
-    if (_isRestartingForRotation) return;
-    final now = DateTime.now();
-    final lastRestartAt = _lastStreamRestartAt;
-    if (lastRestartAt != null &&
-        now.difference(lastRestartAt) < const Duration(milliseconds: 800)) {
-      return;
-    }
-    _isRestartingForRotation = true;
-    _lastStreamRestartAt = now;
-    try {
-      if (isHarmony) {
-        await ref
-            .read(activeHarmonyMirrorProvider(deviceId).notifier)
-            .restartMirroring();
-      } else {
-        await ref
-            .read(activeEmbeddedMirrorProvider(deviceId).notifier)
-            .restartMirroring(newDisplay: newDisplay, startApp: startApp);
-      }
-      _aspectResolver.resetAfterStreamRestart();
-      _resumeAspectDetectionAt = DateTime.now().add(
-        const Duration(milliseconds: 1200),
-      );
-      _autoFitWindowOnStart();
-    } catch (e) {
-      debugPrint('Failed to restart mirroring after rotation change: $e');
-    } finally {
-      _isRestartingForRotation = false;
-    }
   }
 
   /// 启动时自动适配窗口大小以消除黑边。

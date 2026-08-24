@@ -102,12 +102,10 @@
     [self dispose];
 }
 
-- (int)width {
-    return _width;
-}
-
-- (int)height {
-    return _height;
+- (CGSize)videoSize {
+    @synchronized(self) {
+        return CGSizeMake(_width, _height);
+    }
 }
 
 @end

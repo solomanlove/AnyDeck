@@ -206,6 +206,8 @@ void rust_helper_decode_video_packet(
 ) {
     rust_decoder_context* ctx = static_cast<rust_decoder_context*>(decoder_ptr);
     if (!ctx || !ctx->codec_ctx || !ctx->packet || !ctx->frame || !ctx->parser) return;
+    (void)stream_width;
+    (void)stream_height;
 
     const uint8_t* parse_in = data;
     int parse_in_len = size;
@@ -238,8 +240,11 @@ void rust_helper_decode_video_packet(
             if (send_res < 0) continue;
 
             while (avcodec_receive_frame(ctx->codec_ctx, ctx->frame) >= 0) {
-                int w = stream_width;
-                int h = stream_height;
+                // 旋转后 H.264 会在原连接中输出新的帧尺寸，必须以解码帧为准。
+                // sws_getCachedContext 和 ScrcpyTexture 会按尺寸变化原地重建缓冲区，
+                // 从而保留 socket、decoder 与 Flutter Texture，避免重启投屏流。
+                int w = ctx->frame->width;
+                int h = ctx->frame->height;
                 if (w <= 0 || h <= 0 || w > 4096 || h > 4096) continue;
 
                 size_t rgba_size = w * h * 4;
@@ -647,8 +652,9 @@ static void scrcpy_audio_callback(void* opaque, const uint8_t* pcmBuf, int len) 
             return;
         }
         
-        int width = [it->second.context->texture width];
-        int height = [it->second.context->texture height];
+        CGSize videoSize = [it->second.context->texture videoSize];
+        int width = static_cast<int>(videoSize.width);
+        int height = static_cast<int>(videoSize.height);
         result(@{@"width": @(width), @"height": @(height)});
         
     } else if ([@"sendControl" isEqualToString:call.method]) {

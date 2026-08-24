@@ -101,7 +101,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   void _startSizePolling() {
     _sizePollTimer?.cancel();
-    _sizePollTimer = Timer.periodic(const Duration(milliseconds: 250), (
+    _sizePollTimer = Timer.periodic(const Duration(milliseconds: 100), (
       timer,
     ) async {
       if (!mounted) {
@@ -120,21 +120,22 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       _isPollingSize = true;
       try {
         var changed = false;
-        var videoSizeChanged = false;
+        var hasVideoSize = false;
         final size = await ScrcpyFlutter.getVideoSize(
           deviceId: widget.deviceId,
         );
         if (size != null && size['width']! > 0 && size['height']! > 0) {
+          hasVideoSize = true;
           if (_videoWidth != size['width'] || _videoHeight != size['height']) {
             _videoWidth = size['width'];
             _videoHeight = size['height'];
             changed = true;
-            videoSizeChanged = true;
           }
         }
 
-        // 默认每 4 tick (即 1 秒) 轮询一次 displayFrame，但如果视频大小改变了则立即强制刷新
-        if (videoSizeChanged || _sizePollTick % 4 == 0) {
+        // 解码帧尺寸是渲染和触控的 source-of-truth；仅在首帧尚未到达时
+        // 每秒读取一次 displayFrame 作为占位比例，避免持续执行 dumpsys display。
+        if (!hasVideoSize && _sizePollTick % 10 == 0) {
           final displayFrame = await DeviceDisplayFrame.read(
             ref.read(adbServiceProvider),
             widget.deviceId,
@@ -596,6 +597,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
             ),
           ),
           EmbeddedScrcpyTextureSurface(
+            key: ValueKey('$textureId:${_videoWidth}x$_videoHeight'),
             textureKey: _textureKey,
             textureId: textureId,
             aspectRatio: aspectRatio,

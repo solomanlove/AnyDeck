@@ -286,9 +286,9 @@ unsafe fn run_decode_loop(
         .map_err(|e| format!("Failed to read metadata: {}", e))?;
 
     let codec_id = u32::from_be_bytes(meta[64..68].try_into().unwrap());
-    let _width = u32::from_be_bytes(meta[72..76].try_into().unwrap()) as i32;
-    let _height = u32::from_be_bytes(meta[76..80].try_into().unwrap()) as i32;
-    println!("[rust_scrcpy] Metadata: codec_id = {:#x}, width = {}, height = {}", codec_id, _width, _height);
+    let mut current_width = u32::from_be_bytes(meta[72..76].try_into().unwrap()) as i32;
+    let mut current_height = u32::from_be_bytes(meta[76..80].try_into().unwrap()) as i32;
+    println!("[rust_scrcpy] Metadata: codec_id = {:#x}, width = {}, height = {}", codec_id, current_width, current_height);
 
     let video_decoder = rust_helper_create_decoder(opaque_ptr, codec_id);
     if video_decoder.is_null() {
@@ -297,17 +297,31 @@ unsafe fn run_decode_loop(
 
     let mut packet_data = Vec::new();
     let mut header = [0u8; 12];
+    let mut decode_error = None;
 
     while running.load(Ordering::SeqCst) {
         if read_exactly(&mut video_stream, &mut header, &running).is_err() {
             break;
         }
 
-        let pts = u64::from_be_bytes(header[0..8].try_into().unwrap()) as i64;
-        let size = u32::from_be_bytes(header[8..12].try_into().unwrap()) as usize;
+        let (pts, size) = match parse_video_packet_header(&header) {
+            VideoPacketHeader::Session { width, height, reset } => {
+                current_width = width as i32;
+                current_height = height as i32;
+                println!(
+                    "[rust_scrcpy] Session metadata: width = {}, height = {}, reset = {}",
+                    width,
+                    height,
+                    reset,
+                );
+                continue;
+            }
+            VideoPacketHeader::Frame { pts, size } => (pts, size),
+        };
 
         if size > 32 * 1024 * 1024 {
-            return Err(format!("[rust_scrcpy] Video frame size {} exceeds safety threshold 32MB", size));
+            decode_error = Some(format!("[rust_scrcpy] Video frame size {} exceeds safety threshold 32MB", size));
+            break;
         }
 
         if size == 0 {
@@ -327,14 +341,74 @@ unsafe fn run_decode_loop(
             packet_data.as_ptr(),
             size as i32,
             pts,
-            _width,
-            _height,
+            current_width,
+            current_height,
         );
     }
 
     rust_helper_destroy_decoder(video_decoder);
+    if let Some(error) = decode_error {
+        return Err(error);
+    }
     println!("[rust_scrcpy] Video decode loop exited gracefully");
     Ok(())
+}
+
+#[derive(Debug, PartialEq)]
+enum VideoPacketHeader {
+    Session { width: u32, height: u32, reset: bool },
+    Frame { pts: i64, size: usize },
+}
+
+/// scrcpy 4.0 会在同一视频 socket 内插入 session metadata，用于通知旋转后的新尺寸。
+fn parse_video_packet_header(header: &[u8; 12]) -> VideoPacketHeader {
+    let session_flags = u32::from_be_bytes(header[0..4].try_into().unwrap());
+    if session_flags & 0x8000_0000 != 0 {
+        return VideoPacketHeader::Session {
+            width: u32::from_be_bytes(header[4..8].try_into().unwrap()),
+            height: u32::from_be_bytes(header[8..12].try_into().unwrap()),
+            reset: session_flags & 1 != 0,
+        };
+    }
+
+    let packet_pts = u64::from_be_bytes(header[0..8].try_into().unwrap());
+    let clean_pts = packet_pts & !((1u64 << 62) | (1u64 << 61));
+    VideoPacketHeader::Frame {
+        pts: clean_pts as i64,
+        size: u32::from_be_bytes(header[8..12].try_into().unwrap()) as usize,
+    }
+}
+
+#[cfg(test)]
+mod video_packet_header_tests {
+    use super::{parse_video_packet_header, VideoPacketHeader};
+
+    #[test]
+    fn parses_rotation_session_metadata() {
+        let header = [0x80, 0x00, 0x00, 0x01, 0x00, 0x00, 0x09, 0x60, 0x00, 0x00, 0x04, 0x38];
+
+        assert_eq!(
+            parse_video_packet_header(&header),
+            VideoPacketHeader::Session {
+                width: 2400,
+                height: 1080,
+                reset: true,
+            },
+        );
+    }
+
+    #[test]
+    fn parses_frame_metadata_and_clears_packet_flags() {
+        let header = [0x60, 0x00, 0x00, 0x00, 0x00, 0x01, 0xe2, 0x40, 0x00, 0x00, 0x10, 0x00];
+
+        assert_eq!(
+            parse_video_packet_header(&header),
+            VideoPacketHeader::Frame {
+                pts: 123456,
+                size: 4096,
+            },
+        );
+    }
 }
 
 unsafe fn run_audio_loop(

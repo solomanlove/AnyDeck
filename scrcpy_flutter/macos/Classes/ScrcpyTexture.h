@@ -13,7 +13,6 @@
 - (void)updateFrame:(const uint8_t *)rgbaBuffer width:(int)width height:(int)height;
 - (int64_t)textureId;
 - (void)dispose;
-- (int)width;
-- (int)height;
+- (CGSize)videoSize;
 
 @end
