@@ -79,11 +79,15 @@ class _WorkspacePanel extends ConsumerWidget {
     }
     final appService = ref.read(appManagementServiceProvider);
     final fileService = ref.read(fileManagerServiceProvider);
+    final hdcService = ref.read(hdcServiceProvider);
     final remotePath = ref.read(remotePathProvider);
     final transferNotifier = ref.read(transferListProvider.notifier);
 
     for (final file in files) {
       final isApk = file.path.toLowerCase().endsWith('.apk');
+      final isHap = file.path.toLowerCase().endsWith('.hap') ||
+          file.path.toLowerCase().endsWith('.hsp');
+      final isPackage = device.isHarmony ? isHap : isApk;
       final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
 
       transferNotifier.addTask(
@@ -91,14 +95,23 @@ class _WorkspacePanel extends ConsumerWidget {
           id: taskId,
           name: file.name,
           deviceId: device.id,
-          isApk: isApk,
+          isApk: isPackage,
         ),
       );
 
       try {
-        final result = isApk
-            ? await appService.installApk(device.id, file.path)
-            : await fileService.push(device.id, file.path, remotePath);
+        final AdbResult result;
+        if (device.isHarmony) {
+          if (isHap) {
+            result = await hdcService.installApp(device.id, file.path);
+          } else {
+            result = await fileService.push(device.id, file.path, remotePath);
+          }
+        } else {
+          result = isApk
+              ? await appService.installApk(device.id, file.path)
+              : await fileService.push(device.id, file.path, remotePath);
+        }
 
         transferNotifier.updateTask(
           id: taskId,
@@ -111,23 +124,48 @@ class _WorkspacePanel extends ConsumerWidget {
           return;
         }
 
-        final message = isApk
-            ? (result.isSuccess
-                  ? context.l10n
-                        .t('apkInstallSuccess')
-                        .replaceAll('{name}', file.name)
-                  : context.l10n
-                        .t('apkInstallFailed')
-                        .replaceAll('{name}', file.name)
-                        .replaceAll('{error}', result.message))
-            : (result.isSuccess
-                  ? context.l10n
-                        .t('fileUploadSuccess')
-                        .replaceAll('{name}', file.name)
-                  : context.l10n
-                        .t('fileUploadFailed')
-                        .replaceAll('{name}', file.name)
-                        .replaceAll('{error}', result.message));
+        final String message;
+        if (device.isHarmony) {
+          if (isHap) {
+            message = result.isSuccess
+                ? context.l10n
+                      .t('hapInstallSuccess')
+                      .replaceAll('{name}', file.name)
+                : context.l10n
+                      .t('hapInstallFailed')
+                      .replaceAll('{name}', file.name)
+                      .replaceAll('{error}', result.message);
+          } else {
+            message = result.isSuccess
+                ? (isApk
+                      ? context.l10n.t('harmonyApkNotice')
+                      : context.l10n
+                            .t('fileUploadSuccess')
+                            .replaceAll('{name}', file.name))
+                : context.l10n
+                      .t('fileUploadFailed')
+                      .replaceAll('{name}', file.name)
+                      .replaceAll('{error}', result.message);
+          }
+        } else {
+          message = isApk
+              ? (result.isSuccess
+                    ? context.l10n
+                          .t('apkInstallSuccess')
+                          .replaceAll('{name}', file.name)
+                    : context.l10n
+                          .t('apkInstallFailed')
+                          .replaceAll('{name}', file.name)
+                          .replaceAll('{error}', result.message))
+              : (result.isSuccess
+                    ? context.l10n
+                          .t('fileUploadSuccess')
+                          .replaceAll('{name}', file.name)
+                    : context.l10n
+                          .t('fileUploadFailed')
+                          .replaceAll('{name}', file.name)
+                          .replaceAll('{error}', result.message));
+        }
 
         _showSnack(context, message, isError: !result.isSuccess);
       } catch (e) {

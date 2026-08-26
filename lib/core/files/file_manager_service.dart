@@ -2,15 +2,28 @@ import 'dart:io';
 
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
+import '../harmony/hdc_service.dart';
 import 'remote_file.dart';
 
-/// 基于 adb push/pull/shell 命令实现的远程文件浏览能力。
+typedef DeviceHarmonyResolver = bool Function(String deviceId);
+
+/// 基于 ADB / HDC 命令实现的远程文件浏览能力。
 class FileManagerService {
-  FileManagerService(this._adb);
+  FileManagerService(
+    this._adb, {
+    HdcService? hdc,
+    DeviceHarmonyResolver? isHarmonyResolver,
+  })  : _hdc = hdc,
+        _isHarmonyResolver = isHarmonyResolver;
 
   static const _fileTransferTimeout = Duration(minutes: 5);
 
   final AdbService _adb;
+  final HdcService? _hdc;
+  final DeviceHarmonyResolver? _isHarmonyResolver;
+
+  bool _isHarmonyDevice(String deviceId) =>
+      (_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null;
 
   /// 列出远程目录，并解析详细属性。
   Future<List<RemoteFile>> listFiles(String deviceId, String remotePath) async {
@@ -19,33 +32,69 @@ class FileManagerService {
     // 第二选择：ls -lA (长格式，隐藏 . 和 ..)
     // 第三选择：ls -la (长格式，显示所有文件)
     const listTimeout = Duration(seconds: 5);
-    var result = await _adb.shellArgs(deviceId, [
-      'ls',
-      '-llA',
-      remotePath,
-    ], timeout: listTimeout);
+    final hdc = _hdc;
+    final isHarmony = _isHarmonyDevice(deviceId);
 
-    bool shouldFallback(AdbResult res) {
-      final err = res.stderr.toLowerCase();
-      return err.contains('invalid option') ||
-          err.contains('unknown option') ||
-          err.contains('usage: ls') ||
-          err.contains('bad option');
-    }
+    AdbResult result;
+    if (isHarmony && hdc != null) {
+      final escaped = remotePath.replaceAll("'", "'\\''");
+      result = await hdc.shell(
+        deviceId,
+        "ls -llA '$escaped'",
+        timeout: listTimeout,
+      );
 
-    if (shouldFallback(result)) {
+      bool shouldFallback(AdbResult res) {
+        final err = res.stderr.toLowerCase();
+        return err.contains('invalid option') ||
+            err.contains('unknown option') ||
+            err.contains('usage: ls') ||
+            err.contains('bad option');
+      }
+
+      if (shouldFallback(result)) {
+        result = await hdc.shell(
+          deviceId,
+          "ls -lA '$escaped'",
+          timeout: listTimeout,
+        );
+      }
+      if (shouldFallback(result)) {
+        result = await hdc.shell(
+          deviceId,
+          "ls -la '$escaped'",
+          timeout: listTimeout,
+        );
+      }
+    } else {
       result = await _adb.shellArgs(deviceId, [
         'ls',
-        '-lA',
+        '-llA',
         remotePath,
       ], timeout: listTimeout);
-    }
-    if (shouldFallback(result)) {
-      result = await _adb.shellArgs(deviceId, [
-        'ls',
-        '-la',
-        remotePath,
-      ], timeout: listTimeout);
+
+      bool shouldFallback(AdbResult res) {
+        final err = res.stderr.toLowerCase();
+        return err.contains('invalid option') ||
+            err.contains('unknown option') ||
+            err.contains('usage: ls') ||
+            err.contains('bad option');
+      }
+
+      if (shouldFallback(result)) {
+        result = await _adb.shellArgs(deviceId, [
+          'ls',
+          '-lA',
+          remotePath,
+        ], timeout: listTimeout);
+      }
+      if (shouldFallback(result)) {
+        result = await _adb.shellArgs(deviceId, [
+          'ls',
+          '-la',
+          remotePath,
+        ], timeout: listTimeout);
+      }
     }
 
     // 即使命令返回非零（如有些 root 目录部分文件无权限导致 ls 返回 1），
@@ -78,6 +127,15 @@ class FileManagerService {
 
   /// 上传本地文件或目录到当前远程路径。
   Future<AdbResult> push(String deviceId, String localPath, String remotePath) {
+    final hdc = _hdc;
+    if (_isHarmonyDevice(deviceId) && hdc != null) {
+      return hdc.fileSend(
+        deviceId,
+        localPath,
+        remotePath,
+        timeout: _fileTransferTimeout,
+      );
+    }
     return _adb.run([
       '-s',
       deviceId,
@@ -89,6 +147,15 @@ class FileManagerService {
 
   /// 下载远程文件到本地目标路径。
   Future<AdbResult> pull(String deviceId, String remotePath, String localPath) {
+    final hdc = _hdc;
+    if (_isHarmonyDevice(deviceId) && hdc != null) {
+      return hdc.fileRecv(
+        deviceId,
+        remotePath,
+        localPath,
+        timeout: _fileTransferTimeout,
+      );
+    }
     return _adb.run([
       '-s',
       deviceId,
@@ -104,16 +171,28 @@ class FileManagerService {
     String remotePath,
     String localPath,
   ) {
+    final hdc = _hdc;
+    if (_isHarmonyDevice(deviceId) && hdc != null) {
+      return hdc.startFileRecv(deviceId, remotePath, localPath);
+    }
     return _adb.start(['-s', deviceId, 'pull', remotePath, localPath]);
   }
 
   /// 递归删除远程文件路径。
   Future<AdbResult> delete(String deviceId, String remotePath) {
+    final hdc = _hdc;
+    if (_isHarmonyDevice(deviceId) && hdc != null) {
+      return hdc.delete(deviceId, remotePath);
+    }
     return _adb.shellArgs(deviceId, ['rm', '-rf', remotePath]);
   }
 
   /// 创建远程目录及缺失的父目录。
   Future<AdbResult> makeDirectory(String deviceId, String remotePath) {
+    final hdc = _hdc;
+    if (_isHarmonyDevice(deviceId) && hdc != null) {
+      return hdc.makeDirectory(deviceId, remotePath);
+    }
     return _adb.shellArgs(deviceId, ['mkdir', '-p', remotePath]);
   }
 

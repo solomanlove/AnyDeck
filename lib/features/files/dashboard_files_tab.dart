@@ -8,7 +8,21 @@ class _FilesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final navState = ref.watch(fileNavigationProvider);
-    final path = navState.currentPath;
+    final isHarmony = device.isHarmony;
+    // 鸿蒙系统根目录无读取权限，默认重定向至开发者可读写目录 /data/local/tmp/
+    final path = (isHarmony &&
+            (navState.currentPath == '/' ||
+                navState.currentPath.isEmpty ||
+                navState.currentPath.startsWith('/storage/emulated/0')))
+        ? '/data/local/tmp/'
+        : navState.currentPath;
+
+    if (isHarmony && path != navState.currentPath) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(fileNavigationProvider.notifier).navigateTo('/data/local/tmp/');
+      });
+    }
+
     final request = RemoteDirectoryRequest(deviceId: device.id, path: path);
     final filesAsync = ref.watch(remoteFilesProvider(request));
     final filterQuery = ref.watch(fileFilterQueryProvider);
@@ -42,7 +56,10 @@ class _FilesTab extends ConsumerWidget {
                 IconButton(
                   tooltip: '向上',
                   icon: const Icon(CupertinoIcons.up_arrow),
-                  onPressed: path != '/'
+                  onPressed: (!isHarmony && path != '/') ||
+                          (isHarmony &&
+                              path != '/data/local/tmp/' &&
+                              path != '/')
                       ? () => ref.read(fileNavigationProvider.notifier).goUp()
                       : null,
                 ),
@@ -363,7 +380,7 @@ class _FilesTab extends ConsumerWidget {
     );
   }
 
-  /// 上传拖入或选中的文件；APK 会执行安装而不是复制。
+  /// 上传拖入或选中的文件；APK/HAP 会执行安装而不是复制。
   Future<void> _pushFiles(
     BuildContext context,
     WidgetRef ref,
@@ -372,10 +389,14 @@ class _FilesTab extends ConsumerWidget {
   ) async {
     final service = ref.read(fileManagerServiceProvider);
     final appService = ref.read(appManagementServiceProvider);
+    final hdcService = ref.read(hdcServiceProvider);
     final transferNotifier = ref.read(transferListProvider.notifier);
 
     for (final file in files) {
       final isApk = file.path.toLowerCase().endsWith('.apk');
+      final isHap = file.path.toLowerCase().endsWith('.hap') ||
+          file.path.toLowerCase().endsWith('.hsp');
+      final isPackage = device.isHarmony ? isHap : isApk;
       final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
 
       transferNotifier.addTask(
@@ -383,14 +404,23 @@ class _FilesTab extends ConsumerWidget {
           id: taskId,
           name: file.name,
           deviceId: device.id,
-          isApk: isApk,
+          isApk: isPackage,
         ),
       );
 
       try {
-        final result = isApk
-            ? await appService.installApk(device.id, file.path)
-            : await service.push(device.id, file.path, remotePath);
+        final AdbResult result;
+        if (device.isHarmony) {
+          if (isHap) {
+            result = await hdcService.installApp(device.id, file.path);
+          } else {
+            result = await service.push(device.id, file.path, remotePath);
+          }
+        } else {
+          result = isApk
+              ? await appService.installApk(device.id, file.path)
+              : await service.push(device.id, file.path, remotePath);
+        }
 
         transferNotifier.updateTask(
           id: taskId,
@@ -403,23 +433,48 @@ class _FilesTab extends ConsumerWidget {
           return;
         }
 
-        final message = isApk
-            ? (result.isSuccess
-                  ? context.l10n
-                        .t('apkInstallSuccess')
-                        .replaceAll('{name}', file.name)
-                  : context.l10n
-                        .t('apkInstallFailed')
-                        .replaceAll('{name}', file.name)
-                        .replaceAll('{error}', result.message))
-            : (result.isSuccess
-                  ? context.l10n
-                        .t('fileUploadSuccess')
-                        .replaceAll('{name}', file.name)
-                  : context.l10n
-                        .t('fileUploadFailed')
-                        .replaceAll('{name}', file.name)
-                        .replaceAll('{error}', result.message));
+        final String message;
+        if (device.isHarmony) {
+          if (isHap) {
+            message = result.isSuccess
+                ? context.l10n
+                      .t('hapInstallSuccess')
+                      .replaceAll('{name}', file.name)
+                : context.l10n
+                      .t('hapInstallFailed')
+                      .replaceAll('{name}', file.name)
+                      .replaceAll('{error}', result.message);
+          } else {
+            message = result.isSuccess
+                ? (isApk
+                      ? context.l10n.t('harmonyApkNotice')
+                      : context.l10n
+                            .t('fileUploadSuccess')
+                            .replaceAll('{name}', file.name))
+                : context.l10n
+                      .t('fileUploadFailed')
+                      .replaceAll('{name}', file.name)
+                      .replaceAll('{error}', result.message);
+          }
+        } else {
+          message = isApk
+              ? (result.isSuccess
+                    ? context.l10n
+                          .t('apkInstallSuccess')
+                          .replaceAll('{name}', file.name)
+                    : context.l10n
+                          .t('apkInstallFailed')
+                          .replaceAll('{name}', file.name)
+                          .replaceAll('{error}', result.message))
+              : (result.isSuccess
+                    ? context.l10n
+                          .t('fileUploadSuccess')
+                          .replaceAll('{name}', file.name)
+                    : context.l10n
+                          .t('fileUploadFailed')
+                          .replaceAll('{name}', file.name)
+                          .replaceAll('{error}', result.message));
+        }
 
         _showSnack(context, message, isError: !result.isSuccess);
       } catch (e) {

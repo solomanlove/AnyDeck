@@ -1,6 +1,7 @@
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/device_actions/device_action_service.dart';
+import 'package:any_deck/core/files/file_manager_service.dart';
 import 'package:any_deck/core/harmony/hdc_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -186,6 +187,46 @@ void main() {
       'recv',
       '/data/local/tmp/test.mp4',
       '/tmp/test.mp4',
+    ]);
+  });
+
+  test('FileManagerService routes to HDC file operations for HarmonyOS', () async {
+    final adb = _HarmonyAdbService();
+    final hdc = _CommandHdcService();
+    final fileManager = FileManagerService(
+      adb,
+      hdc: hdc,
+      isHarmonyResolver: (_) => true,
+    );
+
+    await fileManager.push(deviceId, '/local/test.txt', '/data/local/tmp/test.txt');
+    await fileManager.pull(deviceId, '/data/local/tmp/test.txt', '/local/test.txt');
+    await fileManager.delete(deviceId, '/data/local/tmp/test.txt');
+    await fileManager.makeDirectory(deviceId, '/data/local/tmp/new_dir');
+
+    expect(hdc.runCommands, [
+      ['-t', deviceId, 'file', 'send', '/local/test.txt', '/data/local/tmp/test.txt'],
+      ['-t', deviceId, 'file', 'recv', '/data/local/tmp/test.txt', '/local/test.txt'],
+    ]);
+    expect(hdc.shellCommands, [
+      "rm -rf '/data/local/tmp/test.txt'",
+      "mkdir -p '/data/local/tmp/new_dir'",
+    ]);
+    expect(adb.shellCommands, isEmpty);
+  });
+
+  test('HdcService installs HAP application packages via HDC', () async {
+    final hdc = _CommandHdcService();
+
+    await hdc.installApp(deviceId, '/local/app.hap');
+
+    expect(hdc.runCommands.single, [
+      '-t',
+      deviceId,
+      'app',
+      'install',
+      '-r',
+      '/local/app.hap',
     ]);
   });
 }

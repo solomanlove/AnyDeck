@@ -62,6 +62,15 @@ const _fileQuickAccessItems = <_FileQuickAccessItem>[
   ),
 ];
 
+const _harmonyQuickAccessItems = <_FileQuickAccessItem>[
+  _FileQuickAccessItem(
+    labelKey: 'fileTmpDirectory',
+    path: '/data/local/tmp',
+    icon: Icons.folder_special_rounded,
+    colorRole: _FileQuickAccessColorRole.primary,
+  ),
+];
+
 /// 根据 Files Tab 可用宽度组合快捷栏与原有文件内容。
 class _FileQuickAccessLayout extends StatelessWidget {
   const _FileQuickAccessLayout({
@@ -120,6 +129,12 @@ class _FileQuickAccessSidebar extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final favoritesAsync = ref.watch(fileFavoriteFoldersProvider);
     final favoritePaths = favoritesAsync.value?[deviceId] ?? const <String>[];
+    final registeredDevices = ref.watch(deviceRegistryProvider);
+    final isHarmony =
+        registeredDevices.any((d) => d.id == deviceId && d.isHarmony);
+    final quickAccessItems =
+        isHarmony ? _harmonyQuickAccessItems : _fileQuickAccessItems;
+
     return ColoredBox(
       color: colorScheme.surfaceContainerLowest,
       child: SizedBox(
@@ -149,7 +164,7 @@ class _FileQuickAccessSidebar extends ConsumerWidget {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    for (final item in _fileQuickAccessItems)
+                    for (final item in quickAccessItems)
                       _buildItem(context, item, colorScheme),
                     const SizedBox(height: 12),
                     _buildFavoritesHeader(
@@ -298,7 +313,12 @@ class _FileQuickAccessSidebar extends ConsumerWidget {
 
   Future<void> _addCurrentFolder(BuildContext context, WidgetRef ref) async {
     final normalizedCurrentPath = _normalizePath(currentPath);
-    final isBuiltIn = _fileQuickAccessItems.any(
+    final registeredDevices = ref.read(deviceRegistryProvider);
+    final isHarmony =
+        registeredDevices.any((d) => d.id == deviceId && d.isHarmony);
+    final quickAccessItems =
+        isHarmony ? _harmonyQuickAccessItems : _fileQuickAccessItems;
+    final isBuiltIn = quickAccessItems.any(
       (item) => _normalizePath(item.path) == normalizedCurrentPath,
     );
     if (isBuiltIn) {

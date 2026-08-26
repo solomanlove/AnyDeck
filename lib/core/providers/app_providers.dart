@@ -108,9 +108,16 @@ final appPermissionServiceProvider = Provider<AppPermissionService>((ref) {
   return AppPermissionService(ref.watch(adbServiceProvider));
 });
 
-/// 远程文件管理门面，负责 adb push/pull 和目录列表。
+/// 远程文件管理门面，负责 adb/hdc push/pull 和目录列表。
 final fileManagerServiceProvider = Provider<FileManagerService>((ref) {
-  return FileManagerService(ref.watch(adbServiceProvider));
+  return FileManagerService(
+    ref.watch(adbServiceProvider),
+    hdc: ref.watch(hdcServiceProvider),
+    isHarmonyResolver: (deviceId) {
+      final registered = ref.read(deviceRegistryProvider);
+      return registered.any((d) => d.id == deviceId && d.isHarmony);
+    },
+  );
 });
 
 /// 只读设备概览服务。
@@ -357,7 +364,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       ref.keepAlive();
 
       final service = ref.watch(deviceInfoServiceProvider);
-      final registeredDevices = ref.watch(deviceRegistryProvider);
+      final registeredDevices = ref.read(deviceRegistryProvider);
       final matchedDevice = registeredDevices.firstWhere(
         (d) => d.id == deviceId,
         orElse: () =>
@@ -470,9 +477,16 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         // Update system version in device list registry so it registers immediately
         Future.microtask(() {
           if (ref.mounted) {
-            ref.read(deviceRegistryProvider.notifier).updateDeviceAndroidVersion(deviceId, systemVersion);
-            // 将真实设备名（marketing_name）同步回写到注册表，使列表和标题栏显示正确名称
-            ref.read(deviceRegistryProvider.notifier).updateDeviceModel(deviceId, name);
+            final reg = ref.read(deviceRegistryProvider).firstWhere(
+              (d) => d.id == deviceId,
+              orElse: () => RegisteredDevice(id: deviceId, status: 'offline', isOnline: false),
+            );
+            if (reg.androidVersion != systemVersion) {
+              ref.read(deviceRegistryProvider.notifier).updateDeviceAndroidVersion(deviceId, systemVersion);
+            }
+            if (reg.model != name && name != deviceId) {
+              ref.read(deviceRegistryProvider.notifier).updateDeviceModel(deviceId, name);
+            }
           }
         });
 
@@ -1476,12 +1490,13 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         final hdc = ref.read(hdcServiceProvider);
         final paramRes = await hdc.shell(
           id,
-          'param get const.ohos.fullname ; param get const.ohos.apiversion ; param get const.product.brand ; param get const.product.model ; param get const.product.name ; param get const.product.software.version',
+          'param get const.ohos.fullname ; param get const.ohos.apiversion ; param get const.product.brand ; param get const.product.model ; param get const.product.name ; param get const.product.software.version ; param get const.product.marketing_name',
         );
         if (_isDisposed) return;
 
         String systemVersion = 'HarmonyOS NEXT';
         int sdkVersion = 23; // 默认 API 23
+        String deviceName = '';
 
         if (paramRes.isSuccess && paramRes.stdout.isNotEmpty) {
           final lines = const LineSplitter().convert(paramRes.stdout.trim());
@@ -1498,11 +1513,28 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               systemVersion = 'HarmonyOS NEXT (API $sdkVersion)';
             }
           }
+          if (lines.length >= 7 &&
+              lines[6].trim().isNotEmpty &&
+              !lines[6].contains('fail')) {
+            deviceName = lines[6].trim();
+          } else if (lines.length >= 5 &&
+              lines[4].trim().isNotEmpty &&
+              !lines[4].contains('fail')) {
+            deviceName = lines[4].trim();
+          } else if (lines.length >= 4 &&
+              lines[3].trim().isNotEmpty &&
+              !lines[3].contains('fail')) {
+            deviceName = lines[3].trim();
+          }
         }
 
         _serialMap[id] = id;
         _androidVersions[id] = systemVersion;
         _sdkVersions[id] = sdkVersion;
+        if (deviceName.isNotEmpty) {
+          _models[id] = deviceName;
+          await _saveModelsAndProducts();
+        }
         await _saveAndroidVersions();
 
         // 尝试获取 IP 地址

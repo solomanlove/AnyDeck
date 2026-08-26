@@ -9,6 +9,7 @@ import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
+import '../../../core/adb/adb_result.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/apps/adb_package.dart';
 import '../../../core/providers/transfer_provider.dart';
@@ -393,11 +394,15 @@ class MirrorWindowController extends ChangeNotifier {
 
     final appService = ref.read(appManagementServiceProvider);
     final fileService = ref.read(fileManagerServiceProvider);
+    final hdcService = ref.read(hdcServiceProvider);
     final transferNotifier = ref.read(transferListProvider.notifier);
 
     for (final file in files) {
       if (!context.mounted) return;
       final isApk = file.path.toLowerCase().endsWith('.apk');
+      final isHap = file.path.toLowerCase().endsWith('.hap') ||
+          file.path.toLowerCase().endsWith('.hsp');
+      final isPackage = isHarmony ? isHap : isApk;
       final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
 
       // 往全局传输列表中添加一个新任务
@@ -406,24 +411,39 @@ class MirrorWindowController extends ChangeNotifier {
           id: taskId,
           name: file.name,
           deviceId: deviceId,
-          isApk: isApk,
+          isApk: isPackage,
         ),
       );
 
       if (context.mounted) {
-        AppToast.show(
-          context,
-          isApk
-              ? context.l10n.t('installingApk')
-              : context.l10n.t('uploadingFile'),
-        );
+        final startTip = isHarmony
+            ? (isHap
+                ? context.l10n.t('installingHap')
+                : context.l10n.t('uploadingFile'))
+            : (isApk
+                ? context.l10n.t('installingApk')
+                : context.l10n.t('uploadingFile'));
+        AppToast.show(context, startTip);
       }
 
       try {
-        // 执行安装或文件推送
-        final result = isApk
-            ? await appService.installApk(deviceId, file.path)
-            : await fileService.push(deviceId, file.path, '/sdcard/Download/');
+        // 执行安装或文件推送（鸿蒙推送到 /data/local/tmp/，安卓推送到 /sdcard/Download/）
+        final AdbResult result;
+        if (isHarmony) {
+          if (isHap) {
+            result = await hdcService.installApp(deviceId, file.path);
+          } else {
+            result = await fileService.push(
+              deviceId,
+              file.path,
+              '/data/local/tmp/',
+            );
+          }
+        } else {
+          result = isApk
+              ? await appService.installApk(deviceId, file.path)
+              : await fileService.push(deviceId, file.path, '/sdcard/Download/');
+        }
 
         // 更新任务结果状态
         transferNotifier.updateTask(
@@ -436,23 +456,48 @@ class MirrorWindowController extends ChangeNotifier {
         if (!context.mounted) return;
 
         // 根据结果拼装提示文案
-        final message = isApk
-            ? (result.isSuccess
-                  ? context.l10n
-                        .t('apkInstallSuccess')
-                        .replaceAll('{name}', file.name)
-                  : context.l10n
-                        .t('apkInstallFailed')
-                        .replaceAll('{name}', file.name)
-                        .replaceAll('{error}', result.message))
-            : (result.isSuccess
-                  ? context.l10n
-                        .t('fileUploadSuccess')
-                        .replaceAll('{name}', file.name)
-                  : context.l10n
-                        .t('fileUploadFailed')
-                        .replaceAll('{name}', file.name)
-                        .replaceAll('{error}', result.message));
+        final String message;
+        if (isHarmony) {
+          if (isHap) {
+            message = result.isSuccess
+                ? context.l10n
+                      .t('hapInstallSuccess')
+                      .replaceAll('{name}', file.name)
+                : context.l10n
+                      .t('hapInstallFailed')
+                      .replaceAll('{name}', file.name)
+                      .replaceAll('{error}', result.message);
+          } else {
+            message = result.isSuccess
+                ? (isApk
+                      ? context.l10n.t('harmonyApkNotice')
+                      : context.l10n
+                            .t('harmonyUploadSuccess')
+                            .replaceAll('{name}', file.name))
+                : context.l10n
+                      .t('fileUploadFailed')
+                      .replaceAll('{name}', file.name)
+                      .replaceAll('{error}', result.message);
+          }
+        } else {
+          message = isApk
+              ? (result.isSuccess
+                    ? context.l10n
+                          .t('apkInstallSuccess')
+                          .replaceAll('{name}', file.name)
+                    : context.l10n
+                          .t('apkInstallFailed')
+                          .replaceAll('{name}', file.name)
+                          .replaceAll('{error}', result.message))
+              : (result.isSuccess
+                    ? context.l10n
+                          .t('fileUploadSuccess')
+                          .replaceAll('{name}', file.name)
+                    : context.l10n
+                          .t('fileUploadFailed')
+                          .replaceAll('{name}', file.name)
+                          .replaceAll('{error}', result.message));
+        }
 
         AppToast.show(context, message, isError: !result.isSuccess);
       } catch (e) {

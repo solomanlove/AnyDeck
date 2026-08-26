@@ -18,13 +18,61 @@ class HdcService {
   final String executable;
   final void Function(String message, {String tag, String level})? _onLog;
 
+  final Map<String, String> _deviceModelCache = {};
+
   /// 获取已连接的鸿蒙设备列表。
   Future<List<AdbDevice>> listDevices() async {
     final result = await run(['list', 'targets']);
     if (!result.isSuccess) {
       return [];
     }
-    return _parseDevices(result.stdout);
+    final rawTargets = _parseRawTargets(result.stdout);
+    if (rawTargets.isEmpty) return [];
+
+    final devices = <AdbDevice>[];
+    for (final id in rawTargets) {
+      String modelName = _deviceModelCache[id] ?? '';
+      if (modelName.isEmpty) {
+        try {
+          final paramRes = await shell(
+            id,
+            'param get const.product.name ; param get const.product.model ; param get const.product.marketing_name',
+            timeout: const Duration(seconds: 2),
+          );
+          if (paramRes.isSuccess && paramRes.stdout.isNotEmpty) {
+            final lines = const LineSplitter().convert(paramRes.stdout.trim());
+            String name = '';
+            String model = '';
+            String marketingName = '';
+            if (lines.isNotEmpty) name = lines[0].trim();
+            if (lines.length > 1) model = lines[1].trim();
+            if (lines.length > 2) marketingName = lines[2].trim();
+
+            if (marketingName.isNotEmpty && !marketingName.contains('fail')) {
+              modelName = marketingName;
+            } else if (name.isNotEmpty && !name.contains('fail')) {
+              modelName = name;
+            } else if (model.isNotEmpty && !model.contains('fail')) {
+              modelName = model;
+            }
+          }
+        } catch (_) {}
+
+        if (modelName.isNotEmpty) {
+          _deviceModelCache[id] = modelName;
+        }
+      }
+
+      devices.add(AdbDevice(
+        id: id,
+        status: 'device',
+        model: modelName.isNotEmpty ? modelName : 'HarmonyOS Device',
+        product: 'HarmonyOS NEXT',
+        transportId: '',
+        isHarmony: true,
+      ));
+    }
+    return devices;
   }
 
   /// 封装的通用 hdc 命令执行。
@@ -250,26 +298,99 @@ class HdcService {
     return null;
   }
 
-  /// 解析 `hdc list targets` 输出的设备列表。
-  List<AdbDevice> _parseDevices(String output) {
-    final devices = <AdbDevice>[];
+  /// 启动 HDC 外部进程。
+  Future<Process> start(List<String> args) {
+    final cmdStr = 'hdc ${args.join(' ')}';
+    _onLog?.call(cmdStr, tag: 'hdc', level: 'I');
+    return Process.start(executable, args);
+  }
+
+  /// 向 HarmonyOS 设备推送文件或目录。
+  Future<AdbResult> fileSend(
+    String deviceId,
+    String localPath,
+    String remotePath, {
+    Duration timeout = const Duration(minutes: 5),
+  }) {
+    return run([
+      '-t',
+      deviceId,
+      'file',
+      'send',
+      localPath,
+      remotePath,
+    ], timeout: timeout);
+  }
+
+  /// 从 HarmonyOS 设备拉取文件或目录到本地。
+  Future<AdbResult> fileRecv(
+    String deviceId,
+    String remotePath,
+    String localPath, {
+    Duration timeout = const Duration(minutes: 5),
+  }) {
+    return run([
+      '-t',
+      deviceId,
+      'file',
+      'recv',
+      remotePath,
+      localPath,
+    ], timeout: timeout);
+  }
+
+  /// 启动拉取文件的进程，支持实时预览与取消。
+  Future<Process> startFileRecv(
+    String deviceId,
+    String remotePath,
+    String localPath,
+  ) {
+    return start(['-t', deviceId, 'file', 'recv', remotePath, localPath]);
+  }
+
+  /// 安装 HarmonyOS HAP/HSP 软件包。
+  Future<AdbResult> installApp(
+    String deviceId,
+    String hapPath, {
+    Duration timeout = const Duration(minutes: 5),
+  }) {
+    return run([
+      '-t',
+      deviceId,
+      'app',
+      'install',
+      '-r',
+      hapPath,
+    ], timeout: timeout);
+  }
+
+  /// 递归删除 HarmonyOS 设备上的远程文件或目录。
+  Future<AdbResult> delete(String deviceId, String remotePath) {
+    final escaped = remotePath.replaceAll("'", "'\\''");
+    return shell(deviceId, "rm -rf '$escaped'");
+  }
+
+  /// 在 HarmonyOS 设备上创建远程目录。
+  Future<AdbResult> makeDirectory(String deviceId, String remotePath) {
+    final escaped = remotePath.replaceAll("'", "'\\''");
+    return shell(deviceId, "mkdir -p '$escaped'");
+  }
+
+  /// 解析 `hdc list targets` 输出的原始目标设备列表。
+  List<String> _parseRawTargets(String output) {
+    final targets = <String>[];
     final lines = LineSplitter.split(output);
     for (final line in lines) {
       final trimmed = line.trim();
       // 过滤空白行和异常提示行（例如 "[Empty]" 或错误输出）
-      if (trimmed.isEmpty || trimmed.contains('[Empty]') || trimmed.startsWith('[') || trimmed.contains(' ')) {
+      if (trimmed.isEmpty ||
+          trimmed.contains('[Empty]') ||
+          trimmed.startsWith('[') ||
+          trimmed.contains(' ')) {
         continue;
       }
-      // 鸿蒙 NEXT 的 hdc 默认直接输出设备的 UDID/ID
-      devices.add(AdbDevice(
-        id: trimmed,
-        status: 'device',
-        model: 'HarmonyOS NEXT Device ($trimmed)',
-        product: 'HarmonyOS NEXT',
-        transportId: '',
-        isHarmony: true,
-      ));
+      targets.add(trimmed);
     }
-    return devices;
+    return targets;
   }
 }
