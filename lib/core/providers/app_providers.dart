@@ -2097,29 +2097,52 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
     final idsToRemove = <String>{};
     for (final id in ids) {
+      idsToRemove.add(id);
+      for (final d in state) {
+        if (d.id == id ||
+            d.connections.contains(id) ||
+            (d.serial != null && d.serial == id)) {
+          idsToRemove.add(d.id);
+          idsToRemove.addAll(d.connections);
+          if (d.serial != null && d.serial!.isNotEmpty) {
+            idsToRemove.add(d.serial!);
+          }
+        }
+      }
+
       final serial = _serialMap[id] ?? id;
       final sameSerialIds = _serialMap.entries
           .where((entry) => entry.value == serial)
           .map((entry) => entry.key)
           .toSet();
-      if (sameSerialIds.isEmpty) {
-        idsToRemove.add(id);
-      } else {
-        idsToRemove.addAll(sameSerialIds);
-      }
+      idsToRemove.addAll(sameSerialIds);
     }
 
+    // 断开所有需要断开的网络连接（直接调用服务，避免 disconnectDevice 触发内部刷新从而重新载入未更新的旧持久化数据）
+    final disconnectFutures = <Future<void>>[];
     for (final removeId in idsToRemove) {
       final isNetwork =
           removeId.contains(':') ||
           removeId.contains('.') ||
           removeId == '127.0.0.1';
       if (isNetwork) {
-        await disconnectDevice(removeId);
+        disconnectFutures.add(
+          ref
+              .read(deviceActionServiceProvider)
+              .disconnect(removeId)
+              .then((_) {})
+              .catchError((_) {}),
+        );
       }
+    }
+    if (disconnectFutures.isNotEmpty) {
+      await Future.wait(disconnectFutures);
+    }
 
+    for (final removeId in idsToRemove) {
       final selected = ref.read(selectedDeviceProvider);
-      if (selected != null && selected.id == removeId) {
+      if (selected != null &&
+          (selected.id == removeId || idsToRemove.contains(selected.id))) {
         ref.read(selectedDeviceProvider.notifier).clear();
       }
 
@@ -2131,6 +2154,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       _ipAddresses.remove(removeId);
       _androidVersions.remove(removeId);
       _sdkVersions.remove(removeId);
+      _serialMap.remove(removeId);
+      _pendingFetchIds.remove(removeId);
+      _attemptedFetchIds.remove(removeId);
 
       // 清除该设备的所有本地缓存信息 (包括概览缓存、包列表缓存、包图标缓存等)
       await ref.read(deviceInfoServiceProvider).clearDeviceCache(removeId);
@@ -2147,7 +2173,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     activeDevices = activeDevices
         .where((d) => !idsToRemove.contains(d.id))
         .toList();
+    _lastActiveDevices = activeDevices;
     state = _mergeDevices(activeDevices);
+    ref.read(adbHeartbeatControllerProvider).trigger();
   }
 
   void toggleCheck(String id) {
@@ -2156,11 +2184,21 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         .where((entry) => entry.value == serial)
         .map((entry) => entry.key)
         .toSet();
-    if (idsToToggle.isEmpty) {
-      idsToToggle.add(id);
+    idsToToggle.add(id);
+    for (final d in state) {
+      if (d.id == id ||
+          d.connections.contains(id) ||
+          d.serial == id ||
+          (d.serial != null && d.serial == serial)) {
+        idsToToggle.add(d.id);
+        idsToToggle.addAll(d.connections);
+      }
     }
 
-    final isRepresentativeChecked = _checkedIds.contains(id);
+    final isRepresentativeChecked = _checkedIds.contains(id) ||
+        state
+            .where((d) => d.id == id || d.connections.contains(id))
+            .any((d) => d.isChecked);
     for (final toggleId in idsToToggle) {
       if (isRepresentativeChecked) {
         _checkedIds.remove(toggleId);
@@ -2184,6 +2222,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           .toSet();
       for (final d in state) {
         _checkedIds.add(d.id);
+        _checkedIds.addAll(d.connections);
+        if (d.serial != null && d.serial!.isNotEmpty) {
+          _checkedIds.add(d.serial!);
+        }
       }
     } else {
       _checkedIds.clear();

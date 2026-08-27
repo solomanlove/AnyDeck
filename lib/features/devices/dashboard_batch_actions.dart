@@ -22,7 +22,7 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
       child: Row(
         children: [
           Text(
-            '${context.l10n.t('batchActions')} (${online.length}):',
+            '${context.l10n.t('batchActions')} (${checkedDevices.length}):',
             style: Theme.of(
               context,
             ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
