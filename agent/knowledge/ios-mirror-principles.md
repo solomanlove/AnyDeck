@@ -90,3 +90,39 @@ iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
   }
   ```
   在测试的 `ProviderScope` 的 `overrides` 中注入该模拟服务，阻断了对真实进程命令的调用，确保测试能瞬间跑通。
+
+---
+
+## 6. go-ios 设备工具能力
+
+除投屏外，项目通过 `IosCommandService` 集中提供以下能力，UI 不直接启动外部进程：
+
+| 功能 | go-ios 命令 | 边界 |
+| --- | --- | --- |
+| 应用列表 | `ios apps --all --udid=<UDID>` | 同时解析用户与系统应用 |
+| 安装/卸载 | `ios install` / `ios uninstall` | IPA 必须已正确签名；卸载需要用户确认 |
+| App 文件 | `ios fsync --app=<BundleID>` | 仅限允许访问的 App container，不提供 iOS 全盘文件系统 |
+| 系统日志 | `ios syslog --parse` | 长生存期进程由页面持有并在 dispose 时终止 |
+| 进程 | `ios ps --apps` / `ios kill --pid` | 默认只展示 App 进程，结束进程是有副作用操作 |
+| 截图 | `ios screenshot --output=<file>` | 使用临时目录，读取后立即删除临时文件 |
+| UI 自动化 | `ios ui ... --driver=wda` | 依赖已经签名、安装并启动的 WebDriverAgent |
+
+所有命令参数都通过 `Process.start(executable, args)` 的参数列表传入，不经过 shell 拼接。短命令默认 15 秒超时，IPA 和文件传输使用 5 分钟超时；超时后先普通终止，再以 `SIGKILL` 兜底。`--text` 的用户输入在全局日志中必须脱敏。
+
+## 7. UI 与生命周期
+
+iOS 在线设备开放“控制、应用、进程、文件、日志、截图”六个入口：
+
+- 控制页提供 WDA 状态、UI Tree、坐标点击、滑动、文字输入和按键操作。
+- 系统日志最多保留 3000 行，通过 100ms batch 降低 Riverpod/Widget rebuild 频率，使用 `ListView.builder` 虚拟化渲染。
+- 截图复用 Dashboard 截图页，但隐藏 Android `screenrecord` 按钮；iOS 当前没有通过 go-ios 输出带音频的视频流。
+- iOS 切换到未支持的 Terminal、Web、Layout、Performance、Network Tab 时回退到概览页。
+
+## 8. 测试与回归范围
+
+1. USB 和 Finder Wi-Fi 两种 transport 分别验证应用列表、进程列表、截图和 syslog。
+2. 使用已签名 IPA 验证安装、刷新列表、卸载确认和卸载后刷新。
+3. 使用开启 File Sharing 的测试 App 验证 `tree`、`push`、`pull`；无权限 App 应显示 go-ios 原始错误。
+4. 启动日志后切换 Tab、切换设备和关闭窗口，确认 `ios syslog` 不残留。
+5. WDA 未部署时应显示明确错误；部署完成后验证 UI Tree、tap、swipe、type 和 home button。
+6. Android 与 HarmonyOS 的原有 Tab、ADB/HDC 命令和截图录屏路径必须保持不变。

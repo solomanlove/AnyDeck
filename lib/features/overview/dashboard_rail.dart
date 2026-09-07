@@ -49,13 +49,14 @@ class _PrimaryRail extends ConsumerWidget {
     final registeredDevices = ref.watch(deviceRegistryProvider);
     final hasOnlineDevice = registeredDevices.any((d) => d.isOnline);
 
-    // 判断当前Tab是否可用：如果手机离线，仅开放主页(0)、控制(1)、应用(2)；如果是 iOS，仅开放主页(0)
+    // 判断当前 Tab 是否可用；iOS 仅开放已经接入 go-ios 的能力。
     bool isToolEnabled(int tabIndex) {
       if (selectedDevice == null) {
         return hasOnlineDevice;
       }
       if (selectedDevice!.isIos) {
-        return tabIndex == 0;
+        if (!selectedDevice!.isOnline) return tabIndex == 0;
+        return const {0, 1, 2, 3, 4, 6, 9}.contains(tabIndex);
       }
       // 鸿蒙 NEXT（纯血鸿蒙）支持：
       // 主页(0)、控制(1)、文件(3)、截图(9)
@@ -82,6 +83,38 @@ class _PrimaryRail extends ConsumerWidget {
         icon: CupertinoIcons.device_phone_portrait,
         label: context.l10n.t('overview'),
       ),
+      if (isIos) ...[
+        _RailToolItem(
+          tabIndex: 1,
+          icon: CupertinoIcons.hand_draw,
+          label: context.l10n.t('control'),
+        ),
+        _RailToolItem(
+          tabIndex: 2,
+          icon: CupertinoIcons.square_grid_2x2,
+          label: context.l10n.t('apps'),
+        ),
+        _RailToolItem(
+          tabIndex: 6,
+          icon: CupertinoIcons.list_bullet,
+          label: context.l10n.t('processes'),
+        ),
+        _RailToolItem(
+          tabIndex: 3,
+          icon: CupertinoIcons.folder,
+          label: context.l10n.t('files'),
+        ),
+        _RailToolItem(
+          tabIndex: 4,
+          icon: CupertinoIcons.doc_text,
+          label: context.l10n.t('logcat'),
+        ),
+        _RailToolItem(
+          tabIndex: 9,
+          icon: CupertinoIcons.camera,
+          label: context.l10n.t('screenshot'),
+        ),
+      ],
       if (!isIos) ...[
         _RailToolItem(
           tabIndex: 1,

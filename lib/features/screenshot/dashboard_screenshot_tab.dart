@@ -81,7 +81,11 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
     });
 
     try {
-      final bytes = widget.device.isHarmony
+      final bytes = widget.device.isIos
+          ? await ref
+                .read(iosCommandServiceProvider)
+                .captureScreenshot(widget.device.id)
+          : widget.device.isHarmony
           ? await ref
                 .read(hdcServiceProvider)
                 .captureScreenshot(widget.device.id)
@@ -451,25 +455,29 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
                     ? null
                     : _toggleAutoRefresh,
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 20,
-                child: VerticalDivider(
-                  width: 1,
-                  color: isDark ? Colors.grey[700] : Colors.grey[400],
+              if (!widget.device.isIos) ...[
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 20,
+                  child: VerticalDivider(
+                    width: 1,
+                    color: isDark ? Colors.grey[700] : Colors.grey[400],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              _ToolbarButton(
-                icon: isRecording ? CupertinoIcons.stop : CupertinoIcons.videocam,
-                tooltip: isRecording
-                    ? context.l10n.t('stopRecord')
-                    : context.l10n.t('startRecord'),
-                color: isRecording ? Colors.red : null,
-                onPressed: _loading
-                    ? null
-                    : (isRecording ? _stopRecording : _startRecording),
-              ),
+                const SizedBox(width: 8),
+                _ToolbarButton(
+                  icon: isRecording
+                      ? CupertinoIcons.stop
+                      : CupertinoIcons.videocam,
+                  tooltip: isRecording
+                      ? context.l10n.t('stopRecord')
+                      : context.l10n.t('startRecord'),
+                  color: isRecording ? Colors.red : null,
+                  onPressed: _loading
+                      ? null
+                      : (isRecording ? _stopRecording : _startRecording),
+                ),
+              ],
               if (isRecording) ...[
                 const SizedBox(width: 8),
                 const _PulsingRecordDot(),

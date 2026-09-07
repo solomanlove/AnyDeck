@@ -238,6 +238,33 @@ class _ToolContentCardState extends State<_ToolContentCard> {
       if (!_initializedTabs.contains(index)) {
         return const SizedBox.shrink();
       }
+      if (widget.device.isIos) {
+        return switch (index) {
+          0 => _OverviewTab(device: widget.device),
+          1 => IosAutomationTab(
+            key: ValueKey(widget.device.id),
+            device: widget.device,
+          ),
+          2 => IosAppsTab(
+            key: ValueKey(widget.device.id),
+            device: widget.device,
+          ),
+          3 => IosFilesTab(
+            key: ValueKey(widget.device.id),
+            device: widget.device,
+          ),
+          4 => IosSyslogTab(
+            key: ValueKey(widget.device.id),
+            device: widget.device,
+          ),
+          6 => IosProcessesTab(
+            key: ValueKey(widget.device.id),
+            device: widget.device,
+          ),
+          9 => _ScreenshotTab(device: widget.device),
+          _ => const SizedBox.shrink(),
+        };
+      }
       return switch (index) {
         0 => _OverviewTab(device: widget.device),
         1 => _ToolTabScrollView(

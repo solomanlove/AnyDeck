@@ -65,6 +65,11 @@ import 'apps/controller/apps_search_history_controller.dart';
 import 'files/controller/file_favorite_folders_controller.dart';
 import 'files/controller/file_preview_controller.dart';
 import 'files/controller/file_selection_controller.dart';
+import 'ios/ios_apps_tab.dart';
+import 'ios/ios_automation_tab.dart';
+import 'ios/ios_files_tab.dart';
+import 'ios/ios_processes_tab.dart';
+import 'ios/ios_syslog_tab.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';
@@ -296,10 +301,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               effectiveSelectedDevice;
         }
 
-        // 当手机是 iOS 时，如果当前选择的不是主页(0)或设置(12) Tab，则自动重定向回主页 Tab
+        // iOS 仅开放已接入 go-ios 的工具页。
         if (effectiveSelectedDevice.isIos) {
           final selectedTool = ref.read(selectedToolTabProvider);
-          if (selectedTool != 0 && selectedTool != 12) {
+          const iosTabs = {0, 1, 2, 3, 4, 6, 9, 12};
+          if (!iosTabs.contains(selectedTool)) {
             ref.read(selectedToolTabProvider.notifier).select(0);
           }
         } else if (effectiveSelectedDevice.isHarmony) {

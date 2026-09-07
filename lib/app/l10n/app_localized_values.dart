@@ -3,6 +3,7 @@ import 'tables/app_l10n_devices_control.dart';
 import 'tables/app_l10n_apps_files_logcat.dart';
 import 'tables/app_l10n_overview_terminal_emulators.dart';
 import 'tables/app_l10n_tools_mirror.dart';
+import 'tables/app_l10n_ios_tools.dart';
 
 /// 全部 UI 文案字符串表。Widget 直接按 key 访问，key 应保持稳定。
 ///
@@ -21,6 +22,7 @@ const localizedValues = {
     ...appsFilesLogcatZh,
     ...overviewTerminalEmulatorsZh,
     ...toolsMirrorZh,
+    ...iosToolsZh,
   },
   'en': {
     ...settingsEn,
@@ -28,5 +30,6 @@ const localizedValues = {
     ...appsFilesLogcatEn,
     ...overviewTerminalEmulatorsEn,
     ...toolsMirrorEn,
+    ...iosToolsEn,
   },
 };

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../logging/log_service.dart';
+import 'ios_command_service.dart';
 import 'ios_device_service.dart';
 
 /// Riverpod Provider definitions for iOS Services
@@ -15,6 +16,15 @@ final iosDeviceServiceProvider = Provider<IosDeviceService>((ref) {
   );
   ref.onDispose(service.stopAll);
   return service;
+});
+
+/// iOS 应用、文件、日志、进程、截图与自动化命令入口。
+final iosCommandServiceProvider = Provider<IosCommandService>((ref) {
+  return IosCommandService(
+    onLog: (message, {tag = 'ios', level = 'I'}) {
+      ref.read(logHistoryProvider.notifier).log(message, tag: tag, level: level);
+    },
+  );
 });
 
 class ActiveIosMirrorNotifier extends Notifier<int?> {
