@@ -44,6 +44,27 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /products
+/Products
 
 # Rust related
 **/target/
+
+# Xcode & Apple related
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+**/*.xcuserdatad/
+**/*.xcuserstate
+**/xcuserdata/
+**/Pods/
+
+# Python cache
+**/__pycache__/
+
+# Ephemeral & Flutter plugin files
+**/Flutter/ephemeral/
+**/flutter/ephemeral/
+.flutter-plugins
+

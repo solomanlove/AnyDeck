@@ -1,7 +1,7 @@
 # AnyDeck (AdbManage) 🚀
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Flutter](https://img.shields.io/badge/Flutter-%5E3.11.4-blue.svg?logo=flutter)](https://flutter.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-%5E3.41.6-blue.svg?logo=flutter)](https://flutter.dev)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](#)
 
 [English Version](README.md) | **简体中文**
