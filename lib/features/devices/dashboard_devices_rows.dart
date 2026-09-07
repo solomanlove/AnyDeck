@@ -256,7 +256,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     );
   }
 
-  /// 构建操作按钮单元格（断开无线调试、连接无线调试以及物理记录的删除）
+  /// 构建操作按钮单元格（投屏、断开无线调试、连接无线调试以及物理记录的删除）
   Widget _buildActionsCell(BuildContext context, RegisteredDevice device) {
     // 找出设备在线的无线连接 ID (如 192.168.1.100:5555)
     final activeWifiId = device.isOnline
@@ -276,7 +276,25 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
       flex: 2,
       child: Row(
         children: [
-          // 1. 如果已有处于激活在线状态的无线网络调试连接，则显示红色“断开”按钮
+          // 1. 若设备在线，显示独立投屏按钮
+          if (device.isOnline) ...[
+            IconButton(
+              icon: const Icon(
+                CupertinoIcons.tv,
+                color: Color(0xFF26A69A),
+              ),
+              tooltip: context.l10n.t('screenMirror'),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () => openStandaloneMirrorWindow(
+                context,
+                ref,
+                device.toAdbDevice,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          // 2. 如果已有处于激活在线状态的无线网络调试连接，则显示红色“断开”按钮
           if (hasActiveWifi) ...[
             IconButton(
               icon: const Icon(
@@ -296,7 +314,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             ),
             const SizedBox(width: 8),
           ]
-          // 2. 若当前无激活无线连接但有已知的 Wi-Fi IP，则显示绿色“连接”按钮
+          // 3. 若当前无激活无线连接但有已知的 Wi-Fi IP，则显示绿色“连接”按钮
           else if (wifiIp != null && wifiIp.isNotEmpty) ...[
             IconButton(
               icon: const Icon(
@@ -320,7 +338,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             ),
             const SizedBox(width: 8),
           ],
-          // 3. 删除或清理不活跃的历史离线设备按钮
+          // 4. 删除或清理不活跃的历史离线设备按钮
           IconButton(
             icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent),
             tooltip: context.l10n.t('delete'),
