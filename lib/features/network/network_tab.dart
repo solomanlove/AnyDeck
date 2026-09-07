@@ -259,7 +259,9 @@ class NetworkTab extends ConsumerWidget {
               width: 1.5,
             ),
           ),
-          child: ListView.separated(
+          child: Material(
+            type: MaterialType.transparency,
+            child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: forwards.length,
@@ -347,6 +349,7 @@ class NetworkTab extends ConsumerWidget {
               );
             },
           ),
+          ),
         ),
       ),
     );
@@ -375,7 +378,9 @@ class NetworkTab extends ConsumerWidget {
               width: 1.5,
             ),
           ),
-          child: ListView.separated(
+          child: Material(
+            type: MaterialType.transparency,
+            child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: presets.length,
@@ -519,6 +524,7 @@ class NetworkTab extends ConsumerWidget {
                 ),
               );
             },
+          ),
           ),
         ),
       ),

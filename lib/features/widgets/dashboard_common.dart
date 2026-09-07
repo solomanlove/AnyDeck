@@ -306,11 +306,14 @@ class _GlassSectionCard extends StatelessWidget {
             ),
           ),
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ...children,
-            ],
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...children,
+              ],
+            ),
           ),
         ),
       ),
