@@ -207,6 +207,7 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       onPressed: () {
         ref.read(userClearedDeviceSelectionProvider.notifier).state = true;
         ref.read(selectedDeviceProvider.notifier).clear();
+        ref.read(selectedToolTabProvider.notifier).select(-1);
       },
     );
 

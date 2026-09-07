@@ -243,17 +243,10 @@ class _PrimaryRail extends ConsumerWidget {
                         SizedBox(height: _topSpacing),
                         GestureDetector(
                           onTap: () {
-                            ref
-                                    .read(
-                                      userClearedDeviceSelectionProvider
-                                          .notifier,
-                                    )
-                                    .state =
-                                true;
-                            ref.read(selectedDeviceProvider.notifier).clear();
+                            // 点击应用 Logo 和 AnyDeck 跳转至设备管理页面，同时保留当前已选中的设备
                             ref
                                 .read(selectedToolTabProvider.notifier)
-                                .select(0);
+                                .select(-1);
                           },
                           child: MouseRegion(
                             cursor: SystemMouseCursors.click,

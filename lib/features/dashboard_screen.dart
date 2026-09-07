@@ -305,13 +305,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         if (effectiveSelectedDevice.isIos) {
           final selectedTool = ref.read(selectedToolTabProvider);
           const iosTabs = {0, 1, 2, 3, 4, 6, 9, 12};
-          if (!iosTabs.contains(selectedTool)) {
+          if (selectedTool != -1 && !iosTabs.contains(selectedTool)) {
             ref.read(selectedToolTabProvider.notifier).select(0);
           }
         } else if (effectiveSelectedDevice.isHarmony) {
           // 鸿蒙设备仅支持主页(0)、控制(1)、截图(9)、设置(12)
           final selectedTool = ref.read(selectedToolTabProvider);
-          if (selectedTool != 0 &&
+          if (selectedTool != -1 &&
+              selectedTool != 0 &&
               selectedTool != 1 &&
               selectedTool != 9 &&
               selectedTool != 12) {
@@ -320,7 +321,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         } else if (!effectiveSelectedDevice.isOnline) {
           // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)或设置(12) Tab，则自动重定向回主页 Tab
           final selectedTool = ref.read(selectedToolTabProvider);
-          if (selectedTool != 0 &&
+          if (selectedTool != -1 &&
+              selectedTool != 0 &&
               selectedTool != 1 &&
               selectedTool != 2 &&
               selectedTool != 12) {
@@ -339,7 +341,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final int stackIndex;
     if (selectedTool == 12) {
       stackIndex = 2;
-    } else if (effectiveSelectedDevice == null) {
+    } else if (selectedTool == -1 || effectiveSelectedDevice == null) {
       stackIndex = 0;
     } else {
       stackIndex = 1;

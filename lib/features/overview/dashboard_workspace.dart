@@ -214,7 +214,8 @@ class _ToolContentCardState extends State<_ToolContentCard> {
   void initState() {
     super.initState();
     // 确保初始索引在有效范围内 (0-11)
-    _currentToolIndex = widget.tabIndex < 12 ? widget.tabIndex : 0;
+    _currentToolIndex =
+        (widget.tabIndex >= 0 && widget.tabIndex < 12) ? widget.tabIndex : 0;
     _initializedTabs.add(_currentToolIndex);
   }
 
@@ -225,8 +226,8 @@ class _ToolContentCardState extends State<_ToolContentCard> {
     if (oldWidget.device.id != widget.device.id) {
       _initializedTabs.clear();
     }
-    // 当 widget.tabIndex 为 12 (即设置 Tab) 时，忽略更新，保持当前展示的工具 Tab 状态不变，规避 IndexedStack 越界崩溃
-    if (widget.tabIndex < 12) {
+    // 当 widget.tabIndex 为 12 (即设置 Tab) 或 -1 (设备管理) 时，忽略更新，保持当前展示的工具 Tab 状态不变，规避 IndexedStack 越界崩溃
+    if (widget.tabIndex >= 0 && widget.tabIndex < 12) {
       _currentToolIndex = widget.tabIndex;
       _initializedTabs.add(_currentToolIndex);
     }

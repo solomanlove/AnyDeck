@@ -224,11 +224,11 @@ final adbHeartbeatControllerProvider =
       final hdcService = ref.watch(hdcServiceProvider);
       final isSub = ref.watch(windowIdProvider).isNotEmpty;
 
-      // 主窗口下，当没有选择设备且未展示设置页面时（即处于设备管理列表“主页”），才应该运行心跳
+      // 主窗口下，当没有选择设备或正处于设备管理Tab(-1)，且未展示设置页面时（即处于设备管理列表“主页”），才应该运行心跳
       final selectedDevice = ref.watch(selectedDeviceProvider);
       final selectedTool = ref.watch(selectedToolTabProvider);
       final isDeviceListVisible =
-          !isSub && selectedDevice == null && selectedTool != 12;
+          !isSub && (selectedDevice == null || selectedTool == -1) && selectedTool != 12;
 
       final controller = AdbHeartbeatController(
         adbService: adbService,
