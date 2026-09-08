@@ -1,21 +1,15 @@
 PODS:
   - FlutterMacOS (1.0.0)
-  - scrcpy_flutter (0.0.1):
-    - FlutterMacOS
 
 DEPENDENCIES:
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - scrcpy_flutter (from `Flutter/ephemeral/.symlinks/plugins/scrcpy_flutter/macos`)
 
 EXTERNAL SOURCES:
   FlutterMacOS:
     :path: Flutter/ephemeral
-  scrcpy_flutter:
-    :path: Flutter/ephemeral/.symlinks/plugins/scrcpy_flutter/macos
 
 SPEC CHECKSUMS:
   FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
-  scrcpy_flutter: b4faf00a635af51ff77a5e97c321c82615777137
 
 PODFILE CHECKSUM: d73096602386d113832c5a6ea017b8bcc0b9c988
 
