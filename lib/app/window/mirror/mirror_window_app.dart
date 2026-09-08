@@ -19,6 +19,7 @@ import 'mirror_floating_toolbar.dart';
 import 'mirror_device_info_overlay.dart';
 import 'mirror_settings_dialog.dart';
 import 'mirror_window_controller.dart';
+import 'widget/mirror_app_quick_actions_dialog.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/harmony/harmony_mirror_service.dart';
 
@@ -465,7 +466,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                               if (widget.startApp == null && _controller.currentForegroundPackage != null) ...[
                                 const SizedBox(width: 8),
                                 Tooltip(
-                                  message: context.l10n.t('appMirroring'),
+                                  message: '${context.l10n.t('appMirroring')} (长按或右键打开快捷操作)',
                                   child: MouseRegion(
                                     cursor: SystemMouseCursors.click,
                                     onEnter: (_) => setState(() => _isIconHovered = true),
@@ -475,6 +476,26 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                       duration: const Duration(milliseconds: 100),
                                       child: GestureDetector(
                                         onTap: () => _controller.openAppMirrorWindow(context),
+                                        onLongPress: () {
+                                          if (_controller.currentForegroundPackage != null) {
+                                            showMirrorAppQuickActionsDialog(
+                                              context: context,
+                                              ref: ref,
+                                              deviceId: widget.deviceId,
+                                              package: _controller.currentForegroundPackage!,
+                                            );
+                                          }
+                                        },
+                                        onSecondaryTap: () {
+                                          if (_controller.currentForegroundPackage != null) {
+                                            showMirrorAppQuickActionsDialog(
+                                              context: context,
+                                              ref: ref,
+                                              deviceId: widget.deviceId,
+                                              package: _controller.currentForegroundPackage!,
+                                            );
+                                          }
+                                        },
                                         child: Container(
                                           decoration: BoxDecoration(
                                             border: Border.all(

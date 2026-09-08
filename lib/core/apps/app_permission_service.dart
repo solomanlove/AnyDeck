@@ -79,6 +79,27 @@ class AppPermissionService {
     return count;
   }
 
+  /// 一键授予应用声明的所有运行时权限。
+  /// 返回成功授予的权限数量。
+  Future<int> grantAllRuntimePermissions(
+    String deviceId,
+    String packageName,
+  ) async {
+    final permissions = await getPermissions(deviceId, packageName);
+    final ungrantedRuntime = permissions
+        .where((p) => p.isRuntime && !p.granted)
+        .toList();
+
+    var count = 0;
+    for (final perm in ungrantedRuntime) {
+      final result = await grantPermission(deviceId, packageName, perm.name);
+      if (result.isSuccess) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   /// 解析 dumpsys package 的输出，提取权限列表及状态。
   List<AdbAppPermission> _parsePermissions(String output, int currentUserId) {
     final permissionsMap = <String, AdbAppPermission>{};
