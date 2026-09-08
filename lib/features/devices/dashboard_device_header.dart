@@ -297,36 +297,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
                 const SizedBox(width: 14),
                 Expanded(child: title),
                 const SizedBox(width: 16),
-                IconButton(
-                  icon: const Icon(Icons.cast),
-                  tooltip: context.l10n.t('screenMirror'),
-                  onPressed: device.isOnline
-                      ? () => _openStandaloneMirror(context, ref, device)
-                      : null,
-                ),
-                // const SizedBox(width: 8),
-                // IconButton(
-                //   icon: const Icon(Icons.open_in_new),
-                //   tooltip: '系统原生投屏(支持音频)',
-                //   onPressed: device.isOnline
-                //       ? () => _openExternalMirror(context, ref, device.id)
-                //       : null,
-                // ),
-                if (!device.isIos) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.settings_remote),
-                    tooltip: context.l10n.t('remoteController'),
-                    onPressed: device.isOnline
-                        ? () => showDialog<void>(
-                            context: context,
-                            builder: (_) =>
-                                _RemoteControllerDialog(device: device),
-                          )
-                        : null,
-                  ),
-                ],
-                const SizedBox(width: 8),
                 closeButton,
               ],
             );
@@ -335,14 +305,6 @@ class _SelectedDeviceHeader extends ConsumerWidget {
       ),
     ),
   );
-  }
-
-  Future<void> _openStandaloneMirror(
-    BuildContext context,
-    WidgetRef ref,
-    AdbDevice device,
-  ) async {
-    await openStandaloneMirrorWindow(context, ref, device);
   }
 
   // ignore: unused_element

@@ -232,6 +232,20 @@ class _QuickActionsPanel extends ConsumerWidget {
           onPressed: () =>
               _showAdbResult(context, ref, actions.currentFocus(device.id)),
         ),
+        _ActionButton(
+          icon: Icons.cast,
+          label: context.l10n.t('screenMirror'),
+          onPressed: () => openStandaloneMirrorWindow(context, ref, device),
+        ),
+        if (!device.isIos)
+          _ActionButton(
+            icon: Icons.settings_remote,
+            label: context.l10n.t('remoteController'),
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => _RemoteControllerDialog(device: device),
+            ),
+          ),
       ],
     );
   }
