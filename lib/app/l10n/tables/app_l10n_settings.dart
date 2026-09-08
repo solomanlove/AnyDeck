@@ -2,6 +2,7 @@
 const settingsZh = {
   'appTitle': 'AnyDeck',
   'settings': '设置',
+  'wanAndroid': '玩安卓',
   'settingsDesc': '管理应用全局配置和偏好设置',
   'generalSettings': '常规设置',
   'saveDirectory': '保存路径',
@@ -98,6 +99,7 @@ const settingsZh = {
 const settingsEn = {
   'appTitle': 'AnyDeck',
   'settings': 'Settings',
+  'wanAndroid': 'WanAndroid',
   'settingsDesc': 'Manage application preferences and configurations',
   'generalSettings': 'General Settings',
   'saveDirectory': 'Save Directory',

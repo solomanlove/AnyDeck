@@ -70,6 +70,7 @@ import 'ios/ios_automation_tab.dart';
 import 'ios/ios_files_tab.dart';
 import 'ios/ios_processes_tab.dart';
 import 'ios/ios_syslog_tab.dart';
+import 'webview/in_app_webview_widget.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';
@@ -304,28 +305,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         // iOS 仅开放已接入 go-ios 的工具页。
         if (effectiveSelectedDevice.isIos) {
           final selectedTool = ref.read(selectedToolTabProvider);
-          const iosTabs = {0, 1, 2, 3, 4, 6, 9, 12};
+          const iosTabs = {0, 1, 2, 3, 4, 6, 9, 12, 13};
           if (selectedTool != -1 && !iosTabs.contains(selectedTool)) {
             ref.read(selectedToolTabProvider.notifier).select(0);
           }
         } else if (effectiveSelectedDevice.isHarmony) {
-          // 鸿蒙设备仅支持主页(0)、控制(1)、截图(9)、设置(12)
+          // 鸿蒙设备仅支持主页(0)、控制(1)、截图(9)、设置(12)、玩安卓(13)
           final selectedTool = ref.read(selectedToolTabProvider);
           if (selectedTool != -1 &&
               selectedTool != 0 &&
               selectedTool != 1 &&
               selectedTool != 9 &&
-              selectedTool != 12) {
+              selectedTool != 12 &&
+              selectedTool != 13) {
             ref.read(selectedToolTabProvider.notifier).select(0);
           }
         } else if (!effectiveSelectedDevice.isOnline) {
-          // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)或设置(12) Tab，则自动重定向回主页 Tab
+          // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)、设置(12)或玩安卓(13) Tab，则自动重定向回主页 Tab
           final selectedTool = ref.read(selectedToolTabProvider);
           if (selectedTool != -1 &&
               selectedTool != 0 &&
               selectedTool != 1 &&
               selectedTool != 2 &&
-              selectedTool != 12) {
+              selectedTool != 12 &&
+              selectedTool != 13) {
             ref.read(selectedToolTabProvider.notifier).select(0);
           }
         }
@@ -341,6 +344,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final int stackIndex;
     if (selectedTool == 12) {
       stackIndex = 2;
+    } else if (selectedTool == 13) {
+      stackIndex = 3;
     } else if (selectedTool == -1 || effectiveSelectedDevice == null) {
       stackIndex = 0;
     } else {
@@ -371,6 +376,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 const _DashboardHomeContent(),
                 workspace,
                 const _SettingsTab(),
+                const InAppWebViewWidget(
+                  initialUrl: 'https://www.wanandroid.com/',
+                  title: '玩Android',
+                ),
               ],
             ),
           ),

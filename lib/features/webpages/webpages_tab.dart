@@ -9,6 +9,7 @@ import '../../core/adb/adb_device.dart';
 import '../../core/web_debug/webpage_target.dart';
 import '../../core/providers/app_providers.dart';
 import '../widgets/dashboard_snack.dart';
+import '../webview/in_app_webview_widget.dart';
 
 /// 网页调试标签页。
 
@@ -32,6 +33,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
   final TextEditingController _filterController = TextEditingController();
   String _filter = '';
   WebpageTarget? _selectedTarget;
+  WebpageTarget? _previewTarget;
 
   Timer? _refreshTimer;
   bool _autoRefresh = true;
@@ -57,6 +59,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
     if (widget.device.id != oldWidget.device.id ||
         widget.isVisible != oldWidget.isVisible) {
       _stopRefreshTimer();
+      _previewTarget = null;
       if (widget.device.isOnline && widget.isVisible) {
         _startRefreshTimer();
       }
@@ -207,6 +210,15 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
     }
   }
 
+  void _openInAppWebView([WebpageTarget? target]) {
+    final item = target ?? _selectedTarget;
+    if (item == null || item.url.isEmpty) return;
+
+    setState(() {
+      _previewTarget = item;
+    });
+  }
+
   List<WebpageTarget> _filterTargets(List<WebpageTarget> items) {
     final query = _filter.trim().toLowerCase();
     if (query.isEmpty) return items;
@@ -232,6 +244,17 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
             Text(context.l10n.t('offlineWebpagesWarning')),
           ],
         ),
+      );
+    }
+
+    if (_previewTarget != null) {
+      return InAppWebViewWidget(
+        initialUrl: _previewTarget!.url,
+        title: _previewTarget!.title.isNotEmpty
+            ? _previewTarget!.title
+            : _previewTarget!.url,
+        showToolbar: true,
+        onBack: () => setState(() => _previewTarget = null),
       );
     }
 
@@ -358,6 +381,21 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                 tooltip: context.l10n.t('openInBrowser'),
                 onPressed: _selectedTarget != null ? _openInBrowser : null,
               ),
+              const SizedBox(width: 8),
+              // 应用内打开按钮 (Mac window 图标)
+              IconButton(
+                icon: const Icon(CupertinoIcons.macwindow, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: _selectedTarget != null
+                      ? Theme.of(context).colorScheme.tertiaryContainer
+                      : null,
+                  foregroundColor: _selectedTarget != null
+                      ? Theme.of(context).colorScheme.onTertiaryContainer
+                      : null,
+                ),
+                tooltip: context.l10n.t('openInAppWebview'),
+                onPressed: _selectedTarget != null ? _openInAppWebView : null,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -438,6 +476,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                               target;
                         }
                       },
+                      onDoubleTap: (target) => _openInAppWebView(target),
                     );
                   },
                 );

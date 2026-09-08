@@ -33,12 +33,14 @@ class _WebpageTable extends StatefulWidget {
   final String? selectedId;
   final _WebpageTableWidths widths;
   final ValueChanged<WebpageTarget> onSelected;
+  final ValueChanged<WebpageTarget>? onDoubleTap;
 
   const _WebpageTable({
     required this.targets,
     required this.selectedId,
     required this.widths,
     required this.onSelected,
+    this.onDoubleTap,
   });
 
   @override
@@ -201,6 +203,9 @@ class _WebpageTableState extends State<_WebpageTable> {
 
     return InkWell(
       onTap: () => widget.onSelected(target),
+      onDoubleTap: widget.onDoubleTap != null
+          ? () => widget.onDoubleTap!(target)
+          : null,
       onSecondaryTapDown: (details) {
         _showContextMenu(context, details.globalPosition, target);
       },

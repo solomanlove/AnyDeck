@@ -57,6 +57,9 @@ dependencies:
   sqlite3: ^2.4.4
   path_provider: ^2.1.3
 
+  # 内嵌 WebView
+  flutter_inappwebview: ^6.1.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -18,7 +18,7 @@ class _PrimaryRail extends ConsumerWidget {
     required bool hasOverflow,
   }) {
     final double toolSlotHeight = isNarrow ? 60.0 : 52.0;
-    final double settingsSlotHeight = isNarrow ? 60.0 : 52.0;
+    final double bottomButtonsSlotHeight = (isNarrow ? 60.0 : 52.0) * 2;
     final double logoSize = isNarrow ? 50.0 : 36.0;
     final double logoToolGap = isNarrow
         ? (hasOverflow ? _compactLogoToolGap : _fullLogoToolGap)
@@ -29,7 +29,7 @@ class _PrimaryRail extends ConsumerWidget {
         _topSpacing -
         logoSize -
         logoToolGap -
-        settingsSlotHeight -
+        bottomButtonsSlotHeight -
         _bottomSpacing;
 
     if (availableHeight <= 0) return 0;
@@ -323,6 +323,15 @@ class _PrimaryRail extends ConsumerWidget {
                     isNarrow: renderNarrow,
                   ),
                 const Spacer(),
+                _RailButton(
+                  icon: CupertinoIcons.compass,
+                  tooltip: context.l10n.t('wanAndroid'),
+                  isNarrow: renderNarrow,
+                  selected: selectedTool == 13,
+                  onPressed: () {
+                    ref.read(selectedToolTabProvider.notifier).select(13);
+                  },
+                ),
                 _RailButton(
                   icon: CupertinoIcons.settings,
                   tooltip: context.l10n.t('settings'),
