@@ -25,7 +25,7 @@ class McpServerConfig {
   final Set<String> disabledToolNames;
 
   const McpServerConfig({
-    this.enableSse = true,
+    this.enableSse = false,
     this.host = '127.0.0.1',
     this.port = 8765,
     this.enableAuth = false,
@@ -73,7 +73,7 @@ class McpServerConfig {
 
   factory McpServerConfig.fromJson(Map<String, dynamic> json) {
     return McpServerConfig(
-      enableSse: json['enableSse'] as bool? ?? true,
+      enableSse: json['enableSse'] as bool? ?? false,
       host: json['host'] as String? ?? '127.0.0.1',
       port: json['port'] as int? ?? 8765,
       enableAuth: json['enableAuth'] as bool? ?? false,

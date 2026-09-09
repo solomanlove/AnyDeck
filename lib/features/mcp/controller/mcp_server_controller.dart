@@ -153,11 +153,17 @@ class McpServerNotifier extends Notifier<McpServerState> {
     try {
       state = state.copyWith(statusText: '正在启动...');
       await _server!.startSse(customConfig: state.config);
+      final newConfig = state.config.copyWith(enableSse: true);
       state = state.copyWith(
         isRunning: true,
         statusText: '运行中 (${state.config.host}:${state.config.port})',
+        config: newConfig,
         lastError: null,
       );
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_prefsKey, jsonEncode(newConfig.toJson()));
+      } catch (_) {}
     } catch (e) {
       state = state.copyWith(
         isRunning: false,
@@ -172,10 +178,16 @@ class McpServerNotifier extends Notifier<McpServerState> {
     if (_server == null) return;
     try {
       await _server!.stop();
+      final newConfig = state.config.copyWith(enableSse: false);
       state = state.copyWith(
         isRunning: false,
         statusText: '已停止',
+        config: newConfig,
       );
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_prefsKey, jsonEncode(newConfig.toJson()));
+      } catch (_) {}
     } catch (e) {
       state = state.copyWith(lastError: e.toString());
     }
