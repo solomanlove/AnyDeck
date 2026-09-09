@@ -16,6 +16,8 @@ import '../widgets/dashboard_table_header.dart';
 part 'processes_tab_view.dart';
 part 'processes_tab_table.dart';
 
+enum _ProcessContextAction { stop }
+
 class ProcessesTab extends ConsumerStatefulWidget {
   final AdbDevice device;
   final bool isVisible;
@@ -35,7 +37,6 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
   String _filter = '';
   bool _onlyShowApps = true;
   String? _selectedPid;
-  AdbProcess? _selectedProcess;
 
   String _sortColumn = 'cpu'; // 'name', 'cpu', 'time', 'memory', 'pid', 'user'
   bool _sortAscending = false;
@@ -59,11 +60,10 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
 
     if (!widget.device.isOnline) {
       _stopRefreshTimer();
-      if (_refreshing || _selectedPid != null || _selectedProcess != null) {
+      if (_refreshing || _selectedPid != null) {
         setState(() {
           _refreshing = false;
           _selectedPid = null;
-          _selectedProcess = null;
         });
       }
       return;
@@ -147,10 +147,57 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
     }
   }
 
-  Future<void> _killProcess() async {
-    final process = _selectedProcess;
-    if (process == null) return;
+  /// 右键选中目标进程，并在指针位置展示单行操作菜单。
+  Future<void> _showProcessContextMenu(
+    AdbProcess process,
+    Offset position,
+  ) async {
+    setState(() => _selectedPid = process.pid);
 
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) return;
+
+    final result = await showMenu<_ProcessContextAction>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        overlay.size.width - position.dx,
+        overlay.size.height - position.dy,
+      ),
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      items: [
+        PopupMenuItem<_ProcessContextAction>(
+          value: _ProcessContextAction.stop,
+          height: 38,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                CupertinoIcons.stop_circle,
+                size: 16,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(width: 8),
+              Text(context.l10n.t('stopThisProcess')),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (result == _ProcessContextAction.stop && mounted) {
+      await _killProcess(process);
+    }
+  }
+
+  Future<void> _killProcess(AdbProcess process) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -184,11 +231,7 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
 
     final result = await ref
         .read(processServiceProvider)
-        .killProcess(
-          widget.device.id,
-          process.pid,
-          processName: process.name,
-        );
+        .killProcess(widget.device.id, process.pid, processName: process.name);
 
     if (!mounted) return;
 
@@ -197,10 +240,9 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
         context,
         '${context.l10n.t('killProcessSuccess')} (PID: ${process.pid})',
       );
-      setState(() {
-        _selectedPid = null;
-        _selectedProcess = null;
-      });
+      if (_selectedPid == process.pid) {
+        setState(() => _selectedPid = null);
+      }
       _refreshProcesses(silent: true);
     } else {
       DashboardSnack.show(

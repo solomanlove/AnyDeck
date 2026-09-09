@@ -1,5 +1,8 @@
 part of 'processes_tab.dart';
 
+typedef _ProcessContextMenuCallback =
+    void Function(AdbProcess process, Offset position);
+
 class _ProcessTableWidths {
   final double name;
   final double cpu;
@@ -55,6 +58,7 @@ class _ProcessTable extends StatefulWidget {
   final bool sortAscending;
   final ValueChanged<String> onSort;
   final ValueChanged<AdbProcess> onSelected;
+  final _ProcessContextMenuCallback onContextMenuRequested;
 
   const _ProcessTable({
     required this.deviceId,
@@ -66,6 +70,7 @@ class _ProcessTable extends StatefulWidget {
     required this.sortAscending,
     required this.onSort,
     required this.onSelected,
+    required this.onContextMenuRequested,
   });
 
   @override
@@ -198,6 +203,8 @@ class _ProcessTableState extends State<_ProcessTable> {
 
     return InkWell(
       onTap: () => widget.onSelected(process),
+      onSecondaryTapDown: (details) =>
+          widget.onContextMenuRequested(process, details.globalPosition),
       child: Container(
         height: 56,
         decoration: BoxDecoration(

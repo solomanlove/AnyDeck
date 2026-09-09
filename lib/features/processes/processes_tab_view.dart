@@ -124,20 +124,6 @@ extension _ProcessesTabView on _ProcessesTabState {
                     : const Icon(CupertinoIcons.refresh, size: 20),
                 onPressed: _refreshing ? null : () => _refreshProcesses(),
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(CupertinoIcons.xmark, size: 20),
-                style: IconButton.styleFrom(
-                  backgroundColor: _selectedPid != null
-                      ? Theme.of(context).colorScheme.errorContainer
-                      : null,
-                  foregroundColor: _selectedPid != null
-                      ? Theme.of(context).colorScheme.onErrorContainer
-                      : null,
-                ),
-                tooltip: context.l10n.t('killSelectedProcess'),
-                onPressed: _selectedPid != null ? _killProcess : null,
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -217,13 +203,12 @@ extension _ProcessesTabView on _ProcessesTabState {
                         _updateState(() {
                           if (_selectedPid == process.pid) {
                             _selectedPid = null;
-                            _selectedProcess = null;
                           } else {
                             _selectedPid = process.pid;
-                            _selectedProcess = process;
                           }
                         });
                       },
+                      onContextMenuRequested: _showProcessContextMenu,
                     );
                   },
                 );
