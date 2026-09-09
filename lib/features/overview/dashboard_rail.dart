@@ -17,7 +17,7 @@ class _PrimaryRail extends ConsumerWidget {
     required bool hasOverflow,
   }) {
     final double toolSlotHeight = isNarrow ? 60.0 : 52.0;
-    final double bottomButtonsSlotHeight = (isNarrow ? 60.0 : 52.0) * 2;
+    final double bottomButtonsSlotHeight = (isNarrow ? 60.0 : 52.0) * 3;
     final double logoSize = isNarrow ? 50.0 : 36.0;
     final double logoToolGap = isNarrow
         ? (hasOverflow ? _compactLogoToolGap : _fullLogoToolGap)
@@ -295,6 +295,15 @@ class _PrimaryRail extends ConsumerWidget {
                   selected: selectedTool == 13,
                   onPressed: () {
                     ref.read(selectedToolTabProvider.notifier).select(13);
+                  },
+                ),
+                _RailButton(
+                  icon: CupertinoIcons.sparkles,
+                  tooltip: context.l10n.t('aiMcp'),
+                  isNarrow: renderNarrow,
+                  selected: selectedTool == 14,
+                  onPressed: () {
+                    ref.read(selectedToolTabProvider.notifier).select(14);
                   },
                 ),
                 _RailButton(

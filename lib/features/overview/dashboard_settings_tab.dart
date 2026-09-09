@@ -415,6 +415,71 @@ class _SettingsTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
 
+                // Card 2.8: AI MCP 服务 (AI Model Context Protocol Server)
+                _buildSectionCard(
+                  context,
+                  title: context.l10n.locale.languageCode == 'zh' ? 'AI MCP 服务' : 'AI MCP Server',
+                  icon: CupertinoIcons.sparkles,
+                  children: [
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final mcpState = ref.watch(mcpServerProvider);
+                        final mcpController = ref.read(mcpServerProvider.notifier);
+                        final isRunning = mcpState.isRunning;
+                        return Column(
+                          children: [
+                            _buildSettingRow(
+                              context,
+                              label: context.l10n.locale.languageCode == 'zh' ? '启用 MCP 服务' : 'Enable MCP Server',
+                              subtitle: context.l10n.locale.languageCode == 'zh'
+                                  ? '允许外部 AI 智能体 (Cursor/Claude/Antigravity 等) 通过标准 MCP 协议感知与控制设备。'
+                                  : 'Allow AI agents (Cursor/Claude/Antigravity) to inspect and control devices via MCP protocol.',
+                              child: Switch.adaptive(
+                                activeThumbColor: brandGreen,
+                                activeTrackColor: brandGreen.withValues(alpha: 0.5),
+                                value: isRunning,
+                                onChanged: (val) {
+                                  if (val) {
+                                    mcpController.startServer();
+                                  } else {
+                                    mcpController.stopServer();
+                                  }
+                                },
+                              ),
+                            ),
+                            const Divider(height: 16),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(
+                                CupertinoIcons.slider_horizontal_3,
+                                color: brandGreen,
+                              ),
+                              title: Text(context.l10n.locale.languageCode == 'zh' ? '前往 AI MCP 控制台' : 'Go to AI MCP Console'),
+                              subtitle: Text(
+                                isRunning
+                                    ? '运行中 (${mcpState.config.host}:${mcpState.config.port}) - ${mcpState.registeredTools.length} 个工具已就绪'
+                                    : '服务已停止',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isRunning ? brandGreen : Colors.grey,
+                                ),
+                              ),
+                              trailing: const Icon(
+                                CupertinoIcons.chevron_right,
+                                size: 16,
+                              ),
+                              onTap: () {
+                                ref.read(selectedToolTabProvider.notifier).select(14);
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
                 // Card 3: 关于与支持 (About & Support)
                 _buildSectionCard(
                   context,

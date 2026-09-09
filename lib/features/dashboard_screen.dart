@@ -57,6 +57,8 @@ import 'webpages/webpages_tab.dart';
 import 'layout/layout_tab.dart';
 import 'performance/performance_tab.dart';
 import 'network/network_tab.dart';
+import 'mcp/presentation/mcp_dashboard_tab.dart';
+import 'mcp/controller/mcp_server_controller.dart';
 import 'widgets/dashboard_snack.dart';
 import 'widgets/dashboard_table_header.dart';
 import 'widgets/device_power_actions.dart';
@@ -348,6 +350,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       stackIndex = 2;
     } else if (selectedTool == 13) {
       stackIndex = 3;
+    } else if (selectedTool == 14) {
+      stackIndex = 4;
     } else if (selectedTool == -1 || effectiveSelectedDevice == null) {
       stackIndex = 0;
     } else {
@@ -382,6 +386,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   initialUrl: 'https://www.wanandroid.com/',
                   title: '玩Android',
                 ),
+                const McpDashboardTab(),
               ],
             ),
           ),
