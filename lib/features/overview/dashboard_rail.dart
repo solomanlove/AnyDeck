@@ -6,7 +6,6 @@ class _PrimaryRail extends ConsumerWidget {
   final AdbDevice? selectedDevice;
 
   static double get _topSpacing => Platform.isMacOS ? 36.0 : 14.0;
-  static const double _logoSize = 50;
   static const double _fullLogoToolGap = 10;
   static const double _compactLogoToolGap = 6;
   static const double _bottomSpacing = 18;
@@ -243,52 +242,18 @@ class _PrimaryRail extends ConsumerWidget {
                         SizedBox(height: _topSpacing),
                         GestureDetector(
                           onTap: () {
-                            // 点击应用 Logo 和 AnyDeck 跳转至设备管理页面，同时保留当前已选中的设备
+                            // 点击顶部身份区跳转至设备管理页面，同时保留当前已选中的设备
                             ref
                                 .read(selectedToolTabProvider.notifier)
                                 .select(-1);
                           },
                           child: MouseRegion(
                             cursor: SystemMouseCursors.click,
-                            child: renderNarrow
-                                ? SizedBox(
-                                    width: _logoSize,
-                                    height: _logoSize,
-                                    child: const Image(
-                                      image: AssetImage(
-                                        AppIcons.appLogo,
-                                      ),
-                                    ),
-                                  )
-                                : Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(8), // 所有角都圆角
-                                          child: const SizedBox(
-                                            width: 36,
-                                            height: 36,
-                                            child: Image(
-                                              image: AssetImage(
-                                                AppIcons.appLogo,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            context.l10n.t('appTitle'),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                            child: _RailIdentity(
+                              selectedDevice: selectedDevice,
+                              registeredDevices: registeredDevices,
+                              isNarrow: renderNarrow,
+                            ),
                           ),
                         ),
                         SizedBox(

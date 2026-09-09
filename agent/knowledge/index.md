@@ -18,6 +18,7 @@
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、USB 投屏原理（MJPEG 字节流解析）、多窗口 Isolate 隔离下的状态同步与测试桩设计 | `core/ios/`, `app/window/mirror/` |
 | `adb-app-window-run-config-script` | App 子窗口 Run Configuration 生成脚本 | active | 记录 `script/generate_app_window_run_configs.sh` 如何生成模拟器管理窗口和控制台窗口的 IDE Flutter 运行入口 | `script/`, `.idea/runConfigurations/`, `app/window/` |
 | `adb-macos-icon-assets` | macOS 图标资源机制 | active | 记录 Dock 图标、Flutter App logo、菜单栏 template icon 的资源边界和生成命令 | `assets/brand/`, `macos/Runner/Assets.xcassets/` |
+| `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录左侧导航顶部 App/设备身份切换、返回设备管理点击逻辑及 workspace 顶部布局边界 | `features/overview/`, `features/devices/` |
 | `adb-macos-signature-policy` | macOS 签名与 system policy 修复机制 | active | 记录 `FlutterMacOS.framework` 被 dyld system policy 拒绝加载时的签名、provenance/quarantine 排查与自动修复脚本 | `macos/`, `script/` |
 
 ## 新增知识库规则

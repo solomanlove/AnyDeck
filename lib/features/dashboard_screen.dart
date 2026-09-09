@@ -45,7 +45,6 @@ import '../core/utils/network_util.dart';
 import 'widgets/drag_drop_target_overlay.dart';
 import 'widgets/liquid_glass_background.dart';
 import 'package:glassmorphism/glassmorphism.dart';
-import '../core/scrcpy/scrcpy_launch_options.dart';
 import '../core/scrcpy/scrcpy_session.dart';
 import '../core/scrcpy/embedded_scrcpy_service.dart';
 import '../core/ios/ios_mirror_service.dart';
@@ -74,6 +73,7 @@ import 'webview/in_app_webview_widget.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';
+part 'overview/dashboard_rail_identity.dart';
 part 'widgets/dashboard_dialogs.dart';
 part 'widgets/dashboard_update_dialog.dart';
 part 'widgets/remote_controller_dialog.dart';
