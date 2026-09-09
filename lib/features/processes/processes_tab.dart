@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
@@ -16,7 +17,7 @@ import '../widgets/dashboard_table_header.dart';
 part 'processes_tab_view.dart';
 part 'processes_tab_table.dart';
 
-enum _ProcessContextAction { stop }
+enum _ProcessContextAction { copyName, stop }
 
 class ProcessesTab extends ConsumerStatefulWidget {
   final AdbDevice device;
@@ -147,7 +148,7 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
     }
   }
 
-  /// 右键选中目标进程，并在指针位置展示单行操作菜单。
+  /// 右键选中目标进程，并在指针位置展示进程操作菜单。
   Future<void> _showProcessContextMenu(
     AdbProcess process,
     Offset position,
@@ -174,6 +175,18 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
       ),
       items: [
         PopupMenuItem<_ProcessContextAction>(
+          value: _ProcessContextAction.copyName,
+          height: 38,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(CupertinoIcons.doc_on_doc, size: 16),
+              const SizedBox(width: 8),
+              Text(context.l10n.t('copyProcessName')),
+            ],
+          ),
+        ),
+        PopupMenuItem<_ProcessContextAction>(
           value: _ProcessContextAction.stop,
           height: 38,
           child: Row(
@@ -192,7 +205,12 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
       ],
     );
 
-    if (result == _ProcessContextAction.stop && mounted) {
+    if (result == _ProcessContextAction.copyName && mounted) {
+      await Clipboard.setData(ClipboardData(text: process.name));
+      if (mounted) {
+        DashboardSnack.show(context, context.l10n.t('copySuccess'));
+      }
+    } else if (result == _ProcessContextAction.stop && mounted) {
       await _killProcess(process);
     }
   }

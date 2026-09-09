@@ -9,6 +9,7 @@ const toolsMirrorZh = {
   'onlyShowApps': '仅显示应用',
   'autoRefreshInterval': '自动刷新 ({seconds}s)',
   'processCount': '共 {count} 个进程',
+  'copyProcessName': '复制进程名',
   'stopThisProcess': '停止该进程',
   'killProcessConfirm': '确定结束进程 {name} (PID: {pid}) 吗？',
   'killProcessSuccess': '进程已结束',
@@ -194,6 +195,7 @@ const toolsMirrorEn = {
   'onlyShowApps': 'Show Apps Only',
   'autoRefreshInterval': 'Auto refresh ({seconds}s)',
   'processCount': 'Total {count} processes',
+  'copyProcessName': 'Copy Process Name',
   'stopThisProcess': 'Stop This Process',
   'killProcessConfirm':
       'Are you sure you want to kill process {name} (PID: {pid})?',

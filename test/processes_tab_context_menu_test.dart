@@ -9,6 +9,7 @@ import 'package:any_deck/features/processes/processes_tab.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,7 +38,7 @@ class _RecordingAdbService extends AdbService {
 }
 
 void main() {
-  testWidgets('process row exposes stop action only from secondary click', (
+  testWidgets('process row context menu copies name and stops target', (
     WidgetTester tester,
   ) async {
     const device = AdbDevice(
@@ -56,6 +57,20 @@ void main() {
       name: 'com.example.app',
     );
     final adb = _RecordingAdbService();
+    String? copiedText;
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copiedText =
+                (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          }
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
 
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1;
@@ -100,7 +115,22 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('复制进程名'), findsOneWidget);
     expect(find.text('停止该进程'), findsOneWidget);
+
+    await tester.tap(find.text('复制进程名'));
+    await tester.pumpAndSettle();
+
+    expect(copiedText, process.name);
+    expect(find.text('已复制到剪贴板'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+
+    await tester.tap(
+      find.text(process.name),
+      buttons: kSecondaryButton,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('停止该进程'));
     await tester.pumpAndSettle();
