@@ -181,15 +181,6 @@ class _RailIdentity extends ConsumerWidget {
         width: double.infinity,
         height: double.infinity,
       );
-      if (device.status != 'device') {
-        child = ColorFiltered(
-          colorFilter: const ColorFilter.mode(
-            Colors.grey,
-            BlendMode.saturation,
-          ),
-          child: Opacity(opacity: 0.6, child: child),
-        );
-      }
     }
 
     return Container(
