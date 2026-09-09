@@ -1,10 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
 
+import '../adb/adb_service.dart';
+import '../apps/app_management_service.dart';
+import '../device_actions/device_action_service.dart';
+import '../device_info/device_info_service.dart';
+import '../files/file_manager_service.dart';
+import '../layout_inspector/layout_inspector_service.dart';
 import 'models/mcp_request.dart';
 import 'models/mcp_response.dart';
 import 'models/mcp_server_config.dart';
 import 'registry/mcp_tool_registry.dart';
+import 'tools/mcp_app_tools.dart';
+import 'tools/mcp_device_tools.dart';
+import 'tools/mcp_file_tools.dart';
+import 'tools/mcp_log_tools.dart';
+import 'tools/mcp_ui_tools.dart';
 import 'transport/mcp_sse_transport.dart';
 import 'transport/mcp_stdio_transport.dart';
 import 'transport/mcp_transport_interface.dart';
@@ -81,7 +92,7 @@ class McpServer {
   }
 
   /// 核心 JSON-RPC 2.0 请求路由分发器
-  Future<McpResponse> handleRequest(McpRequest request) async {
+  Future<McpResponse?> handleRequest(McpRequest request) async {
     final startTime = DateTime.now();
     String? toolName;
     Map<String, dynamic>? arguments;
@@ -92,9 +103,10 @@ class McpServer {
         case 'initialize':
           return _handleInitialize(request);
 
-        // 2. 客户端完成初始化通知
+        // 2. 客户端完成初始化通知 (规范规定 Notification 绝不返回 Response)
         case 'notifications/initialized':
-          return McpResponse.success(id: request.id, result: {});
+        case 'notifications/cancelled':
+          return null;
 
         // 3. 心跳检测
         case 'ping':
@@ -147,6 +159,10 @@ class McpServer {
           return McpResponse.success(id: request.id, result: {'prompts': []});
 
         default:
+          // 若为 Notification，无需响应
+          if (request.isNotification) {
+            return null;
+          }
           return McpResponse.error(
             id: request.id,
             code: McpError.methodNotFound,
@@ -164,6 +180,10 @@ class McpServer {
         durationMs: duration,
       );
 
+      if (request.isNotification) {
+        return null;
+      }
+
       return McpResponse.error(
         id: request.id,
         code: McpError.toolExecutionError,
@@ -179,7 +199,7 @@ class McpServer {
       result: {
         'protocolVersion': '2024-11-05',
         'serverInfo': {
-          'name': 'AnyDeck MCP Server',
+          'name': 'anydeck',
           'version': '1.0.0',
         },
         'capabilities': {
@@ -201,5 +221,25 @@ class McpServer {
       id: request.id,
       result: {'tools': toolsSchema},
     );
+  }
+
+  /// 构造包含所有默认设备、UI、应用、日志与文件工具的注册中心
+  static McpToolRegistry createDefaultRegistry({
+    AdbService? adbService,
+  }) {
+    final adb = adbService ?? AdbService();
+    final deviceInfoService = DeviceInfoService(adb);
+    final actionService = DeviceActionService(adb);
+    final appService = AppManagementService(adb);
+    final layoutService = LayoutInspectorService(adb);
+    final fileService = FileManagerService(adb);
+
+    final registry = McpToolRegistry();
+    registry.registerAll(McpDeviceTools(adbService: adb, deviceInfoService: deviceInfoService).getTools());
+    registry.registerAll(McpUiTools(adbService: adb, actionService: actionService, layoutService: layoutService).getTools());
+    registry.registerAll(McpAppTools(appService: appService).getTools());
+    registry.registerAll(McpLogTools(adbService: adb).getTools());
+    registry.registerAll(McpFileTools(adbService: adb, fileManagerService: fileService).getTools());
+    return registry;
   }
 }

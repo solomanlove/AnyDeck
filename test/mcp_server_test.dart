@@ -69,10 +69,21 @@ void main() {
       );
 
       final res = await server.handleRequest(req);
-      expect(res.id, equals('req-1'));
+      expect(res, isNotNull);
+      expect(res!.id, equals('req-1'));
       expect(res.error, isNull);
       expect(res.result['protocolVersion'], equals('2024-11-05'));
-      expect(res.result['serverInfo']['name'], equals('AnyDeck MCP Server'));
+      expect(res.result['serverInfo']['name'], equals('anydeck'));
+    });
+
+    test('测试 notifications/initialized 通知不返回任何响应', () async {
+      final req = const McpRequest(
+        id: null,
+        method: 'notifications/initialized',
+      );
+
+      final res = await server.handleRequest(req);
+      expect(res, isNull);
     });
 
     test('测试 tools/list 列表查询', () async {
@@ -82,7 +93,8 @@ void main() {
       );
 
       final res = await server.handleRequest(req);
-      expect(res.error, isNull);
+      expect(res, isNotNull);
+      expect(res!.error, isNull);
       final tools = res.result['tools'] as List<dynamic>;
       expect(tools.length, equals(1));
       expect(tools.first['name'], equals('echo_test'));
@@ -99,7 +111,8 @@ void main() {
       );
 
       final res = await server.handleRequest(req);
-      expect(res.error, isNull);
+      expect(res, isNotNull);
+      expect(res!.error, isNull);
       expect(res.result['isError'], isFalse);
       expect(res.result['data']['echo'], equals('Hello MCP'));
     });
@@ -111,7 +124,8 @@ void main() {
       );
 
       final res = await server.handleRequest(req);
-      expect(res.error, isNotNull);
+      expect(res, isNotNull);
+      expect(res!.error, isNotNull);
       expect(res.error!.code, equals(McpError.methodNotFound));
     });
   });

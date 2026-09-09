@@ -37,7 +37,7 @@ class McpSseTransport implements McpTransportInterface {
 
   @override
   Future<void> start({
-    required Future<McpResponse> Function(McpRequest request) onRequest,
+    required Future<McpResponse?> Function(McpRequest request) onRequest,
   }) async {
     if (_isRunning) return;
 
@@ -71,27 +71,53 @@ class McpSseTransport implements McpTransportInterface {
 
         final path = req.uri.path;
 
-        // 1. SSE 长连接端点 (/sse)
-        if (req.method == 'GET' && (path == '/sse' || path == '/')) {
-          await _handleSseConnect(req);
-          return;
-        }
-
-        // 2. 接收客户端请求端点 (/messages 或 POST /)
-        if (req.method == 'POST' && (path == '/messages' || path == '/rpc' || path == '/')) {
-          await _handlePostMessage(req, onRequest);
-          return;
-        }
-
-        // 3. 健康检查端点 (/health)
+        // 1. 健康检查端点 (/health)
         if (req.method == 'GET' && path == '/health') {
           req.response.statusCode = HttpStatus.ok;
           req.response.headers.contentType = ContentType.json;
           req.response.write(jsonEncode({
             'status': 'ok',
-            'server': 'AnyDeck MCP Server',
+            'server': 'anydeck',
             'clients': _activeSseClients.length,
           }));
+          await req.response.close();
+          return;
+        }
+
+        // 2. SSE 长连接端点 (GET 请求且为 text/event-stream 或特定路径)
+        final acceptHeader = req.headers.value(HttpHeaders.acceptHeader) ?? '';
+        final isSseGet = req.method == 'GET' &&
+            (acceptHeader.contains('text/event-stream') ||
+                path == '/sse' ||
+                path == '/' ||
+                path == '/mcp' ||
+                path == '/events');
+
+        if (isSseGet) {
+          await _handleSseConnect(req);
+          return;
+        }
+
+        // 3. 接收客户端请求端点 (支持 POST 到任意端点: /messages, /sse, /mcp, /rpc, / 等)
+        if (req.method == 'POST') {
+          await _handlePostMessage(req, onRequest);
+          return;
+        }
+
+        // 4. 会话注销端点 (DELETE 请求)
+        if (req.method == 'DELETE') {
+          final sessionId = req.uri.queryParameters['sessionId'] ??
+              req.uri.queryParameters['session_id'] ??
+              req.headers.value('mcp-session-id') ??
+              req.headers.value('x-session-id');
+          if (sessionId != null) {
+            final client = _activeSseClients.remove(sessionId);
+            try {
+              await client?.close();
+            } catch (_) {}
+          }
+          req.response.statusCode = HttpStatus.ok;
+          req.response.write(jsonEncode({'status': 'disconnected'}));
           await req.response.close();
           return;
         }
@@ -109,16 +135,24 @@ class McpSseTransport implements McpTransportInterface {
 
   /// 处理 SSE 客户端接入
   Future<void> _handleSseConnect(HttpRequest req) async {
-    final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    final clientSessionId = req.headers.value('mcp-session-id') ??
+        req.headers.value('x-session-id') ??
+        req.uri.queryParameters['sessionId'] ??
+        req.uri.queryParameters['session_id'] ??
+        DateTime.now().millisecondsSinceEpoch.toString();
+
+    final sessionId = clientSessionId;
     final res = req.response;
 
     res.headers.set('Content-Type', 'text/event-stream; charset=utf-8');
     res.headers.set('Cache-Control', 'no-cache, no-transform');
     res.headers.set('Connection', 'keep-alive');
+    res.headers.set('Mcp-Session-Id', sessionId);
+    res.headers.set('X-Session-Id', sessionId);
 
     _activeSseClients[sessionId] = res;
 
-    // 向客户端发送 endpoint 初始化事件
+    // 向客户端发送 endpoint 初始化事件 (遵循 MCP SSE 规范标准格式)
     final endpointUri = '/messages?sessionId=$sessionId';
     res.write('event: endpoint\ndata: $endpointUri\n\n');
     await res.flush();
@@ -133,10 +167,20 @@ class McpSseTransport implements McpTransportInterface {
   /// 处理客户端发来的 POST 请求
   Future<void> _handlePostMessage(
     HttpRequest req,
-    Future<McpResponse> Function(McpRequest request) onRequest,
+    Future<McpResponse?> Function(McpRequest request) onRequest,
   ) async {
     final res = req.response;
     res.headers.contentType = ContentType.json;
+
+    // 提取 Session ID，并在响应头中回写保持会话
+    final sessionId = req.uri.queryParameters['sessionId'] ??
+        req.uri.queryParameters['session_id'] ??
+        req.headers.value('mcp-session-id') ??
+        req.headers.value('x-session-id') ??
+        (_activeSseClients.isNotEmpty ? _activeSseClients.keys.last : DateTime.now().millisecondsSinceEpoch.toString());
+
+    res.headers.set('Mcp-Session-Id', sessionId);
+    res.headers.set('X-Session-Id', sessionId);
 
     try {
       final body = await utf8.decoder.bind(req).join();
@@ -144,21 +188,31 @@ class McpSseTransport implements McpTransportInterface {
       final mcpRequest = McpRequest.fromJson(json);
 
       final mcpResponse = await onRequest(mcpRequest);
-      final responseBody = jsonEncode(mcpResponse.toJson());
 
-      // 检查是否有对应的 SSE 客户端会话
-      final sessionId = req.uri.queryParameters['sessionId'];
-      if (sessionId != null && _activeSseClients.containsKey(sessionId)) {
-        final sseRes = _activeSseClients[sessionId]!;
-        sseRes.write('event: message\ndata: $responseBody\n\n');
-        await sseRes.flush();
+      // 查找对应的 SSE 客户端
+      HttpResponse? targetSseClient = _activeSseClients[sessionId];
+      if (targetSseClient == null && _activeSseClients.isNotEmpty) {
+        targetSseClient = _activeSseClients.values.last;
+      }
 
-        res.statusCode = HttpStatus.accepted;
-        res.write(jsonEncode({'status': 'sent_to_sse'}));
-      } else {
-        // 直接作为 HTTP 响应返回
+      if (mcpResponse != null) {
+        final responseBody = jsonEncode(mcpResponse.toJson());
+
+        // 1. 如果有活跃的 SSE 连接，向 SSE 推送消息事件
+        if (targetSseClient != null) {
+          try {
+            targetSseClient.write('event: message\ndata: $responseBody\n\n');
+            await targetSseClient.flush();
+          } catch (_) {}
+        }
+
+        // 2. HTTP POST 响应直接回写 JSON-RPC 结果 (完美适配 Streamable HTTP 与直连客户端)
         res.statusCode = HttpStatus.ok;
         res.write(responseBody);
+      } else {
+        // 通知类请求 (如 notifications/initialized)，规范规定无需返回数据
+        res.statusCode = HttpStatus.accepted;
+        res.write(jsonEncode({'status': 'accepted'}));
       }
     } catch (e) {
       res.statusCode = HttpStatus.badRequest;
@@ -175,10 +229,14 @@ class McpSseTransport implements McpTransportInterface {
   /// 设置 CORS 跨域响应头
   void _setCorsHeaders(HttpResponse res) {
     res.headers.set('Access-Control-Allow-Origin', '*');
-    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.headers.set(
       'Access-Control-Allow-Headers',
-      'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, X-Session-Id',
+    );
+    res.headers.set(
+      'Access-Control-Expose-Headers',
+      'Mcp-Session-Id, Mcp-Protocol-Version, X-Session-Id, Content-Type',
     );
   }
 

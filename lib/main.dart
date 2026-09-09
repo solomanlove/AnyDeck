@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 import 'dart:isolate';
 import 'dart:developer' as developer;
@@ -12,11 +14,26 @@ import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
 import 'app/window/console/console_window_app.dart';
 import 'app/window/multi_window_compat.dart';
+import 'core/mcp/mcp_server.dart';
 
 import 'app/settings/app_settings_controller.dart';
 
 /// 应用入口，ProviderScope 负责承载全局 Riverpod 依赖图。
 void main(List<String> args) async {
+  // 处理 MCP Stdio 命令行模式 (供 Claude Desktop / Antigravity 等作为子进程拉起)
+  if (args.contains('--mcp-stdio')) {
+    final registry = McpServer.createDefaultRegistry();
+    final server = McpServer(registry: registry);
+    await server.startStdio();
+
+    // 保持进程活跃以监听 stdin
+    final completer = Completer<void>();
+    ProcessSignal.sigint.watch().listen((_) => completer.complete());
+    ProcessSignal.sigterm.watch().listen((_) => completer.complete());
+    await completer.future;
+    return;
+  }
+
   WidgetsFlutterBinding.ensureInitialized();
 
   // 修复在 macOS/桌面端因焦点切换或系统合成事件导致的 KeyUpEvent 断言 crash 错误。

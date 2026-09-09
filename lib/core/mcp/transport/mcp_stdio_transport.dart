@@ -19,7 +19,7 @@ class McpStdioTransport implements McpTransportInterface {
 
   @override
   Future<void> start({
-    required Future<McpResponse> Function(McpRequest request) onRequest,
+    required Future<McpResponse?> Function(McpRequest request) onRequest,
   }) async {
     if (_isRunning) return;
     _isRunning = true;
@@ -37,8 +37,10 @@ class McpStdioTransport implements McpTransportInterface {
           final request = McpRequest.fromJson(json);
           final response = await onRequest(request);
 
-          // 向 stdout 发送 JSON-RPC 响应
-          stdout.writeln(jsonEncode(response.toJson()));
+          // 向 stdout 发送 JSON-RPC 响应 (通知类型无需响应)
+          if (response != null) {
+            stdout.writeln(jsonEncode(response.toJson()));
+          }
         } catch (e) {
           final errResponse = McpResponse.error(
             id: null,

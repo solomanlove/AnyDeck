@@ -37,6 +37,9 @@ class McpRequest {
     return map;
   }
 
+  /// 是否为 JSON-RPC 2.0 通知 (无 id 或以 notifications/ 开头)
+  bool get isNotification => id == null || method.startsWith('notifications/');
+
   @override
   String toString() => 'McpRequest(id: $id, method: $method)';
 }

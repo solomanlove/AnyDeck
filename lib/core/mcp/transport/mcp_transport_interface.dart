@@ -5,7 +5,7 @@ import '../models/mcp_response.dart';
 abstract class McpTransportInterface {
   /// 启动传输层监听
   Future<void> start({
-    required Future<McpResponse> Function(McpRequest request) onRequest,
+    required Future<McpResponse?> Function(McpRequest request) onRequest,
   });
 
   /// 停止传输层并释放连接资源
