@@ -350,6 +350,24 @@ void main() {
     );
   });
 
+  testWidgets(
+    'overview prioritizes version and storage without basic duplicates',
+    (WidgetTester tester) async {
+      await _pumpDashboard(
+        tester,
+        size: const Size(1200, 900),
+        selectedTool: 0,
+      );
+
+      expect(find.text('Android 13'), findsOneWidget);
+      expect(find.text('API 33'), findsOneWidget);
+      expect(find.text('202.92G / 225.43G'), findsOneWidget);
+      expect(find.text('已用 90%'), findsOneWidget);
+      expect(find.text('基本信息'), findsNothing);
+      expect(find.text('mock_serial_123'), findsOneWidget);
+    },
+  );
+
   testWidgets('selected device status follows registry refresh', (
     WidgetTester tester,
   ) async {
