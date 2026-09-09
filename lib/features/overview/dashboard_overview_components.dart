@@ -1,5 +1,15 @@
 part of '../dashboard_screen.dart';
 
+Widget _withOverviewMinHeight(Widget child, double? minHeight) {
+  if (minHeight == null) {
+    return child;
+  }
+  return ConstrainedBox(
+    constraints: BoxConstraints(minHeight: minHeight),
+    child: child,
+  );
+}
+
 class _OverviewHeroCard extends StatelessWidget {
   const _OverviewHeroCard({
     required this.icon,

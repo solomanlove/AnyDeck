@@ -14,7 +14,7 @@
 - 顶部设备摘要统一展示在线状态、设备名称/品牌、序列号和 Android ID；下方不再重复基本信息。iOS 与 HarmonyOS 的设备 ID 已等同于序列号时不再重复展示第二份标识符。
 - Android/系统版本与存储空间是首要状态卡。Android 的 `androidVersion` 展示时拆为主版本和 API badge，并在标题后展示 info icon；仅当鼠标悬浮 info icon 时，才通过 `AndroidVersionHelper.getApiMappingTooltip` 显示黑色 API mapping 提示。厂商系统仅在版本卡内展示。存储卡根据 `DeviceOverview.storage` 的“已用 / 总量”计算比例并展示进度条，同时保留运行内存。
 - 可用宽度不小于 720px 时，重点卡和详情卡采用双列布局；更窄时改为单列堆叠。系统与网络、屏幕与显示使用紧凑键值行，并保留点击复制和密度 tooltip。
-- 桌面双列的版本/存储重点卡使用一致的受约束高度，避免内容较少的一侧出现断层；详情卡使用固定比例的 label 列和左对齐 value 列，保证不同长度参数的起点一致。禁止通过 `IntrinsicHeight` 包裹内部含 `LayoutBuilder` 的组件，否则 Flutter intrinsic size 计算会抛异常并导致 Overview 空白。
+- 桌面双列的版本/存储重点卡使用一致的最小高度，避免内容较少的一侧出现断层，同时允许字体缩放或本地化文案使卡片自动增高，防止内存行出现 bottom overflow；详情卡使用固定比例的 label 列和左对齐 value 列，保证不同长度参数的起点一致。禁止通过 `IntrinsicHeight` 包裹内部含 `LayoutBuilder` 的组件，否则 Flutter intrinsic size 计算会抛异常并导致 Overview 空白。
 - 存储重点卡按内容分区导航：点击容量、已用比例或进度条切换到文件 Tab（index 3）；点击内存行切换到进程管理 Tab（index 6）。标题及卡片空白区域不触发跳转。
 
 ### 底层原理与命令

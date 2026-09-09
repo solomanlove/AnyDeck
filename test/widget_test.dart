@@ -365,6 +365,7 @@ void main() {
       expect(find.text('已用 90%'), findsOneWidget);
       expect(find.text('基本信息'), findsNothing);
       expect(find.text('mock_serial_123'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     },
   );
 

@@ -27,7 +27,7 @@ class _OverviewContent extends StatelessWidget {
           _OverviewResponsivePair(
             first: _OverviewVersionCard(device: device, overview: overview),
             second: _OverviewStorageCard(overview: overview),
-            desktopHeight: 260,
+            desktopMinHeight: 272,
           ),
           const SizedBox(height: 12),
           _OverviewResponsivePair(
@@ -103,12 +103,12 @@ class _OverviewResponsivePair extends StatelessWidget {
   const _OverviewResponsivePair({
     required this.first,
     required this.second,
-    this.desktopHeight,
+    this.desktopMinHeight,
   });
 
   final Widget first;
   final Widget second;
-  final double? desktopHeight;
+  final double? desktopMinHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -121,19 +121,14 @@ class _OverviewResponsivePair extends StatelessWidget {
           );
         }
         final row = Row(
-          crossAxisAlignment: desktopHeight == null
-              ? CrossAxisAlignment.start
-              : CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: first),
+            Expanded(child: _withOverviewMinHeight(first, desktopMinHeight)),
             const SizedBox(width: 12),
-            Expanded(child: second),
+            Expanded(child: _withOverviewMinHeight(second, desktopMinHeight)),
           ],
         );
-        if (desktopHeight == null) {
-          return row;
-        }
-        return SizedBox(height: desktopHeight, child: row);
+        return row;
       },
     );
   }
