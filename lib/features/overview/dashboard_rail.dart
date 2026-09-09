@@ -198,6 +198,9 @@ class _PrimaryRail extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final isMcpRunning =
+        ref.watch(mcpServerProvider.select((s) => s.isRunning));
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
@@ -302,6 +305,7 @@ class _PrimaryRail extends ConsumerWidget {
                   tooltip: context.l10n.t('aiMcp'),
                   isNarrow: renderNarrow,
                   selected: selectedTool == 14,
+                  isHighlighted: isMcpRunning,
                   onPressed: () {
                     ref.read(selectedToolTabProvider.notifier).select(14);
                   },
@@ -511,6 +515,7 @@ class _RailButton extends StatelessWidget {
     required this.tooltip,
     required this.isNarrow,
     this.selected = false,
+    this.isHighlighted = false,
     this.onPressed,
   });
 
@@ -518,6 +523,7 @@ class _RailButton extends StatelessWidget {
   final String tooltip;
   final bool isNarrow;
   final bool selected;
+  final bool isHighlighted;
   final VoidCallback? onPressed;
 
   @override
@@ -528,7 +534,7 @@ class _RailButton extends StatelessWidget {
     final Color color;
     if (onPressed == null) {
       color = isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e);
-    } else if (selected) {
+    } else if (selected || isHighlighted) {
       color = const Color(0xff09c47c);
     } else {
       color = isDark ? const Color(0xffeceff1) : const Color(0xff455a64);
@@ -550,7 +556,7 @@ class _RailButton extends StatelessWidget {
               onPressed: onPressed,
               style: IconButton.styleFrom(
                 foregroundColor: color,
-                backgroundColor: selected
+                backgroundColor: (selected || isHighlighted)
                     ? activeBgColor
                     : Colors.transparent,
                 disabledForegroundColor: isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e),
@@ -568,7 +574,7 @@ class _RailButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
           child: Material(
-            color: selected
+            color: (selected || isHighlighted)
                 ? activeBgColor
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
@@ -589,7 +595,7 @@ class _RailButton extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: selected
+                          fontWeight: (selected || isHighlighted)
                               ? FontWeight.bold
                               : FontWeight.normal,
                           color: color,

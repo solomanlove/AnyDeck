@@ -156,6 +156,8 @@ void main(List<String> args) async {
   }
 
   await DesktopWindowManagerService.initialize();
+  final container = ProviderContainer();
+  DesktopWindowManagerService.setProviderContainer(container);
   //主窗口
-  runApp(const ProviderScope(child: AnyDeckApp()));
+  runApp(UncontrolledProviderScope(container: container, child: const AnyDeckApp()));
 }

@@ -1,12 +1,14 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:any_deck/app/l10n/app_localized_values.dart';
 import 'package:any_deck/app/window/multi_window_compat.dart';
 import 'package:any_deck/app/theme/app_icon.dart';
+import 'package:any_deck/features/mcp/controller/mcp_server_controller.dart';
 
 /// 桌面端窗口与系统托盘管理服务。
 class DesktopWindowManagerService {
@@ -14,6 +16,23 @@ class DesktopWindowManagerService {
 
   static final _trayListener = _AppTrayListener();
   static final _windowListener = _AppWindowListener();
+
+  static ProviderContainer? _providerContainer;
+  static bool _isMcpRunning = false;
+  static String _currentLangCode = 'zh';
+
+  /// 关联全局 Riverpod ProviderContainer 并实时同步 MCP 状态到系统托盘
+  static void setProviderContainer(ProviderContainer container) {
+    _providerContainer = container;
+    container.listen<McpServerState>(mcpServerProvider, (previous, next) {
+      if (_isMcpRunning != next.isRunning) {
+        _isMcpRunning = next.isRunning;
+        updateTrayMenu(_currentLangCode, isMcpRunning: _isMcpRunning);
+      }
+    });
+    _isMcpRunning = container.read(mcpServerProvider).isRunning;
+    updateTrayMenu(_currentLangCode, isMcpRunning: _isMcpRunning);
+  }
 
   /// 初始化窗口管理器和系统托盘。
   static Future<void> initialize() async {
@@ -52,40 +71,39 @@ class DesktopWindowManagerService {
           langCode = savedCode!;
         }
       } catch (_) {}
+      _currentLangCode = langCode;
 
-      final showLabel = localizedValues[langCode]?['trayShowWindow'] ?? (langCode == 'en' ? 'Show Window' : '显示窗口');
-      final exitLabel = localizedValues[langCode]?['trayExit'] ?? (langCode == 'en' ? 'Exit' : '退出');
-      final emulatorsLabel = langCode == 'en' ? 'Emulator Manager Window' : '模拟器管理窗口';
-      final consoleLabel = langCode == 'en' ? 'Console Window' : '控制台窗口';
-
-      final menuItems = [
-        MenuItem(key: 'show_window', label: showLabel),
-        MenuItem(key: 'open_emulators', label: emulatorsLabel),
-        MenuItem(key: 'open_console', label: consoleLabel),
-        MenuItem.separator(),
-        MenuItem(key: 'exit_app', label: exitLabel),
-      ];
-      await trayManager.setContextMenu(Menu(items: menuItems));
+      await updateTrayMenu(langCode, isMcpRunning: _isMcpRunning);
       trayManager.addListener(_trayListener);
     } catch (e) {
       debugPrint('Tray initialization failed: $e');
     }
   }
 
-  /// 动态更新托盘菜单语言。
-  static Future<void> updateTrayMenu(String langCode) async {
+  /// 动态更新托盘菜单语言与 MCP 运行状态。
+  static Future<void> updateTrayMenu(String langCode, {bool? isMcpRunning}) async {
     if (kIsWeb || Platform.isAndroid || Platform.isIOS) return;
+
+    if (isMcpRunning != null) {
+      _isMcpRunning = isMcpRunning;
+    }
+    _currentLangCode = langCode;
 
     try {
       final showLabel = localizedValues[langCode]?['trayShowWindow'] ?? (langCode == 'en' ? 'Show Window' : '显示窗口');
       final exitLabel = localizedValues[langCode]?['trayExit'] ?? (langCode == 'en' ? 'Exit' : '退出');
       final emulatorsLabel = langCode == 'en' ? 'Emulator Manager Window' : '模拟器管理窗口';
       final consoleLabel = langCode == 'en' ? 'Console Window' : '控制台窗口';
+      final mcpToggleLabel = _isMcpRunning
+          ? (langCode == 'en' ? 'Stop MCP Service' : '停止 MCP 服务')
+          : (langCode == 'en' ? 'Start MCP Service' : '启动 MCP 服务');
 
       final menuItems = [
         MenuItem(key: 'show_window', label: showLabel),
         MenuItem(key: 'open_emulators', label: emulatorsLabel),
         MenuItem(key: 'open_console', label: consoleLabel),
+        MenuItem.separator(),
+        MenuItem(key: 'toggle_mcp', label: mcpToggleLabel),
         MenuItem.separator(),
         MenuItem(key: 'exit_app', label: exitLabel),
       ];
@@ -150,6 +168,17 @@ class _AppTrayListener extends TrayListener {
         frame: const Offset(150, 150) & const Size(850, 550),
         title: langCode == 'en' ? 'Console' : '控制台',
       );
+    } else if (menuItem.key == 'toggle_mcp') {
+      final container = DesktopWindowManagerService._providerContainer;
+      if (container != null) {
+        final isRunning = container.read(mcpServerProvider).isRunning;
+        final notifier = container.read(mcpServerProvider.notifier);
+        if (isRunning) {
+          await notifier.stopServer();
+        } else {
+          await notifier.startServer();
+        }
+      }
     } else if (menuItem.key == 'exit_app') {
       // 退出应用时需要先解除关闭拦截，否则无法 destroy 窗口
       await windowManager.setPreventClose(false);

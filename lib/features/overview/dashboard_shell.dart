@@ -43,7 +43,8 @@ class _WechatStyleShell extends ConsumerWidget {
                     children: [
                       if ((selectedDevice == null || selectedTool == -1) &&
                           selectedTool != 12 &&
-                          selectedTool != 13)
+                          selectedTool != 13 &&
+                          selectedTool != 14)
                         _ContentTitleBar(title: title),
                       Expanded(child: child),
                     ],
