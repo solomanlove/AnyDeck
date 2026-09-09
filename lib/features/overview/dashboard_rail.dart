@@ -48,10 +48,13 @@ class _PrimaryRail extends ConsumerWidget {
     final registeredDevices = ref.watch(deviceRegistryProvider);
     final hasOnlineDevice = registeredDevices.any((d) => d.isOnline);
 
-    // 判断当前 Tab 是否可用；iOS 仅开放已经接入 go-ios 的能力。
+    // 判断当前 Tab 是否可用；设备管理(-1)始终可用
     bool isToolEnabled(int tabIndex) {
+      if (tabIndex == -1) {
+        return true;
+      }
       if (selectedDevice == null) {
-        return hasOnlineDevice;
+        return false;
       }
       if (selectedDevice!.isIos) {
         if (!selectedDevice!.isOnline) return tabIndex == 0;
@@ -75,14 +78,33 @@ class _PrimaryRail extends ConsumerWidget {
     final bool isNarrow = MediaQuery.of(context).size.width < 1000;
     final double railWidth = isNarrow ? 76.0 : 180.0;
 
-    final isIos = selectedDevice != null && selectedDevice!.isIos;
-    final tools = [
-      _RailToolItem(
-        tabIndex: 0,
-        icon: CupertinoIcons.device_phone_portrait,
-        label: context.l10n.t('overview'),
-      ),
-      if (isIos) ...[
+    final hasSelectedDevice = selectedDevice != null && selectedTool != -1;
+    final isIos = hasSelectedDevice && selectedDevice!.isIos;
+    final isHarmony = hasSelectedDevice && selectedDevice!.isHarmony;
+
+    final List<_RailToolItem> tools;
+    if (!hasSelectedDevice) {
+      // 1. 设备管理模式（默认未选择手机）：仅显示设备管理 Tab，去掉其他特定手机下的 Tab
+      tools = [
+        _RailToolItem(
+          tabIndex: -1,
+          icon: Icons.devices,
+          label: context.l10n.t('devices'),
+        ),
+      ];
+    } else if (isIos) {
+      // 2. iOS 设备专属 Tab 列表
+      tools = [
+        _RailToolItem(
+          tabIndex: -1,
+          icon: Icons.devices,
+          label: context.l10n.t('devices'),
+        ),
+        _RailToolItem(
+          tabIndex: 0,
+          icon: CupertinoIcons.device_phone_portrait,
+          label: context.l10n.t('overview'),
+        ),
         _RailToolItem(
           tabIndex: 1,
           icon: CupertinoIcons.hand_draw,
@@ -113,8 +135,49 @@ class _PrimaryRail extends ConsumerWidget {
           icon: CupertinoIcons.camera,
           label: context.l10n.t('screenshot'),
         ),
-      ],
-      if (!isIos) ...[
+      ];
+    } else if (isHarmony) {
+      // 3. 鸿蒙设备专属 Tab 列表（支持主页、控制、文件、截图）
+      tools = [
+        _RailToolItem(
+          tabIndex: -1,
+          icon: Icons.devices,
+          label: context.l10n.t('devices'),
+        ),
+        _RailToolItem(
+          tabIndex: 0,
+          icon: CupertinoIcons.device_phone_portrait,
+          label: context.l10n.t('overview'),
+        ),
+        _RailToolItem(
+          tabIndex: 1,
+          icon: CupertinoIcons.slider_horizontal_3,
+          label: context.l10n.t('control'),
+        ),
+        _RailToolItem(
+          tabIndex: 3,
+          icon: CupertinoIcons.folder,
+          label: context.l10n.t('files'),
+        ),
+        _RailToolItem(
+          tabIndex: 9,
+          icon: CupertinoIcons.camera,
+          label: context.l10n.t('screenshot'),
+        ),
+      ];
+    } else {
+      // 4. 安卓设备专属 Tab 列表（全部工具）
+      tools = [
+        _RailToolItem(
+          tabIndex: -1,
+          icon: Icons.devices,
+          label: context.l10n.t('devices'),
+        ),
+        _RailToolItem(
+          tabIndex: 0,
+          icon: CupertinoIcons.device_phone_portrait,
+          label: context.l10n.t('overview'),
+        ),
         _RailToolItem(
           tabIndex: 1,
           icon: CupertinoIcons.slider_horizontal_3,
@@ -170,26 +233,18 @@ class _PrimaryRail extends ConsumerWidget {
           icon: CupertinoIcons.wifi,
           label: context.l10n.t('network'),
         ),
-      ],
-    ];
+      ];
+    }
 
     void handleTap(int tabIndex) {
-      var device = selectedDevice;
-      if (device == null) {
-        // 查找第一个在线的设备
-        RegisteredDevice? firstOnline;
-        for (final d in registeredDevices) {
-          if (d.isOnline) {
-            firstOnline = d;
-            break;
-          }
-        }
-        if (firstOnline != null) {
-          device = firstOnline.toAdbDevice;
-          ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
-          ref.read(selectedDeviceProvider.notifier).select(device);
-        }
+      if (tabIndex == -1) {
+        // 切换到设备管理 Tab，清空当前设备选择
+        ref.read(userClearedDeviceSelectionProvider.notifier).state = true;
+        ref.read(selectedDeviceProvider.notifier).clear();
+        ref.read(selectedToolTabProvider.notifier).select(-1);
+        return;
       }
+      var device = selectedDevice;
       if (device != null) {
         ref.read(selectedToolTabProvider.notifier).select(tabIndex);
       }
@@ -245,7 +300,11 @@ class _PrimaryRail extends ConsumerWidget {
                         SizedBox(height: _topSpacing),
                         GestureDetector(
                           onTap: () {
-                            // 点击顶部身份区跳转至设备管理页面，同时保留当前已选中的设备
+                            // 点击顶部身份区清空选中手机，并跳转至设备管理页面
+                            ref
+                                .read(userClearedDeviceSelectionProvider.notifier)
+                                .state = true;
+                            ref.read(selectedDeviceProvider.notifier).clear();
                             ref
                                 .read(selectedToolTabProvider.notifier)
                                 .select(-1);
@@ -253,7 +312,8 @@ class _PrimaryRail extends ConsumerWidget {
                           child: MouseRegion(
                             cursor: SystemMouseCursors.click,
                             child: _RailIdentity(
-                              selectedDevice: selectedDevice,
+                              selectedDevice:
+                                  (selectedTool == -1) ? null : selectedDevice,
                               registeredDevices: registeredDevices,
                               isNarrow: renderNarrow,
                             ),
@@ -273,8 +333,7 @@ class _PrimaryRail extends ConsumerWidget {
                 for (final tool in visibleTools)
                   _RailButton(
                     icon: tool.icon,
-                    selected:
-                        selectedDevice != null && selectedTool == tool.tabIndex,
+                    selected: selectedTool == tool.tabIndex,
                     tooltip: tool.label,
                     isNarrow: renderNarrow,
                     onPressed: isToolEnabled(tool.tabIndex)
@@ -284,7 +343,7 @@ class _PrimaryRail extends ConsumerWidget {
                 if (hasOverflowTools)
                   _RailMoreButton(
                     tools: overflowTools,
-                    hasSelectedDevice: selectedDevice != null,
+                    hasSelectedDevice: hasSelectedDevice,
                     selectedTool: selectedTool,
                     isToolEnabled: isToolEnabled,
                     onSelected: handleTap,

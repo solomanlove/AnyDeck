@@ -20,13 +20,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
 
     return InkWell(
       onTap: () {
-        // 清除用户主动清空的选择状态，选中当前点击的设备，并切入该设备的主页 (tab 0)
+        // 选中当前点击的设备，并切入该设备的主页 (tab 0)
         ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
         ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
-        final currentTool = ref.read(selectedToolTabProvider);
-        if (currentTool < 0) {
-          ref.read(selectedToolTabProvider.notifier).select(0);
-        }
+        ref.read(selectedToolTabProvider.notifier).select(0);
       },
       child: Container(
         height: 56,

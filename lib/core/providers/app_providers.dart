@@ -761,7 +761,7 @@ class ScrcpySessionsNotifier extends Notifier<Map<String, ScrcpySession>> {
 /// 保存当前工具 tab，避免响应式布局重建时丢失选择。
 class ToolTabNotifier extends Notifier<int> {
   @override
-  int build() => 0;
+  int build() => -1;
 
   /// 按 TabBar 下标选择 tab。
   void select(int index) {

@@ -114,7 +114,7 @@ class _RailIdentity extends ConsumerWidget {
           );
 
     return Tooltip(
-      message: '${matchedDevice.displayName} · $connectionLabel',
+      message: '${matchedDevice.displayName} · $connectionLabel (${context.l10n.t('devices')})',
       child: identity,
     );
   }
