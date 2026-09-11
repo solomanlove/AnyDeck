@@ -89,6 +89,8 @@
    - 第三方应用列表：`adb shell pm list packages -f -3`
    - 系统预装应用：`adb shell pm list packages -f -s`
    - 返回的数据格式包含 APK 物理路径与包名，如 `package:/data/app/.../base.apk=com.example.app`。
+   - **DEBUG 标识与筛选**：完整刷新或单应用刷新通过 `dumpsys package` 的 `DEBUGGABLE` 标志写入 `AdbPackage.debuggable`，表格、网格、详情页与 DEBUG 筛选统一读取此字段。`copyWith` 在补充名称、图标、签名或恢复展示缓存时必须保留该值，仅显式传入 `debuggable` 时覆盖，避免回落到构造默认值 `false`。
+   - **旧缓存恢复与回归**：历史版本可能已将错误的 `false` 写入缓存；修复后点击“刷新全部应用图标”重新读取设备状态，或单击某个应用刷新该包。验证 DEBUG 包在图标加载完成、切换列表/网格、进入详情和重新进入 Tab 后仍保留标识与筛选结果，Release 包不显示标识。`test/app_management_service_test.dart` 覆盖设备状态覆盖旧缓存、展示信息合并及缓存回写读取链路；本修复不新增 ADB 调用、Provider 或 UI 样式。
 2. **图标按需加载（性能优化）**：
    - **首屏秒开**：通过 `listPackages` 优先加载基础包名列表。
    - **默认不批量刷新图标**：切换到 Apps Tab 时只展示缓存或基础列表，避免进入页面就触发全设备 APK 图标提取。

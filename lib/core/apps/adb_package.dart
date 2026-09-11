@@ -119,6 +119,7 @@ class AdbPackage {
       signatureMd5: signatureMd5 ?? this.signatureMd5,
       firstInstallTime: firstInstallTime ?? this.firstInstallTime,
       lastUpdateTime: lastUpdateTime ?? this.lastUpdateTime,
+      debuggable: debuggable ?? this.debuggable,
     );
   }
 
