@@ -334,122 +334,22 @@ class _ComponentsTabState extends State<_ComponentsTab> {
   }
 }
 
-class _PermissionsTab extends ConsumerStatefulWidget {
+/// 详情页权限入口，操作状态统一由共享权限面板管理。
+class _PermissionsTab extends StatelessWidget {
   const _PermissionsTab({
     required this.deviceId,
     required this.packageName,
     required this.permissions,
   });
-
   final String deviceId;
   final String packageName;
   final List<AdbPermissionInfo> permissions;
 
   @override
-  ConsumerState<_PermissionsTab> createState() => _PermissionsTabState();
-}
-
-class _PermissionsTabState extends ConsumerState<_PermissionsTab> {
-  String _query = '';
-  late List<AdbPermissionInfo> _perms;
-  final Set<String> _toggling = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _perms = List.from(widget.permissions);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = _perms
-        .where((p) => p.name.toLowerCase().contains(_query.toLowerCase()))
-        .toList();
-
-    return Column(
-      children: [
-        _SearchField(
-          onChanged: (val) => setState(() => _query = val),
-          hint: '搜索权限...',
-        ),
-        Expanded(
-          child: filtered.isEmpty
-              ? const Center(child: Text('无申请权限'))
-              : ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final perm = filtered[index];
-                    final isToggling = _toggling.contains(perm.name);
-
-                    return ListTile(
-                      dense: true,
-                      title: Text(
-                        perm.name,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      subtitle: Text(
-                        perm.granted ? '已授予' : '未授予',
-                        style: TextStyle(
-                          color: perm.granted ? Colors.green : Colors.red,
-                          fontSize: 11,
-                        ),
-                      ),
-                      trailing: isToggling
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Switch(
-                              value: perm.granted,
-                              onChanged: (val) async {
-                                setState(() => _toggling.add(perm.name));
-                                final service = ref.read(
-                                  appPermissionServiceProvider,
-                                );
-                                final result = val
-                                    ? await service.grantPermission(
-                                        widget.deviceId,
-                                        widget.packageName,
-                                        perm.name,
-                                      )
-                                    : await service.revokePermission(
-                                        widget.deviceId,
-                                        widget.packageName,
-                                        perm.name,
-                                      );
-
-                                if (mounted) {
-                                  setState(() {
-                                    _toggling.remove(perm.name);
-                                    if (result.isSuccess) {
-                                      final i = _perms.indexWhere(
-                                        (p) => p.name == perm.name,
-                                      );
-                                      if (i >= 0) {
-                                        _perms[i] = AdbPermissionInfo(
-                                          name: perm.name,
-                                          granted: val,
-                                        );
-                                      }
-                                    } else {
-                                      _showSnack(
-                                        context,
-                                        '修改权限失败: ${result.message}',
-                                        isError: true,
-                                      );
-                                    }
-                                  });
-                                }
-                              },
-                            ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(12),
+    child: AppPermissionsPanel(deviceId: deviceId, packageName: packageName),
+  );
 }
 
 class _MetadataTab extends StatefulWidget {
