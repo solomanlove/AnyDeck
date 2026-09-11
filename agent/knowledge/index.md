@@ -23,6 +23,7 @@
 | `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录左侧导航顶部 App/设备身份切换、返回设备管理点击逻辑及 workspace 顶部布局边界 | `features/overview/`, `features/devices/` |
 | `adb-macos-signature-policy` | macOS 签名与 system policy 修复机制 | active | 记录 `FlutterMacOS.framework` 被 dyld system policy 拒绝加载时的签名、provenance/quarantine 排查与自动修复脚本 | `macos/`, `script/` |
 | `adb-ai-mcp-server-architecture` | AI MCP 服务架构与集成机制 | active | 记录 AnyDeck 作为 AI MCP (Model Context Protocol) Server 的协议路由、Tools 注册、SSE/Stdio 双通道传输、安全防御沙箱与桌面管理控制台设计 | `core/mcp/`, `features/mcp/` |
+| `adb-screenshot-layout-merge` | 截图录屏与布局分析合并机制 | active | 记录左侧入口收拢（Tab 8 归一化到 9）、顶部工具栏动态开关、三栏展开、共享画布坐标映射、原子化并发刷新与 5 阶段录屏互斥机制 | `features/screenshot/`, `features/overview/` |
 
 ## 新增知识库规则
 每次新增的需求或重大功能迭代，在开发完成后均必须将其技术设计、关键实现与命令机制以知识文档的形式沉淀在 `agent/knowledge/` 目录下，并在此索引中进行登记。

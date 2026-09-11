@@ -16,6 +16,8 @@ import '../adb/adb_service.dart';
 import '../apps/app_data_backup_service.dart';
 import '../apps/adb_package.dart';
 import '../apps/app_management_service.dart';
+import '../apps/package_refresh_progress.dart';
+import '../apps/package_refresh_runner.dart';
 import '../apps/app_permission_service.dart';
 import '../cache/cache_cleanup_service.dart';
 import '../device_actions/device_action_service.dart';
@@ -257,6 +259,9 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
   final String deviceId;
   PackagesNotifier(this.deviceId);
 
+  Future<void>? _refreshAllTask;
+  int _loadRevision = 0;
+
   @override
   AsyncValue<List<AdbPackage>> build() {
     ref.keepAlive();
@@ -265,6 +270,7 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
   }
 
   Future<void> _load() async {
+    final revision = _loadRevision;
     var isDisposed = false;
     ref.onDispose(() => isDisposed = true);
 
@@ -274,44 +280,39 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       // 1. 优先尝试从本地持久化缓存加载以实现秒开
       final cached = await service.loadPackageCache(deviceId);
       if (cached != null && cached.isNotEmpty) {
-        if (isDisposed) return;
+        if (isDisposed || revision != _loadRevision) return;
         state = AsyncValue.data(cached);
         return;
       }
 
       // 2. 无缓存时，只读取基础列表，避免切到 Apps Tab 就批量刷新图标。
       final initialPackages = await service.listPackages(deviceId);
-      if (isDisposed) return;
+      if (isDisposed || revision != _loadRevision) return;
       state = AsyncValue.data(initialPackages);
     } catch (err, stack) {
-      if (!isDisposed) {
+      if (!isDisposed && revision == _loadRevision) {
         state = AsyncValue.error(err, stack);
       }
     }
   }
 
   /// 手动刷新全部应用时，重新读取元数据并分批加载所有应用图标。
-  Future<void> refreshAllPackagesWithIcons() async {
-    final service = ref.read(appManagementServiceProvider);
-    await service.clearPackageCache(deviceId);
-
-    final refreshedPackages = await service.refreshPackages(
-      deviceId,
-      refreshIconsInBackground: false,
+  Future<void> refreshAllPackagesWithIcons({
+    PackageRefreshCallback? onProgress,
+  }) {
+    final running = _refreshAllTask;
+    if (running != null) return running;
+    // 防止首次缓存读取晚于手动刷新完成而覆盖新列表。
+    _loadRevision++;
+    final runner = PackageRefreshRunner(
+      service: ref.read(appManagementServiceProvider),
+      deviceId: deviceId,
+      isActive: () => ref.mounted,
+      publishPackages: (packages) => state = AsyncValue.data(packages),
     );
-    state = AsyncValue.data(refreshedPackages);
-
-    var finalPackages = refreshedPackages;
-    await for (final updatedPackages
-        in service.enrichPackagesWithIconsProgressive(
-          deviceId,
-          refreshedPackages,
-        )) {
-      state = AsyncValue.data(updatedPackages);
-      finalPackages = updatedPackages;
-    }
-
-    await service.savePackageCache(deviceId, finalPackages);
+    return _refreshAllTask = runner.run(onProgress: onProgress).whenComplete(() {
+      _refreshAllTask = null;
+    });
   }
 
   /// 刷新单个应用的最新状态，并更新 state 与本地缓存。
@@ -764,8 +765,9 @@ class ToolTabNotifier extends Notifier<int> {
   int build() => -1;
 
   /// 按 TabBar 下标选择 tab。
+  /// 旧索引 8（布局分析）归一到 9（截图录屏）。
   void select(int index) {
-    state = index;
+    state = (index == 8) ? 9 : index;
   }
 }
 

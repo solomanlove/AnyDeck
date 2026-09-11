@@ -259,7 +259,7 @@ class _ToolContentCardState extends State<_ToolContentCard> {
             key: ValueKey(widget.device.id),
             device: widget.device,
           ),
-          9 => _ScreenshotTab(device: widget.device),
+          9 => DashboardScreenshotTab(device: widget.device),
           _ => const SizedBox.shrink(),
         };
       }
@@ -283,8 +283,8 @@ class _ToolContentCardState extends State<_ToolContentCard> {
           device: widget.device,
           isVisible: _currentToolIndex == 7,
         ),
-        8 => LayoutTab(device: widget.device),
-        9 => _ScreenshotTab(device: widget.device),
+        8 => const SizedBox.shrink(),
+        9 => DashboardScreenshotTab(device: widget.device),
         10 => PerformanceTab(
           device: widget.device,
           isVisible: _currentToolIndex == 10,

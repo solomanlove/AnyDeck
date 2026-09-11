@@ -1,7 +1,9 @@
 part of '../dashboard_screen.dart';
 
-class _PrimaryRail extends ConsumerWidget {
-  const _PrimaryRail({required this.selectedDevice});
+typedef _PrimaryRail = PrimaryRail;
+
+class PrimaryRail extends ConsumerWidget {
+  const PrimaryRail({super.key, required this.selectedDevice});
 
   final AdbDevice? selectedDevice;
 
@@ -46,7 +48,6 @@ class _PrimaryRail extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedTool = ref.watch(selectedToolTabProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);
-    final hasOnlineDevice = registeredDevices.any((d) => d.isOnline);
 
     // 判断当前 Tab 是否可用；设备管理(-1)始终可用
     bool isToolEnabled(int tabIndex) {
@@ -162,7 +163,7 @@ class _PrimaryRail extends ConsumerWidget {
         _RailToolItem(
           tabIndex: 9,
           icon: CupertinoIcons.camera,
-          label: context.l10n.t('screenshot'),
+          label: context.l10n.t('screenshotRecord'),
         ),
       ];
     } else {
@@ -214,14 +215,9 @@ class _PrimaryRail extends ConsumerWidget {
           label: context.l10n.t('webpages'),
         ),
         _RailToolItem(
-          tabIndex: 8,
-          icon: CupertinoIcons.square_stack_3d_up,
-          label: context.l10n.t('layout'),
-        ),
-        _RailToolItem(
           tabIndex: 9,
           icon: CupertinoIcons.camera,
-          label: context.l10n.t('screenshot'),
+          label: context.l10n.t('screenshotRecord'),
         ),
         _RailToolItem(
           tabIndex: 10,

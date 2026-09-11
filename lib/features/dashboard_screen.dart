@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
@@ -28,10 +27,10 @@ import '../core/adb/adb_result.dart';
 import '../core/apps/adb_package.dart';
 import '../core/apps/adb_package_detail.dart';
 import 'apps/widgets/app_permissions_panel.dart';
+import 'apps/widgets/package_refresh_dialog.dart';
 import '../core/cache/cache_cleanup_service.dart';
 import '../core/device_info/device_overview.dart';
 import '../core/device_info/brand_logo_helper.dart';
-import '../core/device_info/android_version_helper.dart';
 import '../core/device_info/screen_density_helper.dart';
 import '../core/emulator/android_emulator.dart';
 import '../core/files/remote_file.dart';
@@ -54,7 +53,7 @@ import 'control/device_settings_popup.dart';
 import 'terminal/terminal_tab.dart';
 import 'processes/processes_tab.dart';
 import 'webpages/webpages_tab.dart';
-import 'layout/layout_tab.dart';
+import 'screenshot/dashboard_screenshot_tab.dart';
 import 'performance/performance_tab.dart';
 import 'network/network_tab.dart';
 import 'mcp/presentation/mcp_dashboard_tab.dart';
@@ -129,7 +128,6 @@ part 'devices/dashboard_devices_view.dart';
 part 'devices/dashboard_devices_rows.dart';
 part 'devices/dashboard_devices_actions.dart';
 part 'devices/dashboard_batch_actions.dart';
-part 'screenshot/dashboard_screenshot_tab.dart';
 part 'screenshot/dashboard_screenshot_recording.dart';
 part 'overview/dashboard_settings_tab.dart';
 part 'overview/dashboard_cache_settings.dart';
@@ -176,6 +174,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   static const _quitShortcutInterval = Duration(seconds: 2);
 
   DateTime? _lastQuitShortcutAt;
+  bool _hasVisitedWanAndroid = false;
 
   @override
   void initState() {
@@ -340,6 +339,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       stackIndex = 2;
     } else if (selectedTool == 13) {
       stackIndex = 3;
+      _hasVisitedWanAndroid = true;
     } else if (selectedTool == 14) {
       stackIndex = 4;
     } else if (selectedTool == -1 || effectiveSelectedDevice == null) {
@@ -372,10 +372,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 const _DashboardHomeContent(),
                 workspace,
                 const _SettingsTab(),
-                const InAppWebViewWidget(
-                  initialUrl: 'https://www.wanandroid.com/',
-                  title: '玩Android',
-                ),
+                if (_hasVisitedWanAndroid)
+                  const InAppWebViewWidget(
+                    initialUrl: 'https://www.wanandroid.com/',
+                    title: '玩Android',
+                  )
+                else
+                  const SizedBox.shrink(),
                 const McpDashboardTab(),
               ],
             ),

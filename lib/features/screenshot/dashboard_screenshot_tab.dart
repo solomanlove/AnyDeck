@@ -1,275 +1,104 @@
-part of '../dashboard_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class _ScreenshotTab extends ConsumerStatefulWidget {
-  const _ScreenshotTab({required this.device});
+import '../../app/l10n/app_localizations.dart';
+import '../../core/adb/adb_device.dart';
+import '../../core/providers/app_providers.dart';
+import '../layout/layout_hierarchy_tree.dart';
+import '../layout/layout_properties_table.dart';
+import 'controller/screenshot_controller.dart';
+import 'widgets/screenshot_canvas.dart';
+import 'widgets/screenshot_toolbar.dart';
+
+/// 截图录屏与布局分析主页面容器。
+/// 统一管理顶部工具栏、中央共享画布、左侧组件树与右侧属性面板的展开与折叠。
+class DashboardScreenshotTab extends ConsumerStatefulWidget {
+  const DashboardScreenshotTab({super.key, required this.device});
 
   final AdbDevice device;
 
   @override
-  ConsumerState<_ScreenshotTab> createState() => _ScreenshotTabState();
+  ConsumerState<DashboardScreenshotTab> createState() =>
+      _DashboardScreenshotTabState();
 }
 
-class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
-    with _ScreenRecordMixin {
-  Uint8List? _screenshotBytes;
-  bool _loading = false;
-  String? _error;
-  int _rotation = 0; // 0, 90, 180, 270
-  bool _autoRefresh = false;
-  Timer? _autoRefreshTimer;
-
-
-  int _imgWidth = 0;
-  int _imgHeight = 0;
-
+class _DashboardScreenshotTabState
+    extends ConsumerState<DashboardScreenshotTab> {
   final TransformationController _transformationController =
       TransformationController();
-  Size _viewportSize = const Size(400, 800);
-
-  double get _fitScale {
-    if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0) {
-      return 1.0;
-    }
-    final rotatedW = (_rotation == 90 || _rotation == 270)
-        ? _imgHeight
-        : _imgWidth;
-    final rotatedH = (_rotation == 90 || _rotation == 270)
-        ? _imgWidth
-        : _imgHeight;
-    return min(_viewportSize.width / rotatedW, _viewportSize.height / rotatedH);
-  }
-
-  double get _minScale {
-    return min(max(0.01, _fitScale * 0.8), 1.0);
-  }
+  final GlobalKey<ScreenshotCanvasState> _canvasKey =
+      GlobalKey<ScreenshotCanvasState>();
 
   @override
   void initState() {
     super.initState();
-    _capture();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final controller =
+          ref.read(screenshotLayoutControllerProvider(widget.device.id).notifier);
+      final state =
+          ref.read(screenshotLayoutControllerProvider(widget.device.id));
+      if (!state.hasImage && !state.isLoading) {
+        if (state.isLayoutAnalysis) {
+          controller.loadLayoutAndScreenshot();
+        } else {
+          controller.captureScreenshot();
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
-    _cleanupRecord();
-    _autoRefreshTimer?.cancel();
     _transformationController.dispose();
     super.dispose();
   }
 
   @override
-  void didUpdateWidget(covariant _ScreenshotTab oldWidget) {
+  void didUpdateWidget(covariant DashboardScreenshotTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.device.id != widget.device.id) {
-      _autoRefreshTimer?.cancel();
-      _autoRefresh = false;
-      _screenshotBytes = null;
-      _imgWidth = 0;
-      _imgHeight = 0;
-      _rotation = 0;
+      // 切换设备：重置旧设备状态（使进行中的请求失效、关闭布局分析模式）
+      ref
+          .read(screenshotLayoutControllerProvider(oldWidget.device.id).notifier)
+          .resetForDeviceSwitch();
       _transformationController.value = Matrix4.identity();
-      _capture();
+
+      // 新设备拉取截图
+      final controller =
+          ref.read(screenshotLayoutControllerProvider(widget.device.id).notifier);
+      controller.captureScreenshot();
     }
   }
 
-  Future<void> _capture({bool isAuto = false}) async {
-    if (_loading && !isAuto) return;
-    setState(() {
-      _loading =
-          !isAuto; // Auto-refresh in the background without blocking the UI
-      _error = null;
-    });
-
-    try {
-      final bytes = widget.device.isIos
-          ? await ref
-                .read(iosCommandServiceProvider)
-                .captureScreenshot(widget.device.id)
-          : widget.device.isHarmony
-          ? await ref
-                .read(hdcServiceProvider)
-                .captureScreenshot(widget.device.id)
-          : await ref
-                .read(adbServiceProvider)
-                .captureScreenshot(widget.device.id);
-      if (mounted) {
-        setState(() {
-          _screenshotBytes = bytes;
-          _loading = false;
-          if (bytes.length > 24) {
-            _imgWidth =
-                (bytes[16] << 24) |
-                (bytes[17] << 16) |
-                (bytes[18] << 8) |
-                bytes[19];
-            _imgHeight =
-                (bytes[20] << 24) |
-                (bytes[21] << 16) |
-                (bytes[22] << 8) |
-                bytes[23];
-          }
-        });
-        if (!isAuto) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _zoomReset();
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-          if (isAuto) {
-            _autoRefresh = false;
-            _autoRefreshTimer?.cancel();
-          }
-        });
-      }
+  double _getDeviceLogicalDensity() {
+    final overview =
+        ref.watch(cachedDeviceOverviewProvider(widget.device.id)).value;
+    if (overview == null) return 1.0;
+    final densityStr = overview.logicalDensity;
+    final match = RegExp(r'^([0-9.]+)\s*x').firstMatch(densityStr);
+    if (match != null) {
+      return double.tryParse(match.group(1)!) ?? 1.0;
     }
-  }
-
-  void _toggleAutoRefresh() {
-    setState(() {
-      _autoRefresh = !_autoRefresh;
-      if (_autoRefresh) {
-        _autoRefreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-          _capture(isAuto: true);
-        });
-      } else {
-        _autoRefreshTimer?.cancel();
-      }
-    });
-  }
-
-  void _zoom(double factor) {
-    final currentMatrix = _transformationController.value;
-    final currentScale = currentMatrix.getMaxScaleOnAxis();
-    final targetScale = currentScale * factor;
-    if (targetScale < _minScale || targetScale > 10.0) return;
-
-    final center = Offset(_viewportSize.width / 2, _viewportSize.height / 2);
-    final translation = currentMatrix.getTranslation();
-    final newTx = center.dx * (1 - factor) + translation.x * factor;
-    final newTy = center.dy * (1 - factor) + translation.y * factor;
-
-    _transformationController.value = Matrix4.copy(currentMatrix)
-      ..setTranslationRaw(newTx, newTy, 0.0)
-      // ignore: deprecated_member_use
-      ..scale(factor);
-  }
-
-  void _zoom1to1() {
-    if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0) return;
-    final rotatedW = (_rotation == 90 || _rotation == 270)
-        ? _imgHeight
-        : _imgWidth;
-    final rotatedH = (_rotation == 90 || _rotation == 270)
-        ? _imgWidth
-        : _imgHeight;
-
-    final offsetX = (_viewportSize.width - rotatedW) / 2;
-    final offsetY = (_viewportSize.height - rotatedH) / 2;
-
-    _transformationController.value = Matrix4.identity()
-      ..setTranslationRaw(offsetX, offsetY, 0.0)
-      // ignore: deprecated_member_use
-      ..scale(1.0);
-  }
-
-  void _zoomReset() {
-    if (_screenshotBytes == null || _imgWidth <= 0 || _imgHeight <= 0) return;
-    final rotatedW = (_rotation == 90 || _rotation == 270)
-        ? _imgHeight
-        : _imgWidth;
-    final rotatedH = (_rotation == 90 || _rotation == 270)
-        ? _imgWidth
-        : _imgHeight;
-
-    final scale = min(
-      _viewportSize.width / rotatedW,
-      _viewportSize.height / rotatedH,
-    );
-    final renderedW = rotatedW * scale;
-    final renderedH = rotatedH * scale;
-    final offsetX = (_viewportSize.width - renderedW) / 2;
-    final offsetY = (_viewportSize.height - renderedH) / 2;
-
-    _transformationController.value = Matrix4.identity()
-      ..setTranslationRaw(offsetX, offsetY, 0.0)
-      // ignore: deprecated_member_use
-      ..scale(scale);
-  }
-
-  Future<void> _saveScreenshot() async {
-    if (_screenshotBytes == null) return;
-    try {
-      final settings = ref.read(appSettingsProvider);
-      final hostPlatform = ref.read(hostPlatformServiceProvider);
-      final savePath = hostPlatform.generateScreenshotPath(
-        settings.screenshotSavePath,
-        widget.device.id,
-      );
-      final file = File(savePath);
-      await file.parent.create(recursive: true);
-      await file.writeAsBytes(_screenshotBytes!);
-
-      final copied = await hostPlatform.copyImageToClipboard(_screenshotBytes!);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
-            ),
-            backgroundColor: const Color(0xff09c47c),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${context.l10n.t('error')}: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _copyScreenshot() async {
-    if (_screenshotBytes == null) return;
-    final success = await _copyImageToClipboard(_screenshotBytes!);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? context.l10n.t('copySuccess') : '复制到剪贴板失败'),
-          backgroundColor: success ? const Color(0xff09c47c) : Colors.red,
-          behavior: SnackBarBehavior.floating,
-          width: 300,
-        ),
-      );
-    }
-  }
-
-  Future<bool> _copyImageToClipboard(Uint8List bytes) {
-    return ref.read(hostPlatformServiceProvider).copyImageToClipboard(bytes);
-  }
-
-  String get _sizeLabel {
-    if (_screenshotBytes == null) return '';
-    final bytes = _screenshotBytes!.length;
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)}MB';
+    return 1.0;
   }
 
   @override
   Widget build(BuildContext context) {
+    // 监听全局 Tab 切换：切出暂停连续截图，切回恢复
+    ref.listen<int>(selectedToolTabProvider, (previous, next) {
+      final controller =
+          ref.read(screenshotLayoutControllerProvider(widget.device.id).notifier);
+      if (previous == 9 && next != 9) {
+        controller.pauseAutoRefreshForTabSwitch();
+      } else if (previous != 9 && next == 9) {
+        controller.resumeAutoRefreshAfterTabSwitch();
+      }
+    });
+
     final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
     if (!isOnline) {
-      _autoRefreshTimer?.cancel();
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -282,338 +111,219 @@ class _ScreenshotTabState extends ConsumerState<_ScreenshotTab>
       );
     }
 
-    if (_error != null && _screenshotBytes == null) {
+    final state =
+        ref.watch(screenshotLayoutControllerProvider(widget.device.id));
+    final controller =
+        ref.read(screenshotLayoutControllerProvider(widget.device.id).notifier);
+    final density = _getDeviceLogicalDensity();
+
+    if (state.error != null && !state.hasImage && !state.isLoading) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              CupertinoIcons.exclamationmark_circle,
-              size: 48,
-              color: Colors.red,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => _capture(),
-              icon: const Icon(CupertinoIcons.refresh),
-              label: Text(context.l10n.t('refresh')),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                CupertinoIcons.exclamationmark_circle,
+                size: 48,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                state.error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () {
+                  if (state.isLayoutAnalysis) {
+                    controller.loadLayoutAndScreenshot();
+                  } else {
+                    controller.captureScreenshot();
+                  }
+                },
+                icon: const Icon(CupertinoIcons.refresh),
+                label: Text(context.l10n.t('refresh')),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Column(
       children: [
-        // 顶部控制工具栏
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xff1f2937) : const Color(0xfff7f9fa),
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              _ToolbarButton(
-                icon: CupertinoIcons.refresh,
-                tooltip: context.l10n.t('refresh'),
-                onPressed: (_loading || isRecording) ? null : () => _capture(),
-              ),
-              _ToolbarButton(
-                icon: CupertinoIcons.floppy_disk,
-                tooltip: context.l10n.t('save'),
-                onPressed: (_screenshotBytes == null || isRecording)
-                    ? null
-                    : _saveScreenshot,
-              ),
-              _ToolbarButton(
-                icon: CupertinoIcons.doc_on_doc,
-                tooltip: context.l10n.t('copy'),
-                onPressed: (_screenshotBytes == null || isRecording)
-                    ? null
-                    : _copyScreenshot,
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 20,
-                child: VerticalDivider(
-                  width: 1,
-                  color: isDark ? Colors.grey[700] : Colors.grey[400],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _ToolbarButton(
-                icon: CupertinoIcons.rotate_left,
-                tooltip: context.l10n.t('rotateLeft'),
-                onPressed: (_screenshotBytes == null || isRecording)
-                    ? null
-                    : () {
-                        setState(() {
-                          _rotation = (_rotation - 90 + 360) % 360;
-                          _zoomReset();
-                        });
-                      },
-              ),
-              _ToolbarButton(
-                icon: CupertinoIcons.rotate_right,
-                tooltip: context.l10n.t('rotateRight'),
-                onPressed: (_screenshotBytes == null || isRecording)
-                    ? null
-                    : () {
-                        setState(() {
-                          _rotation = (_rotation + 90) % 360;
-                          _zoomReset();
-                        });
-                      },
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 20,
-                child: VerticalDivider(
-                  width: 1,
-                  color: isDark ? Colors.grey[700] : Colors.grey[400],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _ToolbarButton(
-                icon: CupertinoIcons.zoom_in,
-                tooltip: context.l10n.t('zoomIn'),
-                onPressed: (_screenshotBytes == null || isRecording)
-                    ? null
-                    : () => _zoom(1.2),
-              ),
-              _ToolbarButton(
-                icon: CupertinoIcons.zoom_out,
-                tooltip: context.l10n.t('zoomOut'),
-                onPressed: (_screenshotBytes == null || isRecording)
-                    ? null
-                    : () => _zoom(0.8),
-              ),
-              Tooltip(
-                message: context.l10n.t('zoom1to1'),
-                child: InkWell(
-                  onTap: (_screenshotBytes == null || isRecording) ? null : _zoom1to1,
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: (_screenshotBytes == null || isRecording)
-                            ? (isDark ? Colors.grey[800]! : Colors.grey[300]!)
-                            : (isDark ? Colors.grey[600]! : Colors.grey[400]!),
-                      ),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '1:1',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: (_screenshotBytes == null || isRecording)
-                            ? (isDark ? Colors.grey[700] : Colors.grey[400])
-                            : (isDark ? Colors.grey[300] : Colors.blueGrey),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              _ToolbarButton(
-                icon: CupertinoIcons.arrow_counterclockwise,
-                tooltip: context.l10n.t('zoomReset'),
-                onPressed: (_screenshotBytes == null || isRecording)
-                    ? null
-                    : _zoomReset,
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 20,
-                child: VerticalDivider(
-                  width: 1,
-                  color: isDark ? Colors.grey[700] : Colors.grey[400],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _ToolbarButton(
-                icon: CupertinoIcons.clock,
-                tooltip: context.l10n.t('autoRefresh'),
-                color: _autoRefresh ? colorScheme.primary : null,
-                onPressed: (_screenshotBytes == null || isRecording)
-                    ? null
-                    : _toggleAutoRefresh,
-              ),
-              if (!widget.device.isIos) ...[
-                const SizedBox(width: 8),
-                SizedBox(
-                  height: 20,
-                  child: VerticalDivider(
-                    width: 1,
-                    color: isDark ? Colors.grey[700] : Colors.grey[400],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _ToolbarButton(
-                  icon: isRecording
-                      ? CupertinoIcons.stop
-                      : CupertinoIcons.videocam,
-                  tooltip: isRecording
-                      ? context.l10n.t('stopRecord')
-                      : context.l10n.t('startRecord'),
-                  color: isRecording ? Colors.red : null,
-                  onPressed: _loading
-                      ? null
-                      : (isRecording ? _stopRecording : _startRecording),
-                ),
-              ],
-              if (isRecording) ...[
-                const SizedBox(width: 8),
-                const _PulsingRecordDot(),
-                const SizedBox(width: 6),
-                Text(
-                  _formatDuration(recordDuration),
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              const Spacer(),
-              if (_screenshotBytes != null)
-                Text(
-                  '${_imgWidth}x$_imgHeight PNG $_sizeLabel',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-            ],
-          ),
+        // 1. 顶部公共控制工具栏
+        ScreenshotToolbar(
+          device: widget.device,
+          state: state,
+          onRefresh: () {
+            if (state.isLayoutAnalysis) {
+              controller.loadLayoutAndScreenshot();
+            } else {
+              controller.captureScreenshot();
+            }
+          },
+          onSave: () => controller.saveScreenshotOrExport(context),
+          onCopy: () {
+            if (state.isLayoutAnalysis) {
+              controller.copySelectedXml(context);
+            } else {
+              controller.copyScreenshotImage(context);
+            }
+          },
+          onRotateLeft: controller.rotateLeft,
+          onRotateRight: controller.rotateRight,
+          onZoomIn: () => _canvasKey.currentState?.zoom(1.2),
+          onZoomOut: () => _canvasKey.currentState?.zoom(0.8),
+          onZoom1To1: () => _canvasKey.currentState?.zoom1to1(),
+          onZoomReset: () {
+            _transformationController.value = Matrix4.identity();
+          },
+          onToggleAutoRefresh: controller.toggleAutoRefresh,
+          onStartRecording: () => controller.startRecording(context: context),
+          onStopRecording: () => controller.stopRecording(context: context),
+          onToggleLayoutAnalysis: controller.toggleLayoutAnalysis,
+          onExpandAll: controller.expandAllNodes,
+          onCollapseAll: controller.collapseAllNodes,
+          onShowPropertiesChanged: (val) =>
+              controller.setShowProperties(val ?? true),
+          onShowBordersChanged: (val) =>
+              controller.setShowBorders(val ?? false),
+          onEnableClickSelectChanged: (val) =>
+              controller.setEnableClickSelect(val ?? false),
+          onUseDpChanged: (val) => controller.setUseDp(val ?? true),
         ),
-        // 截图显示区域
+        // 2. 主工作区：普通截图模式单画布，布局分析模式三栏展开
         Expanded(
-          child: Container(
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final currentSize = Size(
-                        constraints.maxWidth,
-                        constraints.maxHeight,
-                      );
-                      if (_viewportSize != currentSize) {
-                        _viewportSize = currentSize;
-                        if (_screenshotBytes != null) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) _zoomReset();
-                          });
-                        }
-                      }
-
-                      if (_screenshotBytes == null) {
-                        return const SizedBox.shrink();
-                      }
-
-                      final rotatedW = (_rotation == 90 || _rotation == 270)
-                          ? _imgHeight.toDouble()
-                          : _imgWidth.toDouble();
-                      final rotatedH = (_rotation == 90 || _rotation == 270)
-                          ? _imgWidth.toDouble()
-                          : _imgHeight.toDouble();
-
-                      final minScaleVal = _minScale;
-                      final marginX = max(
-                        400.0,
-                        (currentSize.width / minScaleVal - rotatedW) / 2,
-                      );
-                      final marginY = max(
-                        400.0,
-                        (currentSize.height / minScaleVal - rotatedH) / 2,
-                      );
-
-                      return InteractiveViewer(
-                        transformationController: _transformationController,
-                        boundaryMargin: EdgeInsets.symmetric(
-                          horizontal: marginX,
-                          vertical: marginY,
-                        ),
-                        minScale: minScaleVal,
-                        maxScale: 10.0,
-                        constrained: false,
-                        child: SizedBox(
-                          width: rotatedW,
-                          height: rotatedH,
-                          child: Center(
-                            child: RotatedBox(
-                              quarterTurns: _rotation ~/ 90,
-                              child: Image.memory(
-                                _screenshotBytes!,
-                                fit: BoxFit.contain,
-                              ),
+          child: state.isLayoutAnalysis
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 左侧控件树面板
+                    Expanded(
+                      flex: state.showProperties ? 3 : 5,
+                      child: state.rootNode == null
+                          ? _buildHierarchyPlaceholder(context)
+                          : LayoutHierarchyTree(
+                              rootNode: state.rootNode!,
+                              loading: state.isLoading,
+                              selectedNode: state.selectedNode,
+                              hoveredNode: state.hoveredNode,
+                              expandedNodes: state.expandedNodes,
+                              onNodeSelected: controller.selectNode,
+                              onNodeHovered: controller.hoverNode,
+                              onNodeExpansionChanged:
+                                  controller.toggleNodeExpanded,
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                if (_loading)
-                  Positioned.fill(
-                    child: Container(
-                      color: _screenshotBytes == null
-                          ? Colors.transparent
-                          : Colors.black.withValues(alpha: 0.3),
-                      child: const Center(child: CircularProgressIndicator()),
                     ),
-                  ),
-              ],
-            ),
-          ),
+                    VerticalDivider(
+                      width: 1,
+                      color: Theme.of(context)
+                          .dividerColor
+                          .withValues(alpha: 0.3),
+                    ),
+                    // 中间共享截图画布
+                    Expanded(
+                      flex: state.showProperties ? 4 : 5,
+                      child: ScreenshotCanvas(
+                        key: _canvasKey,
+                        decodedImage: state.decodedImage,
+                        rotationAngle: state.rotation,
+                        transformationController: _transformationController,
+                        isLayoutAnalysis: true,
+                        rootNode: state.rootNode,
+                        selectedNode: state.selectedNode,
+                        hoveredNode: state.hoveredNode,
+                        showBorders: state.showBorders,
+                        enableClickSelect: state.enableClickSelect,
+                        useDp: state.useDp,
+                        deviceScale: density,
+                        isLoading: state.isLoading,
+                        onNodeSelected: controller.selectNode,
+                        onNodeHovered: controller.hoverNode,
+                      ),
+                    ),
+                    // 右侧属性面板
+                    if (state.showProperties) ...[
+                      VerticalDivider(
+                        width: 1,
+                        color: Theme.of(context)
+                            .dividerColor
+                            .withValues(alpha: 0.3),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: LayoutPropertiesTable(
+                          selectedNode: state.selectedNode,
+                          useDp: state.useDp,
+                          deviceScale: density,
+                        ),
+                      ),
+                    ],
+                  ],
+                )
+              : ScreenshotCanvas(
+                  key: _canvasKey,
+                  decodedImage: state.decodedImage,
+                  rotationAngle: state.rotation,
+                  transformationController: _transformationController,
+                  isLayoutAnalysis: false,
+                  isLoading: state.isLoading,
+                ),
         ),
       ],
     );
   }
-}
 
-/// 截图工具栏按钮，保持与布局分析工具栏按钮一致的尺寸和样式。
-class _ToolbarButton extends StatelessWidget {
-  const _ToolbarButton({
-    required this.icon,
-    required this.tooltip,
-    this.onPressed,
-    this.color,
-  });
+  Widget _buildHierarchyPlaceholder(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark
+        ? Colors.white.withValues(alpha: 0.02)
+        : Colors.white.withValues(alpha: 0.2);
+    final headerColor = isDark
+        ? Colors.white.withValues(alpha: 0.05)
+        : Colors.black.withValues(alpha: 0.02);
+    final labelColor = isDark ? Colors.grey[300] : Colors.blueGrey;
 
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        icon: Icon(icon, size: 20, color: color),
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          padding: const EdgeInsets.all(6),
-          minimumSize: const Size(32, 32),
-        ),
+    return Container(
+      color: backgroundColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: headerColor,
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  CupertinoIcons.square_stack_3d_up,
+                  size: 18,
+                  color: labelColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  context.l10n.t('nodeHierarchy'),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: labelColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Expanded(child: Center(child: CircularProgressIndicator())),
+        ],
       ),
     );
   }
