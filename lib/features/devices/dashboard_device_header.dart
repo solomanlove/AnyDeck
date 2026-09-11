@@ -47,9 +47,22 @@ Future<void> openStandaloneMirrorWindow(
   WidgetRef ref,
   AdbDevice device,
 ) async {
+  // AdbDevice 不包含别名，按设备身份从注册表读取用户配置的名称。
+  var deviceName = device.displayName;
+  for (final registered in ref.read(deviceRegistryProvider)) {
+    if (registered.id == device.id ||
+        registered.serial == device.id ||
+        registered.connections.contains(device.id)) {
+      final customName = registered.customName?.trim();
+      if (customName != null && customName.isNotEmpty) {
+        deviceName = customName;
+      }
+      break;
+    }
+  }
   final windowTitle = context.l10n
       .t('screenMirrorTitle')
-      .replaceAll('{name}', device.displayName);
+      .replaceAll('{name}', deviceName);
 
   // 1. If mirroring is active, stop it first.
   if (device.isIos) {
@@ -78,7 +91,7 @@ Future<void> openStandaloneMirrorWindow(
       arguments: {
         'type': 'mirror',
         'deviceId': device.id,
-        'deviceName': device.displayName,
+        'deviceName': deviceName,
         'isIos': device.isIos,
         'isHarmony': device.isHarmony,
       },

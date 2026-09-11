@@ -36,6 +36,11 @@
 
 ## 投屏标题设备信息悬浮层
 
+- 单设备投屏入口 `openStandaloneMirrorWindow()` 优先使用 `deviceRegistryProvider` 中非空的 `customName`，未配置或清空名称时保留 `AdbDevice.displayName` 默认值（model，缺失时使用设备 ID）；按 `id`、`serial`、`connections` 匹配同一设备，覆盖 USB 与无线连接。
+- 创建窗口时，原生窗口标题和 JSON 参数 `deviceName` 使用同一解析结果；子窗口标题栏复用该参数。该逻辑覆盖设备列表、控制面板与主窗口投屏快捷入口，批量投屏继续使用已支持别名的 `RegisteredDevice.displayName`。
+- 名称在打开窗口时读取；已打开窗口仍使用启动参数，修改名称后重新打开生效。单 App 投屏继续保留应用名称。
+- 回归检查：未配置名称、配置中文或含空格名称、清空名称后，分别从设备列表和控制面板打开投屏，确认窗口标题符合上述优先级；同一设备切换 USB/无线连接后验证别名，批量投屏与单 App 投屏检查既有标题行为。
+
 - 鼠标进入投屏标题栏中的设备名称时，画面左上角展示设备名称、brand/model、分辨率与刷新率、RAM、系统版本和 `/data` 已用/总存储；鼠标离开设备名称后隐藏，投屏画面本身不触发展示。
 - 数据统一读取 `deviceOverviewProvider(deviceId)`，优先显示 `SharedPreferences` 中的设备概览缓存，再异步刷新，禁止在 `onHover` 中重复执行 ADB command。
 - 悬浮层使用 `IgnorePointer`，不能拦截投屏画面的点击、拖拽、右键返回或中键 Home；hover 状态只由设备名称的 `MouseRegion.onEnter/onExit` 更新，避免鼠标移动造成高频 rebuild。
