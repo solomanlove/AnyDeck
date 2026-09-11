@@ -127,13 +127,13 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     final terminalState = ref.watch(adbTerminalProvider);
     final activeSession = terminalState.getActiveSession(widget.device.id);
 
-    // 监听日志行数变化，自动滚动到底部
+    // 提示符可能追加在原行，行数不变时也需要滚动到最新回显。
     ref.listen<AdbTerminalState>(adbTerminalProvider, (previous, next) {
       final prevActive = previous?.getActiveSession(widget.device.id);
       final nextActive = next.getActiveSession(widget.device.id);
       if (nextActive != null &&
           (prevActive == null ||
-              prevActive.lines.length != nextActive.lines.length)) {
+              prevActive.lines != nextActive.lines)) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
       }
     });
@@ -374,12 +374,12 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
               itemCount: session.lines.length + 1,
               itemBuilder: (context, index) {
                 if (index == session.lines.length) {
-                  // 最末行：交互式输入框
+                  // 真实目录和 $ / # 已由设备回显；输入框仅显示中性的输入标记。
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        '${(widget.device.product ?? widget.device.model ?? 'shell').toLowerCase()}:/ \$ ',
+                        '› ',
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 13,
@@ -419,36 +419,6 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                 }
 
                 final line = session.lines[index];
-
-                // 历史输入行渲染：拼接设备提示符前缀并进行语法着色
-                if (line.type == TerminalLineType.input) {
-                  return Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text:
-                              '${(widget.device.product ?? widget.device.model ?? 'shell').toLowerCase()}:/ \$ ',
-                          style: TextStyle(
-                            color: promptColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextSpan(
-                          text: line.text,
-                          style: TextStyle(
-                            color: inputColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 13,
-                      height: 1.3,
-                    ),
-                  );
-                }
 
                 // 普通的 stdout/stderr/info 日志渲染
                 return Text(

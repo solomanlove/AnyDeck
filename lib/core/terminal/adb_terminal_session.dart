@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../process/tool_path_resolver.dart';
+import 'terminal_newline_normalizer.dart';
 
 enum TerminalLineType { stdout, stderr, input, info }
 
@@ -152,23 +153,31 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
     try {
       final adbPath = resolveToolPath('adb');
-      final process = await Process.start(adbPath, ['-s', deviceId, 'shell']);
+      // stdin 是管道，必须强制申请 PTY，才能收到设备真实的提示符和输入回显。
+      final process = await Process.start(adbPath, [
+        '-s',
+        deviceId,
+        'shell',
+        '-tt',
+      ]);
 
       _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
 
       // 监听 stdout
-      process.stdout.transform(const Utf8Decoder(allowMalformed: true)).listen((
-        data,
-      ) {
-        _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
-      });
+      process.stdout
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .transform(const TerminalNewlineNormalizer())
+          .listen((data) {
+            _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
+          });
 
       // 监听 stderr
-      process.stderr.transform(const Utf8Decoder(allowMalformed: true)).listen((
-        data,
-      ) {
-        _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
-      });
+      process.stderr
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .transform(const TerminalNewlineNormalizer())
+          .listen((data) {
+            _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
+          });
 
       // 进程退出处理
       process.exitCode.then((code) {
@@ -261,16 +270,11 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     session.process!.stdin.write('$command\n');
 
     final newHistory = [...session.commandHistory, command];
-    final newLines = [
-      ...session.lines,
-      TerminalLine(text: command, type: TerminalLineType.input),
-    ];
-
+    // 输入及提示符由 PTY 回显，不能本地重复追加，也不能猜测 su 是否成功。
     _updateSession(deviceId, sessionId, (s) {
       return s.copyWith(
         commandHistory: newHistory,
         historyIndex: newHistory.length,
-        lines: newLines,
       );
     });
   }
@@ -305,21 +309,29 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
     try {
       final adbPath = resolveToolPath('adb');
-      final process = await Process.start(adbPath, ['-s', deviceId, 'shell']);
+      // 重连沿用 PTY，保持 root 提示符与交互行为一致。
+      final process = await Process.start(adbPath, [
+        '-s',
+        deviceId,
+        'shell',
+        '-tt',
+      ]);
 
       _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
 
-      process.stdout.transform(const Utf8Decoder(allowMalformed: true)).listen((
-        data,
-      ) {
-        _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
-      });
+      process.stdout
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .transform(const TerminalNewlineNormalizer())
+          .listen((data) {
+            _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
+          });
 
-      process.stderr.transform(const Utf8Decoder(allowMalformed: true)).listen((
-        data,
-      ) {
-        _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
-      });
+      process.stderr
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .transform(const TerminalNewlineNormalizer())
+          .listen((data) {
+            _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
+          });
 
       process.exitCode.then((code) {
         _appendLocalizedOutput(

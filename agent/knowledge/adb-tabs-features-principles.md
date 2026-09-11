@@ -177,15 +177,16 @@
 ## 6. 终端 (Terminal Tab)
 
 ### 功能说明
-提供一个全功能的交互式 adb shell 命令行终端。支持标准输入输出流的键盘双向互动；拥有完整的终端回显与 ANSI 颜色代码解析；支持用户收藏常用命令以一键自动填入。
+提供按行显示的交互式 adb shell 控制台，通过 PTY 展示设备真实提示符与命令回显，过滤基础 ANSI 控制序列；支持用户收藏常用命令以一键自动填入。它不是完整的全屏终端模拟器。
 
 ### 底层原理与命令
 1. **进程交互通道**：
-   - 启动命令：`Process.start('adb', ['-s', deviceId, 'shell'])`。
+   - 启动命令：`Process.start('adb', ['-s', deviceId, 'shell', '-tt'])`，新建与重连均强制申请 PTY。
    - 管道互通：将 Flutter UI 终端视图的键盘捕获输入转换后，直接通过 `process.stdin.write` 写入进程；同时异步把 `process.stdout` 与 `process.stderr` 的流数据回显到 UI 终端面板。
 2. **数据流控制**：
    - 监听进程的 `exitCode`，在进程退出时关闭终端会话并提示用户。
    - 常用命令记录（Favorite Commands）：保存在 SharedPreferences 中，支持管理和快捷输入。
+   - 不再本地拼接 `$` 或重复追加命令；root 提示符、当前目录均采用设备回显。PTY 换行按流归一化，机制与回归边界见 [终端 PTY 与 root 提示符](adb-terminal-pty.md)。
 
 ---
 
