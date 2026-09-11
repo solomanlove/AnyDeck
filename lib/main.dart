@@ -13,6 +13,7 @@ import 'app/window/desktop_window_manager_service.dart';
 import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
 import 'app/window/console/console_window_app.dart';
+import 'app/window/version_distribution/android_version_distribution_window_app.dart';
 import 'app/window/multi_window_compat.dart';
 import 'core/mcp/mcp_server.dart';
 
@@ -87,7 +88,9 @@ void main(List<String> args) async {
         ? 'mirror_window_$windowId'
         : type == 'console'
             ? 'console_window_$windowId'
-            : 'emulator_window_$windowId';
+            : type == 'version_distribution'
+                ? 'version_distribution_window_$windowId'
+                : 'emulator_window_$windowId';
     PlatformDispatcher.instance.setIsolateDebugName(windowName);
 
     // 获取当前子窗口 of VM Service URI 和 Isolate ID 并输出，用于在 DevTools 中连接调试
@@ -137,6 +140,18 @@ void main(List<String> args) async {
         ProviderScope(
           overrides: [windowIdProvider.overrideWithValue(windowId)],
           child: ConsoleWindowApp(windowId: windowId, argument: argument),
+        ),
+      );
+    } else if (type == 'version_distribution') {
+      await configureCurrentAdbManageSubWindow(argument);
+      // Android 平台与 API 版本分布独立窗口
+      runApp(
+        ProviderScope(
+          overrides: [windowIdProvider.overrideWithValue(windowId)],
+          child: AndroidVersionDistributionWindowApp(
+            windowId: windowId,
+            argument: argument,
+          ),
         ),
       );
     } else {

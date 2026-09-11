@@ -17,6 +17,7 @@ class _OverviewHeroCard extends StatelessWidget {
     required this.child,
     this.onTap,
     this.tooltip,
+    this.trailing,
   });
 
   final IconData icon;
@@ -24,6 +25,7 @@ class _OverviewHeroCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
   final String? tooltip;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +54,10 @@ class _OverviewHeroCard extends StatelessWidget {
                             ),
                       ),
                     ),
-                    if (tooltip != null) ...[
+                    if (trailing != null) ...[
+                      const SizedBox(width: 6),
+                      trailing!,
+                    ] else if (tooltip != null) ...[
                       const SizedBox(width: 6),
                       _OverviewInfoTooltip(
                         message: tooltip!,

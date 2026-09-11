@@ -72,6 +72,7 @@ import 'ios/ios_files_tab.dart';
 import 'ios/ios_processes_tab.dart';
 import 'ios/ios_syslog_tab.dart';
 import 'webview/in_app_webview_widget.dart';
+import 'overview/widget/android_version_distribution_launcher.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';

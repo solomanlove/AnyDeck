@@ -113,7 +113,10 @@ Future<void> configureCurrentAdbManageSubWindow(
 ) async {
   await windowManager.ensureInitialized();
 
-  if (arguments['type'] == 'mirror' || arguments['type'] == 'emulator_manager' || arguments['type'] == 'console') {
+  if (arguments['type'] == 'mirror' ||
+      arguments['type'] == 'emulator_manager' ||
+      arguments['type'] == 'console' ||
+      arguments['type'] == 'version_distribution') {
     await windowManager.setTitleBarStyle(
       TitleBarStyle.hidden,
       windowButtonVisibility: true,

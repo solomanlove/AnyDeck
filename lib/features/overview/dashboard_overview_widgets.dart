@@ -335,16 +335,14 @@ class _OverviewVersionCard extends StatelessWidget {
               ? context.l10n.t('customOsUnknown')
               : overview.customOs)
         : null;
-    final tooltip = !device.isHarmony && !isApple
-        ? AndroidVersionHelper.getApiMappingTooltip(
-            context.l10n.t('androidApiMapping'),
-          )
-        : null;
+    final isAndroid = !device.isHarmony && !isApple;
 
     return _OverviewHeroCard(
       icon: CupertinoIcons.device_phone_portrait,
       label: label,
-      tooltip: tooltip,
+      trailing: isAndroid
+          ? AndroidVersionInfoIcon(currentVersion: overview.androidVersion)
+          : null,
       onTap: () => _copyOverviewValue(context, label, overview.androidVersion),
       child: LayoutBuilder(
         builder: (context, constraints) {
