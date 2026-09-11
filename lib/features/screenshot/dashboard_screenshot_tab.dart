@@ -192,8 +192,6 @@ class _DashboardScreenshotTabState
               controller.setShowProperties(val ?? true),
           onShowBordersChanged: (val) =>
               controller.setShowBorders(val ?? false),
-          onEnableClickSelectChanged: (val) =>
-              controller.setEnableClickSelect(val ?? false),
           onUseDpChanged: (val) => controller.setUseDp(val ?? true),
         ),
         // 2. 主工作区：普通截图模式单画布，布局分析模式三栏展开

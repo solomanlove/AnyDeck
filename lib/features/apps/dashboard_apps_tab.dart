@@ -629,7 +629,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     final isSelected = _appFilterType == type;
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Text(
         label,
         style: TextStyle(

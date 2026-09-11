@@ -241,7 +241,7 @@ extension _ProcessesTabView on _ProcessesTabState {
     final isSelected = _processFilterType == type;
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Text(
         label,
         style: TextStyle(

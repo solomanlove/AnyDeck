@@ -240,7 +240,7 @@ class ScreenshotCanvasState extends State<ScreenshotCanvas> {
         }
 
         final isInteractiveSelection =
-            widget.isLayoutAnalysis && widget.enableClickSelect;
+            widget.isLayoutAnalysis && widget.showBorders;
 
         return Stack(
           children: [

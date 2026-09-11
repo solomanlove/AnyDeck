@@ -100,20 +100,23 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
                         controller: _scrollController,
                         scrollDirection: Axis.vertical,
                         padding: const EdgeInsets.all(8),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(minWidth: 600),
-                            child: _TreeNodeWidget(
-                              node: widget.rootNode,
-                              depth: 0,
-                              selectedNode: widget.selectedNode,
-                              hoveredNode: widget.hoveredNode,
-                              expandedNodes: widget.expandedNodes,
-                              onNodeSelected: widget.onNodeSelected,
-                              onNodeHovered: widget.onNodeHovered,
-                              onNodeExpansionChanged:
-                                  widget.onNodeExpansionChanged,
+                        child: ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minWidth: 600),
+                              child: _TreeNodeWidget(
+                                node: widget.rootNode,
+                                depth: 0,
+                                selectedNode: widget.selectedNode,
+                                hoveredNode: widget.hoveredNode,
+                                expandedNodes: widget.expandedNodes,
+                                onNodeSelected: widget.onNodeSelected,
+                                onNodeHovered: widget.onNodeHovered,
+                                onNodeExpansionChanged:
+                                    widget.onNodeExpansionChanged,
+                              ),
                             ),
                           ),
                         ),

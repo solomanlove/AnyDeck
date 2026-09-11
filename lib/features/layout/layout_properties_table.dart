@@ -5,7 +5,7 @@ import '../../app/l10n/app_localizations.dart';
 import '../../core/layout_inspector/layout_node.dart';
 
 /// 渲染右侧属性面板，展示当前选中的 XML 节点的所有详细属性，并支持点击复制。
-class LayoutPropertiesTable extends StatelessWidget {
+class LayoutPropertiesTable extends StatefulWidget {
   final LayoutNode? selectedNode;
   final bool useDp;
   final double deviceScale;
@@ -16,6 +16,19 @@ class LayoutPropertiesTable extends StatelessWidget {
     this.useDp = false,
     this.deviceScale = 1.0,
   });
+
+  @override
+  State<LayoutPropertiesTable> createState() => _LayoutPropertiesTableState();
+}
+
+class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   void _copyToClipboard(BuildContext context, String label, String value) {
     if (value.isEmpty) return;
@@ -35,7 +48,7 @@ class LayoutPropertiesTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (selectedNode == null) {
+    if (widget.selectedNode == null) {
       return Container(
         color: isDark
             ? Colors.white.withValues(alpha: 0.02)
@@ -56,13 +69,13 @@ class LayoutPropertiesTable extends StatelessWidget {
       );
     }
 
-    final node = selectedNode!;
+    final node = widget.selectedNode!;
     final rect = node.rect;
     final parentRect = node.parent?.rect;
 
     String formatValue(double pxValue) {
-      if (useDp) {
-        final dpValue = pxValue / deviceScale;
+      if (widget.useDp) {
+        final dpValue = pxValue / widget.deviceScale;
         final dpStr = dpValue
             .toStringAsFixed(1)
             .replaceAll(RegExp(r'\.0$'), '');
@@ -196,7 +209,11 @@ class LayoutPropertiesTable extends StatelessWidget {
           // 属性列表内容
           Expanded(
             child: Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
               child: ListView.builder(
+                controller: _scrollController,
+                primary: false,
                 itemCount: properties.length,
                 itemBuilder: (context, index) {
                   final prop = properties[index];

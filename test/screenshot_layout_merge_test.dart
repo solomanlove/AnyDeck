@@ -84,7 +84,6 @@ class MockLayoutInspectorService extends LayoutInspectorService {
 class _TestSelectedDeviceNotifier extends SelectedDeviceNotifier {
   _TestSelectedDeviceNotifier(this.device);
   final AdbDevice? device;
-
   @override
   AdbDevice? build() => device;
 }
@@ -92,7 +91,6 @@ class _TestSelectedDeviceNotifier extends SelectedDeviceNotifier {
 class _TestDeviceRegistryNotifier extends DeviceRegistryNotifier {
   _TestDeviceRegistryNotifier(this.devices);
   final List<RegisteredDevice> devices;
-
   @override
   List<RegisteredDevice> build() => devices;
 }
@@ -100,7 +98,6 @@ class _TestDeviceRegistryNotifier extends DeviceRegistryNotifier {
 class _FixedToolTabNotifier extends ToolTabNotifier {
   _FixedToolTabNotifier(this.initialIndex);
   final int initialIndex;
-
   @override
   int build() => initialIndex;
 }
@@ -108,14 +105,8 @@ class _FixedToolTabNotifier extends ToolTabNotifier {
 class _TestAdbService extends FakeAdbService {
   _TestAdbService(this.bytes);
   final Uint8List bytes;
-
   @override
-  Future<Uint8List> captureScreenshot(
-    String deviceId, {
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    return bytes;
-  }
+  Future<Uint8List> captureScreenshot(String deviceId, {Duration timeout = const Duration(seconds: 15)}) async => bytes;
 }
 
 class _TestIosCommandService extends IosCommandService {
@@ -147,10 +138,8 @@ Widget _wrapTestWidget(Widget child, {List<Override> overrides = const []}) {
       locale: const Locale('zh', 'CN'),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
-        AppLocalizationsDelegate(),
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
+        AppLocalizationsDelegate(), GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate, GlobalWidgetsLocalizations.delegate,
       ],
       home: Scaffold(body: child),
     ),
@@ -161,7 +150,6 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Screenshot and Layout Inspector Merge Tests', () {
-    late Uint8List cachedPng;
     late _TestAdbService fakeAdb;
     late _TestIosCommandService fakeIos;
     late _TestHdcService fakeHdc;
@@ -169,7 +157,7 @@ void main() {
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
-      cachedPng = await _createTestPng();
+      final cachedPng = await _createTestPng();
       fakeAdb = _TestAdbService(cachedPng);
       fakeIos = _TestIosCommandService(cachedPng);
       fakeHdc = _TestHdcService(cachedPng);
@@ -395,6 +383,8 @@ void main() {
       expect(find.byType(LayoutPropertiesTable), findsOneWidget);
       expect(find.byType(ScreenshotCanvas), findsOneWidget);
       expect(mockInspector.captureLayoutCallCount, greaterThan(0));
+      expect(find.text('点击选中'), findsNothing);
+      expect(find.text('显示布局'), findsOneWidget);
 
       // 再次点击关闭布局分析
       await tester.tap(find.byType(CupertinoSwitch));
@@ -450,9 +440,7 @@ void main() {
       expect(state.cannotToggleReasonKey, isNull);
     });
 
-    testWidgets('Atomic refresh does not mix data on layout failure', (
-      WidgetTester tester,
-    ) async {
+    test('Atomic refresh does not mix data on layout failure', () async {
       final container = ProviderContainer(
         overrides: [
           adbServiceProvider.overrideWithValue(fakeAdb),
@@ -482,6 +470,28 @@ void main() {
       expect(secondState.rootNode, equals(firstState.rootNode));
       expect(secondState.decodedImage, equals(firstState.decodedImage));
       expect(secondState.error, contains('Failed to dump uiautomator'));
+    });
+
+    test('showBorders automatically couples enableClickSelect', () {
+      final container = ProviderContainer(
+        overrides: [
+          adbServiceProvider.overrideWithValue(fakeAdb),
+          layoutInspectorServiceProvider.overrideWithValue(mockInspector),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier =
+          container.read(screenshotLayoutControllerProvider('dev1').notifier);
+      // 开启“显示布局”，点击选中自动同步启用
+      notifier.setShowBorders(true);
+      expect(container.read(screenshotLayoutControllerProvider('dev1')).showBorders, isTrue);
+      expect(container.read(screenshotLayoutControllerProvider('dev1')).enableClickSelect, isTrue);
+
+      // 关闭“显示布局”，点击选中自动禁用
+      notifier.setShowBorders(false);
+      expect(container.read(screenshotLayoutControllerProvider('dev1')).showBorders, isFalse);
+      expect(container.read(screenshotLayoutControllerProvider('dev1')).enableClickSelect, isFalse);
     });
   });
 }

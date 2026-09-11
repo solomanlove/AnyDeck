@@ -69,9 +69,8 @@ enum ScreenRecordPhase {
   - 手机物理像素坐标：$(X_p, Y_p)$
   - Flutter 逻辑点与 Canvas 局部渲染坐标：$(X_c, Y_c)$
   - 旋转变换：$0^\circ, 90^\circ, 180^\circ, 270^\circ$ 统一在 Painter 矩阵内处理。
-- **辅助图层可选叠加**：
-  - 边框显示（`showBorders`）
-  - 点击选中（`enableClickSelect`）
+- **辅助图层与交互联动**：
+  - 显示布局边框（`showBorders`：与画布点击选中联动；勾选“显示布局”时自动支持点击/悬停选中控件节点，未勾选时禁用点击选中）
   - 悬停预览（`hoveredNode`）
   - 单位切换（`useDp`，结合设备 density 进行实时换算并在边框上标注宽高）
 

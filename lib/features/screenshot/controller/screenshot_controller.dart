@@ -135,11 +135,11 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
       final service = ref.read(layoutInspectorServiceProvider);
 
       // 并发执行截图与布局转储
-      final screenshotFuture = service.captureScreenshot(deviceId);
-      final layoutFuture = service.captureLayout(deviceId);
-
-      final screenshotBytes = await screenshotFuture;
-      final (parsedRoot, xmlContent) = await layoutFuture;
+      final (screenshotBytes, layoutData) = await (
+        service.captureScreenshot(deviceId),
+        service.captureLayout(deviceId),
+      ).wait;
+      final (parsedRoot, xmlContent) = layoutData;
 
       final codec = await ui.instantiateImageCodec(screenshotBytes);
       final frameInfo = await codec.getNextFrame();
@@ -342,12 +342,9 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
   void setShowBorders(bool val) {
     state = state.copyWith(
       showBorders: val,
-      enableClickSelect: val ? state.enableClickSelect : false,
+      enableClickSelect: val,
     );
   }
-
-  void setEnableClickSelect(bool val) =>
-      state = state.copyWith(enableClickSelect: val);
 
   void setUseDp(bool val) => state = state.copyWith(useDp: val);
 

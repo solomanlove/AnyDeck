@@ -30,7 +30,6 @@ class ScreenshotToolbar extends StatelessWidget {
     required this.onCollapseAll,
     required this.onShowPropertiesChanged,
     required this.onShowBordersChanged,
-    required this.onEnableClickSelectChanged,
     required this.onUseDpChanged,
   });
 
@@ -54,7 +53,6 @@ class ScreenshotToolbar extends StatelessWidget {
   final VoidCallback onCollapseAll;
   final ValueChanged<bool?> onShowPropertiesChanged;
   final ValueChanged<bool?> onShowBordersChanged;
-  final ValueChanged<bool?> onEnableClickSelectChanged;
   final ValueChanged<bool?> onUseDpChanged;
 
   @override
@@ -81,9 +79,11 @@ class ScreenshotToolbar extends StatelessWidget {
         children: [
           // 左侧与中部功能按钮区：支持横向平滑滚动，避免窗口缩小时产生 RenderFlex 溢出
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // 1. 刷新按钮
@@ -212,12 +212,6 @@ class ScreenshotToolbar extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     _ToolbarCheckbox(
-                      label: context.l10n.t('clickToSelect'),
-                      value: state.enableClickSelect,
-                      onChanged: state.showBorders ? onEnableClickSelectChanged : null,
-                    ),
-                    const SizedBox(width: 8),
-                    _ToolbarCheckbox(
                       label: 'DP',
                       value: state.useDp,
                       onChanged: onUseDpChanged,
@@ -227,7 +221,8 @@ class ScreenshotToolbar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+        ),
+        const SizedBox(width: 12),
           // 右侧固定区域：分辨率大小与“布局分析”开关（固定可见）
           Row(
             mainAxisSize: MainAxisSize.min,
