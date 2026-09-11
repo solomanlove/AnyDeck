@@ -1,5 +1,11 @@
 part of '../dashboard_screen.dart';
 
+enum AppFilterType {
+  user,
+  system,
+  all,
+}
+
 class _AppsTab extends ConsumerStatefulWidget {
   const _AppsTab({required this.device});
 
@@ -13,7 +19,7 @@ class _AppsTab extends ConsumerStatefulWidget {
 class _AppsTabState extends ConsumerState<_AppsTab> {
   final TextEditingController _filterController = TextEditingController();
   String _filter = '';
-  bool _hideSystemApps = true;
+  AppFilterType _appFilterType = AppFilterType.user;
   bool _refreshingPackages = false;
   String? _selectedPackage;
   bool _isGridView = false;
@@ -403,16 +409,37 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                 ),
               ),
               const SizedBox(width: 12),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Checkbox(
-                    value: _hideSystemApps,
-                    onChanged: (value) =>
-                        setState(() => _hideSystemApps = value ?? true),
+              CupertinoSlidingSegmentedControl<AppFilterType>(
+                groupValue: _appFilterType,
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.5)
+                    : const Color(0xFFF1F5F9),
+                thumbColor: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.surfaceContainerHigh
+                    : Colors.white,
+                padding: const EdgeInsets.all(3),
+                children: {
+                  AppFilterType.user: _buildAppFilterSegment(
+                    context.l10n.t('userApps'),
+                    AppFilterType.user,
                   ),
-                  Text(context.l10n.t('hideSystemApps')),
-                ],
+                  AppFilterType.system: _buildAppFilterSegment(
+                    context.l10n.t('systemApps'),
+                    AppFilterType.system,
+                  ),
+                  AppFilterType.all: _buildAppFilterSegment(
+                    context.l10n.t('allApps'),
+                    AppFilterType.all,
+                  ),
+                },
+                onValueChanged: (value) {
+                  if (value != null) {
+                    setState(() => _appFilterType = value);
+                  }
+                },
               ),
               const SizedBox(width: 8),
               IconButton(
@@ -487,28 +514,34 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                   );
                 }
                 final selectedPackage = _selectedVisiblePackage(filtered);
+                final showActionsRow = _isGridView || selectedPackage != null;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            context.l10n
-                                .t('appCount')
-                                .replaceAll('{visible}', '${filtered.length}')
-                                .replaceAll('{total}', '${items.length}'),
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                        ),
-                        if (selectedPackage != null)
-                          _PackageActions(
-                            deviceId: widget.device.id,
-                            package: selectedPackage,
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                    if (showActionsRow) ...[
+                      Row(
+                        children: [
+                          if (_isGridView)
+                            Expanded(
+                              child: Text(
+                                context.l10n
+                                    .t('appCount')
+                                    .replaceAll('{visible}', '${filtered.length}')
+                                    .replaceAll('{total}', '${items.length}'),
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                            )
+                          else
+                            const Spacer(),
+                          if (selectedPackage != null)
+                            _PackageActions(
+                              deviceId: widget.device.id,
+                              package: selectedPackage,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     Expanded(
                       child: _isGridView
                           ? _PackageGrid(
@@ -522,6 +555,7 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
                           : _PackageTable(
                               deviceId: widget.device.id,
                               packages: filtered,
+                              totalCount: items.length,
                               selectedPackage: _selectedPackage,
                               onSelected: _selectPackage,
                               onOpened: _openPackage,
@@ -537,12 +571,21 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     );
   }
 
-  /// 对应用名和包名执行大小写不敏感筛选，并且支持拼音匹配（全拼、首字母），可隐藏系统应用。
+  /// 对应用名和包名执行大小写不敏感筛选，并且支持拼音匹配（全拼、首字母），可按用户应用/系统应用/全部筛选。
   List<AdbPackage> _filterPackages(List<AdbPackage> items) {
     final filter = _filter.trim().toLowerCase();
     final cleanFilter = filter.replaceAll(' ', '');
     return items
-        .where((package) => !_hideSystemApps || !package.system)
+        .where((package) {
+          switch (_appFilterType) {
+            case AppFilterType.user:
+              return !package.system;
+            case AppFilterType.system:
+              return package.system;
+            case AppFilterType.all:
+              return true;
+          }
+        })
         .where((package) {
           if (filter.isEmpty) {
             return true;
@@ -580,6 +623,24 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
               displayNameShortPinyin.contains(cleanFilter);
         })
         .toList(growable: false);
+  }
+
+  Widget _buildAppFilterSegment(String label, AppFilterType type) {
+    final isSelected = _appFilterType == type;
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
   }
 
   AdbPackage? _selectedVisiblePackage(List<AdbPackage> packages) {

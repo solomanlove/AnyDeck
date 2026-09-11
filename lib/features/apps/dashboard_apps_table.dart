@@ -4,6 +4,7 @@ class _PackageTable extends StatefulWidget {
   const _PackageTable({
     required this.deviceId,
     required this.packages,
+    this.totalCount,
     required this.selectedPackage,
     required this.onSelected,
     required this.onOpened,
@@ -11,6 +12,7 @@ class _PackageTable extends StatefulWidget {
 
   final String deviceId;
   final List<AdbPackage> packages;
+  final int? totalCount;
   final String? selectedPackage;
   final ValueChanged<String> onSelected;
   final ValueChanged<String> onOpened;
@@ -100,6 +102,7 @@ class _PackageTableState extends State<_PackageTable> {
           context: context,
           packages: sorted,
           viewportWidth: constraints.maxWidth,
+          totalCount: widget.totalCount,
         );
         final tableWidth = max(widths.total, constraints.maxWidth);
 
@@ -124,6 +127,8 @@ class _PackageTableState extends State<_PackageTable> {
                     sortAscending: _sortAscending,
                     onSort: _toggleSort,
                     sortIconBuilder: _getSortIcon,
+                    visibleCount: sorted.length,
+                    totalCount: widget.totalCount,
                   ),
                   Expanded(
                     child: Scrollbar(
@@ -166,6 +171,8 @@ class _PackageTableHeader extends StatelessWidget {
     required this.sortAscending,
     required this.onSort,
     required this.sortIconBuilder,
+    this.visibleCount,
+    this.totalCount,
   });
 
   final _PackageTableWidths widths;
@@ -173,6 +180,8 @@ class _PackageTableHeader extends StatelessWidget {
   final bool sortAscending;
   final ValueChanged<String> onSort;
   final Widget Function(String) sortIconBuilder;
+  final int? visibleCount;
+  final int? totalCount;
 
   @override
   Widget build(BuildContext context) {
@@ -181,6 +190,9 @@ class _PackageTableHeader extends StatelessWidget {
       fontWeight: FontWeight.bold,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
+    final appNameLabel = (visibleCount != null && totalCount != null)
+        ? '${context.l10n.t('appName')} (${context.l10n.t('appCount').replaceAll('{visible}', '$visibleCount').replaceAll('{total}', '$totalCount')})'
+        : context.l10n.t('appName');
     return Container(
       height: 48,
       decoration: BoxDecoration(
@@ -198,7 +210,7 @@ class _PackageTableHeader extends StatelessWidget {
         children: [
           DashboardSortableHeaderCell(
             width: widths.appName,
-            label: context.l10n.t('appName'),
+            label: appNameLabel,
             style: style,
             sortIcon: sortIconBuilder('appName'),
             onTap: () => onSort('appName'),

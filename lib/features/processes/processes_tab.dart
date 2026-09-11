@@ -19,6 +19,16 @@ part 'processes_tab_table.dart';
 
 enum _ProcessContextAction { copyName, stop }
 
+/// 进程类型过滤选项：用户进程、系统进程、全部。
+enum ProcessFilterType {
+  /// 用户安装的应用及其进程。
+  user,
+  /// 系统级应用与系统服务进程。
+  system,
+  /// 全部进程。
+  all,
+}
+
 class ProcessesTab extends ConsumerStatefulWidget {
   final AdbDevice device;
   final bool isVisible;
@@ -36,6 +46,7 @@ class ProcessesTab extends ConsumerStatefulWidget {
 class _ProcessesTabState extends ConsumerState<ProcessesTab> {
   final TextEditingController _filterController = TextEditingController();
   String _filter = '';
+  ProcessFilterType _processFilterType = ProcessFilterType.user;
   bool _onlyShowApps = true;
   String? _selectedPid;
 
@@ -334,14 +345,47 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
     return false;
   }
 
+  /// 判断进程是否属于用户安装的第三方应用进程。
+  bool _isUserProcess(AdbProcess process, Map<String, AdbPackage> packageMap) {
+    final basePackage = process.name.contains(':')
+        ? process.name.split(':').first
+        : process.name;
+    final pkg = packageMap[basePackage];
+    if (pkg != null) return !pkg.system;
+    if (packageMap.isNotEmpty) return false;
+    if (!process.user.startsWith('u0_') && !process.user.startsWith('u1_')) {
+      return false;
+    }
+    const systemPrefixes = [
+      'com.android.', 'android.', 'com.google.android.', 'com.miui.',
+      'com.xiaomi.', 'com.huawei.', 'com.oppo.', 'com.vivo.', 'com.samsung.',
+    ];
+    final lower = basePackage.toLowerCase();
+    return !systemPrefixes.any(lower.startsWith);
+  }
+
   List<AdbProcess> _sortAndFilterProcesses(
     List<AdbProcess> items,
     List<AdbPackage> packages,
   ) {
     final installedPackageNames = packages.map((p) => p.name).toList();
+    final packageMap = {for (final p in packages) p.name: p};
 
     // 1. Filter
     var filtered = items;
+
+    // 按进程类别过滤（用户进程 / 系统进程 / 全部）
+    switch (_processFilterType) {
+      case ProcessFilterType.user:
+        filtered = filtered.where((p) => _isUserProcess(p, packageMap)).toList();
+        break;
+      case ProcessFilterType.system:
+        filtered = filtered.where((p) => !_isUserProcess(p, packageMap)).toList();
+        break;
+      case ProcessFilterType.all:
+        break;
+    }
+
     if (_onlyShowApps) {
       filtered = filtered
           .where((p) => _isAppProcess(p.name, p.user, installedPackageNames))

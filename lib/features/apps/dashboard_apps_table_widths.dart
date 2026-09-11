@@ -13,6 +13,7 @@ class _PackageTableWidths {
     required BuildContext context,
     required List<AdbPackage> packages,
     required double viewportWidth,
+    int? totalCount,
   }) {
     final textTheme = Theme.of(context).textTheme;
     final headerStyle = textTheme.titleSmall;
@@ -30,13 +31,16 @@ class _PackageTableWidths {
       return width;
     }
 
+    final appNameHeader = totalCount != null
+        ? '${l10n.t('appName')} (${l10n.t('appCount').replaceAll('{visible}', '${packages.length}').replaceAll('{total}', '$totalCount')})'
+        : l10n.t('appName');
     final appName = max(
       max(
-        headerWidth('appName'),
+        _measureTableText(appNameHeader, headerStyle),
         contentWidth(packages.map((package) => package.displayName)),
       ),
       contentWidth(packages.map((package) => package.name)),
-    ).clamp(200.0, 360.0);
+    ).clamp(240.0, 420.0);
     final version = max(
       headerWidth('version'),
       contentWidth(packages.map((package) => package.versionLabel)),
@@ -63,7 +67,7 @@ class _PackageTableWidths {
 
     if (base.total > viewportWidth) {
       final overflow = base.total - viewportWidth;
-      final appNameShrink = min(overflow, base.appName - 222.0);
+      final appNameShrink = min(overflow, base.appName - 240.0);
       return base.copyWith(
         appName: base.appName - appNameShrink,
       );

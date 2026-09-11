@@ -73,6 +73,39 @@ extension _ProcessesTabView on _ProcessesTabState {
                 ),
               ),
               const SizedBox(width: 12),
+              CupertinoSlidingSegmentedControl<ProcessFilterType>(
+                groupValue: _processFilterType,
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.5)
+                    : const Color(0xFFF1F5F9),
+                thumbColor: Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(context).colorScheme.surfaceContainerHigh
+                    : Colors.white,
+                padding: const EdgeInsets.all(3),
+                children: {
+                  ProcessFilterType.user: _buildProcessFilterSegment(
+                    context.l10n.t('userProcesses'),
+                    ProcessFilterType.user,
+                  ),
+                  ProcessFilterType.system: _buildProcessFilterSegment(
+                    context.l10n.t('systemProcesses'),
+                    ProcessFilterType.system,
+                  ),
+                  ProcessFilterType.all: _buildProcessFilterSegment(
+                    context.l10n.t('allProcesses'),
+                    ProcessFilterType.all,
+                  ),
+                },
+                onValueChanged: (value) {
+                  if (value != null) {
+                    _updateState(() => _processFilterType = value);
+                  }
+                },
+              ),
+              const SizedBox(width: 12),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -96,23 +129,7 @@ extension _ProcessesTabView on _ProcessesTabState {
                   ),
                 ],
               ),
-              const SizedBox(width: 12),
-              processesAsync.when(
-                data: (items) {
-                  final filtered = _sortAndFilterProcesses(items, packages);
-                  return Text(
-                    context.l10n
-                        .t('processCount')
-                        .replaceAll('{count}', '${filtered.length}'),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  );
-                },
-                loading: () => Text(context.l10n.t('reading')),
-                error: (_, error) => Text(context.l10n.t('loadFailed')),
-              ),
-              const Spacer(),
+              const SizedBox(width: 8),
               IconButton(
                 tooltip: context.l10n.t('refreshProcessesTooltip'),
                 icon: _refreshing
@@ -216,6 +233,24 @@ extension _ProcessesTabView on _ProcessesTabState {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProcessFilterSegment(String label, ProcessFilterType type) {
+    final isSelected = _processFilterType == type;
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }

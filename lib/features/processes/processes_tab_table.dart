@@ -170,7 +170,11 @@ class _ProcessTableState extends State<_ProcessTable> {
       ),
       child: Row(
         children: [
-          headerCell('name', context.l10n.t('processName'), widget.widths.name),
+          headerCell(
+            'name',
+            '${context.l10n.t('processName')} (${context.l10n.t('processCount').replaceAll('{count}', '${widget.processes.length}')})',
+            widget.widths.name,
+          ),
           headerCell('cpu', context.l10n.t('cpuPercent'), widget.widths.cpu),
           headerCell('time', context.l10n.t('cpuTime'), widget.widths.time),
           headerCell('memory', context.l10n.t('memory'), widget.widths.memory),

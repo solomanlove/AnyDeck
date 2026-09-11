@@ -2,6 +2,9 @@
 const appsFilesLogcatZh = {
   'filterPackage': '筛选',
   'hideSystemApps': '隐藏系统应用',
+  'userApps': '用户应用',
+  'systemApps': '系统应用',
+  'allApps': '全部',
   'appCount': '共 {visible}/{total} 个应用',
   'appName': '名称',
   'packageName': '包名',
@@ -166,6 +169,9 @@ const appsFilesLogcatZh = {
 const appsFilesLogcatEn = {
   'filterPackage': 'Filter',
   'hideSystemApps': 'Hide system apps',
+  'userApps': 'User',
+  'systemApps': 'System',
+  'allApps': 'All',
   'appCount': '{visible}/{total} apps',
   'appName': 'Name',
   'packageName': 'Package',
