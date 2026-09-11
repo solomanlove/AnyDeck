@@ -47,7 +47,7 @@ class _DeviceOverviewPanel extends ConsumerWidget {
               title: context.l10n.t('overviewTitle'),
               subtitle: context.l10n.t('noCachedOverview'),
             )
-          : _OverviewContent(
+          : DeviceOverviewContent(
               device: device,
               overview: data,
               onRefresh: () => device.isOnline

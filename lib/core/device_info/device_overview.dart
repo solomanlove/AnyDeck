@@ -12,6 +12,7 @@ class DeviceOverview {
     required this.processor,
     required this.storage,
     required this.memory,
+    this.memoryUsed = '-',
     required this.physicalResolution,
     required this.resolution,
     required this.logicalDensity,
@@ -46,6 +47,9 @@ class DeviceOverview {
   final String processor;
   final String storage;
   final String memory;
+
+  /// 最近一次概览查询的已用内存；旧缓存或不支持的平台使用占位值。
+  final String memoryUsed;
   final String physicalResolution;
   final String resolution;
   final String logicalDensity;
@@ -81,6 +85,7 @@ class DeviceOverview {
       'processor': processor,
       'storage': storage,
       'memory': memory,
+      'memoryUsed': memoryUsed,
       'physicalResolution': physicalResolution,
       'resolution': resolution,
       'logicalDensity': logicalDensity,
@@ -118,6 +123,7 @@ class DeviceOverview {
       processor: json['processor'] as String? ?? '-',
       storage: json['storage'] as String? ?? '-',
       memory: json['memory'] as String? ?? '-',
+      memoryUsed: json['memoryUsed'] as String? ?? '-',
       physicalResolution: json['physicalResolution'] as String? ?? '-',
       resolution: json['resolution'] as String? ?? '-',
       logicalDensity: json['logicalDensity'] as String? ?? '-',
@@ -155,6 +161,7 @@ class DeviceOverview {
     String? processor,
     String? storage,
     String? memory,
+    String? memoryUsed,
     String? physicalResolution,
     String? resolution,
     String? logicalDensity,
@@ -189,6 +196,7 @@ class DeviceOverview {
       processor: processor ?? this.processor,
       storage: storage ?? this.storage,
       memory: memory ?? this.memory,
+      memoryUsed: memoryUsed ?? this.memoryUsed,
       physicalResolution: physicalResolution ?? this.physicalResolution,
       resolution: resolution ?? this.resolution,
       logicalDensity: logicalDensity ?? this.logicalDensity,

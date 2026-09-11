@@ -89,6 +89,7 @@ part 'devices/dashboard_device_header.dart';
 part 'overview/dashboard_overview.dart';
 part 'overview/dashboard_overview_widgets.dart';
 part 'overview/dashboard_overview_components.dart';
+part 'overview/dashboard_overview_capacity_card.dart';
 part 'control/dashboard_control.dart';
 part 'control/dashboard_deeplink.dart';
 part 'control/dashboard_power.dart';

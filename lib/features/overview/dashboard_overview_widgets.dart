@@ -3,8 +3,9 @@ part of '../dashboard_screen.dart';
 const _overviewAccent = Color(0xff09c47c);
 
 /// 按窗口宽度组织设备摘要、重点指标和详细参数。
-class _OverviewContent extends StatelessWidget {
-  const _OverviewContent({
+class DeviceOverviewContent extends StatelessWidget {
+  const DeviceOverviewContent({
+    super.key,
     required this.device,
     required this.overview,
     required this.onRefresh,
@@ -24,10 +25,21 @@ class _OverviewContent extends StatelessWidget {
           const SizedBox(height: 12),
           _OverviewIdentityCard(device: device, overview: overview),
           const SizedBox(height: 12),
+          _OverviewVersionCard(device: device, overview: overview),
+          const SizedBox(height: 12),
           _OverviewResponsivePair(
-            first: _OverviewVersionCard(device: device, overview: overview),
-            second: _OverviewStorageCard(overview: overview),
-            desktopMinHeight: 272,
+            first: _OverviewCapacityCard(
+              label: context.l10n.t('memory'),
+              icon: CupertinoIcons.square_grid_2x2,
+              value: '${overview.memoryUsed} / ${overview.memory}',
+              targetTab: 6,
+            ),
+            second: _OverviewCapacityCard(
+              label: context.l10n.t('storageSpace'),
+              icon: CupertinoIcons.archivebox,
+              value: overview.storage,
+              targetTab: 3,
+            ),
           ),
           const SizedBox(height: 12),
           _OverviewResponsivePair(
@@ -103,12 +115,10 @@ class _OverviewResponsivePair extends StatelessWidget {
   const _OverviewResponsivePair({
     required this.first,
     required this.second,
-    this.desktopMinHeight,
   });
 
   final Widget first;
   final Widget second;
-  final double? desktopMinHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -123,9 +133,9 @@ class _OverviewResponsivePair extends StatelessWidget {
         final row = Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _withOverviewMinHeight(first, desktopMinHeight)),
+            Expanded(child: first),
             const SizedBox(width: 12),
-            Expanded(child: _withOverviewMinHeight(second, desktopMinHeight)),
+            Expanded(child: second),
           ],
         );
         return row;
@@ -351,8 +361,10 @@ class _OverviewVersionCard extends StatelessWidget {
             fontWeight: FontWeight.w800,
             height: 1.05,
           );
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          return Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 32,
+            runSpacing: 12,
             children: [
               Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
@@ -363,128 +375,29 @@ class _OverviewVersionCard extends StatelessWidget {
                   if (display.api != null) _OverviewBadge(text: display.api!),
                 ],
               ),
-              if (customOs != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  customOs,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  context.l10n.t('customOs'),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _OverviewStorageCard extends ConsumerWidget {
-  const _OverviewStorageCard({required this.overview});
-
-  final DeviceOverview overview;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final usage = _StorageUsage.parse(overview.storage);
-    final percentText = context.l10n
-        .t('usedPercent')
-        .replaceAll(
-          '{percent}',
-          usage == null ? '-' : usage.percent.toString(),
-        );
-    return _OverviewHeroCard(
-      icon: CupertinoIcons.archivebox,
-      label: context.l10n.t('storageSpace'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(10),
-            mouseCursor: SystemMouseCursors.click,
-            onTap: () => ref.read(selectedToolTabProvider.notifier).select(3),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      overview.storage,
-                      style: Theme.of(context).textTheme.headlineLarge
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    percentText,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      minHeight: 8,
-                      value: usage?.ratio ?? 0,
-                      color: _overviewAccent,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
-          const SizedBox(height: 6),
-          InkWell(
-            borderRadius: BorderRadius.circular(10),
-            mouseCursor: SystemMouseCursors.click,
-            onTap: () => ref.read(selectedToolTabProvider.notifier).select(6),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  const Icon(
-                    CupertinoIcons.square_grid_2x2,
-                    color: _overviewAccent,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    context.l10n.t('memory'),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Text(
-                      overview.memory,
-                      overflow: TextOverflow.ellipsis,
+              if (customOs != null)
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customOs,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+                    const SizedBox(height: 2),
+                    Text(
+                      context.l10n.t('customOs'),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          );
+        },
       ),
     );
   }

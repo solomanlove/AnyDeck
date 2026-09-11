@@ -12,10 +12,15 @@
 
 ### 信息层级与响应式布局
 - 顶部设备摘要统一展示在线状态、设备名称/品牌、序列号和 Android ID；下方不再重复基本信息。iOS 与 HarmonyOS 的设备 ID 已等同于序列号时不再重复展示第二份标识符。
-- Android/系统版本与存储空间是首要状态卡。Android 的 `androidVersion` 展示时拆为主版本和 API badge，并在标题后展示 info icon；仅当鼠标悬浮 info icon 时，才通过 `AndroidVersionHelper.getApiMappingTooltip` 显示黑色 API mapping 提示。厂商系统仅在版本卡内展示。存储卡根据 `DeviceOverview.storage` 的“已用 / 总量”计算比例并展示进度条，同时保留运行内存。
-- 可用宽度不小于 720px 时，重点卡和详情卡采用双列布局；更窄时改为单列堆叠。系统与网络、屏幕与显示使用紧凑键值行，并保留点击复制和密度 tooltip。
-- 桌面双列的版本/存储重点卡使用一致的最小高度，避免内容较少的一侧出现断层，同时允许字体缩放或本地化文案使卡片自动增高，防止内存行出现 bottom overflow；详情卡使用固定比例的 label 列和左对齐 value 列，保证不同长度参数的起点一致。禁止通过 `IntrinsicHeight` 包裹内部含 `LayoutBuilder` 的组件，否则 Flutter intrinsic size 计算会抛异常并导致 Overview 空白。
-- 存储重点卡按内容分区导航：点击容量、已用比例或进度条切换到文件 Tab（index 3）；点击内存行切换到进程管理 Tab（index 6）。标题及卡片空白区域不触发跳转。
+- Android/系统版本独占一行，内存与存储空间作为下一行的重点状态卡。Android 的 `androidVersion` 展示时拆为主版本和 API badge，并在标题后展示 info icon；仅当鼠标悬浮 info icon 时，才通过 `AndroidVersionHelper.getApiMappingTooltip` 显示黑色 API mapping 提示。厂商系统仅在版本卡内展示，与主版本横向排列，空间不足时自动换行。内存与存储共用 `_OverviewCapacityCard`，统一展示“当前已用 / 总量”、已用比例与进度条；容量缺失时隐藏比例及进度条。
+- 可用宽度不小于 720px 时，内存居左、存储居右，详情卡也采用双列布局；更窄时改为单列堆叠。系统与网络、屏幕与显示使用紧凑键值行，并保留点击复制和密度 tooltip。
+- 系统版本卡按内容自然撑高，取消原先 272px 最小高度，收紧厂商系统下方留白；详情卡使用固定比例的 label 列和左对齐 value 列，保证不同长度参数的起点一致。禁止通过 `IntrinsicHeight` 包裹内部含 `LayoutBuilder` 的组件，否则 Flutter intrinsic size 计算会抛异常并导致 Overview 空白。
+- 容量卡按内容导航：点击存储容量、已用比例或进度条切换到文件 Tab（index 3）；点击内存卡对应内容切换到进程管理 Tab（index 6）。标题及卡片空白区域不触发跳转。
+
+### 本次布局与内存回归
+- `test/overview_layout_test.dart` 独立渲染 `DeviceOverviewContent`，覆盖 1000px/600px、中英文与明暗主题，验证容量可见、左右/上下排列且无 overflow，避免依赖其他 Tab 的原生 WebView。
+- `test/device_memory_info_test.dart` 覆盖新旧内核内存口径、未知值、数值边界与旧缓存；`test/device_overview_test.dart` 覆盖 ADB 查询结果接入与缓存往返；投屏悬浮信息继续保持总内存展示。
+- 真机回归：打开概览、刷新并确认已用量更新；点击内存/存储内容检查进程/文件 Tab 跳转；旧缓存刷新前允许展示 `- / 总量`。本次不运行项目或执行真机查询。
 
 ### 底层原理与命令
 1. **秒开设计（本地缓存）**：
@@ -33,7 +38,7 @@
      - 系统版本：`ro.build.version.release`
      - API 级别：`ro.build.version.sdk`
    - **标识符**：Android ID 采用 `settings get secure android_id` 查询。
-   - **处理器与内存**：解析 `/proc/cpuinfo` (处理器名称与核数) 及 `/proc/meminfo` (总物理内存 `MemTotal`)。
+   - **处理器与内存**：解析 `/proc/cpuinfo` (处理器名称与核数) 及 `/proc/meminfo`。`DeviceMemoryInfo` 从已有分组查询中解析 `MemTotal` 和 `MemAvailable`，已用内存为两者之差；旧内核无 `MemAvailable` 时，以 `MemFree + Buffers + Cached + SReclaimable - Shmem` 估算可用量并限制范围，字段不足则显示未知，不新增 ADB command 或后台轮询。`DeviceOverview.memory` 保留总量语义，新增 `memoryUsed` 存储当前已用量并同步 JSON 缓存；旧缓存和暂不支持的平台默认为 `-`，占用随概览刷新更新。参考 [Linux meminfo 文档](https://docs.kernel.org/filesystems/proc.html)。
    - **存储空间**：运行 `df -h /data` 查询用户分区的总容量、已用空间与可用空间。
    - **屏幕参数**：
      - 分辨率：运行 `wm size` 获取物理分辨率（`Physical size`）及当前缩放分辨率（`Override size`）。

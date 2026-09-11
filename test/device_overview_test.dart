@@ -6,10 +6,11 @@ import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 
 class StubAdbService extends AdbService {
-  StubAdbService({this.shouldFail = false, this.getpropOutput});
+  StubAdbService({this.shouldFail = false, this.getpropOutput, this.meminfoOutput});
 
   final bool shouldFail;
   final String? getpropOutput;
+  final String? meminfoOutput;
 
   @override
   Future<AdbResult> run(
@@ -21,6 +22,13 @@ class StubAdbService extends AdbService {
         exitCode: 1,
         stdout: '',
         stderr: 'error: device offline',
+      );
+    }
+    if (args.any((arg) => arg.contains('cat /proc/meminfo'))) {
+      return AdbResult(
+        exitCode: 0,
+        stdout: '===MEMINFO===\n${meminfoOutput ?? ""}\n===DF===\n',
+        stderr: '',
       );
     }
     if (args.contains('get-serialno')) {
@@ -85,6 +93,7 @@ void main() {
         processor: 'alioth 6 cores (arm64-v8a)',
         storage: '202.92G / 225.43G',
         memory: '11.24G',
+        memoryUsed: '6.00G',
         physicalResolution: '1080x2400 (440dpi)',
         resolution: '1080x2400 (440dpi)',
         logicalDensity: '2.75x (xxhdpi)',
@@ -122,6 +131,8 @@ void main() {
       expect(decoded.processor, overview.processor);
       expect(decoded.storage, overview.storage);
       expect(decoded.memory, overview.memory);
+      expect(decoded.memoryUsed, overview.memoryUsed);
+      expect(decoded.copyWith(name: '新名称').memoryUsed, overview.memoryUsed);
       expect(decoded.physicalResolution, overview.physicalResolution);
       expect(decoded.resolution, overview.resolution);
       expect(decoded.logicalDensity, overview.logicalDensity);
@@ -157,7 +168,9 @@ void main() {
     test(
       'should save to cache on success and load from cache on failure',
       () async {
-        final onlineAdb = StubAdbService(shouldFail: false);
+        final onlineAdb = StubAdbService(
+          meminfoOutput: 'MemTotal: 8388608 kB\nMemAvailable: 2097152 kB',
+        );
         final service = DeviceInfoService(onlineAdb);
 
         // 1. Load while online (saves to cache)
@@ -165,6 +178,8 @@ void main() {
         expect(overview.name, 'Redmi K40');
         expect(overview.brand, 'Redmi');
         expect(overview.customOs, 'MIUI V14');
+        expect(overview.memory, '8.00G');
+        expect(overview.memoryUsed, '6.00G');
 
         // 2. Load while offline (should fallback to cached value)
         final offlineAdb = StubAdbService(shouldFail: true);
@@ -174,6 +189,7 @@ void main() {
         expect(cachedOverview.name, 'Redmi K40');
         expect(cachedOverview.brand, 'Redmi');
         expect(cachedOverview.customOs, 'MIUI V14');
+        expect(cachedOverview.memoryUsed, '6.00G');
       },
     );
 

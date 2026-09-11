@@ -5,6 +5,7 @@ import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import 'android_version_helper.dart';
 import 'device_overview.dart';
+import 'device_memory_info.dart';
 
 /// 通过 adb shell 命令收集只读 Android 设备信息。
 class DeviceInfoService {
@@ -130,7 +131,7 @@ settings get global sysui_demo_allowed
       final fontScale = _formatScale(
         _clean(settingsSections['FONTSCALE'] ?? ''),
       );
-      final memory = _parseMemory(basicSections['MEMINFO'] ?? '');
+      final memory = DeviceMemoryInfo.parse(basicSections['MEMINFO'] ?? '');
       final storage = _parseStorage(basicSections['DF'] ?? '');
       final network = basicSections['IP'] ?? '';
       final wifiDump = results[4].stdout;
@@ -204,7 +205,8 @@ settings get global sysui_demo_allowed
         kernelVersion: kernel,
         processor: _formatProcessor(deviceCode, cores, abi),
         storage: storage,
-        memory: memory,
+        memory: memory.total,
+        memoryUsed: memory.used,
         physicalResolution: _formatResolution(size.physical, density.physical),
         resolution: _formatResolution(size.current, density.current),
         logicalDensity: logicalDensity,
@@ -281,16 +283,6 @@ settings get global sysui_demo_allowed
       physical: physical,
       current: override == '-' ? physical : override,
     );
-  }
-
-  /// 将 `/proc/meminfo` 的 MemTotal 转换为紧凑的 GB 字符串。
-  String _parseMemory(String output) {
-    final kbText = _matchFirst(output, r'MemTotal:\s*(\d+)\s*kB');
-    final kb = int.tryParse(kbText);
-    if (kb == null) {
-      return '-';
-    }
-    return _formatGb(kb * 1024);
   }
 
   /// 将 `df -k /data` 转换为已用/总量存储摘要。
