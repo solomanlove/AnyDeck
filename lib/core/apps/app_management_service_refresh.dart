@@ -13,6 +13,7 @@ Stream<List<AdbPackage>> _enrichPackageIcons(
   final current = List<AdbPackage>.from(packages);
   var processed = 0;
   var failed = 0;
+  final failedPackages = <String>[];
   try {
     if (!active() || current.isEmpty) return;
     await service._ensureIconHelperPushed(deviceId, throwOnError: throwOnError);
@@ -56,9 +57,13 @@ Stream<List<AdbPackage>> _enrichPackageIcons(
           final info = infos[package.name];
           if (info == null) {
             failed++;
+            failedPackages.add(package.name);
           } else {
             final localPath = await service._pullIconIfNeeded(deviceId, info);
-            if (info.remotePath.isNotEmpty && localPath == null) failed++;
+            if (info.remotePath.isNotEmpty && localPath == null) {
+              failed++;
+              failedPackages.add(package.name);
+            }
             current[j] = package.copyWith(
               label: info.label.isEmpty ? null : info.label,
               iconLocalPath: localPath,
@@ -76,6 +81,9 @@ Stream<List<AdbPackage>> _enrichPackageIcons(
       } catch (_) {
         // 单批失败继续后续批次，保留已更新信息并在最终结果中提示。
         failed += end - processed;
+        for (var j = processed; j < end; j++) {
+          failedPackages.add(current[j].name);
+        }
         processed = end;
       } finally {
         // 清理失败不能掩盖原始刷新结果；设备端清理沿用已有超时。
@@ -97,6 +105,7 @@ Stream<List<AdbPackage>> _enrichPackageIcons(
           processed: processed,
           total: current.length,
           failed: failed,
+          failedPackages: List.from(failedPackages),
         ),
       );
       if (updatedAny) yield List<AdbPackage>.from(current);

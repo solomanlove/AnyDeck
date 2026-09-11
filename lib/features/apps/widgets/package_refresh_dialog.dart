@@ -75,8 +75,34 @@ class _PackageRefreshDialogState extends State<PackageRefreshDialog> {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _progress.finished,
+      child: AlertDialog(
+        title: Text(context.l10n.t('packageRefreshTitle')),
+        content: PackageRefreshView(progress: _progress),
+        actions: _progress.finished
+            ? [
+                TextButton(
+                  onPressed: _close,
+                  child: Text(context.l10n.t('close')),
+                ),
+              ]
+            : null,
+      ),
+    );
+  }
+}
+
+/// The actual UI of the progress view, reusable inline.
+class PackageRefreshView extends StatelessWidget {
+  const PackageRefreshView({super.key, required this.progress});
+
+  final PackageRefreshProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final stage = _progress.stage;
+    final stage = progress.stage;
     final statusKey = switch (stage) {
       PackageRefreshStage.reading => 'packageRefreshReading',
       PackageRefreshStage.enriching => 'packageRefreshEnriching',
@@ -85,55 +111,69 @@ class _PackageRefreshDialogState extends State<PackageRefreshDialog> {
       PackageRefreshStage.failed => 'packageRefreshFailed',
     };
     final showCount =
-        _progress.total > 0 || stage == PackageRefreshStage.enriching;
-    return PopScope(
-      canPop: _progress.finished,
-      child: AlertDialog(
-        title: Text(l10n.t('packageRefreshTitle')),
-        content: SizedBox(
-          width: 400,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(l10n.t(statusKey)),
-                const SizedBox(height: 16),
-                if (!_progress.finished)
-                  LinearProgressIndicator(value: _progress.fraction),
-                if (showCount) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n
-                        .t('packageRefreshCount')
-                        .replaceAll('{processed}', '${_progress.processed}')
-                        .replaceAll('{total}', '${_progress.total}'),
-                  ),
-                  if (_progress.fraction != null && !_progress.finished)
-                    Text('${(_progress.fraction! * 100).floor()}%'),
-                ],
-                if (_progress.failed > 0) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n
-                        .t('packageRefreshFailedCount')
-                        .replaceAll('{count}', '${_progress.failed}'),
+        progress.total > 0 || stage == PackageRefreshStage.enriching;
+
+    return SizedBox(
+      width: 400,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.t(statusKey)),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 4,
+              child: (!progress.finished)
+                  ? LinearProgressIndicator(value: progress.fraction)
+                  : null,
+            ),
+            if (showCount) ...[
+              const SizedBox(height: 12),
+              Text(
+                l10n
+                    .t('packageRefreshCount')
+                    .replaceAll('{processed}', '${progress.processed}')
+                    .replaceAll('{total}', '${progress.total}'),
+              ),
+              Visibility(
+                visible: progress.fraction != null && !progress.finished,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: Text(
+                  '${(progress.fraction != null ? progress.fraction! * 100 : 0).floor()}%',
+                ),
+              ),
+            ],
+            if (progress.failed > 0) ...[
+              const SizedBox(height: 12),
+              Text(
+                l10n
+                    .t('packageRefreshFailedCount')
+                    .replaceAll('{count}', '${progress.failed}'),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+              if (progress.failedPackages.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    progress.failedPackages.join('\n'),
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
                     ),
                   ),
-                ],
-                if (_progress.error != null) ...[
-                  const SizedBox(height: 12),
-                  SelectableText(_progress.error!),
-                ],
-              ],
-            ),
-          ),
+                ),
+            ],
+            if (progress.error != null) ...[
+              const SizedBox(height: 12),
+              SelectableText(progress.error!),
+            ],
+          ],
         ),
-        actions: _progress.finished
-            ? [TextButton(onPressed: _close, child: Text(l10n.t('close')))]
-            : null,
       ),
     );
   }

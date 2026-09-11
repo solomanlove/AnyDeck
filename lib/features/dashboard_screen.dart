@@ -28,6 +28,7 @@ import '../core/apps/adb_package.dart';
 import '../core/apps/adb_package_detail.dart';
 import 'apps/widgets/app_permissions_panel.dart';
 import 'apps/widgets/package_refresh_dialog.dart';
+import '../core/apps/package_refresh_progress.dart';
 import '../core/cache/cache_cleanup_service.dart';
 import '../core/device_info/device_overview.dart';
 import '../core/device_info/brand_logo_helper.dart';

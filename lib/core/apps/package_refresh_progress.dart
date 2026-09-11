@@ -8,6 +8,7 @@ class PackageRefreshProgress {
     this.processed = 0,
     this.total = 0,
     this.failed = 0,
+    this.failedPackages = const [],
     this.error,
   });
 
@@ -15,6 +16,7 @@ class PackageRefreshProgress {
   final int processed;
   final int total;
   final int failed;
+  final List<String> failedPackages;
   final String? error;
 
   bool get finished =>
@@ -32,6 +34,7 @@ class PackageRefreshProgress {
         processed: processed,
         total: total,
         failed: failed,
+        failedPackages: failedPackages,
         error: error,
       );
 }
