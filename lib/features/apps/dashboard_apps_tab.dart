@@ -324,288 +324,197 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
       }
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          if (!isOnline)
-            _buildOfflineWarningBanner(
-              context,
-              context.l10n.t('offlineAppsWarning'),
-            ),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  key: _textFieldKey,
-                  height: 38,
-                  child: TapRegion(
-                    groupId: 'apps_search_filter_region',
-                    child: CompositedTransformTarget(
-                      link: _filterLayerLink,
-                      child: TextField(
-                        controller: _filterController,
-                        focusNode: _filterFocusNode,
-                        onChanged: (value) => setState(() => _filter = value),
-                        onSubmitted: (value) {
-                          final val = value.trim();
-                          if (val.isNotEmpty) {
-                            ref
-                                .read(appsSearchHistoryProvider.notifier)
-                                .add(val);
-                          }
-                          _hideFilterOverlay();
-                        },
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(
-                            CupertinoIcons.line_horizontal_3_decrease,
-                            size: 16,
-                          ),
-                          hintText: context.l10n.t('filterPackage'),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                          ),
-                          suffixIcon: _filter.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(
-                                    CupertinoIcons.clear,
-                                    size: 16,
-                                  ),
-                                  onPressed: () {
-                                    _filterController.clear();
-                                    setState(() {
-                                      _filter = '';
-                                    });
-                                  },
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.outlineVariant,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outlineVariant
-                                  .withValues(alpha: 0.5),
-                            ),
-                          ),
-                        ),
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              CupertinoSlidingSegmentedControl<AppFilterType>(
-                groupValue: _appFilterType,
-                backgroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.5)
-                    : const Color(0xFFF1F5F9),
-                thumbColor: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(context).colorScheme.surfaceContainerHigh
-                    : Colors.white,
-                padding: const EdgeInsets.all(3),
-                children: {
-                  AppFilterType.user: _buildAppFilterSegment(
-                    context.l10n.t('userApps'),
-                    AppFilterType.user,
-                  ),
-                  AppFilterType.system: _buildAppFilterSegment(
-                    context.l10n.t('systemApps'),
-                    AppFilterType.system,
-                  ),
-                  AppFilterType.all: _buildAppFilterSegment(
-                    context.l10n.t('allApps'),
-                    AppFilterType.all,
-                  ),
-                },
-                onValueChanged: (value) {
-                  if (value != null) {
-                    setState(() => _appFilterType = value);
-                  }
-                },
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: context.l10n.t('refreshPackages'),
-                icon: const Icon(CupertinoIcons.refresh, size: 20),
-                onPressed: (isOnline && _refreshProgress == null)
-                    ? _refreshPackages
-                    : null,
-              ),
-              IconButton(
-                tooltip: context.l10n.t('zoomIn'),
-                icon: const Icon(CupertinoIcons.zoom_in, size: 20),
-                onPressed: (_isGridView && _gridItemSize < 160.0)
-                    ? () => setState(
-                        () => _gridItemSize = min(160.0, _gridItemSize + 15.0),
-                      )
-                    : null,
-              ),
-              IconButton(
-                tooltip: context.l10n.t('zoomOut'),
-                icon: const Icon(CupertinoIcons.zoom_out, size: 20),
-                onPressed: (_isGridView && _gridItemSize > 70.0)
-                    ? () => setState(
-                        () => _gridItemSize = max(70.0, _gridItemSize - 15.0),
-                      )
-                    : null,
-              ),
-              IconButton(
-                tooltip: context.l10n.t('gridView'),
-                icon: const Icon(CupertinoIcons.square_grid_2x2, size: 20),
-                isSelected: _isGridView,
-                selectedIcon: const Icon(
-                  CupertinoIcons.square_grid_2x2_fill,
-                  size: 20,
-                ),
-                onPressed: () => setState(() => _isGridView = true),
-              ),
-              IconButton(
-                tooltip: context.l10n.t('listView'),
-                icon: const Icon(CupertinoIcons.list_bullet, size: 20),
-                isSelected: !_isGridView,
-                selectedIcon: const Icon(CupertinoIcons.list_bullet, size: 20),
-                onPressed: () => setState(() => _isGridView = false),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                icon: const Icon(CupertinoIcons.square_arrow_down),
-                label: Text(context.l10n.t('installApk')),
-                onPressed: _installApk,
-              ),
-            ],
+    return DashboardTabLayout(
+      toolbar: DashboardSearchToolbar<AppFilterType>(
+        searchController: _filterController,
+        searchHint: context.l10n.t('filterPackage'),
+        searchFocusNode: _filterFocusNode,
+        searchKey: _textFieldKey,
+        searchTapRegionGroupId: 'apps_search_filter_region',
+        hasSearchQuery: _filter.isNotEmpty,
+        onSearchChanged: (value) => setState(() => _filter = value),
+        onSearchClear: () {
+          _filterController.clear();
+          setState(() => _filter = '');
+        },
+        segments: {
+          AppFilterType.user: _buildAppFilterSegment(
+            context.l10n.t('userApps'),
+            AppFilterType.user,
           ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: packages.when(
-                    loading: () => _PanelMessage(
-                      icon: CupertinoIcons.arrow_2_circlepath,
-                      title: context.l10n.t('loadingPackages'),
-                      animateIcon: true,
-                    ),
-                    error: (error, stackTrace) => _PanelMessage(
-                      icon: CupertinoIcons.exclamationmark_circle,
-                      title: context.l10n.t('packageListFailed'),
-                      subtitle: error.toString(),
-                    ),
-                    data: (items) {
-                      final filtered = _filterPackages(items);
-                      if (filtered.isEmpty) {
-                        return _PanelMessage(
-                          icon: CupertinoIcons.square_grid_2x2,
-                          title: context.l10n.t('noPackages'),
-                        );
-                      }
-                      final selectedPackage = _selectedVisiblePackage(filtered);
-                      final showActionsRow =
-                          _isGridView || selectedPackage != null;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (showActionsRow) ...[
-                            Row(
-                              children: [
-                                if (_isGridView)
-                                  Expanded(
-                                    child: Text(
-                                      context.l10n
-                                          .t('appCount')
-                                          .replaceAll(
-                                            '{visible}',
-                                            '${filtered.length}',
-                                          )
-                                          .replaceAll(
-                                            '{total}',
-                                            '${items.length}',
-                                          ),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.labelLarge,
-                                    ),
-                                  )
-                                else
-                                  const Spacer(),
-                                if (selectedPackage != null)
-                                  _PackageActions(
-                                    deviceId: widget.device.id,
-                                    package: selectedPackage,
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          Expanded(
-                            child: _isGridView
-                                ? _PackageGrid(
-                                    deviceId: widget.device.id,
-                                    packages: filtered,
-                                    selectedPackage: _selectedPackage,
-                                    onSelected: _selectPackage,
-                                    onOpened: _openPackage,
-                                    gridItemSize: _gridItemSize,
-                                  )
-                                : _PackageTable(
-                                    deviceId: widget.device.id,
-                                    packages: filtered,
-                                    totalCount: items.length,
-                                    selectedPackage: _selectedPackage,
-                                    onSelected: _selectPackage,
-                                    onOpened: _openPackage,
-                                  ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-                if (_refreshProgress != null)
-                  Positioned.fill(
-                    child: Container(
-                      color: Theme.of(
-                        context,
-                      ).scaffoldBackgroundColor.withValues(alpha: 0.8),
-                      alignment: Alignment.center,
-                      child: AlertDialog(
-                        title: Text(context.l10n.t('packageRefreshTitle')),
-                        content: PackageRefreshView(
-                          progress: _refreshProgress!,
-                        ),
-                        actions: [
-                          Visibility(
-                            visible: _refreshProgress!.finished,
-                            maintainSize: true,
-                            maintainAnimation: true,
-                            maintainState: true,
-                            child: TextButton(
-                              onPressed: () =>
-                                  setState(() => _refreshProgress = null),
-                              child: Text(context.l10n.t('close')),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
+          AppFilterType.system: _buildAppFilterSegment(
+            context.l10n.t('systemApps'),
+            AppFilterType.system,
+          ),
+          AppFilterType.all: _buildAppFilterSegment(
+            context.l10n.t('allApps'),
+            AppFilterType.all,
+          ),
+        },
+        currentSegment: _appFilterType,
+        onSegmentChanged: (value) {
+          if (value != null) {
+            setState(() => _appFilterType = value);
+          }
+        },
+        trailingActions: [
+          IconButton(
+            tooltip: context.l10n.t('refreshPackages'),
+            icon: const Icon(CupertinoIcons.refresh, size: 20),
+            onPressed: (isOnline && _refreshProgress == null)
+                ? _refreshPackages
+                : null,
+          ),
+          IconButton(
+            tooltip: context.l10n.t('zoomIn'),
+            icon: const Icon(CupertinoIcons.zoom_in, size: 20),
+            onPressed: (_isGridView && _gridItemSize < 160.0)
+                ? () => setState(
+                    () => _gridItemSize = min(160.0, _gridItemSize + 15.0),
+                  )
+                : null,
+          ),
+          IconButton(
+            tooltip: context.l10n.t('zoomOut'),
+            icon: const Icon(CupertinoIcons.zoom_out, size: 20),
+            onPressed: (_isGridView && _gridItemSize > 70.0)
+                ? () => setState(
+                    () => _gridItemSize = max(70.0, _gridItemSize - 15.0),
+                  )
+                : null,
+          ),
+          IconButton(
+            tooltip: context.l10n.t('gridView'),
+            icon: const Icon(CupertinoIcons.square_grid_2x2, size: 20),
+            isSelected: _isGridView,
+            selectedIcon: const Icon(
+              CupertinoIcons.square_grid_2x2_fill,
+              size: 20,
             ),
+            onPressed: () => setState(() => _isGridView = true),
+          ),
+          IconButton(
+            tooltip: context.l10n.t('listView'),
+            icon: const Icon(CupertinoIcons.list_bullet, size: 20),
+            isSelected: !_isGridView,
+            selectedIcon: const Icon(CupertinoIcons.list_bullet, size: 20),
+            onPressed: () => setState(() => _isGridView = false),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            icon: const Icon(CupertinoIcons.square_arrow_down),
+            label: Text(context.l10n.t('installApk')),
+            onPressed: _installApk,
           ),
         ],
       ),
-    );
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: packages.when(
+              loading: () => _PanelMessage(
+                icon: CupertinoIcons.arrow_2_circlepath,
+                title: context.l10n.t('loadingPackages'),
+                animateIcon: true,
+              ),
+              error: (error, stackTrace) => _PanelMessage(
+                icon: CupertinoIcons.exclamationmark_circle,
+                title: context.l10n.t('packageListFailed'),
+                subtitle: error.toString(),
+              ),
+              data: (items) {
+                final filtered = _filterPackages(items);
+                if (filtered.isEmpty) {
+                  return _PanelMessage(
+                    icon: CupertinoIcons.square_grid_2x2,
+                    title: context.l10n.t('noPackages'),
+                  );
+                }
+                final selectedPackage = _selectedVisiblePackage(filtered);
+                final showActionsRow = _isGridView || selectedPackage != null;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (showActionsRow) ...[
+                      Row(
+                        children: [
+                          if (_isGridView)
+                            Expanded(
+                              child: Text(
+                                context.l10n
+                                    .t('appCount')
+                                    .replaceAll(
+                                      '{visible}',
+                                      '${filtered.length}',
+                                    )
+                                    .replaceAll('{total}', '${items.length}'),
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                            )
+                          else
+                            const Spacer(),
+                          if (selectedPackage != null)
+                            _PackageActions(
+                              deviceId: widget.device.id,
+                              package: selectedPackage,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Expanded(
+                      child: _isGridView
+                          ? _PackageGrid(
+                              deviceId: widget.device.id,
+                              packages: filtered,
+                              selectedPackage: _selectedPackage,
+                              onSelected: _selectPackage,
+                              onOpened: _openPackage,
+                              gridItemSize: _gridItemSize,
+                            )
+                          : _PackageTable(
+                              deviceId: widget.device.id,
+                              packages: filtered,
+                              totalCount: items.length,
+                              selectedPackage: _selectedPackage,
+                              onSelected: _selectPackage,
+                              onOpened: _openPackage,
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          if (_refreshProgress != null)
+            Positioned.fill(
+              child: Container(
+                color: Theme.of(
+                  context,
+                ).scaffoldBackgroundColor.withValues(alpha: 0.8),
+                alignment: Alignment.center,
+                child: AlertDialog(
+                  title: Text(context.l10n.t('packageRefreshTitle')),
+                  content: PackageRefreshView(progress: _refreshProgress!),
+                  actions: [
+                    Visibility(
+                      visible: _refreshProgress!.finished,
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: TextButton(
+                        onPressed: () =>
+                            setState(() => _refreshProgress = null),
+                        child: Text(context.l10n.t('close')),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ), // Stack
+    ); // DashboardTabLayout
   }
 
   /// 对应用名和包名执行大小写不敏感筛选，并且支持拼音匹配（全拼、首字母），可按用户应用/系统应用/全部筛选。

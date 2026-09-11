@@ -17,6 +17,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../app/l10n/app_localizations.dart';
 import '../app/theme/app_icon.dart';
+import '../app/widget/dashboard_tab_layout.dart';
 
 import '../app/settings/app_settings.dart';
 import '../app/settings/app_settings_controller.dart';
@@ -252,7 +253,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final sessions = ref.watch(scrcpySessionsProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);
     final lastActiveDevice = ref.watch(lastActiveDeviceProvider);
-
 
     var effectiveSelectedDevice = selectedDevice;
     String appBarTitle = context.l10n.t('appTitle');

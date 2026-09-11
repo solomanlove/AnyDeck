@@ -56,3 +56,4 @@ agent/knowledge/index.md
 - 每个文件的代码要符合 Dart 代码规范；
 - 拆分后的文件按功能放在不同的文件夹中，比如widget、model、controller等；
 - 每一个文件和关键流程都要增加中文注释；
+- 公共 Widget 必须有完整的注释，说明其用途、参数意义及用法，方便以后复用；
