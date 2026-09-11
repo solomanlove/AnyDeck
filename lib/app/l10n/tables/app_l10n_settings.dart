@@ -1,6 +1,8 @@
 /// settings 模块文案表。新增 key 时必须同时补齐 zh/en。
 const settingsZh = {
   'appTitle': 'AnyDeck',
+  'startingUp': '正在准备工作环境...',
+  'appSlogan': '多端协同与设备管理中枢',
   'settings': '设置',
   'wanAndroid': '玩安卓',
   'aiMcp': 'AI MCP',
@@ -100,6 +102,8 @@ const settingsZh = {
 
 const settingsEn = {
   'appTitle': 'AnyDeck',
+  'startingUp': 'Initializing workspace...',
+  'appSlogan': 'Multi-device Workspace Hub',
   'settings': 'Settings',
   'wanAndroid': 'WanAndroid',
   'aiMcp': 'AI MCP',

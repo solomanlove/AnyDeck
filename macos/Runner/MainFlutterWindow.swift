@@ -1,6 +1,7 @@
 import Cocoa
 import FlutterMacOS
 import desktop_multi_window
+import window_manager
 
 class MainFlutterWindow: NSWindow {
   private var isChineseMode = true
@@ -9,7 +10,12 @@ class MainFlutterWindow: NSWindow {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
-    self.setFrame(windowFrame, display: true)
+    self.setFrame(windowFrame, display: false)
+
+    // 设置自适应窗口背景色，避免在 Flutter 引擎首帧就绪前暴露原生黑底
+    self.isOpaque = false
+    self.backgroundColor = .windowBackgroundColor
+    self.setIsVisible(false)
 
     let windowChannel = FlutterMethodChannel(
       name: "any_deck/window",
@@ -161,6 +167,11 @@ class MainFlutterWindow: NSWindow {
     }
 
     super.awakeFromNib()
+  }
+
+  override public func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {
+    super.order(place, relativeTo: otherWin)
+    hiddenWindowAtLaunch()
   }
 
   private func syncSystemTitle(_ title: String) {

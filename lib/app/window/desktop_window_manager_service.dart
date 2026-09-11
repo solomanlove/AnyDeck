@@ -54,8 +54,6 @@ class DesktopWindowManagerService {
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
       await windowManager.setPreventClose(true); // 拦截关闭事件，最小化到托盘
     });
 
@@ -78,6 +76,13 @@ class DesktopWindowManagerService {
     } catch (e) {
       debugPrint('Tray initialization failed: $e');
     }
+  }
+
+  /// 显示主窗口并获取焦点（在首帧渲染就绪后调用，消除启动黑屏）。
+  static Future<void> showWindow() async {
+    if (kIsWeb || Platform.isAndroid || Platform.isIOS) return;
+    await windowManager.show();
+    await windowManager.focus();
   }
 
   /// 动态更新托盘菜单语言与 MCP 运行状态。
