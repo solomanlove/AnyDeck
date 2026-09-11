@@ -9,6 +9,9 @@ import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import 'adb_package.dart';
 import 'adb_package_detail.dart';
+import 'package_refresh_progress.dart';
+
+part 'app_management_service_refresh.dart';
 
 /// 基于 adb 和 PackageManager 实现的应用管理能力。
 class AppManagementService {
@@ -504,7 +507,8 @@ fi
       'savedAt': DateTime.now().toIso8601String(),
       'items': packages.map((package) => package.toJson()).toList(),
     });
-    await preferences.setString(_packageCacheKey(deviceId), payload);
+    final saved = await preferences.setString(_packageCacheKey(deviceId), payload);
+    if (!saved) throw StateError('Package cache write failed');
   }
 
   String _packageCacheKey(String deviceId) {
@@ -577,93 +581,21 @@ fi
     );
   }
 
+  /// 保留列表流接口，手动刷新可订阅真实进度并接收整体异常。
   Stream<List<AdbPackage>> enrichPackagesWithIconsProgressive(
     String deviceId,
-    List<AdbPackage> packages,
-  ) async* {
-    try {
-      await _ensureIconHelperPushed(deviceId);
-      final userId = await _currentUserId(deviceId);
-
-      // 分批提取图标（每批 50 个应用）
-      const chunkSize = 50;
-      final currentPackages = List<AdbPackage>.from(packages);
-
-      for (var i = 0; i < currentPackages.length; i += chunkSize) {
-        final end = (i + chunkSize < currentPackages.length)
-            ? i + chunkSize
-            : currentPackages.length;
-        final chunk = currentPackages.sublist(i, end);
-
-        final chunkFile = await _writePackageListFileForChunk(
-          deviceId,
-          chunk,
-          i,
-        );
-        final remoteChunkPath = '$_remotePackageListPath.$i';
-
-        final pushListResult = await _adb.run([
-          '-s',
-          deviceId,
-          'push',
-          chunkFile.path,
-          remoteChunkPath,
-        ], timeout: _fileTransferTimeout);
-
-        if (!pushListResult.isSuccess) {
-          continue;
-        }
-
-        final result = await _adb.shell(
-          deviceId,
-          'CLASSPATH=$_remoteDexPath app_process /system/bin '
-          'com.adbmanage.helper.PackageIconHelper '
-          '$remoteChunkPath $userId',
-          timeout: _metadataTimeout,
-        );
-
-        // 删除临时生成的分批包名列表文件
-        unawaited(_adb.shell(deviceId, 'rm -f $remoteChunkPath'));
-
-        if (!result.isSuccess) {
-          continue;
-        }
-
-        final iconInfos = _parseIconHelperOutput(result.stdout);
-        if (iconInfos.isEmpty) {
-          continue;
-        }
-
-        var updatedAny = false;
-        for (var j = i; j < end; j++) {
-          final package = currentPackages[j];
-          final iconInfo = iconInfos[package.name];
-          if (iconInfo != null) {
-            final iconLocalPath = await _pullIconIfNeeded(deviceId, iconInfo);
-            currentPackages[j] = package.copyWith(
-              label: iconInfo.label.isEmpty ? null : iconInfo.label,
-              iconLocalPath: iconLocalPath,
-              iconRemotePath: iconInfo.remotePath.isEmpty
-                  ? null
-                  : iconInfo.remotePath,
-              signatureMd5: iconInfo.signatureMd5.isEmpty
-                  ? null
-                  : iconInfo.signatureMd5,
-              firstInstallTime: iconInfo.firstInstallTime,
-              lastUpdateTime: iconInfo.lastUpdateTime,
-            );
-            updatedAny = true;
-          }
-        }
-
-        if (updatedAny) {
-          yield List<AdbPackage>.from(currentPackages);
-        }
-      }
-    } catch (_) {
-      // 允许后台分批拉取失败时不抛出异常
-    }
-  }
+    List<AdbPackage> packages, {
+    PackageRefreshCallback? onProgress,
+    bool throwOnError = false,
+    bool Function()? isActive,
+  }) => _enrichPackageIcons(
+    this,
+    deviceId,
+    packages,
+    onProgress: onProgress,
+    throwOnError: throwOnError,
+    isActive: isActive,
+  );
 
   Future<File> _writePackageListFileForChunk(
     String deviceId,
@@ -684,20 +616,25 @@ fi
     return file;
   }
 
-  Future<void> _ensureIconHelperPushed(String deviceId) async {
+  Future<void> _ensureIconHelperPushed(
+    String deviceId, {
+    bool throwOnError = false,
+  }) async {
     final helperFile = await _writeHelperAssetToTemp();
-    await _adb.shell(
+    final mkdir = await _adb.shell(
       deviceId,
       'mkdir -p $_remoteBaseDir/icons',
       timeout: _quickTimeout,
     );
-    await _adb.run([
+    if (throwOnError && !mkdir.isSuccess) throw StateError(mkdir.message);
+    final push = await _adb.run([
       '-s',
       deviceId,
       'push',
       helperFile.path,
       _remoteDexPath,
     ], timeout: _fileTransferTimeout);
+    if (throwOnError && !push.isSuccess) throw StateError(push.message);
   }
 
   Future<File> _writeHelperAssetToTemp() async {

@@ -5,6 +5,7 @@ import window_manager
 
 class MainFlutterWindow: NSWindow {
   private var isChineseMode = true
+  private var screenChangeDebounceWorkItem: DispatchWorkItem?
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -16,6 +17,14 @@ class MainFlutterWindow: NSWindow {
     self.isOpaque = false
     self.backgroundColor = .windowBackgroundColor
     self.setIsVisible(false)
+
+    // 监听窗口跨屏移动通知，使用主线程防抖触发视图标记重绘，规避 Metal 图层挂起黑屏
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(windowDidChangeScreen(_:)),
+      name: NSWindow.didChangeScreenNotification,
+      object: self
+    )
 
     let windowChannel = FlutterMethodChannel(
       name: "any_deck/window",
@@ -99,6 +108,23 @@ class MainFlutterWindow: NSWindow {
             windowChannel?.invokeMethod("onWindowLeaveFullScreen", arguments: nil)
           }
           observers.append(exitObserver)
+
+          var subWindowDebounceWorkItem: DispatchWorkItem?
+          let screenChangeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didChangeScreenNotification,
+            object: window,
+            queue: .main
+          ) { [weak controller, weak window] _ in
+            subWindowDebounceWorkItem?.cancel()
+            let workItem = DispatchWorkItem { [weak controller, weak window] in
+              controller?.view.needsDisplay = true
+              controller?.view.layer?.setNeedsDisplay()
+              window?.viewsNeedDisplay = true
+            }
+            subWindowDebounceWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: workItem)
+          }
+          observers.append(screenChangeObserver)
           
           let closeObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
@@ -172,6 +198,24 @@ class MainFlutterWindow: NSWindow {
   override public func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {
     super.order(place, relativeTo: otherWin)
     hiddenWindowAtLaunch()
+  }
+
+  /// 处理主窗口跨屏幕切换事件，使用主线程防抖避免拖拽过程中频繁触发重绘
+  @objc private func windowDidChangeScreen(_ notification: Notification) {
+    screenChangeDebounceWorkItem?.cancel()
+    let workItem = DispatchWorkItem { [weak self] in
+      guard let self = self, let contentView = self.contentViewController?.view else { return }
+      // 仅标记图层需要重绘，不强行修改窗口几何尺寸以避免拖拽抖动
+      contentView.needsDisplay = true
+      contentView.layer?.setNeedsDisplay()
+      self.viewsNeedDisplay = true
+    }
+    screenChangeDebounceWorkItem = workItem
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: workItem)
+  }
+
+  deinit {
+    NotificationCenter.default.removeObserver(self)
   }
 
   private func syncSystemTitle(_ title: String) {

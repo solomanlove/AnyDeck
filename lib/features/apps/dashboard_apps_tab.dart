@@ -708,15 +708,17 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
     if (_refreshingPackages) {
       return;
     }
+    _hideFilterOverlay();
+    _filterFocusNode.unfocus();
     setState(() => _refreshingPackages = true);
+    final notifier = ref.read(packagesProvider(widget.device.id).notifier);
     try {
-      await ref
-          .read(packagesProvider(widget.device.id).notifier)
-          .refreshAllPackagesWithIcons();
-    } catch (error) {
-      if (mounted) {
-        _showSnack(context, error.toString(), isError: true);
-      }
+      await showPackageRefreshDialog(
+        context,
+        refresh: (onProgress) => notifier.refreshAllPackagesWithIcons(
+          onProgress: onProgress,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _refreshingPackages = false);
