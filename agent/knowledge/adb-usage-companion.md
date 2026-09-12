@@ -1,93 +1,123 @@
-# 使用时长手机端与 ADB 最小闭环
+# 手机使用统计、位置记录与 ADB 历史同步
 
-## 范围与用户流程
+## 范围与操作流程（v0.2.0）
 
-- 桌面入口：Android 设备 → 应用 → 工具栏“使用时长”（柱状图按钮）。
-- 首次点击“安装手机端”，安装内置 `assets/android/usage_companion.apk` 并打开可见入口。
-- 手机端明确展示采集范围，用户开启 ADB 共享并在系统设置授权使用情况访问。
-- 桌面点击同步后显示屏幕交互时长、App 前台累计、App 排行和系统实际统计区间。
-- 无后台常驻服务、开机接收器、隐藏入口、网络权限或自动授予权限命令。
-- 第一版按需读取 Android 已有统计；可能包含安装前系统保留的今日记录，不是从安装时开始独立持续采集。
+桌面入口：Android 设备 → 应用 → 工具栏“使用时长”（柱状图按钮）。弹窗分别提供使用时长和位置历史。
+
+1. 点击“安装手机端”，覆盖安装内置 `assets/android/usage_companion.apk` 并打开可见入口。
+2. 使用统计：手机开启统计 ADB 共享，在系统设置授予使用情况访问权限；可额外勾选自动保存统计。
+3. 定位：手机单独开启位置记录共享，点击“开始记录位置”，授予位置和通知权限，授权完成后再次点击开始。
+4. 手机出现持续记录通知后可离线积累位置，通知或页面均可停止。桌面只拉取已有记录，不远程启动定位。
+5. 桌面分别点击“同步使用时长”和“同步位置记录”，保存到电脑 SQLite；断开手机仍能查看。
+
+两项共享和自动统计默认关闭，定位需显式启动。没有隐藏入口、开机接收器、自动授予权限、保活绕过或手机网络服务。已授权 ADB 的电脑属于信任范围，尚无独立电脑配对。
 
 ## 分层与复用
 
 | 层 | 文件/目录 | 职责 |
 | --- | --- | --- |
-| 手机 UI | `tool/usage_companion/src/com/adbmanage/companion/MainActivity.java` | 可见的共享开关、权限设置、手动预览 |
-| 手机数据 | `UsageRepository.java` | UsageStatsManager 系统日桶查询、安装标识、原子保存最新快照 |
-| 手机接口 | `UsageProvider.java` | 仅允许 Binder UID 2000 的 ADB shell 调用；逐次检查共享与权限 |
-| 传输与缓存 | `lib/core/usage/` | ADB 同步、协议校验、最后快照缓存 |
-| 页面状态 | `lib/features/apps/controller/usage_report_controller.dart` | 防重复、错误状态、生命周期处理 |
-| 展示 | `lib/features/apps/widgets/usage_report_dialog.dart` | 双语、明暗主题、离线快照与虚拟列表 |
+| 手机 UI | `MainActivity.java`、`LocationControls.java` | 可见授权、独立开关、预览、定位开始/停止 |
+| 使用统计 | `UsageRepository.java`、`UsageArchiveJob.java` | 系统日桶查询、按需和系统周期调度保存 |
+| 定位 | `LocationRecordingService.java` | LocationManager 与带通知的 location foreground service |
+| 手机离线库 | `CompanionStore.java` | SQLite 两个流、递增编号、安装标识、分页 |
+| 手机接口 | `UsageProvider.java` | 限 Binder UID 2000，查询前后检查共享及统计权限 |
+| 桌面协议 | `lib/core/usage/companion_history.dart`、`usage_sync_service.dart` | 来源校验、分页恢复、安装和旧快照兼容 |
+| 桌面数据库 | `lib/core/usage/companion_database.dart` | 工作 Isolate 内 SQLite 事务、游标、路由关联 |
+| 页面状态 | `usage_report_controller.dart`、`usage_report_view_controller.dart` | 同步/迁移/清除、展示选择、地图打开及生命周期 |
+| 展示 | `usage_report_dialog.dart`、`location_history_view.dart`、`location_trail_view.dart` | 双语报告、日期筛选、离线轨迹和位置列表 |
 
-复用 `AdbService.shellArgs/run`、`AppManagementService.installApk`、`packagesProvider`、`AdbPackage` 和 `_AppNameCell`。
-**禁止在使用时长链路重新获取图标、重新实现名称缓存，或复制 PackageIconHelper。** 未命中已有缓存时显示包名及原有占位图标，用户可使用应用页原有刷新功能补齐。
-现有应用列表、DEBUG 标识、图标 helper、投屏链路与原生窗口通信均未改动。没有新的 Flutter 依赖。
+复用 `AdbService.shellArgs`、`AppManagementService.installApk`、`deviceRegistryProvider`、`packagesProvider`、`AdbPackage`、`_AppNameCell`、`webDebugServiceProvider` 及已有 sqlite3/path_provider 依赖。
+**使用时长链路不重新获取图标、不复制 PackageIconHelper 或名称缓存。** 缓存未命中时显示包名和原有占位图标。未改动投屏、应用缓存逻辑或原生窗口通信。
 
-## 统计口径
+## 采集与保留边界
 
-- `queryUsageStats(INTERVAL_DAILY, 手机今日零点, 手机当前时间)` 查询系统已有日桶。
-- Android 官方允许扩展查询区间，因此保留各 App 的 `firstTimeStamp/lastTimeStamp`，不能标成严格自然日时长。
-- `foregroundMs` 来自 `getTotalTimeInForeground()`；同一包多个日桶合并。App 累计可能重叠，不能作为手机总使用时长。
-- Android 9+ 通过 `queryEventStats` 中的 `SCREEN_INTERACTIVE` 单独读取屏幕交互时长及其区间；Android 8 不调用该 API，显示“系统未提供”。
-- 系统汇总可能存在延迟、受 ROM 口径影响，不承诺与健康使用手机页面完全一致。
-- 无统计响应使用 `no_data`，不能等价显示为零使用。空 App 列表与缺失屏幕指标分别处理。
-- 桌面按快照中的手机 UTC offset 显示时间；目前不是完整时区数据库换算，跨夏令时边界的历史显示留待后续完善。
+### 使用统计
 
-参考：[UsageStatsManager](https://developer.android.com/reference/android/app/usage/UsageStatsManager)。
+- `queryUsageStats(INTERVAL_DAILY, 手机今日零点, 手机当前时间)` 查询真实系统日桶，可包含安装前保留的今日记录。
+- Android 可扩展查询区间，保留每项 `firstTimeStamp/lastTimeStamp`，不承诺严格自然日。
+- `foregroundMs` 来自 `getTotalTimeInForeground()`；同包日桶合并。App 时间可能重叠，不作为手机总时长。
+- Android 9+ 单独查询 `SCREEN_INTERACTIVE`；Android 8 显示系统未提供。
+- 手动预览/桌面同步生成快照；额外启用自动统计后 JobScheduler 请求每 15 分钟保存，Doze/ROM 可推迟。
+- Job 不跨开机持久化，重新打开手机端后按原有设置安排，不保证进程常驻。
+- 快照保存到手机 SQLite 并保留私有 `files/usage_snapshot.json`，单条 JSON 上限 96 KiB。
+- 桌面按查询起点分组，只展示每个查询日最后一份，不累加。同日末尾未采样时不是全天报告，不补采任意历史日期。
+- 统计按快照手机 UTC offset 展示；系统延迟、跨夏令时和跨时区日界存在口径限制。
 
-## ADB 协议与状态
+参考：[UsageStatsManager](https://developer.android.com/reference/android/app/usage/UsageStatsManager)、[JobInfo.setPeriodic](https://developer.android.com/reference/android/app/job/JobInfo.Builder#setPeriodic(long))。
 
-1. `am get-current-user` 确认目标用户。
-2. `pm path --user <id> com.adbmanage.companion` 检查目标用户是否已安装。
-3. `content call --user <id> --uri content://com.adbmanage.companion.usage --method snapshot` 获取 Base64 JSON。
-4. 解析并校验版本、时间范围、App 行、返回用户，再次确认当前用户未变化。
-5. 桌面成功解析后覆盖最后快照，失败保留旧记录，并明确展示快照生成时间与非实时提示。
+### 定位
 
-手机端 `ContentProvider.call` 自行检查调用 UID，不能只依赖 manifest `DUMP` 权限；鉴权后清除 Binder 调用身份，再以 App 自身权限读取数据。普通 App 无法调用数据接口。已获得 ADB 授权的电脑均属于本版的信任范围，不包含独立电脑配对系统。
+- 系统 NETWORK/GPS provider，不依赖 Google Play services；请求 5 分钟间隔、50 米最小位移。两个 provider 可分别回调，静止时可能没有新点；实际周期和功耗需目标 ROM 验证。
+- 接受最近两分钟内系统回调，不用旧 lastKnownLocation 冒充当前位置。保存采集/接收时间、WGS84 坐标、精度、provider 和 mock 标志。
+- 模拟位置明确标记，最后已知位置也显示模拟标识；拒绝越界坐标和无效时间。
+- 用户在可见 Activity 启动 location foreground service，保持持续通知；不申请后台定位权限，不提供 ADB 启动记录接口。
+- 停止按钮停止新采集，历史仍可同步；关闭位置共享同时停止采集并拒绝历史导出。手机私有历史仍保留。
+- 进程被杀/手机重启后不自动恢复定位，需再次打开并点击开始；未做小米保活豁免或可靠性承诺。
 
-`schemaVersion=1` 包含 `installationId`、`androidUserId`、`generatedAtMs`、`requestedStartMs`、实际统计区间、时区、可选屏幕指标及 App 数组。手机进程内使用共享锁协调手动预览与 Provider 并发写入；AtomicFile 保存私有文件 `files/usage_snapshot.json`。原始 JSON 上限 256 KiB，为 Base64/Bundle 的 Binder 传输预留空间。
+参考：[location foreground service](https://developer.android.com/develop/background-work/services/fgs/service-types#location)、[定位运行时授权](https://developer.android.com/develop/sensors-and-location/location/permissions/runtime)、[LocationManager](https://developer.android.com/reference/android/location/LocationManager)。
 
-错误码：`sharing_disabled`、`permission_required`、`user_locked`、`no_data`、`internal_error`。桌面还区分连接失败、未安装、协议错误、切换用户、安装失败与缓存读写失败。
+### 保存与展示
 
-桌面复用 SharedPreferences 保存 `usage.snapshot.v1.<ADB路由>`，只保留最新一份；不重复累计、不维护长历史。快照携带安装标识和 Android 用户。USB/Wi-Fi 路由变更不会自动合并；旧快照显示其原 Android 用户，后续长期存储需接入稳定设备身份。清除按钮仅清除电脑该路由的快照。
+- 手机每个流写入时裁剪超过 7 天或超过 10000 条的记录；停止写入期间不主动清理，导出不删除。
+- 桌面库位于应用支持目录 `companion/history.sqlite`，使用 WAL 和 5 秒 busy timeout，沿用应用文件权限，无额外数据库加密。
+- 当前来源展示最近 30 个查询日和最近 10000 个位置点；电脑入库历史目前不自动按天裁剪。
+- 位置按电脑时区筛选，保留最后已知时间/精度/来源，明确为已同步历史。
+- 离线轨迹是无底图示意，最多 1000 点；超过 30 分钟、模拟点和跨国际日期变更线不连线。
+- 用户点击位置行地图按钮后，在默认浏览器打开 OpenStreetMap 坐标。无自动联网、内置地图瓦片或实时地图刷新。
 
-## 构建与安装
+## 协议、身份与事务
+
+1. `am get-current-user` 确认用户，调用 `identity` 获取 schemaVersion 2、安装实例和 Android 用户。
+2. 使用统计先调用兼容的 `snapshot` 生成快照；位置直接读取已保存的点。
+3. 按电脑 `(installationId, androidUserId, kind)` 游标调用 `usage_history` / `location_history`。
+4. `--arg <after>:<upperBound>`，首轮上界 0；返回固定上界、`firstAvailableId`、`nextCursor`、`hasMore` 和 records，每页最多 100 行及约 128 KiB 原始 JSON。
+5. 校验版本、来源、编号递增、游标、固定上界和内容，再次确认用户后入库。
+6. 记录和游标同一 SQLite 事务提交，重复页 `INSERT OR IGNORE`；中断从已提交游标恢复。一次最多 120 页，未完成提示再次同步。
+
+调用示例（设备已授权，权限在手机端开启）：
+
+```bash
+adb -s <设备ID> shell content call --user <用户ID> --uri content://com.adbmanage.companion.usage --method identity
+adb -s <设备ID> shell content call --user <用户ID> --uri content://com.adbmanage.companion.usage --method location_history --arg 0:0
+```
+
+外层仍是 `Bundle[{payload=<Base64 JSON>}]`。Provider 显式检查 UID 2000，再清除 Binder 身份，以 App 自身权限读取。普通 App 不可调用。
+
+USB/Wi-Fi 路由优先复用注册表 serial；最终按安装实例和用户隔离，不同路由导入同一实例不会重复入库。重装形成新来源，旧来源数据不覆盖；页面仅显示路由最新关联来源，尚无旧安装实例选择器。
+
+旧 SharedPreferences 快照首次打开迁移为编号 0，不推进游标；先完成迁移再同步/清除，避免清除后回写旧数据。清除电脑历史同时删除当前来源的记录、游标和路由别名；手机数据保留，可再次导入。手机保留期造成缺口时持久化提示。
+
+错误包括 `sharing_disabled`、`permission_required`、`user_locked`、`no_data`、`cursor_invalid`、`internal_error`，以及桌面连接、用户变化、版本、解析与读写错误。没有统计响应不等于零使用。
+
+## 构建与验证
 
 ```bash
 python3 script/build_usage_companion.py
+flutter test --no-pub test/companion_history_test.dart test/usage_sync_test.dart test/usage_report_dialog_test.dart test/app_management_service_test.dart
+flutter analyze --no-pub
 ```
 
-- 无 Gradle/Maven 依赖，使用 Android SDK build-tools 36.0.0、android-36 和本机 JDK。
-- 最低 Android 8（API 26），targetSdk 36；构建脚本支持 `ANDROID_SDK_ROOT` / `ANDROID_HOME` / `JAVA_HOME`。
-- 开发签名位于忽略目录 `.build/usage_companion/development.keystore`，不可提交。
-- APK 内置到 Flutter assets；源码变更后必须重新构建 APK 并与源码一起提交。
-- 开发密钥丢失或其他机器重建会导致签名变化，不能覆盖安装；不要为解决签名问题自动卸载手机端。生产分发前需稳定签名管理。
-- 使用 Java 原生平台 UI，资源中英文分离，适配明暗主题及系统栏空间。
+- 无 Gradle/Maven 依赖，使用 SDK build-tools 36.0.0、android-36 和本机 JDK，minSdk 26、targetSdk 36。
+- 支持 `ANDROID_SDK_ROOT` / `ANDROID_HOME` / `JAVA_HOME`。开发密钥在忽略目录 `.build/usage_companion/development.keystore`，不提交。
+- 源码变更须重建并提交内置 APK。密钥丢失或其他机器重建可能签名不同，不自动卸载处理冲突；生产需稳定签名。
+- 协议测试覆盖统计口径、拒绝授权、来源变化、越界坐标及非法游标。
+- 实体 SQLite 测试覆盖重开回读、重复页、路由合并、来源隔离、强制游标写入失败整页回滚、断线恢复、保留期缺口及旧快照迁移。
+- 弹窗测试覆盖中英文 × 明暗主题、复用 App 名称、离线同步禁用、模拟标识和日期筛选。
 
-## 验证与回归
+真机集成默认跳过；显式指定设备且手机已有非模拟位置时执行。不会自动授权/开始定位，不输出真实坐标或包名到日志与仓库：
 
 ```bash
-flutter test test/usage_sync_test.dart test/usage_report_dialog_test.dart test/app_management_service_test.dart
-flutter analyze
+flutter test --no-pub test/companion_history_test.dart --dart-define=USAGE_ADB_DEVICE=<设备ID> --dart-define=REQUIRE_REAL_LOCATION=true
 ```
 
-显式指定已授权测试设备才执行真实 ADB 测试（不自动开启权限）：
+该测试覆盖手机真实统计/位置 → ADB → 实体 SQLite → 重开回读。还需真机验证首次定位、关共享、撤权限、停止通知、Doze、长时间离线和重启行为。
 
-```bash
-flutter test test/usage_sync_test.dart --dart-define=USAGE_ADB_DEVICE=<设备ID>
-```
+## 验证记录（2026-09-12）
 
-- 协议测试覆盖扩展日桶、缺失指标、空列表、未知版本、负时长、重复包、共享/权限拒绝、用户切换和缓存隔离。
-- 弹窗测试覆盖中英文 × 明暗主题、离线禁用同步和复用缓存名称。
-- 真实 ADB 测试读取手机 App → Dart 解析 → mock 持久化接口往返；不将真实使用记录写入仓库或日志。实际桌面插件持久化仍需启动桌面端后手工回归。
-- 手工回归：关闭手机端共享 → 同步被拒绝；撤回使用权限 → 明确提示；拔线 → 失败且保留旧快照；重复同步 → 替换快照；切用户 → 不串读；未知 App → 原有占位图标；刷新图标 → 使用页复用更新后的缓存。
-- 后续范围：精确自然日事件统计、长期离线历史、稳定设备身份、增量协议、位置功能及局域网同步。
+- v0.1 历史证据：此前在小米 Android 16 / HyperOS 3 读取真实统计，最终返回 26 个 App；当时没有定位与历史库。
+- v0.2 APK 已构建。本轮 ADB 列表为空，未安装新版，也未验证真实定位和新增后台调度。测试坐标不能作为真实采集证据。
+- 本次 21 项定向测试通过，2 项真机测试因设备未连接跳过；新增代码及相关测试的定向 `dart analyze` 无问题。
+- 全量 `flutter analyze --no-pub` 仍报告 53 项既有问题，其中 `test/apps_tab_filter_test.dart` 有 27 个缺参/未定义符号错误；未扩大范围修复无关基线。
+- 未启动 Flutter 桌面项目，`prototype/` 未跟踪目录保持不变。
 
-## 本次验证记录（2026-09-12）
-
-- 已在连接的小米 Android 16 / HyperOS 3 手机上安装并成功读取真实使用统计，首次返回 25 个 App，最终版本再次验证返回 26 个 App；具体使用数据不入库到仓库。
-- 同步与现有 App 缓存回归共 11 项通过（含真实设备测试），弹窗 4 项通过。
-- 全量 `flutter analyze` 报告 53 项：其中 `test/apps_tab_filter_test.dart` 的缺参及未定义测试符号为既有编译错误，其余为既有 warning/info；不扩展修改无关文件。
-- 未启动 Flutter 桌面项目；原有 `prototype/` 未跟踪目录保持不变。
-- 新增代码及测试独立 `dart analyze` 无问题。手机端截图已检查，并修复浅色主题下状态栏图标对比度。
+后续范围：真机长期采样验证、完整自然日统计、内置地图底图、电脑历史保留策略、局域网同步。

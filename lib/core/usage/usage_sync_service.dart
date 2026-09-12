@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../adb/adb_service.dart';
 import '../apps/app_management_service.dart';
 import 'usage_snapshot.dart';
+import 'companion_database.dart';
+import 'companion_history.dart';
 
 /// 复用 AdbService 和安装能力，按需读取当前 Android 用户的快照。
 class UsageSyncService {
@@ -57,6 +59,78 @@ class UsageSyncService {
       throw const UsageSyncException('usageUserChanged');
     }
     return snapshot;
+  }
+
+  /// 分页同步离线记录；只在当前用户、安装实例和本轮上界均一致时入库。
+  Future<void> syncHistory(
+    String deviceId,
+    String route,
+    String kind,
+    CompanionDatabase database, {
+    bool Function()? isActive,
+  }) async {
+    if (!['usage', 'location'].contains(kind)) throw ArgumentError.value(kind);
+    final user = await _currentUser(deviceId);
+    Future<Map<String, dynamic>> call(String method, [String? arg]) async {
+      final result = await adb.shellArgs(deviceId, [
+        'content',
+        'call',
+        '--user',
+        '$user',
+        '--uri',
+        'content://$packageName.usage',
+        '--method',
+        method,
+        if (arg != null) ...['--arg', arg],
+      ]);
+      if (!result.isSuccess) {
+        throw const UsageSyncException('usageConnectionFailed');
+      }
+      return decodeCompanionPayload(result.stdout);
+    }
+
+    final identity = await call('identity');
+    if (identity['schemaVersion'] != 2) {
+      throw const UsageSyncException('historyUpdateRequired');
+    }
+    final source = CompanionSource.fromJson(identity);
+    if (source.androidUserId != user) {
+      throw const UsageSyncException('usageUserChanged');
+    }
+    if (kind == 'usage') {
+      // 顺便更新当前系统日汇总；没有新数据时仍可同步过去保存的记录。
+      try {
+        final snapshot = await sync(deviceId);
+        if (!source.matches(
+          CompanionSource(snapshot.installationId, snapshot.androidUserId),
+        )) {
+          throw const UsageSyncException('usageUserChanged');
+        }
+      } on UsageSyncException catch (error) {
+        if (error.messageKey != 'usageNoData') rethrow;
+      }
+    }
+    var cursor = await database.cursor(source, kind);
+    var upper = 0;
+    for (var index = 0; index < 120; index++) {
+      if (isActive != null && !isActive()) return;
+      final page = CompanionPage.fromJson(
+        await call('${kind}_history', '$cursor:$upper'),
+      );
+      if (page.kind != kind ||
+          !source.matches(page.source) ||
+          page.after != cursor ||
+          (index > 0 && page.upperBound != upper) ||
+          await _currentUser(deviceId) != user) {
+        throw const UsageSyncException('usageUserChanged');
+      }
+      if (isActive != null && !isActive()) return;
+      await database.importPage(route, page);
+      cursor = page.nextCursor;
+      upper = page.upperBound;
+      if (!page.hasMore) return;
+    }
+    throw const UsageSyncException('historyMorePending');
   }
 
   /// 安装复用现有 AppManagementService，临时 APK 无论成功失败均删除。

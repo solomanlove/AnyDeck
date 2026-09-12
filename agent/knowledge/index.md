@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- |
 | `adb-terminal-pty` | 终端 PTY 与 root 提示符 | active | 记录真实 shell 回显、su 提权显示、目录变化、流式换行处理与回归边界 | `core/terminal/`, `features/terminal/` |
 | `adb-app-permissions` | 应用权限分类与批量撤销 | active | 记录动态 / 静态 / 未知权限分类、当前用户隔离、批量撤销与回读结果、共享面板及回归验证 | `core/apps/`, `features/apps/` |
-| `adb-usage-companion` | 使用时长手机端与 ADB 同步 | active | 记录可见授权手机端、系统日桶口径、ADB 快照协议、现有图标复用、构建与回归边界 | `core/usage/`, `features/apps/`, `tool/usage_companion/` |
+| `adb-usage-companion` | 手机使用统计、位置记录与 ADB 历史同步 | active | 可见授权、系统统计口径、位置前台服务、手机离线库、分页游标与 SQLite 事务、图标复用及真机验证边界 | `core/usage/`, `features/apps/`, `tool/usage_companion/` |
 | `adb-cert-management` | 证书管理机制 | active | 记录用户证书与系统证书（Root 权限，包含 Android 10+ 内存挂载与 Conscrypt APEX 挂载）的导入机制与 adb 命令设计 | `control/` (控制面板) |
 | `adb-desktop-window-shortcuts` | 桌面独立窗口快捷键机制 | active | 记录控制台窗口、模拟器管理窗口等独立子窗口的本地快捷键关闭策略与职责边界 | `app/window/` (桌面多窗口) |
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、内存占用与容量卡布局，以及控制、应用（含 DEBUG 标识保留与缓存恢复）、文件预览、日志、终端、进程右键复制与停止、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |

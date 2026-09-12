@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">AnyDeck Usage</string>
-    <string name="description">Reads Android app usage statistics, possibly including today’s records from before installation, for authorized ADB computers. No chats, location, audio, video or clipboard collection. Runs only for a preview or computer request, without a persistent service. System daily buckets may extend beyond midnight.</string>
+    <string name="app_name">AnyDeck Phone Records</string>
+    <string name="description">Authorize usage and location records separately for sync with authorized ADB computers. Records stay on the phone for 7 days. Usage statistics may include pre-installation records and expanded system daily intervals.</string>
     <string name="allow_sharing">Allow authorized ADB computers to read usage statistics</string>
     <string name="permission">Open usage access settings</string>
     <string name="preview">Preview and save system daily statistics</string>
@@ -13,4 +13,20 @@
     <string name="internal_error">Could not read or save statistics. Please retry.</string>
     <string name="loading">Reading…</string>
     <string name="summary">Saved usage for %1$d apps. Combined foreground time: %2$d minutes (may overlap; not total phone usage).</string>
+    <string name="usage_auto">Save usage periodically (about 15 minutes; may be delayed)</string>
+    <string name="location_title">Location records</string>
+    <string name="location_description">Grant location access, then press Start. A persistent notification lets you stop anytime. Requests updates around every 5 minutes and 50 metres of movement; delivery depends on the system and signal. No automatic restart after stopping or rebooting.</string>
+    <string name="location_share">Allow location recording and ADB history sync</string>
+    <string name="location_start">Start location recording</string>
+    <string name="location_stop">Stop location recording</string>
+    <string name="location_stopped">Recording stopped. Saved history can still sync when sharing is allowed.</string>
+    <string name="location_waiting">Recording; waiting for a new location…</string>
+    <string name="location_saved">Location saved. Recording continues.</string>
+    <string name="location_recording">AnyDeck is recording location</string>
+    <string name="location_notification">Saved on this phone. Tap to open, or use Stop to end recording.</string>
+    <string name="location_permission">Location and visible notification access are required. Check system settings.</string>
+    <string name="location_press_start">Permissions processed. Press Start location recording again.</string>
+    <string name="location_share_required">Enable location recording and sharing first.</string>
+    <string name="location_unavailable">Location unavailable. Check the location switch and signal.</string>
+    <string name="location_failed">Could not record or save location. Stop and retry.</string>
 </resources>

@@ -21,6 +21,7 @@ public final class MainActivity extends Activity {
     private UsageRepository repository;
     private TextView status;
     private Button preview;
+    private LocationControls locationControls;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -51,9 +52,18 @@ public final class MainActivity extends Activity {
         sharing.setChecked(repository.preferences().getBoolean("sharing", false));
         sharing.setOnCheckedChangeListener((button, checked) -> {
             repository.preferences().edit().putBoolean("sharing", checked).apply();
+            UsageArchiveJob.schedule(this);
             updateStatus();
         });
         column.addView(sharing);
+        CheckBox archive = new CheckBox(this);
+        archive.setText(R.string.usage_auto);
+        archive.setChecked(repository.preferences().getBoolean("usageAuto", false));
+        archive.setOnCheckedChangeListener((button, checked) -> {
+            repository.preferences().edit().putBoolean("usageAuto", checked).apply();
+            UsageArchiveJob.schedule(this);
+        });
+        column.addView(archive);
         Button permission = new Button(this);
         permission.setText(R.string.permission);
         permission.setOnClickListener(view -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
@@ -65,6 +75,7 @@ public final class MainActivity extends Activity {
         status = new TextView(this);
         status.setPadding(0, pad, 0, 0);
         column.addView(status);
+        locationControls = new LocationControls(this, column);
         scroll.addView(column);
         setContentView(scroll);
     }
@@ -72,6 +83,13 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         updateStatus();
+        UsageArchiveJob.schedule(this);
+        if (locationControls != null) locationControls.refresh();
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        locationControls.permissionsResult(requestCode);
     }
 
     private void updateStatus() {

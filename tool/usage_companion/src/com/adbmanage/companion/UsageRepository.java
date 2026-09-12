@@ -20,9 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.TreeMap;
-import java.util.UUID;
 
-/** 按需读取系统日桶并原子保存快照，不创建采集服务或重复获取 App 图标。 */
+/** 读取系统日桶并保存到离线历史及最新快照，不重复获取 App 图标。 */
 public final class UsageRepository {
     private static final Object SNAPSHOT_LOCK = new Object();
     private final Context context;
@@ -89,13 +88,7 @@ public final class UsageRepository {
                     .put("rangeStartMs", item.getFirstTimeStamp())
                     .put("rangeEndMs", item.getLastTimeStamp()));
         }
-        String installId = preferences().getString("installId", null);
-        if (installId == null) {
-            installId = UUID.randomUUID().toString();
-            if (!preferences().edit().putString("installId", installId).commit()) {
-                throw new IllegalStateException("Could not persist installation identity");
-            }
-        }
+        String installId = CompanionStore.installationId(context);
         JSONObject report = new JSONObject()
                 .put("status", "ok").put("schemaVersion", 1)
                 .put("installationId", installId).put("androidUserId", Process.myUid() / 100000)
@@ -124,7 +117,8 @@ public final class UsageRepository {
         if (!status.equals("ok")) return new JSONObject().put("status", status);
         byte[] encoded = report.toString().getBytes(StandardCharsets.UTF_8);
         // Base64 经 Bundle 按 UTF-16 传输，预留 Binder 事务空间。
-        if (encoded.length > 256 * 1024) throw new IllegalStateException("Snapshot too large");
+        if (encoded.length > 96 * 1024) throw new IllegalStateException("Snapshot too large");
+        CompanionStore.get(context).append("usage", report);
         AtomicFile file = new AtomicFile(new File(context.getFilesDir(), "usage_snapshot.json"));
         FileOutputStream stream = file.startWrite();
         try {

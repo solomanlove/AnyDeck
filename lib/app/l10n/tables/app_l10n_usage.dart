@@ -1,11 +1,11 @@
 /// 使用时长最小闭环文案；统计口径与授权说明中英文保持一致。
 const usageZh = {
   'usageTitle': '使用时长',
-  'usageIntro': '手机端按需读取系统日统计，通过 ADB 同步。名称和图标复用应用列表缓存。',
+  'usageIntro': '通过 ADB 同步手机记录到电脑历史库。使用统计与位置分别授权和同步。',
   'usageInstall': '安装手机端',
   'usageOpen': '打开手机端',
   'usageSync': '同步使用时长',
-  'usageClear': '清除电脑快照',
+  'usageClear': '清除当前来源的电脑历史',
   'usageSetupHint': '在手机端开启 ADB 共享，并在系统设置授予使用情况访问权限，然后点击同步。',
   'usageEmpty': '尚无快照。先安装手机端并完成授权，再同步。',
   'usageBucketNote':
@@ -17,10 +17,10 @@ const usageZh = {
   'usageSnapshotTime': '快照生成时间',
   'usageDeviceTime': '手机时区',
   'usageAndroidUser': 'Android 用户',
-  'usageCachedNote': '显示最后保存的快照，非实时数据；同步失败时保留此快照。',
+  'usageCachedNote': '显示所选查询日最后入库的系统统计，非实时数据；不叠加同一天的多份快照。',
   'usageNoApps': '系统返回了统计，但没有正时长的 App 记录。',
   'usageSyncDone': '已同步并保存到电脑。',
-  'usageCacheCleared': '电脑快照已清除。',
+  'usageCacheCleared': '当前来源的电脑历史已清除；手机尚未过期的数据可重新同步。',
   'usageSharingDisabled': '手机端尚未开启 ADB 共享，或共享已暂停。',
   'usagePermissionRequired': '手机端缺少使用情况访问权限，请在手机系统设置授权。',
   'usageUserLocked': '请在手机重启后先解锁一次再同步。',
@@ -32,16 +32,30 @@ const usageZh = {
   'usageInstallFailed': '安装失败，请检查手机安装确认；签名不一致时不要直接卸载已有数据。',
   'usageSaveFailed': '电脑快照读写失败，请重试。',
   'usageUserChanged': '同步期间 Android 用户发生变化，请重新同步。',
+  'historyCursorInvalid': '手机历史游标不一致，请检查是否清理过手机数据。',
+  'historyUpdateRequired': '请先安装新版手机端，再同步历史记录。',
+  'historyMorePending': '已保存部分历史，请再次同步继续导入。',
+  'historyGap': '部分手机记录在同步前已过期，历史可能存在缺口。',
+  'locationTitle': '位置历史',
+  'locationSync': '同步位置记录',
+  'locationEmpty': '没有已同步的位置。请在手机端开启位置共享、授权并开始记录，收到定位后再同步。',
+  'locationCachedNote': '以下为已同步的历史位置，不代表此刻位置。时间按电脑时区显示。',
+  'locationLatest': '最后已知位置采集时间',
+  'locationAccuracy': '精度半径',
+  'locationMock': '模拟位置',
+  'locationMap': '在 OpenStreetMap 查看此坐标（联网）',
+  'locationMapFailed': '无法打开地图，请检查默认浏览器。',
+  'locationTrailNote': '离线轨迹示意（无底图，最多绘制最近 1000 点；超过 30 分钟缺口不连线）。右侧地图按钮可联网查看坐标。',
 };
 
 const usageEn = {
   'usageTitle': 'Usage time',
   'usageIntro':
-      'Read system daily statistics on demand over ADB. App names and icons reuse the app list cache.',
+      'Sync phone records to the local history database over ADB. Usage and location are authorized and synced separately.',
   'usageInstall': 'Install companion',
   'usageOpen': 'Open companion',
   'usageSync': 'Sync usage',
-  'usageClear': 'Clear local snapshot',
+  'usageClear': 'Clear this source’s local history',
   'usageSetupHint':
       'Enable ADB sharing in the companion and grant usage access in phone settings, then sync.',
   'usageEmpty':
@@ -56,11 +70,12 @@ const usageEn = {
   'usageDeviceTime': 'Phone time zone',
   'usageAndroidUser': 'Android user',
   'usageCachedNote':
-      'Last saved snapshot, not live data. Failed syncs preserve this snapshot.',
+      'Last imported system report for the selected query day, not live data. Multiple snapshots of a day are not added together.',
   'usageNoApps':
       'Statistics returned with no apps having positive foreground time.',
   'usageSyncDone': 'Synced and saved on this computer.',
-  'usageCacheCleared': 'Local snapshot cleared.',
+  'usageCacheCleared':
+      'Local history cleared. Unexpired phone records can be synced again.',
   'usageSharingDisabled':
       'ADB sharing has not been enabled or is paused on the phone.',
   'usagePermissionRequired':
@@ -78,4 +93,25 @@ const usageEn = {
       'Installation failed. Check phone confirmation; do not uninstall existing data to resolve a signature mismatch.',
   'usageSaveFailed': 'Could not read or save the local snapshot. Please retry.',
   'usageUserChanged': 'Android user changed during sync. Please sync again.',
+  'historyCursorInvalid':
+      'Phone history cursor mismatch. Check whether phone data was cleared.',
+  'historyUpdateRequired':
+      'Install the updated companion before syncing history.',
+  'historyMorePending':
+      'Partial history saved. Sync again to continue importing.',
+  'historyGap':
+      'Some phone records expired before sync. History may have gaps.',
+  'locationTitle': 'Location history',
+  'locationSync': 'Sync locations',
+  'locationEmpty':
+      'No synced locations. Enable location sharing on the phone, grant access and start recording; sync after a fix is received.',
+  'locationCachedNote':
+      'Synced historical locations, not current location. Times use the computer’s time zone.',
+  'locationLatest': 'Last known location captured',
+  'locationAccuracy': 'Accuracy radius',
+  'locationMock': 'Mock location',
+  'locationMap': 'View this coordinate on OpenStreetMap (online)',
+  'locationMapFailed': 'Could not open the map. Check the default browser.',
+  'locationTrailNote':
+      'Offline trail sketch without map tiles (latest 1000 points; gaps over 30 minutes are not connected). Use a row’s map button to view its coordinate online.',
 };

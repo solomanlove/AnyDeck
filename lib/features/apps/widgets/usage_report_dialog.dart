@@ -8,6 +8,10 @@ class UsageReportDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tab = ref.watch(
+      usageReportViewProvider(deviceId).select((value) => value.tab),
+    );
+    final viewController = ref.read(usageReportViewProvider(deviceId).notifier);
     final state = ref.watch(usageReportProvider(deviceId));
     final controller = ref.read(usageReportProvider(deviceId).notifier);
     final online = ref.watch(deviceOnlineProvider(deviceId));
@@ -40,9 +44,13 @@ class UsageReportDialog extends ConsumerWidget {
                   child: Text(context.l10n.t('usageOpen')),
                 ),
                 FilledButton.icon(
-                  onPressed: enabled ? controller.sync : null,
+                  onPressed: enabled
+                      ? (tab == 0 ? controller.sync : controller.syncLocations)
+                      : null,
                   icon: const Icon(CupertinoIcons.arrow_2_circlepath, size: 16),
-                  label: Text(context.l10n.t('usageSync')),
+                  label: Text(
+                    context.l10n.t(tab == 0 ? 'usageSync' : 'locationSync'),
+                  ),
                 ),
               ],
             ),
@@ -59,8 +67,60 @@ class UsageReportDialog extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: 8),
+            SegmentedButton<int>(
+              segments: [
+                ButtonSegment(
+                  value: 0,
+                  label: Text(context.l10n.t('usageTitle')),
+                ),
+                ButtonSegment(
+                  value: 1,
+                  label: Text(context.l10n.t('locationTitle')),
+                ),
+              ],
+              selected: {tab},
+              onSelectionChanged: (value) =>
+                  viewController.selectTab(value.first),
+            ),
+            if (state.history.hasGap)
+              Text(
+                context.l10n.t('historyGap'),
+                style: TextStyle(color: colors.error),
+              ),
+            if (tab == 0 && state.history.usage.isNotEmpty)
+              DropdownButton<UsageSnapshot>(
+                isExpanded: true,
+                value: snapshot,
+                items: state.history.usage
+                    .map(
+                      (item) => DropdownMenuItem(
+                        value: item,
+                        child: Text(
+                          DateTime.fromMillisecondsSinceEpoch(
+                                item.requestedStartMs,
+                                isUtc: true,
+                              )
+                              .add(Duration(minutes: item.utcOffsetMinutes))
+                              .toIso8601String()
+                              .split('T')
+                              .first,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: state.busy
+                    ? null
+                    : (value) {
+                        if (value != null) controller.selectSnapshot(value);
+                      },
+              ),
             Expanded(
-              child: snapshot == null
+              child: tab == 1
+                  ? LocationHistoryView(
+                      deviceId: deviceId,
+                      history: state.history,
+                    )
+                  : snapshot == null
                   ? Center(child: Text(context.l10n.t('usageEmpty')))
                   : _UsageSnapshotView(snapshot: snapshot, packages: byName),
             ),
@@ -68,7 +128,7 @@ class UsageReportDialog extends ConsumerWidget {
         ),
       ),
       actions: [
-        if (snapshot != null)
+        if (snapshot != null || state.history.locations.isNotEmpty)
           TextButton(
             onPressed: state.busy ? null : controller.clear,
             child: Text(context.l10n.t('usageClear')),
