@@ -45,7 +45,15 @@ const usageZh = {
   'locationMock': '模拟位置',
   'locationMap': '在 OpenStreetMap 查看此坐标（联网）',
   'locationMapFailed': '无法打开地图，请检查默认浏览器。',
-  'locationTrailNote': '离线轨迹示意（无底图，最多绘制最近 1000 点；超过 30 分钟缺口不连线）。右侧地图按钮可联网查看坐标。',
+  'locationTrailNote':
+      '按经纬度显示当天位置和轨迹（最近 1000 点）。拖动或滚轮缩放地图；底图需要联网，超过 30 分钟的缺口不连线。',
+  'locationMapLatest': '所选日期最后一个位置',
+  'locationMapZoomIn': '放大地图',
+  'locationMapZoomOut': '缩小地图',
+  'locationMapFit': '显示当天全部轨迹',
+  'locationMapRetry': '重试底图',
+  'locationTilesFailed': '部分地图底图加载失败，请检查网络后重试。',
+  'locationMapAttribution': 'OpenStreetMap 贡献者',
 };
 
 const usageEn = {
@@ -113,5 +121,13 @@ const usageEn = {
   'locationMap': 'View this coordinate on OpenStreetMap (online)',
   'locationMapFailed': 'Could not open the map. Check the default browser.',
   'locationTrailNote':
-      'Offline trail sketch without map tiles (latest 1000 points; gaps over 30 minutes are not connected). Use a row’s map button to view its coordinate online.',
+      'Daily locations and trail (latest 1000 points). Drag or scroll to zoom; map tiles require internet. Gaps over 30 minutes are not connected.',
+  'locationMapLatest': 'Last location on the selected date',
+  'locationMapZoomIn': 'Zoom in',
+  'locationMapZoomOut': 'Zoom out',
+  'locationMapFit': 'Fit daily trail',
+  'locationMapRetry': 'Retry map tiles',
+  'locationTilesFailed':
+      'Some map tiles failed to load. Check your connection and retry.',
+  'locationMapAttribution': 'OpenStreetMap contributors',
 };

@@ -59,6 +59,9 @@ dependencies:
 
   # 内嵌 WebView
   flutter_inappwebview: ^6.1.5
+  # 跨桌面平台地图底图与 WGS84 经纬度
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_test:

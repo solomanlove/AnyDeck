@@ -6,6 +6,7 @@ import 'package:any_deck/core/usage/companion_database.dart';
 import 'package:any_deck/core/usage/companion_history.dart';
 import 'package:any_deck/features/apps/controller/usage_report_controller.dart';
 import 'package:any_deck/features/apps/controller/usage_report_view_controller.dart';
+import 'package:any_deck/features/apps/widgets/location_map_view.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/usage_fixture.dart';
+import 'support/location_tile_fixture.dart';
 
 /// 固定快照与已有 App 元数据，避免测试触发 ADB 或重新获取图标。
 class FixedUsageController extends UsageReportController {
@@ -58,6 +60,9 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
+              locationTileProviderFactoryProvider.overrideWithValue(
+                FixtureTileProvider.new,
+              ),
               usageReportProvider(
                 'test',
               ).overrideWith(FixedUsageController.new),
@@ -118,16 +123,17 @@ void main() {
             .read(usageReportViewProvider('test').notifier)
             .selectDay('2026-09-11');
         await tester.pumpAndSettle();
-        await tester.scrollUntilVisible(
-          find.text('2026-09-11 12:00:00'),
-          150,
-          scrollable: find
+        // 地图会消费拖动手势，列表回归直接滚动外层，避免把地图拖动误当列表滚动。
+        final scroll = tester.state<ScrollableState>(
+          find
               .descendant(
                 of: find.byType(ListView),
                 matching: find.byType(Scrollable),
               )
               .first,
         );
+        scroll.position.jumpTo(scroll.position.maxScrollExtent);
+        await tester.pumpAndSettle();
         expect(find.text('2026-09-11 12:00:00'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });

@@ -24,7 +24,7 @@
 | 桌面协议 | `lib/core/usage/companion_history.dart`、`usage_sync_service.dart` | 来源校验、分页恢复、安装和旧快照兼容 |
 | 桌面数据库 | `lib/core/usage/companion_database.dart` | 工作 Isolate 内 SQLite 事务、游标、路由关联 |
 | 页面状态 | `usage_report_controller.dart`、`usage_report_view_controller.dart` | 同步/迁移/清除、展示选择、地图打开及生命周期 |
-| 展示 | `usage_report_dialog.dart`、`location_history_view.dart`、`location_trail_view.dart` | 双语报告、日期筛选、离线轨迹和位置列表 |
+| 展示 | `usage_report_dialog.dart`、`location_history_view.dart`、`location_map_view.dart` | 双语报告、日期筛选、内嵌地图底图和位置列表 |
 
 复用 `AdbService.shellArgs`、`AppManagementService.installApk`、`deviceRegistryProvider`、`packagesProvider`、`AdbPackage`、`_AppNameCell`、`webDebugServiceProvider` 及已有 sqlite3/path_provider 依赖。
 **使用时长链路不重新获取图标、不复制 PackageIconHelper 或名称缓存。** 缓存未命中时显示包名和原有占位图标。未改动投屏、应用缓存逻辑或原生窗口通信。
@@ -62,8 +62,11 @@
 - 桌面库位于应用支持目录 `companion/history.sqlite`，使用 WAL 和 5 秒 busy timeout，沿用应用文件权限，无额外数据库加密。
 - 当前来源展示最近 30 个查询日和最近 10000 个位置点；电脑入库历史目前不自动按天裁剪。
 - 位置按电脑时区筛选，保留最后已知时间/精度/来源，明确为已同步历史。
-- 离线轨迹是无底图示意，最多 1000 点；超过 30 分钟、模拟点和跨国际日期变更线不连线。
-- 用户点击位置行地图按钮后，在默认浏览器打开 OpenStreetMap 坐标。无自动联网、内置地图瓦片或实时地图刷新。
+- 内嵌 flutter_map + OpenStreetMap 标准底图，直接使用 WGS84 经纬度，最多绘制最近 1000 点；超过 30 分钟、模拟点和跨国际日期变更线不连线。`LocationMapData` 统一整理地图数据，旧示意绘图组件已移除。
+- 地图打开/日期变化/记录变化时自动框选轨迹，支持拖动、滚轮和按钮缩放、重新框选；最新点显示精度范围。位置行按钮仍可打开外部地图。
+- 地图仅在位置页显示时按视口联网请求瓦片，不向地图服务提交原始历史数组。底图并非手机实时位置；断网时已有坐标仍可查看，缺失瓦片会提示并可手动重试。
+- 使用 flutter_map 8.3.2、latlong2 0.10.1；瓦片 URL 为 `https://tile.openstreetmap.org/{z}/{x}/{y}.png`，User-Agent 为 `AnyDeck/1.0 (Desktop Location History)`。保留组件内置 HTTP 磁盘缓存，零 panBuffer，不增加批量预下载。版权署名始终可见并链接 OSM copyright。
+- MapController 和重试流随地图释放，TileLayer 释放独占 NetworkTileProvider，避免重建时重复创建连接。地图服务无可用性保证，面向更大规模分发时需评估服务容量或切换供应商。
 
 ## 协议、身份与事务
 
@@ -120,4 +123,18 @@ flutter test --no-pub test/companion_history_test.dart --dart-define=USAGE_ADB_D
 - 全量 `flutter analyze --no-pub` 仍报告 53 项既有问题，其中 `test/apps_tab_filter_test.dart` 有 27 个缺参/未定义符号错误；未扩大范围修复无关基线。
 - 未启动 Flutter 桌面项目，`prototype/` 未跟踪目录保持不变。
 
-后续范围：真机长期采样验证、完整自然日统计、内置地图底图、电脑历史保留策略、局域网同步。
+## 地图底图补充验证（2026-09-12）
+
+- 替换无底图示意，仅改桌面显示与依赖，不重建手机 APK。
+- 地图、位置弹窗和 SQLite 历史共 15 项测试通过，1 项 ADB 真机测试默认跳过；新增及修改代码定向分析无问题。
+- 内存瓦片测试覆盖 WGS84 不偏移/经纬不互换、单点框选、缩放、框选恢复、日期变化、失败提示、重试请求和资源释放；中英文及明暗主题弹窗回归通过。
+- 公共世界概览瓦片 HEAD 返回 HTTP 200、image/png，证明当前网络可达；未上传测试手机坐标做联网检查。未启动桌面项目，因此真实桌面窗口实际瓦片渲染仍需运行后回归。
+- 手工回归：进入位置页 → 地图道路与标点同时显示 → 拖动/滚轮/框选 → 切日期 → 断网显示错误并重试；日期及采集数据不因地图动作改变。
+
+```bash
+flutter test --no-pub test/location_map_test.dart test/usage_report_dialog_test.dart test/companion_history_test.dart
+```
+
+依据：[flutter_map 的 OSM 接入说明](https://docs.fleaflet.dev/tile-servers/using-openstreetmap-direct)、[OSM 瓦片策略](https://operations.osmfoundation.org/policies/tiles/)。
+
+后续范围：真机长期采样验证、完整自然日统计、电脑历史保留策略、局域网同步。

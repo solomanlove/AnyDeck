@@ -5,9 +5,9 @@ import '../../../app/l10n/app_localizations.dart';
 import '../../../core/usage/companion_database.dart';
 import '../../../core/usage/companion_history.dart';
 import '../controller/usage_report_view_controller.dart';
-import 'location_trail_view.dart';
+import 'location_map_view.dart';
 
-/// 查看已同步位置；history 是本地数据，不自动请求手机定位或网络地图。
+/// 查看已同步位置；history 为本地数据，地图底图联网加载，不请求手机定位。
 class LocationHistoryView extends ConsumerWidget {
   const LocationHistoryView({
     super.key,
@@ -70,9 +70,9 @@ class LocationHistoryView extends ConsumerWidget {
               ),
               Text(context.l10n.t('locationTrailNote')),
               SizedBox(
-                height: 200,
+                height: 320,
                 width: double.infinity,
-                child: LocationTrailView(points: points),
+                child: LocationMapView(key: ValueKey(day), points: points),
               ),
               const Divider(),
             ],
