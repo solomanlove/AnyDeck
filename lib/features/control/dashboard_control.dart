@@ -114,6 +114,18 @@ class _QuickActionsPanel extends ConsumerWidget {
           onPressed: () => _showInputTextDialog(context, ref, device.id),
         ),
 
+        _ActionButton(
+          icon: CupertinoIcons.bell,
+          label: '显示通知',
+          onPressed: () {
+            _runAdbAction(
+              context,
+              ref,
+              ref.read(adbServiceProvider).run(['-s', device.id, 'shell', 'cmd', 'statusbar', 'expand-notifications']),
+            );
+          },
+        ),
+
         _ToggleActionButton(
           iconOn: CupertinoIcons.lock_open_fill,
           iconOff: CupertinoIcons.lock_fill,
