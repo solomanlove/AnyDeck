@@ -359,6 +359,14 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
         },
         trailingActions: [
           IconButton(
+            tooltip: context.l10n.t('usageTitle'),
+            icon: const Icon(CupertinoIcons.chart_bar, size: 20),
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => UsageReportDialog(deviceId: widget.device.id),
+            ),
+          ),
+          IconButton(
             tooltip: context.l10n.t('refreshPackages'),
             icon: const Icon(CupertinoIcons.refresh, size: 20),
             onPressed: (isOnline && _refreshProgress == null)

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 手机端默认中文说明，英文独立维护。 -->
+<resources>
+    <string name="app_name">AnyDeck 使用时长</string>
+    <string name="description">本工具读取 Android 已保存的 App 使用时长（可能包含安装前的今日记录），供已授权的 ADB 电脑查看。不采集聊天、位置、音视频或剪贴板。仅在手动预览或电脑请求时读取，无常驻服务。系统日统计区间可能超出今日零点。</string>
+    <string name="allow_sharing">允许已授权的 ADB 电脑读取使用时长</string>
+    <string name="permission">打开使用情况访问设置</string>
+    <string name="preview">预览并保存系统日统计</string>
+    <string name="ready">使用情况权限：已开启。可以预览或从电脑同步。</string>
+    <string name="permission_required">请在系统设置中允许“AnyDeck 使用时长”访问使用情况。</string>
+    <string name="sharing_disabled">ADB 共享已暂停。电脑不能继续读取；已同步到电脑的记录不会自动删除。</string>
+    <string name="user_locked">请在手机重启后先解锁一次再试。</string>
+    <string name="no_data">系统暂未返回统计数据，不表示使用时长为零。</string>
+    <string name="internal_error">读取或保存失败，请重试。</string>
+    <string name="loading">正在读取…</string>
+    <string name="summary">已保存 %1$d 个 App 的时长。App 前台累计：%2$d 分钟（可能重叠，不是手机总使用时长）。</string>
+</resources>

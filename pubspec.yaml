@@ -79,6 +79,7 @@ flutter:
 
   assets:
     - assets/android/package_icon_helper.dex
+    - assets/android/usage_companion.apk
     - assets/brand/
     - assets/scrcpy/
     - assets/rules/
