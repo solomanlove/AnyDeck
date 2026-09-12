@@ -54,6 +54,23 @@ const usageZh = {
   'locationMapRetry': '重试底图',
   'locationTilesFailed': '部分地图底图加载失败，请检查网络后重试。',
   'locationMapAttribution': 'OpenStreetMap 贡献者',
+  'cameraTitle': '摄像头',
+  'cameraIntro': '手动开始实时画面，手机保留系统摄像头使用提示。只传画面，不采集声音、不录像；切页或关闭弹窗即停止。',
+  'cameraBack': '后置镜头',
+  'cameraFront': '前置镜头',
+  'cameraStart': '开始预览',
+  'cameraStop': '停止预览',
+  'cameraIdle': '点击开始，在此显示摄像头画面。',
+  'cameraStarting': '正在连接摄像头…',
+  'cameraWaitingFrame': '已连接，等待画面…',
+  'cameraLive': '摄像头预览中（无声音）',
+  'cameraStopping': '正在停止…',
+  'cameraStopped': '摄像头已停止。',
+  'cameraDisconnected': '设备连接或摄像头视频流已断开，预览已停止。',
+  'cameraStartFailed': '摄像头启动或画面读取失败，请检查连接、镜头占用和手机权限后重试。',
+  'cameraStopFailed': '预览清理失败，请检查手机摄像头是否已停止。',
+  'cameraAndroidRequired': '摄像头预览需要 Android 12 或更高版本。',
+  'cameraPlatformRequired': '当前内嵌摄像头预览仅支持 macOS。',
 };
 
 const usageEn = {
@@ -130,4 +147,26 @@ const usageEn = {
   'locationTilesFailed':
       'Some map tiles failed to load. Check your connection and retry.',
   'locationMapAttribution': 'OpenStreetMap contributors',
+  'cameraTitle': 'Camera',
+  'cameraIntro':
+      'Start a live preview manually; Android camera indicators remain visible. Video only, no audio or recording. Switching tabs or closing stops the camera.',
+  'cameraBack': 'Back camera',
+  'cameraFront': 'Front camera',
+  'cameraStart': 'Start preview',
+  'cameraStop': 'Stop preview',
+  'cameraIdle': 'Start to view the camera here.',
+  'cameraStarting': 'Connecting to camera…',
+  'cameraWaitingFrame': 'Connected; waiting for video…',
+  'cameraLive': 'Camera preview active (no audio)',
+  'cameraStopping': 'Stopping…',
+  'cameraStopped': 'Camera stopped.',
+  'cameraDisconnected':
+      'Device or camera stream disconnected. Preview stopped.',
+  'cameraStartFailed':
+      'Camera start or video failed. Check the connection, camera availability and phone permissions, then retry.',
+  'cameraStopFailed':
+      'Preview cleanup failed. Check that the phone camera has stopped.',
+  'cameraAndroidRequired': 'Camera preview requires Android 12 or later.',
+  'cameraPlatformRequired':
+      'Embedded camera preview currently supports macOS only.',
 };

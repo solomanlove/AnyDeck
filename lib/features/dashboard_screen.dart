@@ -19,6 +19,7 @@ import '../app/l10n/app_localizations.dart';
 import '../app/theme/app_icon.dart';
 import '../app/widget/dashboard_tab_layout.dart';
 
+import '../app/widget/app_toast.dart';
 import '../app/settings/app_settings.dart';
 import '../app/settings/app_settings_controller.dart';
 import '../app/window/multi_window_compat.dart';
@@ -68,6 +69,7 @@ import 'apps/controller/usage_report_controller.dart';
 import 'apps/controller/usage_report_view_controller.dart';
 import '../core/usage/usage_snapshot.dart';
 import 'apps/widgets/location_history_view.dart';
+import 'apps/widgets/camera_preview_view.dart';
 import 'files/controller/file_favorite_folders_controller.dart';
 import 'files/controller/file_preview_controller.dart';
 import 'files/controller/file_selection_controller.dart';

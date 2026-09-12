@@ -31,32 +31,38 @@ class UsageReportDialog extends ConsumerWidget {
           children: [
             Text(context.l10n.t('usageIntro')),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton(
-                  onPressed: enabled ? controller.install : null,
-                  child: Text(context.l10n.t('usageInstall')),
-                ),
-                OutlinedButton(
-                  onPressed: enabled ? controller.open : null,
-                  child: Text(context.l10n.t('usageOpen')),
-                ),
-                FilledButton.icon(
-                  onPressed: enabled
-                      ? (tab == 0 ? controller.sync : controller.syncLocations)
-                      : null,
-                  icon: const Icon(CupertinoIcons.arrow_2_circlepath, size: 16),
-                  label: Text(
-                    context.l10n.t(tab == 0 ? 'usageSync' : 'locationSync'),
+            if (tab != 2)
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    onPressed: enabled ? controller.install : null,
+                    child: Text(context.l10n.t('usageInstall')),
                   ),
-                ),
-              ],
-            ),
+                  OutlinedButton(
+                    onPressed: enabled ? controller.open : null,
+                    child: Text(context.l10n.t('usageOpen')),
+                  ),
+                  FilledButton.icon(
+                    onPressed: enabled
+                        ? (tab == 0
+                              ? controller.sync
+                              : controller.syncLocations)
+                        : null,
+                    icon: const Icon(
+                      CupertinoIcons.arrow_2_circlepath,
+                      size: 16,
+                    ),
+                    label: Text(
+                      context.l10n.t(tab == 0 ? 'usageSync' : 'locationSync'),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: 8),
-            if (state.busy) const LinearProgressIndicator(),
-            if (state.messageKey != null)
+            if (tab != 2 && state.busy) const LinearProgressIndicator(),
+            if (tab != 2 && state.messageKey != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
@@ -77,12 +83,16 @@ class UsageReportDialog extends ConsumerWidget {
                   value: 1,
                   label: Text(context.l10n.t('locationTitle')),
                 ),
+                ButtonSegment(
+                  value: 2,
+                  label: Text(context.l10n.t('cameraTitle')),
+                ),
               ],
               selected: {tab},
               onSelectionChanged: (value) =>
                   viewController.selectTab(value.first),
             ),
-            if (state.history.hasGap)
+            if (tab != 2 && state.history.hasGap)
               Text(
                 context.l10n.t('historyGap'),
                 style: TextStyle(color: colors.error),
@@ -115,7 +125,9 @@ class UsageReportDialog extends ConsumerWidget {
                       },
               ),
             Expanded(
-              child: tab == 1
+              child: tab == 2
+                  ? CameraPreviewView(deviceId: deviceId)
+                  : tab == 1
                   ? LocationHistoryView(
                       deviceId: deviceId,
                       history: state.history,

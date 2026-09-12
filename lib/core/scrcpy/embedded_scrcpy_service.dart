@@ -8,6 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adb/adb_service.dart';
 import '../providers/app_providers.dart';
+import 'scrcpy_camera_options.dart';
+
+part 'embedded_scrcpy_providers.dart';
 
 class EmbeddedScrcpySession {
   EmbeddedScrcpySession({
@@ -16,6 +19,7 @@ class EmbeddedScrcpySession {
     required this.serverProcess,
     required this.textureId,
     required this.startedAt,
+    this.camera,
   });
 
   final String deviceId;
@@ -23,6 +27,7 @@ class EmbeddedScrcpySession {
   final Process serverProcess;
   final int textureId;
   final DateTime startedAt;
+  final ScrcpyCameraOptions? camera;
 }
 
 class EmbeddedScrcpyService {
@@ -60,9 +65,15 @@ class EmbeddedScrcpyService {
     required String deviceId,
     String? newDisplay,
     String? startApp,
+    ScrcpyCameraOptions? camera,
   }) async {
-    if (_sessions.containsKey(deviceId)) {
-      return _sessions[deviceId]!.textureId;
+    if (camera != null && (newDisplay != null || startApp != null)) {
+      throw ArgumentError('Camera cannot create a display or launch an app');
+    }
+    final sessionId = camera?.sessionId ?? deviceId;
+    camera?.checkActive();
+    if (_sessions.containsKey(sessionId)) {
+      return _sessions[sessionId]!.textureId;
     }
 
     // 1. Resolve and push scrcpy-server.jar
@@ -84,6 +95,8 @@ class EmbeddedScrcpyService {
       throw Exception('Failed to push scrcpy-server.jar: ${pushRes.stderr}');
     }
 
+    camera?.checkActive();
+
     // 2. Allocate free port and setup forward tunnel
     final localPort = await _findFreePort();
     final forwardRes = await _adbService.run([
@@ -91,10 +104,18 @@ class EmbeddedScrcpyService {
       deviceId,
       'forward',
       'tcp:$localPort',
-      'localabstract:scrcpy_00000000',
+      'localabstract:${camera?.socketName ?? 'scrcpy_00000000'}',
     ]);
     if (!forwardRes.isSuccess) {
       throw Exception('Failed to setup adb forward: ${forwardRes.stderr}');
+    }
+    if (camera != null) {
+      bool removed = false;
+      camera.removeForward = () async {
+        if (removed) return;
+        removed = true;
+        await _adbService.run(['-s', deviceId, 'forward', '--remove', 'tcp:$localPort']);
+      };
     }
 
     // 读取设备 SDK 版本以做音频转发降级保护 (Android 10及以下系统限制不支持)
@@ -113,38 +134,56 @@ class EmbeddedScrcpyService {
     } catch (e) {
       stdout.writeln('Failed to get device SDK version: $e');
     }
+    if (camera != null && sdkVersion < 31) {
+      await camera.removeForward?.call();
+      throw CameraPreviewException(sdkVersion == 0 ? 'cameraStartFailed' : 'cameraAndroidRequired');
+    }
     final bool isAudioSupported = sdkVersion >= 30; // Android 11+ (API 30+)
 
     // 确保从 SharedPreferences 中获取最新的设置，防止 Isolate 异步加载延迟
     final prefs = await SharedPreferences.getInstance();
-    final bool mirrorAudioEnabled = (prefs.getBool('settings.mirrorAudioEnabled') ?? true) && isAudioSupported;
-    final int bitrate = prefs.getInt('settings.mirrorVideoBitrate') ?? 8000000;
-    final int maxSize = prefs.getInt('settings.mirrorMaxSize') ?? 1080;
+    final bool mirrorAudioEnabled = camera == null && (prefs.getBool('settings.mirrorAudioEnabled') ?? true) && isAudioSupported;
+    final int bitrate = camera != null ? 4000000 : prefs.getInt('settings.mirrorVideoBitrate') ?? 8000000;
+    final int maxSize = camera != null ? 1280 : prefs.getInt('settings.mirrorMaxSize') ?? 1080;
 
     // 3. Start scrcpy-server process on Android
-    final adbPath = _adbService.executable;
-    final serverProcess = await Process.start(adbPath, [
-      '-s',
-      deviceId,
-      'shell',
-      'CLASSPATH=/data/local/tmp/scrcpy-server.jar',
-      'app_process',
-      '/',
-      'com.genymobile.scrcpy.Server',
-      '4.0',
-      'scid=0',
-      'log_level=verbose',
-      'audio=${mirrorAudioEnabled ? "true" : "false"}',
-      'video_bit_rate=$bitrate',
-      if (maxSize > 0) 'max_size=$maxSize',
-      'control=true',
-      'tunnel_forward=true',
-      if (newDisplay != null) ...[
-        'new_display=$newDisplay',
-        'vd_system_decorations=false',
-      ] else
-        'display_id=0',
-    ]);
+    Process serverProcess;
+    try {
+      camera?.checkActive();
+      serverProcess = await _adbService.start([
+        '-s',
+        deviceId,
+        'shell',
+        'CLASSPATH=/data/local/tmp/scrcpy-server.jar',
+        'app_process',
+        '/',
+        'com.genymobile.scrcpy.Server',
+        '4.0',
+        'scid=${camera?.scid ?? '0'}',
+        'log_level=verbose',
+        'audio=${mirrorAudioEnabled ? "true" : "false"}',
+        'video_bit_rate=$bitrate',
+        if (maxSize > 0) 'max_size=$maxSize',
+        // 原生客户端固定连接 video/control，摄像头页不发送触控或键盘消息。
+        'control=true',
+        'tunnel_forward=true',
+        if (camera != null)
+          ...camera.serverArguments
+        else if (newDisplay != null) ...[
+          'new_display=$newDisplay',
+          'vd_system_decorations=false',
+        ] else
+          'display_id=0',
+      ]);
+      camera?.attach(serverProcess);
+    } catch (_) {
+      if (camera != null) {
+        await camera.removeForward?.call();
+      } else {
+        await _adbService.run(['-s', deviceId, 'forward', '--remove', 'tcp:$localPort']);
+      }
+      rethrow;
+    }
 
     // Handle stdout/stderr for logging and parsing display ID
     final displayCompleter = Completer<int>();
@@ -175,17 +214,24 @@ class EmbeddedScrcpyService {
       handleLogData(line);
     });
 
-    // 4. Wait for server to bind & listen
-    await Future<void>.delayed(const Duration(milliseconds: 1000));
-
     // 4. Connect C++ client via Native Plugin (Connect first to avoid handshake deadlock)
     int textureId;
     try {
-      textureId = await ScrcpyFlutter.startMirroring(
-        deviceId: deviceId,
+      await Future<void>.delayed(const Duration(milliseconds: 1000));
+      camera?.checkActive();
+      final connection = ScrcpyFlutter.startMirroring(
+        deviceId: sessionId,
         port: localPort,
         audio: mirrorAudioEnabled,
       );
+      // 超时/取消后才注册成功的纹理也必须回收，独立会话不会误停新预览。
+      if (camera != null) {
+        unawaited(connection.then((_) async {
+          if (camera.cancelled) await ScrcpyFlutter.stopMirroring(deviceId: sessionId);
+        }).catchError((Object _) {}));
+      }
+      textureId = camera == null ? await connection : await connection.timeout(const Duration(seconds: 15));
+      camera?.checkActive();
 
       final session = EmbeddedScrcpySession(
         deviceId: deviceId,
@@ -193,19 +239,28 @@ class EmbeddedScrcpyService {
         serverProcess: serverProcess,
         textureId: textureId,
         startedAt: DateTime.now(),
+        camera: camera,
       );
 
-      _sessions[deviceId] = session;
+      _sessions[sessionId] = session;
     } catch (e) {
       // Cleanup on failure
+      camera?.cancel();
+      if (camera != null) {
+        try { await ScrcpyFlutter.stopMirroring(deviceId: sessionId); } catch (_) { }
+      }
       serverProcess.kill();
-      await _adbService.run([
-        '-s',
-        deviceId,
-        'forward',
-        '--remove',
-        'tcp:$localPort',
-      ]);
+      if (camera != null) {
+        await camera.removeForward?.call();
+      } else {
+        await _adbService.run([
+          '-s',
+          deviceId,
+          'forward',
+          '--remove',
+          'tcp:$localPort',
+        ]);
+      }
       rethrow;
     }
 
@@ -375,13 +430,17 @@ class EmbeddedScrcpyService {
     }
 
     session.serverProcess.kill();
-    await _adbService.run([
-      '-s',
-      deviceId,
-      'forward',
-      '--remove',
-      'tcp:${session.port}',
-    ]);
+    if (session.camera != null) {
+      await session.camera!.removeForward?.call();
+    } else {
+      await _adbService.run([
+        '-s',
+        session.deviceId,
+        'forward',
+        '--remove',
+        'tcp:${session.port}',
+      ]);
+    }
   }
 
   void stopAll() {
@@ -391,100 +450,3 @@ class EmbeddedScrcpyService {
     }
   }
 }
-
-// Riverpod Provider definitions
-final embeddedScrcpyServiceProvider = Provider<EmbeddedScrcpyService>((ref) {
-  final adbService = ref.watch(adbServiceProvider);
-  final service = EmbeddedScrcpyService(adbService);
-  ref.onDispose(service.stopAll);
-  return service;
-});
-
-class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
-  ActiveEmbeddedMirrorNotifier(this.deviceId);
-
-  final String deviceId;
-
-  @override
-  int? build() {
-    // Keep provider alive so session state is preserved when UI rebuilds or switch tabs
-    ref.keepAlive();
-    final textureId = ref.watch(embeddedScrcpyServiceProvider).getTextureId(deviceId);
-    if (textureId != null) {
-      // 避免在 build 中直接修改 state 或进行副作用，使用 microtask 延迟注册进程监听
-      Future.microtask(() => _listenToProcessExit(textureId));
-    }
-    return textureId;
-  }
-
-  void _listenToProcessExit(int textureId) {
-    final service = ref.read(embeddedScrcpyServiceProvider);
-    final process = service.getServerProcess(deviceId);
-    process?.exitCode.then((code) {
-      // 如果当前的投屏状态依然是这个 textureId，且进程已退出，说明是连接断开，自动执行清理
-      if (state == textureId) {
-        service.stop(deviceId);
-        state = null;
-      }
-    });
-  }
-
-  Future<void> toggleMirroring({String? newDisplay, String? startApp}) async {
-    final service = ref.read(embeddedScrcpyServiceProvider);
-    if (service.isActive(deviceId)) {
-      await service.stop(deviceId);
-      ref.read(screenPowerOffProvider(deviceId).notifier).setOff(false);
-      state = null;
-    } else {
-      try {
-        final textureId = await service.start(
-          deviceId: deviceId,
-          newDisplay: newDisplay,
-          startApp: startApp,
-        );
-        state = textureId;
-        _listenToProcessExit(textureId);
-      } catch (e) {
-        state = null;
-        rethrow;
-      }
-    }
-  }
-
-  Future<void> restartMirroring({String? newDisplay, String? startApp}) async {
-    final service = ref.read(embeddedScrcpyServiceProvider);
-    if (service.isActive(deviceId)) {
-      await service.stop(deviceId);
-      ref.read(screenPowerOffProvider(deviceId).notifier).setOff(false);
-      state = null;
-      // 稍作延迟确保资源完全释放
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-    }
-    try {
-      final textureId = await service.start(
-        deviceId: deviceId,
-        newDisplay: newDisplay,
-        startApp: startApp,
-      );
-      state = textureId;
-      _listenToProcessExit(textureId);
-    } catch (e) {
-      state = null;
-      rethrow;
-    }
-  }
-
-  Future<void> forceStop() async {
-    final service = ref.read(embeddedScrcpyServiceProvider);
-    if (service.isActive(deviceId)) {
-      await service.stop(deviceId);
-      ref.read(screenPowerOffProvider(deviceId).notifier).setOff(false);
-      state = null;
-    }
-  }
-}
-
-final activeEmbeddedMirrorProvider =
-    NotifierProvider.family<ActiveEmbeddedMirrorNotifier, int?, String>(
-      ActiveEmbeddedMirrorNotifier.new,
-    );
