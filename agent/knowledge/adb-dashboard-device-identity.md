@@ -17,6 +17,14 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 - 调整主窗口 Dashboard 身份展示及其概览字段，不改变 ADB 命令、设备选择、投屏进程或多窗口 MethodChannel。
 - 明暗主题颜色从 `ThemeData.colorScheme` 获取；USB/Wi-Fi 为协议名，不新增 l10n 文案。
 
+## 内容区 Material 绘制层级（2026-09-14）
+
+- 应用详情组件列表的 `ListTile` 带长按复制操作。原 `_WechatStyleShell` 的玻璃背景 `Container` 位于列表与最近的 `Material` 之间，其 `DecoratedBox` 会遮挡列表底色和水波纹，触发 `ListTile background color or ink splashes may be invisible`。
+- `lib/features/overview/dashboard_shell.dart` 在背景容器内、内容 `Column` 外统一增加 `Material(type: MaterialType.transparency)`，让各 Tab 的列表共用背景上方的绘制层，保留原有明暗主题背景色、左边框、模糊与内容间距。
+- 此次只调整主窗口内容区绘制层级，无新增依赖、可见文案、Provider、ADB 命令或跨窗口通信，长按复制回调保持原样。
+- 验证：`flutter analyze --no-pub lib/features/overview/dashboard_shell.dart` 与 `git diff --check` 通过；全仓 `flutter analyze --no-pub` 仍有 53 项无关现有诊断，主要错误来自 `test/apps_tab_filter_test.dart` 的旧构造参数与缺失测试桩，本次修改文件无诊断。
+- 手动回归：在明暗主题下打开应用详情组件列表，滚动并长按复制名称，确认无上述断言、交互反馈可见且复制正常；切换其他列表 Tab，检查玻璃背景和左边框。本次未启动桌面项目，实际画面与交互待手动验证。
+
 ## 品牌与制造商兜底（2026-09-14）
 
 - `DeviceInfoService` 复用已有整批 `getprop` 结果，分别读取 `ro.product.brand` / `ro.product.vendor.brand` 与 `ro.product.manufacturer` / `ro.product.vendor.manufacturer`，不增加 ADB 查询或后台进程。

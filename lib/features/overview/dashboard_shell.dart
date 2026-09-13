@@ -39,15 +39,19 @@ class _WechatStyleShell extends ConsumerWidget {
                       left: BorderSide(color: glassBorderColor, width: 1),
                     ),
                   ),
-                  child: Column(
-                    children: [
-                      if ((selectedDevice == null || selectedTool == -1) &&
-                          selectedTool != 12 &&
-                          selectedTool != 13 &&
-                          selectedTool != 14)
-                        _ContentTitleBar(title: title),
-                      Expanded(child: child),
-                    ],
+                  // 在玻璃背景上方承载列表底色和水波纹，避免被装饰层遮挡。
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Column(
+                      children: [
+                        if ((selectedDevice == null || selectedTool == -1) &&
+                            selectedTool != 12 &&
+                            selectedTool != 13 &&
+                            selectedTool != 14)
+                          _ContentTitleBar(title: title),
+                        Expanded(child: child),
+                      ],
+                    ),
                   ),
                 ),
               ),
