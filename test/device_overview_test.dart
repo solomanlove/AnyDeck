@@ -84,6 +84,7 @@ void main() {
       const overview = DeviceOverview(
         name: 'Redmi K40',
         brand: 'Redmi',
+        manufacturer: 'Xiaomi',
         model: 'M2012K11AC',
         serial: '5002ba00',
         androidId: 'abcdef1234567890',
@@ -122,6 +123,9 @@ void main() {
 
       expect(decoded.name, overview.name);
       expect(decoded.brand, overview.brand);
+      expect(decoded.manufacturer, overview.manufacturer);
+      expect(decoded.copyWith(name: '新名称').manufacturer, 'Xiaomi');
+      expect(decoded.copyWith(manufacturer: 'Other').manufacturer, 'Other');
       expect(decoded.model, overview.model);
       expect(decoded.serial, overview.serial);
       expect(decoded.androidId, overview.androidId);
@@ -163,6 +167,41 @@ void main() {
   group('DeviceInfoService Cache & Fallback', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});
+    });
+
+    // 模拟美图版真机：旧缓存在线补齐制造商，离线恢复时保留原始品牌。
+    test('refreshes legacy Meitu cache with independent manufacturer', () async {
+      final service = DeviceInfoService(
+        StubAdbService(
+          getpropOutput:
+              '[ro.product.brand]: [Meitu]\n'
+              '[ro.product.manufacturer]: [Xiaomi]\n'
+              '[ro.product.model]: [MI CC 9 Meitu Edition]\n',
+        ),
+      );
+      final legacy = DeviceOverview.fromJson({'brand': 'Meitu'});
+      expect(legacy.manufacturer, '-');
+      await service.saveToCache('meitu_device', legacy);
+
+      final fresh = await service.loadOverview('meitu_device');
+      expect(fresh.brand, 'Meitu');
+      expect(fresh.manufacturer, 'Xiaomi');
+
+      final offlineService = DeviceInfoService(StubAdbService(shouldFail: true));
+      final cached = await offlineService.loadOverview('meitu_device');
+      expect(cached.brand, 'Meitu');
+      expect(cached.manufacturer, 'Xiaomi');
+    });
+
+    test('vendor manufacturer does not replace a missing brand', () async {
+      final service = DeviceInfoService(
+        StubAdbService(
+          getpropOutput: '[ro.product.vendor.manufacturer]: [Xiaomi]\n',
+        ),
+      );
+      final overview = await service.loadOverview('vendor_device');
+      expect(overview.brand, '-');
+      expect(overview.manufacturer, 'Xiaomi');
     });
 
     test(

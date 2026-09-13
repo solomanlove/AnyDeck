@@ -38,7 +38,10 @@ class _RailIdentity extends ConsumerWidget {
     final sdkVersion = ref.watch(deviceSdkVersionProvider(device.id)) ?? 0;
     final isAudioForwarded = sdkVersion >= 30 && mirrorAudioEnabled;
     final logoAsset = overviewAsync.hasValue
-        ? BrandLogoHelper.getBrandLogoAsset(overviewAsync.value!.brand)
+        ? BrandLogoHelper.getBrandLogoAsset(
+            overviewAsync.value!.brand,
+            manufacturer: overviewAsync.value!.manufacturer,
+          )
         : null;
     final isNetwork = matchedDevice.isNetwork;
     final connectionLabel = isNetwork ? 'Wi-Fi' : 'USB';

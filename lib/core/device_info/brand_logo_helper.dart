@@ -1,9 +1,13 @@
 import '../../app/theme/app_icon.dart';
 
+/// 统一解析设备图标，原始品牌和制造商字段不受展示规则影响。
 class BrandLogoHelper {
-  /// Maps a device's manufacturer or brand name to the corresponding asset path.
-  /// Returns null if the brand is not matched, suggesting a fallback to default icon.
-  static String? getBrandLogoAsset(String brandName) {
+  /// 优先匹配 [brandName]，无图标时使用 [manufacturer]；均未命中返回 null。
+  static String? getBrandLogoAsset(String brandName, {String? manufacturer}) {
+    return _matchLogoAsset(brandName) ?? _matchLogoAsset(manufacturer ?? '');
+  }
+
+  static String? _matchLogoAsset(String brandName) {
     final name = brandName.trim().toLowerCase();
     if (name.isEmpty || name == '-' || name == 'unknown') {
       return null;

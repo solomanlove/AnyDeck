@@ -180,7 +180,10 @@ settings get global sysui_demo_allowed
         brand: _firstValue(properties, [
           'ro.product.brand',
           'ro.product.vendor.brand',
+        ]),
+        manufacturer: _firstValue(properties, [
           'ro.product.manufacturer',
+          'ro.product.vendor.manufacturer',
         ]),
         model: _firstValue(properties, [
           'ro.product.model',

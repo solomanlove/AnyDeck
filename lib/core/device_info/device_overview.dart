@@ -3,6 +3,7 @@ class DeviceOverview {
   const DeviceOverview({
     required this.name,
     required this.brand,
+    this.manufacturer = '-',
     required this.model,
     required this.serial,
     required this.androidId,
@@ -38,6 +39,9 @@ class DeviceOverview {
 
   final String name;
   final String brand;
+
+  /// 设备制造商，与原始品牌独立保存；旧缓存和未知设备使用占位值。
+  final String manufacturer;
   final String model;
   final String serial;
   final String androidId;
@@ -76,6 +80,7 @@ class DeviceOverview {
     return {
       'name': name,
       'brand': brand,
+      'manufacturer': manufacturer,
       'model': model,
       'serial': serial,
       'androidId': androidId,
@@ -114,6 +119,7 @@ class DeviceOverview {
     return DeviceOverview(
       name: json['name'] as String? ?? '-',
       brand: json['brand'] as String? ?? '-',
+      manufacturer: json['manufacturer'] as String? ?? '-',
       model: json['model'] as String? ?? '-',
       serial: json['serial'] as String? ?? '-',
       androidId: json['androidId'] as String? ?? '-',
@@ -152,6 +158,7 @@ class DeviceOverview {
   DeviceOverview copyWith({
     String? name,
     String? brand,
+    String? manufacturer,
     String? model,
     String? serial,
     String? androidId,
@@ -187,6 +194,7 @@ class DeviceOverview {
     return DeviceOverview(
       name: name ?? this.name,
       brand: brand ?? this.brand,
+      manufacturer: manufacturer ?? this.manufacturer,
       model: model ?? this.model,
       serial: serial ?? this.serial,
       androidId: androidId ?? this.androidId,
