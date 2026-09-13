@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/l10n/app_localizations.dart';
 import '../../core/apk/apk_install_controller.dart';
@@ -40,7 +41,19 @@ class ApkDetailsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.l10n.t('apkTitle')),
+        automaticallyImplyLeading: false,
+        leading: const SizedBox.shrink(),
+        leadingWidth: 80,
+        title: DragToMoveArea(
+          child: SizedBox(
+            height: 56,
+            width: double.infinity,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(context.l10n.t('apkTitle')),
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             tooltip: context.l10n.t('apkRefresh'),

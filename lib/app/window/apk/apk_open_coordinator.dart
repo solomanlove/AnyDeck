@@ -22,6 +22,8 @@ class ApkOpenCoordinator {
   late final ApkFileOpenQueue _opens;
   late String _mainWindowId;
   final _uiReady = Completer<void>();
+  Future<Map<String, dynamic>>? _deviceRead;
+  DateTime _deviceReadAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   Future<void> initialize() async {
     _mainWindowId = (await WindowController.fromCurrentEngine()).windowId;
@@ -50,13 +52,26 @@ class ApkOpenCoordinator {
     );
   }
 
+  // 多个 APK 窗口共享短期设备快照，安装前仍重新确认实际连接。
+  Future<Map<String, dynamic>> _deviceSnapshot() {
+    final now = DateTime.now();
+    if (_deviceRead != null && now.difference(_deviceReadAt).inSeconds < 2) {
+      return _deviceRead!;
+    }
+    _deviceReadAt = now;
+    return _deviceRead = _devices();
+  }
+
   Future<Map<String, dynamic>> _devices() async {
     final devices = [...await container.read(adbServiceProvider).listDevices()];
     final registry = container.read(deviceRegistryProvider);
     final seen = <String>{};
     final rows = <Map<String, dynamic>>[];
     // 在线连接优先；复用 registry 的物理设备身份，保留实际通信 serial。
-    devices.sort((a, b) => (b.isOnline ? 1 : 0).compareTo(a.isOnline ? 1 : 0));
+    devices.sort((a, b) {
+      final online = (b.isOnline ? 1 : 0).compareTo(a.isOnline ? 1 : 0);
+      return online == 0 ? a.id.compareTo(b.id) : online;
+    });
     for (final device in devices) {
       final known = registry
           .where((r) => r.id == device.id || r.connections.contains(device.id))
@@ -117,7 +132,7 @@ class ApkOpenCoordinator {
   Future<dynamic> handleWindowCall(MethodCall call) async {
     if (!call.method.startsWith('apk_')) return null;
     try {
-      if (call.method == 'apk_devices') return await _devices();
+      if (call.method == 'apk_devices') return await _deviceSnapshot();
       final args = Map<String, dynamic>.from(call.arguments as Map);
       final serial = args['serial'] as String;
       final packageName = args['packageName'] as String;

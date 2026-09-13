@@ -86,7 +86,9 @@ void main(List<String> args) async {
     }
 
     final type = argument['type'] as String?;
-    final windowName = type == 'mirror'
+    final windowName = type == 'apk_details'
+        ? 'apk_details_window_$windowId'
+        : type == 'mirror'
         ? 'mirror_window_$windowId'
         : type == 'console'
             ? 'console_window_$windowId'

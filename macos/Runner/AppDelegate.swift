@@ -24,14 +24,29 @@ class AppDelegate: FlutterAppDelegate {
     }
   }
 
+  // FlutterAppDelegate 实现了 openURLs，AppKit 可能优先走此入口。
+  override func application(_ application: NSApplication, open urls: [URL]) {
+    let apkURLs = urls.filter { $0.isFileURL && $0.pathExtension.lowercased() == "apk" }
+    receiveApkPaths(apkURLs.map { $0.path })
+    let remaining = urls.filter { !($0.isFileURL && $0.pathExtension.lowercased() == "apk") }
+    if !remaining.isEmpty {
+      super.application(application, open: remaining)
+    }
+  }
+
   override func application(_ sender: NSApplication, openFiles filenames: [String]) {
     let paths = filenames.filter { URL(fileURLWithPath: $0).pathExtension.lowercased() == "apk" }
+    receiveApkPaths(paths)
+    sender.reply(toOpenOrPrint: paths.isEmpty ? .failure : .success)
+  }
+
+  private func receiveApkPaths(_ paths: [String]) {
+    guard !paths.isEmpty else { return }
     if apkReady, let channel = apkChannel {
       channel.invokeMethod("openFiles", arguments: paths)
     } else {
       pendingApkPaths.append(contentsOf: paths)
     }
-    sender.reply(toOpenOrPrint: paths.isEmpty ? .failure : .success)
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
