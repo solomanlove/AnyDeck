@@ -129,15 +129,20 @@ class DesktopWindowManagerService {
 class _AppTrayListener extends TrayListener {
   @override
   void onTrayIconMouseDown() async {
-    // 点击托盘图标显示并聚焦窗口
-    await windowManager.show();
-    await windowManager.focus();
+    if (Platform.isMacOS) {
+      // macOS 状态栏规范：单击与右击均弹出托盘菜单
+      await trayManager.popUpContextMenu();
+    } else {
+      // Windows/Linux 点击托盘图标显示并聚焦窗口
+      await windowManager.show();
+      await windowManager.focus();
+    }
   }
 
   @override
-  void onTrayIconRightMouseDown() {
+  void onTrayIconRightMouseDown() async {
     // 右键托盘图标弹出上下文菜单
-    trayManager.popUpContextMenu();
+    await trayManager.popUpContextMenu();
   }
 
   @override
