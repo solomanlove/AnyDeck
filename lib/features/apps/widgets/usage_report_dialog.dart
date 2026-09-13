@@ -31,7 +31,7 @@ class UsageReportDialog extends ConsumerWidget {
           children: [
             Text(context.l10n.t('usageIntro')),
             const SizedBox(height: 12),
-            if (tab != 2)
+            if (tab < 2)
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -61,8 +61,8 @@ class UsageReportDialog extends ConsumerWidget {
                 ],
               ),
             const SizedBox(height: 8),
-            if (tab != 2 && state.busy) const LinearProgressIndicator(),
-            if (tab != 2 && state.messageKey != null)
+            if (tab < 2 && state.busy) const LinearProgressIndicator(),
+            if (tab < 2 && state.messageKey != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
@@ -87,12 +87,16 @@ class UsageReportDialog extends ConsumerWidget {
                   value: 2,
                   label: Text(context.l10n.t('cameraTitle')),
                 ),
+                ButtonSegment(
+                  value: 3,
+                  label: Text(context.l10n.t('clipboardTitle')),
+                ),
               ],
               selected: {tab},
               onSelectionChanged: (value) =>
                   viewController.selectTab(value.first),
             ),
-            if (tab != 2 && state.history.hasGap)
+            if (tab < 2 && state.history.hasGap)
               Text(
                 context.l10n.t('historyGap'),
                 style: TextStyle(color: colors.error),
@@ -125,7 +129,9 @@ class UsageReportDialog extends ConsumerWidget {
                       },
               ),
             Expanded(
-              child: tab == 2
+              child: tab == 3
+                  ? DeviceClipboardView(deviceId: deviceId)
+                  : tab == 2
                   ? CameraPreviewView(deviceId: deviceId)
                   : tab == 1
                   ? LocationHistoryView(

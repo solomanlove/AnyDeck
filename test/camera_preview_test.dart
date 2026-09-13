@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/scrcpy/embedded_camera_backend.dart';
+import 'package:any_deck/core/scrcpy/device_capture_compatibility.dart';
 import 'package:any_deck/features/apps/controller/camera_preview_controller.dart';
 import 'package:any_deck/features/apps/widgets/camera_preview_view.dart';
 import 'package:flutter/material.dart';
@@ -90,6 +91,8 @@ void main() {
           ProviderScope(
             overrides: [
               deviceOnlineProvider('phone').overrideWith((ref) => true),
+              captureSdkProvider('phone').overrideWith((ref) async => 36),
+              captureHostSupportedProvider.overrideWithValue(true),
               cameraBackendFactoryProvider.overrideWithValue((_, _) => backend),
             ],
             child: MaterialApp(

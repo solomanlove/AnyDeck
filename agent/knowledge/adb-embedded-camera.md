@@ -1,4 +1,13 @@
-# 内嵌 scrcpy 摄像头预览
+# 内嵌摄像头预览
+
+## 当前实现（2026-09-13）
+
+摄像头 UI 已迁移至 Rust/VideoToolbox 底层，麦克风独立启停和手机剪贴板也统一由 Rust 管理。完整实现与版本兼容说明见 [adb-device-rust-sessions.md](adb-device-rust-sessions.md)，验证见 [adb-device-rust-sessions-test.md](adb-device-rust-sessions-test.md)。
+
+下文保留初版实现记录。原 `EmbeddedScrcpyService.start(camera: ...)` 参数分支仅保留内部兼容测试，当前摄像头页面不再使用该路径。
+
+## 初版实现记录
+
 
 ## 目标与入口
 

@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:scrcpy_flutter/scrcpy_flutter.dart';
+import 'package:flutter/services.dart';
+
+import '../providers/app_providers.dart';
+import 'rust_device_session.dart';
 
 import 'embedded_scrcpy_service.dart';
 import 'scrcpy_camera_options.dart';
@@ -18,49 +22,81 @@ abstract class CameraBackend {
 final cameraBackendFactoryProvider =
     Provider<CameraBackend Function(String, bool)>((ref) {
       final service = ref.watch(embeddedScrcpyServiceProvider);
-      return (deviceId, front) => EmbeddedCameraBackend(
-        service,
-        ScrcpyCameraOptions(deviceId: deviceId, front: front),
-        deviceId,
+      final adb = ref.watch(adbServiceProvider);
+      return (deviceId, front) => RustCameraBackend(
+        RustDeviceSession(
+          adb: adb.executable,
+          deviceId: deviceId,
+          resolveJar: service.extractScrcpyServerJar,
+          kind: front ? 3 : 0,
+        ),
       );
     });
 
-/// 复用内嵌服务推送、转发、原生解码及纹理注册，摄像头使用独立会话名。
-class EmbeddedCameraBackend implements CameraBackend {
-  EmbeddedCameraBackend(this.service, this.options, this.deviceId);
-  final EmbeddedScrcpyService service;
-  final ScrcpyCameraOptions options;
-  final String deviceId;
+/// 摄像头控制/ADB/解码在 Rust，Swift 仅为 Flutter 注册 CVPixelBuffer Texture。
+class RustCameraBackend implements CameraBackend {
+  RustCameraBackend(this.session);
+  final RustDeviceSession session;
+  static const _textures = MethodChannel('anydeck/rust_texture');
+  int? _texture;
   Future<int>? _starting;
+  Future<void>? _stopping;
+  bool _cancelled = false;
 
   @override
-  Future<int> start() {
+  Future<int> start() => _starting = _start();
+  Future<int> _start() async {
     if (!Platform.isMacOS) {
       throw const CameraPreviewException('cameraPlatformRequired');
     }
-    return _starting = service.start(deviceId: deviceId, camera: options);
+    await session.start();
+    if (_cancelled) throw const CameraPreviewException('cameraStopped');
+    final registering = _textures.invokeMethod<int>('register', {
+      'handle': session.handle,
+    });
+    unawaited(
+      registering
+          .then((texture) async {
+            if (_cancelled && texture != null) {
+              await _textures.invokeMethod<void>('unregister', {
+                'textureId': texture,
+              });
+            }
+          })
+          .catchError((Object _) {}),
+    );
+    _texture = await registering.timeout(const Duration(seconds: 3));
+    if (_texture == null) {
+      throw const CameraPreviewException('cameraStartFailed');
+    }
+    return _texture!;
   }
 
   @override
-  Future<Map<String, int>?> videoSize() =>
-      ScrcpyFlutter.getVideoSize(deviceId: options.sessionId);
+  Future<Map<String, int>?> videoSize() async => session.videoSize();
+  @override
+  Future<int> get exited => session.exited.then((_) => 0);
+  @override
+  void cancel() {
+    _cancelled = true;
+    session.cancel();
+  }
 
   @override
-  Future<int> get exited =>
-      service.getServerProcess(options.sessionId)?.exitCode ?? Future.value(-1);
-
-  @override
-  void cancel() => options.cancel();
-
-  @override
-  Future<void> stop() async {
+  Future<void> stop() => _stopping ??= _stop();
+  Future<void> _stop() async {
     cancel();
-    await service.stop(options.sessionId);
-    // 关闭页面发生在启动途中时，启动结束后再次清理，防止迟到纹理泄漏。
     try {
       await _starting;
     } catch (_) {}
-    await service.stop(options.sessionId);
-    await options.removeForward?.call();
+    try {
+      if (_texture != null) {
+        await _textures
+            .invokeMethod<void>('unregister', {'textureId': _texture})
+            .timeout(const Duration(seconds: 3));
+      }
+    } finally {
+      await session.stop();
+    }
   }
 }

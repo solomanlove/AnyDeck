@@ -40,7 +40,8 @@ class EmbeddedScrcpyService {
   int? getTextureId(String deviceId) => _sessions[deviceId]?.textureId;
   Process? getServerProcess(String deviceId) => _sessions[deviceId]?.serverProcess;
 
-  Future<String> _extractScrcpyServerJar() async {
+  /// 提取匹配版本的内置 server，供投屏与独立音频/剪贴板会话复用。
+  Future<String> extractScrcpyServerJar() async {
     final bytes = await rootBundle.load('assets/scrcpy/scrcpy-server.jar');
     final dir = Directory('${Directory.systemTemp.path}/any_deck_scrcpy');
     if (!dir.existsSync()) {
@@ -77,7 +78,7 @@ class EmbeddedScrcpyService {
     }
 
     // 1. Resolve and push scrcpy-server.jar
-    final serverJar = await _extractScrcpyServerJar();
+    final serverJar = await extractScrcpyServerJar();
     if (!File(serverJar).existsSync()) {
       throw Exception(
         'scrcpy-server not found on host. Failed to extract asset.',

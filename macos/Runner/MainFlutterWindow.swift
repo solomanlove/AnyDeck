@@ -70,9 +70,11 @@ class MainFlutterWindow: NSWindow {
     }
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    RustTexturePlugin.register(with: flutterViewController.registrar(forPlugin: "RustTexturePlugin"))
 
     FlutterMultiWindowPlugin.setOnWindowCreatedCallback { controller in
       RegisterGeneratedPlugins(registry: controller)
+      RustTexturePlugin.register(with: controller.registrar(forPlugin: "RustTexturePlugin"))
       
       let windowChannel = FlutterMethodChannel(
         name: "any_deck/window",

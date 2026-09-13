@@ -70,6 +70,7 @@ import 'apps/controller/usage_report_view_controller.dart';
 import '../core/usage/usage_snapshot.dart';
 import 'apps/widgets/location_history_view.dart';
 import 'apps/widgets/camera_preview_view.dart';
+import 'apps/widgets/device_clipboard_view.dart';
 import 'files/controller/file_favorite_folders_controller.dart';
 import 'files/controller/file_preview_controller.dart';
 import 'files/controller/file_selection_controller.dart';
