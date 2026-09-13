@@ -20,7 +20,12 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
 
     return InkWell(
       onTap: () {
-        // 选中当前点击的设备，并切入该设备的主页 (tab 0)
+        // 单击只选中设备
+        ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
+        ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
+      },
+      onDoubleTap: () {
+        // 双击切入该设备的主页 (tab 0)
         ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
         ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
         ref.read(selectedToolTabProvider.notifier).select(0);
@@ -58,6 +63,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             _buildIdentifierCell(context, device),
             const SizedBox(width: 10),
             _buildNameCell(context, device),
+            const SizedBox(width: 10),
+            _buildRemarkCell(context, device),
+            const SizedBox(width: 10),
+            _buildTagsCell(context, device),
             const SizedBox(width: 10),
             _buildAndroidVersionCell(context, device),
             const SizedBox(width: 10),
@@ -208,6 +217,86 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             onPressed: () => _showRenameDialog(context, device),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 构建设备备注（用途）列
+  Widget _buildRemarkCell(BuildContext context, RegisteredDevice device) {
+    final hasRemark = device.remark != null && device.remark!.isNotEmpty;
+    return Expanded(
+      flex: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => _showRemarkDialog(context, device),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  hasRemark ? device.remark! : '-',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: hasRemark ? Theme.of(context).colorScheme.onSurface : Colors.grey,
+                    fontWeight: hasRemark ? FontWeight.w500 : FontWeight.normal,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(CupertinoIcons.pencil, size: 13, color: Colors.grey.withValues(alpha: 0.5)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建设备标签标识列
+  Widget _buildTagsCell(BuildContext context, RegisteredDevice device) {
+    final hasTags = device.tags.isNotEmpty;
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Expanded(
+      flex: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => _showTagsDialog(context, device),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!hasTags) ...[
+                const Text('-', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(width: 4),
+              ] else ...[
+                Flexible(
+                  child: Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: device.tags.map((tag) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: primary.withValues(alpha: 0.2)),
+                      ),
+                      child: Text(
+                        tag,
+                        style: TextStyle(fontSize: 10, color: primary, fontWeight: FontWeight.w600),
+                      ),
+                    )).toList(),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+              Icon(CupertinoIcons.pencil, size: 13, color: Colors.grey.withValues(alpha: 0.5)),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -60,39 +60,120 @@ extension _DeviceListPanelActions on _DeviceListPanelState {
     BuildContext context,
     RegisteredDevice device,
   ) async {
-    final controller = TextEditingController(
-      text: device.customName ?? device.model ?? '',
-    );
     final name = await showDialog<String>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(context.l10n.t('editDeviceName')),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: context.l10n.t('enterDeviceName'),
-            ),
-            onSubmitted: (value) => Navigator.of(context).pop(value),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(context.l10n.t('cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(controller.text),
-              child: Text(context.l10n.t('confirm')),
-            ),
-          ],
-        );
-      },
+      builder: (_) => _DeviceTextEditDialog(
+        title: context.l10n.t('editDeviceName'),
+        initialText: device.customName ?? device.model ?? '',
+        hintText: context.l10n.t('enterDeviceName'),
+        confirmLabel: context.l10n.t('confirm'),
+      ),
     );
-    controller.dispose();
 
-    if (name != null && context.mounted) {
+    if (name != null) {
       await ref.read(deviceRegistryProvider.notifier).setAlias(device.id, name);
     }
+  }
+
+  Future<void> _showRemarkDialog(
+    BuildContext context,
+    RegisteredDevice device,
+  ) async {
+    final remark = await showDialog<String>(
+      context: context,
+      builder: (_) => _DeviceTextEditDialog(
+        title: '编辑备注/用途',
+        initialText: device.remark ?? '',
+        hintText: '输入备注或用途',
+      ),
+    );
+
+    if (remark != null) {
+      await ref.read(deviceRegistryProvider.notifier).updateRemark(device.id, remark);
+    }
+  }
+
+  Future<void> _showTagsDialog(
+    BuildContext context,
+    RegisteredDevice device,
+  ) async {
+    final tagsString = await showDialog<String>(
+      context: context,
+      builder: (_) => _DeviceTextEditDialog(
+        title: '编辑标签标识',
+        initialText: device.tags.join(', '),
+        hintText: '输入标签，用逗号分隔',
+      ),
+    );
+
+    if (tagsString != null) {
+      final tags = tagsString
+          .split(RegExp(r'[,，]'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      await ref.read(deviceRegistryProvider.notifier).updateTags(device.id, tags);
+    }
+  }
+}
+
+/// 设备文本信息通用编辑对话框（名称、备注、标签等）。
+/// 封装为 StatefulWidget，确保 TextEditingController 在组件生命周期内规范管理，
+/// 避免在 showDialog 返回后过早手动 dispose 导致 Flutter 框架在帧调度销毁时报断言错误。
+class _DeviceTextEditDialog extends StatefulWidget {
+  const _DeviceTextEditDialog({
+    required this.title,
+    required this.initialText,
+    required this.hintText,
+    this.confirmLabel,
+  });
+
+  final String title;
+  final String initialText;
+  final String hintText;
+  final String? confirmLabel;
+
+  @override
+  State<_DeviceTextEditDialog> createState() => _DeviceTextEditDialogState();
+}
+
+class _DeviceTextEditDialogState extends State<_DeviceTextEditDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+        ),
+        onSubmitted: (value) => Navigator.of(context).pop(value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.t('cancel')),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: Text(widget.confirmLabel ?? '确定'),
+        ),
+      ],
+    );
   }
 }

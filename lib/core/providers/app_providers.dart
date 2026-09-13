@@ -990,6 +990,8 @@ class RegisteredDevice {
     this.sdkVersion,
     this.isIos = false,
     this.isHarmony = false,
+    this.remark,
+    this.tags = const [],
   });
 
   final String id;
@@ -1007,6 +1009,8 @@ class RegisteredDevice {
   final int? sdkVersion;
   final bool isIos;
   final bool isHarmony;
+  final String? remark;
+  final List<String> tags;
 
   bool get isNetwork =>
       id.contains(':') || id.contains('.') || id == '127.0.0.1';
@@ -1071,6 +1075,8 @@ class RegisteredDevice {
     int? sdkVersion,
     bool? isIos,
     bool? isHarmony,
+    String? remark,
+    List<String>? tags,
   }) {
     return RegisteredDevice(
       id: id ?? this.id,
@@ -1088,6 +1094,8 @@ class RegisteredDevice {
       sdkVersion: sdkVersion ?? this.sdkVersion,
       isIos: isIos ?? this.isIos,
       isHarmony: isHarmony ?? this.isHarmony,
+      remark: remark ?? this.remark,
+      tags: tags ?? this.tags,
     );
   }
 }
@@ -1136,6 +1144,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   static const _ipsKey = 'devices.ips';
   static const _androidVersionsKey = 'devices.androidVersions';
   static const _sdkVersionsKey = 'devices.sdkVersions';
+  static const _remarksKey = 'devices.remarks';
+  static const _tagsKey = 'devices.tags';
 
   List<String> _historyIds = [];
   Map<String, String> _aliases = {};
@@ -1144,6 +1154,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   Map<String, String> _ipAddresses = {};
   Map<String, String> _androidVersions = {};
   Map<String, int> _sdkVersions = {};
+  Map<String, String> _remarks = {};
+  Map<String, List<String>> _tags = {};
   Set<String> _checkedIds = {};
   Map<String, String> _serialMap = {};
   List<AdbDevice> _lastActiveDevices = [];
@@ -1247,12 +1259,32 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       } catch (_) {}
     }
 
+    final remarksJson = prefs.getString(_remarksKey);
+    Map<String, String> remarks = {};
+    if (remarksJson != null) {
+      try {
+        final decoded = Map<String, dynamic>.from(jsonDecode(remarksJson));
+        remarks = decoded.map((key, value) => MapEntry(key, value.toString()));
+      } catch (_) {}
+    }
+
+    final tagsJson = prefs.getString(_tagsKey);
+    Map<String, List<String>> tags = {};
+    if (tagsJson != null) {
+      try {
+        final decoded = Map<String, dynamic>.from(jsonDecode(tagsJson));
+        tags = decoded.map((key, value) => MapEntry(key, List<String>.from(value)));
+      } catch (_) {}
+    }
+
     _historyIds = history;
     _aliases = aliases;
     _models = models;
     _products = products;
     _androidVersions = androidVersions;
     _sdkVersions = sdkVersions;
+    _remarks = remarks;
+    _tags = tags;
 
     // 加载缓存的序列号映射
     final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
@@ -1812,6 +1844,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       final androidVersion = _androidVersions[serial] ?? _androidVersions[id];
       final sdkVersion = _sdkVersions[serial] ?? _sdkVersions[id];
 
+      final remark = _remarks[id];
+      final tags = _tags[id] ?? [];
+
       if (active != null) {
         // 对鸿蒙设备，若 _models 缓存中已有真实设备名（非通用占位符），优先使用
         final effectiveModel =
@@ -1838,6 +1873,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             sdkVersion: sdkVersion,
             isIos: active.isIos,
             isHarmony: active.isHarmony,
+            remark: remark,
+            tags: tags,
           ),
         );
       } else {
@@ -1855,6 +1892,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             ipAddress: ipAddress,
             androidVersion: androidVersion,
             sdkVersion: sdkVersion,
+            remark: remark,
+            tags: tags,
             isIos:
                 cachedModel != null &&
                 (cachedModel.contains('iPhone') ||
@@ -1884,7 +1923,19 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     final merged = <RegisteredDevice>[];
     groups.forEach((serial, candidates) {
       if (candidates.length == 1) {
-        merged.add(candidates.first);
+        final c = candidates.first;
+        final effectiveRemark = (c.remark != null && c.remark!.isNotEmpty)
+            ? c.remark
+            : (_remarks[serial] ?? _remarks[c.id]);
+        final effectiveTags = c.tags.isNotEmpty
+            ? c.tags
+            : (_tags[serial] ?? _tags[c.id] ?? []);
+        merged.add(
+          c.copyWith(
+            remark: effectiveRemark,
+            tags: effectiveTags,
+          ),
+        );
       } else {
         // 排序规则：在线优先，USB 优先
         candidates.sort((a, b) {
@@ -1962,6 +2013,26 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           }
         }
 
+        String? mergedRemark;
+        for (final c in candidates) {
+          if (c.remark != null && c.remark!.isNotEmpty) {
+            mergedRemark = c.remark;
+            break;
+          }
+        }
+        mergedRemark ??= (_remarks[serial] ?? _remarks[best.id]);
+
+        List<String> mergedTags = [];
+        for (final c in candidates) {
+          if (c.tags.isNotEmpty) {
+            mergedTags = c.tags;
+            break;
+          }
+        }
+        if (mergedTags.isEmpty) {
+          mergedTags = _tags[serial] ?? _tags[best.id] ?? [];
+        }
+
         // When the merged device is online, we filter the connection IDs to only active (online) connections.
         // Otherwise, we show all historical offline connections.
         final connectionIds = best.isOnline
@@ -1979,6 +2050,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             ipAddress: mergedIp,
             androidVersion: mergedAndroidVersion,
             sdkVersion: mergedSdkVersion,
+            remark: mergedRemark,
+            tags: mergedTags,
           ),
         );
       }
@@ -2078,6 +2151,76 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     await _saveAliases();
     final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
+  }
+
+  Future<void> updateRemark(String id, String remark) async {
+    final targetIds = <String>{id};
+    final serial = _serialMap[id] ?? id;
+    targetIds.add(serial);
+    for (final entry in _serialMap.entries) {
+      if (entry.value == serial) {
+        targetIds.add(entry.key);
+      }
+    }
+    for (final dev in state) {
+      if (dev.id == id || dev.serial == serial || dev.connections.contains(id)) {
+        targetIds.add(dev.id);
+        targetIds.addAll(dev.connections);
+        if (dev.serial != null && dev.serial!.isNotEmpty) {
+          targetIds.add(dev.serial!);
+        }
+      }
+    }
+    for (final targetId in targetIds) {
+      if (remark.trim().isEmpty) {
+        _remarks.remove(targetId);
+      } else {
+        _remarks[targetId] = remark.trim();
+      }
+    }
+    await _saveRemarks();
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    state = _mergeDevices(activeDevices);
+  }
+
+  Future<void> updateTags(String id, List<String> tags) async {
+    final targetIds = <String>{id};
+    final serial = _serialMap[id] ?? id;
+    targetIds.add(serial);
+    for (final entry in _serialMap.entries) {
+      if (entry.value == serial) {
+        targetIds.add(entry.key);
+      }
+    }
+    for (final dev in state) {
+      if (dev.id == id || dev.serial == serial || dev.connections.contains(id)) {
+        targetIds.add(dev.id);
+        targetIds.addAll(dev.connections);
+        if (dev.serial != null && dev.serial!.isNotEmpty) {
+          targetIds.add(dev.serial!);
+        }
+      }
+    }
+    for (final targetId in targetIds) {
+      if (tags.isEmpty) {
+        _tags.remove(targetId);
+      } else {
+        _tags[targetId] = tags;
+      }
+    }
+    await _saveTags();
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    state = _mergeDevices(activeDevices);
+  }
+
+  Future<void> _saveRemarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_remarksKey, jsonEncode(_remarks));
+  }
+
+  Future<void> _saveTags() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tagsKey, jsonEncode(_tags));
   }
 
   Future<void> removeDevice(String id) {

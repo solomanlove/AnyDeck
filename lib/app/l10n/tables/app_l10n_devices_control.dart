@@ -234,6 +234,8 @@ const devicesControlEn = {
       'Create a reverse port forward to connect your development server...',
   'devicePort': 'Device Port',
   'localPort': 'Local Port',
+  'deviceRemarkCol': '备注/用途',
+  'deviceTagsCol': '标签标识',
   'quickPresets': 'Quick Presets',
   'saveAsPreset': 'Save as preset',
   'presetNameOptional': 'Name (optional)',
