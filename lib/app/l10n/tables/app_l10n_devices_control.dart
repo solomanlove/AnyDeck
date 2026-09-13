@@ -78,6 +78,46 @@ const devicesControlZh = {
   'noDevices': '未发现 Android 设备',
   'connectUsbOrTcp': '请连接 USB 设备或使用 TCP/IP 连接。',
   'connectDevice': '连接设备',
+  'tcpipAddressLabel': '设备 IP 地址与端口',
+  'tcpipAddressHint':
+      '填写手机当前的局域网 IP:端口，例如 192.168.1.100:5555；不要填写 adb connect。',
+  'tcpipGuideTitle': 'USB 转 TCP/IP · 连接指南',
+  'tcpipGuideIntro':
+      '首次连接先通过 USB 开启 TCP/IP 监听。以下命令在电脑终端执行；本弹窗的“连接”按钮仅连接已开启监听的地址。',
+  'tcpipPrepareTitle': '1. 连接 USB 并确认授权',
+  'tcpipPrepareBody':
+      '手机与电脑接入同一可互通的局域网（通常为同一 Wi-Fi）。开启“开发者选项 > USB 调试”，用数据线连接，并在手机上允许此电脑调试。执行后，目标设备状态应为 device。',
+  'tcpipPrepareCommand': 'adb devices',
+  'tcpipEnableTitle': '2. 启用 TCP/IP 监听',
+  'tcpipEnableBody':
+      '保持 USB 连接，执行以下命令。看到 restarting in TCP mode port: 5555 后，等待设备切换完成，再断开 USB。5555 为常用端口，也可指定其他端口，后续连接时保持一致。',
+  'tcpipEnableCommand': 'adb tcpip 5555',
+  'tcpipConnectTitle': '3. 查看手机 IP 并连接',
+  'tcpipConnectBody':
+      '在手机“设置 > Wi-Fi > 当前网络详情”或“关于手机 > 状态信息”查看 IP（路径因机型而异）。断开 USB 后，在上方填写实际 IP:端口并点击“连接”，也可执行以下命令；请替换示例 IP。',
+  'tcpipConnectCommand': 'adb connect 192.168.1.100:5555',
+  'tcpipVerifyTitle': '4. 验证无线连接',
+  'tcpipVerifyBody':
+      '再次执行 adb devices。出现类似下方的 IP:端口 device 即表示连接成功；若仅显示 USB 序列号，不能证明无线连接成功。',
+  'tcpipVerifyCommand': 'adb devices\n192.168.1.100:5555    device',
+  'tcpipTroubleshootTitle': '常见问题与下次重连',
+  'tcpipMultipleTitle': '多台设备或模拟器',
+  'tcpipMultipleBody':
+      '先用 adb devices 查到目标 USB 序列号，再指定设备开启监听，避免 more than one device/emulator；将占位符替换为实际序列号。',
+  'tcpipMultipleCommand': 'adb -s <USB_SERIAL> tcpip 5555',
+  'tcpipFailureTitle': '未授权、离线或连接失败',
+  'tcpipFailureBody':
+      'unauthorized：解锁手机并允许 USB 调试。offline：重新插拔 USB 并确认 device 状态。refused：检查端口并重新开启 TCP/IP。超时：检查当前 IP、局域网互通、VPN、防火墙或路由器 AP 隔离。找不到 adb 时，在 Android SDK 的 platform-tools 目录执行，或配置 PATH。',
+  'tcpipReconnectTitle': '重启手机或切换网络后',
+  'tcpipReconnectBody':
+      '手机重启后通常需重新通过 USB 执行 tcpip。网络变化可能导致 IP 改变，请重新查看；若监听仍开启且地址未变，直接点击“连接”即可。',
+  'tcpipDisconnectTitle': '断开连接与关闭监听',
+  'tcpipDisconnectBody':
+      'adb disconnect 仅断开电脑连接，不关闭手机监听。需要关闭时，在连接仍在线时执行 adb -s IP:端口 usb，或接回 USB 后使用目标 USB 序列号执行 usb。',
+  'tcpipDisconnectCommand': 'adb disconnect 192.168.1.100:5555',
+  'tcpipPairingTitle': 'Android 11+ 配对方式',
+  'tcpipPairingBody':
+      '系统“无线调试”的二维码 / 配对码是另一套流程，可使用应用顶部的配对入口。配对端口与连接端口不同，不要将配对端口填入本弹窗，也不要默认它是 5555。',
   'ipAddress': 'IP 地址',
   'cancel': '取消',
   'connect': '连接',
@@ -274,6 +314,46 @@ const devicesControlEn = {
   'noDevices': 'No Android devices',
   'connectUsbOrTcp': 'Connect USB or use TCP/IP connect.',
   'connectDevice': 'Connect device',
+  'tcpipAddressLabel': 'Device IP address and port',
+  'tcpipAddressHint':
+      'Enter the phone’s current LAN IP:port, e.g. 192.168.1.100:5555, without adb connect.',
+  'tcpipGuideTitle': 'USB to TCP/IP · Connection guide',
+  'tcpipGuideIntro':
+      'For the first connection, enable TCP/IP over USB. Run the commands below in your computer’s terminal. Connect in this dialog only connects to an address already listening.',
+  'tcpipPrepareTitle': '1. Connect USB and authorize',
+  'tcpipPrepareBody':
+      'Connect your phone and computer to a reachable LAN (usually the same Wi-Fi). Enable Developer options > USB debugging, connect a data cable, and allow debugging on the phone. The target device should appear with the device status.',
+  'tcpipPrepareCommand': 'adb devices',
+  'tcpipEnableTitle': '2. Enable TCP/IP listening',
+  'tcpipEnableBody':
+      'Keep USB connected and run this command. After restarting in TCP mode port: 5555 appears, wait for the switch to finish before unplugging USB. 5555 is common; if you choose another port, use it for the connection too.',
+  'tcpipEnableCommand': 'adb tcpip 5555',
+  'tcpipConnectTitle': '3. Find the phone’s IP and connect',
+  'tcpipConnectBody':
+      'Find the IP in Settings > Wi-Fi > Current network details or About phone > Status (varies by device). Unplug USB, enter the actual IP:port above, and click Connect, or run this command with your phone’s IP instead of the example.',
+  'tcpipConnectCommand': 'adb connect 192.168.1.100:5555',
+  'tcpipVerifyTitle': '4. Verify the wireless connection',
+  'tcpipVerifyBody':
+      'Run adb devices again. An IP:port entry with device status, like the output below, confirms the wireless connection. A USB serial entry alone does not confirm it.',
+  'tcpipVerifyCommand': 'adb devices\n192.168.1.100:5555    device',
+  'tcpipTroubleshootTitle': 'Troubleshooting and reconnecting',
+  'tcpipMultipleTitle': 'Multiple devices or emulators',
+  'tcpipMultipleBody':
+      'Find the target USB serial with adb devices and specify it to avoid more than one device/emulator. Replace the placeholder with the actual serial.',
+  'tcpipMultipleCommand': 'adb -s <USB_SERIAL> tcpip 5555',
+  'tcpipFailureTitle': 'Unauthorized, offline, or failed connection',
+  'tcpipFailureBody':
+      'unauthorized: unlock the phone and allow USB debugging. offline: reconnect USB and confirm device status. refused: check the port and enable TCP/IP again. Timeout: check the current IP, LAN access, VPN, firewall, or router AP isolation. If adb is not found, run it from Android SDK platform-tools or configure PATH.',
+  'tcpipReconnectTitle': 'After a restart or network change',
+  'tcpipReconnectBody':
+      'After a phone restart, you usually need USB to enable tcpip again. A network change may change the IP; check it again. If listening is still enabled and the address is unchanged, simply click Connect.',
+  'tcpipDisconnectTitle': 'Disconnecting vs. stopping the listener',
+  'tcpipDisconnectBody':
+      'adb disconnect only disconnects the computer; the phone keeps listening. To stop it, run adb -s IP:port usb while connected, or reconnect USB and run usb with the target USB serial.',
+  'tcpipDisconnectCommand': 'adb disconnect 192.168.1.100:5555',
+  'tcpipPairingTitle': 'Android 11+ pairing',
+  'tcpipPairingBody':
+      'Wireless debugging with a QR or pairing code uses a separate workflow, available from the app’s top pairing menu. Pairing and connection ports differ. Do not enter the pairing port here or assume it is 5555.',
   'ipAddress': 'IP address',
   'cancel': 'Cancel',
   'connect': 'Connect',

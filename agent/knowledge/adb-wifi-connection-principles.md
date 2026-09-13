@@ -136,3 +136,30 @@ adb -s <device_id> shell ip addr show
 4. **`lib/features/dashboard/presentation/devices/dashboard_devices_rows.dart`**
    - **`_buildIdentifierCell`**：在设备标识符（名称）下部排列 WiFi IP 地址；在 USB 已连接且有可用 IP 时显示快捷无线连接按钮；利用 `_subnetFutures` 进行网段连通性检测，如检测到不同网段，渲染黄色感叹号警告图标（`CupertinoIcons.exclamationmark_circle_fill`）。
    - **`_buildActionsCell`**：根据 `device.wifiIp` 与网络链接代表状态，动态渲染绿色 `CupertinoIcons.link`（连接）或红色 `CupertinoIcons.bolt_slash`（断开连接）操作按钮。
+
+## 5. 手动 TCP/IP 连接弹窗内置指南
+
+### 需求与入口
+为避免忘记 USB 转 TCP/IP 的准备步骤，设备管理的共享“连接设备”弹窗在地址框下默认展示四步指南：USB 授权与 `adb devices` 检查、`adb tcpip 5555` 开启监听、查询手机 IP 并断开 USB 后连接、通过 `IP:端口 device` 验证。
+
+- `lib/features/widgets/dashboard_common.dart`：原弹窗接入指南，地址标签明确为 IP 与端口，提示只填写地址；使用 `scrollable: true` 和 560 logical pixels 内容宽度，长说明可滚动，操作按钮保持可用。
+- `lib/features/devices/widgets/tcpip_connection_guide.dart`：独立只读 `StatelessWidget`，四步说明默认展示，常见问题折叠收纳；命令使用 `SelectableText` 支持选择复制，颜色与文字样式来自当前 Theme。
+- `lib/app/l10n/tables/app_l10n_devices_control.dart`：新增 `tcpip*` 中英文文案，由现有 `AppLocalizations` 读取。
+- 未新增依赖、Provider、后台进程或 MethodChannel；原 `connectDevice(address.trim())` 调用、取消及 Enter 提交行为保持不变。指南本身不执行命令，“连接”按钮不会自动开启 TCP/IP 监听。
+
+### 说明内容与命令边界
+1. 电脑终端执行 ADB 命令，手机开启 USB debugging 并授权；同一局域网需允许设备间通信。
+2. 多设备时使用 `adb -s <USB_SERIAL> tcpip 5555`，替换占位符为实际 USB 序列号。
+3. 示例 IP 必须替换为手机当前地址；自定义监听端口与连接端口需一致。
+4. `unauthorized`、`offline`、连接被拒绝、超时和找不到 adb 分别给出授权、重连、监听、网络和 PATH 排查方向。
+5. 手机重启后通常需重新通过 USB 开启监听，切换网络后需重新检查 IP。
+6. `adb disconnect IP:端口` 只断开连接；要关闭监听，在线时运行 `adb -s IP:端口 usb`，或接回 USB 后指定 USB serial 执行 `usb`。
+7. Android 11+ 的二维码 / 配对码另走配对入口；配对端口与连接端口不可混用，也不能默认都是 5555。
+
+基础流程依据：[Android Developers — 初次通过 USB 后无线连接](https://developer.android.com/tools/adb#wireless)。
+
+### 验证与交接
+- 影响面：共享 TCP/IP 连接弹窗及其中英文文案；不涉及设备合并、ADB 调度或投屏逻辑。
+- 静态检查：本次 4 个 Dart 文件的定向 `flutter analyze --no-pub` 通过（No issues found）。全仓检查报告 53 项既有问题，包含 `test/apps_tab_filter_test.dart` 构造参数缺失、未定义标识符，以及其他模块的 warning / info；未改动这些无关文件。
+- 待 UI 回归：中文 / 英文、明暗主题、小窗口及放大文字下内容可滚动；常见问题展开后无溢出；命令可选中复制；取消不连接，按钮和 Enter 使用输入地址连接。
+- 按项目约定不启动应用，本次不执行真机 TCP/IP 切换或连接验证。

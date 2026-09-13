@@ -62,6 +62,7 @@ import 'network/network_tab.dart';
 import 'mcp/presentation/mcp_dashboard_tab.dart';
 import 'mcp/controller/mcp_server_controller.dart';
 import 'widgets/dashboard_snack.dart';
+import 'devices/widgets/tcpip_connection_guide.dart';
 import 'widgets/dashboard_table_header.dart';
 import 'widgets/device_power_actions.dart';
 import 'apps/controller/apps_search_history_controller.dart';

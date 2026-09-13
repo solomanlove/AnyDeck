@@ -146,11 +146,27 @@ Future<void> _showConnectDeviceDialog(
     builder: (context) {
       return AlertDialog(
         title: Text(context.l10n.t('connectDevice')),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(labelText: context.l10n.t('ipAddress')),
-          onSubmitted: (value) => Navigator.of(context).pop(value),
+        scrollable: true,
+        content: SizedBox(
+          width: 560,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('tcpipAddressLabel'),
+                  helperText: context.l10n.t('tcpipAddressHint'),
+                  helperMaxLines: 3,
+                ),
+                onSubmitted: (value) => Navigator.of(context).pop(value),
+              ),
+              const SizedBox(height: 20),
+              const TcpipConnectionGuide(),
+            ],
+          ),
         ),
         actions: [
           TextButton(
