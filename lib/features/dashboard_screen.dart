@@ -148,6 +148,7 @@ part 'overview/dashboard_settings_tab.dart';
 part 'overview/dashboard_cache_settings.dart';
 part 'overview/dashboard_settings_widgets.dart';
 part 'overview/dashboard_notification_settings.dart';
+part 'overview/dashboard_autostart_settings.dart';
 
 class _EmulatorListExpandedNotifier extends Notifier<bool> {
   @override

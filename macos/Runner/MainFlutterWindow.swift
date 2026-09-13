@@ -73,6 +73,7 @@ class MainFlutterWindow: NSWindow {
     if #available(macOS 10.14, *) {
       NotificationBridgeService.shared.setup(messenger: flutterViewController.engine.binaryMessenger)
     }
+    AutoStartBridgeService.shared.setup(messenger: flutterViewController.engine.binaryMessenger)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     RustTexturePlugin.register(with: flutterViewController.registrar(forPlugin: "RustTexturePlugin"))

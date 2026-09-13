@@ -34,6 +34,7 @@ class AppSettings {
     this.autoPowerOffScreen = false,
     this.deviceConnectNotification = true,
     this.notificationBodyPreview = true,
+    this.launchAtStartup = false,
   });
 
   final AppLanguage language;
@@ -49,6 +50,7 @@ class AppSettings {
   final bool autoPowerOffScreen;
   final bool deviceConnectNotification;
   final bool notificationBodyPreview;
+  final bool launchAtStartup;
 
   /// 创建新的不可变设置对象，未指定字段沿用当前值。
   AppSettings copyWith({
@@ -65,6 +67,7 @@ class AppSettings {
     bool? autoPowerOffScreen,
     bool? deviceConnectNotification,
     bool? notificationBodyPreview,
+    bool? launchAtStartup,
   }) {
     return AppSettings(
       language: language ?? this.language,
@@ -80,6 +83,7 @@ class AppSettings {
       autoPowerOffScreen: autoPowerOffScreen ?? this.autoPowerOffScreen,
       deviceConnectNotification: deviceConnectNotification ?? this.deviceConnectNotification,
       notificationBodyPreview: notificationBodyPreview ?? this.notificationBodyPreview,
+      launchAtStartup: launchAtStartup ?? this.launchAtStartup,
     );
   }
 }

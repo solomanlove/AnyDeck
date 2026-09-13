@@ -98,6 +98,8 @@ const settingsZh = {
   'copyAll': '复制全部',
   'autoPowerOffScreen': '操作时自动息屏',
   'autoPowerOffScreenDesc': '在投屏窗口操作后1秒自动熄灭物理手机屏幕，点击物理屏幕再次亮屏',
+  'launchAtStartup': '开机自启',
+  'launchAtStartupDesc': '登录系统时自动启动 AnyDeck',
 };
 
 const settingsEn = {
@@ -204,4 +206,6 @@ const settingsEn = {
   'copyAll': 'Copy All',
   'autoPowerOffScreen': 'Auto Turn Off Screen',
   'autoPowerOffScreenDesc': 'Automatically turn off physical screen 1s after interaction, tap physical screen to wake up',
+  'launchAtStartup': 'Launch at Startup',
+  'launchAtStartupDesc': 'Automatically launch AnyDeck on system login',
 };

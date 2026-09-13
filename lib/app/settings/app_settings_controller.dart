@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings.dart';
+import 'desktop_autostart_service.dart';
 import '../window/desktop_window_title_service.dart';
 import '../window/desktop_window_manager_service.dart';
 import '../window/sub_window_method_dispatcher.dart';
@@ -36,6 +37,7 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _autoPowerOffScreenKey = 'settings.autoPowerOffScreen';
   static const _deviceConnectNotificationKey = 'settings.deviceConnectNotification';
   static const _notificationBodyPreviewKey = 'settings.notificationBodyPreview';
+  static const _launchAtStartupKey = 'settings.launchAtStartup';
   static const _mainSettingsChannel = WindowMethodChannel(
     'any_deck/settings_main',
     mode: ChannelMode.unidirectional,
@@ -101,6 +103,9 @@ class AppSettingsController extends Notifier<AppSettings> {
     } else if (call.method == 'update_notification_body_preview') {
       final value = call.arguments as bool;
       await setNotificationBodyPreview(value, broadcast: false);
+    } else if (call.method == 'update_launch_at_startup') {
+      final value = call.arguments as bool;
+      await setLaunchAtStartup(value, broadcast: false);
     }
     return null;
   }
@@ -294,6 +299,25 @@ class AppSettingsController extends Notifier<AppSettings> {
     }
   }
 
+  /// 更新开机自启状态，并持久化和广播。
+  Future<void> setLaunchAtStartup(bool value, {bool broadcast = true}) async {
+    state = state.copyWith(launchAtStartup: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_launchAtStartupKey, value);
+
+    if (Platform.isMacOS) {
+      await DesktopAutoStartService.setEnabled(value);
+    }
+
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_launch_at_startup', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast launch at startup change: $e');
+      }
+    }
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -320,6 +344,13 @@ class AppSettingsController extends Notifier<AppSettings> {
         preferences.getBool(_deviceConnectNotificationKey) ?? true;
     final notificationBodyPreview =
         preferences.getBool(_notificationBodyPreviewKey) ?? true;
+    bool launchAtStartup =
+        preferences.getBool(_launchAtStartupKey) ?? false;
+    if (Platform.isMacOS) {
+      try {
+        launchAtStartup = await DesktopAutoStartService.isEnabled();
+      } catch (_) {}
+    }
     state = AppSettings(
       language: language,
       themeMode: themeMode,
@@ -334,6 +365,7 @@ class AppSettingsController extends Notifier<AppSettings> {
       autoPowerOffScreen: autoPowerOffScreen,
       deviceConnectNotification: deviceConnectNotification,
       notificationBodyPreview: notificationBodyPreview,
+      launchAtStartup: launchAtStartup,
     );
 
     if (ref.read(windowIdProvider).isEmpty) {
