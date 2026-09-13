@@ -48,22 +48,6 @@ class _MessagesTabState extends ConsumerState<MessagesTab> {
     if (!mounted || _isLoadingStatus) return;
     final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
     if (!isOnline) {
-      if (_installationId.isEmpty) {
-        final registry = ref.read(deviceRegistryProvider);
-        final reg = registry.firstWhere(
-          (d) => d.id == widget.device.id,
-          orElse: () => RegisteredDevice(
-            id: widget.device.id,
-            status: widget.device.status,
-            isOnline: isOnline,
-          ),
-        );
-        setState(() {
-          _installationId =
-              (reg.serial?.isNotEmpty == true) ? reg.serial! : widget.device.id;
-          _androidUserId = 0;
-        });
-      }
       return;
     }
 
@@ -72,6 +56,30 @@ class _MessagesTabState extends ConsumerState<MessagesTab> {
       final client = ref.read(notificationForwardingClientProvider);
       final user = await client.getCurrentUser(widget.device.id);
       final status = await client.getStatus(widget.device.id, user);
+      final registry = ref.read(deviceRegistryProvider);
+      final reg = registry.firstWhere(
+        (d) =>
+            d.id == widget.device.id ||
+            d.serial == widget.device.id ||
+            d.connections.contains(widget.device.id),
+        orElse: () => RegisteredDevice(
+          id: widget.device.id,
+          status: widget.device.status,
+          isOnline: isOnline,
+        ),
+      );
+      final serial = (reg.serial?.isNotEmpty == true)
+          ? reg.serial!
+          : widget.device.id;
+      if (status.installationId.isNotEmpty) {
+        final database = await ref.read(notificationDatabaseProvider.future);
+        await database.linkSource(
+          [serial, widget.device.id, ...reg.connections],
+          status.installationId,
+          status.androidUserId,
+        );
+        ref.invalidate(notificationSourceProvider(serial));
+      }
       if (mounted) {
         setState(() {
           _status = status;
@@ -80,29 +88,13 @@ class _MessagesTabState extends ConsumerState<MessagesTab> {
         });
       }
     } catch (_) {
-      // 容错处理：使用物理标识作为 installationId
-      if (mounted && _installationId.isEmpty) {
-        final registry = ref.read(deviceRegistryProvider);
-        final reg = registry.firstWhere(
-          (d) => d.id == widget.device.id,
-          orElse: () => RegisteredDevice(
-            id: widget.device.id,
-            status: widget.device.status,
-            isOnline: isOnline,
-          ),
-        );
-        setState(() {
-          _installationId =
-              (reg.serial?.isNotEmpty == true) ? reg.serial! : widget.device.id;
-          _androidUserId = 0;
-        });
-      }
+      // 状态轮询失败时保留最近一次已知来源，离线历史由数据库映射恢复。
     } finally {
       _isLoadingStatus = false;
     }
   }
 
-  Future<void> _handleClearHistory() async {
+  Future<void> _handleClearHistory(NotificationSource source) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -124,14 +116,16 @@ class _MessagesTabState extends ConsumerState<MessagesTab> {
 
     if (confirmed == true && mounted) {
       final db = await ref.read(notificationDatabaseProvider.future);
-      await db.clearMessages(_installationId, _androidUserId);
+      await db.clearMessages(source.installationId, source.androidUserId);
       final bridge = ref.read(macNotificationBridgeProvider);
-      await bridge.removeAllNotifications();
+      await bridge.removeNotificationsWithPrefix(
+        'notif_${source.installationId}_${source.androidUserId}_',
+      );
 
       ref.invalidate(
         deviceMessagesProvider((
-          installationId: _installationId,
-          userId: _androidUserId,
+          installationId: source.installationId,
+          userId: source.androidUserId,
         )),
       );
     }
@@ -149,18 +143,25 @@ class _MessagesTabState extends ConsumerState<MessagesTab> {
         isOnline: isOnline,
       ),
     );
-    final serial =
-        (reg.serial?.isNotEmpty == true) ? reg.serial! : widget.device.id;
+    final serial = (reg.serial?.isNotEmpty == true)
+        ? reg.serial!
+        : widget.device.id;
+    final storedSource = ref.watch(notificationSourceProvider(serial)).value;
+    final source = _installationId.isNotEmpty
+        ? NotificationSource(
+            installationId: _installationId,
+            androidUserId: _androidUserId,
+          )
+        : storedSource;
 
-    final effectiveInstallationId =
-        _installationId.isNotEmpty ? _installationId : serial;
-
-    final messagesAsync = ref.watch(
-      deviceMessagesProvider((
-        installationId: effectiveInstallationId,
-        userId: _androidUserId,
-      )),
-    );
+    final messagesAsync = source == null
+        ? const AsyncValue<List<NotificationMessage>>.data([])
+        : ref.watch(
+            deviceMessagesProvider((
+              installationId: source.installationId,
+              userId: source.androidUserId,
+            )),
+          );
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -170,7 +171,9 @@ class _MessagesTabState extends ConsumerState<MessagesTab> {
             device: widget.device,
             serial: serial,
             status: _status,
-            onClearHistory: _handleClearHistory,
+            onClearHistory: source == null
+                ? () {}
+                : () => _handleClearHistory(source),
             onRefreshStatus: _fetchStatus,
           ),
           Expanded(

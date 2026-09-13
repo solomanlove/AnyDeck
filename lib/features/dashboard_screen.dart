@@ -222,30 +222,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   void _handleNotificationClick(Map<String, dynamic> payload) {
     final type = payload['type'] as String?;
     final deviceId = payload['deviceId'] as String?;
-    final targetTab = payload['targetTab'] as int? ??
-        (type == 'phone_message' ? 15 : 0);
+    final deviceSerial = payload['deviceSerial'] as String?;
+    final rawTargetTab = payload['targetTab'];
+    final targetTab = rawTargetTab is num
+        ? rawTargetTab.toInt()
+        : rawTargetTab == 'messages' || type == 'phone_message'
+        ? 15
+        : 0;
+    final messageId = (payload['messageId'] as num?)?.toInt();
     final notificationKey = payload['notificationKey'] as String?;
 
     if (deviceId != null && deviceId.isNotEmpty) {
       final registry = ref.read(deviceRegistryProvider);
-      final matched = registry.firstWhere(
-        (d) => d.id == deviceId || d.serial == deviceId,
-        orElse: () => RegisteredDevice(
-          id: deviceId,
-          status: 'device',
-          model: deviceId,
-          product: '',
-          transportId: '',
-          isOnline: true,
-          serial: deviceId,
-        ),
-      );
+      RegisteredDevice? matched;
+      for (final device in registry) {
+        if (device.id == deviceId ||
+            device.serial == deviceId ||
+            (deviceSerial != null && device.serial == deviceSerial) ||
+            device.connections.contains(deviceId)) {
+          matched = device;
+          break;
+        }
+      }
+      if (matched == null) {
+        ref.read(selectedDeviceProvider.notifier).clear();
+        ref.read(selectedToolTabProvider.notifier).select(-1);
+        ref.read(targetMessageIdProvider.notifier).state = null;
+        ref.read(highlightedNotificationKeyProvider.notifier).state = null;
+        if (mounted) {
+          _showSnack(
+            context,
+            context.l10n.t('deviceDeletedOrNotFound'),
+            isError: true,
+          );
+        }
+        return;
+      }
       ref.read(selectedDeviceProvider.notifier).select(matched.toAdbDevice);
       ref.read(selectedToolTabProvider.notifier).select(targetTab);
-      if (notificationKey != null && notificationKey.isNotEmpty) {
-        ref.read(highlightedNotificationKeyProvider.notifier).state =
-            notificationKey;
-      }
+      ref.read(targetMessageIdProvider.notifier).state = messageId;
+      ref.read(highlightedNotificationKeyProvider.notifier).state =
+          notificationKey?.isNotEmpty == true ? notificationKey : null;
     }
   }
 

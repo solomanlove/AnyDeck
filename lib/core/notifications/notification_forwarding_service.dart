@@ -13,14 +13,14 @@ import 'notification_models.dart';
 class NotificationForwardingService {
   NotificationForwardingService({
     required this.client,
-    required this.database,
+    required this.databaseFuture,
     required this.bridge,
     required this.settingsGetter,
     required this.appNameResolver,
   });
 
   final NotificationForwardingClient client;
-  final NotificationDatabase database;
+  final Future<NotificationDatabase> databaseFuture;
   final MacNotificationBridge bridge;
   final AppSettings Function() settingsGetter;
   final String? Function(String deviceId, String packageName) appNameResolver;
@@ -31,8 +31,14 @@ class NotificationForwardingService {
 
   final Map<String, _DeviceForwardingSession> _sessions = {};
   final _stateChangeController = StreamController<String>.broadcast();
+  final _messageChangeController =
+      StreamController<NotificationStoreChange>.broadcast();
+  bool _isDisposed = false;
 
   Stream<String> get stateChanges => _stateChangeController.stream;
+
+  Stream<NotificationStoreChange> get messageChanges =>
+      _messageChangeController.stream;
 
   List<String> get activeSessionDeviceIds => _sessions.keys.toList();
 
@@ -46,6 +52,10 @@ class NotificationForwardingService {
 
   bool isReconnecting(String deviceId) {
     return _sessions[deviceId]?.isReconnecting ?? false;
+  }
+
+  bool hasQueueGap(String deviceId) {
+    return _sessions[deviceId]?.hasQueueGap ?? false;
   }
 
   /// 检查某物理设备是否已开启消息转发开关（保存在本地）。
@@ -63,6 +73,10 @@ class NotificationForwardingService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications.forwarding_enabled.$serial', enabled);
     if (enabled) {
+      final authorization = await bridge.getAuthorizationStatus();
+      if (authorization == 'notDetermined') {
+        await bridge.requestAuthorization();
+      }
       startForwarding(device, serial);
     } else {
       stopForwarding(device.id);
@@ -97,6 +111,7 @@ class NotificationForwardingService {
 
   /// 启动某台设备的转发会话。
   void startForwarding(AdbDevice device, String serial) {
+    if (_isDisposed) return;
     if (_sessions.containsKey(device.id)) {
       _sessions[device.id]?.stop();
     }
@@ -113,27 +128,48 @@ class NotificationForwardingService {
   void stopForwarding(String deviceId) {
     final session = _sessions.remove(deviceId);
     session?.stop();
-    _stateChangeController.add(deviceId);
+    _emitStateChange(deviceId);
   }
 
   /// 释放所有资源。
   void dispose() {
+    _isDisposed = true;
     for (final session in _sessions.values) {
       session.stop();
     }
     _sessions.clear();
     _stateChangeController.close();
+    _messageChangeController.close();
   }
 
   Future<void> _acquirePollSlot() async {
-    while (_activePolls >= _maxConcurrentPolls) {
+    while (!_isDisposed && _activePolls >= _maxConcurrentPolls) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
+    if (_isDisposed) return;
     _activePolls++;
   }
 
   void _releasePollSlot() {
     if (_activePolls > 0) _activePolls--;
+  }
+
+  void _emitStateChange(String deviceId) {
+    if (!_isDisposed && !_stateChangeController.isClosed) {
+      _stateChangeController.add(deviceId);
+    }
+  }
+
+  void _emitMessageChange(String deviceId, String installationId, int userId) {
+    if (!_isDisposed && !_messageChangeController.isClosed) {
+      _messageChangeController.add(
+        NotificationStoreChange(
+          installationId: installationId,
+          androidUserId: userId,
+          deviceId: deviceId,
+        ),
+      );
+    }
   }
 }
 
@@ -152,6 +188,7 @@ class _DeviceForwardingSession {
   bool _isDisposed = false;
   bool _isPolling = false;
   bool isReconnecting = false;
+  bool hasQueueGap = false;
   String? lastError;
   String? _sessionId;
   int _currentUser = 0;
@@ -180,7 +217,7 @@ class _DeviceForwardingSession {
 
     try {
       await service._acquirePollSlot();
-      if (_isDisposed) return;
+      if (_isDisposed || service._isDisposed) return;
 
       // 1. 握手与会话建立
       if (_sessionId == null) {
@@ -188,20 +225,23 @@ class _DeviceForwardingSession {
         final status = await service.client.getStatus(device.id, _currentUser);
         if (!status.isReady) {
           lastError = status.rawStatus;
-          service._stateChangeController.add(device.id);
+          service._emitStateChange(device.id);
           _scheduleNext(const Duration(seconds: 4));
           return;
         }
         _installationId = status.installationId;
-        _sessionId = await service.client.startSession(
-          device.id,
+        final database = await service.databaseFuture;
+        await database.linkSource(
+          [serial, device.id],
+          _installationId,
           _currentUser,
         );
+        _sessionId = await service.client.startSession(device.id, _currentUser);
         _cursor = 0;
         isReconnecting = false;
         lastError = null;
         _backoffSeconds = 2;
-        service._stateChangeController.add(device.id);
+        service._emitStateChange(device.id);
       }
 
       // 2. 轮询增量事件
@@ -216,30 +256,34 @@ class _DeviceForwardingSession {
         // 会话失效，标记重新连接并重新初始化
         _sessionId = null;
         isReconnecting = true;
-        service._stateChangeController.add(device.id);
+        service._emitStateChange(device.id);
         _scheduleNext(const Duration(seconds: 1));
         return;
       } else if (status != 'ok') {
         throw Exception('Poll status error: $status');
       }
 
-      _cursor = (result['nextCursor'] as num?)?.toInt() ?? _cursor;
+      final nextCursor = (result['nextCursor'] as num?)?.toInt() ?? _cursor;
+      if (result['gap'] == true) {
+        hasQueueGap = true;
+        service._emitStateChange(device.id);
+      }
       final rawEvents = result['events'] as List<dynamic>? ?? [];
       final blockedApps = await service.getBlockedApps(serial);
+      final database = await service.databaseFuture;
 
       for (final raw in rawEvents) {
         if (raw is! Map<String, dynamic>) continue;
         final event = NotificationEvent.fromJson(raw);
 
         if (event.event == 'removed') {
-          await service.database.markAsRemoved(
+          await database.markAsRemoved(
             _installationId,
             _currentUser,
             event.key,
           );
-          await service.bridge.removeNotification(
-            'notif_${device.id}_${event.key}',
-          );
+          await service.bridge.removeNotification(_notificationId(event.key));
+          service._emitMessageChange(device.id, _installationId, _currentUser);
         } else if (event.event == 'posted') {
           if (blockedApps.contains(event.packageName)) {
             // 被屏蔽的应用跳过入库与通知
@@ -262,7 +306,7 @@ class _DeviceForwardingSession {
             receivedTime: DateTime.now(),
           );
 
-          final saved = await service.database.insertOrUpdate(msg);
+          final saved = await database.insertOrUpdate(msg);
 
           // 发送 macOS 本地通知
           final settings = service.settingsGetter();
@@ -273,17 +317,23 @@ class _DeviceForwardingSession {
           final notifBody = previewBody ? event.content : '';
 
           await service.bridge.showNotification(
-            id: 'notif_${device.id}_${event.key}',
+            id: _notificationId(event.key),
             title: notifTitle,
             body: notifBody,
             payload: {
+              'type': 'phone_message',
               'deviceId': device.id,
-              'targetTab': 'messages',
+              'deviceSerial': serial,
+              'targetTab': 15,
               'messageId': saved.id,
+              'notificationKey': event.key,
             },
           );
+          service._emitMessageChange(device.id, _installationId, _currentUser);
         }
       }
+
+      _cursor = nextCursor;
 
       _backoffSeconds = 2;
       lastError = null;
@@ -294,7 +344,7 @@ class _DeviceForwardingSession {
       lastError = e.toString();
       _sessionId = null;
       isReconnecting = true;
-      service._stateChangeController.add(device.id);
+      service._emitStateChange(device.id);
 
       // 退避重试：2s, 4s, 8s, max 16s
       _scheduleNext(Duration(seconds: _backoffSeconds));
@@ -310,4 +360,7 @@ class _DeviceForwardingSession {
     _timer?.cancel();
     _timer = Timer(delay, _pollTick);
   }
+
+  String _notificationId(String notificationKey) =>
+      'notif_${_installationId}_${_currentUser}_$notificationKey';
 }

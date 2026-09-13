@@ -88,6 +88,34 @@ class NotificationMessage {
   }
 }
 
+/// 已知物理设备路由与 Companion 安装实例的持久化关联。
+class NotificationSource {
+  const NotificationSource({
+    required this.installationId,
+    required this.androidUserId,
+  });
+
+  final String installationId;
+  final int androidUserId;
+}
+
+/// 通知存储变化事件，供消息列表按来源实时刷新。
+class NotificationStoreChange {
+  const NotificationStoreChange({
+    required this.installationId,
+    required this.androidUserId,
+    required this.deviceId,
+  });
+
+  final String installationId;
+  final int androidUserId;
+  final String deviceId;
+
+  bool matches(String installationId, int androidUserId) =>
+      this.installationId == installationId &&
+      this.androidUserId == androidUserId;
+}
+
 /// 手机端 Companion 通知监听状态模型。
 class NotificationSessionStatus {
   const NotificationSessionStatus({

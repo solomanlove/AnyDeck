@@ -85,6 +85,28 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
       case "removeAllNotifications":
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
         result(true)
+      case "removeNotificationsWithPrefix":
+        guard let args = call.arguments as? [String: Any],
+              let prefix = args["prefix"] as? String else {
+          result(nil)
+          return
+        }
+        let center = UNUserNotificationCenter.current()
+        center.getDeliveredNotifications { notifications in
+          let identifiers = notifications
+            .map { $0.request.identifier }
+            .filter { $0.hasPrefix(prefix) }
+          center.removeDeliveredNotifications(withIdentifiers: identifiers)
+          center.getPendingNotificationRequests { requests in
+            let pendingIdentifiers = requests
+              .map { $0.identifier }
+              .filter { $0.hasPrefix(prefix) }
+            center.removePendingNotificationRequests(withIdentifiers: pendingIdentifiers)
+            DispatchQueue.main.async {
+              result(true)
+            }
+          }
+        }
       case "openNotificationSettings":
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
           NSWorkspace.shared.open(url)

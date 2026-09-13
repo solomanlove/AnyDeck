@@ -99,6 +99,20 @@ class MacNotificationBridge {
     }
   }
 
+  /// 仅移除标识符使用指定前缀的已交付及待发送通知。
+  Future<void> removeNotificationsWithPrefix(String prefix) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) return;
+    try {
+      await _channel.invokeMethod('removeNotificationsWithPrefix', {
+        'prefix': prefix,
+      });
+    } catch (e) {
+      debugPrint(
+        '[MacNotificationBridge] removeNotificationsWithPrefix error: $e',
+      );
+    }
+  }
+
   /// 打开 macOS 系统通知设置面板。
   Future<void> openNotificationSettings() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) return;

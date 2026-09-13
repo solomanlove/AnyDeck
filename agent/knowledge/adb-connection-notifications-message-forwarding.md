@@ -25,12 +25,12 @@ flowchart LR
     subgraph Desktop[macOS Flutter Desktop]
         ADB[AdbDeviceTracker adb track-devices] --> ConnService[DeviceConnectionNotificationService]
         ConnService --> Bridge[MacNotificationBridge UNUserNotificationCenter]
-        
+
         NClient[NotificationForwardingClient] -->|adb shell content call| CP
         NClient --> NService[NotificationForwardingService]
         NService --> DB[(NotificationDatabase SQLite in Isolate)]
         NService --> Bridge
-        
+
         UI[MessagesTab Tab 15 & DashboardRail] --> Controller[MessagesNotifier Riverpod]
         Controller --> DB
     end
@@ -68,16 +68,19 @@ flowchart LR
   - `UsageProvider` 通过 UID 2000（`Process.SHELL_UID`）鉴权与设备解锁状态验证，杜绝越权访问。
 
 ### 3.4 桌面端持久化与多进程隔离 (`NotificationDatabase`)
-- 桌面端数据存储于 SQLite (`sqflite_common_ffi`)，基于专用 Worker Isolate 运行所有数据库读写，保证主 UI 线程 0 掉帧。
+- 桌面端数据通过 `sqlite3` 存入 SQLite，每次操作在 Worker Isolate 中打开并释放连接，避免阻塞主 UI Isolate。
 - **存储限制与自动清理**：
   - 电脑保留最近 7 天通知数据；
   - 单台手机上限 10,000 条通知；每次插入触发阈值检查，自动剔除超出上限或超过 7 天的历史记录。
-  - 支持按设备清空通知，清空时联动调用 `MacNotificationBridge.removeNotification` 清理对应设备的 macOS 挂起横幅。
+  - `notification_sources` 持久化 Hardware Serial、ADB route 与 Companion `installationId/androidUserId` 的映射，重启或离线后仍能查询正确历史。
+  - 支持按 Companion 来源清空通知，macOS 端按稳定 ID 前缀移除该设备的已交付与待发送通知，不影响其他设备或连接通知。
 
 ### 3.5 UI 与交互规范 (`lib/features/messages/`)
 - 左侧功能栏新增第 15 项“消息 (Messages)”，无论设备在线或离线均可进入查看。
 - 遵循 Riverpod 2.x `NotifierProvider` 架构，UI 与状态逻辑彻底分离。
 - 搜索与筛选：支持根据包名筛选、关键字模糊搜索（匹配标题、正文、应用名），点击单条通知高亮动画并自动平滑滚动定位。
+- 通知入库和移除后通过 `notificationMessageChangesProvider` 触发列表重新查询；队列返回 `gap=true` 时在消息页展示可能丢失提示。
+- 系统通知 payload 使用数字 `targetTab=15`，同时携带 `messageId`、`notificationKey` 与 Hardware Serial；点击时只选择注册表中的真实设备，设备已删除时回到未选择状态并给出提示。
 - 严格遵循代码规范：单文件行数 <= 500 行，零无意义格式变动。
 
 ---
@@ -87,7 +90,10 @@ flowchart LR
 | 验证场景 | 预期行为 | 验证机制 |
 | --- | --- | --- |
 | 设备热插拔 | 插入显示系统通知，2s 内快速拔插去重 | `DeviceConnectionNotificationService` 单测覆盖 |
+| 首次通知授权 | macOS 状态为 `notDetermined` 时先请求权限，授权成功后发送首次连接通知 | `_FakeMacNotificationBridge` 授权回归测试 |
 | Companion 权限未授予 | 消息页顶栏胶囊提示“未开启”，引导前往授权 | 状态机驱动，不产生 Crash 或异常日志 |
+| 重启或离线查看 | 使用持久化 serial/route 映射恢复 Companion 来源 | `NotificationDatabase` 来源映射单测覆盖 |
 | 7 天过期数据淘汰 | 超过 7 天的数据在下次写入时自动删除 | `NotificationDatabase` 事务级单测验证 |
 | 10,000 条上限淘汰 | 超过 10,000 条时按时间戳移除最旧记录 | 数据库插入循环单测验证 |
 | macOS 通知点击 | 唤起主窗口，聚焦并跳转到 Tab 0 (连接) 或 Tab 15 (消息) | `NotificationBridgeService.swift` 点击流转发 |
+| 消息增量与队列缺口 | 入库后发布刷新事件；`gap=true` 保留缺口状态并显示警告 | `NotificationForwardingService` 回归测试 |

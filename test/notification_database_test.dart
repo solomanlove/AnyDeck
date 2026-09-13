@@ -144,6 +144,31 @@ void main() {
     expect((await database.queryMessages('inst_b', 0)).length, equals(1));
   });
 
+  test('persists notification source aliases for offline history', () async {
+    await database.linkSource(
+      ['SERIAL_001', '192.168.1.8:5555'],
+      'installation_a',
+      10,
+    );
+
+    final serialSource = await database.resolveSource('SERIAL_001');
+    final routeSource = await database.resolveSource('192.168.1.8:5555');
+
+    expect(serialSource?.installationId, equals('installation_a'));
+    expect(serialSource?.androidUserId, equals(10));
+    expect(routeSource?.installationId, equals('installation_a'));
+    expect(routeSource?.androidUserId, equals(10));
+  });
+
+  test('updates an alias when Companion is reinstalled', () async {
+    await database.linkSource(['SERIAL_002'], 'installation_old', 0);
+    await database.linkSource(['SERIAL_002'], 'installation_new', 11);
+
+    final source = await database.resolveSource('SERIAL_002');
+    expect(source?.installationId, equals('installation_new'));
+    expect(source?.androidUserId, equals(11));
+  });
+
   test('prunes messages older than 7 days', () async {
     final now = DateTime.now();
     final eightDaysAgo = now.subtract(const Duration(days: 8));

@@ -83,6 +83,16 @@ class DeviceConnectionNotificationService {
             : (device.serial.isNotEmpty ? device.serial : device.id);
         final body = bodyTextResolver();
 
+        var authorization = await bridge.getAuthorizationStatus();
+        if (authorization == 'notDetermined') {
+          final granted = await bridge.requestAuthorization();
+          authorization = granted ? 'authorized' : 'denied';
+        }
+        if (authorization != 'authorized' && authorization != 'provisional') {
+          _notifiedSerials.add(serial);
+          return;
+        }
+
         await bridge.showNotification(
           id: 'conn_$serial',
           title: title,
@@ -90,6 +100,7 @@ class DeviceConnectionNotificationService {
           payload: {
             'type': 'device_connected',
             'deviceId': device.id,
+            'deviceSerial': serial,
             'targetTab': 0,
           },
         );

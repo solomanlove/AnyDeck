@@ -69,6 +69,13 @@ final forwardingEnabledProvider =
       return service.isForwardingEnabled(serial);
     });
 
+/// 根据物理 serial 或历史 route 恢复最近一次 Companion 安装实例。
+final notificationSourceProvider = FutureProvider.autoDispose
+    .family<NotificationSource?, String>((ref, alias) async {
+      final db = await ref.watch(notificationDatabaseProvider.future);
+      return db.resolveSource(alias);
+    });
+
 /// 消息历史记录列表 Provider。
 final deviceMessagesProvider = FutureProvider.autoDispose
     .family<List<NotificationMessage>, ({String installationId, int userId})>((
@@ -76,6 +83,8 @@ final deviceMessagesProvider = FutureProvider.autoDispose
       params,
     ) async {
       final db = await ref.watch(notificationDatabaseProvider.future);
+      // 任意消息入库/移除都会推动 AsyncValue 更新，从而重新查询当前来源。
+      ref.watch(notificationMessageChangesProvider);
       final query = ref.watch(messagesSearchQueryProvider);
       final packageFilter = ref.watch(messagesPackageFilterProvider);
 

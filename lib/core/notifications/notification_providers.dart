@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/l10n/app_localizations.dart';
 import '../../app/settings/app_settings_controller.dart';
 import '../providers/app_providers.dart';
 import 'device_connection_notification_service.dart';
@@ -7,6 +8,7 @@ import 'mac_notification_bridge.dart';
 import 'notification_database.dart';
 import 'notification_forwarding_client.dart';
 import 'notification_forwarding_service.dart';
+import 'notification_models.dart';
 
 /// 全局 macOS 本地通知桥接单例 Provider。
 final macNotificationBridgeProvider = Provider<MacNotificationBridge>((ref) {
@@ -36,13 +38,12 @@ final notificationForwardingServiceProvider =
       final client = ref.watch(notificationForwardingClientProvider);
       final bridge = ref.watch(macNotificationBridgeProvider);
 
-      // 同步获取数据库，若尚未就绪则返回轻量内存数据库路径兜底
-      final dbAsync = ref.watch(notificationDatabaseProvider);
-      final database = dbAsync.value ?? const NotificationDatabase('');
+      // 服务始终等待同一个真实数据库 Future，避免初始化期间写入临时库或重建会话。
+      final databaseFuture = ref.read(notificationDatabaseProvider.future);
 
       final service = NotificationForwardingService(
         client: client,
-        database: database,
+        databaseFuture: databaseFuture,
         bridge: bridge,
         settingsGetter: () => ref.read(appSettingsProvider),
         appNameResolver: (deviceId, packageName) {
@@ -79,10 +80,21 @@ final notificationForwardingServiceProvider =
             service.stopForwarding(activeId);
           }
         }
-      });
+      }, fireImmediately: true);
 
       ref.onDispose(service.dispose);
       return service;
+    });
+
+/// 转发会话状态变化流，供当前消息页展示重连与队列缺口状态。
+final notificationForwardingStateChangesProvider = StreamProvider<String>((ref) {
+  return ref.watch(notificationForwardingServiceProvider).stateChanges;
+});
+
+/// 消息入库或移除事件流，消息列表按 Companion 来源选择性刷新。
+final notificationMessageChangesProvider =
+    StreamProvider<NotificationStoreChange>((ref) {
+      return ref.watch(notificationForwardingServiceProvider).messageChanges;
     });
 
 /// 设备连接状态与桌面通知监听服务 Provider。
@@ -92,7 +104,10 @@ final deviceConnectionNotificationServiceProvider =
       final service = DeviceConnectionNotificationService(
         bridge: bridge,
         settingsGetter: () => ref.read(appSettingsProvider),
-        bodyTextResolver: () => '设备已连接',
+        bodyTextResolver: () {
+          final locale = ref.read(appSettingsProvider).language.locale;
+          return AppLocalizations(locale).t('deviceConnected');
+        },
       );
 
       // 订阅注册表设备列表变化
@@ -112,7 +127,7 @@ final deviceConnectionNotificationServiceProvider =
           );
         }).toList();
         service.onDevicesUpdated(snapshots);
-      });
+      }, fireImmediately: true);
 
       ref.onDispose(service.dispose);
       return service;

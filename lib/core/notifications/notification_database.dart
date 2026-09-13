@@ -38,6 +38,12 @@ class NotificationDatabase {
           received_time INTEGER NOT NULL,
           is_removed INTEGER NOT NULL DEFAULT 0
         )''');
+        db.execute('''CREATE TABLE IF NOT EXISTS notification_sources (
+          alias TEXT PRIMARY KEY,
+          installation TEXT NOT NULL,
+          user_id INTEGER NOT NULL,
+          updated_time INTEGER NOT NULL
+        )''');
         db.execute(
           '''CREATE INDEX IF NOT EXISTS idx_notif_lookup ON notifications(installation, user_id, notification_key)''',
         );
@@ -175,6 +181,43 @@ class NotificationDatabase {
     db.execute(
       'DELETE FROM notifications WHERE installation=? AND user_id=?',
       [installationId, userId],
+    );
+  });
+
+  /// 保存 serial、USB/Wi-Fi route 到 Companion 安装实例的关联，供离线查询恢复来源。
+  Future<void> linkSource(
+    Iterable<String> aliases,
+    String installationId,
+    int userId,
+  ) => _run((db) {
+    final updatedTime = DateTime.now().millisecondsSinceEpoch;
+    final statement = db.prepare(
+      '''INSERT INTO notification_sources (alias, installation, user_id, updated_time)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(alias) DO UPDATE SET installation=excluded.installation,
+               user_id=excluded.user_id, updated_time=excluded.updated_time''',
+    );
+    try {
+      for (final alias in aliases.toSet()) {
+        if (alias.isEmpty) continue;
+        statement.execute([alias, installationId, userId, updatedTime]);
+      }
+    } finally {
+      statement.dispose();
+    }
+  });
+
+  /// 根据持久化的物理 serial 或历史 route 查找最后一次 Companion 来源。
+  Future<NotificationSource?> resolveSource(String alias) => _run((db) {
+    final rows = db.select(
+      '''SELECT installation, user_id FROM notification_sources
+         WHERE alias = ? ORDER BY updated_time DESC LIMIT 1''',
+      [alias],
+    );
+    if (rows.isEmpty) return null;
+    return NotificationSource(
+      installationId: rows.first['installation'] as String,
+      androidUserId: rows.first['user_id'] as int,
     );
   });
 

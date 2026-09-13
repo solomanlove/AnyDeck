@@ -35,6 +35,8 @@ class MessagesHeaderBar extends ConsumerWidget {
         ref.watch(forwardingEnabledProvider(serial)).value ?? false;
     final forwardingService =
         ref.read(notificationForwardingServiceProvider);
+    ref.watch(notificationForwardingStateChangesProvider);
+    final hasQueueGap = forwardingService.hasQueueGap(device.id);
 
     final isOnline = ref.watch(deviceOnlineProvider(device.id));
     final packages = ref.watch(packagesProvider(device.id)).value ?? [];
@@ -110,6 +112,25 @@ class MessagesHeaderBar extends ConsumerWidget {
               ),
             ],
           ),
+          if (hasQueueGap) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  CupertinoIcons.exclamationmark_triangle_fill,
+                  size: 14,
+                  color: Colors.orange,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    context.l10n.t('queueGapWarning'),
+                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 10),
           // 第二行：搜索框与应用过滤下拉列表，用 IntrinsicHeight 保证等高对齐
           IntrinsicHeight(
