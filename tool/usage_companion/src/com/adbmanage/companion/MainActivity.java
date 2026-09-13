@@ -22,6 +22,8 @@ public final class MainActivity extends Activity {
     private TextView status;
     private Button preview;
     private LocationControls locationControls;
+    private CheckBox notifSharing;
+    private TextView notifStatus;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -76,6 +78,37 @@ public final class MainActivity extends Activity {
         status.setPadding(0, pad, 0, 0);
         column.addView(status);
         locationControls = new LocationControls(this, column);
+
+        TextView notifTitle = new TextView(this);
+        notifTitle.setText(R.string.notification_title);
+        notifTitle.setTextSize(20);
+        notifTitle.setPadding(0, pad, 0, pad / 2);
+        column.addView(notifTitle);
+
+        TextView notifDesc = new TextView(this);
+        notifDesc.setText(R.string.notification_description);
+        notifDesc.setPadding(0, 0, 0, pad / 2);
+        column.addView(notifDesc);
+
+        notifSharing = new CheckBox(this);
+        notifSharing.setText(R.string.notification_share);
+        notifSharing.setChecked(NotificationForwardingService.isShared(this));
+        notifSharing.setOnCheckedChangeListener((button, checked) -> {
+            repository.preferences().edit().putBoolean("notificationSharing", checked).apply();
+            updateNotificationStatus();
+        });
+        column.addView(notifSharing);
+
+        Button notifPermission = new Button(this);
+        notifPermission.setText(R.string.notification_permission);
+        notifPermission.setOnClickListener(view ->
+                startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
+        column.addView(notifPermission);
+
+        notifStatus = new TextView(this);
+        notifStatus.setPadding(0, pad / 2, 0, 0);
+        column.addView(notifStatus);
+
         scroll.addView(column);
         setContentView(scroll);
     }
@@ -83,6 +116,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         updateStatus();
+        updateNotificationStatus();
         UsageArchiveJob.schedule(this);
         if (locationControls != null) locationControls.refresh();
     }
@@ -95,6 +129,12 @@ public final class MainActivity extends Activity {
     private void updateStatus() {
         if (status == null) return;
         status.setText(statusResource(repository.status()));
+    }
+
+    private void updateNotificationStatus() {
+        if (notifStatus == null) return;
+        boolean granted = NotificationForwardingService.isPermissionGranted(this);
+        notifStatus.setText(granted ? R.string.notification_ready : R.string.notification_permission_required);
     }
 
     private int statusResource(String code) {

@@ -30,4 +30,10 @@
     <string name="location_share_required">请先开启位置记录与共享开关。</string>
     <string name="location_unavailable">定位服务不可用，请检查手机定位开关和信号。</string>
     <string name="location_failed">定位或保存失败，请停止后重试。</string>
+    <string name="notification_title">通知共享</string>
+    <string name="notification_description">允许将手机收到的普通通知通过 ADB 实时转发至已授权电脑。仅在连接活跃时转发新消息，不写手机历史库。</string>
+    <string name="notification_share">允许通过 ADB 共享手机通知</string>
+    <string name="notification_permission">打开通知使用权设置</string>
+    <string name="notification_ready">通知使用权：已开启。</string>
+    <string name="notification_permission_required">请在系统设置中允许“AnyDeck 手机记录”访问通知使用权。</string>
 </resources>

@@ -210,9 +210,15 @@ class _ToolContentCardState extends State<_ToolContentCard> {
   @override
   void initState() {
     super.initState();
-    // 确保初始索引在有效范围内 (0-11)
-    _currentToolIndex =
-        (widget.tabIndex >= 0 && widget.tabIndex < 12) ? widget.tabIndex : 0;
+    // 确保初始索引在有效范围内 (0-15 且排除 12, 13, 14 全局 Tab)
+    final initialTab = widget.tabIndex;
+    _currentToolIndex = (initialTab >= 0 &&
+            initialTab < 16 &&
+            initialTab != 12 &&
+            initialTab != 13 &&
+            initialTab != 14)
+        ? initialTab
+        : 0;
     _initializedTabs.add(_currentToolIndex);
   }
 
@@ -223,8 +229,12 @@ class _ToolContentCardState extends State<_ToolContentCard> {
     if (oldWidget.device.id != widget.device.id) {
       _initializedTabs.clear();
     }
-    // 当 widget.tabIndex 为 12 (即设置 Tab) 或 -1 (设备管理) 时，忽略更新，保持当前展示的工具 Tab 状态不变，规避 IndexedStack 越界崩溃
-    if (widget.tabIndex >= 0 && widget.tabIndex < 12) {
+    // 当 widget.tabIndex 为 12-14 (全局Tab) 或 -1 (设备管理) 时，忽略更新，保持当前展示的工具 Tab 状态不变
+    if (widget.tabIndex >= 0 &&
+        widget.tabIndex < 16 &&
+        widget.tabIndex != 12 &&
+        widget.tabIndex != 13 &&
+        widget.tabIndex != 14) {
       _currentToolIndex = widget.tabIndex;
       _initializedTabs.add(_currentToolIndex);
     }
@@ -232,7 +242,7 @@ class _ToolContentCardState extends State<_ToolContentCard> {
 
   @override
   Widget build(BuildContext context) {
-    final children = List.generate(12, (index) {
+    final children = List.generate(16, (index) {
       if (!_initializedTabs.contains(index)) {
         return const SizedBox.shrink();
       }
@@ -290,6 +300,7 @@ class _ToolContentCardState extends State<_ToolContentCard> {
           isVisible: _currentToolIndex == 10,
         ),
         11 => NetworkTab(device: widget.device),
+        15 => MessagesTab(device: widget.device),
         _ => const SizedBox.shrink(),
       };
     });

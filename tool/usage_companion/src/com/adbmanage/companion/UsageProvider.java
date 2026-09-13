@@ -41,18 +41,64 @@ public final class UsageProvider extends ContentProvider {
     }
 
     private JSONObject handle(String method, String arg) throws Exception {
+        if (!getContext().getSystemService(android.os.UserManager.class).isUserUnlocked()) {
+            return new JSONObject().put("status", "user_locked");
+        }
+        if ("notification_status".equals(method)) {
+            boolean sharing = NotificationForwardingService.isShared(getContext());
+            boolean permission = NotificationForwardingService.isPermissionGranted(getContext());
+            String notifStatus = !sharing ? "sharing_disabled" : !permission ? "permission_required" : "ok";
+            return new JSONObject()
+                    .put("status", notifStatus)
+                    .put("sharing", sharing)
+                    .put("permission", permission)
+                    .put("installationId", CompanionStore.installationId(getContext()))
+                    .put("androidUserId", android.os.Process.myUid() / 100000);
+        }
+        if ("notification_start_session".equals(method)) {
+            if (!NotificationForwardingService.isShared(getContext())) {
+                return new JSONObject().put("status", "sharing_disabled");
+            }
+            if (!NotificationForwardingService.isPermissionGranted(getContext())) {
+                return new JSONObject().put("status", "permission_required");
+            }
+            String sessionId = NotificationForwardingService.startSession(getContext());
+            return new JSONObject()
+                    .put("status", "ok")
+                    .put("sessionId", sessionId)
+                    .put("installationId", CompanionStore.installationId(getContext()))
+                    .put("androidUserId", android.os.Process.myUid() / 100000);
+        }
+        if ("notification_poll".equals(method)) {
+            if (!NotificationForwardingService.isShared(getContext())) {
+                return new JSONObject().put("status", "sharing_disabled");
+            }
+            if (!NotificationForwardingService.isPermissionGranted(getContext())) {
+                return new JSONObject().put("status", "permission_required");
+            }
+            String[] parts = arg == null ? new String[]{"", "0"} : arg.split(":", -1);
+            if (parts.length != 2) throw new IllegalArgumentException();
+            String sessionId = parts[0];
+            long cursor = Long.parseLong(parts[1]);
+            JSONObject pollRes = NotificationForwardingService.pollEvents(getContext(), sessionId, cursor);
+            pollRes.put("installationId", CompanionStore.installationId(getContext()));
+            pollRes.put("androidUserId", android.os.Process.myUid() / 100000);
+            return pollRes;
+        }
+        if ("notification_stop_session".equals(method)) {
+            NotificationForwardingService.stopSession(getContext(), arg);
+            return new JSONObject().put("status", "ok");
+        }
         if ("snapshot".equals(method)) return repository.snapshot();
         boolean usage = "usage_history".equals(method);
         boolean location = "location_history".equals(method);
         if (!usage && !location && !"identity".equals(method)) throw new IllegalArgumentException();
-        if (!getContext().getSystemService(android.os.UserManager.class).isUserUnlocked()) {
-            return new JSONObject().put("status", "user_locked");
-        }
         String status = usage ? repository.status() : LocationRecordingService.isShared(getContext())
                 ? "ok" : "sharing_disabled";
         if ("identity".equals(method)) {
             if (!repository.preferences().getBoolean("sharing", false)
-                    && !LocationRecordingService.isShared(getContext())) {
+                    && !LocationRecordingService.isShared(getContext())
+                    && !NotificationForwardingService.isShared(getContext())) {
                 return new JSONObject().put("status", "sharing_disabled");
             }
             return new JSONObject().put("status", "ok").put("schemaVersion", 2)

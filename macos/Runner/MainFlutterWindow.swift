@@ -70,6 +70,9 @@ class MainFlutterWindow: NSWindow {
     }
 
     (NSApplication.shared.delegate as? AppDelegate)?.configureApkChannel(flutterViewController.engine.binaryMessenger)
+    if #available(macOS 10.14, *) {
+      NotificationBridgeService.shared.setup(messenger: flutterViewController.engine.binaryMessenger)
+    }
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     RustTexturePlugin.register(with: flutterViewController.registrar(forPlugin: "RustTexturePlugin"))

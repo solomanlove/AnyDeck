@@ -130,6 +130,8 @@ class AdbService {
   }
 
   /// 解析单行 adb 设备信息，并保留可选的 key:value 属性。
+  AdbDevice? parseDeviceLine(String line) => _parseDeviceLine(line);
+
   AdbDevice _parseDeviceLine(String line) {
     final match = _deviceLinePattern.firstMatch(line);
     final id = match?.group(1) ?? line.split(RegExp(r'\s+')).first;

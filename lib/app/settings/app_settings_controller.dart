@@ -34,6 +34,8 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _autoIdentifyIntervalKey = 'settings.autoIdentifyInterval';
   static const _forceHostRecordingKey = 'settings.forceHostRecording';
   static const _autoPowerOffScreenKey = 'settings.autoPowerOffScreen';
+  static const _deviceConnectNotificationKey = 'settings.deviceConnectNotification';
+  static const _notificationBodyPreviewKey = 'settings.notificationBodyPreview';
   static const _mainSettingsChannel = WindowMethodChannel(
     'any_deck/settings_main',
     mode: ChannelMode.unidirectional,
@@ -93,6 +95,12 @@ class AppSettingsController extends Notifier<AppSettings> {
       final themeName = call.arguments as String;
       final themeMode = _themeModeFromName(themeName);
       await setThemeMode(themeMode, broadcast: false);
+    } else if (call.method == 'update_device_connect_notification') {
+      final value = call.arguments as bool;
+      await setDeviceConnectNotification(value, broadcast: false);
+    } else if (call.method == 'update_notification_body_preview') {
+      final value = call.arguments as bool;
+      await setNotificationBodyPreview(value, broadcast: false);
     }
     return null;
   }
@@ -260,6 +268,32 @@ class AppSettingsController extends Notifier<AppSettings> {
     }
   }
 
+  Future<void> setDeviceConnectNotification(bool value, {bool broadcast = true}) async {
+    state = state.copyWith(deviceConnectNotification: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_deviceConnectNotificationKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_device_connect_notification', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast device connect notification change: $e');
+      }
+    }
+  }
+
+  Future<void> setNotificationBodyPreview(bool value, {bool broadcast = true}) async {
+    state = state.copyWith(notificationBodyPreview: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_notificationBodyPreviewKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_notification_body_preview', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast notification body preview change: $e');
+      }
+    }
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -282,6 +316,10 @@ class AppSettingsController extends Notifier<AppSettings> {
         preferences.getBool(_forceHostRecordingKey) ?? false;
     final autoPowerOffScreen =
         preferences.getBool(_autoPowerOffScreenKey) ?? false;
+    final deviceConnectNotification =
+        preferences.getBool(_deviceConnectNotificationKey) ?? true;
+    final notificationBodyPreview =
+        preferences.getBool(_notificationBodyPreviewKey) ?? true;
     state = AppSettings(
       language: language,
       themeMode: themeMode,
@@ -294,6 +332,8 @@ class AppSettingsController extends Notifier<AppSettings> {
       autoIdentifyInterval: autoIdentifyInterval,
       forceHostRecording: forceHostRecording,
       autoPowerOffScreen: autoPowerOffScreen,
+      deviceConnectNotification: deviceConnectNotification,
+      notificationBodyPreview: notificationBodyPreview,
     );
 
     if (ref.read(windowIdProvider).isEmpty) {

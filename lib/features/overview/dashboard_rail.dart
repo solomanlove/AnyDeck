@@ -72,7 +72,7 @@ class PrimaryRail extends ConsumerWidget {
       if (selectedDevice!.isOnline) {
         return true;
       }
-      return tabIndex == 0 || tabIndex == 1 || tabIndex == 2;
+      return tabIndex == 0 || tabIndex == 1 || tabIndex == 2 || tabIndex == 15;
     }
 
     // 响应式判断：窗口宽度小于1000为窄屏，仅显示Icon；大于等于1000为宽屏，显示Icon+文字
@@ -228,6 +228,11 @@ class PrimaryRail extends ConsumerWidget {
           tabIndex: 11,
           icon: CupertinoIcons.wifi,
           label: context.l10n.t('network'),
+        ),
+        _RailToolItem(
+          tabIndex: 15,
+          icon: CupertinoIcons.chat_bubble_2,
+          label: context.l10n.t('messages'),
         ),
       ];
     }

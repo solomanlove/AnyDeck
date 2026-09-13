@@ -29,4 +29,10 @@
     <string name="location_share_required">Enable location recording and sharing first.</string>
     <string name="location_unavailable">Location unavailable. Check the location switch and signal.</string>
     <string name="location_failed">Could not record or save location. Stop and retry.</string>
+    <string name="notification_title">Notification Forwarding</string>
+    <string name="notification_description">Forward notifications to authorized computers via ADB in real time. Forwards new messages during active sessions without saving phone history.</string>
+    <string name="notification_share">Allow phone notification sharing via ADB</string>
+    <string name="notification_permission">Open notification access settings</string>
+    <string name="notification_ready">Notification access: Granted.</string>
+    <string name="notification_permission_required">Allow notification access for AnyDeck in system settings.</string>
 </resources>

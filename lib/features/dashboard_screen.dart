@@ -81,6 +81,10 @@ import 'ios/ios_processes_tab.dart';
 import 'ios/ios_syslog_tab.dart';
 import 'webview/in_app_webview_widget.dart';
 import 'overview/widget/android_version_distribution_launcher.dart';
+import 'messages/presentation/messages_tab.dart';
+import 'messages/presentation/controller/messages_controller.dart';
+import '../core/notifications/notification_providers.dart';
+import '../core/notifications/mac_notification_bridge.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';
@@ -142,6 +146,7 @@ part 'screenshot/dashboard_screenshot_recording.dart';
 part 'overview/dashboard_settings_tab.dart';
 part 'overview/dashboard_cache_settings.dart';
 part 'overview/dashboard_settings_widgets.dart';
+part 'overview/dashboard_notification_settings.dart';
 
 class _EmulatorListExpandedNotifier extends Notifier<bool> {
   @override
@@ -185,19 +190,62 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   DateTime? _lastQuitShortcutAt;
   bool _hasVisitedWanAndroid = false;
+  StreamSubscription<Map<String, dynamic>>? _notificationClickSub;
 
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
     _windowChannel.setMethodCallHandler(_handleWindowMethodCall);
+    _notificationClickSub = ref
+        .read(macNotificationBridgeProvider)
+        .clickStream
+        .listen(_handleNotificationClick);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final initialClicks =
+          await ref.read(macNotificationBridgeProvider).ready();
+      for (final click in initialClicks) {
+        _handleNotificationClick(click);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _notificationClickSub?.cancel();
     _windowChannel.setMethodCallHandler(null);
     windowManager.removeListener(this);
     super.dispose();
+  }
+
+  void _handleNotificationClick(Map<String, dynamic> payload) {
+    final type = payload['type'] as String?;
+    final deviceId = payload['deviceId'] as String?;
+    final targetTab = payload['targetTab'] as int? ??
+        (type == 'phone_message' ? 15 : 0);
+    final notificationKey = payload['notificationKey'] as String?;
+
+    if (deviceId != null && deviceId.isNotEmpty) {
+      final registry = ref.read(deviceRegistryProvider);
+      final matched = registry.firstWhere(
+        (d) => d.id == deviceId || d.serial == deviceId,
+        orElse: () => RegisteredDevice(
+          id: deviceId,
+          status: 'device',
+          model: deviceId,
+          product: '',
+          transportId: '',
+          isOnline: true,
+          serial: deviceId,
+        ),
+      );
+      ref.read(selectedDeviceProvider.notifier).select(matched.toAdbDevice);
+      ref.read(selectedToolTabProvider.notifier).select(targetTab);
+      if (notificationKey != null && notificationKey.isNotEmpty) {
+        ref.read(highlightedNotificationKeyProvider.notifier).state =
+            notificationKey;
+      }
+    }
   }
 
   @override
@@ -257,6 +305,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(deviceConnectionNotificationServiceProvider);
+    ref.watch(notificationForwardingServiceProvider);
+
     final selectedDevice = ref.watch(selectedDeviceProvider);
     final sessions = ref.watch(scrcpySessionsProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);
@@ -322,12 +373,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             ref.read(selectedToolTabProvider.notifier).select(0);
           }
         } else if (!effectiveSelectedDevice.isOnline) {
-          // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)、设置(12)、玩安卓(13)或 AI MCP(14) Tab，则自动重定向回主页 Tab
+          // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)、消息(15)、设置(12)、玩安卓(13)或 AI MCP(14) Tab，则自动重定向回主页 Tab
           final selectedTool = ref.read(selectedToolTabProvider);
           if (selectedTool != -1 &&
               selectedTool != 0 &&
               selectedTool != 1 &&
               selectedTool != 2 &&
+              selectedTool != 15 &&
               selectedTool != 12 &&
               selectedTool != 13 &&
               selectedTool != 14) {

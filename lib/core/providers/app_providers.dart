@@ -9,6 +9,7 @@ import '../../app/settings/app_settings_controller.dart';
 
 import '../utils/network_util.dart';
 import '../adb/adb_device.dart';
+import '../adb/adb_device_tracker.dart';
 import '../adb/adb_heartbeat_controller.dart';
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
@@ -242,10 +243,33 @@ final adbHeartbeatControllerProvider =
       return controller;
     });
 
-/// 自动轮询的实时 adb 设备列表（接入自适应心跳机制）。
+/// 主窗口常驻 ADB 设备监听进程 Provider（单一长驻进程管理，退出应用时释放）。
+final adbDeviceTrackerProvider = Provider<AdbDeviceTracker>((ref) {
+  final adbService = ref.watch(adbServiceProvider);
+  final iosService = ref.watch(iosDeviceServiceProvider);
+  final hdcService = ref.watch(hdcServiceProvider);
+  final isSub = ref.watch(windowIdProvider).isNotEmpty;
+
+  final tracker = AdbDeviceTracker(
+    adbService: adbService,
+    iosDeviceService: iosService,
+    hdcService: hdcService,
+    isSubWindow: isSub,
+  );
+
+  ref.onDispose(tracker.dispose);
+  return tracker;
+});
+
+/// 自动轮询/监听的实时 adb 设备列表（主窗口接入长驻 track-devices，子窗口安全回退）。
 final devicesProvider = StreamProvider.autoDispose<List<AdbDevice>>((ref) {
-  final controller = ref.watch(adbHeartbeatControllerProvider);
-  return controller.deviceStream;
+  final isSub = ref.watch(windowIdProvider).isNotEmpty;
+  if (isSub) {
+    final controller = ref.watch(adbHeartbeatControllerProvider);
+    return controller.deviceStream;
+  }
+  final tracker = ref.watch(adbDeviceTrackerProvider);
+  return tracker.deviceStream;
 });
 
 /// 单台设备的已安装应用列表。

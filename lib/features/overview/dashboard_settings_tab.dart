@@ -182,6 +182,10 @@ class _SettingsTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
 
+                // Card: 通知与消息设置 (Notification & Message Settings)
+                _buildNotificationSectionCard(context, ref, brandGreen),
+                const SizedBox(height: 24),
+
                 // Card 2: 投屏设置 (Screen Mirroring Settings)
                 _buildSectionCard(
                   context,

@@ -32,6 +32,8 @@ class AppSettings {
     this.autoIdentifyInterval = 3,
     this.forceHostRecording = false,
     this.autoPowerOffScreen = false,
+    this.deviceConnectNotification = true,
+    this.notificationBodyPreview = true,
   });
 
   final AppLanguage language;
@@ -45,6 +47,8 @@ class AppSettings {
   final int autoIdentifyInterval;
   final bool forceHostRecording;
   final bool autoPowerOffScreen;
+  final bool deviceConnectNotification;
+  final bool notificationBodyPreview;
 
   /// 创建新的不可变设置对象，未指定字段沿用当前值。
   AppSettings copyWith({
@@ -59,6 +63,8 @@ class AppSettings {
     int? autoIdentifyInterval,
     bool? forceHostRecording,
     bool? autoPowerOffScreen,
+    bool? deviceConnectNotification,
+    bool? notificationBodyPreview,
   }) {
     return AppSettings(
       language: language ?? this.language,
@@ -72,6 +78,8 @@ class AppSettings {
       autoIdentifyInterval: autoIdentifyInterval ?? this.autoIdentifyInterval,
       forceHostRecording: forceHostRecording ?? this.forceHostRecording,
       autoPowerOffScreen: autoPowerOffScreen ?? this.autoPowerOffScreen,
+      deviceConnectNotification: deviceConnectNotification ?? this.deviceConnectNotification,
+      notificationBodyPreview: notificationBodyPreview ?? this.notificationBodyPreview,
     );
   }
 }
