@@ -45,71 +45,78 @@ class _RailIdentity extends ConsumerWidget {
 
     final identity = isNarrow
         ? _buildDeviceAvatar(device, logoAsset, 50)
-        : Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                _buildDeviceAvatar(device, logoAsset, 36),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              matchedDevice.displayName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                          if (isAudioForwarded) ...[
-                            const SizedBox(width: 4),
-                            Tooltip(
-                              message: context.l10n.t('audioForwardingTooltip'),
-                              child: Container(
-                                width: 6,
-                                height: 6,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
+        : SizedBox(
+            height: 38,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  _buildDeviceAvatar(device, logoAsset, 36),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                matchedDevice.displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.2,
+                                    ),
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(
-                            isNetwork ? Icons.wifi : Icons.usb,
-                            size: 14,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            connectionLabel,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w500,
+                            if (isAudioForwarded) ...[
+                              const SizedBox(width: 4),
+                              Tooltip(
+                                message: context.l10n.t('audioForwardingTooltip'),
+                                child: Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                          ),
-                        ],
-                      ),
-                    ],
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(
+                              isNetwork ? Icons.wifi : Icons.usb,
+                              size: 14,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              connectionLabel,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.2,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
 
@@ -128,27 +135,30 @@ class _RailIdentity extends ConsumerWidget {
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: const SizedBox(
-              width: 36,
-              height: 36,
-              child: Image(image: AssetImage(AppIcons.appLogo)),
+    return SizedBox(
+      height: 38,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: const SizedBox(
+                width: 36,
+                height: 36,
+                child: Image(image: AssetImage(AppIcons.appLogo)),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              context.l10n.t('appTitle'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                context.l10n.t('appTitle'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

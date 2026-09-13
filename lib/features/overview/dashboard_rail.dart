@@ -20,7 +20,7 @@ class PrimaryRail extends ConsumerWidget {
   }) {
     final double toolSlotHeight = isNarrow ? 60.0 : 52.0;
     final double bottomButtonsSlotHeight = (isNarrow ? 60.0 : 52.0) * 3;
-    final double logoSize = isNarrow ? 50.0 : 36.0;
+    final double logoSize = isNarrow ? 50.0 : 38.0;
     final double logoToolGap = isNarrow
         ? (hasOverflow ? _compactLogoToolGap : _fullLogoToolGap)
         : 12.0;
@@ -284,6 +284,9 @@ class PrimaryRail extends ConsumerWidget {
                 isNarrow: renderNarrow,
                 hasOverflow: true,
               );
+              if (visibleToolCount >= tools.length) {
+                visibleToolCount = tools.length - 1;
+              }
             }
             final visibleTools = tools.take(visibleToolCount).toList();
             final overflowTools = tools.skip(visibleToolCount).toList();
@@ -615,6 +618,7 @@ class _RailButton extends StatelessWidget {
               iconSize: 28,
               onPressed: onPressed,
               style: IconButton.styleFrom(
+                fixedSize: const Size(48, 48),
                 foregroundColor: color,
                 backgroundColor: (selected || isHighlighted)
                     ? activeBgColor
