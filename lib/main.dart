@@ -9,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/any_deck_app.dart';
+import 'app/window/apk/apk_open_coordinator.dart';
+import 'app/window/apk/apk_details_window_app.dart';
 import 'app/window/desktop_window_manager_service.dart';
 import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
@@ -124,7 +126,13 @@ void main(List<String> args) async {
       }
     });
 
-    if (type == 'mirror') {
+    if (type == 'apk_details') {
+      await configureCurrentAdbManageSubWindow(argument);
+      runApp(ProviderScope(
+        overrides: [windowIdProvider.overrideWithValue(windowId)],
+        child: ApkDetailsWindowApp(argument: argument),
+      ));
+    } else if (type == 'mirror') {
       await configureCurrentAdbManageSubWindow(argument);
       //投屏窗口
       runApp(
@@ -173,6 +181,9 @@ void main(List<String> args) async {
   await DesktopWindowManagerService.initialize();
   final container = ProviderContainer();
   DesktopWindowManagerService.setProviderContainer(container);
+  if (Platform.isMacOS) {
+    await ApkOpenCoordinator(container).initialize();
+  }
   //主窗口
   runApp(UncontrolledProviderScope(container: container, child: const AnyDeckApp()));
 }

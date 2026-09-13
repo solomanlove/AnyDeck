@@ -69,6 +69,8 @@ class MainFlutterWindow: NSWindow {
       app.mainFlutterWindow = self
     }
 
+    (NSApplication.shared.delegate as? AppDelegate)?.configureApkChannel(flutterViewController.engine.binaryMessenger)
+
     RegisterGeneratedPlugins(registry: flutterViewController)
     RustTexturePlugin.register(with: flutterViewController.registrar(forPlugin: "RustTexturePlugin"))
 

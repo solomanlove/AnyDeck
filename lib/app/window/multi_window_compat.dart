@@ -69,6 +69,9 @@ Future<WindowController> createAdbManageWindow({
         try {
           final windowArgs = jsonDecode(window.arguments);
           if (windowArgs is Map && windowArgs['type'] == type) {
+            if (type == 'apk_details' && windowArgs['path'] != arguments['path']) {
+              continue;
+            }
             if (deviceId == null || windowArgs['deviceId'] == deviceId) {
               if (windowArgs['newDisplay'] == arguments['newDisplay'] &&
                   windowArgs['startApp'] == arguments['startApp']) {
@@ -116,11 +119,16 @@ Future<void> configureCurrentAdbManageSubWindow(
   if (arguments['type'] == 'mirror' ||
       arguments['type'] == 'emulator_manager' ||
       arguments['type'] == 'console' ||
-      arguments['type'] == 'version_distribution') {
+      arguments['type'] == 'version_distribution' ||
+      arguments['type'] == 'apk_details') {
     await windowManager.setTitleBarStyle(
       TitleBarStyle.hidden,
       windowButtonVisibility: true,
     );
+  }
+
+  if (arguments['type'] == 'apk_details') {
+    await windowManager.setMinimumSize(const Size(900, 600));
   }
 
   final frame = _decodeFrame(arguments[_windowFrameKey]);
