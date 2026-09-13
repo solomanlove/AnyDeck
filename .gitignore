@@ -69,8 +69,8 @@ app.*.map.json
 .flutter-plugins
 
 
-# 本次摄像头/麦克风/剪贴板 Rust 库由构建脚本生成
-/scrcpy_flutter/macos/Libs/libanydeck_device_bridge.dylib
+# Rust 设备底座动态库由构建脚本生成
+/macos/Libs/libanydeck_device_bridge.dylib
 
 # 临时原型目录
 /prototype/

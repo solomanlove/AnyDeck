@@ -5,7 +5,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
 import '../../core/device_info/device_display_frame.dart';
 import '../../core/providers/app_providers.dart';
@@ -121,9 +120,9 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       try {
         var changed = false;
         var hasVideoSize = false;
-        final size = await ScrcpyFlutter.getVideoSize(
-          deviceId: widget.deviceId,
-        );
+        final size = widget.deviceId.startsWith('harmony:')
+            ? ref.read(harmonyMirrorServiceProvider).getVideoSize(widget.deviceId)
+            : ref.read(embeddedScrcpyServiceProvider).getVideoSize(widget.deviceId);
         if (size != null && size['width']! > 0 && size['height']! > 0) {
           hasVideoSize = true;
           if (_videoWidth != size['width'] || _videoHeight != size['height']) {
@@ -247,6 +246,23 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     return buffer.buffer.asUint8List(0, 21);
   }
 
+  void _sendControlMessage(Uint8List message, {String? tag}) {
+    final future = widget.deviceId.startsWith('harmony:')
+        ? ref.read(harmonyMirrorServiceProvider).sendControl(
+            deviceId: widget.deviceId,
+            controlMessage: message,
+          )
+        : ref.read(embeddedScrcpyServiceProvider).sendControl(
+            deviceId: widget.deviceId,
+            controlMessage: message,
+          );
+    future.then((success) {
+      if (tag != null) {
+        debugPrint('[EmbeddedScrcpy] sendControl $tag success = $success');
+      }
+    });
+  }
+
   void _sendTouchEvent(PointerEvent event, int action, String? resolution) {
     final mapped = _mapPointerToVideo(event, resolution);
     if (mapped == null) return;
@@ -254,10 +270,6 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     final y = mapped[1];
     final realW = mapped[2];
     final realH = mapped[3];
-
-    debugPrint(
-      '[EmbeddedScrcpy] Touch: action=$action, x=$x, y=$y, realW=$realW, realH=$realH, resolution=$resolution, polledSize=${_videoWidth}x$_videoHeight',
-    );
 
     final message = _serializeTouchEvent(
       action: action,
@@ -270,12 +282,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       buttons: 0,
     );
 
-    ScrcpyFlutter.sendControl(
-      deviceId: widget.deviceId,
-      controlMessage: message,
-    ).then((success) {
-      debugPrint('[EmbeddedScrcpy] sendControl Touch success = $success');
-    });
+    _sendControlMessage(message, tag: 'Touch');
   }
 
   void _sendScrollEvent(PointerScrollEvent event, String? resolution) {
@@ -306,12 +313,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       vScroll: vScroll,
     );
 
-    ScrcpyFlutter.sendControl(
-      deviceId: widget.deviceId,
-      controlMessage: message,
-    ).then((success) {
-      debugPrint('[EmbeddedScrcpy] sendControl Scroll success = $success');
-    });
+    _sendControlMessage(message, tag: 'Scroll');
   }
 
   KeyEventResult _handleKeyEvent(KeyEvent event) {
@@ -336,14 +338,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
               clipboardData.text!.isNotEmpty) {
             final text = clipboardData.text!;
             final message = ScrcpyKeycodeHelper.serializeTextEvent(text);
-            ScrcpyFlutter.sendControl(
-              deviceId: widget.deviceId,
-              controlMessage: message,
-            ).then((success) {
-              debugPrint(
-                '[EmbeddedScrcpy] Command/Control+V Paste Success: $success',
-              );
-            });
+            _sendControlMessage(message, tag: 'Command/Control+V Paste');
           }
         });
       }
@@ -394,14 +389,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
           repeat: action == 2 ? 1 : 0,
           metaState: metaState,
         );
-        ScrcpyFlutter.sendControl(
-          deviceId: widget.deviceId,
-          controlMessage: message,
-        ).then((success) {
-          debugPrint(
-            '[EmbeddedScrcpy] Sent keycode event: key=$key, action=$action, success=$success',
-          );
-        });
+        _sendControlMessage(message, tag: 'KeyCode');
         return KeyEventResult.handled;
       }
     }
@@ -418,14 +406,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     final text = value.text;
     if (text.isNotEmpty) {
       final message = ScrcpyKeycodeHelper.serializeTextEvent(text);
-      ScrcpyFlutter.sendControl(
-        deviceId: widget.deviceId,
-        controlMessage: message,
-      ).then((success) {
-        debugPrint(
-          '[EmbeddedScrcpy] Sent text event: text="$text", success=$success',
-        );
-      });
+      _sendControlMessage(message, tag: 'Text');
       _textController.value = TextEditingValue.empty;
     }
   }
@@ -524,12 +505,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       vScroll: vScroll,
     );
 
-    ScrcpyFlutter.sendControl(
-      deviceId: widget.deviceId,
-      controlMessage: message,
-    ).then((success) {
-      debugPrint('[EmbeddedScrcpy] sendControl PanScroll success = $success');
-    });
+    _sendControlMessage(message, tag: 'PanScroll');
   }
 
   @override

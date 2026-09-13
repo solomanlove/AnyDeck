@@ -25,7 +25,7 @@ AnyDeck 是一个基于 Flutter Desktop 开发的轻量级 Android 调试与辅�
 ## ✨ 核心特性 (Features)
 
 *   **🔌 设备发现与连接**：通过 USB 或无线方式（TCP/IP、二维码配对、配对码）自动扫描并连接 Android 设备。
-*   **💻 实时屏幕投影 (Scrcpy)**：基于外部 Scrcpy 引擎或内置硬解播放器，支持高清、低延迟投屏与逆向控制。
+*   **💻 原生屏幕投影与低延迟控制**：内置纯 Rust 高性能底座，结合 Apple VideoToolbox 硬解、AudioQueue 音频直通与极低延迟触控/键盘逆向控制。
 *   **⚙️ 快捷控制中心**：支持文本快速键入、模拟物理按键（Home、Back、Power 等）、Wi-Fi 开关、显示屏旋转及开发者选项快捷切换。
 *   **📦 完备的应用管理**：拖拽即可安装 APK，支持应用列表拼音检索、一键清除缓存、冻结/解冻应用、卸载及 APK 备份导出。
 *   **🔍 布局分析 (Layout Inspector)**：支持一键获取当前界面布局 XML 树与截图预览，辅助定位界面元素。
@@ -36,12 +36,12 @@ AnyDeck 是一个基于 Flutter Desktop 开发的轻量级 Android 调试与辅�
 
 ---
 
-## 🛠️ 开发架构 (Architecture)
+## 🛠️ 核心架构 (Architecture)
 
-AnyDeck 采用了声明式的状态管理架构，将 UI 层、业务逻辑与底层 CLI 调用分离：
-*   **UI 层 (Flutter Desktop)**：采用响应式与玻璃拟态 (Glassmorphism) 的现代视觉体系，并严格分离组件状态与显示样式。
-*   **状态管理 (Riverpod)**：统一管理设备连接会话、后台长连接进程及用户全局配置。
-*   **底层交互**：通过 Dart Process 安全封装 `adb` 和 `scrcpy` 命令行调用。
+AnyDeck 采用现代化、轻量化、高内聚的分层架构：
+*   **UI 表现层 (Flutter Desktop)**：采用响应式与玻璃拟态 (Glassmorphism) 的现代视觉体系，状态由 Riverpod 统一管理。
+*   **原生渲染桥接 (Swift / Metal)**：通过 macOS 原生 Swift (`RustTexturePlugin.swift`) 实现 Metal 显存零拷贝纹理直通渲染。
+*   **核心引擎层 (纯 Rust `device_bridge`)**：彻底剥离 C++ 及庞大的 FFmpeg 依赖。原生 VideoToolbox 硬件解码、AudioQueue 音频直通播放、ADB 多路 Socket 复用、触控协议编码、摄像头预览及双向剪贴板同步均由纯 Rust 实现（零 C++）。
 *   **应用包名 (Bundle ID)**：各桌面端的唯一包名均已统一规范为 **`com.github.anydeck`**：
     *   macOS: `com.github.anydeck` (配置于 `macos/Runner/Configs/AppInfo.xcconfig`)
     *   Windows: CompanyName 为 `github` (配置于 `windows/runner/Runner.rc`)
@@ -101,5 +101,5 @@ flutter run -d windows # Windows 平台
 *   **许可证**：本项目采用 [Apache-2.0 License](LICENSE) 开源。
 *   **第三方依赖**：
     *   `assets/scrcpy/scrcpy-server.jar` 来源于开源项目 [Genymobile/scrcpy](https://github.com/Genymobile/scrcpy) 并遵循其授权协议。
-    *   视频硬解基于纯 Rust + Apple VideoToolbox 显存直通硬件解码，音频基于纯 Rust + Apple AudioQueue 播放，彻底移除 FFmpeg 动态库依赖。
+    *   投屏解码与音频流基于纯 Rust (`rust/device_bridge/`) + Apple VideoToolbox 显存直通硬件解码与 AudioQueue 播放，彻底移除 C++ 插件与 FFmpeg 动态库依赖（零 C++，轻量化安全）。
 *   **商标声明**：项目 `assets/brand/` 目录中所使用的各品牌 Logo（Google, Xiaomi, Huawei 等）均为各自公司的注册商标，本项目仅将其用于设备品牌识别和非商业性功能展示。

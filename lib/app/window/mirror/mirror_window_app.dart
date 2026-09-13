@@ -349,13 +349,10 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                         duration: const Duration(milliseconds: 160),
                         child: _isTitleHovered && !_controller.isFullScreen
                             ? MirrorDeviceInfoOverlay(
-                                key: const ValueKey('deviceInfo'),
                                 deviceId: widget.deviceId,
                                 deviceName: widget.deviceName,
                               )
-                            : const SizedBox.shrink(
-                                key: ValueKey('deviceInfoHidden'),
-                              ),
+                            : const SizedBox.shrink(),
                       ),
                     ),
                   ),

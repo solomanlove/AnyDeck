@@ -8,7 +8,7 @@
 
 - 启动投屏后，控制器会等待 scrcpy video size 可用，再调用 `MirrorWindowFrameAdapter.fitWindowToAspectRatio()` 修正外层窗口尺寸。
 - Android 主屏横竖屏切换必须复用现有 socket、decoder 和 Flutter Texture，禁止因 `dumpsys display` 与视频帧方向短暂不一致而重启 scrcpy session；Viewer 以 `getVideoSize()` 返回的最新解码帧尺寸更新画面比例与触控坐标。
-- macOS native decoder 必须使用每个 `AVFrame.width/height` 做 `sws_getCachedContext()` 转换；尺寸变化时仅由 `ScrcpyTexture` 原地重建 `CVPixelBuffer`。scrcpy 启动 metadata 中的宽高只是初始值，不能用于整个会话，否则旋转后的帧会按旧尺寸转换并迫使上层重连。
+- macOS 原生硬解由纯 Rust (`rust/device_bridge/`) 调用 Apple VideoToolbox 实现显存直通；解码帧尺寸变化时由 Rust 原生输出对应尺寸的 `CVPixelBuffer`，并通过 `RustTexturePlugin.swift` 通知 Flutter Texture 原地更新，彻底剥离 FFmpeg 与 C++。
 - scrcpy 4.0 在旋转后会在原 video socket 写入 12-byte session metadata：首个 `u32` 最高位为 session flag，随后是新 `width` 和 `height`。Rust client 必须先识别该 header 并跳过 payload 读取；如果按普通的 `PTS + packet size` 解析，会把新高度误认为 packet size、读乱字节边界并以超大 frame 错误退出。
 - 独立窗口不再额外运行 250ms 方向检测与 `dumpsys display` 轮询；`EmbeddedScrcpyViewer` 每 100ms 读取一次 native Texture 尺寸以快速更新比例。只有首帧尚未到达时才每秒读取一次 `displayFrame` 作为占位比例，避免投屏期间持续执行 ADB command。
 - video size 变化时以 `textureId + width×height` 作为 `EmbeddedScrcpyTextureSurface` 的 Key，只重建 Flutter Texture widget/layer 以强制重新 layout；native `textureId`、decoder 和 socket 保持不变，避免 macOS external Texture 在第二次方向切换时沿用上一方向的布局缓存。

@@ -9,17 +9,17 @@
 ## 自动验证
 
 ```bash
-flutter test --no-pub test/device_auxiliary_test.dart test/camera_preview_test.dart test/usage_report_dialog_test.dart test/embedded_camera_service_test.dart
-cargo test --offline --manifest-path scrcpy_flutter/rust/device_bridge/Cargo.toml
-cargo clippy --offline --manifest-path scrcpy_flutter/rust/device_bridge/Cargo.toml -- -D warnings
-bash scrcpy_flutter/script/build_device_bridge.sh
+flutter test --no-pub test/device_auxiliary_test.dart test/camera_preview_test.dart test/usage_report_dialog_test.dart test/embedded_camera_service_test.dart test/embedded_scrcpy_geometry_test.dart test/mirror_device_info_overlay_test.dart
+cargo test --manifest-path rust/device_bridge/Cargo.toml
+cargo clippy --manifest-path rust/device_bridge/Cargo.toml -- -D warnings
+bash script/build_device_bridge.sh
 ```
 
 本地生成测试帧验证实际 VideoToolbox 解码，不打开真实摄像头：
 
 ```bash
 ffmpeg -hide_banner -loglevel error -y -f lavfi -i color=red:size=64x48:rate=1 -frames:v 1 -c:v libx264 -tune zerolatency -pix_fmt yuv420p -f h264 /tmp/anydeck-test-frame.h264
-ANYDECK_H264_FIXTURE=/tmp/anydeck-test-frame.h264 cargo test --offline --manifest-path scrcpy_flutter/rust/device_bridge/Cargo.toml -- --include-ignored
+ANYDECK_H264_FIXTURE=/tmp/anydeck-test-frame.h264 cargo test --manifest-path rust/device_bridge/Cargo.toml -- --include-ignored
 ```
 
 本轮已通过：Flutter 33 项（中文/英文、明暗主题、API 29/30/31 门槛、纯麦克风、静音、迟到取消、剪贴板合并、停止清空、原使用统计和摄像头回归）；Rust 9 项（命令取消、输出限制、拆包、无音频标记、超长文本、Unicode、H.264 参数解析与真实生成帧解码）；Swift Texture 桥接类型检查。

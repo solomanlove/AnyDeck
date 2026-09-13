@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:scrcpy_flutter/scrcpy_flutter.dart';
+import '../scrcpy/rust_device_bridge.dart';
 import 'hdc_service.dart';
 import '../providers/app_providers.dart';
 
@@ -14,6 +14,7 @@ class HarmonyMirrorSession {
     required this.port,
     required this.serverProcess,
     required this.textureId,
+    required this.rustHandle,
     required this.startedAt,
   });
 
@@ -21,6 +22,7 @@ class HarmonyMirrorSession {
   final int port;
   final Process serverProcess;
   final int textureId;
+  final int rustHandle;
   final DateTime startedAt;
 }
 
@@ -30,10 +32,36 @@ class HarmonyMirrorService {
 
   final HdcService _hdcService;
   final Map<String, HarmonyMirrorSession> _sessions = {};
+  static const _textures = MethodChannel('anydeck/rust_texture');
 
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
   int? getTextureId(String deviceId) => _sessions[deviceId]?.textureId;
+  int? getRustHandle(String deviceId) => _sessions[deviceId]?.rustHandle;
   Process? getServerProcess(String deviceId) => _sessions[deviceId]?.serverProcess;
+
+  /// 获取指定已连接鸿蒙镜像的视频帧尺寸。
+  Map<String, int>? getVideoSize(String deviceId) {
+    final session = _sessions[deviceId];
+    if (session == null) return null;
+    final size = RustDeviceBridge.instance.videoSize(session.rustHandle);
+    final width = size >> 32;
+    final height = size & 0xffffffff;
+    if (width == 0 || height == 0) return null;
+    return {'width': width, 'height': height};
+  }
+
+  /// 向指定鸿蒙设备的 control socket 发送控制二进制报文。
+  Future<bool> sendControl({
+    required String deviceId,
+    required Uint8List controlMessage,
+  }) async {
+    final session = _sessions[deviceId];
+    if (session == null) return false;
+    return RustDeviceBridge.instance.sendControl(
+      session.rustHandle,
+      controlMessage,
+    );
+  }
 
   /// 从 Flutter 资源包释放鸿蒙投屏 Java 桥接 jar 包。
   Future<String> _extractSidecarJar() async {
@@ -125,26 +153,61 @@ class HarmonyMirrorService {
     }
     subscription.cancel();
 
-    // 2. 调用 Flutter 基础解码插件直接连接 Java TCP 端口进行视频渲染与按键映射
-    int textureId;
+    // 2. 调用纯 Rust + VideoToolbox 解码并注册至 Swift 原生 Texture
+    int textureId = 0;
+    int rustHandle = 0;
     try {
-      textureId = await ScrcpyFlutter.startMirroring(
-        deviceId: deviceId,
-        port: tcpPort,
-        audio: false,
+      rustHandle = RustDeviceBridge.instance.startMirror(
+        '127.0.0.1',
+        tcpPort,
+        false,
       );
+      if (rustHandle == 0) {
+        throw Exception('Failed to start Rust mirror session for HarmonyOS');
+      }
+
+      final deadline = DateTime.now().add(const Duration(seconds: 15));
+      while (RustDeviceBridge.instance.status(rustHandle) == 0) {
+        if (DateTime.now().isAfter(deadline)) {
+          throw Exception('Rust mirror session connection timed out');
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      if (RustDeviceBridge.instance.status(rustHandle) >= 2) {
+        throw Exception('Rust mirror session failed to connect');
+      }
+
+      await _textures.invokeMethod<void>('track', {'handle': rustHandle});
+      final registered = await _textures.invokeMethod<int>('register', {
+        'handle': rustHandle,
+      });
+      if (registered == null) {
+        throw Exception('Failed to register Flutter texture for handle $rustHandle');
+      }
+      textureId = registered;
 
       final session = HarmonyMirrorSession(
         deviceId: deviceId,
         port: tcpPort,
         serverProcess: serverProcess,
         textureId: textureId,
+        rustHandle: rustHandle,
         startedAt: DateTime.now(),
       );
 
       _sessions[deviceId] = session;
       return textureId;
     } catch (e) {
+      if (rustHandle != 0) {
+        try {
+          await _textures.invokeMethod<void>('untrack', {'handle': rustHandle});
+          if (textureId != 0) {
+            await _textures.invokeMethod<void>('unregister', {'textureId': textureId});
+          }
+        } catch (_) {}
+        RustDeviceBridge.instance.stop(rustHandle);
+        RustDeviceBridge.instance.release(rustHandle);
+      }
       serverProcess.kill();
       rethrow;
     }
@@ -156,6 +219,14 @@ class HarmonyMirrorService {
     if (session == null) {
       return;
     }
+
+    try {
+      await _textures.invokeMethod<void>('untrack', {'handle': session.rustHandle});
+      await _textures.invokeMethod<void>('unregister', {'textureId': session.textureId});
+    } catch (_) {}
+
+    RustDeviceBridge.instance.stop(session.rustHandle);
+    RustDeviceBridge.instance.release(session.rustHandle);
 
     session.serverProcess.kill();
     await session.serverProcess.exitCode.timeout(

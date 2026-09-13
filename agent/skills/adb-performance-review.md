@@ -6,7 +6,7 @@
 ## 核心排查与审查指标
 
 ### 1. 投屏渲染优化
-- 投屏视频流采用独立的底层 C/C++ 插件（如 `scrcpy_flutter` 自带渲染器）或采用 Texture 共享内存方式更新，严禁在 Dart 层频繁将图片转换为 Base64 或 Uint8List 重新构建 Image 组件。
+- 投屏视频流采用独立的纯 Rust 底座（`rust/device_bridge/`）与原生 Metal Texture 显存直通方式更新，严禁在 Dart 层频繁将图片转换为 Base64 或 Uint8List 重新构建 Image 组件。
 - 投屏界面应当控制重绘区域，仅对画布区域进行局部更新，避免导致顶层 Scaffold 或状态栏发生全局 rebuild。
 
 ### 2. 长列表控制台（Logcat/终端）

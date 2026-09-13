@@ -31,7 +31,7 @@ class AppSettings {
     this.autoIdentifyForegroundApp = false,
     this.autoIdentifyInterval = 3,
     this.forceHostRecording = false,
-    this.autoPowerOffScreen = true,
+    this.autoPowerOffScreen = false,
   });
 
   final AppLanguage language;

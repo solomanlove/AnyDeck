@@ -281,7 +281,7 @@ class AppSettingsController extends Notifier<AppSettings> {
     final forceHostRecording =
         preferences.getBool(_forceHostRecordingKey) ?? false;
     final autoPowerOffScreen =
-        preferences.getBool(_autoPowerOffScreenKey) ?? true;
+        preferences.getBool(_autoPowerOffScreenKey) ?? false;
     state = AppSettings(
       language: language,
       themeMode: themeMode,

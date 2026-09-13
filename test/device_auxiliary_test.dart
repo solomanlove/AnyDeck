@@ -221,7 +221,7 @@ void main() {
               home: const Scaffold(
                 body: SizedBox(
                   width: 620,
-                  height: 400,
+                  height: 500,
                   child: DeviceClipboardView(deviceId: 'phone'),
                 ),
               ),

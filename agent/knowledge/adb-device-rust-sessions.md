@@ -1,20 +1,20 @@
-# 摄像头、麦克风、剪贴板：Rust 底层与 Flutter UI
+# 屏幕投屏、摄像头、麦克风、剪贴板：纯 Rust 底座与 Flutter UI
 
-## 业务目标及入口
+## 业务目标及全架构大一统（路线 A）
 
-应用列表 → 使用时长弹窗：
+本项目已彻底清除所有 C++ / Objective-C++ 代码并删除 `scrcpy_flutter` 插件，全桌面端统一为 **Flutter (Dart) + Swift / Metal 原生桥接 + 纯 Rust 底座 (`rust/device_bridge/`)** 架构：
 
-- 摄像头页：前后摄像头预览；麦克风可不开摄像头单独启停，也可在预览过程中启停。
-- “监听静音”只改变电脑播放器音量，手机仍采集；“停止采集”关闭独立音频会话并释放手机麦克风。
-- 手机剪贴板页：手动开启后显示最近收到的文本和接收时间，可读取当前文本、复制到电脑；不会自动覆盖电脑剪贴板。
-- 切页、关闭弹窗、设备离线、启动失败、原生窗口关闭均回收对应会话。不录像、不保存音频或剪贴板历史。
-
-本次只迁移以上三个功能。其他 ADB 功能和屏幕投屏保持原实现，后续逐步迁移。
+- **屏幕投屏 (Screen Mirroring)**：纯 Rust 建立视频流与音频流，纯 Rust 调用 Apple VideoToolbox 硬解并将 `CVPixelBuffer` 注册至 Metal Flutter Texture；音频通过纯 Rust AudioQueue 直通播放。
+- **触控与反向控制 (Control Socket)**：触控、鼠标移动、滚轮、文本输入、按键注入通过 Rust 内部 `control_socket` 直接向 scrcpy-server 发送大端二进制控制协议。
+- **摄像头与麦克风**：前后摄像头硬解预览；麦克风独立采集与监听静音。
+- **手机剪贴板**：双向监听与复制。
+- **资源生命周期**：切页、关闭投屏独立窗口、关闭弹窗、设备离线或断连，由 Rust `AtomicBool` 取消标志和 Drop 统一回收子进程与 socket，Swift 侧窗口关闭时释放对应 Texture。
 
 ## 平台和版本兼容
 
 | 功能 | Android 门槛 | 页面和运行时处理 |
 | --- | --- | --- |
+| 屏幕投屏 | Android 5 / API 21+ | 支持全分辨率自适应与横竖屏旋转 |
 | 摄像头 | Android 12 / API 31+ | 版本不足禁用开始；其他 App 占用仍可能失败 |
 | 麦克风 | Android 11 / API 30+ | Android 11 启动前需解锁；API 29 及以下禁用；系统隐私开关、通话和录音并发可能导致静音 |
 | 文本剪贴板 | Android 5 / API 21+ | Android 10+ 普通后台 App 限制不能套用于 scrcpy；实际 ROM、锁屏、工作资料兼容性需验证 |
@@ -25,18 +25,18 @@
 
 ## 架构与实现文件
 
-- `scrcpy_flutter/rust/device_bridge/src/adb.rs`：Rust std::process 调用 ADB，处理超时、取消、server 进程和独立转发端口。
-- `src/worker.rs` / `src/stream.rs`：TCP 握手、拆包、剪贴板推送、RAW 音频、H.264 帧读取。
-- `src/video.rs` / `src/video_ffi.rs`：Rust 调用 VideoToolbox，处理 Annex-B→AVCC、SPS/PPS、解码和 CVPixelBuffer 所有权。
-- `src/audio_queue.rs`：Rust 调用 macOS AudioQueue，固定 buffer 池、播放静音与析构。
-- `src/lib.rs`：C ABI 导出，仅交换句柄、状态、受限文本和已 retain 的像素缓冲。
-- `lib/core/scrcpy/rust_device_bridge.dart`：dart:ffi 绑定，不解析设备协议。
-- `rust_device_session.dart`：Flutter 句柄状态适配；100ms 查询本机 Rust 内存状态，不轮询 ADB。
-- `embedded_camera_backend.dart` / `auxiliary_backend.dart`：可替换测试边界。
-- `lib/features/apps/controller/device_auxiliary_controller.dart`：Riverpod 页面状态、迟到结果拦截和离线处理。
-- `macos/Runner/RustTexturePlugin.swift`：平台必需的薄桥接，仅 Texture 注册、帧通知与窗口关闭资源追踪。
+- `rust/device_bridge/src/adb.rs`：Rust std::process 调用 ADB，处理超时、取消、server 进程和独立转发端口。
+- `rust/device_bridge/src/worker.rs` / `stream.rs`：TCP 握手、拆包、控制协议写入、RAW 音频、H.264/H.265 帧读取。
+- `rust/device_bridge/src/video.rs` / `video_ffi.rs`：Rust 调用 VideoToolbox，处理 Annex-B→AVCC、SPS/PPS、解码和 CVPixelBuffer 所有权。
+- `rust/device_bridge/src/audio_queue.rs`：Rust 调用 macOS AudioQueue，固定 buffer 池、播放静音与析构。
+- `rust/device_bridge/src/lib.rs`：C ABI 导出 (`anydeck_start_mirror`, `anydeck_send_control`, `anydeck_stop`, `anydeck_release` 等)。
+- `lib/core/scrcpy/rust_device_bridge.dart`：dart:ffi 统一绑定，不解析设备协议。
+- `lib/core/scrcpy/embedded_scrcpy_service.dart`：投屏服务入口，通过 `MethodChannel('anydeck/rust_texture')` 注册纹理并调用 Rust。
+- `lib/core/scrcpy/rust_device_session.dart`：Flutter 句柄状态适配；100ms 查询本机 Rust 内存状态，不轮询 ADB。
+- `lib/features/control/embedded_scrcpy_viewer.dart`：触控、滚轮、按键控制事件收口并调用 provider。
+- `macos/Runner/RustTexturePlugin.swift`：平台必需的纯 Swift 薄桥接，仅 Texture 注册、Metal 显存帧通知与窗口关闭资源追踪。
 
-没有新增 C++，原屏幕投屏的 C++/Rust 实现不变。本轮摄像头 UI 不再调用原 `EmbeddedScrcpyService.start(camera: ...)`；旧内部 camera 参数分支保留兼容测试，不作为新入口或回退路径。
+彻底移除了原 `scrcpy_flutter` 插件及全部 C++/Objective-C++ 依赖，FFmpeg 静态库已完全剥离。
 
 ## 会话参数与协议
 
@@ -69,7 +69,7 @@ ADB 单条命令上限 15 秒，输出排空且最多保留 4096 字节；端口
 独立 Rust crate 无第三方依赖。macOS 的 `Embed Native Dylibs` 阶段自动调用：
 
 ```bash
-bash scrcpy_flutter/script/build_device_bridge.sh
+bash script/build_device_bridge.sh
 ```
 
 生成 `libanydeck_device_bridge.dylib` 并随 App 签名打包，不提交机器生成的二进制。脚本支持 ARCHS 指定 arm64/x86_64，非当前架构需预先安装相应 Rust target；当前项目 Xcode 配置为 arm64。本轮实际只验证当前 arm64 构建。

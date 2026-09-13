@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
 import '../../../core/device_info/device_display_frame.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 
 /// 统一解析投屏窗口当前应该使用的横竖屏比例。
 class MirrorAspectResolver {
@@ -15,7 +15,7 @@ class MirrorAspectResolver {
     required double Function(String?) fallbackAspect,
   }) async {
     await _refreshDisplayFrame(ref, deviceId);
-    return await _resolveVideoAspect(deviceId) ??
+    return _resolveVideoAspect(ref, deviceId) ??
         _displayFrame?.aspectRatio ??
         fallbackAspect(resolution);
   }
@@ -32,9 +32,11 @@ class MirrorAspectResolver {
     } catch (_) {}
   }
 
-  Future<double?> _resolveVideoAspect(String deviceId) async {
+  double? _resolveVideoAspect(WidgetRef ref, String deviceId) {
     try {
-      final size = await ScrcpyFlutter.getVideoSize(deviceId: deviceId);
+      final size = deviceId.startsWith('harmony:')
+          ? ref.read(harmonyMirrorServiceProvider).getVideoSize(deviceId)
+          : ref.read(embeddedScrcpyServiceProvider).getVideoSize(deviceId);
       if (size != null && size['width']! > 0 && size['height']! > 0) {
         final videoAspect = size['width']! / size['height']!;
         final displayFrame = _displayFrame;

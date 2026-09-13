@@ -34,7 +34,7 @@ Security-sensitive areas in this project include:
 - File upload/download operations against connected Android devices.
 - Logcat, terminal, and long-running Process management.
 - Screen mirroring, input injection, and scrcpy server delivery.
-- Bundled native libraries under `scrcpy_flutter/macos/Libs/`.
+- Bundled native libraries under `macos/Libs/` and Rust code under `rust/device_bridge/`.
 - Local storage such as SharedPreferences and cached device metadata.
 
 ## Disclosure Process

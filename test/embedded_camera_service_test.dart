@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/scrcpy/embedded_scrcpy_service.dart';
+import 'package:any_deck/core/scrcpy/rust_device_bridge.dart';
 import 'package:any_deck/core/scrcpy/scrcpy_camera_options.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,11 +50,35 @@ class CameraAdbFake extends AdbService {
   }
 }
 
+class BridgeFake extends Fake implements RustDeviceBridge {
+  final starts = <(String, int, bool)>[];
+  final stops = <int>[];
+  final releases = <int>[];
+
+  @override
+  int startMirror(String host, int port, bool audioEnabled) {
+    starts.add((host, port, audioEnabled));
+    return starts.length;
+  }
+
+  @override
+  int Function(int) get status => (handle) => 1;
+
+  @override
+  void Function(int) get stop => (handle) => stops.add(handle);
+
+  @override
+  void Function(int) get release => (handle) => releases.add(handle);
+
+  @override
+  int Function(int) get videoSize => (handle) => (1280 << 32) | 720;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  const channel = MethodChannel('scrcpy_flutter');
+  const channel = MethodChannel('anydeck/rust_texture');
   late List<MethodCall> native;
   setUp(() {
     SharedPreferences.setMockInitialValues({
@@ -68,7 +93,7 @@ void main() {
     );
     messenger.setMockMethodCallHandler(channel, (call) async {
       native.add(call);
-      return call.method == 'startMirroring' ? native.length : null;
+      return call.method == 'register' ? native.length : null;
     });
   });
   tearDown(() {
@@ -78,7 +103,8 @@ void main() {
 
   test('摄像头复用 Texture 协议，独立 socket/会话且无音频，不误停屏幕投屏', () async {
     final adb = CameraAdbFake();
-    final service = EmbeddedScrcpyService(adb);
+    final bridge = BridgeFake();
+    final service = EmbeddedScrcpyService(adb, bridge);
     final options = ScrcpyCameraOptions(deviceId: 'phone', front: true);
     addTearDown(() async {
       await service.stop(options.sessionId);
@@ -102,14 +128,17 @@ void main() {
     expect(adb.launches[1], isNot(contains('display_id=0')));
     expect(adb.launches[1], contains('scid=${options.scid}'));
     expect(options.socketName, isNot('scrcpy_00000000'));
-    final start = native.lastWhere((call) => call.method == 'startMirroring');
-    expect(start.arguments['deviceId'], options.sessionId);
-    expect(start.arguments['audio'], false);
+    expect(bridge.starts.length, 2);
+    expect(bridge.starts[0].$3, true);
+    expect(bridge.starts[1].$3, false);
+    final start = native.lastWhere((call) => call.method == 'register');
+    expect(start.arguments['handle'], 2);
     await service.stop(options.sessionId);
     expect(service.isActive('phone'), true);
     expect(service.isActive(options.sessionId), false);
     expect(adb.commands.last[1], 'phone');
-    expect(native.last.arguments['deviceId'], options.sessionId);
+    expect(bridge.stops, contains(2));
+    expect(bridge.releases, contains(2));
   });
 
   test('Android 11 拒绝摄像头并回收转发，不启动服务', () async {

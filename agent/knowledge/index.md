@@ -11,16 +11,16 @@
 | `adb-terminal-pty` | 终端 PTY 与 root 提示符 | active | 记录真实 shell 回显、su 提权显示、目录变化、流式换行处理与回归边界 | `core/terminal/`, `features/terminal/` |
 | `adb-app-permissions` | 应用权限分类与批量撤销 | active | 记录动态 / 静态 / 未知权限分类、当前用户隔离、批量撤销与回读结果、共享面板及回归验证 | `core/apps/`, `features/apps/` |
 | `adb-usage-companion` | 手机使用统计、位置记录与 ADB 历史同步 | active | 可见授权、系统统计口径、位置前台服务、手机离线库、分页游标与 SQLite 事务、内嵌地图底图、图标复用及验证边界 | `core/usage/`, `features/apps/`, `tool/usage_companion/` |
-| `adb-device-rust-sessions` | 摄像头、麦克风与手机剪贴板 Rust 底层 | active | Rust ADB/协议/生命周期、VideoToolbox、独立麦克风启停和静音、剪贴板事件、版本 UI 与打包 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
+| `adb-device-rust-sessions` | 屏幕投屏、摄像头、麦克风与手机剪贴板 Rust 底座 | active | 彻底移除 C++ 插件，屏幕投屏、VideoToolbox 硬解、AudioQueue、触控注入、摄像头、麦克风、剪贴板全面由纯 Rust 底座承接 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
 | `adb-device-rust-sessions-test` | Rust 设备会话回归验证 | active | 自动验证结果、平台门槛、生成视频帧解码与真机回归清单 | `test/`, `rust/device_bridge/` |
-| `adb-embedded-camera` | 内嵌摄像头预览 | active | scrcpy camera 参数、独立会话/端口、原生 Texture 复用、手动启停及销毁回收、macOS 限制与回归边界 | `core/scrcpy/`, `features/apps/`, `scrcpy_flutter/` |
+| `adb-embedded-camera` | 内嵌摄像头预览 | active | scrcpy camera 参数、独立会话/端口、原生 Texture 复用、手动启停及销毁回收、macOS 限制与回归边界 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
 | `adb-cert-management` | 证书管理机制 | active | 记录用户证书与系统证书（Root 权限，包含 Android 10+ 内存挂载与 Conscrypt APEX 挂载）的导入机制与 adb 命令设计 | `control/` (控制面板) |
 | `adb-desktop-window-shortcuts` | 桌面独立窗口快捷键机制 | active | 记录控制台窗口、模拟器管理窗口等独立子窗口的本地快捷键关闭策略与职责边界 | `app/window/` (桌面多窗口) |
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、内存占用与容量卡布局，以及控制、应用（含 DEBUG 标识保留与缓存恢复）、文件预览、日志、终端、进程右键复制与停止、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录无线调试底层 TCP/IP 监听模式切换、多级 IP 地址自动探测机制（`ip route`/`ip addr`）、合并去重架构与连接操作链路设计 | `dashboard/devices/` (设备控制行) |
 | `devices_manager` | 设备唯一标识判断机制 | active | 记录底层以 AdbDevice.id 为通信路由、并在 DeviceRegistryNotifier 中根据 hardware serial 进行多连接合并与物理去重的设备管理判定机制 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
-| `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、设备信息悬浮层、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `scrcpy_flutter/`, `core/harmony/` |
+| `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、设备信息悬浮层、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `rust/device_bridge/`, `core/harmony/` |
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、USB 投屏原理（MJPEG 字节流解析）、多窗口 Isolate 隔离下的状态同步与测试桩设计 | `core/ios/`, `app/window/mirror/` |
 | `adb-app-window-run-config-script` | App 子窗口 Run Configuration 生成脚本 | active | 记录 `script/generate_app_window_run_configs.sh` 如何生成模拟器管理窗口和控制台窗口的 IDE Flutter 运行入口 | `script/`, `.idea/runConfigurations/`, `app/window/` |
 | `adb-macos-icon-assets` | macOS 图标资源机制 | active | 记录 Dock 图标、Flutter App logo、菜单栏 template icon 的资源边界和生成命令 | `assets/brand/`, `macos/Runner/Assets.xcassets/` |

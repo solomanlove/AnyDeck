@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:scrcpy_flutter/scrcpy_flutter.dart';
+
+import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 
 import '../../../core/device_actions/device_action_service.dart';
 import '../../../core/scrcpy/screen_record_provider.dart';
@@ -373,11 +374,13 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                                 .read(hdcServiceProvider)
                                 .inputText(widget.deviceId, text))
                             .isSuccess
-                      : await ScrcpyFlutter.sendControl(
-                          deviceId: widget.deviceId,
-                          controlMessage:
-                              ScrcpyKeycodeHelper.serializeTextEvent(text),
-                        );
+                      : await ref
+                              .read(embeddedScrcpyServiceProvider)
+                              .sendControl(
+                                deviceId: widget.deviceId,
+                                controlMessage:
+                                    ScrcpyKeycodeHelper.serializeTextEvent(text),
+                              );
                   if (!success && context.mounted) {
                     AppToast.show(
                       context,

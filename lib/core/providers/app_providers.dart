@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/settings/app_settings_controller.dart';
@@ -2901,7 +2900,7 @@ class ScreenPowerOffNotifier extends Notifier<bool> {
     final message = buffer.buffer.asUint8List();
     bool success = false;
     try {
-      success = await ScrcpyFlutter.sendControl(
+      success = await ref.read(embeddedScrcpyServiceProvider).sendControl(
         deviceId: deviceId,
         controlMessage: message,
       );

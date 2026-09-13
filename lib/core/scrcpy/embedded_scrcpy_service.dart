@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adb/adb_service.dart';
 import '../providers/app_providers.dart';
+import 'activity_escape_guardian.dart';
+import 'rust_device_bridge.dart';
 import 'scrcpy_camera_options.dart';
 
 part 'embedded_scrcpy_providers.dart';
@@ -18,6 +19,7 @@ class EmbeddedScrcpySession {
     required this.port,
     required this.serverProcess,
     required this.textureId,
+    required this.rustHandle,
     required this.startedAt,
     this.camera,
   });
@@ -26,19 +28,48 @@ class EmbeddedScrcpySession {
   final int port;
   final Process serverProcess;
   final int textureId;
+  final int rustHandle;
   final DateTime startedAt;
   final ScrcpyCameraOptions? camera;
 }
 
 class EmbeddedScrcpyService {
-  EmbeddedScrcpyService(this._adbService);
+  EmbeddedScrcpyService(this._adbService, [RustDeviceBridge? bridge])
+      : _bridge = bridge ?? RustDeviceBridge.instance;
 
   final AdbService _adbService;
+  final RustDeviceBridge _bridge;
   final Map<String, EmbeddedScrcpySession> _sessions = {};
+  static const _textures = MethodChannel('anydeck/rust_texture');
 
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
   int? getTextureId(String deviceId) => _sessions[deviceId]?.textureId;
+  int? getRustHandle(String deviceId) => _sessions[deviceId]?.rustHandle;
   Process? getServerProcess(String deviceId) => _sessions[deviceId]?.serverProcess;
+
+  /// 获取指定已连接镜像的视频帧尺寸。
+  Map<String, int>? getVideoSize(String deviceId) {
+    final session = _sessions[deviceId];
+    if (session == null) return null;
+    final size = _bridge.videoSize(session.rustHandle);
+    final width = size >> 32;
+    final height = size & 0xffffffff;
+    if (width == 0 || height == 0) return null;
+    return {'width': width, 'height': height};
+  }
+
+  /// 向指定设备的 control socket 发送控制二进制报文。
+  Future<bool> sendControl({
+    required String deviceId,
+    required Uint8List controlMessage,
+  }) async {
+    final session = _sessions[deviceId];
+    if (session == null) return false;
+    return _bridge.sendControl(
+      session.rustHandle,
+      controlMessage,
+    );
+  }
 
   /// 提取匹配版本的内置 server，供投屏与独立音频/剪贴板会话复用。
   Future<String> extractScrcpyServerJar() async {
@@ -147,6 +178,11 @@ class EmbeddedScrcpyService {
     final int bitrate = camera != null ? 4000000 : prefs.getInt('settings.mirrorVideoBitrate') ?? 8000000;
     final int maxSize = camera != null ? 1280 : prefs.getInt('settings.mirrorMaxSize') ?? 1080;
 
+    // 若设备当前处于休眠或息屏状态，发送 KEYCODE_WAKEUP (224) 唤醒屏幕以确保 SurfaceFlinger 正常产出渲染帧
+    if (camera == null) {
+      unawaited(_adbService.shellArgs(deviceId, ['input', 'keyevent', '224']));
+    }
+
     // 3. Start scrcpy-server process on Android
     Process serverProcess;
     try {
@@ -167,6 +203,7 @@ class EmbeddedScrcpyService {
         'video_codec=h264',
         'video_bit_rate=$bitrate',
         if (maxSize > 0) 'max_size=$maxSize',
+        if (camera == null) 'stay_awake=true',
         // 原生客户端固定连接 video/control，摄像头页不发送触控或键盘消息。
         'control=true',
         'tunnel_forward=true',
@@ -217,23 +254,43 @@ class EmbeddedScrcpyService {
       handleLogData(line);
     });
 
-    // 4. Connect C++ client via Native Plugin (Connect first to avoid handshake deadlock)
-    int textureId;
+    // 4. Connect via Pure Rust VideoToolbox & AudioQueue
+    int textureId = 0;
+    int rustHandle = 0;
     try {
-      await Future<void>.delayed(const Duration(milliseconds: 1000));
+      await Future<void>.delayed(const Duration(milliseconds: 600));
       camera?.checkActive();
-      final connection = ScrcpyFlutter.startMirroring(
-        deviceId: sessionId,
-        port: localPort,
-        audio: mirrorAudioEnabled,
+      rustHandle = _bridge.startMirror(
+        '127.0.0.1',
+        localPort,
+        mirrorAudioEnabled,
       );
-      // 超时/取消后才注册成功的纹理也必须回收，独立会话不会误停新预览。
-      if (camera != null) {
-        unawaited(connection.then((_) async {
-          if (camera.cancelled) await ScrcpyFlutter.stopMirroring(deviceId: sessionId);
-        }).catchError((Object _) {}));
+      if (rustHandle == 0) {
+        throw Exception('Failed to start Rust mirror session');
       }
-      textureId = camera == null ? await connection : await connection.timeout(const Duration(seconds: 15));
+
+      // 等待 Rust 核心建立连接并进入就绪状态
+      final deadline = DateTime.now().add(const Duration(seconds: 15));
+      while (_bridge.status(rustHandle) == 0) {
+        camera?.checkActive();
+        if (DateTime.now().isAfter(deadline)) {
+          throw Exception('Rust mirror session connection timed out');
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      if (_bridge.status(rustHandle) >= 2) {
+        throw Exception('Rust mirror session failed to connect');
+      }
+
+      // 注册至 Swift RustTexturePlugin 获得 Metal/TextureId
+      await _textures.invokeMethod<void>('track', {'handle': rustHandle});
+      final registered = await _textures.invokeMethod<int>('register', {
+        'handle': rustHandle,
+      });
+      if (registered == null) {
+        throw Exception('Failed to register Flutter texture for handle $rustHandle');
+      }
+      textureId = registered;
       camera?.checkActive();
 
       final session = EmbeddedScrcpySession(
@@ -241,6 +298,7 @@ class EmbeddedScrcpyService {
         port: localPort,
         serverProcess: serverProcess,
         textureId: textureId,
+        rustHandle: rustHandle,
         startedAt: DateTime.now(),
         camera: camera,
       );
@@ -249,8 +307,15 @@ class EmbeddedScrcpyService {
     } catch (e) {
       // Cleanup on failure
       camera?.cancel();
-      if (camera != null) {
-        try { await ScrcpyFlutter.stopMirroring(deviceId: sessionId); } catch (_) { }
+      if (rustHandle != 0) {
+        try {
+          await _textures.invokeMethod<void>('untrack', {'handle': rustHandle});
+          if (textureId != 0) {
+            await _textures.invokeMethod<void>('unregister', {'textureId': textureId});
+          }
+        } catch (_) {}
+        _bridge.stop(rustHandle);
+        _bridge.release(rustHandle);
       }
       serverProcess.kill();
       if (camera != null) {
@@ -346,7 +411,7 @@ class EmbeddedScrcpyService {
 
           // 3. 启动后台守护轮询，防范 Activity 在跳转时逃逸回主屏幕（Display 0）
           // 轮询持续 12 秒，每 500 毫秒检查一次，主要覆盖开屏广告与主页面过渡期
-          _startActivityEscapeGuardian(deviceId, startApp, displayId);
+          startActivityEscapeGuardian(_adbService, deviceId, startApp, displayId);
         } catch (e) {
           stdout.write('[scrcpy-server error] Failed to launch app on virtual display: $e\n');
         }
@@ -356,81 +421,20 @@ class EmbeddedScrcpyService {
     return textureId;
   }
 
-  void _startActivityEscapeGuardian(String deviceId, String packageName, int targetDisplayId) {
-    int count = 0;
-    Timer.periodic(const Duration(milliseconds: 500), (timer) async {
-      count++;
-      if (count > 24) { // 12 seconds
-        timer.cancel();
-        return;
-      }
-      
-      try {
-        final res = await _adbService.run([
-          '-s',
-          deviceId,
-          'shell',
-          'am',
-          'stack',
-          'list',
-        ]);
-        if (!res.isSuccess) return;
-        
-        final lines = res.stdout.split('\n');
-        String? currentStackId;
-        String? currentDisplayId;
-        
-        for (final line in lines) {
-          final trimmed = line.trim();
-          if (trimmed.startsWith('Stack id=')) {
-            final stackMatch = RegExp(r'Stack id=(\d+)').firstMatch(trimmed);
-            final displayMatch = RegExp(r'displayId=(\d+)').firstMatch(trimmed);
-            if (stackMatch != null) {
-              currentStackId = stackMatch.group(1);
-            } else {
-              currentStackId = null;
-            }
-            if (displayMatch != null) {
-              currentDisplayId = displayMatch.group(1);
-            } else {
-              currentDisplayId = null;
-            }
-          } else if (trimmed.startsWith('taskId=')) {
-            if (currentStackId != null && currentDisplayId == '0') {
-              if (trimmed.contains(packageName)) {
-                final moveRes = await _adbService.run([
-                  '-s',
-                  deviceId,
-                  'shell',
-                  'am',
-                  'display',
-                  'move-stack',
-                  currentStackId,
-                  targetDisplayId.toString(),
-                ]);
-                if (moveRes.isSuccess) {
-                  stdout.write('[EscapeGuardian] Successfully moved escaped stack $currentStackId of $packageName back to display $targetDisplayId\n');
-                }
-                break;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        // Ignored
-      }
-    });
-  }
 
   Future<void> stop(String deviceId) async {
     final session = _sessions.remove(deviceId);
     if (session == null) return;
 
     try {
-      await ScrcpyFlutter.stopMirroring(deviceId: deviceId);
+      await _textures.invokeMethod<void>('untrack', {'handle': session.rustHandle});
+      await _textures.invokeMethod<void>('unregister', {'textureId': session.textureId});
     } catch (e) {
       // Ignored during stop
     }
+
+    _bridge.stop(session.rustHandle);
+    _bridge.release(session.rustHandle);
 
     session.serverProcess.kill();
     if (session.camera != null) {

@@ -25,7 +25,7 @@ AnyDeck is a lightweight desktop developer toolbox for Android debugging and scr
 ## ✨ Features
 
 *   **🔌 Device Discovery & Pairing**: Automatically scan and connect via USB or wireless methods (TCP/IP, QR code scanning, and pairing code).
-*   **📺 HD Screen Mirroring (Scrcpy)**: Start screen mirroring and reverse control using external Scrcpy settings or built-in decoders.
+*   **📺 Native Screen Mirroring & Low-Latency Control**: Built-in pure Rust engine with Apple VideoToolbox hardware decoding, AudioQueue audio pass-through, and zero-latency touch/keyboard reverse control.
 *   **⚙️ Quick Control Center**: Send text input, emulate hardware key events (Home, Back, Power, volume), toggle Wi-Fi, rotate screen, and inspect current window focus.
 *   **📦 Application Manager**: Drag-and-drop APK files to install. Support app searching (pinyin supported), clearing data, freezing/unfreezing, uninstalling, and exporting/backing up APKs.
 *   **🔍 Layout Inspector**: View the XML hierarchy layout tree of the current Android screen with interactive screenshot outlines.
@@ -36,11 +36,12 @@ AnyDeck is a lightweight desktop developer toolbox for Android debugging and scr
 
 ---
 
-## 🛠️ Architecture & Package ID
+## 🛠️ Architecture & Core Engine
 
-AnyDeck uses a clean, state-separated architecture:
--   **UI Layer (Flutter Desktop)**: Implements responsive grids and glassmorphism styling.
--   **State Management (Riverpod)**: Controls long-running processes (like terminal sessions and ADB connections), device sessions, and local configuration cache.
+AnyDeck uses a modern, lightweight, high-performance architecture:
+-   **UI Layer (Flutter Desktop)**: Implements responsive grids and glassmorphism styling, state managed cleanly via Riverpod.
+-   **Native Render Bridge (Swift / Metal)**: Zero-copy hardware texture sharing via native macOS Metal framework (`RustTexturePlugin.swift`).
+-   **Core Engine (Pure Rust `device_bridge`)**: 100% C++ free and FFmpeg free. Native Apple VideoToolbox hardware decoding, AudioQueue audio pass-through, ADB socket multiplexing, touch/mouse control protocol, camera preview, and bidirectional clipboard sync.
 -   **Package Name (Bundle ID)**: The default unique application identifier is configured as **`com.github.anydeck`** across all desktop platforms:
     *   macOS: `com.github.anydeck` (configured in `macos/Runner/Configs/AppInfo.xcconfig`)
     *   Windows: CompanyName `github` (configured in `windows/runner/Runner.rc`)
@@ -99,5 +100,5 @@ Contributions are welcome! Please follow these standards when contributing:
 *   **License**: Licensed under the [Apache-2.0 License](LICENSE).
 *   **Third-party Components**:
     *   `assets/scrcpy/scrcpy-server.jar` is compiled from the open-source [Genymobile/scrcpy](https://github.com/Genymobile/scrcpy) project and respects its license.
-    *   Video decoding is powered by pure Rust with native Apple VideoToolbox hardware acceleration and AudioQueue audio playback (FFmpeg-free).
+    *   Video decoding and device mirroring are powered by pure Rust (`rust/device_bridge/`) with native Apple VideoToolbox hardware acceleration, AudioQueue audio playback, and Swift Metal texture sharing (100% C++ free, FFmpeg free).
 *   **Trademarks**: All brand logos (Google, Xiaomi, Huawei, etc.) in `assets/brand/` are properties of their respective trademark holders. They are used in this project solely for non-commercial device identification purposes.

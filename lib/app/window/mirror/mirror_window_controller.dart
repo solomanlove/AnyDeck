@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:scrcpy_flutter/scrcpy_flutter.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
@@ -637,7 +636,9 @@ class MirrorWindowController extends ChangeNotifier {
       // 仅当 scrcpy 视频流尺寸已经成功加载时才继续，这避免了前期的 adb 命令拥堵
       Map<dynamic, dynamic>? size;
       try {
-        size = await ScrcpyFlutter.getVideoSize(deviceId: deviceId);
+        size = isHarmony
+            ? ref.read(harmonyMirrorServiceProvider).getVideoSize(deviceId)
+            : ref.read(embeddedScrcpyServiceProvider).getVideoSize(deviceId);
       } catch (_) {}
       if (size == null || size['width'] == null || size['width'] <= 0 || size['height'] == null || size['height'] <= 0) {
         return;
