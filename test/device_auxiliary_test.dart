@@ -109,6 +109,26 @@ void main() {
     expect(scope.read(deviceAuxiliaryProvider(mic)).active, false);
     expect(fake.cancelled, true);
   });
+  test('剪贴板按时间倒序保存在本地列表中，最新一条在最顶部', () async {
+    final fake = AuxiliaryFake();
+    final scope = container(fake);
+    addTearDown(scope.dispose);
+    addTearDown(fake.texts.close);
+    scope.listen(deviceAuxiliaryProvider(clip), (_, _) {});
+    final controller = scope.read(deviceAuxiliaryProvider(clip).notifier);
+    await controller.start();
+    fake.texts.add('旧内容');
+    await Future<void>.delayed(const Duration(milliseconds: 130));
+    fake.texts.add('新内容🙂');
+    await Future<void>.delayed(const Duration(milliseconds: 130));
+    final state = scope.read(deviceAuxiliaryProvider(clip));
+    expect(state.history.length, 2);
+    expect(state.history.first.text, '新内容🙂');
+    expect(state.history[1].text, '旧内容');
+    expect(state.text, '新内容🙂');
+    controller.clearHistory();
+    expect(scope.read(deviceAuxiliaryProvider(clip)).history, isEmpty);
+  });
   test('剪贴板只保留最新内容，连接结束清空文本', () async {
     final fake = AuxiliaryFake();
     final scope = container(fake);
