@@ -169,9 +169,11 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                     final summaryCard = SizedBox(
                       width: useHorizontalLayout ? 300 : double.infinity,
                       child: _AppDetailSummaryCard(
+                        deviceId: deviceId,
                         package: package,
                         cardBg: cardBg,
                         isDark: isDark,
+                        useHorizontalLayout: useHorizontalLayout,
                         detail: detail,
                       ),
                     );
@@ -750,26 +752,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                               ),
                                               _AppActionButtonCard(
                                                 icon: CupertinoIcons
-                                                    .arrow_merge,
-                                                title: "安装路径",
-                                                description:
-                                                    "显示 APK 在设备中的存储路径",
-                                                iconColor: const Color(
-                                                  0xFF00ACC1,
-                                                ),
-                                                onPressed: isOnline
-                                                    ? () => _showAdbResult(
-                                                        context,
-                                                        ref,
-                                                        service.packagePath(
-                                                          deviceId,
-                                                          packageName,
-                                                        ),
-                                                      )
-                                                    : null,
-                                              ),
-                                              _AppActionButtonCard(
-                                                icon: CupertinoIcons
                                                     .cloud_download,
                                                 title: "导出 APK",
                                                 description:
@@ -987,11 +969,12 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
 
                     if (useHorizontalLayout) {
                       return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           summaryCard,
                           const SizedBox(width: 24),
                           tabbedContent,
+                          const SizedBox(width: 24),
                         ],
                       );
                     } else {
@@ -1015,30 +998,38 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
   }
 }
 
-class _AppDetailSummaryCard extends StatefulWidget {
+class _AppDetailSummaryCard extends ConsumerStatefulWidget {
   const _AppDetailSummaryCard({
+    required this.deviceId,
     required this.package,
     required this.cardBg,
     required this.isDark,
+    required this.useHorizontalLayout,
     this.detail,
   });
 
+  final String deviceId;
   final AdbPackage package;
   final Color cardBg;
   final bool isDark;
+  final bool useHorizontalLayout;
   final AdbPackageDetail? detail;
 
   @override
-  State<_AppDetailSummaryCard> createState() => _AppDetailSummaryCardState();
+  ConsumerState<_AppDetailSummaryCard> createState() =>
+      _AppDetailSummaryCardState();
 }
 
-class _AppDetailSummaryCardState extends State<_AppDetailSummaryCard> {
+class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
   Future<String?>? _packerFuture;
+  String? _apkPath;
 
   @override
   void initState() {
     super.initState();
+    _apkPath = widget.package.apkPath;
     _initPackerDetection();
+    _fetchApkPathIfNeeded();
   }
 
   @override
@@ -1047,6 +1038,31 @@ class _AppDetailSummaryCardState extends State<_AppDetailSummaryCard> {
     if (widget.detail != oldWidget.detail) {
       _initPackerDetection();
     }
+    if (widget.package != oldWidget.package ||
+        widget.deviceId != oldWidget.deviceId) {
+      _apkPath = widget.package.apkPath;
+      _fetchApkPathIfNeeded();
+    }
+  }
+
+  void _fetchApkPathIfNeeded() {
+    if (_apkPath != null && _apkPath!.isNotEmpty) return;
+    ref
+        .read(appManagementServiceProvider)
+        .packagePath(widget.deviceId, widget.package.name)
+        .then((res) {
+      if (res.isSuccess && mounted) {
+        final line = res.stdout.split('\n').firstWhere(
+          (l) => l.trim().startsWith('package:'),
+          orElse: () => '',
+        );
+        if (line.isNotEmpty) {
+          setState(() {
+            _apkPath = line.trim().substring('package:'.length).trim();
+          });
+        }
+      }
+    }).catchError((_) {});
   }
 
   void _initPackerDetection() {
@@ -1220,11 +1236,23 @@ class _AppDetailSummaryCardState extends State<_AppDetailSummaryCard> {
     return Container(
       decoration: BoxDecoration(
         color: widget.cardBg,
-        border: Border.all(
-          color: widget.isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.04),
-          width: 1,
+        border: Border(
+          right: widget.useHorizontalLayout
+              ? BorderSide(
+                  color: widget.isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.04),
+                  width: 1,
+                )
+              : BorderSide.none,
+          bottom: widget.useHorizontalLayout
+              ? BorderSide.none
+              : BorderSide(
+                  color: widget.isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.04),
+                  width: 1,
+                ),
         ),
       ),
       padding: const EdgeInsets.all(15),
@@ -1367,6 +1395,13 @@ class _AppDetailSummaryCardState extends State<_AppDetailSummaryCard> {
                   return const SizedBox.shrink();
                 },
               ),
+            if (_apkPath != null && _apkPath!.isNotEmpty)
+              _SummaryItem(
+                label: "文件路径",
+                value: _apkPath!,
+                canCopy: true,
+                maxLines: 4,
+              ),
           ],
         ),
       ),
@@ -1380,12 +1415,14 @@ class _SummaryItem extends StatelessWidget {
     required this.value,
     this.canCopy = false,
     this.valueColor,
+    this.maxLines = 2,
   });
 
   final String label;
   final String value;
   final bool canCopy;
   final Color? valueColor;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -1403,30 +1440,37 @@ class _SummaryItem extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  value,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: valueColor,
+                child: Tooltip(
+                  message: value,
+                  waitDuration: const Duration(milliseconds: 500),
+                  child: Text(
+                    value,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: valueColor,
+                    ),
+                    maxLines: maxLines,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (canCopy)
+              if (canCopy) ...[
+                const SizedBox(width: 4),
                 IconButton(
                   icon: const Icon(CupertinoIcons.doc_on_doc, size: 14),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: value));
-                    _showSnack(context, '包名已复制到剪贴板');
+                    _showSnack(context, '$label已复制到剪贴板');
                   },
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
                   splashRadius: 16,
-                  tooltip: '复制包名',
+                  tooltip: '复制$label',
                 ),
+              ],
             ],
           ),
         ],
