@@ -1300,6 +1300,87 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       } catch (_) {}
     }
 
+    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    _lastActiveDevices = activeDevices;
+
+    // 清洗因历史 ADB track-devices 协议解析漏洞产生的被十六进制长度前缀污染的脏设备 ID
+    String stripHexPrefix(String rawId) {
+      var current = rawId;
+      // 每次剥离 4 字符十六进制长度包头，直到无法剥离或达到合理最小长度
+      while (current.length > 8) {
+        final prefix = current.substring(0, 4);
+        if (int.tryParse(prefix, radix: 16) != null) {
+          final candidate = current.substring(4);
+          if (history.contains(candidate) ||
+              activeDevices.any((d) => d.id == candidate) ||
+              candidate.startsWith('adb-') ||
+              candidate.length >= 8) {
+            current = candidate;
+            continue;
+          }
+        }
+        break;
+      }
+      return current;
+    }
+
+    final cleanedHistory = <String>[];
+    bool historyPolluted = false;
+    for (final id in history) {
+      final realId = stripHexPrefix(id);
+      if (realId != id) {
+        historyPolluted = true;
+        // 将脏 ID 上的缓存元数据迁移给真实 realId
+        if (aliases.containsKey(id) && !aliases.containsKey(realId)) {
+          aliases[realId] = aliases[id]!;
+        }
+        if (models.containsKey(id) && !models.containsKey(realId)) {
+          models[realId] = models[id]!;
+        }
+        if (products.containsKey(id) && !products.containsKey(realId)) {
+          products[realId] = products[id]!;
+        }
+        if (ips.containsKey(id) && !ips.containsKey(realId)) {
+          ips[realId] = ips[id]!;
+        }
+        if (androidVersions.containsKey(id) && !androidVersions.containsKey(realId)) {
+          androidVersions[realId] = androidVersions[id]!;
+        }
+        if (sdkVersions.containsKey(id) && !sdkVersions.containsKey(realId)) {
+          sdkVersions[realId] = sdkVersions[id]!;
+        }
+        if (remarks.containsKey(id) && !remarks.containsKey(realId)) {
+          remarks[realId] = remarks[id]!;
+        }
+        if (tags.containsKey(id) && !tags.containsKey(realId)) {
+          tags[realId] = tags[id]!;
+        }
+
+        aliases.remove(id);
+        models.remove(id);
+        products.remove(id);
+        ips.remove(id);
+        androidVersions.remove(id);
+        sdkVersions.remove(id);
+        remarks.remove(id);
+        tags.remove(id);
+
+        if (!cleanedHistory.contains(realId)) {
+          cleanedHistory.add(realId);
+        }
+      } else {
+        if (!cleanedHistory.contains(id)) {
+          cleanedHistory.add(id);
+        }
+      }
+    }
+
+    if (historyPolluted) {
+      history.clear();
+      history.addAll(cleanedHistory);
+      prefs.setStringList(_historyKey, cleanedHistory);
+    }
+
     _historyIds = history;
     _aliases = aliases;
     _models = models;
@@ -1310,8 +1391,6 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     _tags = tags;
 
     // 加载缓存的序列号映射
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
-    _lastActiveDevices = activeDevices;
     final allIds = {...history, ...activeDevices.map((d) => d.id)};
     final serialMap = <String, String>{};
     for (final id in allIds) {

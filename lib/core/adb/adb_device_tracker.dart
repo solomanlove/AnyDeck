@@ -69,33 +69,66 @@ class AdbDeviceTracker {
       final process = await _adbService.start(['track-devices', '-l']);
       _trackProcess = process;
 
-      // 监听 stdout 数据流
-      final lineStream = process.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter());
+      // 缓冲区用于处理 TCP/管道分包和粘包
+      var buffer = '';
 
-      var currentBatch = <AdbDevice>[];
-      Timer? debounceTimer;
+      process.stdout.transform(utf8.decoder).listen(
+        (chunk) {
+          buffer += chunk;
 
-      lineStream.listen(
-        (line) {
-          final trimmed = line.trim();
-          if (trimmed.isEmpty) return;
-          // 忽略类似 "* daemon started successfully *" 的输出
-          if (trimmed.startsWith('*')) return;
+          while (true) {
+            if (buffer.isEmpty) break;
 
-          final device = _adbService.parseDeviceLine(trimmed);
-          if (device != null) {
-            currentBatch.add(device);
-          }
+            // 忽略类似 "* daemon started successfully *" 的 adb 服务端提示行
+            if (buffer.startsWith('*')) {
+              final newlineIndex = buffer.indexOf('\n');
+              if (newlineIndex != -1) {
+                buffer = buffer.substring(newlineIndex + 1);
+                continue;
+              } else {
+                break;
+              }
+            }
 
-          // 使用 50ms 聚合单次 track-devices 刷新的全部设备行
-          debounceTimer?.cancel();
-          debounceTimer = Timer(const Duration(milliseconds: 50), () {
-            _androidDevices = List.unmodifiable(currentBatch);
-            currentBatch = [];
+            // ADB track-devices 协议规定每个批次以 4 字节十六进制字符开头表示数据长度
+            if (buffer.length < 4) break;
+
+            final lenStr = buffer.substring(0, 4);
+            final length = int.tryParse(lenStr, radix: 16);
+            if (length == null) {
+              // 遇到异常非十六进制前缀，跳到下一行继续尝试
+              final newlineIndex = buffer.indexOf('\n');
+              if (newlineIndex != -1) {
+                buffer = buffer.substring(newlineIndex + 1);
+                continue;
+              } else {
+                buffer = '';
+                break;
+              }
+            }
+
+            // 检查当前缓冲区是否已收齐该批次的完整数据
+            if (buffer.length < 4 + length) {
+              break;
+            }
+
+            final payload = buffer.substring(4, 4 + length);
+            buffer = buffer.substring(4 + length);
+
+            final lines = payload.split('\n');
+            final devices = <AdbDevice>[];
+            for (final line in lines) {
+              final trimmed = line.trim();
+              if (trimmed.isEmpty) continue;
+              final device = _adbService.parseDeviceLine(trimmed);
+              if (device != null) {
+                devices.add(device);
+              }
+            }
+
+            _androidDevices = List.unmodifiable(devices);
             _publish();
-          });
+          }
         },
         onError: (err) {
           debugPrint('[AdbDeviceTracker] track-devices stream error: $err');

@@ -317,7 +317,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     String appBarTitle = context.l10n.t('appTitle');
     if (selectedDevice != null) {
       final matchedDevice = registeredDevices.firstWhere(
-        (d) => d.id == selectedDevice.id,
+        (d) =>
+            d.id == selectedDevice.id ||
+            (d.serial != null &&
+                d.serial!.isNotEmpty &&
+                d.serial == selectedDevice.id) ||
+            (selectedDevice.id.length > d.id.length &&
+                selectedDevice.id.endsWith(d.id)),
         orElse: () => RegisteredDevice(
           id: selectedDevice.id,
           status: selectedDevice.status,
@@ -336,7 +342,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final current = ref.read(selectedDeviceProvider);
           if (current != null &&
-              current.id == syncedDevice.id &&
               _hasDeviceSnapshotChanged(current, syncedDevice)) {
             ref.read(selectedDeviceProvider.notifier).select(syncedDevice);
           }

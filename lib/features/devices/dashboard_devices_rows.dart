@@ -112,11 +112,13 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 if (wifiIp != null && wifiIp.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        wifiIp,
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      Flexible(
+                        child: Text(
+                          wifiIp,
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       FutureBuilder<bool>(
                         future: _subnetFutures.putIfAbsent(
