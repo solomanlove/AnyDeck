@@ -1,42 +1,21 @@
-use std::net::{TcpStream, ToSocketAddrs};
-use std::thread;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
-use std::os::raw::c_void;
+//! 负责管理与 scrcpy-server 的 TCP 通信会话、VideoToolbox 硬件解码及 AudioQueue 原生音频播放。
 use std::io::{Read, Write};
+use std::net::{TcpStream, ToSocketAddrs};
+use std::os::raw::c_void;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 
-use crate::{ScrcpyFrameCallback, ScrcpyAudioCallback};
-
-extern "C" {
-    fn rust_helper_create_decoder(session_ctx: *mut c_void, codec_id: u32) -> *mut c_void;
-    fn rust_helper_destroy_decoder(decoder: *mut c_void);
-    fn rust_helper_decode_video_packet(
-        decoder: *mut c_void,
-        data: *const u8,
-        size: i32,
-        pts: i64,
-        width: i32,
-        height: i32,
-    );
-
-    fn rust_helper_create_audio_decoder(session_ctx: *mut c_void, codec_id: u32) -> *mut c_void;
-    fn rust_helper_destroy_audio_decoder(decoder: *mut c_void);
-    fn rust_helper_decode_audio_packet(
-        decoder: *mut c_void,
-        data: *const u8,
-        size: i32,
-        pts: i64,
-        is_config: bool,
-    );
-}
+use crate::audio_queue::Player;
+use crate::video::{Decoder, Frame};
+use crate::{ScrcpyAudioCallback, ScrcpyPixelBufferCallback};
 
 pub struct ScrcpyDecoder {
     host: String,
     port: i32,
     audio_enabled: bool,
-    frame_cb: ScrcpyFrameCallback,
+    frame_cb: ScrcpyPixelBufferCallback,
     audio_cb: ScrcpyAudioCallback,
     opaque: *mut c_void,
 
@@ -55,7 +34,7 @@ impl ScrcpyDecoder {
         host: String,
         port: i32,
         audio_enabled: bool,
-        frame_cb: ScrcpyFrameCallback,
+        frame_cb: ScrcpyPixelBufferCallback,
         audio_cb: ScrcpyAudioCallback,
         opaque: *mut c_void,
     ) -> Self {
@@ -80,10 +59,12 @@ impl ScrcpyDecoder {
         self.running.store(true, Ordering::SeqCst);
 
         // 解析主机地址与端口
-        let mut connected_streams = None;
         let addr = format!("{}:{}", self.host, self.port);
         let resolved_addr = match addr.to_socket_addrs().and_then(|mut iter| {
-            iter.next().ok_or(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid address"))
+            iter.next().ok_or(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Invalid address",
+            ))
         }) {
             Ok(addr) => addr,
             Err(e) => {
@@ -94,56 +75,58 @@ impl ScrcpyDecoder {
         };
 
         // 阶段 1: 建立 TCP 套接字连接（最多尝试 30 次以等待 adb 端口映射就绪）
+        let mut connected_streams = None;
         for retry in 0..30 {
             if !self.running.load(Ordering::SeqCst) {
                 return false;
             }
-            println!("[rust_scrcpy] Connection attempt #{}...", retry + 1);
+
             match connect_sockets(resolved_addr, self.audio_enabled) {
-                Ok((v, a, c)) => {
+                Ok(streams) => {
+                    connected_streams = Some(streams);
                     println!("[rust_scrcpy] TCP sockets connected successfully.");
-                    connected_streams = Some((v, a, c));
                     break;
                 }
                 Err(e) => {
-                    println!("[rust_scrcpy] Connection failed: {}, retrying in 200ms...", e);
+                    if retry % 5 == 0 {
+                        println!("[rust_scrcpy] Connection failed: {}, retrying...", e);
+                    }
+                    thread::sleep(Duration::from_millis(200));
                 }
             }
-            thread::sleep(Duration::from_millis(200));
         }
 
         let (mut video_stream, audio_stream, control_stream) = match connected_streams {
             Some(s) => s,
             None => {
-                println!("[rust_scrcpy] Failed to connect to scrcpy server after multiple retries.");
+                println!("[rust_scrcpy] Failed to connect to scrcpy server after retries.");
                 self.running.store(false, Ordering::SeqCst);
                 return false;
             }
         };
 
-        // 阶段 2: 保持当前 Socket 连接，循环等待读取 Dummy Byte（最多等待 15 秒以适应服务端启动延迟）
+        // 阶段 2: 从 video socket 读取 dummy byte（验证 server 握手）
         let mut dummy_read_success = false;
-        let mut dummy = [0u8; 1];
-        for dummy_retry in 0..15 {
+        for _dummy_retry in 0..15 {
             if !self.running.load(Ordering::SeqCst) {
-                self.running.store(false, Ordering::SeqCst);
                 return false;
             }
-            println!("[rust_scrcpy] Reading dummy byte (attempt {}/15)...", dummy_retry + 1);
-            match video_stream.read_exact(&mut dummy) {
-                Ok(_) => {
-                    println!("[rust_scrcpy] Dummy byte read successfully: {}", dummy[0]);
+
+            let mut dummy = [0u8; 1];
+            match video_stream.read(&mut dummy) {
+                Ok(1..) => {
                     dummy_read_success = true;
                     break;
                 }
+                Ok(0) => {
+                    thread::sleep(Duration::from_millis(100));
+                }
                 Err(e) => {
-                    if e.kind() == std::io::ErrorKind::WouldBlock || e.kind() == std::io::ErrorKind::TimedOut {
-                        // 读取超时是非致命的，说明服务端仍在初始化。不关闭 Socket 继续等待。
-                        println!("[rust_scrcpy] Dummy byte read timeout, waiting...");
-                        continue;
+                    if e.kind() == std::io::ErrorKind::WouldBlock
+                        || e.kind() == std::io::ErrorKind::TimedOut
+                    {
+                        thread::sleep(Duration::from_millis(100));
                     } else {
-                        // 其他错误（如连接重置、断开）代表连接已失效
-                        println!("[rust_scrcpy] Dummy byte read fatal error: {}", e);
                         break;
                     }
                 }
@@ -156,7 +139,7 @@ impl ScrcpyDecoder {
             return false;
         }
 
-        // Cache the control stream
+        // 保存 control stream
         {
             let mut guard = self.control_stream.lock().unwrap();
             *guard = Some(control_stream);
@@ -166,7 +149,7 @@ impl ScrcpyDecoder {
         let frame_cb = self.frame_cb;
         let opaque_val = self.opaque as usize;
 
-        // Spawn video decode thread
+        // 启动视频硬解与渲染线程
         self.video_thread = Some(thread::spawn(move || {
             let opaque_ptr = opaque_val as *mut c_void;
             unsafe {
@@ -176,7 +159,7 @@ impl ScrcpyDecoder {
             }
         }));
 
-        // Spawn audio thread if enabled
+        // 启动音频播放线程
         if self.audio_enabled {
             if let Some(a_stream) = audio_stream {
                 let audio_running = self.running.clone();
@@ -184,7 +167,9 @@ impl ScrcpyDecoder {
                 self.audio_thread = Some(thread::spawn(move || {
                     let opaque_ptr = opaque_val as *mut c_void;
                     unsafe {
-                        if let Err(e) = run_audio_loop(audio_running, a_stream, audio_cb, opaque_ptr) {
+                        if let Err(e) =
+                            run_audio_loop(audio_running, a_stream, audio_cb, opaque_ptr)
+                        {
                             println!("[rust_scrcpy] Audio loop error: {:?}", e);
                         }
                     }
@@ -198,7 +183,7 @@ impl ScrcpyDecoder {
     pub fn stop(&mut self) {
         self.running.store(false, Ordering::SeqCst);
 
-        // Force shutdown the control stream to unblock writes/reads
+        // 关闭 control socket 释放读写阻塞
         {
             let mut guard = self.control_stream.lock().unwrap();
             if let Some(stream) = guard.take() {
@@ -254,17 +239,31 @@ fn connect_sockets(
     Ok((video_stream, audio_stream, control_stream))
 }
 
-fn read_exactly(stream: &mut TcpStream, buf: &mut [u8], running: &AtomicBool) -> Result<(), std::io::Error> {
+fn read_exactly(
+    stream: &mut TcpStream,
+    buf: &mut [u8],
+    running: &AtomicBool,
+) -> Result<(), std::io::Error> {
     let mut total = 0;
     while total < buf.len() {
         if !running.load(Ordering::SeqCst) {
-            return Err(std::io::Error::new(std::io::ErrorKind::Interrupted, "Decoder stopped"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Interrupted,
+                "Decoder stopped",
+            ));
         }
         match stream.read(&mut buf[total..]) {
-            Ok(0) => return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Socket closed")),
+            Ok(0) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::UnexpectedEof,
+                    "Socket closed",
+                ))
+            }
             Ok(n) => total += n,
             Err(e) => {
-                if e.kind() == std::io::ErrorKind::WouldBlock || e.kind() == std::io::ErrorKind::TimedOut {
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut
+                {
                     thread::sleep(Duration::from_millis(5));
                     continue;
                 }
@@ -275,10 +274,11 @@ fn read_exactly(stream: &mut TcpStream, buf: &mut [u8], running: &AtomicBool) ->
     Ok(())
 }
 
+/// 运行视频接收与纯 Rust + VideoToolbox 硬解循环。
 unsafe fn run_decode_loop(
     running: Arc<AtomicBool>,
     mut video_stream: TcpStream,
-    _frame_cb: ScrcpyFrameCallback,
+    frame_cb: ScrcpyPixelBufferCallback,
     opaque_ptr: *mut c_void,
 ) -> Result<(), String> {
     let mut meta = [0u8; 80];
@@ -288,12 +288,13 @@ unsafe fn run_decode_loop(
     let codec_id = u32::from_be_bytes(meta[64..68].try_into().unwrap());
     let mut current_width = u32::from_be_bytes(meta[72..76].try_into().unwrap()) as i32;
     let mut current_height = u32::from_be_bytes(meta[76..80].try_into().unwrap()) as i32;
-    println!("[rust_scrcpy] Metadata: codec_id = {:#x}, width = {}, height = {}", codec_id, current_width, current_height);
+    println!(
+        "[rust_scrcpy] Metadata: codec_id = {:#x}, width = {}, height = {}",
+        codec_id, current_width, current_height
+    );
 
-    let video_decoder = rust_helper_create_decoder(opaque_ptr, codec_id);
-    if video_decoder.is_null() {
-        return Err("Failed to create C++ video decoder".to_string());
-    }
+    let frame = Arc::new(Frame::default());
+    let mut video_decoder = Decoder::new(frame.clone());
 
     let mut packet_data = Vec::new();
     let mut header = [0u8; 12];
@@ -305,14 +306,16 @@ unsafe fn run_decode_loop(
         }
 
         let (pts, size) = match parse_video_packet_header(&header) {
-            VideoPacketHeader::Session { width, height, reset } => {
+            VideoPacketHeader::Session {
+                width,
+                height,
+                reset,
+            } => {
                 current_width = width as i32;
                 current_height = height as i32;
                 println!(
                     "[rust_scrcpy] Session metadata: width = {}, height = {}, reset = {}",
-                    width,
-                    height,
-                    reset,
+                    width, height, reset,
                 );
                 continue;
             }
@@ -320,7 +323,10 @@ unsafe fn run_decode_loop(
         };
 
         if size > 32 * 1024 * 1024 {
-            decode_error = Some(format!("[rust_scrcpy] Video frame size {} exceeds safety threshold 32MB", size));
+            decode_error = Some(format!(
+                "[rust_scrcpy] Video frame size {} exceeds safety threshold 32MB",
+                size
+            ));
             break;
         }
 
@@ -336,25 +342,31 @@ unsafe fn run_decode_loop(
             break;
         }
 
-        rust_helper_decode_video_packet(
-            video_decoder,
-            packet_data.as_ptr(),
-            size as i32,
-            pts,
-            current_width,
-            current_height,
-        );
+        // 使用 VideoToolbox 进行硬件解码
+        if let Err(e) = video_decoder.decode(&packet_data[0..size], pts as u64) {
+            if decode_error.is_none() {
+                println!("[rust_scrcpy] Decode frame warning: {}", e);
+            }
+        } else {
+            let pixel_buffer = frame.copy();
+            if !pixel_buffer.is_null() {
+                let (w, h) = frame.dimensions();
+                let report_w = if w > 0 { w as i32 } else { current_width };
+                let report_h = if h > 0 { h as i32 } else { current_height };
+                frame_cb(opaque_ptr, pixel_buffer, report_w, report_h);
+                crate::video_ffi::CFRelease(pixel_buffer);
+            }
+        }
     }
 
-    rust_helper_destroy_decoder(video_decoder);
     if let Some(error) = decode_error {
-        return Err(error);
+        println!("{}", error);
     }
     println!("[rust_scrcpy] Video decode loop exited gracefully");
     Ok(())
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum VideoPacketHeader {
     Session { width: u32, height: u32, reset: bool },
     Frame { pts: i64, size: usize },
@@ -379,55 +391,27 @@ fn parse_video_packet_header(header: &[u8; 12]) -> VideoPacketHeader {
     }
 }
 
-#[cfg(test)]
-mod video_packet_header_tests {
-    use super::{parse_video_packet_header, VideoPacketHeader};
-
-    #[test]
-    fn parses_rotation_session_metadata() {
-        let header = [0x80, 0x00, 0x00, 0x01, 0x00, 0x00, 0x09, 0x60, 0x00, 0x00, 0x04, 0x38];
-
-        assert_eq!(
-            parse_video_packet_header(&header),
-            VideoPacketHeader::Session {
-                width: 2400,
-                height: 1080,
-                reset: true,
-            },
-        );
-    }
-
-    #[test]
-    fn parses_frame_metadata_and_clears_packet_flags() {
-        let header = [0x60, 0x00, 0x00, 0x00, 0x00, 0x01, 0xe2, 0x40, 0x00, 0x00, 0x10, 0x00];
-
-        assert_eq!(
-            parse_video_packet_header(&header),
-            VideoPacketHeader::Frame {
-                pts: 123456,
-                size: 4096,
-            },
-        );
-    }
-}
-
+/// 运行音频接收与纯 Rust + AudioQueue 播放循环。
 unsafe fn run_audio_loop(
     running: Arc<AtomicBool>,
     mut audio_stream: TcpStream,
     _audio_cb: ScrcpyAudioCallback,
-    opaque_ptr: *mut c_void,
+    _opaque_ptr: *mut c_void,
 ) -> Result<(), String> {
     let mut codec_header = [0u8; 4];
     read_exactly(&mut audio_stream, &mut codec_header, &running)
         .map_err(|e| format!("Failed to read audio codec ID: {}", e))?;
 
-    let codec_id = u32::from_be_bytes(codec_header);
-    println!("[rust_scrcpy] Audio Codec ID: {:#x}", codec_id);
+    let codec_str = std::str::from_utf8(&codec_header).unwrap_or("unknown");
+    println!("[rust_scrcpy] Audio Codec ID: {}", codec_str);
 
-    let audio_decoder = rust_helper_create_audio_decoder(opaque_ptr, codec_id);
-    if audio_decoder.is_null() {
-        return Err("Failed to create C++ audio decoder".to_string());
-    }
+    let mut player = match Player::new() {
+        Ok(p) => Some(p),
+        Err(e) => {
+            println!("[rust_scrcpy] Failed to initialize AudioQueue: {}", e);
+            None
+        }
+    };
 
     let mut packet_data = Vec::new();
     let mut header = [0u8; 12];
@@ -441,7 +425,10 @@ unsafe fn run_audio_loop(
         let size = u32::from_be_bytes(header[8..12].try_into().unwrap()) as usize;
 
         if size > 10 * 1024 * 1024 {
-            return Err(format!("[rust_scrcpy] Audio frame size {} exceeds safety threshold 10MB", size));
+            return Err(format!(
+                "[rust_scrcpy] Audio frame size {} exceeds safety threshold 10MB",
+                size
+            ));
         }
 
         if size == 0 {
@@ -457,22 +444,49 @@ unsafe fn run_audio_loop(
         }
 
         let is_config = (pts & (1u64 << 63)) != 0 || (pts & (1u64 << 62)) != 0;
-        let clean_pts = pts & !(3u64 << 62);
-
-        rust_helper_decode_audio_packet(
-            audio_decoder,
-            packet_data.as_ptr(),
-            size as i32,
-            clean_pts as i64,
-            is_config,
-        );
+        if !is_config {
+            if let Some(player) = player.as_mut() {
+                let _ = player.write(&packet_data[0..size]);
+            }
+        }
     }
 
-    rust_audio_decoder_context_destroy(audio_decoder);
     println!("[rust_scrcpy] Audio decode loop exited gracefully");
     Ok(())
 }
 
-unsafe fn rust_audio_decoder_context_destroy(audio_decoder: *mut c_void) {
-    rust_helper_destroy_audio_decoder(audio_decoder);
+#[cfg(test)]
+mod video_packet_header_tests {
+    use super::{parse_video_packet_header, VideoPacketHeader};
+
+    #[test]
+    fn parses_rotation_session_metadata() {
+        let header = [
+            0x80, 0x00, 0x00, 0x01, 0x00, 0x00, 0x09, 0x60, 0x00, 0x00, 0x04, 0x38,
+        ];
+
+        assert_eq!(
+            parse_video_packet_header(&header),
+            VideoPacketHeader::Session {
+                width: 2400,
+                height: 1080,
+                reset: true,
+            },
+        );
+    }
+
+    #[test]
+    fn parses_frame_metadata_and_clears_packet_flags() {
+        let header = [
+            0x60, 0x00, 0x00, 0x00, 0x00, 0x01, 0xe2, 0x40, 0x00, 0x00, 0x10, 0x00,
+        ];
+
+        assert_eq!(
+            parse_video_packet_header(&header),
+            VideoPacketHeader::Frame {
+                pts: 123456,
+                size: 4096,
+            },
+        );
+    }
 }

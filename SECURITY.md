@@ -49,6 +49,6 @@ disclosure.
 
 ## Dependency And Binary Notice
 
-AnyDeck depends on ADB, scrcpy-related components, FFmpeg-related libraries, and
+AnyDeck depends on ADB, scrcpy-related components, and
 desktop native integrations. Reports about vulnerable bundled binaries should
 include the library name, version, platform, and CVE reference when possible.

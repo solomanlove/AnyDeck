@@ -1,5 +1,4 @@
 #import "ScrcpyTexture.h"
-#import <cstring>
 
 @implementation ScrcpyTexture
 
@@ -25,51 +24,19 @@
     }
 }
 
-- (void)updateFrame:(const uint8_t *)rgbaBuffer width:(int)width height:(int)height {
+/// 接收 VideoToolbox 硬解生成的 CVPixelBufferRef 显存句柄，实现直通零拷贝渲染。
+- (void)updatePixelBuffer:(CVPixelBufferRef)pixelBuffer width:(int)width height:(int)height {
     int64_t textureId = 0;
     @synchronized(self) {
-        if (_textureId == 0) {
+        if (_textureId == 0 || !pixelBuffer) {
             return;
         }
-        if (!_pixelBuffer || _width != width || _height != height) {
-            if (_pixelBuffer) {
-                CVPixelBufferRelease(_pixelBuffer);
-                _pixelBuffer = nil;
-            }
-            _width = width;
-            _height = height;
-            
-            NSDictionary *options = @{
-                (id)kCVPixelBufferCGImageCompatibilityKey : @YES,
-                (id)kCVPixelBufferCGBitmapContextCompatibilityKey : @YES,
-                (id)kCVPixelBufferMetalCompatibilityKey : @YES,
-                (id)kCVPixelBufferIOSurfacePropertiesKey : @{}
-            };
-            
-            CVReturn status = CVPixelBufferCreate(
-                kCFAllocatorDefault,
-                width,
-                height,
-                kCVPixelFormatType_32BGRA,
-                (__bridge CFDictionaryRef)options,
-                &_pixelBuffer
-            );
-            if (status != kCVReturnSuccess) {
-                return;
-            }
+        if (_pixelBuffer) {
+            CVPixelBufferRelease(_pixelBuffer);
         }
-        
-        CVPixelBufferLockBaseAddress(_pixelBuffer, 0);
-        void *baseAddress = CVPixelBufferGetBaseAddress(_pixelBuffer);
-        size_t bytesPerRow = CVPixelBufferGetBytesPerRow(_pixelBuffer);
-        
-        const uint8_t *src = rgbaBuffer;
-        uint8_t *dst = (uint8_t *)baseAddress;
-        for (int y = 0; y < height; ++y) {
-            std::memcpy(dst + y * bytesPerRow, src + y * width * 4, width * 4);
-        }
-        
-        CVPixelBufferUnlockBaseAddress(_pixelBuffer, 0);
+        _pixelBuffer = CVPixelBufferRetain(pixelBuffer);
+        _width = width;
+        _height = height;
         textureId = _textureId;
     }
 

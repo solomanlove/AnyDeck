@@ -430,7 +430,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n/bin/bash \"$PROJECT_DIR/../scrcpy_flutter/script/build_device_bridge.sh\"\nDEST=\"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Contents/Frameworks\"\nmkdir -p \"$DEST\"\ncp -f \"$PROJECT_DIR/../scrcpy_flutter/macos/Libs/\"*.dylib \"$DEST/\"\nfor f in \"$DEST/\"*.dylib; do\n  if [ -f \"$f\" ]; then\n    codesign --force --sign - \"$f\"\n  fi\ndone\n";
+			shellScript = "set -e\n/bin/bash \"$PROJECT_DIR/../scrcpy_flutter/script/build_device_bridge.sh\"\nDEST=\"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Contents/Frameworks\"\nmkdir -p \"$DEST\"\ncp -f \"$PROJECT_DIR/../scrcpy_flutter/macos/Libs/libanydeck_device_bridge.dylib\" \"$DEST/\"\ncodesign --force --sign - \"$DEST/libanydeck_device_bridge.dylib\"\n";
 		};
 		7A3779DD79E2B573F94E4CAD /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

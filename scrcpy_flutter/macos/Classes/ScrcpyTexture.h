@@ -10,7 +10,7 @@
 }
 
 - (instancetype)initWithTextureRegistry:(id<FlutterTextureRegistry>)registry;
-- (void)updateFrame:(const uint8_t *)rgbaBuffer width:(int)width height:(int)height;
+- (void)updatePixelBuffer:(CVPixelBufferRef)pixelBuffer width:(int)width height:(int)height;
 - (int64_t)textureId;
 - (void)dispose;
 - (CGSize)videoSize;

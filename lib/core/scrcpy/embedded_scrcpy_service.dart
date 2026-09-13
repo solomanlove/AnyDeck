@@ -163,6 +163,8 @@ class EmbeddedScrcpyService {
         'scid=${camera?.scid ?? '0'}',
         'log_level=verbose',
         'audio=${mirrorAudioEnabled ? "true" : "false"}',
+        if (mirrorAudioEnabled) 'audio_codec=raw',
+        'video_codec=h264',
         'video_bit_rate=$bitrate',
         if (maxSize > 0) 'max_size=$maxSize',
         // 原生客户端固定连接 video/control，摄像头页不发送触控或键盘消息。

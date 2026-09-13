@@ -55,8 +55,8 @@ AnyDeck relies on ADB and Scrcpy. Install them via your package manager:
 
 #### 🍏 macOS
 ```bash
-# Install ADB, FFmpeg, and Scrcpy
-brew install android-platform-tools ffmpeg scrcpy
+# Install ADB and Scrcpy
+brew install android-platform-tools scrcpy
 ```
 
 ####  Windows
@@ -99,5 +99,5 @@ Contributions are welcome! Please follow these standards when contributing:
 *   **License**: Licensed under the [Apache-2.0 License](LICENSE).
 *   **Third-party Components**:
     *   `assets/scrcpy/scrcpy-server.jar` is compiled from the open-source [Genymobile/scrcpy](https://github.com/Genymobile/scrcpy) project and respects its license.
-    *   Video decoding functionality links dynamically with [FFmpeg](https://ffmpeg.org).
+    *   Video decoding is powered by pure Rust with native Apple VideoToolbox hardware acceleration and AudioQueue audio playback (FFmpeg-free).
 *   **Trademarks**: All brand logos (Google, Xiaomi, Huawei, etc.) in `assets/brand/` are properties of their respective trademark holders. They are used in this project solely for non-commercial device identification purposes.

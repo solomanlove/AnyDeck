@@ -12,7 +12,7 @@ let libsDir = macosDir.appendingPathComponent("Libs").path
 let package = Package(
     name: "scrcpy_flutter",
     platforms: [
-        .macOS("10.15")
+        .macOS("11.0")
     ],
     products: [
         .library(name: "scrcpy-flutter", targets: ["scrcpy_flutter"])
@@ -32,33 +32,17 @@ let package = Package(
                 .headerSearchPath("include"),
                 .headerSearchPath("include/scrcpy_flutter"),
                 .unsafeFlags([
-                    "-std=c++17",
-                    "-I/opt/homebrew/opt/ffmpeg/include",
-                    "-I/usr/local/opt/ffmpeg/include"
+                    "-std=c++17"
                 ])
             ],
             linkerSettings: [
                 .linkedFramework("AudioToolbox"),
+                .linkedFramework("VideoToolbox"),
+                .linkedFramework("CoreMedia"),
                 .linkedFramework("CoreVideo"),
                 .unsafeFlags([
                     "-L\(libsDir)",
-                    "-L/opt/homebrew/lib",
-                    "-L/usr/local/lib",
-                    "-lrust_scrcpy",
-                    "-lavcodec",
-                    "-lavformat",
-                    "-lavutil",
-                    "-lswscale",
-                    "-lswresample",
-                    "-lSvtAv1Enc",
-                    "-lcrypto",
-                    "-ldav1d",
-                    "-lmp3lame",
-                    "-lopus",
-                    "-lssl",
-                    "-lvpx",
-                    "-lx264",
-                    "-lx265"
+                    "-lrust_scrcpy"
                 ])
             ]
         )

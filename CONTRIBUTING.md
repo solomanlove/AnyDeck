@@ -8,7 +8,7 @@ toolbox for Android debugging, ADB workflows, and scrcpy-based screen mirroring.
 Install the required CLI tools first:
 
 ```bash
-brew install android-platform-tools ffmpeg scrcpy
+brew install android-platform-tools scrcpy
 flutter pub get
 ```
 

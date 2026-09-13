@@ -1,11 +1,14 @@
+pub mod audio_queue;
 pub mod decoder;
+pub mod video;
+pub mod video_ffi;
 
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_void};
 use libc::size_t;
 
-// 定义 Callback 类型，与 C++ / 跨平台平台侧一致
-pub type ScrcpyFrameCallback = unsafe extern "C" fn(opaque: *mut c_void, rgba_buf: *const u8, width: i32, height: i32);
+/// 视频帧解码回调：向平台层传递硬件解码出的 CVPixelBufferRef 句柄指针与分辨率。
+pub type ScrcpyPixelBufferCallback = unsafe extern "C" fn(opaque: *mut c_void, pixel_buffer: *mut c_void, width: i32, height: i32);
 pub type ScrcpyAudioCallback = unsafe extern "C" fn(opaque: *mut c_void, pcm_buf: *const u8, len: i32);
 
 pub struct RustScrcpyDecoderContext {
@@ -17,7 +20,7 @@ pub unsafe extern "C" fn rust_scrcpy_start(
     host: *const c_char,
     port: i32,
     audio_enabled: bool,
-    frame_cb: ScrcpyFrameCallback,
+    frame_cb: ScrcpyPixelBufferCallback,
     audio_cb: ScrcpyAudioCallback,
     opaque: *mut c_void,
 ) -> *mut RustScrcpyDecoderContext {
@@ -29,7 +32,7 @@ pub unsafe extern "C" fn rust_scrcpy_start(
         Err(_) => return std::ptr::null_mut(),
     };
 
-    println!("[rust_scrcpy] Starting Rust decoder for {}:{} (audio: {})", host_str, port, audio_enabled);
+    println!("[rust_scrcpy] Starting pure Rust VideoToolbox & AudioQueue decoder for {}:{} (audio: {})", host_str, port, audio_enabled);
 
     let mut decoder = decoder::ScrcpyDecoder::new(host_str, port, audio_enabled, frame_cb, audio_cb, opaque);
     if !decoder.start() {

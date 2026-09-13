@@ -56,8 +56,8 @@ AnyDeck 需要在本地系统中安装必要的工具，建议使用包管理器
 
 #### 🍏 macOS 平台
 ```bash
-# 安装 ADB、FFmpeg 和 Scrcpy 依赖
-brew install android-platform-tools ffmpeg scrcpy
+# 安装 ADB 和 Scrcpy 依赖
+brew install android-platform-tools scrcpy
 ```
 
 ####  Windows 平台
@@ -101,5 +101,5 @@ flutter run -d windows # Windows 平台
 *   **许可证**：本项目采用 [Apache-2.0 License](LICENSE) 开源。
 *   **第三方依赖**：
     *   `assets/scrcpy/scrcpy-server.jar` 来源于开源项目 [Genymobile/scrcpy](https://github.com/Genymobile/scrcpy) 并遵循其授权协议。
-    *   视频硬解基于 [FFmpeg](https://ffmpeg.org) 动态链接库。
+    *   视频硬解基于纯 Rust + Apple VideoToolbox 显存直通硬件解码，音频基于纯 Rust + Apple AudioQueue 播放，彻底移除 FFmpeg 动态库依赖。
 *   **商标声明**：项目 `assets/brand/` 目录中所使用的各品牌 Logo（Google, Xiaomi, Huawei 等）均为各自公司的注册商标，本项目仅将其用于设备品牌识别和非商业性功能展示。
