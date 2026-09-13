@@ -19,10 +19,15 @@ class AppLocalizations {
 
   /// 按 key 取文案，英文缺失时回退中文，保证 UI 可用。
   String t(String key) {
-    final languageCode = locale.languageCode == 'en' ? 'en' : 'zh';
-    return localizedValues[languageCode]?[key] ??
-        localizedValues['zh']?[key] ??
-        key;
+    // Determine language code, defaulting to Chinese if unsupported.
+    var languageCode = locale.languageCode;
+    if (!localizedValues.containsKey(languageCode)) {
+      languageCode = 'zh';
+    }
+    // Look up the key in the selected language map.
+    final langMap = localizedValues[languageCode]!;
+    // Return the localized string, fall back to Chinese or the key itself.
+    return langMap[key] ?? localizedValues['zh']![key] ?? key;
   }
 }
 
