@@ -86,6 +86,8 @@ import 'messages/presentation/messages_tab.dart';
 import 'messages/presentation/controller/messages_controller.dart';
 import '../core/notifications/notification_providers.dart';
 import '../core/notifications/mac_notification_bridge.dart';
+import '../core/dal/device_driver.dart';
+import '../core/dal/rust_dal_bridge.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';

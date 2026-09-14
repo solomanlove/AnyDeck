@@ -30,3 +30,15 @@ mkdir -p "$(dirname "$BRIDGE_OUTPUT")"
 lipo -create "${BRIDGE_LIBRARIES[@]}" -output "$BRIDGE_OUTPUT"
 install_name_tool -id '@rpath/libanydeck_device_bridge.dylib' "$BRIDGE_OUTPUT"
 codesign --force --sign - "$BRIDGE_OUTPUT"
+
+# 同步覆盖到已构建的 Debug/Release App Frameworks 目录，确保运行时即时生效
+DEBUG_FRAMEWORKS="$PROJECT_ROOT/build/macos/Build/Products/Debug/AnyDeck.app/Contents/Frameworks"
+if [ -d "$DEBUG_FRAMEWORKS" ]; then
+  cp "$BRIDGE_OUTPUT" "$DEBUG_FRAMEWORKS/libanydeck_device_bridge.dylib"
+  codesign --force --sign - "$DEBUG_FRAMEWORKS/libanydeck_device_bridge.dylib"
+fi
+RELEASE_FRAMEWORKS="$PROJECT_ROOT/build/macos/Build/Products/Release/AnyDeck.app/Contents/Frameworks"
+if [ -d "$RELEASE_FRAMEWORKS" ]; then
+  cp "$BRIDGE_OUTPUT" "$RELEASE_FRAMEWORKS/libanydeck_device_bridge.dylib"
+  codesign --force --sign - "$RELEASE_FRAMEWORKS/libanydeck_device_bridge.dylib"
+fi

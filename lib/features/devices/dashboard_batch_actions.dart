@@ -430,6 +430,21 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
         title: '批量执行脚本',
         devices: devices,
         action: (device) async {
+          // 若为 Android 设备且 Rust DAL 桥接可用，优先走 Direct Socket DAL 驱动
+          if (!device.isIos &&
+              !device.isHarmony &&
+              RustDalBridge.instance.isAvailable) {
+            try {
+              final out = await RustDalBridge.instance.executeShell(
+                device.id,
+                script,
+                platform: DevicePlatform.android,
+              );
+              return out.isEmpty ? '执行完成 (无输出)' : out.trim();
+            } catch (_) {
+              // 原生调用异常时自动平滑降级走下方 ADB CLI 通道
+            }
+          }
           final res = await ref
               .read(adbServiceProvider)
               .shell(device.id, script);
@@ -502,10 +517,20 @@ class _BatchProgressDialogState extends ConsumerState<_BatchProgressDialog> {
   }
 
   Future<void> _runActions() async {
-    final futures = <Future<void>>[];
-    for (var i = 0; i < _items.length; i++) {
-      final index = i;
-      futures.add(() async {
+    // 限制 USB 总线最大并发数为 4，防止瞬时并发重度 I/O 打崩宿主机 USB 控制器
+    const maxConcurrency = 4;
+    var nextIndex = 0;
+
+    Future<void> worker() async {
+      while (true) {
+        if (!mounted) return;
+        final int index;
+        if (nextIndex < _items.length) {
+          index = nextIndex++;
+        } else {
+          break;
+        }
+
         if (!mounted) return;
         setState(() {
           _items[index].status = _BatchItemStatus.running;
@@ -530,9 +555,14 @@ class _BatchProgressDialogState extends ConsumerState<_BatchProgressDialog> {
             });
           }
         }
-      }());
+      }
     }
-    await Future.wait(futures);
+
+    final poolSize =
+        _items.length < maxConcurrency ? _items.length : maxConcurrency;
+    final workers = List.generate(poolSize, (_) => worker());
+    await Future.wait(workers);
+
     if (mounted) {
       setState(() {
         _finished = true;

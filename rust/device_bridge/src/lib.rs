@@ -3,6 +3,7 @@ mod adb;
 mod adb_socket;
 mod audio_queue;
 pub mod performance;
+pub mod core;
 mod stream;
 mod video;
 mod video_ffi;
@@ -76,7 +77,12 @@ pub unsafe extern "C" fn anydeck_start(
     if std::thread::Builder::new()
         .name("anydeck-device-session".into())
         .spawn(move || {
-            let _ = std::panic::catch_unwind(|| worker::run(adb, serial, jar, kind, id, &current));
+            let res = std::panic::catch_unwind(|| worker::run(adb, serial, jar, kind, id, &current));
+            if let Err(e) = &res {
+                eprintln!("[RustDeviceBridge] worker::run PANIC: {:?}", e);
+            } else if let Ok(Err(err)) = &res {
+                eprintln!("[RustDeviceBridge] worker::run ERR: {}", err);
+            }
             current.status.store(
                 if current.stopped.load(Ordering::Acquire) {
                     2
@@ -330,6 +336,112 @@ pub unsafe extern "C" fn anydeck_clear_performance_cache(serial: *const c_char) 
     }
     if let Ok(serial_str) = CStr::from_ptr(serial).to_str() {
         performance::clear_device_cache(serial_str);
+    }
+}
+
+/// 批量并发执行控制台 Shell 命令 (带 USB 总线信号量并发保护)
+///
+/// # Safety
+/// serials_json 与 command 必须为有效的 NUL 结尾 C 字符串指针。
+/// 返回指针指向的堆内存必须由调用方通过 `anydeck_free_string` 释放。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_batch_execute_shell(
+    serials_json: *const c_char,
+    command: *const c_char,
+    max_concurrency: u32,
+) -> *mut c_char {
+    if serials_json.is_null() || command.is_null() {
+        return std::ptr::null_mut();
+    }
+    let (Ok(serials_str), Ok(cmd_str)) = (
+        CStr::from_ptr(serials_json).to_str(),
+        CStr::from_ptr(command).to_str(),
+    ) else {
+        return std::ptr::null_mut();
+    };
+
+    let serials: Vec<String> = match serde_json::from_str(serials_str) {
+        Ok(s) => s,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let drivers: Vec<Arc<dyn core::DeviceDriver>> = serials
+        .into_iter()
+        .map(|s| Arc::new(core::AndroidDriver::new(s)) as Arc<dyn core::DeviceDriver>)
+        .collect();
+
+    let results = core::BatchManager::execute_shell_batch_blocking(
+        drivers,
+        cmd_str.to_string(),
+        max_concurrency as usize,
+    );
+
+    let json_bytes = match serde_json::to_string(&results) {
+        Ok(j) => j,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    std::ffi::CString::new(json_bytes)
+        .map(|cs| cs.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// 通过统一 DAL 设备驱动执行单个设备 Shell 命令
+///
+/// # Safety
+/// serial 与 command 必须为有效的 NUL 结尾 C 字符串指针。
+/// 返回指针指向的堆内存必须由调用方通过 `anydeck_free_string` 释放。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_dal_execute_shell(
+    platform: u8,
+    serial: *const c_char,
+    command: *const c_char,
+) -> *mut c_char {
+    if serial.is_null() || command.is_null() {
+        return std::ptr::null_mut();
+    }
+    let (Ok(serial_str), Ok(cmd_str)) = (
+        CStr::from_ptr(serial).to_str(),
+        CStr::from_ptr(command).to_str(),
+    ) else {
+        return std::ptr::null_mut();
+    };
+
+    let driver: Arc<dyn core::DeviceDriver> = match core::DevicePlatform::from_u8(platform) {
+        Some(core::DevicePlatform::Android) => Arc::new(core::AndroidDriver::new(serial_str)),
+        Some(core::DevicePlatform::Harmony) => Arc::new(core::HarmonyDriver::new(serial_str)),
+        Some(core::DevicePlatform::Ios) => Arc::new(core::IosDriver::new(serial_str)),
+        None => return std::ptr::null_mut(),
+    };
+
+    let result = core::BatchManager::runtime().block_on(async {
+        driver.execute_shell(cmd_str).await
+    });
+
+    let (success, payload) = match result {
+        Ok(out) => (true, out),
+        Err(err) => (false, err),
+    };
+
+    let response = serde_json::json!({
+        "success": success,
+        "payload": payload,
+    });
+
+    let json_str = response.to_string();
+    std::ffi::CString::new(json_str)
+        .map(|cs| cs.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// 释放由 Rust 原生层分配并返回给 Dart 侧的 C 字符串裸指针
+///
+/// # Safety
+/// ptr 必须是由 `CString::into_raw` 生成的指针或 null。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_free_string(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        drop(std::ffi::CString::from_raw(ptr));
     }
 }
 

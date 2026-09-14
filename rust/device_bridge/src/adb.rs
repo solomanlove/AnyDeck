@@ -8,12 +8,13 @@ pub fn command(executable: &str, args: &[&str], stopped: &AtomicBool) -> Result<
     let mut child = Command::new(executable)
         .args(args)
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| e.to_string())?;
     let mut stdout = child.stdout.take().ok_or("Missing ADB stdout")?;
+    let mut stderr = child.stderr.take().ok_or("Missing ADB stderr")?;
     // 排空所有输出，仅保留 4096 字节；不会因 pipe 写满而阻塞子进程。
-    let reader = std::thread::spawn(move || {
+    let out_reader = std::thread::spawn(move || {
         let mut result = Vec::new();
         let mut bytes = [0; 1024];
         while let Ok(count) = stdout.read(&mut bytes) {
@@ -25,25 +26,52 @@ pub fn command(executable: &str, args: &[&str], stopped: &AtomicBool) -> Result<
         }
         String::from_utf8_lossy(&result).into_owned()
     });
+    let err_reader = std::thread::spawn(move || {
+        let mut result = Vec::new();
+        let mut bytes = [0; 1024];
+        while let Ok(count) = stderr.read(&mut bytes) {
+            if count == 0 {
+                break;
+            }
+            let keep = count.min(4096 - result.len());
+            result.extend_from_slice(&bytes[..keep]);
+        }
+        String::from_utf8_lossy(&result).into_owned()
+    });
     let deadline = Instant::now() + Duration::from_secs(15);
-    let status = loop {
+    let mut exit_code: Option<i32> = None;
+    while exit_code.is_none() {
         match child.try_wait() {
-            Ok(Some(status)) => break Ok(status),
+            Ok(Some(status)) => {
+                exit_code = Some(status.code().unwrap_or(0));
+                break;
+            }
             Ok(None) => {}
-            Err(error) => break Err(error.to_string()),
+            Err(ref e) if e.raw_os_error() == Some(10) => {
+                // ECHILD: 宿主环境（如 Dart VM SIGCHLD handler）已代为回收子进程，子进程已结束
+                exit_code = Some(0);
+                break;
+            }
+            Err(error) => {
+                let _ = child.kill();
+                return Err(error.to_string());
+            }
         }
         if stopped.load(Ordering::Acquire) || Instant::now() > deadline {
-            break Err("ADB cancelled or timed out".into());
+            let _ = child.kill();
+            return Err("ADB cancelled or timed out".into());
         }
         std::thread::sleep(Duration::from_millis(20));
-    };
-    if status.is_err() {
-        let _ = child.kill();
-        let _ = child.wait();
     }
-    let output = reader.join().map_err(|_| "ADB output worker failed")?;
-    if !status?.success() {
-        return Err("ADB command failed".into());
+    let output = out_reader.join().map_err(|_| "ADB stdout worker failed")?;
+    let err_output = err_reader.join().map_err(|_| "ADB stderr worker failed")?;
+    if let Some(code) = exit_code {
+        if code != 0 {
+            return Err(format!("ADB command failed (exit code {code}): {err_output}"));
+        }
+    }
+    if !err_output.is_empty() && output.is_empty() && err_output.contains("error:") {
+        return Err(format!("ADB command error: {err_output}"));
     }
     Ok(output)
 }
@@ -83,7 +111,7 @@ impl Transport {
         {
             return Err("Unsupported Android version".into());
         }
-        let scid = format!("{:x}", token & 0x7fffffff);
+        let scid = format!("{:08x}", token & 0x7fffffff);
         let socket = format!("localabstract:scrcpy_{:08x}", token & 0x7fffffff);
         let mut transport = Self {
             adb,
@@ -175,11 +203,12 @@ impl Transport {
         Ok(transport)
     }
     pub fn alive(&mut self) -> bool {
-        self.child
-            .as_mut()
-            .and_then(|child| child.try_wait().ok())
-            .flatten()
-            .is_none()
+        match self.child.as_mut().map(|child| child.try_wait()) {
+            Some(Ok(None)) => true,
+            Some(Ok(Some(_))) => false,
+            Some(Err(ref e)) if e.raw_os_error() == Some(10) => false,
+            _ => false,
+        }
     }
 }
 impl Drop for Transport {

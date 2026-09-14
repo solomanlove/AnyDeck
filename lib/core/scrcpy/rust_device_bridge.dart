@@ -103,7 +103,9 @@ class RustDeviceBridge {
         final pointer = _alloc(bytes.length + 1);
         if (pointer == nullptr) throw StateError('Native allocation failed');
         buffers.add((pointer, bytes.length + 1));
-        pointer.asTypedList(bytes.length + 1).setAll(0, bytes);
+        final list = pointer.asTypedList(bytes.length + 1);
+        list.setAll(0, bytes);
+        list[bytes.length] = 0;
       }
       return _start(buffers[0].$1, buffers[1].$1, buffers[2].$1, kind);
     } finally {
@@ -134,7 +136,9 @@ class RustDeviceBridge {
     final pointer = _alloc(bytes.length + 1);
     if (pointer == nullptr) throw StateError('Native allocation failed');
     try {
-      pointer.asTypedList(bytes.length + 1).setAll(0, bytes);
+      final list = pointer.asTypedList(bytes.length + 1);
+      list.setAll(0, bytes);
+      list[bytes.length] = 0;
       return _startMirror(pointer, port, audioEnabled ? 1 : 0);
     } finally {
       _free(pointer, bytes.length + 1);
