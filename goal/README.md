@@ -12,6 +12,7 @@
 
 | 文档 | 名称 | 核心内容 |
 | :--- | :--- | :--- |
+| [PRODUCT_TECH_PLAN.md](./PRODUCT_TECH_PLAN.md) | **产品总体技术方案 (新)** | 吸收旧技术方案结构并全面升级为 Flutter+Rust 异构底座、三端支持、融合模式与批量架构 |
 | [01_platform_goals.md](./01_platform_goals.md) | **三端目标愿景与能力矩阵** | 安卓（性能零拷贝/融合模式）、鸿蒙（HDC 管道/投屏）、iOS（投屏/蓝牙HID反控/WDA）及批量自动化目标 |
 | [02_implementation_plan.md](./02_implementation_plan.md) | **详细落地实施计划** | 分阶段演进路线（Phase 1 ~ Phase 4）、里程碑、任务拆解与量化验收指标 |
 | [03_core_architecture_principles.md](./03_core_architecture_principles.md) | **核心技术架构与原理解析** | Direct ADB Socket、零拷贝解析数学公式、DAL 抽象 Trait、Android 14 虚拟屏原理、iOS 蓝牙 HID 协议 |
