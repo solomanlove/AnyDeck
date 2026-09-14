@@ -46,6 +46,10 @@ import '../ios/ios_mirror_service.dart';
 import '../harmony/hdc_service.dart';
 import '../harmony/harmony_mirror_service.dart';
 
+export '../ios/ios_ble_mouse_service.dart';
+export '../ios/ios_wda_client.dart';
+export '../cron/cron_scheduler_service.dart';
+
 /// 所有命令型 provider 共享的 adb 服务实例。
 final adbServiceProvider = Provider<AdbService>((ref) {
   return AdbService(

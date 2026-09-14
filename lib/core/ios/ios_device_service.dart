@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../adb/adb_device.dart';
+import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 import 'ios_mirror_session.dart';
 
@@ -30,6 +31,27 @@ class IosDeviceService {
 
   /// 获取已连接的 iOS 设备列表。
   Future<List<AdbDevice>> listDevices() async {
+    if (RustDalBridge.instance.isAvailable) {
+      final nativeList = await RustDalBridge.instance.listIosDevices();
+      if (nativeList.isNotEmpty) {
+        return nativeList.map((item) {
+          final udid = (item['udid'] ?? '').toString();
+          final name = (item['name'] ?? 'iPhone').toString();
+          final model = (item['model'] ?? '').toString();
+          final version = (item['version'] ?? 'iOS').toString();
+          final modelName = model.isNotEmpty ? '$name ($model)' : name;
+          return AdbDevice(
+            id: udid,
+            status: 'device',
+            model: modelName,
+            product: version,
+            transportId: '',
+            isIos: true,
+          );
+        }).toList();
+      }
+    }
+
     final exe = _resolveBinary();
     try {
       final result = await Process.run(exe, ['list', '--details']);

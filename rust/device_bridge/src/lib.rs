@@ -4,6 +4,7 @@ mod adb_socket;
 mod audio_queue;
 pub mod performance;
 pub mod core;
+pub mod c_api_ios;
 mod stream;
 mod video;
 mod video_ffi;

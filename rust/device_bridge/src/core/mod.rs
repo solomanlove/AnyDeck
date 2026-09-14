@@ -5,13 +5,17 @@ pub mod harmony;
 pub mod ios;
 pub mod batch;
 pub mod ring_buffer;
+pub mod ble_hid;
+pub mod cron;
 
 pub use driver::{DeviceDriver, DevicePlatform};
 pub use android::AndroidDriver;
 pub use harmony::{HarmonyDriver, HarmonyTarget};
-pub use ios::IosDriver;
+pub use ios::{IosDriver, IosTarget};
 pub use batch::{BatchManager, BatchDeviceResult};
 pub use ring_buffer::{LogRingBuffer, LogEntry};
+pub use ble_hid::{BleHidMouseSimulator, MouseReport};
+pub use cron::{CronScheduler, CronExpression, CronJob};
 
 #[cfg(test)]
 mod tests {
@@ -128,6 +132,14 @@ mod tests {
     fn test_harmony_driver_find_hdc() {
         let hdc_res = harmony::find_hdc_path();
         if let Ok(path) = hdc_res {
+            assert!(path.is_file());
+        }
+    }
+
+    #[test]
+    fn test_ios_driver_find_path() {
+        let ios_res = ios::find_ios_path();
+        if let Ok(path) = ios_res {
             assert!(path.is_file());
         }
     }

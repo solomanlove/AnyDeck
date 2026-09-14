@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/ios/ios_ble_mouse_service.dart';
 
 /// 一个纯 Dart 实现的高性能 MJPEG 图像流播放器。
 /// 检索 JPEG 的起始标记 0xFF, 0xD8 (SOI) 与结束标记 0xFF, 0xD9 (EOI) 来分包渲染，
 /// 无任何第三方系统或 C++ 编解码依赖，极度轻量且跨平台一致。
-class IosMirrorViewer extends StatefulWidget {
+class IosMirrorViewer extends ConsumerStatefulWidget {
   const IosMirrorViewer({
     super.key,
     required this.deviceId,
@@ -17,10 +21,10 @@ class IosMirrorViewer extends StatefulWidget {
   final int port;
 
   @override
-  State<IosMirrorViewer> createState() => _IosMirrorViewerState();
+  ConsumerState<IosMirrorViewer> createState() => _IosMirrorViewerState();
 }
 
-class _IosMirrorViewerState extends State<IosMirrorViewer> {
+class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
   Uint8List? _currentFrame;
   StreamSubscription<List<int>>? _subscription;
   HttpClient? _client;
@@ -240,7 +244,10 @@ class _IosMirrorViewerState extends State<IosMirrorViewer> {
       );
     }
 
-    return Container(
+    final bleMouseState = ref.watch(iosBleMouseProvider);
+    final bleMouseNotifier = ref.read(iosBleMouseProvider.notifier);
+
+    final imageWidget = Container(
       color: Colors.black,
       width: double.infinity,
       height: double.infinity,
@@ -250,6 +257,66 @@ class _IosMirrorViewerState extends State<IosMirrorViewer> {
         fit: BoxFit.contain,
         alignment: Alignment.center,
       ),
+    );
+
+    return Stack(
+      children: [
+        if (bleMouseState.isEnabled)
+          Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerDown: bleMouseNotifier.handlePointerDown,
+            onPointerMove: bleMouseNotifier.handlePointerMove,
+            onPointerUp: bleMouseNotifier.handlePointerUp,
+            onPointerSignal: (event) {
+              if (event is PointerScrollEvent) {
+                bleMouseNotifier.handlePointerScroll(event);
+              }
+            },
+            child: imageWidget,
+          )
+        else
+          imageWidget,
+        if (bleMouseState.isEnabled)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: bleMouseState.state == BleMouseState.connected
+                      ? Colors.greenAccent.withAlpha(180)
+                      : Colors.orangeAccent.withAlpha(180),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.bluetooth,
+                    size: 14,
+                    color: bleMouseState.state == BleMouseState.connected
+                        ? Colors.greenAccent
+                        : Colors.orangeAccent,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    bleMouseState.state == BleMouseState.connected
+                        ? 'BLE 鼠标反控已连接'
+                        : 'BLE 鼠标等待配对...',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

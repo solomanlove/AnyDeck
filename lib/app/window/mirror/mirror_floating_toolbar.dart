@@ -18,6 +18,7 @@ import '../../../features/widgets/device_power_actions.dart';
 import 'mirror_back_long_press_handler.dart';
 import 'mirror_volume_long_press_handler.dart';
 import 'mirror_window_controller.dart';
+import '../../../core/ios/ios_mirror_service.dart';
 
 ///投屏窗口中工具栏
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
@@ -70,9 +71,11 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
 
   Future<void> _takeScreenshot(BuildContext context, String deviceId, {required bool saveToFile}) async {
     try {
-      final bytes = widget.controller.isHarmony
-          ? await ref.read(hdcServiceProvider).captureScreenshot(deviceId)
-          : await ref.read(adbServiceProvider).captureScreenshot(deviceId);
+      final bytes = widget.controller.isIos
+          ? await ref.read(iosCommandServiceProvider).captureScreenshot(deviceId)
+          : (widget.controller.isHarmony
+              ? await ref.read(hdcServiceProvider).captureScreenshot(deviceId)
+              : await ref.read(adbServiceProvider).captureScreenshot(deviceId));
 
       final hostPlatform = ref.read(hostPlatformServiceProvider);
 
@@ -244,13 +247,19 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
               tooltip: context.l10n.t('power'),
-              onPressed: () => pressPowerKeyAndResetScreenPower(
-                actions: actions,
-                deviceId: widget.deviceId,
-                screenPowerOffNotifier: ref.read(
-                  screenPowerOffProvider(widget.deviceId).notifier,
-                ),
-              ),
+              onPressed: () {
+                if (widget.controller.isIos) {
+                  ref.read(iosWdaClientProvider).lockScreen();
+                  return;
+                }
+                pressPowerKeyAndResetScreenPower(
+                  actions: actions,
+                  deviceId: widget.deviceId,
+                  screenPowerOffNotifier: ref.read(
+                    screenPowerOffProvider(widget.deviceId).notifier,
+                  ),
+                );
+              },
             ),
             MirrorToolbarButton(
               icon: Icon(
@@ -276,6 +285,10 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               ),
               tooltip: context.l10n.t('volumeUp'),
               onPressed: () {
+                if (widget.controller.isIos) {
+                  ref.read(iosWdaClientProvider).pressButton('volumeUp');
+                  return;
+                }
                 if (_volumeLongPressHandler.shouldSuppressVolumeUp) {
                   return;
                 }
@@ -293,6 +306,10 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               ),
               tooltip: context.l10n.t('volumeDown'),
               onPressed: () {
+                if (widget.controller.isIos) {
+                  ref.read(iosWdaClientProvider).pressButton('volumeDown');
+                  return;
+                }
                 if (_volumeLongPressHandler.shouldSuppressVolumeDown) {
                   return;
                 }
@@ -331,7 +348,13 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: isDark ? Colors.white70 : Colors.black87,
               ),
               tooltip: context.l10n.t('home'),
-              onPressed: () => actions.keyEvent(widget.deviceId, 3),
+              onPressed: () {
+                if (widget.controller.isIos) {
+                  ref.read(iosWdaClientProvider).pressHome();
+                  return;
+                }
+                actions.keyEvent(widget.deviceId, 3);
+              },
             ),
             MirrorToolbarButton(
               icon: Icon(
@@ -341,6 +364,30 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               tooltip: context.l10n.t('menuKey'),
               onPressed: () => actions.keyEvent(widget.deviceId, 187),
             ),
+            if (widget.controller.isIos) ...[
+              Consumer(
+                builder: (context, ref, _) {
+                  final ble = ref.watch(iosBleMouseProvider);
+                  final isConn = ble.state == BleMouseState.connected;
+                  final isAdv = ble.state == BleMouseState.advertising;
+                  return MirrorToolbarButton(
+                    icon: Icon(
+                      Icons.mouse,
+                      color: isConn
+                          ? Colors.greenAccent
+                          : (isAdv
+                              ? Colors.orangeAccent
+                              : (isDark ? Colors.white70 : Colors.black87)),
+                    ),
+                    tooltip: ble.isEnabled
+                        ? (isConn ? 'BLE 鼠标已连接 (点击断开)' : 'BLE 鼠标广播中 (点击停止)')
+                        : '开启 iOS 蓝牙鼠标反控 (免越狱)',
+                    onPressed: () =>
+                        ref.read(iosBleMouseProvider.notifier).toggle(),
+                  );
+                },
+              ),
+            ],
             // const _VerticalDivider(),
             // Group 4: 通知栏, T
             // MirrorToolbarButton(
@@ -369,18 +416,20 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                     clipboardData.text != null &&
                     clipboardData.text!.isNotEmpty) {
                   final text = clipboardData.text!;
-                  final success = widget.controller.isHarmony
-                      ? (await ref
-                                .read(hdcServiceProvider)
-                                .inputText(widget.deviceId, text))
-                            .isSuccess
-                      : await ref
-                              .read(embeddedScrcpyServiceProvider)
-                              .sendControl(
-                                deviceId: widget.deviceId,
-                                controlMessage:
-                                    ScrcpyKeycodeHelper.serializeTextEvent(text),
-                              );
+                  final success = widget.controller.isIos
+                      ? await ref.read(iosWdaClientProvider).inputText(text)
+                      : (widget.controller.isHarmony
+                          ? (await ref
+                                    .read(hdcServiceProvider)
+                                    .inputText(widget.deviceId, text))
+                                .isSuccess
+                          : await ref
+                                  .read(embeddedScrcpyServiceProvider)
+                                  .sendControl(
+                                    deviceId: widget.deviceId,
+                                    controlMessage:
+                                        ScrcpyKeycodeHelper.serializeTextEvent(text),
+                                  ));
                   if (!success && context.mounted) {
                     AppToast.show(
                       context,

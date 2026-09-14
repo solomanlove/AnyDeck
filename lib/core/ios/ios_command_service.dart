@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../adb/adb_result.dart';
+import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 import 'ios_app_info.dart';
 import 'ios_process_info.dart';
@@ -186,7 +187,23 @@ class IosCommandService {
     }
   }
 
-  Future<AdbResult> automationStatus(String udid) {
+  Future<AdbResult> automationStatus(String udid, {int wdaPort = 8100}) async {
+    if (RustDalBridge.instance.isAvailable) {
+      try {
+        final res = await RustDalBridge.instance.wdaRequest(
+          port: wdaPort,
+          endpoint: '/status',
+          method: 'GET',
+        );
+        if (res['success'] == true) {
+          return AdbResult(
+            exitCode: 0,
+            stdout: jsonEncode(res['payload']),
+            stderr: '',
+          );
+        }
+      } catch (_) {}
+    }
     return run(['ui', 'status', '--driver=wda', '--udid=$udid']);
   }
 
@@ -194,7 +211,20 @@ class IosCommandService {
     return run(['ui', 'source', '--driver=wda', '--udid=$udid']);
   }
 
-  Future<AdbResult> tap(String udid, double x, double y) {
+  Future<AdbResult> tap(String udid, double x, double y, {int wdaPort = 8100}) async {
+    if (RustDalBridge.instance.isAvailable) {
+      try {
+        final res = await RustDalBridge.instance.wdaRequest(
+          port: wdaPort,
+          endpoint: '/wda/tap/nil',
+          method: 'POST',
+          bodyJson: jsonEncode({'x': x.round(), 'y': y.round()}),
+        );
+        if (res['success'] == true) {
+          return const AdbResult(exitCode: 0, stdout: 'OK', stderr: '');
+        }
+      } catch (_) {}
+    }
     return run([
       'ui',
       'tap',
@@ -224,11 +254,40 @@ class IosCommandService {
     ]);
   }
 
-  Future<AdbResult> typeText(String udid, String text) {
+  Future<AdbResult> typeText(String udid, String text, {int wdaPort = 8100}) async {
+    if (RustDalBridge.instance.isAvailable) {
+      try {
+        final res = await RustDalBridge.instance.wdaRequest(
+          port: wdaPort,
+          endpoint: '/wda/keys',
+          method: 'POST',
+          bodyJson: jsonEncode({'value': text.split('')}),
+        );
+        if (res['success'] == true) {
+          return const AdbResult(exitCode: 0, stdout: 'OK', stderr: '');
+        }
+      } catch (_) {}
+    }
     return run(['ui', 'type', '--text=$text', '--driver=wda', '--udid=$udid']);
   }
 
-  Future<AdbResult> pressButton(String udid, String button) {
+  Future<AdbResult> pressButton(String udid, String button, {int wdaPort = 8100}) async {
+    if (RustDalBridge.instance.isAvailable) {
+      try {
+        final isHome = button.toLowerCase() == 'home';
+        final endpoint = isHome ? '/wda/homescreen' : '/wda/pressButton';
+        final bodyJson = isHome ? null : jsonEncode({'name': button});
+        final res = await RustDalBridge.instance.wdaRequest(
+          port: wdaPort,
+          endpoint: endpoint,
+          method: 'POST',
+          bodyJson: bodyJson,
+        );
+        if (res['success'] == true) {
+          return const AdbResult(exitCode: 0, stdout: 'OK', stderr: '');
+        }
+      } catch (_) {}
+    }
     return run(['ui', 'button', button, '--driver=wda', '--udid=$udid']);
   }
 

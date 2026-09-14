@@ -5,6 +5,7 @@ import '../../app/l10n/app_localizations.dart';
 import '../../core/adb/adb_device.dart';
 import '../../core/adb/adb_result.dart';
 import '../../core/ios/ios_mirror_service.dart';
+import '../../core/ios/ios_ble_mouse_service.dart';
 import 'ios_tool_widgets.dart';
 
 /// 使用已部署的 WebDriverAgent 执行基础 iOS UI 自动化动作。
@@ -149,6 +150,35 @@ class _IosAutomationTabState extends ConsumerState<IosAutomationTab> {
                       ),
                 icon: const Icon(Icons.account_tree_outlined),
                 label: Text(context.l10n.t('iosUiSource')),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading
+                    ? null
+                    : () => _execute(
+                        () => service.pressButton(widget.device.id, 'home'),
+                      ),
+                icon: const Icon(Icons.home_outlined),
+                label: const Text('Home 键'),
+              ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final ble = ref.watch(iosBleMouseProvider);
+                  return OutlinedButton.icon(
+                    onPressed: () =>
+                        ref.read(iosBleMouseProvider.notifier).toggle(),
+                    icon: Icon(
+                      Icons.mouse_outlined,
+                      color: ble.isEnabled ? Colors.green : null,
+                    ),
+                    label: Text(
+                      ble.isEnabled
+                          ? (ble.state == BleMouseState.connected
+                              ? 'BLE 鼠标 (已连接)'
+                              : 'BLE 鼠标 (广播中)')
+                          : 'BLE 鼠标反控 (关闭)',
+                    ),
+                  );
+                },
               ),
             ],
           ),
