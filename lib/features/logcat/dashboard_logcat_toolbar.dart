@@ -74,7 +74,8 @@ class _LogcatToolbar extends StatelessWidget {
       history: state.packageFilterHistory,
       onChanged: onPackageChanged,
       onSubmitted: onPackageSubmitted,
-      onSelected: onPackageChanged,
+      // 从历史记录选中时直接提交，确保过滤立即生效并写入历史
+      onSelected: onPackageSubmitted,
       onHistoryRemoved: onPackageHistoryRemoved,
     );
     final tagField = _HistoryTextField(
@@ -83,7 +84,8 @@ class _LogcatToolbar extends StatelessWidget {
       history: state.tagFilterHistory,
       onChanged: onTagChanged,
       onSubmitted: onTagSubmitted,
-      onSelected: onTagChanged,
+      // 从历史记录选中时直接提交，确保过滤立即生效并写入历史
+      onSelected: onTagSubmitted,
       onHistoryRemoved: onTagHistoryRemoved,
     );
     final textField = _HistoryTextField(

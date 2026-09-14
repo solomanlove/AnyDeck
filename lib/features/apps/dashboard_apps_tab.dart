@@ -1,6 +1,6 @@
 part of '../dashboard_screen.dart';
 
-enum AppFilterType { user, system, all }
+enum AppFilterType { user, system, all, favorites }
 
 class _AppsTab extends ConsumerStatefulWidget {
   const _AppsTab({required this.device});
@@ -350,6 +350,10 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
             context.l10n.t('allApps'),
             AppFilterType.all,
           ),
+          AppFilterType.favorites: _buildAppFilterSegment(
+            '收藏 ✨',
+            AppFilterType.favorites,
+          ),
         },
         currentSegment: _appFilterType,
         onSegmentChanged: (value) {
@@ -538,6 +542,9 @@ class _AppsTabState extends ConsumerState<_AppsTab> {
               return package.system;
             case AppFilterType.all:
               return true;
+            case AppFilterType.favorites:
+              final favs = ref.watch(appFavoritesProvider).value ?? const <String>{};
+              return favs.contains(package.name);
           }
         })
         .where((package) {

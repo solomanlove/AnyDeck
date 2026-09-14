@@ -49,6 +49,7 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
   String _filter = '';
   ProcessFilterType _processFilterType = ProcessFilterType.user;
   bool _onlyShowApps = true;
+  bool _onlyShowDebug = false;
   String? _selectedPid;
 
   String _sortColumn = 'cpu'; // 'name', 'cpu', 'time', 'memory', 'pid', 'user'
@@ -391,6 +392,16 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
       filtered = filtered
           .where((p) => _isAppProcess(p.name, p.user, installedPackageNames))
           .toList();
+    }
+
+    if (_onlyShowDebug) {
+      filtered = filtered.where((p) {
+        final basePackage = p.name.contains(':')
+            ? p.name.split(':').first
+            : p.name;
+        final matchedPkg = packageMap[basePackage];
+        return matchedPkg?.debuggable ?? false;
+      }).toList();
     }
 
     final query = _filter.trim().toLowerCase();

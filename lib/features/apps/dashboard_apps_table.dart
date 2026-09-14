@@ -93,71 +93,118 @@ class _PackageTableState extends State<_PackageTable> {
     return sortedList;
   }
 
+  String _getFirstLetter(AdbPackage pkg) {
+    final name = pkg.displayName.trim();
+    if (name.isEmpty) return '#';
+    final pinyin = PinyinHelper.getFirstWordPinyin(name).toUpperCase();
+    if (pinyin.isNotEmpty && RegExp(r'[A-Z]').hasMatch(pinyin[0])) {
+      return pinyin[0];
+    }
+    final firstChar = name[0].toUpperCase();
+    if (RegExp(r'[A-Z]').hasMatch(firstChar)) {
+      return firstChar;
+    }
+    return '#';
+  }
+
+  void _scrollToLetter(String letter, List<AdbPackage> sorted) {
+    final targetIndex = sorted.indexWhere((p) => _getFirstLetter(p) == letter);
+    if (targetIndex != -1 && _verticalController.hasClients) {
+      // 每行高度 56，表头高度 48
+      final offset = (targetIndex * 56.0).clamp(
+        0.0,
+        _verticalController.position.maxScrollExtent,
+      );
+      _verticalController.animateTo(
+        offset,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sorted = _sortedPackages();
+    final availableLetters = sorted.map(_getFirstLetter).toSet();
+
     return LayoutBuilder(
       builder: (context, constraints) {
+        // 右侧为侧边栏预留 28 像素宽度
+        final effectiveWidth = constraints.maxWidth - 28.0;
         final widths = _PackageTableWidths.adaptive(
           context: context,
           packages: sorted,
-          viewportWidth: constraints.maxWidth,
+          viewportWidth: effectiveWidth,
           totalCount: widget.totalCount,
         );
-        final tableWidth = max(widths.total, constraints.maxWidth);
+        final tableWidth = max(widths.total, effectiveWidth);
 
-        return Scrollbar(
-          controller: _horizontalController,
-          notificationPredicate: (n) => n.metrics.axis == Axis.horizontal,
-          child: SingleChildScrollView(
-            key: PageStorageKey<String>(
-              'apps-table-horizontal-${widget.deviceId}',
-            ),
-            controller: _horizontalController,
-            primary: false,
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              height: constraints.maxHeight,
-              child: Column(
-                children: [
-                  _PackageTableHeader(
-                    widths: widths,
-                    sortColumn: _sortColumn,
-                    sortAscending: _sortAscending,
-                    onSort: _toggleSort,
-                    sortIconBuilder: _getSortIcon,
-                    visibleCount: sorted.length,
-                    totalCount: widget.totalCount,
+        return Row(
+          children: [
+            Expanded(
+              child: Scrollbar(
+                controller: _horizontalController,
+                notificationPredicate: (n) => n.metrics.axis == Axis.horizontal,
+                child: SingleChildScrollView(
+                  key: PageStorageKey<String>(
+                    'apps-table-horizontal-${widget.deviceId}',
                   ),
-                  Expanded(
-                    child: Scrollbar(
-                      controller: _verticalController,
-                      child: ListView.builder(
-                        key: PageStorageKey<String>(
-                          'apps-table-vertical-${widget.deviceId}',
+                  controller: _horizontalController,
+                  primary: false,
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    height: constraints.maxHeight,
+                    child: Column(
+                      children: [
+                        _PackageTableHeader(
+                          widths: widths,
+                          sortColumn: _sortColumn,
+                          sortAscending: _sortAscending,
+                          onSort: _toggleSort,
+                          sortIconBuilder: _getSortIcon,
+                          visibleCount: sorted.length,
+                          totalCount: widget.totalCount,
                         ),
-                        controller: _verticalController,
-                        primary: false,
-                        itemCount: sorted.length,
-                        itemBuilder: (context, index) {
-                          final package = sorted[index];
-                          return _PackageTableRow(
-                            package: package,
-                            selected: package.name == widget.selectedPackage,
-                            widths: widths,
-                            onSelected: () => widget.onSelected(package.name),
-                            onOpened: () => widget.onOpened(package.name),
-                            index: index,
-                          );
-                        },
-                      ),
+                        Expanded(
+                          child: Scrollbar(
+                            controller: _verticalController,
+                            child: ListView.builder(
+                              key: PageStorageKey<String>(
+                                'apps-table-vertical-${widget.deviceId}',
+                              ),
+                              controller: _verticalController,
+                              primary: false,
+                              itemCount: sorted.length,
+                              itemBuilder: (context, index) {
+                                final package = sorted[index];
+                                return _PackageTableRow(
+                                  package: package,
+                                  selected: package.name == widget.selectedPackage,
+                                  widths: widths,
+                                  onSelected: () => widget.onSelected(package.name),
+                                  onOpened: () => widget.onOpened(package.name),
+                                  index: index,
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: AppsAlphabetSidebar(
+                availableLetters: availableLetters,
+                onLetterSelected: (letter) => _scrollToLetter(letter, sorted),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -268,14 +315,14 @@ class _PackageCell extends StatelessWidget {
   }
 }
 
-/// 展示应用名称和包名，并且呈现圆角矩形的应用图标（类似 ListTile 结构）
-class _AppNameCell extends StatelessWidget {
+/// 展示应用名称和包名，并且呈现圆角矩形的应用图标（类似 ListTile 结构），支持点击收藏（✨）。
+class _AppNameCell extends ConsumerWidget {
   const _AppNameCell({required this.package});
 
   final AdbPackage package;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final icon = package.flutter
         ? CupertinoIcons.square_grid_2x2
@@ -331,6 +378,25 @@ class _AppNameCell extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ),
+                  const SizedBox(width: 4),
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final favorites = ref.watch(appFavoritesProvider).value ?? const <String>{};
+                      final isFav = favorites.contains(package.name);
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(4),
+                        onTap: () => ref.read(appFavoritesProvider.notifier).toggle(package.name),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: Icon(
+                            isFav ? CupertinoIcons.star_fill : CupertinoIcons.star,
+                            size: 14,
+                            color: isFav ? const Color(0xfff5a623) : colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   if (package.debuggable) ...[
                     const SizedBox(width: 6),

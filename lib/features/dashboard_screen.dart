@@ -66,11 +66,13 @@ import 'devices/widgets/tcpip_connection_guide.dart';
 import 'widgets/dashboard_table_header.dart';
 import 'widgets/device_power_actions.dart';
 import 'apps/controller/apps_search_history_controller.dart';
+import 'apps/controller/app_favorites_controller.dart';
 import 'apps/controller/usage_report_controller.dart';
 import 'apps/controller/usage_report_view_controller.dart';
 import '../core/usage/usage_snapshot.dart';
 import 'apps/widgets/location_history_view.dart';
 import 'apps/widgets/camera_preview_view.dart';
+import 'apps/widgets/apps_alphabet_sidebar.dart';
 import 'apps/widgets/device_clipboard_view.dart';
 import 'files/controller/file_favorite_folders_controller.dart';
 import 'files/controller/file_preview_controller.dart';
@@ -333,6 +335,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final sessions = ref.watch(scrcpySessionsProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);
     final lastActiveDevice = ref.watch(lastActiveDeviceProvider);
+    final settings = ref.watch(appSettingsProvider);
 
     var effectiveSelectedDevice = selectedDevice;
     String appBarTitle = context.l10n.t('appTitle');
@@ -449,6 +452,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         },
       },
       child: MainWindowCloseShortcut(
+        showWindowKey: settings.showWindowShortcutKey,
         child: Scaffold(
           body: _WechatStyleShell(
             title: appBarTitle,

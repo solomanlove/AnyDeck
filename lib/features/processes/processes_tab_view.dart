@@ -65,6 +65,18 @@ extension _ProcessesTabView on _ProcessesTabState {
               Text(context.l10n.t('onlyShowApps')),
             ],
           ),
+          const SizedBox(width: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Checkbox(
+                value: _onlyShowDebug,
+                onChanged: (value) =>
+                    _updateState(() => _onlyShowDebug = value ?? false),
+              ),
+              const Text('仅 Debug 应用'),
+            ],
+          ),
           const SizedBox(width: 16),
           Row(
             mainAxisSize: MainAxisSize.min,

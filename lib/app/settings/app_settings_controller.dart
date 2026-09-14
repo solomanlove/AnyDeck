@@ -38,6 +38,7 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _deviceConnectNotificationKey = 'settings.deviceConnectNotification';
   static const _notificationBodyPreviewKey = 'settings.notificationBodyPreview';
   static const _launchAtStartupKey = 'settings.launchAtStartup';
+  static const _showWindowShortcutKey = 'settings.showWindowShortcutKey';
   static const _mainSettingsChannel = WindowMethodChannel(
     'any_deck/settings_main',
     mode: ChannelMode.unidirectional,
@@ -318,6 +319,14 @@ class AppSettingsController extends Notifier<AppSettings> {
     }
   }
 
+  /// 更新显示主窗口的快捷键字符（如 '1' 表示 ⌘1），并持久化。
+  Future<void> setShowWindowShortcut(String key) async {
+    final clean = key.trim().isEmpty ? '1' : key.trim()[0].toLowerCase();
+    state = state.copyWith(showWindowShortcutKey: clean);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_showWindowShortcutKey, clean);
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -351,6 +360,8 @@ class AppSettingsController extends Notifier<AppSettings> {
         launchAtStartup = await DesktopAutoStartService.isEnabled();
       } catch (_) {}
     }
+    final showWindowShortcutKey =
+        preferences.getString(_showWindowShortcutKey) ?? '1';
     state = AppSettings(
       language: language,
       themeMode: themeMode,
@@ -366,6 +377,7 @@ class AppSettingsController extends Notifier<AppSettings> {
       deviceConnectNotification: deviceConnectNotification,
       notificationBodyPreview: notificationBodyPreview,
       launchAtStartup: launchAtStartup,
+      showWindowShortcutKey: showWindowShortcutKey,
     );
 
     if (ref.read(windowIdProvider).isEmpty) {

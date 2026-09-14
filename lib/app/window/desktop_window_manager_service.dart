@@ -96,7 +96,9 @@ class DesktopWindowManagerService {
 
     try {
       final showLabel = localizedValues[langCode]?['trayShowWindow'] ?? (langCode == 'en' ? 'Show Window' : '显示窗口');
-      final exitLabel = localizedValues[langCode]?['trayExit'] ?? (langCode == 'en' ? 'Exit' : '退出');
+      // macOS 状态栏退出项显示快捷键备注 (⌘Q)
+      final rawExitLabel = localizedValues[langCode]?['trayExit'] ?? (langCode == 'en' ? 'Exit' : '退出');
+      final exitLabel = Platform.isMacOS ? '$rawExitLabel (⌘Q)' : rawExitLabel;
       final emulatorsLabel = langCode == 'en' ? 'Emulator Manager Window' : '模拟器管理窗口';
       final consoleLabel = langCode == 'en' ? 'Console Window' : '控制台窗口';
       final mcpToggleLabel = _isMcpRunning

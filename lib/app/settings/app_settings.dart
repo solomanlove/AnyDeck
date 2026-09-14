@@ -35,6 +35,7 @@ class AppSettings {
     this.deviceConnectNotification = true,
     this.notificationBodyPreview = true,
     this.launchAtStartup = false,
+    this.showWindowShortcutKey = '1',
   });
 
   final AppLanguage language;
@@ -51,6 +52,8 @@ class AppSettings {
   final bool deviceConnectNotification;
   final bool notificationBodyPreview;
   final bool launchAtStartup;
+  /// 显示主窗口的快捷键字符（默认 '1'，即 ⌘1）
+  final String showWindowShortcutKey;
 
   /// 创建新的不可变设置对象，未指定字段沿用当前值。
   AppSettings copyWith({
@@ -68,6 +71,7 @@ class AppSettings {
     bool? deviceConnectNotification,
     bool? notificationBodyPreview,
     bool? launchAtStartup,
+    String? showWindowShortcutKey,
   }) {
     return AppSettings(
       language: language ?? this.language,
@@ -84,6 +88,7 @@ class AppSettings {
       deviceConnectNotification: deviceConnectNotification ?? this.deviceConnectNotification,
       notificationBodyPreview: notificationBodyPreview ?? this.notificationBodyPreview,
       launchAtStartup: launchAtStartup ?? this.launchAtStartup,
+      showWindowShortcutKey: showWindowShortcutKey ?? this.showWindowShortcutKey,
     );
   }
 }

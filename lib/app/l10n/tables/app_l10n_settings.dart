@@ -100,6 +100,8 @@ const settingsZh = {
   'autoPowerOffScreenDesc': '在投屏窗口操作后1秒自动熄灭物理手机屏幕，点击物理屏幕再次亮屏',
   'launchAtStartup': '开机自启',
   'launchAtStartupDesc': '登录系统时自动启动 AnyDeck',
+  'mainWindowShortcut': '唤起主窗口快捷键',
+  'mainWindowShortcutDesc': '在应用内按下快捷键激活主窗口（Command+键）',
 };
 
 const settingsEn = {
@@ -208,4 +210,6 @@ const settingsEn = {
   'autoPowerOffScreenDesc': 'Automatically turn off physical screen 1s after interaction, tap physical screen to wake up',
   'launchAtStartup': 'Launch at Startup',
   'launchAtStartupDesc': 'Automatically launch AnyDeck on system login',
+  'mainWindowShortcut': 'Main Window Shortcut',
+  'mainWindowShortcutDesc': 'Shortcut key to focus main window (Command+key)',
 };
