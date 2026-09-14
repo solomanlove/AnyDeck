@@ -312,7 +312,7 @@ const devicesControlEn = {
   'scanningDevices': 'Scanning devices',
   'adbUnavailable': 'ADB unavailable',
   'noDevices': 'No Android devices',
-  'connectUsbOrTcp': 'Connect USB or use TCP/IP connect.',
+  'connectUsbOrTcp': 'Connect USB or use Wireless connect.',
   'connectDevice': 'Connect device',
   'tcpipAddressLabel': 'Device IP address and port',
   'tcpipAddressHint':
