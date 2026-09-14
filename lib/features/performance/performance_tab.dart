@@ -9,6 +9,7 @@ import '../../app/l10n/app_localizations.dart';
 import '../../core/adb/adb_device.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/apps/adb_package.dart';
+import '../../core/performance/rust_performance_bridge.dart';
 import 'performance_charts.dart';
 import 'performance_data.dart';
 import 'performance_widgets.dart';
@@ -124,6 +125,9 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
     _prevTotalFrames = 0;
     _prevFpsTime = null;
     _lastFps = 0.0;
+    try {
+      RustPerformanceBridge.instance.clearCache(widget.device.id);
+    } catch (_) {}
   }
 
   Future<bool> _isMirrorWindowOpen() async {
@@ -165,73 +169,88 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
     }
 
     try {
-      final adb = ref.read(adbServiceProvider);
-      final result = await adb.shell(widget.device.id, _unifiedCommand);
+      PerformanceSnapshot? snapshot;
+
+      // 1. 优先通过 Rust Direct ADB Socket 进行零拷贝采样 (彻底消除子进程与 Dart GC)
+      try {
+        snapshot = RustPerformanceBridge.instance.poll(widget.device.id);
+      } catch (e) {
+        debugPrint('Rust performance bridge fallback to CLI: $e');
+      }
+
+      // 2. 若 Rust 采样未命中，平滑回退到 ADB CLI 聚合命令
+      if (snapshot == null) {
+        final adb = ref.read(adbServiceProvider);
+        final result = await adb.shell(widget.device.id, _unifiedCommand);
+
+        if (!mounted) return;
+
+        if (!result.isSuccess) {
+          final errorMsg = (result.stderr + result.stdout).toLowerCase();
+          if (errorMsg.contains('not found') || errorMsg.contains('offline')) {
+            _stopPolling();
+          }
+          setState(() {
+            _errorMsg = result.stderr.isNotEmpty
+                ? result.stderr
+                : 'ADB shell failed';
+            _isLoading = false;
+          });
+          return;
+        }
+
+        final outCpuStats = <String, CpuStat>{};
+        final outFpsInfo = <String, double>{};
+
+        snapshot = PerformanceSnapshot.parse(
+          stdout: result.stdout,
+          prevCpuStats: _cpuStats,
+          outCpuStats: outCpuStats,
+          prevTotalFrames: _prevTotalFrames,
+          prevFpsTime: _prevFpsTime,
+          lastFps: _lastFps,
+          outFpsInfo: outFpsInfo,
+        );
+
+        // 更新缓存的 CPU 状态计数器
+        _cpuStats.addAll(outCpuStats);
+
+        // 更新缓存的 FPS 参数
+        _prevTotalFrames = outFpsInfo['totalFrames']?.toInt() ?? 0;
+        final cachedTimeMs = outFpsInfo['timestamp']?.toInt();
+        if (cachedTimeMs != null) {
+          _prevFpsTime = DateTime.fromMillisecondsSinceEpoch(cachedTimeMs);
+        }
+        _lastFps = snapshot.fps;
+      }
 
       if (!mounted) return;
-
-      if (!result.isSuccess) {
-        final errorMsg = (result.stderr + result.stdout).toLowerCase();
-        if (errorMsg.contains('not found') || errorMsg.contains('offline')) {
-          _stopPolling();
-        }
-        setState(() {
-          _errorMsg = result.stderr.isNotEmpty
-              ? result.stderr
-              : 'ADB shell failed';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final outCpuStats = <String, CpuStat>{};
-      final outFpsInfo = <String, double>{};
-
-      final snapshot = PerformanceSnapshot.parse(
-        stdout: result.stdout,
-        prevCpuStats: _cpuStats,
-        outCpuStats: outCpuStats,
-        prevTotalFrames: _prevTotalFrames,
-        prevFpsTime: _prevFpsTime,
-        lastFps: _lastFps,
-        outFpsInfo: outFpsInfo,
-      );
-
-      // 更新缓存的 CPU 状态计数器
-      _cpuStats.addAll(outCpuStats);
-
-      // 更新缓存的 FPS 参数
-      _prevTotalFrames = outFpsInfo['totalFrames']?.toInt() ?? 0;
-      final cachedTimeMs = outFpsInfo['timestamp']?.toInt();
-      if (cachedTimeMs != null) {
-        _prevFpsTime = DateTime.fromMillisecondsSinceEpoch(cachedTimeMs);
-      }
-      _lastFps = snapshot.fps;
+      final currentSnapshot = snapshot;
 
       // 生成时间戳 Label (格式 HH:mm:ss)
       final timeStr =
-          '${snapshot.timestamp.hour.toString().padLeft(2, '0')}:'
-          '${snapshot.timestamp.minute.toString().padLeft(2, '0')}:'
-          '${snapshot.timestamp.second.toString().padLeft(2, '0')}';
+          '${currentSnapshot.timestamp.hour.toString().padLeft(2, '0')}:'
+          '${currentSnapshot.timestamp.minute.toString().padLeft(2, '0')}:'
+          '${currentSnapshot.timestamp.second.toString().padLeft(2, '0')}';
 
       // 1. 更新整体 CPU 历史列表
       _historyOverallCpu.add(
         ChartDataPoint(
-          value: snapshot.overallCpuUsage,
+          value: currentSnapshot.overallCpuUsage,
           label: timeStr,
-          timestamp: snapshot.timestamp,
+          timestamp: currentSnapshot.timestamp,
         ),
       );
       if (_historyOverallCpu.length > 90) _historyOverallCpu.removeAt(0);
 
       // 2. 更新每个核心 CPU 历史列表
-      for (final core in snapshot.cores) {
+      for (final core in currentSnapshot.cores) {
         final list = _historyCores.putIfAbsent(core.id, () => []);
         list.add(
           ChartDataPoint(
             value: core.usage,
             label: timeStr,
-            timestamp: snapshot.timestamp,
+            timestamp: currentSnapshot.timestamp,
           ),
         );
         if (list.length > 20) list.removeAt(0);
@@ -240,9 +259,9 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
       // 3. 更新内存历史列表
       _historyMemory.add(
         ChartDataPoint(
-          value: snapshot.memoryUsagePercent,
+          value: currentSnapshot.memoryUsagePercent,
           label: timeStr,
-          timestamp: snapshot.timestamp,
+          timestamp: currentSnapshot.timestamp,
         ),
       );
       if (_historyMemory.length > 90) _historyMemory.removeAt(0);
@@ -250,9 +269,9 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
       // 4. 更新 FPS 历史列表
       _historyFps.add(
         ChartDataPoint(
-          value: snapshot.fps,
+          value: currentSnapshot.fps,
           label: timeStr,
-          timestamp: snapshot.timestamp,
+          timestamp: currentSnapshot.timestamp,
         ),
       );
       if (_historyFps.length > 90) _historyFps.removeAt(0);
@@ -260,15 +279,15 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
       setState(() {
         _isLoading = false;
         _errorMsg = null;
-        _uptime = snapshot.uptime;
-        _batteryLevel = snapshot.batteryLevel;
-        _isCharging = snapshot.isCharging;
-        _usedMemoryMB = snapshot.usedMemoryMB;
-        _memoryUsagePercent = snapshot.memoryUsagePercent;
-        _foregroundAppPackage = snapshot.foregroundAppPackage;
-        _overallCpuUsage = snapshot.overallCpuUsage;
-        _cores = snapshot.cores;
-        _fps = snapshot.fps;
+        _uptime = currentSnapshot.uptime;
+        _batteryLevel = currentSnapshot.batteryLevel;
+        _isCharging = currentSnapshot.isCharging;
+        _usedMemoryMB = currentSnapshot.usedMemoryMB;
+        _memoryUsagePercent = currentSnapshot.memoryUsagePercent;
+        _foregroundAppPackage = currentSnapshot.foregroundAppPackage;
+        _overallCpuUsage = currentSnapshot.overallCpuUsage;
+        _cores = currentSnapshot.cores;
+        _fps = currentSnapshot.fps;
       });
     } catch (e) {
       if (mounted) {

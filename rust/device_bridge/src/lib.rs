@@ -1,6 +1,8 @@
 //! 三个功能共用的 Rust 会话核心：ADB、协议、解码/播放、剪贴板与资源回收。
 mod adb;
+mod adb_socket;
 mod audio_queue;
+pub mod performance;
 mod stream;
 mod video;
 mod video_ffi;
@@ -295,3 +297,39 @@ pub unsafe extern "C" fn anydeck_free(pointer: *mut u8, size: usize) {
         )));
     }
 }
+
+/// 零拷贝轮询指定设备的性能指标快照
+///
+/// # Safety
+/// serial 与 out_snapshot 必须为非空且合法的指针。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_poll_performance(
+    serial: *const c_char,
+    out_snapshot: *mut performance::PerformanceSnapshotFFI,
+) -> bool {
+    if serial.is_null() || out_snapshot.is_null() {
+        return false;
+    }
+    let Ok(serial_str) = CStr::from_ptr(serial).to_str() else {
+        return false;
+    };
+    if serial_str.is_empty() {
+        return false;
+    }
+    performance::poll_device_performance(serial_str, &mut *out_snapshot).is_ok()
+}
+
+/// 清除指定设备的性能采样历史状态
+///
+/// # Safety
+/// serial 必须为有效的 NUL 结尾 C 字符串指针。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_clear_performance_cache(serial: *const c_char) {
+    if serial.is_null() {
+        return;
+    }
+    if let Ok(serial_str) = CStr::from_ptr(serial).to_str() {
+        performance::clear_device_cache(serial_str);
+    }
+}
+
