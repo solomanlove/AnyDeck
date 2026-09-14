@@ -28,14 +28,44 @@ class AppManagementService {
   static const _fileTransferTimeout = Duration(minutes: 5);
 
   final AdbService _adb;
+  final Map<String, List<AdbPackage>> _memoryCache = {};
+
+  /// 同步查询内存中已解析的应用列表（优先查当前 deviceId，未命中查 canonicalId 与 fallbackKeys）。
+  List<AdbPackage>? getCachedPackagesSync(
+    String deviceId, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) {
+    final candidateKeys = <String>[
+      deviceId,
+      if (canonicalId != null && canonicalId.isNotEmpty) canonicalId,
+      ...fallbackKeys,
+    ];
+    for (final key in candidateKeys) {
+      final cached = _memoryCache[key];
+      if (cached != null && cached.isNotEmpty) {
+        if (key != deviceId) {
+          _memoryCache[deviceId] = cached;
+        }
+        return cached;
+      }
+    }
+    return null;
+  }
 
   /// 优先读取本地缓存；没有缓存或强制刷新时才访问手机。
   Future<List<AdbPackage>> listPackages(
     String deviceId, {
     bool forceRefresh = false,
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
   }) async {
     if (!forceRefresh) {
-      final cached = await _loadPackageCache(deviceId);
+      final cached = await _loadPackageCache(
+        deviceId,
+        canonicalId: canonicalId,
+        fallbackKeys: fallbackKeys,
+      );
       if (cached != null && cached.isNotEmpty) {
         return cached;
       }
@@ -47,13 +77,24 @@ class AppManagementService {
   Future<List<AdbPackage>> refreshPackages(
     String deviceId, {
     bool refreshIconsInBackground = true,
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
   }) async {
-    final cachedPackages = await _loadPackageCache(deviceId);
+    final cachedPackages = await _loadPackageCache(
+      deviceId,
+      canonicalId: canonicalId,
+      fallbackKeys: fallbackKeys,
+    );
     final packages = _restoreCachedPresentationData(
       await _readPackagesFromDevice(deviceId),
       cachedPackages,
     );
-    await _savePackageCache(deviceId, packages);
+    await _savePackageCache(
+      deviceId,
+      packages,
+      canonicalId: canonicalId,
+      fallbackKeys: fallbackKeys,
+    );
     if (refreshIconsInBackground) {
       unawaited(_refreshPackageIconCache(deviceId, packages));
     }
@@ -468,79 +509,172 @@ fi
     }
   }
 
-  Future<List<AdbPackage>?> _loadPackageCache(String deviceId) async {
-    final preferences = await SharedPreferences.getInstance();
-    final raw = preferences.getString(_packageCacheKey(deviceId));
-    if (raw == null || raw.isEmpty) {
-      return null;
+  Future<List<AdbPackage>?> _loadPackageCache(
+    String deviceId, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) async {
+    final memoryHit = getCachedPackagesSync(
+      deviceId,
+      canonicalId: canonicalId,
+      fallbackKeys: fallbackKeys,
+    );
+    if (memoryHit != null && memoryHit.isNotEmpty) {
+      return memoryHit;
     }
 
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map || decoded['schemaVersion'] != _cacheSchemaVersion) {
-        return null;
+    final preferences = await SharedPreferences.getInstance();
+    final candidateKeys = <String>[
+      deviceId,
+      if (canonicalId != null && canonicalId.isNotEmpty) canonicalId,
+      ...fallbackKeys,
+    ];
+
+    for (final key in candidateKeys) {
+      final raw = preferences.getString(_packageCacheKey(key));
+      if (raw == null || raw.isEmpty) {
+        continue;
       }
-      final items = decoded['items'];
-      if (items is! List) {
-        return null;
+
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is! Map || decoded['schemaVersion'] != _cacheSchemaVersion) {
+          continue;
+        }
+        final items = decoded['items'];
+        if (items is! List) {
+          continue;
+        }
+        final packages = items
+            .whereType<Map>()
+            .map((item) => AdbPackage.fromJson(Map<String, Object?>.from(item)))
+            .where((package) => package.name.isNotEmpty)
+            .toList(growable: false);
+        final sorted = packages..sort(_comparePackages);
+        if (sorted.isNotEmpty) {
+          _memoryCache[key] = sorted;
+          _memoryCache[deviceId] = sorted;
+          if (canonicalId != null && canonicalId.isNotEmpty) {
+            _memoryCache[canonicalId] = sorted;
+          }
+          if (key != deviceId) {
+            unawaited(preferences.setString(_packageCacheKey(deviceId), raw));
+          }
+          return sorted;
+        }
+      } on FormatException {
+        continue;
+      } on TypeError {
+        continue;
       }
-      final packages = items
-          .whereType<Map>()
-          .map((item) => AdbPackage.fromJson(Map<String, Object?>.from(item)))
-          .where((package) => package.name.isNotEmpty)
-          .toList(growable: false);
-      return packages..sort(_comparePackages);
-    } on FormatException {
-      return null;
-    } on TypeError {
-      return null;
     }
+    return null;
   }
 
   Future<void> _savePackageCache(
     String deviceId,
-    List<AdbPackage> packages,
-  ) async {
+    List<AdbPackage> packages, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) async {
     final preferences = await SharedPreferences.getInstance();
     final payload = jsonEncode({
       'schemaVersion': _cacheSchemaVersion,
       'savedAt': DateTime.now().toIso8601String(),
       'items': packages.map((package) => package.toJson()).toList(),
     });
-    final saved = await preferences.setString(_packageCacheKey(deviceId), payload);
-    if (!saved) throw StateError('Package cache write failed');
+
+    _memoryCache[deviceId] = packages;
+    final keysToSave = <String>{
+      deviceId,
+      if (canonicalId != null && canonicalId.isNotEmpty) canonicalId,
+      ...fallbackKeys,
+    };
+
+    for (final key in keysToSave) {
+      _memoryCache[key] = packages;
+      final saved = await preferences.setString(_packageCacheKey(key), payload);
+      if (!saved && key == deviceId) {
+        throw StateError('Package cache write failed');
+      }
+    }
   }
 
   String _packageCacheKey(String deviceId) {
     return '$_packageCachePrefix.$deviceId';
   }
 
-  Future<List<AdbPackage>?> loadPackageCache(String deviceId) {
-    return _loadPackageCache(deviceId);
+  Future<List<AdbPackage>?> loadPackageCache(
+    String deviceId, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) {
+    return _loadPackageCache(
+      deviceId,
+      canonicalId: canonicalId,
+      fallbackKeys: fallbackKeys,
+    );
   }
 
-  Future<void> savePackageCache(String deviceId, List<AdbPackage> packages) {
-    return _savePackageCache(deviceId, packages);
+  Future<void> savePackageCache(
+    String deviceId,
+    List<AdbPackage> packages, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) {
+    return _savePackageCache(
+      deviceId,
+      packages,
+      canonicalId: canonicalId,
+      fallbackKeys: fallbackKeys,
+    );
   }
 
-  Future<void> clearPackageCache(String deviceId) async {
+  Future<void> clearPackageCache(
+    String deviceId, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(_packageCacheKey(deviceId));
+    final keysToClear = <String>{
+      deviceId,
+      if (canonicalId != null && canonicalId.isNotEmpty) canonicalId,
+      ...fallbackKeys,
+    };
+    for (final key in keysToClear) {
+      _memoryCache.remove(key);
+      await preferences.remove(_packageCacheKey(key));
+    }
   }
 
   /// 清除某个设备的所有相关本地缓存，包括包列表缓存和本机的本地图标缓存目录，以及临时 chunk 文件。
-  Future<void> clearDeviceCache(String deviceId) async {
+  Future<void> clearDeviceCache(
+    String deviceId, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) async {
     // 1. 清除 package 信息的 SharedPreferences 缓存
-    await clearPackageCache(deviceId);
+    await clearPackageCache(
+      deviceId,
+      canonicalId: canonicalId,
+      fallbackKeys: fallbackKeys,
+    );
 
     // 2. 清除本机的本地图标缓存文件夹
-    try {
-      final iconDir = _localIconCacheDir(deviceId);
-      if (iconDir.existsSync()) {
-        await iconDir.delete(recursive: true);
+    final dirsToClear = <String>{
+      deviceId,
+      if (canonicalId != null && canonicalId.isNotEmpty) canonicalId,
+      ...fallbackKeys,
+    };
+    for (final id in dirsToClear) {
+      try {
+        final iconDir = _localIconCacheDir(id);
+        if (iconDir.existsSync()) {
+          await iconDir.delete(recursive: true);
+        }
+      } catch (_) {
+        // 允许清理本地图标目录失败时不抛出异常
       }
-    } catch (_) {
-      // 允许清理本地图标目录失败时不抛出异常
     }
 
     // 3. 清除临时 chunk 文件
@@ -549,11 +683,13 @@ fi
         '${Directory.systemTemp.path}/any_deck_packages',
       );
       if (chunkDir.existsSync()) {
-        final safeId = _safeFileSegment(deviceId);
-        final list = chunkDir.listSync();
-        for (final file in list) {
-          if (file is File && file.path.contains('${safeId}_chunk_')) {
-            await file.delete();
+        for (final id in dirsToClear) {
+          final safeId = _safeFileSegment(id);
+          final list = chunkDir.listSync();
+          for (final file in list) {
+            if (file is File && file.path.contains('${safeId}_chunk_')) {
+              await file.delete();
+            }
           }
         }
       }
@@ -706,8 +842,10 @@ fi
 
   Future<String?> _pullIconIfNeeded(
     String deviceId,
-    _IconHelperInfo iconInfo,
-  ) async {
+    _IconHelperInfo iconInfo, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) async {
     final remotePath = iconInfo.remotePath;
     if (remotePath.isEmpty) {
       return null;
@@ -717,13 +855,27 @@ fi
     if (fileName.isEmpty) {
       return null;
     }
-    final dir = _localIconCacheDir(deviceId);
-    if (!dir.existsSync()) {
-      dir.createSync(recursive: true);
+    final safeFileName = _safeFileSegment(fileName);
+    final primaryDir = _localIconCacheDir(canonicalId ?? deviceId);
+    if (!primaryDir.existsSync()) {
+      primaryDir.createSync(recursive: true);
     }
-    final localFile = File('${dir.path}/${_safeFileSegment(fileName)}');
+    final localFile = File('${primaryDir.path}/$safeFileName');
     if (localFile.existsSync() && localFile.lengthSync() > 0) {
       return localFile.path;
+    }
+
+    // 检查其他关联通道目录中是否已有下载好的同名图标文件，避免重复拉取
+    final candidateDirs = <String>[
+      if (canonicalId != null && canonicalId != deviceId) deviceId,
+      ...fallbackKeys,
+    ];
+    for (final altKey in candidateDirs) {
+      final altDir = _localIconCacheDir(altKey);
+      final altFile = File('${altDir.path}/$safeFileName');
+      if (altFile.existsSync() && altFile.lengthSync() > 0) {
+        return altFile.path;
+      }
     }
 
     final result = await _adb.run([

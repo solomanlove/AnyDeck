@@ -112,4 +112,46 @@ void main() {
     expect(adb.commands.join('\n'), isNot(contains('dumpsys')));
     expect(adb.commands.join('\n'), isNot(contains('find /data/app')));
   });
+
+  test('无线调试与 USB 数据线切换时共享缓存且可无缝命中', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = AppManagementService(FakeAppAdbService());
+
+    const wifiId = '192.168.1.100:5555';
+    const usbSerial = 'RF8M31ABCDE';
+
+    // 1. 模拟无线连接时获取并保存应用缓存
+    await service.savePackageCache(
+      wifiId,
+      const [
+        AdbPackage(name: 'com.example.wifi', label: '无线应用'),
+      ],
+      canonicalId: usbSerial,
+    );
+
+    // 2. 验证通过内存缓存同步获取成功（插线瞬间零延迟获取）
+    final syncHit = service.getCachedPackagesSync(
+      usbSerial,
+      canonicalId: usbSerial,
+      fallbackKeys: [wifiId],
+    );
+    expect(syncHit, isNotNull);
+    expect(syncHit!.first.name, 'com.example.wifi');
+    expect(syncHit.first.label, '无线应用');
+
+    // 3. 模拟重启后通过持久化回退加载
+    final newServiceInstance = AppManagementService(FakeAppAdbService());
+    final loadedViaFallback = await newServiceInstance.loadPackageCache(
+      usbSerial,
+      canonicalId: usbSerial,
+      fallbackKeys: [wifiId],
+    );
+    expect(loadedViaFallback, isNotNull);
+    expect(loadedViaFallback!.first.name, 'com.example.wifi');
+
+    // 4. 回退加载后会自动为 USB deviceId 补齐独立缓存
+    final directUsbHit = await newServiceInstance.loadPackageCache(usbSerial);
+    expect(directUsbHit, isNotNull);
+    expect(directUsbHit!.first.name, 'com.example.wifi');
+  });
 }

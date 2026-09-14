@@ -287,14 +287,57 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
   Future<void>? _refreshAllTask;
   int _loadRevision = 0;
 
+  RegisteredDevice? _resolveRegisteredDevice() {
+    try {
+      final registry = ref.read(deviceRegistryProvider);
+      for (final d in registry) {
+        if (d.id == deviceId ||
+            d.serial == deviceId ||
+            d.connections.contains(deviceId)) {
+          return d;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String? get _canonicalId {
+    final dev = _resolveRegisteredDevice();
+    if (dev != null && dev.serial != null && dev.serial!.isNotEmpty) {
+      return dev.serial;
+    }
+    return null;
+  }
+
+  List<String> get _fallbackKeys {
+    final dev = _resolveRegisteredDevice();
+    if (dev == null) return const [];
+    final keys = <String>{
+      dev.id,
+      if (dev.serial != null && dev.serial!.isNotEmpty) dev.serial!,
+      ...dev.connections,
+    }..remove(deviceId);
+    return keys.toList(growable: false);
+  }
+
   @override
   AsyncValue<List<AdbPackage>> build() {
     ref.keepAlive();
+    final service = ref.read(appManagementServiceProvider);
+    final inMemory = service.getCachedPackagesSync(
+      deviceId,
+      canonicalId: _canonicalId,
+      fallbackKeys: _fallbackKeys,
+    );
+    if (inMemory != null && inMemory.isNotEmpty) {
+      _load(hasInitialData: true);
+      return AsyncValue.data(inMemory);
+    }
     _load();
     return const AsyncValue.loading();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool hasInitialData = false}) async {
     final revision = _loadRevision;
     var isDisposed = false;
     ref.onDispose(() => isDisposed = true);
@@ -302,20 +345,40 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
     try {
       final service = ref.read(appManagementServiceProvider);
 
-      // 1. 优先尝试从本地持久化缓存加载以实现秒开
-      final cached = await service.loadPackageCache(deviceId);
+      // 1. 优先尝试从本地持久化缓存加载以实现秒开（包含跨通道 fallback 回退）
+      final cached = await service.loadPackageCache(
+        deviceId,
+        canonicalId: _canonicalId,
+        fallbackKeys: _fallbackKeys,
+      );
       if (cached != null && cached.isNotEmpty) {
         if (isDisposed || revision != _loadRevision) return;
         state = AsyncValue.data(cached);
         return;
       }
 
-      // 2. 无缓存时，只读取基础列表，避免切到 Apps Tab 就批量刷新图标。
-      final initialPackages = await service.listPackages(deviceId);
+      // 如果已有初始内存数据（由同一设备上一通道继承），且本地无新数据，保留现状不打断用户
+      if (hasInitialData && state.hasValue) {
+        return;
+      }
+
+      // 2. 校验当前通道在线与就绪状态，规避 USB 刚插入时的 unauthorized / offline 瞬态
+      final isOnline = ref.read(deviceOnlineProvider(deviceId));
+      if (!isOnline) {
+        return;
+      }
+
+      // 3. 无缓存时，只读取基础列表，避免切到 Apps Tab 就批量刷新图标。
+      final initialPackages = await service.listPackages(
+        deviceId,
+        canonicalId: _canonicalId,
+        fallbackKeys: _fallbackKeys,
+      );
       if (isDisposed || revision != _loadRevision) return;
       state = AsyncValue.data(initialPackages);
     } catch (err, stack) {
-      if (!isDisposed && revision == _loadRevision) {
+      // 若当前已有数据，网络或瞬态异常时不冲掉已有数据
+      if (!isDisposed && revision == _loadRevision && !state.hasValue) {
         state = AsyncValue.error(err, stack);
       }
     }
@@ -332,6 +395,8 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
     final runner = PackageRefreshRunner(
       service: ref.read(appManagementServiceProvider),
       deviceId: deviceId,
+      canonicalId: _canonicalId,
+      fallbackKeys: _fallbackKeys,
       isActive: () => ref.mounted,
       publishPackages: (packages) => state = AsyncValue.data(packages),
     );
@@ -363,7 +428,12 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
     }
 
     state = AsyncValue.data(newList);
-    await service.savePackageCache(deviceId, newList);
+    await service.savePackageCache(
+      deviceId,
+      newList,
+      canonicalId: _canonicalId,
+      fallbackKeys: _fallbackKeys,
+    );
   }
 }
 

@@ -9,10 +9,14 @@ class PackageRefreshRunner {
     required this.deviceId,
     required this.isActive,
     required this.publishPackages,
+    this.canonicalId,
+    this.fallbackKeys = const [],
   });
 
   final AppManagementService service;
   final String deviceId;
+  final String? canonicalId;
+  final List<String> fallbackKeys;
   final bool Function() isActive;
   final void Function(List<AdbPackage>) publishPackages;
 
@@ -25,11 +29,17 @@ class PackageRefreshRunner {
 
     try {
       report(progress);
-      await service.clearPackageCache(deviceId);
+      await service.clearPackageCache(
+        deviceId,
+        canonicalId: canonicalId,
+        fallbackKeys: fallbackKeys,
+      );
       if (!isActive()) return;
       var packages = await service.refreshPackages(
         deviceId,
         refreshIconsInBackground: false,
+        canonicalId: canonicalId,
+        fallbackKeys: fallbackKeys,
       );
       if (!isActive()) return;
       publishPackages(packages);
@@ -54,7 +64,12 @@ class PackageRefreshRunner {
       }
       if (!isActive()) return;
       report(progress.atStage(PackageRefreshStage.saving));
-      await service.savePackageCache(deviceId, packages);
+      await service.savePackageCache(
+        deviceId,
+        packages,
+        canonicalId: canonicalId,
+        fallbackKeys: fallbackKeys,
+      );
       if (!isActive()) return;
       report(progress.atStage(PackageRefreshStage.completed));
     } catch (error) {
