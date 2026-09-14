@@ -63,6 +63,7 @@ class MirrorWindowApp extends ConsumerWidget {
           windowId: windowId,
           newDisplay: newDisplay,
           startApp: startApp,
+          initialAlwaysOnTop: argument['alwaysOnTop'] as bool?,
           isIos: argument['isIos'] as bool? ?? false,
           isHarmony: argument['isHarmony'] as bool? ?? false,
         ),
@@ -80,6 +81,7 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
     required this.windowId,
     this.newDisplay,
     this.startApp,
+    this.initialAlwaysOnTop,
     this.isIos = false,
     this.isHarmony = false,
   });
@@ -89,6 +91,7 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
   final String windowId;
   final String? newDisplay;
   final String? startApp;
+  final bool? initialAlwaysOnTop;
   final bool isIos;
   final bool isHarmony;
 
@@ -142,7 +145,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
     // 初始化控制器
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.init(_viewerKey);
+      _controller.init(_viewerKey, initialAlwaysOnTop: widget.initialAlwaysOnTop);
     });
   }
 
@@ -221,6 +224,14 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         if (next is AsyncData<List<AdbPackage>>) {
           _controller.updateForegroundPackageFromList(next.value);
         }
+      },
+    );
+
+    // 监听全局设置中投屏窗口置顶的变化
+    ref.listen<bool>(
+      appSettingsProvider.select((s) => s.scrcpyAlwaysOnTop),
+      (previous, next) {
+        _controller.updateAlwaysOnTop(next);
       },
     );
 

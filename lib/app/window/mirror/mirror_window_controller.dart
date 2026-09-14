@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
@@ -108,10 +109,21 @@ class MirrorWindowController extends ChangeNotifier {
   // ==================== 初始化与销毁 (Init & Dispose) ====================
 
   /// 初始化控制器，绑定视图 Key 并启动投屏相关逻辑
-  void init(GlobalKey viewerKey) {
+  void init(GlobalKey viewerKey, {bool? initialAlwaysOnTop}) {
     _viewerKey = viewerKey;
-    // 从全局配置中读取是否默认置顶
-    _isAlwaysOnTop = ref.read(appSettingsProvider).scrcpyAlwaysOnTop;
+    // 优先从传入的参数（主窗口状态/快照）获取置顶状态，其次从全局配置中读取
+    if (initialAlwaysOnTop != null) {
+      _isAlwaysOnTop = initialAlwaysOnTop;
+    } else {
+      _isAlwaysOnTop = ref.read(appSettingsProvider).scrcpyAlwaysOnTop;
+      // 异步检查持久化配置以防 _load() 尚未完成
+      unawaited(SharedPreferences.getInstance().then((prefs) {
+        final saved = prefs.getBool('settings.scrcpyAlwaysOnTop');
+        if (saved != null && saved != _isAlwaysOnTop) {
+          updateAlwaysOnTop(saved);
+        }
+      }));
+    }
 
     // 针对 macOS 进行特殊窗口通道事件的绑定
     if (Platform.isMacOS) {
@@ -285,6 +297,16 @@ class MirrorWindowController extends ChangeNotifier {
     final updated = await _setAlwaysOnTop(nextState);
     if (updated) {
       _isAlwaysOnTop = nextState;
+      notifyListeners();
+    }
+  }
+
+  /// 外部（如全局设置更新或本地存储就绪）主动同步窗口置顶状态
+  Future<void> updateAlwaysOnTop(bool value) async {
+    if (_isAlwaysOnTop == value) return;
+    final updated = await _setAlwaysOnTop(value);
+    if (updated) {
+      _isAlwaysOnTop = value;
       notifyListeners();
     }
   }
@@ -785,6 +807,7 @@ class MirrorWindowController extends ChangeNotifier {
           'deviceName': package.displayName,
           'newDisplay': vdResolution,
           'startApp': package.name,
+          'alwaysOnTop': _isAlwaysOnTop,
         },
         frame: Offset.zero & initialSize,
         title: windowTitle,

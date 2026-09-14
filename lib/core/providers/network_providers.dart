@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adb/adb_service.dart';
-import '../utils/network_util.dart';
+import '../../common/utils/network_util.dart';
 import 'app_providers.dart';
 
 /// 设备 HTTP 代理配置，rawValue 保留 adb 原始读取结果便于兼容不同 ROM。

@@ -4,6 +4,7 @@ import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/emulator/android_emulator.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';
+import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/web_debug/webpage_target.dart';
 import 'package:flutter/cupertino.dart';
@@ -13,6 +14,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_adb_service.dart';
+
+class FakeIosDeviceService extends IosDeviceService {
+  FakeIosDeviceService() : super();
+
+  @override
+  Future<List<AdbDevice>> listDevices() async {
+    return [];
+  }
+}
 
 class _FixedPackagesNotifier extends PackagesNotifier {
   _FixedPackagesNotifier(this.packages) : super('');
@@ -45,8 +55,33 @@ const _mockOverview = DeviceOverview(
   brand: 'Redmi',
   model: 'M2012K11AC',
   serial: 'mock_serial_123',
+  androidId: 'abcdef1234567890',
+  androidVersion: 'Android 13 (API 33)',
+  kernelVersion: '4.19.157',
+  processor: 'alioth 6 cores (arm64-v8a)',
   storage: '100G / 256G',
   memory: '8G',
+  physicalResolution: '1080x2400 (440dpi)',
+  resolution: '1080x2400 (440dpi)',
+  logicalDensity: '2.75x (xxhdpi)',
+  refreshRate: '120 Hz',
+  fontScale: '1x',
+  wifi: 'jie',
+  wifiEnabled: true,
+  ipAddress: '192.168.31.54',
+  macAddress: '6c:f7:84:80:c9:33',
+  airplaneModeEnabled: false,
+  mobileDataEnabled: true,
+  talkbackEnabled: false,
+  windowAnimationScale: '1.0',
+  transitionAnimationScale: '1.0',
+  animatorDurationScale: '1.0',
+  rawResolution: '1080x2400',
+  hwuiProfile: 'false',
+  layoutBoundsEnabled: false,
+  showTouchesEnabled: false,
+  pointerLocationEnabled: false,
+  demoModeEnabled: false,
 );
 
 class _FixedSelectedDeviceNotifier extends SelectedDeviceNotifier {

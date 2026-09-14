@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/settings/app_settings_controller.dart';
 
-import '../utils/network_util.dart';
+import '../../common/utils/network_util.dart';
 import '../adb/adb_device.dart';
 import '../adb/adb_device_tracker.dart';
 import '../adb/adb_heartbeat_controller.dart';
@@ -2535,6 +2535,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     return result;
   }
 
+  ///名字：connectWireless
+  ///描述：通过Tcp/ip，无线连接设备
+  ///实际执行命令：adb connect $ipAddress:$port
   Future<AdbResult> connectWireless(
     String usbDeviceId,
     String ipAddress, [

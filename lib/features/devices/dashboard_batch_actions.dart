@@ -180,6 +180,7 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
             'type': 'mirror',
             'deviceId': device.id,
             'deviceName': device.displayName,
+            'alwaysOnTop': ref.read(appSettingsProvider).scrcpyAlwaysOnTop,
             'isIos': device.isIos,
             'isHarmony': device.isHarmony,
           },

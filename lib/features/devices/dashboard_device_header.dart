@@ -97,6 +97,7 @@ Future<void> openStandaloneMirrorWindow(
         'type': 'mirror',
         'deviceId': device.id,
         'deviceName': deviceName,
+        'alwaysOnTop': ref.read(appSettingsProvider).scrcpyAlwaysOnTop,
         'isIos': device.isIos,
         'isHarmony': device.isHarmony,
       },

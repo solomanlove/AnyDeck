@@ -164,6 +164,7 @@ class _PackageActions extends ConsumerWidget {
                     'deviceName': package.displayName, // 窗口标题显示应用名
                     'newDisplay': vdResolution,
                     'startApp': packageName,
+                    'alwaysOnTop': ref.read(appSettingsProvider).scrcpyAlwaysOnTop,
                     'isIos': matchingDev.isIos,
                     'isHarmony': matchingDev.isHarmony,
                   },

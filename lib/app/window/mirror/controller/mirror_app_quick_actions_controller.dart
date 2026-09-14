@@ -8,6 +8,7 @@ import '../../../../core/apps/adb_package.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../settings/app_settings_controller.dart';
 import '../../../widget/app_toast.dart';
 import '../../multi_window_compat.dart';
 import '../mirror_aspect_resolver.dart';
@@ -370,6 +371,7 @@ class MirrorAppQuickActionsController {
           'deviceName': _displayName,
           'newDisplay': vdResolution,
           'startApp': _packageName,
+          'alwaysOnTop': ref.read(appSettingsProvider).scrcpyAlwaysOnTop,
           'isIos': matchingDev.isIos,
           'isHarmony': matchingDev.isHarmony,
         },

@@ -605,6 +605,12 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                                   vdResolution,
                                                               'startApp':
                                                                   packageName,
+                                                              'alwaysOnTop':
+                                                                  ref
+                                                                      .read(
+                                                                        appSettingsProvider,
+                                                                      )
+                                                                      .scrcpyAlwaysOnTop,
                                                               'isIos': matchingDev.isIos,
                                                               'isHarmony': matchingDev.isHarmony,
                                                             },
