@@ -37,8 +37,8 @@ void startActivityEscapeGuardian(
 
       for (final line in lines) {
         final trimmed = line.trim();
-        if (trimmed.startsWith('Stack id=')) {
-          final stackMatch = RegExp(r'Stack id=(\d+)').firstMatch(trimmed);
+        if (trimmed.startsWith('Stack id=') || trimmed.startsWith('RootTask id=')) {
+          final stackMatch = RegExp(r'(?:Stack|RootTask)\s+id=(\d+)').firstMatch(trimmed);
           final displayMatch = RegExp(r'displayId=(\d+)').firstMatch(trimmed);
           if (stackMatch != null) {
             currentStackId = stackMatch.group(1);

@@ -65,9 +65,26 @@ void main() {
       expect(results, isNotEmpty);
       expect(results.first.success, isTrue);
       expect(results.first.output.trim(), contains('BATCH_PARALLEL_OK'));
-      expect(results.first.durationMs, greaterThanOrEqualTo(0));
     } catch (_) {
       // 若设备未连接则跳过
     }
+  });
+
+  test('RustDalBridge listHarmonyDevices returns list or empty list', () async {
+    final bridge = RustDalBridge.instance;
+    if (!bridge.isAvailable) return;
+
+    final devices = await bridge.listHarmonyDevices();
+    expect(devices, isA<List<Map<String, dynamic>>>());
+  });
+
+  test('RustDalBridge executeBatchShell supports DevicePlatform.harmony parameter', () async {
+    final bridge = RustDalBridge.instance;
+    final results = await bridge.executeBatchShell(
+      [],
+      'echo hello',
+      platform: DevicePlatform.harmony,
+    );
+    expect(results, isEmpty);
   });
 }

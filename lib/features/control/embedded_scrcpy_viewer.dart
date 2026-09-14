@@ -23,11 +23,13 @@ class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
     required this.deviceId,
     this.isFullScreen = false,
     this.onEscapePressed,
+    this.isHarmony = false,
   });
 
   final String deviceId;
   final bool isFullScreen;
   final VoidCallback? onEscapePressed;
+  final bool isHarmony;
 
   @override
   ConsumerState<EmbeddedScrcpyViewer> createState() =>
@@ -57,6 +59,16 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
 
   /// 是否正在拦截 ESC 按键的抬起事件
   bool _interceptingEscape = false;
+
+  /// 判断当前设备是否为鸿蒙设备（支持 widget 显式传入、前缀匹配、投屏激活态或设备注册表）
+  bool get _isHarmony =>
+      widget.isHarmony ||
+      widget.deviceId.startsWith('harmony:') ||
+      ref.read(activeHarmonyMirrorProvider(widget.deviceId)) != null ||
+      ref.read(harmonyMirrorServiceProvider).isActive(widget.deviceId) ||
+      ref.read(deviceRegistryProvider).any(
+        (d) => d.id == widget.deviceId && d.isHarmony,
+      );
 
   @override
   void initState() {
@@ -120,7 +132,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       try {
         var changed = false;
         var hasVideoSize = false;
-        final size = widget.deviceId.startsWith('harmony:')
+        final size = _isHarmony
             ? ref.read(harmonyMirrorServiceProvider).getVideoSize(widget.deviceId)
             : ref.read(embeddedScrcpyServiceProvider).getVideoSize(widget.deviceId);
         if (size != null && size['width']! > 0 && size['height']! > 0) {
@@ -132,9 +144,9 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
           }
         }
 
-        // 解码帧尺寸是渲染和触控的 source-of-truth；仅在首帧尚未到达时
+        // 解码帧尺寸是渲染和触控的 source-of-truth；仅在首帧尚未到达且非鸿蒙设备时
         // 每秒读取一次 displayFrame 作为占位比例，避免持续执行 dumpsys display。
-        if (!hasVideoSize && _sizePollTick % 10 == 0) {
+        if (!_isHarmony && !hasVideoSize && _sizePollTick % 10 == 0) {
           final displayFrame = await DeviceDisplayFrame.read(
             ref.read(adbServiceProvider),
             widget.deviceId,
@@ -247,7 +259,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _sendControlMessage(Uint8List message, {String? tag}) {
-    final future = widget.deviceId.startsWith('harmony:')
+    final future = _isHarmony
         ? ref.read(harmonyMirrorServiceProvider).sendControl(
             deviceId: widget.deviceId,
             controlMessage: message,
@@ -526,7 +538,10 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       );
     }
 
-    final isHarmony = registeredDevices.any((d) => d.id == widget.deviceId && d.isHarmony);
+    final isHarmony = widget.isHarmony ||
+        widget.deviceId.startsWith('harmony:') ||
+        ref.watch(activeHarmonyMirrorProvider(widget.deviceId)) != null ||
+        registeredDevices.any((d) => d.id == widget.deviceId && d.isHarmony);
 
     final textureId = isHarmony
         ? ref.watch(activeHarmonyMirrorProvider(widget.deviceId))

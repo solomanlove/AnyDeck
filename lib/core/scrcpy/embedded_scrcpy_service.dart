@@ -211,6 +211,7 @@ class EmbeddedScrcpyService {
           ...camera.serverArguments
         else if (newDisplay != null) ...[
           'new_display=$newDisplay',
+          'vd_destroy_content_on_removal=true',
           'vd_system_decorations=false',
         ] else
           'display_id=0',

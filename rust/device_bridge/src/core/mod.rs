@@ -8,7 +8,7 @@ pub mod ring_buffer;
 
 pub use driver::{DeviceDriver, DevicePlatform};
 pub use android::AndroidDriver;
-pub use harmony::HarmonyDriver;
+pub use harmony::{HarmonyDriver, HarmonyTarget};
 pub use ios::IosDriver;
 pub use batch::{BatchManager, BatchDeviceResult};
 pub use ring_buffer::{LogRingBuffer, LogEntry};
@@ -122,5 +122,13 @@ mod tests {
         let filtered = rb.query(0, None, None, Some("message 7"), 0, 10);
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].tag, "Tag_7");
+    }
+
+    #[test]
+    fn test_harmony_driver_find_hdc() {
+        let hdc_res = harmony::find_hdc_path();
+        if let Ok(path) = hdc_res {
+            assert!(path.is_file());
+        }
     }
 }

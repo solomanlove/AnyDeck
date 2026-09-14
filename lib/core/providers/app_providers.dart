@@ -84,6 +84,8 @@ final deviceActionServiceProvider = Provider<DeviceActionService>((ref) {
     sdkVersionResolver: (deviceId) =>
         ref.read(deviceSdkVersionProvider(deviceId)),
     isHarmonyResolver: (deviceId) {
+      if (deviceId.startsWith('harmony:')) return true;
+      if (ref.read(harmonyMirrorServiceProvider).isActive(deviceId)) return true;
       final registered = ref.read(deviceRegistryProvider);
       return registered.any((d) => d.id == deviceId && d.isHarmony);
     },

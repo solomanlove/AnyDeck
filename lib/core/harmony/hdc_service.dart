@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import '../adb/adb_device.dart';
 import '../adb/adb_result.dart';
+import '../dal/device_driver.dart';
+import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 
 /// HDC (HarmonyOS Device Connector) 服务封装，提供与纯血鸿蒙设备的通信指令。
@@ -22,11 +24,24 @@ class HdcService {
 
   /// 获取已连接的鸿蒙设备列表。
   Future<List<AdbDevice>> listDevices() async {
-    final result = await run(['list', 'targets']);
-    if (!result.isSuccess) {
-      return [];
+    List<String> rawTargets = [];
+    if (RustDalBridge.instance.isAvailable) {
+      try {
+        final targets = await RustDalBridge.instance.listHarmonyDevices();
+        rawTargets = targets
+            .map((item) => item['serial'] as String? ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList();
+      } catch (_) {}
     }
-    final rawTargets = _parseRawTargets(result.stdout);
+
+    if (rawTargets.isEmpty) {
+      final result = await run(['list', 'targets']);
+      if (!result.isSuccess) {
+        return [];
+      }
+      rawTargets = _parseRawTargets(result.stdout);
+    }
     if (rawTargets.isEmpty) return [];
 
     final devices = <AdbDevice>[];
@@ -119,12 +134,24 @@ class HdcService {
     }
   }
 
-  /// 在指定设备上执行单条 shell 命令。
+  /// 在指定设备上执行单条 shell 命令 (优先走 Rust DAL 驱动，失败或未初始化时平滑降级走 CLI 通道)。
   Future<AdbResult> shell(
     String deviceId,
     String command, {
     Duration timeout = const Duration(seconds: 15),
-  }) {
+  }) async {
+    if (RustDalBridge.instance.isAvailable) {
+      try {
+        final out = await RustDalBridge.instance.executeShell(
+          deviceId,
+          command,
+          platform: DevicePlatform.harmony,
+        );
+        return AdbResult(exitCode: 0, stdout: out, stderr: '');
+      } catch (e) {
+        // 原生驱动失败时平滑降级走下方通用 CLI 通道
+      }
+    }
     return run(['-t', deviceId, 'shell', command], timeout: timeout);
   }
 

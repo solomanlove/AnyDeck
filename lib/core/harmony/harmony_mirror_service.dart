@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../scrcpy/rust_device_bridge.dart';
@@ -51,16 +52,45 @@ class HarmonyMirrorService {
   }
 
   /// 向指定鸿蒙设备的 control socket 发送控制二进制报文。
+  /// 包含双重保障机制：优先走 Rust 投屏 Control Socket 直通通道；
+  /// 若 Socket 尚未就绪或发送失败，则自动降级为 HDC uinput 命令执行。
   Future<bool> sendControl({
     required String deviceId,
     required Uint8List controlMessage,
   }) async {
     final session = _sessions[deviceId];
-    if (session == null) return false;
-    return RustDeviceBridge.instance.sendControl(
-      session.rustHandle,
-      controlMessage,
-    );
+    if (session != null) {
+      final sent = RustDeviceBridge.instance.sendControl(
+        session.rustHandle,
+        controlMessage,
+      );
+      if (sent) return true;
+    }
+
+    // 容灾策略：如果 Rust 控制 Socket 尚未连接或写入失败，通过 HDC uinput 命令执行降级控制
+    return _sendFallbackControl(deviceId, controlMessage);
+  }
+
+  /// 通过 HDC 注入命令对鸿蒙设备进行兜底触控控制。
+  Future<bool> _sendFallbackControl(
+    String deviceId,
+    Uint8List controlMessage,
+  ) async {
+    if (controlMessage.length >= 18 && controlMessage[0] == 2) {
+      final byteData = ByteData.sublistView(controlMessage);
+      final action = byteData.getUint8(1);
+      final x = byteData.getUint32(10, Endian.big);
+      final y = byteData.getUint32(14, Endian.big);
+      // action: 0 = down, 1 = up, 2 = move
+      final subcmd = action == 0
+          ? '-d $x $y'
+          : action == 1
+              ? '-u $x $y'
+              : '-m $x $y';
+      final res = await _hdcService.shell(deviceId, 'uinput -T $subcmd');
+      return res.isSuccess;
+    }
+    return false;
   }
 
   /// 从 Flutter 资源包释放鸿蒙投屏 Java 桥接 jar 包。

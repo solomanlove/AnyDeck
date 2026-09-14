@@ -344,6 +344,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                     },
                     child: EmbeddedScrcpyViewer(
                       deviceId: widget.deviceId,
+                      isHarmony: widget.isHarmony,
                       isFullScreen: _controller.isFullScreen,
                       onEscapePressed: () {
                         if (_controller.isFullScreen) {

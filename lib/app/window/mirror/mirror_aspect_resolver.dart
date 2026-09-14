@@ -21,6 +21,10 @@ class MirrorAspectResolver {
   }
 
   Future<void> _refreshDisplayFrame(WidgetRef ref, String deviceId) async {
+    final isHarmony = deviceId.startsWith('harmony:') ||
+        ref.read(harmonyMirrorServiceProvider).isActive(deviceId) ||
+        ref.read(deviceRegistryProvider).any((d) => d.id == deviceId && d.isHarmony);
+    if (isHarmony) return;
     try {
       final displayFrame = await DeviceDisplayFrame.read(
         ref.read(adbServiceProvider),
@@ -34,7 +38,10 @@ class MirrorAspectResolver {
 
   double? _resolveVideoAspect(WidgetRef ref, String deviceId) {
     try {
-      final size = deviceId.startsWith('harmony:')
+      final isHarmony = deviceId.startsWith('harmony:') ||
+          ref.read(harmonyMirrorServiceProvider).isActive(deviceId) ||
+          ref.read(deviceRegistryProvider).any((d) => d.id == deviceId && d.isHarmony);
+      final size = isHarmony
           ? ref.read(harmonyMirrorServiceProvider).getVideoSize(deviceId)
           : ref.read(embeddedScrcpyServiceProvider).getVideoSize(deviceId);
       if (size != null && size['width']! > 0 && size['height']! > 0) {

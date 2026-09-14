@@ -5,14 +5,17 @@ import 'dart:io';
 import 'device_driver.dart';
 
 typedef _BatchExecuteNative =
-    Pointer<Uint8> Function(Pointer<Uint8>, Pointer<Uint8>, Uint32);
+    Pointer<Uint8> Function(Uint8, Pointer<Uint8>, Pointer<Uint8>, Uint32);
 typedef _BatchExecuteDart =
-    Pointer<Uint8> Function(Pointer<Uint8>, Pointer<Uint8>, int);
+    Pointer<Uint8> Function(int, Pointer<Uint8>, Pointer<Uint8>, int);
 
 typedef _DalExecuteNative =
     Pointer<Uint8> Function(Uint8, Pointer<Uint8>, Pointer<Uint8>);
 typedef _DalExecuteDart =
     Pointer<Uint8> Function(int, Pointer<Uint8>, Pointer<Uint8>);
+
+typedef _ListHarmonyDevicesNative = Pointer<Uint8> Function();
+typedef _ListHarmonyDevicesDart = Pointer<Uint8> Function();
 
 typedef _FreeStringNative = Void Function(Pointer<Uint8>);
 typedef _FreeStringDart = void Function(Pointer<Uint8>);
@@ -40,6 +43,14 @@ class RustDalBridge {
             .lookupFunction<_DalExecuteNative, _DalExecuteDart>(
               'anydeck_dal_execute_shell',
             );
+        try {
+          _listHarmonyDevices = _library
+              .lookupFunction<_ListHarmonyDevicesNative, _ListHarmonyDevicesDart>(
+                'anydeck_harmony_list_devices',
+              );
+        } catch (_) {
+          _listHarmonyDevices = null;
+        }
         _freeString = _library
             .lookupFunction<_FreeStringNative, _FreeStringDart>(
               'anydeck_free_string',
@@ -60,6 +71,7 @@ class RustDalBridge {
   late final void Function(Pointer<Uint8>, int) _free;
   late final _BatchExecuteDart _batchExecute;
   late final _DalExecuteDart _dalExecute;
+  _ListHarmonyDevicesDart? _listHarmonyDevices;
   late final _FreeStringDart _freeString;
 
   static final RustDalBridge instance = RustDalBridge._(_tryOpen());
@@ -119,6 +131,7 @@ class RustDalBridge {
     List<String> serials,
     String command, {
     int maxConcurrency = 4,
+    DevicePlatform platform = DevicePlatform.android,
   }) async {
     if (!_isInitialized || serials.isEmpty) {
       return [];
@@ -133,7 +146,12 @@ class RustDalBridge {
 
     Pointer<Uint8> resultPtr = nullptr;
     try {
-      resultPtr = _batchExecute(serialsPtr, cmdPtr, maxConcurrency);
+      resultPtr = _batchExecute(
+        platform.value,
+        serialsPtr,
+        cmdPtr,
+        maxConcurrency,
+      );
       if (resultPtr == nullptr) {
         return [];
       }
@@ -155,6 +173,34 @@ class RustDalBridge {
       }
       _free(serialsPtr, serialsBytesLen);
       _free(cmdPtr, cmdBytesLen);
+    }
+  }
+
+  /// 获取已连接的鸿蒙设备列表 (通过 Rust HDC 驱动原生解析)
+  Future<List<Map<String, dynamic>>> listHarmonyDevices() async {
+    if (!_isInitialized || _listHarmonyDevices == null) {
+      return [];
+    }
+
+    Pointer<Uint8> resultPtr = nullptr;
+    try {
+      resultPtr = _listHarmonyDevices!();
+      if (resultPtr == nullptr) {
+        return [];
+      }
+
+      final jsonString = _cStringToString(resultPtr);
+      final decoded = jsonDecode(jsonString);
+      if (decoded is List) {
+        return decoded.whereType<Map<String, dynamic>>().toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    } finally {
+      if (resultPtr != nullptr) {
+        _freeString(resultPtr);
+      }
     }
   }
 

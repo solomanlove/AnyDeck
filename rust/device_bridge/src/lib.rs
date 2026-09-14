@@ -346,6 +346,7 @@ pub unsafe extern "C" fn anydeck_clear_performance_cache(serial: *const c_char) 
 /// 返回指针指向的堆内存必须由调用方通过 `anydeck_free_string` 释放。
 #[no_mangle]
 pub unsafe extern "C" fn anydeck_batch_execute_shell(
+    platform: u8,
     serials_json: *const c_char,
     command: *const c_char,
     max_concurrency: u32,
@@ -365,9 +366,15 @@ pub unsafe extern "C" fn anydeck_batch_execute_shell(
         Err(_) => return std::ptr::null_mut(),
     };
 
+    let target_platform = core::DevicePlatform::from_u8(platform).unwrap_or(core::DevicePlatform::Android);
+
     let drivers: Vec<Arc<dyn core::DeviceDriver>> = serials
         .into_iter()
-        .map(|s| Arc::new(core::AndroidDriver::new(s)) as Arc<dyn core::DeviceDriver>)
+        .map(|s| match target_platform {
+            core::DevicePlatform::Android => Arc::new(core::AndroidDriver::new(s)) as Arc<dyn core::DeviceDriver>,
+            core::DevicePlatform::Harmony => Arc::new(core::HarmonyDriver::new(s)) as Arc<dyn core::DeviceDriver>,
+            core::DevicePlatform::Ios => Arc::new(core::IosDriver::new(s)) as Arc<dyn core::DeviceDriver>,
+        })
         .collect();
 
     let results = core::BatchManager::execute_shell_batch_blocking(
@@ -379,6 +386,26 @@ pub unsafe extern "C" fn anydeck_batch_execute_shell(
     let json_bytes = match serde_json::to_string(&results) {
         Ok(j) => j,
         Err(_) => return std::ptr::null_mut(),
+    };
+
+    std::ffi::CString::new(json_bytes)
+        .map(|cs| cs.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// 查询已连接的鸿蒙设备列表，返回 JSON 字符串裸指针
+///
+/// # Safety
+/// 返回指针指向的堆内存必须由调用方通过 `anydeck_free_string` 释放。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_harmony_list_devices() -> *mut c_char {
+    let result = core::BatchManager::runtime().block_on(async {
+        core::HarmonyDriver::list_targets().await
+    });
+
+    let json_bytes = match result {
+        Ok(targets) => serde_json::to_string(&targets).unwrap_or_else(|_| "[]".into()),
+        Err(_) => "[]".into(),
     };
 
     std::ffi::CString::new(json_bytes)
