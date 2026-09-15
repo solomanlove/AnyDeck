@@ -1,3 +1,4 @@
+import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -184,7 +185,7 @@ class _AnimatedSplashScreenState extends ConsumerState<AnimatedSplashScreen>
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(22),
                         child: Image.asset(
-                          'assets/brand/app_logo.png',
+                          AppIcons.appLogo,
                           fit: BoxFit.contain,
                         ),
                       ),

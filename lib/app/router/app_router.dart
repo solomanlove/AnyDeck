@@ -8,7 +8,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const AnimatedSplashScreen()),
+      GoRoute(path: '/', builder: (context, state) => const AnimatedSplashScreen()),// 首页+启动屏
     ],
   );
 });
