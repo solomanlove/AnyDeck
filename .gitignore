@@ -74,3 +74,6 @@ app.*.map.json
 
 # 临时原型目录
 /prototype/
+
+# go-ios 自动下载的 iOS 开发者镜像缓存
+/devimages/

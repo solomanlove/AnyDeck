@@ -220,7 +220,11 @@ class MirrorWindowController extends ChangeNotifier {
       }
     } catch (e) {
       _isLoading = false;
-      _errorMessage = e.toString();
+      var msg = e.toString();
+      if (msg.startsWith('Exception: ')) {
+        msg = msg.substring('Exception: '.length);
+      }
+      _errorMessage = msg;
       notifyListeners();
     }
   }
