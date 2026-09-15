@@ -305,7 +305,7 @@ class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
                   const SizedBox(width: 4),
                   Text(
                     bleMouseState.state == BleMouseState.connected
-                        ? 'BLE 鼠标反控已连接'
+                        ? 'BLE 鼠标反控已就绪'
                         : 'BLE 鼠标等待配对...',
                     style: const TextStyle(
                       fontSize: 11,

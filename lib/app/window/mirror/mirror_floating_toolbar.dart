@@ -261,20 +261,21 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 );
               },
             ),
-            MirrorToolbarButton(
-              icon: Icon(
-                isScreenOff ? Icons.mobile_off : Icons.smartphone,
-                color: isScreenOff
-                    ? Colors.orange
-                    : (isDark ? Colors.white70 : Colors.black87),
+            if (!widget.controller.isIos && !widget.controller.isHarmony)
+              MirrorToolbarButton(
+                icon: Icon(
+                  isScreenOff ? Icons.mobile_off : Icons.smartphone,
+                  color: isScreenOff
+                      ? Colors.orange
+                      : (isDark ? Colors.white70 : Colors.black87),
+                ),
+                tooltip: context.l10n.t('screenPowerToggle'),
+                onPressed: () {
+                  ref
+                      .read(screenPowerOffProvider(widget.deviceId).notifier)
+                      .toggleScreenPower(!isScreenOff);
+                },
               ),
-              tooltip: context.l10n.t('screenPowerToggle'),
-              onPressed: () {
-                ref
-                    .read(screenPowerOffProvider(widget.deviceId).notifier)
-                    .toggleScreenPower(!isScreenOff);
-              },
-            ),
             const _VerticalDivider(),
 
             // Group 2: 音量+, 音量-
@@ -324,24 +325,25 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             const _VerticalDivider(),
 
             // Group 3: 后退, 主屏, 菜单
-            MirrorToolbarButton(
-              icon: Icon(
-                Icons.chevron_left,
-                size: 18,
-                color: isDark ? Colors.white70 : Colors.black87,
+            if (!widget.controller.isIos)
+              MirrorToolbarButton(
+                icon: Icon(
+                  Icons.chevron_left,
+                  size: 18,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+                tooltip: context.l10n.t('back'),
+                onPressed: () {
+                  if (_backLongPressHandler.shouldSuppressBack) {
+                    return;
+                  }
+                  actions.keyEvent(widget.deviceId, 4);
+                },
+                onPointerDown: () =>
+                    _backLongPressHandler.handlePointerDown(context),
+                onPointerUp: _backLongPressHandler.handlePointerUp,
+                onPointerCancel: _backLongPressHandler.handlePointerUp,
               ),
-              tooltip: context.l10n.t('back'),
-              onPressed: () {
-                if (_backLongPressHandler.shouldSuppressBack) {
-                  return;
-                }
-                actions.keyEvent(widget.deviceId, 4);
-              },
-              onPointerDown: () =>
-                  _backLongPressHandler.handlePointerDown(context),
-              onPointerUp: _backLongPressHandler.handlePointerUp,
-              onPointerCancel: _backLongPressHandler.handlePointerUp,
-            ),
             MirrorToolbarButton(
               icon: Icon(
                 Icons.radio_button_unchecked,
@@ -356,14 +358,15 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 actions.keyEvent(widget.deviceId, 3);
               },
             ),
-            MirrorToolbarButton(
-              icon: Icon(
-                Icons.crop_square,
-                color: isDark ? Colors.white70 : Colors.black87,
+            if (!widget.controller.isIos)
+              MirrorToolbarButton(
+                icon: Icon(
+                  Icons.crop_square,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+                tooltip: context.l10n.t('menuKey'),
+                onPressed: () => actions.keyEvent(widget.deviceId, 187),
               ),
-              tooltip: context.l10n.t('menuKey'),
-              onPressed: () => actions.keyEvent(widget.deviceId, 187),
-            ),
             if (widget.controller.isIos) ...[
               Consumer(
                 builder: (context, ref, _) {
