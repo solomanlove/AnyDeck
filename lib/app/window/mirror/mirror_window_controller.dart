@@ -295,6 +295,12 @@ class MirrorWindowController extends ChangeNotifier {
     });
   }
 
+  /// 视频流分辨率改变时（如设备横竖屏切换），自动调整独立窗口贴合当前画面比例。
+  void onVideoSizeChanged(int width, int height) {
+    if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
+    unawaited(_fitWindowToCurrentAspect());
+  }
+
   /// 切换窗口置顶状态
   Future<void> toggleAlwaysOnTop() async {
     final nextState = !_isAlwaysOnTop;

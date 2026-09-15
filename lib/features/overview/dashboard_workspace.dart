@@ -273,6 +273,46 @@ class _ToolContentCardState extends State<_ToolContentCard> {
           _ => const SizedBox.shrink(),
         };
       }
+      if (widget.device.isHarmony) {
+        return switch (index) {
+          0 => _OverviewTab(device: widget.device),
+          1 => _ToolTabScrollView(
+            child: HarmonyControlTab(
+              key: ValueKey(widget.device.id),
+              device: widget.device,
+              sessions: widget.sessions,
+            ),
+          ),
+          2 => _AppsTab(device: widget.device),
+          3 => HarmonyFilesTab(
+            key: ValueKey(widget.device.id),
+            device: widget.device,
+          ),
+          4 => _LogcatTab(device: widget.device),
+          5 => Padding(
+            padding: const EdgeInsets.all(16),
+            child: TerminalTab(device: widget.device),
+          ),
+          6 => ProcessesTab(
+            device: widget.device,
+            isVisible: _currentToolIndex == 6,
+          ),
+          7 => WebpagesTab(
+            device: widget.device,
+            isVisible: _currentToolIndex == 7,
+          ),
+          9 => HarmonyScreenshotTab(
+            key: ValueKey(widget.device.id),
+            device: widget.device,
+          ),
+          10 => PerformanceTab(
+            device: widget.device,
+            isVisible: _currentToolIndex == 10,
+          ),
+          11 => NetworkTab(device: widget.device),
+          _ => const SizedBox.shrink(),
+        };
+      }
       return switch (index) {
         0 => _OverviewTab(device: widget.device),
         1 => _ToolTabScrollView(

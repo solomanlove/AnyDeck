@@ -24,12 +24,14 @@ class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
     this.isFullScreen = false,
     this.onEscapePressed,
     this.isHarmony = false,
+    this.onVideoSizeChanged,
   });
 
   final String deviceId;
   final bool isFullScreen;
   final VoidCallback? onEscapePressed;
   final bool isHarmony;
+  final void Function(int width, int height)? onVideoSizeChanged;
 
   @override
   ConsumerState<EmbeddedScrcpyViewer> createState() =>
@@ -141,6 +143,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
             _videoWidth = size['width'];
             _videoHeight = size['height'];
             changed = true;
+            widget.onVideoSizeChanged?.call(size['width']!, size['height']!);
           }
         }
 

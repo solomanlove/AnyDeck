@@ -64,6 +64,10 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   static const String _unifiedCommand =
       r'''focusLine=$(dumpsys window | grep mCurrentFocus || true); cat /proc/uptime; echo "---"; dumpsys battery; echo "---"; cat /proc/meminfo; echo "---"; echo "$focusLine"; echo "---"; cat /proc/stat | grep "^cpu"; echo "---"; for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32; do if [ -d "/sys/devices/system/cpu/cpu$i" ]; then freq_file="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; if [ -f "$freq_file" ]; then cat "$freq_file"; else echo "0"; fi; fi; done; echo "---"; tmp=${focusLine%%/*}; pkg=${tmp##* }; pkg=${pkg##*{}; pkg=${pkg%%\}}; case "$pkg" in *.*) case "$pkg" in *[\{\}\/\=\ ]*) pkg="" ;; esac ;; *) pkg="" ;; esac; if [ -n "$pkg" ]; then dumpsys gfxinfo "$pkg" | grep "Total frames rendered:" || true; fi; true''';
 
+  // 鸿蒙系统统一的 HDC Shell 性能采样命令
+  static const String _harmonyUnifiedCommand =
+      r'''cat /proc/uptime 2>/dev/null || echo "0"; echo "---"; if [ -f "/sys/class/power_supply/battery/capacity" ]; then cap=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo "100"); echo "level: $cap"; else echo "level: 100"; fi; echo "---"; cat /proc/meminfo 2>/dev/null; echo "---"; echo ""; echo "---"; cat /proc/stat 2>/dev/null | grep "^cpu"; echo "---"; for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32; do if [ -d "/sys/devices/system/cpu/cpu$i" ]; then freq_file="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; if [ -f "$freq_file" ]; then cat "$freq_file"; else echo "0"; fi; fi; done; echo "---"; echo ""; true''';
+
   @override
   void initState() {
     super.initState();
@@ -180,8 +184,13 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
 
       // 2. 若 Rust 采样未命中，平滑回退到 ADB CLI 聚合命令
       if (snapshot == null) {
-        final adb = ref.read(adbServiceProvider);
-        final result = await adb.shell(widget.device.id, _unifiedCommand);
+        final result = widget.device.isHarmony
+            ? await ref
+                .read(hdcServiceProvider)
+                .shell(widget.device.id, _harmonyUnifiedCommand)
+            : await ref
+                .read(adbServiceProvider)
+                .shell(widget.device.id, _unifiedCommand);
 
         if (!mounted) return;
 

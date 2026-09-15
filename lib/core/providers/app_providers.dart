@@ -23,6 +23,7 @@ import '../cache/cache_cleanup_service.dart';
 import '../device_actions/device_action_service.dart';
 import '../device_actions/foreground_app_service.dart';
 import '../device_info/device_info_service.dart';
+import '../device_info/device_memory_info.dart';
 import '../device_info/device_overview.dart';
 import '../emulator/android_emulator.dart';
 import '../files/file_manager_service.dart';
@@ -524,7 +525,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           }
         }
 
-        // Get screen resolution & refresh rate
+        // 查询屏幕分辨率与刷新率
         final screenRes = await hdc.shell(deviceId, 'hidumper -s RenderService -a screen');
         String physicalRes = '-';
         String refreshRate = '-';
@@ -540,6 +541,80 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           }
         }
 
+        // 并行获取鸿蒙内存、存储、IP网络、CPU及显示密度
+        final results = await Future.wait([
+          hdc.shell(deviceId, 'cat /proc/meminfo'),
+          hdc.shell(deviceId, 'df -k /data'),
+          hdc.shell(deviceId, 'ifconfig wlan0'),
+          hdc.shell(deviceId, 'nproc ; uname -m'),
+          hdc.shell(deviceId, 'hidumper -s DisplayManagerService -a -a'),
+        ]);
+
+        final memRes = results[0];
+        final dfRes = results[1];
+        final ipRes = results[2];
+        final cpuRes = results[3];
+        final displayRes = results[4];
+
+        // 1. 内存 (RAM)
+        final memInfo = DeviceMemoryInfo.parse(memRes.stdout);
+        final memoryTotal = memInfo.total;
+        final memoryUsed = memInfo.used;
+
+        // 2. 存储 (Storage: 已用 / 总量)
+        String storage = '-';
+        if (dfRes.isSuccess && dfRes.stdout.isNotEmpty) {
+          final dfLines = dfRes.stdout.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+          if (dfLines.length >= 2) {
+            final cols = dfLines.last.split(RegExp(r'\s+'));
+            if (cols.length >= 3) {
+              final totalKb = int.tryParse(cols[1]);
+              final usedKb = int.tryParse(cols[2]);
+              if (totalKb != null && usedKb != null) {
+                final usedG = (usedKb / 1024 / 1024).toStringAsFixed(2);
+                final totalG = (totalKb / 1024 / 1024).toStringAsFixed(2);
+                storage = '${usedG}G / ${totalG}G';
+              }
+            }
+          }
+        }
+
+        // 3. Wi-Fi 与 IP 地址
+        String ipAddress = '-';
+        bool wifiEnabled = false;
+        String wifi = '-';
+        if (ipRes.isSuccess && ipRes.stdout.isNotEmpty) {
+          final ip = HdcService.parseIpFromIfconfig(ipRes.stdout);
+          if (ip != null && ip.isNotEmpty) {
+            ipAddress = ip;
+            wifiEnabled = true;
+            wifi = 'Connected';
+          }
+        }
+
+        // 4. 处理器 CPU
+        String processor = '-';
+        if (cpuRes.isSuccess && cpuRes.stdout.isNotEmpty) {
+          final cpuLines = cpuRes.stdout.trim().split('\n');
+          final cores = cpuLines.first.trim();
+          final arch = cpuLines.length > 1 ? cpuLines[1].trim() : '';
+          if (cores.isNotEmpty && int.tryParse(cores) != null) {
+            processor = arch.isNotEmpty ? '$cores cores ($arch)' : '$cores cores';
+          }
+        }
+
+        // 5. 屏幕逻辑密度
+        String logicalDensity = '-';
+        if (displayRes.isSuccess && displayRes.stdout.isNotEmpty) {
+          final densityMatch = RegExp(r'Density:\s*([0-9.]+)').firstMatch(displayRes.stdout);
+          if (densityMatch != null) {
+            final d = double.tryParse(densityMatch.group(1)!);
+            if (d != null) {
+              logicalDensity = '${d.toStringAsFixed(2)}x';
+            }
+          }
+        }
+
         final fresh = DeviceOverview(
           name: name,
           brand: brand,
@@ -548,17 +623,18 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           androidId: '-',
           androidVersion: systemVersion,
           kernelVersion: 'OpenHarmony',
-          processor: '-',
-          storage: '-',
-          memory: '-',
+          processor: processor,
+          storage: storage,
+          memory: memoryTotal,
+          memoryUsed: memoryUsed,
           physicalResolution: physicalRes,
           resolution: physicalRes,
-          logicalDensity: '-',
+          logicalDensity: logicalDensity,
           refreshRate: refreshRate,
           fontScale: '-',
-          wifi: '-',
-          wifiEnabled: false,
-          ipAddress: '-',
+          wifi: wifi,
+          wifiEnabled: wifiEnabled,
+          ipAddress: ipAddress,
           macAddress: '-',
           airplaneModeEnabled: false,
           mobileDataEnabled: false,
@@ -2631,8 +2707,16 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       }
     }
 
-    // 2. 执行连接
-    final result = await ref.read(deviceActionServiceProvider).connect(address);
+    // 2. 优先执行 ADB 连接
+    var result = await ref.read(deviceActionServiceProvider).connect(address);
+
+    // 如果 ADB 连接失败，尝试作为鸿蒙设备通过 HDC 连接
+    if (!result.isSuccess) {
+      final hdcResult = await ref.read(hdcServiceProvider).connectWireless(address);
+      if (hdcResult.isSuccess || hdcResult.stdout.contains('Connect OK')) {
+        result = hdcResult;
+      }
+    }
 
     // 3. 如果点击连接发现不联通，再判断方法二（进行诊断）
     if (!result.isSuccess) {
@@ -2647,7 +2731,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         return const AdbResult(
           exitCode: 1,
           stdout: '',
-          stderr: '连接失败：设备在局域网内网络连通，但手机 ADB 无线端口（5555）未响应，请检查手机端是否允许调试。',
+          stderr: '连接失败：设备在局域网内网络连通，但手机调试端口未响应，请检查手机端是否允许调试。',
         );
       }
     }
@@ -2657,16 +2741,23 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   }
 
   Future<AdbResult> disconnectDevice(String address) async {
-    final result = await ref
-        .read(deviceActionServiceProvider)
-        .disconnect(address);
+    final isHarmony = state.any((d) => d.id == address && d.isHarmony) ||
+        address.startsWith('harmony:');
+    final AdbResult result;
+    if (isHarmony) {
+      result = await ref.read(hdcServiceProvider).disconnectWireless(address);
+    } else {
+      result = await ref
+          .read(deviceActionServiceProvider)
+          .disconnect(address);
+    }
     await _refreshRegistryAfterAdbCommand();
     return result;
   }
 
   ///名字：connectWireless
   ///描述：通过Tcp/ip，无线连接设备
-  ///实际执行命令：adb connect $ipAddress:$port
+  ///实际执行命令：adb connect $ipAddress:$port 或 hdc tconn $ipAddress:$port
   Future<AdbResult> connectWireless(
     String usbDeviceId,
     String ipAddress, [
@@ -2686,27 +2777,45 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       }
     }
 
-    final adb = ref.read(adbServiceProvider);
+    final isHarmony = state.any((d) => d.id == usbDeviceId && d.isHarmony);
+    final AdbResult connectResult;
 
-    // 2. 将 USB 设备切换为 TCP/IP 监听模式，开启指定端口（默认 5555）
-    final tcpipResult = await adb.run([
-      '-s',
-      usbDeviceId,
-      'tcpip',
-      port.toString(),
-    ]);
-    if (!tcpipResult.isSuccess) {
-      return tcpipResult;
+    if (isHarmony) {
+      final hdc = ref.read(hdcServiceProvider);
+      // 2. 将鸿蒙 USB 设备切换为 TCP 监听模式
+      final tmodeResult = await hdc.enableTcpMode(usbDeviceId, port: port);
+      if (!tmodeResult.isSuccess) {
+        return tmodeResult;
+      }
+
+      // 3. 延迟等待 1 秒，以确保手机端的服务就绪
+      await Future.delayed(const Duration(seconds: 1));
+
+      // 4. 执行 hdc tconn 连接
+      connectResult = await hdc.connectWireless('$ipAddress:$port');
+    } else {
+      final adb = ref.read(adbServiceProvider);
+
+      // 2. 将 USB 设备切换为 TCP/IP 监听模式，开启指定端口（默认 5555）
+      final tcpipResult = await adb.run([
+        '-s',
+        usbDeviceId,
+        'tcpip',
+        port.toString(),
+      ]);
+      if (!tcpipResult.isSuccess) {
+        return tcpipResult;
+      }
+
+      // 3. 延迟等待 1 秒，以确保手机端的 TCP/IP 服务成功启动
+      await Future.delayed(const Duration(seconds: 1));
+
+      // 4. 执行 adb connect 连接到该局域网 IP
+      connectResult = await adb.run(['connect', '$ipAddress:$port']);
     }
 
-    // 3. 延迟等待 1 秒，以确保手机端的 TCP/IP 服务成功启动
-    await Future.delayed(const Duration(seconds: 1));
-
-    // 4. 执行 adb connect 连接到该局域网 IP
-    final connectResult = await adb.run(['connect', '$ipAddress:$port']);
-
     // 5. 如果点击连接发现不联通，再判断方法二（进行诊断）
-    if (!connectResult.isSuccess) {
+    if (!connectResult.isSuccess && !connectResult.stdout.contains('Connect OK')) {
       final isPingable = await NetworkLanMatcher.pingDevice(ipAddress);
       if (!isPingable) {
         return const AdbResult(
@@ -2718,7 +2827,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         return const AdbResult(
           exitCode: 1,
           stdout: '',
-          stderr: '连接失败：设备在局域网内网络连通，但手机 ADB 无线端口未响应，请检查手机端是否允许调试或重新插拔 USB。',
+          stderr: '连接失败：设备在局域网内网络连通，但手机无线端口未响应，请检查手机端是否允许调试或重新插拔 USB。',
         );
       }
     }

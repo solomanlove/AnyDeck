@@ -1,14 +1,34 @@
 part of '../dashboard_screen.dart';
 
-class _FilesTab extends ConsumerWidget {
-  const _FilesTab({required this.device});
+/// 鸿蒙手机专属文件管理 Tab。
+///
+/// 独立文件承载鸿蒙系统的文件浏览与传输逻辑，默认重定向至开发者具备完全读写权限的 `/data/local/tmp/` 目录。
+/// 复用公共的文件列表、表格、面包屑导航以及拖拽安装 HAP 机制。
+class HarmonyFilesTab extends ConsumerWidget {
+  /// 创建鸿蒙专属文件管理 Tab
+  const HarmonyFilesTab({super.key, required this.device});
 
+  /// 目标鸿蒙设备
   final AdbDevice device;
+
+  static const String _defaultHarmonyPath = '/data/local/tmp/';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final navState = ref.watch(fileNavigationProvider);
-    final path = navState.currentPath;
+
+    // 鸿蒙系统根目录通常无权限，默认重定向至开发者读写目录 /data/local/tmp/
+    final path = (navState.currentPath == '/' ||
+            navState.currentPath.isEmpty ||
+            navState.currentPath.startsWith('/storage/emulated/0'))
+        ? _defaultHarmonyPath
+        : navState.currentPath;
+
+    if (path != navState.currentPath) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(fileNavigationProvider.notifier).navigateTo(_defaultHarmonyPath);
+      });
+    }
 
     final request = RemoteDirectoryRequest(deviceId: device.id, path: path);
     final filesAsync = ref.watch(remoteFilesProvider(request));
@@ -43,7 +63,7 @@ class _FilesTab extends ConsumerWidget {
                 IconButton(
                   tooltip: '向上',
                   icon: const Icon(CupertinoIcons.up_arrow),
-                  onPressed: path != '/'
+                  onPressed: path != _defaultHarmonyPath && path != '/'
                       ? () => ref.read(fileNavigationProvider.notifier).goUp()
                       : null,
                 ),
@@ -52,6 +72,13 @@ class _FilesTab extends ConsumerWidget {
                   icon: const Icon(CupertinoIcons.refresh),
                   onPressed: () {
                     ref.invalidate(remoteFilesProvider(request));
+                  },
+                ),
+                ActionChip(
+                  avatar: const Icon(CupertinoIcons.folder_badge_person_crop, size: 14),
+                  label: const Text('/data/local/tmp/'),
+                  onPressed: () {
+                    ref.read(fileNavigationProvider.notifier).navigateTo(_defaultHarmonyPath);
                   },
                 ),
                 const SizedBox(width: 8),
@@ -211,9 +238,7 @@ class _FilesTab extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 16),
-            // Table Header (only visible in list view)
             if (!navState.isGridView) _buildTableHeader(context, ref),
-            // Files List / Grid / Table Rows
             Expanded(
               child: filesAsync.when(
                 loading: () => _PanelMessage(
@@ -227,7 +252,6 @@ class _FilesTab extends ConsumerWidget {
                   subtitle: error.toString(),
                 ),
                 data: (items) {
-                  // Client-side filtering
                   var filtered = items;
                   if (!navState.showHiddenFiles) {
                     filtered = filtered
@@ -244,7 +268,6 @@ class _FilesTab extends ConsumerWidget {
                         .toList();
                   }
 
-                  // Client-side sorting
                   filtered = List<RemoteFile>.from(filtered)
                     ..sort(
                       (a, b) => _compareFiles(
@@ -364,23 +387,19 @@ class _FilesTab extends ConsumerWidget {
     );
   }
 
-  /// 上传拖入或选中的文件；APK/HAP 会执行安装而不是复制。
+  /// 上传文件到鸿蒙设备；HAP 文件将自动执行安装，普通文件推送到指定目录。
   Future<void> _pushFiles(
     BuildContext context,
     WidgetRef ref,
     List<XFile> files,
     String remotePath,
   ) async {
-    final service = ref.read(fileManagerServiceProvider);
-    final appService = ref.read(appManagementServiceProvider);
     final hdcService = ref.read(hdcServiceProvider);
+    final service = ref.read(fileManagerServiceProvider);
     final transferNotifier = ref.read(transferListProvider.notifier);
 
     for (final file in files) {
-      final isApk = file.path.toLowerCase().endsWith('.apk');
-      final isHap = file.path.toLowerCase().endsWith('.hap') ||
-          file.path.toLowerCase().endsWith('.hsp');
-      final isPackage = device.isHarmony ? isHap : isApk;
+      final isHap = file.name.toLowerCase().endsWith('.hap');
       final taskId = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
 
       transferNotifier.addTask(
@@ -388,22 +407,16 @@ class _FilesTab extends ConsumerWidget {
           id: taskId,
           name: file.name,
           deviceId: device.id,
-          isApk: isPackage,
+          isApk: false,
         ),
       );
 
       try {
         final AdbResult result;
-        if (device.isHarmony) {
-          if (isHap) {
-            result = await hdcService.installApp(device.id, file.path);
-          } else {
-            result = await service.push(device.id, file.path, remotePath);
-          }
+        if (isHap) {
+          result = await hdcService.installApp(device.id, file.path);
         } else {
-          result = isApk
-              ? await appService.installApk(device.id, file.path)
-              : await service.push(device.id, file.path, remotePath);
+          result = await service.push(device.id, file.path, remotePath);
         }
 
         transferNotifier.updateTask(
@@ -417,48 +430,23 @@ class _FilesTab extends ConsumerWidget {
           return;
         }
 
-        final String message;
-        if (device.isHarmony) {
-          if (isHap) {
-            message = result.isSuccess
+        final message = isHap
+            ? (result.isSuccess
                 ? context.l10n
-                      .t('hapInstallSuccess')
-                      .replaceAll('{name}', file.name)
+                    .t('hapInstallSuccess')
+                    .replaceAll('{name}', file.name)
                 : context.l10n
-                      .t('hapInstallFailed')
-                      .replaceAll('{name}', file.name)
-                      .replaceAll('{error}', result.message);
-          } else {
-            message = result.isSuccess
-                ? (isApk
-                      ? context.l10n.t('harmonyApkNotice')
-                      : context.l10n
-                            .t('fileUploadSuccess')
-                            .replaceAll('{name}', file.name))
+                    .t('hapInstallFailed')
+                    .replaceAll('{name}', file.name)
+                    .replaceAll('{error}', result.message))
+            : (result.isSuccess
+                ? context.l10n
+                    .t('fileUploadSuccess')
+                    .replaceAll('{name}', file.name)
                 : context.l10n
-                      .t('fileUploadFailed')
-                      .replaceAll('{name}', file.name)
-                      .replaceAll('{error}', result.message);
-          }
-        } else {
-          message = isApk
-              ? (result.isSuccess
-                    ? context.l10n
-                          .t('apkInstallSuccess')
-                          .replaceAll('{name}', file.name)
-                    : context.l10n
-                          .t('apkInstallFailed')
-                          .replaceAll('{name}', file.name)
-                          .replaceAll('{error}', result.message))
-              : (result.isSuccess
-                    ? context.l10n
-                          .t('fileUploadSuccess')
-                          .replaceAll('{name}', file.name)
-                    : context.l10n
-                          .t('fileUploadFailed')
-                          .replaceAll('{name}', file.name)
-                          .replaceAll('{error}', result.message));
-        }
+                    .t('fileUploadFailed')
+                    .replaceAll('{name}', file.name)
+                    .replaceAll('{error}', result.message));
 
         _showSnack(context, message, isError: !result.isSuccess);
       } catch (e) {

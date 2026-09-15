@@ -1,6 +1,6 @@
 part of '../dashboard_screen.dart';
 
-extension _FilesTabTableHeader on _FilesTab {
+extension _FilesTabTableHeader on ConsumerWidget {
   /// 文件列表表头，统一使用 Dashboard 可排序表头单元格。
   Widget _buildTableHeader(BuildContext context, WidgetRef ref) {
     final navState = ref.watch(fileNavigationProvider);

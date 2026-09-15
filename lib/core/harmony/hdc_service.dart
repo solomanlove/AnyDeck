@@ -441,6 +441,36 @@ class HdcService {
     return targets;
   }
 
+  /// 开启鸿蒙设备的 TCP 监听模式 (默认 5555 端口)。
+  Future<AdbResult> enableTcpMode(String deviceId, {int port = 5555}) {
+    return run(['-t', deviceId, 'tmode', 'port', '$port']);
+  }
+
+  /// 通过无线网络连接到指定鸿蒙设备地址 (如 192.168.1.10:5555)。
+  Future<AdbResult> connectWireless(String address) {
+    return run(['tconn', address]);
+  }
+
+  /// 断开指定的鸿蒙无线设备连接。
+  Future<AdbResult> disconnectWireless(String address) {
+    return run(['tconn', address, '-remove']);
+  }
+
+  /// 查询鸿蒙设备的局域网 IPv4 地址。
+  Future<String?> getDeviceIp(String deviceId) async {
+    final res = await shell(deviceId, 'ifconfig wlan0');
+    if (!res.isSuccess) return null;
+    return parseIpFromIfconfig(res.stdout);
+  }
+
+  /// 从 `ifconfig wlan0` 输出中解析 IPv4 地址。
+  static String? parseIpFromIfconfig(String output) {
+    final match = RegExp(r'inet (?:addr:)?([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)').firstMatch(output);
+    final ip = match?.group(1);
+    if (ip == null || ip == '127.0.0.1') return null;
+    return ip;
+  }
+
   /// 解析 `hdc list targets` 输出的原始目标设备列表。
   List<String> _parseRawTargets(String output) {
     final targets = <String>[];

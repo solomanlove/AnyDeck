@@ -5,27 +5,9 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../scrcpy/rust_device_bridge.dart';
-import 'hdc_service.dart';
 import '../providers/app_providers.dart';
-
-/// 鸿蒙投屏会话实体，记录投屏相关状态和长连接进程。
-class HarmonyMirrorSession {
-  HarmonyMirrorSession({
-    required this.deviceId,
-    required this.port,
-    required this.serverProcess,
-    required this.textureId,
-    required this.rustHandle,
-    required this.startedAt,
-  });
-
-  final String deviceId;
-  final int port;
-  final Process serverProcess;
-  final int textureId;
-  final int rustHandle;
-  final DateTime startedAt;
-}
+import 'harmony_mirror_session.dart';
+import 'hdc_service.dart';
 
 /// 鸿蒙设备镜像（投屏）管理服务，通过本地 Java 桥接进程运行 HOScrcpy。
 class HarmonyMirrorService {
@@ -34,6 +16,9 @@ class HarmonyMirrorService {
   final HdcService _hdcService;
   final Map<String, HarmonyMirrorSession> _sessions = {};
   static const _textures = MethodChannel('anydeck/rust_texture');
+
+  /// 投屏流旋转发生时通知 UI 刷新新 Texture
+  void Function(String deviceId, int newTextureId)? onMirrorRotated;
 
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
   int? getTextureId(String deviceId) => _sessions[deviceId]?.textureId;
@@ -114,9 +99,30 @@ class HarmonyMirrorService {
     return file.path;
   }
 
+  /// 从 `hidumper -s DisplayManagerService -a -a` 输出中解析主屏幕宽高。
+  static (int?, int?) parseDisplayDimensions(String output) {
+    int? width;
+    int? height;
+    for (final rawLine in LineSplitter.split(output)) {
+      final line = rawLine.trim();
+      final wMatch = RegExp(r'\bwidth:\s*(\d+)', caseSensitive: false).firstMatch(line);
+      if (wMatch != null) width = int.tryParse(wMatch.group(1)!);
+
+      final hMatch = RegExp(r'\bheight:\s*(\d+)', caseSensitive: false).firstMatch(line);
+      if (hMatch != null) height = int.tryParse(hMatch.group(1)!);
+
+      if (width != null && height != null && width > 0 && height > 0) {
+        return (width, height);
+      }
+    }
+    return (null, null);
+  }
+
   /// 启动鸿蒙投屏。
   Future<int> start({
     required String deviceId,
+    int? customWidth,
+    int? customHeight,
   }) async {
     if (_sessions.containsKey(deviceId)) {
       return _sessions[deviceId]!.textureId;
@@ -125,19 +131,44 @@ class HarmonyMirrorService {
     final jarPath = await _extractSidecarJar();
     final hdcPath = _hdcService.executable;
 
-    // 获取设备的物理分辨率
-    int width = 1080;
-    int height = 2400;
-    try {
-      final resResult = await _hdcService.shell(deviceId, 'hidumper -s RenderService -a screen');
-      if (resResult.isSuccess && resResult.stdout.isNotEmpty) {
-        final match = RegExp(r'physical resolution=([0-9]+)x([0-9]+)').firstMatch(resResult.stdout);
-        if (match != null) {
-          width = int.tryParse(match.group(1) ?? '') ?? 1080;
-          height = int.tryParse(match.group(2) ?? '') ?? 2400;
+    int width = customWidth ?? 1080;
+    int height = customHeight ?? 2400;
+
+    if (customWidth == null || customHeight == null) {
+      // 优先从 DisplayManagerService 获取当前实时主屏宽高（适配横屏初始启动）
+      try {
+        final dispResult = await _hdcService.shell(
+          deviceId,
+          'hidumper -s DisplayManagerService -a -a',
+        );
+        if (dispResult.isSuccess && dispResult.stdout.isNotEmpty) {
+          final (dw, dh) = parseDisplayDimensions(dispResult.stdout);
+          if (dw != null && dh != null && dw > 0 && dh > 0) {
+            width = dw;
+            height = dh;
+          }
         }
+      } catch (_) {}
+
+      // 若未能获取，回退尝试 RenderService physical resolution
+      if (width == 1080 && height == 2400) {
+        try {
+          final resResult = await _hdcService.shell(
+            deviceId,
+            'hidumper -s RenderService -a screen',
+          );
+          if (resResult.isSuccess && resResult.stdout.isNotEmpty) {
+            final match = RegExp(
+              r'physical resolution=([0-9]+)x([0-9]+)',
+            ).firstMatch(resResult.stdout);
+            if (match != null) {
+              width = int.tryParse(match.group(1) ?? '') ?? 1080;
+              height = int.tryParse(match.group(2) ?? '') ?? 2400;
+            }
+          }
+        } catch (_) {}
       }
-    } catch (_) {}
+    }
 
     // 1. 启动 Java 桥接 TCP Server 进程（由 Java 端直接作为 TCP scrcpy 服务端接收连接）
     final serverProcess = await Process.start('java', [
@@ -223,9 +254,12 @@ class HarmonyMirrorService {
         textureId: textureId,
         rustHandle: rustHandle,
         startedAt: DateTime.now(),
+        width: width,
+        height: height,
       );
 
       _sessions[deviceId] = session;
+      _startOrientationMonitor(deviceId);
       return textureId;
     } catch (e) {
       if (rustHandle != 0) {
@@ -243,12 +277,87 @@ class HarmonyMirrorService {
     }
   }
 
+  /// 启动屏幕方向监控；检测到横竖屏物理旋转时，重启流以适配最新画面尺寸。
+  void _startOrientationMonitor(String deviceId) {
+    var mismatchCount = 0;
+    _sessions[deviceId]?.orientationTimer?.cancel();
+    _sessions[deviceId]?.orientationTimer = Timer.periodic(
+      const Duration(milliseconds: 1500),
+      (timer) async {
+        final session = _sessions[deviceId];
+        if (session == null) {
+          timer.cancel();
+          return;
+        }
+        try {
+          final res = await _hdcService.shell(
+            deviceId,
+            'hidumper -s DisplayManagerService -a -a',
+          );
+          if (!res.isSuccess || res.stdout.isEmpty) return;
+          final (dispW, dispH) = parseDisplayDimensions(res.stdout);
+          if (dispW == null || dispH == null || dispW <= 0 || dispH <= 0) return;
+
+          final displayIsLandscape = dispW >= dispH;
+          final videoIsLandscape = session.width >= session.height;
+
+          if (displayIsLandscape != videoIsLandscape) {
+            mismatchCount++;
+          } else {
+            mismatchCount = 0;
+          }
+
+          if (mismatchCount >= 2) {
+            timer.cancel();
+            await restartForDisplayChange(deviceId, width: dispW, height: dispH);
+          }
+        } catch (_) {}
+      },
+    );
+  }
+
+  /// 当检测到屏幕旋转时，重启流以适配横竖屏物理画面，彻底防止画面拉伸挤压。
+  Future<int?> restartForDisplayChange(
+    String deviceId, {
+    required int width,
+    required int height,
+  }) async {
+    final oldSession = _sessions[deviceId];
+    if (oldSession == null) return null;
+    oldSession.orientationTimer?.cancel();
+
+    try {
+      await _textures.invokeMethod<void>('untrack', {'handle': oldSession.rustHandle});
+      await _textures.invokeMethod<void>('unregister', {'textureId': oldSession.textureId});
+    } catch (_) {}
+    RustDeviceBridge.instance.stop(oldSession.rustHandle);
+    RustDeviceBridge.instance.release(oldSession.rustHandle);
+
+    oldSession.serverProcess.kill();
+    _sessions.remove(deviceId);
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    try {
+      final newTextureId = await start(
+        deviceId: deviceId,
+        customWidth: width,
+        customHeight: height,
+      );
+      onMirrorRotated?.call(deviceId, newTextureId);
+      return newTextureId;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// 停止鸿蒙投屏。
   Future<void> stop(String deviceId) async {
     final session = _sessions.remove(deviceId);
     if (session == null) {
       return;
     }
+    session.orientationTimer?.cancel();
+    session.orientationTimer = null;
 
     try {
       await _textures.invokeMethod<void>('untrack', {'handle': session.rustHandle});
