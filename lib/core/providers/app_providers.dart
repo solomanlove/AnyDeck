@@ -615,11 +615,15 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           }
         }
 
+        final harmonySerial = ref.read(deviceRegistryProvider.notifier).getSerial(deviceId) ??
+            await hdc.getDeviceSerial(deviceId) ??
+            deviceId;
+
         final fresh = DeviceOverview(
           name: name,
           brand: brand,
           model: model,
-          serial: deviceId,
+          serial: harmonySerial,
           androidId: '-',
           androidVersion: systemVersion,
           kernelVersion: 'OpenHarmony',
@@ -1344,6 +1348,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   final Set<String> _attemptedFetchIds = {};
   bool _isDisposed = false;
 
+  /// 获取设备已映射的物理硬件序列号，未映射时返回 null
+  String? getSerial(String id) => _serialMap[id];
+
   bool _isNetworkId(String id) {
     return id.contains(':') || id.contains('.') || id == '127.0.0.1';
   }
@@ -1459,8 +1466,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       } catch (_) {}
     }
 
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
-    _lastActiveDevices = activeDevices;
+    if (_isDisposed) return;
+    final activeDevices = _lastActiveDevices;
 
     // 清洗因历史 ADB track-devices 协议解析漏洞产生的被十六进制长度前缀污染的脏设备 ID
     String stripHexPrefix(String rawId) {
@@ -1613,6 +1620,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               sdkVersions[id] = cachedSdk;
             }
           }
+          final cachedIp = decoded['ipAddress']?.toString();
+          if (cachedIp != null && cachedIp.isNotEmpty && cachedIp != '-') {
+            ips[id] ??= cachedIp;
+          }
         } catch (_) {}
       }
 
@@ -1646,6 +1657,56 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               ips[id] = cachedIp;
             }
           } catch (_) {}
+        }
+      }
+    }
+
+    // 智能处理历史离线设备中的网络记录（如鸿蒙 Wi-Fi 设备）：
+    // 若网络设备缓存的 serial 仍是网络 ID 本身，尝试通过 IP 地址与同一平台/型号匹配历史物理硬件设备
+    for (final id in allIds) {
+      if (!_isNetworkId(id)) continue;
+      final currentSerial = serialMap[id];
+      if (currentSerial == null || _isNetworkId(currentSerial)) {
+        final devIp = ips[id] ??
+            (id.contains(':')
+                ? id.split(':').first
+                : (id.contains('.') ? id : null));
+        if (devIp == null || devIp.isEmpty || devIp == '127.0.0.1') continue;
+
+        for (final usbId in allIds) {
+          if (_isNetworkId(usbId)) continue;
+          final usbIp = ips[usbId];
+          final sameIp = usbIp == devIp;
+          final isSameHarmony =
+              products[id] == 'HarmonyOS NEXT' && products[usbId] == 'HarmonyOS NEXT';
+          final isSameModel =
+              models[id] != null &&
+              models[id]!.isNotEmpty &&
+              models[id] == models[usbId];
+
+          if (sameIp && (isSameHarmony || isSameModel)) {
+            serialMap[id] = usbId;
+            final cachedVersion = androidVersions[id];
+            if (cachedVersion != null && cachedVersion.isNotEmpty) {
+              androidVersions[usbId] ??= cachedVersion;
+            }
+            final cachedSdk = sdkVersions[id];
+            if (cachedSdk != null && cachedSdk > 0) {
+              sdkVersions[usbId] ??= cachedSdk;
+            }
+
+            // 更新 SharedPreferences 中关于网络设备的 overview 缓存中的 serial 字段
+            final overviewKey = 'devices.overview.$id';
+            final cachedJson = prefs.getString(overviewKey);
+            if (cachedJson != null) {
+              try {
+                final map = Map<String, dynamic>.from(jsonDecode(cachedJson));
+                map['serial'] = usbId;
+                prefs.setString(overviewKey, jsonEncode(map));
+              } catch (_) {}
+            }
+            break;
+          }
         }
       }
     }
@@ -1868,12 +1929,35 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           }
         }
 
-        _serialMap[id] = id;
+        // 获取鸿蒙设备真实物理序列号
+        final rawSerial = await hdc.getDeviceSerial(id);
+        if (_isDisposed) return;
+        final serial = (rawSerial != null && rawSerial.isNotEmpty)
+            ? rawSerial
+            : (!_isNetworkId(id) ? id : null);
+
+        if (serial != null && serial.isNotEmpty) {
+          _serialMap[id] = serial;
+          if (!_isNetworkId(serial)) {
+            _serialMap[serial] = serial;
+          }
+        } else {
+          _serialMap[id] = id;
+        }
+
+        final effectiveSerial = _serialMap[id] ?? id;
         _androidVersions[id] = systemVersion;
         _sdkVersions[id] = sdkVersion;
+        if (effectiveSerial != id) {
+          _androidVersions[effectiveSerial] = systemVersion;
+          _sdkVersions[effectiveSerial] = sdkVersion;
+        }
         if (deviceName.isNotEmpty &&
             !deviceName.toLowerCase().contains('fail')) {
           _models[id] = deviceName;
+          if (effectiveSerial != id) {
+            _models[effectiveSerial] = deviceName;
+          }
           await _saveModelsAndProducts();
         }
         await _saveAndroidVersions();
@@ -1885,8 +1969,104 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           final ip = _parseIpFromIfconfig(ifconfigRes.stdout);
           if (ip != null && ip.isNotEmpty) {
             _ipAddresses[id] = ip;
+            if (effectiveSerial != id) {
+              _ipAddresses[effectiveSerial] = ip;
+            }
             await _saveIps();
           }
+        }
+
+        // 保存 overview 缓存，确保持久化真实 serial
+        final prefs = await SharedPreferences.getInstance();
+        final cacheKey = 'devices.overview.$id';
+        final existingJson = prefs.getString(cacheKey);
+        DeviceOverview overview;
+        if (existingJson != null) {
+          try {
+            final decoded = jsonDecode(existingJson) as Map<String, dynamic>;
+            overview = DeviceOverview.fromJson(decoded).copyWith(
+              serial: effectiveSerial,
+              androidVersion: systemVersion,
+              name: deviceName.isNotEmpty ? deviceName : null,
+              model: deviceName.isNotEmpty ? deviceName : null,
+              ipAddress: _ipAddresses[id],
+            );
+          } catch (_) {
+            overview = DeviceOverview(
+              name: deviceName.isNotEmpty ? deviceName : id,
+              brand: 'HUAWEI',
+              model: deviceName.isNotEmpty ? deviceName : 'HarmonyOS Device',
+              serial: effectiveSerial,
+              androidId: '-',
+              androidVersion: systemVersion,
+              kernelVersion: 'OpenHarmony',
+              processor: '-',
+              storage: '-',
+              memory: '-',
+              physicalResolution: '-',
+              resolution: '-',
+              logicalDensity: '-',
+              refreshRate: '-',
+              fontScale: '-',
+              wifi: '-',
+              wifiEnabled: false,
+              ipAddress: _ipAddresses[id] ?? '-',
+              macAddress: '-',
+              airplaneModeEnabled: false,
+              mobileDataEnabled: false,
+              talkbackEnabled: false,
+              windowAnimationScale: '1.0',
+              transitionAnimationScale: '1.0',
+              animatorDurationScale: '1.0',
+              rawResolution: '-',
+              hwuiProfile: 'false',
+              layoutBoundsEnabled: false,
+              showTouchesEnabled: false,
+              pointerLocationEnabled: false,
+              demoModeEnabled: false,
+            );
+          }
+        } else {
+          overview = DeviceOverview(
+            name: deviceName.isNotEmpty ? deviceName : id,
+            brand: 'HUAWEI',
+            model: deviceName.isNotEmpty ? deviceName : 'HarmonyOS Device',
+            serial: effectiveSerial,
+            androidId: '-',
+            androidVersion: systemVersion,
+            kernelVersion: 'OpenHarmony',
+            processor: '-',
+            storage: '-',
+            memory: '-',
+            physicalResolution: '-',
+            resolution: '-',
+            logicalDensity: '-',
+            refreshRate: '-',
+            fontScale: '-',
+            wifi: '-',
+            wifiEnabled: false,
+            ipAddress: _ipAddresses[id] ?? '-',
+            macAddress: '-',
+            airplaneModeEnabled: false,
+            mobileDataEnabled: false,
+            talkbackEnabled: false,
+            windowAnimationScale: '1.0',
+            transitionAnimationScale: '1.0',
+            animatorDurationScale: '1.0',
+            rawResolution: '-',
+            hwuiProfile: 'false',
+            layoutBoundsEnabled: false,
+            showTouchesEnabled: false,
+            pointerLocationEnabled: false,
+            demoModeEnabled: false,
+          );
+        }
+        await prefs.setString(cacheKey, jsonEncode(overview.toJson()));
+        if (effectiveSerial != id) {
+          await prefs.setString(
+            'devices.overview.$effectiveSerial',
+            jsonEncode(overview.copyWith(serial: effectiveSerial).toJson()),
+          );
         }
 
         if (!_isDisposed) {

@@ -9,6 +9,8 @@ import '../dal/device_driver.dart';
 import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 
+export 'hdc_service_device_info.dart';
+
 /// HDC (HarmonyOS Device Connector) 服务封装，提供与纯血鸿蒙设备的通信指令。
 class HdcService {
   HdcService({
