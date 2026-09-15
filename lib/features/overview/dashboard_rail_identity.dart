@@ -130,12 +130,19 @@ class _RailIdentity extends ConsumerWidget {
   }
 
   Widget _buildAppIdentity(BuildContext context) {
+    final double size = isNarrow ? 50.0 : 36.0;
+    final radius = size == 36 ? 8.0 : 12.0;
+    final avatar = ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: const Image(image: AssetImage(AppIcons.appLogo)),
+      ),
+    );
+
     if (isNarrow) {
-      return const SizedBox(
-        width: 50,
-        height: 50,
-        child: Image(image: AssetImage(AppIcons.appLogo)),
-      );
+      return avatar;
     }
 
     return SizedBox(
@@ -144,14 +151,7 @@ class _RailIdentity extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: const SizedBox(
-                width: 36,
-                height: 36,
-                child: Image(image: AssetImage(AppIcons.appLogo)),
-              ),
-            ),
+            avatar,
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -180,6 +180,8 @@ class _RailIdentity extends ConsumerWidget {
       iconColor = const Color(0xFF9E9E9E);
     }
 
+    final radius = size == 36 ? 8.0 : 12.0;
+
     Widget child;
     if (logoAsset == null) {
       child = Icon(
@@ -190,7 +192,7 @@ class _RailIdentity extends ConsumerWidget {
     } else {
       child = Image.asset(
         logoAsset,
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         width: double.infinity,
         height: double.infinity,
       );
@@ -201,7 +203,7 @@ class _RailIdentity extends ConsumerWidget {
       height: size,
       decoration: BoxDecoration(
         color: logoAsset == null ? backgroundColor : Colors.white,
-        borderRadius: BorderRadius.circular(size * 0.24),
+        borderRadius: BorderRadius.circular(radius),
         border: logoAsset == null
             ? null
             : Border.all(color: backgroundColor, width: 1.5),

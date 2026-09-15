@@ -96,7 +96,7 @@ class _LogcatToolbar extends StatelessWidget {
       prefixIcon: CupertinoIcons.search,
       onChanged: onTextChanged,
       onSubmitted: onTextSubmitted,
-      onSelected: onTextChanged,
+      onSelected: onTextSubmitted,
       onHistoryRemoved: onTextHistoryRemoved,
     );
     final buttons = [
@@ -319,8 +319,7 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
     if (_focusNode.hasFocus) {
       _openHistory();
     } else {
-      widget.onSubmitted(widget.controller.text);
-      _hideOverlay();
+      // 失去焦点时的隐藏由 TapRegion 的 onTapOutside 处理，避免点击下拉列表项时过早卸载 Overlay
     }
   }
 
@@ -329,6 +328,7 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
     widget.controller.selection = TextSelection.collapsed(
       offset: widget.controller.text.length,
     );
+    widget.onChanged(value);
     widget.onSelected(value);
     _hideOverlay();
     _focusNode.unfocus();
@@ -371,6 +371,7 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
               child: TapRegion(
                 groupId: 'logcat_history_filter_region_${identityHashCode(this)}',
                 onTapOutside: (event) {
+                  widget.onSubmitted(widget.controller.text);
                   _hideOverlay();
                   _focusNode.unfocus();
                 },
@@ -435,6 +436,7 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
                 itemBuilder: (context, index) {
                   final item = widget.history[index];
                   return InkWell(
+                    canRequestFocus: false,
                     onTap: () {
                       _selectHistory(item);
                     },
