@@ -1131,18 +1131,24 @@ class RegisteredDevice {
     if (customName != null && customName!.isNotEmpty) {
       return customName!;
     }
-    if (model != null && model!.isNotEmpty) {
+    if (model != null &&
+        model!.isNotEmpty &&
+        !model!.toLowerCase().contains('fail')) {
       return model!.replaceAll('_', ' ');
     }
     return id;
   }
 
   String get connectionMethodDisplay {
-    final name = (model != null && model!.isNotEmpty)
-        ? model!.replaceAll('_', ' ')
-        : id;
+    final hasValidModel = model != null &&
+        model!.isNotEmpty &&
+        !model!.toLowerCase().contains('fail');
+    final name = hasValidModel ? model!.replaceAll('_', ' ') : id;
     // 鸿蒙设备 serial 与 id 相同（HDC Device ID），不重复追加
-    if (serial != null && serial!.isNotEmpty && serial != id) {
+    if (serial != null &&
+        serial!.isNotEmpty &&
+        serial != id &&
+        !serial!.toLowerCase().contains('fail')) {
       return '$name($serial)';
     }
     return name;
@@ -1312,7 +1318,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     if (modelsJson != null) {
       try {
         final decoded = Map<String, dynamic>.from(jsonDecode(modelsJson));
-        models = decoded.map((key, value) => MapEntry(key, value.toString()));
+        models = decoded.map((key, value) => MapEntry(key, value.toString()))
+          ..removeWhere((_, value) => value.toLowerCase().contains('fail'));
       } catch (_) {}
     }
 
@@ -1710,7 +1717,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         int sdkVersion = 23; // 默认 API 23
         String deviceName = '';
 
-        if (paramRes.isSuccess && paramRes.stdout.isNotEmpty) {
+        if (paramRes.isSuccess &&
+            paramRes.stdout.isNotEmpty &&
+            !paramRes.stdout.toLowerCase().contains('fail')) {
           final lines = const LineSplitter().convert(paramRes.stdout.trim());
           if (lines.length >= 2) {
             final fullname = lines[0].trim();
@@ -1719,23 +1728,20 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             if (parsedApi > 0) {
               sdkVersion = parsedApi;
             }
-            if (fullname.isNotEmpty && !fullname.contains('fail')) {
+            if (fullname.isNotEmpty && !fullname.toLowerCase().contains('fail')) {
               systemVersion = '$fullname (API $sdkVersion)';
             } else {
               systemVersion = 'HarmonyOS NEXT (API $sdkVersion)';
             }
           }
-          if (lines.length >= 7 &&
-              lines[6].trim().isNotEmpty &&
-              !lines[6].contains('fail')) {
+          bool isValidName(String s) =>
+              s.isNotEmpty && !s.toLowerCase().contains('fail');
+
+          if (lines.length >= 7 && isValidName(lines[6].trim())) {
             deviceName = lines[6].trim();
-          } else if (lines.length >= 5 &&
-              lines[4].trim().isNotEmpty &&
-              !lines[4].contains('fail')) {
+          } else if (lines.length >= 5 && isValidName(lines[4].trim())) {
             deviceName = lines[4].trim();
-          } else if (lines.length >= 4 &&
-              lines[3].trim().isNotEmpty &&
-              !lines[3].contains('fail')) {
+          } else if (lines.length >= 4 && isValidName(lines[3].trim())) {
             deviceName = lines[3].trim();
           }
         }
@@ -1743,7 +1749,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         _serialMap[id] = id;
         _androidVersions[id] = systemVersion;
         _sdkVersions[id] = sdkVersion;
-        if (deviceName.isNotEmpty) {
+        if (deviceName.isNotEmpty &&
+            !deviceName.toLowerCase().contains('fail')) {
           _models[id] = deviceName;
           await _saveModelsAndProducts();
         }
@@ -2727,7 +2734,16 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
   Future<void> _syncActiveDevices() async {
     _attemptedFetchIds.clear();
-    final activeDevices = await ref.read(adbServiceProvider).listDevices();
+    final androidDevices = await ref.read(adbServiceProvider).listDevices();
+    List<AdbDevice> iosDevices = [];
+    try {
+      iosDevices = await ref.read(iosDeviceServiceProvider).listDevices();
+    } catch (_) {}
+    List<AdbDevice> harmonyDevices = [];
+    try {
+      harmonyDevices = await ref.read(hdcServiceProvider).listDevices();
+    } catch (_) {}
+    final activeDevices = [...androidDevices, ...iosDevices, ...harmonyDevices];
     _lastActiveDevices = activeDevices;
     // 重新从持久化和概览缓存中加载最新的数据
     await _loadFromPrefs();

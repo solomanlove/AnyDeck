@@ -29,18 +29,27 @@ class HdcService {
       try {
         final targets = await RustDalBridge.instance.listHarmonyDevices();
         rawTargets = targets
+            .where((item) {
+              final status = (item['status'] as String? ?? '').toLowerCase();
+              return status == 'connected' || (status.isNotEmpty && !status.contains('offline'));
+            })
             .map((item) => item['serial'] as String? ?? '')
-            .where((s) => s.isNotEmpty)
+            .where((s) => s.isNotEmpty && !s.toLowerCase().contains('fail'))
             .toList();
       } catch (_) {}
     }
 
     if (rawTargets.isEmpty) {
-      final result = await run(['list', 'targets']);
-      if (!result.isSuccess) {
-        return [];
+      final vResult = await run(['list', 'targets', '-v']);
+      if (vResult.isSuccess && vResult.stdout.isNotEmpty) {
+        rawTargets = _parseRawTargetsWithStatus(vResult.stdout);
       }
-      rawTargets = _parseRawTargets(result.stdout);
+      if (rawTargets.isEmpty) {
+        final result = await run(['list', 'targets']);
+        if (result.isSuccess) {
+          rawTargets = _parseRawTargets(result.stdout);
+        }
+      }
     }
     if (rawTargets.isEmpty) return [];
 
@@ -54,7 +63,9 @@ class HdcService {
             'param get const.product.name ; param get const.product.model ; param get const.product.marketing_name',
             timeout: const Duration(seconds: 2),
           );
-          if (paramRes.isSuccess && paramRes.stdout.isNotEmpty) {
+          if (paramRes.isSuccess &&
+              paramRes.stdout.isNotEmpty &&
+              !paramRes.stdout.toLowerCase().contains('fail')) {
             final lines = const LineSplitter().convert(paramRes.stdout.trim());
             String name = '';
             String model = '';
@@ -63,17 +74,20 @@ class HdcService {
             if (lines.length > 1) model = lines[1].trim();
             if (lines.length > 2) marketingName = lines[2].trim();
 
-            if (marketingName.isNotEmpty && !marketingName.contains('fail')) {
+            bool isValid(String s) =>
+                s.isNotEmpty && !s.toLowerCase().contains('fail');
+
+            if (isValid(marketingName)) {
               modelName = marketingName;
-            } else if (name.isNotEmpty && !name.contains('fail')) {
+            } else if (isValid(name)) {
               modelName = name;
-            } else if (model.isNotEmpty && !model.contains('fail')) {
+            } else if (isValid(model)) {
               modelName = model;
             }
           }
         } catch (_) {}
 
-        if (modelName.isNotEmpty) {
+        if (modelName.isNotEmpty && !modelName.toLowerCase().contains('fail')) {
           _deviceModelCache[id] = modelName;
         }
       }
@@ -403,16 +417,41 @@ class HdcService {
     return shell(deviceId, "mkdir -p '$escaped'");
   }
 
+  /// 解析 `hdc list targets -v` 输出，仅保留 Connected 且非 Offline 的在线设备。
+  List<String> _parseRawTargetsWithStatus(String output) {
+    final targets = <String>[];
+    final lines = LineSplitter.split(output);
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty ||
+          trimmed.contains('[Empty]') ||
+          trimmed.startsWith('[') ||
+          trimmed.toLowerCase().contains('offline')) {
+        continue;
+      }
+      final parts = trimmed.split(RegExp(r'\s+'));
+      if (parts.isNotEmpty) {
+        final serial = parts.first;
+        final status = parts.length >= 3 ? parts[2].toLowerCase() : 'connected';
+        if (status == 'connected' && !serial.toLowerCase().contains('fail')) {
+          targets.add(serial);
+        }
+      }
+    }
+    return targets;
+  }
+
   /// 解析 `hdc list targets` 输出的原始目标设备列表。
   List<String> _parseRawTargets(String output) {
     final targets = <String>[];
     final lines = LineSplitter.split(output);
     for (final line in lines) {
       final trimmed = line.trim();
-      // 过滤空白行和异常提示行（例如 "[Empty]" 或错误输出）
+      // 过滤空白行和异常提示行（例如 "[Empty]" 或包含 Fail 的错误输出）
       if (trimmed.isEmpty ||
           trimmed.contains('[Empty]') ||
           trimmed.startsWith('[') ||
+          trimmed.toLowerCase().contains('fail') ||
           trimmed.contains(' ')) {
         continue;
       }
