@@ -142,6 +142,10 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
           if (_videoWidth != size['width'] || _videoHeight != size['height']) {
             _videoWidth = size['width'];
             _videoHeight = size['height'];
+            debugPrint(
+              '[EmbeddedScrcpy] Video size changed: '
+              '${_videoWidth}x$_videoHeight texture=$_activeTextureId',
+            );
             changed = true;
             widget.onVideoSizeChanged?.call(size['width']!, size['height']!);
           }

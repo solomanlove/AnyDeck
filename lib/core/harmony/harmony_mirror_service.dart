@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../scrcpy/rust_device_bridge.dart';
 import '../providers/app_providers.dart';
 import 'harmony_mirror_session.dart';
+import 'harmony_mirror_operations.dart';
 import 'hdc_service.dart';
 
 /// 鸿蒙设备镜像（投屏）管理服务，通过本地 Java 桥接进程运行 HOScrcpy。
@@ -17,8 +18,7 @@ class HarmonyMirrorService {
   final Map<String, HarmonyMirrorSession> _sessions = {};
   static const _textures = MethodChannel('anydeck/rust_texture');
 
-  /// 投屏流旋转发生时通知 UI 刷新新 Texture
-  void Function(String deviceId, int newTextureId)? onMirrorRotated;
+  final _operations = HarmonyMirrorOperations();
 
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
   int? getTextureId(String deviceId) => _sessions[deviceId]?.textureId;
@@ -57,21 +57,13 @@ class HarmonyMirrorService {
   }
 
   /// 通过 HDC 注入命令对鸿蒙设备进行兜底触控控制。
-  Future<bool> _sendFallbackControl(
-    String deviceId,
-    Uint8List controlMessage,
-  ) async {
+  Future<bool> _sendFallbackControl(String deviceId, Uint8List controlMessage) async {
     if (controlMessage.length >= 18 && controlMessage[0] == 2) {
       final byteData = ByteData.sublistView(controlMessage);
       final action = byteData.getUint8(1);
       final x = byteData.getUint32(10, Endian.big);
       final y = byteData.getUint32(14, Endian.big);
-      // action: 0 = down, 1 = up, 2 = move
-      final subcmd = action == 0
-          ? '-d $x $y'
-          : action == 1
-              ? '-u $x $y'
-              : '-m $x $y';
+      final subcmd = action == 0 ? '-d $x $y' : (action == 1 ? '-u $x $y' : '-m $x $y');
       final res = await _hdcService.shell(deviceId, 'uinput -T $subcmd');
       return res.isSuccess;
     }
@@ -81,17 +73,11 @@ class HarmonyMirrorService {
   /// 从 Flutter 资源包释放鸿蒙投屏 Java 桥接 jar 包。
   Future<String> _extractSidecarJar() async {
     final dir = Directory('${Directory.systemTemp.path}/any_deck_hoscrcpy');
-    if (!dir.existsSync()) {
-      dir.createSync(recursive: true);
-    }
+    if (!dir.existsSync()) dir.createSync(recursive: true);
     final file = File('${dir.path}/hoscrcpy-sidecar.jar');
-    
     try {
       final bytes = await rootBundle.load('assets/scrcpy/hoscrcpy-sidecar.jar');
-      await file.writeAsBytes(
-        bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
-        flush: true,
-      );
+      await file.writeAsBytes(bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes), flush: true);
     } catch (e) {
       stdout.writeln('Error: Failed to load hoscrcpy-sidecar.jar from assets: $e');
       rethrow;
@@ -99,23 +85,46 @@ class HarmonyMirrorService {
     return file.path;
   }
 
-  /// 从 `hidumper -s DisplayManagerService -a -a` 输出中解析主屏幕宽高。
+  /// 只读取主屏当前尺寸，忽略历史事件与 scrcpy 虚拟屏。
   static (int?, int?) parseDisplayDimensions(String output) {
-    int? width;
-    int? height;
-    for (final rawLine in LineSplitter.split(output)) {
-      final line = rawLine.trim();
-      final wMatch = RegExp(r'\bwidth:\s*(\d+)', caseSensitive: false).firstMatch(line);
-      if (wMatch != null) width = int.tryParse(wMatch.group(1)!);
-
-      final hMatch = RegExp(r'\bheight:\s*(\d+)', caseSensitive: false).firstMatch(line);
-      if (hMatch != null) height = int.tryParse(hMatch.group(1)!);
-
+    final screen = RegExp(
+      r'-+ Screen ID: 0 -+([\s\S]*?)(?=\n-+ (?:Screen|Display) ID:|$)',
+    ).firstMatch(output)?.group(1);
+    if (screen != null) {
+      final bounds = RegExp(
+        r'^Bounds<L,T,W,H>:\s*-?\d+,\s*-?\d+,\s*(\d+),\s*(\d+)',
+        multiLine: true,
+      ).firstMatch(screen);
+      final width = int.tryParse(bounds?.group(1) ?? '');
+      final height = int.tryParse(bounds?.group(2) ?? '');
       if (width != null && height != null && width > 0 && height > 0) {
         return (width, height);
       }
     }
-    return (null, null);
+    final display = RegExp(
+      r'-+ Display ID: 0 -+([\s\S]*?)(?=\n-+ Display ID:|$)',
+    ).firstMatch(output)?.group(1);
+    if (display == null) return (null, null);
+    int? read(String label) => int.tryParse(
+      RegExp('^$label:\\s*(\\d+)', multiLine: true)
+          .firstMatch(display)?.group(1) ?? '',
+    );
+    final width = read('Width');
+    final height = read('Height');
+    if (width == null || height == null || width <= 0 || height <= 0) {
+      return (null, null);
+    }
+    // 旧版 DMS 把当前旋转放在 Display 段后；Rotation 优先于语义不一致的 Orientation。
+    final rotation = read('Rotation');
+    final landscape = rotation == null
+        ? read('Orientation') == 1 || read('Orientation') == 3
+        : rotation == 1 || rotation == 3 || rotation == 90 || rotation == 270;
+    if (rotation != null || read('Orientation') != null) {
+      final shortSide = width < height ? width : height;
+      final longSide = width > height ? width : height;
+      return landscape ? (longSide, shortSide) : (shortSide, longSide);
+    }
+    return (width, height);
   }
 
   /// 启动鸿蒙投屏。
@@ -123,10 +132,18 @@ class HarmonyMirrorService {
     required String deviceId,
     int? customWidth,
     int? customHeight,
+  }) => _operations.run(deviceId, () => _start(
+    deviceId: deviceId,
+    customWidth: customWidth,
+    customHeight: customHeight,
+  ));
+
+  Future<int> _start({
+    required String deviceId,
+    int? customWidth,
+    int? customHeight,
   }) async {
-    if (_sessions.containsKey(deviceId)) {
-      return _sessions[deviceId]!.textureId;
-    }
+    if (_sessions.containsKey(deviceId)) return _sessions[deviceId]!.textureId;
 
     final jarPath = await _extractSidecarJar();
     final hdcPath = _hdcService.executable;
@@ -158,9 +175,7 @@ class HarmonyMirrorService {
             'hidumper -s RenderService -a screen',
           );
           if (resResult.isSuccess && resResult.stdout.isNotEmpty) {
-            final match = RegExp(
-              r'physical resolution=([0-9]+)x([0-9]+)',
-            ).firstMatch(resResult.stdout);
+            final match = RegExp(r'physical resolution=([0-9]+)x([0-9]+)').firstMatch(resResult.stdout);
             if (match != null) {
               width = int.tryParse(match.group(1) ?? '') ?? 1080;
               height = int.tryParse(match.group(2) ?? '') ?? 2400;
@@ -259,7 +274,7 @@ class HarmonyMirrorService {
       );
 
       _sessions[deviceId] = session;
-      _startOrientationMonitor(deviceId);
+      // HOS 视频帧会原地更新尺寸，旋转时保持 decoder、socket 与 Texture。
       return textureId;
     } catch (e) {
       if (rustHandle != 0) {
@@ -277,87 +292,13 @@ class HarmonyMirrorService {
     }
   }
 
-  /// 启动屏幕方向监控；检测到横竖屏物理旋转时，重启流以适配最新画面尺寸。
-  void _startOrientationMonitor(String deviceId) {
-    var mismatchCount = 0;
-    _sessions[deviceId]?.orientationTimer?.cancel();
-    _sessions[deviceId]?.orientationTimer = Timer.periodic(
-      const Duration(milliseconds: 1500),
-      (timer) async {
-        final session = _sessions[deviceId];
-        if (session == null) {
-          timer.cancel();
-          return;
-        }
-        try {
-          final res = await _hdcService.shell(
-            deviceId,
-            'hidumper -s DisplayManagerService -a -a',
-          );
-          if (!res.isSuccess || res.stdout.isEmpty) return;
-          final (dispW, dispH) = parseDisplayDimensions(res.stdout);
-          if (dispW == null || dispH == null || dispW <= 0 || dispH <= 0) return;
-
-          final displayIsLandscape = dispW >= dispH;
-          final videoIsLandscape = session.width >= session.height;
-
-          if (displayIsLandscape != videoIsLandscape) {
-            mismatchCount++;
-          } else {
-            mismatchCount = 0;
-          }
-
-          if (mismatchCount >= 2) {
-            timer.cancel();
-            await restartForDisplayChange(deviceId, width: dispW, height: dispH);
-          }
-        } catch (_) {}
-      },
-    );
-  }
-
-  /// 当检测到屏幕旋转时，重启流以适配横竖屏物理画面，彻底防止画面拉伸挤压。
-  Future<int?> restartForDisplayChange(
-    String deviceId, {
-    required int width,
-    required int height,
-  }) async {
-    final oldSession = _sessions[deviceId];
-    if (oldSession == null) return null;
-    oldSession.orientationTimer?.cancel();
-
-    try {
-      await _textures.invokeMethod<void>('untrack', {'handle': oldSession.rustHandle});
-      await _textures.invokeMethod<void>('unregister', {'textureId': oldSession.textureId});
-    } catch (_) {}
-    RustDeviceBridge.instance.stop(oldSession.rustHandle);
-    RustDeviceBridge.instance.release(oldSession.rustHandle);
-
-    oldSession.serverProcess.kill();
-    _sessions.remove(deviceId);
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-
-    try {
-      final newTextureId = await start(
-        deviceId: deviceId,
-        customWidth: width,
-        customHeight: height,
-      );
-      onMirrorRotated?.call(deviceId, newTextureId);
-      return newTextureId;
-    } catch (e) {
-      return null;
-    }
-  }
-
   /// 停止鸿蒙投屏。
-  Future<void> stop(String deviceId) async {
+  Future<void> stop(String deviceId) =>
+      _operations.run(deviceId, () => _stop(deviceId));
+
+  Future<void> _stop(String deviceId) async {
     final session = _sessions.remove(deviceId);
-    if (session == null) {
-      return;
-    }
-    session.orientationTimer?.cancel();
-    session.orientationTimer = null;
+    if (session == null) return;
 
     try {
       await _textures.invokeMethod<void>('untrack', {'handle': session.rustHandle});
@@ -395,7 +336,8 @@ class ActiveHarmonyMirrorNotifier extends Notifier<int?> {
   @override
   int? build() {
     ref.keepAlive();
-    final textureId = ref.watch(harmonyMirrorServiceProvider).getTextureId(deviceId);
+    final service = ref.watch(harmonyMirrorServiceProvider);
+    final textureId = service.getTextureId(deviceId);
     if (textureId != null) {
       Future.microtask(() => _listenToProcessExit(textureId));
     }
@@ -406,7 +348,7 @@ class ActiveHarmonyMirrorNotifier extends Notifier<int?> {
     final service = ref.read(harmonyMirrorServiceProvider);
     final process = service.getServerProcess(deviceId);
     process?.exitCode.then((code) {
-      if (state == textureId) {
+      if (state == textureId && service.isActive(deviceId) && service.getTextureId(deviceId) == textureId) {
         service.stop(deviceId);
         state = null;
       }

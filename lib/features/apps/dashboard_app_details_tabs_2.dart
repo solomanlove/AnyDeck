@@ -133,10 +133,6 @@ class _LibsTabState extends State<_LibsTab> {
                               style: const TextStyle(fontSize: 12),
                             )
                           : null,
-                      leading: const Icon(
-                        CupertinoIcons.square_stack_3d_up,
-                        size: 20,
-                      ),
                     );
                   },
                 ),

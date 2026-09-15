@@ -451,6 +451,7 @@ final deviceOnlineProvider = Provider.autoDispose.family<bool, String>((
   if (isSub) {
     // 子 Isolate 下心跳轮询被禁用，通过是否包含激活的投屏 Session 来判断在线状态
     return ref.watch(activeIosMirrorProvider(deviceId)) != null ||
+        ref.watch(activeHarmonyMirrorProvider(deviceId)) != null ||
         ref.watch(activeEmbeddedMirrorProvider(deviceId)) != null;
   }
   final activeDevicesAsync = ref.watch(devicesProvider);

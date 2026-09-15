@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 /// 鸿蒙投屏会话实体，记录投屏相关状态和长连接进程。
@@ -12,7 +11,6 @@ class HarmonyMirrorSession {
     required this.startedAt,
     this.width = 1080,
     this.height = 2400,
-    this.orientationTimer,
   });
 
   final String deviceId;
@@ -23,5 +21,4 @@ class HarmonyMirrorSession {
   final DateTime startedAt;
   final int width;
   final int height;
-  Timer? orientationTimer;
 }

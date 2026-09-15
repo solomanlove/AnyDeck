@@ -211,9 +211,11 @@ class MirrorWindowController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      if (!isIos && !isHarmony) {
-        // 初始化识别前台应用
-        identifyForegroundApp();
+      if (!isIos) {
+        if (!isHarmony) {
+          // 初始化识别前台应用
+          identifyForegroundApp();
+        }
 
         // 启动时自动适配窗口大小以消除黑边
         _autoFitWindowOnStart();

@@ -113,4 +113,59 @@ void main() {
       expect(mockHdc.executedCommands, isEmpty);
     });
   });
+
+  group('HarmonyMirrorService parseDisplayDimensions Tests', () {
+    test('parses portrait orientation correctly', () {
+      const portraitDms = '''
+---------------- Display ID: 0 ----------------
+[DISPLAY INFO]
+Width:                        1224
+Height:                       2776
+------------- Client Screen Infos -------------
+Name:                         UNKNOWN
+Orientation:                  0
+Rotation:                     0
+Bounds<L,T,W,H>:              0, 0, 1224, 2776, 
+AvailableArea<X,Y,W,H>        0, 0, 1224, 2776, 
+-----------------------------------------------
+''';
+      final (w, h) = HarmonyMirrorService.parseDisplayDimensions(portraitDms);
+      expect(w, equals(1224));
+      expect(h, equals(2776));
+    });
+
+    test('parses landscape orientation correctly from Bounds and Rotation', () {
+      const landscapeDms = '''
+---------------- Display ID: 0 ----------------
+[DISPLAY INFO]
+Width:                        1224
+Height:                       2776
+------------- Client Screen Infos -------------
+Name:                         UNKNOWN
+Orientation:                  1
+Rotation:                     270
+Bounds<L,T,W,H>:              0, 0, 2776, 1224, 
+AvailableArea<X,Y,W,H>        0, 0, 2776, 1224, 
+-----------------------------------------------
+''';
+      final (w, h) = HarmonyMirrorService.parseDisplayDimensions(landscapeDms);
+      expect(w, equals(2776));
+      expect(h, equals(1224));
+    });
+
+    test('parses landscape orientation fallback using Rotation when Bounds is missing', () {
+      const landscapeDmsNoBounds = '''
+---------------- Display ID: 0 ----------------
+[DISPLAY INFO]
+Width:                        1224
+Height:                       2776
+Orientation:                  1
+Rotation:                     1
+-----------------------------------------------
+''';
+      final (w, h) = HarmonyMirrorService.parseDisplayDimensions(landscapeDmsNoBounds);
+      expect(w, equals(2776));
+      expect(h, equals(1224));
+    });
+  });
 }
