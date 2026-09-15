@@ -1388,6 +1388,14 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
     // 清洗因历史 ADB track-devices 协议解析漏洞产生的被十六进制长度前缀污染的脏设备 ID
     String stripHexPrefix(String rawId) {
+      // iOS UDID（40 位纯十六进制或 25 位带中划线）绝不能被误判为十六进制长度前缀剥离
+      if (rawId.length == 40 && !rawId.contains(RegExp(r'[^a-fA-F0-9]'))) {
+        return rawId;
+      }
+      if (rawId.length == 25 && rawId.indexOf('-') == 8) {
+        return rawId;
+      }
+
       var current = rawId;
       // 每次剥离 4 字符十六进制长度包头，直到无法剥离或达到合理最小长度
       while (current.length > 8) {
@@ -1396,8 +1404,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           final candidate = current.substring(4);
           if (history.contains(candidate) ||
               activeDevices.any((d) => d.id == candidate) ||
-              candidate.startsWith('adb-') ||
-              candidate.length >= 8) {
+              candidate.startsWith('adb-')) {
             current = candidate;
             continue;
           }
@@ -1458,10 +1465,49 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       }
     }
 
+    // 自动清理与合并此前被历史 stripHexPrefix 截断为 8 位的残缺 iOS 设备记录，合并回完整 UDID
+    final candidateFullUdids = <String>{
+      ...activeDevices.map((d) => d.id),
+      ...tags.keys,
+      ...remarks.keys,
+      ...history,
+    };
+    for (final fullUdid in candidateFullUdids) {
+      if (fullUdid.length == 40 && !fullUdid.contains(RegExp(r'[^a-fA-F0-9]'))) {
+        final suffix = fullUdid.substring(32); // 取后 8 位残缺 ID
+        if (cleanedHistory.contains(suffix) || history.contains(suffix)) {
+          historyPolluted = true;
+          cleanedHistory.remove(suffix);
+          history.remove(suffix);
+
+          // 将被截断残缺 ID 上的备注、别名、标签合并回完整真实 UDID
+          if (remarks.containsKey(suffix) && !remarks.containsKey(fullUdid)) {
+            remarks[fullUdid] = remarks[suffix]!;
+          }
+          if (aliases.containsKey(suffix) && !aliases.containsKey(fullUdid)) {
+            aliases[fullUdid] = aliases[suffix]!;
+          }
+          if (tags.containsKey(suffix) && !tags.containsKey(fullUdid)) {
+            tags[fullUdid] = tags[suffix]!;
+          }
+
+          remarks.remove(suffix);
+          aliases.remove(suffix);
+          tags.remove(suffix);
+          models.remove(suffix);
+          products.remove(suffix);
+        }
+      }
+    }
+
     if (historyPolluted) {
       history.clear();
       history.addAll(cleanedHistory);
       prefs.setStringList(_historyKey, cleanedHistory);
+      prefs.setString(_remarksKey, jsonEncode(remarks));
+      prefs.setString(_tagsKey, jsonEncode(tags));
+      prefs.setString(_modelsKey, jsonEncode(models));
+      prefs.setString(_productsKey, jsonEncode(products));
     }
 
     _historyIds = history;
