@@ -74,11 +74,16 @@ class WebDebugService {
 
     for (final key in keysToRemove) {
       final port = _forwardedPorts.remove(key);
+      final socketName = key.substring(keyPrefix.length);
       _harmonyForwardKeys.remove(key);
       if (port != null) {
         try {
           if (isHarmony && _hdc != null) {
-            await _hdc.removeForward(deviceId, port);
+            await _hdc.removeForward(
+              deviceId,
+              port,
+              'localabstract:$socketName',
+            );
           } else {
             await _adb.run([
               '-s',
@@ -206,7 +211,11 @@ class WebDebugService {
           continue;
         }
         try {
-          await _hdc.removeForward(deviceId, port);
+          await _hdc.removeForward(
+            deviceId,
+            port,
+            'localabstract:$socketName',
+          );
         } catch (_) {}
       }
       return;
@@ -264,6 +273,10 @@ class WebDebugService {
   }
 
   /// 读取单个 DevTools JSON endpoint；无效响应交给调用方尝试 fallback。
+  ///
+  /// 鸿蒙 ArkWeb 的 devtools socket 在应用未开启 setWebDebuggingAccess 时
+  /// 会接受 TCP 连接但不响应任何数据，最终由对端 RST。此处为响应读取加固定
+  /// 超时，避免单个不响应的 socket 长时间阻塞扫描循环导致 UI 一直 loading。
   Future<List<Map<String, dynamic>>?> _fetchTargetsFromPath(
     HttpClient client,
     int port,
@@ -273,11 +286,16 @@ class WebDebugService {
       final request = await client.getUrl(
         Uri.parse('http://127.0.0.1:$port$path'),
       );
-      final response = await request.close();
+      final response = await request.close().timeout(
+        const Duration(seconds: 3),
+      );
       if (response.statusCode != 200) {
         return null;
       }
-      final content = await response.transform(utf8.decoder).join();
+      final content = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 3));
       final decoded = jsonDecode(content);
       if (decoded is List) {
         return List<Map<String, dynamic>>.from(decoded);
