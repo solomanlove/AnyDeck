@@ -20,6 +20,7 @@ import 'mirror_device_info_overlay.dart';
 import 'mirror_settings_dialog.dart';
 import 'mirror_window_controller.dart';
 import 'widget/mirror_app_quick_actions_dialog.dart';
+import 'widget/mirror_status_view.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/harmony/harmony_mirror_service.dart';
 
@@ -273,37 +274,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     }
     //加载出错了
     else if (_controller.errorMessage != null) {
-      contentWidget = Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
-              const SizedBox(height: 16),
-              Text(
-                context.l10n.t('mirrorStartFailed'),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _controller.errorMessage!,
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _controller.restartMirroring,
-                icon: const Icon(Icons.refresh),
-                label: Text(context.l10n.t('retry')),
-              ),
-            ],
-          ),
-        ),
+      contentWidget = MirrorStatusView(
+        rawErrorMessage: _controller.errorMessage,
+        onRetry: _controller.restartMirroring,
       );
     }
     //投屏正常
@@ -378,22 +351,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     }
     //停止投屏或者设备断开
     else {
-      contentWidget = Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              context.l10n.t('mirrorStopped'),
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _controller.restartMirroring,
-              icon: const Icon(Icons.refresh),
-              label: Text(context.l10n.t('retry')),
-            ),
-          ],
-        ),
+      contentWidget = MirrorStatusView(
+        isStoppedState: true,
+        onRetry: _controller.restartMirroring,
       );
     }
 
