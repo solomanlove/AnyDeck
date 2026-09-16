@@ -181,6 +181,20 @@ class HdcService {
     return shell(deviceId, 'uinput -K $keyEvents');
   }
 
+  /// 打开 HarmonyOS 最近任务界面（优先使用 uitest Meta+Tab，失败回退 uinput 组合键）。
+  Future<AdbResult> openRecentTasks(String deviceId) async {
+    final uiTestResult = await shell(
+      deviceId,
+      'uitest uiInput keyEvent 2076 2049',
+    );
+    if (uiTestResult.isSuccess) return uiTestResult;
+    return shell(deviceId, 'uinput -K -d 2076 -d 2049 -u 2049 -u 2076');
+  }
+
+  /// 将鸿蒙设备音量降至静音（发送音量减至0，保持静音状态）。
+  Future<AdbResult> volumeMute(String deviceId) =>
+      injectKey(deviceId, 17, repeat: 30);
+
   /// 向当前焦点输入框写入文本；新系统使用 uitest，旧系统对 ASCII 文本回退到 uinput。
   Future<AdbResult> inputText(String deviceId, String text) async {
     if (text.isEmpty) {
@@ -217,17 +231,9 @@ class HdcService {
   }) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final remotePath = '/data/local/tmp/anydeck_screenshot_$timestamp.png';
-    var snapRes = await shell(
-      deviceId,
-      'uitest screenCap -p $remotePath',
-      timeout: timeout,
-    );
+    var snapRes = await shell(deviceId, 'uitest screenCap -p $remotePath', timeout: timeout);
     if (!snapRes.isSuccess) {
-      snapRes = await shell(
-        deviceId,
-        'snapshot_display -f $remotePath',
-        timeout: timeout,
-      );
+      snapRes = await shell(deviceId, 'snapshot_display -f $remotePath', timeout: timeout);
     }
     if (!snapRes.isSuccess) {
       throw Exception('HarmonyOS screenshot failed: ${snapRes.message}');
@@ -236,14 +242,10 @@ class HdcService {
     final tempDir = Directory.systemTemp;
     final localPath = '${tempDir.path}/anydeck_screenshot_$timestamp.png';
 
-    final recvRes = await run([
-      '-t',
-      deviceId,
-      'file',
-      'recv',
-      remotePath,
-      localPath,
-    ], timeout: timeout);
+    final recvRes = await run(
+      ['-t', deviceId, 'file', 'recv', remotePath, localPath],
+      timeout: timeout,
+    );
     final localFile = File(localPath);
 
     if (!recvRes.isSuccess || !await localFile.exists()) {
@@ -425,9 +427,7 @@ class HdcService {
     final lines = LineSplitter.split(output);
     for (final line in lines) {
       final trimmed = line.trim();
-      if (trimmed.isEmpty ||
-          trimmed.contains('[Empty]') ||
-          trimmed.startsWith('[') ||
+      if (trimmed.isEmpty || trimmed.contains('[Empty]') || trimmed.startsWith('[') ||
           trimmed.toLowerCase().contains('offline')) {
         continue;
       }
@@ -486,11 +486,8 @@ class HdcService {
     for (final line in lines) {
       final trimmed = line.trim();
       // 过滤空白行和异常提示行（例如 "[Empty]" 或包含 Fail 的错误输出）
-      if (trimmed.isEmpty ||
-          trimmed.contains('[Empty]') ||
-          trimmed.startsWith('[') ||
-          trimmed.toLowerCase().contains('fail') ||
-          trimmed.contains(' ')) {
+      if (trimmed.isEmpty || trimmed.contains('[Empty]') || trimmed.startsWith('[') ||
+          trimmed.toLowerCase().contains('fail') || trimmed.contains(' ')) {
         continue;
       }
       targets.add(trimmed);

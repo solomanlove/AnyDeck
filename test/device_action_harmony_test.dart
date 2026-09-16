@@ -25,6 +25,7 @@ class _FakeHdcService extends HdcService {
   _FakeHdcService() : super(executable: 'hdc');
 
   final List<(int keyCode, int repeat)> keyEvents = [];
+  bool openedRecentTasks = false;
 
   @override
   Future<AdbResult> injectKey(
@@ -33,6 +34,12 @@ class _FakeHdcService extends HdcService {
     int repeat = 1,
   }) async {
     keyEvents.add((keyCode, repeat));
+    return const AdbResult(exitCode: 0, stdout: '', stderr: '');
+  }
+
+  @override
+  Future<AdbResult> openRecentTasks(String deviceId) async {
+    openedRecentTasks = true;
     return const AdbResult(exitCode: 0, stdout: '', stderr: '');
   }
 }
@@ -53,7 +60,7 @@ class _CommandHdcService extends HdcService {
     Duration timeout = const Duration(seconds: 15),
   }) async {
     shellCommands.add(command);
-    if (failUiTest && command.startsWith('uitest uiInput text')) {
+    if (failUiTest && command.startsWith('uitest uiInput')) {
       return const AdbResult(exitCode: 1, stdout: '', stderr: 'unsupported');
     }
     return AdbResult(
@@ -92,10 +99,10 @@ void main() {
     await service.volumeDown(deviceId);
     await service.standby(deviceId);
 
+    expect(hdc.openedRecentTasks, isTrue);
     expect(hdc.keyEvents, [
       (2, 1),
       (1, 1),
-      (10011, 1),
       (16, 1),
       (17, 1),
       (18, 1),
@@ -165,6 +172,26 @@ void main() {
       "uinput -K -t 'legacy'",
       "uitest uiInput text '中文'",
     ]);
+  });
+
+  test('HarmonyOS openRecentTasks uses uitest keyEvent with uinput fallback', () async {
+    final hdc = _CommandHdcService();
+    await hdc.openRecentTasks(deviceId);
+    expect(hdc.shellCommands, ['uitest uiInput keyEvent 2076 2049']);
+
+    final fallbackHdc = _CommandHdcService(failUiTest: true);
+    await fallbackHdc.openRecentTasks(deviceId);
+    expect(fallbackHdc.shellCommands, [
+      'uitest uiInput keyEvent 2076 2049',
+      'uinput -K -d 2076 -d 2049 -u 2049 -u 2076',
+    ]);
+  });
+
+  test('HarmonyOS volumeMute sends repeated volume down', () async {
+    final hdc = _CommandHdcService();
+    await hdc.volumeMute(deviceId);
+    final expectedRepeatedKey = List.filled(30, '-d 17 -u 17').join(' ');
+    expect(hdc.shellCommands, ['uinput -K $expectedRepeatedKey']);
   });
 
   test('HarmonyOS media URI is exported before HDC receive', () async {

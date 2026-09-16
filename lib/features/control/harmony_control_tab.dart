@@ -215,7 +215,7 @@ class _HarmonyControlTabState extends ConsumerState<HarmonyControlTab> {
               label: const Text('最近任务'),
               onPressed: () => _executeHdcAction(
                 '最近任务键',
-                (hdc) => hdc.injectKey(widget.device.id, 3),
+                (hdc) => hdc.openRecentTasks(widget.device.id),
               ),
             ),
             OutlinedButton.icon(
@@ -244,7 +244,7 @@ class _HarmonyControlTabState extends ConsumerState<HarmonyControlTab> {
               label: const Text('静音'),
               onPressed: () => _executeHdcAction(
                 '静音按键',
-                (hdc) => hdc.injectKey(widget.device.id, 22),
+                (hdc) => hdc.volumeMute(widget.device.id),
               ),
             ),
             OutlinedButton.icon(

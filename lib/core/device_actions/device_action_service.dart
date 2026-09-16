@@ -229,6 +229,9 @@ class DeviceActionService {
   Future<AdbResult> keyEvent(String deviceId, int keyCode) async {
     final isHarmony = _isHarmonyResolver?.call(deviceId) ?? false;
     if (isHarmony && _hdc != null) {
+      if (keyCode == 187) {
+        return _hdc.openRecentTasks(deviceId);
+      }
       final harmonyKeyCode = _harmonyKeyCodes[keyCode];
       if (harmonyKeyCode == null) {
         return AdbResult(
@@ -254,7 +257,6 @@ class DeviceActionService {
     25: 17, // VOLUME_DOWN
     26: 18, // POWER
     82: 2067, // MENU
-    187: 10011, // APP_SWITCH -> RECENT
   };
 
   /// 通过 Android 具名 key code 调高当前音频流音量。
@@ -300,7 +302,7 @@ class DeviceActionService {
   /// 将手机主要音频流设为静音，并进入系统静音模式。
   Future<AdbResult> volumeMute(String deviceId) async {
     if ((_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null) {
-      return _hdc.injectKey(deviceId, 17, repeat: 30);
+      return _hdc.volumeMute(deviceId);
     }
     final volumeResult = await _setMediaVolumeToBoundary(
       deviceId,
