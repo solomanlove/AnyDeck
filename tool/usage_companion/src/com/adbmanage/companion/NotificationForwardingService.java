@@ -35,7 +35,7 @@ public final class NotificationForwardingService extends NotificationListenerSer
     }
 
     public static boolean isShared(Context context) {
-        return context.getSharedPreferences("usage_prefs", Context.MODE_PRIVATE)
+        return context.getSharedPreferences("usage", Context.MODE_PRIVATE)
                 .getBoolean("notificationSharing", false);
     }
 
