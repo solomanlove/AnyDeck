@@ -300,7 +300,11 @@ class MirrorWindowController extends ChangeNotifier {
   /// 视频流分辨率改变时（如设备横竖屏切换），自动调整独立窗口贴合当前画面比例。
   void onVideoSizeChanged(int width, int height) {
     if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
-    unawaited(_fitWindowToCurrentAspect());
+    if (width > 0 && height > 0) {
+      unawaited(_fitWindowToCurrentAspect(aspectRatio: width / height));
+    } else {
+      unawaited(_fitWindowToCurrentAspect());
+    }
   }
 
   /// 切换窗口置顶状态
@@ -731,17 +735,23 @@ class MirrorWindowController extends ChangeNotifier {
     if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
     try {
       await Future<void>.delayed(const Duration(milliseconds: 16));
-      final size = await windowManager.getSize();
-      if (size.width > 0 && contentAspect > 0) {
+      final frame = await MirrorWindowFrameAdapter.getWindowFrame(_windowChannel);
+      final currentWidth = (frame != null && frame.width > 0)
+          ? frame.width
+          : (await windowManager.getSize()).width;
+      if (currentWidth > 0 && contentAspect > 0) {
         final lockedHeight =
-            size.width / contentAspect + mirrorWindowTopChromeHeight;
+            currentWidth / contentAspect + mirrorWindowTopChromeHeight;
         if (lockedHeight > 0) {
-          await _setWindowAspectRatio(size.width / lockedHeight);
+          await _setWindowAspectRatio(currentWidth / lockedHeight);
           return;
         }
       }
-      if (size.width > 0 && size.height > 0) {
-        await _setWindowAspectRatio(size.width / size.height);
+      final currentHeight = (frame != null && frame.height > 0)
+          ? frame.height
+          : (await windowManager.getSize()).height;
+      if (currentWidth > 0 && currentHeight > 0) {
+        await _setWindowAspectRatio(currentWidth / currentHeight);
         return;
       }
     } catch (e) {

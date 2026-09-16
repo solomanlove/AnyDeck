@@ -23,6 +23,7 @@ import '../app/widget/app_toast.dart';
 import '../app/settings/app_settings.dart';
 import '../app/settings/app_settings_controller.dart';
 import '../app/window/multi_window_compat.dart';
+import '../app/window/mirror/mirror_aspect_resolver.dart';
 import '../app/window/window_close_shortcut.dart';
 import '../core/adb/adb_device.dart';
 import '../core/adb/adb_result.dart';

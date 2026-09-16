@@ -169,12 +169,20 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
         }
 
         // 2. 开启独立投屏窗口
+        final aspect =
+            await MirrorAspectResolver.fetchDeviceAspectRatioBeforeMirror(
+          ref: ref,
+          deviceId: device.id,
+          isHarmony: device.isHarmony,
+          isIos: device.isIos,
+        );
         final overviewAsync = ref.read(deviceOverviewProvider(device.id));
         final resolution = overviewAsync.maybeWhen(
           data: (overview) => overview.physicalResolution,
           orElse: () => null,
         );
-        final initialSize = _resolveMirrorInitialWindowSize(resolution);
+        final initialSize =
+            resolveMirrorInitialWindowSize(resolution, ratio: aspect);
         await createAdbManageWindow(
           arguments: {
             'type': 'mirror',

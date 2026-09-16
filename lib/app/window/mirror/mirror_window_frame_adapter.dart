@@ -29,41 +29,110 @@ class MirrorWindowFrameAdapter {
     return _getWindowManagerBounds();
   }
 
+  /// 计算贴合指定比例后的新窗口 Frame。
+  /// 当横竖屏方向发生翻转时，以原窗口中心点为锚点旋转并重设宽高。
+  static Rect? calculateFittedFrame({
+    required Rect frame,
+    required double aspectRatio,
+    required double viewerW,
+    required double viewerH,
+  }) {
+    if (!_isValid(aspectRatio) || !_isValid(viewerW) || !_isValid(viewerH)) {
+      return null;
+    }
+    if (!_isValid(frame.width) || !_isValid(frame.height)) {
+      return null;
+    }
+
+    final containerRatio = viewerW / viewerH;
+    if (!_isValid(containerRatio)) return null;
+
+    final centerX = frame.left + frame.width / 2;
+    final centerY = frame.top + frame.height / 2;
+
+    final isOldPortrait = containerRatio < 1.0;
+    final isNewLandscape = aspectRatio > 1.0;
+    final isOldLandscape = containerRatio > 1.0;
+    final isNewPortrait = aspectRatio < 1.0;
+    final isOrientationSwapped =
+        (isOldPortrait && isNewLandscape) || (isOldLandscape && isNewPortrait);
+
+    final double newWindowW;
+    final double newWindowH;
+    double newLeft;
+    double newTop;
+
+    if (isOrientationSwapped) {
+      var chromeHeight = frame.height - viewerH;
+      if (chromeHeight < 30 || chromeHeight > 120) {
+        chromeHeight = 58.0;
+      }
+
+      if (isOldPortrait && isNewLandscape) {
+        // 竖屏转横屏：横屏内容基准宽度取原竖屏内容高度 viewerH
+        final targetViewerW = viewerH;
+        final targetViewerH = targetViewerW / aspectRatio;
+        newWindowW = targetViewerW;
+        newWindowH = targetViewerH + chromeHeight;
+      } else {
+        // 横屏转竖屏：竖屏内容基准高度取原横屏内容宽度 viewerW
+        final targetViewerH = viewerW;
+        final targetViewerW = targetViewerH * aspectRatio;
+        newWindowW = targetViewerW;
+        newWindowH = targetViewerH + chromeHeight;
+      }
+
+      // 以原窗口中心点为原点旋转定位
+      newLeft = centerX - newWindowW / 2;
+      newTop = centerY - newWindowH / 2;
+    } else {
+      // 同方向常规比例微调
+      var deltaW = 0.0;
+      var deltaH = 0.0;
+      if (containerRatio > aspectRatio) {
+        deltaW = viewerH * aspectRatio - viewerW;
+      } else if (containerRatio < aspectRatio) {
+        deltaH = viewerW / aspectRatio - viewerH;
+      }
+
+      if (deltaW.abs() < 4 && deltaH.abs() < 4) return null;
+      newWindowW = frame.width + deltaW;
+      newWindowH = frame.height + deltaH;
+      newLeft = frame.left - deltaW / 2;
+      newTop = frame.top - deltaH / 2;
+    }
+
+    if (newWindowW < 200 || newWindowH < 200) return null;
+    if (!_isValid(newWindowW) || !_isValid(newWindowH)) return null;
+    if (!_isValid(newLeft) || !_isValid(newTop)) return null;
+
+    if (newLeft < 0) newLeft = 0;
+    if (newTop < 0) newTop = 0;
+
+    return Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH);
+  }
+
   static Future<void> fitWindowToAspectRatio({
     required MethodChannel windowChannel,
     required double aspectRatio,
     required double viewerW,
     required double viewerH,
   }) async {
-    if (!_isValid(aspectRatio) || !_isValid(viewerW) || !_isValid(viewerH)) {
-      return;
-    }
-
     final frame = await getWindowFrame(windowChannel);
-    if (frame == null || !_isValid(frame.width) || !_isValid(frame.height)) {
-      return;
-    }
+    if (frame == null) return;
 
-    final containerRatio = viewerW / viewerH;
-    if (!_isValid(containerRatio)) return;
+    final newFrame = calculateFittedFrame(
+      frame: frame,
+      aspectRatio: aspectRatio,
+      viewerW: viewerW,
+      viewerH: viewerH,
+    );
+    if (newFrame == null) return;
 
-    var deltaW = 0.0;
-    var deltaH = 0.0;
-    if (containerRatio > aspectRatio) {
-      deltaW = viewerH * aspectRatio - viewerW;
-    } else if (containerRatio < aspectRatio) {
-      deltaH = viewerW / aspectRatio - viewerH;
-    }
-
-    if (deltaW.abs() < 4 && deltaH.abs() < 4) return;
-    final newWindowW = frame.width + deltaW;
-    final newWindowH = frame.height + deltaH;
-    if (newWindowW < 200 || newWindowH < 200) return;
-    if (!_isValid(newWindowW) || !_isValid(newWindowH)) return;
-
-    final newLeft = frame.left - deltaW / 2;
-    final newTop = frame.top - deltaH / 2;
-    if (!_isValid(newLeft) || !_isValid(newTop)) return;
+    final newLeft = newFrame.left;
+    final newTop = newFrame.top;
+    final newWindowW = newFrame.width;
+    final newWindowH = newFrame.height;
 
     if (Platform.isMacOS) {
       try {

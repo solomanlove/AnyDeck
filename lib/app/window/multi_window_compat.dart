@@ -13,24 +13,26 @@ const _windowTitleKey = '_windowTitle';
 const Size defaultMirrorWindowSize = Size(480, 800);
 const double mirrorWindowTopChromeHeight = 58;
 
-/// 根据设备分辨率解析投屏初始窗口大小。
-Size resolveMirrorInitialWindowSize(String? resolution) {
-  final ratio = parseMirrorAspectRatio(resolution);
-  if (ratio == null) return defaultMirrorWindowSize;
-
-  final viewerMaxWidth = defaultMirrorWindowSize.width;
-  final viewerMaxHeight =
-      defaultMirrorWindowSize.height - mirrorWindowTopChromeHeight;
-  final containerRatio = viewerMaxWidth / viewerMaxHeight;
+/// 根据设备分辨率或直接指定的宽高比解析投屏初始窗口大小。
+/// 竖屏贴合纵向高度，横屏贴合横向适度视野，消除黑边并保证比例精确。
+Size resolveMirrorInitialWindowSize(String? resolution, {double? ratio}) {
+  final resolvedRatio = ratio ?? parseMirrorAspectRatio(resolution);
+  if (resolvedRatio == null || resolvedRatio <= 0) return defaultMirrorWindowSize;
 
   final double viewerWidth;
   final double viewerHeight;
-  if (containerRatio > ratio) {
-    viewerHeight = viewerMaxHeight;
-    viewerWidth = viewerHeight * ratio;
+
+  if (resolvedRatio >= 1.0) {
+    // 横屏：基准宽度 800，高度按比例自适应，保证横屏下有足够的视野与操作空间
+    const maxViewerW = 800.0;
+    viewerWidth = maxViewerW;
+    viewerHeight = viewerWidth / resolvedRatio;
   } else {
-    viewerWidth = viewerMaxWidth;
-    viewerHeight = viewerWidth / ratio;
+    // 竖屏：基准高度 742 (800 - 58)，宽度按比例自适应，消除左右黑边
+    final maxViewerH =
+        defaultMirrorWindowSize.height - mirrorWindowTopChromeHeight;
+    viewerHeight = maxViewerH;
+    viewerWidth = viewerHeight * resolvedRatio;
   }
 
   return Size(

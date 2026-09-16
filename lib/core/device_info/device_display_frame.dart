@@ -102,12 +102,13 @@ class DeviceDisplayFrame {
 
   static Future<DeviceDisplayFrame?> read(
     AdbService adb,
-    String deviceId,
-  ) async {
+    String deviceId, {
+    Duration timeout = const Duration(seconds: 2),
+  }) async {
     final result = await adb.shell(
       deviceId,
       'dumpsys display',
-      timeout: const Duration(seconds: 2),
+      timeout: timeout,
     );
     if (!result.isSuccess) return null;
     return parseDumpsysDisplay(result.stdout);
