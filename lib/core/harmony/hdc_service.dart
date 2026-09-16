@@ -58,24 +58,21 @@ class HdcService {
 
     final devices = <AdbDevice>[];
     for (final id in rawTargets) {
+      bool isGenericModel(String s) =>
+          s.isEmpty || s == 'HarmonyOS Device' || s.toLowerCase().contains('fail');
       String modelName = _deviceModelCache[id] ?? '';
-      if (modelName.isEmpty) {
+      if (isGenericModel(modelName)) {
         try {
           final paramRes = await shell(
             id,
             'param get const.product.name ; param get const.product.model ; param get const.product.marketing_name',
             timeout: const Duration(seconds: 2),
           );
-          if (paramRes.isSuccess &&
-              paramRes.stdout.isNotEmpty &&
-              !paramRes.stdout.toLowerCase().contains('fail')) {
+          if (paramRes.isSuccess && paramRes.stdout.isNotEmpty) {
             final lines = const LineSplitter().convert(paramRes.stdout.trim());
-            String name = '';
-            String model = '';
-            String marketingName = '';
-            if (lines.isNotEmpty) name = lines[0].trim();
-            if (lines.length > 1) model = lines[1].trim();
-            if (lines.length > 2) marketingName = lines[2].trim();
+            String name = lines.isNotEmpty ? lines[0].trim() : '';
+            String model = lines.length > 1 ? lines[1].trim() : '';
+            String marketingName = lines.length > 2 ? lines[2].trim() : '';
 
             bool isValid(String s) =>
                 s.isNotEmpty && !s.toLowerCase().contains('fail');
@@ -90,7 +87,7 @@ class HdcService {
           }
         } catch (_) {}
 
-        if (modelName.isNotEmpty && !modelName.toLowerCase().contains('fail')) {
+        if (modelName.isNotEmpty && !isGenericModel(modelName)) {
           _deviceModelCache[id] = modelName;
         }
       }
@@ -472,6 +469,12 @@ class HdcService {
     final ip = match?.group(1);
     if (ip == null || ip == '127.0.0.1') return null;
     return ip;
+  }
+
+  /// 从 `ifconfig wlan0` 输出中解析 MAC 硬件地址。
+  static String? parseMacFromIfconfig(String output) {
+    final match = RegExp(r'HWaddr\s+([0-9a-fA-F:]{17})', caseSensitive: false).firstMatch(output);
+    return match?.group(1);
   }
 
   /// 解析 `hdc list targets` 输出的原始目标设备列表。

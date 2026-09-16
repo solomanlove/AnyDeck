@@ -615,8 +615,9 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           }
         }
 
-        // 3. Wi-Fi 与 IP 地址
+        // 3. Wi-Fi 与 IP / MAC 地址
         String ipAddress = '-';
+        String macAddress = '-';
         bool wifiEnabled = false;
         String wifi = '-';
         if (ipRes.isSuccess && ipRes.stdout.isNotEmpty) {
@@ -625,6 +626,10 @@ final deviceOverviewProvider = StreamProvider.autoDispose
             ipAddress = ip;
             wifiEnabled = true;
             wifi = 'Connected';
+          }
+          final mac = HdcService.parseMacFromIfconfig(ipRes.stdout);
+          if (mac != null && mac.isNotEmpty) {
+            macAddress = mac;
           }
         }
 
@@ -675,7 +680,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           wifi: wifi,
           wifiEnabled: wifiEnabled,
           ipAddress: ipAddress,
-          macAddress: '-',
+          macAddress: macAddress,
           airplaneModeEnabled: false,
           mobileDataEnabled: false,
           talkbackEnabled: false,
@@ -1660,6 +1665,18 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           if (cachedIp != null && cachedIp.isNotEmpty && cachedIp != '-') {
             ips[id] ??= cachedIp;
           }
+          final cachedName = decoded['name']?.toString();
+          final cachedModel = decoded['model']?.toString();
+          final realName = (cachedName != null && !_isGenericHarmonyModel(cachedName))
+              ? cachedName
+              : ((cachedModel != null && !_isGenericHarmonyModel(cachedModel))
+                  ? cachedModel
+                  : null);
+          if (realName != null) {
+            if (models[id] == null || _isGenericHarmonyModel(models[id])) {
+              models[id] = realName;
+            }
+          }
         } catch (_) {}
       }
 
@@ -1922,6 +1939,17 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     });
   }
 
+  bool _isGenericHarmonyModel(String? s) {
+    if (s == null || s.isEmpty) return true;
+    final lower = s.toLowerCase().trim();
+    return lower == 'harmonyos device' ||
+        lower == 'harmonyos next device' ||
+        lower.startsWith('harmonyos device') ||
+        lower.startsWith('harmonyos next') ||
+        lower == 'openharmony' ||
+        lower.contains('fail');
+  }
+
   void _fetchAndCacheHarmony(String id) {
     Future.microtask(() async {
       try {
@@ -1936,9 +1964,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         int sdkVersion = 23; // 默认 API 23
         String deviceName = '';
 
-        if (paramRes.isSuccess &&
-            paramRes.stdout.isNotEmpty &&
-            !paramRes.stdout.toLowerCase().contains('fail')) {
+        if (paramRes.isSuccess && paramRes.stdout.isNotEmpty) {
           final lines = const LineSplitter().convert(paramRes.stdout.trim());
           if (lines.length >= 2) {
             final fullname = lines[0].trim();
@@ -1988,8 +2014,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           _androidVersions[effectiveSerial] = systemVersion;
           _sdkVersions[effectiveSerial] = sdkVersion;
         }
-        if (deviceName.isNotEmpty &&
-            !deviceName.toLowerCase().contains('fail')) {
+        if (deviceName.isNotEmpty && !_isGenericHarmonyModel(deviceName)) {
           _models[id] = deviceName;
           if (effectiveSerial != id) {
             _models[effectiveSerial] = deviceName;
@@ -1998,9 +2023,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         }
         await _saveAndroidVersions();
 
-        // 尝试获取 IP 地址
+        // 尝试获取 IP 地址与 MAC 地址
         final ifconfigRes = await hdc.shell(id, 'ifconfig');
         if (_isDisposed) return;
+        String? harmonyMac;
         if (ifconfigRes.isSuccess && ifconfigRes.stdout.isNotEmpty) {
           final ip = _parseIpFromIfconfig(ifconfigRes.stdout);
           if (ip != null && ip.isNotEmpty) {
@@ -2010,6 +2036,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             }
             await _saveIps();
           }
+          harmonyMac = HdcService.parseMacFromIfconfig(ifconfigRes.stdout);
         }
 
         // 保存 overview 缓存，确保持久化真实 serial
@@ -2026,6 +2053,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               name: deviceName.isNotEmpty ? deviceName : null,
               model: deviceName.isNotEmpty ? deviceName : null,
               ipAddress: _ipAddresses[id],
+              macAddress: harmonyMac ?? decoded['macAddress']?.toString(),
             );
           } catch (_) {
             overview = DeviceOverview(
@@ -2047,7 +2075,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
               wifi: '-',
               wifiEnabled: false,
               ipAddress: _ipAddresses[id] ?? '-',
-              macAddress: '-',
+              macAddress: harmonyMac ?? '-',
               airplaneModeEnabled: false,
               mobileDataEnabled: false,
               talkbackEnabled: false,
@@ -2082,7 +2110,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             wifi: '-',
             wifiEnabled: false,
             ipAddress: _ipAddresses[id] ?? '-',
-            macAddress: '-',
+            macAddress: harmonyMac ?? '-',
             airplaneModeEnabled: false,
             mobileDataEnabled: false,
             talkbackEnabled: false,
@@ -2371,14 +2399,19 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       final tags = _tags[id] ?? [];
 
       if (active != null) {
-        // 对鸿蒙设备，若 _models 缓存中已有真实设备名（非通用占位符），优先使用
-        final effectiveModel =
-            (active.isHarmony &&
-                cachedModel != null &&
-                cachedModel.isNotEmpty &&
-                !cachedModel.startsWith('HarmonyOS NEXT Device'))
-            ? cachedModel
-            : (active.model ?? cachedModel);
+        // 对鸿蒙设备，若 active 或 _models 缓存中已有真实设备名（非通用占位符），优先使用真实型号
+        String? effectiveModel;
+        if (active.isHarmony) {
+          if (active.model != null && !_isGenericHarmonyModel(active.model)) {
+            effectiveModel = active.model;
+          } else if (cachedModel != null && !_isGenericHarmonyModel(cachedModel)) {
+            effectiveModel = cachedModel;
+          } else {
+            effectiveModel = active.model ?? cachedModel;
+          }
+        } else {
+          effectiveModel = active.model ?? cachedModel;
+        }
         allCandidates.add(
           RegisteredDevice(
             id: id,
@@ -2401,12 +2434,19 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           ),
         );
       } else {
+        String? effectiveOfflineModel = cachedModel;
+        if (_isGenericHarmonyModel(effectiveOfflineModel)) {
+          final sModel = _models[serial];
+          if (sModel != null && !_isGenericHarmonyModel(sModel)) {
+            effectiveOfflineModel = sModel;
+          }
+        }
         allCandidates.add(
           RegisteredDevice(
             id: id,
             customName: customName,
             status: 'offline',
-            model: cachedModel,
+            model: effectiveOfflineModel,
             product: cachedProduct,
             isOnline: false,
             isChecked: isChecked,
@@ -2485,9 +2525,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         }
 
         String? mergedModel = best.model;
-        if (mergedModel == null || mergedModel.isEmpty) {
+        if (mergedModel == null || mergedModel.isEmpty || _isGenericHarmonyModel(mergedModel)) {
           for (final c in candidates) {
-            if (c.model != null && c.model!.isNotEmpty) {
+            if (c.model != null && c.model!.isNotEmpty && !_isGenericHarmonyModel(c.model)) {
               mergedModel = c.model;
               break;
             }
@@ -2617,7 +2657,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   void updateDeviceModel(String id, String modelName) {
     if (modelName.isEmpty || modelName == '-') return;
     // 通用占位名不回写，避免覆盖已有真实名称
-    if (modelName.startsWith('HarmonyOS NEXT Device')) return;
+    if (_isGenericHarmonyModel(modelName)) return;
 
     final current = _models[id];
     if (current == modelName) return;
