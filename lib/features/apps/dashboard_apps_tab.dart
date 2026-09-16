@@ -333,6 +333,13 @@ class _AppsTabState extends ConsumerState<AppsTab> {
         searchTapRegionGroupId: 'apps_search_filter_region',
         hasSearchQuery: _filter.isNotEmpty,
         onSearchChanged: (value) => setState(() => _filter = value),
+        onSearchSubmitted: (value) {
+          final val = value.trim();
+          if (val.isNotEmpty) {
+            ref.read(appsSearchHistoryProvider.notifier).add(val);
+          }
+          _hideFilterOverlay();
+        },
         onSearchClear: () {
           _filterController.clear();
           setState(() => _filter = '');

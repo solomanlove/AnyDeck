@@ -491,15 +491,25 @@ fi
     if (hdc == null) {
       throw Exception('HdcService 未注入，无法读取鸿蒙应用列表');
     }
-    final result = await hdc.shell(deviceId, 'bm dump -a -l', timeout: _quickTimeout);
-    if (!result.isSuccess) {
-      throw Exception(result.message);
+    final results = await Future.wait<AdbResult>([
+      hdc.shell(deviceId, 'bm dump -a -l', timeout: _quickTimeout),
+      hdc.shell(deviceId, 'bm dump -g', timeout: _quickTimeout),
+    ]);
+    if (!results[0].isSuccess) {
+      throw Exception(results[0].message);
     }
-    return _parseHarmonyBundleList(result.stdout);
+    final debugBundles = results[1].isSuccess
+        ? _parseHarmonyBundleLines(results[1].stdout)
+        : const <String>{};
+    return _parseHarmonyBundleList(results[0].stdout, debugBundles);
   }
 
   /// 解析 `bm dump -a -l` 的 JSON 数组输出为应用列表。
-  List<AdbPackage> _parseHarmonyBundleList(String stdout) {
+  /// [debugBundles] 为 `bm dump -g` 返回的调试类型应用包名集合，用于填充 debuggable。
+  List<AdbPackage> _parseHarmonyBundleList(
+    String stdout, [
+    Set<String> debugBundles = const <String>{},
+  ]) {
     final jsonStr = _extractJsonArray(stdout);
     if (jsonStr == null) return const [];
     try {
@@ -515,12 +525,26 @@ fi
           name: name,
           label: label,
           system: _isHarmonySystemBundle(name),
+          debuggable: debugBundles.contains(name),
         ));
       }
       return packages..sort(_comparePackages);
     } catch (_) {
       return const [];
     }
+  }
+
+
+  /// 解析 `bm dump -g` 的行输出为包名集合。
+  /// 输出首行通常是设备 ID，后续每行一个 bundleName；只保留含 `.` 且无空格的行。
+  Set<String> _parseHarmonyBundleLines(String stdout) {
+    final names = <String>{};
+    for (final raw in stdout.split('\n')) {
+      final line = raw.trim();
+      if (line.isEmpty || !line.contains('.') || line.contains(' ')) continue;
+      names.add(line);
+    }
+    return names;
   }
 
   /// 从输出中提取第一个 `[` 到匹配 `]` 的 JSON 数组子串。
@@ -542,6 +566,7 @@ fi
   }
 
   /// 鸿蒙设备读取单个应用的基础元数据（确认存在性，label 由批量列表提供）。
+  /// 同时通过 `bm dump -g` 判断该应用是否为调试签名类型，填充 debuggable。
   Future<AdbPackage?> _readHarmonySinglePackage(
     String deviceId,
     String packageName,
@@ -550,24 +575,26 @@ fi
     if (hdc == null) {
       throw Exception('HdcService 未注入，无法读取鸿蒙应用信息');
     }
-    final result = await hdc.shell(
-      deviceId,
-      'bm dump -n $packageName',
-      timeout: _metadataTimeout,
-    );
-    if (!result.isSuccess) {
+    final results = await Future.wait<AdbResult>([
+      hdc.shell(deviceId, 'bm dump -n $packageName', timeout: _metadataTimeout),
+      hdc.shell(deviceId, 'bm dump -g', timeout: _quickTimeout),
+    ]);
+    if (!results[0].isSuccess) {
       return null;
     }
     // bm dump -n 输出为 "<bundle>:\n{...JSON...}"。第三方应用顶层 JSON 无 bundleName
     // 字段（仅系统应用有），因此不能依赖 bundleName 校验存在性；JSON 可解析即视为存在。
-    final jsonStr = _extractJsonObject(result.stdout);
+    final jsonStr = _extractJsonObject(results[0].stdout);
     if (jsonStr == null) return null;
     try {
       jsonDecode(jsonStr);
       // label 在 applicationInfo.label 是资源引用（$string:xxx），非文本，不取。
+      final debuggable = results[1].isSuccess &&
+          _parseHarmonyBundleLines(results[1].stdout).contains(packageName);
       return AdbPackage(
         name: packageName,
         system: _isHarmonySystemBundle(packageName),
+        debuggable: debuggable,
       );
     } catch (_) {
       return null;
@@ -582,11 +609,17 @@ fi
     if (hdc == null) {
       throw Exception('HdcService 未注入，无法读取鸿蒙应用列表');
     }
-    final result = await hdc.shell(deviceId, 'bm dump -a -l', timeout: _quickTimeout);
-    if (!result.isSuccess) {
-      throw Exception(result.message);
+    final results = await Future.wait<AdbResult>([
+      hdc.shell(deviceId, 'bm dump -a -l', timeout: _quickTimeout),
+      hdc.shell(deviceId, 'bm dump -g', timeout: _quickTimeout),
+    ]);
+    if (!results[0].isSuccess) {
+      throw Exception(results[0].message);
     }
-    return _parseHarmonyBundleList(result.stdout);
+    final debugBundles = results[1].isSuccess
+        ? _parseHarmonyBundleLines(results[1].stdout)
+        : const <String>{};
+    return _parseHarmonyBundleList(results[0].stdout, debugBundles);
   }
 
   List<AdbPackage> _restoreCachedPresentationData(

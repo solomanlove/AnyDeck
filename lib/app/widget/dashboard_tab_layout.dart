@@ -20,6 +20,7 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
     this.searchKey,
     this.searchTapRegionGroupId,
     required this.onSearchChanged,
+    this.onSearchSubmitted,
     required this.onSearchClear,
     required this.hasSearchQuery,
     required this.segments,
@@ -46,6 +47,9 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
 
   /// 搜索内容改变时的回调，用于触发过滤逻辑更新。
   final ValueChanged<String> onSearchChanged;
+
+  /// 搜索框提交（按回车）时的回调，通常用于记录搜索历史。
+  final ValueChanged<String>? onSearchSubmitted;
 
   /// 点击搜索框右侧 "清除" 图标时的回调，用于清空内容。
   final VoidCallback onSearchClear;
@@ -102,6 +106,7 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
             : null,
       ),
       onChanged: onSearchChanged,
+      onSubmitted: onSearchSubmitted,
       style: Theme.of(context).textTheme.bodyMedium,
     );
   }
