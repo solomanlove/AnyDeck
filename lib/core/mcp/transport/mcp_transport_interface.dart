@@ -14,6 +14,6 @@ abstract class McpTransportInterface {
   /// 传输层当前是否处于运行状态
   bool get isRunning;
 
-  /// 传输通道名称 (如 "SSE", "Stdio")
+  /// 传输通道名称 (如 "SSE")
   String get name;
 }

@@ -17,7 +17,6 @@ import 'tools/mcp_file_tools.dart';
 import 'tools/mcp_log_tools.dart';
 import 'tools/mcp_ui_tools.dart';
 import 'transport/mcp_sse_transport.dart';
-import 'transport/mcp_stdio_transport.dart';
 import 'transport/mcp_transport_interface.dart';
 
 /// MCP 审计回调函数签名
@@ -67,18 +66,6 @@ class McpServer {
       authToken: config.authToken,
     );
 
-    await transport.start(onRequest: handleRequest);
-    _activeTransport = transport;
-    _isStarted = true;
-  }
-
-  /// 以 Stdio 命令行模式启动
-  Future<void> startStdio() async {
-    if (_isStarted) {
-      await stop();
-    }
-
-    final transport = McpStdioTransport();
     await transport.start(onRequest: handleRequest);
     _activeTransport = transport;
     _isStarted = true;

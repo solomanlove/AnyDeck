@@ -17,7 +17,7 @@ AnyDeck MCP 服务基于分层架构实现：
 +-------------------------------------------------------------+
 |        External AI Clients (Cursor / Claude / Agents)       |
 +------------------------------+------------------------------+
-                               | [JSON-RPC 2.0 via SSE/Stdio]
+                               | [JSON-RPC 2.0 via HTTP SSE]
 +------------------------------v------------------------------+
 |                 McpServer (核心协议路由与分发引擎)             |
 |   - initialize / tools/list / tools/call / ping             |
@@ -78,7 +78,7 @@ AnyDeck MCP 服务基于分层架构实现：
 
 ## 4. 客户端接入配置示例
 
-### 1. Cursor / VSCode Cline / Antigravity (HTTP SSE 模式)
+### 1. Cursor / VSCode Cline / Antigravity / Windsurf (HTTP SSE 模式)
 在客户端 `settings.json` 或 MCP 管理面板添加：
 ```json
 {
@@ -89,19 +89,7 @@ AnyDeck MCP 服务基于分层架构实现：
   }
 }
 ```
-
-### 2. Claude Desktop (Stdio 管道模式)
-在 `~/Library/Application Support/Claude/claude_desktop_config.json` 中配置：
-```json
-{
-  "mcpServers": {
-    "anydeck": {
-      "command": "/Applications/AnyDeck.app/Contents/MacOS/AnyDeck",
-      "args": ["--mcp-stdio"]
-    }
-  }
-}
-```
+*注：AnyDeck AI MCP 采用原生常驻的 HTTP SSE 传输协议，已废弃并移除 Stdio 命令行子进程模式，避免在桌面端拉起额外的黑屏或无内容窗口。*
 
 ---
 

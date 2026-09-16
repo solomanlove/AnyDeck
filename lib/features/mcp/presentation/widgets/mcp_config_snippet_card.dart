@@ -6,19 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/widget/app_toast.dart';
 import '../../controller/mcp_server_controller.dart';
 
-/// 客户端 MCP 配置代码片段生成与一键复制卡片
-class McpConfigSnippetCard extends ConsumerStatefulWidget {
+/// 客户端 MCP 配置代码片段生成与一键复制卡片 (仅支持 HTTP SSE 模式)
+class McpConfigSnippetCard extends ConsumerWidget {
   const McpConfigSnippetCard({super.key});
 
   @override
-  ConsumerState<McpConfigSnippetCard> createState() => _McpConfigSnippetCardState();
-}
-
-class _McpConfigSnippetCardState extends ConsumerState<McpConfigSnippetCard> {
-  int _selectedClientIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final state = ref.watch(mcpServerProvider);
@@ -26,8 +19,8 @@ class _McpConfigSnippetCardState extends ConsumerState<McpConfigSnippetCard> {
 
     final sseUrl = 'http://${config.host}:${config.port}/sse';
 
-    // 生成配置 JSON 字符串
-    final cursorConfig = {
+    // 生成基于 HTTP SSE 的 MCP 配置 JSON
+    final sseConfig = {
       'mcpServers': {
         'anydeck': {
           'url': sseUrl,
@@ -35,18 +28,7 @@ class _McpConfigSnippetCardState extends ConsumerState<McpConfigSnippetCard> {
       }
     };
 
-    final claudeConfig = {
-      'mcpServers': {
-        'anydeck': {
-          'command': '/Applications/AnyDeck.app/Contents/MacOS/AnyDeck',
-          'args': ['--mcp-stdio'],
-        }
-      }
-    };
-
-    final configText = _selectedClientIndex == 0
-        ? const JsonEncoder.withIndent('  ').convert(cursorConfig)
-        : const JsonEncoder.withIndent('  ').convert(claudeConfig);
+    final configText = const JsonEncoder.withIndent('  ').convert(sseConfig);
 
     return Card(
       child: Padding(
@@ -59,33 +41,12 @@ class _McpConfigSnippetCardState extends ConsumerState<McpConfigSnippetCard> {
                 Icon(Icons.code, size: 20, color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'AI 客户端接入配置',
+                  'AI 客户端接入配置 (HTTP SSE)',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const Spacer(),
-                SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 0,
-                      label: Text('CodeX / SSE'),
-                      icon: Icon(Icons.bolt, size: 16),
-                    ),
-                    ButtonSegment(
-                      value: 1,
-                      label: Text('Claude / Stdio'),
-                      icon: Icon(Icons.terminal, size: 16),
-                    ),
-                  ],
-                  selected: {_selectedClientIndex},
-                  onSelectionChanged: (set) {
-                    setState(() {
-                      _selectedClientIndex = set.first;
-                    });
-                  },
-                ),
-                const SizedBox(width: 12),
                 OutlinedButton.icon(
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: configText));
@@ -98,9 +59,7 @@ class _McpConfigSnippetCardState extends ConsumerState<McpConfigSnippetCard> {
             ),
             const SizedBox(height: 12),
             Text(
-              _selectedClientIndex == 0
-                  ? '在 CodeX / Cursor / Antigravity 的 MCP 设置中添加如下配置，即可通过 HTTP SSE 连接 AnyDeck：'
-                  : '在 Claude Desktop 的 claude_desktop_config.json 中添加如下配置，即可通过 Stdio 管道拉起：',
+              '在 Cursor / Antigravity / Cline / Windsurf 等支持 MCP 的 AI 客户端设置中添加如下配置，即可通过 HTTP SSE 连接 AnyDeck：',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
               ),
