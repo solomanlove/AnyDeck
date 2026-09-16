@@ -20,6 +20,7 @@ import 'app/window/multi_window_compat.dart';
 import 'core/mcp/mcp_server.dart';
 
 import 'app/settings/app_settings_controller.dart';
+import 'core/logging/log_service.dart';
 
 /// 应用入口，ProviderScope 负责承载全局 Riverpod 依赖图。
 void main(List<String> args) async {
@@ -128,54 +129,58 @@ void main(List<String> args) async {
       }
     });
 
-    if (type == 'apk_details') {
-      await configureCurrentAdbManageSubWindow(argument);
-      runApp(ProviderScope(
-        overrides: [windowIdProvider.overrideWithValue(windowId)],
-        child: ApkDetailsWindowApp(argument: argument),
-      ));
-    } else if (type == 'mirror') {
-      await configureCurrentAdbManageSubWindow(argument);
-      //投屏窗口
-      runApp(
-        ProviderScope(
+    try {
+      if (type == 'apk_details') {
+        await configureCurrentAdbManageSubWindow(argument);
+        runApp(ProviderScope(
           overrides: [windowIdProvider.overrideWithValue(windowId)],
-          child: MirrorWindowApp(windowId: windowId, argument: argument),
-        ),
-      );
-    } else if (type == 'console') {
-      await configureCurrentAdbManageSubWindow(argument);
-      //控制台窗口
-      runApp(
-        ProviderScope(
-          overrides: [windowIdProvider.overrideWithValue(windowId)],
-          child: ConsoleWindowApp(windowId: windowId, argument: argument),
-        ),
-      );
-    } else if (type == 'version_distribution') {
-      await configureCurrentAdbManageSubWindow(argument);
-      // Android 平台与 API 版本分布独立窗口
-      runApp(
-        ProviderScope(
-          overrides: [windowIdProvider.overrideWithValue(windowId)],
-          child: AndroidVersionDistributionWindowApp(
-            windowId: windowId,
-            argument: argument,
+          child: ApkDetailsWindowApp(argument: argument),
+        ));
+      } else if (type == 'mirror') {
+        await configureCurrentAdbManageSubWindow(argument);
+        //投屏窗口
+        runApp(
+          ProviderScope(
+            overrides: [windowIdProvider.overrideWithValue(windowId)],
+            child: MirrorWindowApp(windowId: windowId, argument: argument),
           ),
-        ),
-      );
-    } else {
-      await configureCurrentAdbManageSubWindow(argument);
-      //模拟器管理窗口
-      runApp(
-        ProviderScope(
-          overrides: [windowIdProvider.overrideWithValue(windowId)],
-          child: EmulatorManagerWindowApp(
-            windowId: windowId,
-            argument: argument,
+        );
+      } else if (type == 'console') {
+        await configureCurrentAdbManageSubWindow(argument);
+        //控制台窗口
+        runApp(
+          ProviderScope(
+            overrides: [windowIdProvider.overrideWithValue(windowId)],
+            child: ConsoleWindowApp(windowId: windowId, argument: argument),
           ),
-        ),
-      );
+        );
+      } else if (type == 'version_distribution') {
+        await configureCurrentAdbManageSubWindow(argument);
+        // Android 平台与 API 版本分布独立窗口
+        runApp(
+          ProviderScope(
+            overrides: [windowIdProvider.overrideWithValue(windowId)],
+            child: AndroidVersionDistributionWindowApp(
+              windowId: windowId,
+              argument: argument,
+            ),
+          ),
+        );
+      } else {
+        await configureCurrentAdbManageSubWindow(argument);
+        //模拟器管理窗口
+        runApp(
+          ProviderScope(
+            overrides: [windowIdProvider.overrideWithValue(windowId)],
+            child: EmulatorManagerWindowApp(
+              windowId: windowId,
+              argument: argument,
+            ),
+          ),
+        );
+      }
+    } catch (e, stack) {
+      debugPrint('Sub-window [$windowName] failed to launch: $e\n$stack');
     }
     return;
   }
@@ -183,6 +188,8 @@ void main(List<String> args) async {
   await DesktopWindowManagerService.initialize();
   final container = ProviderContainer();
   DesktopWindowManagerService.setProviderContainer(container);
+  // 预热主窗口全局日志服务，确保跨窗口通道处理方法在主窗口提前就绪
+  container.read(logHistoryProvider);
   if (Platform.isMacOS) {
     await ApkOpenCoordinator(container).initialize();
   }

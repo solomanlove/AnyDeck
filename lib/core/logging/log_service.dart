@@ -126,10 +126,10 @@ class LogService extends Notifier<List<String>> {
         try {
           final args = jsonDecode(window.arguments);
           if (args is Map && args['type'] == 'console') {
-            await window.invokeMethod('clear');
+            await window.invokeMethod('clear').timeout(const Duration(milliseconds: 300));
           }
-        } catch (e) {
-          // ignore
+        } catch (_) {
+          // 忽略已关闭或通信超时的窗口
         }
       }
     } catch (e) {
@@ -149,11 +149,11 @@ class LogService extends Notifier<List<String>> {
         try {
           final args = jsonDecode(window.arguments);
           if (args is Map && args['type'] == 'console') {
-            // 通过 windowId 对应的控制器调用子Isolate的方法
-            await window.invokeMethod('log', logMsg);
+            // 通过 windowId 对应的控制器调用子Isolate的方法，超时防死锁并安全忽略已销毁的死通道
+            await window.invokeMethod('log', logMsg).timeout(const Duration(milliseconds: 300));
           }
-        } catch (e) {
-          // 忽略个别窗口解析参数失败的情况
+        } catch (_) {
+          // 忽略已关闭、通信超时或 dead channel 的窗口异常
         }
       }
     } catch (e) {

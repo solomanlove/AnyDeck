@@ -77,8 +77,13 @@ Future<WindowController> createAdbManageWindow({
             if (deviceId == null || windowArgs['deviceId'] == deviceId) {
               if (windowArgs['newDisplay'] == arguments['newDisplay'] &&
                   windowArgs['startApp'] == arguments['startApp']) {
-                await window.show();
-                return window;
+                try {
+                  await window.show();
+                  return window;
+                } catch (e) {
+                  debugPrint('Failed to show existing window, falling back to create: $e');
+                  break;
+                }
               }
             }
           }
@@ -104,46 +109,60 @@ Future<WindowController> createAdbManageWindow({
     windowArguments[_windowTitleKey] = title;
   }
 
-  return WindowController.create(
+  final controller = await WindowController.create(
     WindowConfiguration(
-      hiddenAtLaunch: true,
+      hiddenAtLaunch: false,
       arguments: jsonEncode(windowArguments),
     ),
   );
+  try {
+    await controller.show();
+  } catch (_) {}
+  return controller;
 }
 
 /// 在子窗口自己的 Isolate 内应用初始尺寸、位置与标题。
 Future<void> configureCurrentAdbManageSubWindow(
   Map<String, dynamic> arguments,
 ) async {
-  await windowManager.ensureInitialized();
+  try {
+    await windowManager.ensureInitialized();
 
-  if (arguments['type'] == 'mirror' ||
-      arguments['type'] == 'emulator_manager' ||
-      arguments['type'] == 'console' ||
-      arguments['type'] == 'version_distribution' ||
-      arguments['type'] == 'apk_details') {
-    await windowManager.setTitleBarStyle(
-      TitleBarStyle.hidden,
-      windowButtonVisibility: true,
-    );
-  }
+    if (arguments['type'] == 'mirror' ||
+        arguments['type'] == 'emulator_manager' ||
+        arguments['type'] == 'console' ||
+        arguments['type'] == 'version_distribution' ||
+        arguments['type'] == 'apk_details') {
+      await windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: true,
+      );
+    }
 
-  if (arguments['type'] == 'apk_details') {
-    await windowManager.setMinimumSize(const Size(900, 600));
-  }
+    if (arguments['type'] == 'apk_details') {
+      await windowManager.setMinimumSize(const Size(900, 600));
+    }
 
-  final frame = _decodeFrame(arguments[_windowFrameKey]);
-  final title = arguments[_windowTitleKey] as String?;
-  if (frame != null) {
-    await windowManager.setBounds(frame);
-    await windowManager.center();
+    final frame = _decodeFrame(arguments[_windowFrameKey]);
+    final title = arguments[_windowTitleKey] as String?;
+    if (frame != null) {
+      await windowManager.setBounds(frame);
+      await windowManager.center();
+    }
+    if (title != null && title.isNotEmpty) {
+      await DesktopWindowTitleService.setTitle(title);
+    }
+    await windowManager.show();
+    await windowManager.focus();
+
+    // 尝试同步通知 desktop_multi_window 引擎端展示，做双重可见性保障
+    try {
+      final controller = await WindowController.fromCurrentEngine();
+      await controller.show();
+    } catch (_) {}
+  } catch (e, stack) {
+    debugPrint('configureCurrentAdbManageSubWindow error: $e\n$stack');
   }
-  if (title != null && title.isNotEmpty) {
-    await DesktopWindowTitleService.setTitle(title);
-  }
-  await windowManager.show();
-  await windowManager.focus();
 }
 
 Rect? _decodeFrame(Object? value) {
