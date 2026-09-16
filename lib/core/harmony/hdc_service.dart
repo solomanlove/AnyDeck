@@ -48,7 +48,7 @@ class HdcService {
     if (rawTargets.isEmpty) {
       final vResult = await run(['list', 'targets', '-v']);
       if (vResult.isSuccess && vResult.stdout.isNotEmpty) {
-        rawTargets = _parseRawTargetsWithStatus(vResult.stdout);
+        rawTargets = parseConnectedTargetsWithStatus(vResult.stdout);
       } else {
         final result = await run(['list', 'targets']);
         if (result.isSuccess) {
@@ -419,8 +419,8 @@ class HdcService {
     return shell(deviceId, "mkdir -p '$escaped'");
   }
 
-  /// 解析 `hdc list targets -v` 输出，仅保留 Connected 且非 Offline 的在线设备。
-  List<String> _parseRawTargetsWithStatus(String output) {
+  /// 解析 `hdc list targets -v` 输出，仅保留明确标记为 Connected 的设备。
+  static List<String> parseConnectedTargetsWithStatus(String output) {
     final targets = <String>[];
     final lines = LineSplitter.split(output);
     for (final line in lines) {
@@ -434,7 +434,7 @@ class HdcService {
       final parts = trimmed.split(RegExp(r'\s+'));
       if (parts.isNotEmpty) {
         final serial = parts.first;
-        final status = parts.length >= 3 ? parts[2].toLowerCase() : 'connected';
+        final status = parts.length >= 3 ? parts[2].toLowerCase() : '';
         if (status == 'connected' && !serial.toLowerCase().contains('fail')) {
           targets.add(serial);
         }

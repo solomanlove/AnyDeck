@@ -56,6 +56,18 @@ void main() {
       );
     });
 
+    test('verbose HDC targets require explicit Connected status', () {
+      expect(
+        HdcService.parseConnectedTargetsWithStatus('''
+192.168.31.153:5555 TCP Unknown unknown...
+192.168.31.83:5555 TCP Offline localhost
+2UCUT23C18017189 USB Connected localhost
+192.168.31.154:5555
+'''),
+        ['2UCUT23C18017189'],
+      );
+    });
+
     test('parseSerialFromParamOutput extracts valid serial and ignores failures', () {
       expect(
         HdcServiceDeviceInfo.parseSerialFromParamOutput('[Fail]\n2UCUT23C18017189\n'),
