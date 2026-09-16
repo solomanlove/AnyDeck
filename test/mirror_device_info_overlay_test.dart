@@ -44,4 +44,43 @@ void main() {
     expect(find.text('Android 8.1.0'), findsOneWidget);
     expect(find.text('存储：35.00G / 128.00G'), findsOneWidget);
   });
+
+  testWidgets('长系统版本文字支持软换行且不限单行', (tester) async {
+    final overview = DeviceOverview.fromJson({
+      'name': 'nova 12 Ultra',
+      'brand': 'HUAWEI',
+      'model': 'ADA-AL00U',
+      'androidVersion': 'OpenHarmony-6.1.0.115 (API 23) (ADL-AL00)',
+      'memory': '11.31G',
+      'storage': '117.84G / 464.96G',
+      'rawResolution': '1224x2776',
+      'refreshRate': '120 Hz',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizationsDelegate(),
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: MirrorDeviceInfoCard(
+            overview: overview,
+            fallbackName: 'nova 12 Ultra',
+          ),
+        ),
+      ),
+    );
+
+    final versionFinder =
+        find.text('OpenHarmony-6.1.0.115 (API 23) (ADL-AL00)');
+    expect(versionFinder, findsOneWidget);
+    final Text textWidget = tester.widget(versionFinder);
+    expect(textWidget.softWrap, isTrue);
+    expect(textWidget.maxLines, isNull);
+  });
 }

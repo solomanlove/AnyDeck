@@ -330,15 +330,19 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                   Positioned(
                     top: 16,
                     left: 16,
-                    child: IgnorePointer(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 160),
-                        child: _isTitleHovered && !_controller.isFullScreen
-                            ? MirrorDeviceInfoOverlay(
-                                deviceId: widget.deviceId,
-                                deviceName: widget.deviceName,
-                              )
-                            : const SizedBox.shrink(),
+                    right: 16,
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: IgnorePointer(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 160),
+                          child: _isTitleHovered && !_controller.isFullScreen
+                              ? MirrorDeviceInfoOverlay(
+                                  deviceId: widget.deviceId,
+                                  deviceName: widget.deviceName,
+                                )
+                              : const SizedBox.shrink(),
+                        ),
                       ),
                     ),
                   ),

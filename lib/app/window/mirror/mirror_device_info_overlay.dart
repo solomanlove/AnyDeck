@@ -92,7 +92,11 @@ class MirrorDeviceInfoCard extends StatelessWidget {
             if (_hasValue(overview.memory))
               Text('${context.l10n.t('memory')}：${overview.memory}'),
             if (_hasValue(overview.androidVersion))
-              Text(overview.androidVersion),
+              Text(
+                overview.androidVersion,
+                maxLines: null,
+                softWrap: true,
+              ),
             if (_hasValue(overview.storage))
               Text('${context.l10n.t('storage')}：${overview.storage}'),
           ],
