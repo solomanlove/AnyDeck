@@ -126,6 +126,18 @@ class _QuickActionsPanel extends ConsumerWidget {
           },
         ),
 
+        _ActionButton(
+          icon: CupertinoIcons.slider_horizontal_3,
+          label: context.l10n.t('expandSettings'),
+          onPressed: () {
+            _runAdbAction(
+              context,
+              ref,
+              actions.openQuickSettings(device.id),
+            );
+          },
+        ),
+
         _ToggleActionButton(
           iconOn: CupertinoIcons.lock_open_fill,
           iconOff: CupertinoIcons.lock_fill,

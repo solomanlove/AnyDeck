@@ -509,6 +509,10 @@ class DeviceActionService {
   Future<AdbResult> openNotificationBar(String deviceId) =>
       _adb.shellArgs(deviceId, ['cmd', 'statusbar', 'expand-notifications']);
 
+  /// 展开快捷设置面板（下拉快捷面板）。
+  Future<AdbResult> openQuickSettings(String deviceId) =>
+      _adb.shellArgs(deviceId, ['cmd', 'statusbar', 'expand-settings']);
+
   /// 切换屏幕自动旋转。
   Future<AdbResult> setAutoRotate(String deviceId, bool enabled) =>
       _adb.shellArgs(deviceId, [
