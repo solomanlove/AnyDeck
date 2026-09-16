@@ -17,6 +17,7 @@ class NotificationForwardingService {
     required this.bridge,
     required this.settingsGetter,
     required this.appNameResolver,
+    required this.appIconPathResolver,
   });
 
   final NotificationForwardingClient client;
@@ -24,6 +25,7 @@ class NotificationForwardingService {
   final MacNotificationBridge bridge;
   final AppSettings Function() settingsGetter;
   final String? Function(String deviceId, String packageName) appNameResolver;
+  final String? Function(String deviceId, String packageName) appIconPathResolver;
 
   // 全局并发最多 2 个
   int _activePolls = 0;
@@ -320,6 +322,7 @@ class _DeviceForwardingSession {
             id: _notificationId(event.key),
             title: notifTitle,
             body: notifBody,
+            iconPath: service.appIconPathResolver(device.id, event.packageName),
             payload: {
               'type': 'phone_message',
               'deviceId': device.id,

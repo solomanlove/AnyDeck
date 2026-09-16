@@ -29,7 +29,7 @@
 | `adb-macos-signature-policy` | macOS 签名与 system policy 修复机制 | active | 记录 `FlutterMacOS.framework` 被 dyld system policy 拒绝加载时的签名、provenance/quarantine 排查与自动修复脚本 | `macos/`, `script/` |
 | `adb-ai-mcp-server-architecture` | AI MCP 服务架构与集成机制 | active | 记录 AnyDeck 作为 AI MCP (Model Context Protocol) Server 的协议路由、Tools 注册、SSE/Stdio 双通道传输、SSE 停止时的连接回收、安全防御沙箱与桌面管理控制台设计 | `core/mcp/`, `features/mcp/` |
 | `adb-screenshot-layout-merge` | 截图录屏与布局分析合并机制 | active | 记录左侧入口收拢（Tab 8 归一化到 9）、顶部工具栏动态开关、三栏展开、共享画布坐标映射、原子化并发刷新与 5 阶段录屏互斥机制 | `features/screenshot/`, `features/overview/` |
-| `adb-connection-notifications-message-forwarding` | Android 连接通知与手机消息转发 | active | 记录 macOS UNUserNotificationCenter 原生通知与窗口聚焦、首次授权、AdbDeviceTracker 单例守护、Android Companion NotificationListenerService 过滤与有界队列、ADB ContentProvider 轮询、SQLite 来源映射和增量刷新、Tab 15 消息列表 | `core/notifications/`, `features/messages/`, `tool/usage_companion/` |
+| `adb-connection-notifications-message-forwarding` | Android 连接通知与手机消息转发 | active | 记录 macOS UNUserNotificationCenter 原生通知与手机 App 图标附件、窗口聚焦、首次授权、AdbDeviceTracker 单例守护、Android Companion NotificationListenerService 过滤与有界队列、ADB ContentProvider 轮询、SQLite 来源映射和增量刷新、Tab 15 消息列表 | `core/notifications/`, `features/messages/`, `tool/usage_companion/` |
 | `adb-cross-channel-package-cache` | Wi-Fi 与 USB 双通道应用缓存共享机制 | active | 记录 Canonical Serial 规范序列号统一寻址、内存缓存同步直出、多通道 fallback 回退、本地图标目录复用以及 USB 刚插入时的通道就绪防抖与数据保护机制 | `core/apps/`, `core/providers/` |
 
 ## 新增知识库规则

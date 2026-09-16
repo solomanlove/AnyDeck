@@ -48,7 +48,8 @@ flowchart LR
   - 点击通知触发 `userNotificationCenter(_:didReceive:withCompletionHandler:)`。
   - 原生代码调用 `NSApp.activate(ignoringOtherApps: true)`，并针对主窗口执行 `deminiaturize(nil)` 与 `makeKeyAndOrderFront(nil)`，确保无论应用处于全屏、最小化还是后台都能瞬间唤起至用户眼前。
   - 启动阶段设置事件缓冲队列，Flutter 侧调用 `ready()` 完成握手后再冲刷历史点击事件，杜绝冷启动点击丢失。
-  - 支持通过 `NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:...")!)` 直达 macOS 系统通知设置。
+- 支持通过 `NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:...")!)` 直达 macOS 系统通知设置。
+- **手机 App 图标附件**：转发服务从现有 `packagesProvider(deviceId)` 读取 `iconLocalPath`，通过 `showNotification` MethodChannel 传给原生端。原生端校验 PNG 文件和 10 MiB 上限，复制临时文件并创建 `UNNotificationAttachment`，保留原始图标缓存；通知提交后清理临时副本。图标缺失或附件创建失败时继续发送文字通知。macOS 左侧仍使用 AnyDeck 的 Bundle 图标，手机 App 图标由系统作为右侧图片附件展示，具体布局由系统控制。
 
 ### 3.2 设备的全局单例监听 (`AdbDeviceTracker`)
 - 在主窗口进程内托管唯一的 `adb track-devices -l` 长驻子进程 (`Process.start`)。
@@ -96,4 +97,5 @@ flowchart LR
 | 7 天过期数据淘汰 | 超过 7 天的数据在下次写入时自动删除 | `NotificationDatabase` 事务级单测验证 |
 | 10,000 条上限淘汰 | 超过 10,000 条时按时间戳移除最旧记录 | 数据库插入循环单测验证 |
 | macOS 通知点击 | 唤起主窗口，聚焦并跳转到 Tab 0 (连接) 或 Tab 15 (消息) | `NotificationBridgeService.swift` 点击流转发 |
+| 手机 App 图标 | 有缓存时转发通知附带对应图标，未缓存时仍正常显示文字通知 | `NotificationForwardingService` 参数回归测试；右侧附件样式需在 Notification Center 手工验收 |
 | 消息增量与队列缺口 | 入库后发布刷新事件；`gap=true` 保留缺口状态并显示警告 | `NotificationForwardingService` 回归测试 |

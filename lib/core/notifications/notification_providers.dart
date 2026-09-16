@@ -59,6 +59,15 @@ final notificationForwardingServiceProvider =
           }
           return null;
         },
+        appIconPathResolver: (deviceId, packageName) {
+          final packages = ref.read(packagesProvider(deviceId)).value;
+          if (packages != null) {
+            for (final p in packages) {
+              if (p.name == packageName) return p.iconLocalPath;
+            }
+          }
+          return null;
+        },
       );
 
       // 监听已连接设备列表变化，对开启转发的在线设备启动会话，对离线设备停止会话

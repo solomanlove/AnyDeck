@@ -64,8 +64,17 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
         content.sound = UNNotificationSound.default
         content.userInfo = payload
 
+        // 通知附件使用缓存图标的临时副本，避免系统接收附件时移动原始缓存文件。
+        let iconAttachment = self.makeIconAttachment(path: args["iconPath"] as? String)
+        if let attachment = iconAttachment.attachment {
+          content.attachments = [attachment]
+        }
+
         let request = UNNotificationRequest(identifier: id, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request) { error in
+          if let temporaryURL = iconAttachment.temporaryURL {
+            try? FileManager.default.removeItem(at: temporaryURL)
+          }
           DispatchQueue.main.async {
             if let error = error {
               result(FlutterError(code: "add_failed", message: error.localizedDescription, details: nil))
@@ -120,6 +129,29 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
       default:
         result(FlutterMethodNotImplemented)
       }
+    }
+  }
+
+  /// 仅复制有效的本地图标；无图标或附件创建失败时继续发送普通文字通知。
+  private func makeIconAttachment(path: String?) -> (attachment: UNNotificationAttachment?, temporaryURL: URL?) {
+    guard let path = path, !path.isEmpty else { return (nil, nil) }
+    let sourceURL = URL(fileURLWithPath: path)
+    guard sourceURL.pathExtension.lowercased() == "png",
+          let attributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
+          let fileSize = attributes[.size] as? NSNumber,
+          fileSize.intValue > 0 && fileSize.intValue <= 10 * 1024 * 1024 else {
+      return (nil, nil)
+    }
+
+    let temporaryURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("anydeck-notification-\(UUID().uuidString).png")
+    do {
+      try FileManager.default.copyItem(at: sourceURL, to: temporaryURL)
+      let attachment = try UNNotificationAttachment(identifier: "phone_app_icon", url: temporaryURL, options: nil)
+      return (attachment, temporaryURL)
+    } catch {
+      try? FileManager.default.removeItem(at: temporaryURL)
+      return (nil, nil)
     }
   }
 

@@ -39,12 +39,14 @@ class _FakeMacNotificationBridge extends MacNotificationBridge {
     required String id,
     required String title,
     String body = '',
+    String? iconPath,
     Map<String, dynamic>? payload,
   }) async {
     sentNotifications.add({
       'id': id,
       'title': title,
       'body': body,
+      'iconPath': iconPath,
       'payload': payload,
     });
     return true;
@@ -285,6 +287,7 @@ void main() {
         bridge: bridge,
         settingsGetter: () => const AppSettings(),
         appNameResolver: (_, _) => 'Example Chat',
+        appIconPathResolver: (_, _) => '/cached/example_chat.png',
       );
       addTearDown(() {
         service.dispose();
@@ -310,6 +313,10 @@ void main() {
       expect(change.androidUserId, equals(10));
       expect(service.hasQueueGap('usb_route'), isTrue);
       expect(bridge.sentNotifications, hasLength(1));
+      expect(
+        bridge.sentNotifications.single['iconPath'],
+        equals('/cached/example_chat.png'),
+      );
       expect(
         bridge.sentNotifications.single['id'],
         equals('notif_installation_forwarding_10_message_key'),

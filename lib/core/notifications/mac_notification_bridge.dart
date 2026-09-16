@@ -60,6 +60,7 @@ class MacNotificationBridge {
     required String id,
     required String title,
     String body = '',
+    String? iconPath,
     Map<String, dynamic>? payload,
   }) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) {
@@ -70,6 +71,7 @@ class MacNotificationBridge {
         'id': id,
         'title': title,
         'body': body,
+        if (iconPath != null && iconPath.isNotEmpty) 'iconPath': iconPath,
         'payload': payload ?? <String, dynamic>{},
       });
       return result ?? false;
