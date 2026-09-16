@@ -2,17 +2,17 @@ part of '../dashboard_screen.dart';
 
 enum AppFilterType { user, system, all, favorites }
 
-class _AppsTab extends ConsumerStatefulWidget {
-  const _AppsTab({required this.device});
+class AppsTab extends ConsumerStatefulWidget {
+  const AppsTab({super.key, required this.device});
 
   final AdbDevice device;
 
   @override
-  ConsumerState<_AppsTab> createState() => _AppsTabState();
+  ConsumerState<AppsTab> createState() => _AppsTabState();
 }
 
 /// 展示已安装应用，并提供包级操作。
-class _AppsTabState extends ConsumerState<_AppsTab> {
+class _AppsTabState extends ConsumerState<AppsTab> {
   final TextEditingController _filterController = TextEditingController();
   String _filter = '';
   AppFilterType _appFilterType = AppFilterType.user;

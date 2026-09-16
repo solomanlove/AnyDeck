@@ -58,7 +58,7 @@ void main(List<String> args) async {
       )) {
         debugPrint(
           '[KeyAssertionFix] Suppressed mismatched KeyUpEvent for physicalKey: $physicalKey',
-        );
+       );
         return true; // 返回 true 表示事件已消费，不再向下游分发
       }
     }

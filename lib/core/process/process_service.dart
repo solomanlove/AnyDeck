@@ -1,5 +1,6 @@
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
+import '../harmony/hdc_service.dart';
 
 /// 表示 Android 设备上的一个运行进程。
 class AdbProcess {
@@ -28,11 +29,22 @@ class AdbProcess {
 /// 基于 ADB shell top 命令提供进程查看与管理能力。
 class ProcessService {
   final AdbService _adb;
+  final HdcService? _hdc;
 
-  ProcessService(this._adb);
+  ProcessService(this._adb, [this._hdc]);
 
-  /// 获取设备上当前运行的所有进程。
-  Future<List<AdbProcess>> getProcesses(String deviceId) async {
+  /// 获取设备上当前运行的所有进程。鸿蒙走 `ps -ef`，安卓走 `top -b -n 1`。
+  Future<List<AdbProcess>> getProcesses(
+    String deviceId, {
+    bool isHarmony = false,
+  }) async {
+    if (isHarmony && _hdc != null) {
+      final result = await _hdc.shell(deviceId, 'ps -ef');
+      if (!result.isSuccess) {
+        throw Exception(result.message);
+      }
+      return parseHarmonyPsOutput(result.stdout);
+    }
     final result = await _adb.shellArgs(deviceId, ['top', '-b', '-n', '1']);
     if (!result.isSuccess) {
       throw Exception(result.message);
@@ -41,28 +53,83 @@ class ProcessService {
   }
 
   /// 结束设备上指定 PID 的进程。
-  /// 如果提供了 [processName] 且看起来像应用包名，会优先使用 `am force-stop` 结束应用，
+  /// 如果提供了 [processName] 且看起来像应用包名，会优先使用 `am force-stop`/`aa force-stop` 结束应用，
   /// 从而解决非 Root 设备上由于权限问题导致 `kill -9` 报 "Operation not permitted" 的错误。
-  Future<AdbResult> killProcess(String deviceId, String pid, {String? processName}) async {
+  Future<AdbResult> killProcess(
+    String deviceId,
+    String pid, {
+    String? processName,
+    bool isHarmony = false,
+  }) async {
     if (processName != null) {
       final cleanName = processName.trim();
-      final basePackage = cleanName.contains(':') ? cleanName.split(':').first : cleanName;
+      final basePackage = cleanName.contains(':')
+          ? cleanName.split(':').first
+          : cleanName;
 
-      // 匹配典型的 Android 应用包名格式 (例如 com.example.app)
-      final packageRegex = RegExp(r'^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$');
+      // 匹配典型的应用包名格式 (例如 com.example.app)
+      final packageRegex = RegExp(
+        r'^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$',
+      );
       if (packageRegex.hasMatch(basePackage) &&
           !cleanName.startsWith('/') &&
           !cleanName.startsWith('[')) {
-        // 对于应用进程，优先使用 am force-stop，这在非 Root 环境下也能成功运行
-        final stopResult = await _adb.shellArgs(deviceId, ['am', 'force-stop', basePackage]);
-        if (stopResult.isSuccess) {
-          return stopResult;
+        if (isHarmony && _hdc != null) {
+          // 鸿蒙使用 aa force-stop -b <bundle> 结束应用
+          final stopResult = await _hdc.shell(
+            deviceId,
+            'aa force-stop -b "$basePackage"',
+          );
+          if (stopResult.isSuccess) {
+            return stopResult;
+          }
+        } else {
+          // 安卓使用 am force-stop
+          final stopResult = await _adb.shellArgs(
+            deviceId,
+            ['am', 'force-stop', basePackage],
+          );
+          if (stopResult.isSuccess) {
+            return stopResult;
+          }
         }
       }
     }
 
     // 回退到常规的 kill -9 命令
+    if (isHarmony && _hdc != null) {
+      return _hdc.shell(deviceId, 'kill -9 $pid');
+    }
     return _adb.shellArgs(deviceId, ['kill', '-9', pid]);
+  }
+
+  /// 解析鸿蒙 `ps -ef` 输出为进程列表。
+  /// 格式：`UID PID PPID C STIME TTY TIME CMD`，无 CPU% 与内存信息。
+  List<AdbProcess> parseHarmonyPsOutput(String stdout) {
+    final lines = stdout.split('\n');
+    final processes = <AdbProcess>[];
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty || trimmed.startsWith('UID')) continue;
+      final parts = trimmed.split(RegExp(r'\s+'));
+      if (parts.length < 8) continue;
+      final uid = parts[0];
+      final pid = parts[1];
+      if (int.tryParse(pid) == null) continue;
+      final time = parts[6];
+      final name = parts.sublist(7).join(' ');
+      processes.add(
+        AdbProcess(
+          pid: pid,
+          user: uid,
+          cpu: '',
+          memory: '',
+          cpuTime: time,
+          name: name,
+        ),
+      );
+    }
+    return processes;
   }
 
   /// 将 `top -b -n 1` 的文本输出解析为进程列表。

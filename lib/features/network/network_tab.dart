@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
 import '../../core/adb/adb_device.dart';
+import '../../core/network/port_forward_command.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/network_providers.dart';
 import 'device_proxy_panel.dart';
@@ -67,8 +68,11 @@ class NetworkTab extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 设备 HTTP 代理部分 (Device HTTP Proxy)
-            DeviceProxyPanel(deviceId: device.id),
-            const SizedBox(height: 36),
+            // 鸿蒙设备无 hdc 对应的系统代理命令，隐藏整个面板。
+            if (!device.isHarmony) ...[
+              DeviceProxyPanel(deviceId: device.id),
+              const SizedBox(height: 36),
+            ],
 
             // 端口转发部分 (Port Forwarding)
             _buildSectionHeader(
@@ -325,13 +329,13 @@ class NetworkTab extends ConsumerWidget {
                     final devPort = item.devicePort.startsWith('tcp:')
                         ? item.devicePort
                         : 'tcp:${item.devicePort}';
-                    final result = await adb.run([
-                      '-s',
-                      device.id,
-                      'reverse',
-                      '--remove',
-                      devPort,
-                    ]);
+                    final result = await PortForwardCommand.run(
+                      adb,
+                      device.isHarmony ? ref.read(hdcServiceProvider) : null,
+                      deviceId: device.id,
+                      isHarmony: device.isHarmony,
+                      reverseArgs: ['--remove', devPort],
+                    );
                     if (result.isSuccess) {
                       ref.invalidate(activePortForwardsProvider(device.id));
                     } else {
@@ -461,13 +465,13 @@ class NetworkTab extends ConsumerWidget {
                         final locPort = item.localPort.startsWith('tcp:')
                             ? item.localPort
                             : 'tcp:${item.localPort}';
-                        final result = await adb.run([
-                          '-s',
-                          device.id,
-                          'reverse',
-                          devPort,
-                          locPort,
-                        ]);
+                        final result = await PortForwardCommand.run(
+                          adb,
+                          device.isHarmony ? ref.read(hdcServiceProvider) : null,
+                          deviceId: device.id,
+                          isHarmony: device.isHarmony,
+                          reverseArgs: [devPort, locPort],
+                        );
                         if (result.isSuccess) {
                           ref.invalidate(activePortForwardsProvider(device.id));
                           if (context.mounted) {

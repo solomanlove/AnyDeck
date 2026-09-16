@@ -11,6 +11,9 @@ class _PackageActions extends ConsumerWidget {
     final service = ref.read(appManagementServiceProvider);
     final packageName = package.name;
     final isOnline = ref.watch(deviceOnlineProvider(deviceId));
+    final isHarmony = ref.read(deviceRegistryProvider).any(
+      (d) => d.id == deviceId && d.isHarmony,
+    );
 
     return AbsorbPointer(
       absorbing: !isOnline,
@@ -88,7 +91,7 @@ class _PackageActions extends ConsumerWidget {
             onPressed: () => _runAdbAction(
               context,
               ref,
-              service.openAppInfo(deviceId, packageName),
+              service.openAppInfo(deviceId, packageName, isHarmony: isHarmony),
             ),
           ),
           const SizedBox(width: 2),
@@ -98,7 +101,7 @@ class _PackageActions extends ConsumerWidget {
             onPressed: () => _runAdbAction(
               context,
               ref,
-              service.launch(deviceId, packageName),
+              service.launch(deviceId, packageName, isHarmony: isHarmony),
             ),
           ),
           const SizedBox(width: 2),
@@ -191,7 +194,7 @@ class _PackageActions extends ConsumerWidget {
             onPressed: () => _runAdbAction(
               context,
               ref,
-              service.forceStop(deviceId, packageName),
+              service.forceStop(deviceId, packageName, isHarmony: isHarmony),
             ),
           ),
           const SizedBox(width: 2),
@@ -219,7 +222,7 @@ class _PackageActions extends ConsumerWidget {
                 await _runAdbAction(
                   context,
                   ref,
-                  service.clearData(deviceId, packageName),
+                  service.clearData(deviceId, packageName, isHarmony: isHarmony),
                 );
               }
             },
@@ -256,8 +259,8 @@ class _PackageActions extends ConsumerWidget {
               final confirmed = await _confirm(context, confirmMsg);
               if (confirmed && context.mounted) {
                 final result = package.enabled
-                    ? await service.freezeApp(deviceId, packageName)
-                    : await service.unfreezeApp(deviceId, packageName);
+                    ? await service.freezeApp(deviceId, packageName, isHarmony: isHarmony)
+                    : await service.unfreezeApp(deviceId, packageName, isHarmony: isHarmony);
                 if (context.mounted) {
                   final successMsg = package.enabled
                       ? context.l10n

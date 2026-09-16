@@ -262,7 +262,12 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
 
     final result = await ref
         .read(processServiceProvider)
-        .killProcess(widget.device.id, process.pid, processName: process.name);
+        .killProcess(
+          widget.device.id,
+          process.pid,
+          processName: process.name,
+          isHarmony: widget.device.isHarmony,
+        );
 
     if (!mounted) return;
 

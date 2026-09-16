@@ -7,18 +7,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
+import '../harmony/hdc_service.dart';
 import 'adb_package.dart';
 import 'adb_package_detail.dart';
 import 'package_refresh_progress.dart';
 
 part 'app_management_service_refresh.dart';
+part 'app_management_service_harmony_icon.dart';
 
 /// 基于 adb 和 PackageManager 实现的应用管理能力。
 class AppManagementService {
-  AppManagementService(this._adb);
+  AppManagementService(this._adb, {HdcService? hdc}) : _hdc = hdc;
 
-  static const _cacheSchemaVersion = 3;
-  static const _packageCachePrefix = 'apps.packages.v3';
+  static const _cacheSchemaVersion = 4;
+  static const _packageCachePrefix = 'apps.packages.v4';
   static const _helperAssetPath = 'assets/android/package_icon_helper.dex';
   static const _remoteBaseDir = '/data/local/tmp/any_deck';
   static const _remoteDexPath = '$_remoteBaseDir/package_icon_helper.dex';
@@ -28,6 +30,7 @@ class AppManagementService {
   static const _fileTransferTimeout = Duration(minutes: 5);
 
   final AdbService _adb;
+  final HdcService? _hdc;
   final Map<String, List<AdbPackage>> _memoryCache = {};
 
   /// 同步查询内存中已解析的应用列表（优先查当前 deviceId，未命中查 canonicalId 与 fallbackKeys）。
@@ -59,6 +62,7 @@ class AppManagementService {
     bool forceRefresh = false,
     String? canonicalId,
     List<String> fallbackKeys = const [],
+    bool isHarmony = false,
   }) async {
     if (!forceRefresh) {
       final cached = await _loadPackageCache(
@@ -70,6 +74,9 @@ class AppManagementService {
         return cached;
       }
     }
+    if (isHarmony) {
+      return _readHarmonyFastPackagesFromDevice(deviceId);
+    }
     return _readFastPackagesFromDevice(deviceId);
   }
 
@@ -79,6 +86,7 @@ class AppManagementService {
     bool refreshIconsInBackground = true,
     String? canonicalId,
     List<String> fallbackKeys = const [],
+    bool isHarmony = false,
   }) async {
     final cachedPackages = await _loadPackageCache(
       deviceId,
@@ -86,7 +94,9 @@ class AppManagementService {
       fallbackKeys: fallbackKeys,
     );
     final packages = _restoreCachedPresentationData(
-      await _readPackagesFromDevice(deviceId),
+      isHarmony
+          ? await _readHarmonyPackagesFromDevice(deviceId)
+          : await _readPackagesFromDevice(deviceId),
       cachedPackages,
     );
     await _savePackageCache(
@@ -104,8 +114,12 @@ class AppManagementService {
   /// 强制从手机读取单个应用的最新元数据（包括图标等）。
   Future<AdbPackage?> getSinglePackageInfo(
     String deviceId,
-    String packageName,
-  ) async {
+    String packageName, {
+    bool isHarmony = false,
+  }) async {
+    if (isHarmony && _hdc != null) {
+      return _readHarmonySinglePackage(deviceId, packageName);
+    }
     final script =
         '''
 pkg="$packageName"
@@ -469,6 +483,112 @@ fi
     return packages..sort(_comparePackages);
   }
 
+  /// 鸿蒙设备快速读取已安装应用列表（含 label，不含图标）。
+  Future<List<AdbPackage>> _readHarmonyFastPackagesFromDevice(
+    String deviceId,
+  ) async {
+    final hdc = _hdc;
+    if (hdc == null) {
+      throw Exception('HdcService 未注入，无法读取鸿蒙应用列表');
+    }
+    final result = await hdc.shell(deviceId, 'bm dump -a -l', timeout: _quickTimeout);
+    if (!result.isSuccess) {
+      throw Exception(result.message);
+    }
+    return _parseHarmonyBundleList(result.stdout);
+  }
+
+  /// 解析 `bm dump -a -l` 的 JSON 数组输出为应用列表。
+  List<AdbPackage> _parseHarmonyBundleList(String stdout) {
+    final jsonStr = _extractJsonArray(stdout);
+    if (jsonStr == null) return const [];
+    try {
+      final decoded = jsonDecode(jsonStr);
+      if (decoded is! List) return const [];
+      final packages = <AdbPackage>[];
+      for (final item in decoded) {
+        if (item is! Map) continue;
+        final name = item['bundleName'] as String? ?? '';
+        if (name.isEmpty) continue;
+        final label = item['label'] as String?;
+        packages.add(AdbPackage(
+          name: name,
+          label: label,
+          system: _isHarmonySystemBundle(name),
+        ));
+      }
+      return packages..sort(_comparePackages);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// 从输出中提取第一个 `[` 到匹配 `]` 的 JSON 数组子串。
+  String? _extractJsonArray(String stdout) {
+    final start = stdout.indexOf('[');
+    if (start < 0) return null;
+    final end = stdout.lastIndexOf(']');
+    if (end <= start) return null;
+    return stdout.substring(start, end + 1);
+  }
+
+  /// 从输出中提取第一个 `{` 到匹配 `}` 的 JSON 对象子串。
+  String? _extractJsonObject(String stdout) {
+    final start = stdout.indexOf('{');
+    if (start < 0) return null;
+    final end = stdout.lastIndexOf('}');
+    if (end <= start) return null;
+    return stdout.substring(start, end + 1);
+  }
+
+  /// 鸿蒙设备读取单个应用的基础元数据（确认存在性，label 由批量列表提供）。
+  Future<AdbPackage?> _readHarmonySinglePackage(
+    String deviceId,
+    String packageName,
+  ) async {
+    final hdc = _hdc;
+    if (hdc == null) {
+      throw Exception('HdcService 未注入，无法读取鸿蒙应用信息');
+    }
+    final result = await hdc.shell(
+      deviceId,
+      'bm dump -n $packageName',
+      timeout: _metadataTimeout,
+    );
+    if (!result.isSuccess) {
+      return null;
+    }
+    // bm dump -n 输出为 "<bundle>:\n{...JSON...}"。第三方应用顶层 JSON 无 bundleName
+    // 字段（仅系统应用有），因此不能依赖 bundleName 校验存在性；JSON 可解析即视为存在。
+    final jsonStr = _extractJsonObject(result.stdout);
+    if (jsonStr == null) return null;
+    try {
+      jsonDecode(jsonStr);
+      // label 在 applicationInfo.label 是资源引用（$string:xxx），非文本，不取。
+      return AdbPackage(
+        name: packageName,
+        system: _isHarmonySystemBundle(packageName),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 鸿蒙设备完整读取已安装应用列表（含 label；系统/用户标记鸿蒙无批量命令，暂不区分）。
+  Future<List<AdbPackage>> _readHarmonyPackagesFromDevice(
+    String deviceId,
+  ) async {
+    final hdc = _hdc;
+    if (hdc == null) {
+      throw Exception('HdcService 未注入，无法读取鸿蒙应用列表');
+    }
+    final result = await hdc.shell(deviceId, 'bm dump -a -l', timeout: _quickTimeout);
+    if (!result.isSuccess) {
+      throw Exception(result.message);
+    }
+    return _parseHarmonyBundleList(result.stdout);
+  }
+
   List<AdbPackage> _restoreCachedPresentationData(
     List<AdbPackage> packages,
     List<AdbPackage>? cachedPackages,
@@ -724,14 +844,30 @@ fi
     PackageRefreshCallback? onProgress,
     bool throwOnError = false,
     bool Function()? isActive,
-  }) => _enrichPackageIcons(
-    this,
-    deviceId,
-    packages,
-    onProgress: onProgress,
-    throwOnError: throwOnError,
-    isActive: isActive,
-  );
+    bool isHarmony = false,
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) {
+    if (isHarmony) {
+      return _enrichHarmonyPackageIcons(
+        this,
+        deviceId,
+        packages,
+        canonicalId: canonicalId,
+        fallbackKeys: fallbackKeys,
+        onProgress: onProgress,
+        isActive: isActive,
+      );
+    }
+    return _enrichPackageIcons(
+      this,
+      deviceId,
+      packages,
+      onProgress: onProgress,
+      throwOnError: throwOnError,
+      isActive: isActive,
+    );
+  }
 
   Future<File> _writePackageListFileForChunk(
     String deviceId,
@@ -977,17 +1113,26 @@ done | sort -u
   }
 
   /// 从设备卸载指定应用包。
-  Future<AdbResult> uninstall(String deviceId, String packageName) {
+  Future<AdbResult> uninstall(String deviceId, String packageName, {bool isHarmony = false}) {
+    if (isHarmony && _hdc != null) {
+      return _hdc.shell(deviceId, 'bm uninstall -n $packageName');
+    }
     return _adb.run(['-s', deviceId, 'uninstall', packageName]);
   }
 
   /// 通过 monkey 启动应用默认入口 Activity。
-  Future<AdbResult> launch(String deviceId, String packageName) {
+  Future<AdbResult> launch(String deviceId, String packageName, {bool isHarmony = false}) {
+    if (isHarmony && _hdc != null) {
+      return _hdc.shell(deviceId, 'aa start -b $packageName -a EntryAbility');
+    }
     return _adb.shellArgs(deviceId, ['monkey', '-p', packageName, '1']);
   }
 
   /// 跳转到手机系统设置中的应用信息页面。
-  Future<AdbResult> openAppInfo(String deviceId, String packageName) {
+  Future<AdbResult> openAppInfo(String deviceId, String packageName, {bool isHarmony = false}) {
+    if (isHarmony && _hdc != null) {
+      return _hdc.shell(deviceId, 'aa start -a com.ohos.settings.ApplicationInfoAbility -b com.ohos.settings');
+    }
     return _adb.shellArgs(deviceId, [
       'am',
       'start',
@@ -999,17 +1144,26 @@ done | sort -u
   }
 
   /// 强停目标应用进程，但不清除应用数据。
-  Future<AdbResult> forceStop(String deviceId, String packageName) {
+  Future<AdbResult> forceStop(String deviceId, String packageName, {bool isHarmony = false}) {
+    if (isHarmony && _hdc != null) {
+      return _hdc.shell(deviceId, 'aa force-stop $packageName');
+    }
     return _adb.shellArgs(deviceId, ['am', 'force-stop', packageName]);
   }
 
   /// 通过 Android PackageManager 清除应用数据。
-  Future<AdbResult> clearData(String deviceId, String packageName) {
+  Future<AdbResult> clearData(String deviceId, String packageName, {bool isHarmony = false}) {
+    if (isHarmony && _hdc != null) {
+      return _hdc.shell(deviceId, 'bm clean -n $packageName -d');
+    }
     return _adb.shellArgs(deviceId, ['pm', 'clear', packageName]);
   }
 
   /// 冻结（停用）应用，使用 disable-user 无需 root 权限。
-  Future<AdbResult> freezeApp(String deviceId, String packageName) {
+  Future<AdbResult> freezeApp(String deviceId, String packageName, {bool isHarmony = false}) {
+    if (isHarmony && _hdc != null) {
+      return _hdc.shell(deviceId, 'bm disable -n $packageName');
+    }
     return _adb.shellArgs(deviceId, [
       'pm',
       'disable-user',
@@ -1020,7 +1174,10 @@ done | sort -u
   }
 
   /// 解冻（启用）应用。
-  Future<AdbResult> unfreezeApp(String deviceId, String packageName) {
+  Future<AdbResult> unfreezeApp(String deviceId, String packageName, {bool isHarmony = false}) {
+    if (isHarmony && _hdc != null) {
+      return _hdc.shell(deviceId, 'bm enable -n $packageName');
+    }
     return _adb.shellArgs(deviceId, ['pm', 'enable', packageName]);
   }
 

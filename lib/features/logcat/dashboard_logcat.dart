@@ -1,15 +1,15 @@
 part of '../dashboard_screen.dart';
 
-class _LogcatTab extends ConsumerStatefulWidget {
-  const _LogcatTab({required this.device});
+class LogcatTab extends ConsumerStatefulWidget {
+  const LogcatTab({super.key, required this.device});
 
   final AdbDevice device;
 
   @override
-  ConsumerState<_LogcatTab> createState() => _LogcatTabState();
+  ConsumerState<LogcatTab> createState() => LogcatTabState();
 }
 
-class _LogcatTabState extends ConsumerState<_LogcatTab> {
+class LogcatTabState extends ConsumerState<LogcatTab> {
   final ScrollController _verticalController = ScrollController();
   final TextEditingController _packageController = TextEditingController();
   final TextEditingController _tagController = TextEditingController();
@@ -216,7 +216,10 @@ class _LogcatTabState extends ConsumerState<_LogcatTab> {
             onStartStop: () {
               state.isRunning
                   ? controller.stop()
-                  : controller.start(widget.device.id);
+                  : controller.start(
+                      widget.device.id,
+                      isHarmony: widget.device.isHarmony,
+                    );
             },
             onClear: controller.clear,
             onImport: () => _importLogcatFile(context, controller),

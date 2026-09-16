@@ -76,7 +76,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final terminalState = ref.read(adbTerminalProvider);
       if (terminalState.getSessions(widget.device.id).isEmpty) {
-        ref.read(adbTerminalProvider.notifier).createSession(widget.device.id);
+        ref
+            .read(adbTerminalProvider.notifier)
+            .createSession(widget.device.id, isHarmony: widget.device.isHarmony);
       }
     });
   }
@@ -293,7 +295,12 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
             message: context.l10n.t('newTerminal'),
             child: IconButton(
               icon: const Icon(CupertinoIcons.plus, size: 20),
-              onPressed: () => notifier.createSession(widget.device.id),
+              onPressed: () => ref
+                  .read(adbTerminalProvider.notifier)
+                  .createSession(
+                    widget.device.id,
+                    isHarmony: widget.device.isHarmony,
+                  ),
             ),
           ),
         ],
@@ -333,7 +340,10 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
               label: Text(context.l10n.t('newTerminal')),
               onPressed: () => ref
                   .read(adbTerminalProvider.notifier)
-                  .createSession(widget.device.id),
+                  .createSession(
+                    widget.device.id,
+                    isHarmony: widget.device.isHarmony,
+                  ),
             ),
           ],
         ),

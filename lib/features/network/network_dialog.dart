@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../core/network/port_forward_command.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/network_providers.dart';
 
@@ -284,13 +285,16 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           ? locPort
                           : 'tcp:$locPort';
 
-                      final result = await adb.run([
-                        '-s',
-                        widget.deviceId,
-                        'reverse',
-                        fullDevPort,
-                        fullLocPort,
-                      ]);
+                      final isHarmony = ref
+                          .read(deviceRegistryProvider)
+                          .any((d) => d.id == widget.deviceId && d.isHarmony);
+                      final result = await PortForwardCommand.run(
+                        adb,
+                        isHarmony ? ref.read(hdcServiceProvider) : null,
+                        deviceId: widget.deviceId,
+                        isHarmony: isHarmony,
+                        reverseArgs: [fullDevPort, fullLocPort],
+                      );
                       if (result.isSuccess) {
                         // 强制刷新列表
                         ref.invalidate(

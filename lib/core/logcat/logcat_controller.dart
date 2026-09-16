@@ -22,6 +22,7 @@ class LogcatController extends Notifier<LogcatState> {
   StreamSubscription<String>? _errorSubscription;
   Timer? _pidMapTimer;
   String? _deviceId;
+  bool _isHarmony = false;
   Map<String, String> _pidPackages = const {};
   final List<LogcatEntry> _pendingEntries = [];
   Timer? _batchTimer;
@@ -39,10 +40,11 @@ class LogcatController extends Notifier<LogcatState> {
     return const LogcatState();
   }
 
-  /// 为选中设备启动新的 logcat 进程。
-  Future<void> start(String deviceId) async {
+  /// 为选中设备启动新的 logcat 进程。鸿蒙设备走 `hdc hilog`，安卓走 `adb logcat`。
+  Future<void> start(String deviceId, {bool isHarmony = false}) async {
     await stop();
     _deviceId = deviceId;
+    _isHarmony = isHarmony;
     state = state.copyWith(entries: [], isRunning: true, isPaused: false);
     try {
       await _refreshPidPackages();
@@ -50,13 +52,21 @@ class LogcatController extends Notifier<LogcatState> {
         const Duration(seconds: 5),
         (_) => _refreshPidPackages(),
       );
-      _process = await Process.start(resolveToolPath('adb'), [
-        '-s',
-        deviceId,
-        'logcat',
-        '-v',
-        'threadtime',
-      ]);
+      if (isHarmony) {
+        _process = await Process.start(resolveToolPath('hdc'), [
+          '-t',
+          deviceId,
+          'hilog',
+        ]);
+      } else {
+        _process = await Process.start(resolveToolPath('adb'), [
+          '-s',
+          deviceId,
+          'logcat',
+          '-v',
+          'threadtime',
+        ]);
+      }
       _subscription = _process!.stdout
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const LineSplitter())
@@ -305,27 +315,58 @@ class LogcatController extends Notifier<LogcatState> {
       return;
     }
     try {
-      final result = await Process.run(resolveToolPath('adb'), [
-        '-s',
-        deviceId,
-        'shell',
-        'ps',
-        '-A',
-        '-o',
-        'PID,NAME',
-      ]);
-      if (result.exitCode != 0) {
-        return;
+      final String stdout;
+      if (_isHarmony) {
+        final result = await Process.run(resolveToolPath('hdc'), [
+          '-t',
+          deviceId,
+          'shell',
+          'ps',
+          '-ef',
+        ]);
+        if (result.exitCode != 0) return;
+        stdout = result.stdout.toString();
+        final mapping = _parseHarmonyPidPackages(stdout);
+        if (mapping.isEmpty) return;
+        _pidPackages = mapping;
+      } else {
+        final result = await Process.run(resolveToolPath('adb'), [
+          '-s',
+          deviceId,
+          'shell',
+          'ps',
+          '-A',
+          '-o',
+          'PID,NAME',
+        ]);
+        if (result.exitCode != 0) return;
+        stdout = result.stdout.toString();
+        final mapping = _parsePidPackages(stdout);
+        if (mapping.isEmpty) return;
+        _pidPackages = mapping;
       }
-      final mapping = _parsePidPackages(result.stdout.toString());
-      if (mapping.isEmpty) {
-        return;
-      }
-      _pidPackages = mapping;
       _applyPidPackagesToExistingEntries();
     } on Object {
       // PID 映射只是辅助字段，失败时不影响实时日志展示。
     }
+  }
+
+  /// 解析鸿蒙 `ps -ef` 输出，提取 PID→进程名映射。
+  /// 格式：`UID PID PPID C STIME TTY TIME CMD`
+  Map<String, String> _parseHarmonyPidPackages(String output) {
+    final map = <String, String>{};
+    for (final line in const LineSplitter().convert(output)) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty || trimmed.startsWith('UID')) continue;
+      final parts = trimmed.split(RegExp(r'\s+'));
+      if (parts.length < 8) continue;
+      final pid = parts[1];
+      final cmd = parts.sublist(7).join(' ');
+      if (RegExp(r'^\d+$').hasMatch(pid) && cmd.isNotEmpty) {
+        map[pid] = cmd;
+      }
+    }
+    return map;
   }
 
   Map<String, String> _parsePidPackages(String output) {

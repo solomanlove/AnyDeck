@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adb/adb_service.dart';
+
+import '../network/port_forward_command.dart';
 import '../../common/utils/network_util.dart';
 import 'app_providers.dart';
 
@@ -120,23 +122,32 @@ class PortForwardPreset {
   int get hashCode => Object.hash(name, devicePort, localPort, autoApply);
 }
 
-/// 解析 `adb reverse --list` 输出内容
+/// 解析 `adb reverse --list` / `hdc rport ls` 输出内容。
+///
+/// 安卓格式如 `<serial> tcp:8081 tcp:8081`；鸿蒙格式如 `[tcp:8100 tcp:8080]`。
+/// 统一用正则提取相邻的两组 `tcp:<port>`，两种平台通用。
 List<PortForward> parseReverseList(String stdout) {
-  final lines = stdout.split('\n');
   final list = <PortForward>[];
-  for (var line in lines) {
-    line = line.trim();
-    if (line.isEmpty) continue;
-    final parts = line.split(RegExp(r'\s+'));
-    if (parts.length >= 3) {
-      // 格式如: <serial> tcp:8081 tcp:8081
-      list.add(PortForward(devicePort: parts[1], localPort: parts[2]));
-    } else if (parts.length == 2) {
-      // 格式如: tcp:8081 tcp:8081
-      list.add(PortForward(devicePort: parts[0], localPort: parts[1]));
-    }
+  for (final match in RegExp(r'tcp:(\d+)\s+tcp:(\d+)').allMatches(stdout)) {
+    list.add(
+      PortForward(
+        devicePort: 'tcp:${match.group(1)}',
+        localPort: 'tcp:${match.group(2)}',
+      ),
+    );
   }
   return list;
+}
+
+/// 查询设备是否为鸿蒙设备。
+bool isHarmonyDevice(Ref ref, String deviceId) {
+  try {
+    return ref
+        .read(deviceRegistryProvider)
+        .any((d) => d.id == deviceId && d.isHarmony);
+  } catch (_) {
+    return false;
+  }
 }
 
 /// 解析 Android global http_proxy 字段，兼容空值、null、:0 等未设置状态。
@@ -173,7 +184,15 @@ DeviceProxyConfig parseDeviceHttpProxy(String stdout) {
 final activePortForwardsProvider = FutureProvider.autoDispose
     .family<List<PortForward>, String>((ref, deviceId) async {
       final adb = ref.watch(adbServiceProvider);
-      final result = await adb.run(['-s', deviceId, 'reverse', '--list']);
+      final isHarmony = isHarmonyDevice(ref, deviceId);
+      final hdc = isHarmony ? ref.watch(hdcServiceProvider) : null;
+      final result = await PortForwardCommand.run(
+        adb,
+        hdc,
+        deviceId: deviceId,
+        isHarmony: isHarmony,
+        reverseArgs: const ['--list'],
+      );
       if (!result.isSuccess) {
         return [];
       }
@@ -399,6 +418,8 @@ class PortForwardPresetsNotifier extends Notifier<List<PortForwardPreset>> {
     if (autoPresets.isEmpty) return;
 
     final adb = ref.read(adbServiceProvider);
+    final isHarmony = isHarmonyDevice(ref, deviceId);
+    final hdc = isHarmony ? ref.read(hdcServiceProvider) : null;
     for (final preset in autoPresets) {
       final devPort = preset.devicePort.startsWith('tcp:')
           ? preset.devicePort
@@ -406,7 +427,13 @@ class PortForwardPresetsNotifier extends Notifier<List<PortForwardPreset>> {
       final locPort = preset.localPort.startsWith('tcp:')
           ? preset.localPort
           : 'tcp:${preset.localPort}';
-      await adb.run(['-s', deviceId, 'reverse', devPort, locPort]);
+      await PortForwardCommand.run(
+        adb,
+        hdc,
+        deviceId: deviceId,
+        isHarmony: isHarmony,
+        reverseArgs: [devPort, locPort],
+      );
     }
     // 强制触发列表刷新
     ref.invalidate(activePortForwardsProvider(deviceId));

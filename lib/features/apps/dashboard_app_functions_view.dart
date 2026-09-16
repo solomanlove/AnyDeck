@@ -37,6 +37,9 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
     final isOnline = ref.watch(deviceOnlineProvider(deviceId));
     final service = ref.read(appManagementServiceProvider);
     final packageName = package.name;
+    final isHarmony = ref.read(deviceRegistryProvider).any(
+      (d) => d.id == deviceId && d.isHarmony,
+    );
 
     final Color cardBg = isDark
         ? Colors.white.withValues(alpha: 0.04)
@@ -315,6 +318,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                         service.launch(
                                                           deviceId,
                                                           packageName,
+                                                          isHarmony: isHarmony,
                                                         ),
                                                       )
                                                     : null,
@@ -333,6 +337,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                         service.forceStop(
                                                           deviceId,
                                                           packageName,
+                                                          isHarmony: isHarmony,
                                                         ),
                                                       )
                                                     : null,
@@ -366,6 +371,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                             service.clearData(
                                                               deviceId,
                                                               packageName,
+                                                              isHarmony: isHarmony,
                                                             ),
                                                           );
                                                         }
@@ -418,11 +424,13 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                                     .freezeApp(
                                                                       deviceId,
                                                                       packageName,
+                                                                      isHarmony: isHarmony,
                                                                     )
                                                               : await service
                                                                     .unfreezeApp(
                                                                       deviceId,
                                                                       packageName,
+                                                                      isHarmony: isHarmony,
                                                                     );
                                                           if (context
                                                               .mounted) {
@@ -752,6 +760,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                         service.openAppInfo(
                                                           deviceId,
                                                           packageName,
+                                                          isHarmony: isHarmony,
                                                         ),
                                                       )
                                                     : null,
@@ -899,6 +908,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                                   .uninstall(
                                                                     deviceId,
                                                                     packageName,
+                                                                    isHarmony: isHarmony,
                                                                   );
                                                           if (context
                                                               .mounted) {

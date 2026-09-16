@@ -11,6 +11,7 @@ class PackageRefreshRunner {
     required this.publishPackages,
     this.canonicalId,
     this.fallbackKeys = const [],
+    this.isHarmony = false,
   });
 
   final AppManagementService service;
@@ -19,6 +20,7 @@ class PackageRefreshRunner {
   final List<String> fallbackKeys;
   final bool Function() isActive;
   final void Function(List<AdbPackage>) publishPackages;
+  final bool isHarmony;
 
   Future<void> run({PackageRefreshCallback? onProgress}) async {
     var progress = const PackageRefreshProgress();
@@ -40,6 +42,7 @@ class PackageRefreshRunner {
         refreshIconsInBackground: false,
         canonicalId: canonicalId,
         fallbackKeys: fallbackKeys,
+        isHarmony: isHarmony,
       );
       if (!isActive()) return;
       publishPackages(packages);
@@ -56,6 +59,9 @@ class PackageRefreshRunner {
           onProgress: report,
           throwOnError: true,
           isActive: isActive,
+          isHarmony: isHarmony,
+          canonicalId: canonicalId,
+          fallbackKeys: fallbackKeys,
         )) {
           if (!isActive()) return;
           packages = updated;

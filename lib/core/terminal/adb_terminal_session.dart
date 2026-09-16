@@ -38,6 +38,8 @@ class AdbTerminalSession {
   final int historyIndex;
   final Process? process;
   final bool isRunning;
+  /// 是否为鸿蒙设备会话，决定底层走 hdc 还是 adb。
+  final bool isHarmony;
 
   const AdbTerminalSession({
     required this.id,
@@ -47,6 +49,7 @@ class AdbTerminalSession {
     required this.historyIndex,
     this.process,
     required this.isRunning,
+    this.isHarmony = false,
   });
 
   AdbTerminalSession copyWith({
@@ -57,6 +60,7 @@ class AdbTerminalSession {
     int? historyIndex,
     Process? process,
     bool? isRunning,
+    bool? isHarmony,
   }) {
     return AdbTerminalSession(
       id: id ?? this.id,
@@ -66,6 +70,7 @@ class AdbTerminalSession {
       historyIndex: historyIndex ?? this.historyIndex,
       process: process ?? this.process,
       isRunning: isRunning ?? this.isRunning,
+      isHarmony: isHarmony ?? this.isHarmony,
     );
   }
 }
@@ -122,8 +127,22 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     return const AdbTerminalState();
   }
 
+  /// 启动交互式 shell 进程；鸿蒙走 `hdc shell`，安卓走 `adb shell -tt` 强制 PTY。
+  Future<Process> _startShellProcess(
+    String deviceId, {
+    required bool isHarmony,
+  }) async {
+    if (isHarmony) {
+      final hdcPath = resolveToolPath('hdc');
+      return Process.start(hdcPath, ['-t', deviceId, 'shell']);
+    }
+    final adbPath = resolveToolPath('adb');
+    // stdin 是管道，必须强制申请 PTY，才能收到设备真实的提示符和输入回显。
+    return Process.start(adbPath, ['-s', deviceId, 'shell', '-tt']);
+  }
+
   /// 创建并启动一个新的终端会话
-  Future<void> createSession(String deviceId) async {
+  Future<void> createSession(String deviceId, {bool isHarmony = false}) async {
     final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
     final currentSessions = state.getSessions(deviceId);
 
@@ -134,6 +153,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       commandHistory: [],
       historyIndex: -1,
       isRunning: true,
+      isHarmony: isHarmony,
     );
 
     final updatedSessionsMap = Map<String, List<AdbTerminalSession>>.from(
@@ -152,14 +172,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     );
 
     try {
-      final adbPath = resolveToolPath('adb');
-      // stdin 是管道，必须强制申请 PTY，才能收到设备真实的提示符和输入回显。
-      final process = await Process.start(adbPath, [
-        '-s',
-        deviceId,
-        'shell',
-        '-tt',
-      ]);
+      final process = await _startShellProcess(deviceId, isHarmony: isHarmony);
 
       _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
 
@@ -308,14 +321,10 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     );
 
     try {
-      final adbPath = resolveToolPath('adb');
-      // 重连沿用 PTY，保持 root 提示符与交互行为一致。
-      final process = await Process.start(adbPath, [
-        '-s',
+      final process = await _startShellProcess(
         deviceId,
-        'shell',
-        '-tt',
-      ]);
+        isHarmony: session.isHarmony,
+      );
 
       _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
 

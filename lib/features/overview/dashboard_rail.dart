@@ -62,12 +62,20 @@ class PrimaryRail extends ConsumerWidget {
         return const {0, 1, 2, 3, 4, 6, 9}.contains(tabIndex);
       }
       // 鸿蒙 NEXT（纯血鸿蒙）支持：
-      // 主页(0)、控制(1)、文件(3)、截图(9)
+      // 主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)
       if (selectedDevice!.isHarmony) {
         if (!selectedDevice!.isOnline) {
           return tabIndex == 0;
         }
-        return tabIndex == 0 || tabIndex == 1 || tabIndex == 3 || tabIndex == 9;
+        return tabIndex == 0 ||
+            tabIndex == 1 ||
+            tabIndex == 2 ||
+            tabIndex == 3 ||
+            tabIndex == 4 ||
+            tabIndex == 5 ||
+            tabIndex == 6 ||
+            tabIndex == 7 ||
+            tabIndex == 9;
       }
       if (selectedDevice!.isOnline) {
         return true;
@@ -138,7 +146,7 @@ class PrimaryRail extends ConsumerWidget {
         ),
       ];
     } else if (isHarmony) {
-      // 3. 鸿蒙设备专属 Tab 列表（支持主页、控制、文件、截图）
+      // 3. 鸿蒙设备专属 Tab 列表（支持主页、控制、应用、文件、日志、终端、进程、网页调试、截图）
       tools = [
         _RailToolItem(
           tabIndex: -1,
@@ -156,9 +164,34 @@ class PrimaryRail extends ConsumerWidget {
           label: context.l10n.t('control'),
         ),
         _RailToolItem(
+          tabIndex: 2,
+          icon: CupertinoIcons.square_grid_2x2,
+          label: context.l10n.t('apps'),
+        ),
+        _RailToolItem(
           tabIndex: 3,
           icon: CupertinoIcons.folder,
           label: context.l10n.t('files'),
+        ),
+        _RailToolItem(
+          tabIndex: 4,
+          icon: CupertinoIcons.doc_text,
+          label: context.l10n.t('logcat'),
+        ),
+        _RailToolItem(
+          tabIndex: 5,
+          icon: CupertinoIcons.chevron_left_slash_chevron_right,
+          label: context.l10n.t('terminal'),
+        ),
+        _RailToolItem(
+          tabIndex: 6,
+          icon: CupertinoIcons.list_bullet,
+          label: context.l10n.t('processes'),
+        ),
+        _RailToolItem(
+          tabIndex: 7,
+          icon: CupertinoIcons.globe,
+          label: context.l10n.t('webpages'),
         ),
         _RailToolItem(
           tabIndex: 9,

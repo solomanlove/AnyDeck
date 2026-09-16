@@ -3,16 +3,24 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../adb/adb_service.dart';
+import '../harmony/hdc_service.dart';
 import 'webpage_target.dart';
 
 /// 安卓 WebView 及 Chrome 远程网页调试服务。
+///
+/// 鸿蒙设备通过 [isHarmony] 参数分流走 hdc 通道（`hdc shell cat /proc/net/unix`
+/// 发现 socket、`hdc fport` 转发），页面列表仍复用标准 DevTools HTTP 接口。
 class WebDebugService {
-  WebDebugService(this._adb);
+  WebDebugService(this._adb, {HdcService? hdc}) : _hdc = hdc;
 
   final AdbService _adb;
+  final HdcService? _hdc;
 
   /// 缓存已转发的端口映射，格式为：`deviceId:socketName` -> `localPort`
   final Map<String, int> _forwardedPorts = {};
+
+  /// 记录由 hdc 建立的转发 key，dispose 时按通道分流清理
+  final Set<String> _harmonyForwardKeys = {};
 
   /// 缓存进程名以减少 adb 请求，格式为：`pid` -> `packageName`
   final Map<String, String> _packageNameCache = {};
@@ -21,9 +29,12 @@ class WebDebugService {
   Future<List<WebpageTarget>> scanTargets(
     String deviceId, {
     bool includeAllTargets = false,
+    bool isHarmony = false,
   }) async {
     // 1. 读取手机的 unix sockets 列表以查找 devtools
-    final result = await _adb.shellArgs(deviceId, ['cat', '/proc/net/unix']);
+    final result = isHarmony && _hdc != null
+        ? await _hdc.shell(deviceId, 'cat /proc/net/unix')
+        : await _adb.shellArgs(deviceId, ['cat', '/proc/net/unix']);
     if (!result.isSuccess) {
       return [];
     }
@@ -35,9 +46,16 @@ class WebDebugService {
       final parts = line.split(RegExp(r'\s+'));
       if (parts.length >= 8) {
         final path = parts.last;
-        // 如果是以 @ 开头，且包含 devtools_remote 的套接字
-        if (path.startsWith('@') && path.contains('devtools_remote')) {
-          activeSockets.add(path.substring(1)); // 剥离 @
+        if (path.startsWith('@')) {
+          if (isHarmony) {
+            // 鸿蒙 ArkWeb 开启 setWebDebuggingAccess 后的 socket 命名含
+            // devtools 字样（如 arkweb_devtools_<pid>），放宽匹配条件。
+            if (path.contains('devtools')) {
+              activeSockets.add(path.substring(1)); // 剥离 @
+            }
+          } else if (path.contains('devtools_remote')) {
+            activeSockets.add(path.substring(1)); // 剥离 @
+          }
         }
       }
     }
@@ -56,9 +74,20 @@ class WebDebugService {
 
     for (final key in keysToRemove) {
       final port = _forwardedPorts.remove(key);
+      _harmonyForwardKeys.remove(key);
       if (port != null) {
         try {
-          await _adb.run(['-s', deviceId, 'forward', '--remove', 'tcp:$port']);
+          if (isHarmony && _hdc != null) {
+            await _hdc.removeForward(deviceId, port);
+          } else {
+            await _adb.run([
+              '-s',
+              deviceId,
+              'forward',
+              '--remove',
+              'tcp:$port',
+            ]);
+          }
         } catch (_) {}
       }
     }
@@ -66,8 +95,7 @@ class WebDebugService {
     // 3. 逐个请求 sockets 列表并组装网页目标
     final allTargets = <WebpageTarget>[];
     for (final socketName in activeSockets) {
-      if (!includeAllTargets &&
-          !socketName.startsWith('webview_devtools_remote_')) {
+      if (!includeAllTargets && !_isWebviewSocket(socketName, isHarmony)) {
         continue;
       }
 
@@ -75,12 +103,16 @@ class WebDebugService {
       final pidMatch = RegExp(r'\d+$').firstMatch(socketName);
       final pid = pidMatch?.group(0) ?? '';
       final packageName = pid.isNotEmpty
-          ? await _getPackageName(deviceId, pid)
+          ? await _getPackageName(deviceId, pid, isHarmony: isHarmony)
           : '未知应用';
 
       try {
-        await _removeStaleForwards(deviceId, socketName);
-        final port = await _getOrForwardPort(deviceId, socketName);
+        await _removeStaleForwards(deviceId, socketName, isHarmony: isHarmony);
+        final port = await _getOrForwardPort(
+          deviceId,
+          socketName,
+          isHarmony: isHarmony,
+        );
         final rawTargets = await _fetchTargets(port);
         for (final raw in rawTargets) {
           if (!includeAllTargets && raw['type'] != 'page') {
@@ -104,14 +136,36 @@ class WebDebugService {
     return allTargets;
   }
 
+  /// 判断 socket 是否属于应用 WebView 调试通道。
+  bool _isWebviewSocket(String socketName, bool isHarmony) {
+    if (isHarmony) {
+      // 兼容 arkweb_devtools_<pid> 与 *_devtools_remote_<pid> 两种命名。
+      return socketName.contains('devtools');
+    }
+    return socketName.startsWith('webview_devtools_remote_');
+  }
+
   /// 获取或建立一个端口转发。
-  Future<int> _getOrForwardPort(String deviceId, String socketName) async {
+  Future<int> _getOrForwardPort(
+    String deviceId,
+    String socketName, {
+    bool isHarmony = false,
+  }) async {
     final key = '$deviceId:$socketName';
     if (_forwardedPorts.containsKey(key)) {
       return _forwardedPorts[key]!;
     }
 
     final port = await _findFreePort();
+    if (isHarmony && _hdc != null) {
+      final result = await _hdc.forward(deviceId, port, 'localabstract:$socketName');
+      if (result.isSuccess) {
+        _forwardedPorts[key] = port;
+        _harmonyForwardKeys.add(key);
+        return port;
+      }
+      throw Exception('Hdc fport failed: ${result.message}');
+    }
     final result = await _adb.run([
       '-s',
       deviceId,
@@ -128,7 +182,36 @@ class WebDebugService {
   }
 
   /// 清理同一 socket 的历史端口转发，避免旧 App 实例或旧刷新残留影响连接。
-  Future<void> _removeStaleForwards(String deviceId, String socketName) async {
+  Future<void> _removeStaleForwards(
+    String deviceId,
+    String socketName, {
+    bool isHarmony = false,
+  }) async {
+    if (isHarmony && _hdc != null) {
+      final result = await _hdc.listForwards(deviceId);
+      if (!result.isSuccess) {
+        return;
+      }
+      final knownPort = _forwardedPorts['$deviceId:$socketName'];
+      // hdc fport ls 输出形如 [tcp:1234 localabstract:xxx]
+      for (final match in RegExp(
+        r'tcp:(\d+)\s+localabstract:(\S+)',
+      ).allMatches(result.stdout)) {
+        final port = int.tryParse(match.group(1) ?? '');
+        final remote = match.group(2);
+        if (port == null ||
+            remote != socketName ||
+            port == knownPort ||
+            !_forwardedPorts.containsValue(port)) {
+          continue;
+        }
+        try {
+          await _hdc.removeForward(deviceId, port);
+        } catch (_) {}
+      }
+      return;
+    }
+
     final result = await _adb.run(['-s', deviceId, 'forward', '--list']);
     if (!result.isSuccess) {
       return;
@@ -204,15 +287,21 @@ class WebDebugService {
   }
 
   /// 获取 PID 对应的包名并缓存。
-  Future<String> _getPackageName(String deviceId, String pid) async {
+  Future<String> _getPackageName(
+    String deviceId,
+    String pid, {
+    bool isHarmony = false,
+  }) async {
     if (_packageNameCache.containsKey(pid)) {
       return _packageNameCache[pid]!;
     }
     try {
-      final result = await _adb.shellArgs(deviceId, [
-        'cat',
-        '/proc/$pid/cmdline',
-      ]);
+      final result = isHarmony && _hdc != null
+          ? await _hdc.shell(deviceId, 'cat /proc/$pid/cmdline')
+          : await _adb.shellArgs(deviceId, [
+              'cat',
+              '/proc/$pid/cmdline',
+            ]);
       if (result.isSuccess && result.stdout.trim().isNotEmpty) {
         final name = result.stdout.split('\x00').first.trim();
         if (name.isNotEmpty) {
@@ -236,9 +325,20 @@ class WebDebugService {
 
     for (final key in keysToRemove) {
       final port = _forwardedPorts.remove(key);
+      final isHarmonyForward = _harmonyForwardKeys.remove(key);
       if (port != null) {
         try {
-          await _adb.run(['-s', deviceId, 'forward', '--remove', 'tcp:$port']);
+          if (isHarmonyForward && _hdc != null) {
+            await _hdc.removeForward(deviceId, port);
+          } else {
+            await _adb.run([
+              '-s',
+              deviceId,
+              'forward',
+              '--remove',
+              'tcp:$port',
+            ]);
+          }
         } catch (_) {}
       }
     }
@@ -254,15 +354,27 @@ class WebDebugService {
       if (parts.isNotEmpty) {
         final deviceId = parts[0];
         try {
-          unawaited(
-            Process.run(_adb.executable, [
-              '-s',
-              deviceId,
-              'forward',
-              '--remove',
-              'tcp:$port',
-            ]).catchError((_) => ProcessResult(0, 0, '', '')),
-          );
+          if (_harmonyForwardKeys.remove(key) && _hdc != null) {
+            unawaited(
+              Process.run(_hdc.executable, [
+                '-t',
+                deviceId,
+                'fport',
+                'rm',
+                'tcp:$port',
+              ]).catchError((_) => ProcessResult(0, 0, '', '')),
+            );
+          } else {
+            unawaited(
+              Process.run(_adb.executable, [
+                '-s',
+                deviceId,
+                'forward',
+                '--remove',
+                'tcp:$port',
+              ]).catchError((_) => ProcessResult(0, 0, '', '')),
+            );
+          }
         } catch (_) {}
       }
     }

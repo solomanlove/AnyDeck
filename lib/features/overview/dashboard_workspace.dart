@@ -283,21 +283,21 @@ class _ToolContentCardState extends State<_ToolContentCard> {
               sessions: widget.sessions,
             ),
           ),
-          2 => _AppsTab(device: widget.device),
+          2 => HarmonyAppsTab(device: widget.device),
           3 => HarmonyFilesTab(
             key: ValueKey(widget.device.id),
             device: widget.device,
           ),
-          4 => _LogcatTab(device: widget.device),
+          4 => HarmonyLogcatTab(device: widget.device),
           5 => Padding(
             padding: const EdgeInsets.all(16),
-            child: TerminalTab(device: widget.device),
+            child: HarmonyTerminalTab(device: widget.device),
           ),
-          6 => ProcessesTab(
+          6 => HarmonyProcessesTab(
             device: widget.device,
             isVisible: _currentToolIndex == 6,
           ),
-          7 => WebpagesTab(
+          7 => HarmonyWebpagesTab(
             device: widget.device,
             isVisible: _currentToolIndex == 7,
           ),
@@ -313,14 +313,14 @@ class _ToolContentCardState extends State<_ToolContentCard> {
           _ => const SizedBox.shrink(),
         };
       }
-      return switch (index) {
-        0 => _OverviewTab(device: widget.device),
-        1 => _ToolTabScrollView(
-          child: _ControlTab(device: widget.device, sessions: widget.sessions),
-        ),
-        2 => _AppsTab(device: widget.device),
+  return switch (index) {
+    0 => _OverviewTab(device: widget.device),
+    1 => _ToolTabScrollView(
+      child: _ControlTab(device: widget.device, sessions: widget.sessions),
+    ),
+    2 => AppsTab(device: widget.device),
         3 => _FilesTab(device: widget.device),
-        4 => _LogcatTab(device: widget.device),
+        4 => LogcatTab(device: widget.device),
         5 => Padding(
           padding: const EdgeInsets.all(16),
           child: TerminalTab(device: widget.device),

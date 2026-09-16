@@ -104,7 +104,10 @@ final foregroundAppServiceProvider = Provider<ForegroundAppService>((ref) {
 
 /// 应用管理门面，负责安装、卸载、启动和列表读取。
 final appManagementServiceProvider = Provider<AppManagementService>((ref) {
-  return AppManagementService(ref.watch(adbServiceProvider));
+  return AppManagementService(
+    ref.watch(adbServiceProvider),
+    hdc: ref.watch(hdcServiceProvider),
+  );
 });
 
 /// 应用数据备份门面，负责按系统版本选择 adb backup、run-as 或 Root tar。
@@ -148,7 +151,7 @@ final scrcpyServiceProvider = Provider<ScrcpyService>((ref) {
 
 /// 进程管理门面，负责查询和结束进程。
 final processServiceProvider = Provider<ProcessService>((ref) {
-  return ProcessService(ref.watch(adbServiceProvider));
+  return ProcessService(ref.watch(adbServiceProvider), ref.watch(hdcServiceProvider));
 });
 
 /// 宿主机系统平台服务，负责处理与宿主机 OS 交互的操作。
@@ -164,12 +167,19 @@ final cacheCleanupServiceProvider = Provider<CacheCleanupService>((ref) {
 /// 单台设备的当前运行进程列表。
 final processesProvider = FutureProvider.autoDispose
     .family<List<AdbProcess>, String>((ref, deviceId) {
-      return ref.watch(processServiceProvider).getProcesses(deviceId);
+      final registry = ref.watch(deviceRegistryProvider);
+      final isHarmony = registry.any((d) => d.id == deviceId && d.isHarmony);
+      return ref
+          .watch(processServiceProvider)
+          .getProcesses(deviceId, isHarmony: isHarmony);
     });
 
 /// 网页调试服务。
 final webDebugServiceProvider = Provider<WebDebugService>((ref) {
-  final service = WebDebugService(ref.watch(adbServiceProvider));
+  final service = WebDebugService(
+    ref.watch(adbServiceProvider),
+    hdc: ref.watch(hdcServiceProvider),
+  );
   ref.onDispose(service.disposeAll);
   return service;
 });
@@ -179,8 +189,15 @@ final webTargetsProvider = FutureProvider.autoDispose
     .family<List<WebpageTarget>, String>((ref, deviceId) async {
       final service = ref.watch(webDebugServiceProvider);
       final showAllTargets = ref.watch(showAllWebTargetsProvider);
+      final isHarmony = ref
+          .read(deviceRegistryProvider)
+          .any((d) => d.id == deviceId && d.isHarmony);
       await Future<void>.delayed(Duration.zero);
-      return service.scanTargets(deviceId, includeAllTargets: showAllTargets);
+      return service.scanTargets(
+        deviceId,
+        includeAllTargets: showAllTargets,
+        isHarmony: isHarmony,
+      );
     });
 
 /// 选中的网页目标。
@@ -325,6 +342,11 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
     return keys.toList(growable: false);
   }
 
+  bool get _isHarmony {
+    final dev = _resolveRegisteredDevice();
+    return dev?.isHarmony ?? false;
+  }
+
   @override
   AsyncValue<List<AdbPackage>> build() {
     ref.keepAlive();
@@ -378,6 +400,7 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
         deviceId,
         canonicalId: _canonicalId,
         fallbackKeys: _fallbackKeys,
+        isHarmony: _isHarmony,
       );
       if (isDisposed || revision != _loadRevision) return;
       state = AsyncValue.data(initialPackages);
@@ -404,6 +427,7 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       fallbackKeys: _fallbackKeys,
       isActive: () => ref.mounted,
       publishPackages: (packages) => state = AsyncValue.data(packages),
+      isHarmony: _isHarmony,
     );
     return _refreshAllTask = runner.run(onProgress: onProgress).whenComplete(() {
       _refreshAllTask = null;
@@ -416,17 +440,28 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
     if (current == null) return;
 
     final service = ref.read(appManagementServiceProvider);
-    final updated = await service.getSinglePackageInfo(deviceId, packageName);
+    final updated = await service.getSinglePackageInfo(
+      deviceId,
+      packageName,
+      isHarmony: _isHarmony,
+    );
 
     final List<AdbPackage> newList;
     if (updated == null) {
       // 如果应用已被卸载或无法获取信息，从列表中移除它
       newList = current.where((p) => p.name != packageName).toList();
     } else {
-      // 否则，在列表中替换为最新信息
+      // 否则，在列表中替换为最新信息。鸿蒙单包刷新只返回 name/system，需保留旧
+      // label/icon 等展示字段，避免点击应用后图标和名称丢失。
       final index = current.indexWhere((p) => p.name == packageName);
       if (index != -1) {
-        newList = List<AdbPackage>.from(current)..[index] = updated;
+        final old = current[index];
+        final merged = updated.copyWith(
+          label: updated.label ?? old.label,
+          iconLocalPath: updated.iconLocalPath ?? old.iconLocalPath,
+          iconRemotePath: updated.iconRemotePath ?? old.iconRemotePath,
+        );
+        newList = List<AdbPackage>.from(current)..[index] = merged;
       } else {
         newList = List<AdbPackage>.from(current)..add(updated);
       }

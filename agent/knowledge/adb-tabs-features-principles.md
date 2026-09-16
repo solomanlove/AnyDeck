@@ -337,4 +337,41 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
    - **交互式更新检测器 (`_UpdateCheckDialog`)**：
      - **状态流转换**：`Checking`（动画旋转器） $\rightarrow$ `HasUpdate`（显示 v1.0.1 升级日志） $\rightarrow$ `Downloading`（展示进度百分比、动态速率及下载大小） $\rightarrow$ `Installing`（加载安装） $\rightarrow$ `Success`（更新成功）。
      - **动画支持**：旋转动画采用 `RotationTransition` 及 `AnimationController` 实现，以 2 秒为周期无限循环旋转；下载进度利用 `Timer.periodic` 步进更新。
-     - **双语多态设计**：包含独立的中文与英文文案对照（如 `updateSuccessDesc` 与 `downloadComplete`），消除硬编码，在语言切换时自动更新相应状态文案。
+      - **双语多态设计**：包含独立的中文与英文文案对照（如 `updateSuccessDesc` 与 `downloadComplete`），消除硬编码，在语言切换时自动更新相应状态文案。
+
+---
+
+## 附录 A. 鸿蒙 Tab 适配（Harmony Tab Adaptation）
+
+### 适配范围
+纯血 HarmonyOS NEXT 设备（`AdbDevice.isHarmony == true`）通过 hdc 通道对齐安卓 tab 能力，已开放：主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、设置(12)、玩安卓(13)、AI MCP(14)。不支持且已隐藏：HTTP 代理（无 hdc 对应命令）、单 App 投屏（鸿蒙无虚拟副屏 + `aa start --display` 公开机制）。
+
+### 复用模式
+采用"独立鸿蒙 tab 文件 + 复用安卓公共 UI 组件"的物理隔离策略：
+- **UI 层**：每个鸿蒙 tab 是 thin wrapper（`HarmonyAppsTab`/`HarmonyLogcatTab`/`HarmonyTerminalTab`/`HarmonyProcessesTab`/`HarmonyWebpagesTab`），直接复用安卓同名 Tab 的完整 widget，不重复 UI 代码。
+- **底层分流**：service/provider 方法增加 `isHarmony` 命名参数，按平台走 hdc 命令；`isHarmony` 由 `deviceRegistryProvider` 在 provider 层解析，或由 `widget.device.isHarmony` 在 UI 层传入。
+- **rail/workspace/dashboard_screen**：`isToolEnabled` 与 tab 重定向白名单按鸿蒙能力集合收口；workspace 鸿蒙分支 switch case 指向 Harmony*Tab。
+
+### 命令映射
+| 功能 | 安卓命令 | 鸿蒙命令 |
+|---|---|---|
+| 应用列表 | `pm list packages -f -U` | `bm dump -a` / `bm dump -a -s`（系统应用） |
+| 应用详情 | `dumpsys package <pkg>` | `bm dump -n <bundle>`（解析 bundleName/appName） |
+| 启动应用 | `monkey -p <pkg> 1` | `aa start -b <bundle> -a EntryAbility` |
+| 强停应用 | `am force-stop <pkg>` | `aa force-stop <bundle>` |
+| 卸载应用 | `adb uninstall <pkg>` | `bm uninstall -n <bundle>` |
+| 清除数据 | `pm clear <pkg>` | `bm clean -n <bundle> -d` |
+| 冻结/解冻 | `pm disable-user` / `pm enable` | `bm disable -n` / `bm enable -n` |
+| 日志 | `adb logcat -v threadtime` | `hdc hilog` |
+| 进程列表 | `adb shell top -b -n 1` | `hdc shell ps -ef` |
+| 强停进程 | `am force-stop <pkg>` | `aa force-stop <bundle>` |
+| 终端 | `adb shell -tt` | `hdc shell` |
+| Web socket 发现 | `adb shell cat /proc/net/unix`（匹配 `devtools_remote`） | `hdc shell cat /proc/net/unix`（匹配含 `devtools`，兼容 ArkWeb 命名） |
+| Web 端口转发 | `adb forward tcp:<p> localabstract:<s>` | `hdc fport tcp:<p> localabstract:<s>` |
+| 反向端口转发 | `adb reverse` | `hdc rport`（`rport ls` / `rport rm` / `rport tcp:<dev> tcp:<loc>`） |
+
+### 关键文件
+- 服务层：`lib/core/apps/app_management_service.dart`（isHarmony 分流 bm/aa）、`lib/core/web_debug/web_debug_service.dart`（isHarmony 分流 fport）、`lib/core/network/port_forward_command.dart`（adb reverse / hdc rport 收口适配层）、`lib/core/harmony/hdc_service_fport.dart`（`HdcServiceFport` extension 封装 fport/rport）
+- 鸿蒙 tab wrapper：`lib/features/{apps,logcat,terminal,processes,webpages}/harmony_*.dart`
+- 装配层：`lib/core/providers/app_providers.dart`（`appManagementServiceProvider`/`webDebugServiceProvider` 注入 hdc；`PackagesNotifier._isHarmony`）、`lib/core/providers/network_providers.dart`（`isHarmonyDevice` helper + `activePortForwardsProvider` 分流）
+- 已知限制：鸿蒙应用暂无图标/label/versionName 元数据（`bm dump` 不提供，需后续 `bm dump -n` 深度解析）；应用详情页 `getPackageDetailedInfo` 仍走 adb，鸿蒙上会降级；APK 安装对鸿蒙不适用（需 hap 包 + `hdc install`）。

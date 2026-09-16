@@ -54,8 +54,11 @@ import '../core/device_actions/device_action_service.dart';
 import '../core/device_actions/wifi_credentials.dart';
 import 'control/device_settings_popup.dart';
 import 'terminal/terminal_tab.dart';
+import 'terminal/harmony_terminal_tab.dart';
 import 'processes/processes_tab.dart';
+import 'processes/harmony_processes_tab.dart';
 import 'webpages/webpages_tab.dart';
+import 'webpages/harmony_webpages_tab.dart';
 import 'screenshot/dashboard_screenshot_tab.dart';
 import 'control/harmony_control_tab.dart';
 import 'screenshot/harmony_screenshot_tab.dart';
@@ -134,6 +137,7 @@ part 'files/dashboard_file_path_field.dart';
 part 'files/dashboard_files_table_header.dart';
 part 'files/dashboard_file_items.dart';
 part 'logcat/dashboard_logcat.dart';
+part 'logcat/harmony_logcat_tab.dart';
 part 'logcat/dashboard_logcat_toolbar.dart';
 part 'logcat/dashboard_logcat_list.dart';
 part 'logcat/dashboard_logcat_table.dart';
@@ -144,6 +148,7 @@ part 'apps/dashboard_app_details_tabs_2.dart';
 part 'apps/dashboard_app_signature_tab.dart';
 part 'apps/dashboard_app_permissions.dart';
 part 'apps/dashboard_app_functions_view.dart';
+part 'apps/harmony_apps_tab.dart';
 part 'devices/dashboard_pairing.dart';
 part 'devices/dashboard_devices_panel.dart';
 part 'devices/dashboard_devices_view.dart';
@@ -392,12 +397,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             ref.read(selectedToolTabProvider.notifier).select(0);
           }
         } else if (effectiveSelectedDevice.isHarmony) {
-          // 鸿蒙设备仅支持主页(0)、控制(1)、文件(3)、截图(9)、设置(12)、玩安卓(13)、AI MCP(14)
+          // 鸿蒙设备支持主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、设置(12)、玩安卓(13)、AI MCP(14)
           final selectedTool = ref.read(selectedToolTabProvider);
           if (selectedTool != -1 &&
               selectedTool != 0 &&
               selectedTool != 1 &&
+              selectedTool != 2 &&
               selectedTool != 3 &&
+              selectedTool != 4 &&
+              selectedTool != 5 &&
+              selectedTool != 6 &&
+              selectedTool != 7 &&
               selectedTool != 9 &&
               selectedTool != 12 &&
               selectedTool != 13 &&

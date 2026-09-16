@@ -23,16 +23,27 @@ class _RefreshService extends AppManagementService {
   int saves = 0;
 
   @override
-  Future<List<AdbPackage>?> loadPackageCache(String deviceId) async =>
+  Future<List<AdbPackage>?> loadPackageCache(
+    String deviceId, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) async =>
       await (cached ?? Future.value([const AdbPackage(name: 'old.app')]));
 
   @override
-  Future<void> clearPackageCache(String deviceId) async {}
+  Future<void> clearPackageCache(
+    String deviceId, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) async {}
 
   @override
   Future<List<AdbPackage>> refreshPackages(
     String deviceId, {
     bool refreshIconsInBackground = true,
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+    bool isHarmony = false,
   }) async {
     expect(refreshIconsInBackground, isFalse);
     reads++;
@@ -48,6 +59,9 @@ class _RefreshService extends AppManagementService {
     PackageRefreshCallback? onProgress,
     bool throwOnError = false,
     bool Function()? isActive,
+    bool isHarmony = false,
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
   }) async* {
     expect(throwOnError, isTrue);
     onProgress?.call(
@@ -64,8 +78,10 @@ class _RefreshService extends AppManagementService {
   @override
   Future<void> savePackageCache(
     String deviceId,
-    List<AdbPackage> packages,
-  ) async {
+    List<AdbPackage> packages, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) async {
     saves++;
     if (saveGate != null) await saveGate!.future;
     if (failSave) throw StateError('save failed');
@@ -73,6 +89,7 @@ class _RefreshService extends AppManagementService {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late _RefreshService service;
   late ProviderContainer container;
   late PackagesNotifier notifier;
