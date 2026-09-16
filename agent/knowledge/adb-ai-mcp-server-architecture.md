@@ -110,3 +110,9 @@ AnyDeck MCP 服务基于分层架构实现：
 1. **高危指令拦截**：`execute_shell` 自动检测并阻止 `rm -rf /`、`wipe_data`、`fastboot flash`、`mkfs`、`format` 等破坏性指令。
 2. **工具级别细粒度开关**：用户可在 AnyDeck 桌面端设置页实时禁用任意单一工具。
 3. **调用审计与监控**：所有经过 MCP 的请求方法、参数、耗时与错误信息均在 `McpAuditLogsViewer` 实时展示与追溯。
+
+## 6. SSE 服务停止与连接回收
+
+`McpSseTransport.stop()` 先复制活动 SSE 客户端列表并清空连接 Map，再逐个关闭 `HttpResponse`。关闭连接会触发 `response.done` 回调删除 Map 项，因此不能在遍历 Map 的同时 `await client.close()`，否则多个客户端连接时可能抛出 `Concurrent modification during iteration`，导致控制台继续显示运行中。连接关闭后再关闭 `HttpServer`，成功返回后由 `McpServerNotifier.stopServer()` 更新运行状态与持久化配置。
+
+验证：`flutter test test/mcp_sse_transport_test.dart` 使用两个真实 SSE 客户端检查停止流程；手工回归可在两个 AI 客户端接入后点击“停止服务”，确认状态变为“已停止”，再次启动后两个客户端可重新连接。此项不涉及 ADB 命令、设备状态或多窗口广播。

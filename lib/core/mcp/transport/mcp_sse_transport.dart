@@ -245,12 +245,14 @@ class McpSseTransport implements McpTransportInterface {
     if (!_isRunning) return;
     _isRunning = false;
 
-    for (final client in _activeSseClients.values) {
+    // 关闭连接会触发 done 回调修改 Map，先复制再遍历。
+    final clients = _activeSseClients.values.toList();
+    _activeSseClients.clear();
+    for (final client in clients) {
       try {
         await client.close();
       } catch (_) {}
     }
-    _activeSseClients.clear();
 
     await _server?.close(force: true);
     _server = null;
