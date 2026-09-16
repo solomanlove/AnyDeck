@@ -2320,11 +2320,23 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
   }
 
   List<RegisteredDevice> _mergeDevices(List<AdbDevice> activeDevices) {
-    final activeMap = {for (final d in activeDevices) d.id: d};
+    final activeMap = <String, AdbDevice>{};
+    for (final device in activeDevices) {
+      final existing = activeMap[device.id];
+      // 同一地址被 ADB 与 HDC 同时发现时，在线优先；状态相同时保留 ADB 路由。
+      if (existing == null ||
+          (device.isOnline && !existing.isOnline) ||
+          (device.isOnline == existing.isOnline &&
+              existing.isHarmony &&
+              !device.isHarmony)) {
+        activeMap[device.id] = device;
+      }
+    }
+    final resolvedActiveDevices = activeMap.values.toList();
 
     bool historyChanged = false;
     final nextHistory = List<String>.from(_historyIds);
-    for (final device in activeDevices) {
+    for (final device in resolvedActiveDevices) {
       if (!nextHistory.contains(device.id)) {
         nextHistory.add(device.id);
         historyChanged = true;
@@ -2337,7 +2349,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
 
     // 缓存最新获取到的在线设备 model 和 product 信息
     bool modelsOrProductsChanged = false;
-    for (final device in activeDevices) {
+    for (final device in resolvedActiveDevices) {
       if (device.model != null && device.model!.isNotEmpty) {
         if (_models[device.id] != device.model) {
           _models[device.id] = device.model!;
@@ -2356,10 +2368,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     }
 
     // 触发获取新在线设备(或无缓存的IP/系统版本)的序列号、IP 和 Android 版本。
-    final activeIds = activeDevices.map((d) => d.id).toSet();
+    final activeIds = resolvedActiveDevices.map((d) => d.id).toSet();
     _attemptedFetchIds.removeWhere((id) => !activeIds.contains(id));
 
-    for (final device in activeDevices) {
+    for (final device in resolvedActiveDevices) {
       final hasSerial = _serialMap.containsKey(device.id);
       final isNet = _isNetworkId(device.id);
       final hasIp =

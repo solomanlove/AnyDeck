@@ -58,3 +58,11 @@ final deviceAndroidVersionProvider = Provider.autoDispose
     });
 ```
 如上所示，匹配一个设备的 `deviceId` 时，会通过 `id`、`serial` 以及无线/USB 双通道对应的 `connections` 列表三个维度交叉比对。
+
+### 2.3 ADB 与 HDC 同地址时的路由判定
+
+`HdcService.listDevices()` 仅接收状态明确为 `Connected` 的 HDC 目标。`hdc list targets -v` 中的 `Unknown`、`Offline` 不代表可用的鸿蒙设备，不能因此对该地址执行 `hdc -t <id> shell`；只有详细列表命令不可用时才回退到无状态列表。
+
+`DeviceRegistryNotifier._mergeDevices()` 对相同 `id` 的活动设备先按在线状态去重；双方状态相同时，ADB 记录优先于 HDC 记录。去重结果同时用于设备展示、型号与产品缓存、序列号及版本拉取，防止 Android 的 `IP:Port` 被 HDC 记录覆盖后错误走 Harmony 命令。
+
+回归：`flutter test test/harmony_device_serial_merge_test.dart` 覆盖 HDC `Unknown` 过滤和 ADB/HDC 同地址路由。手工验收可同时观察 `adb devices -l`、`hdc list targets -v` 与控制台日志：当 Android 地址仅在 HDC 中呈 `Unknown` 时，不应再出现针对该地址的 `hdc -t ... shell`。普通 HDC 全局设备扫描仍会执行。

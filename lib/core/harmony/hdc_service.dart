@@ -25,20 +25,23 @@ class HdcService {
 
   final Map<String, String> _deviceModelCache = {};
 
+  /// 仅将 HDC 明确标记为 Connected 的目标视为在线。
+  static List<String> connectedTargetIds(List<Map<String, dynamic>> targets) {
+    return targets
+        .where((item) =>
+            (item['status'] as String? ?? '').toLowerCase() == 'connected')
+        .map((item) => item['serial'] as String? ?? '')
+        .where((id) => id.isNotEmpty && !id.toLowerCase().contains('fail'))
+        .toList();
+  }
+
   /// 获取已连接的鸿蒙设备列表。
   Future<List<AdbDevice>> listDevices() async {
     List<String> rawTargets = [];
     if (RustDalBridge.instance.isAvailable) {
       try {
         final targets = await RustDalBridge.instance.listHarmonyDevices();
-        rawTargets = targets
-            .where((item) {
-              final status = (item['status'] as String? ?? '').toLowerCase();
-              return status == 'connected' || (status.isNotEmpty && !status.contains('offline'));
-            })
-            .map((item) => item['serial'] as String? ?? '')
-            .where((s) => s.isNotEmpty && !s.toLowerCase().contains('fail'))
-            .toList();
+        rawTargets = connectedTargetIds(targets);
       } catch (_) {}
     }
 
@@ -46,8 +49,7 @@ class HdcService {
       final vResult = await run(['list', 'targets', '-v']);
       if (vResult.isSuccess && vResult.stdout.isNotEmpty) {
         rawTargets = _parseRawTargetsWithStatus(vResult.stdout);
-      }
-      if (rawTargets.isEmpty) {
+      } else {
         final result = await run(['list', 'targets']);
         if (result.isSuccess) {
           rawTargets = _parseRawTargets(result.stdout);

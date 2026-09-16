@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'fake_adb_service.dart';
+
 class _FakeHdcSerialService extends HdcService {
   _FakeHdcSerialService({
     this.bootSnResult,
@@ -43,6 +45,17 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('HdcService Device Serial Parsing Tests', () {
+    test('only Connected HDC targets are online', () {
+      expect(
+        HdcService.connectedTargetIds([
+          {'serial': '192.168.31.153:5555', 'status': 'Unknown'},
+          {'serial': '192.168.31.83:5555', 'status': 'Offline'},
+          {'serial': '2UCUT23C18017189', 'status': 'Connected'},
+        ]),
+        ['2UCUT23C18017189'],
+      );
+    });
+
     test('parseSerialFromParamOutput extracts valid serial and ignores failures', () {
       expect(
         HdcServiceDeviceInfo.parseSerialFromParamOutput('[Fail]\n2UCUT23C18017189\n'),
@@ -95,6 +108,47 @@ void main() {
   });
 
   group('Harmony Device Registry Merge Tests', () {
+    test('同一地址同时被 ADB 和 HDC 发现时保留 Android 路由', () async {
+      const address = '192.168.31.153:5555';
+      SharedPreferences.setMockInitialValues({
+        'devices.history': [address],
+      });
+
+      final container = ProviderContainer(
+        overrides: [
+          devicesProvider.overrideWith((ref) => Stream.value(const [
+                AdbDevice(
+                  id: address,
+                  status: 'device',
+                  model: 'Android Phone',
+                  product: 'android',
+                ),
+                AdbDevice(
+                  id: address,
+                  status: 'device',
+                  model: 'HarmonyOS Device',
+                  product: 'HarmonyOS NEXT',
+                  isHarmony: true,
+                ),
+              ])),
+          adbServiceProvider.overrideWithValue(FakeAdbService()),
+          hdcServiceProvider.overrideWithValue(_FakeHdcSerialService()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(deviceRegistryProvider, (_, _) {});
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await pumpEventQueue();
+
+      final devices = container.read(deviceRegistryProvider);
+      expect(devices, hasLength(1));
+      expect(devices.single.id, address);
+      expect(devices.single.isHarmony, isFalse);
+      expect(devices.single.model, 'Android Phone');
+      expect(devices.single.product, 'android');
+    });
+
     test('Offline Harmony USB and Wi-Fi devices with same IP merge into single device', () async {
       SharedPreferences.setMockInitialValues({
         'devices.history': ['2UCUT23C18017189', '192.168.1.146:5555'],
