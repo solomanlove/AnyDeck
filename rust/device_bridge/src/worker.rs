@@ -265,9 +265,15 @@ pub fn run_mirror(
 fn run_mirror_audio(mut socket: TcpStream, s: &Session) -> Result<(), String> {
     let mut codec_header = [0u8; 4];
     stream::read(&mut socket, &mut codec_header, &s.stopped).map_err(|e| e.to_string())?;
+    // 若设备端未成功捕获音频或返回禁用状态（如 [0, 0, 0, 0]），及时退出避免异常读取
+    if codec_header != [0, b'r', b'a', b'w'] {
+        let _ = socket.shutdown(std::net::Shutdown::Both);
+        return Err("Audio stream disabled or unsupported codec".into());
+    }
     let mut player = Player::new().ok();
     let mut header = [0u8; 12];
     let mut packet = Vec::new();
+    let mut last_muted = false;
     while !s.stopped.load(Ordering::Acquire) {
         if stream::read_packet(&mut socket, &mut header, &s.stopped).is_err() {
             break;
@@ -290,7 +296,10 @@ fn run_mirror_audio(mut socket: TcpStream, s: &Session) -> Result<(), String> {
         if !is_config {
             if let Some(player) = player.as_mut() {
                 let muted = s.muted.load(Ordering::Acquire);
-                let _ = player.mute(muted);
+                if muted != last_muted {
+                    let _ = player.mute(muted);
+                    last_muted = muted;
+                }
                 let _ = player.write(&packet[..size]);
             }
         }

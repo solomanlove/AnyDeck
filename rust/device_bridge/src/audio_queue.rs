@@ -60,6 +60,9 @@ extern "C" fn recycle(user: *mut c_void, _queue: Queue, buffer: *mut Buffer) {
     }
 }
 
+const BUFFER_CAPACITY: u32 = 16384;
+const BUFFER_COUNT: usize = 8;
+
 pub struct Player {
     queue: Queue,
     pool: Box<Pool>,
@@ -68,7 +71,7 @@ impl Player {
     pub fn new() -> Result<Self, String> {
         let mut player = Self {
             queue: ptr::null_mut(),
-            pool: Box::new(Pool(Mutex::new(Vec::with_capacity(5)))),
+            pool: Box::new(Pool(Mutex::new(Vec::with_capacity(BUFFER_COUNT)))),
         };
         let format = Format {
             sample_rate: 48000.0,
@@ -94,9 +97,9 @@ impl Player {
             {
                 return Err("Audio output unavailable".into());
             }
-            for _ in 0..5 {
+            for _ in 0..BUFFER_COUNT {
                 let mut buffer = ptr::null_mut();
-                if AudioQueueAllocateBuffer(player.queue, 3840, &mut buffer) != 0
+                if AudioQueueAllocateBuffer(player.queue, BUFFER_CAPACITY, &mut buffer) != 0
                     || buffer.is_null()
                 {
                     return Err("Audio buffer allocation failed".into());
@@ -125,19 +128,30 @@ impl Player {
         }
     }
 
-    /// 最多缓冲 100ms；满时丢弃新块，不让电脑播放速度拖慢网络接收。
+    /// 写入 PCM 数据块，支持 4096、3840 等任意大小（自适应分块与入队）。
     pub fn write(&mut self, pcm: &[u8]) -> Result<(), String> {
-        if pcm.len() != 3840 {
-            return Err("Invalid PCM block".into());
+        if pcm.is_empty() {
+            return Ok(());
         }
-        let address = self.pool.0.lock().map_err(|_| "Audio pool poisoned")?.pop();
-        if let Some(address) = address {
-            let buffer = address as *mut Buffer;
-            unsafe {
-                ptr::copy_nonoverlapping(pcm.as_ptr(), (*buffer).data as *mut u8, pcm.len());
-                (*buffer).size = pcm.len() as u32;
-                if AudioQueueEnqueueBuffer(self.queue, buffer, 0, ptr::null()) != 0 {
-                    return Err("Audio enqueue failed".into());
+        // 保证按 16-bit 双声道采样（每帧 4 字节）对齐截断
+        let valid_len = pcm.len() - (pcm.len() % 4);
+        if valid_len == 0 {
+            return Ok(());
+        }
+        let data = &pcm[..valid_len];
+
+        for chunk in data.chunks(BUFFER_CAPACITY as usize) {
+            let address = self.pool.0.lock().map_err(|_| "Audio pool poisoned")?.pop();
+            if let Some(address) = address {
+                let buffer = address as *mut Buffer;
+                unsafe {
+                    ptr::copy_nonoverlapping(chunk.as_ptr(), (*buffer).data as *mut u8, chunk.len());
+                    (*buffer).size = chunk.len() as u32;
+                    if AudioQueueEnqueueBuffer(self.queue, buffer, 0, ptr::null()) != 0 {
+                        return Err("Audio enqueue failed".into());
+                    }
+                    // 确保 AudioQueue 在饥饿停顿后及时恢复播放
+                    let _ = AudioQueueStart(self.queue, ptr::null());
                 }
             }
         }
