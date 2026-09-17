@@ -204,6 +204,14 @@ const toolsMirrorZh = {
   'unpinAlwaysOnTop': '取消置顶',
   'enterFullScreen': '全屏显示',
   'exitFullScreen': '退出全屏',
+  'startRecordMouse': '录制鼠标路径',
+  'stopRecordMouse': '停止录制路径',
+  'playMouseTrack': '回放鼠标路径',
+  'pauseMouseTrack': '暂停回放',
+  'resumeMouseTrack': '继续回放',
+  'stopPlayMouseTrack': '停止回放路径',
+  'clearMouseTrack': '清空录制路径',
+  'mouseTrackRecorded': '已录制 {count} 个动作，耗时 {duration}s',
 };
 
 const toolsMirrorEn = {
@@ -425,4 +433,12 @@ const toolsMirrorEn = {
   'unpinAlwaysOnTop': 'Unpin window',
   'enterFullScreen': 'Fullscreen',
   'exitFullScreen': 'Exit Fullscreen',
+  'startRecordMouse': 'Record Mouse Path',
+  'stopRecordMouse': 'Stop Recording',
+  'playMouseTrack': 'Play Mouse Path',
+  'pauseMouseTrack': 'Pause Playback',
+  'resumeMouseTrack': 'Resume Playback',
+  'stopPlayMouseTrack': 'Stop Playback',
+  'clearMouseTrack': 'Clear Recorded Path',
+  'mouseTrackRecorded': 'Recorded {count} actions ({duration}s)',
 };

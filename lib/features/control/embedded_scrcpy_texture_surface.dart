@@ -17,6 +17,7 @@ class EmbeddedScrcpyTextureSurface extends StatelessWidget {
     required this.onPointerPanZoomStart,
     required this.onPointerPanZoomUpdate,
     required this.onPointerSignal,
+    this.overlay,
   });
 
   final GlobalKey textureKey;
@@ -29,6 +30,9 @@ class EmbeddedScrcpyTextureSurface extends StatelessWidget {
   final ValueChanged<PointerPanZoomStartEvent> onPointerPanZoomStart;
   final ValueChanged<PointerPanZoomUpdateEvent> onPointerPanZoomUpdate;
   final ValueChanged<PointerSignalEvent> onPointerSignal;
+
+  /// 可选的画面叠加层（如轨迹可视化 Overlay），自动对齐真实视频纹理尺寸
+  final Widget? overlay;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +61,13 @@ class EmbeddedScrcpyTextureSurface extends StatelessWidget {
                 onPointerPanZoomStart: onPointerPanZoomStart,
                 onPointerPanZoomUpdate: onPointerPanZoomUpdate,
                 onPointerSignal: onPointerSignal,
-                child: Texture(textureId: textureId),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Texture(textureId: textureId),
+                    ?overlay,
+                  ],
+                ),
               ),
             ),
           );

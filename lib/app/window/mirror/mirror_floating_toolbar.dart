@@ -19,6 +19,7 @@ import 'mirror_back_long_press_handler.dart';
 import 'mirror_volume_long_press_handler.dart';
 import 'mirror_window_controller.dart';
 import '../../../core/ios/ios_mirror_service.dart';
+import '../../../features/control/recorder/widgets/mirror_mouse_recorder_button.dart';
 
 ///投屏窗口中工具栏
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
@@ -583,6 +584,10 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 ),
               ),
             ],
+            MirrorMouseRecorderButton(
+              deviceId: widget.deviceId,
+              isDark: isDark,
+            ),
 
             MirrorToolbarButton(
               icon: DeviceSettingsIcon(

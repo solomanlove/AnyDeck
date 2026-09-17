@@ -16,6 +16,8 @@ import 'embedded_scrcpy_texture_surface.dart';
 import '../../core/ios/ios_mirror_service.dart';
 import '../../core/harmony/harmony_mirror_service.dart';
 import 'ios_mirror_viewer.dart';
+import 'recorder/controller/mouse_track_recorder_controller.dart';
+import 'recorder/widgets/mouse_track_overlay.dart';
 
 class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
   const EmbeddedScrcpyViewer({
@@ -290,6 +292,16 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
     final realW = mapped[2];
     final realH = mapped[3];
 
+    // 同步给鼠标路径录制器（若当前设备处于录制状态）
+    ref.read(mouseTrackRecorderProvider(widget.deviceId).notifier).recordTouch(
+          action: action,
+          x: x,
+          y: y,
+          screenWidth: realW,
+          screenHeight: realH,
+          pressure: event.pressure > 0 ? event.pressure : 1.0,
+        );
+
     final message = _serializeTouchEvent(
       action: action,
       pointerId: 0,
@@ -318,6 +330,16 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       -1.0,
       1.0,
     ); // Android scroll is inverted
+
+    // 同步给鼠标路径录制器（若当前设备处于录制状态）
+    ref.read(mouseTrackRecorderProvider(widget.deviceId).notifier).recordScroll(
+          x: x,
+          y: y,
+          screenWidth: realW,
+          screenHeight: realH,
+          hScroll: hScroll,
+          vScroll: vScroll,
+        );
 
     debugPrint(
       '[EmbeddedScrcpy] Scroll: x=$x, y=$y, realW=$realW, realH=$realH, hScroll=$hScroll, vScroll=$vScroll, polledSize=${_videoWidth}x$_videoHeight',
@@ -610,6 +632,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
                 _sendScrollEvent(signal, resolution);
               }
             },
+            overlay: MouseTrackOverlay(deviceId: widget.deviceId),
           ),
         ],
       ),
