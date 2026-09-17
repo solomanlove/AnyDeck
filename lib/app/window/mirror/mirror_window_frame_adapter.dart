@@ -82,7 +82,7 @@ class MirrorWindowFrameAdapter {
         newWindowH = targetViewerH + chromeHeight;
       }
 
-      // 以原窗口中心点为原点旋转定位
+      // 以原窗口中心点为锚点计算目标位置
       newLeft = centerX - newWindowW / 2;
       newTop = centerY - newWindowH / 2;
     } else {
@@ -112,34 +112,12 @@ class MirrorWindowFrameAdapter {
     return Rect.fromLTWH(newLeft, newTop, newWindowW, newWindowH);
   }
 
-  /// 方向翻转时先以内容长边为边长扩展为正方形，窗口中心保持不变。
-  static Rect? calculateSquareTransitionFrame({
-    required Rect frame,
-    required double targetAspectRatio,
-    required double viewerW,
-    required double viewerH,
-  }) {
-    if ((viewerW < viewerH) == (targetAspectRatio < 1)) {
-      return null;
-    }
-    final chromeHeight = frame.height - viewerH;
-    final side = viewerW > viewerH ? viewerW : viewerH;
-    if (!_isValid(side) || !_isValid(chromeHeight)) return null;
-    final width = side;
-    final height = side + chromeHeight;
-    return Rect.fromCenter(
-      center: frame.center,
-      width: width,
-      height: height,
-    );
-  }
-
   static Future<void> fitWindowToAspectRatio({
     required MethodChannel windowChannel,
     required double aspectRatio,
     required double viewerW,
     required double viewerH,
-    bool animateRotation = false,
+    bool animateOrientationChange = false,
   }) async {
     final frame = await getWindowFrame(windowChannel);
     if (frame == null) return;
@@ -152,25 +130,17 @@ class MirrorWindowFrameAdapter {
     );
     if (newFrame == null) return;
 
-    if (animateRotation && Platform.isMacOS) {
-      final square = calculateSquareTransitionFrame(
-        frame: frame,
-        targetAspectRatio: aspectRatio,
-        viewerW: viewerW,
-        viewerH: viewerH,
-      );
-      if (square != null) {
-        try {
-          await windowChannel.invokeMethod('animateWindowFrameSequence', {
-            'middle': _frameArgs(square),
-            'final': _frameArgs(newFrame),
-          });
-          return;
-        } on MissingPluginException {
-          // 旧版窗口桥接不支持动画时，继续使用直接贴合。
-        } catch (e) {
-          debugPrint('Failed to animate window frame on macOS: $e');
-        }
+    // 横竖屏翻转直接插值到目标窗口 frame，不额外创建正方形过渡阶段。
+    if (animateOrientationChange &&
+        Platform.isMacOS &&
+        (viewerW < viewerH) != (aspectRatio < 1)) {
+      try {
+        await windowChannel.invokeMethod('animateWindowFrame', _frameArgs(newFrame));
+        return;
+      } on MissingPluginException {
+        // 旧版窗口桥接不支持动画时，继续使用直接贴合。
+      } catch (e) {
+        debugPrint('Failed to animate window frame on macOS: $e');
       }
     }
 

@@ -176,29 +176,21 @@ class MainFlutterWindow: NSWindow {
           }
           window.setFrame(NSRect(x: left, y: top, width: width, height: height), display: true, animate: false)
           result(nil)
-        } else if call.method == "animateWindowFrameSequence" {
+        } else if call.method == "animateWindowFrame" {
           guard let args = call.arguments as? [String: Any],
-                let middle = args["middle"] as? [String: Double],
-                let finalFrameArgs = args["final"] as? [String: Double],
-                let middleX = middle["left"], let middleY = middle["top"],
-                let middleW = middle["width"], let middleH = middle["height"],
-                let finalX = finalFrameArgs["left"], let finalY = finalFrameArgs["top"],
-                let finalW = finalFrameArgs["width"], let finalH = finalFrameArgs["height"] else {
-            result(FlutterError(code: "invalid_argument", message: "Requires middle and final frames", details: nil))
+                let left = args["left"] as? Double,
+                let top = args["top"] as? Double,
+                let width = args["width"] as? Double,
+                let height = args["height"] as? Double else {
+            result(FlutterError(code: "invalid_argument", message: "Requires left, top, width, height arguments", details: nil))
             return
           }
-          let middleFrame = NSRect(x: middleX, y: middleY, width: middleW, height: middleH)
-          let finalFrame = NSRect(x: finalX, y: finalY, width: finalW, height: finalH)
+          let targetFrame = NSRect(x: left, y: top, width: width, height: height)
           NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.16
-            window.animator().setFrame(middleFrame, display: true)
+            context.duration = 0.30
+            window.animator().setFrame(targetFrame, display: true)
           } completionHandler: {
-            NSAnimationContext.runAnimationGroup { context in
-              context.duration = 0.18
-              window.animator().setFrame(finalFrame, display: true)
-            } completionHandler: {
-              result(nil)
-            }
+            result(nil)
           }
         } else if call.method == "setAlwaysOnTop" {
           guard let alwaysOnTop = call.arguments as? Bool else {

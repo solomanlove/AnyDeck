@@ -334,7 +334,7 @@ class MirrorWindowController extends ChangeNotifier {
         _pendingRotationAspect = null;
         await _fitWindowToCurrentAspect(
           aspectRatio: aspect,
-          animateRotation: true,
+          animateOrientationChange: true,
         );
       }
     } finally {
@@ -727,7 +727,7 @@ class MirrorWindowController extends ChangeNotifier {
     double? aspectRatio,
     double? viewerW,
     double? viewerH,
-    bool animateRotation = false,
+    bool animateOrientationChange = false,
   }) async {
     if (_isApplyingWindowAutoFit ||
         _isFullScreen ||
@@ -759,7 +759,7 @@ class MirrorWindowController extends ChangeNotifier {
         aspectRatio: targetAspect,
         viewerW: width,
         viewerH: height,
-        animateRotation: animateRotation,
+        animateOrientationChange: animateOrientationChange,
       );
       await _lockWindowAspectRatioForChrome(targetAspect);
     } finally {
