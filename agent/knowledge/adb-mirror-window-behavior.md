@@ -7,6 +7,9 @@
 ## 比例适配
 
 - 启动投屏后，控制器会等待 scrcpy video size 可用，再调用 `MirrorWindowFrameAdapter.fitWindowToAspectRatio()` 修正外层窗口尺寸。
+- Texture 注册仅表示视频通道已建立；独立窗口继续展示 loading，直到 Rust `getVideoSize()` 从首个解码 `CVPixelBuffer` 读到非零宽高。15 秒仍无首帧则显示启动超时，避免先撤掉 loading 后短暂露出黑色 Texture。
+- macOS 上视频尺寸跨横竖屏时，窗口从旧比例先扩展到以原内容长边为边长的正方形，再收敛到新比例；两段原生 `NSAnimationContext` 动画分别为 160ms 和 180ms，均以原窗口中心为锚点。标题栏和工具栏高度始终另计，视频 Texture 仍按真实帧比例渲染，触控坐标不随窗口动画拉伸。
+- 非旋转的尺寸微调仍直接贴合。全屏、原生最大化及其他平台不执行 macOS 两段动画；旋转过程中若继续收到新帧尺寸，控制器在当前动画结束后按最新比例贴合。
 - Android 主屏横竖屏切换必须复用现有 socket、decoder 和 Flutter Texture，禁止因 `dumpsys display` 与视频帧方向短暂不一致而重启 scrcpy session；Viewer 以 `getVideoSize()` 返回的最新解码帧尺寸更新画面比例与触控坐标。
 - macOS 原生硬解由纯 Rust (`rust/device_bridge/`) 调用 Apple VideoToolbox 实现显存直通；解码帧尺寸变化时由 Rust 原生输出对应尺寸的 `CVPixelBuffer`，并通过 `RustTexturePlugin.swift` 通知 Flutter Texture 原地更新，彻底剥离 FFmpeg 与 C++。
 - scrcpy 4.0 在旋转后会在原 video socket 写入 12-byte session metadata：首个 `u32` 最高位为 session flag，随后是新 `width` 和 `height`。Rust client 必须先识别该 header 并跳过 payload 读取；如果按普通的 `PTS + packet size` 解析，会把新高度误认为 packet size、读乱字节边界并以超大 frame 错误退出。

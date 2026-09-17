@@ -68,6 +68,55 @@ void main() {
   });
 
   group('MirrorWindowFrameAdapter 中心点旋转测试', () {
+    test('竖屏转横屏经过内容正方形，顶部工具栏高度保持不变', () {
+      const oldFrame = Rect.fromLTWH(200, 100, 400, 800);
+      final target = MirrorWindowFrameAdapter.calculateFittedFrame(
+        frame: oldFrame,
+        aspectRatio: 2400 / 1080,
+        viewerW: 400,
+        viewerH: 742,
+      )!;
+      final square = MirrorWindowFrameAdapter.calculateSquareTransitionFrame(
+        frame: oldFrame,
+        targetAspectRatio: 2400 / 1080,
+        viewerW: 400,
+        viewerH: 742,
+      )!;
+
+      expect(square.center, oldFrame.center);
+      expect(square.width, 742);
+      expect(square.height - 58, 742);
+      expect(target.width, 742);
+      expect(target.height - 58, closeTo(742 * 1080 / 2400, 0.01));
+    });
+
+    test('同方向比例调整不生成方形过渡帧', () {
+      const oldFrame = Rect.fromLTWH(200, 100, 400, 800);
+      expect(
+        MirrorWindowFrameAdapter.calculateSquareTransitionFrame(
+          frame: oldFrame,
+          targetAspectRatio: 0.5,
+          viewerW: 400,
+          viewerH: 742,
+        ),
+        isNull,
+      );
+    });
+
+    test('横屏转竖屏也经过内容正方形', () {
+      const oldFrame = Rect.fromLTWH(200, 100, 742, 429);
+      final square = MirrorWindowFrameAdapter.calculateSquareTransitionFrame(
+        frame: oldFrame,
+        targetAspectRatio: 1080 / 2400,
+        viewerW: 742,
+        viewerH: 371,
+      )!;
+
+      expect(square.center, oldFrame.center);
+      expect(square.width, 742);
+      expect(square.height - 58, 742);
+    });
+
     test('竖屏转横屏时，窗口围绕中心点旋转，中心坐标保持不变', () {
       // 原窗口：left=200, top=100, width=400, height=800
       // 顶部工具栏高度 58，内容区域 viewerW=400, viewerH=742

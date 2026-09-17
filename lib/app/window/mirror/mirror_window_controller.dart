@@ -106,6 +106,8 @@ class MirrorWindowController extends ChangeNotifier {
   Timer? _resizeSettleTimer;
   final MirrorAspectResolver _aspectResolver = MirrorAspectResolver();
   bool _isApplyingWindowAutoFit = false;
+  double? _pendingRotationAspect;
+  bool _isFittingPendingRotation = false;
   // ==================== 初始化与销毁 (Init & Dispose) ====================
 
   /// 初始化控制器，绑定视图 Key 并启动投屏相关逻辑
@@ -208,6 +210,20 @@ class MirrorWindowController extends ChangeNotifier {
               .toggleMirroring(newDisplay: newDisplay, startApp: startApp);
         }
       }
+      // Texture 注册成功不代表已有可显示像素；等首帧解码后再撤掉 loading。
+      if (!isIos) {
+        final deadline = DateTime.now().add(const Duration(seconds: 15));
+        while (true) {
+          final size = isHarmony
+              ? ref.read(harmonyMirrorServiceProvider).getVideoSize(deviceId)
+              : ref.read(embeddedScrcpyServiceProvider).getVideoSize(deviceId);
+          if (size != null && size['width']! > 0 && size['height']! > 0) break;
+          if (DateTime.now().isAfter(deadline)) {
+            throw StateError('Mirror first video frame timed out');
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+      }
       _isLoading = false;
       notifyListeners();
 
@@ -301,9 +317,28 @@ class MirrorWindowController extends ChangeNotifier {
   void onVideoSizeChanged(int width, int height) {
     if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
     if (width > 0 && height > 0) {
-      unawaited(_fitWindowToCurrentAspect(aspectRatio: width / height));
+      _pendingRotationAspect = width / height;
+      unawaited(_fitPendingRotation());
     } else {
       unawaited(_fitWindowToCurrentAspect());
+    }
+  }
+
+  /// 旋转动画进行中若收到更新的帧尺寸，动画结束后继续贴合最新比例。
+  Future<void> _fitPendingRotation() async {
+    if (_isApplyingWindowAutoFit || _isFittingPendingRotation) return;
+    _isFittingPendingRotation = true;
+    try {
+      while (_pendingRotationAspect != null) {
+        final aspect = _pendingRotationAspect!;
+        _pendingRotationAspect = null;
+        await _fitWindowToCurrentAspect(
+          aspectRatio: aspect,
+          animateRotation: true,
+        );
+      }
+    } finally {
+      _isFittingPendingRotation = false;
     }
   }
 
@@ -692,6 +727,7 @@ class MirrorWindowController extends ChangeNotifier {
     double? aspectRatio,
     double? viewerW,
     double? viewerH,
+    bool animateRotation = false,
   }) async {
     if (_isApplyingWindowAutoFit ||
         _isFullScreen ||
@@ -723,10 +759,14 @@ class MirrorWindowController extends ChangeNotifier {
         aspectRatio: targetAspect,
         viewerW: width,
         viewerH: height,
+        animateRotation: animateRotation,
       );
       await _lockWindowAspectRatioForChrome(targetAspect);
     } finally {
       _isApplyingWindowAutoFit = false;
+      if (_pendingRotationAspect != null && !_isFittingPendingRotation) {
+        unawaited(_fitPendingRotation());
+      }
     }
   }
 

@@ -176,6 +176,30 @@ class MainFlutterWindow: NSWindow {
           }
           window.setFrame(NSRect(x: left, y: top, width: width, height: height), display: true, animate: false)
           result(nil)
+        } else if call.method == "animateWindowFrameSequence" {
+          guard let args = call.arguments as? [String: Any],
+                let middle = args["middle"] as? [String: Double],
+                let finalFrameArgs = args["final"] as? [String: Double],
+                let middleX = middle["left"], let middleY = middle["top"],
+                let middleW = middle["width"], let middleH = middle["height"],
+                let finalX = finalFrameArgs["left"], let finalY = finalFrameArgs["top"],
+                let finalW = finalFrameArgs["width"], let finalH = finalFrameArgs["height"] else {
+            result(FlutterError(code: "invalid_argument", message: "Requires middle and final frames", details: nil))
+            return
+          }
+          let middleFrame = NSRect(x: middleX, y: middleY, width: middleW, height: middleH)
+          let finalFrame = NSRect(x: finalX, y: finalY, width: finalW, height: finalH)
+          NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            window.animator().setFrame(middleFrame, display: true)
+          } completionHandler: {
+            NSAnimationContext.runAnimationGroup { context in
+              context.duration = 0.18
+              window.animator().setFrame(finalFrame, display: true)
+            } completionHandler: {
+              result(nil)
+            }
+          }
         } else if call.method == "setAlwaysOnTop" {
           guard let alwaysOnTop = call.arguments as? Bool else {
             result(FlutterError(code: "invalid_argument", message: "Requires bool arguments", details: nil))
