@@ -104,9 +104,11 @@ class MirrorWindowController extends ChangeNotifier {
   static const _windowChannel = MethodChannel('any_deck/window');
 
   Timer? _resizeSettleTimer;
+  Timer? _orientationSettleTimer;
   final MirrorAspectResolver _aspectResolver = MirrorAspectResolver();
   bool _isApplyingWindowAutoFit = false;
   double? _pendingRotationAspect;
+  double? _lastVideoAspect;
   bool _isFittingPendingRotation = false;
   // ==================== 初始化与销毁 (Init & Dispose) ====================
 
@@ -154,12 +156,14 @@ class MirrorWindowController extends ChangeNotifier {
     }
     _identifyTimer?.cancel();
     _resizeSettleTimer?.cancel();
+    _orientationSettleTimer?.cancel();
     unawaited(_setWindowAspectRatio(0));
     forceStopMirroring();
   }
 
   /// 强制停止投屏并清理 adb/scrcpy 会话
   Future<void> forceStopMirroring() async {
+    _orientationSettleTimer?.cancel();
     try {
       if (isIos) {
         await ref.read(activeIosMirrorProvider(deviceId).notifier).forceStop();
@@ -187,6 +191,9 @@ class MirrorWindowController extends ChangeNotifier {
   Future<void> startMirroring() async {
     _isLoading = true;
     _errorMessage = null;
+    _lastVideoAspect = null;
+    _orientationSettleTimer?.cancel();
+    _pendingRotationAspect = null;
     notifyListeners();
 
     try {
@@ -309,6 +316,7 @@ class MirrorWindowController extends ChangeNotifier {
     if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
     _resizeSettleTimer?.cancel();
     _resizeSettleTimer = Timer(const Duration(milliseconds: 80), () {
+      if (_orientationSettleTimer?.isActive ?? false) return;
       unawaited(_fitWindowToCurrentAspect());
     });
   }
@@ -317,11 +325,31 @@ class MirrorWindowController extends ChangeNotifier {
   void onVideoSizeChanged(int width, int height) {
     if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
     if (width > 0 && height > 0) {
-      _pendingRotationAspect = width / height;
-      unawaited(_fitPendingRotation());
+      final aspect = width / height;
+      final oldAspect = _lastVideoAspect;
+      _lastVideoAspect = aspect;
+      final orientationChanged = oldAspect != null &&
+          (oldAspect < 1) != (aspect < 1);
+      if (Platform.isMacOS &&
+          (orientationChanged || (_orientationSettleTimer?.isActive ?? false))) {
+        // Android 自身会输出斜转过渡帧，先保持窗口稳定，让原生动画完整显示。
+        _scheduleOrientationFit(aspect);
+      } else {
+        _pendingRotationAspect = aspect;
+        unawaited(_fitPendingRotation());
+      }
     } else {
       unawaited(_fitWindowToCurrentAspect());
     }
+  }
+
+  /// 等手机原生旋转帧播完，再按最后收到的视频比例调整窗口。
+  void _scheduleOrientationFit(double aspect) {
+    _orientationSettleTimer?.cancel();
+    _orientationSettleTimer = Timer(const Duration(milliseconds: 350), () {
+      _pendingRotationAspect = aspect;
+      unawaited(_fitPendingRotation());
+    });
   }
 
   /// 旋转动画进行中若收到更新的帧尺寸，动画结束后继续贴合最新比例。

@@ -187,7 +187,7 @@ class MainFlutterWindow: NSWindow {
           }
           let targetFrame = NSRect(x: left, y: top, width: width, height: height)
           NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.30
+            context.duration = 0.22
             window.animator().setFrame(targetFrame, display: true)
           } completionHandler: {
             result(nil)
