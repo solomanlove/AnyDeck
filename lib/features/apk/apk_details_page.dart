@@ -142,6 +142,8 @@ class ApkDetailsPage extends ConsumerWidget {
                                 for (final tab in tabs.keys)
                                   ApkDetailList(
                                     rows: info.rows(tab),
+                                    fallbackIcon: info.icon,
+                                    showComponentIcon: tab == 'activities',
                                     note: tab == 'signatures'
                                         ? context.l10n.t('apkSignatureNote')
                                         : tab == 'permissions'

@@ -5,6 +5,57 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use serde_json::{Value, json};
 use std::{fs::File, io::Read, path::Path};
 
+/// 提取指定资源或路径的位图数据并进行 Base64 编码，适配 Adaptive XML 位图回退。
+fn extract_icon_base64(
+    apk: &Apk,
+    zip: &mut zip::ZipArchive<File>,
+    icon_ref_or_path: &str,
+    max_size: u64,
+) -> Option<String> {
+    let path = if icon_ref_or_path.starts_with('@') {
+        apk.get_resource_value(icon_ref_or_path)?
+    } else {
+        icon_ref_or_path.to_string()
+    };
+    let mut candidates = vec![path.clone()];
+    let stem = Path::new(&path)
+        .file_stem()
+        .and_then(|v| v.to_str())
+        .unwrap_or("");
+    if !stem.is_empty() {
+        candidates.extend(
+            apk.namelist()
+                .filter(|name| {
+                    Path::new(name).file_stem().and_then(|v| v.to_str()) == Some(stem)
+                        && [".png", ".webp", ".jpg"]
+                            .iter()
+                            .any(|ext| name.ends_with(ext))
+                })
+                .map(str::to_owned),
+        );
+    }
+    for candidate in candidates {
+        if ![".png", ".webp", ".jpg"]
+            .iter()
+            .any(|ext| candidate.ends_with(ext))
+        {
+            continue;
+        }
+        if let Ok(entry) = zip.by_name(&candidate) {
+            if entry.size() > max_size {
+                continue;
+            }
+            let mut bytes = vec![];
+            if entry.take(max_size + 1).read_to_end(&mut bytes).is_ok()
+                && bytes.len() <= max_size as usize
+            {
+                return Some(STANDARD.encode(bytes));
+            }
+        }
+    }
+    None
+}
+
 fn inspect(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
     // 限制输入及被实际展开的条目，DEX/SO 只读目录索引，不展开内容。
     if path
@@ -70,45 +121,42 @@ fn inspect(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
         if let Some(label) = apk.get_application_label() {
             result["label"] = json!(label);
         }
-        let mut icon_paths = vec![];
-        if let Some(icon) = apk.get_application_icon() {
-            icon_paths.push(icon.clone());
-            // Android 常使用 adaptive XML，优先寻找同名位图变体。
-            let stem = Path::new(&icon)
-                .file_stem()
-                .and_then(|v| v.to_str())
-                .unwrap_or("");
-            icon_paths.extend(
-                apk.namelist()
-                    .filter(|name| {
-                        Path::new(name).file_stem().and_then(|v| v.to_str()) == Some(stem)
-                            && [".png", ".webp", ".jpg"]
-                                .iter()
-                                .any(|ext| name.ends_with(ext))
-                    })
-                    .map(str::to_owned),
-            );
-        }
-        for icon_path in icon_paths {
-            if ![".png", ".webp", ".jpg"]
-                .iter()
-                .any(|ext| icon_path.ends_with(ext))
+        if let Some(icon_path) = apk.get_application_icon() {
+            if let Some(base64_icon) =
+                extract_icon_base64(apk, &mut zip, &icon_path, 4 * 1024 * 1024)
             {
-                continue;
+                result["icon"] = json!(base64_icon);
             }
-            if let Ok(entry) = zip.by_name(&icon_path) {
-                if entry.size() > 4 * 1024 * 1024 {
-                    continue;
-                }
-                let mut bytes = vec![];
-                if entry
-                    .take(4 * 1024 * 1024 + 1)
-                    .read_to_end(&mut bytes)
-                    .is_ok()
-                    && bytes.len() <= 4 * 1024 * 1024
-                {
-                    result["icon"] = json!(STANDARD.encode(bytes));
-                    break;
+        }
+        for comp_key in ["activities", "services", "receivers", "providers"] {
+            if let Some(components) = result.get_mut(comp_key).and_then(Value::as_array_mut) {
+                for comp in components {
+                    if let Some(label_val) =
+                        comp.get("label").and_then(Value::as_str).map(str::to_owned)
+                    {
+                        if label_val.starts_with('@') {
+                            comp["rawLabel"] = json!(label_val);
+                            if let Some(resolved) = apk.get_resource_value(&label_val) {
+                                comp["label"] = json!(resolved);
+                            }
+                        }
+                    }
+                    if comp_key == "activities" {
+                        if let Some(icon_val) =
+                            comp.get("icon").and_then(Value::as_str).map(str::to_owned)
+                        {
+                            if icon_val.starts_with('@') {
+                                comp["rawIcon"] = json!(icon_val);
+                                if let Some(base64_icon) =
+                                    extract_icon_base64(apk, &mut zip, &icon_val, 1024 * 1024)
+                                {
+                                    comp["icon"] = json!(base64_icon);
+                                } else {
+                                    comp.as_object_mut().unwrap().remove("icon");
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -178,6 +226,13 @@ mod tests {
             assert!(!certificate["SHA-256"].as_str().unwrap().is_empty());
             assert!(!certificate["MD5"].as_str().unwrap().is_empty());
         }
+        let services = info["services"].as_array().unwrap();
+        let service = services
+            .iter()
+            .find(|s| s["name"] == "com.adbmanage.companion.NotificationForwardingService")
+            .unwrap();
+        assert_eq!(service["label"], "通知共享");
+        assert_eq!(service["rawLabel"], "@string/notification_title");
     }
     #[test]
     fn broken_resources_keep_manifest_and_multi_abi_dex_inventory() {

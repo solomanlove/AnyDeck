@@ -6,6 +6,7 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/apk/apk_window_client.dart';
 import 'package:any_deck/core/apk/local_apk_info.dart';
 import 'package:any_deck/features/apk/apk_details_page.dart';
+import 'package:any_deck/features/apk/widgets/apk_detail_list.dart';
 
 void main() {
   for (final dark in [false, true]) {
@@ -67,4 +68,56 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('ApkDetailList 支持解析展示 Activity 图标、真实标题与类名', (tester) async {
+    const testIconBase64 =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    final rows = [
+      {
+        'name': 'de.syss.MifareClassicTool.Activities.MainMenu',
+        'label': '主菜单',
+        'rawLabel': '@string/title_activity_main',
+        'icon': testIconBase64,
+        'rawIcon': '@drawable/map_keys_to_sector',
+        'exported': 'true',
+      },
+      {
+        'name': 'de.syss.MifareClassicTool.Activities.DumpEditor',
+        'exported': 'false',
+      },
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizationsDelegate(),
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: ApkDetailList(
+            rows: rows,
+            showComponentIcon: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 验证真实标题作为主标题展示
+    expect(find.text('主菜单'), findsOneWidget);
+    // 验证类名作为副标题展示
+    expect(find.textContaining('de.syss.MifareClassicTool.Activities.MainMenu'), findsOneWidget);
+    // 验证原始引用格式展示
+    expect(find.textContaining('label: 主菜单 (@string/title_activity_main)'), findsOneWidget);
+    expect(find.textContaining('icon: @drawable/map_keys_to_sector'), findsOneWidget);
+    // 验证未泄露 Base64 字符串
+    expect(find.textContaining(testIconBase64), findsNothing);
+    // 验证未声明 label 的 Activity 以类名为标题
+    expect(find.text('de.syss.MifareClassicTool.Activities.DumpEditor'), findsOneWidget);
+    // 验证图标正常渲染（自定义图片与占位图标）
+    expect(find.byType(Image), findsOneWidget);
+  });
 }
