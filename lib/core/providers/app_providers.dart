@@ -849,6 +849,36 @@ final isDeviceRootProvider = FutureProvider.autoDispose.family<bool, String>((
   return false;
 });
 
+/// 检查手机是否能通过 su 获取 root；检测失败或授权被拒绝时不猜测结果。
+final deviceRootStatusProvider = FutureProvider.autoDispose.family<bool?, String>((
+  ref,
+  deviceId,
+) async {
+  if (!ref.watch(deviceOnlineProvider(deviceId))) return null;
+
+  final adb = ref.watch(adbServiceProvider);
+  try {
+    final shellIdentity = await adb.shell(deviceId, 'id');
+    if (!shellIdentity.isSuccess) return null;
+    if (shellIdentity.stdout.contains('uid=0(')) return true;
+
+    final suPath = await adb.shell(deviceId, 'command -v su');
+    if (suPath.exitCode == 1 && suPath.stdout.trim().isEmpty) return false;
+    if (!suPath.isSuccess || suPath.stdout.trim().isEmpty) return null;
+
+    final suIdentity = await adb.shell(
+      deviceId,
+      'su -c id',
+      timeout: const Duration(seconds: 5),
+    );
+    return suIdentity.isSuccess && suIdentity.stdout.contains('uid=0(')
+        ? true
+        : null;
+  } catch (_) {
+    return null;
+  }
+});
+
 /// 离线设备的本地手机信息概览缓存。
 final cachedDeviceOverviewProvider = FutureProvider.autoDispose
     .family<DeviceOverview?, String>((ref, deviceId) {

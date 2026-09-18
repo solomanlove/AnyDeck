@@ -91,8 +91,6 @@ class _QuickActionsPanel extends ConsumerWidget {
         ? ref.watch(deviceOverviewProvider(device.id))
         : const AsyncValue<DeviceOverview>.loading();
     final wifiEnabled = overviewAsync.value?.wifiEnabled ?? false;
-    final isRootAsync = ref.watch(isDeviceRootProvider(device.id));
-    final isRoot = isRootAsync.value ?? false;
     final airplaneModeEnabled =
         overviewAsync.value?.airplaneModeEnabled ?? false;
     final mobileDataEnabled = overviewAsync.value?.mobileDataEnabled ?? false;
@@ -135,50 +133,6 @@ class _QuickActionsPanel extends ConsumerWidget {
               ref,
               actions.openQuickSettings(device.id),
             );
-          },
-        ),
-
-        _ToggleActionButton(
-          iconOn: CupertinoIcons.lock_open_fill,
-          iconOff: CupertinoIcons.lock_fill,
-          label: isRoot ? context.l10n.t('rooted') : context.l10n.t('unrooted'),
-          value: isRoot,
-          onToggle: (on) async {
-            try {
-              _showSnack(
-                context,
-                on ? context.l10n.t('enteringRootMode') : '正在退出 Root 模式...',
-              );
-              final adb = ref.read(adbServiceProvider);
-              final res = await adb.run([
-                '-s',
-                device.id,
-                on ? 'root' : 'unroot',
-              ]);
-              if (!context.mounted) return;
-              if (res.isSuccess) {
-                _showSnack(
-                  context,
-                  res.stdout.isNotEmpty
-                      ? res.stdout.trim()
-                      : (on
-                            ? context.l10n.t('enterRootModeSuccess')
-                            : '已成功退出 Root 模式'),
-                );
-                await Future<void>.delayed(const Duration(milliseconds: 1500));
-                if (!context.mounted) return;
-                ref.invalidate(isDeviceRootProvider(device.id));
-              } else {
-                _showSnack(
-                  context,
-                  res.stderr.isNotEmpty ? res.stderr.trim() : '操作失败',
-                  isError: true,
-                );
-              }
-            } catch (e) {
-              if (!context.mounted) return;
-              _showSnack(context, e.toString(), isError: true);
-            }
           },
         ),
 

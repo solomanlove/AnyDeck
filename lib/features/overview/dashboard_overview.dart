@@ -50,9 +50,16 @@ class _DeviceOverviewPanel extends ConsumerWidget {
           : DeviceOverviewContent(
               device: device,
               overview: data,
-              onRefresh: () => device.isOnline
-                  ? ref.invalidate(deviceOverviewProvider(device.id))
-                  : ref.invalidate(cachedDeviceOverviewProvider(device.id)),
+              onRefresh: () {
+                if (device.isOnline) {
+                  ref.invalidate(deviceOverviewProvider(device.id));
+                  if (!device.isIos && !device.isHarmony) {
+                    ref.invalidate(deviceRootStatusProvider(device.id));
+                  }
+                } else {
+                  ref.invalidate(cachedDeviceOverviewProvider(device.id));
+                }
+              },
             ),
     );
   }

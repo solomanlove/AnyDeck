@@ -175,14 +175,14 @@ class _OverviewHeader extends StatelessWidget {
 }
 
 /// 顶部只展示一次设备身份信息，避免与详情卡重复。
-class _OverviewIdentityCard extends StatelessWidget {
+class _OverviewIdentityCard extends ConsumerWidget {
   const _OverviewIdentityCard({required this.device, required this.overview});
 
   final AdbDevice device;
   final DeviceOverview overview;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final items = [
       _OverviewIdentityData(
         icon: CupertinoIcons.device_phone_portrait,
@@ -205,7 +205,20 @@ class _OverviewIdentityCard extends StatelessWidget {
     return _OverviewSurface(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final status = _OverviewStatusChip(isOnline: device.isOnline);
+          final status = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _OverviewStatusChip(isOnline: device.isOnline),
+              if (!device.isIos && !device.isHarmony) ...[
+                const SizedBox(height: 8),
+                _OverviewRootChip(
+                  status: device.isOnline
+                      ? ref.watch(deviceRootStatusProvider(device.id))
+                      : null,
+                ),
+              ],
+            ],
+          );
           if (constraints.maxWidth < 720) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,6 +276,55 @@ class _OverviewStatusChip extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               context.l10n.t(isOnline ? 'deviceOnline' : 'deviceOffline'),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 展示当前 Android 设备的 su 授权检测结果，不把查询失败当作未 Root。
+class _OverviewRootChip extends StatelessWidget {
+  const _OverviewRootChip({required this.status});
+
+  final AsyncValue<bool?>? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isRooted = status?.value;
+    final color = isRooted == true
+        ? _overviewAccent
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final label = status?.isLoading == true
+        ? context.l10n.t('checkingRoot')
+        : isRooted == null
+        ? context.l10n.t('rootStatusUnknown')
+        : context.l10n.t(isRooted ? 'rooted' : 'unrooted');
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isRooted == true
+                  ? CupertinoIcons.lock_open_fill
+                  : CupertinoIcons.lock_fill,
+              size: 14,
+              color: color,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: color,
                 fontWeight: FontWeight.w700,
