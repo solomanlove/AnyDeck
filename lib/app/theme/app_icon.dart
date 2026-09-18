@@ -15,4 +15,7 @@ class AppIcons {
   static const String oneplus = 'assets/brand/oneplus_logo.png';
   static const String google = 'assets/brand/google_logo.png';
   static const String apple = 'assets/brand/apple_logo.png';
+
+  static const String harmonyDefaultAppIcon = 'assets/brand/harmony_default_app_icon.png';
+  static const String androidDefaultAppIcon = 'assets/brand/android_default_app_icon.png';
 }

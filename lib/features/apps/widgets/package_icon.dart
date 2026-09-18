@@ -16,9 +16,7 @@ class _PackageIcon extends ConsumerWidget {
       ),
     );
     final fallback = Image.asset(
-      isHarmony
-          ? 'assets/brand/harmony_default_app_icon.png'
-          : 'assets/brand/android_default_app_icon.png',
+      isHarmony ? AppIcons.harmonyDefaultAppIcon : AppIcons.androidDefaultAppIcon,
       fit: BoxFit.contain,
     );
     final iconPath = package.iconLocalPath;
