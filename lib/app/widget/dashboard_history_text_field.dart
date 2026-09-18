@@ -54,11 +54,9 @@ class DashboardHistoryTextField extends StatefulWidget {
 }
 
 class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
-  final GlobalKey _textFieldKey = GlobalKey();
-  final LayerLink _layerLink = LayerLink();
+  final OverlayPortalController _overlayController = OverlayPortalController();
   late final FocusNode _focusNode;
   late final bool _ownsFocusNode;
-  OverlayEntry? _overlayEntry;
   bool get _hasOptions =>
       widget.history.isNotEmpty || widget.defaultOptions.isNotEmpty;
 
@@ -72,7 +70,6 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
 
   @override
   void dispose() {
-    _hideOverlay();
     _focusNode.removeListener(_handleFocusChanged);
     if (_ownsFocusNode) {
       _focusNode.dispose();
@@ -83,13 +80,13 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
   @override
   void didUpdateWidget(DashboardHistoryTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.history != oldWidget.history ||
-        widget.defaultOptions != oldWidget.defaultOptions) {
-      if (!_hasOptions) {
-        _hideOverlay();
-      } else {
-        _overlayEntry?.markNeedsBuild();
-      }
+    if (!_hasOptions && _overlayController.isShowing) {
+      // OverlayPortal 会随输入框刷新内容；只需在选项清空后收起下拉层。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_hasOptions) {
+          _hideOverlay();
+        }
+      });
     }
   }
 
@@ -119,7 +116,7 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
   }
 
   void _toggleHistory() {
-    if (_overlayEntry != null) {
+    if (_overlayController.isShowing) {
       _hideOverlay();
       _focusNode.unfocus();
     } else {
@@ -129,46 +126,12 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
   }
 
   void _showOverlay() {
-    if (_overlayEntry != null) {
-      _overlayEntry?.markNeedsBuild();
-      return;
-    }
     if (!mounted || !_hasOptions) return;
-
-    final overlayState = Overlay.of(context);
-    _overlayEntry = OverlayEntry(
-      builder: (context) {
-        return CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 42),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: SizedBox(
-              width: _getTextFieldWidth(),
-              child: TapRegion(
-                groupId:
-                    'dashboard_history_filter_region_${identityHashCode(this)}',
-                child: _buildDropdownOverlayContent(),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    overlayState.insert(_overlayEntry!);
+    _overlayController.show();
   }
 
   void _hideOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-  }
-
-  double _getTextFieldWidth() {
-    final renderBox =
-        _textFieldKey.currentContext?.findRenderObject() as RenderBox?;
-    return renderBox?.size.width ?? 280.0;
+    if (_overlayController.isShowing) _overlayController.hide();
   }
 
   Widget _buildDropdownOverlayContent() {
@@ -305,18 +268,32 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      key: _textFieldKey,
-      height: 38,
-      child: TapRegion(
-        groupId: 'dashboard_history_filter_region_${identityHashCode(this)}',
-        onTapOutside: (_) {
-          widget.onSubmitted(widget.controller.text);
-          _hideOverlay();
-          _focusNode.unfocus();
-        },
-        child: CompositedTransformTarget(
-          link: _layerLink,
+    return OverlayPortal.overlayChildLayoutBuilder(
+      controller: _overlayController,
+      overlayChildBuilder: (context, info) {
+        final origin = MatrixUtils.transformPoint(
+          info.childPaintTransform,
+          Offset.zero,
+        );
+        return Positioned(
+          left: origin.dx,
+          top: origin.dy + info.childSize.height + 4,
+          width: info.childSize.width,
+          child: TapRegion(
+            groupId: 'dashboard_history_filter_region_${identityHashCode(this)}',
+            child: _buildDropdownOverlayContent(),
+          ),
+        );
+      },
+      child: SizedBox(
+        height: 38,
+        child: TapRegion(
+          groupId: 'dashboard_history_filter_region_${identityHashCode(this)}',
+          onTapOutside: (_) {
+            widget.onSubmitted(widget.controller.text);
+            _hideOverlay();
+            _focusNode.unfocus();
+          },
           child: TextField(
             controller: widget.controller,
             focusNode: _focusNode,

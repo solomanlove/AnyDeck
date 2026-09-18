@@ -7,6 +7,8 @@
 
 历史列表项的删除按钮使用固定 24px 宽度，长搜索词由文本区域省略显示，避免窄筛选框展开下拉时发生 `RenderFlex` 横向溢出。应用 Tab 的工具栏只创建一个 `DashboardHistoryTextField`；桌面页面通过 `IndexedStack` 保留其他 Tab 状态，仅绘制当前 Tab。
 
+历史下拉层使用 `OverlayPortal.overlayChildLayoutBuilder` 按输入框的位置和宽度定位，随输入框销毁而移除。不要在 `didUpdateWidget` 中直接对独立 `OverlayEntry` 调用 `markNeedsBuild`；历史更新发生在页面 build 期间时会触发 `setState() or markNeedsBuild() called during build`，随后可能使页面布局异常。应用工具栏展开历史、更新记录和切换页面时应保持单个筛选框且无溢出。
+
 ---
 
 ## 1. 概览 (Overview Tab)

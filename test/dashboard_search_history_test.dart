@@ -1,5 +1,6 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/widget/dashboard_history_text_field.dart';
+import 'package:any_deck/app/widget/dashboard_tab_layout.dart';
 import 'package:any_deck/core/search/dashboard_search_history_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -125,6 +126,103 @@ void main() {
     await tester.tap(find.byType(TextField));
     await tester.pumpAndSettle();
     expect(find.text('com.example.long.package.name'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('历史下拉展开时更新历史不会在 build 阶段重建 Overlay', (tester) async {
+    final controller = TextEditingController();
+    final history = ValueNotifier<List<String>>(['旧记录']);
+    addTearDown(controller.dispose);
+    addTearDown(history.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: const [AppLocalizationsDelegate()],
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 280,
+              child: ValueListenableBuilder<List<String>>(
+                valueListenable: history,
+                builder: (context, items, _) => DashboardHistoryTextField(
+                  controller: controller,
+                  hintText: '筛选',
+                  history: items,
+                  onChanged: (_) {},
+                  onSubmitted: (_) {},
+                  onSelected: (_) {},
+                  onHistoryRemoved: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    history.value = ['新记录'];
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('新记录'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('应用工具栏展开历史后仍只绘制一个筛选框且页面不溢出', (tester) async {
+    final controller = TextEditingController();
+    final history = ValueNotifier<List<String>>(['旧记录']);
+    addTearDown(controller.dispose);
+    addTearDown(history.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: const [AppLocalizationsDelegate()],
+        home: Scaffold(
+          body: SizedBox(
+            width: 1200,
+            height: 700,
+            child: ValueListenableBuilder<List<String>>(
+              valueListenable: history,
+              builder: (context, items, _) => DashboardTabLayout(
+                toolbar: DashboardSearchToolbar<int>(
+                  searchController: controller,
+                  searchHint: '筛选',
+                  onSearchChanged: (_) {},
+                  onSearchSubmitted: (_) {},
+                  onSearchClear: controller.clear,
+                  hasSearchQuery: false,
+                  searchHistory: items,
+                  onSearchHistorySelected: (_) {},
+                  onSearchHistoryRemoved: (_) {},
+                  searchDefaultOptions: const [
+                    DashboardHistoryOption(value: 'debug', label: '筛选 DEBUG 应用'),
+                  ],
+                  segments: const {0: Text('用户应用'), 1: Text('全部')},
+                  currentSegment: 1,
+                  onSegmentChanged: (_) {},
+                  trailingActions: const [Icon(Icons.refresh)],
+                ),
+                body: const SizedBox.expand(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    history.value = ['新记录'];
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const MaterialApp(home: Scaffold()));
+    await tester.pumpAndSettle();
+    expect(find.text('新记录'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
