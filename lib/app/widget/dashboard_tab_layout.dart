@@ -77,13 +77,9 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
       focusNode: searchFocusNode,
       controller: searchController,
       decoration: InputDecoration(
-        prefixIcon: const Icon(
-          CupertinoIcons.line_horizontal_3_decrease,
-          size: 16,
-        ),
         hintText: searchHint,
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide(

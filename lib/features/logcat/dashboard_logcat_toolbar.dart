@@ -93,7 +93,6 @@ class _LogcatToolbar extends StatelessWidget {
       focusNode: textFocusNode,
       hintText: context.l10n.t('filterLog'),
       history: state.textFilterHistory,
-      prefixIcon: CupertinoIcons.search,
       onChanged: onTextChanged,
       onSubmitted: onTextSubmitted,
       onSelected: onTextSubmitted,
@@ -260,7 +259,6 @@ class _HistoryTextField extends StatefulWidget {
     required this.onSubmitted,
     required this.onSelected,
     required this.onHistoryRemoved,
-    this.prefixIcon,
     this.focusNode,
   });
 
@@ -271,7 +269,6 @@ class _HistoryTextField extends StatefulWidget {
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onSelected;
   final ValueChanged<String> onHistoryRemoved;
-  final IconData? prefixIcon;
   final FocusNode? focusNode;
 
   @override
@@ -502,10 +499,6 @@ class _HistoryTextFieldState extends State<_HistoryTextField> {
             style: const TextStyle(fontSize: 13),
             decoration: InputDecoration(
               isDense: true,
-              prefixIcon: widget.prefixIcon == null
-                  ? null
-                  : Icon(widget.prefixIcon, size: 16),
-              prefixIconConstraints: const BoxConstraints(minWidth: 32),
               suffixIcon: widget.history.isEmpty
                   ? null
                   : IconButton(
