@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
+import 'dashboard_history_text_field.dart';
+
 /// 统一的仪表盘顶部搜索及工具栏组件。
 /// 
 /// 泛型 [T] 用于指定分段选择器（Segmented Control）的值类型（通常是一个 enum）。
@@ -16,13 +18,15 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
     super.key,
     required this.searchController,
     required this.searchHint,
-    this.searchFocusNode,
-    this.searchKey,
-    this.searchTapRegionGroupId,
     required this.onSearchChanged,
-    this.onSearchSubmitted,
+    required this.onSearchSubmitted,
     required this.onSearchClear,
     required this.hasSearchQuery,
+    required this.searchHistory,
+    required this.onSearchHistorySelected,
+    required this.onSearchHistoryRemoved,
+    this.searchDefaultOptions = const [],
+    this.onSearchHistoryCleared,
     required this.segments,
     required this.currentSegment,
     required this.onSegmentChanged,
@@ -35,27 +39,28 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
   /// 搜索框为空时的占位提示文本。
   final String searchHint;
 
-  /// 搜索框的焦点节点。如果在外部需要监听其焦点变化，可传入该参数。
-  final FocusNode? searchFocusNode;
-
-  /// 搜索框的 GlobalKey。通常在需要获取输入框在屏幕上的渲染位置（如显示 Overlay 菜单）时使用。
-  final Key? searchKey;
-
-  /// 如果传入该值，则会对搜索框包裹一个 [TapRegion]。
-  /// 这主要用于在搜索框外部点击时收起输入法或关闭特定的 Overlay。
-  final String? searchTapRegionGroupId;
-
   /// 搜索内容改变时的回调，用于触发过滤逻辑更新。
   final ValueChanged<String> onSearchChanged;
 
   /// 搜索框提交（按回车）时的回调，通常用于记录搜索历史。
-  final ValueChanged<String>? onSearchSubmitted;
+  final ValueChanged<String> onSearchSubmitted;
 
   /// 点击搜索框右侧 "清除" 图标时的回调，用于清空内容。
   final VoidCallback onSearchClear;
 
   /// 标识当前是否有搜索内容（用来控制清除图标的显示与隐藏）。
   final bool hasSearchQuery;
+
+  /// 已提交的搜索历史，仅在当前 Tab 中展示。
+  final List<String> searchHistory;
+
+  /// 选中或删除历史记录时的回调。
+  final ValueChanged<String> onSearchHistorySelected;
+  final ValueChanged<String> onSearchHistoryRemoved;
+
+  /// 固定快捷项和可选的清空历史操作。
+  final List<DashboardHistoryOption> searchDefaultOptions;
+  final VoidCallback? onSearchHistoryCleared;
 
   /// 分段选择器（Segmented Control）的选项，键值对形如: `枚举值: 组件(Text)`。
   final Map<T, Widget> segments;
@@ -70,40 +75,21 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
   /// 例如：刷新按钮、Checkbox、"列表/网格"切换视图按钮等。
   final List<Widget> trailingActions;
 
-  /// 内部封装构建 TextField 组件
+  /// 内部封装带历史下拉的筛选输入框。
   Widget _buildTextField(BuildContext context) {
-    return TextField(
-      key: searchKey,
-      focusNode: searchFocusNode,
+    return DashboardHistoryTextField(
       controller: searchController,
-      decoration: InputDecoration(
-        hintText: searchHint,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(
-            color: Theme.of(
-              context,
-            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-        suffixIcon: hasSearchQuery
-            ? IconButton(
-                icon: const Icon(CupertinoIcons.clear, size: 16),
-                onPressed: onSearchClear,
-              )
-            : null,
-      ),
+      hintText: searchHint,
+      history: searchHistory,
+      defaultOptions: searchDefaultOptions,
       onChanged: onSearchChanged,
       onSubmitted: onSearchSubmitted,
-      style: Theme.of(context).textTheme.bodyMedium,
+      onSelected: onSearchHistorySelected,
+      onHistoryRemoved: onSearchHistoryRemoved,
+      onHistoryCleared: onSearchHistoryCleared,
+      onClear: onSearchClear,
+      hasQuery: hasSearchQuery,
+      textStyle: Theme.of(context).textTheme.bodyMedium,
     );
   }
 
@@ -115,12 +101,7 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
         Expanded(
           child: SizedBox(
             height: 38,
-            child: searchTapRegionGroupId != null
-                ? TapRegion(
-                    groupId: searchTapRegionGroupId,
-                    child: _buildTextField(context),
-                  )
-                : _buildTextField(context),
+            child: _buildTextField(context),
           ),
         ),
         const SizedBox(width: 12),

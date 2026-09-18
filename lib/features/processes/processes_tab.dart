@@ -11,6 +11,7 @@ import '../../core/adb/adb_device.dart';
 import '../../core/process/process_service.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/apps/adb_package.dart';
+import '../../core/search/dashboard_search_history_controller.dart';
 import '../../app/widget/dashboard_tab_layout.dart';
 import '../widgets/dashboard_snack.dart';
 import '../widgets/dashboard_table_header.dart';

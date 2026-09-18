@@ -19,6 +19,8 @@ extension _ProcessesTabView on _ProcessesTabState {
 
     final processesAsync = ref.watch(processesProvider(widget.device.id));
     final packagesAsync = ref.watch(packagesProvider(widget.device.id));
+    final searchHistory =
+        ref.watch(processesSearchHistoryProvider).value ?? const <String>[];
 
     // Resolve list of packages
     final List<AdbPackage> packages = packagesAsync.value ?? [];
@@ -29,6 +31,13 @@ extension _ProcessesTabView on _ProcessesTabState {
         searchHint: context.l10n.t('filterPackage'),
         hasSearchQuery: _filter.isNotEmpty,
         onSearchChanged: (value) => _updateState(() => _filter = value),
+        onSearchSubmitted: (value) =>
+            ref.read(processesSearchHistoryProvider.notifier).add(value),
+        searchHistory: searchHistory,
+        onSearchHistorySelected: (value) =>
+            ref.read(processesSearchHistoryProvider.notifier).add(value),
+        onSearchHistoryRemoved: (value) =>
+            ref.read(processesSearchHistoryProvider.notifier).remove(value),
         onSearchClear: () {
           _filterController.clear();
           _updateState(() => _filter = '');

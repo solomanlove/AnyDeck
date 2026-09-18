@@ -120,38 +120,7 @@ class _FilesTab extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 // Filter search
-                SizedBox(
-                  width: 150,
-                  height: 38,
-                  child: TextField(
-                    onChanged: (val) => ref
-                        .read(fileFilterQueryProvider.notifier)
-                        .setQuery(val),
-                    decoration: InputDecoration(
-                      hintText: context.l10n.t('filter'),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.outlineVariant,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
+                const FileHistoryFilterField(),
                 const SizedBox(width: 8),
                 // View Mode & Hidden Files toggle
                 IconButton(

@@ -22,273 +22,21 @@ class _AppsTabState extends ConsumerState<AppsTab> {
   double _gridItemSize = 100.0;
   final Set<String> _refreshingPackageDetails = <String>{};
 
-  final FocusNode _filterFocusNode = FocusNode();
-  final LayerLink _filterLayerLink = LayerLink();
-  final GlobalKey _textFieldKey = GlobalKey();
-  OverlayEntry? _filterOverlayEntry;
-
-  @override
-  void initState() {
-    super.initState();
-    _filterFocusNode.addListener(_onFilterFocusChange);
-  }
-
   @override
   void dispose() {
-    _hideFilterOverlay();
-    _filterFocusNode.removeListener(_onFilterFocusChange);
-    _filterFocusNode.dispose();
     _filterController.dispose();
     super.dispose();
   }
 
-  void _onFilterFocusChange() {
-    if (_filterFocusNode.hasFocus) {
-      _showFilterOverlay();
-    } else {
-      // 失去焦点时的隐藏由 TapRegion 的 onTapOutside 处理
+  /// 搜索历史只记录实际提交的文本，DEBUG 保持为固定快捷选项。
+  void _commitFilter(String value) {
+    final query = value.trim();
+    if (query.isEmpty) return;
+    if (query.toLowerCase() == 'debug') {
+      setState(() => _appFilterType = AppFilterType.all);
+      return;
     }
-  }
-
-  void _showFilterOverlay() {
-    _hideFilterOverlay();
-    if (!mounted) return;
-
-    final overlayState = Overlay.of(context);
-    _filterOverlayEntry = OverlayEntry(
-      builder: (context) {
-        return Consumer(
-          builder: (context, ref, child) {
-            final history = ref.watch(appsSearchHistoryProvider).value ?? [];
-            return CompositedTransformFollower(
-              link: _filterLayerLink,
-              showWhenUnlinked: false,
-              offset: const Offset(0, 42),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  width: _getTextFieldWidth(),
-                  child: TapRegion(
-                    groupId: 'apps_search_filter_region',
-                    onTapOutside: (event) {
-                      _hideFilterOverlay();
-                      _filterFocusNode.unfocus();
-                    },
-                    child: _buildDropdownOverlayContent(ref, history),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    overlayState.insert(_filterOverlayEntry!);
-  }
-
-  void _hideFilterOverlay() {
-    _filterOverlayEntry?.remove();
-    _filterOverlayEntry = null;
-  }
-
-  double _getTextFieldWidth() {
-    final renderBox =
-        _textFieldKey.currentContext?.findRenderObject() as RenderBox?;
-    return renderBox?.size.width ?? 300.0;
-  }
-
-  void _applyFilter(String value) {
-    _filterController.text = value;
-    setState(() {
-      _filter = value;
-    });
-    if (value.isNotEmpty) {
-      ref.read(appsSearchHistoryProvider.notifier).add(value);
-    }
-  }
-
-  Widget _buildDropdownOverlayContent(WidgetRef ref, List<String> history) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      elevation: 8,
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
-      color: isDark ? const Color(0xff1e293b) : Colors.white,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
-            width: 1,
-          ),
-        ),
-        constraints: const BoxConstraints(maxHeight: 300),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            InkWell(
-              onTap: () {
-                _applyFilter('debug');
-                _hideFilterOverlay();
-                _filterFocusNode.unfocus();
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'DEBUG',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        context.l10n.t('filterDebugOnly'),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      CupertinoIcons.chevron_right,
-                      size: 14,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (history.isNotEmpty) ...[
-              Divider(
-                height: 1,
-                color: isDark
-                    ? const Color(0xff334155)
-                    : const Color(0xffe2e8f0),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 8, 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      context.l10n.t('searchHistory'),
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        ref.read(appsSearchHistoryProvider.notifier).clear();
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Text(
-                        context.l10n.t('clear'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Flexible(
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: history.length,
-                  itemBuilder: (context, index) {
-                    final item = history[index];
-                    return InkWell(
-                      onTap: () {
-                        _applyFilter(item);
-                        _hideFilterOverlay();
-                        _filterFocusNode.unfocus();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.clock,
-                              size: 14,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant
-                                  .withValues(alpha: 0.5),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                item,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(CupertinoIcons.clear, size: 14),
-                              onPressed: () {
-                                ref
-                                    .read(appsSearchHistoryProvider.notifier)
-                                    .remove(item);
-                              },
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              splashRadius: 16,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant
-                                  .withValues(alpha: 0.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+    ref.read(appsSearchHistoryProvider.notifier).add(query);
   }
 
   @override
@@ -296,6 +44,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
     final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
     final packages = ref.watch(packagesProvider(widget.device.id));
     final selectedPkgName = ref.watch(selectedAppPackageProvider);
+    final history = ref.watch(appsSearchHistoryProvider).value ?? const <String>[];
 
     if (selectedPkgName != null) {
       final selectedPackage = packages.maybeWhen(
@@ -328,18 +77,23 @@ class _AppsTabState extends ConsumerState<AppsTab> {
       toolbar: DashboardSearchToolbar<AppFilterType>(
         searchController: _filterController,
         searchHint: context.l10n.t('filterPackage'),
-        searchFocusNode: _filterFocusNode,
-        searchKey: _textFieldKey,
-        searchTapRegionGroupId: 'apps_search_filter_region',
         hasSearchQuery: _filter.isNotEmpty,
         onSearchChanged: (value) => setState(() => _filter = value),
-        onSearchSubmitted: (value) {
-          final val = value.trim();
-          if (val.isNotEmpty) {
-            ref.read(appsSearchHistoryProvider.notifier).add(val);
-          }
-          _hideFilterOverlay();
-        },
+        onSearchSubmitted: _commitFilter,
+        onSearchHistorySelected: _commitFilter,
+        onSearchHistoryRemoved: (value) =>
+            ref.read(appsSearchHistoryProvider.notifier).remove(value),
+        onSearchHistoryCleared: () =>
+            ref.read(appsSearchHistoryProvider.notifier).clear(),
+        searchHistory: history
+            .where((item) => item.toLowerCase() != 'debug')
+            .toList(growable: false),
+        searchDefaultOptions: [
+          DashboardHistoryOption(
+            value: 'debug',
+            label: context.l10n.t('filterDebugOnly'),
+          ),
+        ],
         onSearchClear: () {
           _filterController.clear();
           setState(() => _filter = '');
@@ -559,10 +313,8 @@ class _AppsTabState extends ConsumerState<AppsTab> {
             return true;
           }
 
-          // 如果搜索关键词中包含 'debug'，则匹配所有带 DEBUG 标签（debuggable 为 true）的应用
-          if (filter.contains('debug') && package.debuggable) {
-            return true;
-          }
+          // DEBUG 快捷项只匹配 debuggable 应用，不与普通名称搜索混用。
+          if (filter == 'debug') return package.debuggable;
 
           final nameMatch = package.name.toLowerCase().contains(filter);
           final displayNameMatch = package.displayName.toLowerCase().contains(
@@ -676,8 +428,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
     if (_refreshProgress != null) {
       return;
     }
-    _hideFilterOverlay();
-    _filterFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
     setState(() => _refreshProgress = const PackageRefreshProgress());
     final notifier = ref.read(packagesProvider(widget.device.id).notifier);
     try {
