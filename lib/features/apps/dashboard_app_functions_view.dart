@@ -1349,16 +1349,17 @@ class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
             _SummaryItem(label: "包名", value: widget.package.name, canCopy: true),
             _SummaryItem(
               label: "最低支持系统版本",
-              value: widget.package.minSdk != null
-                  ? "Android ${widget.package.minSdk} (API ${widget.package.minSdk})"
-                  : "-",
+              value: AndroidVersionHelper.formatApiLevel(widget.package.minSdk),
             ),
             _SummaryItem(
-              label: "最大支持系统版本",
-              value: widget.package.targetSdk != null
-                  ? "Android ${widget.package.targetSdk} (API ${widget.package.targetSdk})"
-                  : "-",
+              label: "目标系统版本",
+              value: AndroidVersionHelper.formatApiLevel(widget.package.targetSdk),
             ),
+            if (widget.package.maxSdk != null)
+              _SummaryItem(
+                label: "最大支持系统版本",
+                value: AndroidVersionHelper.formatApiLevel(widget.package.maxSdk),
+              ),
             _SummaryItem(
               label: "安装时间",
               value: (() {

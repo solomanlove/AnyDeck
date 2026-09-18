@@ -34,6 +34,7 @@ import 'apps/widgets/package_refresh_dialog.dart';
 import '../core/apps/package_refresh_progress.dart';
 import '../core/cache/cache_cleanup_service.dart';
 import '../core/device_info/device_overview.dart';
+import '../core/device_info/android_version_helper.dart';
 import '../core/device_info/brand_logo_helper.dart';
 import '../core/device_info/screen_density_helper.dart';
 import '../core/emulator/android_emulator.dart';

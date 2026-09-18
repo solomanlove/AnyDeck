@@ -21,6 +21,47 @@ class AndroidVersionHelper {
     '4.4': 'API 19 (KitKat)',
   };
 
+  // 旧版本及当前映射表尚未收录的版本；主映射表同时服务于概览页 Tooltip。
+  static const Map<int, String> _additionalVersionsByApi = {
+    1: '1.0',
+    2: '1.1',
+    3: '1.5',
+    4: '1.6',
+    5: '2.0',
+    6: '2.0.1',
+    7: '2.1',
+    8: '2.2',
+    9: '2.3',
+    10: '2.3.3',
+    11: '3.0',
+    12: '3.1',
+    13: '3.2',
+    14: '4.0',
+    15: '4.0.3',
+    16: '4.1',
+    17: '4.2',
+    18: '4.3',
+    20: '4.4W',
+    37: '17',
+  };
+
+  /// 将应用 Manifest 的 API level 转成 Android 版本；未知级别只显示 API，避免误报版本。
+  static String formatApiLevel(int? apiLevel) {
+    if (apiLevel == null) return '-';
+    var version = _additionalVersionsByApi[apiLevel];
+    if (version == null) {
+      for (final entry in _apiMap.entries) {
+        if (entry.value.startsWith('API $apiLevel (')) {
+          version = entry.key;
+          break;
+        }
+      }
+    }
+    return version == null
+        ? 'API $apiLevel'
+        : 'Android $version (API $apiLevel)';
+  }
+
   /// 生成等宽对齐的 Tooltip 文本。
   static String getApiMappingTooltip(String title) {
     final sb = StringBuffer();
