@@ -3,6 +3,7 @@ part of '../dashboard_screen.dart';
 /// 单个应用数据行，单击选中、双击进入应用详情页。
 class _PackageTableRow extends StatelessWidget {
   const _PackageTableRow({
+    required this.deviceId,
     required this.package,
     required this.selected,
     required this.widths,
@@ -11,6 +12,7 @@ class _PackageTableRow extends StatelessWidget {
     required this.index,
   });
 
+  final String deviceId;
   final AdbPackage package;
   final bool selected;
   final _PackageTableWidths widths;
@@ -46,7 +48,7 @@ class _PackageTableRow extends StatelessWidget {
           children: [
             _PackageCell(
               width: widths.appName,
-              child: _AppNameCell(package: package),
+              child: _AppNameCell(deviceId: deviceId, package: package),
             ),
             _PackageCell(
               width: widths.version,

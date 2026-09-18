@@ -128,6 +128,7 @@ part 'apps/dashboard_apps_table_widths.dart';
 part 'apps/dashboard_apps_table.dart';
 part 'apps/dashboard_apps_table_row.dart';
 part 'apps/dashboard_apps_grid.dart';
+part 'apps/widgets/package_icon.dart';
 part 'apps/dashboard_apps_actions.dart';
 part 'apps/widgets/usage_report_dialog.dart';
 part 'files/dashboard_files_tab.dart';

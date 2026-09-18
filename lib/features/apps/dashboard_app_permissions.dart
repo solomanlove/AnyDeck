@@ -50,19 +50,7 @@ class _AppPermissionsDialog extends StatelessWidget {
                   child: SizedBox(
                     width: 44,
                     height: 44,
-                    child:
-                        package.iconLocalPath != null &&
-                            File(package.iconLocalPath!).existsSync()
-                        ? Image.file(
-                            File(package.iconLocalPath!),
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _FallbackIconLarge(
-                                  package: package,
-                                  theme: theme,
-                                ),
-                          )
-                        : _FallbackIconLarge(package: package, theme: theme),
+                    child: _PackageIcon(deviceId: deviceId, package: package),
                   ),
                 ),
                 const SizedBox(width: 12),

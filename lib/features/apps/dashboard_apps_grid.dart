@@ -78,13 +78,6 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
     final double labelFontSize = max(11.0, widget.size * 0.11);
     final double secondaryFontSize = max(9.0, widget.size * 0.09);
 
-    final icon = package.flutter
-        ? CupertinoIcons.square_grid_2x2
-        : package.system
-        ? CupertinoIcons.settings
-        : CupertinoIcons.device_phone_portrait;
-    final iconPath = package.iconLocalPath;
-
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -136,24 +129,10 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
                           child: SizedBox(
                             width: iconSize,
                             height: iconSize,
-                            child: iconPath != null && File(iconPath).existsSync()
-                                ? Image.file(
-                                    File(iconPath),
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        _FallbackGridIcon(
-                                          icon: icon,
-                                          system: package.system,
-                                          colorScheme: colorScheme,
-                                          size: iconSize,
-                                        ),
-                                  )
-                                : _FallbackGridIcon(
-                                    icon: icon,
-                                    system: package.system,
-                                    colorScheme: colorScheme,
-                                    size: iconSize,
-                                  ),
+                            child: _PackageIcon(
+                              deviceId: widget.deviceId,
+                              package: package,
+                            ),
                           ),
                         ),
                         SizedBox(height: max(6.0, widget.size * 0.06)),
@@ -232,44 +211,6 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 网格视图中默认的圆角矩形占位图标
-class _FallbackGridIcon extends StatelessWidget {
-  const _FallbackGridIcon({
-    required this.icon,
-    required this.system,
-    required this.colorScheme,
-    required this.size,
-  });
-
-  final IconData icon;
-  final bool system;
-  final ColorScheme colorScheme;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: system
-            ? colorScheme.surfaceContainerHighest
-            : colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Center(
-        child: Icon(
-          icon,
-          size: size * 0.6,
-          color: system
-              ? colorScheme.onSurfaceVariant
-              : colorScheme.onPrimaryContainer,
         ),
       ),
     );

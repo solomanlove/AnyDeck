@@ -140,7 +140,11 @@ class UsageReportDialog extends ConsumerWidget {
                     )
                   : snapshot == null
                   ? Center(child: Text(context.l10n.t('usageEmpty')))
-                  : _UsageSnapshotView(snapshot: snapshot, packages: byName),
+                  : _UsageSnapshotView(
+                      deviceId: deviceId,
+                      snapshot: snapshot,
+                      packages: byName,
+                    ),
             ),
           ],
         ),
@@ -162,7 +166,12 @@ class UsageReportDialog extends ConsumerWidget {
 
 /// 快照内容使用虚拟列表；包展示数据由已有 packagesProvider 提供。
 class _UsageSnapshotView extends StatelessWidget {
-  const _UsageSnapshotView({required this.snapshot, required this.packages});
+  const _UsageSnapshotView({
+    required this.deviceId,
+    required this.snapshot,
+    required this.packages,
+  });
+  final String deviceId;
   final UsageSnapshot snapshot;
   final Map<String, AdbPackage> packages;
 
@@ -246,6 +255,7 @@ class _UsageSnapshotView extends StatelessWidget {
               children: [
                 Expanded(
                   child: _AppNameCell(
+                    deviceId: deviceId,
                     package:
                         packages[app.packageName] ??
                         AdbPackage(name: app.packageName),

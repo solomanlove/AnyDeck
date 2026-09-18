@@ -75,33 +75,3 @@ class _ExportedBadge extends StatelessWidget {
     );
   }
 }
-
-class _FallbackIconLarge extends StatelessWidget {
-  const _FallbackIconLarge({required this.package, required this.theme});
-
-  final AdbPackage package;
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = theme.colorScheme;
-    final icon = package.flutter
-        ? CupertinoIcons.square_grid_2x2
-        : package.system
-            ? CupertinoIcons.settings
-            : CupertinoIcons.device_phone_portrait;
-
-    return Container(
-      color: package.system
-          ? colorScheme.surfaceContainerHighest
-          : colorScheme.primaryContainer,
-      child: Icon(
-        icon,
-        size: 36,
-        color: package.system
-            ? colorScheme.onSurfaceVariant
-            : colorScheme.onPrimaryContainer,
-      ),
-    );
-  }
-}

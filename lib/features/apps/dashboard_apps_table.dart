@@ -180,6 +180,7 @@ class _PackageTableState extends State<_PackageTable> {
                               itemBuilder: (context, index) {
                                 final package = sorted[index];
                                 return _PackageTableRow(
+                                  deviceId: widget.deviceId,
                                   package: package,
                                   selected: package.name == widget.selectedPackage,
                                   widths: widths,
@@ -317,20 +318,14 @@ class _PackageCell extends StatelessWidget {
 
 /// 展示应用名称和包名，并且呈现圆角矩形的应用图标（类似 ListTile 结构），支持点击收藏（✨）。
 class _AppNameCell extends ConsumerWidget {
-  const _AppNameCell({required this.package});
+  const _AppNameCell({required this.deviceId, required this.package});
 
+  final String deviceId;
   final AdbPackage package;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final icon = package.flutter
-        ? CupertinoIcons.square_grid_2x2
-        : package.system
-        ? CupertinoIcons.settings
-        : CupertinoIcons.device_phone_portrait;
-    final iconPath = package.iconLocalPath;
-
     return Row(
       children: [
         ClipRRect(
@@ -338,22 +333,7 @@ class _AppNameCell extends ConsumerWidget {
           child: SizedBox(
             width: 28,
             height: 28,
-            child: iconPath != null && File(iconPath).existsSync()
-                ? Image.file(
-                    File(iconPath),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _FallbackAppIcon(
-                          icon: icon,
-                          system: package.system,
-                          colorScheme: colorScheme,
-                        ),
-                  )
-                : _FallbackAppIcon(
-                    icon: icon,
-                    system: package.system,
-                    colorScheme: colorScheme,
-                  ),
+            child: _PackageIcon(deviceId: deviceId, package: package),
           ),
         ),
         const SizedBox(width: 10),
@@ -443,39 +423,6 @@ class _AppNameCell extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 默认的圆角矩形应用占位图标
-class _FallbackAppIcon extends StatelessWidget {
-  const _FallbackAppIcon({
-    required this.icon,
-    required this.system,
-    required this.colorScheme,
-  });
-  final IconData icon;
-  final bool system;
-  final ColorScheme colorScheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: system
-            ? colorScheme.surfaceContainerHighest
-            : colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Center(
-        child: Icon(
-          icon,
-          size: 16,
-          color: system
-              ? colorScheme.onSurfaceVariant
-              : colorScheme.onPrimaryContainer,
-        ),
-      ),
     );
   }
 }

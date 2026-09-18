@@ -1247,8 +1247,6 @@ class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final iconPath = widget.package.iconLocalPath;
-
     return Container(
       decoration: BoxDecoration(
         color: widget.cardBg,
@@ -1284,17 +1282,10 @@ class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
                     child: SizedBox(
                       width: 80,
                       height: 80,
-                      child: iconPath != null && File(iconPath).existsSync()
-                          ? Image.file(
-                              File(iconPath),
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _FallbackIconLarge(
-                                    package: widget.package,
-                                    theme: theme,
-                                  ),
-                            )
-                          : _FallbackIconLarge(package: widget.package, theme: theme),
+                      child: _PackageIcon(
+                        deviceId: widget.deviceId,
+                        package: widget.package,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
