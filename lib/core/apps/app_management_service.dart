@@ -1294,9 +1294,12 @@ done | sort -u
   }
 
   _PackageDumpMetadata _parseDumpBlock(String block) {
+    final versionName = _firstMatch(block, RegExp(r'versionName=([^\s]+)'));
     return _PackageDumpMetadata(
       label: _firstMatch(block, RegExp(r'label=([^\s]+)')),
-      versionName: _firstMatch(block, RegExp(r'versionName=([^\s]+)')),
+      versionName: versionName == null || versionName.toLowerCase() == 'null'
+          ? null
+          : versionName,
       versionCode: _firstMatch(block, RegExp(r'versionCode=([^\s]+)')),
       minSdk: _parseInt(_firstMatch(block, RegExp(r'minSdk=(\d+)'))),
       targetSdk: _parseInt(_firstMatch(block, RegExp(r'targetSdk=(\d+)'))),

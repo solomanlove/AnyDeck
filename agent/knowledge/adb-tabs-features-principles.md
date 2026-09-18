@@ -102,6 +102,7 @@
    - **手动全量刷新**：点击“刷新全部应用图标”后，后台建立独立流任务 `enrichPackagesWithIconsProgressive`，通过 `pm path <package>` 定位 APK，并利用 Host 端工具读取 APK 的 Manifest 资源文件，提取图标字节流，分批 yield 刷新 UI。
    - **单应用详情刷新**：单击某个应用时只更新选中态，并调用 `getSinglePackageInfo` 刷新该包的详情、图标、签名与安装时间后回写列表缓存；双击才通过 `selectedAppPackageProvider` 进入应用详情页。
    - **详情页系统版本**：`dumpsys package` 的 `minSdk`、`targetSdk`、`maxSdk` 是 API level，不是 Android 主版本号。详情页经 `AndroidVersionHelper.formatApiLevel` 转成 `Android <版本> (API <级别>)`，例如 API 21 显示 Android 5.0、API 29 显示 Android 10；未知级别只保留 API 数字。`targetSdk` 标为“目标系统版本”，仅当 `maxSdk` 存在时展示“最大支持系统版本”。
+   - **应用版本缺失**：部分调试 APK 未设置 `versionName`，设备 `dumpsys package` 会输出字面量 `versionName=null`，`versionCode` 也可能为默认值 `0`。解析时将前者还原为空值，列表/网格/详情页优先显示有效版本名，其次显示非零 `versionCode`，都不存在时显示 `-`；旧缓存读取同样归一化，避免显示字符串 `null`。
 3. **生命周期与数据管理**：
    - **启动**：调用 `adb shell monkey -p <package> 1`（利用 monkey 启动默认 Activity）或 `am start -n <package>/<activity>`。
    - **停止**：`adb shell am force-stop <package>` 结束进程。

@@ -22,8 +22,12 @@ class FakeAppAdbService extends AdbService {
         exitCode: 0,
         stdout:
             '  Package [com.example.app] (123):\n'
+            '    versionCode=0 minSdk=26 targetSdk=30\n'
+            '    versionName=null\n'
             '    pkgFlags=[ DEBUGGABLE HAS_CODE ]\n'
             '  Package [com.android.settings] (456):\n'
+            '    versionCode=42 minSdk=23 targetSdk=34\n'
+            '    versionName=1.2.3\n'
             '    pkgFlags=[ SYSTEM HAS_CODE ]\n',
         stderr: '',
       );
@@ -80,6 +84,14 @@ void main() {
     );
     expect(debugPackage.label, '测试应用');
     expect(debugPackage.debuggable, isTrue);
+    expect(debugPackage.versionName, isNull);
+    expect(debugPackage.versionLabel, '-');
+    expect(
+      packages
+          .singleWhere((package) => package.name == 'com.android.settings')
+          .versionLabel,
+      '1.2.3',
+    );
     expect(
       packages
           .singleWhere((package) => package.name == 'com.android.settings')
@@ -93,6 +105,20 @@ void main() {
           .where((package) => package.debuggable)
           .map((package) => package.name),
       ['com.example.app'],
+    );
+  });
+
+  test('旧缓存中的字面量 null 版本名不会显示为版本', () {
+    final package = AdbPackage.fromJson({
+      'name': 'com.example.old',
+      'versionName': 'null',
+      'versionCode': '0',
+    });
+    expect(package.versionName, isNull);
+    expect(package.versionLabel, '-');
+    expect(
+      const AdbPackage(name: 'com.example.code', versionCode: '42').versionLabel,
+      '42',
     );
   });
 

@@ -51,7 +51,7 @@ class AdbPackage {
       name: json['name'] as String? ?? '',
       label: json['label'] as String?,
       apkPath: json['apkPath'] as String?,
-      versionName: json['versionName'] as String?,
+      versionName: _cleanVersionName(json['versionName'] as String?),
       versionCode: json['versionCode'] as String?,
       minSdk: json['minSdk'] as int?,
       targetSdk: json['targetSdk'] as int?,
@@ -136,12 +136,25 @@ class AdbPackage {
   }
 
   String get versionLabel {
-    final namePart = versionName?.trim();
-    if (namePart != null && namePart.isNotEmpty) {
+    final namePart = _cleanVersionName(versionName);
+    if (namePart != null) {
       return namePart;
     }
     final codePart = versionCode?.trim();
-    return codePart == null || codePart.isEmpty ? '-' : codePart;
+    return codePart == null ||
+            codePart.isEmpty ||
+            codePart == '0' ||
+            codePart.toLowerCase() == 'null'
+        ? '-'
+        : codePart;
+  }
+
+  /// PackageManager 未设置 versionName 时可能输出字面量 null。
+  static String? _cleanVersionName(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty || trimmed.toLowerCase() == 'null'
+        ? null
+        : trimmed;
   }
 
   String get storageLabel {
