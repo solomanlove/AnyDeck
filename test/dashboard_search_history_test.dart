@@ -94,4 +94,37 @@ void main() {
     expect(controller.text, 'AirController');
     expect(selected, 'AirController');
   });
+
+  testWidgets('窄筛选框展开历史时列表项不溢出', (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: const [AppLocalizationsDelegate()],
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 90,
+              child: DashboardHistoryTextField(
+                controller: controller,
+                hintText: '筛选',
+                history: const ['com.example.long.package.name'],
+                onChanged: (_) {},
+                onSubmitted: (_) {},
+                onSelected: (_) {},
+                onHistoryRemoved: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    expect(find.text('com.example.long.package.name'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

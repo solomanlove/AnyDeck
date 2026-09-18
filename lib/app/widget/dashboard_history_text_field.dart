@@ -268,22 +268,26 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(CupertinoIcons.clear, size: 14),
-                              onPressed: () {
+                            InkWell(
+                              onTap: () {
                                 widget.onHistoryRemoved(item);
                                 if (widget.controller.text == item) {
                                   widget.controller.clear();
                                   widget.onChanged('');
                                 }
                               },
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              splashRadius: 16,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant
-                                  .withValues(alpha: 0.5),
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Icon(
+                                  CupertinoIcons.clear,
+                                  size: 14,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.5),
+                                ),
+                              ),
                             ),
                           ],
                         ),

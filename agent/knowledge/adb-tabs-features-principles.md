@@ -5,6 +5,8 @@
 
 应用、进程、文件和日志 Tab 内容区的筛选输入框不显示前缀图标，保留筛选提示文字与必要的清除、历史记录按钮。四处复用 `DashboardHistoryTextField` 的焦点下拉、选择、删除与回车提交交互；应用和进程通过 `DashboardSearchToolbar` 接入，文件的 Android/Harmony 页面复用 `FileHistoryFilterField`。应用沿用原有 `apps_search_history` 缓存，进程和文件分别保存最多 10 条历史；文件两种系统页面共用一份记录。应用历史下拉固定显示 DEBUG 快捷项，不将该项作为普通历史，选择后切到“全部”应用并精确筛选 `debuggable` 包。输入框保留水平内边距，避免文字贴边；左侧导航栏图标不受影响。
 
+历史列表项的删除按钮使用固定 24px 宽度，长搜索词由文本区域省略显示，避免窄筛选框展开下拉时发生 `RenderFlex` 横向溢出。应用 Tab 的工具栏只创建一个 `DashboardHistoryTextField`；桌面页面通过 `IndexedStack` 保留其他 Tab 状态，仅绘制当前 Tab。
+
 ---
 
 ## 1. 概览 (Overview Tab)
