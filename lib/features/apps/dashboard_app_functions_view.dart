@@ -965,6 +965,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                     _DexTab(dexFiles: detail.dexFiles),
                                     _SignatureTab(
                                       signatureMd5: detail.signatureMd5,
+                                      signatures: detail.signatures,
                                     ),
                                   ],
                                 );

@@ -2,8 +2,6 @@ package com.adbmanage.helper;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
-import android.content.pm.Signature;
-import java.security.MessageDigest;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -188,22 +186,7 @@ public final class PackageIconHelper {
      * 计算应用签名证书的 MD5 值
      */
     private String getSignatureMd5(PackageInfo packageInfo) {
-        try {
-            Signature[] signatures = packageInfo.signatures;
-            if (signatures == null || signatures.length == 0) {
-                return "";
-            }
-            byte[] certBytes = signatures[0].toByteArray();
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] digest = md.digest(certBytes);
-            StringBuilder sb = new StringBuilder();
-            for (byte b : digest) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (Throwable ignored) {
-            return "";
-        }
+        return PackageSignatureReader.getPrimaryMd5(packageInfo);
     }
 
     /**
@@ -246,6 +229,9 @@ public final class PackageIconHelper {
 
     private void printPackageDetails(String packageName) throws Exception {
         int flags = 1 | 2 | 4 | 8 | 64 | 4096 | 128; // GET_ACTIVITIES | GET_RECEIVERS | GET_SERVICES | GET_PROVIDERS | GET_SIGNATURES | GET_PERMISSIONS | GET_META_DATA
+        if (Build.VERSION.SDK_INT >= 28) {
+            flags |= 0x08000000; // PackageManager.GET_SIGNING_CERTIFICATES
+        }
         PackageInfo packageInfo = null;
         try {
             packageInfo = getPackageInfoWithFlags(packageName, flags);
@@ -509,7 +495,8 @@ public final class PackageIconHelper {
         json.append("\"providers\":").append(prvJson.toString()).append(",");
         json.append("\"permissions\":").append(permJson.toString()).append(",");
         json.append("\"metadata\":").append(metaJson.toString()).append(",");
-        json.append("\"signatureMd5\":\"").append(sigMd5).append("\"");
+        json.append("\"signatureMd5\":\"").append(sigMd5).append("\",");
+        json.append("\"signatures\":").append(PackageSignatureReader.toJson(packageInfo));
         json.append("}");
 
         System.out.println(json.toString());

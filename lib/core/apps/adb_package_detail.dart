@@ -85,6 +85,71 @@ class AdbPermissionInfo {
   }
 }
 
+/// 表示应用的一张 X.509 签名证书及其指纹信息。
+class AdbSignatureInfo {
+  const AdbSignatureInfo({
+    required this.current,
+    required this.certificateVersion,
+    required this.serialNumber,
+    required this.subject,
+    required this.issuer,
+    required this.notBefore,
+    required this.notAfter,
+    required this.signatureAlgorithm,
+    required this.publicKeyAlgorithm,
+    required this.md5,
+    required this.sha1,
+    required this.sha256,
+  });
+
+  final bool current;
+  final int certificateVersion;
+  final String serialNumber;
+  final String subject;
+  final String issuer;
+  final int notBefore;
+  final int notAfter;
+  final String signatureAlgorithm;
+  final String publicKeyAlgorithm;
+  final String md5;
+  final String sha1;
+  final String sha256;
+
+  factory AdbSignatureInfo.fromJson(Map<String, Object?> json) {
+    return AdbSignatureInfo(
+      current: json['current'] as bool? ?? true,
+      certificateVersion: json['certificateVersion'] as int? ?? 0,
+      serialNumber: json['serialNumber'] as String? ?? '',
+      subject: json['subject'] as String? ?? '',
+      issuer: json['issuer'] as String? ?? '',
+      notBefore: json['notBefore'] as int? ?? 0,
+      notAfter: json['notAfter'] as int? ?? 0,
+      signatureAlgorithm: json['signatureAlgorithm'] as String? ?? '',
+      publicKeyAlgorithm: json['publicKeyAlgorithm'] as String? ?? '',
+      md5: json['md5'] as String? ?? '',
+      sha1: json['sha1'] as String? ?? '',
+      sha256: json['sha256'] as String? ?? '',
+    );
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      'current': current,
+      'certificateVersion': certificateVersion,
+      'serialNumber': serialNumber,
+      'subject': subject,
+      'issuer': issuer,
+      'notBefore': notBefore,
+      'notAfter': notAfter,
+      'signatureAlgorithm': signatureAlgorithm,
+      'publicKeyAlgorithm': publicKeyAlgorithm,
+      'md5': md5,
+      'sha1': sha1,
+      'sha256': sha256,
+    };
+  }
+}
+
 /// 表示应用的详细 LibChecker 元数据。
 class AdbPackageDetail {
   const AdbPackageDetail({
@@ -102,6 +167,7 @@ class AdbPackageDetail {
     required this.permissions,
     required this.metadata,
     required this.signatureMd5,
+    required this.signatures,
     this.extractNativeLibs,
   });
 
@@ -119,6 +185,7 @@ class AdbPackageDetail {
   final List<AdbPermissionInfo> permissions;
   final Map<String, String> metadata;
   final String signatureMd5;
+  final List<AdbSignatureInfo> signatures;
   final bool? extractNativeLibs;
 
   factory AdbPackageDetail.fromJson(Map<String, Object?> json) {
@@ -163,6 +230,11 @@ class AdbPackageDetail {
         [];
 
     final meta = (json['metadata'] as Map?)?.cast<String, String>() ?? {};
+    final signatures =
+        (json['signatures'] as List?)
+            ?.map((e) => AdbSignatureInfo.fromJson(e as Map<String, Object?>))
+            .toList() ??
+        [];
 
     return AdbPackageDetail(
       packageName: json['packageName'] as String? ?? '',
@@ -179,6 +251,7 @@ class AdbPackageDetail {
       permissions: perms,
       metadata: meta,
       signatureMd5: json['signatureMd5'] as String? ?? '',
+      signatures: signatures,
       extractNativeLibs: json['extractNativeLibs'] as bool?,
     );
   }
@@ -199,6 +272,7 @@ class AdbPackageDetail {
       'permissions': permissions.map((e) => e.toJson()).toList(),
       'metadata': metadata,
       'signatureMd5': signatureMd5,
+      'signatures': signatures.map((e) => e.toJson()).toList(),
       'extractNativeLibs': extractNativeLibs,
     };
   }

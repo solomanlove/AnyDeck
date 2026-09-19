@@ -13,6 +13,7 @@
 | `adb-app-permissions` | 应用权限分类与批量撤销 | active | 记录动态 / 静态 / 未知权限分类、当前用户隔离、批量撤销与回读结果、共享面板及回归验证 | `core/apps/`, `features/apps/` |
 | `adb-app-native-library-copy` | 应用原生库名称复制 | active | 记录应用详情原生库 Tab 的 `.so` 库名 Clipboard 复制、统一反馈与原生库规则拆分边界 | `features/apps/` |
 | `adb-app-default-icons` | 应用图标缺失时的平台回退 | active | 记录真实图标优先、文件缺失或损坏时按 Android/HarmonyOS 展示本地默认资源，以及资源来源和验证边界 | `features/apps/`, `assets/brand/` |
+| `adb-app-signature-details` | 应用签名证书详情 | active | 记录已安装应用当前/历史 signer、X.509 证书字段、MD5/SHA-1/SHA-256 指纹及 Android Helper DEX 数据链路 | `core/apps/`, `features/apps/`, `tool/android_helper/` |
 | `adb-usage-companion` | 手机使用统计、位置记录与 ADB 历史同步 | active | 可见授权、系统统计口径、位置前台服务、手机离线库、分页游标与 SQLite 事务、内嵌地图底图、图标复用及验证边界 | `core/usage/`, `features/apps/`, `tool/usage_companion/` |
 | `adb-device-rust-sessions` | 屏幕投屏、摄像头、麦克风与手机剪贴板 Rust 底座 | active | 彻底移除 C++ 插件，屏幕投屏、VideoToolbox 硬解、AudioQueue、触控注入、摄像头、麦克风、剪贴板全面由纯 Rust 底座承接 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
 | `adb-device-rust-sessions-test` | Rust 设备会话回归验证 | active | 自动验证结果、平台门槛、生成视频帧解码与真机回归清单 | `test/`, `rust/device_bridge/` |
