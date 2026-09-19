@@ -150,6 +150,7 @@ part 'logcat/dashboard_logcat_widgets.dart';
 part 'widgets/dashboard_common.dart';
 part 'apps/dashboard_app_details_tabs.dart';
 part 'apps/dashboard_app_details_tabs_2.dart';
+part 'apps/dashboard_app_native_library_rules.dart';
 part 'apps/dashboard_app_signature_tab.dart';
 part 'apps/dashboard_app_permissions.dart';
 part 'apps/dashboard_app_functions_view.dart';
