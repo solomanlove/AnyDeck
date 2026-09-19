@@ -114,25 +114,31 @@ class _LibsTabState extends State<_LibsTab> {
                         : null;
 
                     final match = _matchKnownLib(libName);
-                    return ListTile(
-                      title: Text(libName),
-                      subtitle: match != null
-                          ? Text(
-                              match['desc'] != null && match['desc']!.isNotEmpty
-                                  ? '${match['name']} (${match['desc']})'
-                                  : match['name']!,
-                              style: const TextStyle(
-                                color: Colors.green,
-                                fontSize: 12,
-                              ),
-                            )
-                          : const Text('未知动态库', style: TextStyle(fontSize: 12)),
-                      trailing: libSize != null && libSize > 0
-                          ? Text(
-                              _formatSize(libSize),
-                              style: const TextStyle(fontSize: 12),
-                            )
-                          : null,
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 5,
+                      ),
+                      child: ListTile(
+                        title: Text(libName),
+                        subtitle: match != null
+                            ? Text(
+                                match['desc'] != null && match['desc']!.isNotEmpty
+                                    ? '${match['name']} (${match['desc']})'
+                                    : match['name']!,
+                                style: const TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 12,
+                                ),
+                              )
+                            : const Text('未知动态库', style: TextStyle(fontSize: 12)),
+                        trailing: libSize != null && libSize > 0
+                            ? Text(
+                                _formatSize(libSize),
+                                style: const TextStyle(fontSize: 12),
+                              )
+                            : null,
+                      ),
                     );
                   },
                 ),
@@ -283,44 +289,50 @@ class _ComponentsTabState extends State<_ComponentsTab> {
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final info = filtered[index];
-                    return ListTile(
-                      dense: true,
-                      title: Text(
-                        info.name,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 5,
                       ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (widget.isProvider && info.authority != null)
-                            Text(
-                              'Authority: ${info.authority}',
-                              style: const TextStyle(
-                                color: Colors.blue,
-                                fontSize: 11,
+                      child: ListTile(
+                        dense: true,
+                        title: Text(
+                          info.name,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (widget.isProvider && info.authority != null)
+                              Text(
+                                'Authority: ${info.authority}',
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 11,
+                                ),
                               ),
-                            ),
-                          if (info.permission != null)
-                            Text(
-                              'Required Permission: ${info.permission}',
-                              style: const TextStyle(
-                                color: Colors.red,
-                                fontSize: 11,
+                            if (info.permission != null)
+                              Text(
+                                'Required Permission: ${info.permission}',
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 11,
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
+                        trailing: _ExportedBadge(exported: info.exported),
+                        leading: Icon(
+                          widget.isProvider
+                              ? CupertinoIcons.share
+                              : CupertinoIcons.gear_alt,
+                          size: 16,
+                        ),
+                        onLongPress: () {
+                          Clipboard.setData(ClipboardData(text: info.name));
+                          _showSnack(context, '已复制组件名称: ${info.name}');
+                        },
                       ),
-                      trailing: _ExportedBadge(exported: info.exported),
-                      leading: Icon(
-                        widget.isProvider
-                            ? CupertinoIcons.share
-                            : CupertinoIcons.gear_alt,
-                        size: 16,
-                      ),
-                      onLongPress: () {
-                        Clipboard.setData(ClipboardData(text: info.name));
-                        _showSnack(context, '已复制组件名称: ${info.name}');
-                      },
                     );
                   },
                 ),
@@ -384,19 +396,25 @@ class _MetadataTabState extends State<_MetadataTab> {
                     itemBuilder: (context, index) {
                       final key = filteredKeys[index];
                       final val = widget.metadata[key];
-                      return ListTile(
-                        dense: true,
-                        title: Text(
-                          key,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 5,
                         ),
-                        subtitle: Text(val ?? ''),
-                        trailing: IconButton(
-                          icon: const Icon(CupertinoIcons.doc_on_doc, size: 14),
-                          onPressed: () {
-                            Clipboard.setData(ClipboardData(text: '$key=$val'));
-                            _showSnack(context, '已复制元数据键值对');
-                          },
+                        child: ListTile(
+                          dense: true,
+                          title: Text(
+                            key,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(val ?? ''),
+                          trailing: IconButton(
+                            icon: const Icon(CupertinoIcons.doc_on_doc, size: 14),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: '$key=$val'));
+                              _showSnack(context, '已复制元数据键值对');
+                            },
+                          ),
                         ),
                       );
                     },
@@ -447,11 +465,17 @@ class _DexTab extends StatelessWidget {
                   itemCount: dexFiles.length,
                   itemBuilder: (context, index) {
                     final f = dexFiles[index];
-                    return ListTile(
-                      dense: true,
-                      title: Text(f.name),
-                      trailing: Text(_formatSize(f.size)),
-                      leading: const Icon(CupertinoIcons.doc_text, size: 18),
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 5,
+                      ),
+                      child: ListTile(
+                        dense: true,
+                        title: Text(f.name),
+                        trailing: Text(_formatSize(f.size)),
+                        leading: const Icon(CupertinoIcons.doc_text, size: 18),
+                      ),
                     );
                   },
                 ),

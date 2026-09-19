@@ -1269,6 +1269,7 @@ class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
             Center(
               child: Column(
                 children: [
+                  const SizedBox(height: 15),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: SizedBox(

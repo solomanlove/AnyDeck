@@ -34,52 +34,52 @@ extension _SettingsTabAutoStartActions on _SettingsTab {
             onChanged: (val) => controller.setLaunchAtStartup(val),
           ),
         ),
-        const Divider(height: 24),
-        _buildSettingRow(
-          context,
-          label: context.l10n.t('mainWindowShortcut'),
-          subtitle: context.l10n.t('mainWindowShortcutDesc'),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: ['1', '2', '3', '4', '5'].map((key) {
-              final isSelected = settings.showWindowShortcutKey == key;
-              return Padding(
-                padding: const EdgeInsets.only(left: 6),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => controller.setShowWindowShortcut(key),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? brandGreen
-                          : Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected
-                            ? brandGreen
-                            : Theme.of(context).dividerColor.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      '⌘$key',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? Colors.white
-                            : Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
+        // const Divider(height: 24),
+        // _buildSettingRow(
+        //   context,
+        //   label: context.l10n.t('mainWindowShortcut'),
+        //   subtitle: context.l10n.t('mainWindowShortcutDesc'),
+        //   child: Row(
+        //     mainAxisSize: MainAxisSize.min,
+        //     children: ['1', '2', '3', '4', '5'].map((key) {
+        //       final isSelected = settings.showWindowShortcutKey == key;
+        //       return Padding(
+        //         padding: const EdgeInsets.only(left: 6),
+        //         child: InkWell(
+        //           borderRadius: BorderRadius.circular(8),
+        //           onTap: () => controller.setShowWindowShortcut(key),
+        //           child: Container(
+        //             padding: const EdgeInsets.symmetric(
+        //               horizontal: 10,
+        //               vertical: 6,
+        //             ),
+        //             decoration: BoxDecoration(
+        //               color: isSelected
+        //                   ? brandGreen
+        //                   : Theme.of(context).colorScheme.surfaceContainerHighest,
+        //               borderRadius: BorderRadius.circular(8),
+        //               border: Border.all(
+        //                 color: isSelected
+        //                     ? brandGreen
+        //                     : Theme.of(context).dividerColor.withValues(alpha: 0.3),
+        //               ),
+        //             ),
+        //             child: Text(
+        //               '⌘$key',
+        //               style: TextStyle(
+        //                 fontSize: 12,
+        //                 fontWeight: FontWeight.w600,
+        //                 color: isSelected
+        //                     ? Colors.white
+        //                     : Theme.of(context).colorScheme.onSurface,
+        //               ),
+        //             ),
+        //           ),
+        //         ),
+        //       );
+        //     }).toList(),
+        //   ),
+        // ),
       ],
     );
   }

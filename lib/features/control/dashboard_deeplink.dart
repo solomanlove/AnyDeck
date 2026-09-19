@@ -78,15 +78,15 @@ class _DeeplinkPanel extends ConsumerWidget {
           ),
         ),
         // Google服务信息
-        _ActionButton(
-          icon: CupertinoIcons.info_circle,
-          label: context.l10n.t('deeplinkGoogleSettings'),
-          onPressed: () => _runAdbAction(
-            context,
-            ref,
-            actions.openGoogleSettings(device.id),
-          ),
-        ),
+        // _ActionButton(
+        //   icon: CupertinoIcons.info_circle,
+        //   label: context.l10n.t('deeplinkGoogleSettings'),
+        //   onPressed: () => _runAdbAction(
+        //     context,
+        //     ref,
+        //     actions.openGoogleSettings(device.id),
+        //   ),
+        // ),
         // 自定义链接
         _ActionButton(
           icon: CupertinoIcons.link,
