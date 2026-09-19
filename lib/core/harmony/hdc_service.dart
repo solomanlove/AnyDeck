@@ -9,6 +9,7 @@ import '../dal/device_driver.dart';
 import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 
+import 'hdc_service_device_info.dart';
 export 'hdc_service_device_info.dart';
 export 'hdc_service_fport.dart';
 
@@ -60,10 +61,8 @@ class HdcService {
 
     final devices = <AdbDevice>[];
     for (final id in rawTargets) {
-      bool isGenericModel(String s) =>
-          s.isEmpty || s == 'HarmonyOS Device' || s.toLowerCase().contains('fail');
       String modelName = _deviceModelCache[id] ?? '';
-      if (isGenericModel(modelName)) {
+      if (HdcServiceDeviceInfo.isGenericOrInvalidModel(modelName)) {
         try {
           final paramRes = await shell(
             id,
@@ -77,7 +76,7 @@ class HdcService {
             String marketingName = lines.length > 2 ? lines[2].trim() : '';
 
             bool isValid(String s) =>
-                s.isNotEmpty && !s.toLowerCase().contains('fail');
+                !HdcServiceDeviceInfo.isGenericOrInvalidModel(s);
 
             if (isValid(marketingName)) {
               modelName = marketingName;
@@ -89,15 +88,19 @@ class HdcService {
           }
         } catch (_) {}
 
-        if (modelName.isNotEmpty && !isGenericModel(modelName)) {
+        if (!HdcServiceDeviceInfo.isGenericOrInvalidModel(modelName)) {
           _deviceModelCache[id] = modelName;
+        } else {
+          _deviceModelCache.remove(id);
         }
       }
 
       devices.add(AdbDevice(
         id: id,
         status: 'device',
-        model: modelName.isNotEmpty ? modelName : 'HarmonyOS Device',
+        model: !HdcServiceDeviceInfo.isGenericOrInvalidModel(modelName)
+            ? modelName
+            : 'HarmonyOS Device',
         product: 'HarmonyOS NEXT',
         transportId: '',
         isHarmony: true,
@@ -119,10 +122,17 @@ class HdcService {
       final stdoutFuture = process.stdout.transform(utf8.decoder).join();
       final stderrFuture = process.stderr.transform(utf8.decoder).join();
       final exitCode = await process.exitCode.timeout(timeout);
+      final stdoutStr = await stdoutFuture;
+      final stderrStr = await stderrFuture;
+      final isHdcError = stdoutStr.contains('[Fail]') ||
+          stdoutStr.contains('[E0') ||
+          stdoutStr.contains('The communication channel is being established') ||
+          stdoutStr.contains('Please wait for several seconds');
+      final effectiveExitCode = (exitCode == 0 && isHdcError) ? 1 : exitCode;
       final result = AdbResult(
-        exitCode: exitCode,
-        stdout: await stdoutFuture,
-        stderr: await stderrFuture,
+        exitCode: effectiveExitCode,
+        stdout: isHdcError ? '' : stdoutStr,
+        stderr: isHdcError ? stdoutStr : stderrStr,
       );
       if (!result.isSuccess && result.stderr.isNotEmpty) {
         _onLog?.call('Command failed: ${result.stderr.trim()}', tag: 'hdc', level: 'E');
@@ -212,12 +222,8 @@ class HdcService {
   }
 
   /// 切换 HarmonyOS 设备屏幕电源状态。
-  Future<AdbResult> setScreenPower(String deviceId, {required bool powerOn}) {
-    return shell(
-      deviceId,
-      powerOn ? 'power-shell wakeup' : 'power-shell suspend',
-    );
-  }
+  Future<AdbResult> setScreenPower(String deviceId, {required bool powerOn}) =>
+      shell(deviceId, powerOn ? 'power-shell wakeup' : 'power-shell suspend');
 
   /// 导出 HarmonyOS 当前窗口信息，供投屏工具栏查看前台窗口。
   Future<AdbResult> currentFocus(String deviceId) {
@@ -410,16 +416,12 @@ class HdcService {
   }
 
   /// 递归删除 HarmonyOS 设备上的远程文件或目录。
-  Future<AdbResult> delete(String deviceId, String remotePath) {
-    final escaped = remotePath.replaceAll("'", "'\\''");
-    return shell(deviceId, "rm -rf '$escaped'");
-  }
+  Future<AdbResult> delete(String deviceId, String remotePath) =>
+      shell(deviceId, "rm -rf '${remotePath.replaceAll("'", "'\\''")}'");
 
   /// 在 HarmonyOS 设备上创建远程目录。
-  Future<AdbResult> makeDirectory(String deviceId, String remotePath) {
-    final escaped = remotePath.replaceAll("'", "'\\''");
-    return shell(deviceId, "mkdir -p '$escaped'");
-  }
+  Future<AdbResult> makeDirectory(String deviceId, String remotePath) =>
+      shell(deviceId, "mkdir -p '${remotePath.replaceAll("'", "'\\''")}'");
 
   /// 解析 `hdc list targets -v` 输出，仅保留明确标记为 Connected 的设备。
   static List<String> parseConnectedTargetsWithStatus(String output) {
@@ -435,7 +437,9 @@ class HdcService {
       if (parts.isNotEmpty) {
         final serial = parts.first;
         final status = parts.length >= 3 ? parts[2].toLowerCase() : '';
-        if (status == 'connected' && !serial.toLowerCase().contains('fail')) {
+        if (status == 'connected' &&
+            !serial.toLowerCase().contains('fail') &&
+            !HdcServiceDeviceInfo.isGenericOrInvalidModel(serial)) {
           targets.add(serial);
         }
       }
@@ -444,19 +448,15 @@ class HdcService {
   }
 
   /// 开启鸿蒙设备的 TCP 监听模式 (默认 5555 端口)。
-  Future<AdbResult> enableTcpMode(String deviceId, {int port = 5555}) {
-    return run(['-t', deviceId, 'tmode', 'port', '$port']);
-  }
+  Future<AdbResult> enableTcpMode(String deviceId, {int port = 5555}) =>
+      run(['-t', deviceId, 'tmode', 'port', '$port']);
 
   /// 通过无线网络连接到指定鸿蒙设备地址 (如 192.168.1.10:5555)。
-  Future<AdbResult> connectWireless(String address) {
-    return run(['tconn', address]);
-  }
+  Future<AdbResult> connectWireless(String address) => run(['tconn', address]);
 
   /// 断开指定的鸿蒙无线设备连接。
-  Future<AdbResult> disconnectWireless(String address) {
-    return run(['tconn', address, '-remove']);
-  }
+  Future<AdbResult> disconnectWireless(String address) =>
+      run(['tconn', address, '-remove']);
 
   /// 查询鸿蒙设备的局域网 IPv4 地址。
   Future<String?> getDeviceIp(String deviceId) async {
@@ -485,9 +485,10 @@ class HdcService {
     final lines = LineSplitter.split(output);
     for (final line in lines) {
       final trimmed = line.trim();
-      // 过滤空白行和异常提示行（例如 "[Empty]" 或包含 Fail 的错误输出）
+      // 过滤空白行和异常提示行（例如 "[Empty]" 或包含 Fail/Please wait 的错误输出）
       if (trimmed.isEmpty || trimmed.contains('[Empty]') || trimmed.startsWith('[') ||
-          trimmed.toLowerCase().contains('fail') || trimmed.contains(' ')) {
+          trimmed.toLowerCase().contains('fail') || trimmed.contains(' ') ||
+          HdcServiceDeviceInfo.isGenericOrInvalidModel(trimmed)) {
         continue;
       }
       targets.add(trimmed);

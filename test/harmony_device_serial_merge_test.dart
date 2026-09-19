@@ -117,6 +117,54 @@ void main() {
       final sn = await hdc.getDeviceSerial('192.168.1.146:5555');
       expect(sn, isNull);
     });
+    test('parseSerialFromParamOutput ignores Please wait and error strings', () {
+      expect(
+        HdcServiceDeviceInfo.parseSerialFromParamOutput(
+          '[E000004]:The communication channel is being established.\nPlease wait for several seconds and try again.\n2UCUT23C18017189',
+        ),
+        '2UCUT23C18017189',
+      );
+      expect(
+        HdcServiceDeviceInfo.parseSerialFromParamOutput(
+          'Please wait for several seconds and try again.',
+        ),
+        isNull,
+      );
+    });
+
+    test('isGenericOrInvalidModel correctly identifies errors and valid models', () {
+      expect(HdcServiceDeviceInfo.isGenericOrInvalidModel('Please wait for several seconds and try again.'), isTrue);
+      expect(HdcServiceDeviceInfo.isGenericOrInvalidModel('[E000004]:The communication channel is being established.'), isTrue);
+      expect(HdcServiceDeviceInfo.isGenericOrInvalidModel('Get parameter "const.product.marketing_name" fail! errNum is:106!'), isTrue);
+      expect(HdcServiceDeviceInfo.isGenericOrInvalidModel('HarmonyOS Device'), isTrue);
+      expect(HdcServiceDeviceInfo.isGenericOrInvalidModel('OpenHarmony'), isTrue);
+      expect(HdcServiceDeviceInfo.isGenericOrInvalidModel('-'), isTrue);
+      expect(HdcServiceDeviceInfo.isGenericOrInvalidModel('unknown'), isTrue);
+      expect(HdcServiceDeviceInfo.isGenericOrInvalidModel('nova 12 Ultra'), isFalse);
+      expect(HdcServiceDeviceInfo.isGenericOrInvalidModel('ADA-AL00U'), isFalse);
+    });
+
+    test('RegisteredDevice displayName and connectionMethodDisplay sanitize error strings', () {
+      const dev = RegisteredDevice(
+        id: '2UCUT23C18017189',
+        status: 'device',
+        model: 'Please wait for several seconds and try again.',
+        isOnline: true,
+        isHarmony: true,
+      );
+      expect(dev.displayName, '2UCUT23C18017189');
+      expect(dev.connectionMethodDisplay, '2UCUT23C18017189');
+
+      const validDev = RegisteredDevice(
+        id: '2UCUT23C18017189',
+        status: 'device',
+        model: 'nova 12 Ultra',
+        isOnline: true,
+        isHarmony: true,
+      );
+      expect(validDev.displayName, 'nova 12 Ultra');
+      expect(validDev.connectionMethodDisplay, 'nova 12 Ultra');
+    });
   });
 
   group('Harmony Device Registry Merge Tests', () {
@@ -220,6 +268,37 @@ void main() {
       expect(merged.tags, contains('鸿蒙测试机'));
       expect(merged.wifiIp, '192.168.1.146');
       expect(merged.connections, containsAll(['2UCUT23C18017189', '192.168.1.146:5555']));
+    });
+
+    test('Polluted model cache with Please wait is cleaned automatically on registry init', () async {
+      SharedPreferences.setMockInitialValues({
+        'devices.history': ['2UCUT23C18017189'],
+        'devices.models': jsonEncode({
+          '2UCUT23C18017189': 'Please wait for several seconds and try again.',
+        }),
+        'devices.tags': jsonEncode({
+          '2UCUT23C18017189': ['鸿蒙测试机'],
+        }),
+      });
+
+      final container = ProviderContainer(
+        overrides: [
+          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+          hdcServiceProvider.overrideWithValue(_FakeHdcSerialService()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(deviceRegistryProvider);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await pumpEventQueue();
+
+      final registeredDevices = container.read(deviceRegistryProvider);
+      expect(registeredDevices, hasLength(1));
+      final dev = registeredDevices.first;
+      expect(dev.model, isNot(contains('Please wait')));
+      expect(dev.displayName, '2UCUT23C18017189');
+      expect(dev.connectionMethodDisplay, '2UCUT23C18017189');
     });
   });
 }

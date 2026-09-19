@@ -544,16 +544,18 @@ final deviceOverviewProvider = StreamProvider.autoDispose
             final devSoft = lines[5].trim();
             final marketingName = lines.length >= 7 ? lines[6].trim() : '';
 
-            if (marketingName.isNotEmpty && !marketingName.contains('fail')) {
+            bool isValid(String s) => !HdcServiceDeviceInfo.isGenericOrInvalidModel(s);
+
+            if (isValid(marketingName)) {
               name = marketingName;
-            } else if (devName.isNotEmpty && !devName.contains('fail')) {
+            } else if (isValid(devName)) {
               name = devName;
             }
-            if (devBrand.isNotEmpty && !devBrand.contains('fail')) brand = devBrand;
-            if (devModel.isNotEmpty && !devModel.contains('fail')) model = devModel;
+            if (isValid(devBrand)) brand = devBrand;
+            if (isValid(devModel)) model = devModel;
 
-            final verSuffix = (devSoft.isNotEmpty && !devSoft.contains('fail')) ? ' ($devSoft)' : '';
-            if (fullname.isNotEmpty && !fullname.contains('fail')) {
+            final verSuffix = (isValid(devSoft)) ? ' ($devSoft)' : '';
+            if (isValid(fullname)) {
               systemVersion = '$fullname (API $apiVer)$verSuffix';
             } else {
               systemVersion = 'HarmonyOS NEXT (API $apiVer)$verSuffix';
@@ -1275,7 +1277,7 @@ class RegisteredDevice {
     }
     if (model != null &&
         model!.isNotEmpty &&
-        !model!.toLowerCase().contains('fail')) {
+        !HdcServiceDeviceInfo.isGenericOrInvalidModel(model)) {
       return model!.replaceAll('_', ' ');
     }
     return id;
@@ -1284,13 +1286,13 @@ class RegisteredDevice {
   String get connectionMethodDisplay {
     final hasValidModel = model != null &&
         model!.isNotEmpty &&
-        !model!.toLowerCase().contains('fail');
+        !HdcServiceDeviceInfo.isGenericOrInvalidModel(model);
     final name = hasValidModel ? model!.replaceAll('_', ' ') : id;
     // 鸿蒙设备 serial 与 id 相同（HDC Device ID），不重复追加
     if (serial != null &&
         serial!.isNotEmpty &&
         serial != id &&
-        !serial!.toLowerCase().contains('fail')) {
+        !HdcServiceDeviceInfo.isGenericOrInvalidModel(serial)) {
       return '$name($serial)';
     }
     return name;
@@ -1645,6 +1647,18 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       }
     }
 
+    // 自动清洗此前被异常管道输出（如 Please wait for several seconds...）污染的型号缓存
+    final pollutedModelKeys = models.entries
+        .where((e) => _isGenericHarmonyModel(e.value))
+        .map((e) => e.key)
+        .toList();
+    if (pollutedModelKeys.isNotEmpty) {
+      for (final k in pollutedModelKeys) {
+        models.remove(k);
+      }
+      historyPolluted = true;
+    }
+
     if (historyPolluted) {
       history.clear();
       history.addAll(cleanedHistory);
@@ -1960,16 +1974,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     });
   }
 
-  bool _isGenericHarmonyModel(String? s) {
-    if (s == null || s.isEmpty) return true;
-    final lower = s.toLowerCase().trim();
-    return lower == 'harmonyos device' ||
-        lower == 'harmonyos next device' ||
-        lower.startsWith('harmonyos device') ||
-        lower.startsWith('harmonyos next') ||
-        lower == 'openharmony' ||
-        lower.contains('fail');
-  }
+  bool _isGenericHarmonyModel(String? s) =>
+      HdcServiceDeviceInfo.isGenericOrInvalidModel(s);
 
   void _fetchAndCacheHarmony(String id) {
     Future.microtask(() async {
@@ -1994,14 +2000,13 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
             if (parsedApi > 0) {
               sdkVersion = parsedApi;
             }
-            if (fullname.isNotEmpty && !fullname.toLowerCase().contains('fail')) {
+            if (fullname.isNotEmpty && !_isGenericHarmonyModel(fullname)) {
               systemVersion = '$fullname (API $sdkVersion)';
-            } else {
+            } else if (parsedApi > 0) {
               systemVersion = 'HarmonyOS NEXT (API $sdkVersion)';
             }
           }
-          bool isValidName(String s) =>
-              s.isNotEmpty && !s.toLowerCase().contains('fail');
+          bool isValidName(String s) => !_isGenericHarmonyModel(s);
 
           if (lines.length >= 7 && isValidName(lines[6].trim())) {
             deviceName = lines[6].trim();
@@ -2029,11 +2034,14 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         }
 
         final effectiveSerial = _serialMap[id] ?? id;
-        _androidVersions[id] = systemVersion;
-        _sdkVersions[id] = sdkVersion;
-        if (effectiveSerial != id) {
-          _androidVersions[effectiveSerial] = systemVersion;
-          _sdkVersions[effectiveSerial] = sdkVersion;
+        if (systemVersion != 'HarmonyOS NEXT') {
+          _androidVersions[id] = systemVersion;
+          _sdkVersions[id] = sdkVersion;
+          if (effectiveSerial != id) {
+            _androidVersions[effectiveSerial] = systemVersion;
+            _sdkVersions[effectiveSerial] = sdkVersion;
+          }
+          await _saveAndroidVersions();
         }
         if (deviceName.isNotEmpty && !_isGenericHarmonyModel(deviceName)) {
           _models[id] = deviceName;
@@ -2042,7 +2050,6 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           }
           await _saveModelsAndProducts();
         }
-        await _saveAndroidVersions();
 
         // 尝试获取 IP 地址与 MAC 地址
         final ifconfigRes = await hdc.shell(id, 'ifconfig');
@@ -2162,7 +2169,14 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
         _serialMap[id] = id;
       } finally {
         _pendingFetchIds.remove(id);
-        _attemptedFetchIds.add(id);
+        final hasValidInfo = (_androidVersions[id] != null &&
+                _androidVersions[id] != '-' &&
+                !_isGenericHarmonyModel(_androidVersions[id])) &&
+            (_models[id] != null &&
+                !_isGenericHarmonyModel(_models[id]));
+        if (hasValidInfo) {
+          _attemptedFetchIds.add(id);
+        }
         if (!_isDisposed) {
           final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
           state = _mergeDevices(activeDevices);
@@ -2371,7 +2385,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
     // 缓存最新获取到的在线设备 model 和 product 信息
     bool modelsOrProductsChanged = false;
     for (final device in resolvedActiveDevices) {
-      if (device.model != null && device.model!.isNotEmpty) {
+      if (device.model != null &&
+          device.model!.isNotEmpty &&
+          !_isGenericHarmonyModel(device.model)) {
         if (_models[device.id] != device.model) {
           _models[device.id] = device.model!;
           modelsOrProductsChanged = true;
@@ -2388,7 +2404,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       _saveModelsAndProducts();
     }
 
-    // 触发获取新在线设备(或无缓存的IP/系统版本)的序列号、IP 和 Android 版本。
+    // 触发获取新在线设备(或无缓存的IP/系统版本/真实型号)的序列号、IP、型号和系统版本。
     final activeIds = resolvedActiveDevices.map((d) => d.id).toSet();
     _attemptedFetchIds.removeWhere((id) => !activeIds.contains(id));
 
@@ -2407,8 +2423,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
       final hasSdkVersion =
           _sdkVersions.containsKey(device.id) ||
           _sdkVersions.containsKey(serial);
+      final hasValidModel = _models.containsKey(device.id) &&
+          !_isGenericHarmonyModel(_models[device.id]);
       if (device.isOnline &&
-          (!hasSerial || !hasIp || !hasAndroidVersion || !hasSdkVersion) &&
+          (!hasSerial || !hasIp || !hasAndroidVersion || !hasSdkVersion || !hasValidModel) &&
           !_pendingFetchIds.contains(device.id) &&
           !_attemptedFetchIds.contains(device.id)) {
         _pendingFetchIds.add(device.id);
@@ -2440,7 +2458,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>> {
           } else if (cachedModel != null && !_isGenericHarmonyModel(cachedModel)) {
             effectiveModel = cachedModel;
           } else {
-            effectiveModel = active.model ?? cachedModel;
+            effectiveModel = 'HarmonyOS Device';
           }
         } else {
           effectiveModel = active.model ?? cachedModel;

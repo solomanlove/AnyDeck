@@ -66,3 +66,11 @@ final deviceAndroidVersionProvider = Provider.autoDispose
 `DeviceRegistryNotifier._mergeDevices()` 对相同 `id` 的活动设备先按在线状态去重；双方状态相同时，ADB 记录优先于 HDC 记录。去重结果同时用于设备展示、型号与产品缓存、序列号及版本拉取，防止 Android 的 `IP:Port` 被 HDC 记录覆盖后错误走 Harmony 命令。
 
 回归：`flutter test test/harmony_device_serial_merge_test.dart` 覆盖 HDC `Unknown` 过滤和 ADB/HDC 同地址路由。手工验收可同时观察 `adb devices -l`、`hdc list targets -v` 与控制台日志：当 Android 地址仅在 HDC 中呈 `Unknown` 时，不应再出现针对该地址的 `hdc -t ... shell`。普通 HDC 全局设备扫描仍会执行。
+
+### 2.4 HDC 瞬态错误与设备信息缓存清洗
+
+HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The communication channel is being established` 或 `Please wait for several seconds`。`HdcService.run()` 与 Rust `HarmonyDriver` 必须把这些 stdout 文本转换为失败结果，设备列表解析也必须过滤同类提示，禁止将其当作 serial、model 或在线 target。
+
+`HdcServiceDeviceInfo.isGenericOrInvalidModel()` 集中识别通用 HarmonyOS 占位名称及常见错误文本；设备注册表初始化时会清理已被错误提示污染的型号缓存。只有系统版本与真实型号均已获取时才把该设备记为已完成补全，否则保持后续异步重试，且不得用无效结果覆盖现有版本缓存。
+
+回归：`test/harmony_device_serial_merge_test.dart` 覆盖通信通道提示过滤、有效型号保留、展示名称回退与历史污染缓存清理。按仓库规则未启动桌面项目；HDC 首次握手后的自动重试节奏和真机 UI 展示仍需手工验收。

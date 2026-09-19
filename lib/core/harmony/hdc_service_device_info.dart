@@ -9,15 +9,39 @@ extension HdcServiceDeviceInfo on HdcService {
     return id.contains(':') || id.contains('.') || id == '127.0.0.1';
   }
 
+  /// 校验鸿蒙设备型号、名称或输出是否为通用占位符或异常错误提示（如 Please wait, Fail, Error, [E00...]）
+  static bool isGenericOrInvalidModel(String? s) {
+    if (s == null || s.trim().isEmpty) return true;
+    final lower = s.toLowerCase().trim();
+    return lower == 'harmonyos device' ||
+        lower == 'harmonyos next device' ||
+        lower == 'harmonyos' ||
+        lower.startsWith('harmonyos device') ||
+        lower.startsWith('harmonyos next') ||
+        lower == 'openharmony' ||
+        lower == '-' ||
+        lower == 'unknown' ||
+        lower.contains('fail') ||
+        lower.contains('error') ||
+        lower.contains('errnum') ||
+        lower.contains('please wait') ||
+        lower.contains('channel') ||
+        lower.contains('get parameter') ||
+        lower.contains('[e0') ||
+        lower.contains('[fail]') ||
+        lower.contains('[info]') ||
+        lower.contains('daemon') ||
+        lower.contains('timeout') ||
+        lower.contains('not match') ||
+        lower.length > 50;
+  }
+
   /// 从 `param get` 输出中解析物理序列号 (SN)
   static String? parseSerialFromParamOutput(String output) {
     final lines = const LineSplitter().convert(output);
     for (final rawLine in lines) {
       final line = rawLine.trim();
-      if (line.isNotEmpty &&
-          !line.toLowerCase().contains('fail') &&
-          line != 'unknown' &&
-          line != '-') {
+      if (line.isNotEmpty && !isGenericOrInvalidModel(line)) {
         return line;
       }
     }
@@ -26,10 +50,11 @@ extension HdcServiceDeviceInfo on HdcService {
 
   /// 从 `bm get -u` 输出中解析 UDID 标识
   static String? parseUdidFromBmOutput(String output) {
+    if (isGenericOrInvalidModel(output)) return null;
     final match = RegExp(r'(?:udid:?\s*)?([a-zA-Z0-9_-]{10,})').firstMatch(output.trim());
     if (match != null) {
       final udid = match.group(1);
-      if (udid != null && !udid.toLowerCase().contains('fail')) {
+      if (udid != null && !isGenericOrInvalidModel(udid)) {
         return udid;
       }
     }

@@ -123,8 +123,14 @@ impl HarmonyDriver {
             return Err(err_msg.to_string());
         }
 
-        // 检查 HDC 输出常见错误标记
-        if stdout.contains("[Fail]") || stderr.contains("[Fail]") {
+        // 检查 HDC 输出常见错误标记（包括通信通道握手失败提示）
+        let is_err = stdout.contains("[Fail]")
+            || stderr.contains("[Fail]")
+            || stdout.contains("[E0")
+            || stderr.contains("[E0")
+            || stdout.contains("The communication channel is being established")
+            || stdout.contains("Please wait for several seconds");
+        if is_err {
             let msg = if !stderr.trim().is_empty() {
                 stderr.trim()
             } else {
@@ -147,7 +153,11 @@ impl HarmonyDriver {
         let mut targets = Vec::new();
         for line in raw_output.lines() {
             let trimmed = line.trim();
-            if trimmed.is_empty() || trimmed == "[Empty]" || trimmed.starts_with('[') {
+            if trimmed.is_empty()
+                || trimmed == "[Empty]"
+                || trimmed.starts_with('[')
+                || trimmed.contains("Please wait for several")
+            {
                 continue;
             }
             let parts: Vec<&str> = trimmed.split_whitespace().collect();

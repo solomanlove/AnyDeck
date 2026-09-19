@@ -387,4 +387,4 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
 - 服务层：`lib/core/apps/app_management_service.dart`（isHarmony 分流 bm/aa）、`lib/core/web_debug/web_debug_service.dart`（isHarmony 分流 fport）、`lib/core/network/port_forward_command.dart`（adb reverse / hdc rport 收口适配层）、`lib/core/harmony/hdc_service_fport.dart`（`HdcServiceFport` extension 封装 fport/rport）
 - 鸿蒙 tab wrapper：`lib/features/{apps,logcat,terminal,processes,webpages}/harmony_*.dart`
 - 装配层：`lib/core/providers/app_providers.dart`（`appManagementServiceProvider`/`webDebugServiceProvider` 注入 hdc；`PackagesNotifier._isHarmony`）、`lib/core/providers/network_providers.dart`（`isHarmonyDevice` helper + `activePortForwardsProvider` 分流）
-- 已知限制：鸿蒙应用暂无图标/label/versionName 元数据（`bm dump` 不提供，需后续 `bm dump -n` 深度解析）；应用详情页 `getPackageDetailedInfo` 仍走 adb，鸿蒙上会降级；APK 安装对鸿蒙不适用（需 hap 包 + `hdc install`）。
+- 已知限制：鸿蒙应用列表的基础字段仍受 `bm dump -a -l` 输出限制；应用详情已改为独立 HarmonyOS 分析页，通过 `bm dump -n` 展示 Bundle、HAP、Ability、权限与 Metadata，失败时停留列表且禁止回退 ADB。基于 Android Companion 的使用统计入口在鸿蒙设备隐藏；APK 安装对鸿蒙不适用（需 HAP/HSP + `hdc install`）。

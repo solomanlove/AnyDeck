@@ -144,14 +144,16 @@ class _AppsTabState extends ConsumerState<AppsTab> {
           }
         },
         trailingActions: [
-          IconButton(
-            tooltip: context.l10n.t('usageTitle'),
-            icon: const Icon(CupertinoIcons.chart_bar, size: 20),
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => UsageReportDialog(deviceId: widget.device.id),
+          // 鸿蒙设备暂不支持基于 Companion 的使用时长统计功能
+          if (!widget.device.isHarmony)
+            IconButton(
+              tooltip: context.l10n.t('usageTitle'),
+              icon: const Icon(CupertinoIcons.chart_bar, size: 20),
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => UsageReportDialog(deviceId: widget.device.id),
+              ),
             ),
-          ),
           IconButton(
             tooltip: context.l10n.t('refreshPackages'),
             icon: const Icon(CupertinoIcons.refresh, size: 20),
