@@ -1,10 +1,15 @@
 part of '../dashboard_screen.dart';
 
 class _PackageActions extends ConsumerWidget {
-  const _PackageActions({required this.deviceId, required this.package});
+  const _PackageActions({
+    required this.deviceId,
+    required this.package,
+    required this.onOpenDetails,
+  });
 
   final String deviceId;
   final AdbPackage package;
+  final VoidCallback onOpenDetails;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,9 +38,7 @@ class _PackageActions extends ConsumerWidget {
           IconButton(
             tooltip: context.l10n.t('appDetails'),
             icon: const Icon(CupertinoIcons.info),
-            onPressed: () {
-              ref.read(selectedAppPackageProvider.notifier).state = package.name;
-            },
+            onPressed: onOpenDetails,
           ),
           const SizedBox(width: 2),
           IconButton(

@@ -21,6 +21,9 @@ class _AppsTabState extends ConsumerState<AppsTab> {
   bool _isGridView = false;
   double _gridItemSize = 100.0;
   final Set<String> _refreshingPackageDetails = <String>{};
+  final Set<String> _analyzingHarmonyPackages = <String>{};
+  final Map<String, HarmonyAppDetail> _harmonyDetails =
+      <String, HarmonyAppDetail>{};
 
   @override
   void dispose() {
@@ -59,13 +62,31 @@ class _AppsTabState extends ConsumerState<AppsTab> {
       );
 
       if (selectedPackage != null) {
-        return _AppFunctionsView(
-          deviceId: widget.device.id,
-          package: selectedPackage,
-          onBack: () {
+        if (widget.device.isHarmony) {
+          final detail =
+              _harmonyDetails[_harmonyDetailKey(selectedPackage.name)];
+          if (detail != null) {
+            return _HarmonyAppAnalysisView(
+              package: selectedPackage,
+              initialDetail: detail,
+              onBack: () {
+                ref.read(selectedAppPackageProvider.notifier).state = null;
+              },
+              onReload: () => _loadHarmonyDetail(selectedPackage.name),
+            );
+          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
             ref.read(selectedAppPackageProvider.notifier).state = null;
-          },
-        );
+          });
+        } else {
+          return _AppFunctionsView(
+            deviceId: widget.device.id,
+            package: selectedPackage,
+            onBack: () {
+              ref.read(selectedAppPackageProvider.notifier).state = null;
+            },
+          );
+        }
       } else if (packages.hasValue) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           ref.read(selectedAppPackageProvider.notifier).state = null;
@@ -230,6 +251,8 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                             _PackageActions(
                               deviceId: widget.device.id,
                               package: selectedPackage,
+                              onOpenDetails: () =>
+                                  _openPackage(selectedPackage.name),
                             ),
                         ],
                       ),
@@ -379,6 +402,10 @@ class _AppsTabState extends ConsumerState<AppsTab> {
   /// 单击选中应用时按需刷新详情和图标，但不进入应用详情页。
   Future<void> _selectPackage(String packageName) async {
     setState(() => _selectedPackage = packageName);
+    // HarmonyOS 单击只更新选中态，避免不支持 `bm dump` 的应用被误判为卸载。
+    if (widget.device.isHarmony) {
+      return;
+    }
     if (!ref.read(deviceOnlineProvider(widget.device.id))) {
       return;
     }
@@ -398,11 +425,50 @@ class _AppsTabState extends ConsumerState<AppsTab> {
     }
   }
 
-  /// 双击应用时复用现有详情页入口，并保留当前列表选中态。
-  void _openPackage(String packageName) {
-    unawaited(_selectPackage(packageName));
+  /// 双击 HarmonyOS 应用时先验证 `bm dump`，不支持分析则停留在列表页。
+  Future<void> _openPackage(String packageName) async {
+    if (!widget.device.isHarmony) {
+      // Android 保持原有行为：后台刷新单包信息并立即进入现有详情页。
+      unawaited(_selectPackage(packageName));
+      ref.read(selectedAppPackageProvider.notifier).state = packageName;
+      return;
+    }
+
+    final deviceId = widget.device.id;
+    setState(() => _selectedPackage = packageName);
+    if (!mounted) return;
+    if (!_analyzingHarmonyPackages.add(packageName)) return;
+    _showSnack(context, context.l10n.t('harmonyAnalysisLoading'));
+    try {
+      await _loadHarmonyDetail(packageName);
+    } catch (error) {
+      if (mounted) {
+        _showSnack(
+          context,
+          context.l10n
+              .t('harmonyAnalysisFailed')
+              .replaceAll('{error}', error.toString()),
+          isError: true,
+        );
+      }
+      return;
+    } finally {
+      _analyzingHarmonyPackages.remove(packageName);
+    }
+    if (!mounted || widget.device.id != deviceId) return;
     ref.read(selectedAppPackageProvider.notifier).state = packageName;
   }
+
+  Future<HarmonyAppDetail> _loadHarmonyDetail(String packageName) async {
+    final detail = await ref
+        .read(appManagementServiceProvider)
+        .getHarmonyPackageDetailedInfo(widget.device.id, packageName);
+    _harmonyDetails[_harmonyDetailKey(packageName)] = detail;
+    return detail;
+  }
+
+  String _harmonyDetailKey(String packageName) =>
+      '${widget.device.id}:$packageName';
 
   /// 打开宿主机文件选择器并安装选中的 APK。
   Future<void> _installApk() async {
@@ -429,6 +495,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
       return;
     }
     FocusScope.of(context).unfocus();
+    _harmonyDetails.clear();
     setState(() => _refreshProgress = const PackageRefreshProgress());
     final notifier = ref.read(packagesProvider(widget.device.id).notifier);
     try {

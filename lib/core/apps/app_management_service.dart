@@ -10,9 +10,11 @@ import '../adb/adb_service.dart';
 import '../harmony/hdc_service.dart';
 import 'adb_package.dart';
 import 'adb_package_detail.dart';
+import 'harmony_app_detail.dart';
 import 'package_refresh_progress.dart';
 
 part 'app_management_service_refresh.dart';
+part 'app_management_service_harmony_detail.dart';
 part 'app_management_service_harmony_icon.dart';
 
 /// 基于 adb 和 PackageManager 实现的应用管理能力。
