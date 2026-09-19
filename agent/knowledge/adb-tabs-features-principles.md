@@ -162,6 +162,11 @@
    - Loading 遮罩支持按钮或 Esc 取消，取消时直接终止当前 ADB 子进程并删除残缺文件；单次拉取最多等待 5 分钟，Provider 销毁时也会回收进程。
    - 预览缓存位于 `${Directory.systemTemp}/AnyDeck/previews`，缓存键组合 `deviceId + remotePath + size + modifiedDate`，本地文件名附带散列前缀，避免跨设备、同名路径和远端文件更新后的错误复用；内存 LRU 最多保留 20 个文件，设置页现有缓存清理会覆盖该目录。
    - 本地缓存文件名会替换 Windows/macOS 不兼容字符；Windows 打开文件直接向 `explorer` 传递参数，不经过 `cmd /c`，避免远程文件名中的 shell 字符被解释执行。
+8. **鸿蒙文件导出到手机文件管理**：
+   - 鸿蒙文件页的文件和文件夹悬停操作提供“导出到手机文件管理”，目标为当前用户的 `Download` 目录；Android 文件页不展示此入口。
+   - HarmonyOS 安全策略会拒绝 `shell cp` 从 `/data/local/tmp` 直接复制到用户文件目录。导出流程必须先通过 `hdc file recv` 拉取到桌面端独立临时目录，再通过 `hdc file send` 写回 `/storage/media/<userId>/local/files/Docs/Download/`，依靠 HDC 生成正确的 `file_manager` 属主和权限。
+   - `<userId>` 优先从设备 `mount` 输出解析，解析失败时兼容主用户路径 `100`。文件与目录共用同一串行流程，单次最长等待 30 分钟；无论成功或失败都在 `finally` 中删除桌面端中转目录。
+   - 该能力会占用一次远端文件大小的桌面临时空间，并产生设备→桌面→设备的双倍 USB 传输量；导出大目录时必须保留全局传输状态，禁止重复点击。
 
 ---
 

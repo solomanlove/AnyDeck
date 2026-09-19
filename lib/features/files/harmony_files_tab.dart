@@ -277,6 +277,7 @@ class HarmonyFilesTab extends ConsumerWidget {
                             file: file,
                             deviceId: device.id,
                             currentPath: path,
+                            canExportToPhoneFiles: true,
                             selected:
                                 selectedFile?.matches(
                                   device.id,
@@ -315,6 +316,7 @@ class HarmonyFilesTab extends ConsumerWidget {
                           file: file,
                           deviceId: device.id,
                           currentPath: path,
+                          canExportToPhoneFiles: true,
                           selected:
                               selectedFile?.matches(
                                 device.id,

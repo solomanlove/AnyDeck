@@ -13,14 +13,20 @@ class FileManagerService {
     this._adb, {
     HdcService? hdc,
     DeviceHarmonyResolver? isHarmonyResolver,
-  })  : _hdc = hdc,
-        _isHarmonyResolver = isHarmonyResolver;
+    Directory? exportTempRoot,
+  }) : _hdc = hdc,
+       _isHarmonyResolver = isHarmonyResolver,
+       _exportTempRoot = exportTempRoot;
 
   static const _fileTransferTimeout = Duration(minutes: 5);
+  static const _harmonyExportTimeout = Duration(minutes: 30);
+  static const _fallbackHarmonyDownloadPath =
+      '/storage/media/100/local/files/Docs/Download/';
 
   final AdbService _adb;
   final HdcService? _hdc;
   final DeviceHarmonyResolver? _isHarmonyResolver;
+  final Directory? _exportTempRoot;
 
   bool _isHarmonyDevice(String deviceId) =>
       (_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null;
@@ -163,6 +169,103 @@ class FileManagerService {
       remotePath,
       localPath,
     ], timeout: _fileTransferTimeout);
+  }
+
+  /// 将鸿蒙调试目录中的文件或文件夹导出到手机文件管理的“下载”目录。
+  ///
+  /// HarmonyOS 安全策略会拒绝 shell 直接跨域复制，因此先拉取到桌面端临时目录，
+  /// 再通过 HDC file send 写入用户文件目录；临时中转内容始终在 finally 中清理。
+  Future<AdbResult> exportToHarmonyDownloads(
+    String deviceId,
+    String remotePath,
+    String fileName,
+  ) async {
+    final hdc = _hdc;
+    if (!_isHarmonyDevice(deviceId) || hdc == null) {
+      return const AdbResult(
+        exitCode: 1,
+        stdout: '',
+        stderr: '仅鸿蒙设备支持导出到手机文件管理',
+      );
+    }
+    if (fileName.isEmpty ||
+        fileName == '.' ||
+        fileName == '..' ||
+        fileName.contains('/')) {
+      return const AdbResult(exitCode: 1, stdout: '', stderr: '文件名无效，无法导出');
+    }
+
+    Directory? stagingDirectory;
+    try {
+      final tempRoot = _exportTempRoot ?? Directory.systemTemp;
+      if (!await tempRoot.exists()) {
+        await tempRoot.create(recursive: true);
+      }
+      stagingDirectory = await tempRoot.createTemp('anydeck_harmony_export_');
+
+      final receiveResult = await hdc.fileRecv(
+        deviceId,
+        remotePath,
+        stagingDirectory.path,
+        timeout: _harmonyExportTimeout,
+      );
+      if (!receiveResult.isSuccess) {
+        return receiveResult;
+      }
+
+      final localPath = '${stagingDirectory.path}/$fileName';
+      if (await FileSystemEntity.type(localPath) ==
+          FileSystemEntityType.notFound) {
+        return const AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: 'HDC 未生成本地中转文件',
+        );
+      }
+
+      final downloadPath = await _resolveHarmonyDownloadPath(deviceId, hdc);
+      return await hdc.fileSend(
+        deviceId,
+        localPath,
+        downloadPath,
+        timeout: _harmonyExportTimeout,
+      );
+    } on FileSystemException catch (error) {
+      return AdbResult(
+        exitCode: 1,
+        stdout: '',
+        stderr: '创建或清理本地中转文件失败: ${error.message}',
+      );
+    } finally {
+      final directory = stagingDirectory;
+      if (directory != null && await directory.exists()) {
+        try {
+          await directory.delete(recursive: true);
+        } on FileSystemException {
+          // 中转清理失败不覆盖已经返回的 HDC 传输结果。
+        }
+      }
+    }
+  }
+
+  Future<String> _resolveHarmonyDownloadPath(
+    String deviceId,
+    HdcService hdc,
+  ) async {
+    final mountResult = await hdc.shell(
+      deviceId,
+      'mount',
+      timeout: const Duration(seconds: 5),
+    );
+    if (mountResult.isSuccess) {
+      final match = RegExp(
+        r'(/storage/media/\d+/local/files/Docs)\s+on\s+',
+      ).firstMatch(mountResult.stdout);
+      if (match != null) {
+        return '${match.group(1)}/Download/';
+      }
+    }
+    return _fallbackHarmonyDownloadPath;
   }
 
   /// 启动由上层管理生命周期的下载进程，用于支持预览取消。

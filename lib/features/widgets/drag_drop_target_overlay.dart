@@ -255,7 +255,9 @@ class _TransferTasksPanel extends ConsumerWidget {
                       height: 14,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     );
-                    statusText = task.isApk
+                    statusText = task.pendingLabelKey != null
+                        ? context.l10n.t(task.pendingLabelKey!)
+                        : task.isApk
                         ? context.l10n.t('installingApk')
                         : context.l10n.t('uploadingFile');
                     statusColor = theme.colorScheme.onSurfaceVariant;
@@ -266,7 +268,9 @@ class _TransferTasksPanel extends ConsumerWidget {
                       color: Colors.green,
                       size: 16,
                     );
-                    statusText = task.isApk
+                    statusText = task.successLabelKey != null
+                        ? context.l10n.t(task.successLabelKey!)
+                        : task.isApk
                         ? context.l10n.t('installSuccess')
                         : context.l10n.t('uploadSuccess');
                     statusColor = Colors.green;

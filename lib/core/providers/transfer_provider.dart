@@ -9,6 +9,8 @@ class TransferTask {
   final String? error;
   final bool isDone;
   final bool isSuccess;
+  final String? pendingLabelKey;
+  final String? successLabelKey;
 
   TransferTask({
     required this.id,
@@ -18,6 +20,8 @@ class TransferTask {
     this.error,
     this.isDone = false,
     this.isSuccess = false,
+    this.pendingLabelKey,
+    this.successLabelKey,
   });
 
   TransferTask copyWith({String? error, bool? isDone, bool? isSuccess}) {
@@ -29,6 +33,8 @@ class TransferTask {
       error: error ?? this.error,
       isDone: isDone ?? this.isDone,
       isSuccess: isSuccess ?? this.isSuccess,
+      pendingLabelKey: pendingLabelKey,
+      successLabelKey: successLabelKey,
     );
   }
 }

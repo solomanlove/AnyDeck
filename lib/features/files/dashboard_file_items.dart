@@ -8,6 +8,7 @@ class _FileGridItem extends StatefulWidget {
     required this.selected,
     required this.onSelected,
     required this.onOpened,
+    this.canExportToPhoneFiles = false,
   });
 
   final RemoteFile file;
@@ -16,6 +17,7 @@ class _FileGridItem extends StatefulWidget {
   final bool selected;
   final VoidCallback onSelected;
   final VoidCallback onOpened;
+  final bool canExportToPhoneFiles;
 
   @override
   State<_FileGridItem> createState() => _FileGridItemState();
@@ -85,7 +87,7 @@ class _FileGridItemState extends State<_FileGridItem> {
                 ),
               ),
               // 悬停时在右上角显示浮动操作按钮 (如果是文件且正在悬停)
-              if (_hovering && !file.isFolder)
+              if (_hovering && (!file.isFolder || widget.canExportToPhoneFiles))
                 Positioned(
                   top: 0,
                   right: 0,
@@ -105,6 +107,8 @@ class _FileGridItemState extends State<_FileGridItem> {
                       deviceId: widget.deviceId,
                       remotePath: remoteFilePath,
                       fileName: file.name,
+                      isFolder: file.isFolder,
+                      canExportToPhoneFiles: widget.canExportToPhoneFiles,
                     ),
                   ),
                 ),
@@ -126,6 +130,7 @@ class _FileRow extends StatefulWidget {
     required this.selected,
     required this.onSelected,
     required this.onOpened,
+    this.canExportToPhoneFiles = false,
   });
 
   final int index;
@@ -135,6 +140,7 @@ class _FileRow extends StatefulWidget {
   final bool selected;
   final VoidCallback onSelected;
   final VoidCallback onOpened;
+  final bool canExportToPhoneFiles;
 
   @override
   State<_FileRow> createState() => _FileRowState();
@@ -241,7 +247,7 @@ class _FileRowState extends State<_FileRow> {
               ),
               // 操作 (悬停时显示)
               SizedBox(
-                width: 80,
+                width: widget.canExportToPhoneFiles ? 112 : 80,
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: AnimatedOpacity(
@@ -253,6 +259,8 @@ class _FileRowState extends State<_FileRow> {
                         deviceId: widget.deviceId,
                         remotePath: remoteFilePath,
                         fileName: file.name,
+                        isFolder: file.isFolder,
+                        canExportToPhoneFiles: widget.canExportToPhoneFiles,
                       ),
                     ),
                   ),
@@ -266,76 +274,186 @@ class _FileRowState extends State<_FileRow> {
   }
 }
 
-/// 单个远程文件的下载和删除操作。
-class _RemoteFileActions extends ConsumerWidget {
+/// 单个远程文件的下载、导出和删除操作。
+class _RemoteFileActions extends ConsumerStatefulWidget {
   const _RemoteFileActions({
     required this.deviceId,
     required this.remotePath,
     required this.fileName,
+    required this.isFolder,
+    required this.canExportToPhoneFiles,
   });
 
   final String deviceId;
   final String remotePath;
   final String fileName;
+  final bool isFolder;
+  final bool canExportToPhoneFiles;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_RemoteFileActions> createState() => _RemoteFileActionsState();
+}
+
+class _RemoteFileActionsState extends ConsumerState<_RemoteFileActions> {
+  bool _exporting = false;
+
+  @override
+  Widget build(BuildContext context) {
     final service = ref.read(fileManagerServiceProvider);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          tooltip: context.l10n.t('pull'),
-          icon: const Icon(CupertinoIcons.cloud_download, size: 18),
-          constraints: const BoxConstraints(),
-          padding: const EdgeInsets.all(6),
-          splashRadius: 16,
-          onPressed: () async {
-            final directory = await getDirectoryPath();
-            if (directory == null || !context.mounted) {
-              return;
-            }
-            final result = await service.pull(
-              deviceId,
-              remotePath,
-              '$directory/$fileName',
-            );
-            if (context.mounted) {
-              _showSnack(context, result.message, isError: !result.isSuccess);
-            }
-          },
-        ),
-        IconButton(
-          tooltip: context.l10n.t('delete'),
-          icon: const Icon(CupertinoIcons.trash, size: 18),
-          constraints: const BoxConstraints(),
-          padding: const EdgeInsets.all(6),
-          splashRadius: 16,
-          onPressed: () async {
-            final confirmed = await _confirm(
-              context,
-              context.l10n.t('deleteFile').replaceAll('{file}', fileName),
-            );
-            if (!confirmed || !context.mounted) {
-              return;
-            }
-            final result = await service.delete(deviceId, remotePath);
-            if (context.mounted) {
-              _showSnack(context, result.message, isError: !result.isSuccess);
-            }
-            if (result.isSuccess) {
-              final currentPath = ref.read(fileNavigationProvider).currentPath;
-              ref.invalidate(
-                remoteFilesProvider(
-                  RemoteDirectoryRequest(deviceId: deviceId, path: currentPath),
-                ),
+        if (widget.canExportToPhoneFiles)
+          IconButton(
+            tooltip: context.l10n.t('exportToPhoneFiles'),
+            icon: _exporting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.mobile_screen_share_outlined, size: 18),
+            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.all(6),
+            splashRadius: 16,
+            onPressed: _exporting ? null : _exportToPhoneFiles,
+          ),
+        if (!widget.isFolder)
+          IconButton(
+            tooltip: context.l10n.t('pull'),
+            icon: const Icon(CupertinoIcons.cloud_download, size: 18),
+            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.all(6),
+            splashRadius: 16,
+            onPressed: () async {
+              final directory = await getDirectoryPath();
+              if (directory == null || !context.mounted) {
+                return;
+              }
+              final result = await service.pull(
+                widget.deviceId,
+                widget.remotePath,
+                '$directory/${widget.fileName}',
               );
-            }
-          },
-        ),
+              if (context.mounted) {
+                _showSnack(context, result.message, isError: !result.isSuccess);
+              }
+            },
+          ),
+        if (!widget.isFolder)
+          IconButton(
+            tooltip: context.l10n.t('delete'),
+            icon: const Icon(CupertinoIcons.trash, size: 18),
+            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.all(6),
+            splashRadius: 16,
+            onPressed: () async {
+              final confirmed = await _confirm(
+                context,
+                context.l10n
+                    .t('deleteFile')
+                    .replaceAll('{file}', widget.fileName),
+              );
+              if (!confirmed || !context.mounted) {
+                return;
+              }
+              final result = await service.delete(
+                widget.deviceId,
+                widget.remotePath,
+              );
+              if (context.mounted) {
+                _showSnack(context, result.message, isError: !result.isSuccess);
+              }
+              if (result.isSuccess) {
+                final currentPath = ref
+                    .read(fileNavigationProvider)
+                    .currentPath;
+                ref.invalidate(
+                  remoteFilesProvider(
+                    RemoteDirectoryRequest(
+                      deviceId: widget.deviceId,
+                      path: currentPath,
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
       ],
     );
+  }
+
+  Future<void> _exportToPhoneFiles() async {
+    final confirmed = await _confirm(
+      context,
+      context.l10n
+          .t('exportToPhoneFilesConfirm')
+          .replaceAll('{name}', widget.fileName),
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    setState(() => _exporting = true);
+    final transferNotifier = ref.read(transferListProvider.notifier);
+    final taskId =
+        '${DateTime.now().millisecondsSinceEpoch}_${widget.fileName}_export';
+    transferNotifier.addTask(
+      TransferTask(
+        id: taskId,
+        name: widget.fileName,
+        deviceId: widget.deviceId,
+        isApk: false,
+        pendingLabelKey: 'exportingToPhoneFiles',
+        successLabelKey: 'exportToPhoneFilesSuccessStatus',
+      ),
+    );
+
+    try {
+      final result = await ref
+          .read(fileManagerServiceProvider)
+          .exportToHarmonyDownloads(
+            widget.deviceId,
+            widget.remotePath,
+            widget.fileName,
+          );
+      transferNotifier.updateTask(
+        id: taskId,
+        isDone: true,
+        isSuccess: result.isSuccess,
+        error: result.isSuccess ? null : result.message,
+      );
+      if (mounted) {
+        final message = result.isSuccess
+            ? context.l10n
+                  .t('exportToPhoneFilesSuccess')
+                  .replaceAll('{name}', widget.fileName)
+            : context.l10n
+                  .t('exportToPhoneFilesFailed')
+                  .replaceAll('{error}', result.message);
+        _showSnack(context, message, isError: !result.isSuccess);
+      }
+    } catch (error) {
+      transferNotifier.updateTask(
+        id: taskId,
+        isDone: true,
+        isSuccess: false,
+        error: error.toString(),
+      );
+      if (mounted) {
+        _showSnack(
+          context,
+          context.l10n
+              .t('exportToPhoneFilesFailed')
+              .replaceAll('{error}', error.toString()),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _exporting = false);
+      }
+    }
   }
 }
 
