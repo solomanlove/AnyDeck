@@ -163,72 +163,58 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                   snapshot.connectionState == ConnectionState.waiting;
               final error = snapshot.error;
 
-              return DefaultTabController(
-                length: 10,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final useHorizontalLayout = constraints.maxWidth >= 720;
+              return LayoutBuilder(
+                builder: (context, _) {
+                  final tabData = <AppDetailTabData>[
+                    const AppDetailTabData(id: 'actions', title: '功能操作'),
+                    AppDetailTabData(
+                      id: 'libs',
+                      title: '原生库',
+                      count: detail?.libs.length,
+                    ),
+                    AppDetailTabData(
+                      id: 'services',
+                      title: '服务',
+                      count: detail?.services.length,
+                    ),
+                    AppDetailTabData(
+                      id: 'activities',
+                      title: '活动',
+                      count: detail?.activities.length,
+                    ),
+                    AppDetailTabData(
+                      id: 'receivers',
+                      title: '广播接收器',
+                      count: detail?.receivers.length,
+                    ),
+                    AppDetailTabData(
+                      id: 'providers',
+                      title: '内容提供者',
+                      count: detail?.providers.length,
+                    ),
+                    AppDetailTabData(
+                      id: 'permissions',
+                      title: '权限',
+                      count: detail?.permissions.length,
+                    ),
+                    AppDetailTabData(
+                      id: 'metadata',
+                      title: '元数据',
+                      count: detail?.metadata.length,
+                    ),
+                    AppDetailTabData(
+                      id: 'dex',
+                      title: 'DEX',
+                      count: detail?.dexFiles.length,
+                    ),
+                    AppDetailTabData(
+                      id: 'signatures',
+                      title: context.l10n.t('appSignature'),
+                    ),
+                  ];
 
-                    final summaryCard = SizedBox(
-                      width: useHorizontalLayout ? 300 : double.infinity,
-                      child: _AppDetailSummaryCard(
-                        deviceId: deviceId,
-                        package: package,
-                        cardBg: cardBg,
-                        isDark: isDark,
-                        useHorizontalLayout: useHorizontalLayout,
-                        detail: detail,
-                      ),
-                    );
-
-                    final tabbedContent = Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TabBar(
-                            isScrollable: true,
-                            tabAlignment: TabAlignment.start,
-                            tabs: [
-                              const Tab(text: '功能操作'),
-                              Tab(
-                                text:
-                                    '原生库${detail != null ? ' (${detail.libs.length})' : ''}',
-                              ),
-                              Tab(
-                                text:
-                                    '服务${detail != null ? ' (${detail.services.length})' : ''}',
-                              ),
-                              Tab(
-                                text:
-                                    '活动${detail != null ? ' (${detail.activities.length})' : ''}',
-                              ),
-                              Tab(
-                                text:
-                                    '广播接收器${detail != null ? ' (${detail.receivers.length})' : ''}',
-                              ),
-                              Tab(
-                                text:
-                                    '内容提供者${detail != null ? ' (${detail.providers.length})' : ''}',
-                              ),
-                              Tab(
-                                text:
-                                    '权限${detail != null ? ' (${detail.permissions.length})' : ''}',
-                              ),
-                              Tab(
-                                text:
-                                    '元数据${detail != null ? ' (${detail.metadata.length})' : ''}',
-                              ),
-                              Tab(
-                                text:
-                                    'DEX${detail != null ? ' (${detail.dexFiles.length})' : ''}',
-                              ),
-                              Tab(text: context.l10n.t('appSignature')),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Expanded(
-                            child: Builder(
-                              builder: (context) {
+                  final tabBody = Builder(
+                    builder: (context) {
                                 if (isLoading) {
                                   return const Center(
                                     child: Column(
@@ -286,7 +272,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.stretch,
                                         children: [
-                                          const SizedBox(height: 5),
                                           GridView.extent(
                                             maxCrossAxisExtent: 320,
                                             mainAxisSpacing: 12,
@@ -969,35 +954,18 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                     ),
                                   ],
                                 );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
+                    },
+                  );
 
-                    if (useHorizontalLayout) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          summaryCard,
-                          const SizedBox(width: 24),
-                          tabbedContent,
-                          const SizedBox(width: 24),
-                        ],
-                      );
-                    } else {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          summaryCard,
-                          const SizedBox(height: 24),
-                          tabbedContent,
-                        ],
-                      );
-                    }
-                  },
-                ),
+                  return _InstalledAppDetailViewAdapter(
+                    deviceId: deviceId,
+                    package: package,
+                    summaryBackground: cardBg,
+                    detail: detail,
+                    tabs: tabData,
+                    tabBody: tabBody,
+                  );
+                },
               );
             },
           ),
@@ -1007,29 +975,30 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
   }
 }
 
-class _AppDetailSummaryCard extends ConsumerStatefulWidget {
-  const _AppDetailSummaryCard({
+class _InstalledAppDetailViewAdapter extends ConsumerStatefulWidget {
+  const _InstalledAppDetailViewAdapter({
     required this.deviceId,
     required this.package,
-    required this.cardBg,
-    required this.isDark,
-    required this.useHorizontalLayout,
+    required this.summaryBackground,
+    required this.tabs,
+    required this.tabBody,
     this.detail,
   });
 
   final String deviceId;
   final AdbPackage package;
-  final Color cardBg;
-  final bool isDark;
-  final bool useHorizontalLayout;
+  final Color summaryBackground;
+  final List<AppDetailTabData> tabs;
+  final Widget tabBody;
   final AdbPackageDetail? detail;
 
   @override
-  ConsumerState<_AppDetailSummaryCard> createState() =>
-      _AppDetailSummaryCardState();
+  ConsumerState<_InstalledAppDetailViewAdapter> createState() =>
+      _InstalledAppDetailViewAdapterState();
 }
 
-class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
+class _InstalledAppDetailViewAdapterState
+    extends ConsumerState<_InstalledAppDetailViewAdapter> {
   Future<String?>? _packerFuture;
   String? _apkPath;
 
@@ -1042,7 +1011,7 @@ class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
   }
 
   @override
-  void didUpdateWidget(covariant _AppDetailSummaryCard oldWidget) {
+  void didUpdateWidget(covariant _InstalledAppDetailViewAdapter oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.detail != oldWidget.detail) {
       _initPackerDetection();
@@ -1237,248 +1206,134 @@ class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: widget.cardBg,
-        border: Border(
-          right: widget.useHorizontalLayout
-              ? BorderSide(
-                  color: widget.isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.04),
-                  width: 1,
-                )
-              : BorderSide.none,
-          bottom: widget.useHorizontalLayout
-              ? BorderSide.none
-              : BorderSide(
-                  color: widget.isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.04),
-                  width: 1,
-                ),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Column(
-                children: [
-                  const SizedBox(height: 15),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: SizedBox(
-                      width: 80,
-                      height: 80,
-                      child: _PackageIcon(
-                        deviceId: widget.deviceId,
-                        package: widget.package,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.package.displayName,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.package.versionLabel,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.8,
-                      ),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (widget.detail != null) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        if (widget.detail!.supportedAbis.isNotEmpty)
-                          _Badge(
-                            label: widget.detail!.supportedAbis.join(', '),
-                            color: Colors.blue.shade50,
-                            textColor: Colors.blue.shade800,
-                          ),
-                        for (final fw in widget.detail!.frameworks)
-                          _Badge(
-                            label: fw,
-                            color: Colors.green.shade50,
-                            textColor: Colors.green.shade800,
-                          ),
-                      ],
-                    ),
-                  ],
-                ],
+    final colorScheme = Theme.of(context).colorScheme;
+    return FutureBuilder<String?>(
+      future: _packerFuture,
+      builder: (context, snapshot) {
+        final detail = widget.detail;
+        final isHarmony = ref.watch(
+          deviceRegistryProvider.select(
+            (devices) => devices.any(
+              (device) =>
+                  device.id == widget.deviceId && device.isHarmony,
+            ),
+          ),
+        );
+        final iconPath = widget.package.iconLocalPath;
+        final badges = <AppDetailSummaryBadge>[
+          if (detail != null && detail.supportedAbis.isNotEmpty)
+            AppDetailSummaryBadge(label: detail.supportedAbis.join(', ')),
+          if (detail != null)
+            for (final framework in detail.frameworks)
+              AppDetailSummaryBadge(
+                label: framework,
+                tone: AppDetailBadgeTone.success,
+              ),
+        ];
+        final fields = <AppDetailSummaryField>[
+          AppDetailSummaryField(
+            label: '包名',
+            value: widget.package.name,
+            copyable: true,
+          ),
+          AppDetailSummaryField(
+            label: '最低支持系统版本',
+            value: AndroidVersionHelper.formatApiLevel(widget.package.minSdk),
+          ),
+          AppDetailSummaryField(
+            label: '目标系统版本',
+            value: AndroidVersionHelper.formatApiLevel(
+              widget.package.targetSdk,
+            ),
+          ),
+          if (widget.package.maxSdk != null)
+            AppDetailSummaryField(
+              label: '最大支持系统版本',
+              value: AndroidVersionHelper.formatApiLevel(
+                widget.package.maxSdk,
               ),
             ),
-            const SizedBox(height: 5),
-            const Divider(),
-            const SizedBox(height: 5),
-
-            _SummaryItem(label: "包名", value: widget.package.name, canCopy: true),
-            _SummaryItem(
-              label: "最低支持系统版本",
-              value: AndroidVersionHelper.formatApiLevel(widget.package.minSdk),
+          AppDetailSummaryField(
+            label: '安装时间',
+            value: _formatDetailTime(widget.package.firstInstallTime),
+          ),
+          AppDetailSummaryField(
+            label: '更新时间',
+            value: _formatDetailTime(widget.package.lastUpdateTime),
+          ),
+          AppDetailSummaryField(
+            label: '安装大小',
+            value: widget.package.storageLabel,
+          ),
+          AppDetailSummaryField(
+            label: '类型',
+            value:
+                "${widget.package.system ? '系统应用' : '用户应用'} / ${widget.package.flutter ? 'Flutter' : '原生'}",
+          ),
+          AppDetailSummaryField(
+            label: '状态',
+            value: widget.package.enabled ? '已启用' : '已停用',
+            valueColor: widget.package.enabled
+                ? const Color(0xFF2EC46B)
+                : const Color(0xFFE53935),
+          ),
+          if (widget.package.debuggable)
+            AppDetailSummaryField(
+              label: '调试模式',
+              value: 'DEBUG',
+              valueColor: colorScheme.error,
             ),
-            _SummaryItem(
-              label: "目标系统版本",
-              value: AndroidVersionHelper.formatApiLevel(widget.package.targetSdk),
+          if (snapshot.data != null)
+            AppDetailSummaryField(
+              label: '加固状态',
+              value: snapshot.data!,
+              valueColor: Colors.orange.shade700,
             ),
-            if (widget.package.maxSdk != null)
-              _SummaryItem(
-                label: "最大支持系统版本",
-                value: AndroidVersionHelper.formatApiLevel(widget.package.maxSdk),
-              ),
-            _SummaryItem(
-              label: "安装时间",
-              value: (() {
-                final ms = widget.package.firstInstallTime;
-                if (ms == null || ms <= 0) return '-';
-                final dt = DateTime.fromMillisecondsSinceEpoch(ms);
-                return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
-              })(),
+          if (_apkPath != null && _apkPath!.isNotEmpty)
+            AppDetailSummaryField(
+              label: '文件路径',
+              value: _apkPath!,
+              copyable: true,
+              maxLines: 4,
             ),
-            _SummaryItem(
-              label: "更新时间",
-              value: (() {
-                final ms = widget.package.lastUpdateTime;
-                if (ms == null || ms <= 0) return '-';
-                final dt = DateTime.fromMillisecondsSinceEpoch(ms);
-                return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
-              })(),
+        ];
+        final data = AppDetailViewData(
+          name: widget.package.displayName,
+          version: widget.package.versionLabel,
+          logo: AppDetailLogoData(
+            image: iconPath != null && File(iconPath).existsSync()
+                ? FileImage(File(iconPath))
+                : null,
+            fallbackImage: AssetImage(
+              isHarmony
+                  ? AppIcons.harmonyDefaultAppIcon
+                  : AppIcons.androidDefaultAppIcon,
             ),
-            _SummaryItem(label: "安装大小", value: widget.package.storageLabel),
-            _SummaryItem(
-              label: "类型",
-              value:
-                  "${widget.package.system ? '系统应用' : '用户应用'} / ${widget.package.flutter ? 'Flutter' : '原生'}",
-            ),
-            _SummaryItem(
-              label: "状态",
-              value: widget.package.enabled ? "已启用" : "已停用",
-              valueColor: widget.package.enabled
-                  ? const Color(0xFF2EC46B)
-                  : const Color(0xFFE53935),
-            ),
-            if (widget.package.debuggable)
-              _SummaryItem(
-                label: "调试模式",
-                value: "DEBUG",
-                valueColor: colorScheme.error,
-              ),
-            if (_packerFuture != null)
-              FutureBuilder<String?>(
-                future: _packerFuture,
-                builder: (context, snapshot) {
-                  final packer = snapshot.data;
-                  if (packer != null) {
-                    return _SummaryItem(
-                      label: "加固状态",
-                      value: packer,
-                      valueColor: Colors.orange.shade700,
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            if (_apkPath != null && _apkPath!.isNotEmpty)
-              _SummaryItem(
-                label: "文件路径",
-                value: _apkPath!,
-                canCopy: true,
-                maxLines: 4,
-              ),
-          ],
-        ),
-      ),
+          ),
+          badges: badges,
+          fields: fields,
+          tabs: widget.tabs,
+        );
+        return AppDetailView(
+          data: data,
+          summaryBackground: widget.summaryBackground,
+          tabBody: widget.tabBody,
+          copyTooltip: '复制',
+          onCopied: (field) {
+            _showSnack(context, '${field.label}已复制到剪贴板');
+          },
+        );
+      },
     );
   }
 }
 
-class _SummaryItem extends StatelessWidget {
-  const _SummaryItem({
-    required this.label,
-    required this.value,
-    this.canCopy = false,
-    this.valueColor,
-    this.maxLines = 2,
-  });
-
-  final String label;
-  final String value;
-  final bool canCopy;
-  final Color? valueColor;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Tooltip(
-                  message: value,
-                  waitDuration: const Duration(milliseconds: 500),
-                  child: Text(
-                    value,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: valueColor,
-                    ),
-                    maxLines: maxLines,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              if (canCopy) ...[
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(CupertinoIcons.doc_on_doc, size: 14),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: value));
-                    _showSnack(context, '$label已复制到剪贴板');
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                  splashRadius: 16,
-                  tooltip: '复制$label',
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+String _formatDetailTime(int? milliseconds) {
+  if (milliseconds == null || milliseconds <= 0) return '-';
+  final date = DateTime.fromMillisecondsSinceEpoch(milliseconds);
+  String twoDigits(int value) => value.toString().padLeft(2, '0');
+  return '${date.year}-${twoDigits(date.month)}-${twoDigits(date.day)} '
+      '${twoDigits(date.hour)}:${twoDigits(date.minute)}:${twoDigits(date.second)}';
 }
 
 class _AppActionButtonCard extends StatelessWidget {

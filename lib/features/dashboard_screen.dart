@@ -19,6 +19,7 @@ import '../app/l10n/app_localizations.dart';
 import '../app/theme/app_icon.dart';
 import '../app/widget/dashboard_tab_layout.dart';
 import '../app/widget/dashboard_history_text_field.dart';
+import '../app/widget/app_detail_layout.dart';
 
 import '../app/widget/app_toast.dart';
 import '../app/settings/app_settings.dart';

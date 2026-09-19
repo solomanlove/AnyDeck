@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/widget/app_detail_layout.dart';
 import 'package:any_deck/core/apk/apk_window_client.dart';
 import 'package:any_deck/core/apk/local_apk_info.dart';
 import 'package:any_deck/features/apk/apk_details_page.dart';
@@ -23,6 +24,8 @@ void main() {
               (ref) async => LocalApkInfo({
                 'packageName': 'example.app',
                 'label': 'Example',
+                'icon':
+                    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
                 'versionName': '1.0',
                 'versionCode': '1',
                 'minSdk': '23',
@@ -54,6 +57,15 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.byType(AppDetailView), findsOneWidget);
+      expect(find.byType(AppDetailSummaryPanel), findsOneWidget);
+      final detailView = tester.widget<AppDetailView>(
+        find.byType(AppDetailView),
+      );
+      expect(detailView.data.name, 'Example');
+      expect(detailView.data.logo.image, isA<MemoryImage>());
+      expect(detailView.data.tabs, hasLength(10));
+      expect(find.byKey(const ValueKey('app-detail-logo')), findsOneWidget);
       expect(find.text('Example'), findsOneWidget);
       expect(find.text('Target SDK'), findsOneWidget);
       expect(find.text('Not provided'), findsOneWidget);

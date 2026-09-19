@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/l10n/app_localizations.dart';
+import '../../app/widget/app_detail_layout.dart';
 import '../../core/apk/apk_install_controller.dart';
 import '../../core/apk/apk_window_client.dart';
 import 'widgets/apk_detail_list.dart';
@@ -80,89 +81,79 @@ class ApkDetailsPage extends ConsumerWidget {
             ),
           ),
         ),
-        data: (info) => Column(
-          children: [
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    width: 290,
-                    child: ApkSummary(info: info, path: path),
-                  ),
-                  const VerticalDivider(width: 1),
-                  Expanded(
-                    child: DefaultTabController(
-                      length: tabs.length + 1,
-                      child: Column(
-                        children: [
-                          TabBar(
-                            isScrollable: true,
-                            tabAlignment: TabAlignment.start,
-                            tabs: [
-                              Tab(text: context.l10n.t('apkInstallTab')),
-                              for (final tab in tabs.entries)
-                                Tab(
-                                  text:
-                                      '${context.l10n.t(tab.value)} (${info.rows(tab.key).length})',
-                                ),
-                            ],
+        data: (info) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final summaryBackground = isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : Colors.white.withValues(alpha: 0.5);
+          final tabData = <AppDetailTabData>[
+            AppDetailTabData(
+              id: 'install',
+              title: context.l10n.t('apkInstallTab'),
+            ),
+            for (final tab in tabs.entries)
+              AppDetailTabData(
+                id: tab.key,
+                title: context.l10n.t(tab.value),
+                count: info.rows(tab.key).length,
+              ),
+          ];
+          final viewData = buildLocalApkDetailViewData(
+            context,
+            info: info,
+            path: path,
+            tabs: tabData,
+          );
+          return Column(
+            children: [
+              Expanded(
+                child: AppDetailView(
+                  data: viewData,
+                  summaryBackground: summaryBackground,
+                  copyTooltip: context.l10n.t('apkCopy'),
+                  tabViews: [
+                    ListView(
+                      padding: const EdgeInsets.all(24),
+                      children: [
+                        Text(
+                          context.l10n.t('apkOffline'),
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 20),
+                        Text(context.l10n.t('apkInstallDescription')),
+                        if (!info.installable)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Text(context.l10n.t('apkSplit')),
                           ),
-                          Expanded(
-                            child: TabBarView(
-                              children: [
-                                ListView(
-                                  padding: const EdgeInsets.all(24),
-                                  children: [
-                                    Text(
-                                      context.l10n.t('apkOffline'),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.headlineSmall,
-                                    ),
-                                    const SizedBox(height: 20),
-                                    Text(
-                                      context.l10n.t('apkInstallDescription'),
-                                    ),
-                                    if (!info.installable)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 16),
-                                        child: Text(context.l10n.t('apkSplit')),
-                                      ),
-                                    for (final warning
-                                        in info.data['warnings'] as List? ?? [])
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 16),
-                                        child: SelectableText(
-                                          apkErrorText(context, warning),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                for (final tab in tabs.keys)
-                                  ApkDetailList(
-                                    rows: info.rows(tab),
-                                    fallbackIcon: info.icon,
-                                    showComponentIcon: tab == 'activities',
-                                    note: tab == 'signatures'
-                                        ? context.l10n.t('apkSignatureNote')
-                                        : tab == 'permissions'
-                                        ? context.l10n.t('apkPermissionNote')
-                                        : null,
-                                  ),
-                              ],
+                        for (final warning
+                            in info.data['warnings'] as List? ?? [])
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: SelectableText(
+                              apkErrorText(context, warning),
                             ),
                           ),
-                        ],
-                      ),
+                      ],
                     ),
-                  ),
-                ],
+                    for (final tab in tabs.keys)
+                      ApkDetailList(
+                        rows: info.rows(tab),
+                        fallbackIcon: info.icon,
+                        showComponentIcon: tab == 'activities',
+                        note: tab == 'signatures'
+                            ? context.l10n.t('apkSignatureNote')
+                            : tab == 'permissions'
+                            ? context.l10n.t('apkPermissionNote')
+                            : null,
+                      ),
+                  ],
+                ),
               ),
-            ),
-            ApkInstallBar(info: info, path: path, mainWindowId: mainWindowId),
-          ],
-        ),
+              ApkInstallBar(info: info, path: path, mainWindowId: mainWindowId),
+            ],
+          );
+        },
       ),
     );
   }

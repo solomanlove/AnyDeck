@@ -9,6 +9,7 @@
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
 | `adb-local-apk-inspector` | macOS 本地 APK 详情与安装 | active | Finder 文件关联、独立窗口、Rust 离线解析、签名信息与主窗口安装队列、缓存刷新及回归边界 | `core/apk/`, `features/apk/`, `app/window/apk/`, `rust/apk_inspector/` |
+| `adb-unified-app-detail-view` | 应用详情统一展示模型与 UI | active | 记录本地 APK 与已安装应用如何转换为统一 `AppDetailViewData`，并复用同一分栏、概要与 Tabs Widget | `app/widget/`, `features/apk/`, `features/apps/` |
 | `adb-terminal-pty` | 终端 PTY 与 root 提示符 | active | 记录真实 shell 回显、su 提权显示、目录变化、流式换行处理与回归边界 | `core/terminal/`, `features/terminal/` |
 | `adb-app-permissions` | 应用权限分类与批量撤销 | active | 记录动态 / 静态 / 未知权限分类、当前用户隔离、批量撤销与回读结果、共享面板及回归验证 | `core/apps/`, `features/apps/` |
 | `adb-app-native-library-copy` | 应用原生库名称复制 | active | 记录应用详情原生库 Tab 的 `.so` 库名 Clipboard 复制、统一反馈与原生库规则拆分边界 | `features/apps/` |
