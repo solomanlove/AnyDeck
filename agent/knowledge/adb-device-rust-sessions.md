@@ -58,6 +58,8 @@
 
 Rust 每会话一个工作线程，状态 0 启动中、1 已有实际画面/声音或剪贴板连接、2 已停止、3 异常结束。停止发出原子取消信号并 shutdown socket，随后 Drop 终止/reap 子进程、移除本会话端口及远端 jar。
 
+macOS 屏幕投屏只有在 VideoToolbox 产出首个非零尺寸且带 `IOSurface` 的 `CVPixelBuffer` 后才进入状态 1；socket 建立完成仍保持启动中。解码错误或缺少 `IOSurface` 会让会话进入状态 3，并输出 `[RustDeviceBridge] mirror worker ERR`，不能吞掉错误后把黑色 Texture 当作成功。Flutter 3.47 默认启用的 Impeller 在 macOS External Texture 路径存在偶发黑屏，本项目在 `macos/Runner/Info.plist` 显式设置 `FLTEnableImpeller=false`，投屏暂时使用 Skia；后续升级 Flutter 时必须经过多窗口、旋转和重复启停真机回归后才能重新启用。
+
 ADB 单条命令上限 15 秒，输出排空且最多保留 4096 字节；端口分配返回后才处理取消，异常时通过本次唯一 socket 补查映射。整个启动有 75 秒上限，停止异常清理最多等待 65 秒，UI 始终显示正在连接/停止。
 
 播放器固定 5 个 20ms buffer（最多约 100ms 队列），满时丢弃新块。Swift 每秒最多通知 30 次纹理可用。VideoToolbox 同步解码，Rust 持有最新一帧并在替换时 release；AudioQueue Dispose 不持有回调锁，避免死锁。

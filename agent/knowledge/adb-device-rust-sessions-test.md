@@ -12,6 +12,7 @@
 flutter test --no-pub test/device_auxiliary_test.dart test/camera_preview_test.dart test/usage_report_dialog_test.dart test/embedded_camera_service_test.dart test/embedded_scrcpy_geometry_test.dart test/mirror_device_info_overlay_test.dart
 cargo test --manifest-path rust/device_bridge/Cargo.toml
 cargo clippy --manifest-path rust/device_bridge/Cargo.toml -- -D warnings
+plutil -lint macos/Runner/Info.plist
 bash script/build_device_bridge.sh
 ```
 
@@ -37,6 +38,7 @@ ANYDECK_H264_FIXTURE=/tmp/anydeck-test-frame.h264 cargo test --manifest-path rus
 7. 原屏幕投屏保持运行，同时启停这三个会话，验证不会互相停止或更改手机屏幕状态。
 8. 检查中英文、深浅主题，以及较小窗口中滚动控制区仍可操作，视频区域比例正确。
 9. macOS 构建后确认 Contents/Frameworks 内存在并签名 `libanydeck_device_bridge.dylib`；检查主窗口和子窗口均可注册 Rust Texture。
+10. Flutter 3.47+ 检查启动日志使用 Skia 而不是 `MetalSDF`；连续重复开启/关闭投屏、横竖屏旋转和跨显示器移动，确认没有纯黑 Texture。若重新启用 Impeller，必须先完成同一组真机 A/B 回归。
 
 连接自己的目标设备后可检查残留（不是启动命令）：
 

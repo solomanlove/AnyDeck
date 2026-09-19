@@ -30,6 +30,9 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!-- Flutter 3.47 的 macOS Impeller External Texture 偶发黑屏，投屏暂时使用 Skia。 -->
+	<key>FLTEnableImpeller</key>
+	<false/>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>

@@ -143,9 +143,16 @@ pub unsafe extern "C" fn anydeck_start_mirror(
     if std::thread::Builder::new()
         .name(format!("anydeck-mirror-{}", id))
         .spawn(move || {
-            let _ = std::panic::catch_unwind(|| {
+            let result = std::panic::catch_unwind(|| {
                 worker::run_mirror(host, port_u16, audio_on, id, &session_clone)
             });
+            if !session_clone.stopped.load(Ordering::Acquire) {
+                if let Err(error) = &result {
+                    eprintln!("[RustDeviceBridge] mirror worker PANIC: {:?}", error);
+                } else if let Ok(Err(error)) = &result {
+                    eprintln!("[RustDeviceBridge] mirror worker ERR: {}", error);
+                }
+            }
             session_clone.status.store(
                 if session_clone.stopped.load(Ordering::Acquire) {
                     2

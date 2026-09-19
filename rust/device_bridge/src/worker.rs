@@ -206,8 +206,6 @@ pub fn run_mirror(
         Some(video.try_clone().map_err(|e| e.to_string())?);
     *s.control_socket.lock().map_err(|_| "Control socket poisoned")? = Some(control);
 
-    s.status.store(1, Ordering::Release);
-
     let audio_thread = if let Some(audio_socket) = audio {
         let s_clone = s.clone();
         std::thread::Builder::new()
@@ -225,9 +223,8 @@ pub fn run_mirror(
     let mut packet = Vec::new();
 
     while !s.stopped.load(Ordering::Acquire) {
-        if stream::read_packet(&mut video, &mut header, &s.stopped).is_err() {
-            break;
-        }
+        stream::read_packet(&mut video, &mut header, &s.stopped)
+            .map_err(|error| format!("Video header read failed: {error}"))?;
         let session_flags = u32::from_be_bytes(header[0..4].try_into().unwrap());
         if session_flags & 0x8000_0000 != 0 {
             continue;
@@ -244,10 +241,16 @@ pub fn run_mirror(
         if packet.len() < size {
             packet.resize(size, 0);
         }
-        if stream::read_packet(&mut video, &mut packet[..size], &s.stopped).is_err() {
-            break;
+        stream::read_packet(&mut video, &mut packet[..size], &s.stopped)
+            .map_err(|error| format!("Video payload read failed: {error}"))?;
+        decoder.decode(&packet[..size], clean_pts)?;
+        if s.frame.dimensions().0 > 0 {
+            if !s.frame.has_surface() {
+                return Err("Decoded video frame is missing IOSurface".into());
+            }
+            // socket 建立不代表 Flutter Texture 可显示；首个 Metal 可用帧生成后才进入运行态。
+            s.status.store(1, Ordering::Release);
         }
-        let _ = decoder.decode(&packet[..size], clean_pts);
     }
 
     let _ = video.shutdown(std::net::Shutdown::Both);
@@ -387,5 +390,24 @@ mod tests {
         stream.flush().unwrap();
         drop(guard);
         server.join().unwrap();
+    }
+
+    #[test]
+    fn mirror_waits_for_renderable_frame_before_running() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            let (mut video, _) = listener.accept().unwrap();
+            let (_control, _) = listener.accept().unwrap();
+            video.write_all(&[0]).unwrap();
+            video.write_all(&[0; 80]).unwrap();
+        });
+        let session = Arc::new(state());
+
+        let error = run_mirror("127.0.0.1".into(), port, false, 1, &session).unwrap_err();
+
+        server.join().unwrap();
+        assert!(error.contains("Video header read failed"));
+        assert_eq!(session.status.load(Ordering::Acquire), 0);
     }
 }
