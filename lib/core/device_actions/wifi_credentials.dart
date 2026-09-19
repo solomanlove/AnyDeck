@@ -1,3 +1,4 @@
+import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 
 class WifiCredentials {
@@ -108,15 +109,30 @@ class WifiCredentialsHelper {
         .replaceAll('&apos;', "'");
   }
 
+  static Future<AdbResult> _catFile(
+    AdbService adb,
+    String deviceId,
+    String path,
+  ) async {
+    final res = await adb.shell(deviceId, 'cat $path');
+    if (res.isSuccess &&
+        res.stdout.trim().isNotEmpty &&
+        !res.stdout.contains('Permission denied')) {
+      return res;
+    }
+    return adb.shell(deviceId, 'su -c "cat $path"');
+  }
+
   /// 获取设备上已保存的 WiFi 密码。
   static Future<List<WifiCredentials>> fetchSavedWifi(
     AdbService adb,
     String deviceId,
   ) async {
     // 1. 尝试现代 Android 路径
-    var res = await adb.shell(
+    var res = await _catFile(
+      adb,
       deviceId,
-      'cat /data/misc/apexdata/com.android.wifi/WifiConfigStore.xml',
+      '/data/misc/apexdata/com.android.wifi/WifiConfigStore.xml',
     );
     if (res.isSuccess && res.stdout.trim().isNotEmpty) {
       final list = parseWifiConfigStore(res.stdout);
@@ -124,14 +140,22 @@ class WifiCredentialsHelper {
     }
 
     // 2. 尝试 Android 10 路径
-    res = await adb.shell(deviceId, 'cat /data/misc/wifi/WifiConfigStore.xml');
+    res = await _catFile(
+      adb,
+      deviceId,
+      '/data/misc/wifi/WifiConfigStore.xml',
+    );
     if (res.isSuccess && res.stdout.trim().isNotEmpty) {
       final list = parseWifiConfigStore(res.stdout);
       if (list.isNotEmpty) return list;
     }
 
     // 3. 尝试旧版 wpa_supplicant 路径
-    res = await adb.shell(deviceId, 'cat /data/misc/wifi/wpa_supplicant.conf');
+    res = await _catFile(
+      adb,
+      deviceId,
+      '/data/misc/wifi/wpa_supplicant.conf',
+    );
     if (res.isSuccess && res.stdout.trim().isNotEmpty) {
       final list = parseWpaSupplicant(res.stdout);
       if (list.isNotEmpty) return list;

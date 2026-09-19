@@ -287,12 +287,6 @@ class _ComponentsTabState extends State<_ComponentsTab> {
                           ],
                         ),
                         trailing: _ExportedBadge(exported: info.exported),
-                        leading: Icon(
-                          widget.isProvider
-                              ? CupertinoIcons.share
-                              : CupertinoIcons.gear_alt,
-                          size: 16,
-                        ),
                         onLongPress: () {
                           Clipboard.setData(ClipboardData(text: info.name));
                           _showSnack(context, '已复制组件名称: ${info.name}');
@@ -439,7 +433,6 @@ class _DexTab extends StatelessWidget {
                         dense: true,
                         title: Text(f.name),
                         trailing: Text(_formatSize(f.size)),
-                        leading: const Icon(CupertinoIcons.doc_text, size: 18),
                       ),
                     );
                   },

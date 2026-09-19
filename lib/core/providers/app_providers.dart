@@ -831,22 +831,13 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       yield fresh;
     });
 
-/// 单台设备的 adb shell 是否拥有 root 权限。
+/// 单台设备是否拥有 Root 权限（支持 adb shell 已提权或通过 su 提权）。
 final isDeviceRootProvider = FutureProvider.autoDispose.family<bool, String>((
   ref,
   deviceId,
 ) async {
-  final isOnline = ref.watch(deviceOnlineProvider(deviceId));
-  if (!isOnline) return false;
-
-  final adb = ref.watch(adbServiceProvider);
-  try {
-    final result = await adb.shell(deviceId, 'id');
-    if (result.isSuccess) {
-      return result.stdout.contains('uid=0');
-    }
-  } catch (_) {}
-  return false;
+  final status = await ref.watch(deviceRootStatusProvider(deviceId).future);
+  return status == true;
 });
 
 /// 检查手机是否能通过 su 获取 root；检测失败或授权被拒绝时不猜测结果。

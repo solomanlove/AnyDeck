@@ -105,11 +105,6 @@ class PrimaryRail extends ConsumerWidget {
       // 2. iOS 设备专属 Tab 列表
       tools = [
         _RailToolItem(
-          tabIndex: -1,
-          icon: Icons.devices,
-          label: context.l10n.t('devices'),
-        ),
-        _RailToolItem(
           tabIndex: 0,
           icon: CupertinoIcons.device_phone_portrait,
           label: context.l10n.t('overview'),
@@ -148,11 +143,6 @@ class PrimaryRail extends ConsumerWidget {
     } else if (isHarmony) {
       // 3. 鸿蒙设备专属 Tab 列表（支持主页、控制、应用、文件、日志、终端、进程、网页调试、截图）
       tools = [
-        _RailToolItem(
-          tabIndex: -1,
-          icon: Icons.devices,
-          label: context.l10n.t('devices'),
-        ),
         _RailToolItem(
           tabIndex: 0,
           icon: CupertinoIcons.device_phone_portrait,
@@ -202,11 +192,6 @@ class PrimaryRail extends ConsumerWidget {
     } else {
       // 4. 安卓设备专属 Tab 列表（全部工具）
       tools = [
-        _RailToolItem(
-          tabIndex: -1,
-          icon: Icons.devices,
-          label: context.l10n.t('devices'),
-        ),
         _RailToolItem(
           tabIndex: 0,
           icon: CupertinoIcons.device_phone_portrait,

@@ -93,37 +93,78 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
     );
   }
 
+  /// 内部封装分类筛选的分段选择器。
+  Widget _buildSegmentedControl(BuildContext context) {
+    return CupertinoSlidingSegmentedControl<T>(
+      groupValue: currentSegment,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
+          : const Color(0xFFF1F5F9),
+      thumbColor: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.surfaceContainerHigh
+          : Colors.white,
+      padding: const EdgeInsets.all(3),
+      children: segments,
+      onValueChanged: onSegmentChanged,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // 1. 左侧：输入框（撑满剩余空间）
-        Expanded(
-          child: SizedBox(
-            height: 38,
-            child: _buildTextField(context),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // 2. 中间：类别分段选择器
-        CupertinoSlidingSegmentedControl<T>(
-          groupValue: currentSegment,
-          backgroundColor: Theme.of(context).brightness == Brightness.dark
-              ? Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-              : const Color(0xFFF1F5F9),
-          thumbColor: Theme.of(context).brightness == Brightness.dark
-              ? Theme.of(context).colorScheme.surfaceContainerHigh
-              : Colors.white,
-          padding: const EdgeInsets.all(3),
-          children: segments,
-          onValueChanged: onSegmentChanged,
-        ),
-        const SizedBox(width: 8),
-        // 3. 右侧：补充额外操作区
-        ...trailingActions,
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 当可用宽度较窄（小于 760）时，为了避免输入框被过度挤压或右侧操作按钮溢出，
+        // 采用双行自适应布局：上行展开搜索框，下行放置分段筛选与操作区。
+        final isNarrow = constraints.maxWidth < 760;
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 38,
+                child: _buildTextField(context),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                alignment: WrapAlignment.spaceBetween,
+                children: [
+                  _buildSegmentedControl(context),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: trailingActions,
+                  ),
+                ],
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            // 1. 左侧：输入框（撑满剩余空间）
+            Expanded(
+              child: SizedBox(
+                height: 38,
+                child: _buildTextField(context),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // 2. 中间：类别分段选择器
+            _buildSegmentedControl(context),
+            const SizedBox(width: 8),
+            // 3. 右侧：补充额外操作区
+            ...trailingActions,
+          ],
+        );
+      },
     );
   }
 }

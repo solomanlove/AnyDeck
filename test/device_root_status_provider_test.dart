@@ -88,4 +88,41 @@ void main() {
     expect(status, isNull);
     expect(commands, ['id', 'command -v su', 'su -c id']);
   });
+
+  test('isDeviceRootProvider: 普通 shell 可通过 su 提权时为 true', () async {
+    final adb = _RootAdbService({
+      'id': shellUser,
+      'command -v su': suPath,
+      'su -c id': rootUser,
+    });
+    final container = ProviderContainer(
+      overrides: [
+        adbServiceProvider.overrideWithValue(adb),
+        deviceOnlineProvider('target-device').overrideWithValue(true),
+      ],
+    );
+    addTearDown(container.dispose);
+    final isRoot = await container.read(
+      isDeviceRootProvider('target-device').future,
+    );
+    expect(isRoot, isTrue);
+  });
+
+  test('isDeviceRootProvider: 无 su 提权能力时为 false', () async {
+    final adb = _RootAdbService({
+      'id': shellUser,
+      'command -v su': const AdbResult(exitCode: 1, stdout: '', stderr: ''),
+    });
+    final container = ProviderContainer(
+      overrides: [
+        adbServiceProvider.overrideWithValue(adb),
+        deviceOnlineProvider('target-device').overrideWithValue(true),
+      ],
+    );
+    addTearDown(container.dispose);
+    final isRoot = await container.read(
+      isDeviceRootProvider('target-device').future,
+    );
+    expect(isRoot, isFalse);
+  });
 }

@@ -490,9 +490,14 @@ fi
       setState(() {
         _statusMessage = '正在申请 Root 权限并执行证书导入...';
       });
+      final shellId = await adb.shell(widget.deviceId, 'id');
+      final isAdbShellRoot =
+          shellId.isSuccess && shellId.stdout.contains('uid=0(');
       final execRes = await adb.shell(
         widget.deviceId,
-        'su -c "sh /data/local/tmp/install_cert.sh"',
+        isAdbShellRoot
+            ? 'sh /data/local/tmp/install_cert.sh'
+            : 'su -c "sh /data/local/tmp/install_cert.sh"',
       );
 
       // 5. 立即清理手机端的临时文件

@@ -63,44 +63,35 @@ extension _ProcessesTabView on _ProcessesTabState {
           }
         },
         trailingActions: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Checkbox(
-                value: _onlyShowApps,
-                onChanged: (value) =>
-                    _updateState(() => _onlyShowApps = value ?? true),
-              ),
-              Text(context.l10n.t('onlyShowApps')),
-            ],
+          _buildToolbarCheckbox(
+            context: context,
+            label: context.l10n.t('onlyShowApps'),
+            value: _onlyShowApps,
+            onChanged: (value) =>
+                _updateState(() => _onlyShowApps = value ?? true),
           ),
-          const SizedBox(width: 12),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Checkbox(
-                value: _onlyShowDebug,
-                onChanged: (value) =>
-                    _updateState(() => _onlyShowDebug = value ?? false),
-              ),
-              const Text('仅 Debug 应用'),
-            ],
+          const SizedBox(width: 6),
+          _buildToolbarCheckbox(
+            context: context,
+            label: '仅 Debug 应用',
+            value: _onlyShowDebug,
+            onChanged: (value) =>
+                _updateState(() => _onlyShowDebug = value ?? false),
           ),
-          const SizedBox(width: 16),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Checkbox(value: _autoRefresh, onChanged: _toggleAutoRefresh),
-              Text(
-                context.l10n
-                    .t('autoRefreshInterval')
-                    .replaceAll('{seconds}', '3'),
-              ),
-            ],
+          const SizedBox(width: 6),
+          _buildToolbarCheckbox(
+            context: context,
+            label: context.l10n
+                .t('autoRefreshInterval')
+                .replaceAll('{seconds}', '3'),
+            value: _autoRefresh,
+            onChanged: _toggleAutoRefresh,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           IconButton(
             tooltip: context.l10n.t('refreshProcessesTooltip'),
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             icon: _refreshing
                 ? const SizedBox(
                     width: 18,
@@ -212,6 +203,43 @@ extension _ProcessesTabView on _ProcessesTabState {
           color: isSelected
               ? theme.colorScheme.primary
               : theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  /// 构建进程工具栏紧凑型 Checkbox 选项，支持点击整行文字切换。
+  Widget _buildToolbarCheckbox({
+    required BuildContext context,
+    required String label,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Checkbox(
+              value: value,
+              onChanged: onChanged,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.grey[300] : const Color(0xff5f6368),
+              ),
+            ),
+          ],
         ),
       ),
     );

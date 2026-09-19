@@ -14,7 +14,7 @@
 2. 普通 shell 下执行 `command -v su`：确认无 `su` 时显示未 Root。
 3. 存在 `su` 时执行 `su -c id`，5 秒内返回 `uid=0(root)`：已 Root；授权被拒、超时或其他异常：状态未知。
 
-现有 `isDeviceRootProvider` 仅判断 ADB shell 当前是否为 root，仍供 Wi-Fi 密码与证书等权限功能使用，不承担手机 Root 标识的语义。
+`isDeviceRootProvider` 依赖 `deviceRootStatusProvider`，统一判定设备是否已获得 Root 权限（包括 ADB shell 已提权或通过 `su` 提权），供 Wi-Fi 密码与系统证书导入等功能使用。
 
 ## 验证边界
 

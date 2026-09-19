@@ -18,7 +18,6 @@ class _FixedPackagesNotifier extends PackagesNotifier {
   @override
   AsyncValue<List<AdbPackage>> build() => AsyncValue.data(packages);
 }
-
 class _DummyAdbService extends AdbService {
   _DummyAdbService() : super(executable: 'adb');
 
@@ -147,5 +146,61 @@ void main() {
     expect(find.text('com.ss.android.ugc.aweme:sandboxed_process0'), findsOneWidget);
     expect(find.text('系统界面'), findsOneWidget);
     expect(find.textContaining('共 3 个进程'), findsOneWidget);
+  });
+
+  testWidgets('processes tab does not overflow on narrow viewport', (
+    WidgetTester tester,
+  ) async {
+    const device = AdbDevice(
+      id: 'test-device',
+      status: 'device',
+      model: 'Test Device',
+      product: 'test',
+      transportId: '1',
+    );
+
+    tester.view.physicalSize = const Size(500, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          deviceOnlineProvider(device.id).overrideWithValue(true),
+          processesProvider(
+            device.id,
+          ).overrideWith((ref) => Future.value(const <AdbProcess>[])),
+          packagesProvider(
+            device.id,
+          ).overrideWith(() => _FixedPackagesNotifier(packages: const [])),
+          processServiceProvider.overrideWithValue(ProcessService(_DummyAdbService())),
+        ],
+        child: const MaterialApp(
+          locale: Locale('zh'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Scaffold(
+            body: ProcessesTab(
+              device: device,
+              isVisible: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('用户进程'), findsOneWidget);
+    expect(find.text('仅 Debug 应用'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
