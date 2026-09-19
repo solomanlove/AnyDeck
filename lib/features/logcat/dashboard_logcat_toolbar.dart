@@ -7,10 +7,6 @@ class _LogcatToolbar extends StatelessWidget {
     required this.tagController,
     required this.textController,
     required this.textFocusNode,
-    required this.onStartStop,
-    required this.onClear,
-    required this.onImport,
-    required this.onExport,
     required this.onViewModeChanged,
     required this.onLevelChanged,
     required this.onPackageChanged,
@@ -22,9 +18,6 @@ class _LogcatToolbar extends StatelessWidget {
     required this.onTextChanged,
     required this.onTextSubmitted,
     required this.onTextHistoryRemoved,
-    required this.onPause,
-    required this.onAutoScroll,
-    required this.onWrap,
   });
 
   final LogcatState state;
@@ -32,10 +25,6 @@ class _LogcatToolbar extends StatelessWidget {
   final TextEditingController tagController;
   final TextEditingController textController;
   final FocusNode textFocusNode;
-  final VoidCallback onStartStop;
-  final VoidCallback onClear;
-  final VoidCallback onImport;
-  final VoidCallback onExport;
   final ValueChanged<LogcatViewMode> onViewModeChanged;
   final ValueChanged<LogcatLevelFilter> onLevelChanged;
   final ValueChanged<String> onPackageChanged;
@@ -47,9 +36,6 @@ class _LogcatToolbar extends StatelessWidget {
   final ValueChanged<String> onTextChanged;
   final ValueChanged<String> onTextSubmitted;
   final ValueChanged<String> onTextHistoryRemoved;
-  final VoidCallback onPause;
-  final VoidCallback onAutoScroll;
-  final VoidCallback onWrap;
 
   @override
   Widget build(BuildContext context) {
@@ -98,57 +84,12 @@ class _LogcatToolbar extends StatelessWidget {
       onSelected: onTextSubmitted,
       onHistoryRemoved: onTextHistoryRemoved,
     );
-    final buttons = [
-      _LogcatIconButton(
-        tooltip: state.isRunning
-            ? context.l10n.t('stop')
-            : context.l10n.t('start'),
-        icon: state.isRunning ? CupertinoIcons.stop : CupertinoIcons.play,
-        selected: state.isRunning,
-        onPressed: onStartStop,
-      ),
-      _LogcatIconButton(
-        tooltip: state.isPaused
-            ? context.l10n.t('logcatResume')
-            : context.l10n.t('logcatPause'),
-        icon: state.isPaused ? CupertinoIcons.play : CupertinoIcons.pause,
-        selected: state.isPaused,
-        onPressed: onPause,
-      ),
-      _LogcatIconButton(
-        tooltip: context.l10n.t('logcatAutoScroll'),
-        icon: CupertinoIcons.arrow_down_to_line,
-        selected: state.autoScroll,
-        onPressed: onAutoScroll,
-      ),
-      _LogcatIconButton(
-        tooltip: context.l10n.t('logcatWrapLines'),
-        icon: CupertinoIcons.text_alignleft,
-        selected: state.wrapLines,
-        onPressed: onWrap,
-      ),
-      _LogcatIconButton(
-        tooltip: context.l10n.t('logcatImport'),
-        icon: CupertinoIcons.folder_open,
-        onPressed: onImport,
-      ),
-      _LogcatIconButton(
-        tooltip: context.l10n.t('logcatExport'),
-        icon: CupertinoIcons.floppy_disk,
-        onPressed: onExport,
-      ),
-      _LogcatIconButton(
-        tooltip: context.l10n.t('clear'),
-        icon: CupertinoIcons.clear,
-        onPressed: onClear,
-      ),
-    ];
 
     return SizedBox(
       width: double.infinity,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          if (constraints.maxWidth < 1120) {
+          if (constraints.maxWidth < 860) {
             return Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -159,7 +100,6 @@ class _LogcatToolbar extends StatelessWidget {
                 SizedBox(width: 220, child: packageField),
                 SizedBox(width: 180, child: tagField),
                 SizedBox(width: 260, child: textField),
-                ...buttons,
               ],
             );
           }
@@ -175,14 +115,106 @@ class _LogcatToolbar extends StatelessWidget {
               Expanded(flex: 18, child: tagField),
               const SizedBox(width: 8),
               Expanded(flex: 30, child: textField),
-              const SizedBox(width: 10),
-              for (final button in buttons) ...[
-                button,
-                if (button != buttons.last) const SizedBox(width: 6),
-              ],
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// 日志左侧垂直操作栏组件
+///
+/// 包含清空、暂停/恢复、自动滚动、自动换行、导入与导出等常用操作按钮。
+class _LogcatLeftToolbar extends StatelessWidget {
+  const _LogcatLeftToolbar({
+    required this.state,
+    required this.onClear,
+    required this.onPause,
+    required this.onAutoScroll,
+    required this.onWrap,
+    required this.onImport,
+    required this.onExport,
+  });
+
+  final LogcatState state;
+  final VoidCallback onClear;
+  final VoidCallback onPause;
+  final VoidCallback onAutoScroll;
+  final VoidCallback onWrap;
+  final VoidCallback onImport;
+  final VoidCallback onExport;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 42,
+      child: Material(
+        color: colorScheme.surfaceContainerLowest,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LogcatIconButton(
+                tooltip: context.l10n.t('clear'),
+                icon: CupertinoIcons.trash,
+                onPressed: onClear,
+              ),
+              const SizedBox(height: 4),
+              _LogcatIconButton(
+                tooltip: state.isPaused
+                    ? context.l10n.t('logcatResume')
+                    : context.l10n.t('logcatPause'),
+                icon: state.isPaused
+                    ? CupertinoIcons.play
+                    : CupertinoIcons.pause,
+                iconColor: state.isPaused ? const Color(0xFF4CAF50) : null,
+                selected: state.isPaused,
+                onPressed: onPause,
+              ),
+              const SizedBox(height: 4),
+              _LogcatIconButton(
+                tooltip: context.l10n.t('logcatAutoScroll'),
+                icon: CupertinoIcons.arrow_down_to_line,
+                selected: state.autoScroll,
+                onPressed: onAutoScroll,
+              ),
+              const SizedBox(height: 4),
+              _LogcatIconButton(
+                tooltip: context.l10n.t('logcatWrapLines'),
+                icon: CupertinoIcons.text_alignleft,
+                selected: state.wrapLines,
+                onPressed: onWrap,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 6,
+                ),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Theme.of(context)
+                      .dividerColor
+                      .withValues(alpha: 0.4),
+                ),
+              ),
+              _LogcatIconButton(
+                tooltip: context.l10n.t('logcatImport'),
+                icon: CupertinoIcons.folder_open,
+                onPressed: onImport,
+              ),
+              const SizedBox(height: 4),
+              _LogcatIconButton(
+                tooltip: context.l10n.t('logcatExport'),
+                icon: CupertinoIcons.floppy_disk,
+                onPressed: onExport,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -256,12 +288,14 @@ class _LogcatIconButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.selected = false,
+    this.iconColor,
   });
 
   final String tooltip;
   final IconData icon;
   final VoidCallback onPressed;
   final bool selected;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -269,7 +303,13 @@ class _LogcatIconButton extends StatelessWidget {
       message: tooltip,
       child: IconButton(
         isSelected: selected,
-        icon: Icon(icon, size: 20),
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        padding: const EdgeInsets.all(6),
+        icon: Icon(
+          icon,
+          size: 18,
+          color: iconColor,
+        ),
         onPressed: onPressed,
       ),
     );

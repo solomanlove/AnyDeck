@@ -24,41 +24,39 @@ class _WechatStyleShell extends ConsumerWidget {
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.04);
 
-    return LiquidGlassBackground(
-      child: Row(
-        children: [
-          _PrimaryRail(selectedDevice: selectedDevice),
-          Expanded(
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: glassBgColor,
-                    border: Border(
-                      left: BorderSide(color: glassBorderColor, width: 1),
-                    ),
+    return Row(
+      children: [
+        _PrimaryRail(selectedDevice: selectedDevice),
+        Expanded(
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: glassBgColor,
+                  border: Border(
+                    left: BorderSide(color: glassBorderColor, width: 1),
                   ),
-                  // 在玻璃背景上方承载列表底色和水波纹，避免被装饰层遮挡。
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Column(
-                      children: [
-                        if ((selectedDevice == null || selectedTool == -1) &&
-                            selectedTool != 12 &&
-                            selectedTool != 13 &&
-                            selectedTool != 14)
-                          _ContentTitleBar(title: title),
-                        Expanded(child: child),
-                      ],
-                    ),
+                ),
+                // 在玻璃背景上方承载列表底色和水波纹，避免被装饰层遮挡。
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    children: [
+                      if ((selectedDevice == null || selectedTool == -1) &&
+                          selectedTool != 12 &&
+                          selectedTool != 13 &&
+                          selectedTool != 14)
+                        _ContentTitleBar(title: title),
+                      Expanded(child: child),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

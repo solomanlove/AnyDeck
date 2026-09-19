@@ -48,7 +48,7 @@ import '../core/providers/network_providers.dart';
 import '../core/providers/transfer_provider.dart';
 import '../common/utils/network_util.dart';
 import 'widgets/drag_drop_target_overlay.dart';
-import 'widgets/liquid_glass_background.dart';
+import '../common/widget/liquid_glass_background.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import '../core/scrcpy/scrcpy_session.dart';
 import '../core/scrcpy/embedded_scrcpy_service.dart';

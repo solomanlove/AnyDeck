@@ -286,15 +286,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.stretch,
                                         children: [
-                                          Text(
-                                            "功能操作",
-                                            style: theme.textTheme.titleMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: titleColor,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 16),
+                                          const SizedBox(height: 5),
                                           GridView.extent(
                                             maxCrossAxisExtent: 320,
                                             mainAxisSpacing: 12,
@@ -848,6 +840,61 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                     : null,
                                               ),
                                               _AppActionButtonCard(
+                                                icon: CupertinoIcons.trash,
+                                                title: "卸载应用",
+                                                description: "从设备中彻底卸载并删除此应用",
+                                                iconColor: const Color(
+                                                  0xFFE53935,
+                                                ),
+                                                onPressed: isOnline
+                                                    ? () async {
+                                                  final confirmed =
+                                                  await _confirm(
+                                                    context,
+                                                    context.l10n
+                                                        .t(
+                                                      'uninstallPackage',
+                                                    )
+                                                        .replaceAll(
+                                                      '{package}',
+                                                      packageName,
+                                                    ),
+                                                  );
+                                                  if (confirmed &&
+                                                      context.mounted) {
+                                                    final result =
+                                                    await service
+                                                        .uninstall(
+                                                      deviceId,
+                                                      packageName,
+                                                      isHarmony: isHarmony,
+                                                    );
+                                                    if (context
+                                                        .mounted) {
+                                                      _showSnack(
+                                                        context,
+                                                        result.message,
+                                                        isError: !result
+                                                            .isSuccess,
+                                                      );
+                                                    }
+                                                    if (result
+                                                        .isSuccess) {
+                                                      await ref
+                                                          .read(
+                                                        packagesProvider(
+                                                          deviceId,
+                                                        ).notifier,
+                                                      )
+                                                          .refreshSinglePackage(
+                                                        packageName,
+                                                      );
+                                                    }
+                                                  }
+                                                }
+                                                    : null,
+                                              ),
+                                              _AppActionButtonCard(
                                                 icon:
                                                     CupertinoIcons.archivebox,
                                                 title: "备份数据",
@@ -878,61 +925,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                         deviceId,
                                                         package,
                                                       )
-                                                    : null,
-                                              ),
-                                              _AppActionButtonCard(
-                                                icon: CupertinoIcons.trash,
-                                                title: "卸载应用",
-                                                description: "从设备中彻底卸载并删除此应用",
-                                                iconColor: const Color(
-                                                  0xFFE53935,
-                                                ),
-                                                onPressed: isOnline
-                                                    ? () async {
-                                                        final confirmed =
-                                                            await _confirm(
-                                                              context,
-                                                              context.l10n
-                                                                  .t(
-                                                                    'uninstallPackage',
-                                                                  )
-                                                                  .replaceAll(
-                                                                    '{package}',
-                                                                    packageName,
-                                                                  ),
-                                                            );
-                                                        if (confirmed &&
-                                                            context.mounted) {
-                                                          final result =
-                                                              await service
-                                                                  .uninstall(
-                                                                    deviceId,
-                                                                    packageName,
-                                                                    isHarmony: isHarmony,
-                                                                  );
-                                                          if (context
-                                                              .mounted) {
-                                                            _showSnack(
-                                                              context,
-                                                              result.message,
-                                                              isError: !result
-                                                                  .isSuccess,
-                                                            );
-                                                          }
-                                                          if (result
-                                                              .isSuccess) {
-                                                            await ref
-                                                                .read(
-                                                                  packagesProvider(
-                                                                    deviceId,
-                                                                  ).notifier,
-                                                                )
-                                                                .refreshSinglePackage(
-                                                                  packageName,
-                                                                );
-                                                          }
-                                                        }
-                                                      }
                                                     : null,
                                               ),
                                             ],
@@ -1269,7 +1261,7 @@ class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
                 ),
         ),
       ),
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.symmetric(horizontal: 15),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1333,9 +1325,9 @@ class _AppDetailSummaryCardState extends ConsumerState<_AppDetailSummaryCard> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 5),
             const Divider(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 5),
 
             _SummaryItem(label: "包名", value: widget.package.name, canCopy: true),
             _SummaryItem(

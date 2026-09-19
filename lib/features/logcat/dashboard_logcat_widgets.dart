@@ -52,6 +52,47 @@ class _LogcatError extends StatelessWidget {
   }
 }
 
+/// 当日志暂停时显示的黄色警告提示条（参考 Android Studio Logcat 设计）
+class _LogcatPausedBanner extends StatelessWidget {
+  const _LogcatPausedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    const warningColor = Color(0xFFE5A83B);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: warningColor.withValues(alpha: 0.12),
+        border: Border(
+          bottom: BorderSide(
+            color: warningColor.withValues(alpha: 0.25),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            CupertinoIcons.exclamationmark_triangle_fill,
+            size: 15,
+            color: warningColor,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            context.l10n.t('logcatIsPaused'),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: warningColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 用于承载一组相关操作按钮的小型复用卡片。
 class _ActionCard extends StatelessWidget {
   const _ActionCard({required this.title, required this.children});

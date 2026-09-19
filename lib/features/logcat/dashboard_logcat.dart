@@ -30,6 +30,14 @@ class LogcatTabState extends ConsumerState<LogcatTab> {
   void initState() {
     super.initState();
     _searchController.addListener(_handleSearchTextChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !ref.read(logcatControllerProvider).isRunning) {
+        ref.read(logcatControllerProvider.notifier).start(
+              widget.device.id,
+              isHarmony: widget.device.isHarmony,
+            );
+      }
+    });
   }
 
   @override
@@ -213,17 +221,6 @@ class LogcatTabState extends ConsumerState<LogcatTab> {
             tagController: _tagController,
             textController: _textController,
             textFocusNode: _textFilterFocusNode,
-            onStartStop: () {
-              state.isRunning
-                  ? controller.stop()
-                  : controller.start(
-                      widget.device.id,
-                      isHarmony: widget.device.isHarmony,
-                    );
-            },
-            onClear: controller.clear,
-            onImport: () => _importLogcatFile(context, controller),
-            onExport: () => _exportLogcatFile(context, controller),
             onViewModeChanged: controller.setViewMode,
             onLevelChanged: controller.setLevelFilter,
             onPackageChanged: controller.setPackageFilter,
@@ -235,9 +232,6 @@ class LogcatTabState extends ConsumerState<LogcatTab> {
             onTextChanged: controller.setTextFilter,
             onTextSubmitted: controller.commitTextFilter,
             onTextHistoryRemoved: controller.removeTextFilterHistory,
-            onPause: controller.togglePaused,
-            onAutoScroll: controller.toggleAutoScroll,
-            onWrap: controller.toggleWrapLines,
           ),
           const SizedBox(height: 10),
           Expanded(
@@ -275,65 +269,116 @@ class LogcatTabState extends ConsumerState<LogcatTab> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Stack(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            state.error != null
-                                ? _LogcatError(message: state.error!)
-                                : state.viewMode == LogcatViewMode.raw
-                                ? _LogcatTextList(
-                                    entries: entries,
-                                    controller: _verticalController,
-                                    wrapLines: state.wrapLines,
-                                    useLevelColor: true,
-                                    textForEntry: (entry) => entry.rawLine,
-                                    searchQuery: query,
-                                    activeEntryIndex: activeEntryIndex,
-                                    maxLogLength: controller.maxLogLength,
-                                  )
-                                : state.viewMode == LogcatViewMode.plain
-                                ? _LogcatTextList(
-                                    entries: entries,
-                                    controller: _verticalController,
-                                    wrapLines: state.wrapLines,
-                                    textForEntry: (entry) =>
-                                        entry.message.isEmpty
-                                        ? entry.rawLine
-                                        : entry.message,
-                                    searchQuery: query,
-                                    activeEntryIndex: activeEntryIndex,
-                                    maxLogLength: controller.maxLogLength,
-                                  )
-                                : state.viewMode == LogcatViewMode.compact
-                                ? _CompactLogcatList(
-                                    entries: entries,
-                                    controller: _verticalController,
-                                    wrapLines: state.wrapLines,
-                                    searchQuery: query,
-                                    activeEntryIndex: activeEntryIndex,
-                                    maxLogLength: controller.maxLogLength,
-                                  )
-                                : _StructuredLogcatTable(
-                                    entries: entries,
-                                    verticalController: _verticalController,
-                                    wrapLines: state.wrapLines,
-                                    searchQuery: query,
-                                    activeEntryIndex: activeEntryIndex,
-                                    maxLogLength: controller.maxLogLength,
+                            _LogcatLeftToolbar(
+                              state: state,
+                              onClear: controller.clear,
+                              onPause: () {
+                                if (!state.isRunning) {
+                                  controller.start(
+                                    widget.device.id,
+                                    isHarmony: widget.device.isHarmony,
+                                  );
+                                } else {
+                                  controller.togglePaused();
+                                }
+                              },
+                              onAutoScroll: controller.toggleAutoScroll,
+                              onWrap: controller.toggleWrapLines,
+                              onImport: () =>
+                                  _importLogcatFile(context, controller),
+                              onExport: () =>
+                                  _exportLogcatFile(context, controller),
+                            ),
+                            VerticalDivider(
+                              width: 1,
+                              thickness: 1,
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.5),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (state.isPaused)
+                                    const _LogcatPausedBanner(),
+                                  Expanded(
+                                    child: Stack(
+                                      children: [
+                                        state.error != null
+                                            ? _LogcatError(message: state.error!)
+                                            : state.viewMode == LogcatViewMode.raw
+                                            ? _LogcatTextList(
+                                                entries: entries,
+                                                controller: _verticalController,
+                                                wrapLines: state.wrapLines,
+                                                useLevelColor: true,
+                                                textForEntry: (entry) =>
+                                                    entry.rawLine,
+                                                searchQuery: query,
+                                                activeEntryIndex: activeEntryIndex,
+                                                maxLogLength:
+                                                    controller.maxLogLength,
+                                              )
+                                            : state.viewMode == LogcatViewMode.plain
+                                            ? _LogcatTextList(
+                                                entries: entries,
+                                                controller: _verticalController,
+                                                wrapLines: state.wrapLines,
+                                                textForEntry: (entry) =>
+                                                    entry.message.isEmpty
+                                                    ? entry.rawLine
+                                                    : entry.message,
+                                                searchQuery: query,
+                                                activeEntryIndex: activeEntryIndex,
+                                                maxLogLength:
+                                                    controller.maxLogLength,
+                                              )
+                                            : state.viewMode == LogcatViewMode.compact
+                                            ? _CompactLogcatList(
+                                                entries: entries,
+                                                controller: _verticalController,
+                                                wrapLines: state.wrapLines,
+                                                searchQuery: query,
+                                                activeEntryIndex: activeEntryIndex,
+                                                maxLogLength:
+                                                    controller.maxLogLength,
+                                              )
+                                            : _StructuredLogcatTable(
+                                                entries: entries,
+                                                verticalController:
+                                                    _verticalController,
+                                                wrapLines: state.wrapLines,
+                                                searchQuery: query,
+                                                activeEntryIndex: activeEntryIndex,
+                                                maxLogLength:
+                                                    controller.maxLogLength,
+                                              ),
+                                        if (_searchBarVisible)
+                                          Positioned(
+                                            top: 8,
+                                            right: 16,
+                                            child: _LogcatSearchPanel(
+                                              controller: _searchController,
+                                              focusNode: _searchFocusNode,
+                                              matchIndices: matchIndices,
+                                              activeMatchIndex: activeMatchIndex,
+                                              onClose: _closeSearch,
+                                              onPrev: () =>
+                                                  _goToPrevMatch(matchIndices),
+                                              onNext: () =>
+                                                  _goToNextMatch(matchIndices),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
-                            if (_searchBarVisible)
-                              Positioned(
-                                top: 8,
-                                right: 16,
-                                child: _LogcatSearchPanel(
-                                  controller: _searchController,
-                                  focusNode: _searchFocusNode,
-                                  matchIndices: matchIndices,
-                                  activeMatchIndex: activeMatchIndex,
-                                  onClose: _closeSearch,
-                                  onPrev: () => _goToPrevMatch(matchIndices),
-                                  onNext: () => _goToNextMatch(matchIndices),
-                                ),
+                                ],
                               ),
+                            ),
                           ],
                         ),
                       ),
