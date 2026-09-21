@@ -18,6 +18,7 @@ class ScrcpyService {
     required String deviceId,
     ScrcpyLaunchOptions options = const ScrcpyLaunchOptions(),
     String? adbPath,
+    void Function(int exitCode)? onExit,
   }) async {
     final process = await Process.start(
       executable,
@@ -40,9 +41,17 @@ class ScrcpyService {
       startedAt: DateTime.now(),
     );
     _processes[session.id] = process;
-    process.exitCode.whenComplete(() => _processes.remove(session.id));
+    process.exitCode.whenComplete(() {
+      _processes.remove(session.id);
+    });
+    if (onExit != null) {
+      process.exitCode.then(onExit);
+    }
     return session;
   }
+
+  /// 查询特定 session id 的进程是否仍在运行。
+  bool isRunning(String sessionId) => _processes.containsKey(sessionId);
 
   /// 启动 scrcpy 的电脑本地录制进程（无窗口，直接录制到本地文件）。
   Future<Process> startRecording({

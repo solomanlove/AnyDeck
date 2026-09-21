@@ -216,6 +216,8 @@ class _QuickActionsPanel extends ConsumerWidget {
           onPressed: () => openStandaloneMirrorWindow(context, ref, device),
         ),
         if (!device.isIos)
+          AudioForwardButton(device: device),
+        if (!device.isIos)
           _ActionButton(
             icon: Icons.settings_remote,
             label: context.l10n.t('remoteController'),

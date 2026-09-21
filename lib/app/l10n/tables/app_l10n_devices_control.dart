@@ -230,6 +230,11 @@ const devicesControlZh = {
   'offlineControlWarning': '设备已离线，进入只读模式。控制操作已被禁用，当前仅展示缓存状态。',
   'offlineDragInstallWarning': '设备已离线，无法进行文件拖拽或安装操作',
   'iosDragInstallWarning': 'iOS 设备暂不支持拖拽安装及文件上传',
+  'audioOnlyMirror': '只转发音频',
+  'audioOnlyMirrorTooltip': '只转发音频而无画面',
+  'audioOnlyStarted': '已开启纯音频转发（无画面）',
+  'audioOnlyStopped': '音频转发已停止',
+  'audioOnlyFailed': '音频转发启动失败',
 };
 
 const devicesControlEn = {
@@ -479,4 +484,9 @@ const devicesControlEn = {
       'Device is offline, file drag-and-drop or installation is not available.',
   'iosDragInstallWarning':
       'File drag-and-drop or installation is not supported on iOS devices.',
+  'audioOnlyMirror': 'Audio Only',
+  'audioOnlyMirrorTooltip': 'Forward audio only without video',
+  'audioOnlyStarted': 'Audio-only forwarding started (no video)',
+  'audioOnlyStopped': 'Audio forwarding stopped',
+  'audioOnlyFailed': 'Failed to start audio forwarding',
 };

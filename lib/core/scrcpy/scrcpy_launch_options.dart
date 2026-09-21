@@ -6,6 +6,8 @@ class ScrcpyLaunchOptions {
     this.maxFps,
     this.alwaysOnTop = true,
     this.noAudio = false,
+    this.noVideo = false,
+    this.requireAudio = false,
     this.newDisplay,
     this.noVdSystemDecorations = false,
     this.startApp,
@@ -16,6 +18,8 @@ class ScrcpyLaunchOptions {
   final int? maxFps;
   final bool alwaysOnTop;
   final bool noAudio;
+  final bool noVideo;
+  final bool requireAudio;
   final String? newDisplay;
   final bool noVdSystemDecorations;
   final String? startApp;
@@ -25,13 +29,17 @@ class ScrcpyLaunchOptions {
     return [
       '-s',
       deviceId,
-      '--max-size',
-      maxSize.toString(),
-      '--video-bit-rate',
-      videoBitRate,
-      if (maxFps != null) ...['--max-fps', maxFps.toString()],
-      if (alwaysOnTop) '--always-on-top',
+      if (noVideo) '--no-video',
+      if (!noVideo) ...[
+        '--max-size',
+        maxSize.toString(),
+        '--video-bit-rate',
+        videoBitRate,
+        if (maxFps != null) ...['--max-fps', maxFps.toString()],
+        if (alwaysOnTop) '--always-on-top',
+      ],
       if (noAudio) '--no-audio',
+      if (requireAudio) '--require-audio',
       if (newDisplay != null) ...['--new-display', newDisplay!],
       if (noVdSystemDecorations) '--no-vd-system-decorations',
       if (startApp != null) ...['--start-app', startApp!],
