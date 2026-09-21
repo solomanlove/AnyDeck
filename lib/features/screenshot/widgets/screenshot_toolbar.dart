@@ -23,6 +23,7 @@ class ScreenshotToolbar extends StatelessWidget {
     required this.onZoom1To1,
     required this.onZoomReset,
     required this.onToggleAutoRefresh,
+    this.onLongPressAutoRefresh,
     required this.onStartRecording,
     required this.onStopRecording,
     required this.onToggleLayoutAnalysis,
@@ -46,6 +47,7 @@ class ScreenshotToolbar extends StatelessWidget {
   final VoidCallback onZoom1To1;
   final VoidCallback onZoomReset;
   final VoidCallback onToggleAutoRefresh;
+  final VoidCallback? onLongPressAutoRefresh;
   final VoidCallback onStartRecording;
   final VoidCallback onStopRecording;
   final ValueChanged<bool> onToggleLayoutAnalysis;
@@ -145,10 +147,28 @@ class ScreenshotToolbar extends StatelessWidget {
                   if (!isAnalysis) ...[
                     _buildDivider(isDark),
                     _ToolbarButton(
-                      icon: CupertinoIcons.clock,
-                      tooltip: context.l10n.t('autoRefresh'),
-                      color: state.isAutoRefresh ? colorScheme.primary : null,
+                      icon: (state.isAutoRefresh && state.isAutoSave)
+                          ? CupertinoIcons.clock_fill
+                          : CupertinoIcons.clock,
+                      tooltip: state.isAutoRefresh && state.isAutoSave
+                          ? context.l10n
+                              .t('autoSaveRunningTooltip')
+                              .replaceAll('{count}', state.autoSavedCount.toString())
+                              .replaceAll(
+                                '{dir}',
+                                state.autoSavePath.isNotEmpty
+                                    ? state.autoSavePath
+                                    : '...',
+                              )
+                          : '${context.l10n.t('autoRefresh')} (${context.l10n.t('autoRefreshLongPressHint')})',
+                      color: state.isAutoRefresh
+                          ? (state.isAutoSave
+                              ? const Color(0xff09c47c)
+                              : colorScheme.primary)
+                          : null,
                       onPressed: (!hasImage || isRecActive) ? null : onToggleAutoRefresh,
+                      onLongPress: (!hasImage || isRecActive) ? null : onLongPressAutoRefresh,
+                      onSecondaryTap: (!hasImage || isRecActive) ? null : onLongPressAutoRefresh,
                     ),
                     if (!device.isIos) ...[
                       _buildDivider(isDark),
@@ -343,26 +363,41 @@ class _ToolbarButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     this.onPressed,
+    this.onLongPress,
+    this.onSecondaryTap,
     this.color,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onSecondaryTap;
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    Widget button = IconButton(
+      icon: Icon(icon, size: 20, color: color),
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        padding: const EdgeInsets.all(6),
+        minimumSize: const Size(32, 32),
+      ),
+    );
+
+    if (onLongPress != null || onSecondaryTap != null) {
+      button = GestureDetector(
+        onLongPress: onPressed != null ? onLongPress : null,
+        onSecondaryTap:
+            onPressed != null ? (onSecondaryTap ?? onLongPress) : null,
+        child: button,
+      );
+    }
+
     return Tooltip(
       message: tooltip,
-      child: IconButton(
-        icon: Icon(icon, size: 20, color: color),
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          padding: const EdgeInsets.all(6),
-          minimumSize: const Size(32, 32),
-        ),
-      ),
+      child: button,
     );
   }
 }

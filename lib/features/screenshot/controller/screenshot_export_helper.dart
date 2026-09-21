@@ -139,4 +139,27 @@ class ScreenshotExportHelper {
       }
     }
   }
+
+  /// 自动刷新模式下静默保存截图到指定目录（不干扰系统剪贴板）
+  static Future<String?> autoSaveScreenshot({
+    required String deviceId,
+    required Uint8List? rawBytes,
+    required String targetPath,
+    required HostPlatformService hostPlatform,
+  }) async {
+    if (rawBytes == null) return null;
+    try {
+      final savePath = hostPlatform.generateScreenshotPath(
+        targetPath,
+        deviceId,
+      );
+      final file = File(savePath);
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(rawBytes);
+      return savePath;
+    } catch (_) {
+      return null;
+    }
+  }
 }
+

@@ -8,6 +8,7 @@ import '../../core/providers/app_providers.dart';
 import '../layout/layout_hierarchy_tree.dart';
 import '../layout/layout_properties_table.dart';
 import 'controller/screenshot_controller.dart';
+import 'widgets/screenshot_auto_save_dialog.dart';
 import 'widgets/screenshot_canvas.dart';
 import 'widgets/screenshot_toolbar.dart';
 
@@ -183,6 +184,12 @@ class _DashboardScreenshotTabState
             _transformationController.value = Matrix4.identity();
           },
           onToggleAutoRefresh: controller.toggleAutoRefresh,
+          onLongPressAutoRefresh: () {
+            ScreenshotAutoSaveDialog.show(
+              context: context,
+              deviceId: widget.device.id,
+            );
+          },
           onStartRecording: () => controller.startRecording(context: context),
           onStopRecording: () => controller.stopRecording(context: context),
           onToggleLayoutAnalysis: controller.toggleLayoutAnalysis,

@@ -6,6 +6,7 @@ import '../../app/l10n/app_localizations.dart';
 import '../../core/adb/adb_device.dart';
 import '../../core/providers/app_providers.dart';
 import 'controller/screenshot_controller.dart';
+import 'widgets/screenshot_auto_save_dialog.dart';
 import 'widgets/screenshot_canvas.dart';
 import 'widgets/screenshot_toolbar.dart';
 
@@ -160,6 +161,12 @@ class _HarmonyScreenshotTabState extends ConsumerState<HarmonyScreenshotTab> {
             _transformationController.value = Matrix4.identity();
           },
           onToggleAutoRefresh: controller.toggleAutoRefresh,
+          onLongPressAutoRefresh: () {
+            ScreenshotAutoSaveDialog.show(
+              context: context,
+              deviceId: widget.device.id,
+            );
+          },
           onStartRecording: () => controller.startRecording(context: context),
           onStopRecording: () => controller.stopRecording(context: context),
           onToggleLayoutAnalysis: (_) {},

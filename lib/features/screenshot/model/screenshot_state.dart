@@ -31,6 +31,10 @@ class ScreenshotLayoutState {
     this.rotation = 0,
     this.isLayoutAnalysis = false,
     this.isAutoRefresh = false,
+    this.isAutoSave = false,
+    this.autoSavePath = '',
+    this.autoRefreshInterval = 3,
+    this.autoSavedCount = 0,
     this.showProperties = true,
     this.showBorders = false,
     this.enableClickSelect = false,
@@ -66,6 +70,18 @@ class ScreenshotLayoutState {
 
   /// 是否开启连续截图（自动刷新）
   final bool isAutoRefresh;
+
+  /// 是否在自动刷新时自动保存截图到指定文件夹
+  final bool isAutoSave;
+
+  /// 自动保存截图的目标文件夹绝对路径（为空时回退默认保存路径）
+  final String autoSavePath;
+
+  /// 自动刷新间隔（秒，默认 3 秒）
+  final int autoRefreshInterval;
+
+  /// 当前自动刷新会话已自动保存的截图数量
+  final int autoSavedCount;
 
   /// 是否显示右侧属性面板
   final bool showProperties;
@@ -141,6 +157,10 @@ class ScreenshotLayoutState {
     int? rotation,
     bool? isLayoutAnalysis,
     bool? isAutoRefresh,
+    bool? isAutoSave,
+    String? autoSavePath,
+    int? autoRefreshInterval,
+    int? autoSavedCount,
     bool? showProperties,
     bool? showBorders,
     bool? enableClickSelect,
@@ -166,6 +186,10 @@ class ScreenshotLayoutState {
       rotation: rotation ?? this.rotation,
       isLayoutAnalysis: isLayoutAnalysis ?? this.isLayoutAnalysis,
       isAutoRefresh: isAutoRefresh ?? this.isAutoRefresh,
+      isAutoSave: isAutoSave ?? this.isAutoSave,
+      autoSavePath: autoSavePath ?? this.autoSavePath,
+      autoRefreshInterval: autoRefreshInterval ?? this.autoRefreshInterval,
+      autoSavedCount: autoSavedCount ?? this.autoSavedCount,
       showProperties: showProperties ?? this.showProperties,
       showBorders: showBorders ?? this.showBorders,
       enableClickSelect: enableClickSelect ?? this.enableClickSelect,

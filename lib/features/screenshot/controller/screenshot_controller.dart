@@ -103,6 +103,24 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
         clearError: true,
       );
       oldImg?.dispose();
+
+      if (isAuto && state.isAutoSave) {
+        final savePath = state.autoSavePath.isNotEmpty
+            ? state.autoSavePath
+            : ref.read(appSettingsProvider).screenshotSavePath;
+        unawaited(
+          ScreenshotExportHelper.autoSaveScreenshot(
+            deviceId: deviceId,
+            rawBytes: bytes,
+            targetPath: savePath,
+            hostPlatform: ref.read(hostPlatformServiceProvider),
+          ).then((saved) {
+            if (saved != null && ref.mounted) {
+              state = state.copyWith(autoSavedCount: state.autoSavedCount + 1);
+            }
+          }),
+        );
+      }
     } catch (e) {
       if (currentRequestId == _requestId && ref.mounted) {
         state = state.copyWith(
@@ -221,21 +239,55 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
     }
   }
 
+  void _startAutoRefreshTimer() {
+    _autoRefreshTimer?.cancel();
+    final interval = state.autoRefreshInterval > 0 ? state.autoRefreshInterval : 3;
+    _autoRefreshTimer = Timer.periodic(Duration(seconds: interval), (_) {
+      captureScreenshot(isAuto: true);
+    });
+  }
+
   /// 切换连续截图
   void toggleAutoRefresh() {
     if (state.isLayoutAnalysis || state.isRecordingActive) return;
 
     final nextVal = !state.isAutoRefresh;
-    state = state.copyWith(isAutoRefresh: nextVal);
+    state = state.copyWith(
+      isAutoRefresh: nextVal,
+      autoSavedCount: nextVal ? 0 : state.autoSavedCount,
+    );
 
     if (nextVal) {
-      _autoRefreshTimer?.cancel();
-      _autoRefreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-        captureScreenshot(isAuto: true);
-      });
+      _startAutoRefreshTimer();
     } else {
       _autoRefreshTimer?.cancel();
       _autoRefreshTimer = null;
+    }
+  }
+
+  /// 更新自动刷新与自动保存配置，并可选择是否直接启动
+  void updateAutoRefreshConfig({
+    required bool autoSave,
+    required String savePath,
+    required int intervalSeconds,
+    bool startImmediately = true,
+  }) {
+    state = state.copyWith(
+      isAutoSave: autoSave,
+      autoSavePath: savePath,
+      autoRefreshInterval: intervalSeconds,
+      autoSavedCount: 0,
+      isAutoRefresh: startImmediately ? true : state.isAutoRefresh,
+    );
+
+    if (startImmediately) {
+      _startAutoRefreshTimer();
+      captureScreenshot(isAuto: true);
+    } else if (!state.isAutoRefresh) {
+      _autoRefreshTimer?.cancel();
+      _autoRefreshTimer = null;
+    } else {
+      _startAutoRefreshTimer();
     }
   }
 
@@ -248,10 +300,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
   /// 切回 Tab 时根据先前的开关状态恢复连续截图
   void resumeAutoRefreshAfterTabSwitch() {
     if (state.isAutoRefresh && !state.isLayoutAnalysis && !state.isRecordingActive) {
-      _autoRefreshTimer?.cancel();
-      _autoRefreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-        captureScreenshot(isAuto: true);
-      });
+      _startAutoRefreshTimer();
       captureScreenshot(isAuto: true);
     }
   }
