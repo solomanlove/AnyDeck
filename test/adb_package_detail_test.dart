@@ -44,4 +44,14 @@ void main() {
     expect(detail.signatureMd5, 'ffeeddccbbaa99887766554433221100');
     expect(detail.signatures, isEmpty);
   });
+
+  test('支持解析 uni-app 等跨平台框架标签', () {
+    final detail = AdbPackageDetail.fromJson({
+      'packageName': 'com.example.uniapp',
+      'frameworks': ['Kotlin', 'uni-app'],
+    });
+
+    expect(detail.frameworks, contains('uni-app'));
+    expect(detail.frameworks, contains('Kotlin'));
+  });
 }

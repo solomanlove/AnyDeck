@@ -263,6 +263,7 @@ public final class PackageIconHelper {
         boolean isCompose = false;
         boolean isXamarin = false;
         boolean isUnity = false;
+        boolean isUniApp = false;
 
         if (appInfo.sourceDir != null) {
             try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(appInfo.sourceDir)) {
@@ -314,6 +315,10 @@ public final class PackageIconHelper {
                     if (name.contains("libunity")) {
                         isUnity = true;
                     }
+                    String lowerName = name.toLowerCase();
+                    if (lowerName.contains("dcloud") || lowerName.contains("uni-app") || lowerName.contains("uniapp") || name.startsWith("assets/apps/") || lowerName.contains("libnative-html5plus")) {
+                        isUniApp = true;
+                    }
                 }
             } catch (Throwable ignored) {}
         }
@@ -348,12 +353,35 @@ public final class PackageIconHelper {
             }
         }
 
+        // Check components for DCloud
+        if (!isUniApp && packageInfo.activities != null) {
+            for (android.content.pm.ActivityInfo info : packageInfo.activities) {
+                if (info.name != null && info.name.contains("io.dcloud.")) { isUniApp = true; break; }
+            }
+        }
+        if (!isUniApp && packageInfo.services != null) {
+            for (android.content.pm.ServiceInfo info : packageInfo.services) {
+                if (info.name != null && info.name.contains("io.dcloud.")) { isUniApp = true; break; }
+            }
+        }
+        if (!isUniApp && packageInfo.providers != null) {
+            for (android.content.pm.ProviderInfo info : packageInfo.providers) {
+                if (info.name != null && info.name.contains("io.dcloud.")) { isUniApp = true; break; }
+            }
+        }
+        if (!isUniApp && packageInfo.receivers != null) {
+            for (android.content.pm.ActivityInfo info : packageInfo.receivers) {
+                if (info.name != null && info.name.contains("io.dcloud.")) { isUniApp = true; break; }
+            }
+        }
+
         // Frameworks list
         java.util.List<String> frameworks = new java.util.ArrayList<>();
         if (isFlutter) frameworks.add("Flutter");
         if (isReactNative) frameworks.add("React Native");
         if (isKotlin) frameworks.add("Kotlin");
         if (isCompose) frameworks.add("Jetpack Compose");
+        if (isUniApp) frameworks.add("uni-app");
         if (isXamarin) frameworks.add("Xamarin");
         if (isUnity) frameworks.add("Unity");
 
@@ -364,12 +392,18 @@ public final class PackageIconHelper {
         if (metaData != null) {
             boolean first = true;
             for (String key : metaData.keySet()) {
+                if (key.toLowerCase().contains("dcloud")) {
+                    isUniApp = true;
+                }
                 Object val = metaData.get(key);
                 if (val != null) {
                     if (!first) metaJson.append(",");
                     first = false;
                     metaJson.append("\"").append(escapeJson(key)).append("\":\"").append(escapeJson(val.toString())).append("\"");
                 }
+            }
+            if (isUniApp && !frameworks.contains("uni-app")) {
+                frameworks.add("uni-app");
             }
         }
         metaJson.append("}");

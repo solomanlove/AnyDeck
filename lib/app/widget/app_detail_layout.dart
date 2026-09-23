@@ -231,25 +231,32 @@ class AppDetailSummaryPanel extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      name,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        name,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      version,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant.withValues(
-                          alpha: 0.8,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        version,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.8,
+                          ),
                         ),
+                        maxLines: 1,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
@@ -258,14 +265,20 @@ class AppDetailSummaryPanel extends StatelessWidget {
           ),
           if (badges.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Center(
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                alignment: WrapAlignment.center,
-                children: [
-                  for (final badge in badges) _AppDetailBadge(data: badge),
-                ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (int i = 0; i < badges.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      _AppDetailBadge(data: badges[i]),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -343,6 +356,7 @@ class _AppDetailBadge extends StatelessWidget {
       ),
       child: Text(
         data.label,
+        maxLines: 1,
         style: TextStyle(
           color: foreground,
           fontSize: 10,

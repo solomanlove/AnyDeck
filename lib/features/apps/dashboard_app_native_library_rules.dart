@@ -6,6 +6,8 @@ const _commonNativeLibraryRules = [
   _LibRule('reactnative', 'React Native', 'Meta 开发的跨平台开发框架核心 C++ 运行库'),
   _LibRule('unity', 'Unity 3D', 'Unity Technologies 开发的 3D 游戏引擎底层核心库'),
   _LibRule('mono', 'Xamarin Mono', 'Microsoft 开发的跨平台 .NET 运行时引擎'),
+  _LibRule('native-html5plus', 'DCloud 5+ Runtime', 'DCloud 开发的 HTML5+ 跨平台原生运行时引擎库'),
+  _LibRule('dcloud', 'DCloud uni-app SDK', 'DCloud 跨平台框架核心支持库'),
   _LibRule('sgmain', '阿里聚安全 (Security Guard)', '阿里巴巴提供的移动应用安全防护与加密 SDK'),
   _LibRule(
     'sgsecuritybody',
