@@ -58,11 +58,13 @@ class _FileGridItemState extends State<_FileGridItem> {
           padding: const EdgeInsets.all(8),
           child: Stack(
             children: [
-              // 网格项内容
-              Center(
+              // 网格项内容（顶部对齐，避免不同文件名行数导致图标高低错位）
+              Align(
+                alignment: Alignment.topCenter,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    const SizedBox(height: 4),
                     Icon(
                       _fileIcon(file),
                       size: 40,
@@ -86,8 +88,8 @@ class _FileGridItemState extends State<_FileGridItem> {
                   ],
                 ),
               ),
-              // 悬停时在右上角显示浮动操作按钮 (如果是文件且正在悬停)
-              if (_hovering && (!file.isFolder || widget.canExportToPhoneFiles))
+              // 悬停时在右上角显示浮动操作按钮
+              if (_hovering)
                 Positioned(
                   top: 0,
                   right: 0,
@@ -319,28 +321,30 @@ class _RemoteFileActionsState extends ConsumerState<_RemoteFileActions> {
             splashRadius: 16,
             onPressed: _exporting ? null : _exportToPhoneFiles,
           ),
-        if (!widget.isFolder)
-          IconButton(
-            tooltip: context.l10n.t('pull'),
-            icon: const Icon(CupertinoIcons.cloud_download, size: 18),
-            constraints: const BoxConstraints(),
-            padding: const EdgeInsets.all(6),
-            splashRadius: 16,
-            onPressed: () async {
-              final directory = await getDirectoryPath();
-              if (directory == null || !context.mounted) {
-                return;
-              }
-              final result = await service.pull(
-                widget.deviceId,
-                widget.remotePath,
-                '$directory/${widget.fileName}',
-              );
-              if (context.mounted) {
-                _showSnack(context, result.message, isError: !result.isSuccess);
-              }
-            },
-          ),
+        IconButton(
+          tooltip: context.l10n.t('pull'),
+          icon: const Icon(CupertinoIcons.cloud_download, size: 18),
+          constraints: const BoxConstraints(),
+          padding: const EdgeInsets.all(6),
+          splashRadius: 16,
+          onPressed: () async {
+            final directory = await getDirectoryPath();
+            if (directory == null || !context.mounted) {
+              return;
+            }
+            final target = widget.isFolder
+                ? directory
+                : '$directory/${widget.fileName}';
+            final result = await service.pull(
+              widget.deviceId,
+              widget.remotePath,
+              target,
+            );
+            if (context.mounted) {
+              _showSnack(context, result.message, isError: !result.isSuccess);
+            }
+          },
+        ),
         if (!widget.isFolder)
           IconButton(
             tooltip: context.l10n.t('delete'),
@@ -492,5 +496,3 @@ int _compareFiles(
 
   return sortAscending ? cmp : -cmp;
 }
-
-/// 实时 logcat 查看器，支持启动/停止、清空和文本筛选。
