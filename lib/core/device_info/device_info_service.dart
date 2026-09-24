@@ -205,6 +205,7 @@ settings get global sysui_demo_allowed
           return 'Android $release (API $sdk)';
         }(),
         customOs: AndroidVersionHelper.getCustomOsVersion(properties) ?? '-',
+        deviceCode: AndroidVersionHelper.getDeviceCodename(properties) ?? '-',
         kernelVersion: kernel,
         processor: _formatProcessor(deviceCode, cores, abi),
         storage: storage,

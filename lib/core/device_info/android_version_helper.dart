@@ -173,6 +173,31 @@ class AndroidVersionHelper {
     return null;
   }
 
+  /// 获取设备代号。对于小米/红米/POCO 设备，通过 `ro.product.name` 获取机型代号。
+  static String? getDeviceCodename(Map<String, String> properties) {
+    final brand = _firstNonEmpty(properties, [
+      'ro.product.brand',
+      'ro.product.vendor.brand',
+      'ro.product.manufacturer',
+      'ro.product.vendor.manufacturer',
+    ])?.toLowerCase() ?? '';
+
+    final isXiaomi = brand.contains('xiaomi') ||
+        brand.contains('redmi') ||
+        brand.contains('poco') ||
+        properties.containsKey('ro.miui.ui.version.name') ||
+        properties.containsKey('ro.mi.os.version.name');
+
+    if (isXiaomi) {
+      return _firstNonEmpty(properties, [
+        'ro.product.name',
+        'ro.product.device',
+        'ro.product.vendor.device',
+      ]);
+    }
+    return null;
+  }
+
   static String? _firstNonEmpty(
     Map<String, String> properties,
     List<String> keys,

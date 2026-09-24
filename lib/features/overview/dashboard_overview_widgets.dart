@@ -407,6 +407,12 @@ class _OverviewVersionCard extends StatelessWidget {
               ? context.l10n.t('customOsUnknown')
               : overview.customOs)
         : null;
+    final deviceCode = !device.isHarmony &&
+            !isApple &&
+            overview.deviceCode.isNotEmpty &&
+            overview.deviceCode != '-'
+        ? overview.deviceCode
+        : null;
     final isAndroid = !device.isHarmony && !isApple;
 
     return _OverviewHeroCard(
@@ -451,6 +457,26 @@ class _OverviewVersionCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       context.l10n.t('customOs'),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              if (deviceCode != null)
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      deviceCode,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.l10n.t('deviceCodename'),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),

@@ -63,4 +63,33 @@ void main() {
       );
     });
   });
+
+  group('AndroidVersionHelper.getDeviceCodename', () {
+    test('小米手机优先通过 ro.product.name 获取机型代号', () {
+      final properties = {
+        'ro.product.brand': 'Xiaomi',
+        'ro.product.name': 'perseus',
+        'ro.product.device': 'perseus',
+        'ro.product.model': 'MIX 3',
+      };
+      expect(AndroidVersionHelper.getDeviceCodename(properties), 'perseus');
+    });
+
+    test('红米手机在 ro.product.name 缺失时回退 ro.product.device', () {
+      final properties = {
+        'ro.product.brand': 'Redmi',
+        'ro.product.device': 'alioth',
+      };
+      expect(AndroidVersionHelper.getDeviceCodename(properties), 'alioth');
+    });
+
+    test('非小米手机不返回代号', () {
+      final properties = {
+        'ro.product.brand': 'Google',
+        'ro.product.name': 'cheetah',
+        'ro.product.device': 'cheetah',
+      };
+      expect(AndroidVersionHelper.getDeviceCodename(properties), isNull);
+    });
+  });
 }

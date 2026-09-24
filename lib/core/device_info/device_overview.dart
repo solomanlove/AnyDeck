@@ -9,6 +9,7 @@ class DeviceOverview {
     required this.androidId,
     required this.androidVersion,
     this.customOs = '-',
+    this.deviceCode = '-',
     required this.kernelVersion,
     required this.processor,
     required this.storage,
@@ -47,6 +48,9 @@ class DeviceOverview {
   final String androidId;
   final String androidVersion;
   final String customOs;
+
+  /// 设备代号（如小米手机通过 ro.product.name 获取，未识别时为 '-'）。
+  final String deviceCode;
   final String kernelVersion;
   final String processor;
   final String storage;
@@ -86,6 +90,7 @@ class DeviceOverview {
       'androidId': androidId,
       'androidVersion': androidVersion,
       'customOs': customOs,
+      'deviceCode': deviceCode,
       'kernelVersion': kernelVersion,
       'processor': processor,
       'storage': storage,
@@ -125,6 +130,7 @@ class DeviceOverview {
       androidId: json['androidId'] as String? ?? '-',
       androidVersion: json['androidVersion'] as String? ?? '-',
       customOs: json['customOs'] as String? ?? '-',
+      deviceCode: json['deviceCode'] as String? ?? '-',
       kernelVersion: json['kernelVersion'] as String? ?? '-',
       processor: json['processor'] as String? ?? '-',
       storage: json['storage'] as String? ?? '-',
@@ -164,6 +170,7 @@ class DeviceOverview {
     String? androidId,
     String? androidVersion,
     String? customOs,
+    String? deviceCode,
     String? kernelVersion,
     String? processor,
     String? storage,
@@ -200,6 +207,7 @@ class DeviceOverview {
       androidId: androidId ?? this.androidId,
       androidVersion: androidVersion ?? this.androidVersion,
       customOs: customOs ?? this.customOs,
+      deviceCode: deviceCode ?? this.deviceCode,
       kernelVersion: kernelVersion ?? this.kernelVersion,
       processor: processor ?? this.processor,
       storage: storage ?? this.storage,

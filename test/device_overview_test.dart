@@ -90,6 +90,7 @@ void main() {
         androidId: 'abcdef1234567890',
         androidVersion: 'Android 13 (API 33)',
         customOs: 'MIUI V14',
+        deviceCode: 'alioth',
         kernelVersion: '4.19.157',
         processor: 'alioth 6 cores (arm64-v8a)',
         storage: '202.92G / 225.43G',
@@ -131,6 +132,8 @@ void main() {
       expect(decoded.androidId, overview.androidId);
       expect(decoded.androidVersion, overview.androidVersion);
       expect(decoded.customOs, overview.customOs);
+      expect(decoded.deviceCode, overview.deviceCode);
+      expect(decoded.copyWith(deviceCode: 'perseus').deviceCode, 'perseus');
       expect(decoded.kernelVersion, overview.kernelVersion);
       expect(decoded.processor, overview.processor);
       expect(decoded.storage, overview.storage);
