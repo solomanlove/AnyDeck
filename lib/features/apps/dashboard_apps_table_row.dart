@@ -6,8 +6,10 @@ class _PackageTableRow extends StatelessWidget {
     required this.deviceId,
     required this.package,
     required this.selected,
+    required this.checked,
     required this.widths,
     required this.onSelected,
+    required this.onCheckChanged,
     required this.onOpened,
     required this.index,
   });
@@ -15,15 +17,17 @@ class _PackageTableRow extends StatelessWidget {
   final String deviceId;
   final AdbPackage package;
   final bool selected;
+  final bool checked;
   final _PackageTableWidths widths;
   final VoidCallback onSelected;
+  final ValueChanged<bool?> onCheckChanged;
   final VoidCallback onOpened;
   final int index;
 
   @override
   Widget build(BuildContext context) {
-    final Color? rowColor = selected
-        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
+    final Color? rowColor = selected || checked
+        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: checked ? 0.25 : 0.4)
         : index % 2 == 0
         ? null
         : Theme.of(
@@ -46,6 +50,15 @@ class _PackageTableRow extends StatelessWidget {
         ),
         child: Row(
           children: [
+            SizedBox(
+              width: widths.checkbox,
+              child: Center(
+                child: Checkbox(
+                  value: checked,
+                  onChanged: onCheckChanged,
+                ),
+              ),
+            ),
             _PackageCell(
               width: widths.appName,
               child: _AppNameCell(deviceId: deviceId, package: package),

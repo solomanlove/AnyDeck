@@ -5,7 +5,9 @@ class _PackageGrid extends ConsumerWidget {
     required this.deviceId,
     required this.packages,
     required this.selectedPackage,
+    required this.checkedPackages,
     required this.onSelected,
+    required this.onToggleCheck,
     required this.onOpened,
     required this.gridItemSize,
   });
@@ -13,7 +15,9 @@ class _PackageGrid extends ConsumerWidget {
   final String deviceId;
   final List<AdbPackage> packages;
   final String? selectedPackage;
+  final Set<String> checkedPackages;
   final ValueChanged<String> onSelected;
+  final ValueChanged<String> onToggleCheck;
   final ValueChanged<String> onOpened;
   final double gridItemSize;
 
@@ -34,7 +38,10 @@ class _PackageGrid extends ConsumerWidget {
           deviceId: deviceId,
           package: package,
           selected: package.name == selectedPackage,
+          checked: checkedPackages.contains(package.name),
+          isAnyChecked: checkedPackages.isNotEmpty,
           onSelected: () => onSelected(package.name),
+          onCheckChanged: (_) => onToggleCheck(package.name),
           onOpened: () => onOpened(package.name),
           size: gridItemSize,
         );
@@ -48,7 +55,10 @@ class _PackageGridItem extends ConsumerStatefulWidget {
     required this.deviceId,
     required this.package,
     required this.selected,
+    required this.checked,
+    required this.isAnyChecked,
     required this.onSelected,
+    required this.onCheckChanged,
     required this.onOpened,
     required this.size,
   });
@@ -56,7 +66,10 @@ class _PackageGridItem extends ConsumerStatefulWidget {
   final String deviceId;
   final AdbPackage package;
   final bool selected;
+  final bool checked;
+  final bool isAnyChecked;
   final VoidCallback onSelected;
+  final ValueChanged<bool?> onCheckChanged;
   final VoidCallback onOpened;
   final double size;
 
@@ -92,18 +105,18 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
             duration: const Duration(milliseconds: 150),
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: widget.selected
-                  ? colorScheme.primaryContainer.withValues(alpha: 0.8)
+              color: (widget.selected || widget.checked)
+                  ? colorScheme.primaryContainer.withValues(alpha: widget.checked ? 0.6 : 0.8)
                   : _isHovered
                   ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
                   : colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
               border: Border.all(
-                color: widget.selected
+                color: (widget.selected || widget.checked)
                     ? colorScheme.primary
                     : _isHovered
                     ? colorScheme.outlineVariant.withValues(alpha: 0.8)
                     : colorScheme.outlineVariant.withValues(alpha: 0.3),
-                width: 1.5,
+                width: (widget.selected || widget.checked) ? 2.0 : 1.5,
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
@@ -117,6 +130,27 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
             ),
             child: Stack(
               children: [
+                Positioned(
+                  top: 2,
+                  left: 2,
+                  child: AnimatedOpacity(
+                    opacity: (widget.checked || _isHovered || widget.isAnyChecked)
+                        ? 1.0
+                        : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: Transform.scale(
+                        scale: 0.85,
+                        child: Checkbox(
+                          value: widget.checked,
+                          onChanged: widget.onCheckChanged,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 Positioned.fill(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

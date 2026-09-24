@@ -24,10 +24,39 @@ class _AppsTabState extends ConsumerState<AppsTab> {
   final Set<String> _analyzingHarmonyPackages = <String>{};
   final Map<String, HarmonyAppDetail> _harmonyDetails =
       <String, HarmonyAppDetail>{};
+  final Set<String> _checkedPackages = <String>{};
+  final ValueNotifier<_BatchProgressState?> _batchProgressNotifier =
+      ValueNotifier<_BatchProgressState?>(null);
+
+  void _toggleCheckPackage(String packageName) {
+    setState(() {
+      if (!_checkedPackages.add(packageName)) {
+        _checkedPackages.remove(packageName);
+      }
+    });
+  }
+
+  void _toggleCheckAllPackages(List<AdbPackage> visible) {
+    setState(() {
+      final names = visible.map((p) => p.name).toSet();
+      if (_checkedPackages.containsAll(names)) {
+        _checkedPackages.removeAll(names);
+      } else {
+        _checkedPackages.addAll(names);
+      }
+    });
+  }
+
+  void _clearCheckedPackages() {
+    if (_checkedPackages.isNotEmpty) {
+      setState(() => _checkedPackages.clear());
+    }
+  }
 
   @override
   void dispose() {
     _filterController.dispose();
+    _batchProgressNotifier.dispose();
     super.dispose();
   }
 
@@ -231,7 +260,19 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (showActionsRow) ...[
+                    if (_checkedPackages.isNotEmpty) ...[
+                      _AppsBatchActionsToolbar(
+                        deviceId: widget.device.id,
+                        checkedPackages: _checkedPackages,
+                        allFilteredPackages: filtered,
+                        progressNotifier: _batchProgressNotifier,
+                        onClearSelection: _clearCheckedPackages,
+                        onSelectAll: () =>
+                            _toggleCheckAllPackages(filtered),
+                        isHarmony: widget.device.isHarmony,
+                      ),
+                      const SizedBox(height: 8),
+                    ] else if (showActionsRow) ...[
                       Row(
                         children: [
                           if (_isGridView)
@@ -266,7 +307,9 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                               deviceId: widget.device.id,
                               packages: filtered,
                               selectedPackage: _selectedPackage,
+                              checkedPackages: _checkedPackages,
                               onSelected: _selectPackage,
+                              onToggleCheck: _toggleCheckPackage,
                               onOpened: _openPackage,
                               gridItemSize: _gridItemSize,
                             )
@@ -275,7 +318,11 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                               packages: filtered,
                               totalCount: items.length,
                               selectedPackage: _selectedPackage,
+                              checkedPackages: _checkedPackages,
                               onSelected: _selectPackage,
+                              onToggleCheck: _toggleCheckPackage,
+                              onToggleCheckAll: () =>
+                                  _toggleCheckAllPackages(filtered),
                               onOpened: _openPackage,
                             ),
                     ),
@@ -310,6 +357,25 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                 ),
               ),
             ),
+          Positioned.fill(
+            child: ValueListenableBuilder<_BatchProgressState?>(
+              valueListenable: _batchProgressNotifier,
+              builder: (context, progress, _) {
+                return IgnorePointer(
+                  ignoring: progress == null,
+                  child: progress == null
+                      ? const SizedBox.shrink()
+                      : Container(
+                          color: Theme.of(context)
+                              .scaffoldBackgroundColor
+                              .withValues(alpha: 0.8),
+                          alignment: Alignment.center,
+                          child: _AppsBatchProgressCard(state: progress),
+                        ),
+                );
+              },
+            ),
+          ),
         ],
       ), // Stack
     ); // DashboardTabLayout
@@ -498,6 +564,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
     }
     FocusScope.of(context).unfocus();
     _harmonyDetails.clear();
+    _clearCheckedPackages();
     setState(() => _refreshProgress = const PackageRefreshProgress());
     final notifier = ref.read(packagesProvider(widget.device.id).notifier);
     try {

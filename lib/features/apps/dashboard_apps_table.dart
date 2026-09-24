@@ -6,6 +6,9 @@ class _PackageTable extends StatefulWidget {
     required this.packages,
     this.totalCount,
     required this.selectedPackage,
+    required this.checkedPackages,
+    required this.onToggleCheck,
+    required this.onToggleCheckAll,
     required this.onSelected,
     required this.onOpened,
   });
@@ -14,6 +17,9 @@ class _PackageTable extends StatefulWidget {
   final List<AdbPackage> packages;
   final int? totalCount;
   final String? selectedPackage;
+  final Set<String> checkedPackages;
+  final ValueChanged<String> onToggleCheck;
+  final VoidCallback onToggleCheckAll;
   final ValueChanged<String> onSelected;
   final ValueChanged<String> onOpened;
 
@@ -166,6 +172,11 @@ class _PackageTableState extends State<_PackageTable> {
                           sortIconBuilder: _getSortIcon,
                           visibleCount: sorted.length,
                           totalCount: widget.totalCount,
+                          isAllChecked: sorted.isNotEmpty &&
+                              sorted.every((p) => widget.checkedPackages.contains(p.name)),
+                          isIndeterminate: sorted.any((p) => widget.checkedPackages.contains(p.name)) &&
+                              !sorted.every((p) => widget.checkedPackages.contains(p.name)),
+                          onToggleCheckAll: widget.onToggleCheckAll,
                         ),
                         Expanded(
                           child: Scrollbar(
@@ -183,8 +194,10 @@ class _PackageTableState extends State<_PackageTable> {
                                   deviceId: widget.deviceId,
                                   package: package,
                                   selected: package.name == widget.selectedPackage,
+                                  checked: widget.checkedPackages.contains(package.name),
                                   widths: widths,
                                   onSelected: () => widget.onSelected(package.name),
+                                  onCheckChanged: (_) => widget.onToggleCheck(package.name),
                                   onOpened: () => widget.onOpened(package.name),
                                   index: index,
                                 );
@@ -219,6 +232,9 @@ class _PackageTableHeader extends StatelessWidget {
     required this.sortAscending,
     required this.onSort,
     required this.sortIconBuilder,
+    required this.isAllChecked,
+    required this.isIndeterminate,
+    required this.onToggleCheckAll,
     this.visibleCount,
     this.totalCount,
   });
@@ -228,6 +244,9 @@ class _PackageTableHeader extends StatelessWidget {
   final bool sortAscending;
   final ValueChanged<String> onSort;
   final Widget Function(String) sortIconBuilder;
+  final bool isAllChecked;
+  final bool isIndeterminate;
+  final VoidCallback onToggleCheckAll;
   final int? visibleCount;
   final int? totalCount;
 
@@ -256,6 +275,16 @@ class _PackageTableHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
+          SizedBox(
+            width: widths.checkbox,
+            child: Center(
+              child: Checkbox(
+                value: isIndeterminate ? null : isAllChecked,
+                tristate: true,
+                onChanged: (_) => onToggleCheckAll(),
+              ),
+            ),
+          ),
           DashboardSortableHeaderCell(
             width: widths.appName,
             label: appNameLabel,

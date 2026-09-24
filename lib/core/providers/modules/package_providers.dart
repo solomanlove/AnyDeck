@@ -192,4 +192,25 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       fallbackKeys: _fallbackKeys,
     );
   }
+
+  /// 批量从列表中移除指定的包名，并立即同步更新内存状态与本地磁盘持久化缓存（无需重新请求设备）。
+  Future<void> removePackages(Set<String> packageNames) async {
+    if (packageNames.isEmpty) return;
+    final current = state.value;
+    if (current == null) return;
+
+    final newList = current
+        .where((p) => !packageNames.contains(p.name))
+        .toList(growable: false);
+
+    state = AsyncValue.data(newList);
+
+    final service = ref.read(appManagementServiceProvider);
+    await service.savePackageCache(
+      deviceId,
+      newList,
+      canonicalId: _canonicalId,
+      fallbackKeys: _fallbackKeys,
+    );
+  }
 }

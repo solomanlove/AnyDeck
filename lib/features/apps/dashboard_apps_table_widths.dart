@@ -2,6 +2,7 @@ part of '../dashboard_screen.dart';
 
 class _PackageTableWidths {
   const _PackageTableWidths({
+    this.checkbox = 44.0,
     required this.appName,
     required this.version,
     required this.minSdk,
@@ -57,7 +58,9 @@ class _PackageTableWidths {
       headerWidth('storageUsed'),
       contentWidth(packages.map((package) => package.storageLabel)),
     ).clamp(104.0, 136.0);
+    const checkboxWidth = 44.0;
     final base = _PackageTableWidths(
+      checkbox: checkboxWidth,
       appName: appName + _PackageCell.horizontalPadding + 38,
       version: version + _PackageCell.horizontalPadding,
       minSdk: minSdk + _PackageCell.horizontalPadding,
@@ -79,6 +82,7 @@ class _PackageTableWidths {
     );
   }
 
+  final double checkbox;
   final double appName;
   final double version;
   final double minSdk;
@@ -86,6 +90,7 @@ class _PackageTableWidths {
   final double storage;
 
   double get total =>
+      checkbox +
       appName +
       version +
       minSdk +
@@ -94,6 +99,7 @@ class _PackageTableWidths {
 
   _PackageTableWidths copyWith({double? appName}) {
     return _PackageTableWidths(
+      checkbox: checkbox,
       appName: appName ?? this.appName,
       version: version,
       minSdk: minSdk,
