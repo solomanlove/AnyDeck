@@ -209,7 +209,10 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   Widget build(BuildContext context) {
     final settings = ref.watch(appSettingsProvider);
     final sdkVersion = ref.watch(deviceSdkVersionProvider(widget.deviceId)) ?? 0;
-    final isAudioForwarded = (sdkVersion >= 30) && settings.mirrorAudioEnabled;
+    final isAudioForwarded =
+        widget.startApp == null &&
+        (sdkVersion >= 30) &&
+        settings.mirrorAudioEnabled;
 
     // 监听设备在线状态，若设备断开则强制停止投屏
     ref.listen<bool>(deviceOnlineProvider(widget.deviceId), (previous, next) {

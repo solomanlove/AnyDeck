@@ -48,3 +48,13 @@ adb forward --list
 ```
 
 在设备离线期间远端 jar 删除可能失败；会话不恢复为运行态。下次连接可人工检查 `/data/local/tmp/anydeck-*.jar`，不要删除其他会话正在使用的文件。
+
+## 2026-09-27 Android 15 单 App 投屏验证
+
+- 设备：Xiaomi Mi MIX 3，Android 15 / API 35，ADB serial `2ccaef6`。
+- 官方 scrcpy 4.0 对照：成功创建 1080×1920 virtual display 并把 YouTube 启动到 display 48，确认系统与目标 App 支持副屏运行。
+- 修复前项目复现：server 创建 display 49 后没有 Activity；Dart 等待首个视频帧超时，而 audio socket 已播放，导致与整机投屏重音。
+- 修复后项目实测：创建 display 52，YouTube `Shell$HomeActivity` 在副屏进入 `topResumedActivity`；Rust Texture 注册成功，首个 `CVPixelBuffer` 成功复制，Flutter 读取视频尺寸 810×1440，窗口画面和触控正常。
+- 并发隔离：整机投屏保留 `scrcpy_00000000`，单 App 使用独立随机 socket `scrcpy_19ee9bfa`；单 App server 参数为 `audio=false`，未再创建第二路设备音频播放。
+- 自动验证：5 个投屏相关测试文件共 25 项通过；4 个相关 Dart 文件定向 `dart analyze` 无问题；`flutter build macos --debug` 成功。
+- 诊断窗口使用 `Ctrl+C` 强退绕过 Dart `dispose`，手动移除了该次测试的 `tcp:64633` forward；Android virtual display 已由 server 清理。正常窗口关闭继续由 `EmbeddedScrcpyService.stop()` 回收 Texture、Rust handle、server process 与 forward。

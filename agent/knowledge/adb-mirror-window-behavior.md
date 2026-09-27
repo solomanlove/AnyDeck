@@ -26,6 +26,11 @@
 ## 应用投屏模式
 
 - `startApp != null` 表示当前窗口是单 App 投屏窗口。
+- 每个屏幕投屏会话必须生成独立的非零 `scid`，并转发到匹配的 `scrcpy_<8位十六进制>` abstract socket；禁止继续写死 `scid=0`，否则整机投屏与单 App 投屏会争用同一 socket。
+- scrcpy 创建空虚拟副屏后可能不会立即产生视频帧。`EmbeddedScrcpyService` 必须先从 server 日志取得 display ID，通过 `am start ... --display <id>` 把目标 App 启动到副屏，再等待 Rust/VideoToolbox 首个可渲染帧；不能在首帧就绪后才启动 App。
+- App 启动使用 package MAIN/LAUNCHER Intent，不直接传 `resolve-activity` 返回的组件名；Activity alias 可能含 `$`（例如 YouTube 的 `Shell$HomeActivity`），会被设备端 `adb shell` 展开并导致错误组件。
+- scrcpy 4.0 的虚拟屏参数名是 `vd_destroy_content=true`，不是 `vd_destroy_content_on_removal`；后者会被 server 作为未知参数忽略。
+- scrcpy audio playback capture 是设备级而非 App/virtual display 级。单 App 投屏固定 `audio=false`，由同设备整机投屏承担音频，避免两个窗口同时播放同一设备音频；标题栏也不显示音频转发标识。
 - 单 App 投屏窗口不再在标题栏展示“打开应用投屏”的 app icon，避免在应用投屏内继续递归打开应用投屏。
 - 顶部工具栏在非全屏状态下仍展示，保持返回、Home、截图、录屏、设备设置等快捷控制可用。
 - 长按返回键强停前台应用时，停止命令仍以包名执行；如果 `MirrorWindowController.currentForegroundPackage` 已经拿到本地 icon 且 label 非空，则轻提示优先展示应用名，避免把包名直接暴露给用户。

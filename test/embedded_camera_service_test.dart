@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:any_deck/core/adb/adb_result.dart';
@@ -12,9 +13,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 使用假进程验证会话生命周期，不执行 ADB 或访问手机摄像头。
 class CameraServerProcess extends Fake implements Process {
+  CameraServerProcess({this.output = const Stream.empty()});
+
   final done = Completer<int>();
+  final Stream<List<int>> output;
   @override
-  Stream<List<int>> get stdout => const Stream.empty();
+  Stream<List<int>> get stdout => output;
   @override
   Stream<List<int>> get stderr => const Stream.empty();
   @override
@@ -51,6 +55,9 @@ class CameraAdbFake extends AdbService {
 }
 
 class BridgeFake extends Fake implements RustDeviceBridge {
+  BridgeFake({this.isReady});
+
+  final bool Function()? isReady;
   final starts = <(String, int, bool)>[];
   final stops = <int>[];
   final releases = <int>[];
@@ -62,16 +69,49 @@ class BridgeFake extends Fake implements RustDeviceBridge {
   }
 
   @override
-  int Function(int) get status => (handle) => 1;
+  int Function(int) get status =>
+      (handle) => (isReady?.call() ?? true) ? 1 : 0;
 
   @override
-  void Function(int) get stop => (handle) => stops.add(handle);
+  void Function(int) get stop =>
+      (handle) => stops.add(handle);
 
   @override
-  void Function(int) get release => (handle) => releases.add(handle);
+  void Function(int) get release =>
+      (handle) => releases.add(handle);
 
   @override
-  int Function(int) get videoSize => (handle) => (1280 << 32) | 720;
+  int Function(int) get videoSize =>
+      (handle) => (1280 << 32) | 720;
+}
+
+class AppMirrorAdbFake extends CameraAdbFake {
+  bool appStarted = false;
+
+  @override
+  Future<AdbResult> run(
+    List<String> args, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    commands.add(args);
+    if (args.contains('getprop')) {
+      return AdbResult(exitCode: 0, stdout: '$sdk', stderr: '');
+    }
+    if (args.contains('start') && args.contains('--display')) {
+      appStarted = true;
+    }
+    return const AdbResult(exitCode: 0, stdout: '', stderr: '');
+  }
+
+  @override
+  Future<Process> start(List<String> args) async {
+    launches.add(args);
+    return CameraServerProcess(
+      output: Stream.value(
+        utf8.encode('[server] INFO: New display: 1080x1920/361 (id=48)\n'),
+      ),
+    );
+  }
 }
 
 void main() {
@@ -153,6 +193,47 @@ void main() {
     );
     expect(adb.launches, isEmpty);
     expect(adb.commands.last, contains('--remove'));
+  });
+
+  test('单 App 投屏先启动副屏 Activity 再等待首帧，并使用独立 socket 且关闭重复音频', () async {
+    final adb = AppMirrorAdbFake();
+    final bridge = BridgeFake(isReady: () => adb.appStarted);
+    final service = EmbeddedScrcpyService(adb, bridge);
+    addTearDown(() => service.stop('phone'));
+
+    final textureId = await service
+        .start(
+          deviceId: 'phone',
+          newDisplay: '1080x1920',
+          startApp: 'com.example.app',
+        )
+        .timeout(const Duration(seconds: 2));
+
+    expect(textureId, greaterThan(0));
+    expect(adb.appStarted, true);
+    expect(bridge.starts.single.$3, false);
+    final launch = adb.launches.single;
+    expect(launch, contains('audio=false'));
+    expect(launch, contains('vd_destroy_content=true'));
+    expect(launch, isNot(contains('vd_destroy_content_on_removal=true')));
+    final scid = launch
+        .singleWhere((argument) => argument.startsWith('scid='))
+        .substring(5);
+    expect(scid, isNot('0'));
+    final forward = adb.commands.firstWhere(
+      (command) => command.contains('forward'),
+    );
+    expect(forward, contains('localabstract:scrcpy_${scid.padLeft(8, '0')}'));
+    expect(
+      adb.commands.any((command) => command.contains('resolve-activity')),
+      false,
+    );
+    final appStart = adb.commands.firstWhere(
+      (command) => command.contains('start') && command.contains('--display'),
+    );
+    expect(appStart, containsAll(['-p', 'com.example.app']));
+    expect(appStart, isNot(contains('-n')));
+    expect(appStart, containsAllInOrder(['--display', '48']));
   });
 
   test('取消令牌拒绝迟到启动，每次摄像头会话 ID 独立', () async {

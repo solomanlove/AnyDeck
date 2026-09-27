@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adb/adb_service.dart';
 import '../providers/app_providers.dart';
-import 'activity_escape_guardian.dart';
+import 'app_virtual_display_launcher.dart';
 import 'rust_device_bridge.dart';
 import 'scrcpy_camera_options.dart';
 
@@ -107,6 +108,9 @@ class EmbeddedScrcpyService {
     if (_sessions.containsKey(sessionId)) {
       return _sessions[sessionId]!.textureId;
     }
+    final scid = camera?.scid ??
+        (Random.secure().nextInt(0x7ffffffe) + 1).toRadixString(16);
+    final socketName = camera?.socketName ?? 'scrcpy_${scid.padLeft(8, '0')}';
 
     // 1. Resolve and push scrcpy-server.jar
     final serverJar = await extractScrcpyServerJar();
@@ -136,7 +140,7 @@ class EmbeddedScrcpyService {
       deviceId,
       'forward',
       'tcp:$localPort',
-      'localabstract:${camera?.socketName ?? 'scrcpy_00000000'}',
+      'localabstract:$socketName',
     ]);
     if (!forwardRes.isSuccess) {
       throw Exception('Failed to setup adb forward: ${forwardRes.stderr}');
@@ -174,7 +178,12 @@ class EmbeddedScrcpyService {
 
     // 确保从 SharedPreferences 中获取最新的设置，防止 Isolate 异步加载延迟
     final prefs = await SharedPreferences.getInstance();
-    final bool mirrorAudioEnabled = camera == null && (prefs.getBool('settings.mirrorAudioEnabled') ?? true) && isAudioSupported;
+    // scrcpy 音频是设备级采集，并非虚拟副屏/App 级采集；单 App 窗口关闭音频，避免与整机投屏产生重音。
+    final bool mirrorAudioEnabled =
+        camera == null &&
+        startApp == null &&
+        (prefs.getBool('settings.mirrorAudioEnabled') ?? true) &&
+        isAudioSupported;
     final int bitrate = camera != null ? 4000000 : prefs.getInt('settings.mirrorVideoBitrate') ?? 8000000;
     final int maxSize = camera != null ? 1280 : prefs.getInt('settings.mirrorMaxSize') ?? 1080;
 
@@ -196,7 +205,7 @@ class EmbeddedScrcpyService {
         '/',
         'com.genymobile.scrcpy.Server',
         '4.0',
-        'scid=${camera?.scid ?? '0'}',
+        'scid=$scid',
         'log_level=verbose',
         'audio=${mirrorAudioEnabled ? "true" : "false"}',
         if (mirrorAudioEnabled) 'audio_codec=raw',
@@ -211,7 +220,7 @@ class EmbeddedScrcpyService {
           ...camera.serverArguments
         else if (newDisplay != null) ...[
           'new_display=$newDisplay',
-          'vd_destroy_content_on_removal=true',
+          'vd_destroy_content=true',
           'vd_system_decorations=false',
         ] else
           'display_id=0',
@@ -268,6 +277,16 @@ class EmbeddedScrcpyService {
       );
       if (rustHandle == 0) {
         throw Exception('Failed to start Rust mirror session');
+      }
+
+      // 空虚拟副屏不会产生视频首帧；先启动 App，再等待 Rust/VideoToolbox 可渲染首帧。
+      if (newDisplay != null && startApp != null) {
+        await launchAppOnVirtualDisplay(
+          adbService: _adbService,
+          deviceId: deviceId,
+          packageName: startApp,
+          displayIdFuture: displayCompleter.future,
+        );
       }
 
       // 等待 Rust 核心建立连接并进入就绪状态
@@ -331,92 +350,6 @@ class EmbeddedScrcpyService {
         ]);
       }
       rethrow;
-    }
-
-    // 5. Once connected, the server creates the virtual display. We wait for it and launch the app asynchronously in background.
-    if (newDisplay != null && startApp != null) {
-      unawaited(() async {
-        try {
-          final displayId = await displayCompleter.future.timeout(
-            const Duration(seconds: 5),
-          );
-
-           // 0. 先强杀该应用进程，确保不存在残留的主屏任务栈，从而让新任务栈完全创建在副屏上
-          await _adbService.run([
-            '-s',
-            deviceId,
-            'shell',
-            'am',
-            'force-stop',
-            startApp,
-          ]);
-
-          // 1. 解析指定应用的入口 Activity 组件名，以保证能精确启动
-          String? component;
-          final resolveRes = await _adbService.run([
-            '-s',
-            deviceId,
-            'shell',
-            'cmd',
-            'package',
-            'resolve-activity',
-            '--brief',
-            startApp,
-          ]);
-          if (resolveRes.isSuccess) {
-            final lines = resolveRes.stdout.split('\n');
-            for (final line in lines) {
-              final trimmed = line.trim();
-              if (trimmed.contains('/') && trimmed.contains(startApp)) {
-                component = trimmed;
-                break;
-              }
-            }
-          }
-
-          // 2. 运行 am start 在虚拟副屏上以新任务栈模式启动应用
-          if (component != null) {
-            await _adbService.run([
-              '-s',
-              deviceId,
-              'shell',
-              'am',
-              'start',
-              '-n',
-              component,
-              '--display',
-              displayId.toString(),
-              '-f',
-              '0x10000000', // FLAG_ACTIVITY_NEW_TASK
-            ]);
-          } else {
-            // 降级使用通用 Intent 启动
-            await _adbService.run([
-              '-s',
-              deviceId,
-              'shell',
-              'am',
-              'start',
-              '-a',
-              'android.intent.action.MAIN',
-              '-c',
-              'android.intent.category.LAUNCHER',
-              '-p',
-              startApp,
-              '--display',
-              displayId.toString(),
-              '-f',
-              '0x10000000', // FLAG_ACTIVITY_NEW_TASK
-            ]);
-          }
-
-          // 3. 启动后台守护轮询，防范 Activity 在跳转时逃逸回主屏幕（Display 0）
-          // 轮询持续 12 秒，每 500 毫秒检查一次，主要覆盖开屏广告与主页面过渡期
-          startActivityEscapeGuardian(_adbService, deviceId, startApp, displayId);
-        } catch (e) {
-          stdout.write('[scrcpy-server error] Failed to launch app on virtual display: $e\n');
-        }
-      }());
     }
 
     return textureId;
