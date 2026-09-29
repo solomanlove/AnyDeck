@@ -44,6 +44,7 @@ class _WechatStyleShell extends ConsumerWidget {
                   child: Column(
                     children: [
                       if ((selectedDevice == null || selectedTool == -1) &&
+                          selectedTool != -2 &&
                           selectedTool != 12 &&
                           selectedTool != 13 &&
                           selectedTool != 14)

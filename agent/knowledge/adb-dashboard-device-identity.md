@@ -6,7 +6,7 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 
 ## 交互与数据边界
 
-1. 左侧身份区的点击逻辑将 `selectedToolTabProvider` 切换为 `-1`，清空 `selectedDeviceProvider` 并返回设备管理页面；设备管理页面统一展示 App logo 与应用名称 AnyDeck，侧边栏仅展示【设备管理】Tab，收起特定手机下的 Tab。
+1. 左侧身份区的点击逻辑将 `selectedToolTabProvider` 切换为 `-1`，清空 `selectedDeviceProvider` 并返回设备管理页面；设备管理页面统一展示 App logo 与应用名称 AnyDeck，侧边栏展示同级的【设备管理】与【模拟器列表】Tab，收起特定手机下的 Tab。
 2. 品牌 logo 通过 `deviceOverviewProvider(deviceId)` 的 `brand`、`manufacturer` 和 `BrandLogoHelper` 解析：优先使用品牌图标，未命中时使用制造商图标，均未命中则展示通用手机图标；设备名称与连接方式以 `deviceRegistryProvider` 中匹配的 `RegisteredDevice` 为准。
 3. 未授权或离线设备继续使用外框状态色，但品牌 logo 始终保持原始颜色与不透明度，避免 Apple、Huawei 等白底 JPEG 素材灰化后失真；音频转发状态点仍按 SDK 与设置展示。
 4. 设备工具页不再渲染独立的顶部 `_SelectedDeviceHeader`，也不提供右上角叉号清空设备；切换设备统一返回设备管理列表操作。
@@ -40,3 +40,12 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 - 静态检查：本次 6 个 Dart 文件定向 `flutter analyze` 通过；全仓 `flutter analyze` 有 53 项无关现有问题，包括 `apps_tab_filter_test.dart` 的旧构造参数及缺失测试桩，以及其他模块的 warning/info，本次修改文件无诊断。
 - 手动回归：更新应用后选择美图版手机，等待概览刷新，检查侧栏小米 logo 与概览 `Meitu` 同时保留；切换 Tab、断线后恢复缓存，并检查普通 Xiaomi、Apple、HUAWEI 图标及明暗主题。
 - 验证边界：ADB 属性已真机读取；桌面应用不启动，实际侧栏渲染与交互仍需手动回归。
+
+## 模拟器列表同级入口（2026-09-29）
+
+- 设备管理模式的左侧导航增加模拟器列表（`selectedToolTabProvider = -2`），与设备管理（`-1`）并列，无需连接或选中设备。选择任一管理入口均清空设备选择，并标记用户主动清空，避免设备自动选择覆盖当前页面。
+- 主窗口 `IndexedStack` 增加模拟器页面，直接复用 `EmulatorListPanel(isStandalone: true)` 的完整列表布局；该参数仅选择布局，不创建窗口。仅进入 Tab 时挂载列表，离开后释放页面订阅，不在启动时额外扫描模拟器。
+- 模拟器页面使用自身标题和操作栏，外壳不重复显示设备管理标题栏；既有模拟器独立窗口入口保留。iOS、HarmonyOS 与离线设备工具回退仅作用于非负工具索引，不覆盖全局管理页面。
+- 不新增依赖、Provider、文案或跨窗口协议，复用 `emulators` 中英文文案、已有明暗主题及启动、清除、删除、刷新等操作，不修改 ADB 或投屏实现。
+- 手动回归：未连接设备时切换两个管理 Tab；启动模拟器后确认列表状态更新，返回设备管理选择设备；从设备身份入口返回后切换模拟器；检查窄窗口、明暗主题、中英文及独立窗口入口。桌面项目未启动，实际交互待验证。
+- 自动验证：本次 4 个 Dart 文件定向 `flutter analyze --no-pub` 无新增诊断，仅有 `dashboard_screen.dart:54` 原有 unused import 警告；`git diff --check` 通过。既有 `widget_test.dart` 的 `shows AdbManage shell in Chinese by default` 用例因找不到“设备标识”失败，已在修改前 HEAD 代码上复现相同断言，不属于本次改动引入的问题。

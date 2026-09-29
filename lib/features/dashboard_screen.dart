@@ -405,13 +405,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         if (effectiveSelectedDevice.isIos) {
           final selectedTool = ref.read(selectedToolTabProvider);
           const iosTabs = {0, 1, 2, 3, 4, 6, 9, 12, 13, 14};
-          if (selectedTool != -1 && !iosTabs.contains(selectedTool)) {
+          if (selectedTool >= 0 && !iosTabs.contains(selectedTool)) {
             ref.read(selectedToolTabProvider.notifier).select(0);
           }
         } else if (effectiveSelectedDevice.isHarmony) {
           // 鸿蒙设备支持主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、设置(12)、玩安卓(13)、AI MCP(14)
           final selectedTool = ref.read(selectedToolTabProvider);
-          if (selectedTool != -1 &&
+          if (selectedTool >= 0 &&
               selectedTool != 0 &&
               selectedTool != 1 &&
               selectedTool != 2 &&
@@ -429,7 +429,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         } else if (!effectiveSelectedDevice.isOnline) {
           // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)、消息(15)、设置(12)、玩安卓(13)或 AI MCP(14) Tab，则自动重定向回主页 Tab
           final selectedTool = ref.read(selectedToolTabProvider);
-          if (selectedTool != -1 &&
+          if (selectedTool >= 0 &&
               selectedTool != 0 &&
               selectedTool != 1 &&
               selectedTool != 2 &&
@@ -457,6 +457,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       _hasVisitedWanAndroid = true;
     } else if (selectedTool == 14) {
       stackIndex = 4;
+    } else if (selectedTool == -2) {
+      stackIndex = 5;
     } else if (selectedTool == -1 || effectiveSelectedDevice == null) {
       stackIndex = 0;
     } else {
@@ -496,6 +498,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 else
                   const SizedBox.shrink(),
                 const McpDashboardTab(),
+                // 复用完整模拟器列表布局，仅访问时加载，避免后台扫描。
+                if (selectedTool == -2)
+                  const EmulatorListPanel(isStandalone: true)
+                else
+                  const SizedBox.shrink(),
               ],
             ),
           ),

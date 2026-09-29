@@ -49,9 +49,9 @@ class PrimaryRail extends ConsumerWidget {
     final selectedTool = ref.watch(selectedToolTabProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);
 
-    // 判断当前 Tab 是否可用；设备管理(-1)始终可用
+    // 判断当前 Tab 是否可用；设备管理(-1)与模拟器(-2)始终可用
     bool isToolEnabled(int tabIndex) {
-      if (tabIndex == -1) {
+      if (tabIndex == -1 || tabIndex == -2) {
         return true;
       }
       if (selectedDevice == null) {
@@ -87,18 +87,24 @@ class PrimaryRail extends ConsumerWidget {
     final bool isNarrow = MediaQuery.of(context).size.width < 1000;
     final double railWidth = isNarrow ? 76.0 : 180.0;
 
-    final hasSelectedDevice = selectedDevice != null && selectedTool != -1;
+    final hasSelectedDevice =
+        selectedDevice != null && selectedTool != -1 && selectedTool != -2;
     final isIos = hasSelectedDevice && selectedDevice!.isIos;
     final isHarmony = hasSelectedDevice && selectedDevice!.isHarmony;
 
     final List<_RailToolItem> tools;
     if (!hasSelectedDevice) {
-      // 1. 设备管理模式（默认未选择手机）：仅显示设备管理 Tab，去掉其他特定手机下的 Tab
+      // 1. 设备管理模式（默认未选择手机）：显示设备管理与模拟器同级 Tab，收起设备专属工具
       tools = [
         _RailToolItem(
           tabIndex: -1,
           icon: Icons.devices,
           label: context.l10n.t('devices'),
+        ),
+        _RailToolItem(
+          tabIndex: -2,
+          icon: CupertinoIcons.device_desktop,
+          label: context.l10n.t('emulators'),
         ),
       ];
     } else if (isIos) {
@@ -256,11 +262,11 @@ class PrimaryRail extends ConsumerWidget {
     }
 
     void handleTap(int tabIndex) {
-      if (tabIndex == -1) {
-        // 切换到设备管理 Tab，清空当前设备选择
+      if (tabIndex == -1 || tabIndex == -2) {
+        // 全局管理页面不依赖设备，阻止自动选择设备抢走当前页面。
         ref.read(userClearedDeviceSelectionProvider.notifier).state = true;
         ref.read(selectedDeviceProvider.notifier).clear();
-        ref.read(selectedToolTabProvider.notifier).select(-1);
+        ref.read(selectedToolTabProvider.notifier).select(tabIndex);
         return;
       }
       var device = selectedDevice;
@@ -335,7 +341,9 @@ class PrimaryRail extends ConsumerWidget {
                             cursor: SystemMouseCursors.click,
                             child: _RailIdentity(
                               selectedDevice:
-                                  (selectedTool == -1) ? null : selectedDevice,
+                                  (selectedTool == -1 || selectedTool == -2)
+                                      ? null
+                                      : selectedDevice,
                               registeredDevices: registeredDevices,
                               isNarrow: renderNarrow,
                             ),
