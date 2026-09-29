@@ -8,6 +8,7 @@ class _StructuredLogcatTable extends StatefulWidget {
     required this.searchQuery,
     required this.activeEntryIndex,
     required this.maxLogLength,
+    this.isPaused = false,
   });
 
   final List<LogcatEntry> entries;
@@ -16,6 +17,7 @@ class _StructuredLogcatTable extends StatefulWidget {
   final String searchQuery;
   final int activeEntryIndex;
   final int maxLogLength;
+  final bool isPaused;
 
   @override
   State<_StructuredLogcatTable> createState() => _StructuredLogcatTableState();
@@ -53,23 +55,37 @@ class _StructuredLogcatTableState extends State<_StructuredLogcatTable> {
                   children: [
                     _LogcatTableHeader(widths: widths),
                     Expanded(
-                      child: Scrollbar(
-                        controller: widget.verticalController,
-                        child: ListView.builder(
-                          controller: widget.verticalController,
-                          itemCount: widget.entries.length,
-                          itemExtent: widget.wrapLines ? null : 28,
-                          itemBuilder: (context, index) {
-                            return _LogcatTableRow(
-                              entry: widget.entries[index],
-                              widths: widths,
-                              index: index,
-                              wrapLines: widget.wrapLines,
-                              searchQuery: widget.searchQuery,
-                              isActiveMatch: index == widget.activeEntryIndex,
-                            );
-                          },
-                        ),
+                      child: Stack(
+                        children: [
+                          Scrollbar(
+                            controller: widget.verticalController,
+                            child: ListView.builder(
+                              controller: widget.verticalController,
+                              itemCount: widget.entries.length,
+                              itemExtent: widget.wrapLines ? null : 28,
+                              itemBuilder: (context, index) {
+                                return _LogcatTableRow(
+                                  entry: widget.entries[index],
+                                  widths: widths,
+                                  index: index,
+                                  wrapLines: widget.wrapLines,
+                                  searchQuery: widget.searchQuery,
+                                  isActiveMatch:
+                                      index == widget.activeEntryIndex,
+                                );
+                              },
+                            ),
+                          ),
+                          if (widget.isPaused)
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: _LogcatPausedBanner(
+                                horizontalController: _horizontalController,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ],

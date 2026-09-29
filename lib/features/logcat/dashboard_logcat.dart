@@ -300,14 +300,8 @@ class LogcatTabState extends ConsumerState<LogcatTab> {
                               ).dividerColor.withValues(alpha: 0.5),
                             ),
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                              child: Stack(
                                 children: [
-                                  if (state.isPaused)
-                                    const _LogcatPausedBanner(),
-                                  Expanded(
-                                    child: Stack(
-                                      children: [
                                         state.error != null
                                             ? _LogcatError(message: state.error!)
                                             : state.viewMode == LogcatViewMode.raw
@@ -353,9 +347,11 @@ class LogcatTabState extends ConsumerState<LogcatTab> {
                                                     _verticalController,
                                                 wrapLines: state.wrapLines,
                                                 searchQuery: query,
-                                                activeEntryIndex: activeEntryIndex,
+                                                activeEntryIndex:
+                                                    activeEntryIndex,
                                                 maxLogLength:
                                                     controller.maxLogLength,
+                                                isPaused: state.isPaused,
                                               ),
                                         if (_searchBarVisible)
                                           Positioned(
@@ -373,12 +369,18 @@ class LogcatTabState extends ConsumerState<LogcatTab> {
                                                   _goToNextMatch(matchIndices),
                                             ),
                                           ),
+                                        if (state.isPaused &&
+                                            state.viewMode !=
+                                                LogcatViewMode.standard)
+                                          const Positioned(
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            child: _LogcatPausedBanner(),
+                                          ),
                                       ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
                           ],
                         ),
                       ),
