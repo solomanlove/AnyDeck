@@ -61,6 +61,7 @@ class BridgeFake extends Fake implements RustDeviceBridge {
   final starts = <(String, int, bool)>[];
   final stops = <int>[];
   final releases = <int>[];
+  final mutes = <(int, int)>[];
 
   @override
   int startMirror(String host, int port, bool audioEnabled) {
@@ -81,12 +82,16 @@ class BridgeFake extends Fake implements RustDeviceBridge {
       (handle) => releases.add(handle);
 
   @override
+  void Function(int, int) get mute =>
+      (handle, muted) => mutes.add((handle, muted));
+
+  @override
   int Function(int) get videoSize =>
       (handle) => (1280 << 32) | 720;
 }
 
 class AppMirrorAdbFake extends CameraAdbFake {
-  bool appStarted = false;
+  bool appPlaced = false;
 
   @override
   Future<AdbResult> run(
@@ -97,8 +102,16 @@ class AppMirrorAdbFake extends CameraAdbFake {
     if (args.contains('getprop')) {
       return AdbResult(exitCode: 0, stdout: '$sdk', stderr: '');
     }
-    if (args.contains('start') && args.contains('--display')) {
-      appStarted = true;
+    if (args.contains('stack') && args.contains('list')) {
+      return const AdbResult(
+        exitCode: 0,
+        stdout: 'RootTask id=42 bounds=[0,0][1080,1920] displayId=0\n'
+            '  taskId=42: com.example.app/.MainActivity bounds=[0,0][1080,1920]\n',
+        stderr: '',
+      );
+    }
+    if (args.contains('move-stack')) {
+      appPlaced = true;
     }
     return const AdbResult(exitCode: 0, stdout: '', stderr: '');
   }
@@ -195,9 +208,9 @@ void main() {
     expect(adb.commands.last, contains('--remove'));
   });
 
-  test('单 App 投屏先启动副屏 Activity 再等待首帧，并使用独立 socket 且关闭重复音频', () async {
+  test('单 App 投屏迁移已有 Task 再等待首帧，并保留可切换音频通道', () async {
     final adb = AppMirrorAdbFake();
-    final bridge = BridgeFake(isReady: () => adb.appStarted);
+    final bridge = BridgeFake(isReady: () => adb.appPlaced);
     final service = EmbeddedScrcpyService(adb, bridge);
     addTearDown(() => service.stop('phone'));
 
@@ -206,15 +219,18 @@ void main() {
           deviceId: 'phone',
           newDisplay: '1080x1920',
           startApp: 'com.example.app',
+          initiallyMuted: true,
         )
         .timeout(const Duration(seconds: 2));
 
     expect(textureId, greaterThan(0));
-    expect(adb.appStarted, true);
-    expect(bridge.starts.single.$3, false);
+    expect(adb.appPlaced, true);
+    expect(bridge.starts.single.$3, true);
+    expect(bridge.mutes, [(1, 1)]);
     final launch = adb.launches.single;
-    expect(launch, contains('audio=false'));
-    expect(launch, contains('vd_destroy_content=true'));
+    expect(launch, contains('audio=true'));
+    expect(launch, contains('audio_codec=raw'));
+    expect(launch, contains('vd_destroy_content=false'));
     expect(launch, isNot(contains('vd_destroy_content_on_removal=true')));
     final scid = launch
         .singleWhere((argument) => argument.startsWith('scid='))
@@ -228,12 +244,20 @@ void main() {
       adb.commands.any((command) => command.contains('resolve-activity')),
       false,
     );
-    final appStart = adb.commands.firstWhere(
-      (command) => command.contains('start') && command.contains('--display'),
+    final taskMove = adb.commands.firstWhere(
+      (command) => command.contains('move-stack'),
     );
-    expect(appStart, containsAll(['-p', 'com.example.app']));
-    expect(appStart, isNot(contains('-n')));
-    expect(appStart, containsAllInOrder(['--display', '48']));
+    expect(taskMove, containsAllInOrder(['move-stack', '42', '48']));
+    expect(
+      adb.commands.any((command) => command.contains('force-stop')),
+      false,
+    );
+    expect(
+      adb.commands.any(
+        (command) => command.contains('start') && command.contains('--display'),
+      ),
+      false,
+    );
   });
 
   test('取消令牌拒绝迟到启动，每次摄像头会话 ID 独立', () async {

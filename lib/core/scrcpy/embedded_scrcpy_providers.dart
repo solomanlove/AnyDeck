@@ -37,7 +37,11 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
     });
   }
 
-  Future<void> toggleMirroring({String? newDisplay, String? startApp}) async {
+  Future<void> toggleMirroring({
+    String? newDisplay,
+    String? startApp,
+    bool initiallyMuted = false,
+  }) async {
     final service = ref.read(embeddedScrcpyServiceProvider);
     if (service.isActive(deviceId)) {
       await service.stop(deviceId);
@@ -49,6 +53,7 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
           deviceId: deviceId,
           newDisplay: newDisplay,
           startApp: startApp,
+          initiallyMuted: initiallyMuted,
         );
         state = textureId;
         _listenToProcessExit(textureId);
@@ -59,7 +64,11 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
     }
   }
 
-  Future<void> restartMirroring({String? newDisplay, String? startApp}) async {
+  Future<void> restartMirroring({
+    String? newDisplay,
+    String? startApp,
+    bool initiallyMuted = false,
+  }) async {
     final service = ref.read(embeddedScrcpyServiceProvider);
     if (service.isActive(deviceId)) {
       await service.stop(deviceId);
@@ -73,6 +82,7 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
         deviceId: deviceId,
         newDisplay: newDisplay,
         startApp: startApp,
+        initiallyMuted: initiallyMuted,
       );
       state = textureId;
       _listenToProcessExit(textureId);

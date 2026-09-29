@@ -99,6 +99,7 @@ class EmbeddedScrcpyService {
     String? newDisplay,
     String? startApp,
     ScrcpyCameraOptions? camera,
+    bool initiallyMuted = false,
   }) async {
     if (camera != null && (newDisplay != null || startApp != null)) {
       throw ArgumentError('Camera cannot create a display or launch an app');
@@ -178,10 +179,9 @@ class EmbeddedScrcpyService {
 
     // 确保从 SharedPreferences 中获取最新的设置，防止 Isolate 异步加载延迟
     final prefs = await SharedPreferences.getInstance();
-    // scrcpy 音频是设备级采集，并非虚拟副屏/App 级采集；单 App 窗口关闭音频，避免与整机投屏产生重音。
+    // scrcpy 音频是设备级采集；所有 Android 投屏都建立音频通道，由窗口层分配唯一音频焦点。
     final bool mirrorAudioEnabled =
         camera == null &&
-        startApp == null &&
         (prefs.getBool('settings.mirrorAudioEnabled') ?? true) &&
         isAudioSupported;
     final int bitrate = camera != null ? 4000000 : prefs.getInt('settings.mirrorVideoBitrate') ?? 8000000;
@@ -220,7 +220,8 @@ class EmbeddedScrcpyService {
           ...camera.serverArguments
         else if (newDisplay != null) ...[
           'new_display=$newDisplay',
-          'vd_destroy_content=true',
+          // 副屏销毁时让 Android 将 Task 迁回手机屏，不销毁 App 状态。
+          'vd_destroy_content=false',
           'vd_system_decorations=false',
         ] else
           'display_id=0',
@@ -277,6 +278,9 @@ class EmbeddedScrcpyService {
       );
       if (rustHandle == 0) {
         throw Exception('Failed to start Rust mirror session');
+      }
+      if (mirrorAudioEnabled && initiallyMuted) {
+        _bridge.mute(rustHandle, 1);
       }
 
       // 空虚拟副屏不会产生视频首帧；先启动 App，再等待 Rust/VideoToolbox 可渲染首帧。
@@ -353,6 +357,13 @@ class EmbeddedScrcpyService {
     }
 
     return textureId;
+  }
+
+  /// 切换指定 Android 投屏会话的本地音频输出。
+  void setMuted(String deviceId, bool muted) {
+    final session = _sessions[deviceId];
+    if (session == null) return;
+    _bridge.mute(session.rustHandle, muted ? 1 : 0);
   }
 
 

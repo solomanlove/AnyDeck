@@ -16,8 +16,10 @@ import '../../../core/providers/transfer_provider.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../widget/app_toast.dart';
 import 'mirror_aspect_resolver.dart';
+import 'mirror_audio_focus_coordinator.dart';
 import 'mirror_window_frame_adapter.dart';
 import '../multi_window_compat.dart';
+import '../sub_window_method_dispatcher.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/harmony/harmony_mirror_service.dart';
 
@@ -63,6 +65,15 @@ class MirrorWindowController extends ChangeNotifier {
   /// 窗口是否置顶
   bool _isAlwaysOnTop = false;
   bool get isAlwaysOnTop => _isAlwaysOnTop;
+
+  /// 当前投屏窗口是否因同设备其他窗口占用音频而静音。
+  bool _isAudioMuted = false;
+  bool get isAudioMuted => _isAudioMuted;
+  bool _audioFocusPrepared = false;
+  final MirrorAudioFocusCoordinator _audioFocusCoordinator =
+      MirrorAudioFocusCoordinator();
+  late final Future<dynamic> Function(MethodCall) _audioFocusHandler =
+      _handleAudioFocusCall;
 
   Timer? _identifyTimer;
   String? _currentPackageName;
@@ -115,6 +126,9 @@ class MirrorWindowController extends ChangeNotifier {
   /// 初始化控制器，绑定视图 Key 并启动投屏相关逻辑
   void init(GlobalKey viewerKey, {bool? initialAlwaysOnTop}) {
     _viewerKey = viewerKey;
+    if (!isIos && !isHarmony) {
+      SubWindowMethodDispatcher.registerHandler(_audioFocusHandler);
+    }
     // 优先从传入的参数（主窗口状态/快照）获取置顶状态，其次从全局配置中读取
     if (initialAlwaysOnTop != null) {
       _isAlwaysOnTop = initialAlwaysOnTop;
@@ -158,7 +172,41 @@ class MirrorWindowController extends ChangeNotifier {
     _resizeSettleTimer?.cancel();
     _orientationSettleTimer?.cancel();
     unawaited(_setWindowAspectRatio(0));
+    if (!isIos && !isHarmony) {
+      SubWindowMethodDispatcher.removeHandler(_audioFocusHandler);
+      ref.read(embeddedScrcpyServiceProvider).setMuted(deviceId, true);
+      if (_audioFocusPrepared) {
+        unawaited(
+          _audioFocusCoordinator.release(
+            currentWindowId: windowId,
+            deviceId: deviceId,
+          ),
+        );
+      }
+    }
     forceStopMirroring();
+  }
+
+  Future<dynamic> _handleAudioFocusCall(MethodCall call) async {
+    if (call.method != MirrorAudioFocusCoordinator.methodName) return null;
+    final arguments = call.arguments;
+    if (arguments is! Map || arguments['deviceId'] != deviceId) return null;
+
+    final muted = arguments['muted'] == true;
+    _isAudioMuted = muted;
+    ref.read(embeddedScrcpyServiceProvider).setMuted(deviceId, muted);
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> _prepareAudioFocus() async {
+    if (isIos || isHarmony || _audioFocusPrepared) return;
+    _isAudioMuted = await _audioFocusCoordinator.claim(
+      currentWindowId: windowId,
+      deviceId: deviceId,
+      isAppMirror: startApp != null,
+    );
+    _audioFocusPrepared = true;
   }
 
   /// 强制停止投屏并清理 adb/scrcpy 会话
@@ -197,6 +245,7 @@ class MirrorWindowController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      await _prepareAudioFocus();
       if (isIos) {
         final activeMirror = ref.read(activeIosMirrorProvider(deviceId));
         if (activeMirror == null) {
@@ -214,7 +263,11 @@ class MirrorWindowController extends ChangeNotifier {
           // 激活投屏
           await ref
               .read(activeEmbeddedMirrorProvider(deviceId).notifier)
-              .toggleMirroring(newDisplay: newDisplay, startApp: startApp);
+              .toggleMirroring(
+                newDisplay: newDisplay,
+                startApp: startApp,
+                initiallyMuted: _isAudioMuted,
+              );
         }
       }
       // Texture 注册成功不代表已有可显示像素；等首帧解码后再撤掉 loading。
