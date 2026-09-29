@@ -4,6 +4,27 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('IosCommandService parser', () {
+    test('supports wrappers, all identifier aliases and map-key fallback', () {
+      const output = '''
+{"apps":[{"BundleIdentifier":"com.example.one","name":"One","type":"User"},{"bundleId":"com.example.two","name":"Two","type":"System"}]}
+{"com.example.three":{"CFBundleName":"Three","ApplicationType":"User"}}
+{"BundleIdentifier":"com.example.four","name":"Four"}
+''';
+      final apps = IosCommandService.parseApps(output);
+      expect(apps, hasLength(4));
+      expect(apps.singleWhere((app) => app.bundleId == 'com.example.two').system, isTrue);
+      expect(apps.singleWhere((app) => app.bundleId == 'com.example.three').name, 'Three');
+    });
+
+    test('does not turn nested app metadata or log entries into apps', () {
+      const output = '''
+[{"CFBundleIdentifier":"com.example.real","CFBundleName":"Real","Entitlements":{"com.example.fake":{"CFBundleName":"Fake"}},"Extension":{"CFBundleIdentifier":"com.example.extension"}}]
+{"level":"warn","msg":"test","metadata":{"CFBundleIdentifier":"com.example.log"}}
+''';
+      expect(IosCommandService.parseApps(output).map((app) => app.bundleId),
+          ['com.example.real']);
+    });
+
     test('parses app map and ignores go-ios log lines', () {
       const output = '''
 {"time":"2026-09-07","level":"WARN","msg":"agent is not running"}

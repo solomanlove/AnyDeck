@@ -3,7 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 管理收藏应用（✨）的持久化控制器。
 class AppFavoritesNotifier extends AsyncNotifier<Set<String>> {
-  static const _key = 'apps.favoritePackages.v1';
+  AppFavoritesNotifier({String storageKey = 'apps.favoritePackages.v1'})
+      : _key = storageKey;
+
+  // 默认保留 Android 的存储位置，其他平台可使用独立命名空间。
+  final String _key;
 
   @override
   Future<Set<String>> build() async {

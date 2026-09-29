@@ -293,17 +293,30 @@ class IosCommandService {
 
   static List<IosAppInfo> parseApps(String output) {
     final apps = <String, IosAppInfo>{};
-    for (final payload in _jsonPayloads(output)) {
-      _walkMaps(payload, (map, fallbackKey) {
-        final bundleId =
-            _firstString(map, const [
-              'CFBundleIdentifier',
-              'bundleIdentifier',
-              'BundleIdentifier',
-              'bundleId',
-            ]) ??
-            fallbackKey;
-        if (bundleId == null || !bundleId.contains('.')) return;
+    // 找到应用对象即停止递归，避免把 Entitlements 等嵌套元数据误认作应用。
+    void collect(Object? value, [String? fallbackId]) {
+      if (value is List) {
+        for (final item in value) {
+          collect(item);
+        }
+        return;
+      }
+      if (value is! Map) return;
+      final map = value;
+      final explicitId = _firstString(map, const [
+        'CFBundleIdentifier',
+        'bundleIdentifier',
+        'BundleIdentifier',
+        'bundleId',
+      ]);
+      final hasAppMetadata =
+          map.containsKey('ApplicationType') ||
+          map.containsKey('CFBundleName') ||
+          map.containsKey('CFBundleDisplayName') ||
+          map.containsKey('CFBundleVersion') ||
+          map.containsKey('CFBundleShortVersionString');
+      final bundleId = explicitId ?? (hasAppMetadata ? fallbackId : null);
+      if (bundleId != null && bundleId.contains('.')) {
         final name =
             _firstString(map, const [
               'CFBundleDisplayName',
@@ -324,7 +337,18 @@ class IosCommandService {
           version: version,
           system: appType?.toLowerCase() == 'system',
         );
-      });
+        return;
+      }
+      if (map.containsKey('level') &&
+          (map.containsKey('msg') || map.containsKey('message'))) {
+        return;
+      }
+      for (final entry in map.entries) {
+        collect(entry.value, entry.key.toString());
+      }
+    }
+    for (final payload in _jsonPayloads(output)) {
+      collect(payload);
     }
     final result = apps.values.toList();
     result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
