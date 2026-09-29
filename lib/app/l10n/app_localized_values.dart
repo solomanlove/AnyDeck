@@ -7,6 +7,7 @@ import 'tables/app_l10n_ios_tools.dart';
 import 'tables/app_l10n_usage.dart';
 import 'tables/app_l10n_apk.dart';
 import 'tables/app_l10n_messages.dart';
+import 'tables/app_l10n_emulator_config.dart';
 
 /// 全部 UI 文案字符串表。Widget 直接按 key 访问，key 应保持稳定。
 ///
@@ -29,6 +30,7 @@ const localizedValues = {
     ...usageZh,
     ...apkZh,
     ...messagesZh,
+    ...emulatorConfigZh,
   },
   'en': {
     ...settingsEn,
@@ -40,5 +42,6 @@ const localizedValues = {
     ...usageEn,
     ...apkEn,
     ...messagesEn,
+    ...emulatorConfigEn,
   },
 };

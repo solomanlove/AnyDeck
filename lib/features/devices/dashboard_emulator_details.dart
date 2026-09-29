@@ -1,5 +1,7 @@
 part of '../dashboard_screen.dart';
 
+/// 模拟器配置只读详情；[emulatorName] 为标题，[config] 保留原始 key/value。
+/// 支持按本地化名称、原始 key 或值搜索，复制时使用原始配置。
 class EmulatorFullConfigDialog extends StatefulWidget {
   const EmulatorFullConfigDialog({
     super.key,
@@ -30,11 +32,15 @@ class EmulatorFullConfigDialogState extends State<EmulatorFullConfigDialog> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // Filter configurations based on query
+    // 同时支持中文释义、原始配置 key 和配置值搜索。
     final query = _searchQuery.trim().toLowerCase();
     final entries = widget.config.entries.where((entry) {
       if (query.isEmpty) return true;
-      return entry.key.toLowerCase().contains(query) ||
+      return _emulatorConfigLabel(
+            context,
+            entry.key,
+          ).toLowerCase().contains(query) ||
+          entry.key.toLowerCase().contains(query) ||
           entry.value.toLowerCase().contains(query);
     }).toList();
 
@@ -205,13 +211,24 @@ class _EmulatorConfigRow extends StatelessWidget {
         children: [
           Expanded(
             flex: 5,
-            child: Text(
-              configKey,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _emulatorConfigLabel(context, configKey),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SelectableText(
+                  configKey,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontFamily: 'monospace',
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 12),
@@ -263,4 +280,11 @@ class _EmulatorConfigRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 未知扩展配置不猜测含义，仍保留原始 key 供识别。
+String _emulatorConfigLabel(BuildContext context, String key) {
+  final translationKey = 'avdConfig.$key';
+  final label = context.l10n.t(translationKey);
+  return label == translationKey ? context.l10n.t('emulatorConfigOther') : label;
 }

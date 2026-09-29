@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'android_emulator.dart';
+import 'emulator_process.dart';
 import '../process/tool_path_resolver.dart';
 import '../process/host_platform_service.dart';
 
@@ -42,17 +43,9 @@ class EmulatorService {
     }
   }
 
-  /// 后台启动指定的 AVD 模拟器（使用 ProcessStartMode.detached 运行）。
-  Future<bool> startEmulator(String avdName) async {
-    try {
-      await Process.start(executable, [
-        '-avd',
-        avdName,
-      ], mode: ProcessStartMode.detached);
-      return true;
-    } catch (_) {
-      return false;
-    }
+  /// 创建可观测的模拟器进程，调用方通过退出结果及 ADB 上线状态判断成功。
+  Future<EmulatorProcess> startEmulator(String avdName) {
+    return EmulatorProcess.start(executable, avdName);
   }
 
   /// 在系统文件管理器中打开指定 AVD 配置目录。

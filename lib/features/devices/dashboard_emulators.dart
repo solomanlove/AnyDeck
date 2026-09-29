@@ -95,13 +95,13 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     final emulatorsAsync = ref.watch(emulatorListProvider);
     // 监听正在运行的模拟器与设备的映射状态
     final runningEmulatorsAsync = ref.watch(runningEmulatorsProvider);
-    // 监听正在启动中的模拟器集合
-    final startingEmulators = ref.watch(startingEmulatorsProvider);
+    // 监听启动阶段与失败诊断
+    final launches = ref.watch(emulatorLaunchProvider);
 
     final emulators = emulatorsAsync.value ?? [];
     final runningMap = runningEmulatorsAsync.value ?? {};
     // 构建并排序过滤后的列表项
-    final items = _buildItems(emulators, runningMap, startingEmulators);
+    final items = _buildItems(emulators, runningMap, launches);
     // 获取当前选中的列表项
     final selectedItem = _selectedItem(items);
 
@@ -166,140 +166,25 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
 
         final layoutWidget = contentWidget;
 
-        // 如果是独立窗口模式，使用定制的无 Card 边框布局
+        // 主窗口 Tab 与独立窗口复用完整页面布局。
         if (widget.isStandalone) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          final glassBgColor = isDark
-              ? Colors.black.withValues(alpha: 0.18)
-              : Colors.white.withValues(alpha: 0.28);
-          final glassBorderColor = isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.04);
-          final cardColor = isDark
-              ? Colors.white.withValues(alpha: 0.03)
-              : Colors.white.withValues(alpha: 0.35);
-
-          final tableCard = ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: glassBorderColor,
-                    width: 1.5,
-                  ),
-                ),
-                child: layoutWidget,
-              ),
-            ),
-          );
-
-          return BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              decoration: BoxDecoration(
-                color: glassBgColor,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DragToMoveArea(
-                    child: GlassmorphicContainer(
-                      width: double.infinity,
-                      height: 30,
-                      borderRadius: 0,
-                      blur: 15,
-                      alignment: Alignment.center,
-                      border: 0,
-                      linearGradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.04)
-                              : Colors.white.withValues(alpha: 0.40),
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.01)
-                              : Colors.white.withValues(alpha: 0.15),
-                        ],
-                      ),
-                      borderGradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.04),
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.03)
-                              : Colors.black.withValues(alpha: 0.02),
-                        ],
-                      ),
-                      child: Container(
-                        padding: EdgeInsets.only(
-                          left: Platform.isMacOS ? 80 : 28,
-                          right: 28,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.06)
-                                  : Colors.black.withValues(alpha: 0.03),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              context.l10n.t('emulators'),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? const Color(0xffeceff1)
-                                    : const Color(0xff202124),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(child: SizedBox()),
-                            _EmulatorToolbar(
-                              onStart: selectedItem != null && selectedItem.canStart
-                                  ? () => _startEmulator(
-                                      context,
-                                      selectedItem.emulator.name,
-                                    )
-                                  : null,
-                              onClearData:
-                                  selectedItem != null && selectedItem.canClearData
-                                  ? () => _clearEmulatorData(
-                                      context,
-                                      selectedItem.emulator,
-                                    )
-                                  : null,
-                              onDelete: selectedItem != null && selectedItem.canDelete
-                                  ? () =>
-                                        _deleteEmulator(context, selectedItem.emulator)
-                                  : null,
-                              onOpenFolder: selectedItem != null
-                                  ? () => _openAvdFolder(context, selectedItem.emulator)
-                                  : null,
-                              onRefresh: _refreshEmulators,
-                              onPopOut: null,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: tableCard,
-                  ),
-                ],
-              ),
+          return _EmulatorStandaloneLayout(
+            layoutWidget: layoutWidget,
+            toolbar: _EmulatorToolbar(
+              onStart: selectedItem != null && selectedItem.canStart
+                  ? () => _startEmulator(context, selectedItem.emulator.name)
+                  : null,
+              onClearData: selectedItem != null && selectedItem.canClearData
+                  ? () => _clearEmulatorData(context, selectedItem.emulator)
+                  : null,
+              onDelete: selectedItem != null && selectedItem.canDelete
+                  ? () => _deleteEmulator(context, selectedItem.emulator)
+                  : null,
+              onOpenFolder: selectedItem != null
+                  ? () => _openAvdFolder(context, selectedItem.emulator)
+                  : null,
+              onRefresh: _refreshEmulators,
+              onPopOut: null,
             ),
           );
         }
@@ -368,7 +253,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   List<_EmulatorItem> _buildItems(
     List<AndroidEmulator> emulators,
     Map<String, String> runningMap,
-    Set<String> startingEmulators,
+    Map<String, EmulatorLaunchState> launches,
   ) {
     final query = _filter.trim().toLowerCase();
     final items = emulators
@@ -379,18 +264,21 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
           return emulator.searchableText.contains(query);
         })
         .map((emulator) {
-          final isStarting = startingEmulators.contains(emulator.name);
+          final launch = launches[emulator.name];
+          final isStarting = launch?.starting == true;
           final runningDeviceId = runningMap[emulator.name];
           final isRunning = runningDeviceId != null;
 
           String status = 'stopped';
           if (isRunning) status = 'running';
           if (isStarting) status = 'starting';
+          if (launch?.errorKey != null) status = 'error';
 
           return _EmulatorItem(
             emulator: emulator,
             status: status,
             deviceId: runningDeviceId,
+            launch: launch,
           );
         })
         .toList();
@@ -451,20 +339,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
 
   /// 异步执行启动模拟器操作
   Future<void> _startEmulator(BuildContext context, String avdName) async {
-    ref.read(startingEmulatorsProvider.notifier).start(avdName);
-
-    final success = await ref
-        .read(emulatorServiceProvider)
-        .startEmulator(avdName);
-    if (!context.mounted) return;
-
-    if (success) {
-      _showSnack(context, context.l10n.t('startSuccess'));
-      ref.invalidate(runningEmulatorsProvider);
-    } else {
-      ref.read(startingEmulatorsProvider.notifier).stopStarting(avdName);
-      _showSnack(context, context.l10n.t('startFailed'), isError: true);
-    }
+    await ref.read(emulatorLaunchProvider.notifier).launch(avdName);
   }
 
   /// 清除指定模拟器的用户数据
@@ -570,23 +445,30 @@ class _EmulatorItem {
     required this.emulator,
     required this.status,
     this.deviceId,
+    this.launch,
   });
 
   /// 模拟器配置属性
   final AndroidEmulator emulator;
 
-  /// 模拟器运行状态 ('running', 'starting', 'stopped')
+  /// 模拟器运行状态 ('running', 'starting', 'stopped', 'error')
   final String status;
+
+  /// 启动诊断保留到下次重试；错误详情可在列表中查看。
+  final EmulatorLaunchState? launch;
 
   /// 如果运行中，对应的 ADB 设备 ID
   final String? deviceId;
 
-  /// 能否启动（仅 stopped 状态可启动）
-  bool get canStart => status == 'stopped';
+  /// 已停止或失败且进程已退出时允许重试。
+  bool get canStart =>
+      (status == 'stopped' || status == 'error') &&
+      launch?.processAlive != true &&
+      deviceId == null;
 
-  /// 能否清除数据（仅 stopped 状态可清除数据）
-  bool get canClearData => status == 'stopped';
+  /// 仅在确认进程已停止时允许清除数据。
+  bool get canClearData => canStart;
 
-  /// 能否被删除（仅 stopped 状态可删除）
-  bool get canDelete => status == 'stopped';
+  /// 仅在确认进程已停止时允许删除。
+  bool get canDelete => canStart;
 }

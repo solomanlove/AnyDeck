@@ -299,7 +299,7 @@ class _EmulatorTableRow extends StatelessWidget {
       onTap: onSelected,
       onDoubleTap: onDoubleTap,
       child: Container(
-        height: 56,
+        height: item.status == 'error' ? 88 : 56,
         decoration: BoxDecoration(
           color: rowColor,
           border: Border(
@@ -316,10 +316,37 @@ class _EmulatorTableRow extends StatelessWidget {
               width: widths.name,
               child: Row(
                 children: [
-                  _EmulatorStatusDot(status: item.status),
+                  if (item.status == 'error')
+                    _EmulatorErrorButton(launch: item.launch!)
+                  else
+                    _EmulatorStatusDot(status: item.status),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _EmulatorTableText(item.emulator.displayName),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _EmulatorTableText(item.emulator.displayName),
+                        if (item.status == 'error')
+                          Tooltip(
+                            message: _emulatorErrorText(context, item.launch!),
+                            child: Text(
+                              _emulatorErrorSummary(context, item.launch!),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: context.l10n.t('emulatorViewDetails'),
+                    icon: const Icon(CupertinoIcons.info_circle, size: 18),
+                    onPressed: onDoubleTap,
                   ),
                 ],
               ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../emulator/android_emulator.dart';
 import '../../emulator/emulator_service.dart';
+import '../../emulator/emulator_process.dart';
 import '../../terminal/adb_terminal_session.dart';
 import '../../terminal/favorite_commands.dart';
 import 'device_tracking_providers.dart';
@@ -34,32 +35,143 @@ final emulatorListProvider = FutureProvider.autoDispose<List<AndroidEmulator>>((
   return ref.watch(emulatorServiceProvider).listEmulators();
 });
 
-/// 正在冷启动中的模拟器名称集合状态控制器。
-class StartingEmulatorsNotifier extends Notifier<Set<String>> {
+/// 按 AVD 保存启动结果，切换 Tab 后仍持续跟踪失败和超时。
+final emulatorLaunchProvider =
+    NotifierProvider<EmulatorLaunchNotifier, Map<String, EmulatorLaunchState>>(
+      EmulatorLaunchNotifier.new,
+    );
+
+/// 进程创建、ADB 上线和进程退出分开处理，防止永久“启动中”。
+class EmulatorLaunchNotifier
+    extends Notifier<Map<String, EmulatorLaunchState>> {
+  EmulatorLaunchNotifier({this.startupTimeout = const Duration(minutes: 2)});
+
+  final Duration startupTimeout;
+  final Map<String, Timer> _timers = {};
+  bool _disposed = false;
+  ProviderSubscription<AsyncValue<Map<String, String>>>? _runningSubscription;
+
   @override
-  Set<String> build() => {};
-
-  /// 标记某模拟器进入启动中状态
-  void start(String name) {
-    state = {...state, name};
+  Map<String, EmulatorLaunchState> build() {
+    ref.onDispose(() {
+      _disposed = true;
+      _runningSubscription?.close();
+      for (final timer in _timers.values) {
+        timer.cancel();
+      }
+    });
+    return {};
   }
 
-  /// 停止或完成启动状态
-  void stopStarting(String name) {
-    state = state.where((n) => n != name).toSet();
+  /// 启动期间使用显式订阅，避免 Tab 卸载导致 Riverpod 暂停上线监听。
+  /// 全部启动结束后关闭订阅，不为已启动的模拟器长期增加设备查询。
+  void _observeRunning() {
+    _runningSubscription ??= ref.container.listen(runningEmulatorsProvider, (
+      _,
+      next,
+    ) {
+      if (_disposed || next.isLoading) return;
+      for (final name in (next.value ?? {}).keys) {
+        final current = state[name];
+        if (current == null ||
+            (!current.starting &&
+                current.errorKey != 'emulatorLaunchTimeout')) {
+          continue;
+        }
+        _timers.remove(name)?.cancel();
+        state = {...state, name: const EmulatorLaunchState(processAlive: true)};
+      }
+      _releaseRunningObserver();
+    });
   }
 
-  /// 批量更新启动状态集合
-  void setStarting(Set<String> next) {
-    state = next;
+  void _releaseRunningObserver() {
+    final pending = state.values.any(
+      (value) => value.starting || value.errorKey == 'emulatorLaunchTimeout',
+    );
+    if (pending) return;
+    _runningSubscription?.close();
+    _runningSubscription = null;
+  }
+
+  /// 重复点击不创建第二个进程；超时后仍存活的进程也不能重复启动。
+  Future<void> launch(String name) async {
+    if (state[name]?.processAlive == true || state[name]?.starting == true) {
+      return;
+    }
+    state = {...state, name: const EmulatorLaunchState(starting: true)};
+    try {
+      final process = await ref
+          .read(emulatorServiceProvider)
+          .startEmulator(name);
+      if (_disposed) return;
+      state = {
+        ...state,
+        name: const EmulatorLaunchState(starting: true, processAlive: true),
+      };
+      _timers[name] = Timer(startupTimeout, () {
+        _timers.remove(name);
+        if (_disposed || state[name]?.starting != true) return;
+        state = {
+          ...state,
+          name: EmulatorLaunchState(
+            processAlive: true,
+            errorKey: 'emulatorLaunchTimeout',
+            details: process.output(),
+          ),
+        };
+      });
+      // 即便列表已卸载，也要记录后续退出结果，避免丢失启动错误。
+      unawaited(_observeExit(name, process));
+      _observeRunning();
+      ref.invalidate(runningEmulatorsProvider);
+    } catch (error) {
+      if (_disposed) return;
+      state = {
+        ...state,
+        name: EmulatorLaunchState(
+          errorKey: 'emulatorLaunchFailed',
+          details: error.toString(),
+        ),
+      };
+    }
+  }
+
+  Future<void> _observeExit(String name, EmulatorProcess process) async {
+    try {
+      final result = await process.exited;
+      if (_disposed) return;
+      _timers.remove(name)?.cancel();
+      final current = state[name];
+      final failed =
+          result.code != 0 ||
+          current?.starting == true ||
+          current?.errorKey != null;
+      state = {
+        ...state,
+        name: EmulatorLaunchState(
+          errorKey: failed ? 'emulatorLaunchExited' : null,
+          details: failed ? result.output : '',
+          exitCode: failed ? result.code : null,
+        ),
+      };
+      _releaseRunningObserver();
+      ref.invalidate(runningEmulatorsProvider);
+    } catch (error) {
+      if (_disposed) return;
+      _timers.remove(name)?.cancel();
+      state = {
+        ...state,
+        name: EmulatorLaunchState(
+          processAlive: true,
+          errorKey: 'emulatorLaunchObserveFailed',
+          details: error.toString(),
+        ),
+      };
+      _releaseRunningObserver();
+    }
   }
 }
-
-/// 处于启动中状态的模拟器集合 Provider。
-final startingEmulatorsProvider =
-    NotifierProvider<StartingEmulatorsNotifier, Set<String>>(
-      StartingEmulatorsNotifier.new,
-    );
 
 /// 当前正在运行的模拟器映射 Provider（Map 格式：AVD 名称 -> 对应的 ADB 设备 ID）。
 final runningEmulatorsProvider =
@@ -89,25 +201,6 @@ final runningEmulatorsProvider =
               map[avdName] = device.id;
             }
           } catch (_) {}
-        }
-      }
-
-      // 如果某些处于 starting 状态的模拟器已经在 running 映射中出现，将它们从 starting 状态移除。
-      final startingNotifier = ref.read(startingEmulatorsProvider.notifier);
-      final starting = ref.read(startingEmulatorsProvider);
-      if (starting.isNotEmpty) {
-        final nextStarting = Set<String>.from(starting);
-        bool changed = false;
-        for (final runningAvd in map.keys) {
-          if (nextStarting.contains(runningAvd)) {
-            nextStarting.remove(runningAvd);
-            changed = true;
-          }
-        }
-        if (changed) {
-          Future.microtask(() {
-            startingNotifier.setStarting(nextStarting);
-          });
         }
       }
 
