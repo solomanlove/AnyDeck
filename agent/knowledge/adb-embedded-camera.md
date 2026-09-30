@@ -1,8 +1,14 @@
 # 内嵌摄像头预览
 
-## 当前实现（2026-09-13）
+## 当前实现（2026-09-30）
 
-摄像头 UI 已迁移至 Rust/VideoToolbox 底层，麦克风独立启停和手机剪贴板也统一由 Rust 管理。完整实现与版本兼容说明见 [adb-device-rust-sessions.md](adb-device-rust-sessions.md)，验证见 [adb-device-rust-sessions-test.md](adb-device-rust-sessions-test.md)。
+摄像头 UI 迁移至 Rust/VideoToolbox 底层，并增加**前后摄像头并发支持（前后双摄）**：
+- **门槛探测**：通过 `pm has-feature android.hardware.camera.concurrent` 与 Android 12+ (API 31+) 动态校验设备硬件与系统能力。若设备不支持并发流（例如大部分单 ISP 设备返回 `false`），则下拉菜单中**不展示“前后双摄”入口**，仅保留后置/前置单镜头。
+- **并发采集架构**：双摄模式下同时拉起后置（`kind: 0`）与前置（`kind: 3`）两个独立的 `scrcpy-server` 及 Rust VideoToolbox 会话，分配独立的 TCP 端口、scid 与 Flutter 外部纹理 ID。
+- **左右分栏布局**：双摄模式下，预览区由单画幅自适应切换为左右并排双视窗（左后置、右前置），分别显示对应的视频纹理与状态标签；单摄模式下自动恢复单中心视窗。
+- **生命周期保护**：单镜头与双镜头生命周期统一收口在 `CameraPreviewController`，任一通道断连、进程退出或用户停止时，原子化释放并清理两个后台进程、端口转发与显存纹理。
+
+完整实现与版本兼容说明见 [adb-device-rust-sessions.md](adb-device-rust-sessions.md)，验证见 [adb-device-rust-sessions-test.md](adb-device-rust-sessions-test.md)。
 
 下文保留初版实现记录。原 `EmbeddedScrcpyService.start(camera: ...)` 参数分支仅保留内部兼容测试，当前摄像头页面不再使用该路径。
 
@@ -13,7 +19,7 @@
 
 使用现有原生解码器把手机摄像头画面显示在本项目 Flutter Texture 中，不启动外部 scrcpy/SDL 窗口。
 
-入口：Android 设备 → 应用 → 使用时长 → 摄像头 → 选择前置/后置 → 开始预览。切换镜头先停止再选择；关闭弹窗或切到其它页即停止。默认无音频、不录像、不保存摄像头数据到历史库。
+入口：Android 设备 → 应用 → 使用时长 → 摄像头 → 选择前置/后置/前后双摄（仅支持设备可见） → 开始预览。切换镜头先停止再选择；关闭弹窗或切到其它页即停止。默认无音频、不录像、不保存摄像头数据到历史库。
 
 当前支持 macOS + Android 12（API 31）及以上。现有 Windows/Linux scrcpy 插件只有模板接口，不能宣称支持内嵌摄像头；界面在启动前给出平台限制。手机保留正常摄像头隐私提示，不实现隐藏采集或提示规避。无需安装/更新使用统计手机 App。
 

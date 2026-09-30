@@ -93,6 +93,7 @@ void main() {
               deviceOnlineProvider('phone').overrideWith((ref) => true),
               captureSdkProvider('phone').overrideWith((ref) async => 36),
               captureHostSupportedProvider.overrideWithValue(true),
+              concurrentCameraSupportedProvider('phone').overrideWith((ref) async => false),
               cameraBackendFactoryProvider.overrideWithValue((_, _) => backend),
             ],
             child: MaterialApp(
@@ -129,4 +130,96 @@ void main() {
       });
     }
   }
+
+  testWidgets('不支持前后双摄时，下拉选择框不显示前后双摄入口', (tester) async {
+    final backend = PreviewBackendFake();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          deviceOnlineProvider('phone').overrideWith((ref) => true),
+          captureSdkProvider('phone').overrideWith((ref) async => 33),
+          captureHostSupportedProvider.overrideWithValue(true),
+          concurrentCameraSupportedProvider('phone').overrideWith((ref) async => false),
+          cameraBackendFactoryProvider.overrideWithValue((_, _) => backend),
+        ],
+        child: const MaterialApp(
+          locale: Locale('zh'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Scaffold(
+            body: SizedBox(
+              width: 620,
+              height: 400,
+              child: CameraPreviewView(deviceId: 'phone'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('后置镜头'));
+    await tester.pumpAndSettle();
+    expect(find.text('后置镜头'), findsWidgets);
+    expect(find.text('前置镜头'), findsOneWidget);
+    expect(find.text('前后双摄'), findsNothing);
+  });
+
+  testWidgets('支持前后双摄时，显示前后双摄入口且可开启双路画面并排渲染', (tester) async {
+    final backBackend = PreviewBackendFake();
+    final frontBackend = PreviewBackendFake();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          deviceOnlineProvider('phone').overrideWith((ref) => true),
+          captureSdkProvider('phone').overrideWith((ref) async => 33),
+          captureHostSupportedProvider.overrideWithValue(true),
+          concurrentCameraSupportedProvider('phone').overrideWith((ref) async => true),
+          cameraBackendFactoryProvider.overrideWithValue((_, front) => front ? frontBackend : backBackend),
+        ],
+        child: const MaterialApp(
+          locale: Locale('zh'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 500,
+              child: CameraPreviewView(deviceId: 'phone'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('后置镜头'));
+    await tester.pumpAndSettle();
+    expect(find.text('前后双摄'), findsOneWidget);
+    await tester.tap(find.text('前后双摄').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('开始预览'));
+    await tester.pumpAndSettle();
+
+    expect(backBackend.starts, 1);
+    expect(frontBackend.starts, 1);
+
+    final textures = tester.widgetList<Texture>(find.byType(Texture)).toList();
+    expect(textures.length, 2);
+
+    await tester.tap(find.text('停止预览'));
+    await tester.pumpAndSettle();
+
+    expect(backBackend.stops, greaterThanOrEqualTo(1));
+    expect(frontBackend.stops, greaterThanOrEqualTo(1));
+  });
 }
