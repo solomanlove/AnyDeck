@@ -1,7 +1,20 @@
 import 'dart:io';
 
+/// 自定义工具绝对路径覆盖字典（如应用内一键下载的 platform-tools 路径）
+final Map<String, String> customToolPaths = {};
+
+/// 注册自定义工具绝对路径
+void registerCustomToolPath(String toolName, String path) {
+  customToolPaths[toolName] = path;
+}
+
 /// 优先解析常见 Android 工具路径，找不到时回退到 PATH。
 String resolveToolPath(String toolName) {
+  if (customToolPaths.containsKey(toolName)) {
+    final custom = customToolPaths[toolName]!;
+    if (File(custom).existsSync()) return custom;
+  }
+
   final sdkRoot =
       Platform.environment['ANDROID_HOME'] ??
       Platform.environment['ANDROID_SDK_ROOT'];
@@ -9,6 +22,14 @@ String resolveToolPath(String toolName) {
       Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
 
   final candidates = <String>[
+    // 优先检查应用内置下载的 platform-tools 工具目录
+    if (toolName == 'adb' && home != null) ...[
+      '$home/Library/Application Support/AnyDeck/tools/platform-tools/adb',
+      '$home/Library/Application Support/com.example.adbManage/tools/platform-tools/adb',
+      '$home/AppData/Roaming/AnyDeck/tools/platform-tools/adb.exe',
+      '$home/.local/share/AnyDeck/tools/platform-tools/adb',
+      '$home/Library/Caches/AnyDeck/tools/platform-tools/adb',
+    ],
     if (toolName == 'adb' && sdkRoot != null) '$sdkRoot/platform-tools/adb',
     if (toolName == 'adb' && home != null)
       '$home/Library/Android/sdk/platform-tools/adb',

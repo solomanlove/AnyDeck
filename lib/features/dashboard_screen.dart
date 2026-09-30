@@ -38,6 +38,7 @@ import '../core/apps/harmony_app_detail.dart';
 import 'apps/widgets/app_permissions_panel.dart';
 import 'devices/widgets/device_wireless_controls.dart';
 import 'devices/widgets/device_connection_indicators.dart';
+import 'devices/widgets/device_status_avatar.dart';
 import 'apps/widgets/package_refresh_dialog.dart';
 import '../core/apps/package_refresh_progress.dart';
 import '../core/cache/cache_cleanup_service.dart';
@@ -58,6 +59,7 @@ import '../core/providers/transfer_provider.dart';
 import '../common/utils/network_util.dart';
 import 'widgets/drag_drop_target_overlay.dart';
 import '../common/widget/liquid_glass_background.dart';
+import '../core/adb/adb_environment_service.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import '../core/scrcpy/scrcpy_session.dart';
 import '../core/scrcpy/embedded_scrcpy_service.dart';
@@ -250,6 +252,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           await ref.read(macNotificationBridgeProvider).ready();
       for (final click in initialClicks) {
         _handleNotificationClick(click);
+      }
+      if (mounted) {
+        ref.read(adbEnvironmentProvider.notifier).checkAndPromptIfNeeded(context);
       }
     });
   }

@@ -73,8 +73,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             const SizedBox(width: 10),
             _buildAndroidVersionCell(context, device),
             const SizedBox(width: 10),
-            _buildStatusCell(context, device),
-            const SizedBox(width: 10),
             _buildActionsCell(context, device),
             if (!isCompact) ...[
               const SizedBox(width: 10),
@@ -97,6 +95,9 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
       flex: 3,
       child: Row(
         children: [
+          // 设备品牌/系统 Logo，结合角标和灰阶直观标识在线或离线状态
+          DeviceStatusAvatar(device: device),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,31 +291,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
         version == null || version.isEmpty ? '-' : version,
         style: const TextStyle(fontSize: 12, color: Colors.grey),
         overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
-
-  /// 构建设备状态信息展示列（如已在线、未授权等）
-  Widget _buildStatusCell(BuildContext context, RegisteredDevice device) {
-    return Expanded(
-      flex: 2,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: _getStatusBgColor(device.status),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            _getStatusText(context, device.status),
-            style: TextStyle(
-              color: _getStatusTextColor(device.status),
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -228,14 +228,6 @@ extension _DeviceListPanelView on _DeviceListPanelState {
             ),
           ),
           const SizedBox(width: 10),
-          _SortableHeaderCell(
-            flex: 2,
-            label: context.l10n.t('deviceStatusCol'),
-            style: titleStyle,
-            sortIcon: _getSortIcon('status'),
-            onTap: () => _toggleSort('status'),
-          ),
-          const SizedBox(width: 10),
           Expanded(
             flex: 2,
             child: Text(context.l10n.t('deviceActionsCol'), style: titleStyle),
