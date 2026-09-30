@@ -43,6 +43,7 @@ import '../core/device_info/brand_logo_helper.dart';
 import '../core/device_info/screen_density_helper.dart';
 import '../core/emulator/android_emulator.dart';
 import '../core/emulator/emulator_process.dart';
+import '../core/emulator/emulator_connection.dart';
 import '../core/files/remote_file.dart';
 import '../core/logcat/logcat_controller.dart';
 import '../core/logcat/logcat_entry.dart';
@@ -114,6 +115,7 @@ part 'widgets/remote_controller_dialog.dart';
 part 'devices/dashboard_emulators.dart';
 part 'devices/dashboard_emulator_layout.dart';
 part 'devices/dashboard_emulator_error.dart';
+part 'devices/dashboard_emulator_item.dart';
 part 'devices/dashboard_emulators_header.dart';
 part 'devices/dashboard_emulators_table.dart';
 part 'devices/dashboard_emulator_details.dart';
@@ -503,7 +505,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 const McpDashboardTab(),
                 // 复用完整模拟器列表布局，仅访问时加载，避免后台扫描。
                 if (selectedTool == -2)
-                  const EmulatorListPanel(isStandalone: true)
+                  const EmulatorListPanel(isStandalone: true, isEmbeddedTab: true)
                 else
                   const SizedBox.shrink(),
               ],

@@ -1,122 +1,83 @@
 part of '../dashboard_screen.dart';
 
-/// 模拟器完整页面布局；主窗口 Tab 和独立窗口共享标题、操作栏及列表样式。
-/// [layoutWidget] 为列表内容，[toolbar] 为当前选择对应的操作按钮。
+/// 模拟器页标题、搜索与操作栏。窄窗口分两行，独立窗口单独预留系统按钮空间。
 class _EmulatorStandaloneLayout extends StatelessWidget {
   const _EmulatorStandaloneLayout({
     required this.layoutWidget,
     required this.toolbar,
+    required this.isEmbeddedTab,
+    required this.filterController,
+    required this.onFilterChanged,
   });
 
   final Widget layoutWidget;
   final Widget toolbar;
+  final bool isEmbeddedTab;
+  final TextEditingController filterController;
+  final ValueChanged<String> onFilterChanged;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final glassBgColor = isDark
-        ? Colors.black.withValues(alpha: 0.18)
-        : Colors.white.withValues(alpha: 0.28);
-    final glassBorderColor = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.04);
-    final cardColor = isDark
-        ? Colors.white.withValues(alpha: 0.03)
-        : Colors.white.withValues(alpha: 0.35);
-
-    final tableCard = ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: glassBorderColor, width: 1.5),
+    final theme = Theme.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 1100;
+        final search = SizedBox(
+          width: compact ? 180 : 220,
+          child: TextField(
+            controller: filterController,
+            onChanged: onFilterChanged,
+            decoration: InputDecoration(
+              isDense: true,
+              prefixIcon: const Icon(CupertinoIcons.search, size: 18),
+              hintText: context.l10n.t('emulatorSearch'),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
-          child: layoutWidget,
-        ),
-      ),
-    );
-
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-      child: Container(
-        decoration: BoxDecoration(color: glassBgColor),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (!isEmbeddedTab && Platform.isMacOS)
+              const DragToMoveArea(child: SizedBox(height: 30)),
             DragToMoveArea(
-              child: GlassmorphicContainer(
-                width: double.infinity,
-                height: 30,
-                borderRadius: 0,
-                blur: 15,
-                alignment: Alignment.center,
-                border: 0,
-                linearGradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : Colors.white.withValues(alpha: 0.40),
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.01)
-                        : Colors.white.withValues(alpha: 0.15),
-                  ],
-                ),
-                borderGradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.04),
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.03)
-                        : Colors.black.withValues(alpha: 0.02),
-                  ],
-                ),
-                child: Container(
-                  padding: EdgeInsets.only(
-                    left: Platform.isMacOS ? 80 : 28,
-                    right: 28,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.06)
-                            : Colors.black.withValues(alpha: 0.03),
-                        width: 1,
-                      ),
-                    ),
-                  ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                  height: 72,
                   child: Row(
                     children: [
-                      Text(
-                        context.l10n.t('emulators'),
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? const Color(0xffeceff1)
-                                  : const Color(0xff202124),
-                            ),
+                      Expanded(
+                        child: Text(
+                          context.l10n.t('emulators'),
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       const SizedBox(width: 16),
-                      Expanded(child: SizedBox()),
-                      toolbar,
+                      search,
+                      if (!compact) ...[const SizedBox(width: 16), toolbar],
                     ],
                   ),
                 ),
               ),
             ),
-            Expanded(child: tableCard),
+            if (compact)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: toolbar,
+              ),
+            const Divider(height: 1),
+            Expanded(child: layoutWidget),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

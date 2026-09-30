@@ -21,7 +21,7 @@
 | `adb-device-rust-sessions-test` | Rust 设备会话回归验证 | active | 自动验证结果、平台门槛、生成视频帧解码与真机回归清单 | `test/`, `rust/device_bridge/` |
 | `adb-embedded-camera` | 内嵌摄像头预览 | active | scrcpy camera 参数、独立会话/端口、原生 Texture 复用、手动启停及销毁回收、macOS 限制与回归边界 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
 | `adb-cert-management` | 证书管理机制 | active | 记录用户证书与系统证书（Root 权限，包含 Android 10+ 内存挂载与 Conscrypt APEX 挂载）的导入机制与 adb 命令设计 | `control/` (控制面板) |
-| `adb-emulator-management` | 模拟器启动诊断与配置详情 | active | 记录进程输出与退出码、有界日志、启动超时及重试防护、详情图标、中英文配置释义与搜索 | `core/emulator/`, `core/providers/`, `features/devices/` |
+| `adb-emulator-management` | 模拟器启动诊断与配置详情 | active | 记录启动诊断、ADB 授权与离线状态、定向重连/关闭、冷启动与 SDK 环境、标题工具栏、详情及中英文配置搜索 | `core/emulator/`, `core/providers/`, `features/devices/` |
 | `adb-desktop-window-shortcuts` | 桌面独立窗口快捷键机制 | active | 记录控制台窗口、模拟器管理窗口等独立子窗口的本地快捷键关闭策略与职责边界 | `app/window/` (桌面多窗口) |
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、内存占用与容量卡布局，以及控制、应用（含 DEBUG 标识保留与缓存恢复）、文件预览、鸿蒙文件导出到手机文件管理、日志、终端、进程右键复制与停止、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录手动连接弹窗内置四步指南与排障、无线调试底层 TCP/IP 监听模式切换、多级 IP 地址自动探测机制（`ip route`/`ip addr`）、合并去重架构与连接操作链路设计 | `dashboard/devices/` (设备控制行) |

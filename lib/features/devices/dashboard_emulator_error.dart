@@ -10,6 +10,7 @@ String _emulatorErrorText(BuildContext context, EmulatorLaunchState launch) {
 
 /// 行内优先显示真正的错误行，避免 INFO 日志把失败原因挤出两行摘要。
 String _emulatorErrorSummary(BuildContext context, EmulatorLaunchState launch) {
+  if (launch.isConnectionIssue) return context.l10n.t(launch.errorKey!);
   final lines = launch.details.split('\n');
   final errorPattern = RegExp(
     r'error|panic|fatal|missing|failed|exception',
@@ -30,11 +31,12 @@ class _EmulatorErrorButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final message = _emulatorErrorText(context, launch);
+    final title = context.l10n.t(launch.isConnectionIssue ? 'emulatorAdbHelp' : 'emulatorViewError');
     return IconButton(
-      tooltip: context.l10n.t('emulatorViewError'),
+      tooltip: title,
       icon: Icon(
-        Icons.error_outline,
-        color: Theme.of(context).colorScheme.error,
+        launch.isConnectionIssue ? Icons.link_off : Icons.error_outline,
+        color: launch.isConnectionIssue ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.error,
       ),
       iconSize: 20,
       padding: EdgeInsets.zero,
@@ -42,7 +44,7 @@ class _EmulatorErrorButton extends StatelessWidget {
       onPressed: () => showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(context.l10n.t('emulatorViewError')),
+          title: Text(title),
           content: SizedBox(
             width: 640,
             child: SingleChildScrollView(child: SelectableText(message)),

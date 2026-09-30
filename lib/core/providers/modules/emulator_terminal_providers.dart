@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../emulator/android_emulator.dart';
+import '../../emulator/emulator_connection.dart';
+import '../../adb/adb_device.dart';
 import '../../emulator/emulator_service.dart';
 import '../../emulator/emulator_process.dart';
 import '../../terminal/adb_terminal_session.dart';
@@ -25,6 +27,7 @@ final favoriteCommandsProvider =
 final emulatorServiceProvider = Provider<EmulatorService>((ref) {
   return EmulatorService(
     hostPlatformService: ref.watch(hostPlatformServiceProvider),
+    adbService: ref.watch(adbServiceProvider),
   );
 });
 
@@ -49,7 +52,8 @@ class EmulatorLaunchNotifier
   final Duration startupTimeout;
   final Map<String, Timer> _timers = {};
   bool _disposed = false;
-  ProviderSubscription<AsyncValue<Map<String, String>>>? _runningSubscription;
+  ProviderSubscription<AsyncValue<Map<String, AdbDevice>>>?
+  _runningSubscription;
 
   @override
   Map<String, EmulatorLaunchState> build() {
@@ -64,22 +68,29 @@ class EmulatorLaunchNotifier
   }
 
   /// 启动期间使用显式订阅，避免 Tab 卸载导致 Riverpod 暂停上线监听。
-  /// 全部启动结束后关闭订阅，不为已启动的模拟器长期增加设备查询。
+  /// 进程退出后释放订阅；存活期间继续接收授权状态变化。
   void _observeRunning() {
-    _runningSubscription ??= ref.container.listen(runningEmulatorsProvider, (
+    _runningSubscription ??= ref.container.listen(emulatorConnectionsProvider, (
       _,
       next,
     ) {
       if (_disposed || next.isLoading) return;
-      for (final name in (next.value ?? {}).keys) {
+      for (final entry in (next.value ?? <String, AdbDevice>{}).entries) {
+        final name = entry.key;
         final current = state[name];
-        if (current == null ||
-            (!current.starting &&
-                current.errorKey != 'emulatorLaunchTimeout')) {
-          continue;
-        }
+        if (current == null || !current.processAlive) continue;
         _timers.remove(name)?.cancel();
-        state = {...state, name: const EmulatorLaunchState(processAlive: true)};
+        state = {
+          ...state,
+          name: EmulatorLaunchState(
+            processAlive: true,
+            errorKey: entry.value.isOnline
+                ? null
+                : entry.value.status == 'unauthorized'
+                ? 'emulatorAdbUnauthorized'
+                : 'emulatorAdbOffline',
+          ),
+        };
       }
       _releaseRunningObserver();
     });
@@ -87,7 +98,7 @@ class EmulatorLaunchNotifier
 
   void _releaseRunningObserver() {
     final pending = state.values.any(
-      (value) => value.starting || value.errorKey == 'emulatorLaunchTimeout',
+      (value) => value.starting || value.processAlive,
     );
     if (pending) return;
     _runningSubscription?.close();
@@ -95,7 +106,7 @@ class EmulatorLaunchNotifier
   }
 
   /// 重复点击不创建第二个进程；超时后仍存活的进程也不能重复启动。
-  Future<void> launch(String name) async {
+  Future<void> launch(String name, {bool coldBoot = false}) async {
     if (state[name]?.processAlive == true || state[name]?.starting == true) {
       return;
     }
@@ -103,7 +114,7 @@ class EmulatorLaunchNotifier
     try {
       final process = await ref
           .read(emulatorServiceProvider)
-          .startEmulator(name);
+          .startEmulator(name, coldBoot: coldBoot);
       if (_disposed) return;
       state = {
         ...state,
@@ -124,7 +135,7 @@ class EmulatorLaunchNotifier
       // 即便列表已卸载，也要记录后续退出结果，避免丢失启动错误。
       unawaited(_observeExit(name, process));
       _observeRunning();
-      ref.invalidate(runningEmulatorsProvider);
+      ref.invalidate(emulatorConnectionsProvider);
     } catch (error) {
       if (_disposed) return;
       state = {
@@ -146,7 +157,7 @@ class EmulatorLaunchNotifier
       final failed =
           result.code != 0 ||
           current?.starting == true ||
-          current?.errorKey != null;
+          (current?.errorKey != null && current?.isConnectionIssue != true);
       state = {
         ...state,
         name: EmulatorLaunchState(
@@ -156,7 +167,7 @@ class EmulatorLaunchNotifier
         ),
       };
       _releaseRunningObserver();
-      ref.invalidate(runningEmulatorsProvider);
+      ref.invalidate(emulatorConnectionsProvider);
     } catch (error) {
       if (_disposed) return;
       _timers.remove(name)?.cancel();
@@ -173,36 +184,21 @@ class EmulatorLaunchNotifier
   }
 }
 
-/// 当前正在运行的模拟器映射 Provider（Map 格式：AVD 名称 -> 对应的 ADB 设备 ID）。
+/// 包括未授权/离线的模拟器映射，避免只查 shell 而遗漏已运行的 AVD。
+final emulatorConnectionsProvider =
+    FutureProvider.autoDispose<Map<String, AdbDevice>>((ref) async {
+      final devices = ref.watch(devicesProvider).value ?? [];
+      return EmulatorConnectionService(
+        ref.read(adbServiceProvider),
+      ).inspect(devices);
+    });
+
+/// 兼容现有调用者：此映射仅表示可执行 ADB shell 的模拟器。
 final runningEmulatorsProvider =
     FutureProvider.autoDispose<Map<String, String>>((ref) async {
-      final devicesAsync = ref.watch(devicesProvider);
-      final devices = devicesAsync.value ?? [];
-      final adb = ref.read(adbServiceProvider);
-      final map = <String, String>{};
-
-      for (final device in devices) {
-        if (device.isOnline) {
-          try {
-            var result = await adb.shellArgs(device.id, [
-              'getprop',
-              'ro.boot.qemu.avd_name',
-            ]);
-            var avdName = result.isSuccess ? result.stdout.trim() : '';
-            if (avdName.isEmpty) {
-              result = await adb.shellArgs(device.id, [
-                'getprop',
-                'ro.kernel.qemu.avd_name',
-              ]);
-              avdName = result.isSuccess ? result.stdout.trim() : '';
-            }
-
-            if (avdName.isNotEmpty) {
-              map[avdName] = device.id;
-            }
-          } catch (_) {}
-        }
-      }
-
-      return map;
+      final connections = await ref.watch(emulatorConnectionsProvider.future);
+      return {
+        for (final entry in connections.entries)
+          if (entry.value.isOnline) entry.key: entry.value.id,
+      };
     });

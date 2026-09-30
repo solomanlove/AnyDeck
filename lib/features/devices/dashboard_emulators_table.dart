@@ -299,7 +299,7 @@ class _EmulatorTableRow extends StatelessWidget {
       onTap: onSelected,
       onDoubleTap: onDoubleTap,
       child: Container(
-        height: item.status == 'error' ? 88 : 56,
+        height: (item.status == 'error' || item.status == 'connectionIssue') ? 88 : 56,
         decoration: BoxDecoration(
           color: rowColor,
           border: Border(
@@ -316,7 +316,7 @@ class _EmulatorTableRow extends StatelessWidget {
               width: widths.name,
               child: Row(
                 children: [
-                  if (item.status == 'error')
+                  if ((item.status == 'error' || item.status == 'connectionIssue'))
                     _EmulatorErrorButton(launch: item.launch!)
                   else
                     _EmulatorStatusDot(status: item.status),
@@ -327,7 +327,7 @@ class _EmulatorTableRow extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _EmulatorTableText(item.emulator.displayName),
-                        if (item.status == 'error')
+                        if ((item.status == 'error' || item.status == 'connectionIssue'))
                           Tooltip(
                             message: _emulatorErrorText(context, item.launch!),
                             child: Text(
@@ -336,7 +336,9 @@ class _EmulatorTableRow extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Theme.of(context).colorScheme.error,
+                                color: item.status == 'connectionIssue'
+                                    ? Theme.of(context).colorScheme.tertiary
+                                    : Theme.of(context).colorScheme.error,
                               ),
                             ),
                           ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:any_deck/core/adb/adb_device.dart';
 
 import 'package:any_deck/core/emulator/emulator_process.dart';
 import 'package:any_deck/core/emulator/emulator_service.dart';
@@ -12,7 +13,10 @@ class _FakeEmulatorService extends EmulatorService {
   bool throwOnStart = false;
 
   @override
-  Future<EmulatorProcess> startEmulator(String avdName) async {
+  Future<EmulatorProcess> startEmulator(
+    String avdName, {
+    bool coldBoot = false,
+  }) async {
     if (throwOnStart) throw StateError('emulator executable missing');
     final exit = Completer<EmulatorExit>();
     exits.add(exit);
@@ -26,7 +30,7 @@ class _FakeEmulatorService extends EmulatorService {
 void main() {
   late ProviderContainer container;
   late _FakeEmulatorService service;
-  late Map<String, String> running;
+  late Map<String, AdbDevice> running;
 
   setUp(() {
     service = _FakeEmulatorService();
@@ -34,7 +38,7 @@ void main() {
     container = ProviderContainer(
       overrides: [
         emulatorServiceProvider.overrideWithValue(service),
-        runningEmulatorsProvider.overrideWith((ref) async => running),
+        emulatorConnectionsProvider.overrideWith((ref) async => running),
         emulatorLaunchProvider.overrideWith(
           () => EmulatorLaunchNotifier(
             startupTimeout: const Duration(milliseconds: 20),
@@ -87,8 +91,8 @@ void main() {
     expect(state.processAlive, isTrue);
     await notifier.launch('phone');
     expect(service.exits, hasLength(1));
-    running = {'phone': 'emulator-5554'};
-    container.invalidate(runningEmulatorsProvider);
+    running = {'phone': const AdbDevice(id: 'emulator-5554', status: 'device')};
+    container.invalidate(emulatorConnectionsProvider);
     await Future<void>.delayed(const Duration(milliseconds: 1));
     expect(container.read(emulatorLaunchProvider)['phone']!.errorKey, isNull);
     service.exits.first.complete(const EmulatorExit(0, ''));
@@ -99,6 +103,31 @@ void main() {
     );
     expect(container.read(emulatorLaunchProvider)['phone']!.errorKey, isNull);
   });
+
+  test(
+    'unauthorized is a connection issue and clears when authorized',
+    () async {
+      await container.read(emulatorLaunchProvider.notifier).launch('phone');
+      running = {
+        'phone': const AdbDevice(id: 'emulator-5554', status: 'unauthorized'),
+      };
+      container.invalidate(emulatorConnectionsProvider);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      final waiting = container.read(emulatorLaunchProvider)['phone']!;
+      expect(waiting.starting, isFalse);
+      expect(waiting.isConnectionIssue, isTrue);
+      expect(waiting.errorKey, 'emulatorAdbUnauthorized');
+      running = {
+        'phone': const AdbDevice(id: 'emulator-5554', status: 'device'),
+      };
+      container.invalidate(emulatorConnectionsProvider);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(container.read(emulatorLaunchProvider)['phone']!.errorKey, isNull);
+      service.exits.first.complete(const EmulatorExit(0, ''));
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+      expect(container.read(emulatorLaunchProvider)['phone']!.errorKey, isNull);
+    },
+  );
 
   test('spawn exception clears busy state', () async {
     service.throwOnStart = true;

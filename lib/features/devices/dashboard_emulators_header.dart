@@ -133,7 +133,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
   }
 }
 
-/// 模拟器操作工具栏，包含启动、清除数据、删除、打开文件夹、独立窗口、刷新等按钮。
+/// 主操作直接显示文字，清除数据/删除收进更多菜单，避免图标歧义。
 class _EmulatorToolbar extends StatelessWidget {
   const _EmulatorToolbar({
     required this.onStart,
@@ -142,75 +142,69 @@ class _EmulatorToolbar extends StatelessWidget {
     required this.onOpenFolder,
     required this.onRefresh,
     this.onPopOut,
+    this.onColdBoot,
+    this.onReconnect,
+    this.onStop,
   });
 
-  /// 启动模拟器
   final VoidCallback? onStart;
-
-  /// 清除数据
   final VoidCallback? onClearData;
-
-  /// 删除模拟器
   final VoidCallback? onDelete;
-
-  /// 打开 AVD 文件夹
   final VoidCallback? onOpenFolder;
-
-  /// 刷新列表
   final VoidCallback onRefresh;
-
-  /// 弹出独立窗口
   final VoidCallback? onPopOut;
+  final VoidCallback? onColdBoot;
+  final VoidCallback? onReconnect;
+  final VoidCallback? onStop;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 启动按钮
-        IconButton(
-          tooltip: context.l10n.t('launch'),
-          padding: EdgeInsets.zero,
-          icon: const Icon(CupertinoIcons.play,size: 18,),
-          onPressed: onStart,
-        ),
-        // 清除数据按钮
-        IconButton(
-          tooltip: context.l10n.t('clearEmulatorData'),
-          padding: EdgeInsets.zero,
-          icon: const Icon(CupertinoIcons.clear,size: 18,),
-          onPressed: onClearData,
-        ),
-        // 删除模拟器按钮
-        IconButton(
-          tooltip: context.l10n.t('deleteEmulator'),
-          padding: EdgeInsets.zero,
-          icon: const Icon(CupertinoIcons.trash,size: 18,),
-          onPressed: onDelete,
-        ),
-        // 打开 AVD 目录按钮
-        IconButton(
-          tooltip: context.l10n.t('openAvdFolder'),
-          padding: EdgeInsets.zero,
-          icon: const Icon(CupertinoIcons.folder_open,size: 18,),
-          onPressed: onOpenFolder,
-        ),
-        // 弹出窗口按钮 (如果提供了回调)
-        if (onPopOut != null)
-          IconButton(
-            tooltip: '独立窗口显示',
-            padding: EdgeInsets.zero,
-            icon: const Icon(Icons.open_in_new,size: 18,),
-            onPressed: onPopOut,
-          ),
-        // 刷新列表按钮
-        IconButton(
-          tooltip: context.l10n.t('refresh'),
-          padding: EdgeInsets.zero,
-          icon: const Icon(CupertinoIcons.refresh,size: 18,),
-          onPressed: onRefresh,
-        ),
-      ],
-    );
+    final actions = <(String, IconData, VoidCallback?)>[
+      ('emulatorColdBoot', CupertinoIcons.arrow_clockwise, onColdBoot),
+      ('openAvdFolder', CupertinoIcons.folder_open, onOpenFolder),
+      ('clearEmulatorData', CupertinoIcons.arrow_counterclockwise, onClearData),
+      ('deleteEmulator', CupertinoIcons.trash, onDelete),
+      if (onPopOut != null) ('emulatorPopOut', Icons.open_in_new, onPopOut),
+    ];
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      FilledButton.tonalIcon(
+        onPressed: onStart,
+        icon: const Icon(CupertinoIcons.play, size: 18),
+        label: Text(context.l10n.t('launch')),
+      ),
+      const SizedBox(width: 8),
+      OutlinedButton.icon(
+        onPressed: onReconnect,
+        icon: const Icon(CupertinoIcons.link, size: 18),
+        label: Text(context.l10n.t('emulatorReconnect')),
+      ),
+      IconButton(
+        tooltip: context.l10n.t('emulatorStop'),
+        onPressed: onStop,
+        icon: const Icon(CupertinoIcons.stop_circle, size: 22),
+      ),
+      IconButton(
+        tooltip: context.l10n.t('refresh'),
+        onPressed: onRefresh,
+        icon: const Icon(CupertinoIcons.refresh, size: 22),
+      ),
+      PopupMenuButton<int>(
+        tooltip: context.l10n.t('emulatorMore'),
+        icon: const Icon(CupertinoIcons.ellipsis, size: 22),
+        onSelected: (index) => actions[index].$3?.call(),
+        itemBuilder: (context) => [
+          for (var i = 0; i < actions.length; i++)
+            PopupMenuItem(
+              value: i,
+              enabled: actions[i].$3 != null,
+              child: Row(children: [
+                Icon(actions[i].$2, size: 18),
+                const SizedBox(width: 12),
+                Text(context.l10n.t(actions[i].$1)),
+              ]),
+            ),
+        ],
+      ),
+    ]);
   }
 }

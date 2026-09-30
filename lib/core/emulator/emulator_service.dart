@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'android_emulator.dart';
+import '../adb/adb_service.dart';
 import 'emulator_process.dart';
 import '../process/tool_path_resolver.dart';
 import '../process/host_platform_service.dart';
@@ -13,16 +14,19 @@ class EmulatorService {
     String? avdManagerExecutable,
     String? avdHome,
     HostPlatformService? hostPlatformService,
+    AdbService? adbService,
   }) : executable = executable ?? resolveToolPath('emulator'),
        avdManagerExecutable =
            avdManagerExecutable ?? resolveToolPath('avdmanager'),
        avdHome = avdHome ?? _defaultAvdHome(),
-       _hostPlatformService = hostPlatformService ?? HostPlatformService();
+       _hostPlatformService = hostPlatformService ?? HostPlatformService(),
+       _adbService = adbService ?? AdbService();
 
   final String executable;
   final String avdManagerExecutable;
   final String? avdHome;
   final HostPlatformService _hostPlatformService;
+  final AdbService _adbService;
 
   /// 获取本地所有 AVD 模拟器配置摘要。
   Future<List<AndroidEmulator>> listEmulators() async {
@@ -44,8 +48,22 @@ class EmulatorService {
   }
 
   /// 创建可观测的模拟器进程，调用方通过退出结果及 ADB 上线状态判断成功。
-  Future<EmulatorProcess> startEmulator(String avdName) {
-    return EmulatorProcess.start(executable, avdName);
+  Future<EmulatorProcess> startEmulator(String avdName, {bool coldBoot = false}) async {
+    // 使用应用同一个 ADB 服务先准备 server 与本机授权密钥，保留用户环境配置。
+    final server = await _adbService.run(['start-server']);
+    if (!server.isSuccess) throw StateError(server.message);
+    final sdk = File(executable).absolute.parent.parent;
+    final environment = <String, String>{
+      if (File(executable).isAbsolute &&
+          await Directory('${sdk.path}/platform-tools').exists()) ...{
+        'ANDROID_HOME': sdk.path,
+        'ANDROID_SDK_ROOT': sdk.path,
+      },
+      'ANDROID_AVD_HOME': ?avdHome,
+    };
+    return EmulatorProcess.start(
+      executable, avdName, environment: environment, coldBoot: coldBoot,
+    );
   }
 
   /// 在系统文件管理器中打开指定 AVD 配置目录。

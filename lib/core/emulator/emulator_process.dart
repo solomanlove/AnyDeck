@@ -18,8 +18,17 @@ class EmulatorProcess {
   final String Function() output;
 
   /// 持续排空 stdout/stderr，分别保留最后 16,384 个字符，避免管道阻塞和日志无限增长。
-  static Future<EmulatorProcess> start(String executable, String name) async {
-    final process = await Process.start(executable, ['-avd', name]);
+  static Future<EmulatorProcess> start(
+    String executable,
+    String name, {
+    Map<String, String>? environment,
+    bool coldBoot = false,
+  }) async {
+    final process = await Process.start(executable, [
+      '-avd',
+      name,
+      if (coldBoot) '-no-snapshot-load',
+    ], environment: environment);
     unawaited(process.stdin.close());
     var stdoutTail = '';
     var stderrTail = '';
@@ -86,4 +95,7 @@ class EmulatorLaunchState {
   final String? errorKey;
   final String details;
   final int? exitCode;
+
+  /// 进程存活但调试连接不可用，不应展示为启动失败。
+  bool get isConnectionIssue => processAlive && errorKey != null;
 }

@@ -180,20 +180,6 @@ class _ContentTitleBar extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               IconButton(
-                tooltip: context.l10n.t('emulators'),
-                icon: const Icon(CupertinoIcons.device_desktop),
-                iconSize: 30,
-                color: iconColor,
-                onPressed: () => EmulatorListPanel.openStandaloneWindow(context),
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(48, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
                 tooltip: context.l10n.t('console'),
                 icon: const Icon(CupertinoIcons.doc_plaintext),
                 iconSize: 30,

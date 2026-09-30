@@ -1,8 +1,20 @@
 /// 模拟器诊断和 AVD 配置释义；原始 key 始终保留，未知 key 使用通用名称。
 const emulatorConfigZh = {
+  "emulatorSearch": "搜索模拟器",
+  "emulatorReconnect": "重连 ADB",
+  "emulatorColdBoot": "冷启动（不加载快照）",
+  "emulatorStop": "关闭模拟器",
+  "emulatorStopConfirm": "确定关闭此模拟器？未保存的操作可能丢失。",
+  "emulatorMore": "更多操作",
+  "emulatorPopOut": "在独立窗口显示",
+  "emulatorAdbHelp": "ADB 连接诊断",
+  "emulatorReconnectSent": "已请求 ADB 重连；若仍未授权，请在模拟器中允许 USB 调试。",
+  "emulatorAdbUnauthorized":
+      "模拟器已运行，ADB 未授权。请在模拟器中允许 USB 调试；若没有弹窗，关闭后选择冷启动再重连 ADB。",
+  "emulatorAdbOffline": "模拟器已运行，ADB 离线。请重连 ADB；若持续离线，关闭后选择冷启动。",
   "emulatorLaunchFailed": "无法创建模拟器进程",
   "emulatorLaunchExited": "模拟器在启动期间退出或异常结束（退出码：{code}）",
-  "emulatorLaunchTimeout": "等待模拟器上线超时；进程仍在运行，请检查模拟器窗口",
+  "emulatorLaunchTimeout": "模拟器进程仍在运行，ADB 尚未连接。请检查模拟器中的 USB 调试授权，或关闭后选择冷启动。",
   "emulatorLaunchObserveFailed": "无法确认模拟器进程状态，请检查模拟器窗口",
   "emulatorViewError": "查看启动错误",
   "emulatorCopyError": "复制错误详情",
@@ -96,11 +108,25 @@ const emulatorConfigZh = {
 };
 
 const emulatorConfigEn = {
+  "emulatorSearch": "Search emulators",
+  "emulatorReconnect": "Reconnect ADB",
+  "emulatorColdBoot": "Cold boot (skip snapshot)",
+  "emulatorStop": "Stop emulator",
+  "emulatorStopConfirm": "Stop this emulator? Unsaved work may be lost.",
+  "emulatorMore": "More actions",
+  "emulatorPopOut": "Open in separate window",
+  "emulatorAdbHelp": "ADB connection diagnostics",
+  "emulatorReconnectSent":
+      "ADB reconnect requested. If unauthorized, allow USB debugging in the emulator.",
+  "emulatorAdbUnauthorized":
+      "Emulator is running; ADB is unauthorized. Allow USB debugging in its window. If no prompt appears, stop it, cold boot, then reconnect ADB.",
+  "emulatorAdbOffline":
+      "Emulator is running; ADB is offline. Reconnect ADB; if it stays offline, stop it and cold boot.",
   "emulatorLaunchFailed": "Could not create emulator process",
   "emulatorLaunchExited":
       "Emulator exited during startup or failed (exit code: {code})",
   "emulatorLaunchTimeout":
-      "Timed out waiting for the emulator; its process is still running. Check its window.",
+      "Emulator process is running, but ADB is not connected. Check USB debugging authorization, or stop it and cold boot.",
   "emulatorLaunchObserveFailed":
       "Could not determine process status. Check the emulator window.",
   "emulatorViewError": "View launch error",

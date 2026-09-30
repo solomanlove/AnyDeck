@@ -1,6 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/l10n/tables/app_l10n_emulator_config.dart';
 import 'package:any_deck/core/emulator/android_emulator.dart';
+import 'package:any_deck/core/adb/adb_device.dart';
 import 'package:any_deck/core/emulator/emulator_process.dart';
 import 'package:any_deck/core/providers/modules/emulator_terminal_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
@@ -20,6 +21,14 @@ class _FailedLaunch extends EmulatorLaunchNotifier {
       details:
           'Missing system image android-35/google_apis_playstore/arm64-v8a.',
     ),
+  };
+}
+
+/// 已启动进程失去 ADB transport 的测试状态。
+class _AliveLaunch extends EmulatorLaunchNotifier {
+  @override
+  Map<String, EmulatorLaunchState> build() => {
+    'Small_Phone': const EmulatorLaunchState(processAlive: true),
   };
 }
 
@@ -113,7 +122,7 @@ void main() {
       ProviderScope(
         overrides: [
           emulatorListProvider.overrideWith((ref) async => [_emulator]),
-          runningEmulatorsProvider.overrideWith((ref) async => {}),
+          emulatorConnectionsProvider.overrideWith((ref) async => {}),
           emulatorLaunchProvider.overrideWith(_FailedLaunch.new),
         ],
         child: _app(const EmulatorListPanel(isStandalone: true)),
@@ -136,6 +145,81 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(EmulatorFullConfigDialog), findsOneWidget);
     expect(find.text('运行内存（MiB）'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets(
+    'unauthorized emulator has connection guidance and responsive toolbar',
+    (tester) async {
+      tester.view.physicalSize = const Size(760, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            emulatorListProvider.overrideWith((ref) async => [_emulator]),
+            emulatorConnectionsProvider.overrideWith(
+              (ref) async => {
+                'Small_Phone': const AdbDevice(
+                  id: 'emulator-5554',
+                  status: 'unauthorized',
+                ),
+              },
+            ),
+            emulatorLaunchProvider.overrideWith(_FailedLaunch.new),
+          ],
+          child: _app(
+            const EmulatorListPanel(isStandalone: true, isEmbeddedTab: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.error_outline), findsNothing);
+      expect(find.byIcon(Icons.link_off), findsOneWidget);
+      expect(find.textContaining('ADB 未授权'), findsOneWidget);
+      expect(find.text('重连 ADB'), findsOneWidget);
+      await tester.tap(find.text('Small Phone'));
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+        isNotNull,
+      );
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNull,
+      );
+      await tester.tap(find.byTooltip('更多操作'));
+      await tester.pumpAndSettle();
+      expect(find.text('冷启动（不加载快照）'), findsOneWidget);
+      expect(find.text('清空模拟器数据'), findsOneWidget);
+      await tester.tapAt(const Offset(10, 600));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'no matches');
+      await tester.pumpAndSettle();
+      expect(find.text('Small Phone'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('live process without ADB transport is not shown as stopped', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          emulatorListProvider.overrideWith((ref) async => [_emulator]),
+          emulatorConnectionsProvider.overrideWith((ref) async => {}),
+          emulatorLaunchProvider.overrideWith(_AliveLaunch.new),
+        ],
+        child: _app(
+          const EmulatorListPanel(isStandalone: true, isEmbeddedTab: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.link_off), findsOneWidget);
+    expect(find.byTooltip('已关闭'), findsNothing);
+    expect(find.textContaining('模拟器进程仍在运行'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

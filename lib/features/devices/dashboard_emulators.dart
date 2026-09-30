@@ -3,10 +3,13 @@ part of '../dashboard_screen.dart';
 /// 模拟器列表面板组件。
 /// 用于管理和启动 Android 模拟器，支持以普通卡片组件嵌入主界面，或以独立子窗口形式运行。
 class EmulatorListPanel extends ConsumerStatefulWidget {
-  const EmulatorListPanel({super.key, this.isStandalone = false});
+  const EmulatorListPanel({super.key, this.isStandalone = false, this.isEmbeddedTab = false});
 
   /// 是否作为独立窗口运行
   final bool isStandalone;
+
+  /// 主窗口 Tab 已有系统窗口按钮，不预留独立窗口的交通灯区域。
+  final bool isEmbeddedTab;
 
   /// 打开模拟器管理器的独立窗口。
   static Future<void> openStandaloneWindow(BuildContext context) async {
@@ -42,6 +45,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
 
   /// 当前选中的模拟器的 AVD 名称
   String? _selectedName;
+  bool _connectionBusy = false;
 
   @override
   void dispose() {
@@ -94,7 +98,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
     // 监听模拟器列表异步状态
     final emulatorsAsync = ref.watch(emulatorListProvider);
     // 监听正在运行的模拟器与设备的映射状态
-    final runningEmulatorsAsync = ref.watch(runningEmulatorsProvider);
+    final runningEmulatorsAsync = ref.watch(emulatorConnectionsProvider);
     // 监听启动阶段与失败诊断
     final launches = ref.watch(emulatorLaunchProvider);
 
@@ -170,9 +174,22 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
         if (widget.isStandalone) {
           return _EmulatorStandaloneLayout(
             layoutWidget: layoutWidget,
+            isEmbeddedTab: widget.isEmbeddedTab,
+            filterController: _filterController,
+            onFilterChanged: (value) => setState(() => _filter = value),
             toolbar: _EmulatorToolbar(
               onStart: selectedItem != null && selectedItem.canStart
                   ? () => _startEmulator(context, selectedItem.emulator.name)
+                  : null,
+              onColdBoot: selectedItem != null && selectedItem.canStart
+                  ? () => ref.read(emulatorLaunchProvider.notifier).launch(
+                      selectedItem.emulator.name, coldBoot: true)
+                  : null,
+              onReconnect: selectedItem?.deviceId != null && !_connectionBusy
+                  ? () => _connectionAction(selectedItem!.deviceId!, stop: false)
+                  : null,
+              onStop: selectedItem?.deviceId != null && !_connectionBusy
+                  ? () => _connectionAction(selectedItem!.deviceId!, stop: true)
                   : null,
               onClearData: selectedItem != null && selectedItem.canClearData
                   ? () => _clearEmulatorData(context, selectedItem.emulator)
@@ -252,7 +269,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   /// 过滤、排序并组装模拟器列表数据项
   List<_EmulatorItem> _buildItems(
     List<AndroidEmulator> emulators,
-    Map<String, String> runningMap,
+    Map<String, AdbDevice> runningMap,
     Map<String, EmulatorLaunchState> launches,
   ) {
     final query = _filter.trim().toLowerCase();
@@ -264,15 +281,30 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
           return emulator.searchableText.contains(query);
         })
         .map((emulator) {
-          final launch = launches[emulator.name];
+          final connection = runningMap[emulator.name];
+          final previous = launches[emulator.name];
+          final launch = connection != null
+              ? EmulatorLaunchState(
+                  processAlive: true,
+                  errorKey: connection.isOnline ? null : connection.status == 'unauthorized'
+                      ? 'emulatorAdbUnauthorized' : 'emulatorAdbOffline',
+                )
+              : previous?.processAlive == true &&
+                    previous?.starting == false && previous?.errorKey == null
+                  ? const EmulatorLaunchState(
+                      processAlive: true, errorKey: 'emulatorLaunchTimeout',
+                    )
+                  : previous;
           final isStarting = launch?.starting == true;
-          final runningDeviceId = runningMap[emulator.name];
-          final isRunning = runningDeviceId != null;
+          final runningDeviceId = connection?.id;
+          final isRunning = connection?.isOnline == true;
 
           String status = 'stopped';
           if (isRunning) status = 'running';
           if (isStarting) status = 'starting';
-          if (launch?.errorKey != null) status = 'error';
+          if (launch?.errorKey != null) {
+            status = launch!.isConnectionIssue ? 'connectionIssue' : 'error';
+          }
 
           return _EmulatorItem(
             emulator: emulator,
@@ -326,7 +358,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   /// 刷新模拟器数据
   void _refreshEmulators() {
     ref.invalidate(emulatorListProvider);
-    ref.invalidate(runningEmulatorsProvider);
+    ref.invalidate(emulatorConnectionsProvider);
   }
 
   /// 弹出独立窗口展示列表，同时折叠主界面的面板
@@ -340,6 +372,24 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   /// 异步执行启动模拟器操作
   Future<void> _startEmulator(BuildContext context, String avdName) async {
     await ref.read(emulatorLaunchProvider.notifier).launch(avdName);
+  }
+
+  /// 仅操作所选 emulator transport，完成后回读状态；按钮在请求期间禁用。
+  Future<void> _connectionAction(String deviceId, {required bool stop}) async {
+    if (stop && !await _confirm(context, context.l10n.t('emulatorStopConfirm'))) return;
+    if (!mounted) return;
+    setState(() => _connectionBusy = true);
+    try {
+      final service = EmulatorConnectionService(ref.read(adbServiceProvider));
+      final result = stop ? await service.stop(deviceId) : await service.reconnect(deviceId);
+      if (!mounted) return;
+      _refreshEmulators();
+      _showSnack(context, result.isSuccess
+          ? context.l10n.t(stop ? 'stopSuccess' : 'emulatorReconnectSent')
+          : result.message, isError: !result.isSuccess);
+    } finally {
+      if (mounted) setState(() => _connectionBusy = false);
+    }
   }
 
   /// 清除指定模拟器的用户数据
@@ -413,7 +463,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
       setState(() => _selectedName = null);
       _showSnack(context, context.l10n.t('deleteEmulatorSuccess'));
       ref.invalidate(emulatorListProvider);
-      ref.invalidate(runningEmulatorsProvider);
+      ref.invalidate(emulatorConnectionsProvider);
     } else {
       _showSnack(
         context,
@@ -437,38 +487,4 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
       _showSnack(context, context.l10n.t('openAvdFolderFailed'), isError: true);
     }
   }
-}
-
-/// 模拟器项数据包装类，合并模拟器配置和当前状态。
-class _EmulatorItem {
-  const _EmulatorItem({
-    required this.emulator,
-    required this.status,
-    this.deviceId,
-    this.launch,
-  });
-
-  /// 模拟器配置属性
-  final AndroidEmulator emulator;
-
-  /// 模拟器运行状态 ('running', 'starting', 'stopped', 'error')
-  final String status;
-
-  /// 启动诊断保留到下次重试；错误详情可在列表中查看。
-  final EmulatorLaunchState? launch;
-
-  /// 如果运行中，对应的 ADB 设备 ID
-  final String? deviceId;
-
-  /// 已停止或失败且进程已退出时允许重试。
-  bool get canStart =>
-      (status == 'stopped' || status == 'error') &&
-      launch?.processAlive != true &&
-      deviceId == null;
-
-  /// 仅在确认进程已停止时允许清除数据。
-  bool get canClearData => canStart;
-
-  /// 仅在确认进程已停止时允许删除。
-  bool get canDelete => canStart;
 }
