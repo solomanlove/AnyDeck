@@ -12,6 +12,11 @@ class DeviceConnectionIndicators extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 当设备处于离线状态时，不展示 USB / TCP 等连接类型图标
+    if (!device.isOnline) {
+      return const SizedBox.shrink();
+    }
+
     return MouseRegion(
       cursor: SystemMouseCursors.basic,
       child: GestureDetector(

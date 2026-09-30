@@ -18,7 +18,6 @@ class _EmulatorStandaloneLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 1100;
@@ -50,13 +49,10 @@ class _EmulatorStandaloneLayout extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          context.l10n.t('emulators'),
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: DashboardHeaderTitle(
+                          title: context.l10n.t('emulators'),
+                          subtitle: context.l10n.t('emulatorsSubtitle'),
+                          icon: Icons.devices_rounded,
                         ),
                       ),
                       const SizedBox(width: 16),

@@ -1,6 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/devices/widgets/device_wireless_controls.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,6 +82,8 @@ void main() {
           tester.widget<IconButton>(find.byType(IconButton).first).onPressed,
           isNotNull,
         );
+        expect(find.byIcon(CupertinoIcons.link), findsOneWidget);
+        expect(find.byIcon(Icons.link_off), findsNothing);
         expect(
           find.text(AppLocalizations(Locale(locale)).t('wirelessNoIp')),
           findsOneWidget,

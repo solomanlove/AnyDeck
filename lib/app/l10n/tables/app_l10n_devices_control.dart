@@ -1,6 +1,7 @@
 /// devices_control 模块文案表。新增 key 时必须同时补齐 zh/en。
 const devicesControlZh = {
   'devices': '设备管理',
+  'devicesSubtitle': '统一管理 Android、HarmonyOS 与 iOS 设备',
   'deviceOnline': '已在线',
   'deviceOffline': '已离线',
   'deviceUnauthorized': '未授权设备',
@@ -12,6 +13,8 @@ const devicesControlZh = {
   'deviceStatusCol': '状态',
   'deviceActionsCol': '操作',
   'editDeviceName': '修改设备名称',
+  'editDeviceInfo': '编辑设备信息',
+  'editDeviceInfoDesc': '修改设备自定义名称、分类标签与备注用途。',
   'enterDeviceName': '请输入新的设备名称',
   'files': '文件',
   'logcat': '日志',
@@ -239,6 +242,7 @@ const devicesControlZh = {
 
 const devicesControlEn = {
   'devices': 'Devices',
+  'devicesSubtitle': 'Unified management of Android, HarmonyOS, and iOS devices',
   'deviceOnline': 'Online',
   'deviceOffline': 'Offline',
   'deviceUnauthorized': 'Unauthorized',
@@ -248,6 +252,8 @@ const devicesControlEn = {
   'deviceStatusCol': 'Status',
   'deviceActionsCol': 'Actions',
   'editDeviceName': 'Edit Device Name',
+  'editDeviceInfo': 'Edit Device Info',
+  'editDeviceInfoDesc': 'Edit device custom name, classification tags, and remarks.',
   'enterDeviceName': 'Enter new device name',
   'files': 'Files',
   'logcat': 'Logcat',

@@ -189,15 +189,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
             const SizedBox(width: 10),
           ],
           _SortableHeaderCell(
-            flex: 3,
-            label: context.l10n.t('deviceIdentifier'),
-            style: titleStyle,
-            sortIcon: _getSortIcon('id'),
-            onTap: () => _toggleSort('id'),
-          ),
-          const SizedBox(width: 10),
-          _SortableHeaderCell(
-            flex: 3,
+            flex: 4,
             label: context.l10n.t('deviceNameCol'),
             style: titleStyle,
             sortIcon: _getSortIcon('name'),
@@ -205,17 +197,9 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           ),
           const SizedBox(width: 10),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
               context.l10n.t('deviceRemarkCol'),
-              style: titleStyle,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Text(
-              context.l10n.t('deviceTagsCol'),
               style: titleStyle,
             ),
           ),

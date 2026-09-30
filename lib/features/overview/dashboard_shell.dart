@@ -69,10 +69,8 @@ class _ContentTitleBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final titleColor = isDark ? const Color(0xffeceff1) : const Color(0xff202124);
     final iconColor = isDark ? const Color(0xffb0bec5) : const Color(0xff5f6b6e);
 
     return DragToMoveArea(
@@ -111,14 +109,14 @@ class _ContentTitleBar extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              Text(
-                "设备管理",
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: titleColor,
+              Expanded(
+                child: DashboardHeaderTitle(
+                  title: context.l10n.t('devices'),
+                  subtitle: context.l10n.t('devicesSubtitle'),
+                  icon: Icons.devices_rounded,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 16),
               IconButton(
                 tooltip: context.l10n.t('connectTcp'),
                 icon: const Icon(CupertinoIcons.link),

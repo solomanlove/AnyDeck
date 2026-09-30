@@ -36,7 +36,7 @@ class DeviceWirelessControls extends ConsumerWidget {
       children: [
         if (!device.isOnline || !device.hasTcpConnection || busy)
           IconButton(
-            tooltip: context.l10n.t(status?.messageKey ?? 'wirelessConnect'),
+            tooltip: context.l10n.t('wirelessConnect'),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             icon: busy
@@ -46,13 +46,10 @@ class DeviceWirelessControls extends ConsumerWidget {
                     child: const CircularProgressIndicator(strokeWidth: 2),
                   )
                 : Icon(
-                    status?.failed == true
-                        ? Icons.link_off
-                        : CupertinoIcons.link,
+                    // 无论是否曾失败，此按钮职责始终为发起无线连接，保持连接图标
+                    CupertinoIcons.link,
                     size: 22,
-                    color: status?.failed == true
-                        ? colors.error
-                        : colors.primary,
+                    color: colors.primary,
                   ),
             onPressed: busy
                 ? null

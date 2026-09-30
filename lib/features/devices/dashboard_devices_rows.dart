@@ -62,14 +62,9 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               ),
               const SizedBox(width: 10),
             ],
-            const SizedBox(width: 10),
             _buildIdentifierCell(context, device),
             const SizedBox(width: 10),
-            _buildNameCell(context, device),
-            const SizedBox(width: 10),
             _buildRemarkCell(context, device),
-            const SizedBox(width: 10),
-            _buildTagsCell(context, device),
             const SizedBox(width: 10),
             _buildAndroidVersionCell(context, device),
             const SizedBox(width: 10),
@@ -87,12 +82,28 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     );
   }
 
-  /// 构建设备标识列（展示设备型号序列号、Wi-Fi IP 以及物理连接/无线调试状态图标）
+  /// 构建设备标识与自定义名称列（展示设备 Logo、自定义名称、硬件型号、Wi-Fi IP 以及通道状态图标）
   Widget _buildIdentifierCell(BuildContext context, RegisteredDevice device) {
     final wifiIp = device.wifiIp;
+    final hasCustomName = device.customName != null && device.customName!.isNotEmpty;
+
+    // 次行辅助信息：有自定义名称时展示硬件型号，结合 IP 展示
+    final String? subtitleText;
+    if (hasCustomName) {
+      final modelStr = device.connectionMethodDisplay;
+      if (wifiIp != null && wifiIp.isNotEmpty) {
+        subtitleText = '$modelStr · $wifiIp';
+      } else {
+        subtitleText = modelStr;
+      }
+    } else if (wifiIp != null && wifiIp.isNotEmpty) {
+      subtitleText = wifiIp;
+    } else {
+      subtitleText = null;
+    }
 
     return Expanded(
-      flex: 3,
+      flex: 4,
       child: Row(
         children: [
           // 设备品牌/系统 Logo，结合角标和灰阶直观标识在线或离线状态
@@ -104,46 +115,77 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 1. 首行显示设备型号与序列号
-                Text(
-                  device.connectionMethodDisplay,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                  overflow: TextOverflow.ellipsis,
+                // 1. 首行展示设备名称，若包含标签标识则紧随其后展示（无标签时不展示）
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        device.displayName,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (device.tags.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      ...device.tags.map((tag) => Container(
+                        margin: const EdgeInsets.only(right: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Text(
+                          tag,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )),
+                    ],
+                  ],
                 ),
-                // 2. 次行展示已获取并缓存的局域网 Wi-Fi IP 地址与网段警告图标
-                if (wifiIp != null && wifiIp.isNotEmpty) ...[
+                // 2. 次行展示硬件型号代号与已获取的局域网 Wi-Fi IP 地址及警告图标
+                if (subtitleText != null) ...[
                   const SizedBox(height: 2),
                   Row(
                     children: [
                       Flexible(
                         child: Text(
-                          wifiIp,
+                          subtitleText,
                           style: const TextStyle(fontSize: 11, color: Colors.grey),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      FutureBuilder<bool>(
-                        future: _subnetFutures.putIfAbsent(
-                          wifiIp,
-                          () => NetworkLanMatcher.isSameSubnet(wifiIp),
-                        ),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData && snapshot.data == false) {
-                            return const Padding(
-                              padding: EdgeInsets.only(left: 4.0),
-                              child: Tooltip(
-                                message: '手机与电脑可能不在同一局域网网段',
-                                child: Icon(
-                                  CupertinoIcons.exclamationmark_circle_fill,
-                                  color: Colors.amber,
-                                  size: 14,
+                      if (wifiIp != null && wifiIp.isNotEmpty) ...[
+                        FutureBuilder<bool>(
+                          future: _subnetFutures.putIfAbsent(
+                            wifiIp,
+                            () => NetworkLanMatcher.isSameSubnet(wifiIp),
+                          ),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data == false) {
+                              return const Padding(
+                                padding: EdgeInsets.only(left: 4.0),
+                                child: Tooltip(
+                                  message: '手机与电脑可能不在同一局域网网段',
+                                  child: Icon(
+                                    CupertinoIcons.exclamationmark_circle_fill,
+                                    color: Colors.amber,
+                                    size: 14,
+                                  ),
                                 ),
-                              ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -152,48 +194,8 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               ],
             ),
           ),
-          // 标识列只显示通道状态，所有连接操作统一放在右侧操作列。
+          // 标识列只显示通道状态，所有连接操作统一放在右侧操作列；离线时由组件内部隐藏
           DeviceConnectionIndicators(device: device),
-        ],
-      ),
-    );
-  }
-
-  /// 构建设备自定义名称（别名）标签列
-  Widget _buildNameCell(BuildContext context, RegisteredDevice device) {
-    return Expanded(
-      flex: 3,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFC8E6C9), width: 1),
-              ),
-              child: Text(
-                device.displayName,
-                style: const TextStyle(
-                  color: Color(0xFF2E7D32),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          // 重命名图标按钮，点击弹出重命名对话框
-          IconButton(
-            icon: const Icon(CupertinoIcons.pencil, size: 14),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            splashRadius: 16,
-            onPressed: () => _showRenameDialog(context, device),
-          ),
         ],
       ),
     );
@@ -203,78 +205,15 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
   Widget _buildRemarkCell(BuildContext context, RegisteredDevice device) {
     final hasRemark = device.remark != null && device.remark!.isNotEmpty;
     return Expanded(
-      flex: 2,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: () => _showRemarkDialog(context, device),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  hasRemark ? device.remark! : '-',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: hasRemark ? Theme.of(context).colorScheme.onSurface : Colors.grey,
-                    fontWeight: hasRemark ? FontWeight.w500 : FontWeight.normal,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(CupertinoIcons.pencil, size: 13, color: Colors.grey.withValues(alpha: 0.5)),
-            ],
-          ),
+      flex: 3,
+      child: Text(
+        hasRemark ? device.remark! : '-',
+        style: TextStyle(
+          fontSize: 12,
+          color: hasRemark ? Theme.of(context).colorScheme.onSurface : Colors.grey,
+          fontWeight: hasRemark ? FontWeight.w500 : FontWeight.normal,
         ),
-      ),
-    );
-  }
-
-  /// 构建设备标签标识列
-  Widget _buildTagsCell(BuildContext context, RegisteredDevice device) {
-    final hasTags = device.tags.isNotEmpty;
-    final primary = Theme.of(context).colorScheme.primary;
-
-    return Expanded(
-      flex: 2,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: () => _showTagsDialog(context, device),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!hasTags) ...[
-                const Text('-', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(width: 4),
-              ] else ...[
-                Flexible(
-                  child: Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: device.tags.map((tag) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: primary.withValues(alpha: 0.2)),
-                      ),
-                      child: Text(
-                        tag,
-                        style: TextStyle(fontSize: 10, color: primary, fontWeight: FontWeight.w600),
-                      ),
-                    )).toList(),
-                  ),
-                ),
-                const SizedBox(width: 4),
-              ],
-              Icon(CupertinoIcons.pencil, size: 13, color: Colors.grey.withValues(alpha: 0.5)),
-            ],
-          ),
-        ),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -379,7 +318,18 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               ),
             ),
           ],
-          // 4. 彻底删除设备并清理关联缓存按钮
+          // 4. 编辑设备信息按钮（修改设备名称、标签标识、备注等）
+          IconButton(
+            icon: const Icon(
+              CupertinoIcons.pencil,
+              color: Color(0xFF1976D2),
+            ),
+            tooltip: context.l10n.t('editDeviceInfo'),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () => _showEditDeviceInfoDialog(context, device),
+          ),
+          // 5. 彻底删除设备并清理关联缓存按钮
           IconButton(
             icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent),
             tooltip: context.l10n.t('delete'),
