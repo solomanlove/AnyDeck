@@ -98,7 +98,9 @@ class AdbWirelessProbe {
   /// connect 的退出码不能证明 transport 可用，必须回读状态并校验身份。
   Future<bool> connect(String address, String? expectedSerial) async {
     final wasOnline = await online(address);
-    await run(['connect', address]);
+    if (!wasOnline) {
+      await run(['connect', address], timeout: const Duration(seconds: 8));
+    }
     if (!await online(address)) return false;
     final actual = await serial(address);
     final matches =

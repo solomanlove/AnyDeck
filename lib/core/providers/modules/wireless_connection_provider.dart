@@ -42,8 +42,40 @@ class WirelessConnectionNotifier
   void observe(List<AdbDevice> devices) {
     if (!_isMain) return;
     scheduleMicrotask(() {
-      if (ref.mounted) _coordinator.observe(devices);
+      if (ref.mounted) {
+        _coordinator.observe(devices);
+        _clearConnectedDevices(devices);
+      }
     });
+  }
+
+  /// 若设备当前已在线且已具有网络连接通道，清理陈旧的失败状态
+  void _clearConnectedDevices(List<AdbDevice> devices) {
+    final onlineNetworkIds = devices
+        .where((d) => d.isOnline && (d.id.contains(':') || d.id.contains('.')))
+        .map((d) => d.id)
+        .toSet();
+    if (onlineNetworkIds.isEmpty && state.isEmpty) return;
+
+    final next = Map<String, AdbWirelessState>.from(state);
+    var changed = false;
+
+    next.removeWhere((key, val) {
+      if (val.busy || !val.failed) return false;
+      final ip = val.ip;
+      final isOnlineNow = onlineNetworkIds.any(
+        (id) => id == key || (ip != null && id.startsWith('$ip:')),
+      );
+      if (isOnlineNow) {
+        changed = true;
+        return true;
+      }
+      return false;
+    });
+
+    if (changed) {
+      state = next;
+    }
   }
 
   Future<AdbWirelessResult> connect(RegisteredDevice device) {
@@ -82,6 +114,13 @@ AdbWirelessState? wirelessStateFor(
   for (final value in states.values.toList().reversed) {
     if (ids.contains(value.deviceId) ||
         (value.serial != null && ids.contains(value.serial))) {
+      // 若设备当前已在线且已建立无线连接通道，且非执行中状态，历史失败状态不再生效
+      if (value.failed &&
+          !value.busy &&
+          device.isOnline &&
+          (device.hasTcpConnection || device.hasWifiDebuggingConnection)) {
+        return null;
+      }
       return value;
     }
   }

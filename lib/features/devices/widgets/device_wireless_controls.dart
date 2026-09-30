@@ -119,6 +119,12 @@ class DeviceWirelessStatusLabel extends ConsumerWidget {
     if (status == null || (!status.busy && !status.failed)) {
       return const SizedBox.shrink();
     }
+    // 设备已在线且已成功建立无线连接（TCP/WiFi调试），历史失败提示不再显示
+    if (device.isOnline &&
+        (device.hasTcpConnection || device.hasWifiDebuggingConnection) &&
+        !status.busy) {
+      return const SizedBox.shrink();
+    }
     final text = context.l10n.t(status.messageKey);
     return Tooltip(
       message: text,

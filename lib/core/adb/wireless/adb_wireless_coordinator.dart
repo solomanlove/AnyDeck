@@ -242,6 +242,13 @@ class AdbWirelessCoordinator {
       }
       if (i < 2) await Future<void>.delayed(const Duration(seconds: 1));
     }
+    // 兜底校验：检查目标设备在此期间是否已成功接入 TCP 5555
+    if (ip != null && await probe.online('$ip:5555')) {
+      final actual = await probe.serial('$ip:5555');
+      if (actual == null || actual == serial) {
+        return _finishTcp(key, '$ip:5555', serial, connections);
+      }
+    }
     return const AdbWirelessResult('wirelessUnavailable');
   }
 
