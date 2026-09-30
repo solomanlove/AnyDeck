@@ -19,7 +19,23 @@ class _PackageIcon extends ConsumerWidget {
       isHarmony ? AppIcons.harmonyDefaultAppIcon : AppIcons.androidDefaultAppIcon,
       fit: BoxFit.contain,
     );
-    final iconPath = package.iconLocalPath;
+
+    // AnyDeck 伴侣应用优先展示自带 App Logo
+    if (package.name == 'com.adbmanage.companion') {
+      return Image.asset(
+        AppIcons.appLogo,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      );
+    }
+
+    var iconPath = package.iconLocalPath;
+    if (iconPath == null || !File(iconPath).existsSync()) {
+      iconPath = ref
+          .read(packageMetadataResolverProvider)
+          .findIconOnDisk(package.name, preferredDeviceId: deviceId);
+    }
+
     if (iconPath == null || !File(iconPath).existsSync()) return fallback;
     return Image.file(
       File(iconPath),

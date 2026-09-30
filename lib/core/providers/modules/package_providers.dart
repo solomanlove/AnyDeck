@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../apps/adb_package.dart';
+import '../../apps/package_metadata_resolver.dart';
 import '../../apps/package_refresh_progress.dart';
 import '../../apps/package_refresh_runner.dart';
 import 'device_registry_providers.dart';
@@ -216,3 +217,34 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
     );
   }
 }
+
+/// 全局包展示元数据解析服务 Provider。
+final packageMetadataResolverProvider = Provider<PackageMetadataResolver>((ref) {
+  final service = ref.watch(appManagementServiceProvider);
+  final resolver = PackageMetadataResolver(
+    service,
+    onCacheUpdated: () {
+      try {
+        ref.read(packageMetadataRevisionProvider.notifier).increment();
+      } catch (_) {}
+    },
+  );
+  resolver.warmup();
+  return resolver;
+});
+
+/// 包元数据全局版本号 Notifier，当有新的名称或图标加载完成时递增，触发监听它的 UI 组件刷新。
+final packageMetadataRevisionProvider =
+    NotifierProvider<PackageMetadataRevisionNotifier, int>(
+      PackageMetadataRevisionNotifier.new,
+    );
+
+class PackageMetadataRevisionNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void increment() {
+    state++;
+  }
+}
+

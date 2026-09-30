@@ -15,9 +15,14 @@ class UsageReportDialog extends ConsumerWidget {
     final state = ref.watch(usageReportProvider(deviceId));
     final controller = ref.read(usageReportProvider(deviceId).notifier);
     final online = ref.watch(deviceOnlineProvider(deviceId));
+    ref.watch(packageMetadataRevisionProvider);
     final packages =
         ref.watch(packagesProvider(deviceId)).value ?? <AdbPackage>[];
-    final byName = {for (final package in packages) package.name: package};
+    final resolver = ref.read(packageMetadataResolverProvider);
+    final byName = {
+      for (final package in packages)
+        package.name: resolver.resolve(package, preferredDeviceId: deviceId),
+    };
     final colors = Theme.of(context).colorScheme;
     final snapshot = state.snapshot;
     final enabled = online && !state.busy;

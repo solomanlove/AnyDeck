@@ -351,6 +351,10 @@ class _AppNameCell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(packageMetadataRevisionProvider);
+    final effectivePackage = ref
+        .read(packageMetadataResolverProvider)
+        .resolve(package, preferredDeviceId: deviceId);
     final colorScheme = Theme.of(context).colorScheme;
     return Row(
       children: [
@@ -359,7 +363,7 @@ class _AppNameCell extends ConsumerWidget {
           child: SizedBox(
             width: 28,
             height: 28,
-            child: _PackageIcon(deviceId: deviceId, package: package),
+            child: _PackageIcon(deviceId: deviceId, package: effectivePackage),
           ),
         ),
         const SizedBox(width: 10),
@@ -373,9 +377,9 @@ class _AppNameCell extends ConsumerWidget {
                 children: [
                   Flexible(
                     child: Tooltip(
-                      message: package.displayName,
+                      message: effectivePackage.displayName,
                       child: Text(
-                        package.displayName,
+                        effectivePackage.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -389,10 +393,10 @@ class _AppNameCell extends ConsumerWidget {
                   Consumer(
                     builder: (context, ref, _) {
                       final favorites = ref.watch(appFavoritesProvider).value ?? const <String>{};
-                      final isFav = favorites.contains(package.name);
+                      final isFav = favorites.contains(effectivePackage.name);
                       return InkWell(
                         borderRadius: BorderRadius.circular(4),
-                        onTap: () => ref.read(appFavoritesProvider.notifier).toggle(package.name),
+                        onTap: () => ref.read(appFavoritesProvider.notifier).toggle(effectivePackage.name),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 2),
                           child: Icon(
@@ -404,7 +408,7 @@ class _AppNameCell extends ConsumerWidget {
                       );
                     },
                   ),
-                  if (package.debuggable) ...[
+                  if (effectivePackage.debuggable) ...[
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -434,9 +438,9 @@ class _AppNameCell extends ConsumerWidget {
               ),
               const SizedBox(height: 2),
               Tooltip(
-                message: package.name,
+                message: effectivePackage.name,
                 child: Text(
-                  package.name,
+                  effectivePackage.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

@@ -13,6 +13,8 @@ import 'adb_package_detail.dart';
 import 'harmony_app_detail.dart';
 import 'package_refresh_progress.dart';
 
+export 'package_metadata_resolver.dart';
+
 part 'app_management_service_refresh.dart';
 part 'app_management_service_harmony_detail.dart';
 part 'app_management_service_harmony_icon.dart';
@@ -34,6 +36,9 @@ class AppManagementService {
   final AdbService _adb;
   final HdcService? _hdc;
   final Map<String, List<AdbPackage>> _memoryCache = {};
+
+  /// 获取只读内存应用缓存映射（用于跨设备展示解析）
+  Map<String, List<AdbPackage>> get memoryCache => _memoryCache;
 
   /// 同步查询内存中已解析的应用列表（优先查当前 deviceId，未命中查 canonicalId 与 fallbackKeys）。
   List<AdbPackage>? getCachedPackagesSync(
