@@ -9,6 +9,7 @@ import 'router/app_router.dart';
 import 'settings/app_settings_controller.dart';
 import 'theme/app_theme.dart';
 import 'window/desktop_window_title_service.dart';
+import '../features/splash/animated_splash_screen.dart';
 
 /// 应用根组件，统一装配路由、本地化和主题设置。
 class AnyDeckApp extends ConsumerWidget {
@@ -40,6 +41,9 @@ class AnyDeckApp extends ConsumerWidget {
       darkTheme: buildAppTheme(Brightness.dark),// 暗黑主题
       themeMode: settings.themeMode,// 主题模式
       routerConfig: router,
+      builder: (context, child) => AnimatedSplashScreen(
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

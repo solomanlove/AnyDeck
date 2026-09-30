@@ -262,16 +262,23 @@ class PrimaryRail extends ConsumerWidget {
     }
 
     void handleTap(int tabIndex) {
-      if (tabIndex == -1 || tabIndex == -2) {
-        // 全局管理页面不依赖设备，阻止自动选择设备抢走当前页面。
-        ref.read(userClearedDeviceSelectionProvider.notifier).state = true;
-        ref.read(selectedDeviceProvider.notifier).clear();
-        ref.read(selectedToolTabProvider.notifier).select(tabIndex);
+      if (tabIndex == -1) {
+        context.goNamed(AppRouteNames.devices);
         return;
       }
-      var device = selectedDevice;
+      if (tabIndex == -2) {
+        context.goNamed(AppRouteNames.emulators);
+        return;
+      }
+      final device = selectedDevice;
       if (device != null) {
-        ref.read(selectedToolTabProvider.notifier).select(tabIndex);
+        context.goNamed(
+          AppRouteNames.deviceTool,
+          pathParameters: {
+            'deviceId': device.id,
+            'tool': toolSlugForTabIndex(tabIndex),
+          },
+        );
       }
     }
 
@@ -328,14 +335,7 @@ class PrimaryRail extends ConsumerWidget {
                         SizedBox(height: _topSpacing),
                         GestureDetector(
                           onTap: () {
-                            // 点击顶部身份区清空选中手机，并跳转至设备管理页面
-                            ref
-                                .read(userClearedDeviceSelectionProvider.notifier)
-                                .state = true;
-                            ref.read(selectedDeviceProvider.notifier).clear();
-                            ref
-                                .read(selectedToolTabProvider.notifier)
-                                .select(-1);
+                            context.goNamed(AppRouteNames.devices);
                           },
                           child: MouseRegion(
                             cursor: SystemMouseCursors.click,
@@ -386,7 +386,7 @@ class PrimaryRail extends ConsumerWidget {
                   isNarrow: renderNarrow,
                   selected: selectedTool == 13,
                   onPressed: () {
-                    ref.read(selectedToolTabProvider.notifier).select(13);
+                    context.goNamed(AppRouteNames.wanAndroid);
                   },
                 ),
                 _RailButton(
@@ -396,7 +396,7 @@ class PrimaryRail extends ConsumerWidget {
                   selected: selectedTool == 14,
                   isHighlighted: isMcpRunning,
                   onPressed: () {
-                    ref.read(selectedToolTabProvider.notifier).select(14);
+                    context.goNamed(AppRouteNames.mcp);
                   },
                 ),
                 _RailButton(
@@ -405,7 +405,7 @@ class PrimaryRail extends ConsumerWidget {
                   isNarrow: renderNarrow,
                   selected: selectedTool == 12,
                   onPressed: () {
-                    ref.read(selectedToolTabProvider.notifier).select(12);
+                    context.goNamed(AppRouteNames.settings);
                   },
                 ),
                 const SizedBox(height: _bottomSpacing),

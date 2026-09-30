@@ -6,7 +6,6 @@ class _PackageGrid extends ConsumerWidget {
     required this.packages,
     required this.selectedPackage,
     required this.checkedPackages,
-    required this.onSelected,
     required this.onToggleCheck,
     required this.onOpened,
     required this.gridItemSize,
@@ -16,7 +15,6 @@ class _PackageGrid extends ConsumerWidget {
   final List<AdbPackage> packages;
   final String? selectedPackage;
   final Set<String> checkedPackages;
-  final ValueChanged<String> onSelected;
   final ValueChanged<String> onToggleCheck;
   final ValueChanged<String> onOpened;
   final double gridItemSize;
@@ -40,7 +38,6 @@ class _PackageGrid extends ConsumerWidget {
           selected: package.name == selectedPackage,
           checked: checkedPackages.contains(package.name),
           isAnyChecked: checkedPackages.isNotEmpty,
-          onSelected: () => onSelected(package.name),
           onCheckChanged: (_) => onToggleCheck(package.name),
           onOpened: () => onOpened(package.name),
           size: gridItemSize,
@@ -57,7 +54,6 @@ class _PackageGridItem extends ConsumerStatefulWidget {
     required this.selected,
     required this.checked,
     required this.isAnyChecked,
-    required this.onSelected,
     required this.onCheckChanged,
     required this.onOpened,
     required this.size,
@@ -68,7 +64,6 @@ class _PackageGridItem extends ConsumerStatefulWidget {
   final bool selected;
   final bool checked;
   final bool isAnyChecked;
-  final VoidCallback onSelected;
   final ValueChanged<bool?> onCheckChanged;
   final VoidCallback onOpened;
   final double size;
@@ -95,8 +90,7 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
-        onTap: widget.onSelected,
-        onDoubleTap: widget.onOpened,
+        onTap: widget.onOpened,
         child: AnimatedScale(
           scale: _isHovered ? 1.04 : 1.0,
           duration: const Duration(milliseconds: 150),

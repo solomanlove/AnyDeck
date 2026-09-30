@@ -1,6 +1,6 @@
 part of '../dashboard_screen.dart';
 
-/// 单个应用数据行，单击选中、双击进入应用详情页。
+/// 单个应用数据行，单击进入应用详情，批量选择由 Checkbox 承担。
 class _PackageTableRow extends StatelessWidget {
   const _PackageTableRow({
     required this.deviceId,
@@ -8,7 +8,6 @@ class _PackageTableRow extends StatelessWidget {
     required this.selected,
     required this.checked,
     required this.widths,
-    required this.onSelected,
     required this.onCheckChanged,
     required this.onOpened,
     required this.index,
@@ -19,7 +18,6 @@ class _PackageTableRow extends StatelessWidget {
   final bool selected;
   final bool checked;
   final _PackageTableWidths widths;
-  final VoidCallback onSelected;
   final ValueChanged<bool?> onCheckChanged;
   final VoidCallback onOpened;
   final int index;
@@ -35,8 +33,7 @@ class _PackageTableRow extends StatelessWidget {
           ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.5);
 
     return InkWell(
-      onTap: onSelected,
-      onDoubleTap: onOpened,
+      onTap: onOpened,
       child: Container(
         height: 56,
         decoration: BoxDecoration(

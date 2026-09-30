@@ -98,27 +98,23 @@ class _AppsTabState extends ConsumerState<AppsTab> {
             return _HarmonyAppAnalysisView(
               package: selectedPackage,
               initialDetail: detail,
-              onBack: () {
-                ref.read(selectedAppPackageProvider.notifier).state = null;
-              },
+              onBack: _closeAppDetails,
               onReload: () => _loadHarmonyDetail(selectedPackage.name),
             );
           }
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(selectedAppPackageProvider.notifier).state = null;
+            if (mounted) unawaited(_openPackage(selectedPackage.name));
           });
         } else {
           return _AppFunctionsView(
             deviceId: widget.device.id,
             package: selectedPackage,
-            onBack: () {
-              ref.read(selectedAppPackageProvider.notifier).state = null;
-            },
+            onBack: _closeAppDetails,
           );
         }
       } else if (packages.hasValue) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          ref.read(selectedAppPackageProvider.notifier).state = null;
+          if (mounted) _closeAppDetails();
         });
       }
     }
@@ -308,7 +304,6 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                               packages: filtered,
                               selectedPackage: _selectedPackage,
                               checkedPackages: _checkedPackages,
-                              onSelected: _selectPackage,
                               onToggleCheck: _toggleCheckPackage,
                               onOpened: _openPackage,
                               gridItemSize: _gridItemSize,
@@ -319,7 +314,6 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                               totalCount: items.length,
                               selectedPackage: _selectedPackage,
                               checkedPackages: _checkedPackages,
-                              onSelected: _selectPackage,
                               onToggleCheck: _toggleCheckPackage,
                               onToggleCheckAll: () =>
                                   _toggleCheckAllPackages(filtered),
@@ -498,7 +492,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
     if (!widget.device.isHarmony) {
       // Android 保持原有行为：后台刷新单包信息并立即进入现有详情页。
       unawaited(_selectPackage(packageName));
-      ref.read(selectedAppPackageProvider.notifier).state = packageName;
+      _openAppDetailsRoute(packageName);
       return;
     }
 
@@ -518,13 +512,40 @@ class _AppsTabState extends ConsumerState<AppsTab> {
               .replaceAll('{error}', error.toString()),
           isError: true,
         );
+        _closeAppDetails();
       }
       return;
     } finally {
       _analyzingHarmonyPackages.remove(packageName);
     }
     if (!mounted || widget.device.id != deviceId) return;
+    _openAppDetailsRoute(packageName);
+  }
+
+  void _openAppDetailsRoute(String packageName) {
     ref.read(selectedAppPackageProvider.notifier).state = packageName;
+    final target = GoRouter.of(context).namedLocation(
+      AppRouteNames.appDetails,
+      pathParameters: {
+        'deviceId': widget.device.id,
+        'packageName': packageName,
+      },
+    );
+    if (GoRouterState.of(context).uri.toString() != target) {
+      context.push(target);
+    }
+  }
+
+  void _closeAppDetails() {
+    ref.read(selectedAppPackageProvider.notifier).state = null;
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.goNamed(
+      AppRouteNames.deviceTool,
+      pathParameters: {'deviceId': widget.device.id, 'tool': 'apps'},
+    );
   }
 
   Future<HarmonyAppDetail> _loadHarmonyDetail(String packageName) async {

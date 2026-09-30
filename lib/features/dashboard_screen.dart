@@ -10,12 +10,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lpinyin/lpinyin.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqlite3/sqlite3.dart' hide Row;
 import 'package:path_provider/path_provider.dart';
 
 import '../app/l10n/app_localizations.dart';
+import '../app/router/dashboard_route.dart';
 import '../app/theme/app_icon.dart';
 import '../app/widget/dashboard_tab_layout.dart';
 import '../app/widget/dashboard_history_text_field.dart';
@@ -120,6 +122,7 @@ part 'devices/dashboard_emulators_header.dart';
 part 'devices/dashboard_emulators_table.dart';
 part 'devices/dashboard_emulator_details.dart';
 part 'overview/dashboard_workspace.dart';
+part 'overview/dashboard_route_sync.dart';
 part 'devices/dashboard_device_header.dart';
 part 'overview/dashboard_overview.dart';
 part 'overview/dashboard_overview_widgets.dart';
@@ -208,7 +211,10 @@ final lastActiveDeviceProvider =
 
 /// 桌面主面板，整合设备发现和工具区域。
 class DashboardScreen extends ConsumerStatefulWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.route});
+
+  /// 由 GoRouter 提供；测试或独立嵌入时可为空并沿用 Provider 状态。
+  final DashboardRouteState? route;
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -221,6 +227,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   DateTime? _lastQuitShortcutAt;
   bool _hasVisitedWanAndroid = false;
+  bool _routeSyncScheduled = false;
+  String? _resolvedRouteDeviceId;
   StreamSubscription<Map<String, dynamic>>? _notificationClickSub;
 
   @override
@@ -232,6 +240,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         .read(macNotificationBridgeProvider)
         .clickStream
         .listen(_handleNotificationClick);
+    _scheduleDashboardRouteSync();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initialClicks =
           await ref.read(macNotificationBridgeProvider).ready();
@@ -239,6 +248,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         _handleNotificationClick(click);
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.route != widget.route) {
+      _scheduleDashboardRouteSync();
+    }
   }
 
   @override
@@ -275,8 +292,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         }
       }
       if (matched == null) {
-        ref.read(selectedDeviceProvider.notifier).clear();
-        ref.read(selectedToolTabProvider.notifier).select(-1);
+        context.goNamed(AppRouteNames.devices);
         ref.read(targetMessageIdProvider.notifier).state = null;
         ref.read(highlightedNotificationKeyProvider.notifier).state = null;
         if (mounted) {
@@ -288,11 +304,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         }
         return;
       }
-      ref.read(selectedDeviceProvider.notifier).select(matched.toAdbDevice);
-      ref.read(selectedToolTabProvider.notifier).select(targetTab);
       ref.read(targetMessageIdProvider.notifier).state = messageId;
       ref.read(highlightedNotificationKeyProvider.notifier).state =
           notificationKey?.isNotEmpty == true ? notificationKey : null;
+      _goToDeviceTool(matched.id, targetTab);
     }
   }
 
@@ -303,7 +318,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   Future<void> _handleWindowMethodCall(MethodCall call) async {
     if (call.method == 'openEmulatorManager') {
-      EmulatorListPanel.openStandaloneWindow(context);
+      context.goNamed(AppRouteNames.emulators);
     } else if (call.method == 'openMirrorWindow') {
       final selectedDevice = ref.read(selectedDeviceProvider);
       if (selectedDevice != null && selectedDevice.isOnline) {
@@ -320,7 +335,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     } else if (call.method == 'openConsoleWindow') {
       _openConsoleWindow(context);
     } else if (call.method == 'openPreferences') {
-      ref.read(selectedToolTabProvider.notifier).select(12);
+      context.goNamed(AppRouteNames.settings);
     }
   }
 
@@ -361,6 +376,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final registeredDevices = ref.watch(deviceRegistryProvider);
     final lastActiveDevice = ref.watch(lastActiveDeviceProvider);
     final settings = ref.watch(appSettingsProvider);
+    _scheduleDashboardRouteSync();
 
     var effectiveSelectedDevice = selectedDevice;
     String appBarTitle = context.l10n.t('appTitle');
@@ -411,7 +427,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           final selectedTool = ref.read(selectedToolTabProvider);
           const iosTabs = {0, 1, 2, 3, 4, 6, 9, 12, 13, 14};
           if (selectedTool >= 0 && !iosTabs.contains(selectedTool)) {
-            ref.read(selectedToolTabProvider.notifier).select(0);
+            _goToDeviceTool(effectiveSelectedDevice.id, 0);
           }
         } else if (effectiveSelectedDevice.isHarmony) {
           // 鸿蒙设备支持主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、设置(12)、玩安卓(13)、AI MCP(14)
@@ -429,7 +445,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               selectedTool != 12 &&
               selectedTool != 13 &&
               selectedTool != 14) {
-            ref.read(selectedToolTabProvider.notifier).select(0);
+            _goToDeviceTool(effectiveSelectedDevice.id, 0);
           }
         } else if (!effectiveSelectedDevice.isOnline) {
           // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)、消息(15)、设置(12)、玩安卓(13)或 AI MCP(14) Tab，则自动重定向回主页 Tab
@@ -442,7 +458,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               selectedTool != 12 &&
               selectedTool != 13 &&
               selectedTool != 14) {
-            ref.read(selectedToolTabProvider.notifier).select(0);
+            _goToDeviceTool(effectiveSelectedDevice.id, 0);
           }
         }
       });
@@ -477,10 +493,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         const SingleActivator(LogicalKeyboardKey.keyQ, control: true):
             _handleQuitShortcut,
         const SingleActivator(LogicalKeyboardKey.comma, meta: true): () {
-          ref.read(selectedToolTabProvider.notifier).select(12);
+          context.goNamed(AppRouteNames.settings);
         },
         const SingleActivator(LogicalKeyboardKey.comma, control: true): () {
-          ref.read(selectedToolTabProvider.notifier).select(12);
+          context.goNamed(AppRouteNames.settings);
         },
       },
       child: MainWindowCloseShortcut(

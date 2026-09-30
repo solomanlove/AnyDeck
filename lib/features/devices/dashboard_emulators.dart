@@ -201,7 +201,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
                   ? () => _openAvdFolder(context, selectedItem.emulator)
                   : null,
               onRefresh: _refreshEmulators,
-              onPopOut: null,
+              onPopOut: widget.isEmbeddedTab ? _popOutWindow : null,
             ),
           );
         }

@@ -6,12 +6,14 @@ class _OverviewCapacityCard extends ConsumerWidget {
     required this.label,
     required this.icon,
     required this.value,
+    required this.deviceId,
     required this.targetTab,
   });
 
   final String label;
   final IconData icon;
   final String value;
+  final String deviceId;
   final int targetTab;
 
   @override
@@ -23,8 +25,13 @@ class _OverviewCapacityCard extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
         mouseCursor: SystemMouseCursors.click,
-        onTap: () =>
-            ref.read(selectedToolTabProvider.notifier).select(targetTab),
+        onTap: () => context.goNamed(
+          AppRouteNames.deviceTool,
+          pathParameters: {
+            'deviceId': deviceId,
+            'tool': toolSlugForTabIndex(targetTab),
+          },
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(

@@ -33,6 +33,7 @@
 | `adb-app-window-run-config-script` | App 子窗口 Run Configuration 生成脚本 | active | 记录 `script/generate_app_window_run_configs.sh` 如何生成模拟器管理窗口和控制台窗口的 IDE Flutter 运行入口 | `script/`, `.idea/runConfigurations/`, `app/window/` |
 | `adb-macos-icon-assets` | macOS 图标资源机制 | active | 记录 Dock 图标、Flutter App logo、菜单栏 template icon 的资源边界和生成命令 | `assets/brand/`, `macos/Runner/Assets.xcassets/` |
 | `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录设备管理与模拟器列表同级入口、左侧导航顶部 App/设备身份切换、品牌优先与制造商图标兜底、概览缓存兼容、返回设备管理点击逻辑、workspace 顶部布局边界及玻璃背景内的 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |
+| `adb-main-window-routing` | 主窗口层级路由 | active | 记录 Splash StartupGate、设备/模拟器/设置顶层 Route、设备工具 slug、应用详情嵌套路由及 Route 与 Riverpod 的职责边界 | `app/router/`, `features/overview/`, `features/apps/`, `features/devices/` |
 | `adb-device-root-status` | Dashboard 手机 Root 状态标识 | active | 记录主页 Root 标识、检测链路、未知状态与控制 Tab 按钮移除 | `features/overview/`, `features/control/`, `core/providers/` |
 | `adb-macos-signature-policy` | macOS 签名与 system policy 修复机制 | active | 记录 `FlutterMacOS.framework` 被 dyld system policy 拒绝加载时的签名、provenance/quarantine 排查与自动修复脚本 | `macos/`, `script/` |
 | `adb-ai-mcp-server-architecture` | AI MCP 服务架构与集成机制 | active | 记录 AnyDeck 作为 AI MCP (Model Context Protocol) Server 的协议路由、Tools 注册、HTTP SSE 传输通道、SSE 停止时的连接回收、安全防御沙箱与桌面管理控制台设计 | `core/mcp/`, `features/mcp/` |

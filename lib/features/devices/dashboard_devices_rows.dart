@@ -20,15 +20,17 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
 
     return InkWell(
       onTap: () {
-        // 单击只选中设备
-        ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
-        ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
+        // 设备行直接进入概览，批量选择继续由 Checkbox 承担。
+        context.goNamed(
+          AppRouteNames.deviceTool,
+          pathParameters: {'deviceId': device.id, 'tool': 'overview'},
+        );
       },
       onDoubleTap: () {
-        // 双击切入该设备的主页 (tab 0)
-        ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
-        ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
-        ref.read(selectedToolTabProvider.notifier).select(0);
+        context.goNamed(
+          AppRouteNames.deviceTool,
+          pathParameters: {'deviceId': device.id, 'tool': 'overview'},
+        );
       },
       child: Container(
         height: 56,

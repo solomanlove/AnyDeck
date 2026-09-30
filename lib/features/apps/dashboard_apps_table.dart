@@ -9,7 +9,6 @@ class _PackageTable extends StatefulWidget {
     required this.checkedPackages,
     required this.onToggleCheck,
     required this.onToggleCheckAll,
-    required this.onSelected,
     required this.onOpened,
   });
 
@@ -20,7 +19,6 @@ class _PackageTable extends StatefulWidget {
   final Set<String> checkedPackages;
   final ValueChanged<String> onToggleCheck;
   final VoidCallback onToggleCheckAll;
-  final ValueChanged<String> onSelected;
   final ValueChanged<String> onOpened;
 
   @override
@@ -196,7 +194,6 @@ class _PackageTableState extends State<_PackageTable> {
                                   selected: package.name == widget.selectedPackage,
                                   checked: widget.checkedPackages.contains(package.name),
                                   widths: widths,
-                                  onSelected: () => widget.onSelected(package.name),
                                   onCheckChanged: (_) => widget.onToggleCheck(package.name),
                                   onOpened: () => widget.onOpened(package.name),
                                   index: index,

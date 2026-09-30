@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
 import '../../app/window/desktop_window_manager_service.dart';
-import '../dashboard_screen.dart';
 
 /// 应用启动动效屏与主界面平滑过渡组件。
 ///
@@ -13,10 +14,14 @@ import '../dashboard_screen.dart';
 /// 2. 播放品牌 Logo 缩放渐入、标语滑入与加载进度动效；
 /// 3. 并行静默预热主面板（DashboardScreen），动效完成后平滑淡出揭开主界面。
 class AnimatedSplashScreen extends ConsumerStatefulWidget {
-  const AnimatedSplashScreen({super.key});
+  const AnimatedSplashScreen({super.key, required this.child});
+
+  /// Router 当前页面在启动动画下方预热，动画结束后无需重建业务首页。
+  final Widget child;
 
   @override
-  ConsumerState<AnimatedSplashScreen> createState() => _AnimatedSplashScreenState();
+  ConsumerState<AnimatedSplashScreen> createState() =>
+      _AnimatedSplashScreenState();
 }
 
 class _AnimatedSplashScreenState extends ConsumerState<AnimatedSplashScreen>
@@ -27,6 +32,7 @@ class _AnimatedSplashScreenState extends ConsumerState<AnimatedSplashScreen>
   late final Animation<Offset> _contentSlideAnimation;
   late final Animation<double> _contentFadeAnimation;
   late final Animation<double> _progressAnimation;
+  Timer? _holdTimer;
 
   /// 标记启动动画是否已完成，用于触发淡出过渡
   bool _isStartupComplete = false;
@@ -97,18 +103,20 @@ class _AnimatedSplashScreenState extends ConsumerState<AnimatedSplashScreen>
     await _controller.forward();
 
     // 稍作短暂停留（150ms），确保视觉节奏舒适自然
-    await Future.delayed(const Duration(milliseconds: 150));
-
     if (!mounted) return;
+    _holdTimer = Timer(const Duration(milliseconds: 150), () {
+      if (!mounted) return;
 
-    // 触发启动层渐变淡出
-    setState(() {
-      _isStartupComplete = true;
+      // 触发启动层渐变淡出
+      setState(() {
+        _isStartupComplete = true;
+      });
     });
   }
 
   @override
   void dispose() {
+    _holdTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -119,7 +127,7 @@ class _AnimatedSplashScreenState extends ConsumerState<AnimatedSplashScreen>
       fit: StackFit.expand,
       children: [
         // 1. 底层主面板（提前预热并在启动淡出后完整呈现）
-        const DashboardScreen(),
+        widget.child,
 
         // 2. 顶层品牌动效层（淡出完成后自动卸载，不截断事件）
         if (!_isSplashDisposed)

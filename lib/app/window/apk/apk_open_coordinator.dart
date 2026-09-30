@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/apk/apk_install_queue.dart';
 import '../../../core/apk/apk_file_open_queue.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../router/app_router.dart';
+import '../../router/dashboard_route.dart';
 import '../desktop_window_manager_service.dart';
 import '../multi_window_compat.dart';
 import '../sub_window_method_dispatcher.dart';
@@ -193,6 +195,15 @@ class ApkOpenCoordinator {
         container.read(selectedDeviceProvider.notifier).select(device);
         container.read(selectedToolTabProvider.notifier).select(2);
         container.read(selectedAppPackageProvider.notifier).state = packageName;
+        container
+            .read(appRouterProvider)
+            .goNamed(
+              AppRouteNames.appDetails,
+              pathParameters: {
+                'deviceId': device.id,
+                'packageName': packageName,
+              },
+            );
         await DesktopWindowManagerService.showWindow();
         return {'success': true};
       }
