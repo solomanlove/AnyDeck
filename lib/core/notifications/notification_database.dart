@@ -230,4 +230,26 @@ class NotificationDatabase {
       [sevenDaysAgo],
     );
   });
+
+  /// 清除指定设备别名或 serial 的所有通知记录及来源映射。
+  Future<void> clearSource(String alias) => _run((db) {
+    final rows = db.select(
+      'SELECT installation, user_id FROM notification_sources WHERE alias = ?',
+      [alias],
+    );
+    if (rows.isEmpty) return;
+    final key = [rows.first['installation'], rows.first['user_id']];
+    db.execute('BEGIN IMMEDIATE');
+    try {
+      db.execute(
+        'DELETE FROM notifications WHERE installation=? AND user_id=?',
+        key,
+      );
+      db.execute('DELETE FROM notification_sources WHERE alias=?', [alias]);
+      db.execute('COMMIT');
+    } catch (_) {
+      db.execute('ROLLBACK');
+      rethrow;
+    }
+  });
 }

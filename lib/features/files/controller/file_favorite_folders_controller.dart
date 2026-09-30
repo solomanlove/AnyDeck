@@ -67,6 +67,15 @@ class FileFavoriteFoldersNotifier
     await _persist(updated);
   }
 
+  /// 清除指定设备下的所有常用文件夹配置。
+  Future<void> clearDevice(String deviceId) async {
+    final current = state.value ?? const <String, List<String>>{};
+    if (!current.containsKey(deviceId)) return;
+    final updated = Map<String, List<String>>.from(current)..remove(deviceId);
+    state = AsyncData(updated);
+    await _persist(updated);
+  }
+
   Future<void> _persist(Map<String, List<String>> value) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_preferencesKey, jsonEncode(value));

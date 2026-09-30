@@ -7,16 +7,14 @@ import '../../../app/widget/app_toast.dart';
 import '../../../core/adb/adb_result.dart';
 import '../../../core/providers/app_providers.dart';
 
-/// Android 单设备无线按钮。compact 用于名称旁的快捷入口；默认同时提供断开。
+/// Android 操作列无线按钮，统一提供连接、断开及操作进度。
 /// device 必须是注册表合并后的设备，便于所有入口共享身份、防重复与进度。
 class DeviceWirelessControls extends ConsumerWidget {
   const DeviceWirelessControls({
     super.key,
     required this.device,
-    this.compact = false,
   });
   final RegisteredDevice device;
-  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,8 +29,10 @@ class DeviceWirelessControls extends ConsumerWidget {
     final networkIds = device.isOnline
         ? device.connections.where((id) => !isPhysicalUsbId(id)).toList()
         : <String>[];
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         if (!device.isOnline || !device.hasTcpConnection || busy)
           IconButton(
@@ -41,15 +41,15 @@ class DeviceWirelessControls extends ConsumerWidget {
             constraints: const BoxConstraints(),
             icon: busy
                 ? SizedBox(
-                    width: compact ? 16 : 20,
-                    height: compact ? 16 : 20,
+                    width: 20,
+                    height: 20,
                     child: const CircularProgressIndicator(strokeWidth: 2),
                   )
                 : Icon(
                     status?.failed == true
                         ? Icons.link_off
                         : CupertinoIcons.link,
-                    size: compact ? 16 : 22,
+                    size: 22,
                     color: status?.failed == true
                         ? colors.error
                         : colors.primary,
@@ -64,8 +64,7 @@ class DeviceWirelessControls extends ConsumerWidget {
                     _showResult(context, result);
                   },
           ),
-        if (!compact && networkIds.isNotEmpty) ...[
-          const SizedBox(width: 8),
+        if (networkIds.isNotEmpty) ...[
           IconButton(
             tooltip: context.l10n.t('disconnect'),
             padding: EdgeInsets.zero,

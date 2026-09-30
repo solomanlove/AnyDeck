@@ -6,12 +6,23 @@ extension _DeviceListPanelActions on _DeviceListPanelState {
     BuildContext context,
     int selectedCount,
   ) async {
-    final confirmed = await _confirm(
-      context,
-      context.l10n
+    final allDevices = ref.read(deviceRegistryProvider);
+    final hasUsbOnline = allDevices
+        .where((d) => d.isChecked && d.isOnline && d.hasUsbConnection)
+        .isNotEmpty;
+
+    final String message;
+    if (hasUsbOnline) {
+      message = context.l10n
+          .t('batchDeleteUsbWarning')
+          .replaceAll('{count}', '$selectedCount');
+    } else {
+      message = context.l10n
           .t('deleteSelectedDevicesConfirm')
-          .replaceAll('{count}', '$selectedCount'),
-    );
+          .replaceAll('{count}', '$selectedCount');
+    }
+
+    final confirmed = await _confirm(context, message);
     if (!context.mounted || !confirmed) {
       return;
     }
@@ -85,6 +96,8 @@ extension _DeviceListPanelActions on _DeviceListPanelState {
         title: '编辑备注/用途',
         initialText: device.remark ?? '',
         hintText: '输入备注或用途',
+        minLines: 3,
+        maxLines: 5,
       ),
     );
 
@@ -126,12 +139,16 @@ class _DeviceTextEditDialog extends StatefulWidget {
     required this.initialText,
     required this.hintText,
     this.confirmLabel,
+    this.minLines = 1,
+    this.maxLines = 1,
   });
 
   final String title;
   final String initialText;
   final String hintText;
   final String? confirmLabel;
+  final int minLines;
+  final int maxLines;
 
   @override
   State<_DeviceTextEditDialog> createState() => _DeviceTextEditDialogState();
@@ -144,6 +161,9 @@ class _DeviceTextEditDialogState extends State<_DeviceTextEditDialog> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialText);
+    _controller.selection = TextSelection.collapsed(
+      offset: widget.initialText.length,
+    );
   }
 
   @override
@@ -154,15 +174,28 @@ class _DeviceTextEditDialogState extends State<_DeviceTextEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isMultiline = widget.maxLines > 1;
+
     return AlertDialog(
       title: Text(widget.title),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        decoration: InputDecoration(
-          hintText: widget.hintText,
+      content: SizedBox(
+        width: 480,
+        child: TextField(
+          controller: _controller,
+          autofocus: true,
+          minLines: widget.minLines,
+          maxLines: widget.maxLines,
+          keyboardType: isMultiline ? TextInputType.multiline : TextInputType.text,
+          textInputAction: isMultiline ? TextInputAction.newline : TextInputAction.done,
+          decoration: InputDecoration(
+            hintText: widget.hintText,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+          ),
+          onSubmitted: isMultiline ? null : (value) => Navigator.of(context).pop(value),
         ),
-        onSubmitted: (value) => Navigator.of(context).pop(value),
       ),
       actions: [
         TextButton(

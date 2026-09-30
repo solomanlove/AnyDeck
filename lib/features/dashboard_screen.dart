@@ -37,6 +37,7 @@ import '../core/apps/app_management_service.dart';
 import '../core/apps/harmony_app_detail.dart';
 import 'apps/widgets/app_permissions_panel.dart';
 import 'devices/widgets/device_wireless_controls.dart';
+import 'devices/widgets/device_connection_indicators.dart';
 import 'apps/widgets/package_refresh_dialog.dart';
 import '../core/apps/package_refresh_progress.dart';
 import '../core/cache/cache_cleanup_service.dart';

@@ -41,8 +41,14 @@ const deviceConnectionsZh = {
   'harmonyConnectSuccess': '鸿蒙设备无线连接成功',
   'harmonyConnectFailed': '鸿蒙设备无线连接失败',
   'harmonyDetectIp': '已自动检测到设备局域网 IP: ',
-  'harmonyNoIpHint': '未检测到设备 WLAN IP，请确保设备与电脑在同一局域网并手动输入 IP',
   'harmonyGuideTip': '提示：首次开启无线调试需通过 USB 数据线连接电脑并授权，成功开启 5555 端口后即可拔出数据线。',
+  // 设备删除与 USB 连接警示提示
+  'usbConnectedDeleteWarningTitle': '设备正通过 USB 物理连接',
+  'usbConnectedDeleteWarning': '当前设备正通过 USB 数据线连接到电脑。若未拔出数据线，删除并清理缓存后，系统仍会自动重新识别该设备。\n\n建议先拔出 USB 数据线再删除。是否确认立即清理此设备全部数据？',
+  'confirmDeleteDeviceTitle': '删除设备',
+  'confirmDeleteDeviceMessage': '确定要删除设备“{name}”吗？\n删除后将彻底清理该设备的所有本地信息、历史记录与关联缓存数据。',
+  'batchDeleteUsbWarning': '选中的设备中包含正通过 USB 物理连接的设备。若未拔出数据线，删除后系统仍会自动重新识别。\n\n确定要删除选中的 {count} 台设备并彻底清理其缓存吗？',
+  'deviceDeletedSuccess': '已彻底清除设备记录与缓存',
 };
 
 const deviceConnectionsEn = {
@@ -89,4 +95,11 @@ const deviceConnectionsEn = {
   'harmonyDetectIp': 'Detected device LAN IP: ',
   'harmonyNoIpHint': 'No WLAN IP detected. Ensure device is on the same Wi-Fi and input IP manually',
   'harmonyGuideTip': 'Tip: Connect via USB first to open port 5555. Once opened, you can unplug the cable.',
+  // Device deletion and USB warning prompts
+  'usbConnectedDeleteWarningTitle': 'Device Connected via USB',
+  'usbConnectedDeleteWarning': 'This device is physically connected via USB cable. If the cable is not unplugged, the system will automatically rediscover it after deletion.\n\nIt is recommended to unplug the USB cable first. Do you still want to delete and clear all data now?',
+  'confirmDeleteDeviceTitle': 'Delete Device',
+  'confirmDeleteDeviceMessage': 'Are you sure you want to delete device "{name}"?\nAll local information, history records, and associated caches will be completely removed.',
+  'batchDeleteUsbWarning': 'Some selected devices are physically connected via USB. If the cable is not unplugged, the system will rediscover them.\n\nAre you sure you want to delete {count} selected devices and clean their caches?',
+  'deviceDeletedSuccess': 'Device records and caches completely removed',
 };

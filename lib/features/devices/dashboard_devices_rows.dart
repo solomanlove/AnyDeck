@@ -33,7 +33,8 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
         );
       },
       child: Container(
-        height: 56,
+        // 长状态文案、放大字体和操作换行时允许行高增长。
+        constraints: const BoxConstraints(minHeight: 56),
         padding: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           color: rowColor,
@@ -91,10 +92,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
   /// 构建设备标识列（展示设备型号序列号、Wi-Fi IP 以及物理连接/无线调试状态图标）
   Widget _buildIdentifierCell(BuildContext context, RegisteredDevice device) {
     final wifiIp = device.wifiIp;
-    final hasUsb = device.hasUsbConnection;
-    final hasTcp = device.hasTcpConnection;
-    final hasWifiDebug = device.hasWifiDebuggingConnection;
-    final hasAnyNetwork = hasTcp || hasWifiDebug;
 
     return Expanded(
       flex: 3,
@@ -154,54 +151,8 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               ],
             ),
           ),
-          // 1. USB 物理连接状态图标
-          if (hasUsb) ...[
-            const SizedBox(width: 4),
-            Tooltip(
-              message: context.l10n.t('connectionUsb'),
-              child: const Icon(Icons.usb, color: Color(0xFF26A69A), size: 16),
-            ),
-          ],
-          // 2. TCP/IP 网络连接状态图标 (传统 5555 端口调试)
-          if (hasTcp) ...[
-            const SizedBox(width: 4),
-            Tooltip(
-              message: context.l10n.t('connectionTcp'),
-              child: const Icon(CupertinoIcons.link, color: Color(0xFF00ACC1), size: 16),
-            ),
-          ],
-          // 3. WiFi 无线调试状态图标 (Android 11+ 配对或高位动态端口)
-          if (hasWifiDebug) ...[
-            const SizedBox(width: 4),
-            Tooltip(
-              message: context.l10n.t('connectionWirelessDebug'),
-              child: const Icon(CupertinoIcons.wifi, color: Color(0xFF43A047), size: 16),
-            ),
-          ],
-          // 如果 USB 已连接，且探测到 Wi-Fi IP，且尚未建立任何网络调试，提供快捷无线连接按钮
-          if (!device.isIos && !device.isHarmony && !hasTcp) ...[
-            const SizedBox(width: 6),
-            DeviceWirelessControls(device: device, compact: true),
-          ],
-          if (device.isHarmony && hasUsb && !hasAnyNetwork && wifiIp != null && wifiIp.isNotEmpty) ...[
-            const SizedBox(width: 6),
-            Tooltip(
-              message: '通过 WiFi 连接 ADB',
-              child: IconButton(
-                icon: const Icon(CupertinoIcons.link, color: Color(0xFF26A69A), size: 16),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                splashRadius: 16,
-                onPressed: () => _runAdbAction(
-                  context,
-                  ref,
-                  ref
-                      .read(deviceRegistryProvider.notifier)
-                      .connectWireless(device.id, wifiIp),
-                ),
-              ),
-            ),
-          ],
+          // 标识列只显示通道状态，所有连接操作统一放在右侧操作列。
+          DeviceConnectionIndicators(device: device),
         ],
       ),
     );
@@ -386,7 +337,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
 
     return Expanded(
       flex: 2,
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // 1. 若设备在线，显示独立投屏按钮
           if (device.isOnline) ...[
@@ -404,12 +358,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 device.toAdbDevice,
               ),
             ),
-            const SizedBox(width: 8),
           ],
           // 2. 如果已有处于激活在线状态的无线网络调试连接，则显示红色“断开”按钮
           if (!device.isIos && !device.isHarmony) ...[
             DeviceWirelessControls(device: device),
-            const SizedBox(width: 8),
           ] else if (hasActiveWifi) ...[
             IconButton(
               icon: const Icon(
@@ -427,7 +379,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                     .disconnectDevice(activeWifiId),
               ),
             ),
-            const SizedBox(width: 8),
           ]
           // 3. 若当前无激活无线连接但有已知的 Wi-Fi IP，则显示绿色“连接”按钮
           else if (wifiIp != null && wifiIp.isNotEmpty) ...[
@@ -451,20 +402,63 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                         .connectDevice('$wifiIp:5555'),
               ),
             ),
-            const SizedBox(width: 8),
           ],
-          // 4. 删除或清理不活跃的历史离线设备按钮
+          // 4. 彻底删除设备并清理关联缓存按钮
           IconButton(
             icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent),
             tooltip: context.l10n.t('delete'),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            onPressed: () {
-              ref.read(deviceRegistryProvider.notifier).removeDevice(device.id);
-            },
+            onPressed: () => _confirmAndDeleteDevice(context, ref, device),
           ),
         ],
       ),
     );
+  }
+
+  /// 确认并删除设备，若设备正通过 USB 物理连接则给予警示提示
+  Future<void> _confirmAndDeleteDevice(
+    BuildContext context,
+    WidgetRef ref,
+    RegisteredDevice device,
+  ) async {
+    final isUsbOnline = device.isOnline && device.hasUsbConnection;
+    final title = isUsbOnline
+        ? context.l10n.t('usbConnectedDeleteWarningTitle')
+        : context.l10n.t('confirmDeleteDeviceTitle');
+    final message = isUsbOnline
+        ? context.l10n.t('usbConnectedDeleteWarning')
+        : context.l10n
+            .t('confirmDeleteDeviceMessage')
+            .replaceAll('{name}', device.displayName);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(context.l10n.t('cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(context.l10n.t('delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await ref.read(deviceRegistryProvider.notifier).removeDevice(device.id);
+      if (context.mounted) {
+        _showSnack(context, context.l10n.t('deviceDeletedSuccess'));
+      }
+    }
   }
 }

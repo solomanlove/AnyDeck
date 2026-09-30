@@ -179,12 +179,14 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
       _ipAddresses.remove(removeId);
       _androidVersions.remove(removeId);
       _sdkVersions.remove(removeId);
+      _remarks.remove(removeId);
+      _tags.remove(removeId);
       _serialMap.remove(removeId);
       _pendingFetchIds.remove(removeId);
       _attemptedFetchIds.remove(removeId);
 
-      await ref.read(deviceInfoServiceProvider).clearDeviceCache(removeId);
-      await ref.read(appManagementServiceProvider).clearDeviceCache(removeId);
+      // 级联彻底清理设备概览、应用图标目录、常用文件夹与 SQLite 数据库等全部缓存
+      await DeviceRegistryCleaner.cleanupAll(ref, removeId);
     }
 
     await _storage.saveHistory(_historyIds);
@@ -192,6 +194,8 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
     await _storage.saveModelsAndProducts(_models, _products);
     await _storage.saveIps(_ipAddresses);
     await _storage.saveAndroidVersions(_androidVersions, _sdkVersions);
+    await _storage.saveRemarks(_remarks);
+    await _storage.saveTags(_tags);
 
     var activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
     activeDevices = activeDevices

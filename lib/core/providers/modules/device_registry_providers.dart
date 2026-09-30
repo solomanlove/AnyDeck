@@ -13,6 +13,7 @@ import 'device_tracking_providers.dart';
 import 'registered_device_model.dart';
 import 'service_providers.dart';
 import 'wireless_connection_provider.dart';
+import 'device_registry_cleaner.dart';
 
 part 'device_registry_item_actions.dart';
 
