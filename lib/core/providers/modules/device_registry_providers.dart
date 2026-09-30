@@ -12,6 +12,7 @@ import 'device_registry_storage.dart';
 import 'device_tracking_providers.dart';
 import 'registered_device_model.dart';
 import 'service_providers.dart';
+import 'wireless_connection_provider.dart';
 
 part 'device_registry_item_actions.dart';
 
@@ -59,14 +60,40 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   final Set<String> _attemptedFetchIds = {};
   bool _isDisposed = false;
 
+  void _listenWirelessState() {
+    ref.listen(wirelessConnectionProvider, (previous, next) {
+      for (final entry in next.entries) {
+        if (identical(previous?[entry.key], entry.value)) continue;
+        final value = entry.value;
+        if (value.registryIp == null || value.busy) continue;
+        if (_isDisposed) return;
+        updateDeviceIp(value.deviceId, value.registryIp!, clear: value.registryIp == '-');
+        if (value.serial != null && value.serial != value.deviceId) {
+          updateDeviceIp(value.serial!, value.registryIp!, clear: value.registryIp == '-');
+        }
+      }
+    });
+  }
+
+  /// Android 设备列表的统一入口，离线历史设备也经过 TCP 优先与 mDNS 回退。
+  Future<AdbResult> connectPreferredWireless(RegisteredDevice device) async {
+    final result = await ref
+        .read(wirelessConnectionProvider.notifier)
+        .connect(device);
+    if (!_isDisposed) await _refreshRegistryAfterAdbCommand();
+    return result;
+  }
+
   /// 获取设备已映射的物理硬件序列号，未映射时返回 null
   String? getSerial(String id) => _serialMap[id];
 
   @override
   List<RegisteredDevice> build() {
+    _isDisposed = false;
     ref.onDispose(() {
       _isDisposed = true;
     });
+    _listenWirelessState();
 
     final activeDevicesAsync = ref.watch(devicesProvider);
     final activeDevices = activeDevicesAsync.value ?? _lastActiveDevices;
@@ -94,6 +121,12 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     _remarks = data.remarks;
     _tags = data.tags;
     _serialMap = data.serialMap;
+    // 实时连接结果优先于异步加载的磁盘快照，避免 DHCP 更新被旧缓存覆盖。
+    for (final value in ref.read(wirelessConnectionProvider).values) {
+      if (value.registryIp == null || value.busy) continue;
+      _ipAddresses[value.deviceId] = value.registryIp!;
+      if (value.serial != null) _ipAddresses[value.serial!] = value.registryIp!;
+    }
 
     state = _mergeDevices(activeDevices);
   }
@@ -112,6 +145,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       }
 
       try {
+        await ref.read(wirelessConnectionProvider.notifier).waitForPreparation(id);
+        if (_isDisposed) return;
         final adb = ref.read(adbServiceProvider);
         await DeviceRegistryProbeService.probeAndSyncAndroid(
           adb: adb,
@@ -178,6 +213,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       }
     }
     final resolvedActiveDevices = activeMap.values.toList();
+    ref.read(wirelessConnectionProvider.notifier).observe(resolvedActiveDevices);
 
     bool historyChanged = false;
     final nextHistory = List<String>.from(_historyIds);
@@ -309,8 +345,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   }
 
   /// 概览信息加载成功后触发同步更新设备注册表中的 IP 缓存并更新状态
-  void updateDeviceIp(String id, String ip) {
-    if (ip == '-' || ip.isEmpty) return;
+  void updateDeviceIp(String id, String ip, {bool clear = false}) {
+    if (clear) ip = '-';
+    if (!clear && (ip == '-' || ip.isEmpty)) return;
 
     final currentIp = _ipAddresses[id];
     if (currentIp == ip) return;
@@ -441,13 +478,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     String hostWithPort,
     String pairingCode,
   ) async {
-    final result = await DeviceRegistryActions.pairAndConnect(
-      hostWithPort: hostWithPort,
-      pairingCode: pairingCode,
-      adbService: ref.read(adbServiceProvider),
-      deviceActionService: ref.read(deviceActionServiceProvider),
-      hdcService: ref.read(hdcServiceProvider),
-    );
+    final result = await ref.read(wirelessConnectionProvider.notifier)
+        .pair(hostWithPort, pairingCode);
     await _refreshRegistryAfterAdbCommand();
     return result;
   }

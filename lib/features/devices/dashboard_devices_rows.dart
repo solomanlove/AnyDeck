@@ -149,6 +149,8 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                     ],
                   ),
                 ],
+                if (!device.isIos && !device.isHarmony)
+                  DeviceWirelessStatusLabel(device: device),
               ],
             ),
           ),
@@ -177,7 +179,11 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             ),
           ],
           // 如果 USB 已连接，且探测到 Wi-Fi IP，且尚未建立任何网络调试，提供快捷无线连接按钮
-          if (hasUsb && !hasAnyNetwork && wifiIp != null && wifiIp.isNotEmpty) ...[
+          if (!device.isIos && !device.isHarmony && !hasTcp) ...[
+            const SizedBox(width: 6),
+            DeviceWirelessControls(device: device, compact: true),
+          ],
+          if (device.isHarmony && hasUsb && !hasAnyNetwork && wifiIp != null && wifiIp.isNotEmpty) ...[
             const SizedBox(width: 6),
             Tooltip(
               message: '通过 WiFi 连接 ADB',
@@ -401,7 +407,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             const SizedBox(width: 8),
           ],
           // 2. 如果已有处于激活在线状态的无线网络调试连接，则显示红色“断开”按钮
-          if (hasActiveWifi) ...[
+          if (!device.isIos && !device.isHarmony) ...[
+            DeviceWirelessControls(device: device),
+            const SizedBox(width: 8),
+          ] else if (hasActiveWifi) ...[
             IconButton(
               icon: const Icon(
                 CupertinoIcons.bolt_slash,

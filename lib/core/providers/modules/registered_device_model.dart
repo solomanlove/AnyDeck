@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../adb/adb_device.dart';
+import '../../adb/wireless/adb_wireless_state.dart';
 import '../../harmony/hdc_service.dart';
 import 'device_registry_providers.dart';
 
@@ -85,6 +86,7 @@ class RegisteredDevice {
 
   /// 从连接标识符中解析网络端口号（若为纯 IP 则默认 5555，非网络连接返回 null）
   static int? parseConnectionPort(String connectionId) {
+    if (connectionId.contains('_adb-tls-connect._tcp')) return null;
     if (!connectionId.contains(':')) {
       if (connectionId.contains('.')) return 5555;
       return null;
@@ -109,12 +111,12 @@ class RegisteredDevice {
     if (connections.isEmpty) {
       if (!isNetwork) return false;
       final port = parseConnectionPort(id);
-      return port == 5555 || port == null;
+      return !isWirelessTlsId(id) && (port == 5555 || port == null);
     }
     return connections.any((c) {
       if (!c.contains(':') && !c.contains('.')) return false;
       final port = parseConnectionPort(c);
-      return port == 5555 || port == null;
+      return !isWirelessTlsId(c) && (port == 5555 || port == null);
     });
   }
 
@@ -122,13 +124,11 @@ class RegisteredDevice {
   bool get hasWifiDebuggingConnection {
     if (connections.isEmpty) {
       if (!isNetwork) return false;
-      final port = parseConnectionPort(id);
-      return port != null && port != 5555;
+      return isWirelessTlsId(id);
     }
     return connections.any((c) {
       if (!c.contains(':') && !c.contains('.')) return false;
-      final port = parseConnectionPort(c);
-      return port != null && port != 5555;
+      return isWirelessTlsId(c);
     });
   }
 
@@ -142,7 +142,8 @@ class RegisteredDevice {
     );
     if (usbId.isNotEmpty) return usbId;
     final tcpId = connections.firstWhere(
-      (c) => parseConnectionPort(c) == 5555,
+      (c) => !isWirelessTlsId(c) &&
+          (parseConnectionPort(c) == 5555 || c.contains('._adb._tcp')),
       orElse: () => '',
     );
     if (tcpId.isNotEmpty) return tcpId;
@@ -152,12 +153,13 @@ class RegisteredDevice {
   /// 获取设备的局域网 Wi-Fi IP 地址
   String? get wifiIp {
     if (ipAddress != null && ipAddress!.isNotEmpty && ipAddress != '-') {
-      return ipAddress;
+      final ip = wirelessIpv4(ipAddress);
+      if (ip != null) return ip;
     }
     if (isNetwork) {
       final parts = id.split(':');
       if (parts.isNotEmpty) {
-        return parts.first;
+        return wirelessIpv4(parts.first);
       }
     }
     return null;

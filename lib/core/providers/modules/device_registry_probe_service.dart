@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../adb/adb_service.dart';
+import '../../adb/wireless/adb_wireless_probe.dart';
 import '../../device_info/device_overview.dart';
 import '../../harmony/hdc_service.dart';
 import 'device_registry_storage.dart';
@@ -45,48 +46,8 @@ class DeviceRegistryProbeService {
 
   /// 探查 Android 设备的 Wi-Fi 局域网 IP 地址
   static Future<String?> fetchDeviceIpAddress(AdbService adb, String id) async {
-    // 优先尝试从本设备的概览缓存获取 IP
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final cacheKey = 'devices.overview.$id';
-      final jsonStr = prefs.getString(cacheKey);
-      if (jsonStr != null) {
-        final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
-        final cachedIp = decoded['ipAddress']?.toString();
-        if (cachedIp != null && cachedIp.isNotEmpty && cachedIp != '-') {
-          return cachedIp;
-        }
-      }
-    } catch (_) {}
-
-    try {
-      // 1. 尝试通过 ip route 获取
-      final routeResult = await adb.shellArgs(id, ['ip', 'route']);
-      if (routeResult.isSuccess) {
-        final ip = parseIpFromIpRoute(routeResult.stdout);
-        if (ip != null) return ip;
-      }
-
-      // 2. 尝试通过 ip addr show wlan0 获取
-      final wlanResult = await adb.shellArgs(id, [
-        'ip',
-        'addr',
-        'show',
-        'wlan0',
-      ]);
-      if (wlanResult.isSuccess) {
-        final ip = parseIpFromIpAddr(wlanResult.stdout);
-        if (ip != null) return ip;
-      }
-
-      // 3. 尝试通过 ip addr show 兜底获取
-      final addrResult = await adb.shellArgs(id, ['ip', 'addr', 'show']);
-      if (addrResult.isSuccess) {
-        final ip = parseIpFromIpAddr(addrResult.stdout);
-        if (ip != null) return ip;
-      }
-    } catch (_) {}
-    return null;
+    // 连接准备始终查询当前 Wi-Fi 接口，避免旧缓存、VPN 或蜂窝地址污染。
+    return AdbWirelessProbe(adb).ip(id);
   }
 
   static String? parseIpFromIpRoute(String output) {

@@ -60,3 +60,4 @@ export 'modules/package_providers.dart';
 export 'modules/registered_device_model.dart';
 export 'modules/screen_power_providers.dart';
 export 'modules/service_providers.dart';
+export 'modules/wireless_connection_provider.dart';

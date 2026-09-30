@@ -98,14 +98,18 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
     setState(() {
       _isPairing = false;
       if (result.isSuccess) {
-        _statusMessage = context.l10n.t('pairSuccess');
+        _statusMessage = result is AdbWirelessResult
+            ? context.l10n.t(result.messageKey) : context.l10n.t('pairSuccess');
+        if (result is AdbWirelessResult && result.messageKey == 'wirelessTlsFallback') return;
         Future.delayed(const Duration(milliseconds: 1000), () {
           if (mounted) {
             Navigator.of(context).pop();
           }
         });
       } else {
-        _statusMessage = '${context.l10n.t('pairFailed')}: ${result.message}';
+        _statusMessage = result is AdbWirelessResult
+            ? context.l10n.t(result.messageKey)
+            : '${context.l10n.t('pairFailed')}: ${result.message}';
         _isError = true;
         // Resume QR code discovery if we were on the QR tab
         if (_tabController.index == 0) {
