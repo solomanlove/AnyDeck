@@ -30,12 +30,16 @@ class MainWindowCloseShortcut extends StatelessWidget {
     super.key,
     required this.child,
     this.showWindowKey = '1',
+    this.onQuit,
   });
 
   final Widget child;
 
   /// 显示主窗口的按键字符（单字符，默认 '1'）
   final String showWindowKey;
+
+  /// 退出快捷键回调（若提供则委托，支持双按退出确认）
+  final VoidCallback? onQuit;
 
   /// 将字符串 key 映射到 LogicalKeyboardKey
   static LogicalKeyboardKey? _keyFromChar(String char) {
@@ -63,12 +67,17 @@ class MainWindowCloseShortcut extends StatelessWidget {
 
     // macOS 上注册 ⌘Q 退出整个应用（与状态栏退出一致）
     if (Platform.isMacOS) {
-      bindings[const SingleActivator(LogicalKeyboardKey.keyQ, meta: true)] =
-          () async {
-        await windowManager.setPreventClose(false);
-        await windowManager.destroy();
-        exit(0);
-      };
+      if (onQuit != null) {
+        bindings[const SingleActivator(LogicalKeyboardKey.keyQ, meta: true)] =
+            onQuit!;
+      } else {
+        bindings[const SingleActivator(LogicalKeyboardKey.keyQ, meta: true)] =
+            () async {
+          await windowManager.setPreventClose(false);
+          await windowManager.destroy();
+          exit(0);
+        };
+      }
     }
 
     // 注册动态显示主窗口快捷键（默认 ⌘1）

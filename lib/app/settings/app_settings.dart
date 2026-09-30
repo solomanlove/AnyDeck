@@ -36,6 +36,7 @@ class AppSettings {
     this.notificationBodyPreview = true,
     this.launchAtStartup = false,
     this.showWindowShortcutKey = '1',
+    this.developerModeEnabled = false,
   });
 
   final AppLanguage language;
@@ -54,6 +55,8 @@ class AppSettings {
   final bool launchAtStartup;
   /// 显示主窗口的快捷键字符（默认 '1'，即 ⌘1）
   final String showWindowShortcutKey;
+  /// 是否已开启开发者选项
+  final bool developerModeEnabled;
 
   /// 创建新的不可变设置对象，未指定字段沿用当前值。
   AppSettings copyWith({
@@ -72,6 +75,7 @@ class AppSettings {
     bool? notificationBodyPreview,
     bool? launchAtStartup,
     String? showWindowShortcutKey,
+    bool? developerModeEnabled,
   }) {
     return AppSettings(
       language: language ?? this.language,
@@ -89,6 +93,7 @@ class AppSettings {
       notificationBodyPreview: notificationBodyPreview ?? this.notificationBodyPreview,
       launchAtStartup: launchAtStartup ?? this.launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey ?? this.showWindowShortcutKey,
+      developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
     );
   }
 }

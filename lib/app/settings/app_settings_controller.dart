@@ -39,6 +39,7 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _notificationBodyPreviewKey = 'settings.notificationBodyPreview';
   static const _launchAtStartupKey = 'settings.launchAtStartup';
   static const _showWindowShortcutKey = 'settings.showWindowShortcutKey';
+  static const _developerModeEnabledKey = 'settings.developerModeEnabled';
   static const _mainSettingsChannel = WindowMethodChannel(
     'any_deck/settings_main',
     mode: ChannelMode.unidirectional,
@@ -107,6 +108,9 @@ class AppSettingsController extends Notifier<AppSettings> {
     } else if (call.method == 'update_launch_at_startup') {
       final value = call.arguments as bool;
       await setLaunchAtStartup(value, broadcast: false);
+    } else if (call.method == 'update_developer_mode') {
+      final value = call.arguments as bool;
+      await setDeveloperModeEnabled(value, broadcast: false);
     }
     return null;
   }
@@ -327,6 +331,20 @@ class AppSettingsController extends Notifier<AppSettings> {
     await preferences.setString(_showWindowShortcutKey, clean);
   }
 
+  /// 更新开发者模式开关状态，并持久化和跨窗口同步。
+  Future<void> setDeveloperModeEnabled(bool value, {bool broadcast = true}) async {
+    state = state.copyWith(developerModeEnabled: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_developerModeEnabledKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange('update_developer_mode', value);
+      } catch (e) {
+        debugPrint('Failed to broadcast developer mode change: $e');
+      }
+    }
+  }
+
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
@@ -362,6 +380,8 @@ class AppSettingsController extends Notifier<AppSettings> {
     }
     final showWindowShortcutKey =
         preferences.getString(_showWindowShortcutKey) ?? '1';
+    final developerModeEnabled =
+        preferences.getBool(_developerModeEnabledKey) ?? false;
     state = AppSettings(
       language: language,
       themeMode: themeMode,
@@ -378,6 +398,7 @@ class AppSettingsController extends Notifier<AppSettings> {
       notificationBodyPreview: notificationBodyPreview,
       launchAtStartup: launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey,
+      developerModeEnabled: developerModeEnabled,
     );
 
     if (ref.read(windowIdProvider).isEmpty) {

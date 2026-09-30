@@ -102,6 +102,13 @@ const settingsZh = {
   'launchAtStartupDesc': '登录系统时自动启动 AnyDeck',
   'mainWindowShortcut': '唤起主窗口快捷键',
   'mainWindowShortcutDesc': '在应用内按下快捷键激活主窗口（Command+键）',
+  'developerOptions': '开发者选项',
+  'developerOptionsDesc': '调试入口与测试功能中心',
+  'developerOptionsStepTip': '再点击 {count} 次进入开发者模式',
+  'developerOptionsEnabledTip': '您已处于开发者模式！',
+  'developerOptionsAlreadyEnabled': '您已处于开发者模式，无需重复开启',
+  'developerModeSwitch': '开发者模式',
+  'developerModeSwitchDesc': '开启后在设置中显示开发者选项入口',
 };
 
 const settingsEn = {
@@ -212,4 +219,11 @@ const settingsEn = {
   'launchAtStartupDesc': 'Automatically launch AnyDeck on system login',
   'mainWindowShortcut': 'Main Window Shortcut',
   'mainWindowShortcutDesc': 'Shortcut key to focus main window (Command+key)',
+  'developerOptions': 'Developer Options',
+  'developerOptionsDesc': 'Debugging entrypoints and testing tools center',
+  'developerOptionsStepTip': 'Tap {count} more times to enable developer mode',
+  'developerOptionsEnabledTip': 'You are now in developer mode!',
+  'developerOptionsAlreadyEnabled': 'You are already in developer mode',
+  'developerModeSwitch': 'Developer Mode',
+  'developerModeSwitchDesc': 'Show developer options entry in Settings',
 };

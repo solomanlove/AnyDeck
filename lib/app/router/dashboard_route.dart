@@ -9,6 +9,7 @@ abstract final class AppRouteNames {
   static const mcp = 'mcp';
   static const deviceTool = 'deviceTool';
   static const appDetails = 'appDetails';
+  static const developerOptions = 'developerOptions';
 }
 
 /// 主窗口路由对应的页面类型。

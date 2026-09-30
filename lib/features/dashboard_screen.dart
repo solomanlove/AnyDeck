@@ -120,6 +120,7 @@ import '../core/notifications/notification_providers.dart';
 import '../core/notifications/mac_notification_bridge.dart';
 import '../core/dal/device_driver.dart';
 import '../core/dal/rust_dal_bridge.dart';
+import 'developer/widget/settings_developer_entry.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';
@@ -352,6 +353,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       _openConsoleWindow(context);
     } else if (call.method == 'openPreferences') {
       context.goNamed(AppRouteNames.settings);
+    } else if (call.method == 'promptQuitConfirmation') {
+      _lastQuitShortcutAt = DateTime.now();
+      if (mounted) {
+        _showSnack(context, context.l10n.t('pressCommandQAgainToQuit'));
+      }
     }
   }
 
@@ -373,7 +379,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     }
 
     _lastQuitShortcutAt = now;
-    DashboardSnack.show(context, context.l10n.t('pressCommandQAgainToQuit'));
+    if (mounted) {
+      _showSnack(context, context.l10n.t('pressCommandQAgainToQuit'));
+    }
   }
 
   @override
@@ -517,6 +525,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       },
       child: MainWindowCloseShortcut(
         showWindowKey: settings.showWindowShortcutKey,
+        onQuit: _handleQuitShortcut,
         child: Scaffold(
           body: _WechatStyleShell(
             title: appBarTitle,

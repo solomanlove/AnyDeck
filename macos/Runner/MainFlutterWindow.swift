@@ -70,6 +70,7 @@ class MainFlutterWindow: NSWindow {
     }
 
     (NSApplication.shared.delegate as? AppDelegate)?.configureApkChannel(flutterViewController.engine.binaryMessenger)
+    (NSApplication.shared.delegate as? AppDelegate)?.configureWindowChannel(flutterViewController.engine.binaryMessenger)
     if #available(macOS 10.14, *) {
       NotificationBridgeService.shared.setup(messenger: flutterViewController.engine.binaryMessenger)
     }
@@ -290,7 +291,7 @@ class MainFlutterWindow: NSWindow {
         if submenu.items.count > 10 {
           let quitItem = submenu.items[10]
           quitItem.title = isChinese ? "退出 \(title)" : "Quit \(title)"
-          quitItem.keyEquivalent = ""
+          quitItem.keyEquivalent = "q"
         }
       }
     }

@@ -6,12 +6,19 @@ import '../../core/providers/app_providers.dart';
 import '../../features/dashboard_screen.dart';
 import 'dashboard_route.dart';
 
+import '../../features/developer/developer_options_screen.dart';
+
 /// 全局 GoRouter 实例，集中管理路由，避免页面路径散落在业务组件中。
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: _initialLocation(ref),
     routes: [
       GoRoute(path: '/', redirect: (context, state) => '/devices'),
+      GoRoute(
+        path: '/developer-options',
+        name: AppRouteNames.developerOptions,
+        builder: (context, state) => const DeveloperOptionsScreen(),
+      ),
       ShellRoute(
         builder: (context, state, child) {
           return Stack(

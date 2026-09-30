@@ -18,7 +18,8 @@ class PrimaryRail extends ConsumerWidget {
     required bool isNarrow,
     required bool hasOverflow,
   }) {
-    final double toolSlotHeight = isNarrow ? 60.0 : 52.0;
+    // 顶部工具项使用更紧凑的间距，底部设置等保留原有高度以防变动
+    final double toolSlotHeight = isNarrow ? 54.0 : 48.0;
     final double bottomButtonsSlotHeight = (isNarrow ? 60.0 : 52.0) * 3;
     final double logoSize = isNarrow ? 50.0 : 38.0;
     final double logoToolGap = isNarrow
@@ -366,6 +367,7 @@ class PrimaryRail extends ConsumerWidget {
                     selected: selectedTool == tool.tabIndex,
                     tooltip: tool.label,
                     isNarrow: renderNarrow,
+                    verticalPadding: renderNarrow ? 3.0 : 2.0,
                     onPressed: isToolEnabled(tool.tabIndex)
                         ? () => handleTap(tool.tabIndex)
                         : null,
@@ -378,6 +380,7 @@ class PrimaryRail extends ConsumerWidget {
                     isToolEnabled: isToolEnabled,
                     onSelected: handleTap,
                     isNarrow: renderNarrow,
+                    verticalPadding: renderNarrow ? 3.0 : 2.0,
                   ),
                 const Spacer(),
                 _RailButton(
@@ -440,6 +443,7 @@ class _RailMoreButton extends StatelessWidget {
     required this.isToolEnabled,
     required this.onSelected,
     required this.isNarrow,
+    this.verticalPadding,
   });
 
   final List<_RailToolItem> tools;
@@ -448,6 +452,7 @@ class _RailMoreButton extends StatelessWidget {
   final bool Function(int) isToolEnabled;
   final ValueChanged<int> onSelected;
   final bool isNarrow;
+  final double? verticalPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -475,7 +480,7 @@ class _RailMoreButton extends StatelessWidget {
 
     if (isNarrow) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: EdgeInsets.symmetric(vertical: verticalPadding ?? 6),
         child: Center(
           child: PopupMenuButton<int>(
             tooltip: context.l10n.t('moreTools'),
@@ -524,7 +529,10 @@ class _RailMoreButton extends StatelessWidget {
       );
     } else {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+        padding: EdgeInsets.symmetric(
+          vertical: verticalPadding ?? 4,
+          horizontal: 12,
+        ),
         child: PopupMenuButton<int>(
           tooltip: context.l10n.t('moreTools'),
           onSelected: anyEnabled ? onSelected : null,
@@ -605,6 +613,7 @@ class _RailButton extends StatelessWidget {
     required this.isNarrow,
     this.selected = false,
     this.isHighlighted = false,
+    this.verticalPadding,
     this.onPressed,
   });
 
@@ -613,6 +622,7 @@ class _RailButton extends StatelessWidget {
   final bool isNarrow;
   final bool selected;
   final bool isHighlighted;
+  final double? verticalPadding;
   final VoidCallback? onPressed;
 
   @override
@@ -637,7 +647,7 @@ class _RailButton extends StatelessWidget {
       return Tooltip(
         message: tooltip,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: EdgeInsets.symmetric(vertical: verticalPadding ?? 6),
           child: Center(
             child: IconButton(
               icon: Icon(icon, color: color),
@@ -662,7 +672,10 @@ class _RailButton extends StatelessWidget {
       return Tooltip(
         message: tooltip,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+          padding: EdgeInsets.symmetric(
+            vertical: verticalPadding ?? 4,
+            horizontal: 12,
+          ),
           child: Material(
             color: (selected || isHighlighted)
                 ? activeBgColor
