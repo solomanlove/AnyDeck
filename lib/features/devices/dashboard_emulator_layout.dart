@@ -1,7 +1,7 @@
 part of '../dashboard_screen.dart';
 
-/// 模拟器页标题、搜索与操作栏。窄窗口分两行，独立窗口单独预留系统按钮空间。
-class _EmulatorStandaloneLayout extends StatelessWidget {
+/// 模拟器页标题、分平台 Tab 切换（Android AVD、DevEco Emulator、Xcode Simulator）与操作栏。
+class _EmulatorStandaloneLayout extends StatefulWidget {
   const _EmulatorStandaloneLayout({
     required this.layoutWidget,
     required this.toolbar,
@@ -17,15 +17,23 @@ class _EmulatorStandaloneLayout extends StatelessWidget {
   final ValueChanged<String> onFilterChanged;
 
   @override
+  State<_EmulatorStandaloneLayout> createState() =>
+      _EmulatorStandaloneLayoutState();
+}
+
+class _EmulatorStandaloneLayoutState extends State<_EmulatorStandaloneLayout> {
+  EmulatorPlatform _selectedPlatform = EmulatorPlatform.android;
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 1100;
+        final compact = constraints.maxWidth < 650;
         final search = SizedBox(
           width: compact ? 180 : 220,
           child: TextField(
-            controller: filterController,
-            onChanged: onFilterChanged,
+            controller: widget.filterController,
+            onChanged: widget.onFilterChanged,
             decoration: InputDecoration(
               isDense: true,
               prefixIcon: const Icon(CupertinoIcons.search, size: 18),
@@ -36,11 +44,13 @@ class _EmulatorStandaloneLayout extends StatelessWidget {
             ),
           ),
         );
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!isEmbeddedTab && Platform.isMacOS)
+            if (!widget.isEmbeddedTab && Platform.isMacOS)
               const DragToMoveArea(child: SizedBox(height: 30)),
+            // 顶部公用标题栏：左侧为标题与副标题，右上角为共用的模拟器平台切换 Tab
             DragToMoveArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -56,21 +66,47 @@ class _EmulatorStandaloneLayout extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      search,
-                      if (!compact) ...[const SizedBox(width: 16), toolbar],
+                      EmulatorPlatformTabs(
+                        selectedPlatform: _selectedPlatform,
+                        onPlatformChanged: (platform) {
+                          setState(() => _selectedPlatform = platform);
+                        },
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
-            if (compact)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: toolbar,
-              ),
             const Divider(height: 1),
-            Expanded(child: layoutWidget),
+            // 内容区域：安卓模拟器与其他两端页面保持完全一致（搜索框 + 工具栏 + 分割线 + 表格）
+            Expanded(
+              child: switch (_selectedPlatform) {
+                EmulatorPlatform.android => Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                        child: Row(
+                          children: [
+                            search,
+                            const Spacer(),
+                            if (!compact) widget.toolbar,
+                          ],
+                        ),
+                      ),
+                      if (compact)
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                          child: widget.toolbar,
+                        ),
+                      const Divider(height: 1),
+                      Expanded(child: widget.layoutWidget),
+                    ],
+                  ),
+                EmulatorPlatform.harmony => const DevecoEmulatorsView(),
+                EmulatorPlatform.ios => const IosSimulatorsView(),
+              },
+            ),
           ],
         );
       },
