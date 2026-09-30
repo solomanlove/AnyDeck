@@ -62,7 +62,7 @@ class _EmulatorStandaloneLayoutState extends State<_EmulatorStandaloneLayout> {
                         child: DashboardHeaderTitle(
                           title: context.l10n.t('emulators'),
                           subtitle: context.l10n.t('emulatorsSubtitle'),
-                          icon: Icons.devices_rounded,
+                          icon: CupertinoIcons.device_desktop,
                         ),
                       ),
                       const SizedBox(width: 16),

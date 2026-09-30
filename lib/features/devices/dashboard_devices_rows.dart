@@ -213,6 +213,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           color: hasRemark ? Theme.of(context).colorScheme.onSurface : Colors.grey,
           fontWeight: hasRemark ? FontWeight.w500 : FontWeight.normal,
         ),
+        maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
     );
@@ -318,7 +319,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               ),
             ),
           ],
-          // 4. 编辑设备信息按钮（修改设备名称、标签标识、备注等）
+          // 4. 编辑设备信息按钮（修改设备名称、标签标识、备注，并在弹窗内展示详情及提供删除功能）
           IconButton(
             icon: const Icon(
               CupertinoIcons.pencil,
@@ -329,62 +330,8 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             constraints: const BoxConstraints(),
             onPressed: () => _showEditDeviceInfoDialog(context, device),
           ),
-          // 5. 彻底删除设备并清理关联缓存按钮
-          IconButton(
-            icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent),
-            tooltip: context.l10n.t('delete'),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () => _confirmAndDeleteDevice(context, ref, device),
-          ),
         ],
       ),
     );
-  }
-
-  /// 确认并删除设备，若设备正通过 USB 物理连接则给予警示提示
-  Future<void> _confirmAndDeleteDevice(
-    BuildContext context,
-    WidgetRef ref,
-    RegisteredDevice device,
-  ) async {
-    final isUsbOnline = device.isOnline && device.hasUsbConnection;
-    final title = isUsbOnline
-        ? context.l10n.t('usbConnectedDeleteWarningTitle')
-        : context.l10n.t('confirmDeleteDeviceTitle');
-    final message = isUsbOnline
-        ? context.l10n.t('usbConnectedDeleteWarning')
-        : context.l10n
-            .t('confirmDeleteDeviceMessage')
-            .replaceAll('{name}', device.displayName);
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(context.l10n.t('cancel')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-              foregroundColor: Theme.of(ctx).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(context.l10n.t('delete')),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      await ref.read(deviceRegistryProvider.notifier).removeDevice(device.id);
-      if (context.mounted) {
-        _showSnack(context, context.l10n.t('deviceDeletedSuccess'));
-      }
-    }
   }
 }
