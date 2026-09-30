@@ -30,6 +30,7 @@ import '../app/window/multi_window_compat.dart';
 import '../app/window/mirror/mirror_aspect_resolver.dart';
 import '../app/window/window_close_shortcut.dart';
 import '../core/adb/adb_device.dart';
+import '../core/notifications/notification_click_target.dart';
 import '../core/adb/adb_result.dart';
 import '../core/apps/adb_package.dart';
 import '../core/apps/adb_package_detail.dart';
@@ -283,7 +284,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     super.dispose();
   }
 
-  void _handleNotificationClick(Map<String, dynamic> payload) {
+  int _notificationClickRevision = 0;
+
+  Future<void> _handleNotificationClick(Map<String, dynamic> payload) async {
+    final revision = ++_notificationClickRevision;
     final type = payload['type'] as String?;
     final deviceId = payload['deviceId'] as String?;
     final deviceSerial = payload['deviceSerial'] as String?;
@@ -298,18 +302,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     if (deviceId != null && deviceId.isNotEmpty) {
       final registry = ref.read(deviceRegistryProvider);
-      RegisteredDevice? matched;
-      for (final device in registry) {
-        if (device.id == deviceId ||
-            device.serial == deviceId ||
-            (deviceSerial != null && device.serial == deviceSerial) ||
-            device.connections.contains(deviceId)) {
-          matched = device;
-          break;
-        }
-      }
+      final installationId = payload['installationId'] as String?;
+      final userId = (payload['androidUserId'] as num?)?.toInt();
+      final database = await ref.read(notificationDatabaseProvider.future);
+      if (!mounted || revision != _notificationClickRevision) return;
+      final matched = await resolveNotificationClickDevice(
+        devices: registry,
+        database: database,
+        deviceId: deviceId,
+        deviceSerial: deviceSerial,
+        installationId: installationId,
+        userId: userId,
+      );
+      if (!mounted || revision != _notificationClickRevision) return;
       if (matched == null) {
         context.goNamed(AppRouteNames.devices);
+        ref.read(messageClickTargetProvider.notifier).state = null;
         ref.read(targetMessageIdProvider.notifier).state = null;
         ref.read(highlightedNotificationKeyProvider.notifier).state = null;
         if (mounted) {
@@ -321,6 +329,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         }
         return;
       }
+      ref
+          .read(messageClickTargetProvider.notifier)
+          .state = installationId != null && userId != null
+          ? (
+              deviceId: matched.id,
+              serial: matched.serial,
+              installationId: installationId,
+              userId: userId,
+            )
+          : null;
+      ref.read(messagesSearchQueryProvider.notifier).state = '';
+      ref.read(messagesPackageFilterProvider.notifier).state = null;
       ref.read(targetMessageIdProvider.notifier).state = messageId;
       ref.read(highlightedNotificationKeyProvider.notifier).state =
           notificationKey?.isNotEmpty == true ? notificationKey : null;

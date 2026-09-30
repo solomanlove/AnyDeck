@@ -1,3 +1,5 @@
+import 'notification_device_identity.dart';
+
 /// 手机转发消息的数据模型定义。
 class NotificationMessage {
   const NotificationMessage({
@@ -93,10 +95,12 @@ class NotificationSource {
   const NotificationSource({
     required this.installationId,
     required this.androidUserId,
+    this.identity,
   });
 
   final String installationId;
   final int androidUserId;
+  final NotificationDeviceIdentity? identity;
 }
 
 /// 通知存储变化事件，供消息列表按来源实时刷新。

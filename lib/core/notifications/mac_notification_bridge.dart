@@ -60,6 +60,7 @@ class MacNotificationBridge {
     required String id,
     required String title,
     String body = '',
+    String subtitle = '',
     String? iconPath,
     Map<String, dynamic>? payload,
   }) async {
@@ -71,6 +72,7 @@ class MacNotificationBridge {
         'id': id,
         'title': title,
         'body': body,
+        'subtitle': subtitle,
         if (iconPath != null && iconPath.isNotEmpty) 'iconPath': iconPath,
         'payload': payload ?? <String, dynamic>{},
       });

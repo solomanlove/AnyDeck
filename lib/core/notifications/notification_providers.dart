@@ -9,6 +9,7 @@ import 'notification_database.dart';
 import 'notification_forwarding_client.dart';
 import 'notification_forwarding_service.dart';
 import 'notification_models.dart';
+import 'notification_device_identity.dart';
 
 /// 全局 macOS 本地通知桥接单例 Provider。
 final macNotificationBridgeProvider = Provider<MacNotificationBridge>((ref) {
@@ -46,6 +47,19 @@ final notificationForwardingServiceProvider =
         databaseFuture: databaseFuture,
         bridge: bridge,
         settingsGetter: () => ref.read(appSettingsProvider),
+        deviceIdentityResolver: (deviceId, serial, installationId) {
+          final locale = ref.read(appSettingsProvider).language.locale;
+          return resolveNotificationIdentity(
+            devices: ref.read(deviceRegistryProvider),
+            deviceId: deviceId,
+            serial: serial,
+            installationId: installationId,
+            fallbackName: AppLocalizations(locale).t('messageAndroidDevice'),
+          );
+        },
+        deviceLabelResolver: (identity) => identity.label(
+          notificationKnownDeviceIds(ref.read(deviceRegistryProvider)),
+        ),
         appNameResolver: (deviceId, packageName) {
           final packages = ref.read(packagesProvider(deviceId)).value;
           if (packages != null) {

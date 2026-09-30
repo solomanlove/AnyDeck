@@ -99,3 +99,40 @@ flowchart LR
 | macOS 通知点击 | 唤起主窗口，聚焦并跳转到 Tab 0 (连接) 或 Tab 15 (消息) | `NotificationBridgeService.swift` 点击流转发 |
 | 手机 App 图标 | 有缓存时转发通知附带对应图标，未缓存时仍正常显示文字通知 | `NotificationForwardingService` 参数回归测试；右侧附件样式需在 Notification Center 手工验收 |
 | 消息增量与队列缺口 | 入库后发布刷新事件；`gap=true` 保留缺口状态并显示警告 | `NotificationForwardingService` 回归测试 |
+
+## 5. 多设备消息来源标识（2026-09-30）
+
+### 5.1 展示与身份规则
+
+- macOS 手机消息通知的 Title 为 `设备名 · 短标识 · 应用名`，新增可选 Subtitle 承载原消息标题，Body 继续遵循正文预览开关。连接通知没有 Subtitle 时仍保持原行为。
+- 消息页仍按当前设备查询；页头和每条卡片共用 `MessageDeviceBadge` 显示来源。页头区分在线监听、在线未监听、离线历史；清空按钮与确认文案明确当前设备范围。
+- `notification_device_identity.dart` 复用注册表 `displayName`（备注优先，其次有效型号），名称缺失回退至快照或中英文 Android 设备文案。稳定身份优先 Hardware Serial，网络 route 不充当持久身份；缺少 Serial 时使用 `installation:<installationId>`。
+- 来源标签始终附带尾部短标识，从 4 位起，在已知注册设备间发生尾码冲突时延长；包含离线注册设备参与消歧。USB/Wi-Fi 通过同一 Hardware Serial 保持身份一致。
+- 身份显示通过现有注册表与 SQLite 读取，无额外 ADB 查询，无新增依赖或子窗口。新增标签使用主题色，文案维护于中英文 messages 表。
+
+### 5.2 持久化与兼容
+
+- SQLite 新增 `notification_source_metadata` 表，主键 `(installation, user_id)`，保存 `device_id` 和 `device_name` 快照；保留原 notifications 表和来源别名表，不清空旧数据。
+- 会话握手、收到消息以及消息页状态刷新时补齐元数据。`resolveSource()` 左连接元数据，旧库没有快照时仍可查询原历史；当前注册表可用于显示旧来源名称。
+- Companion 重装或网络地址复用只更新别名指向，旧来源元数据独立保留；`readSource()` 可按通知原始来源恢复快照。改名后界面优先使用注册表当前名称，新通知更新名称快照。
+- 历史仍保留 7 天、每来源 10,000 条；屏蔽、清空和 macOS 通知 ID 继续按原来源隔离。Android Companion 协议未变。
+
+### 5.3 点击定位与设备切换
+
+- 手机通知 payload 增加 `installationId`、`androidUserId`，`deviceSerial` 使用稳定身份。
+- `notification_click_target.dart` 优先核验 Hardware Serial。有明确 Serial 却找不到对应设备时，不允许用旧 IP 匹配另一台手机；没有 Serial 时用持久化安装来源及 Android 用户核验设备。旧版通知仍兼容既有 route 路径。
+- 点击时清除搜索/应用筛选，保存来源目标与 messageId；以来源和 ID 双重条件补查最近 200 条之外的目标消息。列表使用以目标为原点的 SliverList，目标立即可见，向上仍可查看较新消息。原始来源与手机当前安装/用户不同时提供返回当前消息入口。
+- `MessagesTab.didUpdateWidget` 在设备变化时清理状态并递增请求代次；异步状态回调、数据库写入与 Provider 更新前校验代次，避免 A 的迟到结果覆盖 B。
+- 设备已删除时沿用回到设备列表并提示的行为；过期或已清空消息不能恢复正文，显示对应来源剩余历史。
+
+### 5.4 本次验证与手工验收边界
+
+定向自动测试覆盖数据库升级、来源快照、重装与 route 复用、双设备相同消息隔离、正文隐藏、MethodChannel Subtitle、点击来源核验、设备切换迟到回调以及明暗主题下目标定位。
+
+```bash
+flutter test --no-pub test/notification_database_test.dart test/notification_forwarding_test.dart test/notification_device_identity_test.dart test/notification_click_target_test.dart test/messages_source_widget_test.dart test/mac_notification_bridge_test.dart
+```
+
+- 本次 28 项定向测试通过；消息模块定向 Dart analyze 无问题；Swift 桥接文件语法检查通过。Dashboard 检查仅保留 HEAD 已存在的 `liquid_glass_background.dart` 未使用 import 警告，未混入无关清理。未启动桌面项目、未执行整机或完整 macOS 构建验收。
+- 手工验收：两台同型号手机同时发相同通知；修改备注后再发消息；USB/Wi-Fi 切换；离线重启查看历史；查看 A 时点击 B 的通知；关闭正文预览；清空 A 不影响 B。
+- macOS 横幅 Subtitle、附件布局及系统截断行为受系统版本与通知设置影响，需 Notification Center 实机验收。

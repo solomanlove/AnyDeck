@@ -10,11 +10,13 @@ import '../../../../core/providers/app_providers.dart';
 import '../../../../core/usage/usage_sync_service.dart';
 import '../controller/messages_controller.dart';
 import 'blocked_apps_dialog.dart';
+import 'message_device_badge.dart';
 
 /// 消息页面的顶部工具条，集成状态切换、Companion 检查、检索与屏蔽入口。
 class MessagesHeaderBar extends ConsumerWidget {
   const MessagesHeaderBar({
     super.key,
+    required this.deviceLabel,
     required this.device,
     required this.serial,
     this.status,
@@ -27,6 +29,7 @@ class MessagesHeaderBar extends ConsumerWidget {
   final NotificationSessionStatus? status;
   final VoidCallback onClearHistory;
   final VoidCallback onRefreshStatus;
+  final String deviceLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,6 +58,23 @@ class MessagesHeaderBar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Flexible(child: MessageDeviceBadge(label: deviceLabel)),
+              const SizedBox(width: 8),
+              Text(
+                context.l10n.t(
+                  !isOnline
+                      ? 'messageSourceOffline'
+                      : forwardingService.isForwardingActive(device.id)
+                      ? 'messageSourceListening'
+                      : 'messageSourceOnline',
+                ),
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           // 第一行：转发开关、Companion 状态提示与操作按钮
           Row(
             children: [
@@ -139,7 +159,12 @@ class MessagesHeaderBar extends ConsumerWidget {
               children: [
                 Expanded(
                   flex: 2,
-                  child: TextField(
+                  child: TextFormField(
+                    key: ValueKey((
+                      device.id,
+                      ref.watch(targetMessageIdProvider),
+                    )),
+                    initialValue: ref.read(messagesSearchQueryProvider),
                     decoration: InputDecoration(
                       hintText: context.l10n.t('searchMessagesPlaceholder'),
                       prefixIcon:
@@ -168,6 +193,7 @@ class MessagesHeaderBar extends ConsumerWidget {
                 Expanded(
                   flex: 1,
                   child: DropdownButtonFormField<String?>(
+                    key: ValueKey((device.id, selectedPkg)),
                     initialValue: selectedPkg,
                     isExpanded: true,
                     decoration: InputDecoration(

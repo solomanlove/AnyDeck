@@ -6,11 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/l10n/app_localizations.dart';
 import '../../../../core/notifications/notification_models.dart';
 import '../../../../core/providers/app_providers.dart';
+import 'message_device_badge.dart';
 
 /// 单条通知消息展示卡片。
 class MessageItemCard extends ConsumerWidget {
   const MessageItemCard({
     super.key,
+    required this.deviceLabel,
     required this.message,
     required this.deviceId,
     this.isTarget = false,
@@ -19,6 +21,7 @@ class MessageItemCard extends ConsumerWidget {
   final NotificationMessage message;
   final String deviceId;
   final bool isTarget;
+  final String deviceLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -70,6 +73,8 @@ class MessageItemCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          MessageDeviceBadge(label: deviceLabel),
+          const SizedBox(height: 8),
           // 顶部：App 图标、名称、包名与时间
           Row(
             children: [

@@ -9,6 +9,7 @@ import 'package:any_deck/core/notifications/notification_database.dart';
 import 'package:any_deck/core/notifications/notification_forwarding_client.dart';
 import 'package:any_deck/core/notifications/notification_forwarding_service.dart';
 import 'package:any_deck/core/notifications/notification_models.dart';
+import 'package:any_deck/core/notifications/notification_device_identity.dart';
 import 'package:any_deck/app/settings/app_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,6 +40,7 @@ class _FakeMacNotificationBridge extends MacNotificationBridge {
     required String id,
     required String title,
     String body = '',
+    String subtitle = '',
     String? iconPath,
     Map<String, dynamic>? payload,
   }) async {
@@ -46,6 +48,7 @@ class _FakeMacNotificationBridge extends MacNotificationBridge {
       'id': id,
       'title': title,
       'body': body,
+      'subtitle': subtitle,
       'iconPath': iconPath,
       'payload': payload,
     });
@@ -59,8 +62,10 @@ class _FakeMacNotificationBridge extends MacNotificationBridge {
 }
 
 class _FakeNotificationForwardingClient extends NotificationForwardingClient {
-  _FakeNotificationForwardingClient()
+  _FakeNotificationForwardingClient({this.multipleDevices = false})
     : super(AdbService(executable: 'unused-in-test'));
+
+  final bool multipleDevices;
 
   @override
   Future<int> getCurrentUser(String deviceId) async => 10;
@@ -70,10 +75,12 @@ class _FakeNotificationForwardingClient extends NotificationForwardingClient {
     String deviceId,
     int userId,
   ) async {
-    return const NotificationSessionStatus(
+    return NotificationSessionStatus(
       isSharingEnabled: true,
       isPermissionGranted: true,
-      installationId: 'installation_forwarding',
+      installationId: multipleDevices
+          ? 'installation_$deviceId'
+          : 'installation_forwarding',
       androidUserId: 10,
       rawStatus: 'ok',
     );
@@ -288,6 +295,11 @@ void main() {
         settingsGetter: () => const AppSettings(),
         appNameResolver: (_, _) => 'Example Chat',
         appIconPathResolver: (_, _) => '/cached/example_chat.png',
+        deviceIdentityResolver: (_, serial, _) => NotificationDeviceIdentity(
+          stableId: serial,
+          name: '工作手机',
+        ),
+        deviceLabelResolver: (identity) => identity.label([]),
       );
       addTearDown(() {
         service.dispose();
@@ -336,10 +348,83 @@ void main() {
 
       final source = await database.resolveSource('SERIAL_FORWARDING');
       expect(source?.installationId, equals('installation_forwarding'));
+      expect(source?.identity?.name, '工作手机');
+      expect(
+        bridge.sentNotifications.single['title'],
+        '工作手机 · DING · Example Chat',
+      );
+      expect(bridge.sentNotifications.single['subtitle'], 'Alice');
+      expect(bridge.sentNotifications.single['body'], 'Hello');
+      expect(
+        bridge.sentNotifications.single['payload'],
+        containsPair('installationId', 'installation_forwarding'),
+      );
+      expect(
+        bridge.sentNotifications.single['payload'],
+        containsPair('androidUserId', 10),
+      );
       expect(
         await database.queryMessages('installation_forwarding', 10),
         hasLength(1),
       );
     },
   );
+
+  test('two phones keep identical notifications separate with body preview disabled', () async {
+    SharedPreferences.setMockInitialValues({});
+    final directory = await Directory.systemTemp.createTemp('multi_phone_');
+    final database = NotificationDatabase(
+      '${directory.path}/notifications.sqlite',
+    );
+    // 与生产 Provider 一致，先完成数据库初始化再启动并行会话。
+    await database.pruneExpired();
+    final bridge = _FakeMacNotificationBridge();
+    final service = NotificationForwardingService(
+      client: _FakeNotificationForwardingClient(multipleDevices: true),
+      databaseFuture: Future.value(database),
+      bridge: bridge,
+      settingsGetter: () => const AppSettings(notificationBodyPreview: false),
+      appNameResolver: (_, _) => '微信',
+      appIconPathResolver: (_, _) => null,
+      deviceIdentityResolver: (_, serial, _) =>
+          NotificationDeviceIdentity(stableId: serial, name: 'Pixel'),
+      deviceLabelResolver: (identity) =>
+          identity.label(['SERIAL_A1234', 'SERIAL_B1234']),
+    );
+    final received = service.messageChanges.take(2).toList();
+    try {
+      service.startForwarding(
+        const AdbDevice(id: 'phone_a', status: 'device'),
+        'SERIAL_A1234',
+      );
+      service.startForwarding(
+        const AdbDevice(id: 'phone_b', status: 'device'),
+        'SERIAL_B1234',
+      );
+      await received.timeout(const Duration(seconds: 5));
+      final notices = bridge.sentNotifications;
+      expect(notices.map((n) => n['title']).toSet(), {
+        'Pixel · A1234 · 微信',
+        'Pixel · B1234 · 微信',
+      });
+      expect(notices.map((n) => n['id']).toSet(), hasLength(2));
+      expect(
+        notices.every((n) => n['body'] == '' && n['subtitle'] == 'Alice'),
+        isTrue,
+      );
+      final a = await database.queryMessages('installation_phone_a', 10);
+      final b = await database.queryMessages('installation_phone_b', 10);
+      expect(a, hasLength(1));
+      expect(b, hasLength(1));
+      expect(a.single.id, isNot(b.single.id));
+      await database.clearMessages('installation_phone_a', 10);
+      expect(
+        await database.queryMessages('installation_phone_b', 10),
+        hasLength(1),
+      );
+    } finally {
+      service.dispose();
+      await directory.delete(recursive: true);
+    }
+  });
 }

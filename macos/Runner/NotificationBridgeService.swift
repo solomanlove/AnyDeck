@@ -60,6 +60,7 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
 
         let content = UNMutableNotificationContent()
         content.title = title
+        content.subtitle = args["subtitle"] as? String ?? ""
         content.body = body
         content.sound = UNNotificationSound.default
         content.userInfo = payload

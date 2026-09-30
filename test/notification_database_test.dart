@@ -1,4 +1,7 @@
 import 'dart:io';
+
+import 'package:sqlite3/sqlite3.dart';
+import 'package:any_deck/core/notifications/notification_device_identity.dart';
 import 'package:any_deck/core/notifications/notification_database.dart';
 import 'package:any_deck/core/notifications/notification_models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -207,4 +210,93 @@ void main() {
     expect(remaining.length, equals(1));
     expect(remaining.first.notificationKey, equals('recent_item'));
   });
+  test('legacy database upgrades without losing source or messages', () async {
+    final legacy = sqlite3.open(dbPath);
+    legacy.execute(
+      'CREATE TABLE notification_sources (alias TEXT PRIMARY KEY, installation TEXT NOT NULL, user_id INTEGER NOT NULL, updated_time INTEGER NOT NULL)',
+    );
+    legacy.execute(
+      "INSERT INTO notification_sources VALUES ('USB', 'old', 0, 1)",
+    );
+    legacy.dispose();
+    final source = await database.resolveSource('USB');
+    expect(source?.installationId, 'old');
+    expect(source?.identity, isNull);
+    await database.linkSource(
+      ['USB'],
+      'old',
+      0,
+      identity: const NotificationDeviceIdentity(
+        stableId: 'SERIAL',
+        name: '旧手机',
+      ),
+    );
+    expect((await database.resolveSource('USB'))?.identity?.name, '旧手机');
+  });
+
+  test('offline metadata survives reinstallation and route reuse', () async {
+    await database.linkSource(
+      ['SERIAL_A', '192.168.1.2:5555'],
+      'old_a',
+      0,
+      identity: const NotificationDeviceIdentity(
+        stableId: 'SERIAL_A',
+        name: '工作手机',
+      ),
+    );
+    await database.linkSource(
+      ['SERIAL_A'],
+      'new_a',
+      0,
+      identity: const NotificationDeviceIdentity(
+        stableId: 'SERIAL_A',
+        name: '工作手机新名',
+      ),
+    );
+    await database.linkSource(
+      ['SERIAL_B', '192.168.1.2:5555'],
+      'b',
+      10,
+      identity: const NotificationDeviceIdentity(
+        stableId: 'SERIAL_B',
+        name: '私人手机',
+      ),
+    );
+    final reopened = NotificationDatabase(dbPath);
+    expect((await reopened.readSource('old_a', 0)).identity?.name, '工作手机');
+    expect(
+      (await reopened.resolveSource('SERIAL_A'))?.identity?.name,
+      '工作手机新名',
+    );
+    expect(
+      (await reopened.resolveSource('192.168.1.2:5555'))?.identity?.stableId,
+      'SERIAL_B',
+    );
+    expect((await reopened.readSource('b', 0)).identity, isNull);
+  });
+
+  test(
+    'target lookup never returns a message belonging to another source',
+    () async {
+      final now = DateTime.now();
+      final saved = await database.insertOrUpdate(
+        NotificationMessage(
+          installationId: 'a',
+          androidUserId: 0,
+          notificationKey: 'same',
+          packageName: 'chat',
+          title: 'title',
+          content: '',
+          postTime: now,
+          receivedTime: now,
+        ),
+      );
+      expect(await database.queryMessageById('b', 0, saved.id!), isNull);
+      expect(await database.queryMessageById('a', 10, saved.id!), isNull);
+      expect(
+        (await database.queryMessageById('a', 0, saved.id!))?.id,
+        saved.id,
+      );
+    },
+  );
 }

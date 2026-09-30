@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'notification_models.dart';
+import 'notification_device_identity.dart';
 
 /// 手机通知本地 SQLite 存储；每次操作在工作 Isolate 打开并释放连接。
 class NotificationDatabase {
@@ -43,6 +44,14 @@ class NotificationDatabase {
           installation TEXT NOT NULL,
           user_id INTEGER NOT NULL,
           updated_time INTEGER NOT NULL
+        )''');
+        // 增量建表兼容旧库；独立保存来源，不因 route 复用或重装覆盖旧身份。
+        db.execute('''CREATE TABLE IF NOT EXISTS notification_source_metadata (
+          installation TEXT NOT NULL,
+          user_id INTEGER NOT NULL,
+          device_id TEXT NOT NULL,
+          device_name TEXT NOT NULL,
+          PRIMARY KEY (installation, user_id)
         )''');
         db.execute(
           '''CREATE INDEX IF NOT EXISTS idx_notif_lookup ON notifications(installation, user_id, notification_key)''',
@@ -188,9 +197,19 @@ class NotificationDatabase {
   Future<void> linkSource(
     Iterable<String> aliases,
     String installationId,
-    int userId,
-  ) => _run((db) {
+    int userId, {
+    NotificationDeviceIdentity? identity,
+  }) => _run((db) {
     final updatedTime = DateTime.now().millisecondsSinceEpoch;
+    if (identity != null) {
+      db.execute(
+        '''INSERT INTO notification_source_metadata
+           (installation, user_id, device_id, device_name) VALUES (?, ?, ?, ?)
+           ON CONFLICT(installation, user_id) DO UPDATE SET
+           device_id=excluded.device_id, device_name=excluded.device_name''',
+        [installationId, userId, identity.stableId, identity.name],
+      );
+    }
     final statement = db.prepare(
       '''INSERT INTO notification_sources (alias, installation, user_id, updated_time)
              VALUES (?, ?, ?, ?)
@@ -210,15 +229,55 @@ class NotificationDatabase {
   /// 根据持久化的物理 serial 或历史 route 查找最后一次 Companion 来源。
   Future<NotificationSource?> resolveSource(String alias) => _run((db) {
     final rows = db.select(
-      '''SELECT installation, user_id FROM notification_sources
-         WHERE alias = ? ORDER BY updated_time DESC LIMIT 1''',
+      '''SELECT s.installation, s.user_id, m.device_id, m.device_name
+         FROM notification_sources s LEFT JOIN notification_source_metadata m
+         ON s.installation=m.installation AND s.user_id=m.user_id
+         WHERE s.alias = ? ORDER BY s.updated_time DESC LIMIT 1''',
       [alias],
     );
     if (rows.isEmpty) return null;
     return NotificationSource(
       installationId: rows.first['installation'] as String,
       androidUserId: rows.first['user_id'] as int,
+      identity: rows.first['device_id'] == null
+          ? null
+          : NotificationDeviceIdentity(
+              stableId: rows.first['device_id'] as String,
+              name: rows.first['device_name'] as String,
+            ),
     );
+  });
+
+  /// 通知点击使用原始来源，避免 Companion 重装后跳入新来源历史。
+  Future<NotificationSource> readSource(String installationId, int userId) =>
+      _run((db) {
+        final rows = db.select(
+          'SELECT device_id, device_name FROM notification_source_metadata WHERE installation=? AND user_id=?',
+          [installationId, userId],
+        );
+        return NotificationSource(
+          installationId: installationId,
+          androidUserId: userId,
+          identity: rows.isEmpty
+              ? null
+              : NotificationDeviceIdentity(
+                  stableId: rows.first['device_id'] as String,
+                  name: rows.first['device_name'] as String,
+                ),
+        );
+      });
+
+  /// 目标消息按来源与 ID 双重约束查询，不能落到另一台手机。
+  Future<NotificationMessage?> queryMessageById(
+    String installationId,
+    int userId,
+    int id,
+  ) => _run((db) {
+    final rows = db.select(
+      'SELECT * FROM notifications WHERE installation=? AND user_id=? AND id=?',
+      [installationId, userId, id],
+    );
+    return rows.isEmpty ? null : NotificationMessage.fromMap(rows.first);
   });
 
   /// 启动时主动清理已超过 7 天的数据。

@@ -11,6 +11,7 @@ import 'message_item_card.dart';
 class MessagesListView extends ConsumerWidget {
   const MessagesListView({
     super.key,
+    required this.deviceLabel,
     required this.messages,
     required this.deviceId,
     required this.isOnline,
@@ -20,10 +21,24 @@ class MessagesListView extends ConsumerWidget {
   final String deviceId;
   final bool isOnline;
 
+  final String deviceLabel;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final targetId = ref.watch(targetMessageIdProvider);
+    final targetIndex = messages.indexWhere((m) => m.id == targetId);
+    final centerIndex = targetIndex < 0 ? 0 : targetIndex;
+    Widget item(int index) {
+      final msg = messages[index];
+      return MessageItemCard(
+        key: ValueKey(msg.id ?? msg.notificationKey),
+        message: msg,
+        deviceId: deviceId,
+        deviceLabel: deviceLabel,
+        isTarget: targetId != null && msg.id == targetId,
+      );
+    }
 
     if (messages.isEmpty) {
       return Center(
@@ -75,18 +90,25 @@ class MessagesListView extends ConsumerWidget {
             ),
           ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: messages.length,
-            itemBuilder: (context, index) {
-              final msg = messages[index];
-              return MessageItemCard(
-                key: ValueKey(msg.id ?? msg.notificationKey),
-                message: msg,
-                deviceId: deviceId,
-                isTarget: targetId != null && msg.id == targetId,
-              );
-            },
+          // 目标卡片作为滚动原点，向上仍可查看较新消息，向下查看较旧消息。
+          child: CustomScrollView(
+            key: ValueKey((deviceId, targetId)),
+            center: const ValueKey('message-center'),
+            slivers: [
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => item(centerIndex - index - 1),
+                  childCount: centerIndex,
+                ),
+              ),
+              SliverList(
+                key: const ValueKey('message-center'),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => item(centerIndex + index),
+                  childCount: messages.length - centerIndex,
+                ),
+              ),
+            ],
           ),
         ),
       ],

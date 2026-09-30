@@ -8,6 +8,7 @@ import 'mac_notification_bridge.dart';
 import 'notification_database.dart';
 import 'notification_forwarding_client.dart';
 import 'notification_models.dart';
+import 'notification_device_identity.dart';
 
 /// 手机消息转发全局调度服务，管理各设备的增量轮询会话、并发限制与通知分发。
 class NotificationForwardingService {
@@ -18,6 +19,8 @@ class NotificationForwardingService {
     required this.settingsGetter,
     required this.appNameResolver,
     required this.appIconPathResolver,
+    required this.deviceIdentityResolver,
+    required this.deviceLabelResolver,
   });
 
   final NotificationForwardingClient client;
@@ -26,6 +29,15 @@ class NotificationForwardingService {
   final AppSettings Function() settingsGetter;
   final String? Function(String deviceId, String packageName) appNameResolver;
   final String? Function(String deviceId, String packageName) appIconPathResolver;
+
+  final NotificationDeviceIdentity Function(
+    String deviceId,
+    String serial,
+    String installationId,
+  )
+  deviceIdentityResolver;
+  final String Function(NotificationDeviceIdentity identity)
+  deviceLabelResolver;
 
   // 全局并发最多 2 个
   int _activePolls = 0;
@@ -237,6 +249,11 @@ class _DeviceForwardingSession {
           [serial, device.id],
           _installationId,
           _currentUser,
+          identity: service.deviceIdentityResolver(
+            device.id,
+            serial,
+            _installationId,
+          ),
         );
         _sessionId = await service.client.startSession(device.id, _currentUser);
         _cursor = 0;
@@ -274,6 +291,20 @@ class _DeviceForwardingSession {
       final blockedApps = await service.getBlockedApps(serial);
       final database = await service.databaseFuture;
 
+      // 有新消息时更新名称快照，设备改名无需重启监听会话。
+      final identity = service.deviceIdentityResolver(
+        device.id,
+        serial,
+        _installationId,
+      );
+      if (rawEvents.isNotEmpty) {
+        await database.linkSource(
+          [serial, device.id],
+          _installationId,
+          _currentUser,
+          identity: identity,
+        );
+      }
       for (final raw in rawEvents) {
         if (raw is! Map<String, dynamic>) continue;
         final event = NotificationEvent.fromJson(raw);
@@ -313,20 +344,25 @@ class _DeviceForwardingSession {
           // 发送 macOS 本地通知
           final settings = service.settingsGetter();
           final previewBody = settings.notificationBodyPreview;
-          final notifTitle = (appName != null && appName.isNotEmpty)
-              ? '$appName: ${event.title}'
-              : (event.title.isNotEmpty ? event.title : event.packageName);
+          final appLabel = (appName != null && appName.isNotEmpty)
+              ? appName
+              : event.packageName;
+          final notifTitle =
+              '${service.deviceLabelResolver(identity)} · $appLabel';
           final notifBody = previewBody ? event.content : '';
 
           await service.bridge.showNotification(
             id: _notificationId(event.key),
             title: notifTitle,
+            subtitle: event.title,
             body: notifBody,
             iconPath: service.appIconPathResolver(device.id, event.packageName),
             payload: {
               'type': 'phone_message',
               'deviceId': device.id,
-              'deviceSerial': serial,
+              'deviceSerial': identity.stableId,
+              'installationId': _installationId,
+              'androidUserId': _currentUser,
               'targetTab': 15,
               'messageId': saved.id,
               'notificationKey': event.key,
