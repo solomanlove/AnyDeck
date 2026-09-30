@@ -180,9 +180,6 @@ class _UsageSnapshotView extends StatelessWidget {
   final UsageSnapshot snapshot;
   final Map<String, AdbPackage> packages;
 
-  String _duration(int milliseconds) =>
-      Duration(milliseconds: milliseconds).toString().split('.').first;
-
   // 以快照记录的手机 UTC offset 展示，避免电脑时区改变查询日期。
   String _time(int milliseconds) =>
       DateTime.fromMillisecondsSinceEpoch(milliseconds, isUtc: true)
@@ -197,8 +194,14 @@ class _UsageSnapshotView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    // 仅过滤展示列表，保留原始快照和累计统计中的毫秒数据。
+    final visibleApps = snapshot.apps
+        .where((app) => app.foregroundMs >= Duration.millisecondsPerSecond)
+        .toList(growable: false);
+    String duration(int milliseconds) =>
+        context.l10n.formatDuration(Duration(milliseconds: milliseconds));
     return ListView.builder(
-      itemCount: snapshot.apps.length + 1,
+      itemCount: visibleApps.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
           return Padding(
@@ -223,7 +226,7 @@ class _UsageSnapshotView extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   '${context.l10n.t('usageScreen')}: '
-                  '${snapshot.screenInteractiveMs == null ? context.l10n.t('usageUnavailable') : _duration(snapshot.screenInteractiveMs!)}',
+                  '${snapshot.screenInteractiveMs == null ? context.l10n.t('usageUnavailable') : duration(snapshot.screenInteractiveMs!)}',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 if (snapshot.screenRangeStartMs != null)
@@ -233,7 +236,7 @@ class _UsageSnapshotView extends StatelessWidget {
                   ),
                 const SizedBox(height: 8),
                 Text(
-                  '${context.l10n.t('usageCombined')}: ${_duration(snapshot.combinedForegroundMs)}',
+                  '${context.l10n.t('usageCombined')}: ${duration(snapshot.combinedForegroundMs)}',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 Text(
@@ -246,12 +249,12 @@ class _UsageSnapshotView extends StatelessWidget {
                   style: TextStyle(color: colors.onSurfaceVariant),
                 ),
                 const Divider(),
-                if (snapshot.apps.isEmpty) Text(context.l10n.t('usageNoApps')),
+                if (visibleApps.isEmpty) Text(context.l10n.t('usageNoApps')),
               ],
             ),
           );
         }
-        final app = snapshot.apps[index - 1];
+        final app = visibleApps[index - 1];
         return Tooltip(
           message: _range(app.rangeStartMs, app.rangeEndMs),
           child: Padding(
@@ -267,7 +270,7 @@ class _UsageSnapshotView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Text(_duration(app.foregroundMs)),
+                Text(duration(app.foregroundMs)),
               ],
             ),
           ),

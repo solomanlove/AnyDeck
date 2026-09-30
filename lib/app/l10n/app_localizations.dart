@@ -29,6 +29,23 @@ class AppLocalizations {
     // Return the localized string, fall back to Chinese or the key itself.
     return langMap[key] ?? localizedValues['zh']![key] ?? key;
   }
+
+  /// 按天、时、分、秒展示时长，舍去不足一秒的部分并省略零值单位。
+  String formatDuration(Duration duration) {
+    final parts = <String>[];
+    final units = [
+      (duration.inDays, 'durationDay'),
+      (duration.inHours.remainder(24), 'durationHour'),
+      (duration.inMinutes.remainder(60), 'durationMinute'),
+      (duration.inSeconds.remainder(60), 'durationSecond'),
+    ];
+    for (final (value, key) in units) {
+      if (value > 0) parts.add('$value${t(key)}');
+    }
+    return parts.isEmpty
+        ? '0${t('durationSecond')}'
+        : parts.join(locale.languageCode == 'en' ? ' ' : '');
+  }
 }
 
 /// 给 Widget 提供更短的本地化访问入口。

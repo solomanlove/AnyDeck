@@ -57,7 +57,11 @@ const usageZh = {
   'usageDeviceTime': '手机时区',
   'usageAndroidUser': 'Android 用户',
   'usageCachedNote': '显示所选查询日最后入库的系统统计，非实时数据；不叠加同一天的多份快照。',
-  'usageNoApps': '系统返回了统计，但没有正时长的 App 记录。',
+  'durationDay': '天',
+  'durationHour': '时',
+  'durationMinute': '分',
+  'durationSecond': '秒',
+  'usageNoApps': '系统返回了统计，但没有使用时长达到 1 秒的 App 记录。',
   'usageSyncDone': '已同步并保存到电脑。',
   'usageCacheCleared': '当前来源的电脑历史已清除；手机尚未过期的数据可重新同步。',
   'usageSharingDisabled': '手机端尚未开启 ADB 共享，或共享已暂停。',
@@ -175,8 +179,12 @@ const usageEn = {
   'usageAndroidUser': 'Android user',
   'usageCachedNote':
       'Last imported system report for the selected query day, not live data. Multiple snapshots of a day are not added together.',
+  'durationDay': 'd',
+  'durationHour': 'h',
+  'durationMinute': 'm',
+  'durationSecond': 's',
   'usageNoApps':
-      'Statistics returned with no apps having positive foreground time.',
+      'Statistics returned with no apps having at least 1 second of foreground time.',
   'usageSyncDone': 'Synced and saved on this computer.',
   'usageCacheCleared':
       'Local history cleared. Unexpired phone records can be synced again.',

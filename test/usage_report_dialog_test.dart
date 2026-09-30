@@ -60,6 +60,8 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
+              // 隔离元数据解析间接订阅的设备流，避免测试启动真实 ADB 监听。
+              devicesProvider.overrideWith((ref) => Stream.value([])),
               locationTileProviderFactoryProvider.overrideWithValue(
                 FixtureTileProvider.new,
               ),
@@ -95,7 +97,7 @@ void main() {
           scrollable: find.byType(Scrollable).last,
         );
         expect(find.text('Existing cached app'), findsOneWidget);
-        expect(find.text('0:40:00'), findsOneWidget);
+        expect(find.text(locale == 'zh' ? '40分' : '40m'), findsOneWidget);
         // 切换位置页后仍离线禁用同步，模拟数据始终明确标注。
         await tester.tap(
           find.text(locale == 'zh' ? '位置历史' : 'Location history'),
