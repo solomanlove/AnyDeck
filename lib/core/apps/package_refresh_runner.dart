@@ -12,6 +12,7 @@ class PackageRefreshRunner {
     this.canonicalId,
     this.fallbackKeys = const [],
     this.isHarmony = false,
+    this.filter,
   });
 
   final AppManagementService service;
@@ -21,6 +22,7 @@ class PackageRefreshRunner {
   final bool Function() isActive;
   final void Function(List<AdbPackage>) publishPackages;
   final bool isHarmony;
+  final bool Function(AdbPackage)? filter;
 
   Future<void> run({PackageRefreshCallback? onProgress}) async {
     var progress = const PackageRefreshProgress();
@@ -31,11 +33,13 @@ class PackageRefreshRunner {
 
     try {
       report(progress);
-      await service.clearPackageCache(
-        deviceId,
-        canonicalId: canonicalId,
-        fallbackKeys: fallbackKeys,
-      );
+      if (filter == null) {
+        await service.clearPackageCache(
+          deviceId,
+          canonicalId: canonicalId,
+          fallbackKeys: fallbackKeys,
+        );
+      }
       if (!isActive()) return;
       var packages = await service.refreshPackages(
         deviceId,
@@ -46,16 +50,21 @@ class PackageRefreshRunner {
       );
       if (!isActive()) return;
       publishPackages(packages);
+
+      final targetPackages = filter == null
+          ? packages
+          : packages.where(filter!).toList(growable: false);
+
       report(
         PackageRefreshProgress(
           stage: PackageRefreshStage.enriching,
-          total: packages.length,
+          total: targetPackages.length,
         ),
       );
-      if (packages.isNotEmpty) {
+      if (targetPackages.isNotEmpty) {
         await for (final updated in service.enrichPackagesWithIconsProgressive(
           deviceId,
-          packages,
+          targetPackages,
           onProgress: report,
           throwOnError: true,
           isActive: isActive,
@@ -64,7 +73,14 @@ class PackageRefreshRunner {
           fallbackKeys: fallbackKeys,
         )) {
           if (!isActive()) return;
-          packages = updated;
+          if (filter == null) {
+            packages = updated;
+          } else {
+            final updatedMap = {for (final p in updated) p.name: p};
+            packages = packages
+                .map((p) => updatedMap[p.name] ?? p)
+                .toList(growable: false);
+          }
           publishPackages(packages);
         }
       }

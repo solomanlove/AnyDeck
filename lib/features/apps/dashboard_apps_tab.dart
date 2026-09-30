@@ -16,7 +16,36 @@ class _AppsTabState extends ConsumerState<AppsTab> {
   final TextEditingController _filterController = TextEditingController();
   String _filter = '';
   AppFilterType _appFilterType = AppFilterType.user;
+  AppFilterType? _refreshingFilterType;
   PackageRefreshProgress? _refreshProgress;
+
+  String get _refreshTooltip {
+    final l10n = context.l10n;
+    switch (_appFilterType) {
+      case AppFilterType.user:
+        return l10n.t('refreshUserPackages');
+      case AppFilterType.system:
+        return l10n.t('refreshSystemPackages');
+      case AppFilterType.all:
+        return l10n.t('refreshPackages');
+      case AppFilterType.favorites:
+        return l10n.t('refreshFavoritePackages');
+    }
+  }
+
+  String _getRefreshTitle(AppFilterType type) {
+    final l10n = context.l10n;
+    switch (type) {
+      case AppFilterType.user:
+        return l10n.t('packageRefreshUserTitle');
+      case AppFilterType.system:
+        return l10n.t('packageRefreshSystemTitle');
+      case AppFilterType.all:
+        return l10n.t('packageRefreshTitle');
+      case AppFilterType.favorites:
+        return l10n.t('packageRefreshFavoriteTitle');
+    }
+  }
   String? _selectedPackage;
   bool _isGridView = false;
   double _gridItemSize = 100.0;
@@ -180,28 +209,10 @@ class _AppsTabState extends ConsumerState<AppsTab> {
               ),
             ),
           IconButton(
-            tooltip: context.l10n.t('refreshPackages'),
+            tooltip: _refreshTooltip,
             icon: const Icon(CupertinoIcons.refresh, size: 20),
             onPressed: (isOnline && _refreshProgress == null)
                 ? _refreshPackages
-                : null,
-          ),
-          IconButton(
-            tooltip: context.l10n.t('zoomIn'),
-            icon: const Icon(CupertinoIcons.zoom_in, size: 20),
-            onPressed: (_isGridView && _gridItemSize < 160.0)
-                ? () => setState(
-                    () => _gridItemSize = min(160.0, _gridItemSize + 15.0),
-                  )
-                : null,
-          ),
-          IconButton(
-            tooltip: context.l10n.t('zoomOut'),
-            icon: const Icon(CupertinoIcons.zoom_out, size: 20),
-            onPressed: (_isGridView && _gridItemSize > 70.0)
-                ? () => setState(
-                    () => _gridItemSize = max(70.0, _gridItemSize - 15.0),
-                  )
                 : null,
           ),
           IconButton(
@@ -272,20 +283,17 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                       Row(
                         children: [
                           if (_isGridView)
-                            Expanded(
-                              child: Text(
-                                context.l10n
-                                    .t('appCount')
-                                    .replaceAll(
-                                      '{visible}',
-                                      '${filtered.length}',
-                                    )
-                                    .replaceAll('{total}', '${items.length}'),
-                                style: Theme.of(context).textTheme.labelLarge,
-                              ),
-                            )
-                          else
-                            const Spacer(),
+                            Text(
+                              context.l10n
+                                  .t('appCount')
+                                  .replaceAll(
+                                    '{visible}',
+                                    '${filtered.length}',
+                                  )
+                                  .replaceAll('{total}', '${items.length}'),
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
+                          const Spacer(),
                           if (selectedPackage != null)
                             _PackageActions(
                               deviceId: widget.device.id,
@@ -293,6 +301,32 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                               onOpenDetails: () =>
                                   _openPackage(selectedPackage.name),
                             ),
+                          if (_isGridView) ...[
+                            if (selectedPackage != null)
+                              const SizedBox(width: 8),
+                            IconButton(
+                              tooltip: context.l10n.t('zoomIn'),
+                              icon: const Icon(CupertinoIcons.zoom_in, size: 20),
+                              visualDensity: VisualDensity.compact,
+                              onPressed: _gridItemSize < 160.0
+                                  ? () => setState(
+                                      () => _gridItemSize =
+                                          min(160.0, _gridItemSize + 15.0),
+                                    )
+                                  : null,
+                            ),
+                            IconButton(
+                              tooltip: context.l10n.t('zoomOut'),
+                              icon: const Icon(CupertinoIcons.zoom_out, size: 20),
+                              visualDensity: VisualDensity.compact,
+                              onPressed: _gridItemSize > 70.0
+                                  ? () => setState(
+                                      () => _gridItemSize =
+                                          max(70.0, _gridItemSize - 15.0),
+                                    )
+                                  : null,
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -333,7 +367,9 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                 ).scaffoldBackgroundColor.withValues(alpha: 0.8),
                 alignment: Alignment.center,
                 child: AlertDialog(
-                  title: Text(context.l10n.t('packageRefreshTitle')),
+                  title: Text(
+                    _getRefreshTitle(_refreshingFilterType ?? _appFilterType),
+                  ),
                   content: PackageRefreshView(progress: _refreshProgress!),
                   actions: [
                     Visibility(
@@ -342,8 +378,10 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                       maintainAnimation: true,
                       maintainState: true,
                       child: TextButton(
-                        onPressed: () =>
-                            setState(() => _refreshProgress = null),
+                        onPressed: () => setState(() {
+                          _refreshProgress = null;
+                          _refreshingFilterType = null;
+                        }),
                         child: Text(context.l10n.t('close')),
                       ),
                     ),
@@ -578,7 +616,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
     }
   }
 
-  /// 手动刷新全部应用时，清空本地缓存并分批加载所有应用图标。
+  /// 手动刷新应用时，按当前 Tab（用户/系统/全部/收藏）分批加载应用图标。
   Future<void> _refreshPackages() async {
     if (_refreshProgress != null) {
       return;
@@ -586,8 +624,28 @@ class _AppsTabState extends ConsumerState<AppsTab> {
     FocusScope.of(context).unfocus();
     _harmonyDetails.clear();
     _clearCheckedPackages();
-    setState(() => _refreshProgress = const PackageRefreshProgress());
+    final filterType = _appFilterType;
+    setState(() {
+      _refreshingFilterType = filterType;
+      _refreshProgress = const PackageRefreshProgress();
+    });
     final notifier = ref.read(packagesProvider(widget.device.id).notifier);
+    bool Function(AdbPackage)? filter;
+    switch (filterType) {
+      case AppFilterType.user:
+        filter = (p) => !p.system;
+        break;
+      case AppFilterType.system:
+        filter = (p) => p.system;
+        break;
+      case AppFilterType.all:
+        filter = null;
+        break;
+      case AppFilterType.favorites:
+        final favs = ref.read(appFavoritesProvider).value ?? const <String>{};
+        filter = (p) => favs.contains(p.name);
+        break;
+    }
     try {
       await notifier.refreshAllPackagesWithIcons(
         onProgress: (progress) {
@@ -595,11 +653,15 @@ class _AppsTabState extends ConsumerState<AppsTab> {
             setState(() => _refreshProgress = progress);
           }
         },
+        filter: filter,
       );
       if (mounted) {
         if (_refreshProgress?.stage != PackageRefreshStage.failed &&
             _refreshProgress?.failed == 0) {
-          setState(() => _refreshProgress = null);
+          setState(() {
+            _refreshProgress = null;
+            _refreshingFilterType = null;
+          });
         } else if (_refreshProgress != null && !_refreshProgress!.finished) {
           setState(
             () => _refreshProgress = _refreshProgress!.atStage(

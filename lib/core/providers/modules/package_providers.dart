@@ -129,9 +129,10 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
     }
   }
 
-  /// 手动刷新全部应用时，重新读取元数据并分批加载所有应用图标。
+  /// 手动刷新全部或指定类型应用时，重新读取元数据并分批加载应用图标。
   Future<void> refreshAllPackagesWithIcons({
     PackageRefreshCallback? onProgress,
+    bool Function(AdbPackage)? filter,
   }) {
     final running = _refreshAllTask;
     if (running != null) return running;
@@ -145,6 +146,7 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       isActive: () => ref.mounted,
       publishPackages: (packages) => state = AsyncValue.data(packages),
       isHarmony: _isHarmony,
+      filter: filter,
     );
     return _refreshAllTask = runner.run(onProgress: onProgress).whenComplete(() {
       _refreshAllTask = null;
