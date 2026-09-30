@@ -53,6 +53,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                     Expanded(child: contentWidget)
                   else
                     contentWidget,
+                  const HostNetworkFooter(),
                 ],
               ),
             ),
