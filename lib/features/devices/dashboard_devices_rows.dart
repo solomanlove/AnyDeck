@@ -108,7 +108,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
         children: [
           // 设备品牌/系统 Logo，结合角标和灰阶直观标识在线或离线状态
           DeviceStatusAvatar(device: device),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -17,12 +17,12 @@ import '../../../core/providers/modules/registered_device_model.dart';
 ///
 /// 参数：
 /// - [device]：要渲染的设备注册模型，包含在线状态、系统类型、型号等；
-/// - [size]：头像尺寸正方形宽高，默认 28.0。
+/// - [size]：头像尺寸正方形宽高，默认 38.0。
 class DeviceStatusAvatar extends ConsumerWidget {
   const DeviceStatusAvatar({
     super.key,
     required this.device,
-    this.size = 28.0,
+    this.size = 38.0,
   });
 
   /// 设备数据模型
@@ -88,7 +88,7 @@ class DeviceStatusAvatar extends ConsumerWidget {
         ? (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))
         : (isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1).withValues(alpha: 0.4));
 
-    final dotSize = (size * 0.28).clamp(7.0, 9.0);
+    final dotSize = (size * 0.26).clamp(8.0, 10.0);
 
     return Tooltip(
       message: '${device.displayName} ($statusText)',
@@ -102,7 +102,7 @@ class DeviceStatusAvatar extends ConsumerWidget {
             height: size,
             decoration: BoxDecoration(
               color: avatarBg,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: avatarBorder, width: 1),
             ),
             alignment: Alignment.center,
