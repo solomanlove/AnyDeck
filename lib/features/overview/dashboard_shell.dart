@@ -163,19 +163,7 @@ class _ContentTitleBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton(
-                tooltip: context.l10n.t('terminalDir'),
-                icon: const Icon(Icons.terminal),
-                iconSize: 30,
-                color: iconColor,
-                onPressed: () => _openLocalTerminal(context, ref),
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(48, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
+              ToolDirectoryMenuButton(iconColor: iconColor),
               const SizedBox(width: 8),
               IconButton(
                 tooltip: context.l10n.t('console'),
@@ -191,19 +179,7 @@ class _ContentTitleBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton(
-                tooltip: context.l10n.t('restartAdb'),
-                icon: const Icon(CupertinoIcons.ant),
-                iconSize: 30,
-                color: iconColor,
-                onPressed: () => _restartAdbServer(context, ref),
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(48, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
+              ServiceRestartMenuButton(iconColor: iconColor),
             ],
           ),
         ),
