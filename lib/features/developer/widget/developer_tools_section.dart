@@ -6,14 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/widget/app_toast.dart';
-import '../../../core/adb/adb_environment_service.dart';
 import '../../../core/notifications/notification_providers.dart';
 import '../../overview/widget/android_version_distribution_launcher.dart';
+import 'developer_connection_environment_card.dart';
 import 'developer_section_card.dart';
 
 /// 核心调试工具与测试功能板块。
 ///
-/// 包含 ADB 诊断、Toast 预览、系统通知推送、独立窗口调起、缓存统计等实用调试能力，
+/// 包含多端连接环境诊断、Toast 预览、系统通知推送、独立窗口调起、缓存统计等实用调试能力，
 /// 并为后续新增调试入口和测试功能提供模块化扩展支持。
 class DeveloperToolsSection extends ConsumerStatefulWidget {
   const DeveloperToolsSection({super.key});
@@ -23,46 +23,13 @@ class DeveloperToolsSection extends ConsumerStatefulWidget {
 }
 
 class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
-  final _adbService = AdbEnvironmentService();
-
-  bool _isCheckingAdb = false;
-  String? _adbVersionResult;
-  String? _adbResolvedPath;
-
   int _prefKeysCount = 0;
   bool _isLoadingPrefs = false;
 
   @override
   void initState() {
     super.initState();
-    _checkAdb();
     _loadPrefsCount();
-  }
-
-  /// 检查 ADB 环境信息
-  Future<void> _checkAdb() async {
-    setState(() {
-      _isCheckingAdb = true;
-    });
-    try {
-      final info = await _adbService.checkEnvironment();
-      if (mounted) {
-        setState(() {
-          _adbVersionResult = info.isReady
-              ? info.version
-              : (info.errorMessage.isNotEmpty ? info.errorMessage : 'ADB 未就绪');
-          _adbResolvedPath = info.adbPath.isNotEmpty ? info.adbPath : '未找到 adb';
-          _isCheckingAdb = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _adbVersionResult = '检测失败: $e';
-          _isCheckingAdb = false;
-        });
-      }
-    }
   }
 
   /// 统计 SharedPreferences 键值数量
@@ -84,26 +51,8 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. ADB 与设备调试
-        DeveloperSectionCard(
-          title: 'ADB 通信与环境诊断',
-          subtitle: 'ADB Process & Platform-Tools Diagnosis',
-          icon: CupertinoIcons.arrow_right_arrow_left_square_fill,
-          trailing: TextButton.icon(
-            icon: _isCheckingAdb
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(CupertinoIcons.refresh, size: 14),
-            label: const Text('重新检测'),
-            onPressed: _isCheckingAdb ? null : _checkAdb,
-          ),
-          children: [
-            _buildAdbStatusCard(context),
-          ],
-        ),
+        // 1. 多端连接环境与工具诊断
+        const DeveloperConnectionEnvironmentCard(),
         const SizedBox(height: 20),
 
         // 2. 界面与交互测试
@@ -145,57 +94,6 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
     );
   }
 
-  /// ADB 诊断信息卡片
-  Widget _buildAdbStatusCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.black.withValues(alpha: 0.25) : const Color(0xfff8fafc),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isDark ? const Color(0xff334155).withValues(alpha: 0.4) : const Color(0xffe2e8f0),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(CupertinoIcons.checkmark_shield_fill, color: Color(0xff09c47c), size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'ADB 执行文件路径',
-                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          SelectableText(
-            _adbResolvedPath ?? '正在解析...',
-            style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'ADB 版本详情输出',
-            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          SelectableText(
-            _adbVersionResult ?? '检测中...',
-            style: TextStyle(
-              fontSize: 12,
-              fontFamily: 'monospace',
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// 全局 Toast 样式快速测试器
   Widget _buildToastTester(BuildContext context) {

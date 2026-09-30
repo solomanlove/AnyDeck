@@ -257,6 +257,14 @@ class AdbEnvironmentNotifier extends Notifier<AdbEnvironmentInfo> {
     return result;
   }
 
+  /// 开发者选项测试专用：模拟 ADB 缺失状态，以便测试弹窗展示与一键下载逻辑
+  void simulateMissing() {
+    state = const AdbEnvironmentInfo(
+      status: AdbEnvironmentStatus.missing,
+      errorMessage: '开发者选项测试：模拟未找到 adb 命令',
+    );
+  }
+
   /// 启动时自检；若 ADB 缺失且本会话未弹出过提示，则弹出引导下载弹窗
   Future<void> checkAndPromptIfNeeded(BuildContext context) async {
     if (_hasPromptedThisSession) return;

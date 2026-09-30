@@ -14,14 +14,24 @@ import '../../../core/adb/adb_environment_service.dart';
 /// 2. 展示 Homebrew 命令行安装与官网手动安装说明；
 /// 3. 手动重新检测环境。
 class AdbEnvironmentDialog extends ConsumerWidget {
-  const AdbEnvironmentDialog({super.key});
+  const AdbEnvironmentDialog({
+    super.key,
+    this.allowReinstall = false,
+  });
+
+  /// 是否在环境就绪时也展示重新下载测试按钮（用于开发者调试与验证）
+  final bool allowReinstall;
 
   /// 便捷静态展示方法
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(
+    BuildContext context, {
+    bool barrierDismissible = true,
+    bool allowReinstall = false,
+  }) {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => const AdbEnvironmentDialog(),
+      barrierDismissible: barrierDismissible,
+      builder: (context) => AdbEnvironmentDialog(allowReinstall: allowReinstall),
     );
   }
 
@@ -67,6 +77,41 @@ class AdbEnvironmentDialog extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // 环境已就绪时，若开启了 allowReinstall，允许一键重新下载官方 Platform-Tools 测试
+              if (env.isReady && allowReinstall && !isBusy) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(CupertinoIcons.info_circle, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '当前环境已就绪。您可重新下载官方 Platform-Tools 并覆盖配置到应用工具目录：',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.tonalIcon(
+                        icon: const Icon(CupertinoIcons.cloud_download, size: 16),
+                        label: const Text('重新下载'),
+                        onPressed: () {
+                          ref
+                              .read(adbEnvironmentProvider.notifier)
+                              .downloadAndInstall();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // 下载与解压进度展示
               if (env.status == AdbEnvironmentStatus.downloading ||

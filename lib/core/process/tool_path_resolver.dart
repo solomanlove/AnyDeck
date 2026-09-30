@@ -58,6 +58,11 @@ String resolveToolPath(String toolName) {
       '/usr/local/bin/ios',
       '/opt/homebrew/bin/go-ios',
       '/usr/local/bin/go-ios',
+      if (home != null) ...[
+        '$home/go/bin/ios',
+        '$home/go/bin/go-ios',
+        '$home/Library/Application Support/AnyDeck/tools/ios/ios',
+      ],
     ],
     if (toolName == 'hdc') ...[
       if (Platform.environment['HUAWEI_SDK_HOME'] != null)
@@ -68,7 +73,10 @@ String resolveToolPath(String toolName) {
         '$home/Library/Huawei/Sdk/openharmony/toolchains/hdc',
         '$home/AppData/Local/Huawei/Sdk/openharmony/toolchains/hdc',
         '$home/AppData/Local/Huawei/Sdk/openharmony/toolchains/hdc.exe',
-      ]
+        '$home/Library/Application Support/AnyDeck/tools/harmony/hdc',
+      ],
+      '/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc',
+      '/Applications/DevEco-Studio.app/Contents/tools/hdc',
     ],
     '/opt/homebrew/bin/$toolName',
     '/usr/local/bin/$toolName',
