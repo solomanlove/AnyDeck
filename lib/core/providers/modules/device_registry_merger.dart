@@ -152,15 +152,20 @@ class DeviceRegistryMerger {
           ),
         );
       } else {
-        // 排序规则：在线优先，USB 优先
+        // 排序规则：在线优先，USB 优先，其次传统 TCP/IP 5555 端口优先
         candidates.sort((a, b) {
           if (a.isOnline && !b.isOnline) return -1;
           if (!a.isOnline && b.isOnline) return 1;
 
-          final aIsUsb = !a.isNetwork;
-          final bIsUsb = !b.isNetwork;
+          final aIsUsb = a.hasUsbConnection;
+          final bIsUsb = b.hasUsbConnection;
           if (aIsUsb && !bIsUsb) return -1;
           if (!aIsUsb && bIsUsb) return 1;
+
+          final aIsTcp = a.hasTcpConnection;
+          final bIsTcp = b.hasTcpConnection;
+          if (aIsTcp && !bIsTcp) return -1;
+          if (!aIsTcp && bIsTcp) return 1;
 
           return a.id.compareTo(b.id);
         });
@@ -254,6 +259,7 @@ class DeviceRegistryMerger {
 
         merged.add(
           best.copyWith(
+            id: best.preferredCommandId,
             isChecked: anyChecked,
             customName: mergedCustomName,
             model: mergedModel,

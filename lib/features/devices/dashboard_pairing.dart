@@ -20,6 +20,7 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
 
   final _addressController = TextEditingController(text: '192.168.1.10:37123');
   final _codeController = TextEditingController();
+  int _selectedPlatform = 0; // 0: Android, 1: HarmonyOS
 
   @override
   void initState() {
@@ -132,199 +133,233 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
     return AlertDialog(
       title: Text(context.l10n.t('pairDeviceTitle')),
       content: SizedBox(
-        width: 420,
-        height: 480,
+        width: 440,
+        height: 500,
         child: Column(
           children: [
-            TabBar(
-              controller: _tabController,
-              tabs: [
-                Tab(text: context.l10n.t('pairQr')),
-                Tab(text: context.l10n.t('pairCode')),
+            SegmentedButton<int>(
+              segments: [
+                ButtonSegment<int>(
+                  value: 0,
+                  label: Text(context.l10n.t('pairAndroid')),
+                  icon: const Icon(Icons.android, size: 18),
+                ),
+                ButtonSegment<int>(
+                  value: 1,
+                  label: Text(context.l10n.t('pairHarmony')),
+                  icon: const Icon(CupertinoIcons.device_phone_portrait, size: 18),
+                ),
               ],
-              onTap: (index) {
-                if (index == 0) {
-                  _startMdnsDiscovery();
-                } else {
-                  _pairingTimer?.cancel();
-                }
+              selected: {_selectedPlatform},
+              onSelectionChanged: (set) {
+                setState(() {
+                  _selectedPlatform = set.first;
+                  if (_selectedPlatform != 0) {
+                    _pairingTimer?.cancel();
+                  } else if (_tabController.index == 0) {
+                    _startMdnsDiscovery();
+                  }
+                });
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  // Tab 1: QR Code
-                  Center(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: context.l10n.t(
-                                    'qrImageCaptionPrefix',
+              child: _selectedPlatform == 0
+                  ? Column(
+                      children: [
+                        TabBar(
+                          controller: _tabController,
+                          tabs: [
+                            Tab(text: context.l10n.t('pairQr')),
+                            Tab(text: context.l10n.t('pairCode')),
+                          ],
+                          onTap: (index) {
+                            if (index == 0) {
+                              _startMdnsDiscovery();
+                            } else {
+                              _pairingTimer?.cancel();
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabController,
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: [
+                              // Tab 1: QR Code
+                              Center(
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text: context.l10n.t(
+                                                'qrImageCaptionPrefix',
+                                              ),
+                                            ),
+                                            const TextSpan(text: ' '),
+                                            TextSpan(
+                                              text: context.l10n.t(
+                                                'qrImageCaptionDevice',
+                                              ),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const TextSpan(text: '\n'),
+                                            TextSpan(
+                                              text: context.l10n.t(
+                                                'qrImageCaptionAction',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                          color: isDark
+                                              ? const Color(0xffeceff1)
+                                              : const Color(0xff202124),
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.32,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.1),
+                                              blurRadius: 20,
+                                              offset: const Offset(1, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: QrImageView(
+                                          data: 'WIFI:T:ADB;S:$_ssid;P:$_password;;',
+                                          version: QrVersions.auto,
+                                          size: 180,
+                                          eyeStyle: const QrEyeStyle(
+                                            eyeShape: QrEyeShape.square,
+                                            color: Colors.black,
+                                          ),
+                                          dataModuleStyle: const QrDataModuleStyle(
+                                            dataModuleShape: QrDataModuleShape.square,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        context.l10n.t('qrInstruction'),
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: theme.colorScheme.onSurfaceVariant,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        '${context.l10n.t('pairingCode')}: $_password',
+                                        style: theme.textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const TextSpan(text: ' '),
-                                TextSpan(
-                                  text: context.l10n.t(
-                                    'qrImageCaptionDevice',
-                                  ),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              ),
+                              // Tab 2: Pairing Code
+                              SingleChildScrollView(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      context.l10n.t('codeInstruction'),
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    TextField(
+                                      controller: _addressController,
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            '${context.l10n.t('ipAddress')} & ${context.l10n.t('pairingPort')}',
+                                        hintText: '192.168.1.10:37123',
+                                        border: const OutlineInputBorder(),
+                                        prefixIcon: const Icon(CupertinoIcons.link),
+                                      ),
+                                      keyboardType: TextInputType.text,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    TextField(
+                                      controller: _codeController,
+                                      decoration: InputDecoration(
+                                        labelText: context.l10n.t('pairingCode'),
+                                        hintText: '123456',
+                                        border: const OutlineInputBorder(),
+                                        prefixIcon: const Icon(CupertinoIcons.number),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      maxLength: 6,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    FilledButton.icon(
+                                      onPressed: _isPairing ? null : _manualPair,
+                                      icon: const Icon(CupertinoIcons.link),
+                                      label: Text(context.l10n.t('connect')),
+                                    ),
+                                  ],
                                 ),
-                                const TextSpan(text: '\n'),
-                                TextSpan(
-                                  text: context.l10n.t(
-                                    'qrImageCaptionAction',
-                                  ),
-                                ),
-                              ],
-                            ),
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(
-                              color: isDark
-                                  ? const Color(0xffeceff1)
-                                  : const Color(0xff202124),
-                              fontWeight: FontWeight.w600,
-                              height: 1.32,
-                            ),
-                            textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
+                        ),
+                        // Common Status indicator
+                        if (_isPairing || _statusMessage.isNotEmpty) ...[
                           const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 20,
-                                  offset: const Offset(1, 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_isPairing) ...[
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
                                 ),
+                                const SizedBox(width: 8),
                               ],
-                            ),
-                            child: QrImageView(
-                              data: 'WIFI:T:ADB;S:$_ssid;P:$_password;;',
-                              version: QrVersions.auto,
-                              size: 180,
-                              eyeStyle: const QrEyeStyle(
-                                eyeShape: QrEyeShape.square,
-                                color: Colors.black,
+                              Flexible(
+                                child: Text(
+                                  _statusMessage,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: _isError
+                                        ? theme.colorScheme.error
+                                        : _statusMessage == context.l10n.t('pairSuccess')
+                                        ? Colors.green
+                                        : theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
-                              dataModuleStyle: const QrDataModuleStyle(
-                                dataModuleShape: QrDataModuleShape.square,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            context.l10n.t('qrInstruction'),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${context.l10n.t('pairingCode')}: $_password',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
+                            ],
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-                  // Tab 2: Pairing Code
-                  SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 8),
-                        Text(
-                          context.l10n.t('codeInstruction'),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: _addressController,
-                          decoration: InputDecoration(
-                            labelText:
-                                '${context.l10n.t('ipAddress')} & ${context.l10n.t('pairingPort')}',
-                            hintText: '192.168.1.10:37123',
-                            border: const OutlineInputBorder(),
-                            prefixIcon: const Icon(CupertinoIcons.link),
-                          ),
-                          keyboardType: TextInputType.text,
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _codeController,
-                          decoration: InputDecoration(
-                            labelText: context.l10n.t('pairingCode'),
-                            hintText: '123456',
-                            border: const OutlineInputBorder(),
-                            prefixIcon: const Icon(CupertinoIcons.number),
-                          ),
-                          keyboardType: TextInputType.number,
-                          maxLength: 6,
-                        ),
-                        const SizedBox(height: 16),
-                        FilledButton.icon(
-                          onPressed: _isPairing ? null : _manualPair,
-                          icon: const Icon(CupertinoIcons.link),
-                          label: Text(context.l10n.t('connect')),
-                        ),
                       ],
-                    ),
-                  ),
-                ],
-              ),
+                    )
+                  : const HarmonyWirelessPairingView(),
             ),
-            // Common Status indicator
-            if (_isPairing || _statusMessage.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (_isPairing) ...[
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Flexible(
-                    child: Text(
-                      _statusMessage,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: _isError
-                            ? theme.colorScheme.error
-                            : _statusMessage == context.l10n.t('pairSuccess')
-                            ? Colors.green
-                            : theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),

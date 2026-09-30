@@ -83,6 +83,72 @@ class RegisteredDevice {
   bool get isNetwork =>
       id.contains(':') || id.contains('.') || id == '127.0.0.1';
 
+  /// 从连接标识符中解析网络端口号（若为纯 IP 则默认 5555，非网络连接返回 null）
+  static int? parseConnectionPort(String connectionId) {
+    if (!connectionId.contains(':')) {
+      if (connectionId.contains('.')) return 5555;
+      return null;
+    }
+    final parts = connectionId.split(':');
+    if (parts.length >= 2) {
+      return int.tryParse(parts.last);
+    }
+    return null;
+  }
+
+  /// 设备当前是否包含物理 USB 连接
+  bool get hasUsbConnection {
+    if (connections.isEmpty) return !isNetwork;
+    return connections.any(
+      (c) => !(c.contains(':') || c.contains('.') || c == '127.0.0.1'),
+    );
+  }
+
+  /// 设备当前是否包含 TCP/IP 连接（传统网络调试，默认 5555 端口）
+  bool get hasTcpConnection {
+    if (connections.isEmpty) {
+      if (!isNetwork) return false;
+      final port = parseConnectionPort(id);
+      return port == 5555 || port == null;
+    }
+    return connections.any((c) {
+      if (!c.contains(':') && !c.contains('.')) return false;
+      final port = parseConnectionPort(c);
+      return port == 5555 || port == null;
+    });
+  }
+
+  /// 设备当前是否包含 WiFi 无线调试连接（Android 11+ 配对或非 5555 动态高位端口）
+  bool get hasWifiDebuggingConnection {
+    if (connections.isEmpty) {
+      if (!isNetwork) return false;
+      final port = parseConnectionPort(id);
+      return port != null && port != 5555;
+    }
+    return connections.any((c) {
+      if (!c.contains(':') && !c.contains('.')) return false;
+      final port = parseConnectionPort(c);
+      return port != null && port != 5555;
+    });
+  }
+
+  /// 获取执行命令与数据传输的最佳优先 ID：
+  /// 若多种方式同时连接，严格保证优先使用 USB 连接
+  String get preferredCommandId {
+    if (connections.isEmpty) return id;
+    final usbId = connections.firstWhere(
+      (c) => !(c.contains(':') || c.contains('.') || c == '127.0.0.1'),
+      orElse: () => '',
+    );
+    if (usbId.isNotEmpty) return usbId;
+    final tcpId = connections.firstWhere(
+      (c) => parseConnectionPort(c) == 5555,
+      orElse: () => '',
+    );
+    if (tcpId.isNotEmpty) return tcpId;
+    return id;
+  }
+
   /// 获取设备的局域网 Wi-Fi IP 地址
   String? get wifiIp {
     if (ipAddress != null && ipAddress!.isNotEmpty && ipAddress != '-') {

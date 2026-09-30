@@ -91,8 +91,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
   /// 构建设备标识列（展示设备型号序列号、Wi-Fi IP 以及物理连接/无线调试状态图标）
   Widget _buildIdentifierCell(BuildContext context, RegisteredDevice device) {
     final wifiIp = device.wifiIp;
-    final hasUsb = _hasUsbConnection(device);
-    final hasNetwork = _hasNetworkConnection(device);
+    final hasUsb = device.hasUsbConnection;
+    final hasTcp = device.hasTcpConnection;
+    final hasWifiDebug = device.hasWifiDebuggingConnection;
+    final hasAnyNetwork = hasTcp || hasWifiDebug;
 
     return Expanded(
       flex: 3,
@@ -150,35 +152,49 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               ],
             ),
           ),
-          // USB 连接状态处理
+          // 1. USB 物理连接状态图标
           if (hasUsb) ...[
             const SizedBox(width: 4),
-            const Icon(Icons.usb, color: Color(0xFF26A69A), size: 16),
-            // 如果 USB 已连接，且存在 Wi-Fi IP，且尚未建立网络 ADB 调试，则提供快捷无线连接按钮
-            if (wifiIp != null && wifiIp.isNotEmpty && !hasNetwork) ...[
-              const SizedBox(width: 6),
-              Tooltip(
-                message: '通过 WiFi 连接 ADB',
-                child: IconButton(
-                  icon: const Icon(CupertinoIcons.link, color: Color(0xFF26A69A), size: 16),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  splashRadius: 16,
-                  onPressed: () => _runAdbAction(
-                    context,
-                    ref,
-                    ref
-                        .read(deviceRegistryProvider.notifier)
-                        .connectWireless(device.id, wifiIp),
-                  ),
+            Tooltip(
+              message: context.l10n.t('connectionUsb'),
+              child: const Icon(Icons.usb, color: Color(0xFF26A69A), size: 16),
+            ),
+          ],
+          // 2. TCP/IP 网络连接状态图标 (传统 5555 端口调试)
+          if (hasTcp) ...[
+            const SizedBox(width: 4),
+            Tooltip(
+              message: context.l10n.t('connectionTcp'),
+              child: const Icon(CupertinoIcons.link, color: Color(0xFF00ACC1), size: 16),
+            ),
+          ],
+          // 3. WiFi 无线调试状态图标 (Android 11+ 配对或高位动态端口)
+          if (hasWifiDebug) ...[
+            const SizedBox(width: 4),
+            Tooltip(
+              message: context.l10n.t('connectionWirelessDebug'),
+              child: const Icon(CupertinoIcons.wifi, color: Color(0xFF43A047), size: 16),
+            ),
+          ],
+          // 如果 USB 已连接，且探测到 Wi-Fi IP，且尚未建立任何网络调试，提供快捷无线连接按钮
+          if (hasUsb && !hasAnyNetwork && wifiIp != null && wifiIp.isNotEmpty) ...[
+            const SizedBox(width: 6),
+            Tooltip(
+              message: '通过 WiFi 连接 ADB',
+              child: IconButton(
+                icon: const Icon(CupertinoIcons.link, color: Color(0xFF26A69A), size: 16),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                splashRadius: 16,
+                onPressed: () => _runAdbAction(
+                  context,
+                  ref,
+                  ref
+                      .read(deviceRegistryProvider.notifier)
+                      .connectWireless(device.id, wifiIp),
                 ),
               ),
-            ],
-          ],
-          // 无线/网络连接状态处理
-          if (hasNetwork) ...[
-            const SizedBox(width: 4),
-            const Icon(CupertinoIcons.wifi, color: Color(0xFF26A69A), size: 16),
+            ),
           ],
         ],
       ),
@@ -440,32 +456,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           ),
         ],
       ),
-    );
-  }
-
-  /// 检查设备是否拥有活跃的 USB 连接
-  bool _hasUsbConnection(RegisteredDevice device) {
-    if (device.connections.isEmpty) {
-      return !device.isNetwork;
-    }
-    return device.connections.any(
-      (connection) =>
-          !(connection.contains(':') ||
-              connection.contains('.') ||
-              connection == '127.0.0.1'),
-    );
-  }
-
-  /// 检查设备是否拥有网络 IP/TCP 连接
-  bool _hasNetworkConnection(RegisteredDevice device) {
-    if (device.connections.isEmpty) {
-      return device.isNetwork;
-    }
-    return device.connections.any(
-      (connection) =>
-          connection.contains(':') ||
-          connection.contains('.') ||
-          connection == '127.0.0.1',
     );
   }
 }

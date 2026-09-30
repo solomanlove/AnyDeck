@@ -80,6 +80,7 @@ import 'mcp/controller/mcp_server_controller.dart';
 import 'widgets/dashboard_snack.dart';
 import 'devices/widgets/tcpip_connection_guide.dart';
 import 'devices/widgets/host_network_footer.dart';
+import 'devices/widgets/harmony_wireless_pairing_view.dart';
 import 'widgets/dashboard_table_header.dart';
 import 'widgets/device_power_actions.dart';
 import '../core/search/dashboard_search_history_controller.dart';

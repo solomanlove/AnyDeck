@@ -131,8 +131,6 @@ class _HarmonyControlTabState extends ConsumerState<HarmonyControlTab> {
   @override
   Widget build(BuildContext context) {
     final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
-    final overviewAsync = ref.watch(deviceOverviewProvider(widget.device.id));
-    final deviceIp = overviewAsync.value?.ipAddress ?? '';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -171,8 +169,6 @@ class _HarmonyControlTabState extends ConsumerState<HarmonyControlTab> {
                   _buildQuickNavigationCard(context),
                   const SizedBox(height: 16),
                   _buildAbilityAndDeeplinkCard(context),
-                  const SizedBox(height: 16),
-                  _buildWirelessDebugCard(context, deviceIp),
                   const SizedBox(height: 16),
                   _buildPowerAndRebootCard(context),
                 ],
@@ -363,47 +359,6 @@ class _HarmonyControlTabState extends ConsumerState<HarmonyControlTab> {
                 );
               },
             ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  /// 鸿蒙无线调试配置卡片
-  Widget _buildWirelessDebugCard(BuildContext context, String deviceIp) {
-    return GlassSectionCard(
-      title: 'HDC 无线调试',
-      icon: CupertinoIcons.wifi,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                deviceIp.isNotEmpty
-                    ? '已检测到局域网 IP: $deviceIp (默认端口: 5555)'
-                    : '未检测到 WLAN IP，请确保鸿蒙手机已连接与电脑相同的 Wi-Fi',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            FilledButton.icon(
-              icon: const Icon(CupertinoIcons.antenna_radiowaves_left_right, size: 16),
-              label: const Text('开启 TCP 端口 (5555)'),
-              onPressed: () => _executeHdcAction(
-                '开启 5555 调试端口',
-                (hdc) => hdc.enableTcpMode(widget.device.id, port: 5555),
-              ),
-            ),
-            if (deviceIp.isNotEmpty) ...[
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                icon: const Icon(CupertinoIcons.link, size: 16),
-                label: const Text('连接此设备'),
-                onPressed: () => _executeHdcAction(
-                  '无线连接',
-                  (hdc) => hdc.connectWireless('$deviceIp:5555'),
-                ),
-              ),
-            ],
           ],
         ),
       ],
