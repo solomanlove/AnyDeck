@@ -8,7 +8,7 @@
 
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
-| `adb-github-feedback` | GitHub Issues 意见反馈 | active | 设置页问题与建议入口、双语正文预览、浏览器打开与复制兜底、网页模板及验证边界 | `features/feedback/`, `core/process/`, `.github/ISSUE_TEMPLATE/` |
+| `adb-github-feedback` | GitHub Issues 意见反馈 | active | 设置页标题与正文编辑、环境信息快照、分类草稿保留、长正文复制兜底、网页模板及验证边界 | `features/feedback/`, `core/process/`, `.github/ISSUE_TEMPLATE/` |
 | `adb-local-apk-inspector` | macOS 本地 APK 详情与安装 | active | Finder 文件关联、独立窗口、Rust 离线解析、签名信息与主窗口安装队列、缓存刷新及回归边界 | `core/apk/`, `features/apk/`, `app/window/apk/`, `rust/apk_inspector/` |
 | `adb-unified-app-detail-view` | 应用详情统一展示模型与 UI | active | 记录本地 APK 与已安装应用如何转换为统一 `AppDetailViewData`，并复用同一分栏、概要与 Tabs Widget | `app/widget/`, `features/apk/`, `features/apps/` |
 | `adb-terminal-pty` | 终端 PTY 与 root 提示符 | active | 记录真实 shell 回显、su 提权显示、目录变化、流式换行处理与回归边界 | `core/terminal/`, `features/terminal/` |
