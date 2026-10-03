@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:any_deck/app/l10n/app_localized_values.dart';
 import 'package:any_deck/app/window/multi_window_compat.dart';
 import 'package:any_deck/app/theme/app_icon.dart';
+import 'model/desktop_chrome_policy.dart';
 import 'package:any_deck/features/mcp/controller/mcp_server_controller.dart';
 
 /// 桌面端窗口与系统托盘管理服务。
@@ -44,13 +45,13 @@ class DesktopWindowManagerService {
     await windowManager.ensureInitialized();
     windowManager.addListener(_windowListener);
 
-    const windowOptions = WindowOptions(
-      size: Size(1100, 780),// 初始窗口大小
-      minimumSize: Size(700, 400), // 限制最小窗口尺寸
+    final windowOptions = WindowOptions(
+      size: const Size(1100, 780),// 初始窗口大小
+      minimumSize: const Size(700, 400), // 限制最小窗口尺寸
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.hidden, // 隐藏原生标题栏
+      titleBarStyle: DesktopChromePolicy.current.mainTitleBarStyle, // 按宿主系统选择装饰
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {

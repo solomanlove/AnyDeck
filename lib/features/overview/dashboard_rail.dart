@@ -7,7 +7,7 @@ class PrimaryRail extends ConsumerWidget {
 
   final AdbDevice? selectedDevice;
 
-  static double get _topSpacing => Platform.isMacOS ? 36.0 : 14.0;
+  static double get _topSpacing => DesktopChromePolicy.current.sidebarTopInset;
   static const double _fullLogoToolGap = 10;
   static const double _compactLogoToolGap = 6;
   static const double _bottomSpacing = 18;
@@ -294,10 +294,13 @@ class PrimaryRail extends ConsumerWidget {
       curve: Curves.easeInOut,
       width: railWidth,
       decoration: BoxDecoration(
-        color: isDark ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.20),
+        color: DesktopChromePolicy.current.usesMacChrome
+            ? (isDark ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.20))
+            : theme.colorScheme.surfaceContainerLow,
       ),
       child: ClipRect(
         child: BackdropFilter(
+          enabled: DesktopChromePolicy.current.usesMacChrome,
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: SafeArea(
         child: LayoutBuilder(

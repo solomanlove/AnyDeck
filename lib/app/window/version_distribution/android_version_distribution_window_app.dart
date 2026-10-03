@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -6,6 +8,7 @@ import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
 import '../window_close_shortcut.dart';
+import '../desktop_window_title_service.dart';
 import '../../../features/overview/widget/android_api_distribution_view.dart';
 
 /// Android 平台与 API 版本分布独立 macOS 窗口入口。
@@ -25,7 +28,11 @@ class AndroidVersionDistributionWindowApp extends ConsumerWidget {
     final initialVersion = argument['initialVersion'] as String?;
 
     return MaterialApp(
-      onGenerateTitle: (context) => context.l10n.t('androidApiDistribution'),
+      onGenerateTitle: (context) {
+        final title = context.l10n.t('androidApiDistribution');
+        unawaited(DesktopWindowTitleService.setTitle(title));
+        return title;
+      },
       debugShowCheckedModeBanner: false,
       locale: settings.language.locale,
       supportedLocales: AppLocalizations.supportedLocales,

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
 
 /// 同步 Flutter 本地化标题到桌面系统原生窗口标题栏。
 class DesktopWindowTitleService {
@@ -17,9 +18,17 @@ class DesktopWindowTitleService {
     }
 
     try {
+      // 主 Runner 同时更新 GTK HeaderBar；子引擎缺少私有通道时再回退。
       await _channel.invokeMethod<void>('setWindowTitle', title);
     } on MissingPluginException {
-      // 非桌面目标或测试环境没有原生 Runner，忽略即可。
+      if (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux) {
+        try {
+          await windowManager.setTitle(title);
+        } on MissingPluginException {
+          // 测试环境没有原生插件，忽略即可。
+        }
+      }
     }
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -7,6 +9,7 @@ import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../../features/dashboard_screen.dart';
 import '../window_close_shortcut.dart';
+import '../desktop_window_title_service.dart';
 
 /// 模拟器管理独立窗口的应用入口。
 class EmulatorManagerWindowApp extends ConsumerWidget {
@@ -24,7 +27,11 @@ class EmulatorManagerWindowApp extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
 
     return MaterialApp(
-      onGenerateTitle: (context) => context.l10n.t('emulators'),
+      onGenerateTitle: (context) {
+        final title = context.l10n.t('emulators');
+        unawaited(DesktopWindowTitleService.setTitle(title));
+        return title;
+      },
       debugShowCheckedModeBanner: false,
       locale: settings.language.locale,
       supportedLocales: AppLocalizations.supportedLocales,

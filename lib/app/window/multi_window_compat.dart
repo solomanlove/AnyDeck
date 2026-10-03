@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'desktop_window_title_service.dart';
+import 'model/desktop_chrome_policy.dart';
 
 const _windowFrameKey = '_windowFrame';
 const _windowTitleKey = '_windowTitle';
@@ -134,7 +135,7 @@ Future<void> configureCurrentAdbManageSubWindow(
         arguments['type'] == 'version_distribution' ||
         arguments['type'] == 'apk_details') {
       await windowManager.setTitleBarStyle(
-        TitleBarStyle.hidden,
+        DesktopChromePolicy.current.subWindowTitleBarStyle,
         windowButtonVisibility: true,
       );
     }

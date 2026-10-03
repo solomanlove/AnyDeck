@@ -15,45 +15,25 @@ class _WechatStyleShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedTool = ref.watch(selectedToolTabProvider);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final glassBgColor = isDark
-        ? Colors.black.withValues(alpha: 0.18)
-        : Colors.white.withValues(alpha: 0.28);
-    final glassBorderColor = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.04);
 
     return Row(
       children: [
         _PrimaryRail(selectedDevice: selectedDevice),
         Expanded(
-          child: ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: glassBgColor,
-                  border: Border(
-                    left: BorderSide(color: glassBorderColor, width: 1),
-                  ),
-                ),
-                // 在玻璃背景上方承载列表底色和水波纹，避免被装饰层遮挡。
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: Column(
-                    children: [
-                      if ((selectedDevice == null || selectedTool == -1) &&
-                          selectedTool != -2 &&
-                          selectedTool != 12 &&
-                          selectedTool != 13 &&
-                          selectedTool != 14)
-                        _ContentTitleBar(title: title),
-                      Expanded(child: child),
-                    ],
-                  ),
-                ),
-              ),
+          child: DesktopWorkspaceSurface(
+            border: Border(
+              left: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Column(
+              children: [
+                if ((selectedDevice == null || selectedTool == -1) &&
+                    selectedTool != -2 &&
+                    selectedTool != 12 &&
+                    selectedTool != 13 &&
+                    selectedTool != 14)
+                  _ContentTitleBar(title: title),
+                Expanded(child: child),
+              ],
             ),
           ),
         ),
@@ -74,30 +54,9 @@ class _ContentTitleBar extends ConsumerWidget {
     final iconColor = isDark ? const Color(0xffb0bec5) : const Color(0xff5f6b6e);
 
     return DragToMoveArea(
-      child: GlassmorphicContainer(
-        width: double.infinity,
-        height: 72,
-        borderRadius: 0,
-        blur: 15,
-        alignment: Alignment.center,
-        border: 0,
-        linearGradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.40),
-            isDark ? Colors.white.withValues(alpha: 0.01) : Colors.white.withValues(alpha: 0.15),
-          ],
-        ),
-        borderGradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.04),
-            isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-          ],
-        ),
+      child: DesktopWorkspaceSurface(
         child: Container(
+          constraints: const BoxConstraints(minHeight: 72),
           padding: const EdgeInsets.symmetric(horizontal: 28),
           decoration: BoxDecoration(
             border: Border(

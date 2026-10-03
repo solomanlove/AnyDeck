@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/l10n/app_localizations.dart';
+import '../../app/window/model/desktop_chrome_policy.dart';
 import '../../app/widget/app_detail_layout.dart';
 import '../../core/apk/apk_install_controller.dart';
 import '../../core/apk/apk_window_client.dart';
@@ -44,7 +45,7 @@ class ApkDetailsPage extends ConsumerWidget {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         leading: const SizedBox.shrink(),
-        leadingWidth: 80,
+        leadingWidth: DesktopChromePolicy.current.toolbarLeadingInset,
         title: DragToMoveArea(
           child: SizedBox(
             height: 56,
