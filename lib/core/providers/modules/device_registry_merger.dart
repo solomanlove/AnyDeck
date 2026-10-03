@@ -276,6 +276,10 @@ class DeviceRegistryMerger {
       }
     });
 
-    return merged;
+    // 完成物理设备合并后再选取在线地址，避免 USB 代表项或旧 serial 缓存遮盖 TCP 地址。
+    return [
+      for (final device in merged)
+        device.copyWith(ipAddress: device.connectedNetworkIp),
+    ];
   }
 }

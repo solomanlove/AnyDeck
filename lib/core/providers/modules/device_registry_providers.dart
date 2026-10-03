@@ -279,7 +279,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       }
     }
 
-    return DeviceRegistryMerger.mergeDevices(
+    final merged = DeviceRegistryMerger.mergeDevices(
       activeDevices: resolvedActiveDevices,
       historyIds: _historyIds,
       aliases: _aliases,
@@ -293,6 +293,19 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       checkedIds: _checkedIds,
       serialMap: _serialMap,
     );
+    // 在线地址回写通道及物理 serial，仅变化时落盘，避免旧快照在重连后恢复。
+    bool ipsChanged = false;
+    for (final device in merged) {
+      final ip = device.connectedNetworkIp;
+      if (ip == null) continue;
+      for (final id in {device.id, ...device.connections, ?device.serial}) {
+        if (_ipAddresses[id] == ip) continue;
+        _ipAddresses[id] = ip;
+        ipsChanged = true;
+      }
+    }
+    if (ipsChanged) _storage.saveIps(_ipAddresses);
+    return merged;
   }
 
   /// 概览信息加载成功后触发同步更新设备注册表中的 Android 版本缓存并更新状态。

@@ -36,6 +36,16 @@ adb -s <device_id> shell ip -o -4 addr show
 
 实时结果回写现有注册表和 SharedPreferences；USB 准备未获取到 IP 时清除旧地址展示。注册表异步加载磁盘缓存时保留较新的连接结果，防止 DHCP 地址被旧快照覆盖。
 
+### 2.1.1 已连接 TCP/IP 的列表地址修复（2026-10-04）
+
+- 现象与证据：设备行显示历史地址 `192.168.10.241`，但只读 `adb devices -l` 返回 `192.168.0.100:5555 device`，该通道执行 `shell ip -4 route` 的 `wlan0 src` 同样为 `192.168.0.100`。
+- 根因：`RegisteredDevice.wifiIp` 原先优先读 `ipAddress` 缓存；设备合并优先取物理 serial 的缓存，且 Android 元数据探测跳过网络 ID 的 IP 查询。通用手动连接或外部 ADB 连接不会经过无线编排器的实时 IP 回写，因此旧缓存可持续遮盖当前连接地址。
+- 修复：统一通过 `connectedNetworkIp` 从在线通道解析 IPv4，传统 TCP 优先于 TLS；USB 与 TCP 合并仍以 USB 执行命令，地址取在线网络通道。合并后同步 `ipAddress`，注册表将地址写回当前通道和物理 serial，仅发生变化时保存 `devices.ips`。
+- 边界：离线 / unauthorized 历史通道不参与在线地址选择；仅 USB、mDNS 服务名、回环地址和非法 IPv4 继续使用已探测缓存。iOS 不启用该规则；HDC 数字网络通道复用该规则。当前选择的是 ADB/HDC 连接端点，代理或 NAT 场景不保证等于手机 WLAN 接口地址。
+- 影响：设备列表、编辑弹窗及共享 `wifiIp` 的连接入口；不增加轮询、ADB 命令、依赖、UI 文案、配色或跨窗口协议，不改变命令路由及投屏链路。
+- 自动验证：`test/device_registry_ip_test.dart` 新增 7 项回归，覆盖旧缓存、双通道、离线 / 未授权、TCP/TLS 优先级、mDNS / 回环、无缓存和持久化重载；连同无线编排、Provider、HDC 合并及无线控件测试共 46 项通过。三个改动源码和新增测试定向 `flutter analyze --no-pub` 通过。
+- 待 UI 验收：使用新版本检查仅 TCP 在线、插入 USB、断开 TCP 和重启后的设备行地址及网段提示。未启动或构建应用；真机仅做上述只读地址核验，未进行连接切换。
+
 ### 2.2 身份与 mDNS
 
 - 优先 `ro.serialno`，其次 `ro.boot.serialno`；USB transport ID 与硬件 serial 不同的设备也可连接。

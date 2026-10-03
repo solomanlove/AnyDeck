@@ -150,8 +150,25 @@ class RegisteredDevice {
     return id;
   }
 
-  /// 获取设备的局域网 Wi-Fi IP 地址
+  /// 当前在线网络通道的 IPv4；合并后的 connections 仅包含在线通道。
+  /// USB 不提供地址，传统 TCP 优先于 TLS，mDNS 名称与回环地址不参与选择。
+  String? get connectedNetworkIp {
+    if (!isOnline || isIos) return null;
+    final ids = connections.isEmpty ? [id] : connections;
+    String? fallback;
+    for (final connectionId in ids) {
+      final ip = wirelessIpv4(connectionId.split(':').first);
+      if (ip == null) continue;
+      if (!isWirelessTlsId(connectionId)) return ip;
+      fallback ??= ip;
+    }
+    return fallback;
+  }
+
+  /// 获取设备的局域网 IP，在线网络通道优先于历史 Wi-Fi 缓存。
   String? get wifiIp {
+    final connectedIp = connectedNetworkIp;
+    if (connectedIp != null) return connectedIp;
     if (ipAddress != null && ipAddress!.isNotEmpty && ipAddress != '-') {
       final ip = wirelessIpv4(ipAddress);
       if (ip != null) return ip;
