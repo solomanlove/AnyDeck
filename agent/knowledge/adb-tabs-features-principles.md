@@ -87,6 +87,10 @@
    - 解析其中的 `<Network>` 结构块（或 `network={...}` 块），提取 `SSID`、`PreSharedKey`/`WEPKey` 以获取 Wi-Fi 密码。
 4. **证书快速导入**：
    - 参见 [证书管理机制](./adb-cert-management.md)。用户证书调用 `com.android.certinstaller/.CertInstallerMain` Intent 调起系统安装；系统证书（需要 Root）使用 Subject Hash 命名并拷贝到 `/system/etc/security/cacerts/`。Android 10+ 使用 `tmpfs` 挂载，Android 14+ 需利用 `nsenter` 绑定挂载 Conscrypt APEX 目录。
+5. **布局边界按钮状态**：
+   - 控制 Tab 的按钮由 `deviceOverviewProvider(deviceId).layoutBoundsEnabled` 驱动。`toggleLayoutBounds` 执行结束后刷新该设备概览；回读为开启时显示主题色实心按钮，再次点击发送关闭命令，回读为关闭时恢复描边按钮。不能仅修改按钮内部状态，否则外部传入的旧 `value` 会覆盖本地状态，导致连续点击始终发送开启命令。
+   - 刷新前检查页面仍挂载且设备在线；命令失败沿用现有错误提示，并回读实际状态，不直接假定开关成功。复用现有中英文文案及明暗主题配色，不新增轮询或修改投屏链路。
+   - 真机回归：关闭状态点击后确认手机显示边界、按钮高亮；再次点击确认边界消失、按钮恢复描边；设备原本已开启时进入控制 Tab 应直接高亮。断连或命令失败时不应显示虚假的成功状态。本次仅做静态检查，未运行应用或完成真机验证。
 
 ---
 

@@ -324,11 +324,17 @@ class _LayoutHelperPanel extends ConsumerWidget {
           iconOff: CupertinoIcons.rectangle,
           label: context.l10n.t('layoutBoundsToggle'),
           value: overviewAsync.value?.layoutBoundsEnabled ?? false,
-          onToggle: (on) => _runAdbAction(
-            context,
-            ref,
-            actions.toggleLayoutBounds(device.id, on),
-          ),
+          onToggle: (on) async {
+            await _runAdbAction(
+              context,
+              ref,
+              actions.toggleLayoutBounds(device.id, on),
+            );
+            // 回读设备状态，更新按钮高亮及下一次点击的开关方向。
+            if (context.mounted && device.isOnline) {
+              ref.invalidate(deviceOverviewProvider(device.id));
+            }
+          },
         ),
         _ToggleActionButton(
           iconOn: CupertinoIcons.moon,
