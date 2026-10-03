@@ -4,6 +4,52 @@ import 'package:flutter/foundation.dart';
 
 /// 宿主机系统平台服务，负责处理所有与宿主机 OS 交互的操作。
 class HostPlatformService {
+  /// 用默认浏览器打开 HTTP(S) 链接；独立传参，避免查询参数被 Shell 解释。
+  Future<bool> openWebUri(Uri uri) async {
+    if (!['https', 'http'].contains(uri.scheme) || uri.host.isEmpty) {
+      return false;
+    }
+    Process? process;
+    StreamSubscription<List<int>>? output;
+    StreamSubscription<List<int>>? errors;
+    try {
+      final String executable;
+      final List<String> arguments;
+      if (Platform.isMacOS) {
+        executable = 'open';
+        arguments = [uri.toString()];
+      } else if (Platform.isWindows) {
+        executable = 'rundll32.exe';
+        arguments = ['url.dll,FileProtocolHandler', uri.toString()];
+      } else if (Platform.isLinux) {
+        executable = 'xdg-open';
+        arguments = [uri.toString()];
+      } else {
+        return false;
+      }
+      process = await Process.start(executable, arguments);
+      // 丢弃启动器输出，避免缓冲区阻塞，也不记录反馈内容。
+      output = process.stdout.listen((_) {}, onError: (Object _) {});
+      errors = process.stderr.listen((_) {}, onError: (Object _) {});
+      return await process.exitCode.timeout(const Duration(seconds: 15)) == 0;
+    } on TimeoutException {
+      process?.kill();
+      await process?.exitCode.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          process?.kill(ProcessSignal.sigkill);
+          return -1;
+        },
+      );
+      return false;
+    } catch (_) {
+      return false;
+    } finally {
+      await output?.cancel();
+      await errors?.cancel();
+    }
+  }
+
   /// 将 PNG 图片字节复制到宿主机系统剪贴板。
   Future<bool> copyImageToClipboard(Uint8List bytes) async {
     try {

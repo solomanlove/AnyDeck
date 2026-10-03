@@ -1,4 +1,5 @@
 import 'tables/app_l10n_settings.dart';
+import 'tables/app_l10n_feedback.dart';
 import 'tables/app_l10n_devices_control.dart';
 import 'tables/app_l10n_apps_files_logcat.dart';
 import 'tables/app_l10n_overview_terminal_emulators.dart';
@@ -24,6 +25,7 @@ import 'tables/app_l10n_device_connections.dart';
 const localizedValues = {
   'zh': {
     ...settingsZh,
+    ...feedbackZh,
     ...devicesControlZh,
     ...appsFilesLogcatZh,
     ...overviewTerminalEmulatorsZh,
@@ -38,6 +40,7 @@ const localizedValues = {
   },
   'en': {
     ...settingsEn,
+    ...feedbackEn,
     ...devicesControlEn,
     ...appsFilesLogcatEn,
     ...overviewTerminalEmulatorsEn,

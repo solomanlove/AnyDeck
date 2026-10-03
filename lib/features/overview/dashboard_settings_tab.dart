@@ -450,6 +450,8 @@ class _SettingsTab extends ConsumerWidget {
                         builder: (_) => const _UpdateCheckDialog(),
                       ),
                     ),
+                    const Divider(height: 16),
+                    const SettingsFeedbackEntry(),
                   ],
                 ),
               ],

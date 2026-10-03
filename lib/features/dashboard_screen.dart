@@ -122,6 +122,7 @@ import '../core/notifications/mac_notification_bridge.dart';
 import '../core/dal/device_driver.dart';
 import '../core/dal/rust_dal_bridge.dart';
 import 'developer/widget/settings_developer_entry.dart';
+import 'feedback/widget/settings_feedback_entry.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_rail.dart';
