@@ -10,6 +10,7 @@ import '../../../core/notifications/notification_providers.dart';
 import '../../overview/widget/android_version_distribution_launcher.dart';
 import 'developer_connection_environment_card.dart';
 import 'developer_section_card.dart';
+import 'developer_local_logs_card.dart';
 
 /// 核心调试工具与测试功能板块。
 ///
@@ -53,6 +54,9 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
       children: [
         // 1. 多端连接环境与工具诊断
         const DeveloperConnectionEnvironmentCard(),
+        const SizedBox(height: 20),
+
+        const DeveloperLocalLogsCard(),
         const SizedBox(height: 20),
 
         // 2. 界面与交互测试

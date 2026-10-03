@@ -9,6 +9,8 @@ import 'package:glassmorphism/glassmorphism.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../../core/logging/log_service.dart';
+import '../../../core/logging/app_log_recorder.dart';
+import '../../widget/local_log_capture_button.dart';
 
 /// 控制台独立窗口的 UI 内容组件。
 class ConsoleWindowPanel extends ConsumerStatefulWidget {
@@ -30,6 +32,9 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
 
   /// 当前搜索关键字
   String _searchQuery = '';
+
+  /// 聚焦警告和错误；与关键词筛选共同生效。
+  bool _keyLogsOnly = false;
 
   @override
   void initState() {
@@ -74,9 +79,9 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
 
   /// 构建带语法高亮的单条日志 TextSpan
   TextSpan _buildLogSpan(String line, bool isDark) {
-    // 匹配类似: "15:50:31.722 I adb: init"
+    // 支持带日期的运行记录与旧版时间格式，异常堆栈保留为同一条日志。
     final match = RegExp(
-      r'^(\d{2}:\d{2}:\d{2}\.\d{3})\s+([IWE])\s+(.*?)$',
+      r'^(\S+)\s+([VDIWEF])\s+([\s\S]*)$',
     ).firstMatch(line);
     final TextStyle defaultStyle = TextStyle(
       fontFamily: Platform.isMacOS ? 'Menlo' : 'Consolas',
@@ -94,7 +99,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
     final content = match.group(3)!;
 
     final Color levelColor = switch (level) {
-      'E' => const Color(0xfff44336), // 红色错误
+      'E' || 'F' => const Color(0xfff44336), // 红色错误
       'W' => const Color(0xffffb300), // 橙色警告
       _ => isDark ? const Color(0xff00e676) : const Color(0xff2e7d32), // 绿色信息
     };
@@ -122,7 +127,9 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
 
     // 过滤日志
     final filteredLogs = logs.where((log) {
-      if (_hideHeartbeats && _isHeartbeat(log)) {
+      final isKey = AppLogRecorder.isKeyLog(log);
+      if (_keyLogsOnly && !isKey) return false;
+      if (_hideHeartbeats && !isKey && _isHeartbeat(log)) {
         return false;
       }
       if (_searchQuery.isNotEmpty) {
@@ -327,6 +334,22 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  FilterChip(
+                    label: Text(context.l10n.t('consoleKeyLogs')),
+                    selected: _keyLogsOnly,
+                    onSelected: (value) => setState(() => _keyLogsOnly = value),
+                  ),
+                  const LocalLogCaptureButton(),
+                ],
+              ),
+            ),
             // 日志文本显示终端区域
             Expanded(
               child: Container(
@@ -342,20 +365,24 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                     width: 1,
                   ),
                 ),
-                child: Scrollbar(
-                  controller: _scrollController,
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: filteredLogs.length,
-                    itemBuilder: (context, index) {
-                      return SelectionArea(
-                        child: Text.rich(
-                          _buildLogSpan(filteredLogs[index], isDark),
+                child: filteredLogs.isEmpty
+                    ? Center(
+                        child: Text(context.l10n.t('consoleNoLogs')),
+                      )
+                    : Scrollbar(
+                        controller: _scrollController,
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          itemCount: filteredLogs.length,
+                          itemBuilder: (context, index) {
+                            return SelectionArea(
+                              child: Text.rich(
+                                _buildLogSpan(filteredLogs[index], isDark),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
               ),
             ),
           ],

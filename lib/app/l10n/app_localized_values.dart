@@ -1,4 +1,5 @@
 import 'tables/app_l10n_settings.dart';
+import 'tables/app_l10n_local_logs.dart';
 import 'tables/app_l10n_feedback.dart';
 import 'tables/app_l10n_devices_control.dart';
 import 'tables/app_l10n_apps_files_logcat.dart';
@@ -25,6 +26,7 @@ import 'tables/app_l10n_device_connections.dart';
 const localizedValues = {
   'zh': {
     ...settingsZh,
+    ...localLogsZh,
     ...feedbackZh,
     ...devicesControlZh,
     ...appsFilesLogcatZh,
@@ -40,6 +42,7 @@ const localizedValues = {
   },
   'en': {
     ...settingsEn,
+    ...localLogsEn,
     ...feedbackEn,
     ...devicesControlEn,
     ...appsFilesLogcatEn,

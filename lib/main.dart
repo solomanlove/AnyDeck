@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
@@ -19,10 +20,25 @@ import 'app/window/multi_window_compat.dart';
 
 import 'app/settings/app_settings_controller.dart';
 import 'core/logging/log_service.dart';
+import 'core/logging/app_log_capture.dart';
+import 'core/logging/app_log_recorder.dart';
 
 /// 应用入口，ProviderScope 负责承载全局 Riverpod 依赖图。
-void main(List<String> args) async {
+void main(List<String> args) {
+  // Binding 与 runApp 保持同一个 Zone，启动期及异步未处理异常写入本地日志。
+  runZonedGuarded(() => _startApplication(args), (error, stack) {
+    AppLogRecorder.instance.record('$error\n$stack', tag: 'uncaught', level: 'E');
+    stderr.writeln('$error\n$stack');
+  });
+}
+
+Future<void> _startApplication(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  installAppLogCapture();
+  final logWindowId = args.firstOrNull == 'multi_window' && args.length > 1
+      ? args[1]
+      : '';
+  await AppLogRecorder.instance.initialize(logWindowId);
 
   // 修复在 macOS/桌面端因焦点切换或系统合成事件导致的 KeyUpEvent 断言 crash 错误。
   // 当 Flutter 接收到 KeyUpEvent，但其内部 HardwareKeyboard 并没有记录对应的 KeyDownEvent 时，
@@ -118,7 +134,7 @@ void main(List<String> args) async {
         await configureCurrentAdbManageSubWindow(argument);
         runApp(ProviderScope(
           overrides: [windowIdProvider.overrideWithValue(windowId)],
-          child: ApkDetailsWindowApp(argument: argument),
+          child: AppLogScope(child: ApkDetailsWindowApp(argument: argument)),
         ));
       } else if (type == 'mirror') {
         await configureCurrentAdbManageSubWindow(argument);
@@ -126,7 +142,9 @@ void main(List<String> args) async {
         runApp(
           ProviderScope(
             overrides: [windowIdProvider.overrideWithValue(windowId)],
-            child: MirrorWindowApp(windowId: windowId, argument: argument),
+            child: AppLogScope(
+              child: MirrorWindowApp(windowId: windowId, argument: argument),
+            ),
           ),
         );
       } else if (type == 'console') {
@@ -135,7 +153,9 @@ void main(List<String> args) async {
         runApp(
           ProviderScope(
             overrides: [windowIdProvider.overrideWithValue(windowId)],
-            child: ConsoleWindowApp(windowId: windowId, argument: argument),
+            child: AppLogScope(
+              child: ConsoleWindowApp(windowId: windowId, argument: argument),
+            ),
           ),
         );
       } else if (type == 'version_distribution') {
@@ -144,9 +164,11 @@ void main(List<String> args) async {
         runApp(
           ProviderScope(
             overrides: [windowIdProvider.overrideWithValue(windowId)],
-            child: AndroidVersionDistributionWindowApp(
-              windowId: windowId,
-              argument: argument,
+            child: AppLogScope(
+              child: AndroidVersionDistributionWindowApp(
+                windowId: windowId,
+                argument: argument,
+              ),
             ),
           ),
         );
@@ -156,15 +178,21 @@ void main(List<String> args) async {
         runApp(
           ProviderScope(
             overrides: [windowIdProvider.overrideWithValue(windowId)],
-            child: EmulatorManagerWindowApp(
-              windowId: windowId,
-              argument: argument,
+            child: AppLogScope(
+              child: EmulatorManagerWindowApp(
+                windowId: windowId,
+                argument: argument,
+              ),
             ),
           ),
         );
       }
     } catch (e, stack) {
-      debugPrint('Sub-window [$windowName] failed to launch: $e\n$stack');
+      AppLogRecorder.instance.record(
+        'Sub-window [$windowName] failed to launch: $e\n$stack',
+        tag: 'window',
+        level: 'E',
+      );
     }
     return;
   }

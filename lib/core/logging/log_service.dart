@@ -1,187 +1,189 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:desktop_multi_window/desktop_multi_window.dart';
+
 import '../../app/settings/app_settings_controller.dart';
 import '../../app/window/sub_window_method_dispatcher.dart';
+import 'app_log_recorder.dart';
 
-/// 全局日志历史提供者，维护一个字符串日志列表。
-final logHistoryProvider = NotifierProvider<LogService, List<String>>(LogService.new);
+/// 控制台日志状态，主窗口汇总各 Isolate 的运行日志和命令记录。
+final logHistoryProvider = NotifierProvider<LogService, List<String>>(
+  LogService.new,
+);
 
-/// 日志服务类，负责收集 adb 命令执行记录并提供跨多窗口通信广播。
+/// 以有界队列和批量广播连接本地采集器与控制台，避免逐条枚举窗口。
 class LogService extends Notifier<List<String>> {
   static const _logChannel = WindowMethodChannel(
     'any_deck/console_logs',
     mode: ChannelMode.unidirectional,
   );
+  static const _timeout = Duration(seconds: 2);
+  final List<String> _pending = [];
+  Timer? _timer;
+  bool _sending = false;
+  bool get _isMain => ref.read(windowIdProvider).isEmpty;
 
   @override
   List<String> build() {
-    _setupLogChannel();
-    return [];
-  }
-
-  /// 注册窗口方法调用处理器以接收其他 Isolate 发来的日志。
-  void _setupLogChannel() {
-    final currentId = ref.read(windowIdProvider);
-    if (currentId.isEmpty) {
-      // 主窗口注册单向通道监听，用来处理子窗口的日志上报与历史同步请求
-      unawaited(_logChannel.setMethodCallHandler(_handleLogCall));
-      return;
+    final recorder = AppLogRecorder.instance;
+    final isMain = _isMain;
+    final subscription = recorder.events.listen(_enqueue);
+    if (_isMain) {
+      // 注册失败时仅保留本地记录，禁止 debugPrint 引发日志反馈循环。
+      unawaited(
+        _logChannel.setMethodCallHandler(_handleLogCall).catchError((_) {}),
+      );
+    } else {
+      SubWindowMethodDispatcher.registerHandler(_handleLogCall);
+      // 子窗口在 Provider 建立前的启动日志也需要转发。
+      for (final line in recorder.history) {
+        _enqueue(line);
+      }
     }
-
-    // 子窗口则监听主Isolate通过 `WindowController.invokeMethod` 广播进来的日志数据
-    SubWindowMethodDispatcher.registerHandler(_handleLogCall);
+    ref.onDispose(() {
+      _timer?.cancel();
+      unawaited(subscription.cancel());
+      if (!isMain) SubWindowMethodDispatcher.removeHandler(_handleLogCall);
+    });
+    return recorder.history;
   }
 
-  /// 处理跨 Isolate 消息的回调。
   Future<dynamic> _handleLogCall(MethodCall call) async {
-    if (call.method == 'log') {
-      // 子窗口接收到主窗口广播的单条日志
-      final logMsg = call.arguments as String;
-      state = [...state, logMsg];
-    } else if (call.method == 'log_from_sub') {
-      // 主窗口接收到子窗口发送的日志，进行处理并广播
-      final logMsg = call.arguments as String;
-      _addAndBroadcastLog(logMsg);
-    } else if (call.method == 'get_history') {
-      // 主窗口接收到子窗口的历史同步请求，返回当前的全部日志
-      return state;
-    } else if (call.method == 'clear') {
-      // 子窗口接收到主窗口发送的清空指令
-      state = [];
-    } else if (call.method == 'clear_from_sub') {
-      // 主窗口接收到子窗口的清空请求，本地清空并向所有窗口广播
-      _clearAndBroadcast();
+    if (!ref.mounted) return null;
+    switch (call.method) {
+      case 'flush_local_logs':
+        await AppLogRecorder.instance.store?.flush();
+        return AppLogRecorder.instance.store != null &&
+            AppLogRecorder.instance.store?.lastError == null &&
+            AppLogRecorder.instance.store?.lostRecords == 0;
+      case 'log_batch':
+        _addLocal(_readBatch(call.arguments));
+      case 'log':
+        if (call.arguments is String) _addLocal([call.arguments as String]);
+      case 'log_batch_from_sub':
+        for (final line in _readBatch(call.arguments)) {
+          _enqueue(line);
+        }
+      case 'log_from_sub':
+        if (call.arguments is String) _enqueue(call.arguments as String);
+      case 'get_history':
+        return _bounded([...state, ..._pending]);
+      case 'clear':
+        _pending.clear();
+        state = [];
+      case 'clear_from_sub':
+        clear();
     }
     return null;
   }
 
-  /// 记录一条格式化日志，并自动进行跨窗口同步。
+  List<String> _readBatch(dynamic value) => value is List
+      ? value.whereType<String>().take(AppLogRecorder.maxRecords).toList()
+      : [];
+
+  /// 对外保留命令服务已有的日志接口，由采集器统一持久化和脱敏。
   void log(String message, {String tag = 'adb', String level = 'I'}) {
-    final now = DateTime.now();
-    final timeStr =
-        '${now.hour.toString().padLeft(2, '0')}:'
-        '${now.minute.toString().padLeft(2, '0')}:'
-        '${now.second.toString().padLeft(2, '0')}.'
-        '${now.millisecond.toString().padLeft(3, '0')}';
-    final logMsg = '$timeStr $level $tag: $message';
+    AppLogRecorder.instance.record(message, tag: tag, level: level);
+  }
 
-    final currentId = ref.read(windowIdProvider);
-    if (currentId.isNotEmpty) {
-      // 子窗口不直接维护日志状态，而是通过单向通道调用主窗口来汇总
-      unawaited(_sendLogFromSub(logMsg));
-    } else {
-      // 主窗口直接本地记录并向所有子窗口发起广播
-      // 使用 Future.microtask 确保状态更新在微任务中执行，避免在 Provider 构建期修改状态导致 Assertion Error
-      Future.microtask(() {
-        if (ref.mounted) {
-          _addAndBroadcastLog(logMsg);
-        }
-      });
+  void _enqueue(String line) {
+    _pending.add(line);
+    if (_pending.length > AppLogRecorder.maxRecords) _pending.removeAt(0);
+    _schedule();
+  }
+
+  void _schedule() {
+    if (_sending || _timer != null) return;
+    _timer = Timer(const Duration(milliseconds: 150), () {
+      _timer = null;
+      unawaited(_flushBatch());
+    });
+  }
+
+  Future<void> _flushBatch() async {
+    if (!ref.mounted || _pending.isEmpty) return;
+    _sending = true;
+    final batch = List<String>.from(_pending);
+    _pending.clear();
+    _addLocal(batch);
+    try {
+      if (_isMain) {
+        await _broadcast('log_batch', batch);
+      } else {
+        await _logChannel
+            .invokeMethod('log_batch_from_sub', batch)
+            .timeout(_timeout);
+      }
+    } catch (_) {
+      // 主窗口未启动或已经关闭时，子窗口仍有本地内存及文件记录。
+    } finally {
+      _sending = false;
+      if (ref.mounted && _pending.isNotEmpty) _schedule();
     }
   }
 
-  /// 清空所有日志
+  /// 清空当前显示，不删除故障排查所需的本地日志文件。
   void clear() {
-    final currentId = ref.read(windowIdProvider);
-    if (currentId.isNotEmpty) {
-      unawaited(_clearFromSub());
-    } else {
-      _clearAndBroadcast();
-    }
-  }
-
-  /// 子窗口向主窗口上报日志；脚本直启子窗口时没有主窗口通道，降级为本地记录。
-  Future<void> _sendLogFromSub(String logMsg) async {
-    try {
-      await _logChannel.invokeMethod('log_from_sub', logMsg);
-    } catch (e) {
-      if (ref.mounted) {
-        _addLocalLog(logMsg);
-      }
-    }
-  }
-
-  /// 子窗口请求主窗口清空日志；脚本直启子窗口时没有主窗口通道，降级为本地清空。
-  Future<void> _clearFromSub() async {
-    try {
-      await _logChannel.invokeMethod('clear_from_sub');
-    } catch (e) {
-      if (ref.mounted) {
-        state = [];
-      }
-    }
-  }
-
-  /// 仅在主窗口执行：清空本地日志并广播给所有子窗口
-  void _clearAndBroadcast() async {
+    _pending.clear();
     state = [];
+    if (_isMain) {
+      unawaited(_broadcast('clear', null));
+    } else {
+      unawaited(
+        _logChannel
+            .invokeMethod('clear_from_sub')
+            .timeout(_timeout)
+            .catchError((_) => null),
+      );
+    }
+  }
+
+  Future<void> _broadcast(String method, dynamic arguments) async {
     try {
-      final windows = await WindowController.getAll();
-      for (final window in windows) {
-        if (window.arguments.isEmpty) continue;
-        try {
-          final args = jsonDecode(window.arguments);
-          if (args is Map && args['type'] == 'console') {
-            await window.invokeMethod('clear').timeout(const Duration(milliseconds: 300));
+      final windows = await WindowController.getAll().timeout(_timeout);
+      await Future.wait(
+        windows.map((window) async {
+          try {
+            if (window.arguments.isEmpty) return;
+            final args = jsonDecode(window.arguments);
+            if (args is Map && args['type'] == 'console') {
+              await window.invokeMethod(method, arguments).timeout(_timeout);
+            }
+          } catch (_) {
+            // 窗口销毁、参数损坏和 dead channel 均不阻塞其他控制台。
           }
-        } catch (_) {
-          // 忽略已关闭或通信超时的窗口
-        }
-      }
-    } catch (e) {
-      debugPrint('Failed to broadcast clear: $e');
+        }),
+      );
+    } catch (_) {
+      // 通信错误不可回流采集器，避免递归广播。
     }
   }
 
-  /// 仅在主窗口执行：将日志持久存储到状态中并向所有子窗口（控制台）分发。
-  void _addAndBroadcastLog(String logMsg) async {
-    // 限制最大日志量为 1000 条，防止长时间运行导致内存泄漏
-    _addLocalLog(logMsg);
+  List<String> _bounded(List<String> lines) =>
+      lines.length > AppLogRecorder.maxRecords
+      ? lines.sublist(lines.length - AppLogRecorder.maxRecords)
+      : lines;
 
-    try {
-      final windows = await WindowController.getAll();
-      for (final window in windows) {
-        if (window.arguments.isEmpty) continue;
-        try {
-          final args = jsonDecode(window.arguments);
-          if (args is Map && args['type'] == 'console') {
-            // 通过 windowId 对应的控制器调用子Isolate的方法，超时防死锁并安全忽略已销毁的死通道
-            await window.invokeMethod('log', logMsg).timeout(const Duration(milliseconds: 300));
-          }
-        } catch (_) {
-          // 忽略已关闭、通信超时或 dead channel 的窗口异常
-        }
-      }
-    } catch (e) {
-      debugPrint('Failed to broadcast log: $e');
-    }
+  void _addLocal(List<String> lines) {
+    if (!ref.mounted) return;
+    // 历史同步和实时广播可能交错，时间戳含微秒用于去重。
+    state = _bounded({...state, ...lines}.toList());
   }
 
-  /// 本地保存日志并限制最大数量，供主窗口和脚本直启子窗口共用。
-  void _addLocalLog(String logMsg) {
-    var newLogs = [...state, logMsg];
-    if (newLogs.length > 1000) {
-      newLogs = newLogs.sublist(newLogs.length - 1000);
-    }
-    state = newLogs;
-  }
-
-  /// 在控制台子窗口启动时，向主窗口拉取所有已记录的历史日志。
+  /// 控制台启动时读取主窗口快照，同时保留同步期间收到的新日志。
   Future<void> syncHistory() async {
-    final currentId = ref.read(windowIdProvider);
-    if (currentId.isEmpty) return; // 仅子窗口需要同步
-
+    if (_isMain) return;
     try {
-      final history = await _logChannel.invokeMethod('get_history');
-      if (history is List) {
-        state = List<String>.from(history);
-      }
-    } catch (e) {
-      debugPrint('Failed to sync log history: $e');
+      final history = await _logChannel
+          .invokeMethod('get_history')
+          .timeout(_timeout);
+      if (!ref.mounted) return;
+      state = _bounded({..._readBatch(history), ...state}.toList()..sort());
+    } catch (_) {
+      // 脚本直启控制台时展示当前 Isolate 的本地日志。
     }
   }
 }
