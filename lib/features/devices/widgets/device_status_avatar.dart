@@ -66,8 +66,10 @@ class DeviceStatusAvatar extends ConsumerWidget {
     Widget logoWidget = AppAssetImage(
       logoAsset,
       fit: BoxFit.contain,
-      width: size * 0.75,
-      height: size * 0.75,
+      // width: size * 0.75,
+      // height: size * 0.75,
+      width: size,
+      height: size,
     );
 
     if (!isOnline) {
@@ -103,8 +105,8 @@ class DeviceStatusAvatar extends ConsumerWidget {
             height: size,
             decoration: BoxDecoration(
               color: avatarBg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: avatarBorder, width: 1),
+              borderRadius: BorderRadius.circular(16),
+              // border: Border.all(color: avatarBorder, width: 1),
             ),
             alignment: Alignment.center,
             child: logoWidget,

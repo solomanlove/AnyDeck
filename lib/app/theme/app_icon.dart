@@ -7,6 +7,7 @@ class AppIcons {
 
   // 手机品牌logo
   static const String xiaomi = 'assets/brand/xiaomi_logo.png';
+  static const String xiaomiSvg = 'assets/brand/xiaomi_logo.svg';
   static const String huawei = 'assets/brand/huawei_logo.png';
   static const String honor = 'assets/brand/honor_logo.png';
   static const String oppo = 'assets/brand/oppo_logo.png';
