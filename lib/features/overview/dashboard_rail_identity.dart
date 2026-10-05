@@ -190,7 +190,7 @@ class _RailIdentity extends ConsumerWidget {
         color: iconColor,
       );
     } else {
-      child = Image.asset(
+      child = AppAssetImage(
         logoAsset,
         fit: BoxFit.contain,
         width: double.infinity,

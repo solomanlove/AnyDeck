@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_icon.dart';
+import '../../../app/widget/app_asset_image.dart';
 import '../../../core/device_info/brand_logo_helper.dart';
 import '../../../core/providers/modules/device_overview_providers.dart';
 import '../../../core/providers/modules/registered_device_model.dart';
@@ -62,7 +63,7 @@ class DeviceStatusAvatar extends ConsumerWidget {
     }
 
     // 3. 构建 Logo 图像，并在离线或脱机状态下应用灰阶滤镜与透明度
-    Widget logoWidget = Image.asset(
+    Widget logoWidget = AppAssetImage(
       logoAsset,
       fit: BoxFit.contain,
       width: size * 0.75,
