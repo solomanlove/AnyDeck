@@ -131,3 +131,21 @@ flutter test --no-pub test/adb_wireless_coordinator_test.dart test/wireless_conn
 - 静态检查：本次 4 个 Dart 文件的定向 `flutter analyze --no-pub` 通过（No issues found）。全仓检查报告 53 项既有问题，包含 `test/apps_tab_filter_test.dart` 构造参数缺失、未定义标识符，以及其他模块的 warning / info；未改动这些无关文件。
 - 待 UI 回归：中文 / 英文、明暗主题、小窗口及放大文字下内容可滚动；常见问题展开后无溢出；命令可选中复制；取消不连接，按钮和 Enter 使用输入地址连接。
 - 按项目约定不启动应用，本次不执行真机 TCP/IP 切换或连接验证。
+
+## 6. 设备行网段提示随主机网络刷新（2026-10-05）
+
+### 问题与实现
+
+- 原设备列表 `_subnetFutures` 仅按手机 IP 永久缓存检测结果，电脑切换 Wi-Fi 或首次网卡读取失败后，底部 IP 已更新但设备行仍可能保留黄色警告。截图中的手机 `192.168.0.104` 与电脑 `192.168.0.105` 按现有规则应判为同网段。
+- 移除设备列表的 Future 缓存，抽出 `DeviceSubnetWarning`，通过 `hostNetworkProvider.select` 订阅是否需要提示。设备行与底栏共享同一网络快照，沿用已有 10 秒刷新及底栏手动刷新，不新增扫描、Ping、Timer 或后台进程。
+- `HostNetworkInfo.ipv4Addresses` 保留本轮所有有效 IPv4，底栏继续优先展示 Wi-Fi / 物理网卡地址；任意有效网卡匹配时隐藏警告，避免多网卡环境误报。
+- `NetworkLanMatcher.matchesAnySubnet` 集中同步判断，返回 `true` / `false` / `null`：只有明确的 `false` 显示提示；加载、读取错误、无本机地址或设备地址无效均隐藏。原异步 `isSameSubnet` 复用此逻辑，保留未知时返回 `false` 的连接流程约定。
+- 仍使用已有 /24、私有 10/8、172.16/12 的估算规则，不读取实际 netmask，不以此证明 SSID 相同或实际可达。ADB 连接与投屏命令、跨窗口协议及 IP 持久化流程不变。
+- 提示文案迁入 `app_l10n_host_network.dart`，提供中文 / 英文；图标颜色使用 Theme 的 `colorScheme.tertiary`，适配明暗主题。
+
+### 验证与交接
+
+- `flutter test --no-pub test/device_subnet_warning_test.dart test/device_registry_ip_test.dart`：15 项通过，覆盖截图地址、不同网段、多网卡、无效地址、底栏手动刷新、自动切网刷新、读取失败以及中英文 / 明暗主题。
+- 本次 8 个 Dart 入口定向 `flutter analyze --no-pub` 无新增诊断，仅保留 `dashboard_screen.dart` 原有的 `liquid_glass_background.dart` unused import 警告；`git diff --check` 通过。
+- Widget 测试替换 `HostNetworkService`，使用真实 Provider 和底栏刷新按钮验证旧结果会消失，未访问真实网络、手机或原生接口。
+- 手动验收：电脑与手机保持截图中的 IP，确认警告不显示；电脑切网后等待最多一个刷新周期或点击底栏刷新，检查提示与底栏一致；网络读取失败时不显示旧警告。按约定未启动桌面应用，实际 UI / 真机验收待执行。

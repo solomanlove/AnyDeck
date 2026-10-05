@@ -163,28 +163,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                         ),
                       ),
                       if (wifiIp != null && wifiIp.isNotEmpty) ...[
-                        FutureBuilder<bool>(
-                          future: _subnetFutures.putIfAbsent(
-                            wifiIp,
-                            () => NetworkLanMatcher.isSameSubnet(wifiIp),
-                          ),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData && snapshot.data == false) {
-                              return const Padding(
-                                padding: EdgeInsets.only(left: 4.0),
-                                child: Tooltip(
-                                  message: '手机与电脑可能不在同一局域网网段',
-                                  child: Icon(
-                                    CupertinoIcons.exclamationmark_circle_fill,
-                                    color: Colors.amber,
-                                    size: 14,
-                                  ),
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
+                        DeviceSubnetWarning(wifiIp: wifiIp),
                       ],
                     ],
                   ),

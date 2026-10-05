@@ -28,55 +28,65 @@ class NetworkLanMatcher {
     }
   }
 
-  /// 方法一：判断手机 IP 与电脑的所有物理网卡 IPv4 是否在同一局域网网段
+  /// 方法一：读取本机 IPv4 后估算网段；连接流程沿用未知时返回 false 的行为。
   static Future<bool> isSameSubnet(String phoneIp) async {
-    if (phoneIp == '-' || phoneIp.isEmpty) return false;
-
     try {
-      // 获取电脑上所有非回环的 IPv4 地址列表
       final interfaces = await NetworkInterface.list(
         includeLoopback: false,
         type: InternetAddressType.IPv4,
       );
+      return matchesAnySubnet(
+            phoneIp,
+            interfaces.expand((entry) => entry.addresses.map((a) => a.address)),
+          ) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
 
-      final phoneParts = phoneIp.split('.');
-      if (phoneParts.length != 4) return false;
-
-      for (final interface in interfaces) {
-        for (final addr in interface.addresses) {
-          final pcIp = addr.address;
-          final pcParts = pcIp.split('.');
-          if (pcParts.length != 4) continue;
-
-          // C 类私有网段匹配 (掩码 255.255.255.0 /24)
-          if (phoneParts[0] == pcParts[0] &&
-              phoneParts[1] == pcParts[1] &&
-              phoneParts[2] == pcParts[2]) {
-            return true;
-          }
-
-          // A 类私有网段匹配 (10.x.x.x，掩码 255.0.0.0 /8)
-          if (phoneParts[0] == '10' && pcParts[0] == '10') {
-            return true;
-          }
-
-          // B 类私有网段匹配 (172.16.0.0 - 172.31.255.255，掩码 255.240.0.0 /12)
-          if (phoneParts[0] == '172' && pcParts[0] == '172') {
-            final phoneSeg = int.tryParse(phoneParts[1]);
-            final pcSeg = int.tryParse(pcParts[1]);
-            if (phoneSeg != null &&
-                pcSeg != null &&
-                phoneSeg >= 16 &&
-                phoneSeg <= 31 &&
-                pcSeg >= 16 &&
-                pcSeg <= 31) {
-              return true;
-            }
-          }
-        }
+  /// 用同一份网络快照估算网段；地址无效或本机地址未知时返回 null，避免误报。
+  /// 未读取实际掩码，沿用 /24、私有 10/8 和 172.16/12 的提示性规则。
+  static bool? matchesAnySubnet(String phoneIp, Iterable<String> hostIps) {
+    final phoneParts = _ipv4Parts(phoneIp);
+    if (phoneParts == null) return null;
+    var hasHostAddress = false;
+    for (final hostIp in hostIps) {
+      final pcParts = _ipv4Parts(hostIp);
+      if (pcParts == null) continue;
+      hasHostAddress = true;
+      if (phoneParts[0] == pcParts[0] &&
+          phoneParts[1] == pcParts[1] &&
+          phoneParts[2] == pcParts[2]) {
+        return true;
       }
-    } catch (_) {}
-    return false;
+      if (phoneParts[0] == 10 && pcParts[0] == 10) return true;
+      if (phoneParts[0] == 172 &&
+          pcParts[0] == 172 &&
+          phoneParts[1] >= 16 &&
+          phoneParts[1] <= 31 &&
+          pcParts[1] >= 16 &&
+          pcParts[1] <= 31) {
+        return true;
+      }
+    }
+    return hasHostAddress ? false : null;
+  }
+
+  /// 排除占位符、回环、链路本地及非单播地址，未知状态不作为网段不匹配。
+  static List<int>? _ipv4Parts(String ip) {
+    final address = InternetAddress.tryParse(ip);
+    if (address == null || address.type != InternetAddressType.IPv4) {
+      return null;
+    }
+    final parts = address.rawAddress;
+    if (parts[0] == 0 ||
+        parts[0] == 127 ||
+        parts[0] >= 224 ||
+        (parts[0] == 169 && parts[1] == 254)) {
+      return null;
+    }
+    return parts;
   }
 
   /// 方法二：动态测试网络可达性 (Ping 手机 IP)

@@ -16,12 +16,16 @@ class HostNetworkInfo {
     this.ssid,
     this.address,
     this.isWifiAddress = false,
+    this.ipv4Addresses = const [],
   });
 
   final HostWifiStatus wifiStatus;
   final String? ssid;
   final HostNetworkAddress? address;
   final bool isWifiAddress;
+
+  /// 本轮读取的所有有效网卡地址，供设备行与底栏共享；多网卡任一匹配即可。
+  final List<HostNetworkAddress> ipv4Addresses;
 
   /// 优先选择已连接 Wi-Fi 的 IPv4，再选择物理有线网卡；忽略虚拟网卡。
   static HostNetworkInfo resolve(
@@ -80,6 +84,7 @@ class HostNetworkInfo {
       ssid: hasSsid ? ssid : null,
       address: address,
       isWifiAddress: isWifiAddress,
+      ipv4Addresses: List.unmodifiable(usable),
     );
   }
 }

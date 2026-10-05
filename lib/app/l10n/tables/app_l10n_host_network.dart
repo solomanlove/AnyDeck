@@ -10,6 +10,7 @@ const hostNetworkZh = {
   'hostWifiPermissionRequired': '未授权(需定位权限)',
   'hostWifiReadName': '点击授权读取名称',
   'hostNetworkRefresh': '刷新网络信息',
+  'deviceSubnetWarning': '手机与电脑可能不在同一局域网网段',
 };
 
 const hostNetworkEn = {
@@ -23,4 +24,5 @@ const hostNetworkEn = {
   'hostWifiPermissionRequired': 'Permission Required',
   'hostWifiReadName': 'Grant Permission',
   'hostNetworkRefresh': 'Refresh Network',
+  'deviceSubnetWarning': 'The phone and computer may be on different LAN subnets',
 };
