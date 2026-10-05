@@ -8,6 +8,7 @@ import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 import 'ios_app_info.dart';
 import 'ios_process_info.dart';
+import 'ios_screenshot_capture.dart';
 
 /// 统一封装 go-ios 的短命令、持续流和 JSON 解析。
 class IosCommandService {
@@ -22,6 +23,7 @@ class IosCommandService {
 
   final String executable;
   final void Function(String message, {String tag, String level})? _onLog;
+  late final _screenshotCapture = IosScreenshotCapture(run);
 
   static String _resolveBinary() {
     final ios = resolveToolPath('ios');
@@ -49,7 +51,8 @@ class IosCommandService {
       final exitCode = await process.exitCode.timeout(timeout);
       final stdout = await stdoutFuture;
       final stderr = await stderrFuture;
-      final effectiveExitCode = exitCode == 0 && _containsFatalLog(stdout)
+      final effectiveExitCode = exitCode == 0 &&
+              (_containsFatalLog(stdout) || _containsFatalLog(stderr))
           ? 1
           : exitCode;
       final result = AdbResult(
@@ -168,23 +171,8 @@ class IosCommandService {
     return run(['kill', '--pid=$pid', '--udid=$udid']);
   }
 
-  Future<Uint8List> captureScreenshot(String udid) async {
-    final directory = await Directory.systemTemp.createTemp('anydeck_ios_');
-    final file = File('${directory.path}/screenshot.png');
-    try {
-      final result = await run([
-        'screenshot',
-        '--output=${file.path}',
-        '--udid=$udid',
-      ]);
-      if (!result.isSuccess) throw Exception(result.message);
-      if (!await file.exists()) throw Exception('go-ios 未生成截图文件');
-      return await file.readAsBytes();
-    } finally {
-      try {
-        await directory.delete(recursive: true);
-      } catch (_) {}
-    }
+  Future<Uint8List> captureScreenshot(String udid) {
+    return _screenshotCapture.capture(udid);
   }
 
   Future<AdbResult> automationStatus(String udid, {int wdaPort = 8100}) async {

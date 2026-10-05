@@ -104,7 +104,7 @@ iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
 | App 文件 | `ios fsync --app=<BundleID>` | 仅限允许访问的 App container，不提供 iOS 全盘文件系统 |
 | 系统日志 | `ios syslog --parse` | 长生存期进程由页面持有并在 dispose 时终止 |
 | 进程 | `ios ps --apps` / `ios kill --pid` | 默认只展示 App 进程，结束进程是有副作用操作 |
-| 截图 | `ios screenshot --output=<file>` | 使用临时目录，读取后立即删除临时文件 |
+| 截图 | `ios screenshot --output=<file>` | 缺少开发者镜像时自动挂载并重试一次；使用临时目录，结束后删除临时文件 |
 | UI 自动化 | `ios ui ... --driver=wda` | 依赖已经签名、安装并启动的 WebDriverAgent |
 
 所有命令参数都通过 `Process.start(executable, args)` 的参数列表传入，不经过 shell 拼接。短命令默认 15 秒超时，IPA 和文件传输使用 5 分钟超时；超时后先普通终止，再以 `SIGKILL` 兜底。`--text` 的用户输入在全局日志中必须脱敏。
@@ -126,3 +126,37 @@ iOS 在线设备开放“控制、应用、进程、文件、日志、截图”�
 4. 启动日志后切换 Tab、切换设备和关闭窗口，确认 `ios syslog` 不残留。
 5. WDA 未部署时应显示明确错误；部署完成后验证 UI Tree、tap、swipe、type 和 home button。
 6. Android 与 HarmonyOS 的原有 Tab、ADB/HDC 命令和截图录屏路径必须保持不变。
+
+## 9. 截图缺少 Developer Disk Image 的自动恢复（2026-10-05）
+
+### 问题与实现
+
+截图页通过 `IosCommandService.captureScreenshot` 执行一次性截图，此前没有投屏入口中的镜像挂载恢复流程。未挂载时，go-ios 会返回 `DVTSecureSocketProxy` / `InvalidService` 或 `Developer Disk Image must be mounted`，页面直接展示失败。
+
+- `lib/core/ios/ios_screenshot_capture.dart` 独立承接截图恢复，复用 `IosCommandService.run` 的参数列表、超时和进程回收机制。
+- 先正常截图；只有明确的镜像未挂载或截图开发服务 `InvalidService` 错误才执行 `ios image auto --udid=<UDID>`，成功后重试截图一次。重试失败直接返回，不递归挂载。
+- 普通截图仍为 15 秒超时；镜像首次下载和挂载允许 5 分钟，超时由执行器终止进程。不会启动常驻 tunnel，也不会修改全局环境变量。
+- 同一个服务实例内按 UDID 共享进行中的截图 Future，避免连续截图或重复刷新并发挂载；结束或失败后移除记录，下一次可重新尝试。
+- 失败重试前删除旧输出；最终检查截图文件存在且非空，成功或异常均清理临时目录。
+- 命令退出码为 0 时同时检查 stdout/stderr 中的 ERROR/FATAL JSON。截图错误优先提取 `err`/`error`/`msg`，避免 stdout 的 WARN 遮蔽 stderr 的真正原因；原始 stdout/stderr 仍保留在 `AdbResult` 中。
+
+当前连接设备经 `ios list --details` 确认为 iOS 15.8.8。`go-ios agent is not running ... ios17+` 为通用警告，不能仅根据这条 WARN 判断当前设备必须启动 tunnel。iOS 17+ 的开发服务仍需环境中已有可用 tunnel，自动启动该服务不在本次修复范围。[go-ios 官方说明](https://github.com/danielpaulus/go-ios)
+
+### 验证与回归边界
+
+已通过以下针对性验证，未启动桌面项目：
+
+```bash
+flutter test test/ios_screenshot_capture_test.dart test/ios_command_service_test.dart test/ios_device_service_test.dart
+flutter analyze lib/core/ios/ios_command_service.dart lib/core/ios/ios_screenshot_capture.dart test/ios_screenshot_capture_test.dart
+```
+
+- 16 项测试通过，覆盖正常截图、挂载恢复、挂载失败、有限重试、警告/断连不误触发、缺失文件、临时目录清理、同设备并发合并、失败后重新请求及 stderr ERROR 识别。
+- 使用当前已连接的 iOS 15.8.8 真机执行可选测试，修改后的服务成功返回截图字节，并由 Flutter 解码验证宽高大于 0。测试不保存截图内容。
+- 真机用例仅显式指定 UDID 后启用，常规测试不会访问设备：
+
+```bash
+flutter test --dart-define=IOS_SCREENSHOT_UDID=<UDID> test/ios_screenshot_capture_test.dart --plain-name '真机截图字节可以被 Flutter 解码'
+```
+
+仍需手动验证桌面截图页刷新、连续截图、锁屏/拔线和 iOS 17+ tunnel 场景；本次未对这些场景作 UI 验收。Android/HarmonyOS 截图与录屏路径、投屏会话、主题及跨窗口通信均无修改。
