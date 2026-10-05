@@ -103,7 +103,7 @@ iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
 | 安装/卸载 | `ios install` / `ios uninstall` | IPA 必须已正确签名；卸载需要用户确认 |
 | App 文件 | `ios fsync --app=<BundleID>` | 仅限允许访问的 App container，不提供 iOS 全盘文件系统 |
 | 系统日志 | `ios syslog --parse` | 长生存期进程由页面持有并在 dispose 时终止 |
-| 进程 | `ios ps --apps` / `ios kill --pid` | 默认只展示 App 进程，结束进程是有副作用操作 |
+| 进程 | `ios ps --apps` / `ios kill --pid` | 展示进程与扩展，通过安装路径关联应用名称及 Bundle ID；结束进程需要确认 |
 | 截图 | `ios screenshot --output=<file>` | 缺少开发者镜像时自动挂载并重试一次；使用临时目录，结束后删除临时文件 |
 | UI 自动化 | `ios ui ... --driver=wda` | 依赖已经签名、安装并启动的 WebDriverAgent |
 
@@ -160,3 +160,35 @@ flutter test --dart-define=IOS_SCREENSHOT_UDID=<UDID> test/ios_screenshot_captur
 ```
 
 仍需手动验证桌面截图页刷新、连续截图、锁屏/拔线和 iOS 17+ tunnel 场景；本次未对这些场景作 UI 验收。Android/HarmonyOS 截图与录屏路径、投屏会话、主题及跨窗口通信均无修改。
+
+## 10. iOS 进程详情与应用关联（2026-10-05）
+
+### 字段及关联机制
+
+此前进程解析仅读取小写 `name` 等字段，而当前 go-ios 真机结果使用 `Name`，导致页面全部回退为 `PID xxx`。
+
+- `IosProcessParser` 统一读取 `Name`、`Pid`、`RealAppName`、`StartDate`、`IsApplication`，兼容旧字段及名称/PID 映射。忽略日志、包装对象中的计数和进程内部元数据，未知日期不展示。
+- `IosAppInfo.path` 保留 `ios apps --all` 返回的安装目录 `Path`，`copyWith` 更新图标时继续保留该字段。
+- `IosCommandService.listProcesses` 每次先查询进程，非空时再查询一次同 UDID 的应用列表，按目录建立索引。每条命令沿用 15 秒超时，无按进程逐个查询或后台轮询。
+- 使用可执行路径最外层 `.app/` 目录匹配安装路径；统一 `/private/var/` 与 `/var/`，使用 POSIX 路径语义，不受桌面宿主系统影响。匹配不到时，主进程可使用明确返回的 Bundle ID 关联；不按名称猜测，避免多个 Flutter `Runner` 误匹配。
+- `.appex/` 路径标识 App Extension，其所属应用保存在 `IosProcessInfo.app`；进程自身的 `bundleId` 独立保留。页面对扩展关联结果标注“宿主 Bundle ID”，不把宿主 ID 当作扩展自身 ID，也不根据通用进程名称推测扩展具体类型。
+- 应用查询失败仅记录警告并回退到原始进程信息，不使整个进程列表失效。没有可靠关联时不伪造应用名称或 Bundle ID。
+
+### 页面与安全边界
+
+- `IosProcessTile` 独立承接展示：应用名与进程名、可复制 Bundle ID、PID、App/Extension 类型、系统/用户应用类别、版本、主机本地时区的启动时间以及带完整路径 Tooltip 的单行路径。
+- 中英文文案放在 `app_l10n_ios_tools.dart`；沿用主题颜色和虚拟列表，不引入额外依赖。
+- 设备切换时清除旧列表，使用请求序号隔离迟到结果。结束进程的确认框展示应用与进程名称，操作绑定原设备 UDID 和请求序号；切换设备后旧确认不得结束新设备进程。
+- 本次没有加入 CPU/内存采样，也没有修改 Android/HarmonyOS 进程或 iOS 投屏、截图链路。
+
+### 验证记录与待验收项
+
+针对性测试共 32 项通过，包含 1 项显式启用的真机只读查询；相关 9 个 Dart 文件静态检查无问题。覆盖真实字段结构、宿主/扩展 ID 区分、同名 Runner 路径隔离、路径别名、应用查询失败降级、切换设备的迟到结果、中英文窄屏明暗主题，以及既有应用和截图回归。
+
+```bash
+flutter test test/ios_process_info_test.dart test/ios_processes_tab_test.dart test/ios_command_service_test.dart test/ios_apps_tab_test.dart test/ios_screenshot_capture_test.dart
+# 显式指定 UDID 才额外执行真机用例，不会结束任何设备进程。
+flutter test --dart-define=IOS_PROCESS_UDID=<UDID> test/ios_process_info_test.dart
+```
+
+当前连接 iPhone 的实际进程已通过新服务读取出名称，并成功关联应用 Bundle ID。未启动桌面项目，完整桌面交互、真实结束进程、断连及 iOS 17+ 设备仍需手动验收。

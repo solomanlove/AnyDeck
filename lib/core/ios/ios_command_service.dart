@@ -8,6 +8,7 @@ import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 import 'ios_app_info.dart';
 import 'ios_process_info.dart';
+import 'ios_process_parser.dart';
 import 'ios_screenshot_capture.dart';
 
 /// 统一封装 go-ios 的短命令、持续流和 JSON 解析。
@@ -164,7 +165,15 @@ class IosCommandService {
   Future<List<IosProcessInfo>> listProcesses(String udid) async {
     final result = await run(['ps', '--apps', '--udid=$udid']);
     if (!result.isSuccess) throw Exception(result.message);
-    return parseProcesses(result.stdout);
+    final processes = parseProcesses(result.stdout);
+    if (processes.isEmpty) return processes;
+    // 应用元数据失败时保留原始进程，避免把补充信息失败当作进程查询失败。
+    try {
+      return IosProcessParser.associate(processes, await listApps(udid));
+    } catch (error) {
+      _onLog?.call('iOS 进程关联应用信息失败: $error', tag: 'ios', level: 'W');
+      return processes;
+    }
   }
 
   Future<AdbResult> killProcess(String udid, int pid) {
@@ -324,6 +333,7 @@ class IosCommandService {
           name: name,
           version: version,
           system: appType?.toLowerCase() == 'system',
+          path: _firstString(map, const ['Path', 'path']),
         );
         return;
       }
@@ -344,48 +354,7 @@ class IosCommandService {
   }
 
   static List<IosProcessInfo> parseProcesses(String output) {
-    final processes = <int, IosProcessInfo>{};
-    for (final payload in _jsonPayloads(output)) {
-      if (payload is Map) {
-        for (final entry in payload.entries) {
-          final pid = entry.value is int
-              ? entry.value as int
-              : int.tryParse(entry.value?.toString() ?? '');
-          if (pid != null) {
-            processes[pid] = IosProcessInfo(
-              pid: pid,
-              name: entry.key.toString(),
-            );
-          }
-        }
-      }
-      _walkMaps(payload, (map, fallbackKey) {
-        final pidValue =
-            map['pid'] ??
-            map['Pid'] ??
-            map['PID'] ??
-            map['ProcessIdentifier'] ??
-            (fallbackKey == null ? null : int.tryParse(fallbackKey));
-        final pid = pidValue is int
-            ? pidValue
-            : int.tryParse(pidValue?.toString() ?? '');
-        if (pid == null) return;
-        final name =
-            _firstString(map, const [
-              'name',
-              'processName',
-              'ExecutableName',
-              'bundleIdentifier',
-            ]) ??
-            map['value']?.toString() ??
-            fallbackKey ??
-            'PID $pid';
-        processes[pid] = IosProcessInfo(pid: pid, name: name);
-      });
-    }
-    final result = processes.values.toList();
-    result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    return result;
+    return IosProcessParser.parse(output);
   }
 
   static bool _containsFatalLog(String output) {
@@ -409,23 +378,6 @@ class IosCommandService {
         if (decoded is Map && decoded.containsKey('level')) continue;
         yield decoded;
       } catch (_) {}
-    }
-  }
-
-  static void _walkMaps(
-    Object? value,
-    void Function(Map<Object?, Object?> map, String? fallbackKey) visit, {
-    String? fallbackKey,
-  }) {
-    if (value is Map) {
-      visit(value, fallbackKey);
-      for (final entry in value.entries) {
-        _walkMaps(entry.value, visit, fallbackKey: entry.key.toString());
-      }
-    } else if (value is List) {
-      for (final item in value) {
-        _walkMaps(item, visit);
-      }
     }
   }
 

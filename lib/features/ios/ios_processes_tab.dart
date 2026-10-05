@@ -6,6 +6,7 @@ import '../../core/adb/adb_device.dart';
 import '../../core/ios/ios_mirror_service.dart';
 import '../../core/ios/ios_process_info.dart';
 import '../widgets/dashboard_snack.dart';
+import 'widgets/ios_process_tile.dart';
 
 /// 通过 go-ios instruments 进程服务查看和结束 iOS App 进程。
 class IosProcessesTab extends ConsumerStatefulWidget {
@@ -21,6 +22,7 @@ class _IosProcessesTabState extends ConsumerState<IosProcessesTab> {
   List<IosProcessInfo> _processes = const [];
   bool _loading = false;
   String? _error;
+  int _requestId = 0;
 
   @override
   void initState() {
@@ -28,8 +30,19 @@ class _IosProcessesTabState extends ConsumerState<IosProcessesTab> {
     _refresh();
   }
 
+  @override
+  void didUpdateWidget(covariant IosProcessesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.device.id == widget.device.id) return;
+    // 切换设备后旧进程及其补充信息不得写入新设备页面。
+    _processes = const [];
+    _loading = false;
+    _refresh();
+  }
+
   Future<void> _refresh() async {
     if (_loading) return;
+    final requestId = ++_requestId;
     setState(() {
       _loading = true;
       _error = null;
@@ -38,15 +51,23 @@ class _IosProcessesTabState extends ConsumerState<IosProcessesTab> {
       final processes = await ref
           .read(iosCommandServiceProvider)
           .listProcesses(widget.device.id);
-      if (mounted) setState(() => _processes = processes);
+      if (mounted && requestId == _requestId) {
+        setState(() => _processes = processes);
+      }
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted && requestId == _requestId) {
+        setState(() => _error = error.toString());
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && requestId == _requestId) {
+        setState(() => _loading = false);
+      }
     }
   }
 
   Future<void> _kill(IosProcessInfo process) async {
+    final udid = widget.device.id;
+    final requestId = _requestId;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -54,7 +75,7 @@ class _IosProcessesTabState extends ConsumerState<IosProcessesTab> {
         content: Text(
           context.l10n
               .t('killProcessConfirm')
-              .replaceAll('{name}', process.name)
+              .replaceAll('{name}', process.displayName)
               .replaceAll('{pid}', '${process.pid}'),
         ),
         actions: [
@@ -69,12 +90,12 @@ class _IosProcessesTabState extends ConsumerState<IosProcessesTab> {
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted || requestId != _requestId) return;
     setState(() => _loading = true);
     final result = await ref
         .read(iosCommandServiceProvider)
-        .killProcess(widget.device.id, process.pid);
-    if (!mounted) return;
+        .killProcess(udid, process.pid);
+    if (!mounted || requestId != _requestId) return;
     setState(() => _loading = false);
     if (!result.isSuccess) {
       DashboardSnack.show(
@@ -135,22 +156,9 @@ class _IosProcessesTabState extends ConsumerState<IosProcessesTab> {
       itemCount: _processes.length,
       itemBuilder: (context, index) {
         final process = _processes[index];
-        return Card(
-          child: ListTile(
-            leading: const Icon(Icons.memory),
-            title: Text(process.name),
-            subtitle: Text(
-              '${context.l10n.t('iosProcessPid')}: ${process.pid}',
-            ),
-            trailing: IconButton(
-              tooltip: context.l10n.t('iosKillProcess'),
-              onPressed: _loading ? null : () => _kill(process),
-              icon: Icon(
-                Icons.stop_circle_outlined,
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-          ),
+        return IosProcessTile(
+          process: process,
+          onKill: _loading ? null : () => _kill(process),
         );
       },
     );

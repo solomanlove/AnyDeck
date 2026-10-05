@@ -6,6 +6,7 @@ class IosAppInfo {
     this.version,
     this.system = false,
     this.iconPath,
+    this.path,
   });
 
   final String bundleId;
@@ -14,12 +15,16 @@ class IosAppInfo {
   final bool system;
   final String? iconPath;
 
+  /// 安装目录，用于将进程可执行路径关联到所属 App。
+  final String? path;
+
   IosAppInfo copyWith({
     String? bundleId,
     String? name,
     String? version,
     bool? system,
     String? iconPath,
+    String? path,
   }) {
     return IosAppInfo(
       bundleId: bundleId ?? this.bundleId,
@@ -27,6 +32,7 @@ class IosAppInfo {
       version: version ?? this.version,
       system: system ?? this.system,
       iconPath: iconPath ?? this.iconPath,
+      path: path ?? this.path,
     );
   }
 }
