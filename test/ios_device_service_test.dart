@@ -13,15 +13,32 @@ void main() {
       expect(devices.length, 1);
       final dev = devices.first;
       expect(dev.id, 'c2b1632e9949e742d81c5d4ef11d356bd4687014');
-      expect(dev.model, 'iPhone OS (iPhone8,1)');
+      expect(dev.model, 'iPhone 6s');
       expect(dev.product, '15.8.8');
       expect(dev.isIos, isTrue);
+    });
+
+    test('Rust 设备字段使用相同的型号和版本解析', () {
+      final device = IosDeviceService.parseDeviceListOutput(
+        '[{"udid":"test-phone","name":"iPhone OS","model":"iPhone8,1","version":"iOS 15.8.8"}]',
+      ).single;
+      expect(device.model, 'iPhone 6s');
+      expect(device.product, '15.8.8');
+    });
+
+    test('未知型号保留硬件标识，缺失版本不写入占位缓存', () {
+      final device = IosDeviceService.parseDeviceListOutput(
+        '{"Udid":"test-phone","ProductType":"iPhone99,1","ProductVersion":"iOS"}',
+      ).single;
+      expect(device.model, 'iPhone99,1');
+      expect(device.product, isNull);
     });
 
     test('parseDeviceListOutput gracefully ignores invalid JSON and non-device lines', () {
       const invalidOutput = '''
 some raw log output line
 {"random":"json"}
+{"level":"WARN","udid":"log-only-device","msg":"failed to get tunnel info"}
 {}
 ''';
       final devices = IosDeviceService.parseDeviceListOutput(invalidOutput);

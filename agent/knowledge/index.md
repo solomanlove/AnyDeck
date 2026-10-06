@@ -29,7 +29,7 @@
 | `adb-desktop-window-shortcuts` | 桌面独立窗口快捷键机制 | active | 记录控制台窗口、模拟器管理窗口等独立子窗口的本地快捷键关闭策略与职责边界 | `app/window/` (桌面多窗口) |
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、内存占用与容量卡布局，以及控制、应用（含 DEBUG 标识保留与缓存恢复）、文件预览、鸿蒙文件导出到手机文件管理、日志、终端、进程右键复制与停止、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录 USB 自动准备监听、2 秒等待与就绪检测、实时 Wi-Fi IP、在线 TCP 地址优先与旧缓存修复、网段提示与主机网络快照同步、TCP 优先和目标 mDNS 回退、TLS 切换恢复、双语状态及手动连接指南 | `core/adb/wireless/`, `core/providers/`, `features/devices/` |
-| `devices_manager` | 设备唯一标识判断机制 | active | 记录 AdbDevice.id 命令路由、HDC 在线状态过滤、ADB/HDC 同地址优先级，以及根据 hardware serial 进行多连接合并与物理去重 | `dashboard/devices/` (设备控制行) |
+| `devices_manager` | 设备唯一标识判断机制 | active | 记录 AdbDevice.id 命令路由、HDC 在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
 | `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、设备信息悬浮层、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `rust/device_bridge/`, `core/harmony/` |
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、概览身份/CPU/存储/网络读取与型号规格边界、USB 投屏、截图镜像恢复、进程应用关联、扩展宿主 Bundle ID、多窗口及验证边界 | `core/ios/`, `features/ios/`, `features/overview/`, `app/window/mirror/` |

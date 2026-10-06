@@ -1,4 +1,5 @@
 import '../../adb/adb_device.dart';
+import '../../ios/ios_device_identity.dart';
 import 'device_registry_storage.dart';
 import 'registered_device_model.dart';
 
@@ -53,7 +54,9 @@ class DeviceRegistryMerger {
       if (active != null) {
         // 对鸿蒙设备，若 active 或 models 缓存中已有真实设备名（非通用占位符），优先使用真实型号
         String? effectiveModel;
-        if (active.isHarmony) {
+        if (active.isIos) {
+          effectiveModel = IosDeviceIdentity.modelName(active.model ?? cachedModel);
+        } else if (active.isHarmony) {
           if (active.model != null && !DeviceRegistryStorage.isGenericHarmonyModel(active.model)) {
             effectiveModel = active.model;
           } else if (cachedModel != null && !DeviceRegistryStorage.isGenericHarmonyModel(cachedModel)) {
@@ -77,7 +80,11 @@ class DeviceRegistryMerger {
             connections: [id],
             serial: serial,
             ipAddress: ipAddress,
-            androidVersion: androidVersion,
+            androidVersion: active.isIos
+                ? IosDeviceIdentity.versionLabel(active.product) ??
+                    IosDeviceIdentity.versionLabel(cachedProduct) ??
+                    IosDeviceIdentity.versionLabel(androidVersion)
+                : androidVersion,
             sdkVersion: sdkVersion,
             isIos: active.isIos,
             isHarmony: active.isHarmony,
@@ -86,7 +93,17 @@ class DeviceRegistryMerger {
           ),
         );
       } else {
+        final isIos = cachedModel != null &&
+            (cachedModel.contains('iPhone') ||
+                cachedModel.contains('iPad') ||
+                cachedModel.contains('Apple') ||
+                cachedModel.contains('iOS') ||
+                id.length == 40 ||
+                (id.length == 25 && id.indexOf('-') == 8));
         String? effectiveOfflineModel = cachedModel;
+        if (isIos) {
+          effectiveOfflineModel = IosDeviceIdentity.modelName(cachedModel);
+        }
         if (DeviceRegistryStorage.isGenericHarmonyModel(effectiveOfflineModel)) {
           final sModel = models[serial];
           if (sModel != null && !DeviceRegistryStorage.isGenericHarmonyModel(sModel)) {
@@ -105,18 +122,14 @@ class DeviceRegistryMerger {
             connections: [id],
             serial: serial,
             ipAddress: ipAddress,
-            androidVersion: androidVersion,
+            androidVersion: isIos
+                ? IosDeviceIdentity.versionLabel(cachedProduct) ??
+                    IosDeviceIdentity.versionLabel(androidVersion)
+                : androidVersion,
             sdkVersion: sdkVersion,
             remark: remark,
             tags: deviceTags,
-            isIos:
-                cachedModel != null &&
-                (cachedModel.contains('iPhone') ||
-                    cachedModel.contains('iPad') ||
-                    cachedModel.contains('Apple') ||
-                    cachedModel.contains('iOS') ||
-                    id.length == 40 ||
-                    (id.length == 25 && id.indexOf('-') == 8)),
+            isIos: isIos,
             isHarmony:
                 cachedProduct == 'HarmonyOS NEXT' ||
                 (cachedModel != null &&

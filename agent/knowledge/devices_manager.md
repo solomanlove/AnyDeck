@@ -74,3 +74,13 @@ HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The
 `HdcServiceDeviceInfo.isGenericOrInvalidModel()` 集中识别通用 HarmonyOS 占位名称及常见错误文本；设备注册表初始化时会清理已被错误提示污染的型号缓存。只有系统版本与真实型号均已获取时才把该设备记为已完成补全，否则保持后续异步重试，且不得用无效结果覆盖现有版本缓存。
 
 回归：`test/harmony_device_serial_merge_test.dart` 覆盖通信通道提示过滤、有效型号保留、展示名称回退与历史污染缓存清理。按仓库规则未启动桌面项目；HDC 首次握手后的自动重试节奏和真机 UI 展示仍需手工验收。
+
+### 2.5 iOS 列表型号与系统版本
+
+`IosDeviceService` 对 Rust DAL 和 go-ios CLI 的设备列表共用解析逻辑，使用 `IosDeviceIdentity` 将 `ProductType` 转换为已核对的型号名称。目前复用 `IosModelSpec` 的 `iPhone8,1 → iPhone 6s` 映射，其他型号保留硬件标识，不将系统名称 `ProductName: iPhone OS` 当作机型。带 `level` 的日志即使包含 UDID 也不能生成设备记录。
+
+`ProductVersion` 作为实际版本号存入 `AdbDevice.product` 和 `devices.products`；`DeviceRegistryMerger` 将其填入列表共用的 `RegisteredDevice.androidVersion` 字段，显示为 `iOS 15.8.8`。当前发现版本优先于历史缓存，空值或 `iOS` 占位值不覆盖已知版本。离线记录和旧版 `iPhone OS (iPhone8,1)` 缓存也能直接显示型号与版本，用户别名仍优先，不依赖打开概览页面。
+
+注册表补全元数据时跳过 iOS，不再对 UDID 发起 Android ADB 探测。此变更不增加 CLI 轮询、不修改投屏会话、UI 样式或多窗口设置协议。
+
+验证：`test/ios_device_service_test.dart`、`test/ios_device_registry_test.dart` 覆盖 Rust/CLI 字段、日志过滤、未知型号、首次连接、旧缓存、别名、重连版本更新、缺失版本和重新加载；与 IP、Harmony 合并回归共 27 项通过，定向 `flutter analyze` 无问题。2026-10-06 真机只读 `ios list --details` 确认返回 `iPhone8,1 / 15.8.8`；未启动桌面应用，列表实际渲染仍待手工验收。

@@ -30,6 +30,7 @@ iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
    - 使用 `go-ios list --details` 命令检索已通过 USB 连接并信任电脑的 iOS 设备。
    - 命令成功执行后，返回结构化的 JSON 列表。控制器提取 `Udid` 作为设备 ID，以及 `ProductName`、`ProductType`、`ProductVersion` 等属性。
    - 将 iOS 设备和 Android 设备统一拼装成 `List<AdbDevice>` 并向外派发。
+   - Rust 与 CLI 共用 `IosDeviceIdentity` 型号和版本规范化：已知 `iPhone8,1` 显示 `iPhone 6s`，未知机型保留 ProductType；版本由 ProductVersion 直达设备列表并缓存，断开后仍可展示，不必先进入概览。注册表跳过 iOS 的 Android 元数据探测，详见 `devices_manager.md` 第 2.5 节。
    - **多行 JSON 与警告信息容错**：由于 `go-ios list` 在部分环境下（如没有启动 tunnel 服务的 iOS 17+ 设备连接时）会在 stdout 首行输出警告日志 JSON，为了防止直接 `jsonDecode` 解析整段 stdout 时发生 `FormatException` 异常，`listDevices()` 采用 `LineSplitter.split` 将输出按行切分并逐行尝试 `jsonDecode` 解码。只有符合目标设备列表结构的 JSON 行才会被处理，其余警告行则会被安全忽略，保障了解析的高容错性。
 
 2. **信息概览分流 (Overview Routing)**：

@@ -6,6 +6,7 @@ import '../adb/adb_device.dart';
 import '../adb/adb_result.dart';
 import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
+import 'ios_device_identity.dart';
 import 'ios_mirror_session.dart';
 
 /// 负责管理 go-ios 进程、解析设备列表以及管理 iOS 投屏会话。
@@ -35,21 +36,8 @@ class IosDeviceService {
     if (RustDalBridge.instance.isAvailable) {
       final nativeList = await RustDalBridge.instance.listIosDevices();
       if (nativeList.isNotEmpty) {
-        return nativeList.map((item) {
-          final udid = (item['udid'] ?? '').toString();
-          final name = (item['name'] ?? 'iPhone').toString();
-          final model = (item['model'] ?? '').toString();
-          final version = (item['version'] ?? 'iOS').toString();
-          final modelName = model.isNotEmpty ? '$name ($model)' : name;
-          return AdbDevice(
-            id: udid,
-            status: 'device',
-            model: modelName,
-            product: version,
-            transportId: '',
-            isIos: true,
-          );
-        }).toList();
+        // Rust 与 CLI 共用解析规则，保持型号名称和版本缓存一致。
+        return parseDeviceListOutput(jsonEncode(nativeList));
       }
     }
 
@@ -85,6 +73,7 @@ class IosDeviceService {
         if (decoded is List) {
           list = decoded;
         } else if (decoded is Map) {
+          if (decoded.containsKey('level')) continue;
           final deviceList =
               decoded['deviceList'] ?? decoded['devices'] ?? decoded['data'];
           if (deviceList is List) {
@@ -98,6 +87,7 @@ class IosDeviceService {
 
         for (final item in list) {
           if (item is Map) {
+            if (item.containsKey('level')) continue;
             final udid = (item['Udid'] ??
                     item['udid'] ??
                     item['UniqueIdentifier'] ??
@@ -109,17 +99,18 @@ class IosDeviceService {
             if (devices.any((d) => d.id == udid)) continue;
 
             final name =
-                (item['ProductName'] ?? item['name'] ?? 'iPhone').toString();
-            final type = (item['ProductType'] ?? item['type'] ?? '').toString();
+                (item['ProductName'] ?? item['name'] ?? '').toString();
+            final type =
+                (item['ProductType'] ?? item['type'] ?? item['model'] ?? '').toString();
             final version =
                 (item['ProductVersion'] ?? item['version'] ?? 'iOS').toString();
 
-            final modelName = type.isNotEmpty ? '$name ($type)' : name;
+            final modelName = IosDeviceIdentity.modelName(type, fallback: name);
             devices.add(AdbDevice(
               id: udid,
               status: 'device',
               model: modelName,
-              product: version,
+              product: IosDeviceIdentity.versionNumber(version),
               transportId: '',
               isIos: true,
             ));

@@ -252,8 +252,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
 
     final activeIds = resolvedActiveDevices.map((d) => d.id).toSet();
     _attemptedFetchIds.removeWhere((id) => !activeIds.contains(id));
-
-    for (final device in resolvedActiveDevices) {
+    // iOS 的型号和版本来自设备发现，不参与 Android ADB 元数据探测。
+    for (final device in resolvedActiveDevices.where((d) => !d.isIos)) {
       final hasSerial = _serialMap.containsKey(device.id);
       final isNet = DeviceRegistryStorage.isNetworkId(device.id);
       final hasIp =
