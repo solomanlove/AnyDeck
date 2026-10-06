@@ -1,6 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/adb/adb_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
+import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -18,6 +19,10 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         await tester.pumpWidget(
           ProviderScope(
+            overrides: [
+              // 纯布局测试不启动 Root 探测及设备心跳。
+              deviceRootStatusProvider('test').overrideWith((ref) async => false),
+            ],
             child: MaterialApp(
               locale: Locale(locale),
               theme: ThemeData(

@@ -32,10 +32,10 @@ iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
    - 将 iOS 设备和 Android 设备统一拼装成 `List<AdbDevice>` 并向外派发。
    - **多行 JSON 与警告信息容错**：由于 `go-ios list` 在部分环境下（如没有启动 tunnel 服务的 iOS 17+ 设备连接时）会在 stdout 首行输出警告日志 JSON，为了防止直接 `jsonDecode` 解析整段 stdout 时发生 `FormatException` 异常，`listDevices()` 采用 `LineSplitter.split` 将输出按行切分并逐行尝试 `jsonDecode` 解码。只有符合目标设备列表结构的 JSON 行才会被处理，其余警告行则会被安全忽略，保障了解析的高容错性。
 
-2. **信息概览绕过 (Overview Bypass)**：
+2. **信息概览分流 (Overview Routing)**：
    当用户选中 iOS 设备进入“主页概览”时，由于 iOS 无法响应 ADB 的 `shell getprop` 指令，为了防止产生报错横幅（如 "adb已断开"），`deviceOverviewProvider` 增加了 `matchedDevice.isIos` 分支判定：
    - 绕过所有 Android `deviceInfoService` 逻辑。
-   - 直接根据设备注册表中的内存缓存（UDID、ProductName、ProductVersion）构造并 `yield` 一个静态的 `DeviceOverview` 对象（其中 `brand: 'Apple'`），确保页面零加载延迟且没有任何 ADB 报错。
+   - 通过 `IosOverviewService` 并行读取 `ios info` 与 `ios diskspace`，构造 `brand: 'Apple'` 的 `DeviceOverview`，白名单缓存用于离线展示。详细字段与来源边界见第 11 节。
 
 ---
 
@@ -192,3 +192,40 @@ flutter test --dart-define=IOS_PROCESS_UDID=<UDID> test/ios_process_info_test.da
 ```
 
 当前连接 iPhone 的实际进程已通过新服务读取出名称，并成功关联应用 Bundle ID。未启动桌面项目，完整桌面交互、真实结束进程、断连及 iOS 17+ 设备仍需手动验收。
+
+## 11. iOS 概览信息读取（2026-10-06）
+
+### 数据与展示
+
+此前 iOS 分支只把设备列表中的系统版本填入概览，其余字段固定为 `-`，还将 UDID 显示为序列号、把固定的 `Darwin` 显示为内核版本。本次改为以下数据来源：
+
+| 字段 | 来源与边界 |
+| --- | --- |
+| 设备名、型号、序列号 | `DeviceName`、`ProductType`、`SerialNumber`；保留用户自定义别名，UDID 只用于命令路由 |
+| 系统、CPU | `ProductVersion`、`BuildVersion`、`HardwareModel`、`CPUArchitecture`、`instruments:hardwareInformation.numberOfCpus` |
+| 存储 | `diskspace.TotalBytes/FreeBytes`；按十进制 GB 显示已用/总量，拒绝负数、零总量、剩余大于总量等无效数据 |
+| 网络 | `instruments:networkInformation` 展示接口清单，`WiFiAddress` 标为硬件 MAC；接口存在不代表已连接某个 SSID |
+| 屏幕与芯片规格 | `IosModelSpec` 目前仅收录已核对的 `iPhone8,1`（iPhone 6s、A9、750 × 1334、326 PPI），明确标注“型号规格”；未知型号保留 ProductType，不套用该规格 |
+| 暂无读数 | 实时 RAM、内核版本、SSID/IP、逻辑分辨率、scale、刷新率显示“暂未读取”；不把 PPI 解释为 Android 逻辑密度 |
+
+规格来源：[Apple iPhone 6s 技术规格](https://support.apple.com/en-us/111952)。后续扩充型号需要核对来源；静态规格不作为实时读数写入通用分辨率字段。
+
+### 实现与生命周期
+
+- `core/ios/ios_overview_service.dart` 并行执行两条定向 UDID 的只读短命令，沿用 `IosCommandService.run` 的 15 秒超时及进程回收；无后台采样、自动挂载或常驻 tunnel。
+- 解析兼容 WARN 前缀、单行和格式化 JSON；必须识别目标数据对象。单项失败保留其它可用字段并显示部分读取失败提示，不伪造容量或序列号。
+- `IosOverviewDetails` 仅保存型号、Build、硬件型号、CPU 核心数、接口与部分失败状态；缓存不保存 lockdown 原始对象、IMEI、NonVolatileRAM 或配对信息。
+- `deviceOverviewProvider` 接入读取和缓存，失效后重新获取；异步返回检查 `ref.mounted`，不会将旧 Provider 结果写入当前视图。离线复用既有 `cachedDeviceOverviewProvider`。
+- iOS 详情字段与通用详情生成拆到独立 overview part 文件，共用卡片和响应式布局，补齐中英文；Android/HarmonyOS 详情逻辑保持原样。
+
+### 验证记录
+
+21 项针对性测试通过，覆盖数据解析、无效容量、部分失败、缓存白名单与兼容、Provider 刷新及别名保留、iOS 中英文宽窄屏、明暗主题，以及原 Android 概览布局/模型回归。布局测试补齐 Root Provider mock，避免真实设备查询及未结束 Timer 干扰。
+
+```bash
+flutter test test/ios_overview_service_test.dart test/ios_overview_layout_test.dart test/overview_layout_test.dart test/device_overview_test.dart
+# 只有显式提供 UDID 才执行真机只读用例。
+flutter test --dart-define=IOS_OVERVIEW_UDID=<UDID> test/ios_overview_service_test.dart
+```
+
+相关 12 个文件针对性 analyze 通过。额外检查 `dashboard_screen.dart` 时存在原有 `liquid_glass_background.dart` 未使用 import 警告，本次未改动。2026-10-05 已验证设备原始命令可读出上述身份、存储、CPU、接口字段；2026-10-06 收尾时 `ios list --details` 为空，因此新服务真机用例未执行。未启动桌面项目；真机刷新、离线显示及 iOS 17+ 环境仍待设备验收。

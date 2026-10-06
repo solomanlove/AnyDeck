@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../device_info/device_memory_info.dart';
 import '../../device_info/device_overview.dart';
 import '../../harmony/hdc_service.dart';
+import '../../ios/ios_mirror_service.dart';
+import '../../ios/ios_overview_service.dart';
 import 'device_registry_providers.dart';
 import 'device_tracking_providers.dart';
 import 'registered_device_model.dart';
@@ -238,44 +240,20 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       }
 
       if (matchedDevice.isIos) {
-        yield DeviceOverview(
-          name: matchedDevice.displayName,
-          brand: 'Apple',
-          model: matchedDevice.model ?? 'iPhone',
-          serial: matchedDevice.id,
-          androidId: '-',
-          androidVersion:
-              matchedDevice.androidVersion ??
-              (matchedDevice.product != null &&
-                      matchedDevice.product!.isNotEmpty
-                  ? 'iOS ${matchedDevice.product}'
-                  : 'iOS'),
-          kernelVersion: 'Darwin',
-          processor: '-',
-          storage: '-',
-          memory: '-',
-          physicalResolution: '-',
-          resolution: '-',
-          logicalDensity: '-',
-          refreshRate: '-',
-          fontScale: '-',
-          wifi: '-',
-          wifiEnabled: false,
-          ipAddress: '-',
-          macAddress: '-',
-          airplaneModeEnabled: false,
-          mobileDataEnabled: false,
-          talkbackEnabled: false,
-          windowAnimationScale: '1.0',
-          transitionAnimationScale: '1.0',
-          animatorDurationScale: '1.0',
-          rawResolution: '-',
-          hwuiProfile: 'false',
-          layoutBoundsEnabled: false,
-          showTouchesEnabled: false,
-          pointerLocationEnabled: false,
-          demoModeEnabled: false,
+        final ios = IosOverviewService(ref.read(iosCommandServiceProvider));
+        final overview = await ios.load(
+          deviceId,
+          fallbackName: matchedDevice.displayName,
+          fallbackVersion: matchedDevice.androidVersion ??
+              (matchedDevice.product == null ? 'iOS' : 'iOS ${matchedDevice.product}'),
         );
+        if (!ref.mounted) return;
+        final display = matchedDevice.customName?.isNotEmpty == true
+            ? overview.copyWith(name: matchedDevice.customName)
+            : overview;
+        await service.saveToCache(deviceId, display);
+        if (!ref.mounted) return;
+        yield display;
         return;
       }
 

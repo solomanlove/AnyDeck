@@ -22,6 +22,8 @@ class DeviceOverviewContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _OverviewHeader(onRefresh: onRefresh),
+          if (device.isIos && overview.iosDetails?.partial == true)
+            Text(context.l10n.t('iosOverviewPartial')),
           const SizedBox(height: 12),
           _OverviewIdentityCard(device: device, overview: overview),
           const SizedBox(height: 12),
@@ -31,14 +33,17 @@ class DeviceOverviewContent extends StatelessWidget {
             first: _OverviewCapacityCard(
               label: context.l10n.t('memory'),
               icon: CupertinoIcons.square_grid_2x2,
-              value: '${overview.memoryUsed} / ${overview.memory}',
+              value: device.isIos
+                  ? _iosMemoryValue(context, overview)
+                  : '${overview.memoryUsed} / ${overview.memory}',
+              subtitle: device.isIos ? context.l10n.t('iosMemoryUnavailable') : null,
               deviceId: device.id,
               targetTab: 6,
             ),
             second: _OverviewCapacityCard(
               label: context.l10n.t('storageSpace'),
               icon: CupertinoIcons.archivebox,
-              value: overview.storage,
+              value: device.isIos ? _iosValue(context, overview.storage) : overview.storage,
               deviceId: device.id,
               targetTab: 3,
             ),
@@ -61,55 +66,6 @@ class DeviceOverviewContent extends StatelessWidget {
     );
   }
 
-  List<_OverviewDetailData> _systemNetworkItems(BuildContext context) {
-    return [
-      _OverviewDetailData(
-        label: context.l10n.t('processor'),
-        value: overview.processor,
-      ),
-      _OverviewDetailData(
-        label: context.l10n.t('kernelVersion'),
-        value: overview.kernelVersion,
-      ),
-      _OverviewDetailData(label: context.l10n.t('wifi'), value: overview.wifi),
-      _OverviewDetailData(
-        label: context.l10n.t('ipAddress'),
-        value: overview.ipAddress,
-      ),
-      _OverviewDetailData(
-        label: context.l10n.t('macAddress'),
-        value: overview.macAddress,
-      ),
-    ];
-  }
-
-  List<_OverviewDetailData> _screenItems(BuildContext context) {
-    return [
-      _OverviewDetailData(
-        label: context.l10n.t('physicalResolution'),
-        value: overview.physicalResolution,
-      ),
-      _OverviewDetailData(
-        label: context.l10n.t('resolution'),
-        value: overview.resolution,
-      ),
-      _OverviewDetailData(
-        label: context.l10n.t('logicalDensity'),
-        value: overview.logicalDensity,
-        tooltip: ScreenDensityHelper.getDensityMappingTooltip(
-          context.l10n.t('densityMapping'),
-        ),
-      ),
-      _OverviewDetailData(
-        label: context.l10n.t('refreshRate'),
-        value: overview.refreshRate,
-      ),
-      _OverviewDetailData(
-        label: context.l10n.t('fontScale'),
-        value: overview.fontScale,
-      ),
-    ];
-  }
 }
 
 /// 宽屏使用双列，窄屏自动堆叠，避免长设备参数被压缩。
@@ -189,7 +145,9 @@ class _OverviewIdentityCard extends ConsumerWidget {
       _OverviewIdentityData(
         icon: CupertinoIcons.device_phone_portrait,
         value: overview.name,
-        secondary: overview.brand,
+        secondary: device.isIos && overview.model != '-'
+            ? overview.model
+            : overview.brand,
       ),
       _OverviewIdentityData(
         icon: CupertinoIcons.number_square,

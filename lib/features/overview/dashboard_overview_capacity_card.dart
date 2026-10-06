@@ -8,6 +8,7 @@ class _OverviewCapacityCard extends ConsumerWidget {
     required this.value,
     required this.deviceId,
     required this.targetTab,
+    this.subtitle,
   });
 
   final String label;
@@ -15,6 +16,7 @@ class _OverviewCapacityCard extends ConsumerWidget {
   final String value;
   final String deviceId;
   final int targetTab;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -49,7 +51,7 @@ class _OverviewCapacityCard extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                context.l10n.t('overviewUsedTotal'),
+                subtitle ?? context.l10n.t('overviewUsedTotal'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),

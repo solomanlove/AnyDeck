@@ -1,3 +1,5 @@
+import '../ios/ios_overview_details.dart';
+
 /// 设备概览面板展示的只读聚合信息。
 class DeviceOverview {
   const DeviceOverview({
@@ -36,6 +38,7 @@ class DeviceOverview {
     required this.showTouchesEnabled,
     required this.pointerLocationEnabled,
     required this.demoModeEnabled,
+    this.iosDetails,
   });
 
   final String name;
@@ -79,6 +82,7 @@ class DeviceOverview {
   final bool showTouchesEnabled;
   final bool pointerLocationEnabled;
   final bool demoModeEnabled;
+  final IosOverviewDetails? iosDetails;
 
   Map<String, dynamic> toJson() {
     return {
@@ -117,6 +121,7 @@ class DeviceOverview {
       'showTouchesEnabled': showTouchesEnabled,
       'pointerLocationEnabled': pointerLocationEnabled,
       'demoModeEnabled': demoModeEnabled,
+      if (iosDetails != null) 'iosDetails': iosDetails!.toJson(),
     };
   }
 
@@ -158,6 +163,9 @@ class DeviceOverview {
       showTouchesEnabled: json['showTouchesEnabled'] as bool? ?? false,
       pointerLocationEnabled: json['pointerLocationEnabled'] as bool? ?? false,
       demoModeEnabled: json['demoModeEnabled'] as bool? ?? false,
+      iosDetails: json['iosDetails'] is Map<String, dynamic>
+          ? IosOverviewDetails.fromJson(json['iosDetails'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -197,6 +205,7 @@ class DeviceOverview {
     bool? showTouchesEnabled,
     bool? pointerLocationEnabled,
     bool? demoModeEnabled,
+    IosOverviewDetails? iosDetails,
   }) {
     return DeviceOverview(
       name: name ?? this.name,
@@ -237,6 +246,7 @@ class DeviceOverview {
       pointerLocationEnabled:
           pointerLocationEnabled ?? this.pointerLocationEnabled,
       demoModeEnabled: demoModeEnabled ?? this.demoModeEnabled,
+      iosDetails: iosDetails ?? this.iosDetails,
     );
   }
 }
