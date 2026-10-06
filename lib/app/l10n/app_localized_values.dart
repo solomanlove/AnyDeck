@@ -6,6 +6,7 @@ import 'tables/app_l10n_apps_files_logcat.dart';
 import 'tables/app_l10n_overview_terminal_emulators.dart';
 import 'tables/app_l10n_tools_mirror.dart';
 import 'tables/app_l10n_ios_tools.dart';
+import 'tables/app_l10n_ios_processes.dart';
 import 'tables/app_l10n_usage.dart';
 import 'tables/app_l10n_apk.dart';
 import 'tables/app_l10n_messages.dart';
@@ -33,6 +34,7 @@ const localizedValues = {
     ...overviewTerminalEmulatorsZh,
     ...toolsMirrorZh,
     ...iosToolsZh,
+    ...iosProcessesZh,
     ...usageZh,
     ...apkZh,
     ...messagesZh,
@@ -49,6 +51,7 @@ const localizedValues = {
     ...overviewTerminalEmulatorsEn,
     ...toolsMirrorEn,
     ...iosToolsEn,
+    ...iosProcessesEn,
     ...usageEn,
     ...apkEn,
     ...messagesEn,

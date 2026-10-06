@@ -4,7 +4,9 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/adb/adb_device.dart';
 import 'package:any_deck/core/ios/ios_app_info.dart';
 import 'package:any_deck/core/ios/ios_command_service.dart';
-import 'package:any_deck/core/ios/ios_mirror_service.dart';
+import 'package:any_deck/core/ios/ios_process_service.dart';
+import 'package:any_deck/core/providers/app_providers.dart';
+import 'package:any_deck/features/ios/controller/ios_processes_controller.dart';
 import 'package:any_deck/core/ios/ios_process_info.dart';
 import 'package:any_deck/features/ios/ios_processes_tab.dart';
 import 'package:any_deck/features/ios/widgets/ios_process_tile.dart';
@@ -14,12 +16,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 只通过 Future 桩验证页面，禁止启动真实进程。
-class _Commands extends IosCommandService {
-  final pending = <String, Completer<List<IosProcessInfo>>>{};
-
+class _Service extends IosProcessService {
+  _Service(String udid, this.pending) : super(IosCommandService(), udid);
+  final Completer<List<IosProcessInfo>> pending;
   @override
-  Future<List<IosProcessInfo>> listProcesses(String udid) =>
-      pending[udid]!.future;
+  Future<List<IosProcessInfo>> read({bool refreshApps = false}) =>
+      pending.future;
 }
 
 Widget _page(
@@ -100,11 +102,17 @@ void main() {
   });
 
   testWidgets('设备切换后旧请求完成不得覆盖当前进程信息', (tester) async {
-    final commands = _Commands();
-    commands.pending['a'] = Completer();
-    commands.pending['b'] = Completer();
+    final pending = {
+      'a': Completer<List<IosProcessInfo>>(),
+      'b': Completer<List<IosProcessInfo>>(),
+    };
     Widget page(String id) => ProviderScope(
-      overrides: [iosCommandServiceProvider.overrideWithValue(commands)],
+      overrides: [
+        deviceOnlineProvider.overrideWith((ref, id) => true),
+        iosProcessServiceProvider.overrideWith(
+          (ref, id) => _Service(id, pending[id]!),
+        ),
+      ],
       child: _page(
         IosProcessesTab(
           device: AdbDevice(id: id, status: 'device', isIos: true),
@@ -113,13 +121,9 @@ void main() {
     );
     await tester.pumpWidget(page('a'));
     await tester.pumpWidget(page('b'));
-    commands.pending['b']!.complete([
-      const IosProcessInfo(pid: 2, name: 'New'),
-    ]);
+    pending['b']!.complete([const IosProcessInfo(pid: 2, name: 'New')]);
     await tester.pumpAndSettle();
-    commands.pending['a']!.complete([
-      const IosProcessInfo(pid: 1, name: 'Old'),
-    ]);
+    pending['a']!.complete([const IosProcessInfo(pid: 1, name: 'Old')]);
     await tester.pumpAndSettle();
     expect(find.text('New'), findsOneWidget);
     expect(find.text('Old'), findsNothing);

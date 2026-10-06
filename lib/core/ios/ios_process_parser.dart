@@ -50,7 +50,7 @@ class IosProcessParser {
               'PID $pid',
           executablePath: path,
           bundleId: bundleId,
-          startedAt: DateTime.tryParse(
+          startedAt: _startDate(
             _text(value, ['StartDate', 'startDate']) ?? '',
           ),
           isApplication: switch (value['IsApplication'] ??
@@ -130,6 +130,12 @@ class IosProcessParser {
     return normalized.startsWith('/private/var/')
         ? normalized.substring('/private'.length)
         : normalized;
+  }
+
+  /// Go time.Time 的零值不是设备真实启动时间。
+  static DateTime? _startDate(String value) {
+    final date = DateTime.tryParse(value);
+    return date != null && date.year > 1 ? date : null;
   }
 
   static int? _pid(Object? value) {

@@ -46,6 +46,13 @@ void main() {
     expect(process.bundleId, isNull);
   });
 
+  test('Go time.Time 零值不能显示为真实启动时间', () {
+    final process = IosCommandService.parseProcesses(
+      '[{"Pid":42,"Name":"daemon","StartDate":"0001-01-01T00:00:00Z"}]',
+    ).single;
+    expect(process.startedAt, isNull);
+  });
+
   test('关联扩展宿主，并保留应用路径供图标 copyWith 使用', () {
     final apps = IosCommandService.parseApps(_appsJson);
     final app = apps.single.copyWith(iconPath: '/tmp/icon.png');
