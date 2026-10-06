@@ -99,10 +99,11 @@ class DeviceStatusAvatar extends ConsumerWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          // Logo 容器背景与边框
+          // 按容器圆角裁剪所有品牌图片，避免 Apple/Huawei 位图的直角背景外露。
           Container(
             width: size,
             height: size,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: avatarBg,
               borderRadius: BorderRadius.circular(16),

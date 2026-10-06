@@ -82,25 +82,12 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     );
   }
 
-  /// 构建设备标识与自定义名称列（展示设备 Logo、自定义名称、硬件型号、Wi-Fi IP 以及通道状态图标）
+  /// 构建设备标识与自定义名称列（展示设备 Logo、自定义名称、Wi-Fi IP 以及通道状态图标）
   Widget _buildIdentifierCell(BuildContext context, RegisteredDevice device) {
     final wifiIp = device.wifiIp;
-    final hasCustomName = device.customName != null && device.customName!.isNotEmpty;
 
-    // 次行辅助信息：有自定义名称时展示硬件型号，结合 IP 展示
-    final String? subtitleText;
-    if (hasCustomName) {
-      final modelStr = device.connectionMethodDisplay;
-      if (wifiIp != null && wifiIp.isNotEmpty) {
-        subtitleText = '$modelStr · $wifiIp';
-      } else {
-        subtitleText = modelStr;
-      }
-    } else if (wifiIp != null && wifiIp.isNotEmpty) {
-      subtitleText = wifiIp;
-    } else {
-      subtitleText = null;
-    }
+    // 次行只展示 IP；实际型号和序列号统一在编辑设备信息中查看。
+    final subtitleText = wifiIp != null && wifiIp.isNotEmpty ? wifiIp : null;
 
     return Expanded(
       flex: 4,
@@ -150,7 +137,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                     ],
                   ],
                 ),
-                // 2. 次行展示硬件型号代号与已获取的局域网 Wi-Fi IP 地址及警告图标
+                // 2. 次行展示已获取的局域网 Wi-Fi IP 地址及警告图标
                 if (subtitleText != null) ...[
                   const SizedBox(height: 2),
                   Row(

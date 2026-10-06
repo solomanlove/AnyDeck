@@ -49,3 +49,12 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 - 不新增依赖、Provider、文案或跨窗口协议，复用 `emulators` 中英文文案、已有明暗主题及启动、清除、删除、刷新等操作，不修改 ADB 或投屏实现。
 - 手动回归：未连接设备时切换两个管理 Tab；启动模拟器后确认列表状态更新，返回设备管理选择设备；从设备身份入口返回后切换模拟器；检查窄窗口、明暗主题、中英文及独立窗口入口。桌面项目未启动，实际交互待验证。
 - 自动验证：本次 4 个 Dart 文件定向 `flutter analyze --no-pub` 无新增诊断，仅有 `dashboard_screen.dart:54` 原有 unused import 警告；`git diff --check` 通过。既有 `widget_test.dart` 的 `shows AdbManage shell in Chinese by default` 用例因找不到“设备标识”失败，已在修改前 HEAD 代码上复现相同断言，不属于本次改动引入的问题。
+
+## 设备列表次行精简与 Logo 圆角（2026-10-06）
+
+- `dashboard_devices_rows.dart` 的设备标识列首行继续使用 `device.displayName` 和标签；次行只展示 Wi-Fi IP 与网段提示，移除 `connectionMethodDisplay` 拼接的实际型号 / 序列号，无 IP 时隐藏次行。实际型号、序列号继续保存在模型中，可通过编辑设备信息查看。
+- `DeviceStatusAvatar` 原先只有 `BoxDecoration.borderRadius`，并未裁剪子图片，小米 SVG 自带圆角，而 Apple / Huawei 位图的白底直角仍会外露。Logo 容器增加 `Clip.antiAlias`，统一按现有 16 logical pixels 圆角裁剪背景和图片；状态点继续位于外层 Stack，不被裁剪。
+- 保留名称回退、品牌选择、资源原色、离线灰度 / 透明度、连接状态点与网段判断；不改动侧栏、编辑弹窗、设备数据、ADB / 投屏、多窗口协议，不新增文案或后台任务。
+- 定向静态检查两个修改文件无新增诊断，仅存在原有 `avatarBorder` unused local variable；`git diff --check` 通过。
+- 现有图片资源与网段提示测试共 12 项通过。品牌 helper 的 4 项测试失败：旧用例仍期望小米 PNG 及 Meitu 无匹配，而当前 helper 已返回 SVG 并匹配 Meitu；测试、helper 与资源常量均与 HEAD 一致，本次未修改这些既有差异。
+- 手动回归：检查有 / 无自定义名、有 / 无 IP 的设备行；在明暗主题、在线 / 离线状态下检查 Xiaomi、Apple、Huawei Logo 圆角和右下角状态点，并确认编辑弹窗仍可查看型号 / 序列号。按约定未启动桌面项目，真实窗口视觉效果待验收。
