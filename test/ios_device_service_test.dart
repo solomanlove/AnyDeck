@@ -1,4 +1,5 @@
 import 'package:any_deck/core/ios/ios_device_service.dart';
+import 'package:any_deck/core/ios/ios_connection_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -16,14 +17,16 @@ void main() {
       expect(dev.model, 'iPhone 6s');
       expect(dev.product, '15.8.8');
       expect(dev.isIos, isTrue);
+      expect(dev.iosConnectionTypes, {IosConnectionType.usb, IosConnectionType.network});
     });
 
     test('Rust 设备字段使用相同的型号和版本解析', () {
       final device = IosDeviceService.parseDeviceListOutput(
-        '[{"udid":"test-phone","name":"iPhone OS","model":"iPhone8,1","version":"iOS 15.8.8"}]',
+        '[{"udid":"test-phone","name":"iPhone OS","model":"iPhone8,1","version":"iOS 15.8.8","connection_type":"Network"}]',
       ).single;
       expect(device.model, 'iPhone 6s');
       expect(device.product, '15.8.8');
+      expect(device.iosConnectionTypes, {IosConnectionType.network});
     });
 
     test('未知型号保留硬件标识，缺失版本不写入占位缓存', () {
@@ -32,6 +35,7 @@ void main() {
       ).single;
       expect(device.model, 'iPhone99,1');
       expect(device.product, isNull);
+      expect(device.iosConnectionTypes, isEmpty);
     });
 
     test('parseDeviceListOutput gracefully ignores invalid JSON and non-device lines', () {

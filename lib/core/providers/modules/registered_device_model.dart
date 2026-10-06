@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../adb/adb_device.dart';
 import '../../adb/wireless/adb_wireless_state.dart';
 import '../../harmony/hdc_service.dart';
+import '../../ios/ios_connection_type.dart';
 import 'device_registry_providers.dart';
 
 /// 设备注册表中的统一设备模型。
@@ -25,6 +26,7 @@ class RegisteredDevice {
     this.sdkVersion,
     this.isIos = false,
     this.isHarmony = false,
+    this.iosConnectionTypes = const {},
     this.remark,
     this.tags = const [],
   });
@@ -74,6 +76,12 @@ class RegisteredDevice {
   /// 是否为鸿蒙（HarmonyOS NEXT / OpenHarmony）设备
   final bool isHarmony;
 
+  /// iOS 当前已发现的通道，离线时为空；UDID 本身不代表物理连接方式。
+  final Set<IosConnectionType> iosConnectionTypes;
+
+  bool get hasIosNetworkConnection =>
+      isIos && iosConnectionTypes.contains(IosConnectionType.network);
+
   /// 用户对该设备的自定义备注信息
   final String? remark;
 
@@ -82,6 +90,7 @@ class RegisteredDevice {
 
   /// 判断该连接是否为网络（Wi-Fi/以太网）连接
   bool get isNetwork =>
+      isIos ? hasIosNetworkConnection :
       id.contains(':') || id.contains('.') || id == '127.0.0.1';
 
   /// 从连接标识符中解析网络端口号（若为纯 IP 则默认 5555，非网络连接返回 null）
@@ -100,6 +109,7 @@ class RegisteredDevice {
 
   /// 设备当前是否包含物理 USB 连接
   bool get hasUsbConnection {
+    if (isIos) return iosConnectionTypes.contains(IosConnectionType.usb);
     if (connections.isEmpty) return !isNetwork;
     return connections.any(
       (c) => !(c.contains(':') || c.contains('.') || c == '127.0.0.1'),
@@ -108,6 +118,7 @@ class RegisteredDevice {
 
   /// 设备当前是否包含 TCP/IP 连接（传统网络调试，默认 5555 端口）
   bool get hasTcpConnection {
+    if (isIos) return false;
     if (connections.isEmpty) {
       if (!isNetwork) return false;
       final port = parseConnectionPort(id);
@@ -122,6 +133,7 @@ class RegisteredDevice {
 
   /// 设备当前是否包含 WiFi 无线调试连接（Android 11+ 配对或非 5555 动态高位端口）
   bool get hasWifiDebuggingConnection {
+    if (isIos) return false;
     if (connections.isEmpty) {
       if (!isNetwork) return false;
       return isWirelessTlsId(id);
@@ -135,6 +147,7 @@ class RegisteredDevice {
   /// 获取执行命令与数据传输的最佳优先 ID：
   /// 若多种方式同时连接，严格保证优先使用 USB 连接
   String get preferredCommandId {
+    if (isIos) return id;
     if (connections.isEmpty) return id;
     final usbId = connections.firstWhere(
       (c) => !(c.contains(':') || c.contains('.') || c == '127.0.0.1'),
@@ -220,6 +233,7 @@ class RegisteredDevice {
     transportId: transportId,
     isIos: isIos,
     isHarmony: isHarmony,
+    iosConnectionTypes: iosConnectionTypes,
   );
 
   /// 复制并更新部分属性
@@ -239,6 +253,7 @@ class RegisteredDevice {
     int? sdkVersion,
     bool? isIos,
     bool? isHarmony,
+    Set<IosConnectionType>? iosConnectionTypes,
     String? remark,
     List<String>? tags,
   }) {
@@ -258,6 +273,7 @@ class RegisteredDevice {
       sdkVersion: sdkVersion ?? this.sdkVersion,
       isIos: isIos ?? this.isIos,
       isHarmony: isHarmony ?? this.isHarmony,
+      iosConnectionTypes: iosConnectionTypes ?? this.iosConnectionTypes,
       remark: remark ?? this.remark,
       tags: tags ?? this.tags,
     );

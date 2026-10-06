@@ -1,3 +1,5 @@
+import '../ios/ios_connection_type.dart';
+
 /// `adb devices -l` 输出中的一行设备信息。
 class AdbDevice {
   const AdbDevice({
@@ -8,6 +10,7 @@ class AdbDevice {
     this.transportId,
     this.isIos = false,
     this.isHarmony = false,
+    this.iosConnectionTypes = const {},
   });
 
   final String id;
@@ -17,6 +20,9 @@ class AdbDevice {
   final String? transportId;
   final bool isIos;
   final bool isHarmony;
+
+  /// iOS 使用 UDID 路由，连接方式须保留发现结果，支持 USB 与网络同时在线。
+  final Set<IosConnectionType> iosConnectionTypes;
 
   /// adb 状态为 device 时，才表示设备可执行 shell 命令。
   bool get isOnline => status == 'device';

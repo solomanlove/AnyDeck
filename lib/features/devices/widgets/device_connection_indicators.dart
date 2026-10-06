@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../core/providers/modules/registered_device_model.dart';
 
-/// 设备标识旁的只读 USB / TCP / TLS 通道状态，不提供连接操作。
+/// 设备标识旁的只读 USB / TCP / TLS / iOS 网络通道状态，不提供连接操作。
 /// [device] 为合并后的设备；消费点击以避免触发外层设备行的概览导航。
 class DeviceConnectionIndicators extends StatelessWidget {
   const DeviceConnectionIndicators({super.key, required this.device});
@@ -29,6 +29,8 @@ class DeviceConnectionIndicators extends StatelessWidget {
           children: [
             if (device.hasUsbConnection)
               _indicator(context, 'connectionUsb', Icons.usb, const Color(0xFF26A69A)),
+            if (device.hasIosNetworkConnection)
+              _indicator(context, 'connectionIosNetwork', CupertinoIcons.wifi, Theme.of(context).colorScheme.primary),
             if (device.hasTcpConnection)
               _indicator(context, 'connectionTcp', CupertinoIcons.link, const Color(0xFF00ACC1)),
             if (device.hasWifiDebuggingConnection)

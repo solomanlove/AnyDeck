@@ -19,6 +19,9 @@ pub struct IosTarget {
     pub version: String,
     /// 设备在线状态
     pub status: String,
+    /// usbmuxd 连接通道，未知时留空，由上层保留未知状态。
+    #[serde(default)]
+    pub connection_type: String,
 }
 
 /// 探测宿主机环境中的 go-ios / ios 可执行文件绝对路径
@@ -130,6 +133,11 @@ impl IosDriver {
     /// 检索连接至宿主机的已就绪 iOS 设备列表
     pub async fn list_targets() -> Result<Vec<IosTarget>, String> {
         let stdout = Self::run_ios_cmd(&["list", "--details"], Duration::from_secs(10)).await?;
+        Ok(Self::parse_targets(&stdout))
+    }
+
+    /// 保留同一 UDID 的各条连接记录，交给上层合并通道。
+    fn parse_targets(stdout: &str) -> Vec<IosTarget> {
         let mut targets = Vec::new();
 
         for line in stdout.lines() {
@@ -142,6 +150,9 @@ impl IosDriver {
             let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) else {
                 continue;
             };
+            if val.get("level").is_some() {
+                continue;
+            }
 
             let items = if let Some(arr) = val.as_array() {
                 arr.clone()
@@ -156,6 +167,9 @@ impl IosDriver {
             };
 
             for item in items {
+                if item.get("level").is_some() {
+                    continue;
+                }
                 let udid = item.get("Udid")
                     .or_else(|| item.get("udid"))
                     .or_else(|| item.get("UniqueIdentifier"))
@@ -191,11 +205,15 @@ impl IosDriver {
                     model,
                     version,
                     status: "Connected".to_string(),
+                    connection_type: item.get("ConnectionType")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
                 });
             }
         }
 
-        Ok(targets)
+        targets
     }
 
     /// 向 WDA 发送轻量 HTTP 请求进行自动化操作
@@ -399,4 +417,25 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
     }
 
     Ok(output)
+}
+
+#[cfg(test)]
+mod connection_tests {
+    use super::IosDriver;
+
+    /// Rust FFI 不得丢弃通道或把带 UDID 的日志当作设备。
+    #[test]
+    fn ios_discovery_preserves_connection_types() {
+        let output = r#"{"level":"WARN","udid":"log-only"}
+{"deviceList":[{"Udid":"phone","ConnectionType":"Network"},{"Udid":"phone","ConnectionType":"USB"},{"Udid":"unknown"}]}
+"#;
+        let targets = IosDriver::parse_targets(output);
+        assert_eq!(targets.len(), 3);
+        assert_eq!(targets[0].udid, targets[1].udid);
+        assert_eq!(targets[0].connection_type, "Network");
+        assert_eq!(targets[1].connection_type, "USB");
+        assert_eq!(targets[2].connection_type, "");
+        let json = serde_json::to_value(&targets).unwrap();
+        assert_eq!(json[0]["connection_type"], "Network");
+    }
 }

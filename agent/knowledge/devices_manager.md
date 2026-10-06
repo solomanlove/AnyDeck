@@ -84,3 +84,11 @@ HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The
 注册表补全元数据时跳过 iOS，不再对 UDID 发起 Android ADB 探测。此变更不增加 CLI 轮询、不修改投屏会话、UI 样式或多窗口设置协议。
 
 验证：`test/ios_device_service_test.dart`、`test/ios_device_registry_test.dart` 覆盖 Rust/CLI 字段、日志过滤、未知型号、首次连接、旧缓存、别名、重连版本更新、缺失版本和重新加载；与 IP、Harmony 合并回归共 27 项通过，定向 `flutter analyze` 无问题。2026-10-06 真机只读 `ios list --details` 确认返回 `iPhone8,1 / 15.8.8`；未启动桌面应用，列表实际渲染仍待手工验收。
+
+### 2.6 iOS 连接通道
+
+`AdbDevice` 和 `RegisteredDevice` 通过 `iosConnectionTypes` 保存发现阶段的 USB/Network 集合，`copyWith`、`toAdbDevice` 与注册表合并需完整传递。不能套用 Android 的“ID 不含 IP 就是 USB”规则；iOS 网络连接仍使用 UDID 路由。未知通道不显示 USB 图标，断线后集合清空。同一设备多通道合并和旧 Rust 库兼容策略见 `ios-mirror-principles.md` 第 2 节。
+
+2026-10-06 真机只读查询确认该 iPhone 6s 报告 `ConnectionType: Network`。解析与注册表测试覆盖双通道、网络转 USB、离线清理和 UDID 不变；`ios_connection_indicators_test.dart` 覆盖中英文、明暗主题下的网络/USB/双通道/未知/离线图标。Rust `ios_discovery_preserves_connection_types` 验证 FFI 序列化保留通道、过滤日志。未启动桌面应用；实际 USB 插拔与侧栏渲染待手工验收。
+
+验证结果：31 项 Flutter 定向回归与 1 项 Rust 测试通过，12 个相关 Dart 文件定向静态分析无问题。

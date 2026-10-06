@@ -196,6 +196,7 @@ class AdbHeartbeatController {
           left.status != right.status ||
           left.model != right.model ||
           left.product != right.product ||
+          !setEquals(left.iosConnectionTypes, right.iosConnectionTypes) ||
           left.isIos != right.isIos) {
         return false;
       }

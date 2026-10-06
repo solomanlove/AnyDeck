@@ -7,6 +7,7 @@ import '../adb/adb_result.dart';
 import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 import 'ios_device_identity.dart';
+import 'ios_connection_type.dart';
 import 'ios_mirror_session.dart';
 
 /// 负责管理 go-ios 进程、解析设备列表以及管理 iOS 投屏会话。
@@ -17,6 +18,7 @@ class IosDeviceService {
 
   final void Function(String message, {String tag, String level})? _onLog;
   final Map<String, IosMirrorSession> _sessions = {};
+  bool _useNativeDiscovery = true;
 
   /// 检索可用 go-ios 二进制路径。
   String _resolveBinary() {
@@ -33,11 +35,15 @@ class IosDeviceService {
 
   /// 获取已连接的 iOS 设备列表。
   Future<List<AdbDevice>> listDevices() async {
-    if (RustDalBridge.instance.isAvailable) {
+    if (_useNativeDiscovery && RustDalBridge.instance.isAvailable) {
       final nativeList = await RustDalBridge.instance.listIosDevices();
       if (nativeList.isNotEmpty) {
-        // Rust 与 CLI 共用解析规则，保持型号名称和版本缓存一致。
-        return parseDeviceListOutput(jsonEncode(nativeList));
+        if (nativeList.every((item) => item.containsKey('connection_type'))) {
+          // Rust 与 CLI 共用解析规则，保持型号、版本和连接通道一致。
+          return parseDeviceListOutput(jsonEncode(nativeList));
+        }
+        // 旧版动态库丢弃 ConnectionType，后续直接走 CLI，避免持续双重扫描。
+        _useNativeDiscovery = false;
       }
     }
 
@@ -95,8 +101,12 @@ class IosDeviceService {
                 .toString();
             if (udid.isEmpty) continue;
 
-            // 避免同一设备由于同时连接 USB 与 WiFi 输出重复项
-            if (devices.any((d) => d.id == udid)) continue;
+            // 同一 UDID 的 USB 与 Network 合并展示，不能丢掉另一条通道。
+            final index = devices.indexWhere((d) => d.id == udid);
+            final previous = index < 0 ? null : devices[index];
+            final connectionType = IosConnectionType.parse(
+              item['ConnectionType'] ?? item['connection_type'],
+            );
 
             final name =
                 (item['ProductName'] ?? item['name'] ?? '').toString();
@@ -106,14 +116,23 @@ class IosDeviceService {
                 (item['ProductVersion'] ?? item['version'] ?? 'iOS').toString();
 
             final modelName = IosDeviceIdentity.modelName(type, fallback: name);
-            devices.add(AdbDevice(
+            final device = AdbDevice(
               id: udid,
               status: 'device',
-              model: modelName,
-              product: IosDeviceIdentity.versionNumber(version),
+              model: modelName ?? previous?.model,
+              product: IosDeviceIdentity.versionNumber(version) ?? previous?.product,
               transportId: '',
               isIos: true,
-            ));
+              iosConnectionTypes: Set.unmodifiable({
+                ...?previous?.iosConnectionTypes,
+                ?connectionType,
+              }),
+            );
+            if (index < 0) {
+              devices.add(device);
+            } else {
+              devices[index] = device;
+            }
           }
         }
       } catch (_) {

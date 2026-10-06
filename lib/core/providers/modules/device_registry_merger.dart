@@ -87,6 +87,7 @@ class DeviceRegistryMerger {
                 : androidVersion,
             sdkVersion: sdkVersion,
             isIos: active.isIos,
+            iosConnectionTypes: active.iosConnectionTypes,
             isHarmony: active.isHarmony,
             remark: remark,
             tags: deviceTags,

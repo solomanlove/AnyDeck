@@ -29,6 +29,8 @@ class _RailIdentity extends ConsumerWidget {
         transportId: device.transportId,
         isOnline: device.isOnline,
         serial: device.id,
+        isIos: device.isIos,
+        iosConnectionTypes: device.iosConnectionTypes,
       ),
     );
     final overviewAsync = ref.watch(deviceOverviewProvider(device.id));
@@ -44,7 +46,12 @@ class _RailIdentity extends ConsumerWidget {
           )
         : null;
     final isNetwork = matchedDevice.isNetwork;
-    final connectionLabel = isNetwork ? 'Wi-Fi' : 'USB';
+    final isUnknown = matchedDevice.isIos && matchedDevice.iosConnectionTypes.isEmpty;
+    final connectionLabel = isUnknown
+        ? context.l10n.t('connectionUnknown')
+        : matchedDevice.hasIosNetworkConnection && matchedDevice.hasUsbConnection
+            ? context.l10n.t('connectionUsbAndNetwork')
+            : isNetwork ? 'Wi-Fi' : 'USB';
 
     final identity = isNarrow
         ? _buildDeviceAvatar(device, logoAsset, 50)
@@ -95,7 +102,7 @@ class _RailIdentity extends ConsumerWidget {
                         Row(
                           children: [
                             Icon(
-                              isNetwork ? Icons.wifi : Icons.usb,
+                              isUnknown ? Icons.help_outline : isNetwork ? Icons.wifi : Icons.usb,
                               size: 14,
                               color: Theme.of(
                                 context,

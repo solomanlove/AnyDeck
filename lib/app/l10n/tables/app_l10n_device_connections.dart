@@ -23,6 +23,9 @@ const deviceConnectionsZh = {
   'wirelessMainOnly': '请在主窗口的设备管理中连接手机',
   // 连接图标 Tooltip
   'connectionUsb': 'USB 连接',
+  'connectionIosNetwork': 'Wi-Fi（网络连接）',
+  'connectionUsbAndNetwork': 'USB + Wi-Fi',
+  'connectionUnknown': '连接方式未知',
   'connectionTcp': 'TCP/IP 连接',
   'connectionWirelessDebug': 'WiFi 无线调试',
 
@@ -144,6 +147,9 @@ const deviceConnectionsEn = {
   'wirelessMainOnly': 'Connect the phone from Device Management in the main window',
   // Connection Badges
   'connectionUsb': 'USB Connection',
+  'connectionIosNetwork': 'Wi-Fi (Network connection)',
+  'connectionUsbAndNetwork': 'USB + Wi-Fi',
+  'connectionUnknown': 'Unknown connection',
   'connectionTcp': 'TCP/IP Connection',
   'connectionWirelessDebug': 'WiFi Wireless Debugging',
 

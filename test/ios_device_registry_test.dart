@@ -51,7 +51,7 @@ void main() {
     container.listen(deviceRegistryProvider, (_, _) {});
     await pumpEventQueue();
 
-    void connect(String version) {
+    void connect(String version, {String connection = 'Network'}) {
       stream.add(
         IosDeviceService.parseDeviceListOutput(
           jsonEncode({
@@ -59,6 +59,7 @@ void main() {
             'ProductName': 'iPhone OS',
             'ProductType': 'iPhone8,1',
             'ProductVersion': version,
+            'ConnectionType': connection,
           }),
         ),
       );
@@ -70,6 +71,19 @@ void main() {
     expect(device.displayName, 'iPhone 6s');
     expect(device.androidVersion, 'iOS 15.8.8');
     expect(device.isOnline, isTrue);
+    expect(device.hasIosNetworkConnection, isTrue);
+    expect(device.hasUsbConnection, isFalse);
+    expect(device.hasTcpConnection, isFalse);
+    expect(device.hasWifiDebuggingConnection, isFalse);
+    expect(device.preferredCommandId, 'test-phone');
+    expect(device.copyWith().toAdbDevice.iosConnectionTypes, device.iosConnectionTypes);
+
+    // 同一 UDID 从网络切换到 USB，注册表必须刷新且移除已断开的通道。
+    connect('15.8.8', connection: 'USB');
+    await pumpEventQueue();
+    device = container.read(deviceRegistryProvider).single;
+    expect(device.hasUsbConnection, isTrue);
+    expect(device.hasIosNetworkConnection, isFalse);
 
     // 概览的旧版本缓存不能遮盖重连时的实际系统版本。
     container
@@ -105,6 +119,8 @@ void main() {
     await pumpEventQueue();
     device = container.read(deviceRegistryProvider).single;
     expect(device.isOnline, isFalse);
+    expect(device.iosConnectionTypes, isEmpty);
+    expect(device.hasUsbConnection, isFalse);
     expect(device.displayName, 'iPhone 6s');
     expect(device.androidVersion, 'iOS 15.8.9');
     expect(adb.calls, isEmpty);
