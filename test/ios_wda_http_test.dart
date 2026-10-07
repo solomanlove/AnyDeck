@@ -83,6 +83,43 @@ void main() {
     expect(client.path('/source'), '/session/legacy/source');
   });
 
+  // 复现真机 WDA 对 chunked 请求的拒绝，覆盖中文、emoji 和空 POST。
+  test('WDA requests use fixed UTF-8 length, including empty POST', () async {
+    final bodies = <String>[];
+    server.listen((request) async {
+      final bytes = await request.fold<List<int>>(
+        [],
+        (all, chunk) => all..addAll(chunk),
+      );
+      final valid =
+          !request.headers.chunkedTransferEncoding &&
+          request.contentLength == bytes.length;
+      request.response.statusCode = valid ? 200 : 400;
+      bodies.add(utf8.decode(bytes));
+      request.response.write(
+        jsonEncode({
+          'value': !valid
+              ? 'Transfer-Encoding is not supported'
+              : request.uri.path == '/session'
+              ? {'sessionId': 'fixed-length'}
+              : null,
+        }),
+      );
+      await request.response.close();
+    });
+    await client.createSession();
+    await client.request(
+      '/wda/keys',
+      method: 'POST',
+      body: {
+        'value': ['中文🙂'],
+      },
+    );
+    await client.request('/wda/homescreen', method: 'POST');
+    expect(jsonDecode(bodies[1])['value'], ['中文🙂']);
+    expect(bodies.last, isEmpty);
+  });
+
   test(
     'nonresponsive WDA times out without blocking the Dart event loop',
     () async {

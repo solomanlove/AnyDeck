@@ -9,7 +9,7 @@
 | PoC | 视频 | 控制 | 本轮状态 |
 | --- | --- | --- | --- |
 | PoC 1：较新 iOS 原生服务 | CoreDevice ScreenStream，研究 HEVC 视频与硬件解码 | CoreDevice HID 服务 | 保留调研路径和验收项；按用户要求推迟到高版本真机阶段，未集成、未验证 |
-| PoC 2：旧 iOS / macOS USB | CoreMediaIO 开放 iPhone 采集设备 → AVFoundation → CVPixelBuffer → Flutter Texture | 已签名 WDA Runner → XCTest → USB 转发 → 异步 WDA HTTP | 本轮实现。提供独立视频探针、WDA 部署脚本、WDA 真机测试入口；10 月 7 日修正设备身份关联后已取得 6s 原生视频帧，用户确认 AnyDeck 可以投屏；WDA 控制仍待部署与验收 |
+| PoC 2：旧 iOS / macOS USB | CoreMediaIO 开放 iPhone 采集设备 → AVFoundation → CVPixelBuffer → Flutter Texture | 已签名 WDA Runner → XCTest → USB 转发 → 异步 WDA HTTP | 本轮实现。10 月 7 日已取得 6s 原生视频帧，用户确认 AnyDeck 可以投屏；WDA 已签名安装，Session/窗口几何/Home 请求真机 PoC 通过，窗口点击和滑动仍待验收 |
 
 本轮只落地 PoC 2，不能说“两套方案都已实测”。iPhone 6s 不用 PoC 1 验证，也不尝试用 iOS 17+ tunnel 提示解决 iOS 15 的 WDA 未启动问题。
 
@@ -46,7 +46,7 @@
 4. `ios runwda --bundleid=<RunnerID> --testrunnerbundleid=<RunnerID> --xctestconfig=WebDriverAgentRunner.xctest --udid=<UDID>` 启动测试 Runner。
 5. 轮询 `/status`，创建 `/session`，读取 point 窗口尺寸与方向；以上成功才标记“控制已就绪”。
 
-`IosWdaHttp` 使用 Dart 异步 HttpClient，支持分块响应并验证 HTTP、W3C、JSONWP 错误；单请求 8 秒超时，响应上限 8 MiB。所有控制操作统一路由，失败不回退到别的后端。
+`IosWdaHttp` 使用 Dart 异步 HttpClient，请求预先编码 UTF-8 并设置字节级 Content-Length（WDA 不接受 chunked 请求）；支持分块响应并验证 HTTP、W3C、JSONWP 错误。单请求 8 秒超时，响应上限 8 MiB。所有控制操作统一路由，失败不回退到别的后端。
 
 同一设备不积压输入，跨设备独立；几何查询在多窗口间合并，输入等待进行中的只读查询。取消启动、Runner/iproxy 退出、窗口主动结束会话、应用正常退出时释放资源；日志有界，只结束自身创建的进程，不按端口杀 PID。异常强制杀死桌面进程不保证能执行清理；启动中的 DDI 短命令最多等待其超时，取消后不会继续启动 Runner。
 
@@ -132,7 +132,7 @@ PoC 1 的通过条件：指定设备上同时读到真实视频帧和实际 HID 
 | Rust 单元测试 | 19 通过、1 个本地视频测试按原配置 ignored |
 | Dart 定向检查 | 变更 Dart 文件 analyze 无问题；iOS 测试集 + Harmony 投屏回归 90 项通过、1 项真机 PoC 因未设置 UDID 跳过；包含双设备动态端口、Session 和自有进程回收的本地假 CLI 测试；随后 USB 原生桥接/生命周期/坐标 7 项、错误展示 8 项通过（部分与前述测试重叠） |
 | USB 独立探针 | 10 月 7 日真实连接后修正 UDID/采集 UUID 匹配；20 秒采集 1173 帧，约 59.2 FPS，752×1334，无采集错误。属于原生采集结果，非 Flutter 呈现帧率 |
-| 真机 WDA | 用户已选择个人 Team，签名构建与真机安装成功；go-ios 启动调试通道失败，尚未建立 Session 或通过输入验收，详见 8.1 |
+| 真机 WDA | 个人 Team 签名安装成功；用户信任后启动服务，修复 chunked HTTP 请求被拒绝的问题；Session、窗口几何和 Home 请求真机 PoC 通过，投屏窗口点击/滑动仍待人工验收，详见 8.1、8.2 |
 | 高版本/Windows/Linux | 延后，未验证 |
 
 组合验收建议（均为目标，不是实测结果）：
@@ -192,6 +192,19 @@ bash script/ios_usb_poc.sh '<iPhone-UDID>' 30
 - 下一步需手机解锁并确认开发者证书信任及 Runner 是否能手动打开，再检查调试服务与启动兼容性。尚未发送 Home 或点击，不把签名安装记为控制通过。
 
 后续可更换 Team：使用新 Team 重新签名安装并在手机上信任。现有脚本的 Bundle ID 带 Team 后缀，旧、新 Runner 可能并存；需移除旧 Runner 或明确指定目标 Bundle ID，避免自动选择出现多个候选。USB 视频不依赖签名 Team。
+
+### 8.2 信任证书后的 WDA 请求修复
+
+用户确认已信任开发者证书，Runner 能手动打开并显示空白界面。再次运行同一真机 PoC，调试服务启动成功，但创建 Session 返回 `HTTP 400: Transfer-Encoding is not supported`。空白 Runner 界面本身不代表 XCTest/WDA 已启动，必须检查服务响应。
+
+根因：Dart `HttpClientRequest.write(jsonEncode(body))` 在没有 Content-Length 时发送 chunked 请求，当前 WDA 的 HTTP 服务拒绝这种请求体。修复为先编码 UTF-8，设置实际字节长度，再 `add(payload)`；无请求体也显式设置长度 0，分块响应解码保持原逻辑。
+
+验证结果：
+
+- 新增固定长度请求回归，覆盖 Session、中文/emoji 文本和无 body 的 Home POST；HTTP/Host/生命周期 9 项本地测试通过，定向 analyze 无问题。
+- 同一 iPhone 6s 上，默认真机 PoC 通过：Runner 启动、USB 转发、Session 创建、窗口几何读取、停止及资源回收。
+- 启用 `ANYDECK_IOS_POC_HOME=1` 后再次通过，WDA 接受 Home 请求。尚未将这些结果扩大为投屏窗口触控坐标、滑动和文字输入全部通过。
+- 本次修复只涉及 Dart 请求逻辑；已运行的 AnyDeck 需加载新代码，再点击“启用控制”进行窗口人工验收。测试结束主动停止其自有 Runner/iproxy，不保留独立 PoC 进程占用设备。
 
 ## 9. 上游依据
 

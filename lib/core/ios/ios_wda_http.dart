@@ -29,7 +29,12 @@ class IosWdaHttp {
           throw TimeoutException('WDA request cancelled');
         }
         request.headers.contentType = ContentType.json;
-        if (body != null) request.write(jsonEncode(body));
+        // WDA 的 HTTP 服务不接受 chunked 请求；长度必须按 UTF-8 字节计算。
+        final payload = body == null
+            ? const <int>[]
+            : utf8.encode(jsonEncode(body));
+        request.contentLength = payload.length;
+        if (payload.isNotEmpty) request.add(payload);
         final response = await request.close();
         final bytes = <int>[];
         await for (final chunk in response) {
