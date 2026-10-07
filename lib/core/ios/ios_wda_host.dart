@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import '../process/tool_path_resolver.dart';
+import '../logging/app_log_recorder.dart';
 
 import 'ios_command_service.dart';
 import 'ios_wda_http.dart';
@@ -8,11 +9,15 @@ import 'ios_wda_process.dart';
 
 /// 主 Isolate 独占 WDA Runner、forward、Session；同设备操作串行，跨设备独立。
 class IosWdaHost {
-  IosWdaHost({IosCommandService? commands, String? forwardExecutable})
-    : commands = commands ?? IosCommandService(),
-      forwardExecutable = forwardExecutable ?? resolveToolPath('iproxy');
+  IosWdaHost({
+    IosCommandService? commands,
+    String? forwardExecutable,
+    this.requestTimeout = const Duration(seconds: 8),
+  }) : commands = commands ?? IosCommandService(),
+       forwardExecutable = forwardExecutable ?? resolveToolPath('iproxy');
   final IosCommandService commands;
   final String forwardExecutable;
+  final Duration requestTimeout;
   final Map<String, _WdaConnection> _connections = {};
   final Set<String> _busy = {};
   final Set<String> _cancelled = {};
@@ -28,11 +33,10 @@ class IosWdaHost {
     // 多窗口共享一次几何查询；输入等待这一次只读请求，避免被后台轮询随机丢弃。
     return _geometryRequests.putIfAbsent(
       udid,
-      () => _execute(
-        udid,
-        action,
-        args,
-      ).whenComplete(() => _geometryRequests.remove(udid)),
+      () => _execute(udid, action, args).whenComplete(() {
+        // remove 返回的正是当前 Future；不能将它返回给 whenComplete 形成自等待。
+        _geometryRequests.remove(udid);
+      }),
     );
   }
 
@@ -84,7 +88,11 @@ class IosWdaHost {
             connection.geometry = await http.geometry();
             connection.geometryAt = DateTime.now();
           }
-          return {'ready': true, ...connection.geometry};
+          return {
+            'ready':
+                identical(_connections[udid], connection) && connection.ready,
+            ...connection.geometry,
+          };
         case 'tap':
           await http.gesture(_number(args, 'x'), _number(args, 'y'));
         case 'swipe':
@@ -117,13 +125,37 @@ class IosWdaHost {
         default:
           throw ArgumentError('Unknown iOS control action: $action');
       }
-      return {'ready': true};
+      return {
+        'ready': identical(_connections[udid], connection) && connection.ready,
+      };
+    } on IosWdaRequestError catch (error) {
+      if (error.invalidSession) {
+        await _stop(udid);
+        throw StateError('iosWdaConnectionLost');
+      }
+      rethrow;
     } on SocketException {
       await _stop(udid);
       rethrow;
     } on TimeoutException {
-      await _stop(udid);
-      rethrow;
+      final connection = _connections[udid];
+      // 单次慢请求不代表 Runner 已退出。只探测会话，绝不重放可能已执行的输入。
+      var recovered = false;
+      if (connection?.ready == true) {
+        try {
+          await connection!.http.request(connection.http.path(''));
+          recovered = identical(_connections[udid], connection);
+        } catch (_) {}
+      }
+      AppLogRecorder.instance.record(
+        'WDA $action timed out; session responsive=$recovered',
+        tag: 'ios-control',
+        level: 'W',
+      );
+      if (!recovered) await _stop(udid);
+      throw StateError(
+        recovered ? 'iosWdaRequestTimeout' : 'iosWdaConnectionLost',
+      );
     } finally {
       _busy.remove(udid);
     }
@@ -171,7 +203,9 @@ class IosWdaHost {
     final socket = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final port = socket.port;
     await socket.close();
-    final connection = _WdaConnection(IosWdaHttp(port));
+    final connection = _WdaConnection(
+      IosWdaHttp(port, timeout: requestTimeout),
+    );
     _connections[udid] = connection;
     try {
       // go-ios v1.2 forward 固定监听 0.0.0.0；iproxy 显式限定 loopback + USB。
@@ -231,8 +265,15 @@ class IosWdaHost {
       // CLI 退出立即失效；旧进程回调不能误清理重连后的会话。
       for (final child in [connection.runner!, connection.forward!]) {
         unawaited(
-          child.process.exitCode.then((_) async {
-            if (identical(_connections[udid], connection)) await _stop(udid);
+          child.process.exitCode.then((code) async {
+            if (identical(_connections[udid], connection)) {
+              AppLogRecorder.instance.record(
+                'WDA ${identical(child, connection.runner) ? 'runner' : 'forward'} exited ($code)',
+                tag: 'ios-control',
+                level: 'W',
+              );
+              await _stop(udid);
+            }
           }),
         );
       }

@@ -16,10 +16,15 @@ import '../../settings/app_settings_controller.dart';
 import '../../../features/control/device_settings_popup.dart';
 import '../../../features/widgets/device_power_actions.dart';
 import 'mirror_back_long_press_handler.dart';
+import 'mirror_toolbar_button.dart';
+import 'ios_mirror_toolbar.dart';
 import 'mirror_volume_long_press_handler.dart';
 import 'mirror_window_controller.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../features/control/recorder/widgets/mirror_mouse_recorder_button.dart';
+import 'mirror_screen_recording_action.dart';
+
+export 'mirror_toolbar_button.dart';
 
 ///投屏窗口中工具栏
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
@@ -121,90 +126,6 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     }
   }
 
-  Future<void> _toggleScreenRecording(BuildContext context) async {
-    final recordState = ref.read(screenRecordProvider(widget.deviceId));
-    final recordNotifier = ref.read(
-      screenRecordProvider(widget.deviceId).notifier,
-    );
-
-    if (recordState.isRecording) {
-      try {
-        final recordResult = await recordNotifier.stop();
-        if (recordResult == null) return;
-
-        if (recordResult.startsWith('local:')) {
-          final localSavePath = recordResult.substring(6);
-          if (context.mounted) {
-            AppToast.show(
-              context,
-              context.l10n
-                  .t('recordSuccess')
-                  .replaceAll('{path}', localSavePath),
-            );
-          }
-          return;
-        }
-
-        final remotePath = recordResult;
-        final settings = ref.read(appSettingsProvider);
-        final hostPlatform = ref.read(hostPlatformServiceProvider);
-        final localSavePath = hostPlatform.generateRecordPath(
-          settings.screenshotSavePath,
-          widget.deviceId,
-        );
-        final file = File(localSavePath);
-        await file.parent.create(recursive: true);
-
-        final pullResult = await ref
-            .read(fileManagerServiceProvider)
-            .pull(widget.deviceId, remotePath, localSavePath);
-
-        if (pullResult.isSuccess) {
-          if (context.mounted) {
-            AppToast.show(
-              context,
-              context.l10n
-                  .t('recordSuccess')
-                  .replaceAll('{path}', localSavePath),
-            );
-          }
-        } else {
-          throw Exception(
-            pullResult.stderr.isNotEmpty
-                ? pullResult.stderr
-                : 'File transfer failed',
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          AppToast.show(
-            context,
-            context.l10n.t('recordFailed').replaceAll('{error}', '$e'),
-            isError: true,
-          );
-        }
-      } finally {
-        try {
-          await ref
-              .read(fileManagerServiceProvider)
-              .delete(widget.deviceId, '/sdcard/adb_screenrecord_temp.mp4');
-        } catch (_) {}
-      }
-    } else {
-      try {
-        await recordNotifier.start();
-      } catch (e) {
-        if (context.mounted) {
-          AppToast.show(
-            context,
-            context.l10n.t('recordFailed').replaceAll('{error}', '$e'),
-            isError: true,
-          );
-        }
-      }
-    }
-  }
-
   String _formatDuration(int seconds) {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
     final s = (seconds % 60).toString().padLeft(2, '0');
@@ -214,6 +135,14 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // iOS 只创建已接入的操作，不订阅 Android 录屏和屏幕电源状态。
+    if (widget.controller.isIos) {
+      return IosMirrorToolbar(
+        deviceId: widget.deviceId,
+        onScreenshot: () => _takeScreenshot(context, widget.deviceId, saveToFile: false),
+        onSaveScreenshot: () => _takeScreenshot(context, widget.deviceId, saveToFile: true),
+      );
+    }
     final actions = ref.read(deviceActionServiceProvider);
     final isScreenOff = ref.watch(screenPowerOffProvider(widget.deviceId));
     final recordState = ref.watch(screenRecordProvider(widget.deviceId));
@@ -249,10 +178,6 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               ),
               tooltip: context.l10n.t('power'),
               onPressed: () {
-                if (widget.controller.isIos) {
-                  ref.read(iosControlProvider(widget.deviceId).notifier).perform('lock');
-                  return;
-                }
                 pressPowerKeyAndResetScreenPower(
                   actions: actions,
                   deviceId: widget.deviceId,
@@ -277,7 +202,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                       .toggleScreenPower(!isScreenOff);
                 },
               ),
-            const _VerticalDivider(),
+            const MirrorToolbarDivider(),
 
             // Group 2: 音量+, 音量-
             MirrorToolbarButton(
@@ -287,10 +212,6 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               ),
               tooltip: context.l10n.t('volumeUp'),
               onPressed: () {
-                if (widget.controller.isIos) {
-                  ref.read(iosControlProvider(widget.deviceId).notifier).perform('button', {'name': 'volumeUp'});
-                  return;
-                }
                 if (_volumeLongPressHandler.shouldSuppressVolumeUp) {
                   return;
                 }
@@ -308,10 +229,6 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               ),
               tooltip: context.l10n.t('volumeDown'),
               onPressed: () {
-                if (widget.controller.isIos) {
-                  ref.read(iosControlProvider(widget.deviceId).notifier).perform('button', {'name': 'volumeDown'});
-                  return;
-                }
                 if (_volumeLongPressHandler.shouldSuppressVolumeDown) {
                   return;
                 }
@@ -323,7 +240,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               onPointerCancel:
                   _volumeLongPressHandler.handleVolumeDownPointerUp,
             ),
-            const _VerticalDivider(),
+            const MirrorToolbarDivider(),
 
             // Group 3: 后退, 主屏, 菜单
             if (!widget.controller.isIos)
@@ -352,10 +269,6 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               ),
               tooltip: context.l10n.t('home'),
               onPressed: () {
-                if (widget.controller.isIos) {
-                  ref.read(iosControlProvider(widget.deviceId).notifier).perform('button', {'name': 'home'});
-                  return;
-                }
                 actions.keyEvent(widget.deviceId, 3);
               },
             ),
@@ -428,7 +341,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 }
               },
             ),
-            const _VerticalDivider(),
+            const MirrorToolbarDivider(),
 
             // Group 5: 截图, 录屏, 前台窗口
             MirrorToolbarButton(
@@ -543,9 +456,9 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   : context.l10n.t('startRecord'),
               isLoading: recordState.isStopping,
               badge: recordState.isRecording
-                  ? const _PulsingRecordBadge()
+                  ? const MirrorPulsingRecordBadge()
                   : null,
-              onPressed: () => _toggleScreenRecording(context),
+              onPressed: () => toggleMirrorScreenRecording(context, ref, widget.deviceId),
             ),
             if (recordState.isRecording) ...[
               Padding(
@@ -580,158 +493,5 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         ),
       ),
     );
-  }
-}
-
-class _PulsingRecordBadge extends StatefulWidget {
-  const _PulsingRecordBadge();
-
-  @override
-  State<_PulsingRecordBadge> createState() => _PulsingRecordBadgeState();
-}
-
-class _PulsingRecordBadgeState extends State<_PulsingRecordBadge>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: Tween<double>(begin: 0.8, end: 1.2).animate(_controller),
-      child: Container(
-        width: 6,
-        height: 6,
-        decoration: const BoxDecoration(
-          color: Colors.red,
-          shape: BoxShape.circle,
-        ),
-      ),
-    );
-  }
-}
-
-class MirrorToolbarButton extends StatefulWidget {
-  const MirrorToolbarButton({
-    super.key,
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.isLoading = false,
-    this.badge,
-    this.onPointerDown,
-    this.onPointerUp,
-    this.onPointerCancel,
-    this.onLongPress,
-  });
-
-  final Widget icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-  final bool isLoading;
-  final Widget? badge;
-  final VoidCallback? onPointerDown;
-  final VoidCallback? onPointerUp;
-  final VoidCallback? onPointerCancel;
-  final VoidCallback? onLongPress;
-
-  @override
-  State<MirrorToolbarButton> createState() => _MirrorToolbarButtonState();
-}
-
-class _MirrorToolbarButtonState extends State<MirrorToolbarButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final hoverBg = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.05);
-
-    return Tooltip(
-      message: widget.tooltip,
-      preferBelow: false,
-      margin: const EdgeInsets.only(bottom: 4),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: AnimatedScale(
-          scale: _isHovered ? 1.15 : 1.0,
-          duration: const Duration(milliseconds: 100),
-          curve: Curves.easeOut,
-          child: Listener(
-            onPointerDown: (_) => widget.onPointerDown?.call(),
-            onPointerUp: (_) => widget.onPointerUp?.call(),
-            onPointerCancel: (_) => widget.onPointerCancel?.call(),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                GestureDetector(
-                  onLongPress: widget.isLoading ? null : widget.onLongPress,
-                  child: IconButton(
-                    iconSize: 14,
-                    padding: const EdgeInsets.all(2),
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: _isHovered ? hoverBg : Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    icon: widget.isLoading
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : widget.icon,
-                    onPressed: widget.isLoading ? null : widget.onPressed,
-                  ),
-                ),
-                if (widget.badge != null)
-                  Positioned(top: 2, right: 2, child: widget.badge!),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _VerticalDivider extends StatelessWidget {
-  const _VerticalDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container();
-    //分割线
-    // final isDark = Theme.of(context).brightness == Brightness.dark;
-    // return Container(
-    //   width: 1,
-    //   height: 16,
-    //   margin: const EdgeInsets.symmetric(horizontal: 8),
-    //   color: isDark ? Colors.white24 : Colors.black12,
-    // );
   }
 }

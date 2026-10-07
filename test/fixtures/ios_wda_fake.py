@@ -4,7 +4,8 @@ import json
 import os
 import signal
 import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 args = sys.argv[1:]
@@ -35,7 +36,17 @@ else:
 
         def respond(self):
             self.rfile.read(int(self.headers.get('Content-Length', 0)))
-            if self.path == '/session':
+            with open(Path(__file__).with_suffix('.requests'), 'a') as requests:
+                requests.write(self.path + '\n')
+            # 测试可模拟丢失单次响应、持续无响应或 Session 失效。
+            fault_file = Path(__file__).with_suffix('.fault')
+            fault = json.loads(fault_file.read_text()) if fault_file.exists() else {}
+            applies = fault.get('path') in ('*', self.path)
+            if applies and fault.get('kind') == 'timeout':
+                time.sleep(0.8)
+            if applies and fault.get('kind') == 'invalidSession':
+                value = {'error': 'invalid session id', 'message': 'Session expired'}
+            elif self.path == '/session':
                 value = {'sessionId': phone}
             elif self.path.endswith('/window/size'):
                 value = {'width': 375, 'height': 667}
@@ -47,6 +58,9 @@ else:
             self.send_response(200)
             self.send_header('Content-Length', str(len(data)))
             self.end_headers()
-            self.wfile.write(data)
+            try:
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
-    HTTPServer(('127.0.0.1', port), Handler).serve_forever()
+    ThreadingHTTPServer(('127.0.0.1', port), Handler).serve_forever()

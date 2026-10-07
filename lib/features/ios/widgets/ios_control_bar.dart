@@ -60,6 +60,8 @@ String iosControlErrorText(BuildContext context, String error) {
     'iosWdaRunnerMissing',
     'iosWdaProxyMissing',
     'iosWdaUnavailable',
+    'iosWdaRequestTimeout',
+    'iosWdaConnectionLost',
     'iosControlBusy',
     'iosUsbTextureFailed',
     'iosUsbDeviceAmbiguous',

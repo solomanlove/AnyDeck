@@ -55,6 +55,11 @@ void main() {
         await request.response.close();
       });
       await client.createSession();
+      expect(
+        requests
+            .single['body']['capabilities']['alwaysMatch']['waitForIdleTimeout'],
+        0,
+      );
       await client.gesture(100, 120, toX: 100, toY: 500, durationMs: 600);
       expect(requests.last['path'], '/session/session-A/actions');
       final actions = requests.last['body']['actions'][0]['actions'] as List;

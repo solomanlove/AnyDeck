@@ -32,7 +32,7 @@
 | `devices_manager` | 设备唯一标识判断机制 | active | 记录 AdbDevice.id 命令路由、HDC 在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
 | `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、设备信息悬浮层、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `rust/device_bridge/`, `core/harmony/` |
-| `ios投屏控制` | iOS 投屏控制方案与 PoC | active | 移除模拟 BLE、macOS/iPhone 6s 原生 USB Texture + WDA、部署探针、双 PoC 范围及真机验收边界 | `core/ios/`, `macos/Runner/`, `script/` |
+| `ios投屏控制` | iOS 投屏控制方案与 PoC | active | 移除模拟 BLE、macOS/iPhone 6s 原生 USB Texture + WDA、部署探针、WDA 查询循环等待修复、iOS 工具栏能力及真机验收边界 | `core/ios/`, `macos/Runner/`, `script/` |
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、USB/Network 连接类型与旧 Rust 库兼容、概览读取与型号规格边界、USB 投屏、截图镜像恢复、进程应用关联、扩展宿主 Bundle ID、多窗口及验证边界 | `core/ios/`, `features/ios/`, `features/overview/`, `app/window/mirror/` |
 | `ios-process-management` | iOS 进程表格与生命周期管理 | active | 全进程查询、应用归属筛选、图标缓存、3 秒轮询、未知性能指标、PID 身份回读及取消隔离 | `core/ios/`, `features/ios/` |
 | `ios-apps-management` | iOS 应用筛选、收藏与图标管理 | active | Android 风格工具栏与表格、分类/拼音筛选、持久化收藏、字母索引、设备隔离、图标 helper 取消与验证边界 | `core/ios/`, `features/ios/`, `assets/ios/` |

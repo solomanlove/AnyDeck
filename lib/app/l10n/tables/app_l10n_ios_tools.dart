@@ -82,7 +82,10 @@ const iosToolsZh = {
   'iosButtonName': '按键名称，例如 home',
   'iosCommandOutput': '命令输出',
   'iosNoOutput': '命令执行成功，无输出',
-  'iosWdaUnavailable': 'WDA 尚未就绪，请先完成签名、安装和启动。',
+  'iosWdaUnavailable': '控制会话未就绪，请点击“启用控制”；若启动失败，再检查 WDA 安装与签名。',
+  'iosWdaRequestTimeout': '本次操作响应超时，会话仍可用；请先观察手机结果，再继续操作。',
+  'iosWdaConnectionLost': '控制连接已中断，请重新启用控制。',
+  'iosLock': '锁屏',
   'iosScreenshotOnly': 'iOS 当前支持截图与连续截图，不支持该页面的 Android screenrecord。',
 };
 
@@ -171,7 +174,10 @@ const iosToolsEn = {
   'iosButtonName': 'Button name, e.g. home',
   'iosCommandOutput': 'Command output',
   'iosNoOutput': 'Command succeeded with no output',
-  'iosWdaUnavailable': 'WDA is not ready. Sign, install, and start it first.',
+  'iosWdaUnavailable': 'Control is not ready. Enable control; check WDA installation and signing if startup fails.',
+  'iosWdaRequestTimeout': 'The request timed out, but the session is available. Check the phone before continuing.',
+  'iosWdaConnectionLost': 'The control connection was lost. Enable control again.',
+  'iosLock': 'Lock screen',
   'iosScreenshotOnly':
       'iOS currently supports screenshots and continuous screenshots, not Android screenrecord.',
 };

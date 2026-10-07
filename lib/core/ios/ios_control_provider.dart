@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'ios_control_gateway.dart';
 
+/// 注入同一条 gateway，便于验证跨窗口响应先后顺序，不访问真机。
+final iosControlCallProvider = Provider((ref) => IosControlGateway.call);
+
 /// 状态使用 iOS point 尺寸；像素帧尺寸只负责绘制，不混入输入坐标。
 class IosControlState {
   const IosControlState({
@@ -40,14 +43,25 @@ class IosControlNotifier extends Notifier<IosControlState> {
   Future<void> refresh() async {
     if (!ref.mounted || state.busy || _polling) return;
     _polling = true;
+    final generation = _actionGeneration;
+    final call = ref.read(iosControlCallProvider);
     try {
-      var value = await IosControlGateway.call(udid, 'status');
+      var value = await call(udid, 'status');
+      if (!ref.mounted || generation != _actionGeneration) return;
       if (value['ready'] == true && value['busy'] != true) {
-        value = await IosControlGateway.call(udid, 'geometry');
+        value = await call(udid, 'geometry');
       }
-      if (ref.mounted && !state.busy) _apply(value, error: state.error);
+      if (ref.mounted && generation == _actionGeneration && !state.busy) {
+        _apply(
+          value,
+          error: value['ready'] == true
+              ? null
+              : state.error ?? (state.ready ? 'iosWdaConnectionLost' : null),
+        );
+      }
     } catch (error) {
       if (ref.mounted &&
+          generation == _actionGeneration &&
           !state.busy &&
           !error.toString().contains('iosControlBusy')) {
         state = IosControlState(error: error.toString());
@@ -74,6 +88,7 @@ class IosControlNotifier extends Notifier<IosControlState> {
   ]) async {
     if (state.busy && action != 'stop') return false;
     final generation = ++_actionGeneration;
+    final call = ref.read(iosControlCallProvider);
     state = IosControlState(
       ready: state.ready,
       busy: true,
@@ -82,18 +97,19 @@ class IosControlNotifier extends Notifier<IosControlState> {
       orientation: state.orientation,
     );
     try {
-      final value = await IosControlGateway.call(udid, action, args);
+      final value = await call(udid, action, args);
       if (ref.mounted && generation == _actionGeneration) _apply(value);
       return true;
     } catch (error) {
+      // 失败后以主窗口实际会话状态为准，不能继续沿用操作前的 ready。
+      Map<String, dynamic> status = {'ready': false};
       if (ref.mounted && generation == _actionGeneration) {
-        state = IosControlState(
-          ready: state.ready,
-          width: state.width,
-          height: state.height,
-          orientation: state.orientation,
-          error: error.toString(),
-        );
+        try {
+          status = await call(udid, 'status');
+        } catch (_) {}
+      }
+      if (ref.mounted && generation == _actionGeneration) {
+        _apply(status, error: error.toString());
       }
       return false;
     }

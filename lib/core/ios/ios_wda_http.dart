@@ -2,6 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+/// 保留 W3C 错误类型，使 Host 能区分会话失效与单个不支持的命令。
+class IosWdaRequestError extends StateError {
+  IosWdaRequestError(super.message, {this.invalidSession = false});
+  final bool invalidSession;
+}
+
 /// 真正的异步 WDA HTTP 客户端；HTTP/W3C 错误均抛出，不把收到响应当作成功。
 class IosWdaHttp {
   IosWdaHttp(this.port, {this.timeout = const Duration(seconds: 8)});
@@ -52,8 +58,11 @@ class IosWdaHttp {
             response.statusCode >= 300 ||
             (value is Map && value['error'] != null) ||
             (decoded['status'] is num && decoded['status'] != 0)) {
-          throw StateError(
+          throw IosWdaRequestError(
             'WDA HTTP ${response.statusCode}: ${value is Map ? value['message'] ?? value : value}',
+            invalidSession:
+                (value is Map && value['error'] == 'invalid session id') ||
+                decoded['status'] == 6,
           );
         }
         return decoded;
@@ -71,7 +80,11 @@ class IosWdaHttp {
       method: 'POST',
       body: {
         'capabilities': {
-          'alwaysMatch': {'shouldUseCompactResponses': true},
+          // 投屏控制不能等待动画页面空闲；WDA 默认等待 10 秒会超过请求超时。
+          'alwaysMatch': {
+            'shouldUseCompactResponses': true,
+            'waitForIdleTimeout': 0,
+          },
         },
       },
     );

@@ -206,6 +206,29 @@ bash script/ios_usb_poc.sh '<iPhone-UDID>' 30
 - 启用 `ANYDECK_IOS_POC_HOME=1` 后再次通过，WDA 接受 Home 请求。尚未将这些结果扩大为投屏窗口触控坐标、滑动和文字输入全部通过。
 - 本次修复只涉及 Dart 请求逻辑；已运行的 AnyDeck 需加载新代码，再点击“启用控制”进行窗口人工验收。测试结束主动停止其自有 Runner/iproxy，不保留独立 PoC 进程占用设备。
 
+### 8.3 控制数秒后失效与工具栏收口（2026-10-07）
+
+用户反馈最初几秒可控，随后输入失效，界面同时显示“控制已就绪”和 WDA 未就绪错误。
+
+**已通过本地回归复现的根因**：`IosWdaHost.execute('geometry')` 用 `whenComplete(() => _geometryRequests.remove(udid))` 清理共享查询。`Map.remove` 返回的正是当前 Future，`whenComplete` 又等待该返回值，导致 Future 循环等待。首次后台查询之后，轮询或等待它的输入不再完成。改为无返回值的清理回调；测试覆盖多个窗口合并查询以及随后点击，不能再返回正在清理的 Future。
+
+配套修复：
+
+- 创建 Session 时显式设置 `waitForIdleTimeout: 0`。本次固定 WDA 源码默认值为 10 秒，超过客户端 8 秒请求超时；动态页面的空闲等待是另一项风险，不把它当作本次真机已确认的唯一根因。
+- 单个请求超时后，最多追加一次当前 Session 查询。会话仍响应则保留 Runner/iproxy，并提示先观察手机结果；持续无响应或 invalid session 则清理会话。**绝不自动重放点击、滑动或输入文字**，因为请求超时不能证明手机未执行。
+- `IosControlNotifier` 用操作代次丢弃启停之前发起的旧轮询结果；操作失败立即回读 Host 状态，成功恢复后清除旧错误，避免“已就绪 + 未就绪”并存。新增超时与进程退出诊断，不记录用户输入内容。
+- iOS 独立工具栏仅保留锁屏、音量增减、Home、剪贴板文字输入、截图。未启用控制或操作中禁用 WDA 按钮，截图可独立复制/长按保存。移除未实现的前台窗口查询、录屏、鼠标录制和设备设置；不挂接 Android 音量长按行为。
+- 公共按钮/录制状态 Widget 拆到 `mirror_toolbar_button.dart`；原 Android/HarmonyOS 录屏动作原样迁到 `mirror_screen_recording_action.dart`。工具栏、iOS UI 与控制逻辑分开，相关 Dart 文件均在 500 行以内。主/子窗口继续使用原 gateway，没有新增通道或依赖。
+
+验证记录：
+
+- WDA HTTP、Host、进程生命周期、故障恢复及 Provider 竞态共 **17 项通过**；涵盖反复查询后点击、单次超时保留会话且不重放、持续无响应和 Session 失效后的清理。
+- 工具栏中英文/明暗主题、禁用状态、独立截图，及 USB、坐标、Harmony 控制、窗口比例/旋转、错误展示共 **33 项通过**。
+- 变更 Dart 文件定向 analyze 通过；提交前检查 `git diff --check`。
+- 本轮未启动桌面项目、未执行真机输入，也未重新签名或安装 WDA。上述为本地假 CLI/HTTP、单元与 Widget 测试，不能替代 iPhone 连续操作验收。
+
+人工验收：加载更新后的 Dart 代码，停止旧控制会话并重新启用；在截图中的动态首页连续点击/滑动至少 1 分钟，旋转与窗口缩放后继续验证；检查控制断开后按钮禁用、重新启用恢复，以及 Android/HarmonyOS 录屏/截图入口。若仍异常，导出 `ios-control` 日志区分请求超时与 Runner/forward 退出。
+
 ## 9. 上游依据
 
 - [Apple QuickTime：录制连接设备的视频](https://support.apple.com/en-in/guide/quicktime-player/qtp356b55534/mac)：验证 macOS USB 采集路径的产品可行性；不是对本项目帧率的保证。
