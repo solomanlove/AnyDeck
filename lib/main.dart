@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'core/ios/ios_control_gateway.dart';
 import 'dart:ui';
 import 'dart:isolate';
 import 'dart:developer' as developer;
@@ -204,6 +205,7 @@ Future<void> _startApplication(List<String> args) async {
   container.read(logHistoryProvider);
   if (Platform.isMacOS) {
     await ApkOpenCoordinator(container).initialize();
+    await IosControlGateway.initializeHost();
   }
   //主窗口
   runApp(UncontrolledProviderScope(container: container, child: const AnyDeckApp()));

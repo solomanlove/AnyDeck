@@ -4,20 +4,11 @@
 
 ---
 
-## 1. 投屏机制 (USB Mirroring Principle)
+## 1. 投屏机制（2026-10-06 更新）
 
-iOS 投屏在本项目中采用 **USB 本地端口转发** 与 **MJPEG 图像流解析** 方案，摆脱了对 Android-scrcpy 编解码体系的依赖，保持极轻量化：
+macOS 已将原 `go-ios screenshot --stream` / MJPEG / `Image.memory` 投屏替换为 CoreMediaIO + AVFoundation + Flutter Texture。单张截图功能继续独立保留。视频不再占用固定 3333 端口，也不再按端口清理其他进程。
 
-1. **go-ios screenshot 端口转发**：
-   通过 `go-ios screenshot --stream --port=[port] --udid=[udid]` 指令启动 iOS 截图流服务。该服务会建立 USB 连接通道，在指定的本地 TCP 端口（如 `127.0.0.1:port`）启动一个轻量级的 HTTP MJPEG 服务。
-
-2. **纯 Dart 缓冲区包分包解析 (SOI/EOI Boundary Parsing)**：
-   iOS 投屏的渲染并不依赖 GStreamer 或 FFmpeg 库，而是通过纯 Dart 代码高效率提取 JPEG 帧：
-   - 建立 `HttpClient` 连接到本地 HTTP Stream，接收流式的二进制数据块。
-   - 每接收到一个 Chunk，将其追加到内存缓冲区。
-   - 检索 JPEG 协议的文件起始标记 **SOI (`0xFF, 0xD8`)** 与文件结束标记 **EOI (`0xFF, 0xD9`)**。
-   - 一旦定位到完整的 SOI 到 EOI 字节区间，即截取出一个完整的 JPEG 帧，使用 `Image.memory` 原生 Widget 快速渲染（同时使用 `gaplessPlayback: true` 消除闪烁）。
-   - 移除已处理字节，循环检索后续帧，防止缓冲区膨胀。
+控制统一由主窗口持有 WDA Runner、iproxy USB 转发和 Session；模拟 BLE 已删除。当前面向 macOS + iPhone 6s 的实现、部署脚本、两个 PoC 的范围和未完成的真机验收见 [iOS 投屏控制](ios投屏控制.md)。不能将编译通过当作流畅度或真机控制已经通过。
 
 ---
 
@@ -108,7 +99,7 @@ iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
 | 系统日志 | `ios syslog --parse` | 长生存期进程由页面持有并在 dispose 时终止 |
 | 进程 | `ios ps --apps` / `ios kill --pid` | 展示进程与扩展，通过安装路径关联应用名称及 Bundle ID；结束进程需要确认 |
 | 截图 | `ios screenshot --output=<file>` | 缺少开发者镜像时自动挂载并重试一次；使用临时目录，结束后删除临时文件 |
-| UI 自动化 | `ios ui ... --driver=wda` | 依赖已经签名、安装并启动的 WebDriverAgent |
+| UI 自动化 | 主窗口 WDA HTTP Session + `ios runwda` + `iproxy` | 先签名安装 Runner，界面启用控制后托管启动/转发；详见 iOS 投屏控制 |
 
 所有命令参数都通过 `Process.start(executable, args)` 的参数列表传入，不经过 shell 拼接。短命令默认 15 秒超时，IPA 和文件传输使用 5 分钟超时；超时后先普通终止，再以 `SIGKILL` 兜底。`--text` 的用户输入在全局日志中必须脱敏。
 

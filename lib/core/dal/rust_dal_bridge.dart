@@ -20,33 +20,6 @@ typedef _ListHarmonyDevicesDart = Pointer<Uint8> Function();
 typedef _ListIosDevicesNative = Pointer<Uint8> Function();
 typedef _ListIosDevicesDart = Pointer<Uint8> Function();
 
-typedef _BleMouseStartNative = Uint8 Function();
-typedef _BleMouseStartDart = int Function();
-
-typedef _BleMouseStopNative = Uint8 Function();
-typedef _BleMouseStopDart = int Function();
-
-typedef _BleMouseSendNative = Uint8 Function(Uint8, Int8, Int8, Int8);
-typedef _BleMouseSendDart = int Function(int, int, int, int);
-
-typedef _BleMouseStatusNative = Uint8 Function();
-typedef _BleMouseStatusDart = int Function();
-
-typedef _WdaRequestNative =
-    Pointer<Uint8> Function(
-      Uint16,
-      Pointer<Uint8>,
-      Pointer<Uint8>,
-      Pointer<Uint8>,
-    );
-typedef _WdaRequestDart =
-    Pointer<Uint8> Function(
-      int,
-      Pointer<Uint8>,
-      Pointer<Uint8>,
-      Pointer<Uint8>,
-    );
-
 typedef _CronAddJobNative =
     Uint8 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>);
 typedef _CronAddJobDart =
@@ -101,37 +74,6 @@ class RustDalBridge {
           _listIosDevices = null;
         }
         try {
-          _bleMouseStart = _library
-              .lookupFunction<_BleMouseStartNative, _BleMouseStartDart>(
-                'anydeck_ble_mouse_start',
-              );
-          _bleMouseStop = _library
-              .lookupFunction<_BleMouseStopNative, _BleMouseStopDart>(
-                'anydeck_ble_mouse_stop',
-              );
-          _bleMouseSend = _library
-              .lookupFunction<_BleMouseSendNative, _BleMouseSendDart>(
-                'anydeck_ble_mouse_send',
-              );
-          _bleMouseStatus = _library
-              .lookupFunction<_BleMouseStatusNative, _BleMouseStatusDart>(
-                'anydeck_ble_mouse_status',
-              );
-        } catch (_) {
-          _bleMouseStart = null;
-          _bleMouseStop = null;
-          _bleMouseSend = null;
-          _bleMouseStatus = null;
-        }
-        try {
-          _wdaRequest = _library
-              .lookupFunction<_WdaRequestNative, _WdaRequestDart>(
-                'anydeck_wda_request',
-              );
-        } catch (_) {
-          _wdaRequest = null;
-        }
-        try {
           _cronAddJob = _library
               .lookupFunction<_CronAddJobNative, _CronAddJobDart>(
                 'anydeck_cron_add_job',
@@ -171,11 +113,6 @@ class RustDalBridge {
   late final _DalExecuteDart _dalExecute;
   _ListHarmonyDevicesDart? _listHarmonyDevices;
   _ListIosDevicesDart? _listIosDevices;
-  _BleMouseStartDart? _bleMouseStart;
-  _BleMouseStopDart? _bleMouseStop;
-  _BleMouseSendDart? _bleMouseSend;
-  _BleMouseStatusDart? _bleMouseStatus;
-  _WdaRequestDart? _wdaRequest;
   _CronAddJobDart? _cronAddJob;
   _CronRemoveJobDart? _cronRemoveJob;
   _CronListJobsDart? _cronListJobs;
@@ -377,87 +314,6 @@ class RustDalBridge {
     } finally {
       if (resultPtr != nullptr) {
         _freeString(resultPtr);
-      }
-    }
-  }
-
-  /// 开启蓝牙 BLE HID 鼠标广播
-  bool bleMouseStart() {
-    if (!_isInitialized || _bleMouseStart == null) return false;
-    return _bleMouseStart!() != 0;
-  }
-
-  /// 停止蓝牙 BLE HID 鼠标广播
-  bool bleMouseStop() {
-    if (!_isInitialized || _bleMouseStop == null) return false;
-    return _bleMouseStop!() != 0;
-  }
-
-  /// 发送蓝牙鼠标相对移动与按键 (buttons: 1:左键, 2:右键, 4:中键)
-  bool bleMouseSend({
-    required int buttons,
-    required int dx,
-    required int dy,
-    int wheel = 0,
-  }) {
-    if (!_isInitialized || _bleMouseSend == null) return false;
-    return _bleMouseSend!(
-          buttons.clamp(0, 255),
-          dx.clamp(-127, 127),
-          dy.clamp(-127, 127),
-          wheel.clamp(-127, 127),
-        ) !=
-        0;
-  }
-
-  /// 查询当前 BLE 虚拟鼠标状态 (0: 停止, 1: 广播等待连接, 2: 已连接活跃)
-  int bleMouseStatus() {
-    if (!_isInitialized || _bleMouseStatus == null) return 0;
-    return _bleMouseStatus!();
-  }
-
-  /// 向 WebDriverAgent 发送轻量级 HTTP 自动化请求
-  Future<Map<String, dynamic>> wdaRequest({
-    required int port,
-    required String endpoint,
-    required String method,
-    String? bodyJson,
-  }) async {
-    if (!_isInitialized || _wdaRequest == null) {
-      return {'success': false, 'payload': 'WDA FFI not available'};
-    }
-
-    final epLen = utf8.encode(endpoint).length + 1;
-    final mLen = utf8.encode(method).length + 1;
-    final bLen = bodyJson != null ? utf8.encode(bodyJson).length + 1 : 0;
-
-    final epPtr = _stringToBuffer(endpoint);
-    final mPtr = _stringToBuffer(method);
-    final bPtr = bodyJson != null ? _stringToBuffer(bodyJson) : nullptr;
-
-    Pointer<Uint8> resultPtr = nullptr;
-    try {
-      resultPtr = _wdaRequest!(port, epPtr, mPtr, bPtr);
-      if (resultPtr == nullptr) {
-        return {'success': false, 'payload': 'Null response from WDA'};
-      }
-
-      final jsonStr = _cStringToString(resultPtr);
-      final decoded = jsonDecode(jsonStr);
-      if (decoded is Map<String, dynamic>) {
-        return decoded;
-      }
-      return {'success': false, 'payload': jsonStr};
-    } catch (e) {
-      return {'success': false, 'payload': e.toString()};
-    } finally {
-      if (resultPtr != nullptr) {
-        _freeString(resultPtr);
-      }
-      _free(epPtr, epLen);
-      _free(mPtr, mLen);
-      if (bPtr != nullptr) {
-        _free(bPtr, bLen);
       }
     }
   }

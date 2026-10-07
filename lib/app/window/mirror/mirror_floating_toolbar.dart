@@ -250,7 +250,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               tooltip: context.l10n.t('power'),
               onPressed: () {
                 if (widget.controller.isIos) {
-                  ref.read(iosWdaClientProvider).lockScreen();
+                  ref.read(iosControlProvider(widget.deviceId).notifier).perform('lock');
                   return;
                 }
                 pressPowerKeyAndResetScreenPower(
@@ -288,7 +288,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               tooltip: context.l10n.t('volumeUp'),
               onPressed: () {
                 if (widget.controller.isIos) {
-                  ref.read(iosWdaClientProvider).pressButton('volumeUp');
+                  ref.read(iosControlProvider(widget.deviceId).notifier).perform('button', {'name': 'volumeUp'});
                   return;
                 }
                 if (_volumeLongPressHandler.shouldSuppressVolumeUp) {
@@ -309,7 +309,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               tooltip: context.l10n.t('volumeDown'),
               onPressed: () {
                 if (widget.controller.isIos) {
-                  ref.read(iosWdaClientProvider).pressButton('volumeDown');
+                  ref.read(iosControlProvider(widget.deviceId).notifier).perform('button', {'name': 'volumeDown'});
                   return;
                 }
                 if (_volumeLongPressHandler.shouldSuppressVolumeDown) {
@@ -353,7 +353,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               tooltip: context.l10n.t('home'),
               onPressed: () {
                 if (widget.controller.isIos) {
-                  ref.read(iosWdaClientProvider).pressHome();
+                  ref.read(iosControlProvider(widget.deviceId).notifier).perform('button', {'name': 'home'});
                   return;
                 }
                 actions.keyEvent(widget.deviceId, 3);
@@ -368,30 +368,6 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 tooltip: context.l10n.t('menuKey'),
                 onPressed: () => actions.keyEvent(widget.deviceId, 187),
               ),
-            if (widget.controller.isIos) ...[
-              Consumer(
-                builder: (context, ref, _) {
-                  final ble = ref.watch(iosBleMouseProvider);
-                  final isConn = ble.state == BleMouseState.connected;
-                  final isAdv = ble.state == BleMouseState.advertising;
-                  return MirrorToolbarButton(
-                    icon: Icon(
-                      Icons.mouse,
-                      color: isConn
-                          ? Colors.greenAccent
-                          : (isAdv
-                              ? Colors.orangeAccent
-                              : (isDark ? Colors.white70 : Colors.black87)),
-                    ),
-                    tooltip: ble.isEnabled
-                        ? (isConn ? 'BLE 鼠标已连接 (点击断开)' : 'BLE 鼠标广播中 (点击停止)')
-                        : '开启 iOS 蓝牙鼠标反控 (免越狱)',
-                    onPressed: () =>
-                        ref.read(iosBleMouseProvider.notifier).toggle(),
-                  );
-                },
-              ),
-            ],
             // const _VerticalDivider(),
             // Group 4: 通知栏, T
             // MirrorToolbarButton(
@@ -421,7 +397,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                     clipboardData.text!.isNotEmpty) {
                   final text = clipboardData.text!;
                   final success = widget.controller.isIos
-                      ? await ref.read(iosWdaClientProvider).inputText(text)
+                      ? await ref.read(iosControlProvider(widget.deviceId).notifier).perform('text', {'text': text})
                       : (widget.controller.isHarmony
                           ? (await ref
                                     .read(hdcServiceProvider)

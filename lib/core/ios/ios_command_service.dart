@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../adb/adb_result.dart';
-import '../dal/rust_dal_bridge.dart';
+import 'ios_control_gateway.dart';
 import '../process/tool_path_resolver.dart';
 import 'ios_app_info.dart';
 import 'ios_process_info.dart';
@@ -184,109 +184,25 @@ class IosCommandService {
     return _screenshotCapture.capture(udid);
   }
 
-  Future<AdbResult> automationStatus(String udid, {int wdaPort = 8100}) async {
-    if (RustDalBridge.instance.isAvailable) {
-      try {
-        final res = await RustDalBridge.instance.wdaRequest(
-          port: wdaPort,
-          endpoint: '/status',
-          method: 'GET',
-        );
-        if (res['success'] == true) {
-          return AdbResult(
-            exitCode: 0,
-            stdout: jsonEncode(res['payload']),
-            stderr: '',
-          );
-        }
-      } catch (_) {}
+  /// 控制统一路由到主引擎，禁止隐式回退到另一个设备或控制后端。
+  Future<AdbResult> _control(String udid, String action, [Map<String, dynamic> args = const {}]) async {
+    try {
+      final value = await IosControlGateway.call(udid, action, args);
+      return AdbResult(exitCode: 0, stdout: jsonEncode(value), stderr: '');
+    } catch (error) {
+      return AdbResult(exitCode: 1, stdout: '', stderr: error.toString());
     }
-    return run(['ui', 'status', '--driver=wda', '--udid=$udid']);
   }
 
-  Future<AdbResult> automationSource(String udid) {
-    return run(['ui', 'source', '--driver=wda', '--udid=$udid']);
-  }
-
-  Future<AdbResult> tap(String udid, double x, double y, {int wdaPort = 8100}) async {
-    if (RustDalBridge.instance.isAvailable) {
-      try {
-        final res = await RustDalBridge.instance.wdaRequest(
-          port: wdaPort,
-          endpoint: '/wda/tap/nil',
-          method: 'POST',
-          bodyJson: jsonEncode({'x': x.round(), 'y': y.round()}),
-        );
-        if (res['success'] == true) {
-          return const AdbResult(exitCode: 0, stdout: 'OK', stderr: '');
-        }
-      } catch (_) {}
-    }
-    return run([
-      'ui',
-      'tap',
-      '--x=$x',
-      '--y=$y',
-      '--driver=wda',
-      '--udid=$udid',
-    ]);
-  }
-
-  Future<AdbResult> swipe(
-    String udid, {
-    required double fromX,
-    required double fromY,
-    required double toX,
-    required double toY,
-  }) {
-    return run([
-      'ui',
-      'swipe',
-      '--from-x=$fromX',
-      '--from-y=$fromY',
-      '--to-x=$toX',
-      '--to-y=$toY',
-      '--driver=wda',
-      '--udid=$udid',
-    ]);
-  }
-
-  Future<AdbResult> typeText(String udid, String text, {int wdaPort = 8100}) async {
-    if (RustDalBridge.instance.isAvailable) {
-      try {
-        final res = await RustDalBridge.instance.wdaRequest(
-          port: wdaPort,
-          endpoint: '/wda/keys',
-          method: 'POST',
-          bodyJson: jsonEncode({'value': text.split('')}),
-        );
-        if (res['success'] == true) {
-          return const AdbResult(exitCode: 0, stdout: 'OK', stderr: '');
-        }
-      } catch (_) {}
-    }
-    return run(['ui', 'type', '--text=$text', '--driver=wda', '--udid=$udid']);
-  }
-
-  Future<AdbResult> pressButton(String udid, String button, {int wdaPort = 8100}) async {
-    if (RustDalBridge.instance.isAvailable) {
-      try {
-        final isHome = button.toLowerCase() == 'home';
-        final endpoint = isHome ? '/wda/homescreen' : '/wda/pressButton';
-        final bodyJson = isHome ? null : jsonEncode({'name': button});
-        final res = await RustDalBridge.instance.wdaRequest(
-          port: wdaPort,
-          endpoint: endpoint,
-          method: 'POST',
-          bodyJson: bodyJson,
-        );
-        if (res['success'] == true) {
-          return const AdbResult(exitCode: 0, stdout: 'OK', stderr: '');
-        }
-      } catch (_) {}
-    }
-    return run(['ui', 'button', button, '--driver=wda', '--udid=$udid']);
-  }
+  Future<AdbResult> automationStatus(String udid) => _control(udid, 'status');
+  Future<AdbResult> automationSource(String udid) => _control(udid, 'source');
+  Future<AdbResult> tap(String udid, double x, double y) => _control(udid, 'tap', {'x': x, 'y': y});
+  Future<AdbResult> swipe(String udid, {required double fromX, required double fromY,
+    required double toX, required double toY}) => _control(udid, 'swipe', {
+      'fromX': fromX, 'fromY': fromY, 'toX': toX, 'toY': toY,
+    });
+  Future<AdbResult> typeText(String udid, String text) => _control(udid, 'text', {'text': text});
+  Future<AdbResult> pressButton(String udid, String button) => _control(udid, 'button', {'name': button});
 
   static List<IosAppInfo> parseApps(String output) {
     final apps = <String, IosAppInfo>{};

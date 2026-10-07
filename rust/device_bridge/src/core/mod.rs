@@ -5,7 +5,6 @@ pub mod harmony;
 pub mod ios;
 pub mod batch;
 pub mod ring_buffer;
-pub mod ble_hid;
 pub mod cron;
 
 pub use driver::{DeviceDriver, DevicePlatform};
@@ -14,7 +13,6 @@ pub use harmony::{HarmonyDriver, HarmonyTarget};
 pub use ios::{IosDriver, IosTarget};
 pub use batch::{BatchManager, BatchDeviceResult};
 pub use ring_buffer::{LogRingBuffer, LogEntry};
-pub use ble_hid::{BleHidMouseSimulator, MouseReport};
 pub use cron::{CronScheduler, CronExpression, CronJob};
 
 #[cfg(test)]

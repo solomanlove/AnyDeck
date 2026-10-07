@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../core/ios/ios_control_gateway.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -193,6 +194,7 @@ class _AppTrayListener extends TrayListener {
         }
       }
     } else if (menuItem.key == 'exit_app') {
+      await IosControlGateway.closeHost();
       // 退出应用时需要先解除关闭拦截，否则无法 destroy 窗口
       await windowManager.setPreventClose(false);
       await windowManager.destroy();

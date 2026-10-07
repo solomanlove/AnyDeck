@@ -24,8 +24,7 @@ import 'device_registry_providers.dart';
 import 'registered_device_model.dart';
 
 export '../../cron/cron_scheduler_service.dart';
-export '../../ios/ios_ble_mouse_service.dart';
-export '../../ios/ios_wda_client.dart';
+export '../../ios/ios_control_provider.dart';
 
 /// 所有命令型 Provider 共享的全局 ADB 服务单例实例。
 ///

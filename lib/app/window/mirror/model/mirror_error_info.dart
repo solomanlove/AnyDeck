@@ -72,6 +72,21 @@ class MirrorErrorInfo {
       );
     }
 
+    // iOS 原生采集错误优先使用其前置条件提示，避免套用 Android 调试说明。
+    for (final key in [
+      'iosUsbTextureFailed', 'iosUsbDeviceMissing', 'iosUsbPermissionDenied', 'iosUsbFirstFrameTimeout',
+      'iosUsbCaptureStopped', 'iosUsbMacOnly', 'iosUsbStarting',
+    ]) {
+      if (rawError.contains(key)) {
+        return MirrorErrorInfo(
+          type: MirrorErrorType.general,
+          titleKey: 'mirrorStartFailed',
+          descriptionKey: key,
+          rawError: rawError,
+        );
+      }
+    }
+
     final lower = rawError.toLowerCase();
 
     // 1. 设备未找到 / 离线 / 断开连接

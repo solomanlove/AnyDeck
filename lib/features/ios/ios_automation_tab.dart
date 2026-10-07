@@ -5,7 +5,8 @@ import '../../app/l10n/app_localizations.dart';
 import '../../core/adb/adb_device.dart';
 import '../../core/adb/adb_result.dart';
 import '../../core/ios/ios_mirror_service.dart';
-import '../../core/ios/ios_ble_mouse_service.dart';
+import '../../core/ios/ios_control_provider.dart';
+import 'widgets/ios_control_bar.dart';
 import 'ios_tool_widgets.dart';
 
 /// 使用已部署的 WebDriverAgent 执行基础 iOS UI 自动化动作。
@@ -123,12 +124,15 @@ class _IosAutomationTabState extends ConsumerState<IosAutomationTab> {
   @override
   Widget build(BuildContext context) {
     final service = ref.read(iosCommandServiceProvider);
+    final control = ref.watch(iosControlProvider(widget.device.id));
     return IosToolScaffold(
       title: context.l10n.t('iosAutomation'),
       description: context.l10n.t('iosWdaRequirement'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          IosControlBar(udid: widget.device.id),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -143,7 +147,7 @@ class _IosAutomationTabState extends ConsumerState<IosAutomationTab> {
                 label: Text(context.l10n.t('iosWdaStatus')),
               ),
               OutlinedButton.icon(
-                onPressed: _loading
+                onPressed: _loading || !control.ready
                     ? null
                     : () => _execute(
                         () => service.automationSource(widget.device.id),
@@ -152,34 +156,15 @@ class _IosAutomationTabState extends ConsumerState<IosAutomationTab> {
                 label: Text(context.l10n.t('iosUiSource')),
               ),
               OutlinedButton.icon(
-                onPressed: _loading
+                onPressed: _loading || !control.ready
                     ? null
                     : () => _execute(
                         () => service.pressButton(widget.device.id, 'home'),
                       ),
                 icon: const Icon(Icons.home_outlined),
-                label: const Text('Home 键'),
+                label: Text(context.l10n.t('iosHomeButton')),
               ),
-              Consumer(
-                builder: (context, ref, _) {
-                  final ble = ref.watch(iosBleMouseProvider);
-                  return OutlinedButton.icon(
-                    onPressed: () =>
-                        ref.read(iosBleMouseProvider.notifier).toggle(),
-                    icon: Icon(
-                      Icons.mouse_outlined,
-                      color: ble.isEnabled ? Colors.green : null,
-                    ),
-                    label: Text(
-                      ble.isEnabled
-                          ? (ble.state == BleMouseState.connected
-                              ? 'BLE 鼠标 (已连接)'
-                              : 'BLE 鼠标 (广播中)')
-                          : 'BLE 鼠标反控 (关闭)',
-                    ),
-                  );
-                },
-              ),
+
             ],
           ),
           const SizedBox(height: 16),
@@ -201,7 +186,7 @@ class _IosAutomationTabState extends ConsumerState<IosAutomationTab> {
                 numeric: true,
               ),
               FilledButton(
-                onPressed: _loading ? null : _tap,
+                onPressed: _loading || !control.ready ? null : _tap,
                 child: Text(context.l10n.t('iosTap')),
               ),
             ],
@@ -227,7 +212,7 @@ class _IosAutomationTabState extends ConsumerState<IosAutomationTab> {
               _field(context, _toX, context.l10n.t('iosToX'), numeric: true),
               _field(context, _toY, context.l10n.t('iosToY'), numeric: true),
               FilledButton(
-                onPressed: _loading ? null : _swipe,
+                onPressed: _loading || !control.ready ? null : _swipe,
                 child: Text(context.l10n.t('iosSwipe')),
               ),
             ],
@@ -240,7 +225,7 @@ class _IosAutomationTabState extends ConsumerState<IosAutomationTab> {
             children: [
               _field(context, _text, context.l10n.t('iosText'), width: 320),
               FilledButton(
-                onPressed: _loading
+                onPressed: _loading || !control.ready
                     ? null
                     : () => _execute(
                         () => service.typeText(widget.device.id, _text.text),
@@ -262,7 +247,7 @@ class _IosAutomationTabState extends ConsumerState<IosAutomationTab> {
                 width: 320,
               ),
               FilledButton(
-                onPressed: _loading || _button.text.isEmpty
+                onPressed: _loading || !control.ready || _button.text.isEmpty
                     ? null
                     : () => _execute(
                         () => service.pressButton(

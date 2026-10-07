@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleIdentifier</key><string>com.anydeck.ios-usb-poc</string>
+  <key>NSCameraUsageDescription</key><string>验证通过 USB 采集已连接 iPhone 的屏幕。</string>
+</dict></plist>

@@ -51,6 +51,8 @@
 	<string>用于在设备列表显示当前电脑的 Wi-Fi 名称，不采集地理位置。Used to display this computer’s Wi-Fi name without collecting its location.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>用于在设备列表显示当前电脑的 Wi-Fi 名称，不采集地理位置。Used to display this computer’s Wi-Fi name without collecting its location.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>用于通过 USB 采集你选择的 iPhone 屏幕，不启用手机摄像头。Capture the selected iPhone screen over USB.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

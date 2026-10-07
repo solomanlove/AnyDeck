@@ -21,6 +21,8 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		E1D0B1000000000000000001 /* IosUsbCapturePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1D0B1000000000000000002 /* IosUsbCapturePlugin.swift */; };
+		E0D0B1000000000000000001 /* IosUsbCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0D0B1000000000000000002 /* IosUsbCapture.swift */; };
 		A1D0B1000000000000000001 /* RustTexturePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1D0B1000000000000000002 /* RustTexturePlugin.swift */; };
 		B1D0B1000000000000000001 /* NotificationBridgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D0B1000000000000000002 /* NotificationBridgeService.swift */; };
 		C1D0B1000000000000000001 /* AutoStartBridgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D0B1000000000000000002 /* AutoStartBridgeService.swift */; };
@@ -67,6 +69,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E1D0B1000000000000000002 /* IosUsbCapturePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosUsbCapturePlugin.swift; sourceTree = "<group>"; };
+		E0D0B1000000000000000002 /* IosUsbCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosUsbCapture.swift; sourceTree = "<group>"; };
 		A1D0B1000000000000000002 /* RustTexturePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RustTexturePlugin.swift; sourceTree = "<group>"; };
 		B1D0B1000000000000000002 /* NotificationBridgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationBridgeService.swift; sourceTree = "<group>"; };
 		C1D0B1000000000000000002 /* AutoStartBridgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoStartBridgeService.swift; sourceTree = "<group>"; };
@@ -190,6 +194,8 @@
 				33CC10F02044A3C60003C045 /* AppDelegate.swift */,
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				A1D0B1000000000000000002 /* RustTexturePlugin.swift */,
+				E1D0B1000000000000000002 /* IosUsbCapturePlugin.swift */,
+				E0D0B1000000000000000002 /* IosUsbCapture.swift */,
 				B1D0B1000000000000000002 /* NotificationBridgeService.swift */,
 				C1D0B1000000000000000002 /* AutoStartBridgeService.swift */,
 				D1D0B1000000000000000002 /* HostNetworkBridgeService.swift */,
@@ -493,6 +499,8 @@
 			files = (
 				33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */,
 				A1D0B1000000000000000001 /* RustTexturePlugin.swift in Sources */,
+				E1D0B1000000000000000001 /* IosUsbCapturePlugin.swift in Sources */,
+				E0D0B1000000000000000001 /* IosUsbCapture.swift in Sources */,
 				B1D0B1000000000000000001 /* NotificationBridgeService.swift in Sources */,
 				C1D0B1000000000000000001 /* AutoStartBridgeService.swift in Sources */,
 				D1D0B1000000000000000001 /* HostNetworkBridgeService.swift in Sources */,
