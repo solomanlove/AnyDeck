@@ -132,7 +132,7 @@ PoC 1 的通过条件：指定设备上同时读到真实视频帧和实际 HID 
 | Rust 单元测试 | 19 通过、1 个本地视频测试按原配置 ignored |
 | Dart 定向检查 | 变更 Dart 文件 analyze 无问题；iOS 测试集 + Harmony 投屏回归 90 项通过、1 项真机 PoC 因未设置 UDID 跳过；包含双设备动态端口、Session 和自有进程回收的本地假 CLI 测试；随后 USB 原生桥接/生命周期/坐标 7 项、错误展示 8 项通过（部分与前述测试重叠） |
 | USB 独立探针 | 10 月 7 日真实连接后修正 UDID/采集 UUID 匹配；20 秒采集 1173 帧，约 59.2 FPS，752×1334，无采集错误。属于原生采集结果，非 Flutter 呈现帧率 |
-| 真机 WDA | 未完成；检查时手机未安装 WDA Runner，本机有多个签名身份，尚未选定 Team |
+| 真机 WDA | 用户已选择个人 Team，签名构建与真机安装成功；go-ios 启动调试通道失败，尚未建立 Session 或通过输入验收，详见 8.1 |
 | 高版本/Windows/Linux | 延后，未验证 |
 
 组合验收建议（均为目标，不是实测结果）：
@@ -183,7 +183,15 @@ bash script/ios_usb_poc.sh '<iPhone-UDID>' 30
 
 2026-10-07 用户反馈“可以投屏了，但不能控制”。再次通过 go-ios 查询该 USB iPhone 的已安装应用，13 个应用中没有 WebDriverAgent Runner。当前控制实现必须先安装已签名的 Runner，再点击“启用控制”；只插 USB 不会自动获得 XCTest 输入能力。
 
-本机存在多个 Apple Development 签名身份，需用户明确指定对应 Developer Team 后运行第 4.3 节的部署脚本。证书显示名称中的括号标识不能直接当成 Team ID，应核对证书 Subject OU 或 Xcode Team。尚未执行签名安装、Home 或触控真机验收，不把视频恢复记为控制通过。
+本机存在多个 Apple Development 签名身份。证书显示名称中的括号标识不能直接当成 Team ID，应核对证书 Subject OU 或 Xcode Team。用户随后明确选择个人 Team `C7PX48FL76`，已运行第 4.3 节脚本：
+
+- `xcodebuild build-for-testing` 签名构建成功，`ios install` 报告成功；再次查询手机应用，确认 `com.anydeck.WebDriverAgentRunner.c7px48fl76.xctrunner` 已安装。
+- 本次 embedded provisioning profile 包含目标 UDID，Team 正确，有效期至 **2026-10-14 13:44:13（Asia/Shanghai）**。本次个人签名需要到期重新部署，不代表永久安装。
+- 两次独立控制 PoC 均在 go-ios `com.apple.instruments.server.services.processcontrol` 建立通道阶段超时，随后 `broken pipe` 退出；WDA 尚未监听，未建立 Session。
+- Xcode `test-without-building` 交叉检查报告 `0xE8000084 / This device is no longer connected`；同一时段 IOKit 与 go-ios 仍能枚举 USB 设备。因此不能直接断言数据线已拔出，也未证明是 WDA HTTP 或触摸坐标问题。
+- 下一步需手机解锁并确认开发者证书信任及 Runner 是否能手动打开，再检查调试服务与启动兼容性。尚未发送 Home 或点击，不把签名安装记为控制通过。
+
+后续可更换 Team：使用新 Team 重新签名安装并在手机上信任。现有脚本的 Bundle ID 带 Team 后缀，旧、新 Runner 可能并存；需移除旧 Runner 或明确指定目标 Bundle ID，避免自动选择出现多个候选。USB 视频不依赖签名 Team。
 
 ## 9. 上游依据
 
