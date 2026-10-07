@@ -9,7 +9,7 @@
 | PoC | 视频 | 控制 | 本轮状态 |
 | --- | --- | --- | --- |
 | PoC 1：较新 iOS 原生服务 | CoreDevice ScreenStream，研究 HEVC 视频与硬件解码 | CoreDevice HID 服务 | 保留调研路径和验收项；按用户要求推迟到高版本真机阶段，未集成、未验证 |
-| PoC 2：旧 iOS / macOS USB | CoreMediaIO 开放 iPhone 采集设备 → AVFoundation → CVPixelBuffer → Flutter Texture | 已签名 WDA Runner → XCTest → USB 转发 → 异步 WDA HTTP | 本轮实现。提供独立视频探针、WDA 部署脚本、WDA 真机测试入口；当前缺 USB 视频设备与选定签名 Team，真机验收未完成 |
+| PoC 2：旧 iOS / macOS USB | CoreMediaIO 开放 iPhone 采集设备 → AVFoundation → CVPixelBuffer → Flutter Texture | 已签名 WDA Runner → XCTest → USB 转发 → 异步 WDA HTTP | 本轮实现。提供独立视频探针、WDA 部署脚本、WDA 真机测试入口；10 月 7 日修正设备身份关联后已取得 6s 原生视频帧，用户确认 AnyDeck 可以投屏；WDA 控制仍待部署与验收 |
 
 本轮只落地 PoC 2，不能说“两套方案都已实测”。iPhone 6s 不用 PoC 1 验证，也不尝试用 iOS 17+ tunnel 提示解决 iOS 15 的 WDA 未启动问题。
 
@@ -26,7 +26,7 @@
 
 ### 3.1 视频
 
-- `macos/Runner/IosUsbCapture.swift`：开启 `kCMIOHardwarePropertyAllowScreenCaptureDevices`，按规范化 UDID 精确匹配设备；不按名称选第一台摄像头。
+- `macos/Runner/IosUsbCapture.swift`：开启 `kCMIOHardwarePropertyAllowScreenCaptureDevices`，使用 IOKit 确认目标物理 USB UDID，优先精确匹配采集 ID；若 AVFoundation 返回 UUID，仅在一台物理 USB iOS 设备和一个 Apple iOS muxed 屏幕候选时关联，多设备歧义明确失败；不按名称选第一台摄像头。
 - 独立串行队列配置和启动采集，另一串行队列接收帧。输出 BGRA、IOSurface/Metal 可用的 CVPixelBuffer，丢弃迟到帧；只持有最新帧，主线程刷新通知合并。
 - `IosUsbCapturePlugin.swift` 为每个 Flutter Engine 注册独立 Texture；真实首帧到达才返回成功，15 秒未到首帧失败。窗口关闭停止采集，拒绝旧会话回调污染新会话。
 - Dart `IosUsbMirrorService` 仅传控制消息和 Texture ID，不搬运视频字节。`activeIosMirrorProvider` 为兼容窗口现有 `int?` 接口，数值现在是 Texture ID，旧 `port/getPort` 名称不再代表网络端口。
@@ -131,7 +131,7 @@ PoC 1 的通过条件：指定设备上同时读到真实视频帧和实际 HID 
 | WDA 未签名构建 | 固定 revision、Xcode 26.3、iOS 15.0 target 编译通过；未签名产物不能安装 |
 | Rust 单元测试 | 19 通过、1 个本地视频测试按原配置 ignored |
 | Dart 定向检查 | 变更 Dart 文件 analyze 无问题；iOS 测试集 + Harmony 投屏回归 90 项通过、1 项真机 PoC 因未设置 UDID 跳过；包含双设备动态端口、Session 和自有进程回收的本地假 CLI 测试；随后 USB 原生桥接/生命周期/坐标 7 项、错误展示 8 项通过（部分与前述测试重叠） |
-| USB 独立探针 | 可编译；枚举只有 Mac 摄像头和已有虚拟摄像头，未发现此 iPhone USB 采集设备，未获得帧率数据 |
+| USB 独立探针 | 10 月 7 日真实连接后修正 UDID/采集 UUID 匹配；20 秒采集 1173 帧，约 59.2 FPS，752×1334，无采集错误。属于原生采集结果，非 Flutter 呈现帧率 |
 | 真机 WDA | 未完成；检查时手机未安装 WDA Runner，本机有多个签名身份，尚未选定 Team |
 | 高版本/Windows/Linux | 延后，未验证 |
 
@@ -143,7 +143,7 @@ PoC 1 的通过条件：指定设备上同时读到真实视频帧和实际 HID 
 4. 主/子窗口都能观察同一控制状态；两台设备互不串控，关闭与重启后无自有 Runner/iproxy 残留。
 5. Android scrcpy、Harmony 投屏及原有 iOS 应用/截图/进程入口回归。两设备原生同时采集、实际窗口交互和明暗主题仍需要人工验收。
 
-## 7. USB 失败复查（2026-10-07）
+## 7. USB 失败复查（2026-10-07，重新连接前）
 
 用户反馈 USB 连接后仍无法投屏。本次检查不能证明已修复该真机问题：
 
@@ -154,7 +154,38 @@ PoC 1 的通过条件：指定设备上同时读到真实视频帧和实际 HID 
 - 用户重新连接并保持手机解锁后，先运行独立视频探针取得真实帧，再确认 AnyDeck 当前进程是新构建版本、相机授权和 Texture 显示。当前运行进程不会因重新 build 自动加载新 Swift 代码；需用户完整退出/重新启动后验证。
 - **USB 视频不依赖 WDA、签名 Team 或 8100 端口**。在出现真实帧之前，不把部署 WDA 当作投屏故障的解决方法。
 
-## 8. 上游依据
+## 8. USB 真机定位与修复（2026-10-07，重新连接后）
+
+重新连接 iPhone 6s / iOS 15.8.8 后，USB 注册表与 go-ios 均能识别目标设备，但原生 PoC 仍报 `iosUsbDeviceMissing`。实际枚举证明：
+
+- go-ios / IOKit 返回 40 位设备 UDID；AVFoundation 返回另一个 UUID。
+- 此采集设备的 `modelID` 为 `iOS Device`、manufacturer 为 `Apple Inc.`、`muxed=true`、`video=false`。只枚举 video 或把 uniqueID 当作 UDID 均会漏掉真实屏幕。
+- 此前“两个标识必然相同”的假设错误；根因已由真机复现确认，不是重新部署 WDA 可以解决的问题。
+
+新增 `IosUsbDeviceSelection`，按物理 USB 身份与采集候选唯一性关联。仅适用于本轮单台 UUID iPhone 的明确场景；有多个 USB iOS 设备或多个候选而无法精确关联时，显示“只连接目标 iPhone”提示，不能任意取第一个或按手机名称猜测。精确 ID 匹配的旧接口仍保留。
+
+PoC 另修正权限顺序：先等待 macOS Camera 授权，再启用采集并开始计时。首次系统权限等待期间曾得到 0 帧，授权完成后复测取得真实视频。产品原生插件已在开始采集前请求权限；CLI 使用宿主进程的 TCC 身份，不能把 CLI 授权等同于 AnyDeck 授权。
+
+验证：
+
+- 与产品复用同一 Swift 采集器，20 秒实测 1173 帧、约 59.2 FPS、752×1334，`stage=streaming`、`error` 为空。没有保存手机屏幕内容。
+- 最终 30 秒复测采集 1695 帧，约 57.0 FPS，752×1334，最新帧年龄约 5 ms，仍无采集错误。新 Debug 构建通过，Dart 定向 analyze 无问题，USB 桥接/坐标/错误展示 14 项回归通过。
+- 设备选择 7 项无真机回归覆盖 UUID、旧 ID 精确匹配、多设备歧义、无 USB、错误 UDID 和普通摄像头排除。
+- 新 Swift 文件加入 Xcode 编译；需完整重启 AnyDeck，Flutter 热重载不能替换已加载的原生插件。
+- 用户随后确认 AnyDeck 已可以投屏；新进程的窗口日志记录 `USB first frame ready`。旋转、长时间稳定性及 WDA 控制仍待验收；不能仅由采集 FPS 推断端到端延迟。
+
+```bash
+bash script/ios_usb_poc.sh --test-selection
+bash script/ios_usb_poc.sh '<iPhone-UDID>' 30
+```
+
+### 8.1 视频恢复后，控制未启用的真机检查
+
+2026-10-07 用户反馈“可以投屏了，但不能控制”。再次通过 go-ios 查询该 USB iPhone 的已安装应用，13 个应用中没有 WebDriverAgent Runner。当前控制实现必须先安装已签名的 Runner，再点击“启用控制”；只插 USB 不会自动获得 XCTest 输入能力。
+
+本机存在多个 Apple Development 签名身份，需用户明确指定对应 Developer Team 后运行第 4.3 节的部署脚本。证书显示名称中的括号标识不能直接当成 Team ID，应核对证书 Subject OU 或 Xcode Team。尚未执行签名安装、Home 或触控真机验收，不把视频恢复记为控制通过。
+
+## 9. 上游依据
 
 - [Apple QuickTime：录制连接设备的视频](https://support.apple.com/en-in/guide/quicktime-player/qtp356b55534/mac)：验证 macOS USB 采集路径的产品可行性；不是对本项目帧率的保证。
 - [Appium WebDriverAgent](https://github.com/appium/WebDriverAgent/tree/d17782422d55ff1e5e0ceb74eb1fd509cc0c35b6)：本次固定源码、XCTest Runner 与 HTTP 接口。

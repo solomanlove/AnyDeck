@@ -3,7 +3,7 @@ import CoreMediaIO
 import CoreVideo
 
 /// iPhone USB 屏幕采集：AVFoundation 交付 CVPixelBuffer，只保留最新帧。
-/// 不使用摄像头名称猜测设备，必须与调用方的 UDID 精确匹配。
+/// 通过物理 USB 身份和唯一 iOS 屏幕候选关联，不按名称选择摄像头。
 final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
   private let queue = DispatchQueue(label: "anydeck.ios.usb.capture")
   private let frames = DispatchQueue(label: "anydeck.ios.usb.frames")
@@ -16,6 +16,7 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
   private var failure: String?
   private var stage = "created"
   private var discovered: [[String: Any]] = []
+  private var usbSerials: [String] = []
   private var closed = false
   private var notificationPending = false
   private var observers: [NSObjectProtocol] = []
@@ -46,14 +47,16 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         setStage("enablingDevices")
         try Self.enableDevices()
         setStage("discovering")
-        let key = Self.normalize(udid)
         var device: AVCaptureDevice?
         let deadline = Date().addingTimeInterval(8)
         repeat {
           if isClosed { return }
           let available = Self.devices()
-          lock.lock(); discovered = available.map(Self.describe); lock.unlock()
-          device = available.first { Self.normalize($0.uniqueID) == key }
+          let identities = available.map(Self.describe)
+          let physical = IosUsbDeviceSelection.connectedSerials()
+          lock.lock(); discovered = identities; usbSerials = physical; lock.unlock()
+          let id = try IosUsbDeviceSelection.selectID(udid: udid, usbSerials: physical, devices: identities)
+          device = available.first { $0.uniqueID == id }
           if device == nil { Thread.sleep(forTimeInterval: 0.2) }
         } while device == nil && Date() < deadline
         guard let device else {
@@ -95,16 +98,13 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         lock.lock(); startedAt = Date().timeIntervalSince1970; lock.unlock()
         setStage("startingSession")
         capture.startRunning()
+        lock.lock(); if count == 0 { stage = "waitingFirstFrame" }; lock.unlock()
         DispatchQueue.main.async { completion(nil) }
       } catch {
         setFailure(error.localizedDescription)
         DispatchQueue.main.async { completion(error) }
       }
     }
-  }
-
-  private static func normalize(_ id: String) -> String {
-    id.replacingOccurrences(of: "-", with: "").lowercased()
   }
 
   private var isClosed: Bool {
@@ -123,13 +123,15 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
   /// 只记录设备身份和能力，不采集或保存屏幕内容。
   static func describe(_ device: AVCaptureDevice) -> [String: Any] {
     ["id": device.uniqueID, "name": device.localizedName,
+     "model": device.modelID, "manufacturer": device.manufacturer,
+     "transport": device.transportType, "type": device.deviceType.rawValue,
      "video": device.hasMediaType(.video), "muxed": device.hasMediaType(.muxed),
      "connected": device.isConnected, "suspended": device.isSuspended]
   }
 
   func diagnostics() -> [String: Any] {
     var value = status()
-    lock.lock(); value["devices"] = discovered; lock.unlock()
+    lock.lock(); value["devices"] = discovered; value["usbSerials"] = usbSerials; lock.unlock()
     value["cameraAuthorization"] = AVCaptureDevice.authorizationStatus(for: .video).rawValue
     return value
   }

@@ -3,6 +3,21 @@ import AVFoundation
 
 // 与生产代码复用同一个采集器，输出帧数/尺寸，不落盘屏幕内容。
 let arguments = CommandLine.arguments
+// 与产品启动顺序一致：先完成权限，再启动采集，授权等待不占用视频测量时间。
+if arguments.count > 1 && arguments[1] != "--list" {
+  var granted = AVCaptureDevice.authorizationStatus(for: .video) == .authorized
+  if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
+    var finished = false
+    AVCaptureDevice.requestAccess(for: .video) { allowed in
+      DispatchQueue.main.async { granted = allowed; finished = true }
+    }
+    let deadline = Date().addingTimeInterval(60)
+    while !finished && Date() < deadline {
+      RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+    }
+  }
+  guard granted else { fputs("iosUsbPermissionDenied\n", stderr); exit(2) }
+}
 do { try IosUsbCapture.enableDevices() } catch {
   fputs("USB capture discovery failed: \(error)\n", stderr)
   exit(1)

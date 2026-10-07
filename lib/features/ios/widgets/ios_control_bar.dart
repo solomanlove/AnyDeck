@@ -62,6 +62,7 @@ String iosControlErrorText(BuildContext context, String error) {
     'iosWdaUnavailable',
     'iosControlBusy',
     'iosUsbTextureFailed',
+    'iosUsbDeviceAmbiguous',
     'iosUsbDeviceMissing',
     'iosUsbPermissionDenied',
     'iosUsbFirstFrameTimeout',
