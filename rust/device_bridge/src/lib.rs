@@ -5,6 +5,8 @@ mod audio_queue;
 pub mod performance;
 pub mod core;
 pub mod c_api_ios;
+pub mod airplay;
+pub mod c_api_airplay;
 mod stream;
 mod video;
 mod video_ffi;
@@ -248,23 +250,33 @@ pub unsafe extern "C" fn anydeck_clipboard(id: u64, output: *mut u8, capacity: u
 }
 #[no_mangle]
 pub extern "C" fn anydeck_video_size(id: u64) -> u64 {
-    let Some(s) = session(id) else {
-        return 0;
-    };
-    let (width, height) = s.frame.dimensions();
-    ((width as u64) << 32) | height as u64
+    if let Some(s) = session(id) {
+        let (width, height) = s.frame.dimensions();
+        return ((width as u64) << 32) | height as u64;
+    }
+    let mut w = 0u32;
+    let mut h = 0u32;
+    if unsafe { c_api_airplay::anydeck_airplay_get_dimensions(id, &mut w, &mut h) } {
+        ((w as u64) << 32) | h as u64
+    } else {
+        0
+    }
 }
 /// 返回 retain 后的 CVPixelBuffer，由 Flutter Texture 协议接管 release。
 #[no_mangle]
 pub extern "C" fn anydeck_copy_pixel_buffer(id: u64) -> *mut c_void {
-    session(id)
-        .map(|s| s.frame.copy())
-        .unwrap_or(std::ptr::null_mut())
+    if let Some(s) = session(id) {
+        return s.frame.copy();
+    }
+    c_api_airplay::anydeck_airplay_get_frame(id)
 }
 /// 检查当前解码帧是否已绑定 IOSurface（确保 Metal Texture 可用）。
 #[no_mangle]
 pub extern "C" fn anydeck_has_surface(id: u64) -> bool {
-    session(id).map(|s| s.frame.has_surface()).unwrap_or(false)
+    if let Some(s) = session(id) {
+        return s.frame.has_surface();
+    }
+    c_api_airplay::anydeck_airplay_has_surface(id)
 }
 /// 停止只发信号和关闭 socket；状态变为 2 时 ADB 与原生资源已清理完成。
 #[no_mangle]
@@ -282,6 +294,7 @@ pub extern "C" fn anydeck_stop(id: u64) {
             }
         }
     }
+    c_api_airplay::anydeck_airplay_stop(id);
 }
 /// Flutter 在停止完成后释放句柄；重复调用安全。
 #[no_mangle]

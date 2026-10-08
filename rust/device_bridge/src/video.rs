@@ -83,6 +83,8 @@ pub struct Decoder {
     pps: Vec<u8>,
     frame: Arc<Frame>,
 }
+unsafe impl Send for Decoder {}
+unsafe impl Sync for Decoder {}
 impl Decoder {
     pub fn new(frame: Arc<Frame>) -> Self {
         Self {

@@ -17,6 +17,7 @@ import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
 import 'app/window/console/console_window_app.dart';
 import 'app/window/version_distribution/android_version_distribution_window_app.dart';
+import 'app/window/airplay/airplay_mirror_window_app.dart';
 import 'app/window/multi_window_compat.dart';
 
 import 'app/settings/app_settings_controller.dart';
@@ -96,7 +97,9 @@ Future<void> _startApplication(List<String> args) async {
             ? 'console_window_$windowId'
             : type == 'version_distribution'
                 ? 'version_distribution_window_$windowId'
-                : 'emulator_window_$windowId';
+                : type == 'airplay_mirror'
+                    ? 'airplay_mirror_window_$windowId'
+                    : 'emulator_window_$windowId';
     PlatformDispatcher.instance.setIsolateDebugName(windowName);
 
     // 获取当前子窗口 of VM Service URI 和 Isolate ID 并输出，用于在 DevTools 中连接调试
@@ -167,6 +170,20 @@ Future<void> _startApplication(List<String> args) async {
             overrides: [windowIdProvider.overrideWithValue(windowId)],
             child: AppLogScope(
               child: AndroidVersionDistributionWindowApp(
+                windowId: windowId,
+                argument: argument,
+              ),
+            ),
+          ),
+        );
+      } else if (type == 'airplay_mirror') {
+        await configureCurrentAdbManageSubWindow(argument);
+        // AirPlay 独立投屏小窗口
+        runApp(
+          ProviderScope(
+            overrides: [windowIdProvider.overrideWithValue(windowId)],
+            child: AppLogScope(
+              child: AirPlayMirrorWindowApp(
                 windowId: windowId,
                 argument: argument,
               ),

@@ -108,6 +108,8 @@ class _ContentTitleBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              AirPlayToolbarButton(iconColor: iconColor),
+              const SizedBox(width: 8),
               IconButton(
                 tooltip: context.l10n.t('refreshDevices'),
                 icon: const Icon(CupertinoIcons.refresh),
