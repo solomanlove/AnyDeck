@@ -43,7 +43,7 @@
 1. 查询已安装应用；自动选择唯一名称包含 `WebDriverAgent` 且 Bundle ID 以 `.xctrunner` 结束的 Runner。找不到或不唯一均报前置条件错误，不猜测设备/Runner。底层允许显式 `bundleId`。
 2. `ios image auto --udid=<UDID>` 准备 Developer Disk Image（60 秒超时）；iOS 15 XCTest 需要它。
 3. 分配动态本地端口，用 `iproxy --source 127.0.0.1 --local --udid <UDID> <port>:8100` 转发。源码核对发现 go-ios v1.2.0 的 `forward` 固定绑定 `0.0.0.0`，因此不用于本轮桌面转发。
-4. `ios runwda --bundleid=<RunnerID> --testrunnerbundleid=<RunnerID> --xctestconfig=WebDriverAgentRunner.xctest --udid=<UDID>` 启动测试 Runner。
+4. 先经 iproxy 短探测 `/status`（单次 500 ms、探测窗口约 2 秒），若 `value.ready=true` 则复用已运行的 WDA；否则执行 `ios runwda --bundleid=<RunnerID> --testrunnerbundleid=<RunnerID> --xctestconfig=WebDriverAgentRunner.xctest --udid=<UDID>` 启动测试 Runner。
 5. 轮询 `/status`，创建 `/session`，读取 point 窗口尺寸与方向；以上成功才标记“控制已就绪”。
 
 `IosWdaHttp` 使用 Dart 异步 HttpClient，请求预先编码 UTF-8 并设置字节级 Content-Length（WDA 不接受 chunked 请求）；支持分块响应并验证 HTTP、W3C、JSONWP 错误。单请求 8 秒超时，响应上限 8 MiB。所有控制操作统一路由，失败不回退到别的后端。
@@ -228,6 +228,31 @@ bash script/ios_usb_poc.sh '<iPhone-UDID>' 30
 - 本轮未启动桌面项目、未执行真机输入，也未重新签名或安装 WDA。上述为本地假 CLI/HTTP、单元与 Widget 测试，不能替代 iPhone 连续操作验收。
 
 人工验收：加载更新后的 Dart 代码，停止旧控制会话并重新启用；在截图中的动态首页连续点击/滑动至少 1 分钟，旋转与窗口缩放后继续验证；检查控制断开后按钮禁用、重新启用恢复，以及 Android/HarmonyOS 录屏/截图入口。若仍异常，导出 `ios-control` 日志区分请求超时与 Runner/forward 退出。
+
+### 8.4 真机数秒断连：复用已运行的 WDA（2026-10-08 确认）
+
+上一节的本地回归没有覆盖实际 Runner 启动失败。用户继续反馈 `/actions` 报 `HttpException: Connection closed before full header was received`，本轮获授权后直接操作真实投屏窗口并抓取进程日志。
+
+证据链：
+
+1. 10 月 7 日真机日志多次出现 `WDA runner exited (1)`；在窗口里重新启用控制后，不点击手机内容也会很快断开。
+2. 单独运行同样的 `ios runwda`，约 6 秒后在 `com.apple.instruments.server.services.processcontrol` 建立通道时超时，随后 `broken pipe`、退出码 1。该结果证明重复启动失败，尚不能确定底层调试通道失败的全部环境原因。
+3. 同一台 iPhone 的 USB iproxy 转发仍可读到 WDA `/status`，`value.ready=true`，说明手机上已有可用服务。原逻辑无条件创建新的 runwda，再将其失败退出视为整个控制会话死亡，关闭健康转发，造成刚可控就断开的现象。
+
+实现与边界：
+
+- `IosWdaHost` 在 iproxy 启动后先短探测 WDA，覆盖转发尚未绑定端口的时序；存在可用服务时不再创建 Runner，只创建当前控制 Session、读取几何并持有自有转发。
+- 不可用时才沿用原 runwda 启动流程，启动轮询明确检查 `value.ready`；只有确实创建的子进程才注册退出监听、停止时回收。复用的设备端 WDA 不由本次桌面会话杀死。
+- `IosWdaHttp.request` 支持本次请求覆盖超时时间，短探测不改变正常请求的 8 秒上限。
+- Runner/forward 退出日志附带现有有界输出，便于区分 HTTP 症状与启动失败，不只记录退出码。
+- 此修复覆盖“手机已有健康 WDA”的复用场景；不宣称已修复冷启动时所有 Instruments/XCTest 环境异常，也未验证设备重启后的首次启动。
+
+验证与交接：
+
+- 新增“服务已就绪且重复 Runner 启动必失败”的假 CLI 回归，覆盖两次启停、几何查询、点击、零次 runwda 调用，以及自有 iproxy 回收。
+- WDA HTTP、Host、生命周期、故障恢复、Provider 定向测试 **18 项通过**；相关 Dart analyze 通过；macOS Debug 构建成功。
+- 重启到本次构建后，真机日志明确记录 `Reusing WDA already responding over USB; no runner launched`；通过实际投屏窗口拖动，观察到 iPhone 桌面成功翻页且控制保持就绪。用户随后明确确认“现在可以控制了”，并要求提交。
+- 已结束本轮单独创建的诊断转发与旧调试实例，当前修复版窗口保留供用户继续使用。未重新签名/安装 WDA；没有宣称完成长时间稳定性或全部手势验收。
 
 ## 9. 上游依据
 

@@ -20,6 +20,7 @@ class IosWdaHttp {
     String path, {
     String method = 'GET',
     Map<String, dynamic>? body,
+    Duration? requestTimeout,
   }) async {
     HttpClientRequest? active;
     var cancelled = false;
@@ -66,7 +67,7 @@ class IosWdaHttp {
           );
         }
         return decoded;
-      })().timeout(timeout);
+      })().timeout(requestTimeout ?? timeout);
     } catch (_) {
       cancelled = true;
       active?.abort();

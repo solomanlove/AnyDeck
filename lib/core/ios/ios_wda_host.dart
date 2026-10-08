@@ -222,18 +222,42 @@ class IosWdaHost {
         throw StateError('iosWdaProxyMissing: ${error.message}');
       }
       checkCancelled();
-      connection.runner = await IosWdaProcess.start(commands.executable, [
-        'runwda',
-        '--bundleid=$runner',
-        '--testrunnerbundleid=$runner',
-        '--xctestconfig=WebDriverAgentRunner.xctest',
-        '--udid=$udid',
-      ]);
+      // WDA 可在之前的启动进程退出后继续服务。先复用，避免重复启动失败时
+      // 将健康的 USB 转发一起关闭；短暂等待也覆盖 iproxy 尚未绑定端口的竞态。
+      var responding = false;
+      final reuseDeadline = DateTime.now().add(const Duration(seconds: 2));
+      do {
+        checkCancelled();
+        try {
+          final status = await connection.http.request(
+            '/status',
+            requestTimeout: const Duration(milliseconds: 500),
+          );
+          responding = (status['value'] as Map?)?['ready'] == true;
+          if (responding) break;
+        } catch (_) {}
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      } while (DateTime.now().isBefore(reuseDeadline));
+      checkCancelled();
+      if (responding) {
+        AppLogRecorder.instance.record(
+          'Reusing WDA already responding over USB; no runner launched',
+          tag: 'ios-control',
+        );
+      } else {
+        connection.runner = await IosWdaProcess.start(commands.executable, [
+          'runwda',
+          '--bundleid=$runner',
+          '--testrunnerbundleid=$runner',
+          '--xctestconfig=WebDriverAgentRunner.xctest',
+          '--udid=$udid',
+        ]);
+      }
       checkCancelled();
       final deadline = DateTime.now().add(const Duration(seconds: 45));
       Object? lastError;
-      var responding = false;
-      while (!_closed &&
+      while (!responding &&
+          !_closed &&
           !_cancelled.contains(udid) &&
           DateTime.now().isBefore(deadline)) {
         if (connection.forward?.exitCode != null ||
@@ -243,9 +267,9 @@ class IosWdaHost {
           );
         }
         try {
-          await connection.http.request('/status');
-          responding = true;
-          break;
+          final status = await connection.http.request('/status');
+          responding = (status['value'] as Map?)?['ready'] == true;
+          if (responding) break;
         } catch (error) {
           lastError = error;
         }
@@ -263,12 +287,12 @@ class IosWdaHost {
       checkCancelled();
       connection.ready = true;
       // CLI 退出立即失效；旧进程回调不能误清理重连后的会话。
-      for (final child in [connection.runner!, connection.forward!]) {
+      for (final child in [connection.runner, connection.forward].nonNulls) {
         unawaited(
           child.process.exitCode.then((code) async {
             if (identical(_connections[udid], connection)) {
               AppLogRecorder.instance.record(
-                'WDA ${identical(child, connection.runner) ? 'runner' : 'forward'} exited ($code)',
+                'WDA ${identical(child, connection.runner) ? 'runner' : 'forward'} exited ($code): ${child.log}',
                 tag: 'ios-control',
                 level: 'W',
               );

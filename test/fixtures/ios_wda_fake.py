@@ -17,6 +17,10 @@ if args[0] == 'apps':
 elif args[0] == 'image':
     print('{}')
 elif args[0] == 'runwda':
+    if Path(__file__).with_suffix('.runner-fails').exists():
+        sys.exit('cannot start test runner: broken pipe')
+    phone = next(a.split('=', 1)[1] for a in args if a.startswith('--udid='))
+    Path(__file__).with_suffix('.ready-' + phone).touch()
     signal.pause()
 else:
     assert args[:3] == ['--source', '127.0.0.1', '--local']
@@ -48,6 +52,8 @@ else:
                 value = {'error': 'invalid session id', 'message': 'Session expired'}
             elif self.path == '/session':
                 value = {'sessionId': phone}
+            elif self.path == '/status':
+                value = {'ready': Path(__file__).with_suffix('.ready-' + phone).exists()}
             elif self.path.endswith('/window/size'):
                 value = {'width': 375, 'height': 667}
             elif self.path.endswith('/orientation'):
