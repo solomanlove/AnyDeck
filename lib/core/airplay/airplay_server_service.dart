@@ -4,9 +4,10 @@ import 'dart:ffi' hide Size;
 import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/window/multi_window_compat.dart';
 import '../scrcpy/rust_device_bridge.dart';
 import 'airplay_server_state.dart';
 
@@ -251,5 +252,32 @@ class AirPlayServerService {
       await _channel.invokeMethod<void>('untrack', {'handle': session.id});
     } catch (_) {}
     _stopFunc(session.id);
+  }
+}
+
+/// 打开或重新打开 AirPlay 独立非全屏等比投屏窗口。
+///
+/// 当用户在手机端开启屏幕镜像，或在电脑端需要重新唤出投屏小窗口时调用。
+Future<void> openAirPlayMirrorWindow(AirPlaySessionData session) async {
+  final double aspect = (session.width > 0 && session.height > 0)
+      ? (session.width / session.height)
+      : (9.0 / 19.5);
+  final double windowWidth = aspect < 1.0 ? 360.0 : 720.0;
+  final double windowHeight = windowWidth / aspect;
+  final initialSize = Size(windowWidth, windowHeight);
+
+  try {
+    await createAdbManageWindow(
+      arguments: {
+        'type': 'airplay_mirror',
+        'handle': session.id,
+        'aspectRatio': aspect,
+        'deviceName': session.clientName ?? 'iPhone',
+      },
+      frame: Offset.zero & initialSize,
+      title: '${session.clientName ?? 'iPhone'} - AirPlay',
+    );
+  } catch (e) {
+    debugPrint('[AirPlay] Failed to open mirror window: $e');
   }
 }

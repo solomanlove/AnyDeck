@@ -106,6 +106,7 @@ import 'apps/widgets/camera_preview_view.dart';
 import 'apps/widgets/apps_alphabet_sidebar.dart';
 import 'apps/widgets/device_clipboard_view.dart';
 import 'airplay/airplay_toolbar_button.dart';
+import 'airplay/widgets/airplay_active_banner.dart';
 import '../core/airplay/airplay_server_service.dart';
 import '../core/airplay/airplay_server_state.dart';
 import 'files/controller/file_favorite_folders_controller.dart';
@@ -429,7 +430,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       if (next != null &&
           next.status == AirPlayServerStatus.mirroring &&
           previous?.status != AirPlayServerStatus.mirroring) {
-        _openAirPlayMirrorWindow(next);
+        openAirPlayMirrorWindow(next);
       }
     });
 
@@ -602,30 +603,5 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         left.model != right.model ||
         left.product != right.product ||
         left.transportId != right.transportId;
-  }
-
-  /// 自动打开 AirPlay 独立非全屏等比投屏窗口
-  Future<void> _openAirPlayMirrorWindow(AirPlaySessionData session) async {
-    final double aspect = (session.width > 0 && session.height > 0)
-        ? (session.width / session.height)
-        : (9.0 / 19.5);
-    final double windowWidth = aspect < 1.0 ? 360.0 : 720.0;
-    final double windowHeight = windowWidth / aspect;
-    final initialSize = Size(windowWidth, windowHeight);
-
-    try {
-      await createAdbManageWindow(
-        arguments: {
-          'type': 'airplay_mirror',
-          'handle': session.id,
-          'aspectRatio': aspect,
-          'deviceName': session.clientName ?? 'iPhone',
-        },
-        frame: Offset.zero & initialSize,
-        title: '${session.clientName ?? 'iPhone'} - AirPlay',
-      );
-    } catch (e) {
-      debugPrint('[AirPlay] Failed to auto create mirror window: $e');
-    }
   }
 }

@@ -63,6 +63,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const AirPlayActiveBanner(),
             if (hasChecked) ...[
               _buildBatchActionsToolbar(
                 context,

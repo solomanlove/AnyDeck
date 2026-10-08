@@ -69,6 +69,12 @@ class _AirPlayToolbarButtonState extends ConsumerState<AirPlayToolbarButton>
             context.l10n.t('airplayBroadcasting').replaceAll('{name}', 'AnyDeck-AirPlay'),
           );
         }
+      } else if (session.status == AirPlayServerStatus.mirroring) {
+        // 当前正处于投屏中，点击重新打开并置顶投屏窗口
+        await openAirPlayMirrorWindow(session);
+        if (mounted) {
+          AppToast.show(context, context.l10n.t('airplayOpenMirrorWindow'));
+        }
       } else {
         await notifier.stopServer();
         if (mounted) {

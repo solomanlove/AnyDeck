@@ -12,6 +12,7 @@ import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
 import '../window_close_shortcut.dart';
+import 'widgets/airplay_disconnected_view.dart';
 
 /// AirPlay 投屏独立子窗口入口。
 class AirPlayMirrorWindowApp extends ConsumerWidget {
@@ -283,34 +284,9 @@ class _AirPlayMirrorWindowContentState extends ConsumerState<AirPlayMirrorWindow
   /// 构建视频流或状态占位视图
   Widget _buildVideoContent(BuildContext context, bool isDark) {
     if (_isDisconnected) {
-      return Container(
-        color: isDark ? const Color(0xff1e1e1e) : const Color(0xfff5f5f7),
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.airplay_rounded,
-              size: 48,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              context.l10n.t('airplayDisconnected'),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              onPressed: () => windowManager.close(),
-              icon: const Icon(CupertinoIcons.xmark, size: 16),
-              label: Text(context.l10n.t('airplayCloseWindow')),
-            ),
-          ],
-        ),
+      return AirPlayDisconnectedView(
+        deviceName: widget.deviceName,
+        onClose: () => windowManager.close(),
       );
     }
 
@@ -417,7 +393,25 @@ class _AirPlayMirrorWindowContentState extends ConsumerState<AirPlayMirrorWindow
               onPressed: _toggleFullScreen,
             ),
             const SizedBox(width: 4),
-            // 关闭窗口按钮
+            // 彻底停止投屏会话按钮 (通知手机退出镜像)
+            _WindowIconButton(
+              icon: CupertinoIcons.stop_circle,
+              tooltip: context.l10n.t('airplayStopSession'),
+              color: Colors.redAccent.withValues(alpha: 0.85),
+              onPressed: () async {
+                final service = AirPlayServerService.instance;
+                await service.stop(AirPlaySessionData(
+                  id: widget.handle,
+                  serverName: widget.deviceName,
+                  rtspPort: 7000,
+                  videoPort: 7100,
+                  status: AirPlayServerStatus.stopped,
+                ));
+                await windowManager.close();
+              },
+            ),
+            const SizedBox(width: 4),
+            // 关闭窗口按钮 (保留后台投屏，可从设备列表重新打开)
             _WindowIconButton(
               icon: CupertinoIcons.xmark,
               tooltip: context.l10n.t('airplayCloseWindow'),

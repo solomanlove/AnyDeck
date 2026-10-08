@@ -216,6 +216,9 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
 
     final hasActiveWifi = activeWifiId.isNotEmpty;
     final wifiIp = device.wifiIp;
+    final airplaySession = ref.watch(airplaySessionProvider);
+    final isAirplayMirroring = airplaySession != null &&
+        airplaySession.status == AirPlayServerStatus.mirroring;
 
     return Expanded(
       flex: 2,
@@ -224,8 +227,48 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
         runSpacing: 4,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          // 1. 若设备在线，显示独立投屏按钮
-          if (device.isOnline) ...[
+          // 0. 若为 iOS 设备且当前 AirPlay 正在投屏中，展示专属重新打开投屏窗口按钮
+          if (device.isIos && isAirplayMirroring) ...[
+            Tooltip(
+              message: context.l10n.t('airplayOpenMirrorWindow'),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () => openAirPlayMirrorWindow(airplaySession),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF34C759).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0xFF34C759).withValues(alpha: 0.4),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.airplay_rounded,
+                        size: 15,
+                        color: Color(0xFF34C759),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        context.l10n.t('airplayOpenMirrorWindow'),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF34C759),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ]
+          // 1. 若设备在线且非 AirPlay 独占状态，显示常规独立投屏按钮
+          else if (device.isOnline) ...[
             IconButton(
               icon: const Icon(
                 CupertinoIcons.tv,
