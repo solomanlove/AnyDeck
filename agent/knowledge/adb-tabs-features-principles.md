@@ -79,6 +79,8 @@
    - **返回键长按强停**：投屏工具栏返回键短按仍发送 `KEYCODE_BACK`。长按时先通过 `dumpsys window | grep mCurrentFocus` 获取前台包名并在窗口内提示应用名；若继续按住且前台不是 HOME/Launcher，则执行 `am force-stop <package>`。桌面包通过系统 HOME resolve 和常见 launcher 包名识别，只提示“桌面”，不执行强停。
    - **电源键与关闭物理屏幕状态同步**：投屏工具栏的“关闭/开启设备屏幕”通过 scrcpy control message 设置 Android 物理屏幕模式，并用 `screenPowerOffProvider` 渲染 UI 状态。用户再点击电源键 (`KEYCODE_POWER`) 时，设备会离开该受控物理屏幕模式；因此电源键命令成功后必须同步将 `screenPowerOffProvider(deviceId)` 重置为 `false`，避免手机真实亮灭状态和软件图标状态不一致。
    - **截图服务按设备类型分流**：Screenshot Tab 和投屏工具栏必须以 `AdbDevice.isHarmony` 为 source-of-truth。纯血 HarmonyOS NEXT 设备调用 `HdcService.captureScreenshot(deviceId)`，Android 设备调用 `AdbService.captureScreenshot(deviceId)`；不得把 HDC `connectKey` 传给 `adb -s`，否则会得到 `device '<connectKey>' not found`。
+   - **快捷跳转反馈（2026-10-09）**：控制 Tab 的全部快捷跳转（含工程模式、自定义链接）和 `DeviceSettingsPopup` 的系统设置入口共用 `runDeeplinkAction`。使用本地化 `deeplinkSuccess` / `deeplinkFailed` 显示“跳转成功 / 跳转失败”，不在 Toast 中显示 `Starting: Intent` 或原始错误输出；沿用 `DashboardSnack` 成功/错误图标。非零退出码、输出中的明确 `Error:` / `Error type` / 异常行以及 Future 异常均显示失败；已运行 Activity 接收 Intent 的 Warning 仍视为成功。设备断连沿用 registry 同步，异步返回时检查 Context 生命周期；跳转不触发无关的设备概览刷新。
+   - **验证与交接边界**：`test/deeplink_feedback_test.dart` 覆盖中英文成功/失败 Toast、零退出码错误、已有 Activity 的正常 Warning、URI 中含 Error 字样和执行异常。手动回归应验证控制 Tab、手机设置弹窗、自定义链接在可打开/不可打开目标、设备断开和中英文切换时的提示；未启动应用，未做真机验收。“跳转成功”表示启动命令执行成功，不代表已回读并确认目标页面实际可见。本次不修改 ADB 命令、工程模式候选回退、投屏流、主题或跨窗口语言同步机制。
 3. **已存 Wi-Fi 密码读取 (需 Root)**：
    - 依次检测三代 Android 系统配置路径，以 `cat` 命令读取其内容并在 Host 端进行 XML/conf 解析：
      - Android 11+ 路径：`/data/misc/apexdata/com.android.wifi/WifiConfigStore.xml`

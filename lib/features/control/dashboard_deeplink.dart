@@ -17,7 +17,7 @@ class _DeeplinkPanel extends ConsumerWidget {
         _ActionButton(
           icon: CupertinoIcons.device_desktop,
           label: context.l10n.t('deeplinkDeveloperOptions'),
-          onPressed: () => _runAdbAction(
+          onPressed: () => runDeeplinkAction(
             context,
             ref,
             actions.openDeveloperSettings(device.id),
@@ -27,7 +27,7 @@ class _DeeplinkPanel extends ConsumerWidget {
         _ActionButton(
           icon: CupertinoIcons.info,
           label: context.l10n.t('deeplinkDeviceInfo'),
-          onPressed: () => _runAdbAction(
+          onPressed: () => runDeeplinkAction(
             context,
             ref,
             actions.openDeviceInfoSettings(device.id),
@@ -37,7 +37,7 @@ class _DeeplinkPanel extends ConsumerWidget {
         _ActionButton(
           icon: CupertinoIcons.globe,
           label: context.l10n.t('deeplinkLanguages'),
-          onPressed: () => _runAdbAction(
+          onPressed: () => runDeeplinkAction(
             context,
             ref,
             actions.openLocaleSettings(device.id),
@@ -48,20 +48,20 @@ class _DeeplinkPanel extends ConsumerWidget {
           icon: CupertinoIcons.settings,
           label: context.l10n.t('deeplinkSettings'),
           onPressed: () =>
-              _runAdbAction(context, ref, actions.openMainSettings(device.id)),
+              runDeeplinkAction(context, ref, actions.openMainSettings(device.id)),
         ),
         // Wi-Fi 设置
         _ActionButton(
           icon: CupertinoIcons.wifi,
           label: context.l10n.t('deeplinkWifi'),
           onPressed: () =>
-              _runAdbAction(context, ref, actions.openWifiSettings(device.id)),
+              runDeeplinkAction(context, ref, actions.openWifiSettings(device.id)),
         ),
         // 应用管理
         _ActionButton(
           icon: CupertinoIcons.square_grid_2x2,
           label: context.l10n.t('deeplinkApps'),
-          onPressed: () => _runAdbAction(
+          onPressed: () => runDeeplinkAction(
             context,
             ref,
             actions.openManageApplicationsSettings(device.id),
@@ -71,7 +71,7 @@ class _DeeplinkPanel extends ConsumerWidget {
         _ActionButton(
           icon: CupertinoIcons.wrench,
           label: context.l10n.t('deeplinkTestingSettings'),
-          onPressed: () => _runAdbAction(
+          onPressed: () => runDeeplinkAction(
             context,
             ref,
             actions.openTestingSettings(device.id),
@@ -140,7 +140,7 @@ class _DeeplinkPanel extends ConsumerWidget {
       return;
     }
 
-    await _runAdbAction(
+    await runDeeplinkAction(
       context,
       ref,
       ref

@@ -9,6 +9,7 @@ import '../../core/adb/adb_result.dart';
 import '../../core/device_info/device_overview.dart';
 import '../../core/providers/app_providers.dart';
 import '../widgets/dashboard_snack.dart';
+import 'deeplink_feedback.dart';
 
 /// 投屏窗口与控制 Tab 复用的手机快捷设置弹窗。
 class DeviceSettingsPopup extends ConsumerStatefulWidget {
@@ -136,36 +137,56 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
       _ShortcutSettingAction(
         icon: Icons.developer_mode,
         label: context.l10n.t('deeplinkDeveloperOptions'),
-        onPressed: () =>
-            _runAction(actions.openDeveloperSettings(widget.deviceId)),
+        onPressed: () => runDeeplinkAction(
+          context,
+          ref,
+          actions.openDeveloperSettings(widget.deviceId),
+        ),
       ),
       _ShortcutSettingAction(
         icon: CupertinoIcons.wifi,
         label: context.l10n.t('deeplinkWifi'),
-        onPressed: () => _runAction(actions.openWifiSettings(widget.deviceId)),
+        onPressed: () => runDeeplinkAction(
+          context,
+          ref,
+          actions.openWifiSettings(widget.deviceId),
+        ),
       ),
       _ShortcutSettingAction(
         icon: CupertinoIcons.settings,
         label: context.l10n.t('deeplinkSettings'),
-        onPressed: () => _runAction(actions.openMainSettings(widget.deviceId)),
+        onPressed: () => runDeeplinkAction(
+          context,
+          ref,
+          actions.openMainSettings(widget.deviceId),
+        ),
       ),
       _ShortcutSettingAction(
         icon: CupertinoIcons.info_circle,
         label: context.l10n.t('deeplinkDeviceInfo'),
-        onPressed: () =>
-            _runAction(actions.openDeviceInfoSettings(widget.deviceId)),
+        onPressed: () => runDeeplinkAction(
+          context,
+          ref,
+          actions.openDeviceInfoSettings(widget.deviceId),
+        ),
       ),
       _ShortcutSettingAction(
         icon: CupertinoIcons.globe,
         label: context.l10n.t('deeplinkLanguages'),
-        onPressed: () =>
-            _runAction(actions.openLocaleSettings(widget.deviceId)),
+        onPressed: () => runDeeplinkAction(
+          context,
+          ref,
+          actions.openLocaleSettings(widget.deviceId),
+        ),
       ),
       _ShortcutSettingAction(
         icon: CupertinoIcons.square_grid_2x2,
         label: context.l10n.t('deeplinkApps'),
-        onPressed: () =>
-            _runAction(actions.openManageApplicationsSettings(widget.deviceId)),
+        onPressed: () => runDeeplinkAction(
+          context,
+          ref,
+          actions.openManageApplicationsSettings(widget.deviceId),
+        ),
       ),
     ];
 

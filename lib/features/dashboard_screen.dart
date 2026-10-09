@@ -71,6 +71,7 @@ import '../core/ios/ios_overview_details.dart';
 import '../core/device_actions/device_action_service.dart';
 import '../core/device_actions/wifi_credentials.dart';
 import 'control/device_settings_popup.dart';
+import 'control/deeplink_feedback.dart';
 import 'control/widgets/audio_forward_button.dart';
 import 'terminal/terminal_tab.dart';
 import 'terminal/harmony_terminal_tab.dart';
