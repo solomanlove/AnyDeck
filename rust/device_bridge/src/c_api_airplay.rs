@@ -66,10 +66,10 @@ pub unsafe extern "C" fn anydeck_airplay_start(
 /// 停止并销毁指定的 AirPlay 投屏服务
 #[no_mangle]
 pub extern "C" fn anydeck_airplay_stop(id: u64) {
-    if let Ok(mut map) = servers().lock() {
-        if let Some(server) = map.remove(&id) {
-            server.stop();
-        }
+    // join native 线程前释放全局表锁，避免 Texture/状态轮询被停止操作卡住。
+    let server = servers().lock().ok().and_then(|mut map| map.remove(&id));
+    if let Some(server) = server {
+        server.stop();
     }
 }
 

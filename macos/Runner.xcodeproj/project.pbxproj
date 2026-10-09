@@ -449,7 +449,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n/bin/bash \"$PROJECT_DIR/../script/build_device_bridge.sh\"\nDEST=\"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Contents/Frameworks\"\nmkdir -p \"$DEST\"\ncp -f \"$PROJECT_DIR/Libs/libanydeck_device_bridge.dylib\" \"$DEST/\"\ncodesign --force --sign - \"$DEST/libanydeck_device_bridge.dylib\"\n";
+			shellScript = "set -e\n/bin/bash \"$PROJECT_DIR/../script/build_device_bridge.sh\"\nDEST=\"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Contents/Frameworks\"\nmkdir -p \"$DEST\"\nTEMP_LIB=\"$DEST/.libanydeck_device_bridge.$$.dylib\"\ntrap 'rm -f \"$TEMP_LIB\"' EXIT\ncp -p \"$PROJECT_DIR/Libs/libanydeck_device_bridge.dylib\" \"$TEMP_LIB\"\nmv -f \"$TEMP_LIB\" \"$DEST/libanydeck_device_bridge.dylib\"\n";
 		};
 		7A3779DD79E2B573F94E4CAD /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

@@ -30,6 +30,15 @@ impl Frame {
             )
         }
     }
+    /// 断流时释放最近一帧，避免重连期间继续显示上一设备的画面。
+    pub fn clear(&self) {
+        if let Ok(mut frame) = self.0.lock() {
+            if *frame != 0 {
+                unsafe { CFRelease(*frame as Ref); }
+                *frame = 0;
+            }
+        }
+    }
     pub fn has_surface(&self) -> bool {
         let Ok(frame) = self.0.lock() else {
             return false;

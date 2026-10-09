@@ -189,7 +189,8 @@ class AdbService {
         _onLog?.call('Screenshot failed: $err', tag: 'adb', level: 'E');
         throw AdbException(err);
       }
-      return Uint8List.fromList(await stdoutFuture);
+      final stdoutBytes = await stdoutFuture;
+      return sanitizePngBytes(stdoutBytes, onLog: _onLog);
     } on TimeoutException {
       process?.kill();
       await process?.exitCode.timeout(
@@ -205,6 +206,97 @@ class AdbService {
       _onLog?.call('Screenshot process error: ${error.message}', tag: 'adb', level: 'E');
       throw AdbException(error.message);
     }
+  }
+
+  /// PNG 图像签名魔数 (89 50 4E 47 0D 0A 1A 0A)。
+  static const List<int> _pngSignature = [
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+  ];
+
+  /// PNG 图像标准结束块 (00 00 00 00 49 45 4E 44 AE 42 60 82)。
+  static const List<int> _pngIendChunk = [
+    0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+  ];
+
+  /// 在字节流中查找目标子序列的起始下标。
+  static int _indexOfSublist(
+    List<int> source,
+    List<int> pattern, [
+    int start = 0,
+  ]) {
+    if (pattern.isEmpty) return start;
+    final maxSearch = source.length - pattern.length;
+    for (var i = start; i <= maxSearch; i++) {
+      var match = true;
+      for (var j = 0; j < pattern.length; j++) {
+        if (source[i + j] != pattern[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return i;
+    }
+    return -1;
+  }
+
+  /// 从字节流中安全提取纯净的 PNG 图片数据。
+  /// 剔除 stdout 中可能混入的非图片前缀（如 Android 模拟器多显示屏时输出的 Warning 文本）与尾部垃圾数据。
+  static Uint8List sanitizePngBytes(
+    List<int> rawBytes, {
+    void Function(String message, {String tag, String level})? onLog,
+  }) {
+    if (rawBytes.isEmpty) {
+      throw const AdbException('未接收到截图数据');
+    }
+
+    // 1. 查找 PNG 图像签名起始位置
+    final pngIndex = _indexOfSublist(rawBytes, _pngSignature);
+
+    // 未找到 PNG 头，尝试作为文本解析错误提示
+    if (pngIndex < 0) {
+      final errorText = utf8.decode(rawBytes, allowMalformed: true).trim();
+      if (errorText.isNotEmpty) {
+        onLog?.call(
+          'Screenshot returned non-image text: $errorText',
+          tag: 'adb',
+          level: 'E',
+        );
+        throw AdbException(errorText);
+      }
+      throw const AdbException('截图数据损坏或格式不受支持');
+    }
+
+    // 若前面混入了非图片内容（如模拟器多屏幕 Warning），丢弃前缀并打日志
+    if (pngIndex > 0) {
+      final prefixText = utf8.decode(
+        rawBytes.sublist(0, pngIndex),
+        allowMalformed: true,
+      ).trim();
+      onLog?.call(
+        'Screenshot stdout contained warning/text prefix ($pngIndex bytes): $prefixText',
+        tag: 'adb',
+        level: 'W',
+      );
+    }
+
+    var validBytes = rawBytes.sublist(pngIndex);
+
+    // 2. 检查是否有多余的尾部脏数据（以 PNG 标准 IEND 块为准截断）
+    final iendIndex = _indexOfSublist(validBytes, _pngIendChunk);
+    if (iendIndex >= 0) {
+      final expectedEnd = iendIndex + _pngIendChunk.length;
+      if (expectedEnd < validBytes.length) {
+        final trailingBytes = validBytes.length - expectedEnd;
+        onLog?.call(
+          'Screenshot stdout contained trailing data ($trailingBytes bytes), trimmed',
+          tag: 'adb',
+          level: 'W',
+        );
+        validBytes = validBytes.sublist(0, expectedEnd);
+      }
+    }
+
+    return Uint8List.fromList(validBytes);
   }
 
   /// 开始录制手机屏幕，返回 Process 实例。

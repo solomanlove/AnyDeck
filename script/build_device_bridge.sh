@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# 统一纯 Rust 设备桥接库构建脚本（VideoToolbox 硬解 / AudioQueue 音频 / ADB / 剪贴板 / 触控控制）
+# 设备桥接库构建脚本（Rust + UxPlay 协议核心 / VideoToolbox / ADB）
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CARGO_BIN="${CARGO:-$(command -v cargo || true)}"
 if [ -z "$CARGO_BIN" ]; then
@@ -27,18 +27,21 @@ for BRIDGE_ARCH in $BRIDGE_ARCHS; do
   BRIDGE_LIBRARIES+=("$BRIDGE_TARGET_DIR/$BRIDGE_TARGET/release/libanydeck_device_bridge.dylib")
 done
 mkdir -p "$(dirname "$BRIDGE_OUTPUT")"
-lipo -create "${BRIDGE_LIBRARIES[@]}" -output "$BRIDGE_OUTPUT"
-install_name_tool -id '@rpath/libanydeck_device_bridge.dylib' "$BRIDGE_OUTPUT"
-codesign --force --sign - "$BRIDGE_OUTPUT"
+# 先签名临时文件再原子替换，避免覆盖仍被运行中 App mmap 的动态库。
+BRIDGE_STAGED="$(mktemp "${BRIDGE_OUTPUT}.XXXXXX")"
+trap 'rm -f "$BRIDGE_STAGED"' EXIT
+lipo -create "${BRIDGE_LIBRARIES[@]}" -output "$BRIDGE_STAGED"
+install_name_tool -id '@rpath/libanydeck_device_bridge.dylib' "$BRIDGE_STAGED"
+chmod 755 "$BRIDGE_STAGED"
+codesign --force --sign - "$BRIDGE_STAGED"
+mv -f "$BRIDGE_STAGED" "$BRIDGE_OUTPUT"
 
-# 同步覆盖到已构建的 Debug/Release App Frameworks 目录，确保运行时即时生效
-DEBUG_FRAMEWORKS="$PROJECT_ROOT/build/macos/Build/Products/Debug/AnyDeck.app/Contents/Frameworks"
-if [ -d "$DEBUG_FRAMEWORKS" ]; then
-  cp "$BRIDGE_OUTPUT" "$DEBUG_FRAMEWORKS/libanydeck_device_bridge.dylib"
-  codesign --force --sign - "$DEBUG_FRAMEWORKS/libanydeck_device_bridge.dylib"
-fi
-RELEASE_FRAMEWORKS="$PROJECT_ROOT/build/macos/Build/Products/Release/AnyDeck.app/Contents/Frameworks"
-if [ -d "$RELEASE_FRAMEWORKS" ]; then
-  cp "$BRIDGE_OUTPUT" "$RELEASE_FRAMEWORKS/libanydeck_device_bridge.dylib"
-  codesign --force --sign - "$RELEASE_FRAMEWORKS/libanydeck_device_bridge.dylib"
-fi
+# 更新已构建 App 的磁盘文件；已运行的进程必须重启才会加载新版本。
+for BRIDGE_CONFIGURATION in Debug Release; do
+  BRIDGE_FRAMEWORKS="$PROJECT_ROOT/build/macos/Build/Products/$BRIDGE_CONFIGURATION/AnyDeck.app/Contents/Frameworks"
+  if [ -d "$BRIDGE_FRAMEWORKS" ]; then
+    BRIDGE_STAGED="$(mktemp "$BRIDGE_FRAMEWORKS/libanydeck_device_bridge.dylib.XXXXXX")"
+    cp -p "$BRIDGE_OUTPUT" "$BRIDGE_STAGED"
+    mv -f "$BRIDGE_STAGED" "$BRIDGE_FRAMEWORKS/libanydeck_device_bridge.dylib"
+  fi
+done

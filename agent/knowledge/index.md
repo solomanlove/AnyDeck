@@ -34,7 +34,7 @@
 | `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、设备信息悬浮层、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `rust/device_bridge/`, `core/harmony/` |
 | `ios投屏控制` | iOS 投屏控制方案与 PoC | active | 移除模拟 BLE、macOS/iPhone 6s 原生 USB Texture + WDA、部署探针、WDA 查询循环等待修复与已有服务复用、iOS 工具栏能力及真机验收边界 | `core/ios/`, `macos/Runner/`, `script/` |
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、USB/Network 连接类型与旧 Rust 库兼容、概览读取与型号规格边界、USB 投屏、截图镜像恢复、进程应用关联、扩展宿主 Bundle ID、多窗口及验证边界 | `core/ios/`, `features/ios/`, `features/overview/`, `app/window/mirror/` |
-| `ios-airplay-server-architecture` | iOS AirPlay 实验性接收端与连接故障 | experimental | legacy AES-CTR 配对修复、RTSP/视频包解析、连接回收与诊断；FairPlay 媒体密钥解包尚缺失，未通过真机投屏验收 | `core/airplay/`, `rust/device_bridge/src/airplay/` |
+| `ios-airplay-server-architecture` | iOS AirPlay 实验性接收端与连接故障 | experimental | UxPlay/FairPlay 实验接入、VideoToolbox 首帧与重连、后台启停和原子打包；协议/解码回归通过，真机出画待验收 | `core/airplay/`, `rust/device_bridge/src/airplay/` |
 | `ios-process-management` | iOS 进程表格与生命周期管理 | active | 全进程查询、应用归属筛选、图标缓存、3 秒轮询、未知性能指标、PID 身份回读及取消隔离 | `core/ios/`, `features/ios/` |
 | `ios-apps-management` | iOS 应用筛选、收藏与图标管理 | active | Android 风格工具栏与表格、分类/拼音筛选、持久化收藏、字母索引、设备隔离、图标 helper 取消与验证边界 | `core/ios/`, `features/ios/`, `assets/ios/` |
 | `adb-app-window-run-config-script` | App 子窗口 Run Configuration 生成脚本 | active | 记录 `script/generate_app_window_run_configs.sh` 如何生成模拟器管理窗口和控制台窗口的 IDE Flutter 运行入口 | `script/`, `.idea/runConfigurations/`, `app/window/` |

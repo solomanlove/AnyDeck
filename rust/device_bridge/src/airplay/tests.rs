@@ -174,7 +174,9 @@ async fn cancelling_listener_releases_idle_client_and_port() {
     let server = Arc::new(AirPlayServer {
         id: 999999, frame: Arc::new(Frame::default()),
         status: Arc::new(AtomicU8::new(0)), stopped: Arc::new(AtomicBool::new(false)),
-        last_error: Mutex::new(String::new()), _advertiser: Mutex::new(None), task: Mutex::new(None),
+        last_error: Arc::new(Mutex::new(String::new())), _advertiser: Mutex::new(None), task: Mutex::new(None),
+        #[cfg(feature = "airplay-uxplay")]
+        native: Mutex::new(None),
     });
     let runner = server.clone();
     let handle = tokio::spawn(async move {

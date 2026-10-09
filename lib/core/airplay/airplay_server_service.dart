@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' hide Size;
 import 'dart:io';
+import 'dart:isolate';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -117,8 +118,6 @@ class AirPlayServerService {
   static const _channel = MethodChannel('anydeck/rust_texture');
   DynamicLibrary? _lib;
 
-  late final _AirplayStartDart _startFunc;
-  late final _AirplayStopDart _stopFunc;
   late final _AirplayStatusDart _statusFunc;
   late final _AirplayDimensionsDart _dimFunc;
 
@@ -130,10 +129,10 @@ class AirPlayServerService {
   void _initFfi() {
     try {
       _lib = RustDeviceBridge.instance.library;
-      _startFunc = _lib!.lookupFunction<_AirplayStartNative, _AirplayStartDart>(
+      _lib!.lookupFunction<_AirplayStartNative, _AirplayStartDart>(
         'anydeck_airplay_start',
       );
-      _stopFunc = _lib!.lookupFunction<_AirplayStopNative, _AirplayStopDart>(
+      _lib!.lookupFunction<_AirplayStopNative, _AirplayStopDart>(
         'anydeck_airplay_stop',
       );
       _statusFunc = _lib!.lookupFunction<_AirplayStatusNative, _AirplayStatusDart>(
@@ -168,36 +167,31 @@ class AirPlayServerService {
       throw UnsupportedError('AirPlay Server 仅支持 macOS 平台且需动态库支持');
     }
 
-    final cName = utf8.encode('$name\x00');
-    final namePtr = calloc<Uint8>(cName.length);
-    namePtr.asTypedList(cName.length).setAll(0, cName);
-
-    try {
-      final handle = _startFunc(namePtr, rtspPort, videoPort);
-      if (handle == 0) {
-        throw StateError('启动 AirPlay Server 失败');
-      }
-
-      // 注册至 macOS Texture Registry 获取纹理 ID
-      int? textureId;
-      try {
-        await _channel.invokeMethod<void>('track', {'handle': handle});
-        textureId = await _channel.invokeMethod<int>('register', {
-          'handle': handle,
-        });
-      } catch (_) {}
-
-      return AirPlaySessionData(
-        id: handle,
-        serverName: name,
-        rtspPort: rtspPort,
-        videoPort: videoPort,
-        status: AirPlayServerStatus.idle,
-        textureId: textureId,
-      );
-    } finally {
-      calloc.free(namePtr);
+    // native 启动包含密钥文件、Bonjour 和监听初始化，放到后台 Isolate。
+    final handle = await Isolate.run(
+      () => _startNativeAirPlay(name, rtspPort, videoPort),
+    );
+    if (handle == 0) {
+      throw StateError('启动 AirPlay Server 失败');
     }
+
+    // 注册至 macOS Texture Registry 获取纹理 ID
+    int? textureId;
+    try {
+      await _channel.invokeMethod<void>('track', {'handle': handle});
+      textureId = await _channel.invokeMethod<int>('register', {
+        'handle': handle,
+      });
+    } catch (_) {}
+
+    return AirPlaySessionData(
+      id: handle,
+      serverName: name,
+      rtspPort: rtspPort,
+      videoPort: videoPort,
+      status: AirPlayServerStatus.idle,
+      textureId: textureId,
+    );
   }
 
   /// 获取当前投屏分辨率
@@ -251,7 +245,9 @@ class AirPlayServerService {
     try {
       await _channel.invokeMethod<void>('untrack', {'handle': session.id});
     } catch (_) {}
-    _stopFunc(session.id);
+    final handle = session.id;
+    // UxPlay stop 会 join 协议线程，不能阻塞 Flutter UI 线程。
+    await Isolate.run(() => _stopNativeAirPlay(handle));
   }
 }
 
@@ -280,4 +276,25 @@ Future<void> openAirPlayMirrorWindow(AirPlaySessionData session) async {
   } catch (e) {
     debugPrint('[AirPlay] Failed to open mirror window: $e');
   }
+}
+
+/// 后台 Isolate 独立加载同一路径的动态库，复用进程内 Rust 会话表。
+int _startNativeAirPlay(String name, int rtspPort, int videoPort) {
+  final start = RustDeviceBridge.instance.library
+      .lookupFunction<_AirplayStartNative, _AirplayStartDart>('anydeck_airplay_start');
+  final cName = utf8.encode('$name\x00');
+  final namePtr = calloc<Uint8>(cName.length);
+  try {
+    namePtr.asTypedList(cName.length).setAll(0, cName);
+    return start(namePtr, rtspPort, videoPort);
+  } finally {
+    calloc.free(namePtr);
+  }
+}
+
+/// 等 native 线程退出后才完成 Future，支持顺序停止并重启服务。
+void _stopNativeAirPlay(int handle) {
+  final stop = RustDeviceBridge.instance.library
+      .lookupFunction<_AirplayStopNative, _AirplayStopDart>('anydeck_airplay_stop');
+  stop(handle);
 }

@@ -5,18 +5,30 @@ pub mod bonjour;
 pub mod crypto;
 pub mod packet;
 pub mod rtsp;
+#[cfg(feature = "airplay-uxplay")]
+pub mod uxplay;
 
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
+#[cfg(any(test, not(feature = "airplay-uxplay")))]
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+#[cfg(any(test, not(feature = "airplay-uxplay")))]
 use tokio::net::TcpListener;
-use tokio::task::{JoinHandle, JoinSet};
+use tokio::task::JoinHandle;
+#[cfg(any(test, not(feature = "airplay-uxplay")))]
+use tokio::task::JoinSet;
+#[cfg(any(test, not(feature = "airplay-uxplay")))]
 use std::time::Duration;
 
-use crate::video::{Decoder, Frame};
+use crate::video::Frame;
+#[cfg(not(feature = "airplay-uxplay"))]
+use crate::video::Decoder;
 use bonjour::AirPlayAdvertiser;
+#[cfg(any(test, not(feature = "airplay-uxplay")))]
 use crypto::AirPlayCrypto;
+#[cfg(not(feature = "airplay-uxplay"))]
 use packet::{avcc_to_annex_b, codec_to_annex_b, AirPlayVideoHeader, AIRPLAY_VIDEO_HEADER_LEN};
+#[cfg(any(test, not(feature = "airplay-uxplay")))]
 use rtsp::{parse_rtsp_request, RtspResponse, RtspSession, MAX_RTSP_BYTES};
 
 /// AirPlay 服务状态
@@ -37,16 +49,19 @@ pub struct AirPlayServer {
     /// 当前运行状态
     pub status: Arc<AtomicU8>,
     /// 最近的协商错误，通过 FFI 转发到 Dart 本地诊断日志。
-    pub last_error: Mutex<String>,
+    pub last_error: Arc<Mutex<String>>,
     /// 运行中断标志
     stopped: Arc<AtomicBool>,
     /// Bonjour 广播句柄
     _advertiser: Mutex<Option<AirPlayAdvertiser>>,
     /// 异步监听任务
     task: Mutex<Option<JoinHandle<()>>>,
+    #[cfg(feature = "airplay-uxplay")]
+    native: Mutex<Option<uxplay::Receiver>>,
 }
 
 impl AirPlayServer {
+    #[cfg(not(feature = "airplay-uxplay"))]
     fn bind_port_range(start_port: u16) -> Result<(std::net::TcpListener, u16), String> {
         // 端口占用时只选择下一可用端口，不修改系统 AirPlay 或终止系统进程。
         let max = start_port.saturating_add(20);
@@ -118,8 +133,37 @@ impl AirPlayServer {
         id: u64,
         name: &str,
         rtsp_port: u16,
-        video_port: u16,
+        #[allow(unused_variables)] video_port: u16,
     ) -> Result<Arc<Self>, String> {
+        #[cfg(feature = "airplay-uxplay")]
+        {
+            let frame = Arc::new(Frame::default());
+            let status = Arc::new(AtomicU8::new(AirPlayStatus::Idle as u8));
+            let stopped = Arc::new(AtomicBool::new(false));
+            let server = Arc::new(Self {
+                id,
+                frame: frame.clone(),
+                status: status.clone(),
+                stopped: stopped.clone(),
+                last_error: Arc::new(Mutex::new(String::new())),
+                _advertiser: Mutex::new(None),
+                task: Mutex::new(None),
+                native: Mutex::new(None),
+            });
+
+            let receiver = uxplay::Receiver::start(&server, name, rtsp_port)?;
+            eprintln!("[AirPlay UxPlay] Listening on port {}", receiver.port);
+            *server.native.lock().map_err(|_| "AirPlay native lock poisoned")? = Some(receiver);
+            return Ok(server);
+        }
+
+        #[cfg(not(feature = "airplay-uxplay"))]
+        Self::start_legacy(id, name, rtsp_port, video_port)
+    }
+
+    /// 旧 Rust 后端仅用于协议回归，不作为 native 启动失败的降级路径。
+    #[cfg(not(feature = "airplay-uxplay"))]
+    fn start_legacy(id: u64, name: &str, rtsp_port: u16, video_port: u16) -> Result<Arc<Self>, String> {
         let frame = Arc::new(Frame::default());
         let status = Arc::new(AtomicU8::new(AirPlayStatus::Idle as u8));
         let stopped = Arc::new(AtomicBool::new(false));
@@ -146,7 +190,7 @@ impl AirPlayServer {
             frame: frame.clone(),
             status: status.clone(),
             stopped: stopped.clone(),
-            last_error: Mutex::new(String::new()),
+            last_error: Arc::new(Mutex::new(String::new())),
             _advertiser: Mutex::new(Some(advertiser)),
             task: Mutex::new(None),
         });
@@ -194,6 +238,7 @@ impl AirPlayServer {
     }
 
     /// RTSP 控制通道循环：并发处理客户端的信令连接
+    #[cfg(any(test, not(feature = "airplay-uxplay")))]
     async fn run_rtsp_loop(
         listener: TcpListener,
         server: Arc<Self>,
@@ -282,6 +327,7 @@ impl AirPlayServer {
     }
 
     /// 视频数据包循环：接收 128 字节头并直接调用 VideoToolbox 解码
+    #[cfg(not(feature = "airplay-uxplay"))]
     async fn run_video_loop(
         listener: TcpListener,
         server: Arc<Self>,
@@ -351,6 +397,7 @@ impl AirPlayServer {
     }
 
     /// 只保留最后一条有界错误，供现有 Dart 日志采集链路读取。
+    #[cfg(any(test, not(feature = "airplay-uxplay")))]
     fn record_error(&self, error: String) {
         eprintln!("[AirPlay] {error}");
         if let Ok(mut latest) = self.last_error.lock() {
@@ -362,6 +409,11 @@ impl AirPlayServer {
     pub fn stop(&self) {
         self.stopped.store(true, Ordering::Release);
         self.status.store(AirPlayStatus::Stopped as u8, Ordering::Release);
+        #[cfg(feature = "airplay-uxplay")]
+        if let Ok(mut nat) = self.native.lock() {
+            nat.take();
+            self.frame.clear();
+        }
         if let Ok(mut adv) = self._advertiser.lock() {
             adv.take(); // 触发 Drop 注销 Bonjour
         }
