@@ -6,6 +6,12 @@ import 'performance_data.dart';
 import '../../app/l10n/app_localizations.dart';
 
 /// 顶部开机时间和电量状态组件。
+/// 用于性能监控面板顶部展示系统运行时间与电池电量及充电状态。
+///
+/// 参数说明：
+/// - [uptime]：开机持续时间格式化文本（如 "00时02分13秒"）
+/// - [batteryLevel]：电池剩余百分比数值（0 ~ 100）
+/// - [isCharging]：当前是否处于充电状态。为 true 时显示充电标识（绿色闪电图标），为 false 时保持现有常规电池样式。
 class PerformanceTopStatusRow extends StatelessWidget {
   const PerformanceTopStatusRow({
     super.key,
@@ -59,10 +65,16 @@ class PerformanceTopStatusRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
+              if (isCharging) ...[
+                const Icon(
+                  CupertinoIcons.bolt_fill,
+                  size: 14,
+                  color: Color(0xff00c853),
+                ),
+                const SizedBox(width: 2),
+              ],
               Icon(
-                isCharging
-                    ? CupertinoIcons.battery_charging
-                    : CupertinoIcons.battery_100,
+                CupertinoIcons.battery_100,
                 size: 20,
                 color: isCharging
                     ? const Color(0xff00c853)
