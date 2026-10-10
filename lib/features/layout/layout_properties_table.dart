@@ -55,44 +55,18 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
         color: isDark
             ? Colors.white.withValues(alpha: 0.02)
             : Colors.white.withValues(alpha: 0.2),
-        child: Stack(
-          children: [
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(CupertinoIcons.info, size: 48, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(
-                    context.l10n.t('noComponentSelected'),
-                    style: const TextStyle(color: Colors.grey, fontSize: 14),
-                  ),
-                ],
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(CupertinoIcons.info, size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                context.l10n.t('noComponentSelected'),
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
               ),
-            ),
-            Positioned(
-              top: 8,
-              right: 16,
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: widget.useDp,
-                    onChanged: widget.onUseDpChanged,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  Text(
-                    'DP',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.grey[300] : Colors.blueGrey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }

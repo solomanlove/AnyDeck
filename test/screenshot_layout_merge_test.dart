@@ -404,7 +404,7 @@ void main() {
           of: find.byType(LayoutPropertiesTable),
           matching: find.text('DP'),
         ),
-        findsOneWidget,
+        findsNothing,
       );
 
       // 再次点击关闭布局分析

@@ -25,6 +25,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('未选择组件'), findsOneWidget);
+    expect(find.text('DP'), findsNothing);
   });
 
   testWidgets('LayoutPropertiesTable renders and scrolls properties without scrollbar assertion', (tester) async {
@@ -51,6 +52,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('属性列表'), findsOneWidget);
+    expect(find.text('DP'), findsOneWidget);
     expect(find.text('Test Component'), findsOneWidget);
 
     // 验证滚动不会触发 "The Scrollbar's ScrollController has no ScrollPosition attached"
