@@ -119,6 +119,18 @@ class DeviceActionService {
     ]);
   }
 
+  /// 开关 Android 启用视图属性检查功能 (Enable view attribute inspection)。
+  Future<AdbResult> setViewAttributeInspection(String deviceId, bool enabled) {
+    final flag = enabled ? '1' : '0';
+    return _adb.shellArgs(deviceId, [
+      'settings',
+      'put',
+      'global',
+      'debug_view_attributes',
+      flag,
+    ]);
+  }
+
   /// 模拟电源键，用于亮屏或熄屏。
   Future<AdbResult> standby(String deviceId) {
     if ((_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null) {

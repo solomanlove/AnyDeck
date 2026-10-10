@@ -165,6 +165,7 @@ const devicesControlZh = {
   'showTouchesToggle': '点按反馈',
   'pointerLocationToggle': '指针位置',
   'demoModeToggle': '演示模式',
+  'viewAttributeInspectionToggle': '视图属性检查',
   'darkMode': '深色',
   'lightMode': '浅色',
   'darkLightToggle': '深色模式',
@@ -410,6 +411,7 @@ const devicesControlEn = {
   'showTouchesToggle': 'Show taps',
   'pointerLocationToggle': 'Pointer location',
   'demoModeToggle': 'Demo Mode',
+  'viewAttributeInspectionToggle': 'View attribute inspection',
   'darkMode': 'Dark mode',
   'lightMode': 'Light mode',
   'darkLightToggle': 'Dark mode',
@@ -474,8 +476,7 @@ const devicesControlEn = {
   'certSystemHashTip':
       'Tip: If openssl is installed, we will compute the hash automatically. Otherwise, run `openssl x509 -inform PEM -subject_hash_old -in <path> -noout` and type the hash here.',
   'certSystemNoRoot': 'Root access is required! Your device is not rooted.',
-  'certSystemInstallSuccess':
-      'System certificate installed! (Temporary overlay mode, resets on reboot)',
+  'certSystemInstallSuccess': 'System certificate installed! (Temporary overlay mode, resets on reboot)',
   'certSystemInstallFailed': 'Failed to install system certificate: ',
   'certInstall': 'Install',
   'certSubjectHash': 'Subject Hash',

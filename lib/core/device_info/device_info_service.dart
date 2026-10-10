@@ -102,6 +102,8 @@ echo "===POINTERLOCATION==="
 settings get system pointer_location
 echo "===DEMOMODE==="
 settings get global sysui_demo_allowed
+echo "===VIEWATTRIBUTEINSPECTION==="
+settings get global debug_view_attributes
 ''';
 
       // 保持概览能力只读：通过分组命令降低子进程创建开销从23个到6个
@@ -158,6 +160,9 @@ settings get global sysui_demo_allowed
       );
       final demoModeRaw = _clean(settingsSections['DEMOMODE'] ?? '');
       final layoutBoundsRaw = _clean(settingsSections['LAYOUTBOUNDS'] ?? '');
+      final viewAttributeInspectionRaw = _clean(
+        settingsSections['VIEWATTRIBUTEINSPECTION'] ?? '',
+      );
 
       final abi = _firstValue(properties, ['ro.product.cpu.abi', 'ro.cpu.abi']);
       final deviceCode = _firstValue(properties, [
@@ -234,6 +239,7 @@ settings get global sysui_demo_allowed
         showTouchesEnabled: showTouchesRaw == '1',
         pointerLocationEnabled: pointerLocationRaw == '1',
         demoModeEnabled: demoModeRaw == '1',
+        viewAttributeInspectionEnabled: viewAttributeInspectionRaw == '1',
       );
 
       // 保存到本地缓存

@@ -38,6 +38,7 @@ class DeviceOverview {
     required this.showTouchesEnabled,
     required this.pointerLocationEnabled,
     required this.demoModeEnabled,
+    this.viewAttributeInspectionEnabled = false,
     this.iosDetails,
   });
 
@@ -82,6 +83,7 @@ class DeviceOverview {
   final bool showTouchesEnabled;
   final bool pointerLocationEnabled;
   final bool demoModeEnabled;
+  final bool viewAttributeInspectionEnabled;
   final IosOverviewDetails? iosDetails;
 
   Map<String, dynamic> toJson() {
@@ -121,6 +123,7 @@ class DeviceOverview {
       'showTouchesEnabled': showTouchesEnabled,
       'pointerLocationEnabled': pointerLocationEnabled,
       'demoModeEnabled': demoModeEnabled,
+      'viewAttributeInspectionEnabled': viewAttributeInspectionEnabled,
       if (iosDetails != null) 'iosDetails': iosDetails!.toJson(),
     };
   }
@@ -163,6 +166,8 @@ class DeviceOverview {
       showTouchesEnabled: json['showTouchesEnabled'] as bool? ?? false,
       pointerLocationEnabled: json['pointerLocationEnabled'] as bool? ?? false,
       demoModeEnabled: json['demoModeEnabled'] as bool? ?? false,
+      viewAttributeInspectionEnabled:
+          json['viewAttributeInspectionEnabled'] as bool? ?? false,
       iosDetails: json['iosDetails'] is Map<String, dynamic>
           ? IosOverviewDetails.fromJson(json['iosDetails'] as Map<String, dynamic>)
           : null,
@@ -205,6 +210,7 @@ class DeviceOverview {
     bool? showTouchesEnabled,
     bool? pointerLocationEnabled,
     bool? demoModeEnabled,
+    bool? viewAttributeInspectionEnabled,
     IosOverviewDetails? iosDetails,
   }) {
     return DeviceOverview(
@@ -246,6 +252,8 @@ class DeviceOverview {
       pointerLocationEnabled:
           pointerLocationEnabled ?? this.pointerLocationEnabled,
       demoModeEnabled: demoModeEnabled ?? this.demoModeEnabled,
+      viewAttributeInspectionEnabled:
+          viewAttributeInspectionEnabled ?? this.viewAttributeInspectionEnabled,
       iosDetails: iosDetails ?? this.iosDetails,
     );
   }

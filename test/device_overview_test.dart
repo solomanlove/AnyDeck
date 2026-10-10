@@ -117,6 +117,7 @@ void main() {
         showTouchesEnabled: false,
         pointerLocationEnabled: false,
         demoModeEnabled: false,
+        viewAttributeInspectionEnabled: true,
       );
 
       final json = overview.toJson();
@@ -164,6 +165,14 @@ void main() {
       expect(decoded.showTouchesEnabled, overview.showTouchesEnabled);
       expect(decoded.pointerLocationEnabled, overview.pointerLocationEnabled);
       expect(decoded.demoModeEnabled, overview.demoModeEnabled);
+      expect(
+        decoded.viewAttributeInspectionEnabled,
+        overview.viewAttributeInspectionEnabled,
+      );
+      expect(
+        decoded.copyWith(viewAttributeInspectionEnabled: false).viewAttributeInspectionEnabled,
+        false,
+      );
     });
   });
 

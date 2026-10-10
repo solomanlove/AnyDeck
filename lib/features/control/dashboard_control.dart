@@ -315,6 +315,8 @@ class _LayoutHelperPanel extends ConsumerWidget {
     final pointerLocationEnabled =
         overviewAsync.value?.pointerLocationEnabled ?? false;
     final demoModeEnabled = overviewAsync.value?.demoModeEnabled ?? false;
+    final viewAttributeInspectionEnabled =
+        overviewAsync.value?.viewAttributeInspectionEnabled ?? false;
 
     return _ActionCard(
       title: context.l10n.t('layoutHelper'),
@@ -386,6 +388,22 @@ class _LayoutHelperPanel extends ConsumerWidget {
               context,
               ref,
               actions.setDemoMode(device.id, on),
+            );
+            if (device.isOnline) {
+              ref.invalidate(deviceOverviewProvider(device.id));
+            }
+          },
+        ),
+        _ToggleActionButton(
+          iconOn: CupertinoIcons.viewfinder,
+          iconOff: CupertinoIcons.viewfinder,
+          label: context.l10n.t('viewAttributeInspectionToggle'),
+          value: viewAttributeInspectionEnabled,
+          onToggle: (on) async {
+            await _runAdbAction(
+              context,
+              ref,
+              actions.setViewAttributeInspection(device.id, on),
             );
             if (device.isOnline) {
               ref.invalidate(deviceOverviewProvider(device.id));
