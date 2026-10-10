@@ -7,7 +7,7 @@ import '../model/screenshot_state.dart';
 
 /// 截图与布局分析共享控制工具栏。
 /// 左侧和中间操作按钮区支持横向滚动（保证窄窗口下不溢出）；
-/// 右侧固化显示分辨率/大小信息以及 Android 专属的“布局分析”模式开关。
+/// 右侧固定显示 Android 专属的“布局分析”模式开关；缩放与图片信息由底栏承载。
 class ScreenshotToolbar extends StatelessWidget {
   const ScreenshotToolbar({
     super.key,
@@ -18,10 +18,6 @@ class ScreenshotToolbar extends StatelessWidget {
     required this.onCopy,
     required this.onRotateLeft,
     required this.onRotateRight,
-    required this.onZoomIn,
-    required this.onZoomOut,
-    required this.onZoom1To1,
-    required this.onZoomReset,
     required this.onToggleAutoRefresh,
     this.onLongPressAutoRefresh,
     required this.onStartRecording,
@@ -42,10 +38,6 @@ class ScreenshotToolbar extends StatelessWidget {
   final VoidCallback onCopy;
   final VoidCallback onRotateLeft;
   final VoidCallback onRotateRight;
-  final VoidCallback onZoomIn;
-  final VoidCallback onZoomOut;
-  final VoidCallback onZoom1To1;
-  final VoidCallback onZoomReset;
   final VoidCallback onToggleAutoRefresh;
   final VoidCallback? onLongPressAutoRefresh;
   final VoidCallback onStartRecording;
@@ -124,26 +116,7 @@ class ScreenshotToolbar extends StatelessWidget {
                     tooltip: context.l10n.t('rotateRight'),
                     onPressed: (!hasImage || isRecActive) ? null : onRotateRight,
                   ),
-                  _buildDivider(isDark),
-                  // 5. 缩放控制
-                  _ToolbarButton(
-                    icon: CupertinoIcons.zoom_in,
-                    tooltip: context.l10n.t('zoomIn'),
-                    onPressed: (!hasImage || isRecActive) ? null : onZoomIn,
-                  ),
-                  _ToolbarButton(
-                    icon: CupertinoIcons.zoom_out,
-                    tooltip: context.l10n.t('zoomOut'),
-                    onPressed: (!hasImage || isRecActive) ? null : onZoomOut,
-                  ),
-                  _buildZoom1to1Button(context, isDark, hasImage && !isRecActive),
-                  const SizedBox(width: 6),
-                  _ToolbarButton(
-                    icon: CupertinoIcons.arrow_counterclockwise,
-                    tooltip: context.l10n.t('zoomReset'),
-                    onPressed: (!hasImage || isRecActive) ? null : onZoomReset,
-                  ),
-                  // 6. 普通模式专属：连续截图与录屏
+                  // 5. 普通模式专属：连续截图与录屏
                   if (!isAnalysis) ...[
                     _buildDivider(isDark),
                     _ToolbarButton(
@@ -205,7 +178,7 @@ class ScreenshotToolbar extends StatelessWidget {
                       ],
                     ],
                   ],
-                  // 7. 布局分析模式专属：展开折叠、边框显示、点击选中、DP 单位、属性面板
+                  // 6. 布局分析模式专属：展开折叠、边框显示、点击选中、DP 单位、属性面板
                   if (isAnalysis) ...[
                     _buildDivider(isDark),
                     _ToolbarButton(
@@ -243,21 +216,10 @@ class ScreenshotToolbar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-          // 右侧固定区域：分辨率大小与“布局分析”开关（固定可见）
+          // 右侧固定区域：“布局分析”开关（固定可见）
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (hasImage)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Text(
-                    '${state.imgWidth}x${state.imgHeight} PNG ${state.sizeLabel}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
               // 仅 Android 设备显示“布局分析”开关，iOS 与 HarmonyOS 保持现有截图能力并不展示开关
               if (!device.isIos && !device.isHarmony) ...[
                 _buildDivider(isDark),
@@ -277,37 +239,6 @@ class ScreenshotToolbar extends StatelessWidget {
       child: VerticalDivider(
         width: 1,
         color: isDark ? Colors.grey[700] : Colors.grey[300],
-      ),
-    );
-  }
-
-  Widget _buildZoom1to1Button(BuildContext context, bool isDark, bool enabled) {
-    return Tooltip(
-      message: context.l10n.t('zoom1to1'),
-      child: InkWell(
-        onTap: enabled ? onZoom1To1 : null,
-        borderRadius: BorderRadius.circular(4),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: enabled
-                  ? (isDark ? Colors.grey[600]! : Colors.grey[400]!)
-                  : (isDark ? Colors.grey[800]! : Colors.grey[300]!),
-            ),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            '1:1',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: enabled
-                  ? (isDark ? Colors.grey[300] : Colors.blueGrey)
-                  : (isDark ? Colors.grey[700] : Colors.grey[400]),
-            ),
-          ),
-        ),
       ),
     );
   }

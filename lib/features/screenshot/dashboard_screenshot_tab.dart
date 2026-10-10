@@ -11,9 +11,10 @@ import 'controller/screenshot_controller.dart';
 import 'widgets/screenshot_auto_save_dialog.dart';
 import 'widgets/screenshot_canvas.dart';
 import 'widgets/screenshot_toolbar.dart';
+import 'widgets/screenshot_bottom_bar.dart';
 
 /// 截图录屏与布局分析主页面容器。
-/// 统一管理顶部工具栏、中央共享画布、左侧组件树与右侧属性面板的展开与折叠。
+/// 统一管理顶部工具栏、底部缩放信息栏、中央画布及左右分析面板。
 class DashboardScreenshotTab extends ConsumerStatefulWidget {
   const DashboardScreenshotTab({super.key, required this.device});
 
@@ -177,12 +178,6 @@ class _DashboardScreenshotTabState
           },
           onRotateLeft: controller.rotateLeft,
           onRotateRight: controller.rotateRight,
-          onZoomIn: () => _canvasKey.currentState?.zoom(1.2),
-          onZoomOut: () => _canvasKey.currentState?.zoom(0.8),
-          onZoom1To1: () => _canvasKey.currentState?.zoom1to1(),
-          onZoomReset: () {
-            _transformationController.value = Matrix4.identity();
-          },
           onToggleAutoRefresh: controller.toggleAutoRefresh,
           onLongPressAutoRefresh: () {
             ScreenshotAutoSaveDialog.show(
@@ -278,6 +273,16 @@ class _DashboardScreenshotTabState
                   isLayoutAnalysis: false,
                   isLoading: state.isLoading,
                 ),
+        ),
+        // 底部集中展示画布缩放操作与当前图片信息。
+        ScreenshotBottomBar(
+          state: state,
+          onZoomIn: () => _canvasKey.currentState?.zoom(1.2),
+          onZoomOut: () => _canvasKey.currentState?.zoom(0.8),
+          onZoom1To1: () => _canvasKey.currentState?.zoom1to1(),
+          onZoomReset: () {
+            _transformationController.value = Matrix4.identity();
+          },
         ),
       ],
     );

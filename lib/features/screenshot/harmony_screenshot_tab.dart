@@ -9,6 +9,7 @@ import 'controller/screenshot_controller.dart';
 import 'widgets/screenshot_auto_save_dialog.dart';
 import 'widgets/screenshot_canvas.dart';
 import 'widgets/screenshot_toolbar.dart';
+import 'widgets/screenshot_bottom_bar.dart';
 
 /// 鸿蒙手机专属截图与录屏页面。
 ///
@@ -154,12 +155,6 @@ class _HarmonyScreenshotTabState extends ConsumerState<HarmonyScreenshotTab> {
           onCopy: () => controller.copyScreenshotImage(context),
           onRotateLeft: controller.rotateLeft,
           onRotateRight: controller.rotateRight,
-          onZoomIn: () => _canvasKey.currentState?.zoom(1.2),
-          onZoomOut: () => _canvasKey.currentState?.zoom(0.8),
-          onZoom1To1: () => _canvasKey.currentState?.zoom1to1(),
-          onZoomReset: () {
-            _transformationController.value = Matrix4.identity();
-          },
           onToggleAutoRefresh: controller.toggleAutoRefresh,
           onLongPressAutoRefresh: () {
             ScreenshotAutoSaveDialog.show(
@@ -206,6 +201,16 @@ class _HarmonyScreenshotTabState extends ConsumerState<HarmonyScreenshotTab> {
                 ),
             ],
           ),
+        ),
+        // 底部集中展示画布缩放操作与当前图片信息。
+        ScreenshotBottomBar(
+          state: state,
+          onZoomIn: () => _canvasKey.currentState?.zoom(1.2),
+          onZoomOut: () => _canvasKey.currentState?.zoom(0.8),
+          onZoom1To1: () => _canvasKey.currentState?.zoom1to1(),
+          onZoomReset: () {
+            _transformationController.value = Matrix4.identity();
+          },
         ),
       ],
     );
