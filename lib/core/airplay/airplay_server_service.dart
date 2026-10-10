@@ -251,27 +251,33 @@ class AirPlayServerService {
   }
 }
 
-/// 打开或重新打开 AirPlay 独立非全屏等比投屏窗口。
+/// 在通用 iOS 投屏窗口中显示 AirPlay，不再创建专用 AirPlay 窗口。
 ///
-/// 当用户在手机端开启屏幕镜像，或在电脑端需要重新唤出投屏小窗口时调用。
-Future<void> openAirPlayMirrorWindow(AirPlaySessionData session) async {
+/// [deviceId] 可关联已打开的 USB 投屏窗口；缺失时使用会话级稳定标识。
+Future<void> openAirPlayMirrorWindow(
+  AirPlaySessionData session, {
+  String? deviceId,
+  String? deviceName,
+}) async {
   final double aspect = (session.width > 0 && session.height > 0)
       ? (session.width / session.height)
       : (9.0 / 19.5);
-  final double windowWidth = aspect < 1.0 ? 360.0 : 720.0;
-  final double windowHeight = windowWidth / aspect;
-  final initialSize = Size(windowWidth, windowHeight);
+  final resolvedDeviceId = deviceId ?? 'airplay-${session.id}';
+  final resolvedDeviceName = deviceName ?? session.clientName ?? 'iPhone';
+  final initialSize = resolveMirrorInitialWindowSize(null, ratio: aspect);
 
   try {
     await createAdbManageWindow(
       arguments: {
-        'type': 'airplay_mirror',
-        'handle': session.id,
-        'aspectRatio': aspect,
-        'deviceName': session.clientName ?? 'iPhone',
+        'type': 'mirror',
+        'deviceId': resolvedDeviceId,
+        'deviceName': resolvedDeviceName,
+        'isIos': true,
+        'airplayHandle': session.id,
+        'airplayAspectRatio': aspect,
       },
       frame: Offset.zero & initialSize,
-      title: '${session.clientName ?? 'iPhone'} - AirPlay',
+      title: '$resolvedDeviceName · Wi-Fi AirPlay',
     );
   } catch (e) {
     debugPrint('[AirPlay] Failed to open mirror window: $e');

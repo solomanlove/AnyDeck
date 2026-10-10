@@ -6,6 +6,8 @@ import '../../app/l10n/app_localizations.dart';
 import '../../app/widget/app_toast.dart';
 import '../../core/airplay/airplay_server_service.dart';
 import '../../core/airplay/airplay_server_state.dart';
+import '../../core/providers/app_providers.dart';
+import 'airplay_mirror_target.dart';
 
 /// 主窗口顶部工具栏优雅的 AirPlay 广播开关按钮。
 ///
@@ -71,7 +73,14 @@ class _AirPlayToolbarButtonState extends ConsumerState<AirPlayToolbarButton>
         }
       } else if (session.status == AirPlayServerStatus.mirroring) {
         // 当前正处于投屏中，点击重新打开并置顶投屏窗口
-        await openAirPlayMirrorWindow(session);
+        final preferred = resolveAirPlayMirrorTarget(
+          ref.read(deviceRegistryProvider),
+        );
+        await openAirPlayMirrorWindow(
+          session,
+          deviceId: preferred?.id,
+          deviceName: preferred?.displayName,
+        );
         if (mounted) {
           AppToast.show(context, context.l10n.t('airplayOpenMirrorWindow'));
         }

@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../core/airplay/airplay_server_service.dart';
 import '../../../core/airplay/airplay_server_state.dart';
+import '../../../core/providers/app_providers.dart';
+import '../airplay_mirror_target.dart';
 
 /// AirPlay 投屏活跃状态横幅组件。
 ///
@@ -119,7 +121,16 @@ class AirPlayActiveBanner extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onPressed: () => openAirPlayMirrorWindow(session),
+            onPressed: () {
+              final preferred = resolveAirPlayMirrorTarget(
+                ref.read(deviceRegistryProvider),
+              );
+              openAirPlayMirrorWindow(
+                session,
+                deviceId: preferred?.id,
+                deviceName: preferred?.displayName,
+              );
+            },
             icon: const Icon(CupertinoIcons.tv, size: 14),
             label: Text(
               context.l10n.t('airplayOpenMirrorWindow'),

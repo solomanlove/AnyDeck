@@ -233,7 +233,11 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               message: context.l10n.t('airplayOpenMirrorWindow'),
               child: InkWell(
                 borderRadius: BorderRadius.circular(6),
-                onTap: () => openAirPlayMirrorWindow(airplaySession),
+                onTap: () => openAirPlayMirrorWindow(
+                  airplaySession,
+                  deviceId: device.id,
+                  deviceName: device.displayName,
+                ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(

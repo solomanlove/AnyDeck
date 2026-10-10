@@ -79,6 +79,13 @@ Future<WindowController> createAdbManageWindow({
               if (windowArgs['newDisplay'] == arguments['newDisplay'] &&
                   windowArgs['startApp'] == arguments['startApp']) {
                 try {
+                  final airplayHandle = arguments['airplayHandle'];
+                  if (type == 'mirror' && airplayHandle is int) {
+                    await window.invokeMethod('switchIosMirrorSource', {
+                      'airplayHandle': airplayHandle,
+                      'airplayAspectRatio': arguments['airplayAspectRatio'],
+                    });
+                  }
                   await window.show();
                   return window;
                 } catch (e) {

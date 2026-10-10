@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -23,6 +24,9 @@ import 'widget/mirror_app_quick_actions_dialog.dart';
 import 'widget/mirror_status_view.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/harmony/harmony_mirror_service.dart';
+import '../desktop_window_title_service.dart';
+import '../sub_window_method_dispatcher.dart';
+import 'ios_airplay_mirror_content.dart';
 
 /// 投屏独立窗口应用入口。
 class MirrorWindowApp extends ConsumerWidget {
@@ -67,6 +71,9 @@ class MirrorWindowApp extends ConsumerWidget {
           initialAlwaysOnTop: argument['alwaysOnTop'] as bool?,
           isIos: argument['isIos'] as bool? ?? false,
           isHarmony: argument['isHarmony'] as bool? ?? false,
+          initialAirplayHandle: argument['airplayHandle'] as int?,
+          initialAirplayAspectRatio:
+              (argument['airplayAspectRatio'] as num?)?.toDouble(),
         ),
       ),
     );
@@ -85,6 +92,8 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
     this.initialAlwaysOnTop,
     this.isIos = false,
     this.isHarmony = false,
+    this.initialAirplayHandle,
+    this.initialAirplayAspectRatio,
   });
 
   final String deviceId;
@@ -95,6 +104,8 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
   final bool? initialAlwaysOnTop;
   final bool isIos;
   final bool isHarmony;
+  final int? initialAirplayHandle;
+  final double? initialAirplayAspectRatio;
 
   @override
   ConsumerState<MirrorWindowContent> createState() =>
@@ -122,10 +133,15 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   /// 设备标题悬浮状态，仅在进入/离开标题时更新，避免鼠标移动触发高频 rebuild。
   bool _isTitleHovered = false;
 
+  int? _airplayHandle;
+  double _airplayAspectRatio = 9.0 / 19.5;
+
   @override
   void initState() {
     super.initState();
     _keyboardFocusNode = FocusNode(debugLabel: 'MirrorWindowKeyboard');
+    _airplayHandle = widget.initialAirplayHandle;
+    _airplayAspectRatio = widget.initialAirplayAspectRatio ?? _airplayAspectRatio;
 
     // 实例化业务逻辑控制器
     _controller = MirrorWindowController(
@@ -143,6 +159,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
     // 监听窗口状态变化，用于同步全屏状态和比例锁定
     windowManager.addListener(this);
+    SubWindowMethodDispatcher.registerHandler(_handleWindowMethod);
 
     // 初始化控制器
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -157,8 +174,29 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     _controller.disposeController();
 
     windowManager.removeListener(this);
+    SubWindowMethodDispatcher.removeHandler(_handleWindowMethod);
     _keyboardFocusNode.dispose();
     super.dispose();
+  }
+
+  /// AirPlay 建立后切换当前 iOS 投屏窗口的视频源，不创建第二个窗口。
+  Future<dynamic> _handleWindowMethod(MethodCall call) async {
+    if (call.method != 'switchIosMirrorSource') return null;
+    final arguments = call.arguments;
+    if (arguments is! Map) return false;
+    final handle = arguments['airplayHandle'];
+    if (handle is! int || handle <= 0 || !mounted) return false;
+    final ratio = (arguments['airplayAspectRatio'] as num?)?.toDouble();
+    setState(() {
+      _airplayHandle = handle;
+      if (ratio != null && ratio > 0) _airplayAspectRatio = ratio;
+    });
+    await DesktopWindowTitleService.setTitle(
+      '${widget.deviceName} · ${context.l10n.t('iosMirrorWifiAirPlay')}',
+    );
+    await windowManager.show();
+    await windowManager.focus();
+    return true;
   }
 
   /// 监听控制器属性变动时的回调
@@ -207,6 +245,31 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
   @override
   Widget build(BuildContext context) {
+    final airplayHandle = _airplayHandle;
+    if (airplayHandle != null) {
+      return IosAirPlayMirrorContent(
+        handle: airplayHandle,
+        deviceName: widget.deviceName,
+        initialAspectRatio: _airplayAspectRatio,
+        toolbar: MirrorFloatingToolbar(
+          deviceId: widget.deviceId,
+          windowId: widget.windowId,
+          controller: _controller,
+        ),
+        onDisconnected: () {
+          if (!mounted ||
+              ref.read(activeIosMirrorProvider(widget.deviceId)) == null) {
+            return;
+          }
+          setState(() => _airplayHandle = null);
+          unawaited(
+            DesktopWindowTitleService.setTitle(
+              '${widget.deviceName} · ${context.l10n.t('iosMirrorUsbNative')}',
+            ),
+          );
+        },
+      );
+    }
     final settings = ref.watch(appSettingsProvider);
     final sdkVersion = ref.watch(deviceSdkVersionProvider(widget.deviceId)) ?? 0;
     final isAudioForwarded =
@@ -409,7 +472,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                     TextSpan(
                                       children: [
                                         TextSpan(
-                                          text: widget.deviceName,
+                                          text: isIos
+                                              ? '${widget.deviceName} · ${context.l10n.t('iosMirrorUsbNative')}'
+                                              : widget.deviceName,
                                           style: Theme.of(context)
                                               .textTheme
                                               .headlineSmall

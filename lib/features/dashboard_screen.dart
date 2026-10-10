@@ -107,6 +107,7 @@ import 'apps/widgets/camera_preview_view.dart';
 import 'apps/widgets/apps_alphabet_sidebar.dart';
 import 'apps/widgets/device_clipboard_view.dart';
 import 'airplay/airplay_toolbar_button.dart';
+import 'airplay/airplay_mirror_target.dart';
 import 'airplay/widgets/airplay_active_banner.dart';
 import '../core/airplay/airplay_server_service.dart';
 import '../core/airplay/airplay_server_state.dart';
@@ -431,7 +432,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       if (next != null &&
           next.status == AirPlayServerStatus.mirroring &&
           previous?.status != AirPlayServerStatus.mirroring) {
-        openAirPlayMirrorWindow(next);
+        final preferred = resolveAirPlayMirrorTarget(
+          ref.read(deviceRegistryProvider),
+        );
+        openAirPlayMirrorWindow(
+          next,
+          deviceId: preferred?.id,
+          deviceName: preferred?.displayName,
+        );
       }
     });
 

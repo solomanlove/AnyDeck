@@ -1,6 +1,15 @@
 # iOS 投屏控制
 
-更新：2026-10-07。目标：先完成 macOS + iPhone 6s（当前连接设备为 iOS 15.8.8）的可验证实现；高版本 iPhone、Windows、Linux 后续验证。本文是实现与验收记录，不能将编译通过写成真机功能通过。
+更新：2026-10-10。目标：先完成 macOS + iPhone 6s（当前连接设备为 iOS 15.8.8）的可验证实现；高版本 iPhone、Windows、Linux 后续验证。本文是实现与验收记录，不能将编译通过写成真机功能通过。
+
+## USB 与 Wi-Fi 共用投屏窗口
+
+- iOS 投屏统一使用 `MirrorWindowApp`。USB 画面是主窗口来源，AirPlay 建立后通过子窗口 MethodChannel 将同一个窗口切换为 Wi-Fi Texture，不再创建 `airplay_mirror` 专用窗口。
+- 标题必须明确显示 `USB 原生视频` 或 `Wi-Fi AirPlay`，避免用户混淆当前视频来源。
+- AirPlay 模式复用 USB 窗口已有的 iOS/WDA 工具栏，并承接置顶、恢复比例、全屏和停止 AirPlay 操作。AirPlay 停止或会话断开后，有有效 USB 会话时切回 USB 画面。
+- 视频区域按照原始宽高比计算窗口客户区尺寸，窗口比例包含 30px 标题栏和 28px iOS 工具栏，避免因工具栏占用空间而产生上下黑边。
+- 同一 iOS 设备已存在投屏窗口时，`createAdbManageWindow` 使用 `switchIosMirrorSource` 更新该窗口；AirPlay 自动入口优先绑定当前在线 USB iOS 设备，没有 USB 设备时才回退到在线 iOS 设备。
+- 自动化测试、静态分析和 macOS 构建只能证明代码链路可编译；USB/AirPlay 实际切换、旋转后窗口贴合和触控映射仍须真机验收。
 
 ## 1. 结论与两个 PoC
 
