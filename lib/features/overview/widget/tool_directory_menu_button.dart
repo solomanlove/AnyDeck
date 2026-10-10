@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/widget/menu_corner_indicator.dart';
 import '../../devices/controller/platform_tools_controller.dart';
 
 /// 跨平台调试工具目录打开按钮组件。
@@ -30,7 +31,9 @@ class ToolDirectoryMenuButton extends ConsumerWidget {
 
     return PopupMenuButton<String>(
       tooltip: context.l10n.t('openToolDir'),
-      icon: const Icon(CupertinoIcons.folder),
+      icon: const MenuCornerIndicator(
+        child: Icon(CupertinoIcons.folder),
+      ),
       iconSize: 30,
       color: popupBgColor,
       elevation: 6,
