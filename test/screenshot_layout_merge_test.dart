@@ -385,6 +385,27 @@ void main() {
       expect(mockInspector.captureLayoutCallCount, greaterThan(0));
       expect(find.text('点击选中'), findsNothing);
       expect(find.text('显示布局'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(LayoutHierarchyTree),
+          matching: find.byTooltip('展开全部'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(LayoutHierarchyTree),
+          matching: find.byTooltip('折叠全部'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(LayoutPropertiesTable),
+          matching: find.text('DP'),
+        ),
+        findsOneWidget,
+      );
 
       // 再次点击关闭布局分析
       await tester.tap(find.byType(CupertinoSwitch));

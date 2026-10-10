@@ -23,11 +23,8 @@ class ScreenshotToolbar extends StatelessWidget {
     required this.onStartRecording,
     required this.onStopRecording,
     required this.onToggleLayoutAnalysis,
-    required this.onExpandAll,
-    required this.onCollapseAll,
     required this.onShowPropertiesChanged,
     required this.onShowBordersChanged,
-    required this.onUseDpChanged,
   });
 
   final AdbDevice device;
@@ -43,11 +40,8 @@ class ScreenshotToolbar extends StatelessWidget {
   final VoidCallback onStartRecording;
   final VoidCallback onStopRecording;
   final ValueChanged<bool> onToggleLayoutAnalysis;
-  final VoidCallback onExpandAll;
-  final VoidCallback onCollapseAll;
   final ValueChanged<bool?> onShowPropertiesChanged;
   final ValueChanged<bool?> onShowBordersChanged;
-  final ValueChanged<bool?> onUseDpChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -178,20 +172,9 @@ class ScreenshotToolbar extends StatelessWidget {
                       ],
                     ],
                   ],
-                  // 6. 布局分析模式专属：展开折叠、边框显示、点击选中、DP 单位、属性面板
+                  // 6. 布局分析模式专属：边框显示、点击选中与属性面板
                   if (isAnalysis) ...[
                     _buildDivider(isDark),
-                    _ToolbarButton(
-                      icon: CupertinoIcons.chevron_up_chevron_down,
-                      tooltip: context.l10n.t('expandAll'),
-                      onPressed: state.rootNode != null ? onExpandAll : null,
-                    ),
-                    _ToolbarButton(
-                      icon: CupertinoIcons.minus,
-                      tooltip: context.l10n.t('collapseAll'),
-                      onPressed: state.rootNode != null ? onCollapseAll : null,
-                    ),
-                    const SizedBox(width: 8),
                     _ToolbarCheckbox(
                       label: context.l10n.t('showProperties'),
                       value: state.showProperties,
@@ -202,12 +185,6 @@ class ScreenshotToolbar extends StatelessWidget {
                       label: context.l10n.t('showBorders'),
                       value: state.showBorders,
                       onChanged: onShowBordersChanged,
-                    ),
-                    const SizedBox(width: 8),
-                    _ToolbarCheckbox(
-                      label: 'DP',
-                      value: state.useDp,
-                      onChanged: onUseDpChanged,
                     ),
                   ],
                 ],

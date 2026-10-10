@@ -13,6 +13,8 @@ class LayoutHierarchyTree extends StatefulWidget {
   final ValueChanged<LayoutNode?> onNodeSelected;
   final ValueChanged<LayoutNode?> onNodeHovered;
   final void Function(LayoutNode node, bool expanded) onNodeExpansionChanged;
+  final VoidCallback? onExpandAll;
+  final VoidCallback? onCollapseAll;
 
   const LayoutHierarchyTree({
     super.key,
@@ -24,6 +26,8 @@ class LayoutHierarchyTree extends StatefulWidget {
     required this.onNodeSelected,
     required this.onNodeHovered,
     required this.onNodeExpansionChanged,
+    this.onExpandAll,
+    this.onCollapseAll,
   });
 
   @override
@@ -81,6 +85,19 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
                     fontSize: 13,
                     color: labelColor,
                   ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(CupertinoIcons.chevron_up_chevron_down, size: 18),
+                  tooltip: context.l10n.t('expandAll'),
+                  onPressed: widget.loading ? null : widget.onExpandAll,
+                  visualDensity: VisualDensity.compact,
+                ),
+                IconButton(
+                  icon: const Icon(CupertinoIcons.minus, size: 18),
+                  tooltip: context.l10n.t('collapseAll'),
+                  onPressed: widget.loading ? null : widget.onCollapseAll,
+                  visualDensity: VisualDensity.compact,
                 ),
               ],
             ),

@@ -188,13 +188,10 @@ class _DashboardScreenshotTabState
           onStartRecording: () => controller.startRecording(context: context),
           onStopRecording: () => controller.stopRecording(context: context),
           onToggleLayoutAnalysis: controller.toggleLayoutAnalysis,
-          onExpandAll: controller.expandAllNodes,
-          onCollapseAll: controller.collapseAllNodes,
           onShowPropertiesChanged: (val) =>
               controller.setShowProperties(val ?? true),
           onShowBordersChanged: (val) =>
               controller.setShowBorders(val ?? false),
-          onUseDpChanged: (val) => controller.setUseDp(val ?? true),
         ),
         // 2. 主工作区：普通截图模式单画布，布局分析模式三栏展开
         Expanded(
@@ -217,6 +214,8 @@ class _DashboardScreenshotTabState
                               onNodeHovered: controller.hoverNode,
                               onNodeExpansionChanged:
                                   controller.toggleNodeExpanded,
+                              onExpandAll: controller.expandAllNodes,
+                              onCollapseAll: controller.collapseAllNodes,
                             ),
                     ),
                     VerticalDivider(
@@ -260,6 +259,8 @@ class _DashboardScreenshotTabState
                           selectedNode: state.selectedNode,
                           useDp: state.useDp,
                           deviceScale: density,
+                          onUseDpChanged: (val) =>
+                              controller.setUseDp(val ?? true),
                         ),
                       ),
                     ],

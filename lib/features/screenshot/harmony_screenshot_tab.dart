@@ -165,11 +165,8 @@ class _HarmonyScreenshotTabState extends ConsumerState<HarmonyScreenshotTab> {
           onStartRecording: () => controller.startRecording(context: context),
           onStopRecording: () => controller.stopRecording(context: context),
           onToggleLayoutAnalysis: (_) {},
-          onExpandAll: () {},
-          onCollapseAll: () {},
           onShowPropertiesChanged: (_) {},
           onShowBordersChanged: (_) {},
-          onUseDpChanged: (_) {},
         ),
         // 中央复用截图画布
         Expanded(
