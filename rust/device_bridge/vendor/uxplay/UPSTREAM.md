@@ -9,6 +9,7 @@
 ## 本地补丁
 
 - `lib/raop.c`：`raop_stop_httpd` 判断 httpd 是否为空，允许 init2 失败路径安全析构。
+- `lib/dnssd.*`、`lib/dns_sd/dns_sd.c`：允许接入层指定 Bonjour interface，避免服务同时发布到 USB link-local 链路。
 - `native/uxplay_bridge.c` 位于 vendor 目录外，是 AnyDeck 生命周期、能力声明和媒体回调适配层。
 
 ## 构建

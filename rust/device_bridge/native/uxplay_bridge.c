@@ -8,6 +8,9 @@
 #include <stdatomic.h>
 #include <errno.h>
 #include <sys/select.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <netinet/in.h>
 
 /* AnyDeck 接入层：只借用回调数据，停止时先 join 再释放上下文。 */
 
@@ -28,6 +31,26 @@ typedef struct {
     atomic_bool running;
     bool worker_started;
 } anydeck_uxplay_handle_t;
+
+/* AirPlay 只在可路由 LAN 上广播，避免 iPhone 通过 USB 169.254 链路建连后 UDP timing 断流。 */
+static uint32_t find_lan_interface_index(void) {
+    struct ifaddrs *interfaces = NULL;
+    if (getifaddrs(&interfaces) != 0) return 0;
+    uint32_t selected = 0;
+    for (struct ifaddrs *entry = interfaces; entry; entry = entry->ifa_next) {
+        if (!entry->ifa_addr || entry->ifa_addr->sa_family != AF_INET) continue;
+        if (!(entry->ifa_flags & IFF_UP) || !(entry->ifa_flags & IFF_RUNNING) ||
+            (entry->ifa_flags & IFF_LOOPBACK) || strncmp(entry->ifa_name, "utun", 4) == 0) continue;
+        uint32_t address = ntohl(((struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr);
+        if ((address & 0xffff0000u) == 0xa9fe0000u || (address & 0xff000000u) == 0x7f000000u) continue;
+        uint32_t index = if_nametoindex(entry->ifa_name);
+        if (!index) continue;
+        selected = index;
+        if (strncmp(entry->ifa_name, "en", 2) == 0) break;
+    }
+    freeifaddrs(interfaces);
+    return selected;
+}
 
 static void on_audio_process(void *cls, raop_ntp_t *ntp, audio_decode_struct *data) {
     (void)cls;
@@ -324,6 +347,14 @@ void *anydeck_uxplay_start(
     if (parse_mac_bytes(mac, mac_bytes) != 0) goto fail;
     h->dnssd = dnssd_init(name, (int)strlen(name), (const char *)mac_bytes, 6, 0, &dnssd_err);
     if (!h->dnssd || dnssd_err) goto fail;
+    if (publish) {
+        uint32_t interface_index = find_lan_interface_index();
+        if (!interface_index) {
+            on_raop_log(h, LOGGER_ERR, "No routable LAN interface available for AirPlay Bonjour");
+            goto fail;
+        }
+        dnssd_set_interface_index(h->dnssd, interface_index);
+    }
     dnssd_set_airplay_features(h->dnssd, 0, 0); // 不支持 HLS
     dnssd_set_airplay_features(h->dnssd, 4, 0);
     dnssd_set_airplay_features(h->dnssd, 42, 0); // 不支持 HEVC

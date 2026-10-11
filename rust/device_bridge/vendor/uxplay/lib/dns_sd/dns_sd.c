@@ -241,7 +241,7 @@ dnssd_register_raop(dnssd_t *dnssd_public, unsigned short port)
     assert(dnssd_public->dnssd_private);
     dnssd_private_t *dnssd = (dnssd_private_t *) dnssd_public->dnssd_private;
     DNSServiceFlags flags = 0;
-    uint32_t interface_index = 0;
+    uint32_t interface_index = dnssd_public->interface_index;
 
 #if defined(__APPLE__) && defined(UXPLAY_HAVE_APPLE_P2P)
     /* p2p support (macOS only) 
@@ -329,7 +329,7 @@ dnssd_register_airplay(dnssd_t *dnssd_public, unsigned short port)
     assert(dnssd_public->dnssd_private);
     dnssd_private_t *dnssd = (dnssd_private_t *) dnssd_public->dnssd_private;    
     DNSServiceFlags flags = 0;
-    uint32_t interface_index = 0;
+    uint32_t interface_index = dnssd_public->interface_index;
 
 #if defined(__APPLE__) && defined(UXPLAY_HAVE_APPLE_P2P)
     /* p2p support (macOS only) 

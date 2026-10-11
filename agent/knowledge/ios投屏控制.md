@@ -7,6 +7,7 @@
 - iOS 投屏统一使用 `MirrorWindowApp`。USB 画面是主窗口来源，AirPlay 建立后通过子窗口 MethodChannel 将同一个窗口切换为 Wi-Fi Texture，不再创建 `airplay_mirror` 专用窗口。
 - 标题必须明确显示 `USB 原生视频` 或 `Wi-Fi AirPlay`，避免用户混淆当前视频来源。
 - AirPlay 模式复用 USB 窗口已有的 iOS/WDA 工具栏，并承接置顶、恢复比例、全屏和停止 AirPlay 操作。AirPlay 停止或会话断开后，有有效 USB 会话时切回 USB 画面。
+- AirPlay Bonjour 只发布到具备可路由 IPv4 的 LAN interface，排除 loopback、`utun` 与 `169.254/16` USB link-local。否则 USB 同时连接时，iPhone 可能经 USB 接入并在首帧后因 UDP NTP `No route to host` 终止镜像流。
 - 视频区域按照原始宽高比计算窗口客户区尺寸，窗口比例包含 30px 标题栏和 28px iOS 工具栏，避免因工具栏占用空间而产生上下黑边。
 - USB 投屏内容区只承载视频和手势映射；启用/停止控制入口紧邻截图按钮，采集 FPS 固定在工具栏最右侧。WDA 或 USB 采集错误使用可滚动弹框展示，不再把长日志插入视频布局并挤压手机画面。
 - 同一 iOS 设备已存在投屏窗口时，`createAdbManageWindow` 使用 `switchIosMirrorSource` 更新该窗口；AirPlay 自动入口优先绑定当前在线 USB iOS 设备，没有 USB 设备时才回退到在线 iOS 设备。

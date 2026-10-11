@@ -27,6 +27,11 @@
 #include "dnssdint.h"
 #include "utils.h"
 
+void dnssd_set_interface_index(dnssd_t *dnssd, uint32_t interface_index) {
+    assert(dnssd);
+    dnssd->interface_index = interface_index;
+}
+
 #if defined(__APPLE__) && defined(UXPLAY_HAVE_APPLE_P2P)
 /* p2p support (macOS only) */
 #include "netutils.h"
