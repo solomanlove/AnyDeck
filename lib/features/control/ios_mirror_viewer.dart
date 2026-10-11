@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/l10n/app_localizations.dart';
 import '../../core/ios/ios_control_provider.dart';
 import '../../core/ios/ios_mirror_coordinates.dart';
 import '../../core/ios/ios_mirror_service.dart';
-import '../ios/widgets/ios_control_bar.dart';
 
 /// macOS iPhone USB Texture 视图；port 为兼容旧调用保留，实际传入 Texture ID。
 /// 所有点击只落入视频区域；WDA 手势在抬起时一次提交，避免逐像素请求。
@@ -15,9 +13,12 @@ class IosMirrorViewer extends ConsumerStatefulWidget {
     super.key,
     required this.deviceId,
     required this.port,
+    this.onVideoGeometryChanged,
   });
   final String deviceId;
   final int port;
+  final void Function(int width, int height, Size viewport)?
+  onVideoGeometryChanged;
   @override
   ConsumerState<IosMirrorViewer> createState() => _IosMirrorViewerState();
 }
@@ -29,6 +30,8 @@ class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
   Size? _gesturePoints;
   Size? _gesturePixels;
   String? _gestureOrientation;
+  Size? _reportedVideoSize;
+  Size? _reportedViewport;
 
   void _cancel() {
     _down = null;
@@ -39,8 +42,11 @@ class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
   @override
   void didUpdateWidget(covariant IosMirrorViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.deviceId != widget.deviceId || oldWidget.port != widget.port) {
+    if (oldWidget.deviceId != widget.deviceId ||
+        oldWidget.port != widget.port) {
       _cancel();
+      _reportedVideoSize = null;
+      _reportedViewport = null;
     }
   }
 
@@ -53,108 +59,101 @@ class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
       (data['height'] as num?)?.toDouble() ?? 0,
     );
     final points = Size(control.width, control.height);
-    final fps = (data['fps'] as num?)?.toStringAsFixed(1) ?? '-';
-    final error = '${data['error'] ?? ''}';
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: IosControlBar(udid: widget.deviceId),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Text(
-            '${context.l10n.t('iosUsbVideo')} · $fps FPS · ${context.l10n.t('iosWdaGestureHint')}',
-            style: Theme.of(context).textTheme.bodySmall,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewport = constraints.biggest;
+        if (!pixels.isEmpty &&
+            (pixels != _reportedVideoSize || viewport != _reportedViewport)) {
+          _reportedVideoSize = pixels;
+          _reportedViewport = viewport;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted ||
+                _reportedVideoSize != pixels ||
+                _reportedViewport != viewport) {
+              return;
+            }
+            widget.onVideoGeometryChanged?.call(
+              pixels.width.toInt(),
+              pixels.height.toInt(),
+              viewport,
+            );
+          });
+        }
+        Offset? convert(Offset position) =>
+            IosMirrorCoordinates.toPoints(position, viewport, pixels, points);
+        return Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (event) {
+            _cancel();
+            if (!control.ready ||
+                control.busy ||
+                event.buttons != kPrimaryMouseButton) {
+              return;
+            }
+            _down = convert(event.localPosition);
+            if (_down == null) return;
+            _pointer = event.pointer;
+            _downAt = DateTime.now();
+            _gesturePoints = points;
+            _gesturePixels = pixels;
+            _gestureOrientation = control.orientation;
+          },
+          onPointerCancel: (_) => _cancel(),
+          onPointerUp: (event) {
+            final from = _down;
+            final to = convert(event.localPosition);
+            final duration = _downAt == null
+                ? 400
+                : DateTime.now().difference(_downAt!).inMilliseconds;
+            final valid =
+                _pointer == event.pointer &&
+                _gesturePoints == points &&
+                _gesturePixels == pixels &&
+                _gestureOrientation == control.orientation;
+            _cancel();
+            if (!valid ||
+                from == null ||
+                to == null ||
+                !control.ready ||
+                control.busy) {
+              return;
+            }
+            final notifier = ref.read(
+              iosControlProvider(widget.deviceId).notifier,
+            );
+            if ((to - from).distance < 5) {
+              notifier.perform('tap', {'x': to.dx, 'y': to.dy});
+            } else {
+              notifier.perform('swipe', {
+                'fromX': from.dx,
+                'fromY': from.dy,
+                'toX': to.dx,
+                'toY': to.dy,
+                'durationMs': duration.clamp(100, 1500),
+              });
+            }
+          },
+          child: ColoredBox(
+            color: Colors.black,
+            child: Center(
+              child: pixels.isEmpty
+                  ? const CircularProgressIndicator()
+                  : SizedBox(
+                      width: viewport.width,
+                      height: viewport.height,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: SizedBox(
+                          width: pixels.width,
+                          height: pixels.height,
+                          child: Texture(textureId: widget.port),
+                        ),
+                      ),
+                    ),
+            ),
           ),
-        ),
-        if (error.isNotEmpty) Text(iosControlErrorText(context, error)),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final viewport = constraints.biggest;
-              Offset? convert(Offset position) => IosMirrorCoordinates.toPoints(
-                position,
-                viewport,
-                pixels,
-                points,
-              );
-              return Listener(
-                behavior: HitTestBehavior.opaque,
-                onPointerDown: (event) {
-                  _cancel();
-                  if (!control.ready ||
-                      control.busy ||
-                      event.buttons != kPrimaryMouseButton) {
-                    return;
-                  }
-                  _down = convert(event.localPosition);
-                  if (_down == null) return;
-                  _pointer = event.pointer;
-                  _downAt = DateTime.now();
-                  _gesturePoints = points;
-                  _gesturePixels = pixels;
-                  _gestureOrientation = control.orientation;
-                },
-                onPointerCancel: (_) => _cancel(),
-                onPointerUp: (event) {
-                  final from = _down;
-                  final to = convert(event.localPosition);
-                  final duration = _downAt == null
-                      ? 400
-                      : DateTime.now().difference(_downAt!).inMilliseconds;
-                  final valid =
-                      _pointer == event.pointer &&
-                      _gesturePoints == points &&
-                      _gesturePixels == pixels &&
-                      _gestureOrientation == control.orientation;
-                  _cancel();
-                  if (!valid ||
-                      from == null ||
-                      to == null ||
-                      !control.ready ||
-                      control.busy) {
-                    return;
-                  }
-                  final notifier = ref.read(
-                    iosControlProvider(widget.deviceId).notifier,
-                  );
-                  if ((to - from).distance < 5) {
-                    notifier.perform('tap', {'x': to.dx, 'y': to.dy});
-                  } else {
-                    notifier.perform('swipe', {
-                      'fromX': from.dx,
-                      'fromY': from.dy,
-                      'toX': to.dx,
-                      'toY': to.dy,
-                      'durationMs': duration.clamp(100, 1500),
-                    });
-                  }
-                },
-                child: ColoredBox(
-                  color: Colors.black,
-                  child: Center(
-                    child: pixels.isEmpty
-                        ? const CircularProgressIndicator()
-                        : SizedBox(
-                            width: viewport.width,
-                            height: viewport.height,
-                            child: FittedBox(
-                              fit: BoxFit.contain,
-                              child: SizedBox(
-                                width: pixels.width,
-                                height: pixels.height,
-                                child: Texture(textureId: widget.port),
-                              ),
-                            ),
-                          ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 }

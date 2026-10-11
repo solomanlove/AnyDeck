@@ -8,8 +8,17 @@
 - 标题必须明确显示 `USB 原生视频` 或 `Wi-Fi AirPlay`，避免用户混淆当前视频来源。
 - AirPlay 模式复用 USB 窗口已有的 iOS/WDA 工具栏，并承接置顶、恢复比例、全屏和停止 AirPlay 操作。AirPlay 停止或会话断开后，有有效 USB 会话时切回 USB 画面。
 - 视频区域按照原始宽高比计算窗口客户区尺寸，窗口比例包含 30px 标题栏和 28px iOS 工具栏，避免因工具栏占用空间而产生上下黑边。
+- USB 投屏内容区只承载视频和手势映射；启用/停止控制入口紧邻截图按钮，采集 FPS 固定在工具栏最右侧。WDA 或 USB 采集错误使用可滚动弹框展示，不再把长日志插入视频布局并挤压手机画面。
 - 同一 iOS 设备已存在投屏窗口时，`createAdbManageWindow` 使用 `switchIosMirrorSource` 更新该窗口；AirPlay 自动入口优先绑定当前在线 USB iOS 设备，没有 USB 设备时才回退到在线 iOS 设备。
 - 自动化测试、静态分析和 macOS 构建只能证明代码链路可编译；USB/AirPlay 实际切换、旋转后窗口贴合和触控映射仍须真机验收。
+
+## USB 采集已识别设备但无首帧
+
+- `iosUsbFirstFrameTimeout` 不等于设备未解锁。先检查错误详情中的 `usbSerials`、`devices`、`cameraAuthorization`、`stage` 和 `frames`；物理 serial 与唯一 Apple muxed 设备均存在且权限已授权时，说明设备选择成功。
+- 旧 iPhone 可能出现 `AVCaptureSession.startRunning()` 返回、状态停在 `waitingFirstFrame`、`frames=0` 的情况。采集器等待 6 秒后只执行一次 session 销毁、设备重新枚举和 session 重建，禁止无限重试或积累采集会话。
+- 若恢复后仍为 `waitingFirstFrameAfterRecovery`，需要物理拔插 USB，让 iPhone 重新发布 muxed 屏幕流；仅点击重试、重新解锁或重启 Flutter 窗口无法恢复设备端视频源。
+- iOS USB Texture 首帧尺寸必须由 `IosMirrorViewer` 回调 `MirrorWindowController.onVideoSizeChanged`，让窗口按实际像素比例收敛；不能只对 Android/HarmonyOS 的 `EmbeddedScrcpyViewer` 注册尺寸回调，否则 USB 画面会保留左右黑边。
+- 排障时同时检查残留的 `ios screenshot --stream` 和 `xcdevice observe` 进程。若 AVFoundation 0 帧且 go-ios DTX 同时报 `write unix ->/var/run/usbmuxd: broken pipe`，应先清理残留客户端；本次 iPhone 6s 最终通过设备重启恢复，PoC 实测 `752×1334`、约 31.7 FPS，AnyDeck 窗口复测约 40 FPS。
 
 ## 1. 结论与两个 PoC
 

@@ -75,7 +75,8 @@ final class IosUsbCapturePlugin: NSObject, FlutterPlugin {
       guard let self, let capture, self.captures[udid] === capture else { return }
       if let error { self.stop(udid, code: error.localizedDescription) }
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self, weak capture] in
+    // 给旧 iPhone 的一次原生 session 自恢复留出时间，仍无首帧再向 Dart 报错。
+    DispatchQueue.main.asyncAfter(deadline: .now() + 22) { [weak self, weak capture] in
       guard let self, let capture, self.captures[udid] === capture, self.pending[udid] != nil else { return }
       self.stop(udid, code: "iosUsbFirstFrameTimeout")
     }

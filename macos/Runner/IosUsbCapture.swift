@@ -19,6 +19,7 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
   private var usbSerials: [String] = []
   private var closed = false
   private var notificationPending = false
+  private var recoveryAttempts = 0
   private var observers: [NSObjectProtocol] = []
   var onFrame: (() -> Void)?
 
@@ -27,9 +28,9 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
       mSelector: CMIOObjectPropertySelector(kCMIOHardwarePropertyAllowScreenCaptureDevices),
       mScope: CMIOObjectPropertyScope(kCMIOObjectPropertyScopeGlobal),
       mElement: CMIOObjectPropertyElement(kCMIOObjectPropertyElementMain))
-    var enabled: UInt32 = 1
+    var value: UInt32 = 1
     let status = CMIOObjectSetPropertyData(CMIOObjectID(kCMIOObjectSystemObject),
-      &address, 0, nil, UInt32(MemoryLayout<UInt32>.size), &enabled)
+      &address, 0, nil, UInt32(MemoryLayout<UInt32>.size), &value)
     if status != noErr { throw NSError(domain: "IosUsbCapture", code: Int(status)) }
   }
 
@@ -63,48 +64,93 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
           throw NSError(domain: "IosUsbCapture", code: 1,
             userInfo: [NSLocalizedDescriptionKey: "iosUsbDeviceMissing"])
         }
-        let capture = AVCaptureSession()
-        setStage("creatingInput")
-        capture.beginConfiguration()
-        let input = try AVCaptureDeviceInput(device: device)
-        guard capture.canAddInput(input) else {
-          throw NSError(domain: "IosUsbCapture", code: 2)
-        }
-        capture.addInput(input)
-        setStage("configuringOutput")
-        let output = AVCaptureVideoDataOutput()
-        output.alwaysDiscardsLateVideoFrames = true
-        output.videoSettings = [
-          kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-          kCVPixelBufferIOSurfacePropertiesKey as String: [:],
-          kCVPixelBufferMetalCompatibilityKey as String: true,
-        ]
-        output.setSampleBufferDelegate(self, queue: frames)
-        guard capture.canAddOutput(output) else {
-          throw NSError(domain: "IosUsbCapture", code: 3)
-        }
-        capture.addOutput(output)
-        capture.commitConfiguration()
-        session = capture
-        observers.append(NotificationCenter.default.addObserver(
-          forName: AVCaptureSession.runtimeErrorNotification, object: capture, queue: nil) { [weak self] note in
-            self?.setFailure((note.userInfo?[AVCaptureSessionErrorKey] as? Error)?.localizedDescription
-              ?? "iosUsbCaptureStopped")
-          })
-        observers.append(NotificationCenter.default.addObserver(
-          forName: AVCaptureDevice.wasDisconnectedNotification, object: device, queue: nil) { [weak self] _ in
-            self?.setFailure("iosUsbDeviceMissing")
-          })
-        lock.lock(); startedAt = Date().timeIntervalSince1970; lock.unlock()
-        setStage("startingSession")
-        capture.startRunning()
-        lock.lock(); if count == 0 { stage = "waitingFirstFrame" }; lock.unlock()
+        try startSession(device: device)
+        scheduleFirstFrameRecovery(device: device, completion: completion)
         DispatchQueue.main.async { completion(nil) }
       } catch {
         setFailure(error.localizedDescription)
         DispatchQueue.main.async { completion(error) }
       }
     }
+  }
+
+  private func startSession(device: AVCaptureDevice) throws {
+    let capture = AVCaptureSession()
+    setStage(recoveryAttempts == 0 ? "creatingInput" : "recoveringCreatingInput")
+    capture.beginConfiguration()
+    let input = try AVCaptureDeviceInput(device: device)
+    guard capture.canAddInput(input) else {
+      throw NSError(domain: "IosUsbCapture", code: 2)
+    }
+    capture.addInput(input)
+    setStage(recoveryAttempts == 0 ? "configuringOutput" : "recoveringOutput")
+    let output = AVCaptureVideoDataOutput()
+    output.alwaysDiscardsLateVideoFrames = true
+    output.videoSettings = [
+      kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+      kCVPixelBufferIOSurfacePropertiesKey as String: [:],
+      kCVPixelBufferMetalCompatibilityKey as String: true,
+    ]
+    output.setSampleBufferDelegate(self, queue: frames)
+    guard capture.canAddOutput(output) else {
+      throw NSError(domain: "IosUsbCapture", code: 3)
+    }
+    capture.addOutput(output)
+    capture.commitConfiguration()
+    session = capture
+    observers.append(NotificationCenter.default.addObserver(
+      forName: AVCaptureSession.runtimeErrorNotification, object: capture, queue: nil) { [weak self] note in
+        self?.setFailure((note.userInfo?[AVCaptureSessionErrorKey] as? Error)?.localizedDescription
+          ?? "iosUsbCaptureStopped")
+      })
+    observers.append(NotificationCenter.default.addObserver(
+      forName: AVCaptureDevice.wasDisconnectedNotification, object: device, queue: nil) { [weak self] _ in
+        self?.setFailure("iosUsbDeviceMissing")
+      })
+    lock.lock(); startedAt = Date().timeIntervalSince1970; lock.unlock()
+    setStage(recoveryAttempts == 0 ? "startingSession" : "recoveringSession")
+    capture.startRunning()
+    lock.lock(); if count == 0 { stage = recoveryAttempts == 0
+      ? "waitingFirstFrame" : "waitingFirstFrameAfterRecovery" }; lock.unlock()
+  }
+
+  private func scheduleFirstFrameRecovery(
+    device: AVCaptureDevice,
+    completion: @escaping (Error?) -> Void
+  ) {
+    queue.asyncAfter(deadline: .now() + 6) { [weak self] in
+      guard let self, !self.isClosed else { return }
+      self.lock.lock(); let needsRecovery = self.count == 0 && self.recoveryAttempts == 0; self.lock.unlock()
+      guard needsRecovery else { return }
+      self.recoveryAttempts = 1
+      self.setStage("resettingCaptureDevice")
+      self.stopSession()
+      do {
+        Thread.sleep(forTimeInterval: 0.2)
+        guard !self.isClosed else { return }
+        let deadline = Date().addingTimeInterval(4)
+        var refreshedDevice: AVCaptureDevice?
+        repeat {
+          refreshedDevice = Self.devices().first { $0.uniqueID == device.uniqueID }
+          if refreshedDevice == nil { Thread.sleep(forTimeInterval: 0.2) }
+        } while refreshedDevice == nil && Date() < deadline
+        guard let refreshedDevice else {
+          throw NSError(domain: "IosUsbCapture", code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "iosUsbDeviceMissing"])
+        }
+        try self.startSession(device: refreshedDevice)
+      } catch {
+        self.setFailure(error.localizedDescription)
+        DispatchQueue.main.async { completion(error) }
+      }
+    }
+  }
+
+  private func stopSession() {
+    session?.stopRunning()
+    session = nil
+    observers.forEach { NotificationCenter.default.removeObserver($0) }
+    observers.removeAll()
   }
 
   private var isClosed: Bool {
@@ -174,6 +220,7 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
             "height": pixel.map { CVPixelBufferGetHeight($0) } ?? 0,
             "frames": count, "fps": Double(count) / max(0.001, now - startedAt),
             "stage": stage,
+            "recoveryAttempts": recoveryAttempts,
             "frameAgeMs": lastFrame == 0 ? -1 : (now - lastFrame) * 1000,
             "error": failure ?? "", "closed": closed]
   }
@@ -181,10 +228,7 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
   func stop() {
     lock.lock(); closed = true; pixel = nil; lock.unlock()
     queue.async { [self] in
-      session?.stopRunning()
-      session = nil
-      observers.forEach { NotificationCenter.default.removeObserver($0) }
-      observers.removeAll()
+      stopSession()
     }
   }
 }

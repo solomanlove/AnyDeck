@@ -2,6 +2,7 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/window/mirror/ios_mirror_toolbar.dart';
 import 'package:any_deck/app/window/mirror/mirror_toolbar_button.dart';
 import 'package:any_deck/core/ios/ios_control_provider.dart';
+import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -59,6 +60,10 @@ void main() {
           ),
         );
         await tester.pump();
+        container.read(iosUsbFrameProvider('phone').notifier).update({
+          'fps': 44.7,
+        });
+        await tester.pump();
         final buttons = tester
             .widgetList<MirrorToolbarButton>(find.byType(MirrorToolbarButton))
             .toList();
@@ -67,6 +72,27 @@ void main() {
         expect(buttons.last.onPressed, isNotNull);
         expect(find.byIcon(CupertinoIcons.scope), findsNothing);
         expect(find.byIcon(CupertinoIcons.videocam), findsNothing);
+        expect(find.text('44.7 FPS'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('ios-control-toggle')),
+          findsOneWidget,
+        );
+        expect(
+          tester.getCenter(find.byIcon(CupertinoIcons.camera)).dx,
+          lessThan(
+            tester
+                .getCenter(find.byKey(const ValueKey('ios-control-toggle')))
+                .dx,
+          ),
+        );
+        expect(
+          tester.getCenter(find.byKey(const ValueKey('ios-mirror-fps'))).dx,
+          greaterThan(
+            tester
+                .getCenter(find.byKey(const ValueKey('ios-control-toggle')))
+                .dx,
+          ),
+        );
         await tester.tap(find.byIcon(CupertinoIcons.camera));
         await tester.longPress(find.byIcon(CupertinoIcons.camera));
         expect(screenshots, 1);
@@ -103,4 +129,60 @@ void main() {
       });
     }
   }
+
+  testWidgets('control failure opens a scrollable error dialog', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        iosControlCallProvider.overrideWithValue((
+          udid,
+          action, [
+          args = const {},
+        ]) async {
+          if (action == 'start') {
+            throw StateError('WDA diagnostic details');
+          }
+          return {'ready': false};
+        }),
+      ],
+    );
+    var disposed = false;
+    addTearDown(() {
+      if (!disposed) container.dispose();
+    });
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Scaffold(
+            body: IosMirrorToolbar(
+              deviceId: 'phone',
+              onScreenshot: _noop,
+              onSaveScreenshot: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('ios-control-toggle')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(SelectableText), findsOneWidget);
+    expect(find.textContaining('WDA diagnostic details'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    container.dispose();
+    disposed = true;
+  });
 }
+
+void _noop() {}

@@ -386,6 +386,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                       isHarmony: widget.isHarmony,
                       isFullScreen: _controller.isFullScreen,
                       onVideoSizeChanged: _controller.onVideoSizeChanged,
+                      onIosVideoGeometryChanged:
+                          _controller.onIosVideoGeometryChanged,
                       onEscapePressed: () {
                         if (_controller.isFullScreen) {
                           _controller.toggleFullScreen(context, false);

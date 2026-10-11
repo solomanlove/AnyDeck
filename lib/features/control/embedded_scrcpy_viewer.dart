@@ -27,6 +27,7 @@ class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
     this.onEscapePressed,
     this.isHarmony = false,
     this.onVideoSizeChanged,
+    this.onIosVideoGeometryChanged,
   });
 
   final String deviceId;
@@ -34,6 +35,8 @@ class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
   final VoidCallback? onEscapePressed;
   final bool isHarmony;
   final void Function(int width, int height)? onVideoSizeChanged;
+  final void Function(int width, int height, Size viewport)?
+      onIosVideoGeometryChanged;
 
   @override
   ConsumerState<EmbeddedScrcpyViewer> createState() =>
@@ -564,6 +567,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
       return IosMirrorViewer(
         deviceId: widget.deviceId,
         port: port,
+        onVideoGeometryChanged: widget.onIosVideoGeometryChanged,
       );
     }
 

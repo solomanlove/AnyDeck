@@ -120,6 +120,7 @@ class MirrorWindowController extends ChangeNotifier {
   bool _isApplyingWindowAutoFit = false;
   double? _pendingRotationAspect;
   double? _lastVideoAspect;
+  double _contentChromeHeight = mirrorWindowTopChromeHeight;
   bool _isFittingPendingRotation = false;
   // ==================== 初始化与销毁 (Init & Dispose) ====================
 
@@ -394,6 +395,25 @@ class MirrorWindowController extends ChangeNotifier {
     } else {
       unawaited(_fitWindowToCurrentAspect());
     }
+  }
+
+  /// iOS 控制栏位于视频区域上方，使用真实视频 viewport 计算窗口比例。
+  Future<void> onIosVideoGeometryChanged(
+    int width,
+    int height,
+    Size viewport,
+  ) async {
+    if (!isIos || width <= 0 || height <= 0 || viewport.isEmpty) return;
+    final frame = await MirrorWindowFrameAdapter.getWindowFrame(_windowChannel);
+    if (frame != null && frame.height > viewport.height) {
+      _contentChromeHeight = frame.height - viewport.height;
+    }
+    _lastVideoAspect = width / height;
+    await _fitWindowToCurrentAspect(
+      aspectRatio: _lastVideoAspect,
+      viewerW: viewport.width,
+      viewerH: viewport.height,
+    );
   }
 
   /// 等手机原生旋转帧播完，再按最后收到的视频比例调整窗口。
@@ -861,8 +881,7 @@ class MirrorWindowController extends ChangeNotifier {
           ? frame.width
           : (await windowManager.getSize()).width;
       if (currentWidth > 0 && contentAspect > 0) {
-        final lockedHeight =
-            currentWidth / contentAspect + mirrorWindowTopChromeHeight;
+        final lockedHeight = currentWidth / contentAspect + _contentChromeHeight;
         if (lockedHeight > 0) {
           await _setWindowAspectRatio(currentWidth / lockedHeight);
           return;
