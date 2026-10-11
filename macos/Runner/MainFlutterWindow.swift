@@ -70,7 +70,6 @@ class MainFlutterWindow: NSWindow {
     }
 
     (NSApplication.shared.delegate as? AppDelegate)?.configureApkChannel(flutterViewController.engine.binaryMessenger)
-    (NSApplication.shared.delegate as? AppDelegate)?.configureWindowChannel(flutterViewController.engine.binaryMessenger)
     if #available(macOS 10.14, *) {
       NotificationBridgeService.shared.setup(messenger: flutterViewController.engine.binaryMessenger)
     }

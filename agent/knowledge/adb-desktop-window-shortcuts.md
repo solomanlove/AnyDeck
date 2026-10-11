@@ -14,6 +14,7 @@
 | 模拟器管理窗口 | `EmulatorManagerWindowApp` | `Command + W` | 关闭当前模拟器管理子窗口 |
 | 投屏窗口 | `MirrorWindowApp` | `Command + W` | 关闭当前投屏子窗口，仅拦截本地窗口关闭组合键 |
 | 应用级退出 | `DashboardScreen` | 连按两次 `Command + Q` | 第一次显示顶部提示并取消退出，2 秒内第二次按下才退出应用 |
+| Dock 退出 | macOS `NSApplication` | Dock 图标右键 → 退出 | 使用系统标准退出流程，单次点击立即退出应用 |
 
 投屏窗口复用 `WindowCloseShortcut` 时只处理 `Command + W`，普通按键、`ESC`、全屏与设备键盘映射仍由投屏交互层负责，避免本地窗口快捷键扩大拦截范围。
 
@@ -27,13 +28,14 @@
 4. `Command + Q` 由 `DashboardScreen` 的 `CallbackShortcuts` 处理；第一次按下通过 `DashboardSnack.show(...)` 显示顶部提示并记录时间，第二次按下才解除 `window_manager` close 拦截并退出进程。
 5. 不要在 macOS 原生层用 `NSEvent.addLocalMonitorForEvents` 拦截 `Command + Q`；如果回调 `return nil`，Flutter 主窗口收不到快捷键，提示和二次退出都会失效。
 6. `MainMenu.xib` 中 Quit 菜单项的默认 `q` key equivalent 已移除，避免 AppKit 菜单绕过双按判断。
-7. 关闭窗口快捷键通过 `CallbackShortcuts` 注册：
+7. `AppDelegate` 不拦截 `applicationShouldTerminate`。Dock 的“退出”属于明确的系统退出动作，应一次生效；主窗口关闭按钮仍由 `window_manager` 拦截并隐藏到托盘。
+8. 关闭窗口快捷键通过 `CallbackShortcuts` 注册：
 
 ```dart
 const SingleActivator(LogicalKeyboardKey.keyW, meta: true)
 ```
 
-8. 子窗口回调直接调用 `windowManager.close()`，只关闭当前子窗口；主窗口回调同样调用 `windowManager.close()`，但最终行为由 `DashboardScreen.onWindowClose()` 隐藏到托盘。
+9. 子窗口回调直接调用 `windowManager.close()`，只关闭当前子窗口；主窗口回调同样调用 `windowManager.close()`，但最终行为由 `DashboardScreen.onWindowClose()` 隐藏到托盘。
 
 ---
 

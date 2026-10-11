@@ -7,12 +7,6 @@ class AppDelegate: FlutterAppDelegate {
   private var pendingApkPaths: [String] = []
   private var apkChannel: FlutterMethodChannel?
   private var apkReady = false
-  private var lastQuitRequestTime: Date?
-  private var windowChannel: FlutterMethodChannel?
-
-  func configureWindowChannel(_ messenger: FlutterBinaryMessenger) {
-    windowChannel = FlutterMethodChannel(name: "any_deck/window", binaryMessenger: messenger)
-  }
 
   func configureApkChannel(_ messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: "any_deck/apk_files", binaryMessenger: messenger)
@@ -70,30 +64,6 @@ class AppDelegate: FlutterAppDelegate {
       }
     }
     return true
-  }
-
-  // 收到退出请求时，2 秒内按两次直接退出；第一次拦截并通知 Flutter 弹出提示
-  override func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-    let now = Date()
-    if let lastTime = lastQuitRequestTime, now.timeIntervalSince(lastTime) <= 2.0 {
-      lastQuitRequestTime = nil
-      return .terminateNow
-    }
-    lastQuitRequestTime = now
-
-    if let channel = windowChannel {
-      channel.invokeMethod("promptQuitConfirmation", arguments: nil)
-    } else {
-      for window in sender.windows {
-        if let mainWindow = window as? MainFlutterWindow,
-           let flutterVC = mainWindow.contentViewController as? FlutterViewController {
-          let channel = FlutterMethodChannel(name: "any_deck/window", binaryMessenger: flutterVC.engine.binaryMessenger)
-          channel.invokeMethod("promptQuitConfirmation", arguments: nil)
-          break
-        }
-      }
-    }
-    return .terminateCancel
   }
 
   override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {

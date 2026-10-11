@@ -385,11 +385,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       _openConsoleWindow(context);
     } else if (call.method == 'openPreferences') {
       context.goNamed(AppRouteNames.settings);
-    } else if (call.method == 'promptQuitConfirmation') {
-      _lastQuitShortcutAt = DateTime.now();
-      if (mounted) {
-        _showSnack(context, context.l10n.t('pressCommandQAgainToQuit'));
-      }
     }
   }
 
