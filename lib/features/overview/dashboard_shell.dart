@@ -76,6 +76,7 @@ class _ContentTitleBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 16),
+              //tcp连接
               IconButton(
                 tooltip: context.l10n.t('connectTcp'),
                 icon: const Icon(CupertinoIcons.link),
@@ -90,6 +91,7 @@ class _ContentTitleBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              //无线连接
               IconButton(
                 tooltip: context.l10n.t('pairDeviceTitle'),
                 icon: const Icon(CupertinoIcons.antenna_radiowaves_left_right),
@@ -108,24 +110,10 @@ class _ContentTitleBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              //ios投屏
               AirPlayToolbarButton(iconColor: iconColor),
               const SizedBox(width: 8),
-              IconButton(
-                tooltip: context.l10n.t('refreshDevices'),
-                icon: const Icon(CupertinoIcons.refresh),
-                iconSize: 30,
-                color: iconColor,
-                onPressed: () => _refreshDevices(context, ref),
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(48, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ToolDirectoryMenuButton(iconColor: iconColor),
-              const SizedBox(width: 8),
+              //打开控制台
               IconButton(
                 tooltip: context.l10n.t('console'),
                 icon: const Icon(CupertinoIcons.doc_plaintext),
@@ -140,7 +128,26 @@ class _ContentTitleBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              //打开文件位置
+              ToolDirectoryMenuButton(iconColor: iconColor),
+              const SizedBox(width: 8),
+              //重置服务
               ServiceRestartMenuButton(iconColor: iconColor),
+              const SizedBox(width: 8),
+              //刷新
+              IconButton(
+                tooltip: context.l10n.t('refreshDevices'),
+                icon: const Icon(CupertinoIcons.refresh),
+                iconSize: 30,
+                color: iconColor,
+                onPressed: () => _refreshDevices(context, ref),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(48, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
