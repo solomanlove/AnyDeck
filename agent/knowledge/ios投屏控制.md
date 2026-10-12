@@ -10,6 +10,7 @@
 - AirPlay Bonjour 只发布到具备可路由 IPv4 的 LAN interface，排除 loopback、`utun` 与 `169.254/16` USB link-local。否则 USB 同时连接时，iPhone 可能经 USB 接入并在首帧后因 UDP NTP `No route to host` 终止镜像流。
 - 视频区域按照原始宽高比计算窗口客户区尺寸，窗口比例包含 30px 标题栏和 28px iOS 工具栏，避免因工具栏占用空间而产生上下黑边。
 - USB 投屏内容区只承载视频和手势映射；启用/停止控制入口紧邻截图按钮，采集 FPS 固定在工具栏最右侧。WDA 或 USB 采集错误使用可滚动弹框展示，不再把长日志插入视频布局并挤压手机画面。
+- 投屏画面使用 `GestureDetector` 区分 tap 与 pan；手势结束时读取最新 WDA 控制状态并换算 iOS point，避免 USB 帧状态与 1 秒 WDA 轮询重建期间把有效的 Pointer Down/Up 组合静默丢弃。工具栏 Home、锁屏可用但画面点击无效时，应先用同一 Session 的 `/actions` 验证真机 tap，再排查窗口手势层。
 - 同一 iOS 设备已存在投屏窗口时，`createAdbManageWindow` 使用 `switchIosMirrorSource` 更新该窗口；AirPlay 自动入口优先绑定当前在线 USB iOS 设备，没有 USB 设备时才回退到在线 iOS 设备。
 - 自动化测试、静态分析和 macOS 构建只能证明代码链路可编译；USB/AirPlay 实际切换、旋转后窗口贴合和触控映射仍须真机验收。
 

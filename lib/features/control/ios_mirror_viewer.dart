@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ios/ios_control_provider.dart';
@@ -25,7 +24,7 @@ class IosMirrorViewer extends ConsumerStatefulWidget {
 
 class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
   Offset? _down;
-  int? _pointer;
+  Offset? _lastDrag;
   DateTime? _downAt;
   Size? _gesturePoints;
   Size? _gesturePixels;
@@ -35,7 +34,7 @@ class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
 
   void _cancel() {
     _down = null;
-    _pointer = null;
+    _lastDrag = null;
     _downAt = null;
   }
 
@@ -81,57 +80,69 @@ class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
         }
         Offset? convert(Offset position) =>
             IosMirrorCoordinates.toPoints(position, viewport, pixels, points);
-        return Listener(
+        bool canControl() {
+          final current = ref.read(iosControlProvider(widget.deviceId));
+          return current.ready && !current.busy;
+        }
+
+        void performTap(Offset position) {
+          if (!canControl()) return;
+          final target = convert(position);
+          if (target == null) return;
+          ref.read(iosControlProvider(widget.deviceId).notifier).perform(
+            'tap',
+            {'x': target.dx, 'y': target.dy},
+          );
+        }
+
+        return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onPointerDown: (event) {
+          onTapUp: (details) => performTap(details.localPosition),
+          onPanStart: (details) {
             _cancel();
-            if (!control.ready ||
-                control.busy ||
-                event.buttons != kPrimaryMouseButton) {
-              return;
-            }
-            _down = convert(event.localPosition);
+            if (!canControl()) return;
+            _down = convert(details.localPosition);
             if (_down == null) return;
-            _pointer = event.pointer;
+            _lastDrag = _down;
             _downAt = DateTime.now();
             _gesturePoints = points;
             _gesturePixels = pixels;
             _gestureOrientation = control.orientation;
           },
-          onPointerCancel: (_) => _cancel(),
-          onPointerUp: (event) {
+          onPanUpdate: (details) {
+            if (_down == null) return;
+            _lastDrag = convert(details.localPosition);
+          },
+          onPanCancel: _cancel,
+          onPanEnd: (_) {
             final from = _down;
-            final to = convert(event.localPosition);
+            final to = _lastDrag;
             final duration = _downAt == null
                 ? 400
                 : DateTime.now().difference(_downAt!).inMilliseconds;
+            final current = ref.read(iosControlProvider(widget.deviceId));
             final valid =
-                _pointer == event.pointer &&
                 _gesturePoints == points &&
                 _gesturePixels == pixels &&
-                _gestureOrientation == control.orientation;
+                _gestureOrientation == current.orientation;
             _cancel();
             if (!valid ||
                 from == null ||
                 to == null ||
-                !control.ready ||
-                control.busy) {
+                !current.ready ||
+                current.busy) {
               return;
             }
             final notifier = ref.read(
               iosControlProvider(widget.deviceId).notifier,
             );
-            if ((to - from).distance < 5) {
-              notifier.perform('tap', {'x': to.dx, 'y': to.dy});
-            } else {
-              notifier.perform('swipe', {
-                'fromX': from.dx,
-                'fromY': from.dy,
-                'toX': to.dx,
-                'toY': to.dy,
-                'durationMs': duration.clamp(100, 1500),
-              });
-            }
+            notifier.perform('swipe', {
+              'fromX': from.dx,
+              'fromY': from.dy,
+              'toX': to.dx,
+              'toY': to.dy,
+              'durationMs': duration.clamp(100, 1500),
+            });
           },
           child: ColoredBox(
             color: Colors.black,
