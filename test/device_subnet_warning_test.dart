@@ -94,7 +94,7 @@ void main() {
 
   for (final locale in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
-      testWidgets('底栏刷新与定时切网同步更新提示 $locale $brightness', (tester) async {
+      testWidgets('底栏手动刷新同步更新提示 $locale $brightness', (tester) async {
         final service = _HostNetworkService();
         final l10n = AppLocalizations(Locale(locale));
         await tester.pumpWidget(
@@ -134,11 +134,18 @@ void main() {
         expect(find.text('IP: 192.168.0.105 (en0)'), findsOneWidget);
         expect(service.reads, 2);
 
-        // 切到不同网络后，已有的共享定时器也必须更新提示。
+        // 不再自动轮询：等待 10 秒后不应触发自动刷新。
         service.info = _network('192.168.31.105');
         await tester.pump(const Duration(seconds: 10));
         await tester.pumpAndSettle();
+        expect(warning, findsNothing);
+        expect(service.reads, 2);
+
+        // 手动刷新后更新提示与信息。
+        await tester.tap(find.byTooltip(l10n.t('hostNetworkRefresh')));
+        await tester.pumpAndSettle();
         expect(warning, findsOneWidget);
+        expect(service.reads, 3);
 
         service.fail = true;
         await tester.tap(find.byTooltip(l10n.t('hostNetworkRefresh')));

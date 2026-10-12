@@ -7,7 +7,7 @@ import '../../../core/providers/host_network_provider.dart';
 
 /// 设备列表固定底栏：展示当前电脑主机的 Wi-Fi/热点名称和本机 IP 地址。
 ///
-/// 位于设备管理列表最下方，窄窗口自动换行，离开页面时自动释放网络监听。
+/// 位于设备管理列表最下方，窄窗口自动换行，支持手动刷新网络信息。
 class HostNetworkFooter extends ConsumerWidget {
   const HostNetworkFooter({super.key});
 
