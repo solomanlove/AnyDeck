@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -201,7 +203,7 @@ class _MirrorAppQuickActionsDialogState
                   package.name,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? Colors.white60 : Colors.black54,
+                    color: Theme.of(context).appColors.mutedForeground,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -240,7 +242,7 @@ class _MirrorAppQuickActionsDialogState
                 hintText: '搜索快捷操作 (如: 重启, 调试, 权限, 清除)...',
                 hintStyle: TextStyle(
                   fontSize: 12,
-                  color: isDark ? Colors.white38 : Colors.black38,
+                  color: Theme.of(context).appColors.faintForeground,
                 ),
                 prefixIcon: const Icon(CupertinoIcons.search, size: 16),
                 prefixIconConstraints: const BoxConstraints(minWidth: 32),
@@ -331,7 +333,7 @@ class _MirrorAppQuickActionsDialogState
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white60 : Colors.black54,
+              color: Theme.of(context).appColors.mutedForeground,
             ),
           ),
         ),
@@ -370,7 +372,7 @@ class _MirrorAppQuickActionsDialogState
           child: Text(
             '未找到匹配的快捷操作',
             style: TextStyle(
-              color: isDark ? Colors.white38 : Colors.black38,
+              color: Theme.of(context).appColors.faintForeground,
               fontSize: 13,
             ),
           ),

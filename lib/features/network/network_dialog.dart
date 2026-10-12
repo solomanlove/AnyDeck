@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,12 +46,12 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      backgroundColor: isDark ? const Color(0xff1e293b) : Colors.white,
+      backgroundColor: Theme.of(context).appColors.panelSurface,
       surfaceTintColor: Colors.transparent,
       child: Container(
         width: 440,
@@ -70,7 +72,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : const Color(0xff1f2937),
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ],
@@ -81,13 +83,11 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: isDark ? Colors.grey[400] : const Color(0xff6b7280),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 20),
-              Divider(
-                color: isDark ? Colors.grey[800] : const Color(0xffe5e7eb),
-              ),
+              Divider(color: theme.colorScheme.outlineVariant),
               const SizedBox(height: 16),
 
               // 端口输入行
@@ -104,9 +104,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: isDark
-                                ? Colors.grey[300]
-                                : const Color(0xff4b5563),
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -115,7 +113,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           keyboardType: TextInputType.number,
                           style: const TextStyle(fontWeight: FontWeight.w500),
                           decoration: _inputDecoration(
-                            isDark,
+                            theme,
                             primaryColor,
                             '8081',
                           ),
@@ -141,9 +139,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: isDark
-                                ? Colors.grey[300]
-                                : const Color(0xff4b5563),
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -152,7 +148,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           keyboardType: TextInputType.number,
                           style: const TextStyle(fontWeight: FontWeight.w500),
                           decoration: _inputDecoration(
-                            isDark,
+                            theme,
                             primaryColor,
                             '8081',
                           ),
@@ -170,23 +166,21 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.grey[300] : const Color(0xff4b5563),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 10),
               Row(
                 children: [
-                  _quickPresetButton('React Native', '8081', isDark),
+                  _quickPresetButton('React Native', '8081', theme),
                   const SizedBox(width: 10),
-                  _quickPresetButton('Flutter', '8080', isDark),
+                  _quickPresetButton('Flutter', '8080', theme),
                   const SizedBox(width: 10),
-                  _quickPresetButton('Expo', '19000', isDark),
+                  _quickPresetButton('Expo', '19000', theme),
                 ],
               ),
               const SizedBox(height: 20),
-              Divider(
-                color: isDark ? Colors.grey[800] : const Color(0xffe5e7eb),
-              ),
+              Divider(color: theme.colorScheme.outlineVariant),
               const SizedBox(height: 16),
 
               // 保存为预设复选框
@@ -202,7 +196,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                   });
                 },
                 label: context.l10n.t('saveAsPreset'),
-                isDark: isDark,
+                theme: theme,
                 primaryColor: primaryColor,
               ),
 
@@ -220,7 +214,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                               controller: _presetNameController,
                               style: const TextStyle(fontSize: 14),
                               decoration: _inputDecoration(
-                                isDark,
+                                theme,
                                 primaryColor,
                                 context.l10n.t('presetNameOptional'),
                               ),
@@ -231,7 +225,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                               onChanged: (val) =>
                                   setState(() => _autoApplyOnConnect = val),
                               label: context.l10n.t('autoApplyOnConnect'),
-                              isDark: isDark,
+                              theme: theme,
                               primaryColor: primaryColor,
                             ),
                           ],
@@ -253,9 +247,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                         horizontal: 24,
                         vertical: 14,
                       ),
-                      backgroundColor: isDark
-                          ? const Color(0xff334155)
-                          : const Color(0xfff3f4f6),
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -263,9 +256,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                     child: Text(
                       context.l10n.t('cancel'),
                       style: TextStyle(
-                        color: isDark
-                            ? Colors.grey[200]
-                            : const Color(0xff1f2937),
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -363,7 +354,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
     );
   }
 
-  Widget _quickPresetButton(String title, String port, bool isDark) {
+  Widget _quickPresetButton(String title, String port, ThemeData theme) {
     return Expanded(
       child: GestureDetector(
         onTap: () => _applyQuickPreset(title, port),
@@ -372,7 +363,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xff334155) : const Color(0xfff3f4f6),
+              color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -383,7 +374,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.grey[200] : const Color(0xff374151),
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -392,7 +383,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.grey[400] : const Color(0xff6b7280),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -407,7 +398,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
     required bool value,
     required ValueChanged<bool> onChanged,
     required String label,
-    required bool isDark,
+    required ThemeData theme,
     required Color primaryColor,
   }) {
     return GestureDetector(
@@ -423,11 +414,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
               height: 22,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(6),
-                color: value
-                    ? primaryColor
-                    : (isDark
-                          ? const Color(0xff334155)
-                          : const Color(0xffe5e7eb)),
+                color: value ? primaryColor : theme.colorScheme.outlineVariant,
               ),
               child: value
                   ? const Icon(Icons.check, size: 16, color: Colors.white)
@@ -439,7 +426,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: isDark ? Colors.grey[200] : const Color(0xff1f2937),
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ],
@@ -449,30 +436,26 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
   }
 
   InputDecoration _inputDecoration(
-    bool isDark,
+    ThemeData theme,
     Color focusedColor,
     String hint,
   ) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
-        color: isDark ? Colors.grey[600] : Colors.grey[400],
+        color: theme.colorScheme.onSurfaceVariant,
         fontSize: 14,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       filled: true,
-      fillColor: isDark ? const Color(0xff0f172a) : const Color(0xfff9fafb),
+      fillColor: theme.appColors.sunkenSurface,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: isDark ? const Color(0xff475569) : const Color(0xffe5e7eb),
-        ),
+        borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: isDark ? const Color(0xff475569) : const Color(0xffe5e7eb),
-        ),
+        borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

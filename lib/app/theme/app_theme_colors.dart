@@ -12,6 +12,14 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     required this.success,
     required this.warning,
     required this.glassSurface,
+    required this.panelSurface,
+    required this.sunkenSurface,
+    required this.subtleSurface,
+    required this.hoverSurface,
+    required this.subtleDivider,
+    required this.softDivider,
+    required this.mutedForeground,
+    required this.faintForeground,
   });
 
   final Color toolbarForeground;
@@ -20,6 +28,14 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
   final Color success;
   final Color warning;
   final Color glassSurface;
+  final Color panelSurface;
+  final Color sunkenSurface;
+  final Color subtleSurface;
+  final Color hoverSurface;
+  final Color subtleDivider;
+  final Color softDivider;
+  final Color mutedForeground;
+  final Color faintForeground;
 
   static const light = AppThemeColors(
     toolbarForeground: Colors.black87,
@@ -28,6 +44,14 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     success: AppPalette.primary,
     warning: Colors.orange,
     glassSurface: Color(0x47ffffff),
+    panelSurface: Colors.white,
+    sunkenSurface: Color(0xfff7f8fb),
+    subtleSurface: Color(0x05000000),
+    hoverSurface: Color(0x0d000000),
+    subtleDivider: Colors.black12,
+    softDivider: Colors.black12,
+    mutedForeground: Colors.black54,
+    faintForeground: Colors.black38,
   );
 
   static const dark = AppThemeColors(
@@ -37,6 +61,14 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     success: AppPalette.primary,
     warning: Colors.orange,
     glassSurface: Color(0x2e000000),
+    panelSurface: Color(0xff1e293b),
+    sunkenSurface: Color(0xff0f172a),
+    subtleSurface: Color(0x0affffff),
+    hoverSurface: Color(0x14ffffff),
+    subtleDivider: Colors.white12,
+    softDivider: Colors.white10,
+    mutedForeground: Colors.white60,
+    faintForeground: Colors.white38,
   );
 
   @override
@@ -47,6 +79,14 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     Color? success,
     Color? warning,
     Color? glassSurface,
+    Color? panelSurface,
+    Color? sunkenSurface,
+    Color? subtleSurface,
+    Color? hoverSurface,
+    Color? subtleDivider,
+    Color? softDivider,
+    Color? mutedForeground,
+    Color? faintForeground,
   }) {
     return AppThemeColors(
       toolbarForeground: toolbarForeground ?? this.toolbarForeground,
@@ -55,6 +95,14 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       success: success ?? this.success,
       warning: warning ?? this.warning,
       glassSurface: glassSurface ?? this.glassSurface,
+      panelSurface: panelSurface ?? this.panelSurface,
+      sunkenSurface: sunkenSurface ?? this.sunkenSurface,
+      subtleSurface: subtleSurface ?? this.subtleSurface,
+      hoverSurface: hoverSurface ?? this.hoverSurface,
+      subtleDivider: subtleDivider ?? this.subtleDivider,
+      softDivider: softDivider ?? this.softDivider,
+      mutedForeground: mutedForeground ?? this.mutedForeground,
+      faintForeground: faintForeground ?? this.faintForeground,
     );
   }
 
@@ -72,6 +120,14 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       success: Color.lerp(success, other.success, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
       glassSurface: Color.lerp(glassSurface, other.glassSurface, t)!,
+      panelSurface: Color.lerp(panelSurface, other.panelSurface, t)!,
+      sunkenSurface: Color.lerp(sunkenSurface, other.sunkenSurface, t)!,
+      subtleSurface: Color.lerp(subtleSurface, other.subtleSurface, t)!,
+      hoverSurface: Color.lerp(hoverSurface, other.hoverSurface, t)!,
+      subtleDivider: Color.lerp(subtleDivider, other.subtleDivider, t)!,
+      softDivider: Color.lerp(softDivider, other.softDivider, t)!,
+      mutedForeground: Color.lerp(mutedForeground, other.mutedForeground, t)!,
+      faintForeground: Color.lerp(faintForeground, other.faintForeground, t)!,
     );
   }
 }

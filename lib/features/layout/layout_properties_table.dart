@@ -196,7 +196,7 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
                 Icon(
                   CupertinoIcons.list_bullet,
                   size: 18,
-                  color: isDark ? Colors.grey[300] : Colors.blueGrey,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -204,7 +204,7 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: isDark ? Colors.grey[300] : Colors.blueGrey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const Spacer(),
@@ -219,7 +219,7 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.grey[300] : Colors.blueGrey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -292,7 +292,7 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
                                                   : (isDark ? Colors.red[300] : Colors.red[600]))
                                             : (prop.value.isEmpty
                                                   ? (isDark ? Colors.grey[600] : Colors.grey[400])
-                                                  : (isDark ? Colors.grey[200] : const Color(0xff202124))),
+                                                  : (Theme.of(context).colorScheme.onSurface)),
                                         fontWeight: prop.isBool
                                             ? FontWeight.bold
                                             : FontWeight.normal,

@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -78,7 +80,7 @@ class _MirrorStatusViewState extends State<MirrorStatusView> {
       titleText = context.l10n.t('mirrorStopped');
       descriptionText = context.l10n.t('deviceOfflineHint');
       statusIcon = Icons.portable_wifi_off_rounded;
-      iconColor = isDark ? Colors.white54 : Colors.black45;
+      iconColor = Theme.of(context).colorScheme.onSurfaceVariant;
     }
 
     final hasRawError = widget.rawErrorMessage != null &&
@@ -144,7 +146,7 @@ class _MirrorStatusViewState extends State<MirrorStatusView> {
                             : context.l10n.t('viewErrorDetails'),
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark ? Colors.white38 : Colors.black38,
+                          color: Theme.of(context).appColors.faintForeground,
                         ),
                       ),
                       const SizedBox(width: 2),
@@ -153,7 +155,7 @@ class _MirrorStatusViewState extends State<MirrorStatusView> {
                             ? Icons.keyboard_arrow_up
                             : Icons.keyboard_arrow_down,
                         size: 14,
-                        color: isDark ? Colors.white38 : Colors.black38,
+                        color: Theme.of(context).appColors.faintForeground,
                       ),
                     ],
                   ),
@@ -184,7 +186,7 @@ class _MirrorStatusViewState extends State<MirrorStatusView> {
                         style: TextStyle(
                           fontSize: 11,
                           fontFamily: 'monospace',
-                          color: isDark ? Colors.white60 : Colors.black54,
+                          color: Theme.of(context).appColors.mutedForeground,
                         ),
                       ),
                       const SizedBox(height: 6),

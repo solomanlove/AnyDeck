@@ -152,7 +152,7 @@ class LayoutToolbar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.grey[300] : Colors.blueGrey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -247,7 +247,7 @@ class _ToolbarCheckbox extends StatelessWidget {
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: onChanged != null
-                ? (isDark ? Colors.grey[300] : const Color(0xff5f6368))
+                ? (Theme.of(context).colorScheme.onSurfaceVariant)
                 : (isDark ? Colors.grey[600] : Colors.grey[400]),
           ),
         ),

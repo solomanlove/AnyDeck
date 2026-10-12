@@ -115,7 +115,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
               icon: Icon(
                 CupertinoIcons.clear_circled,
                 size: 16,
-                color: isDark ? Colors.white38 : Colors.black38,
+                color: Theme.of(context).appColors.faintForeground,
               ),
               tooltip: context.l10n.t('clearMouseTrack'),
               onPressed: notifier.clear,
@@ -140,7 +140,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
               icon: Icon(
                 CupertinoIcons.stop_fill,
                 size: 16,
-                color: isDark ? Colors.white54 : Colors.black54,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               tooltip: context.l10n.t('stopPlayMouseTrack'),
               onPressed: notifier.stopPlaying,
@@ -178,7 +178,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
               icon: Icon(
                 CupertinoIcons.stop_fill,
                 size: 16,
-                color: isDark ? Colors.white54 : Colors.black54,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               tooltip: context.l10n.t('stopPlayMouseTrack'),
               onPressed: notifier.stopPlaying,

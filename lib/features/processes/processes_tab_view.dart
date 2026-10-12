@@ -216,7 +216,6 @@ extension _ProcessesTabView on _ProcessesTabState {
     required ValueChanged<bool?> onChanged,
   }) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     return InkWell(
       onTap: () => onChanged(!value),
       borderRadius: BorderRadius.circular(4),
@@ -236,7 +235,7 @@ extension _ProcessesTabView on _ProcessesTabState {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: isDark ? Colors.grey[300] : const Color(0xff5f6368),
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],

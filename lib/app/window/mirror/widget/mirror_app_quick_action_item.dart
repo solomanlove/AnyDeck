@@ -105,7 +105,7 @@ class _MirrorAppQuickActionItemState extends State<MirrorAppQuickActionItem> {
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: 10.5,
                           height: 1.15,
-                          color: isDark ? Colors.white54 : Colors.black45,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

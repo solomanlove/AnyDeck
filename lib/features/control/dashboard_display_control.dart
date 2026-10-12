@@ -46,15 +46,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
   // 统一的高级质感输入框装饰器
   InputDecoration _buildInputDecoration(String? hintText) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     return InputDecoration(
       isDense: true,
       hintText: hintText,
       hintStyle: TextStyle(
-        color: isDark ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.3),
+        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
         fontSize: 13,
       ),
-      fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
+      fillColor: Theme.of(context).appColors.subtleSurface,
       filled: true,
       contentPadding: const EdgeInsets.symmetric(
         vertical: 10,
@@ -63,7 +62,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
-          color: isDark ? Colors.white12 : Colors.black12,
+          color: Theme.of(context).appColors.subtleDivider,
         ),
       ),
       focusedBorder: OutlineInputBorder(
@@ -86,7 +85,6 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
     required VoidCallback onPressed,
   }) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
         boxShadow: isActive
@@ -103,14 +101,14 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
         style: OutlinedButton.styleFrom(
           backgroundColor: isActive
               ? theme.colorScheme.primary
-              : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02)),
+              : (Theme.of(context).appColors.subtleSurface),
           foregroundColor: isActive
               ? theme.colorScheme.onPrimary
               : (Theme.of(context).appColors.toolbarForeground),
           side: BorderSide(
             color: isActive
                 ? theme.colorScheme.primary
-                : (isDark ? Colors.white12 : Colors.black12),
+                : (Theme.of(context).appColors.subtleDivider),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -134,7 +132,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
     required bool isDark,
   }) {
     final theme = Theme.of(context);
-    final borderColor = isDark ? Colors.white12 : Colors.black12;
+    final borderColor = Theme.of(context).appColors.subtleDivider;
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(8),
       side: BorderSide(color: borderColor),
@@ -305,7 +303,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                 ),
               ],
             ),
-            Divider(height: 28, thickness: 0.5, color: isDark ? Colors.white10 : Colors.black12),
+            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
 
             // 2. 显示大小/分辨率 (Display Size / Resolution)
             Row(
@@ -415,7 +413,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                 ),
               ],
             ),
-            Divider(height: 28, thickness: 0.5, color: isDark ? Colors.white10 : Colors.black12),
+            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
 
             // 3. 显示大小/密度 (Display Density / DPI)
             Row(
@@ -533,7 +531,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Theme.of(context).appColors.toolbarForeground,
                     side: BorderSide(
-                      color: isDark ? Colors.white12 : Colors.black12,
+                      color: Theme.of(context).appColors.subtleDivider,
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     shape: RoundedRectangleBorder(
@@ -554,7 +552,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                 ),
               ],
             ),
-            Divider(height: 28, thickness: 0.5, color: isDark ? Colors.white10 : Colors.black12),
+            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
 
             // 4. HWUI Rendering Bars
             Row(
@@ -605,7 +603,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                 ),
               ],
             ),
-            Divider(height: 28, thickness: 0.5, color: isDark ? Colors.white10 : Colors.black12),
+            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
 
             // 5. Profile GPU Rendering
             Row(
@@ -653,7 +651,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                 ),
               ],
             ),
-            Divider(height: 28, thickness: 0.5, color: isDark ? Colors.white10 : Colors.black12),
+            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
 
             // 6. 动画缩放 (Animation Scale)
             Text(
@@ -775,7 +773,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Theme.of(context).appColors.toolbarForeground,
                     side: BorderSide(
-                      color: isDark ? Colors.white12 : Colors.black12,
+                      color: Theme.of(context).appColors.subtleDivider,
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     shape: RoundedRectangleBorder(
@@ -842,7 +840,6 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
     );
 
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -852,30 +849,30 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.5),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
+            color: Theme.of(context).appColors.subtleSurface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? Colors.white12 : Colors.black12,
+              color: Theme.of(context).appColors.subtleDivider,
             ),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<double>(
               value: effectiveVal,
               borderRadius: BorderRadius.circular(12),
-              dropdownColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              dropdownColor: Theme.of(context).appColors.panelSurface,
               icon: Padding(
                 padding: const EdgeInsets.only(left: 5),
                 child: Icon(
                   CupertinoIcons.chevron_down,
                   size: 14,
-                  color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.5),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               style: theme.textTheme.bodyMedium?.copyWith(

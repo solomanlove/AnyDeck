@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import '../../app/theme/app_theme.dart';
 import 'performance_charts.dart';
 import 'performance_bar_chart.dart';
 import 'performance_data.dart';
@@ -45,9 +46,7 @@ class PerformanceTopStatusRow extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[200]
-                      : const Color(0xff202124),
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ],
@@ -59,9 +58,7 @@ class PerformanceTopStatusRow extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[200]
-                      : const Color(0xff202124),
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(width: 4),
@@ -101,14 +98,12 @@ class CpuOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isDark ? const Color(0xff334155) : const Color(0xffeceef1),
-        ),
+        borderRadius: AppThemeSizes.radiusLarge,
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       color: Theme.of(context).cardColor,
       child: Padding(
@@ -124,7 +119,7 @@ class CpuOverviewCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
-                    color: isDark ? Colors.grey[200] : const Color(0xff202124),
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 Text(
@@ -205,14 +200,11 @@ class CpuCoresGrid extends StatelessWidget {
         final core = cores[index];
         final coreHistory = historyCores[core.id] ?? [];
 
-        final isDark = theme.brightness == Brightness.dark;
         return Card(
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: isDark ? const Color(0xff334155) : const Color(0xffeceef1),
-            ),
+            borderRadius: AppThemeSizes.radiusMedium,
+            side: BorderSide(color: theme.colorScheme.outlineVariant),
           ),
           color: theme.cardColor,
           child: Padding(
@@ -228,9 +220,7 @@ class CpuCoresGrid extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 11,
-                        color: isDark
-                            ? Colors.grey[400]
-                            : const Color(0xff5f6b6e),
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                     Text(
@@ -280,14 +270,12 @@ class MemoryOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isDark ? const Color(0xff334155) : const Color(0xffeceef1),
-        ),
+        borderRadius: AppThemeSizes.radiusLarge,
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       color: Theme.of(context).cardColor,
       child: Padding(
@@ -308,7 +296,7 @@ class MemoryOverviewCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
-                    color: isDark ? Colors.grey[200] : const Color(0xff202124),
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 Text(
@@ -357,14 +345,12 @@ class FpsOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isDark ? const Color(0xff334155) : const Color(0xffeceef1),
-        ),
+        borderRadius: AppThemeSizes.radiusLarge,
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       color: Theme.of(context).cardColor,
       child: Padding(
@@ -384,9 +370,7 @@ class FpsOverviewCard extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
-                      color: isDark
-                          ? Colors.grey[200]
-                          : const Color(0xff202124),
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),

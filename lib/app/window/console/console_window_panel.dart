@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../theme/app_theme.dart';
 import '../../../core/logging/log_service.dart';
 import '../../../core/logging/app_log_recorder.dart';
 import '../../widget/local_log_capture_button.dart';
@@ -78,16 +79,15 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
   }
 
   /// 构建带语法高亮的单条日志 TextSpan
-  TextSpan _buildLogSpan(String line, bool isDark) {
+  TextSpan _buildLogSpan(String line, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     // 支持带日期的运行记录与旧版时间格式，异常堆栈保留为同一条日志。
-    final match = RegExp(
-      r'^(\S+)\s+([VDIWEF])\s+([\s\S]*)$',
-    ).firstMatch(line);
+    final match = RegExp(r'^(\S+)\s+([VDIWEF])\s+([\s\S]*)$').firstMatch(line);
     final TextStyle defaultStyle = TextStyle(
       fontFamily: Platform.isMacOS ? 'Menlo' : 'Consolas',
       fontSize: 12.0,
       height: 1.4,
-      color: isDark ? const Color(0xffe0e0e0) : const Color(0xff2d2d2d),
+      color: theme.colorScheme.onSurface,
     );
 
     if (match == null) {
@@ -109,7 +109,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
       children: [
         TextSpan(
           text: '$time ',
-          style: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[600]),
+          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
         ),
         TextSpan(
           text: '$level ',
@@ -122,7 +122,8 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final logs = ref.watch(logHistoryProvider);
 
     // 过滤日志
@@ -154,12 +155,8 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
     });
 
     // 磨砂玻璃色调配置
-    final glassBgColor = isDark
-        ? Colors.black.withValues(alpha: 0.18)
-        : Colors.white.withValues(alpha: 0.28);
-    final terminalBgColor = isDark
-        ? const Color(0xff0d0e15)
-        : const Color(0xfff5f6fa);
+    final glassBgColor = theme.appColors.glassSurface;
+    final terminalBgColor = theme.appColors.sunkenSurface;
 
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
@@ -222,9 +219,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? const Color(0xffeceff1)
-                                  : const Color(0xff202124),
+                              color: theme.colorScheme.onSurface,
                             ),
                       ),
                       const SizedBox(width: 16),
@@ -359,16 +354,12 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                   color: terminalBgColor,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.05),
+                    color: theme.appColors.subtleDivider,
                     width: 1,
                   ),
                 ),
                 child: filteredLogs.isEmpty
-                    ? Center(
-                        child: Text(context.l10n.t('consoleNoLogs')),
-                      )
+                    ? Center(child: Text(context.l10n.t('consoleNoLogs')))
                     : Scrollbar(
                         controller: _scrollController,
                         child: ListView.builder(
@@ -377,7 +368,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                           itemBuilder: (context, index) {
                             return SelectionArea(
                               child: Text.rich(
-                                _buildLogSpan(filteredLogs[index], isDark),
+                                _buildLogSpan(filteredLogs[index], theme),
                               ),
                             );
                           },

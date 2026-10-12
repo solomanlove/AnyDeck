@@ -13,6 +13,10 @@ void main() {
     expect(dark.colorScheme.outlineVariant, AppThemeColors.dark.subtleBorder);
     expect(light.appColors.toolbarForeground, Colors.black87);
     expect(dark.appColors.toolbarForeground, Colors.white70);
+    expect(light.appColors.panelSurface, Colors.white);
+    expect(dark.appColors.panelSurface, const Color(0xff1e293b));
+    expect(light.appColors.subtleDivider, Colors.black12);
+    expect(dark.appColors.subtleDivider, Colors.white12);
     expect(
       light.inputDecorationTheme.border,
       isA<OutlineInputBorder>().having(

@@ -102,7 +102,7 @@ class AirPlayActiveBanner extends ConsumerWidget {
                     '${context.l10n.t('resolution')}: $resolutionStr',
                     style: TextStyle(
                       fontSize: 11,
-                      color: isDark ? Colors.white60 : Colors.black54,
+                      color: Theme.of(context).appColors.mutedForeground,
                     ),
                   ),
                 ],

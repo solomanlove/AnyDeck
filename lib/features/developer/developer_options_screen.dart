@@ -24,11 +24,10 @@ class DeveloperOptionsScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final controller = ref.read(appSettingsProvider.notifier);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     const brandGreen = AppPalette.primary;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xff0f172a) : const Color(0xfff8fafc),
+      backgroundColor: theme.appColors.sunkenSurface,
       body: SafeArea(
         child: Column(
           children: [
@@ -37,7 +36,10 @@ class DeveloperOptionsScreen extends ConsumerWidget {
             // 主体滚动区域
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 24,
+                ),
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
@@ -74,14 +76,14 @@ class DeveloperOptionsScreen extends ConsumerWidget {
     AppSettingsController controller,
     Color brandGreen,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     final leftPadding = Platform.isMacOS ? 80.0 : 20.0;
 
     return Container(
       height: 52,
       padding: EdgeInsets.only(left: leftPadding, right: 24),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xff1e293b).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.85),
+        color: theme.colorScheme.surfaceContainerLow,
         border: Border(
           bottom: BorderSide(
             color: Theme.of(context).colorScheme.outlineVariant,
@@ -97,11 +99,9 @@ class DeveloperOptionsScreen extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xff334155).withValues(alpha: 0.5) : const Color(0xfff1f5f9),
+                color: theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isDark ? const Color(0xff475569) : const Color(0xffe2e8f0),
-                ),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -109,7 +109,7 @@ class DeveloperOptionsScreen extends ConsumerWidget {
                   Icon(
                     CupertinoIcons.chevron_back,
                     size: 15,
-                    color: isDark ? Colors.white70 : const Color(0xff334155),
+                    color: theme.colorScheme.onSurface,
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -117,7 +117,7 @@ class DeveloperOptionsScreen extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white70 : const Color(0xff334155),
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ],
@@ -128,10 +128,7 @@ class DeveloperOptionsScreen extends ConsumerWidget {
           // 面包屑分隔与弱化标题
           Text(
             '/',
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark ? const Color(0xff475569) : const Color(0xffcbd5e1),
-            ),
+            style: TextStyle(fontSize: 14, color: theme.colorScheme.outline),
           ),
           const SizedBox(width: 10),
           Text(
@@ -139,19 +136,22 @@ class DeveloperOptionsScreen extends ConsumerWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: isDark ? Colors.white60 : const Color(0xff64748b),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const Spacer(),
           // 开发者模式状态开关胶囊
           Container(
-            padding: const EdgeInsets.only(left: 10, right: 6, top: 2, bottom: 2),
+            padding: const EdgeInsets.only(
+              left: 10,
+              right: 6,
+              top: 2,
+              bottom: 2,
+            ),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xff334155).withValues(alpha: 0.4) : const Color(0xfff8fafc),
+              color: theme.colorScheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? const Color(0xff475569) : const Color(0xffe2e8f0),
-              ),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -161,7 +161,9 @@ class DeveloperOptionsScreen extends ConsumerWidget {
                   height: 7,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: settings.developerModeEnabled ? brandGreen : Colors.grey,
+                    color: settings.developerModeEnabled
+                        ? brandGreen
+                        : Colors.grey,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -170,7 +172,7 @@ class DeveloperOptionsScreen extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.white70 : const Color(0xff475569),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -183,9 +185,17 @@ class DeveloperOptionsScreen extends ConsumerWidget {
                     onChanged: (val) {
                       controller.setDeveloperModeEnabled(val);
                       if (!val) {
-                        AppToast.show(context, '已关闭开发者模式，设置中已隐藏入口', type: AppToastType.info);
+                        AppToast.show(
+                          context,
+                          '已关闭开发者模式，设置中已隐藏入口',
+                          type: AppToastType.info,
+                        );
                       } else {
-                        AppToast.show(context, '开发者模式已开启', type: AppToastType.success);
+                        AppToast.show(
+                          context,
+                          '开发者模式已开启',
+                          type: AppToastType.success,
+                        );
                       }
                     },
                   ),
@@ -201,7 +211,6 @@ class DeveloperOptionsScreen extends ConsumerWidget {
   /// 页面顶部大标题与徽章 (Hero Header)
   Widget _buildPageHeroHeader(BuildContext context, Color brandGreen) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -253,7 +262,10 @@ class DeveloperOptionsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(width: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: brandGreen.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(5),
@@ -279,7 +291,7 @@ class DeveloperOptionsScreen extends ConsumerWidget {
                   '应用底层诊断、UI组件预览、网络探测与实验性功能集合',
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: isDark ? const Color(0xff94a3b8) : const Color(0xff64748b),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

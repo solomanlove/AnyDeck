@@ -9,11 +9,10 @@ class _RemoteControllerDialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = ref.read(deviceActionServiceProvider);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: isDark ? const Color(0xff1e293b) : Colors.white,
+      backgroundColor: theme.appColors.panelSurface,
       child: Container(
         width: 320,
         padding: const EdgeInsets.all(20),
@@ -29,7 +28,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    color: isDark ? const Color(0xffeceff1) : const Color(0xFF1E1E2E),
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 IconButton(
@@ -44,7 +43,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             // Outer grey frame resembling a real remote control
             Container(
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFECEEF2),
+                color: Theme.of(context).appColors.sunkenSurface,
                 borderRadius: BorderRadius.circular(20),
               ),
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -57,7 +56,9 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.power,
                         tooltip: context.l10n.t('power'),
-                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         iconColor: const Color(
                           0xFFF38BA8,
                         ), // soft premium red for power
@@ -76,8 +77,12 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.volume_down,
                         tooltip: context.l10n.t('volumeDown'),
-                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
-                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF5F6B6E),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        iconColor: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant,
                         onPressed: () => _runAdb(
                           context,
                           ref,
@@ -87,8 +92,12 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.volume_up,
                         tooltip: context.l10n.t('volumeUp'),
-                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
-                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF5F6B6E),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        iconColor: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant,
                         onPressed: () =>
                             _runAdb(context, ref, actions.volumeUp(device.id)),
                       ),
@@ -96,7 +105,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
                   ),
                   const SizedBox(height: 32),
                   // Row 2: D-Pad
-                  _buildDPad(context, ref, actions, isDark),
+                  _buildDPad(context, ref, actions),
                   const SizedBox(height: 32),
                   // Row 3: Home, Back (Capsule), Recents
                   Row(
@@ -105,8 +114,12 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.circle,
                         tooltip: context.l10n.t('home'),
-                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
-                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF5F6B6E),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        iconColor: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant,
                         onPressed: () => _runAdb(
                           context,
                           ref,
@@ -116,8 +129,8 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCapsuleButton(
                         icon: Icons.arrow_left_rounded,
                         tooltip: context.l10n.t('back'),
-                        color: isDark ? const Color(0xFF334155) : const Color(0xFFD3D5DC),
-                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF1E1E2E),
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                        iconColor: Theme.of(context).colorScheme.onSurface,
                         onPressed: () => _runAdb(
                           context,
                           ref,
@@ -127,8 +140,12 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       _buildCircularButton(
                         icon: CupertinoIcons.square,
                         tooltip: 'Recents',
-                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0E2E7),
-                        iconColor: isDark ? const Color(0xffeceff1) : const Color(0xFF5F6B6E),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        iconColor: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant,
                         onPressed: () => _runAdb(
                           context,
                           ref,
@@ -202,13 +219,12 @@ class _RemoteControllerDialog extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     DeviceActionService actions,
-    bool isDark,
   ) {
     return Container(
       width: 190,
       height: 190,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFD4D6DD),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         shape: BoxShape.circle,
       ),
       child: Stack(
@@ -222,7 +238,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             right: 55,
             height: 50,
             child: _buildDPadSector(
-              isDark: isDark,
+              context: context,
               tooltip: 'Up',
               onPressed: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 19)),
@@ -235,7 +251,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             right: 55,
             height: 50,
             child: _buildDPadSector(
-              isDark: isDark,
+              context: context,
               tooltip: 'Down',
               onPressed: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 20)),
@@ -248,7 +264,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             bottom: 55,
             width: 50,
             child: _buildDPadSector(
-              isDark: isDark,
+              context: context,
               tooltip: 'Left',
               onPressed: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 21)),
@@ -261,7 +277,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             bottom: 55,
             width: 50,
             child: _buildDPadSector(
-              isDark: isDark,
+              context: context,
               tooltip: 'Right',
               onPressed: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 22)),
@@ -270,14 +286,14 @@ class _RemoteControllerDialog extends ConsumerWidget {
 
           // Center OK button
           Material(
-            color: isDark ? const Color(0xFF334155) : Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             shape: const CircleBorder(),
             elevation: 2,
             child: InkWell(
               onTap: () =>
                   _runAdb(context, ref, actions.keyEvent(device.id, 23)),
               customBorder: const CircleBorder(),
-              hoverColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFECEEF2),
+              hoverColor: Theme.of(context).appColors.hoverSurface,
               child: SizedBox(
                 width: 84,
                 height: 84,
@@ -287,7 +303,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? const Color(0xffeceff1) : const Color(0xFF1E1E2E),
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -300,7 +316,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
   }
 
   Widget _buildDPadSector({
-    required bool isDark,
+    required BuildContext context,
     required String tooltip,
     required VoidCallback onPressed,
   }) {
@@ -315,7 +331,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xffeceff1) : const Color(0xFF1E1E2E),
+              color: Theme.of(context).colorScheme.onSurface,
               shape: BoxShape.circle,
             ),
           ),

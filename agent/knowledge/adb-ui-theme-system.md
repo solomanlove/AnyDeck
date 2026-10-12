@@ -25,10 +25,15 @@
 2. ColorScheme 没有表达的业务语义使用 `Theme.of(context).appColors`：
    - 投屏及控制工具栏前景：`appColors.toolbarForeground`
    - 桌面玻璃表面：`appColors.glassSurface`
+   - 面板与下沉背景：`appColors.panelSurface`、`appColors.sunkenSurface`
+   - Hover 与弱背景：`appColors.hoverSurface`、`appColors.subtleSurface`
+   - 分隔线与弱化文本：`appColors.subtleDivider`、`appColors.softDivider`、`appColors.mutedForeground`、`appColors.faintForeground`
 3. 无 `BuildContext` 且必须保持品牌色一致时使用 `AppPalette.primary`。
 4. 圆角和边框宽度使用 `AppThemeSizes`。
 
 禁止新增以具体色值命名的属性，例如 `gray334155`、`white70`。应按用途命名，例如 `toolbarForeground`、`subtleBorder`。
+
+所有新增 Page、Dialog、Widget、Overlay、Toolbar、Table 和 Card 必须遵守 `agent/rules/60-ui-theme.md`，不得在业务 UI 中新增明暗颜色三元表达式。
 
 ## 4. 固定业务颜色边界
 

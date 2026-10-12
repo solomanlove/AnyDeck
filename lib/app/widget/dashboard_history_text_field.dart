@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -135,12 +137,11 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
   }
 
   Widget _buildDropdownOverlayContent() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       elevation: 8,
       borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
-      color: isDark ? const Color(0xff1e293b) : Colors.white,
+      color: Theme.of(context).appColors.panelSurface,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
@@ -280,7 +281,8 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
           top: origin.dy + info.childSize.height + 4,
           width: info.childSize.width,
           child: TapRegion(
-            groupId: 'dashboard_history_filter_region_${identityHashCode(this)}',
+            groupId:
+                'dashboard_history_filter_region_${identityHashCode(this)}',
             child: _buildDropdownOverlayContent(),
           ),
         );

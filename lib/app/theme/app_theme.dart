@@ -12,6 +12,7 @@ export 'app_theme_sizes.dart';
 ThemeData buildAppTheme(Brightness brightness) {
   const seed = AppPalette.primary;
   final isDark = brightness == Brightness.dark;
+  final appColors = isDark ? AppThemeColors.dark : AppThemeColors.light;
   final colorScheme =
       ColorScheme.fromSeed(seedColor: seed, brightness: brightness).copyWith(
         primary: seed,
@@ -27,16 +28,14 @@ ThemeData buildAppTheme(Brightness brightness) {
   return ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
-    extensions: <ThemeExtension<dynamic>>[
-      isDark ? AppThemeColors.dark : AppThemeColors.light,
-    ],
+    extensions: <ThemeExtension<dynamic>>[appColors],
     scaffoldBackgroundColor: isDark
         ? const Color(0xff0f172a)
         : const Color(0xfff7f8fb),
-    canvasColor: isDark ? const Color(0xff1e293b) : Colors.white,
+    canvasColor: appColors.panelSurface,
     visualDensity: VisualDensity.standard,
     dialogTheme: DialogThemeData(
-      backgroundColor: isDark ? const Color(0xff1e293b) : Colors.white,
+      backgroundColor: appColors.panelSurface,
       surfaceTintColor: Colors.transparent,
     ),
     appBarTheme: AppBarTheme(
@@ -110,7 +109,7 @@ ThemeData buildAppTheme(Brightness brightness) {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         foregroundColor: isDark ? Colors.white : const Color(0xff1f2937),
-        backgroundColor: isDark ? const Color(0xff1e293b) : Colors.white,
+        backgroundColor: appColors.panelSurface,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         shape: RoundedRectangleBorder(

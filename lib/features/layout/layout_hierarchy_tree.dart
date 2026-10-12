@@ -54,7 +54,7 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
     final headerColor = isDark
         ? Colors.white.withValues(alpha: 0.05)
         : Colors.black.withValues(alpha: 0.02);
-    final labelColor = isDark ? Colors.grey[300] : Colors.blueGrey;
+    final labelColor = Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Container(
       color: backgroundColor,
