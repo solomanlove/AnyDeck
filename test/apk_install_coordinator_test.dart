@@ -43,13 +43,19 @@ class _Apps extends AppManagementService {
   }
 
   @override
-  Future<List<AdbPackage>?> loadPackageCache(String deviceId) =>
+  Future<List<AdbPackage>?> loadPackageCache(
+    String deviceId, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) =>
       loadGate.future;
+
   @override
   Future<AdbPackage?> getSinglePackageInfo(
     String deviceId,
-    String packageName,
-  ) async {
+    String packageName, {
+    bool isHarmony = false,
+  }) async {
     refreshes++;
     return AdbPackage(name: packageName);
   }
@@ -57,8 +63,10 @@ class _Apps extends AppManagementService {
   @override
   Future<void> savePackageCache(
     String deviceId,
-    List<AdbPackage> packages,
-  ) async {
+    List<AdbPackage> packages, {
+    String? canonicalId,
+    List<String> fallbackKeys = const [],
+  }) async {
     saves++;
   }
 }
