@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -93,7 +95,7 @@ class _DeviceProxyPanelState extends ConsumerState<DeviceProxyPanel> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : const Color(0xff09c47c),
+        backgroundColor: isError ? Colors.red : AppPalette.primary,
       ),
     );
   }

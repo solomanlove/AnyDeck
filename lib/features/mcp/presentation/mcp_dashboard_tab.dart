@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'widgets/mcp_audit_logs_viewer.dart';
@@ -13,7 +14,7 @@ class McpDashboardTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    const brandGreen = Color(0xff09c47c);
+    const brandGreen = AppPalette.primary;
 
     return Scaffold(
       backgroundColor: Colors.transparent,

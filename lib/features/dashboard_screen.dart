@@ -19,6 +19,7 @@ import 'package:path_provider/path_provider.dart';
 import '../app/l10n/app_localizations.dart';
 import '../app/router/dashboard_route.dart';
 import '../app/theme/app_icon.dart';
+import '../app/theme/app_theme.dart';
 import '../app/widget/app_asset_image.dart';
 import '../app/widget/dashboard_tab_layout.dart';
 import '../app/widget/dashboard_history_text_field.dart';

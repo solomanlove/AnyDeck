@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
 
 /// 开发者选项页面统一的卡片容器组件。
 ///
@@ -40,7 +41,7 @@ class DeveloperSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    const brandGreen = Color(0xff09c47c);
+    const brandGreen = AppPalette.primary;
 
     final cardBgColor = isDark
         ? const Color(0xff1e293b).withValues(alpha: 0.7)

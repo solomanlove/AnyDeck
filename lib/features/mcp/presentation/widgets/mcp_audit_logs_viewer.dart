@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,7 +66,7 @@ class McpAuditLogsViewer extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final item = logs[index];
                   final statusColor = item.isSuccess
-                      ? const Color(0xff09c47c)
+                      ? AppPalette.primary
                       : Colors.redAccent;
 
                   return ListTile(

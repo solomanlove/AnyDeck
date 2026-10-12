@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
@@ -24,7 +25,7 @@ class DeveloperOptionsScreen extends ConsumerWidget {
     final controller = ref.read(appSettingsProvider.notifier);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    const brandGreen = Color(0xff09c47c);
+    const brandGreen = AppPalette.primary;
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xff0f172a) : const Color(0xfff8fafc),
@@ -83,7 +84,7 @@ class DeveloperOptionsScreen extends ConsumerWidget {
         color: isDark ? const Color(0xff1e293b).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.85),
         border: Border(
           bottom: BorderSide(
-            color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
+            color: Theme.of(context).colorScheme.outlineVariant,
           ),
         ),
       ),

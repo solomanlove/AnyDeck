@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -91,7 +93,7 @@ class MessagesHeaderBar extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Switch(
                     value: forwardingEnabled && isOnline,
-                    activeThumbColor: const Color(0xff09c47c),
+                    activeThumbColor: AppPalette.primary,
                     onChanged: isOnline
                         ? (enabled) async {
                             await forwardingService.setForwardingEnabled(
@@ -246,7 +248,7 @@ class MessagesHeaderBar extends ConsumerWidget {
     final currentStatus = status;
     final isReady = currentStatus?.isReady ?? false;
 
-    Color badgeColor = isReady ? const Color(0xff09c47c) : Colors.amber;
+    Color badgeColor = isReady ? AppPalette.primary : Colors.amber;
     String text = isReady
         ? context.l10n.t('companionInstalled')
         : (currentStatus?.rawStatus == 'permission_required'

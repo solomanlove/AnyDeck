@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../settings/app_settings_controller.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme/app_theme.dart';
 import '../../widget/app_toast.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
@@ -107,7 +108,7 @@ void showMirrorSettingsDialog({
               children: [
                 Icon(
                   Icons.settings,
-                  color: isDark ? Colors.white70 : Colors.black87,
+                  color: Theme.of(context).appColors.toolbarForeground,
                   size: 20,
                 ),
                 const SizedBox(width: 8),

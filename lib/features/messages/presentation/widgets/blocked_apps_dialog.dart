@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,7 +59,7 @@ class _BlockedAppsDialogState extends ConsumerState<BlockedAppsDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          const Icon(CupertinoIcons.shield_fill, color: Color(0xff09c47c)),
+          const Icon(CupertinoIcons.shield_fill, color: AppPalette.primary),
           const SizedBox(width: 8),
           Text(context.l10n.t('blockedAppsTitle')),
         ],

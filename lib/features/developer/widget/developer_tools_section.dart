@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,7 +49,7 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
 
   @override
   Widget build(BuildContext context) {
-    const brandGreen = Color(0xff09c47c);
+    const brandGreen = AppPalette.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +118,7 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
             _buildDebugChip(
               context,
               label: '成功提示 (Success)',
-              color: const Color(0xff09c47c),
+              color: AppPalette.primary,
               onTap: () => AppToast.show(context, '操作成功：数据已保存！', type: AppToastType.success),
             ),
             _buildDebugChip(
@@ -151,7 +153,7 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
       children: [
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xff09c47c),
+            backgroundColor: AppPalette.primary,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             elevation: 0,

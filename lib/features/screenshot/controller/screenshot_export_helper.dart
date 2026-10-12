@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_selector/file_selector.dart';
@@ -25,7 +27,7 @@ class ScreenshotExportHelper {
       SnackBar(
         content: Text(context.l10n.t('copySuccess')),
         duration: const Duration(seconds: 1),
-        backgroundColor: const Color(0xff09c47c),
+        backgroundColor: AppPalette.primary,
         behavior: SnackBarBehavior.floating,
         width: 300,
       ),
@@ -44,7 +46,7 @@ class ScreenshotExportHelper {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(success ? context.l10n.t('copySuccess') : '复制到剪贴板失败'),
-          backgroundColor: success ? const Color(0xff09c47c) : Colors.red,
+          backgroundColor: success ? AppPalette.primary : Colors.red,
           behavior: SnackBarBehavior.floating,
           width: 300,
         ),
@@ -88,7 +90,7 @@ class ScreenshotExportHelper {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('已成功保存截图与 XML 至: $basePath'),
-              backgroundColor: const Color(0xff09c47c),
+              backgroundColor: AppPalette.primary,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -121,7 +123,7 @@ class ScreenshotExportHelper {
               content: Text(
                 '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
               ),
-              backgroundColor: const Color(0xff09c47c),
+              backgroundColor: AppPalette.primary,
               behavior: SnackBarBehavior.floating,
             ),
           );

@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -296,7 +298,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
       SnackBar(
         content: Text(context.l10n.t('copySuccess')),
         duration: const Duration(seconds: 1),
-        backgroundColor: const Color(0xff09c47c),
+        backgroundColor: AppPalette.primary,
         behavior: SnackBarBehavior.floating,
         width: 300,
       ),
@@ -329,7 +331,7 @@ class _LayoutTabState extends ConsumerState<LayoutTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('已成功保存截图与 XML 至: $basePath'),
-            backgroundColor: const Color(0xff09c47c),
+            backgroundColor: AppPalette.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );

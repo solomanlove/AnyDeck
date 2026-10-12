@@ -568,13 +568,13 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                                             Icon(
                                                               CupertinoIcons.app,
                                                               size: 16,
-                                                              color: isDark ? Colors.white70 : Colors.black87,
+                                                              color: Theme.of(context).appColors.toolbarForeground,
                                                              ),
                                                    )
                                                 : Icon(
                                                     CupertinoIcons.app,
                                                     size: 16,
-                                                    color: isDark ? Colors.white70 : Colors.black87,
+                                                    color: Theme.of(context).appColors.toolbarForeground,
                                                   ),
                                           ),
                                         ),
@@ -590,7 +590,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                         MirrorToolbarButton(
                           icon: Icon(
                             CupertinoIcons.refresh,
-                            color: isDark ? Colors.white70 : Colors.black87,
+                            color: Theme.of(context).appColors.toolbarForeground,
                             size: 16,
                           ),
                           tooltip: context.l10n.t('retry'),
@@ -604,7 +604,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                                 : CupertinoIcons.pin,
                             color: _controller.isAlwaysOnTop
                                 ? Colors.orange
-                                : (isDark ? Colors.white70 : Colors.black87),
+                                : (Theme.of(context).appColors.toolbarForeground),
                           ),
                           tooltip: _controller.isAlwaysOnTop
                               ? context.l10n.t('unpinAlwaysOnTop')
@@ -617,7 +617,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                             _controller.isFullScreen
                                 ? CupertinoIcons.fullscreen_exit
                                 : CupertinoIcons.fullscreen,
-                            color: isDark ? Colors.white70 : Colors.black87,
+                            color: Theme.of(context).appColors.toolbarForeground,
                           ),
                           tooltip: _controller.isFullScreen
                               ? context.l10n.t('exitFullScreen')
@@ -632,7 +632,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                           MirrorToolbarButton(
                             icon: Icon(
                               CupertinoIcons.settings,
-                              color: isDark ? Colors.white70 : Colors.black87,
+                              color: Theme.of(context).appColors.toolbarForeground,
                             ),
                             tooltip: context.l10n.t('mirrorQualitySettings'),
                             onPressed: () => showMirrorSettingsDialog(

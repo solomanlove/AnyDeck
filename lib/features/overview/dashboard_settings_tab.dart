@@ -10,7 +10,7 @@ class _SettingsTab extends ConsumerWidget {
     final theme = Theme.of(context);
 
     // Primary brand green
-    const brandGreen = Color(0xff09c47c);
+    const brandGreen = AppPalette.primary;
 
     return Scaffold(
       backgroundColor: Colors.transparent,

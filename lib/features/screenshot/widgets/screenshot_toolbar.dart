@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -130,7 +132,7 @@ class ScreenshotToolbar extends StatelessWidget {
                           : '${context.l10n.t('autoRefresh')} (${context.l10n.t('autoRefreshLongPressHint')})',
                       color: state.isAutoRefresh
                           ? (state.isAutoSave
-                              ? const Color(0xff09c47c)
+                              ? AppPalette.primary
                               : colorScheme.primary)
                           : null,
                       onPressed: (!hasImage || isRecActive) ? null : onToggleAutoRefresh,

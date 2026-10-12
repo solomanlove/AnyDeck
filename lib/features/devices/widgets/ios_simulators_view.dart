@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widget/app_toast.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/emulator/ios/ios_simulator.dart';
 import '../../../core/emulator/ios/ios_simulator_providers.dart';
 
@@ -158,7 +159,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
               ? () => _bootSimulator(selected)
               : null,
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF09C47C),
+            backgroundColor: AppPalette.primary,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           ),
         ),
@@ -225,7 +226,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: item.isBooted
-                        ? const Color(0xFF09C47C)
+                        ? AppPalette.primary
                         : Colors.grey.shade400,
                   ),
                 ),
@@ -246,7 +247,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                     item.runtime,
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? Colors.white70 : Colors.black87,
+                      color: Theme.of(context).appColors.toolbarForeground,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -259,7 +260,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                     style: TextStyle(
                       fontSize: 12,
                       color: item.isBooted
-                          ? const Color(0xFF09C47C)
+                          ? AppPalette.primary
                           : Colors.grey,
                       fontWeight: FontWeight.w500,
                     ),
@@ -308,7 +309,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                     if (!item.isBooted)
                       IconButton(
                         icon: const Icon(CupertinoIcons.play_circle,
-                            color: Color(0xFF09C47C), size: 20),
+                            color: AppPalette.primary, size: 20),
                         tooltip: '启动',
                         onPressed: () => _bootSimulator(item),
                       )

@@ -95,7 +95,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    const brandGreen = Color(0xff09c47c);
+    const brandGreen = AppPalette.primary;
 
     return Dialog(
       backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
@@ -238,7 +238,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
               : Colors.black.withValues(alpha: 0.02),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
+            color: theme.appColors.subtleBorder,
           ),
         ),
         child: Column(
@@ -276,9 +276,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: _progress,
-              backgroundColor: isDark
-                  ? const Color(0xff334155)
-                  : const Color(0xffe2e8f0),
+              backgroundColor: theme.appColors.subtleBorder,
               valueColor: AlwaysStoppedAnimation<Color>(brandGreen),
               minHeight: 8,
             ),
@@ -370,11 +368,9 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(
-                    color: isDark
-                        ? const Color(0xff334155)
-                        : const Color(0xffcbd5e1),
+                    color: theme.appColors.strongBorder,
                   ),
-                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                  foregroundColor: Theme.of(context).appColors.toolbarForeground,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),

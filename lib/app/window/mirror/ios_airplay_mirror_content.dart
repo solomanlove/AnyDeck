@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../core/airplay/airplay_server_service.dart';
 import '../../../core/airplay/airplay_server_state.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme/app_theme.dart';
 import '../multi_window_compat.dart';
 import 'mirror_toolbar_button.dart';
 import 'mirror_window_frame_adapter.dart';
@@ -192,7 +193,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final foreground = isDark ? Colors.white70 : Colors.black87;
+    final foreground = Theme.of(context).appColors.toolbarForeground;
     final resolution = _videoSize == null
         ? ''
         : '${_videoSize!.width.toInt()} × ${_videoSize!.height.toInt()}';

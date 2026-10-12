@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -224,8 +226,8 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
                         const SizedBox(width: 12),
                         Switch.adaptive(
                           value: isEnabled,
-                          activeThumbColor: const Color(0xff09c47c),
-                          activeTrackColor: const Color(0xff09c47c).withValues(alpha: 0.5),
+                          activeThumbColor: AppPalette.primary,
+                          activeTrackColor: AppPalette.primary.withValues(alpha: 0.5),
                           onChanged: (val) {
                             controller.toggleTool(tool.name, val);
                           },

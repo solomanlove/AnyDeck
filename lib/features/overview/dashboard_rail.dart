@@ -472,7 +472,7 @@ class _RailMoreButton extends StatelessWidget {
     final disabledColor = isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e);
     final color = !anyEnabled
         ? disabledColor
-        : (selected ? const Color(0xff09c47c) : defaultColor);
+        : (selected ? AppPalette.primary : defaultColor);
 
     final activeBgColor = isDark
         ? Colors.white.withValues(alpha: 0.12)
@@ -509,7 +509,7 @@ class _RailMoreButton extends StatelessWidget {
                       tool.icon,
                       size: 26,
                       color: tool.tabIndex == selectedTool
-                          ? const Color(0xff09c47c)
+                          ? AppPalette.primary
                           : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
                     ),
                   ),
@@ -560,7 +560,7 @@ class _RailMoreButton extends StatelessWidget {
                       tool.icon,
                       size: 20,
                       color: tool.tabIndex == selectedTool
-                          ? const Color(0xff09c47c)
+                          ? AppPalette.primary
                           : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
                     ),
                     const SizedBox(width: 10),
@@ -570,7 +570,7 @@ class _RailMoreButton extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           color: tool.tabIndex == selectedTool
-                              ? const Color(0xff09c47c)
+                              ? AppPalette.primary
                               : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
                         ),
                       ),
@@ -637,7 +637,7 @@ class _RailButton extends StatelessWidget {
     if (onPressed == null) {
       color = isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e);
     } else if (selected || isHighlighted) {
-      color = const Color(0xff09c47c);
+      color = AppPalette.primary;
     } else {
       color = isDark ? const Color(0xffeceff1) : const Color(0xff455a64);
     }

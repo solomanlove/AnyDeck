@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -169,7 +171,7 @@ class _DeveloperConnectionEnvironmentCardState
                 children: [
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xff09c47c),
+                      backgroundColor: AppPalette.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -264,7 +266,7 @@ class _DeveloperConnectionEnvironmentCardState
     required VoidCallback onGuide,
   }) {
     final theme = Theme.of(context);
-    final statusColor = isReady ? const Color(0xff09c47c) : Colors.orange;
+    final statusColor = isReady ? AppPalette.primary : Colors.orange;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

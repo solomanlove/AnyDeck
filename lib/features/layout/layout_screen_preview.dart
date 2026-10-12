@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'dart:ui' as ui;
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import '../../core/layout_inspector/layout_node.dart';
 
@@ -342,13 +344,13 @@ class _ScreenPreviewPainter extends CustomPainter {
         canvas.drawRect(
           rect,
           Paint()
-            ..color = const Color(0xff09c47c)
+            ..color = AppPalette.primary
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3.0,
         );
         canvas.drawRect(
           rect,
-          Paint()..color = const Color(0xff09c47c).withValues(alpha: 0.20),
+          Paint()..color = AppPalette.primary.withValues(alpha: 0.20),
         );
       }
     }

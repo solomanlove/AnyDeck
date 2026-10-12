@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -185,7 +187,7 @@ class ScreenshotRecordRunner {
                     .t('recordSuccess')
                     .replaceAll('{path}', _localRecordPath ?? ''),
               ),
-              backgroundColor: const Color(0xff09c47c),
+              backgroundColor: AppPalette.primary,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -204,7 +206,7 @@ class ScreenshotRecordRunner {
                     .t('recordSuccess')
                     .replaceAll('{path}', _localRecordPath ?? ''),
               ),
-              backgroundColor: const Color(0xff09c47c),
+              backgroundColor: AppPalette.primary,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -250,7 +252,7 @@ class ScreenshotRecordRunner {
                       .t('recordSuccess')
                       .replaceAll('{path}', localSavePath),
                 ),
-                backgroundColor: const Color(0xff09c47c),
+                backgroundColor: AppPalette.primary,
                 behavior: SnackBarBehavior.floating,
               ),
             );

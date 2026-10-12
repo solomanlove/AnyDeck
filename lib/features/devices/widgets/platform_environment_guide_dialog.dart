@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -189,7 +191,7 @@ class _PlatformEnvironmentGuideDialogState
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isReady
-                  ? const Color(0xff09c47c)
+                  ? AppPalette.primary
                   : (isMissing ? Colors.orange : Colors.grey),
             ),
           ),
@@ -454,7 +456,7 @@ class _PlatformEnvironmentGuideDialogState
     required String missingText,
   }) {
     final theme = Theme.of(context);
-    final color = isReady ? const Color(0xff09c47c) : Colors.orange;
+    final color = isReady ? AppPalette.primary : Colors.orange;
 
     return Container(
       padding: const EdgeInsets.all(12),

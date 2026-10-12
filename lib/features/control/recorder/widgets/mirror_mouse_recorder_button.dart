@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/l10n/app_localizations.dart';
+import '../../../../app/theme/app_theme.dart';
 import '../../../../app/window/mirror/mirror_floating_toolbar.dart';
 import '../controller/mouse_track_recorder_controller.dart';
 
@@ -47,7 +48,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
     final notifier = ref.read(mouseTrackRecorderProvider(deviceId).notifier);
 
     // 默认图标颜色
-    final defaultIconColor = isDark ? Colors.white70 : Colors.black87;
+    final defaultIconColor = Theme.of(context).appColors.toolbarForeground;
 
     switch (state.status) {
       case MouseRecorderStatus.idle:

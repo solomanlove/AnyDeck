@@ -11,6 +11,7 @@ import '../../../core/scrcpy/screen_record_provider.dart';
 import '../../../core/scrcpy/scrcpy_keycode_helper.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../app/l10n/app_localizations.dart';
+import '../../theme/app_theme.dart';
 import '../../widget/app_toast.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../../features/control/device_settings_popup.dart';
@@ -174,7 +175,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             MirrorToolbarButton(
               icon: Icon(
                 CupertinoIcons.power,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('power'),
               onPressed: () {
@@ -193,7 +194,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   isScreenOff ? Icons.mobile_off : Icons.smartphone,
                   color: isScreenOff
                       ? Colors.orange
-                      : (isDark ? Colors.white70 : Colors.black87),
+                      : (Theme.of(context).appColors.toolbarForeground),
                 ),
                 tooltip: context.l10n.t('screenPowerToggle'),
                 onPressed: () {
@@ -208,7 +209,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             MirrorToolbarButton(
               icon: Icon(
                 CupertinoIcons.volume_up,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('volumeUp'),
               onPressed: () {
@@ -225,7 +226,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             MirrorToolbarButton(
               icon: Icon(
                 CupertinoIcons.volume_down,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('volumeDown'),
               onPressed: () {
@@ -248,7 +249,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 icon: Icon(
                   Icons.chevron_left,
                   size: 18,
-                  color: isDark ? Colors.white70 : Colors.black87,
+                  color: Theme.of(context).appColors.toolbarForeground,
                 ),
                 tooltip: context.l10n.t('back'),
                 onPressed: () {
@@ -265,7 +266,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             MirrorToolbarButton(
               icon: Icon(
                 Icons.radio_button_unchecked,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('home'),
               onPressed: () {
@@ -276,7 +277,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               MirrorToolbarButton(
                 icon: Icon(
                   Icons.crop_square,
-                  color: isDark ? Colors.white70 : Colors.black87,
+                  color: Theme.of(context).appColors.toolbarForeground,
                 ),
                 tooltip: context.l10n.t('menuKey'),
                 onPressed: () => actions.keyEvent(widget.deviceId, 187),
@@ -286,7 +287,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             // MirrorToolbarButton(
             //   icon: Icon(
             //     CupertinoIcons.bell,
-            //     color: isDark ? Colors.white70 : Colors.black87,
+            //     color: Theme.of(context).appColors.toolbarForeground,
             //   ),
             //   tooltip: context.l10n.t('notificationBar'),
             //   onPressed: () => actions.openNotificationBar(widget.deviceId),
@@ -297,7 +298,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white70 : Colors.black87,
+                  color: Theme.of(context).appColors.toolbarForeground,
                 ),
               ),
               tooltip: context.l10n.t('getClipboardInput'),
@@ -347,7 +348,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             MirrorToolbarButton(
               icon: Icon(
                 CupertinoIcons.scope,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('focus'),
               onPressed: () async {
@@ -392,7 +393,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                           children: [
                             Icon(
                               CupertinoIcons.scope,
-                              color: isDark ? Colors.white70 : Colors.black87,
+                              color: Theme.of(context).appColors.toolbarForeground,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
@@ -427,7 +428,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             MirrorToolbarButton(
               icon: Icon(
                 CupertinoIcons.camera,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('screenshotTooltip'),
               onPressed: () => _takeScreenshot(
@@ -449,7 +450,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 size: 22,
                 color: recordState.isRecording
                     ? Colors.red
-                    : (isDark ? Colors.white70 : Colors.black87),
+                    : (Theme.of(context).appColors.toolbarForeground),
               ),
               tooltip: recordState.isRecording
                   ? context.l10n.t('stopRecord')
@@ -480,7 +481,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
 
             MirrorToolbarButton(
               icon: DeviceSettingsIcon(
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: Theme.of(context).appColors.toolbarForeground,
                 size: 18,
               ),
               tooltip: context.l10n.t('deviceSettings'),

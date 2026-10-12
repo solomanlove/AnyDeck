@@ -106,7 +106,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
               : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02)),
           foregroundColor: isActive
               ? theme.colorScheme.onPrimary
-              : (isDark ? Colors.white70 : Colors.black87),
+              : (Theme.of(context).appColors.toolbarForeground),
           side: BorderSide(
             color: isActive
                 ? theme.colorScheme.primary
@@ -162,7 +162,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
               size: 16,
               color: onPressed == null
                   ? theme.disabledColor
-                  : (isDark ? Colors.white70 : Colors.black87),
+                  : (Theme.of(context).appColors.toolbarForeground),
             ),
           ),
         ),
@@ -531,7 +531,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                 const SizedBox(width: 8),
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                    foregroundColor: Theme.of(context).appColors.toolbarForeground,
                     side: BorderSide(
                       color: isDark ? Colors.white12 : Colors.black12,
                     ),
@@ -773,7 +773,7 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
                   icon: const Icon(CupertinoIcons.refresh),
                   label: Text(context.l10n.t('resetAllAnimations')),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                    foregroundColor: Theme.of(context).appColors.toolbarForeground,
                     side: BorderSide(
                       color: isDark ? Colors.white12 : Colors.black12,
                     ),

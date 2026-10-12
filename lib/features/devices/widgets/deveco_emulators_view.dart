@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widget/app_toast.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/emulator/harmony/deveco_emulator.dart';
 import '../../../core/emulator/harmony/deveco_emulator_providers.dart';
 
@@ -117,7 +118,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                     label: const Text('打开 DevEco Studio'),
                     onPressed: _openDevEcoStudio,
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF09C47C),
+                      backgroundColor: AppPalette.primary,
                     ),
                   ),
                 ],
@@ -168,7 +169,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                 }
               : null,
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF09C47C),
+            backgroundColor: AppPalette.primary,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           ),
         ),
@@ -236,7 +237,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: item.isRunning
-                        ? const Color(0xFF09C47C)
+                        ? AppPalette.primary
                         : Colors.grey.shade400,
                   ),
                 ),
@@ -255,7 +256,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                     item.apiVersion,
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? Colors.white70 : Colors.black87,
+                      color: Theme.of(context).appColors.toolbarForeground,
                     ),
                   ),
                 ),
@@ -273,7 +274,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                     style: TextStyle(
                       fontSize: 12,
                       color: item.isRunning
-                          ? const Color(0xFF09C47C)
+                          ? AppPalette.primary
                           : Colors.grey,
                       fontWeight: FontWeight.w500,
                     ),

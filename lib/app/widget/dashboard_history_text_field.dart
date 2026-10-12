@@ -145,7 +145,7 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
+            color: Theme.of(context).colorScheme.outlineVariant,
             width: 1,
           ),
         ),

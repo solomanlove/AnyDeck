@@ -1,26 +1,39 @@
 import 'package:flutter/material.dart';
 
+import 'app_palette.dart';
+import 'app_theme_colors.dart';
+import 'app_theme_sizes.dart';
+
+export 'app_palette.dart';
+export 'app_theme_colors.dart';
+export 'app_theme_sizes.dart';
+
 /// 基于同一个种子色构建 Material 3 的浅色和深色主题。
 ThemeData buildAppTheme(Brightness brightness) {
-  const seed = Color(0xff09c47c);
-  final colorScheme = ColorScheme.fromSeed(
-    seedColor: seed,
-    brightness: brightness,
-  ).copyWith(
-    primary: seed,
-    onPrimary: Colors.white,
-  );
+  const seed = AppPalette.primary;
   final isDark = brightness == Brightness.dark;
+  final colorScheme =
+      ColorScheme.fromSeed(seedColor: seed, brightness: brightness).copyWith(
+        primary: seed,
+        onPrimary: Colors.white,
+        outline: isDark
+            ? AppThemeColors.dark.strongBorder
+            : AppThemeColors.light.strongBorder,
+        outlineVariant: isDark
+            ? AppThemeColors.dark.subtleBorder
+            : AppThemeColors.light.subtleBorder,
+      );
 
   return ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
+    extensions: <ThemeExtension<dynamic>>[
+      isDark ? AppThemeColors.dark : AppThemeColors.light,
+    ],
     scaffoldBackgroundColor: isDark
         ? const Color(0xff0f172a)
         : const Color(0xfff7f8fb),
-    canvasColor: isDark
-        ? const Color(0xff1e293b)
-        : Colors.white,
+    canvasColor: isDark ? const Color(0xff1e293b) : Colors.white,
     visualDensity: VisualDensity.standard,
     dialogTheme: DialogThemeData(
       backgroundColor: isDark ? const Color(0xff1e293b) : Colors.white,
@@ -41,20 +54,34 @@ ThemeData buildAppTheme(Brightness brightness) {
       color: isDark ? const Color(0xff111827) : Colors.white,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppThemeSizes.radiusMedium,
         side: BorderSide(
-          color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
+          color: isDark
+              ? AppThemeColors.dark.subtleBorder
+              : AppThemeColors.light.subtleBorder,
         ),
       ),
     ),
+    dividerTheme: DividerThemeData(
+      color: isDark
+          ? AppThemeColors.dark.subtleBorder
+          : AppThemeColors.light.subtleBorder,
+      thickness: AppThemeSizes.borderWidth,
+      space: AppThemeSizes.borderWidth,
+    ),
+    iconTheme: IconThemeData(
+      color: isDark
+          ? AppThemeColors.dark.toolbarForeground
+          : AppThemeColors.light.toolbarForeground,
+    ),
     inputDecorationTheme: InputDecorationTheme(
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      border: const OutlineInputBorder(
+        borderRadius: AppThemeSizes.radiusMedium,
+      ),
       isDense: true,
     ),
     checkboxTheme: CheckboxThemeData(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: AppThemeSizes.radiusSmall),
       checkColor: WidgetStateProperty.all(Colors.white),
       fillColor: WidgetStateProperty.resolveWith<Color?>((states) {
         if (states.contains(WidgetState.selected)) {
@@ -68,7 +95,7 @@ ThemeData buildAppTheme(Brightness brightness) {
         }
         return BorderSide(
           color: isDark ? const Color(0xff475569) : const Color(0xffcbd5e1),
-          width: 1.5,
+          width: AppThemeSizes.strongBorderWidth,
         );
       }),
     ),
@@ -87,10 +114,8 @@ ThemeData buildAppTheme(Brightness brightness) {
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(
-            color: isDark ? const Color(0xff334155) : const Color(0xffe2e8f0),
-          ),
+          borderRadius: AppThemeSizes.radiusMedium,
+          side: BorderSide(color: colorScheme.outlineVariant),
         ),
       ),
     ),
@@ -100,7 +125,9 @@ ThemeData buildAppTheme(Brightness brightness) {
         backgroundColor: colorScheme.primary,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppThemeSizes.radiusMedium,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -108,14 +135,18 @@ ThemeData buildAppTheme(Brightness brightness) {
         foregroundColor: colorScheme.primary,
         side: BorderSide(color: colorScheme.primary),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppThemeSizes.radiusMedium,
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: colorScheme.primary,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppThemeSizes.radiusMedium,
+        ),
       ),
     ),
   );

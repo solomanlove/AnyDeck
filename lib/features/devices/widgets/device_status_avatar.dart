@@ -88,7 +88,7 @@ class DeviceStatusAvatar extends ConsumerWidget {
         : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9));
 
     final avatarBorder = isOnline
-        ? (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))
+        ? (Theme.of(context).colorScheme.outlineVariant)
         : (isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1).withValues(alpha: 0.4));
 
     final dotSize = (size * 0.26).clamp(8.0, 10.0);

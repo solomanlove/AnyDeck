@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -40,7 +42,7 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
       SnackBar(
         content: Text('${context.l10n.t('copySuccess')}: $value'),
         duration: const Duration(seconds: 1),
-        backgroundColor: const Color(0xff09c47c),
+        backgroundColor: AppPalette.primary,
         behavior: SnackBarBehavior.floating,
         width: 300,
       ),
@@ -286,7 +288,7 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
                                         fontSize: 12,
                                         color: prop.isBool
                                             ? (prop.value == 'true'
-                                                  ? const Color(0xff09c47c)
+                                                  ? AppPalette.primary
                                                   : (isDark ? Colors.red[300] : Colors.red[600]))
                                             : (prop.value.isEmpty
                                                   ? (isDark ? Colors.grey[600] : Colors.grey[400])

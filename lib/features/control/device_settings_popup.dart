@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/adb/adb_result.dart';
 import '../../core/device_info/device_overview.dart';
 import '../../core/providers/app_providers.dart';
@@ -94,7 +95,7 @@ class _DeviceSettingsPopupState extends ConsumerState<DeviceSettingsPopup> {
         children: [
           Icon(
             Icons.settings,
-            color: isDark ? Colors.white70 : Colors.black87,
+            color: Theme.of(context).appColors.toolbarForeground,
             size: 20,
           ),
           const SizedBox(width: 8),

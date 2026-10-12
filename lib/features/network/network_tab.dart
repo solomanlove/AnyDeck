@@ -1,4 +1,6 @@
 import 'dart:ui';
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -478,7 +480,7 @@ class NetworkTab extends ConsumerWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(context.l10n.t('reverseSuccess')),
-                                backgroundColor: const Color(0xff09c47c),
+                                backgroundColor: AppPalette.primary,
                               ),
                             );
                           }

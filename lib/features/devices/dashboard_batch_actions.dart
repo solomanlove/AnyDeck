@@ -1499,7 +1499,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('计划任务已成功创建，将于 $_delayMinutes 分钟后执行。'),
-          backgroundColor: const Color(0xff09c47c),
+          backgroundColor: AppPalette.primary,
         ),
       );
       Navigator.of(context).pop();

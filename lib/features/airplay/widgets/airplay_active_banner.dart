@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/airplay/airplay_server_service.dart';
 import '../../../core/airplay/airplay_server_state.dart';
 import '../../../core/providers/app_providers.dart';
@@ -160,7 +161,7 @@ class AirPlayActiveBanner extends ConsumerWidget {
               context.l10n.t('airplayStopSession'),
               style: TextStyle(
                 fontSize: 12,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: Theme.of(context).appColors.toolbarForeground,
               ),
             ),
           ),

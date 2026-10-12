@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,7 +16,7 @@ class McpServerStatusCard extends ConsumerWidget {
     final state = ref.watch(mcpServerProvider);
     final controller = ref.read(mcpServerProvider.notifier);
 
-    final statusColor = state.isRunning ? const Color(0xff09c47c) : Colors.grey;
+    final statusColor = state.isRunning ? AppPalette.primary : Colors.grey;
 
     return Card(
       child: Padding(
@@ -65,7 +67,7 @@ class McpServerStatusCard extends ConsumerWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: state.isRunning
                         ? Colors.red.shade600
-                        : const Color(0xff09c47c),
+                        : AppPalette.primary,
                   ),
                 ),
               ],
@@ -151,8 +153,8 @@ class McpServerStatusCard extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Switch.adaptive(
                       value: state.config.enableDangerousOperationGuard,
-                      activeThumbColor: const Color(0xff09c47c),
-                      activeTrackColor: const Color(0xff09c47c).withValues(alpha: 0.5),
+                      activeThumbColor: AppPalette.primary,
+                      activeTrackColor: AppPalette.primary.withValues(alpha: 0.5),
                       onChanged: (val) {
                         final newConfig = state.config.copyWith(
                           enableDangerousOperationGuard: val,

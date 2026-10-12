@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,14 +52,14 @@ class MessageItemCard extends ConsumerWidget {
 
     final cardBg = isTarget
         ? (isDark
-            ? const Color(0xff09c47c).withValues(alpha: 0.20)
-            : const Color(0xff09c47c).withValues(alpha: 0.12))
+            ? AppPalette.primary.withValues(alpha: 0.20)
+            : AppPalette.primary.withValues(alpha: 0.12))
         : (isDark
             ? Colors.white.withValues(alpha: 0.05)
             : Colors.black.withValues(alpha: 0.03));
 
     final borderColor = isTarget
-        ? const Color(0xff09c47c)
+        ? AppPalette.primary
         : (isDark
             ? Colors.white.withValues(alpha: 0.1)
             : Colors.black.withValues(alpha: 0.08));

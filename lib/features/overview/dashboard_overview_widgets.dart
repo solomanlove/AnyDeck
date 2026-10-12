@@ -1,6 +1,6 @@
 part of '../dashboard_screen.dart';
 
-const _overviewAccent = Color(0xff09c47c);
+const _overviewAccent = AppPalette.primary;
 
 /// 按窗口宽度组织设备摘要、重点指标和详细参数。
 class DeviceOverviewContent extends StatelessWidget {

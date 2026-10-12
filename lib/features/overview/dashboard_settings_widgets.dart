@@ -83,10 +83,10 @@ extension _SettingsTabWidgets on _SettingsTab {
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    const brandGreen = Color(0xff09c47c);
+    const brandGreen = AppPalette.primary;
     final outlineColor = selected
         ? brandGreen
-        : (isDark ? const Color(0xff334155) : const Color(0xffe2e8f0));
+        : (Theme.of(context).colorScheme.outlineVariant);
     final textColor = selected
         ? brandGreen
         : (isDark ? Colors.white70 : const Color(0xff5f6b6e));

@@ -72,7 +72,7 @@ extension _SettingsTabNotificationSection on _SettingsTab {
                   children: [
                     const Icon(
                       CupertinoIcons.checkmark_circle_fill,
-                      color: Color(0xff09c47c),
+                      color: AppPalette.primary,
                       size: 18,
                     ),
                     const SizedBox(width: 6),
@@ -80,7 +80,7 @@ extension _SettingsTabNotificationSection on _SettingsTab {
                       context.l10n.t('notificationPermissionGranted'),
                       style: const TextStyle(
                         fontSize: 13,
-                        color: Color(0xff09c47c),
+                        color: AppPalette.primary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -142,7 +142,7 @@ extension _SettingsTabNotificationSection on _SettingsTab {
         content: Text(context.l10n.t('notificationPermissionDenied')),
         action: SnackBarAction(
           label: context.l10n.t('openSystemSettings'),
-          textColor: const Color(0xff09c47c),
+          textColor: AppPalette.primary,
           onPressed: () => bridge.openNotificationSettings(),
         ),
         duration: const Duration(seconds: 5),

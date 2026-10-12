@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
 import '../model/desktop_chrome_policy.dart';
 
 /// 工作区公共背景。[child] 为页面内容；[border] 用于导航与内容分隔。
@@ -15,14 +16,11 @@ class DesktopWorkspaceSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final mac = DesktopChromePolicy.current.usesMacChrome;
     final content = DecoratedBox(
       decoration: BoxDecoration(
         color: mac
-            ? (isDark
-                  ? Colors.black.withValues(alpha: 0.18)
-                  : Colors.white.withValues(alpha: 0.28))
+            ? theme.appColors.glassSurface
             : theme.colorScheme.surface,
         border: border,
       ),

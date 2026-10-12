@@ -1,3 +1,5 @@
+import 'package:any_deck/app/theme/app_theme.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +23,7 @@ class SettingsDeveloperEntry extends ConsumerStatefulWidget {
   const SettingsDeveloperEntry({
     super.key,
     required this.onCheckUpdate,
-    this.brandGreen = const Color(0xff09c47c),
+    this.brandGreen = AppPalette.primary,
   });
 
   /// 检查更新回调
