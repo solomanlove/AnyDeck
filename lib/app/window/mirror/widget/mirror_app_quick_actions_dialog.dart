@@ -139,7 +139,6 @@ class _MirrorAppQuickActionsDialogState
                     : Colors.black.withValues(alpha: 0.06),
               ),
             ),
-            padding: const EdgeInsets.all(4),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: hasLocalIcon
