@@ -29,8 +29,8 @@ void main() {
     expect(find.text('测试主标题'), findsOneWidget);
     expect(find.text('测试副标题描述'), findsOneWidget);
 
-    // 验证图标与操作按钮
-    expect(find.byIcon(Icons.devices_rounded), findsOneWidget);
+    // 验证图标已删除（不再渲染徽标图标），操作按钮正常保留
+    expect(find.byIcon(Icons.devices_rounded), findsNothing);
     expect(find.byIcon(CupertinoIcons.refresh), findsOneWidget);
   });
 
@@ -42,7 +42,6 @@ void main() {
           body: DashboardHeaderBar(
             title: 'AI MCP',
             subtitle: 'AI MCP 服务与工具集',
-            icon: CupertinoIcons.sparkles,
             trailing: Text('运行中 (端口: 8080)'),
           ),
         ),
@@ -51,7 +50,7 @@ void main() {
 
     expect(find.text('AI MCP'), findsOneWidget);
     expect(find.text('AI MCP 服务与工具集'), findsOneWidget);
-    expect(find.byIcon(CupertinoIcons.sparkles), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.sparkles), findsNothing);
     expect(find.text('运行中 (端口: 8080)'), findsOneWidget);
   });
 }

@@ -9,8 +9,8 @@ export 'dashboard_header_title.dart';
 /// 仪表盘一级模块页面顶部统一标准标题栏。
 ///
 /// 封装 72px 标准高度、原生窗口拖拽（[DragToMoveArea]）、桌面工作区毛玻璃背景（[DesktopWorkspaceSurface]）
-/// 以及统一的底部边框线。左侧采用规范的 [DashboardHeaderTitle]（圆形主题色图标徽章 + 粗体主标题 + 柔和副标题），
-/// 右侧支持灵活承载各页面的操作工具栏、平台切换或状态标识。
+/// 以及统一的底部边框线。左侧采用规范的 [DashboardHeaderTitle]（粗体主标题 + 柔和副标题左对齐），
+/// 与下方内容列形成一条整齐的竖直对齐线。右侧支持灵活承载各页面的操作工具栏、平台切换或状态标识。
 ///
 /// 适用于“设备管理”、“模拟器管理”、“AI MCP”、“设置”等所有仪表盘顶级模块页面。
 ///
@@ -19,7 +19,6 @@ export 'dashboard_header_title.dart';
 /// DashboardHeaderBar(
 ///   title: context.l10n.t('devices'),
 ///   subtitle: context.l10n.t('devicesSubtitle'),
-///   icon: Icons.devices_rounded,
 ///   actions: [ ... ],
 /// )
 /// ```
@@ -28,7 +27,7 @@ class DashboardHeaderBar extends StatelessWidget {
   ///
   /// [title] 主标题文本；
   /// [subtitle] 副标题描述文本；
-  /// [icon] 左侧圆形徽章内部图标；
+  /// [icon] 兼容保留参数（已废弃不再渲染图标）；
   /// [badgeSize] 徽标外圈圆形直径，默认 48.0；
   /// [iconSize] 徽标内部图标尺寸，默认 26.0；
   /// [trailing] 标题栏右侧自定义组件（例如平台切换 Tabs 或状态徽章）；
@@ -39,7 +38,7 @@ class DashboardHeaderBar extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
-    required this.icon,
+    this.icon,
     this.badgeSize = 48.0,
     this.iconSize = 26.0,
     this.trailing,
@@ -54,8 +53,8 @@ class DashboardHeaderBar extends StatelessWidget {
   /// 页面副标题
   final String subtitle;
 
-  /// 徽标图标
-  final IconData icon;
+  /// 徽标图标（兼容保留参数）
+  final IconData? icon;
 
   /// 徽标外圈圆形直径
   final double badgeSize;

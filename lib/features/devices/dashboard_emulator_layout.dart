@@ -67,7 +67,6 @@ class _EmulatorStandaloneLayoutState extends State<_EmulatorStandaloneLayout> {
             DashboardHeaderBar(
               title: context.l10n.t('emulators'),
               subtitle: context.l10n.t('emulatorsSubtitle'),
-              icon: CupertinoIcons.device_desktop,
               trailing: EmulatorPlatformTabs(
                 selectedPlatform: _selectedPlatform,
                 onPlatformChanged: (platform) {

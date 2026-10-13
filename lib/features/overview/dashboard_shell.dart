@@ -56,7 +56,6 @@ class _ContentTitleBar extends ConsumerWidget {
     return DashboardHeaderBar(
       title: context.l10n.t('devices'),
       subtitle: context.l10n.t('devicesSubtitle'),
-      icon: Icons.devices_rounded,
       actions: [
         //tcp连接
         IconButton(

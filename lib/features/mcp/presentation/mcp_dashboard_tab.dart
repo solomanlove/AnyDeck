@@ -53,7 +53,6 @@ class _McpDashboardHeader extends StatelessWidget {
     return DashboardHeaderBar(
       title: context.l10n.t('aiMcp'),
       subtitle: context.l10n.t('aiMcpDesc'),
-      icon: CupertinoIcons.sparkles,
       trailing: const _McpServerStatusHeaderBadge(),
     );
   }

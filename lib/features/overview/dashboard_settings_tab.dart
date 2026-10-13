@@ -17,7 +17,6 @@ class _SettingsTab extends ConsumerWidget {
         DashboardHeaderBar(
           title: context.l10n.t('settings'),
           subtitle: context.l10n.t('settingsDesc'),
-          icon: CupertinoIcons.settings,
         ),
         Expanded(
           child: SingleChildScrollView(
