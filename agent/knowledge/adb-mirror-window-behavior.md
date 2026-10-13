@@ -59,7 +59,7 @@
 - Android、HarmonyOS 和 AirPlay FPS 使用 Rust `Frame` 成功产出的可渲染帧累计值按秒做差；iOS USB 复用原生采集状态中的 FPS。不得使用前台 App 的 `dumpsys gfxinfo` FPS 代替投屏 FPS。
 - Rust 帧计数使用 Atomic 累加并由 Dart 低频轮询，禁止为每帧建立 MethodChannel 事件或触发顶层窗口 rebuild。控件显隐不得调整原生窗口 Frame，也不得改变 Texture 的布局尺寸和触控映射。
 - 窗口初始尺寸、横竖屏适配和拖拽缩放比例必须同时扣除右侧 32px 最窄工具栏宽度与顶部 30px 标题栏高度；缩放过程中按真实 Viewer 比例持续收敛，禁止把窗口总宽度直接作为视频宽度，否则竖屏会产生上下黑边。
-- 从手机投屏窗口打开应用独立副屏时，不得停止当前主屏 Session；虚拟副屏优先复用当前手机投屏解码帧尺寸，仅在无有效视频尺寸时回退到物理分辨率或 `1080x1920`。应用副屏工具栏隐藏 Home 与 Recent/Menu 键，避免 Task 离开目标应用。
+- 从手机投屏窗口打开应用独立副屏时，不得停止当前主屏 Session；虚拟副屏优先使用手机物理分辨率与 DPI，例如 `1080x2376/480`，禁止直接使用受 `max_size` 缩放的解码帧尺寸。无物理信息时才按视频比例放大到长边至少 1920，最后回退 `1080x1920`。应用副屏工具栏隐藏 Home 与 Recent/Menu 键，避免 Task 离开目标应用。
 - 应用副屏 Session 保存 scrcpy 创建的 virtual displayId；截图使用 `screencap -d <displayId> -p`，录屏使用 `screenrecord --display-id <displayId>`。应用副屏尚未取得 displayId 时必须提示失败，禁止回退抓取手机主屏；普通手机投屏继续沿用默认显示截图/录屏链路。
 
 ## 投屏标题设备信息悬浮层

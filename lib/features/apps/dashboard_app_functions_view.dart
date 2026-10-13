@@ -475,22 +475,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                               package
                                                                   .displayName,
                                                             );
-                                                        final textureId = ref
-                                                            .read(
-                                                              activeEmbeddedMirrorProvider(
-                                                                deviceId,
-                                                              ),
-                                                            );
-                                                        if (textureId !=
-                                                            null) {
-                                                          await ref
-                                                              .read(
-                                                                activeEmbeddedMirrorProvider(
-                                                                  deviceId,
-                                                                ).notifier,
-                                                              )
-                                                              .forceStop();
-                                                        }
                                                         try {
                                                           final overviewAsync =
                                                               ref.read(
@@ -508,66 +492,21 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                                 orElse: () =>
                                                                     null,
                                                               );
-                                                          String
-                                                          vdResolution =
-                                                              '1080x1920';
-                                                          if (resolution !=
-                                                                  null &&
-                                                              resolution
-                                                                  .contains(
-                                                                    'x',
-                                                                  )) {
-                                                            final parts =
-                                                                resolution
-                                                                    .split(
-                                                                      'x',
-                                                                    );
-                                                            if (parts
-                                                                    .length ==
-                                                                2) {
-                                                              final w =
-                                                                  int.tryParse(
-                                                                    parts[0]
-                                                                        .trim(),
-                                                                  );
-                                                              final h =
-                                                                  int.tryParse(
-                                                                    parts[1]
-                                                                        .trim(),
-                                                                  );
-                                                              if (w != null &&
-                                                                  h != null) {
-                                                                final minSide =
-                                                                    w < h
-                                                                    ? w
-                                                                    : h;
-                                                                final maxSide =
-                                                                    w > h
-                                                                    ? w
-                                                                    : h;
-                                                                double scale =
-                                                                    1.0;
-                                                                if (maxSide >
-                                                                    1920) {
-                                                                  scale =
-                                                                      1920 /
-                                                                      maxSide;
-                                                                }
-                                                                final targetW =
-                                                                    ((minSide * scale)
-                                                                            .toInt() ~/
-                                                                        2) *
-                                                                    2;
-                                                                final targetH =
-                                                                    ((maxSide * scale)
-                                                                            .toInt() ~/
-                                                                        2) *
-                                                                    2;
-                                                                vdResolution =
-                                                                    '${targetW}x$targetH';
-                                                              }
-                                                            }
-                                                          }
+                                                          final videoSize = ref
+                                                              .read(
+                                                                embeddedScrcpyServiceProvider,
+                                                              )
+                                                              .getVideoSize(
+                                                                deviceId,
+                                                              );
+                                                          final vdResolution =
+                                                              resolveAppMirrorDisplayResolution(
+                                                                resolution,
+                                                                videoWidth:
+                                                                    videoSize?['width'],
+                                                                videoHeight:
+                                                                    videoSize?['height'],
+                                                              );
                                                           final initialSize =
                                                               _resolveMirrorInitialWindowSize(
                                                                 vdResolution,

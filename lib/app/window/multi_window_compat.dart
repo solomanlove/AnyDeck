@@ -16,34 +16,39 @@ const Size defaultMirrorWindowSize = Size(480, 800);
 const double mirrorWindowTopChromeHeight = 30;
 const double mirrorWindowSideChromeWidth = 32;
 
-/// 应用虚拟副屏优先复用当前手机投屏的真实视频尺寸，避免回退比例产生黑边。
+/// 应用虚拟副屏优先使用手机物理分辨率与 DPI，避免厂商兼容缩放只占左上区域。
 String resolveAppMirrorDisplayResolution(
   String? physicalResolution, {
   int? videoWidth,
   int? videoHeight,
 }) {
+  final physicalMatch = physicalResolution == null
+      ? null
+      : RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(physicalResolution);
+  if (physicalMatch != null) {
+    final first = int.parse(physicalMatch.group(1)!);
+    final second = int.parse(physicalMatch.group(2)!);
+    final width = min(first, second);
+    final height = max(first, second);
+    final densityMatch = RegExp(
+      r'(\d+)\s*dpi',
+      caseSensitive: false,
+    ).firstMatch(physicalResolution!);
+    final density = densityMatch?.group(1);
+    return density == null ? '${width}x$height' : '${width}x$height/$density';
+  }
+
   if (videoWidth != null &&
       videoHeight != null &&
       videoWidth > 0 &&
       videoHeight > 0) {
-    final width = videoWidth.isEven ? videoWidth : videoWidth - 1;
-    final height = videoHeight.isEven ? videoHeight : videoHeight - 1;
-    return '${width}x$height';
+    final minSide = min(videoWidth, videoHeight);
+    final maxSide = max(videoWidth, videoHeight);
+    final targetHeight = maxSide < 1920 ? 1920 : maxSide;
+    final targetWidth = ((targetHeight * minSide / maxSide).round() ~/ 2) * 2;
+    return '${targetWidth}x$targetHeight';
   }
-
-  final parsedRatio = parseMirrorAspectRatio(physicalResolution);
-  final match = physicalResolution == null
-      ? null
-      : RegExp(r'(\d+)\s*[xX]\s*(\d+)').firstMatch(physicalResolution);
-  if (parsedRatio == null || match == null) return '1080x1920';
-  final first = int.parse(match.group(1)!);
-  final second = int.parse(match.group(2)!);
-  final minSide = min(first, second);
-  final maxSide = max(first, second);
-  final scale = maxSide > 1920 ? 1920 / maxSide : 1.0;
-  final targetWidth = ((minSide * scale).toInt() ~/ 2) * 2;
-  final targetHeight = ((maxSide * scale).toInt() ~/ 2) * 2;
-  return '${targetWidth}x$targetHeight';
+  return '1080x1920';
 }
 
 /// 根据设备分辨率或直接指定的宽高比解析投屏初始窗口大小。
