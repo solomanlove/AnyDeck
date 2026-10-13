@@ -3,7 +3,14 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-/// App 全局居中 Toast，统一主窗口与独立子窗口的轻提示样式。
+/// 显示全局居中 Toast 提示。
+///
+/// [context] 上下文；
+/// [message] 提示文案；
+/// [type] 提示类型，默认为 [AppToastType.success]；
+/// [isError] 兼容历史布尔入参，为 true 时转换为错误样式；
+/// [duration] 停留时长，默认 1600ms；
+/// [maxWidth] 最大限制宽度，默认 640，保证较长提示语在一行完整呈现。
 class AppToast {
   const AppToast._();
 
@@ -16,6 +23,7 @@ class AppToast {
     AppToastType type = AppToastType.success,
     bool? isError,
     Duration duration = const Duration(milliseconds: 1600),
+    double maxWidth = 640,
   }) {
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null || message.isEmpty) {
@@ -42,9 +50,7 @@ class AppToast {
                 alignment: Alignment.center,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: media.size.width < 420
-                        ? media.size.width - 48
-                        : 420,
+                    maxWidth: (media.size.width - 48).clamp(0.0, maxWidth)
                   ),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
