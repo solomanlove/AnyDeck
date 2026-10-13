@@ -150,54 +150,26 @@ pub fn run_mirror(
     let address: SocketAddr = format!("{}:{}", host, port)
         .parse()
         .unwrap_or_else(|_| SocketAddr::from(([127, 0, 0, 1], port)));
-
-    let mut connected = None;
-    for _ in 0..30 {
-        if s.stopped.load(Ordering::Acquire) {
-            return Ok(());
-        }
-        let Ok(mut video) = TcpStream::connect_timeout(&address, Duration::from_millis(500)) else {
-            std::thread::sleep(Duration::from_millis(150));
-            continue;
-        };
-        let _ = video.set_read_timeout(Some(Duration::from_millis(500)));
-        let _ = video.set_write_timeout(Some(Duration::from_secs(2)));
-        let _ = video.set_nodelay(true);
-
-        let mut audio = None;
-        if audio_enabled {
-            std::thread::sleep(Duration::from_millis(30));
-            let Ok(a) = TcpStream::connect_timeout(&address, Duration::from_millis(500)) else {
-                std::thread::sleep(Duration::from_millis(150));
-                continue;
-            };
-            let _ = a.set_read_timeout(Some(Duration::from_millis(500)));
-            let _ = a.set_write_timeout(Some(Duration::from_secs(2)));
-            let _ = a.set_nodelay(true);
-            audio = Some(a);
-        }
-
-        std::thread::sleep(Duration::from_millis(30));
-        let Ok(control) = TcpStream::connect_timeout(&address, Duration::from_millis(500)) else {
-            std::thread::sleep(Duration::from_millis(150));
-            continue;
-        };
-        let _ = control.set_read_timeout(Some(Duration::from_millis(500)));
-        let _ = control.set_write_timeout(Some(Duration::from_secs(2)));
-        let _ = control.set_nodelay(true);
-
-        let mut dummy = [0u8; 1];
-        if stream::read(&mut video, &mut dummy, &s.stopped).is_ok() {
-            connected = Some((video, audio, control));
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(150));
-    }
-
-    let (mut video, audio, control) = match connected {
-        Some(streams) => streams,
-        None => return Err("Failed to connect to scrcpy server".into()),
+    let deadline = Instant::now() + Duration::from_secs(15);
+    // scrcpy 按 video -> audio -> control 接受连接。已经成功的前序 Socket 必须保留，
+    // 否则较慢设备上 control 尚未就绪时重建 video，会让 Server 与客户端顺序错位。
+    let mut video = connect_mirror_socket(&address, deadline, s, "video")?;
+    let audio = if audio_enabled {
+        Some(connect_mirror_socket(&address, deadline, s, "audio")?)
+    } else {
+        None
     };
+    let control = connect_mirror_socket(&address, deadline, s, "control")?;
+
+    video
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .map_err(|e| e.to_string())?;
+    let mut dummy = [0u8; 1];
+    stream::read(&mut video, &mut dummy, &s.stopped)
+        .map_err(|error| format!("scrcpy handshake failed: {error}"))?;
+    video
+        .set_read_timeout(Some(Duration::from_millis(500)))
+        .map_err(|e| e.to_string())?;
 
     let mut meta = [0u8; 80];
     stream::read(&mut video, &mut meta, &s.stopped).map_err(|e| e.to_string())?;
@@ -263,6 +235,33 @@ pub fn run_mirror(
         }
     }
     Ok(())
+}
+
+fn connect_mirror_socket(
+    address: &SocketAddr,
+    deadline: Instant,
+    s: &Session,
+    name: &str,
+) -> Result<TcpStream, String> {
+    loop {
+        if s.stopped.load(Ordering::Acquire) {
+            return Err("Mirror connection cancelled".into());
+        }
+        if Instant::now() >= deadline {
+            return Err(format!("Timed out connecting scrcpy {name} socket"));
+        }
+        if let Ok(socket) = TcpStream::connect_timeout(address, Duration::from_millis(500)) {
+            socket
+                .set_read_timeout(Some(Duration::from_millis(500)))
+                .map_err(|e| e.to_string())?;
+            socket
+                .set_write_timeout(Some(Duration::from_secs(2)))
+                .map_err(|e| e.to_string())?;
+            socket.set_nodelay(true).map_err(|e| e.to_string())?;
+            return Ok(socket);
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
 
 fn run_mirror_audio(mut socket: TcpStream, s: &Session) -> Result<(), String> {

@@ -71,6 +71,7 @@ class MirrorWindowController extends ChangeNotifier {
   bool _isAudioMuted = false;
   bool get isAudioMuted => _isAudioMuted;
   bool _audioFocusPrepared = false;
+  bool _startupRecoveryAttempted = false;
   final MirrorAudioFocusCoordinator _audioFocusCoordinator =
       MirrorAudioFocusCoordinator();
   late final Future<dynamic> Function(MethodCall) _audioFocusHandler =
@@ -231,6 +232,7 @@ class MirrorWindowController extends ChangeNotifier {
 
   /// 强制重启投屏服务（用于刷新/重新连接）
   Future<void> restartMirroring() async {
+    _startupRecoveryAttempted = false;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -289,6 +291,7 @@ class MirrorWindowController extends ChangeNotifier {
         }
       }
       _isLoading = false;
+      _startupRecoveryAttempted = false;
       notifyListeners();
 
       if (!isIos) {
@@ -301,6 +304,19 @@ class MirrorWindowController extends ChangeNotifier {
         _autoFitWindowOnStart();
       }
     } catch (e) {
+      if (!isIos &&
+          !isHarmony &&
+          !_startupRecoveryAttempted &&
+          _isRecoverableMirrorStartupError(e)) {
+        _startupRecoveryAttempted = true;
+        debugPrint('Mirror startup failed transiently, retrying once: $e');
+        await ref
+            .read(activeEmbeddedMirrorProvider(deviceId).notifier)
+            .forceStop();
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+        await startMirroring();
+        return;
+      }
       _isLoading = false;
       var msg = e.toString();
       if (msg.startsWith('Exception: ')) {
@@ -309,6 +325,13 @@ class MirrorWindowController extends ChangeNotifier {
       _errorMessage = msg;
       notifyListeners();
     }
+  }
+
+  bool _isRecoverableMirrorStartupError(Object error) {
+    final message = error.toString().toLowerCase();
+    return message.contains('rust mirror session failed to connect') ||
+        message.contains('rust mirror session connection timed out') ||
+        message.contains('mirror first video frame timed out');
   }
 
   /// 切换窗口全屏状态

@@ -53,6 +53,8 @@
 - 投屏处于 loading、启动失败或断开等非画面状态时，窗口恢复 Theme surface 实体背景并保持控制区显示；仅在可见投屏画面正常输出后启用外围透明与自动隐藏。
 - loading 阶段仍需构建并显示右侧工具栏，FPS 未取得有效帧样本前显示 `-- FPS`。
 - loading 阶段的内容区、标题栏和右侧工具栏必须使用同一窗口背景色：Light `#F8F9FA`、Dark `#121212`，禁止混用 `colorScheme.surface` 造成色差。
+- 投屏子窗口必须以隐藏状态创建，完成 Flutter 首帧后再显示；复用已有窗口前通过 `isFlutterReady` 握手确认 Dart Isolate 存活，握手失败时隐藏失效窗口并创建新窗口，禁止暴露或重复复用只有原生黑底的僵尸窗口。
+- Android scrcpy 启动按 video、可选 audio、control 顺序连接 Socket，后序 Socket 较慢时必须保留已连接的前序 Socket。连接失败、连接超时或首帧超时属于可恢复启动故障，完整清理 Session 后自动重试一次，第二次仍失败才展示错误页。
 - macOS 完全透明需要同时清除 `NSWindow.backgroundColor` 与子引擎 `FlutterViewController.backgroundColor`；只调用 `windowManager.setBackgroundColor(Colors.transparent)` 会保留 FlutterView 默认黑底。透明切换不得调用窗口定位或尺寸 API。
 - 鼠标停留在标题栏或工具栏时暂停隐藏；进入对应固定槽位时恢复显示，离开整个窗口时立即隐藏。loading、失败和断开等非活跃状态不启用自动隐藏。
 - 活跃投屏中，鼠标进入视频 Viewer 后延迟 300ms 隐藏标题栏和右侧工具栏，点击 Viewer 时立即隐藏；进入顶部或右侧固定透明槽位时重新显示。区域显隐不得改变窗口和 Viewer 尺寸。

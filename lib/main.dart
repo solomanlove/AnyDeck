@@ -138,7 +138,10 @@ Future<void> _startApplication(List<String> args) async {
           child: AppLogScope(child: ApkDetailsWindowApp(argument: argument)),
         ));
       } else if (type == 'mirror') {
-        await configureCurrentAdbManageSubWindow(argument);
+        await configureCurrentAdbManageSubWindow(
+          argument,
+          showWhenReady: false,
+        );
         //投屏窗口
         runApp(
           ProviderScope(
@@ -148,6 +151,9 @@ Future<void> _startApplication(List<String> args) async {
             ),
           ),
         );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(showCurrentAdbManageSubWindow());
+        });
       } else if (type == 'console') {
         await configureCurrentAdbManageSubWindow(argument);
         //控制台窗口

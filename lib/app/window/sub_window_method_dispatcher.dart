@@ -29,6 +29,8 @@ class SubWindowMethodDispatcher {
     
     WindowController.fromCurrentEngine().then((controller) {
       controller.setWindowMethodHandler((call) async {
+        // 主窗口用此握手判断子窗口的 Dart/Flutter 首帧链路是否仍然存活。
+        if (call.method == 'isFlutterReady') return true;
         dynamic lastResult;
         // 使用副本遍历，防止遍历中修改列表
         for (final handler in List.from(_handlers)) {

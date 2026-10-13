@@ -116,6 +116,14 @@ Future<WindowController> createAdbManageWindow({
               if (windowArgs['newDisplay'] == arguments['newDisplay'] &&
                   windowArgs['startApp'] == arguments['startApp']) {
                 try {
+                  if (type == 'mirror') {
+                    final ready = await window
+                        .invokeMethod<bool>('isFlutterReady')
+                        .timeout(const Duration(milliseconds: 800));
+                    if (ready != true) {
+                      throw StateError('Mirror window is not ready');
+                    }
+                  }
                   final airplayHandle = arguments['airplayHandle'];
                   if (type == 'mirror' && airplayHandle is int) {
                     await window.invokeMethod('switchIosMirrorSource', {
@@ -127,6 +135,11 @@ Future<WindowController> createAdbManageWindow({
                   return window;
                 } catch (e) {
                   debugPrint('Failed to show existing window, falling back to create: $e');
+                  if (type == 'mirror') {
+                    try {
+                      await window.hide();
+                    } catch (_) {}
+                  }
                   break;
                 }
               }
@@ -156,20 +169,24 @@ Future<WindowController> createAdbManageWindow({
 
   final controller = await WindowController.create(
     WindowConfiguration(
-      hiddenAtLaunch: false,
+      // 投屏窗口等待 Flutter 首帧完成后再显示，避免暴露原生黑底。
+      hiddenAtLaunch: type == 'mirror',
       arguments: jsonEncode(windowArguments),
     ),
   );
-  try {
-    await controller.show();
-  } catch (_) {}
+  if (type != 'mirror') {
+    try {
+      await controller.show();
+    } catch (_) {}
+  }
   return controller;
 }
 
 /// 在子窗口自己的 Isolate 内应用初始尺寸、位置与标题。
 Future<void> configureCurrentAdbManageSubWindow(
-  Map<String, dynamic> arguments,
-) async {
+  Map<String, dynamic> arguments, {
+  bool showWhenReady = true,
+}) async {
   try {
     await windowManager.ensureInitialized();
 
@@ -209,17 +226,22 @@ Future<void> configureCurrentAdbManageSubWindow(
     if (title != null && title.isNotEmpty) {
       await DesktopWindowTitleService.setTitle(title);
     }
-    await windowManager.show();
-    await windowManager.focus();
-
-    // 尝试同步通知 desktop_multi_window 引擎端展示，做双重可见性保障
-    try {
-      final controller = await WindowController.fromCurrentEngine();
-      await controller.show();
-    } catch (_) {}
+    if (showWhenReady) {
+      await showCurrentAdbManageSubWindow();
+    }
   } catch (e, stack) {
     debugPrint('configureCurrentAdbManageSubWindow error: $e\n$stack');
   }
+}
+
+/// Flutter 首帧绘制完成后再展示当前子窗口，避免原生窗口黑底先于 UI 暴露。
+Future<void> showCurrentAdbManageSubWindow() async {
+  await windowManager.show();
+  await windowManager.focus();
+  try {
+    final controller = await WindowController.fromCurrentEngine();
+    await controller.show();
+  } catch (_) {}
 }
 
 Rect? _decodeFrame(Object? value) {
