@@ -51,40 +51,24 @@ class _EmulatorStandaloneLayoutState extends State<_EmulatorStandaloneLayout> {
             if (!widget.isEmbeddedTab && Platform.isMacOS)
               const DragToMoveArea(child: SizedBox(height: 30)),
             // 顶部公用标题栏：左侧为标题与副标题，右上角为共用的模拟器平台切换 Tab
-            DragToMoveArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SizedBox(
-                  height: 72,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: DashboardHeaderTitle(
-                          title: context.l10n.t('emulators'),
-                          subtitle: context.l10n.t('emulatorsSubtitle'),
-                          icon: CupertinoIcons.device_desktop,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      EmulatorPlatformTabs(
-                        selectedPlatform: _selectedPlatform,
-                        onPlatformChanged: (platform) {
-                          setState(() => _selectedPlatform = platform);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
+            DashboardHeaderBar(
+              title: context.l10n.t('emulators'),
+              subtitle: context.l10n.t('emulatorsSubtitle'),
+              icon: CupertinoIcons.device_desktop,
+              trailing: EmulatorPlatformTabs(
+                selectedPlatform: _selectedPlatform,
+                onPlatformChanged: (platform) {
+                  setState(() => _selectedPlatform = platform);
+                },
               ),
             ),
-            const Divider(height: 1),
             // 内容区域：安卓模拟器与其他两端页面保持完全一致（搜索框 + 工具栏 + 分割线 + 表格）
             Expanded(
               child: switch (_selectedPlatform) {
                 EmulatorPlatform.android => Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                        padding: const EdgeInsets.fromLTRB(28, 12, 28, 12),
                         child: Row(
                           children: [
                             search,
@@ -96,7 +80,7 @@ class _EmulatorStandaloneLayoutState extends State<_EmulatorStandaloneLayout> {
                       if (compact)
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                          padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
                           child: widget.toolbar,
                         ),
                       const Divider(height: 1),

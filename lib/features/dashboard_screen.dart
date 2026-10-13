@@ -95,7 +95,7 @@ import 'devices/widgets/host_network_footer.dart';
 import 'devices/widgets/device_subnet_warning.dart';
 import 'devices/widgets/harmony_wireless_pairing_view.dart';
 import 'widgets/dashboard_table_header.dart';
-import 'widgets/dashboard_header_title.dart';
+import 'widgets/dashboard_header_bar.dart';
 import 'devices/widgets/emulator_platform_tabs.dart';
 import 'devices/widgets/ios_simulators_view.dart';
 import 'devices/widgets/deveco_emulators_view.dart';

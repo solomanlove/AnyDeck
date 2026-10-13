@@ -53,105 +53,78 @@ class _ContentTitleBar extends ConsumerWidget {
 
     final iconColor = isDark ? const Color(0xffb0bec5) : const Color(0xff5f6b6e);
 
-    return DragToMoveArea(
-      child: DesktopWorkspaceSurface(
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 72),
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.03),
-                width: 1,
-              ),
+    return DashboardHeaderBar(
+      title: context.l10n.t('devices'),
+      subtitle: context.l10n.t('devicesSubtitle'),
+      icon: Icons.devices_rounded,
+      actions: [
+        //tcp连接
+        IconButton(
+          tooltip: context.l10n.t('connectTcp'),
+          icon: const Icon(CupertinoIcons.link),
+          iconSize: 30,
+          color: iconColor,
+          onPressed: () => _showConnectDeviceDialog(context, ref),
+          style: IconButton.styleFrom(
+            fixedSize: const Size(48, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: DashboardHeaderTitle(
-                  title: context.l10n.t('devices'),
-                  subtitle: context.l10n.t('devicesSubtitle'),
-                  icon: Icons.devices_rounded,
-                ),
-              ),
-              const SizedBox(width: 16),
-              //tcp连接
-              IconButton(
-                tooltip: context.l10n.t('connectTcp'),
-                icon: const Icon(CupertinoIcons.link),
-                iconSize: 30,
-                color: iconColor,
-                onPressed: () => _showConnectDeviceDialog(context, ref),
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(48, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              //无线连接
-              IconButton(
-                tooltip: context.l10n.t('pairDeviceTitle'),
-                icon: const Icon(CupertinoIcons.antenna_radiowaves_left_right),
-                iconSize: 30,
-                color: iconColor,
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const _DevicePairingDialog(),
-                ),
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(48, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              //ios投屏
-              AirPlayToolbarButton(iconColor: iconColor),
-              const SizedBox(width: 8),
-              //打开控制台
-              IconButton(
-                tooltip: context.l10n.t('console'),
-                icon: const Icon(CupertinoIcons.doc_plaintext),
-                iconSize: 30,
-                color: iconColor,
-                onPressed: () => _openConsoleWindow(context),
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(48, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              //打开文件位置
-              ToolDirectoryMenuButton(iconColor: iconColor),
-              const SizedBox(width: 8),
-              //重置服务
-              ServiceRestartMenuButton(iconColor: iconColor),
-              const SizedBox(width: 8),
-              //刷新
-              IconButton(
-                tooltip: context.l10n.t('refreshDevices'),
-                icon: const Icon(CupertinoIcons.refresh),
-                iconSize: 30,
-                color: iconColor,
-                onPressed: () => _refreshDevices(context, ref),
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(48, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ],
+        ),
+        //无线连接
+        IconButton(
+          tooltip: context.l10n.t('pairDeviceTitle'),
+          icon: const Icon(CupertinoIcons.antenna_radiowaves_left_right),
+          iconSize: 30,
+          color: iconColor,
+          onPressed: () => showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const _DevicePairingDialog(),
+          ),
+          style: IconButton.styleFrom(
+            fixedSize: const Size(48, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         ),
-      ),
+        //ios投屏
+        AirPlayToolbarButton(iconColor: iconColor),
+        //打开控制台
+        IconButton(
+          tooltip: context.l10n.t('console'),
+          icon: const Icon(CupertinoIcons.doc_plaintext),
+          iconSize: 30,
+          color: iconColor,
+          onPressed: () => _openConsoleWindow(context),
+          style: IconButton.styleFrom(
+            fixedSize: const Size(48, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        //打开文件位置
+        ToolDirectoryMenuButton(iconColor: iconColor),
+        //重置服务
+        ServiceRestartMenuButton(iconColor: iconColor),
+        //刷新
+        IconButton(
+          tooltip: context.l10n.t('refreshDevices'),
+          icon: const Icon(CupertinoIcons.refresh),
+          iconSize: 30,
+          color: iconColor,
+          onPressed: () => _refreshDevices(context, ref),
+          style: IconButton.styleFrom(
+            fixedSize: const Size(48, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

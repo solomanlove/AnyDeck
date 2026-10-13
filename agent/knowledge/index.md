@@ -49,6 +49,7 @@
 | `adb-connection-notifications-message-forwarding` | Android 连接通知与手机消息转发 | active | 记录 macOS UNUserNotificationCenter 原生通知与手机 App 图标附件、窗口聚焦、首次授权、AdbDeviceTracker 单例守护、Android Companion NotificationListenerService 过滤与有界队列、ADB ContentProvider 轮询、SQLite 来源映射和增量刷新、多设备来源标签与名称快照、原始来源点击定位及切换隔离、Tab 15 消息列表 | `core/notifications/`, `features/messages/`, `tool/usage_companion/` |
 | `adb-cross-channel-package-cache` | Wi-Fi 与 USB 双通道应用缓存共享机制 | active | 记录 Canonical Serial 规范序列号统一寻址、内存缓存同步直出、多通道 fallback 回退、本地图标目录复用以及 USB 刚插入时的通道就绪防抖与数据保护机制 | `core/apps/`, `core/providers/` |
 | `adb-apps-batch-management` | 应用多选与批量管理机制 | active | 记录应用列表/网格多选状态维持、全选/反选/部分选联动、批量导出包、批量卸载、批量清除数据、批量冻结/解冻的工具栏交互、底层 ADB/HDC 命令机制与进度弹窗设计 | `features/apps/`, `core/apps/` |
+| `adb-dashboard-header-bar-unification` | 仪表盘一级模块标题与页面样式统一机制 | active | 记录设备管理、模拟器管理、AI MCP、设置的顶部标题栏组件统一收口（DashboardHeaderBar）、72px 高度与 28px 内边距对齐、窗口拖拽、徽章规范及页面滚动布局一致性设计 | `features/widgets/`, `features/overview/`, `features/devices/`, `features/mcp/` |
 
 ## 新增知识库规则
 每次新增的需求或重大功能迭代，在开发完成后均必须将其技术设计、关键实现与命令机制以知识文档的形式沉淀在 `agent/knowledge/` 目录下，并在此索引中进行登记。

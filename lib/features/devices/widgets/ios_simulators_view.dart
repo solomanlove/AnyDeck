@@ -121,7 +121,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
         return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+              padding: const EdgeInsets.fromLTRB(28, 12, 28, 12),
               child: Row(
                 children: [
                   searchField,
@@ -133,7 +133,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
             if (compact)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
                 child: toolbar,
               ),
             const Divider(height: 1),
