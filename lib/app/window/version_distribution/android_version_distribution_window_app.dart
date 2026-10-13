@@ -9,9 +9,10 @@ import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
 import '../window_close_shortcut.dart';
 import '../desktop_window_title_service.dart';
-import '../../../features/overview/widget/android_api_distribution_view.dart';
+import '../../../features/overview/model/platform_distribution_type.dart';
+import '../../../features/overview/widget/platform_version_distribution_shell_view.dart';
 
-/// Android 平台与 API 版本分布独立 macOS 窗口入口。
+/// 平台版本分布独立 macOS 窗口入口，支持 Android、HarmonyOS、iOS 三端切换。
 class AndroidVersionDistributionWindowApp extends ConsumerWidget {
   const AndroidVersionDistributionWindowApp({
     super.key,
@@ -26,6 +27,12 @@ class AndroidVersionDistributionWindowApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsProvider);
     final initialVersion = argument['initialVersion'] as String?;
+    final platformStr = argument['platform'] as String?;
+    final initialPlatform = platformStr == 'harmony'
+        ? PlatformDistributionType.harmony
+        : platformStr == 'ios'
+            ? PlatformDistributionType.ios
+            : PlatformDistributionType.android;
 
     return MaterialApp(
       onGenerateTitle: (context) {
@@ -48,8 +55,9 @@ class AndroidVersionDistributionWindowApp extends ConsumerWidget {
       home: WindowCloseShortcut(
         child: Scaffold(
           backgroundColor: Colors.transparent,
-          body: AndroidApiDistributionView(
+          body: PlatformVersionDistributionShellView(
             isStandaloneWindow: true,
+            initialPlatform: initialPlatform,
             initialVersion: initialVersion,
           ),
         ),

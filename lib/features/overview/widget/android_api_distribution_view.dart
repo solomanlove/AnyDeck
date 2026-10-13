@@ -13,6 +13,7 @@ class AndroidApiDistributionView extends StatefulWidget {
     super.key,
     this.initialVersion,
     this.isStandaloneWindow = false,
+    this.isEmbedded = false,
     this.onClose,
   });
 
@@ -21,6 +22,9 @@ class AndroidApiDistributionView extends StatefulWidget {
 
   /// 是否作为独立 macOS 窗口运行
   final bool isStandaloneWindow;
+
+  /// 是否嵌入在多平台版本外壳容器中（若为 true 则由外壳提供标题栏与底栏）
+  final bool isEmbedded;
 
   /// 关闭回调
   final VoidCallback? onClose;
@@ -76,6 +80,30 @@ class _AndroidApiDistributionViewState
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.08);
 
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 左侧版本与 API 分布栏
+        SizedBox(
+          width: 410,
+          child: _buildLeftDistributionPane(isDark),
+        ),
+        // 垂直分割线
+        Container(
+          width: 1,
+          color: dividerColor,
+        ),
+        // 右侧版本特性列表与详情
+        Expanded(
+          child: _buildRightDetailsPane(),
+        ),
+      ],
+    );
+
+    if (widget.isEmbedded) {
+      return content;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: windowBg,
@@ -86,27 +114,7 @@ class _AndroidApiDistributionViewState
           // 1. macOS 风格标题栏（可拖拽，随明暗主题自适应）
           _buildMacTitleBar(isDark),
           // 2. 核心内容区域（左侧分布柱形图，右侧特性详情）
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 左侧版本与 API 分布栏
-                SizedBox(
-                  width: 410,
-                  child: _buildLeftDistributionPane(isDark),
-                ),
-                // 垂直分割线
-                Container(
-                  width: 1,
-                  color: dividerColor,
-                ),
-                // 右侧版本特性列表与详情
-                Expanded(
-                  child: _buildRightDetailsPane(),
-                ),
-              ],
-            ),
-          ),
+          Expanded(child: content),
           // 3. 底部状态栏与 Close 按钮
           _buildBottomBar(isDark, langCode),
         ],

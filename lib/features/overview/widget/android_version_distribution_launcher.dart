@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/window/multi_window_compat.dart';
-import 'android_api_distribution_view.dart';
+import 'platform_version_distribution_shell_view.dart';
 
-/// 打开 Android 平台与 API 版本分布独立 macOS 窗口，若环境不支持则优雅降级为居中弹窗。
+/// 打开平台与 API 版本分布独立 macOS 窗口，若环境不支持则优雅降级为居中弹窗。
 Future<void> openAndroidVersionDistributionWindow(
   BuildContext context, {
   String? currentVersion,
@@ -24,7 +24,7 @@ Future<void> openAndroidVersionDistributionWindow(
         'type': 'version_distribution',
         'initialVersion': currentVersion,
       },
-      frame: const Offset(140, 120) & const Size(900, 600),
+      frame: const Offset(140, 120) & const Size(980, 640),
       title: windowTitle,
     );
   } catch (e) {
@@ -53,10 +53,10 @@ void showAndroidVersionDistributionDialog(
         insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
         child: ConstrainedBox(
           constraints: const BoxConstraints(
-            maxWidth: 920,
-            maxHeight: 620,
+            maxWidth: 980,
+            maxHeight: 640,
           ),
-          child: AndroidApiDistributionView(
+          child: PlatformVersionDistributionShellView(
             isStandaloneWindow: false,
             initialVersion: currentVersion,
             onClose: () => Navigator.of(ctx).pop(),
