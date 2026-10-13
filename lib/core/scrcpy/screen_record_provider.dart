@@ -56,7 +56,7 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
     return const ScreenRecordState(isRecording: false, durationSeconds: 0);
   }
 
-  Future<void> start() async {
+  Future<void> start({int? displayId}) async {
     if (state.isRecording) return;
 
     try {
@@ -81,6 +81,9 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
           throw Exception(result.message);
         }
         _isHarmonyRecording = true;
+        _isHostRecording = false;
+      } else if (displayId != null) {
+        // 应用投屏明确录制虚拟副屏，不回退到主屏或 Host scrcpy 录制。
         _isHostRecording = false;
       } else {
         final isSupported = await ref
@@ -111,9 +114,17 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
         } catch (_) {}
 
         // 2. Start recording
-        _process = await ref
-            .read(adbServiceProvider)
-            .startScreenRecord(deviceId, '/sdcard/adb_screenrecord_temp.mp4');
+        final adb = ref.read(adbServiceProvider);
+        _process = displayId == null
+            ? await adb.startScreenRecord(
+                deviceId,
+                '/sdcard/adb_screenrecord_temp.mp4',
+              )
+            : await adb.startDisplayScreenRecord(
+                deviceId,
+                '/sdcard/adb_screenrecord_temp.mp4',
+                displayId,
+              );
       }
 
       if (_process != null) {

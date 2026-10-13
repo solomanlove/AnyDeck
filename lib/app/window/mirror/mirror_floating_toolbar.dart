@@ -78,11 +78,23 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
 
   Future<void> _takeScreenshot(BuildContext context, String deviceId, {required bool saveToFile}) async {
     try {
+      final displayId = widget.controller.isAppMirror
+          ? ref
+              .read(embeddedScrcpyServiceProvider)
+              .getVirtualDisplayId(deviceId)
+          : null;
+      if (widget.controller.isAppMirror && displayId == null) {
+        throw StateError('应用副屏尚未准备完成，无法截图');
+      }
       final bytes = widget.controller.isIos
           ? await ref.read(iosCommandServiceProvider).captureScreenshot(deviceId)
           : (widget.controller.isHarmony
               ? await ref.read(hdcServiceProvider).captureScreenshot(deviceId)
-              : await ref.read(adbServiceProvider).captureScreenshot(deviceId));
+              : (displayId == null
+                  ? await ref.read(adbServiceProvider).captureScreenshot(deviceId)
+                  : await ref
+                      .read(adbServiceProvider)
+                      .captureDisplayScreenshot(deviceId, displayId)));
 
       final hostPlatform = ref.read(hostPlatformServiceProvider);
 
@@ -263,17 +275,18 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 onPointerUp: _backLongPressHandler.handlePointerUp,
                 onPointerCancel: _backLongPressHandler.handlePointerUp,
               ),
-            MirrorToolbarButton(
-              icon: Icon(
-                Icons.radio_button_unchecked,
-                color: Theme.of(context).appColors.toolbarForeground,
+            if (!widget.controller.isAppMirror)
+              MirrorToolbarButton(
+                icon: Icon(
+                  Icons.radio_button_unchecked,
+                  color: Theme.of(context).appColors.toolbarForeground,
+                ),
+                tooltip: context.l10n.t('home'),
+                onPressed: () {
+                  actions.keyEvent(widget.deviceId, 3);
+                },
               ),
-              tooltip: context.l10n.t('home'),
-              onPressed: () {
-                actions.keyEvent(widget.deviceId, 3);
-              },
-            ),
-            if (!widget.controller.isIos)
+            if (!widget.controller.isIos && !widget.controller.isAppMirror)
               MirrorToolbarButton(
                 icon: Icon(
                   Icons.crop_square,
@@ -459,7 +472,27 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               badge: recordState.isRecording
                   ? const MirrorPulsingRecordBadge()
                   : null,
-              onPressed: () => toggleMirrorScreenRecording(context, ref, widget.deviceId),
+              onPressed: () {
+                final displayId = widget.controller.isAppMirror
+                    ? ref
+                        .read(embeddedScrcpyServiceProvider)
+                        .getVirtualDisplayId(widget.deviceId)
+                    : null;
+                if (widget.controller.isAppMirror && displayId == null) {
+                  AppToast.show(
+                    context,
+                    '应用副屏尚未准备完成，无法录屏',
+                    isError: true,
+                  );
+                  return;
+                }
+                toggleMirrorScreenRecording(
+                  context,
+                  ref,
+                  widget.deviceId,
+                  displayId: displayId,
+                );
+              },
             ),
             if (recordState.isRecording) ...[
               Padding(

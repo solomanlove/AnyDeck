@@ -11,7 +11,6 @@ import '../../../l10n/app_localizations.dart';
 import '../../../settings/app_settings_controller.dart';
 import '../../../widget/app_toast.dart';
 import '../../multi_window_compat.dart';
-import '../mirror_aspect_resolver.dart';
 
 /// 投屏窗口前台应用快捷操作控制器。
 /// 封装针对当前应用的全部 ADB 快捷操作逻辑，与 UI 组件彻底解耦。
@@ -262,7 +261,7 @@ class MirrorAppQuickActionsController {
 
     final safeLabel = _displayName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final versionStr = package.versionName != null ? '_v${package.versionName}' : '';
-    final localSavePath = '$directory/${safeLabel}$versionStr.apk';
+    final localSavePath = '$directory/$safeLabel$versionStr.apk';
 
     _toast('正在导出 APK 安装包...');
     final service = ref.read(appManagementServiceProvider);
@@ -325,11 +324,6 @@ class MirrorAppQuickActionsController {
         .t('screenMirrorTitle')
         .replaceAll('{name}', _displayName);
 
-    final textureId = ref.read(activeEmbeddedMirrorProvider(deviceId));
-    if (textureId != null) {
-      await ref.read(activeEmbeddedMirrorProvider(deviceId).notifier).forceStop();
-    }
-
     try {
       final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
       final resolution = overviewAsync.maybeWhen(
@@ -337,25 +331,14 @@ class MirrorAppQuickActionsController {
         orElse: () => null,
       );
 
-      String vdResolution = '1080x1920';
-      if (resolution != null && resolution.contains('x')) {
-        final parts = resolution.split('x');
-        if (parts.length == 2) {
-          final w = int.tryParse(parts[0].trim());
-          final h = int.tryParse(parts[1].trim());
-          if (w != null && h != null) {
-            final minSide = w < h ? w : h;
-            final maxSide = w > h ? w : h;
-            double scale = 1.0;
-            if (maxSide > 1920) {
-              scale = 1920 / maxSide;
-            }
-            final targetW = ((minSide * scale).toInt() ~/ 2) * 2;
-            final targetH = ((maxSide * scale).toInt() ~/ 2) * 2;
-            vdResolution = '${targetW}x$targetH';
-          }
-        }
-      }
+      final videoSize = ref
+          .read(embeddedScrcpyServiceProvider)
+          .getVideoSize(deviceId);
+      final vdResolution = resolveAppMirrorDisplayResolution(
+        resolution,
+        videoWidth: videoSize?['width'],
+        videoHeight: videoSize?['height'],
+      );
 
       final initialSize = resolveMirrorInitialWindowSize(vdResolution);
       final devReg = ref.read(deviceRegistryProvider);

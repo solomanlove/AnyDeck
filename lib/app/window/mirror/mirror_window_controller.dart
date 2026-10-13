@@ -65,6 +65,7 @@ class MirrorWindowController extends ChangeNotifier {
   /// 窗口是否置顶
   bool _isAlwaysOnTop = false;
   bool get isAlwaysOnTop => _isAlwaysOnTop;
+  bool get isAppMirror => startApp != null;
 
   /// 当前投屏窗口是否因同设备其他窗口占用音频而静音。
   bool _isAudioMuted = false;
@@ -948,25 +949,14 @@ class MirrorWindowController extends ChangeNotifier {
         orElse: () => null,
       );
 
-      String vdResolution = '1080x1920';
-      if (resolution != null && resolution.contains('x')) {
-        final parts = resolution.split('x');
-        if (parts.length == 2) {
-          final w = int.tryParse(parts[0].trim());
-          final h = int.tryParse(parts[1].trim());
-          if (w != null && h != null) {
-            final minSide = w < h ? w : h;
-            final maxSide = w > h ? w : h;
-            double scale = 1.0;
-            if (maxSide > 1920) {
-              scale = 1920 / maxSide;
-            }
-            final targetW = ((minSide * scale).toInt() ~/ 2) * 2;
-            final targetH = ((maxSide * scale).toInt() ~/ 2) * 2;
-            vdResolution = '${targetW}x$targetH';
-          }
-        }
-      }
+      final videoSize = ref
+          .read(embeddedScrcpyServiceProvider)
+          .getVideoSize(deviceId);
+      final vdResolution = resolveAppMirrorDisplayResolution(
+        resolution,
+        videoWidth: videoSize?['width'],
+        videoHeight: videoSize?['height'],
+      );
 
       final initialSize = resolveMirrorInitialWindowSize(vdResolution);
 

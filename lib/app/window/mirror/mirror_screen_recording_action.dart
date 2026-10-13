@@ -12,6 +12,7 @@ Future<void> toggleMirrorScreenRecording(
   BuildContext context,
   WidgetRef ref,
   String deviceId,
+  {int? displayId}
 ) async {
   final recordState = ref.read(screenRecordProvider(deviceId));
   final recordNotifier = ref.read(screenRecordProvider(deviceId).notifier);
@@ -77,7 +78,7 @@ Future<void> toggleMirrorScreenRecording(
     }
   } else {
     try {
-      await recordNotifier.start();
+      await recordNotifier.start(displayId: displayId);
     } catch (e) {
       if (context.mounted) {
         AppToast.show(

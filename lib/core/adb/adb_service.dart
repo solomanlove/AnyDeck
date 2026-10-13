@@ -208,6 +208,44 @@ class AdbService {
     }
   }
 
+  /// 截取指定 Android Display，应用虚拟副屏直接使用其 logical displayId。
+  Future<Uint8List> captureDisplayScreenshot(
+    String deviceId,
+    int displayId, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final args = [
+      '-s',
+      deviceId,
+      'exec-out',
+      'screencap',
+      '-d',
+      '$displayId',
+      '-p',
+    ];
+    _onLog?.call('adb ${args.join(' ')}', tag: 'adb', level: 'I');
+    final process = await Process.start(executable, args);
+    final stdoutFuture = process.stdout.fold<List<int>>(
+      <int>[],
+      (buffer, chunk) => buffer..addAll(chunk),
+    );
+    final stderrFuture = process.stderr.transform(utf8.decoder).join();
+    final exitCode = await process.exitCode.timeout(timeout);
+    final stderr = await stderrFuture;
+    if (exitCode != 0) {
+      throw AdbException(
+        stderr.isNotEmpty
+            ? stderr
+            : 'Failed to capture display $displayId (exit code $exitCode)',
+      );
+    }
+    final bytes = await stdoutFuture;
+    if (bytes.isEmpty) {
+      throw AdbException('Display $displayId screenshot returned empty data');
+    }
+    return Uint8List.fromList(bytes);
+  }
+
   /// PNG 图像签名魔数 (89 50 4E 47 0D 0A 1A 0A)。
   static const List<int> _pngSignature = [
     0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
@@ -322,6 +360,28 @@ class AdbService {
       args.addAll(['--size', size]);
     }
     args.add(remotePath);
+    _onLog?.call('adb ${args.join(' ')}', tag: 'adb', level: 'I');
+    return Process.start(executable, args);
+  }
+
+  /// 录制指定 Android Display；调用方负责停止进程并拉取 remotePath。
+  Future<Process> startDisplayScreenRecord(
+    String deviceId,
+    String remotePath,
+    int displayId, {
+    int timeLimit = 180,
+  }) {
+    final args = <String>[
+      '-s',
+      deviceId,
+      'shell',
+      'screenrecord',
+      '--display-id',
+      '$displayId',
+      '--time-limit',
+      '$timeLimit',
+      remotePath,
+    ];
     _onLog?.call('adb ${args.join(' ')}', tag: 'adb', level: 'I');
     return Process.start(executable, args);
   }

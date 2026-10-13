@@ -69,6 +69,38 @@ void main() {
     });
   });
 
+  group('resolveAppMirrorDisplayResolution 应用副屏尺寸测试', () {
+    test('优先复用当前手机投屏视频尺寸', () {
+      expect(
+        resolveAppMirrorDisplayResolution(
+          '1080x1920',
+          videoWidth: 1080,
+          videoHeight: 2400,
+        ),
+        '1080x2400',
+      );
+    });
+
+    test('视频尺寸为奇数时收敛为编码器可用偶数', () {
+      expect(
+        resolveAppMirrorDisplayResolution(
+          null,
+          videoWidth: 1081,
+          videoHeight: 2401,
+        ),
+        '1080x2400',
+      );
+    });
+
+    test('没有活动投屏时保留物理分辨率回退规则', () {
+      expect(
+        resolveAppMirrorDisplayResolution('1440x3200'),
+        '864x1920',
+      );
+      expect(resolveAppMirrorDisplayResolution(null), '1080x1920');
+    });
+  });
+
   group('MirrorWindowFrameAdapter 横竖屏目标尺寸测试', () {
     test('竖屏转横屏时，窗口中心坐标保持不变', () {
       // 原窗口：left=200, top=100, width=400, height=800

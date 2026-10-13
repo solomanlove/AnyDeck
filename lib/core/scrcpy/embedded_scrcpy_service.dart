@@ -22,6 +22,7 @@ class EmbeddedScrcpySession {
     required this.textureId,
     required this.rustHandle,
     required this.startedAt,
+    this.virtualDisplayId,
     this.camera,
   });
 
@@ -31,6 +32,7 @@ class EmbeddedScrcpySession {
   final int textureId;
   final int rustHandle;
   final DateTime startedAt;
+  final int? virtualDisplayId;
   final ScrcpyCameraOptions? camera;
 }
 
@@ -46,6 +48,8 @@ class EmbeddedScrcpyService {
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
   int? getTextureId(String deviceId) => _sessions[deviceId]?.textureId;
   int? getRustHandle(String deviceId) => _sessions[deviceId]?.rustHandle;
+  int? getVirtualDisplayId(String deviceId) =>
+      _sessions[deviceId]?.virtualDisplayId;
   Process? getServerProcess(String deviceId) => _sessions[deviceId]?.serverProcess;
 
   /// 获取指定已连接镜像的视频帧尺寸。
@@ -298,6 +302,9 @@ class EmbeddedScrcpyService {
           displayIdFuture: displayCompleter.future,
         );
       }
+      final virtualDisplayId = newDisplay == null
+          ? null
+          : await displayCompleter.future.timeout(const Duration(seconds: 10));
 
       // 等待 Rust 核心建立连接并进入就绪状态
       final deadline = DateTime.now().add(const Duration(seconds: 15));
@@ -330,6 +337,7 @@ class EmbeddedScrcpyService {
         textureId: textureId,
         rustHandle: rustHandle,
         startedAt: DateTime.now(),
+        virtualDisplayId: virtualDisplayId,
         camera: camera,
       );
 
