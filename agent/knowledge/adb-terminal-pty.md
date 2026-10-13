@@ -10,7 +10,7 @@ MIX3 的 `/sbin/su` 在普通管道中可以成功进入 root shell，但不输�
 
 - `lib/core/terminal/adb_terminal_session.dart`：新建和重连均使用 `adb -s <deviceId> shell -tt`。Dart `Process.start` 的 stdin 是管道，单个 `-t` 不保证申请 PTY。
 - PTY 返回真实提示符、命令回显和命令输出；发送命令只更新历史，不再添加本地输入行，避免重复回显。没有额外注入 `id`、`pwd` 或后台轮询命令。
-- `lib/features/terminal/terminal_tab.dart`：移除输入框及历史行中硬编码的设备名、目录和 `$`。输入框仅显示中性标记 `›`，真实 `$ / #` 和目录显示在上方设备输出中；同一行追加提示符时也触发滚动。
+- `lib/features/terminal/terminal_tab.dart`：识别设备端回显的最后一行 Shell 提示符（如 `pudding:/ $ ` 或 `perseus:/ # `），将其收口提取至命令行输入行前缀同屏展示，移除次行割裂的 `›` 符号与占位符；输入框采用 `monospace` 等宽字体与 8px 直角矩形块状光标（`█`），精确还原原生终端视觉与交互体验；同一行追加提示符时触发滚动。
 - `lib/core/terminal/terminal_newline_normalizer.dart`：按流隔离回车状态，将 CR、CRLF、MIX3 的 CRCRLF 统一为 LF；支持跨数据块换行，不等待完整行，提示符可立即显示。
 - 保留 1500 行输出上限、命令历史、原有明暗主题和进程关闭机制。无新依赖、全局 Provider 或跨窗口通信变更，不涉及投屏。
 

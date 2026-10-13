@@ -80,6 +80,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
             .read(adbTerminalProvider.notifier)
             .createSession(widget.device.id, isHarmony: widget.device.isHarmony);
       }
+      if (mounted) {
+        _inputFocusNode.requestFocus();
+      }
     });
   }
 
@@ -351,23 +354,35 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     );
   }
 
-  /// 交互式终端核心窗口
+  /// 判断终端回显行是否为 shell 就绪提示符（如 "pudding:/ $ " 或 "perseus:/ # "）
+  bool _isPromptLine(TerminalLine line) {
+    if (line.type != TerminalLineType.stdout) return false;
+    final trimmed = line.text.trimRight();
+    return trimmed.isNotEmpty &&
+        (trimmed.endsWith(r'$') ||
+            trimmed.endsWith('#') ||
+            trimmed.endsWith('>') ||
+            trimmed.endsWith('%'));
+  }
+
   /// 交互式终端核心窗口
   Widget _buildTerminalConsole(
     BuildContext context,
     AdbTerminalSession session,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final consoleBg = isDark
-        ? const Color(0xFF1E1E2E)
-        : const Color(0xFFF5F5F7);
-    final promptColor = isDark
-        ? const Color(0xFF89B4FA)
-        : const Color(0xFF1D4ED8); // 柔和蓝 vs 深蓝
-    final inputColor = isDark
-        ? const Color(0xFFA6E3A1)
-        : const Color(0xFF111827); // 浅绿 vs 墨黑
-    final hintColor = isDark ? Colors.white24 : Colors.black26;
+    final consoleBg = isDark ? const Color(0xFF1E1E2E) : const Color(0xFFF5F5F7);
+    final inputColor = isDark ? const Color(0xFFA6E3A1) : const Color(0xFF111827);
+
+    // 检查末行是否为 shell 回显的就绪提示符（如 "pudding:/ $ "）
+    final hasPrompt = session.lines.isNotEmpty && _isPromptLine(session.lines.last);
+    final rawPrompt = hasPrompt ? session.lines.last.text : '';
+    final promptText = rawPrompt.isEmpty
+        ? ''
+        : (rawPrompt.endsWith(' ') ? rawPrompt : '$rawPrompt ');
+    // 若末行是提示符，则将其收口到命令行输入行内展示，避免换行割裂
+    final historyLinesCount =
+        hasPrompt ? session.lines.length - 1 : session.lines.length;
 
     return Card(
       elevation: 4,
@@ -381,44 +396,45 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
           child: SelectionArea(
             child: ListView.builder(
               controller: _scrollController,
-              itemCount: session.lines.length + 1,
+              itemCount: historyLinesCount + 1,
               itemBuilder: (context, index) {
-                if (index == session.lines.length) {
-                  // 真实目录和 $ / # 已由设备回显；输入框仅显示中性的输入标记。
+                if (index == historyLinesCount) {
+                  // 命令行输入行：将设备回显的提示符与输入框保持在同一行（如 "pudding:/ $ " 后紧跟光标）
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        '› ',
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 13,
-                          color: promptColor,
-                          fontWeight: FontWeight.bold,
+                      if (promptText.isNotEmpty)
+                        Text(
+                          promptText,
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                            height: 1.3,
+                            color: _getTerminalLineColor(
+                              TerminalLineType.stdout,
+                              isDark,
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
                       Expanded(
                         child: TextField(
                           controller: _commandController,
                           focusNode: _inputFocusNode,
+                          cursorWidth: 8.0,
+                          cursorRadius: Radius.zero,
+                          cursorColor: isDark
+                              ? const Color(0xFFCDD6F4)
+                              : const Color(0xFF111827),
                           style: TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 13,
+                            height: 1.3,
                             color: inputColor,
-                            fontWeight: FontWeight.bold,
                           ),
-                          decoration: InputDecoration(
-                            hintText: context.l10n.t('enterCommandHint'),
-                            hintStyle: TextStyle(
-                              color: hintColor,
-                              fontSize: 12,
-                            ),
+                          decoration: const InputDecoration(
                             border: InputBorder.none,
                             isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 4,
-                            ),
+                            contentPadding: EdgeInsets.symmetric(vertical: 2),
                           ),
                           onSubmitted: (text) =>
                               _handleSendCommand(session.id, text),
