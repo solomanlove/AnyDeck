@@ -27,6 +27,8 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
+  static const _mirrorControlsAlwaysVisibleKey =
+      'settings.mirrorControlsAlwaysVisible';
   static const _mirrorVideoBitrateKey = 'settings.mirrorVideoBitrate';
   static const _mirrorMaxSizeKey = 'settings.mirrorMaxSize';
   static const _mirrorAudioEnabledKey = 'settings.mirrorAudioEnabled';
@@ -74,6 +76,9 @@ class AppSettingsController extends Notifier<AppSettings> {
     } else if (call.method == 'update_always_on_top') {
       final value = call.arguments as bool;
       await setScrcpyAlwaysOnTop(value, broadcast: false);
+    } else if (call.method == 'update_mirror_controls_always_visible') {
+      final value = call.arguments as bool;
+      await setMirrorControlsAlwaysVisible(value, broadcast: false);
     } else if (call.method == 'update_video_bitrate') {
       final value = call.arguments as int;
       await setMirrorVideoBitrate(value, broadcast: false);
@@ -161,6 +166,26 @@ class AppSettingsController extends Notifier<AppSettings> {
         await _broadcastSettingChange('update_always_on_top', value);
       } catch (e) {
         debugPrint('Failed to broadcast always on top change: $e');
+      }
+    }
+  }
+
+  /// 更新投屏标题栏和工具栏是否始终显示，并持久化。
+  Future<void> setMirrorControlsAlwaysVisible(
+    bool value, {
+    bool broadcast = true,
+  }) async {
+    state = state.copyWith(mirrorControlsAlwaysVisible: value);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_mirrorControlsAlwaysVisibleKey, value);
+    if (broadcast) {
+      try {
+        await _broadcastSettingChange(
+          'update_mirror_controls_always_visible',
+          value,
+        );
+      } catch (e) {
+        debugPrint('Failed to broadcast mirror controls visibility change: $e');
       }
     }
   }
@@ -352,6 +377,8 @@ class AppSettingsController extends Notifier<AppSettings> {
     final themeMode = _themeModeFromName(preferences.getString(_themeModeKey));
     final scrcpyAlwaysOnTop =
         preferences.getBool(_scrcpyAlwaysOnTopKey) ?? true;
+    final mirrorControlsAlwaysVisible =
+        preferences.getBool(_mirrorControlsAlwaysVisibleKey) ?? false;
     final mirrorVideoBitrate =
         preferences.getInt(_mirrorVideoBitrateKey) ?? 8000000;
     final mirrorMaxSize = preferences.getInt(_mirrorMaxSizeKey) ?? 1080;
@@ -386,6 +413,7 @@ class AppSettingsController extends Notifier<AppSettings> {
       language: language,
       themeMode: themeMode,
       scrcpyAlwaysOnTop: scrcpyAlwaysOnTop,
+      mirrorControlsAlwaysVisible: mirrorControlsAlwaysVisible,
       mirrorVideoBitrate: mirrorVideoBitrate,
       mirrorMaxSize: mirrorMaxSize,
       mirrorAudioEnabled: mirrorAudioEnabled,

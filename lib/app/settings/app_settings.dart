@@ -24,6 +24,7 @@ class AppSettings {
     this.language = AppLanguage.zh,
     this.themeMode = ThemeMode.system,
     this.scrcpyAlwaysOnTop = true,
+    this.mirrorControlsAlwaysVisible = false,
     this.mirrorVideoBitrate = 8000000,
     this.mirrorMaxSize = 1080,
     this.mirrorAudioEnabled = true,
@@ -42,6 +43,7 @@ class AppSettings {
   final AppLanguage language;
   final ThemeMode themeMode;
   final bool scrcpyAlwaysOnTop;
+  final bool mirrorControlsAlwaysVisible;
   final int mirrorVideoBitrate;
   final int mirrorMaxSize;
   final bool mirrorAudioEnabled;
@@ -63,6 +65,7 @@ class AppSettings {
     AppLanguage? language,
     ThemeMode? themeMode,
     bool? scrcpyAlwaysOnTop,
+    bool? mirrorControlsAlwaysVisible,
     int? mirrorVideoBitrate,
     int? mirrorMaxSize,
     bool? mirrorAudioEnabled,
@@ -81,6 +84,8 @@ class AppSettings {
       language: language ?? this.language,
       themeMode: themeMode ?? this.themeMode,
       scrcpyAlwaysOnTop: scrcpyAlwaysOnTop ?? this.scrcpyAlwaysOnTop,
+      mirrorControlsAlwaysVisible:
+          mirrorControlsAlwaysVisible ?? this.mirrorControlsAlwaysVisible,
       mirrorVideoBitrate: mirrorVideoBitrate ?? this.mirrorVideoBitrate,
       mirrorMaxSize: mirrorMaxSize ?? this.mirrorMaxSize,
       mirrorAudioEnabled: mirrorAudioEnabled ?? this.mirrorAudioEnabled,

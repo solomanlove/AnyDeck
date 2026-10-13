@@ -23,6 +23,7 @@ class IosAirPlayMirrorContent extends StatefulWidget {
     required this.handle,
     required this.deviceName,
     required this.initialAspectRatio,
+    required this.autoHideControls,
     required this.toolbar,
     required this.onDisconnected,
   });
@@ -30,6 +31,7 @@ class IosAirPlayMirrorContent extends StatefulWidget {
   final int handle;
   final String deviceName;
   final double initialAspectRatio;
+  final bool autoHideControls;
   final Widget toolbar;
   final VoidCallback onDisconnected;
 
@@ -210,7 +212,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
           ? Colors.transparent
           : windowBackground,
       body: MirrorImmersiveOverlay(
-        autoHide: isLiveMirrorVisible,
+        autoHide: isLiveMirrorVisible && widget.autoHideControls,
         viewer: SizedBox.expand(key: _viewerKey, child: _buildVideo(context)),
         titleBar: _isFullScreen
             ? const SizedBox.shrink()

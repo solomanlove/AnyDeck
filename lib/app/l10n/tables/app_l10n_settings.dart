@@ -34,6 +34,8 @@ const settingsZh = {
   'mirrorSettings': '投屏设置',
   'mirrorAlwaysOnTop': '投屏窗口最前',
   'mirrorAlwaysOnTopDesc': '保持投屏窗口置顶显示',
+  'mirrorControlsAlwaysVisible': '始终显示投屏控制栏',
+  'mirrorControlsAlwaysVisibleDesc': '保持标题栏和工具栏显示，不自动隐藏',
   'autoIdentifyForegroundApp': '自动识别前台应用',
   'autoIdentifyForegroundAppDesc': '开启后在投屏窗口中点击手机画面时触发前台应用识别，关闭则仅在点击前台窗口图标时触发',
   'autoIdentifyInterval': '自动识别防抖间隔',
@@ -150,6 +152,8 @@ const settingsEn = {
   'mirrorSettings': 'Screen Mirroring Settings',
   'mirrorAlwaysOnTop': 'Always on Top',
   'mirrorAlwaysOnTopDesc': 'Keep mirroring window on top of others',
+  'mirrorControlsAlwaysVisible': 'Always Show Mirror Controls',
+  'mirrorControlsAlwaysVisibleDesc': 'Keep the title bar and toolbar visible',
   'autoIdentifyForegroundApp': 'Auto Identify Foreground App',
   'autoIdentifyForegroundAppDesc':
       'When enabled, clicking the phone screen triggers foreground app identification. When disabled, only clicking the foreground window icon triggers it',

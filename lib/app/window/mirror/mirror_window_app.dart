@@ -247,12 +247,14 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(appSettingsProvider);
     final airplayHandle = _airplayHandle;
     if (airplayHandle != null) {
       return IosAirPlayMirrorContent(
         handle: airplayHandle,
         deviceName: widget.deviceName,
         initialAspectRatio: _airplayAspectRatio,
+        autoHideControls: !settings.mirrorControlsAlwaysVisible,
         toolbar: MirrorFloatingToolbar(
           deviceId: widget.deviceId,
           windowId: widget.windowId,
@@ -272,7 +274,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         },
       );
     }
-    final settings = ref.watch(appSettingsProvider);
     final sdkVersion = ref.watch(deviceSdkVersionProvider(widget.deviceId)) ?? 0;
     final isAudioForwarded =
         (sdkVersion >= 30) &&
@@ -431,7 +432,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
             }
           },
           child: MirrorImmersiveOverlay(
-            autoHide: isLiveMirrorVisible,
+            autoHide:
+                isLiveMirrorVisible && !settings.mirrorControlsAlwaysVisible,
             viewer: contentWidget,
             titleBar: _controller.isFullScreen
                 ? const SizedBox.shrink()

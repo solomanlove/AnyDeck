@@ -208,6 +208,21 @@ class _SettingsTab extends ConsumerWidget {
                     const Divider(height: 24),
                     _buildSettingRow(
                       context,
+                      label: context.l10n.t('mirrorControlsAlwaysVisible'),
+                      subtitle: context.l10n.t(
+                        'mirrorControlsAlwaysVisibleDesc',
+                      ),
+                      child: Switch.adaptive(
+                        activeThumbColor: brandGreen,
+                        activeTrackColor: brandGreen.withValues(alpha: 0.5),
+                        value: settings.mirrorControlsAlwaysVisible,
+                        onChanged: (val) => controller
+                            .setMirrorControlsAlwaysVisible(val),
+                      ),
+                    ),
+                    const Divider(height: 24),
+                    _buildSettingRow(
+                      context,
                       label: context.l10n.t('autoPowerOffScreen'),
                       subtitle: context.l10n.t('autoPowerOffScreenDesc'),
                       child: Switch.adaptive(
