@@ -10,20 +10,19 @@ extension _SettingsTabNotificationSection on _SettingsTab {
     final settings = ref.watch(appSettingsProvider);
     final controller = ref.read(appSettingsProvider.notifier);
     final bridge = ref.read(macNotificationBridgeProvider);
+    final isZh = context.l10n.locale.languageCode == 'zh';
 
     return _buildSectionCard(
       context,
-      title: context.l10n.t('notificationSettingsTitle'),
-      icon: CupertinoIcons.bell,
+      title: isZh ? '通知' : context.l10n.t('notificationSettingsTitle'),
       children: [
         // 1. Android 设备连接桌面通知
         _buildSettingRow(
           context,
           label: context.l10n.t('deviceConnectNotification'),
           subtitle: context.l10n.t('deviceConnectNotificationDesc'),
-          child: Switch.adaptive(
-            activeThumbColor: brandGreen,
-            activeTrackColor: brandGreen.withValues(alpha: 0.5),
+          child: CupertinoSwitch(
+            activeTrackColor: const Color(0xFF34C759),
             value: settings.deviceConnectNotification,
             onChanged: (val) async {
               if (val && Platform.isMacOS) {
@@ -41,21 +40,18 @@ extension _SettingsTabNotificationSection on _SettingsTab {
             },
           ),
         ),
-        const Divider(height: 24),
 
         // 2. 消息通知正文预览
         _buildSettingRow(
           context,
           label: context.l10n.t('notificationBodyPreview'),
           subtitle: context.l10n.t('notificationBodyPreviewDesc'),
-          child: Switch.adaptive(
-            activeThumbColor: brandGreen,
-            activeTrackColor: brandGreen.withValues(alpha: 0.5),
+          child: CupertinoSwitch(
+            activeTrackColor: const Color(0xFF34C759),
             value: settings.notificationBodyPreview,
             onChanged: (val) => controller.setNotificationBodyPreview(val),
           ),
         ),
-        const Divider(height: 24),
 
         // 3. 系统级通知权限状态与快捷引导
         _buildSettingRow(
@@ -72,15 +68,15 @@ extension _SettingsTabNotificationSection on _SettingsTab {
                   children: [
                     const Icon(
                       CupertinoIcons.checkmark_circle_fill,
-                      color: AppPalette.primary,
-                      size: 18,
+                      color: Color(0xFF34C759),
+                      size: 16,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       context.l10n.t('notificationPermissionGranted'),
                       style: const TextStyle(
                         fontSize: 13,
-                        color: AppPalette.primary,
+                        color: Color(0xFF34C759),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -97,18 +93,15 @@ extension _SettingsTabNotificationSection on _SettingsTab {
                         ? CupertinoIcons.exclamationmark_circle
                         : CupertinoIcons.question_circle,
                     color: isDenied ? Colors.orange : Colors.grey,
-                    size: 18,
+                    size: 16,
                   ),
                   const SizedBox(width: 8),
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: brandGreen,
-                      side: BorderSide(color: brandGreen),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () async {
+                  _buildTextActionButton(
+                    text: isDenied
+                        ? context.l10n.t('openSystemSettings')
+                        : context.l10n.t('requestPermission'),
+                    color: const Color(0xFF2563EB),
+                    onTap: () async {
                       if (isDenied) {
                         await bridge.openNotificationSettings();
                       } else {
@@ -118,11 +111,6 @@ extension _SettingsTabNotificationSection on _SettingsTab {
                         }
                       }
                     },
-                    child: Text(
-                      isDenied
-                          ? context.l10n.t('openSystemSettings')
-                          : context.l10n.t('requestPermission'),
-                    ),
                   ),
                 ],
               );

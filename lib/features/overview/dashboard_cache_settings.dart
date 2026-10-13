@@ -14,6 +14,28 @@ class _CacheCleanupInProgressNotifier extends Notifier<bool> {
   }
 }
 
+/// 异步统计缓存目录总占用大小的 Provider。
+final _cacheSizeProvider = FutureProvider.autoDispose<int>((ref) async {
+  final service = ref.watch(cacheCleanupServiceProvider);
+  var total = 0;
+  for (final folder in service.cacheFolders(existingOnly: true)) {
+    final dir = Directory(folder.path);
+    if (dir.existsSync()) {
+      try {
+        await for (final child in dir.list(
+          recursive: true,
+          followLinks: false,
+        )) {
+          if (child is File) {
+            total += await child.length();
+          }
+        }
+      } catch (_) {}
+    }
+  }
+  return total;
+});
+
 extension _SettingsTabCacheActions on _SettingsTab {
   Widget _buildCacheSettingRow(
     BuildContext context,
@@ -21,55 +43,46 @@ extension _SettingsTabCacheActions on _SettingsTab {
     Color brandGreen,
   ) {
     final isClearing = ref.watch(_cacheCleanupInProgressProvider);
+    final cacheSizeAsync = ref.watch(_cacheSizeProvider);
+    final sizeText = cacheSizeAsync.maybeWhen(
+      data: (bytes) => _formatCacheSize(bytes),
+      orElse: () => '',
+    );
+    final desc = context.l10n.t('cacheFoldersDesc');
+    final subtitle = sizeText.isNotEmpty
+        ? (context.l10n.locale.languageCode == 'zh'
+            ? '$desc，已占用 $sizeText'
+            : '$desc ($sizeText used)')
+        : desc;
+
     return _buildSettingRow(
       context,
       label: context.l10n.t('cacheFolders'),
-      subtitle: context.l10n.t('cacheFoldersDesc'),
+      subtitle: subtitle,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: brandGreen,
-              side: BorderSide(color: brandGreen),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: isClearing ? null : () => _openCacheFolder(context, ref),
-            icon: const Icon(CupertinoIcons.folder_open, size: 18),
-            label: Text(context.l10n.t('openCacheFolder')),
+          _buildTextActionButton(
+            text: context.l10n.t('openCacheFolder'),
+            color: const Color(0xFF2563EB),
+            onTap: isClearing ? null : () => _openCacheFolder(context, ref),
           ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: brandGreen,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: brandGreen.withValues(alpha: 0.35),
-              disabledForegroundColor: Colors.white70,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          const SizedBox(width: 16),
+          if (isClearing)
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFFDC2626),
               ),
+            )
+          else
+            _buildTextActionButton(
+              text: context.l10n.t('clearCache'),
+              color: const Color(0xFFDC2626),
+              onTap: () => _confirmAndClearCache(context, ref),
             ),
-            onPressed: isClearing
-                ? null
-                : () => _confirmAndClearCache(context, ref),
-            icon: isClearing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(CupertinoIcons.trash, size: 18),
-            label: Text(
-              isClearing
-                  ? context.l10n.t('clearingCache')
-                  : context.l10n.t('clearCache'),
-            ),
-          ),
         ],
       ),
     );
@@ -194,6 +207,8 @@ extension _SettingsTabCacheActions on _SettingsTab {
       final result = await ref
           .read(cacheCleanupServiceProvider)
           .clearCacheFolders();
+      // 清理完成后重新刷新缓存大小
+      ref.invalidate(_cacheSizeProvider);
       if (!context.mounted) {
         return;
       }
@@ -216,6 +231,9 @@ extension _SettingsTabCacheActions on _SettingsTab {
   }
 
   String _formatCacheSize(int bytes) {
+    if (bytes <= 0) {
+      return '0 B';
+    }
     const units = ['B', 'KB', 'MB', 'GB'];
     var value = bytes.toDouble();
     var unitIndex = 0;
@@ -223,9 +241,9 @@ extension _SettingsTabCacheActions on _SettingsTab {
       value /= 1024;
       unitIndex += 1;
     }
-    if (unitIndex == 0) {
-      return '${bytes}B';
-    }
-    return '${value.toStringAsFixed(1)} ${units[unitIndex]}';
+    final formatted = value == value.truncateToDouble()
+        ? value.toInt().toString()
+        : value.toStringAsFixed(1);
+    return '$formatted ${units[unitIndex]}';
   }
 }
