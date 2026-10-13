@@ -45,7 +45,7 @@ pub fn run(
         std::thread::sleep(Duration::from_millis(100));
     };
     let result = match kind {
-        1 => audio(&mut socket, s),
+        1 | 4 => audio(&mut socket, s),
         2 => clipboard(&mut socket, s),
         _ => camera(&mut socket, s),
     };

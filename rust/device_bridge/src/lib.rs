@@ -38,7 +38,7 @@ fn session(id: u64) -> Option<Arc<Session>> {
     sessions().lock().ok()?.get(&id).cloned()
 }
 
-/// kind: 0 后摄、1 麦克风、2 剪贴板、3 前摄。
+/// kind: 0 后摄、1 麦克风、2 剪贴板、3 前摄、4 系统播放音频。
 ///
 /// # Safety
 /// 三个非空指针必须指向调用期间有效的 NUL 结尾 UTF-8 字符串。
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn anydeck_start(
     jar: *const c_char,
     kind: u8,
 ) -> u64 {
-    if adb.is_null() || serial.is_null() || jar.is_null() || kind > 3 {
+    if adb.is_null() || serial.is_null() || jar.is_null() || kind > 4 {
         return 0;
     }
     let strings = [adb, serial, jar].map(|ptr| CStr::from_ptr(ptr).to_str().map(str::to_owned));

@@ -25,6 +25,7 @@ class _FakeHdcService extends HdcService {
   _FakeHdcService() : super(executable: 'hdc');
 
   final List<(int keyCode, int repeat)> keyEvents = [];
+  final List<bool> screenPowerChanges = [];
   bool openedRecentTasks = false;
 
   @override
@@ -40,6 +41,15 @@ class _FakeHdcService extends HdcService {
   @override
   Future<AdbResult> openRecentTasks(String deviceId) async {
     openedRecentTasks = true;
+    return const AdbResult(exitCode: 0, stdout: '', stderr: '');
+  }
+
+  @override
+  Future<AdbResult> setScreenPower(
+    String deviceId, {
+    required bool powerOn,
+  }) async {
+    screenPowerChanges.add(powerOn);
     return const AdbResult(exitCode: 0, stdout: '', stderr: '');
   }
 }
@@ -122,6 +132,25 @@ void main() {
     await service.volumeMute(deviceId);
 
     expect(hdc.keyEvents, [(16, 30), (17, 30)]);
+  });
+
+  test('lock screen uses one-way sleep commands per platform', () async {
+    final adb = _HarmonyAdbService();
+    final hdc = _FakeHdcService();
+    final harmonyService = DeviceActionService(
+      adb,
+      hdc: hdc,
+      isHarmonyResolver: (_) => true,
+    );
+    final androidService = DeviceActionService(adb);
+
+    await harmonyService.lockScreen(deviceId);
+    await androidService.lockScreen('android-device');
+
+    expect(hdc.screenPowerChanges, [false]);
+    expect(adb.shellCommands, [
+      ['input', 'keyevent', 'KEYCODE_SLEEP'],
+    ]);
   });
 
   test('unsupported Android key is not forwarded as HarmonyOS key', () async {

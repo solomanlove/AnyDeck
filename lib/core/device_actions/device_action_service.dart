@@ -139,6 +139,14 @@ class DeviceActionService {
     return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_POWER']);
   }
 
+  /// 仅执行锁屏，不在屏幕已关闭时反向唤醒设备。
+  Future<AdbResult> lockScreen(String deviceId) {
+    if ((_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null) {
+      return _hdc.setScreenPower(deviceId, powerOn: false);
+    }
+    return _adb.shellArgs(deviceId, ['input', 'keyevent', 'KEYCODE_SLEEP']);
+  }
+
   /// 通过 cmd uimode 切换系统夜间模式。
   Future<AdbResult> setDarkMode(String deviceId, bool enabled) => _adb
       .shellArgs(deviceId, ['cmd', 'uimode', 'night', enabled ? 'yes' : 'no']);

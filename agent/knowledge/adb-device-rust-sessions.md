@@ -48,6 +48,7 @@
 | --- | --- |
 | 摄像头 | `video=true audio=false control=false video_source=camera video_codec=h264 camera_fps=30 max_size=1280 video_bit_rate=4000000 camera_facing=front/back` |
 | 麦克风 | `video=false audio=true control=false audio_source=mic audio_codec=raw send_frame_meta=false` |
+| 系统播放音频 | `video=false audio=true control=false audio_source=output audio_codec=raw send_frame_meta=false` |
 | 剪贴板 | `video=false audio=false control=true clipboard_autosync=true` |
 
 - RAW 音频：dummy byte 后验证 codec `raw`；48kHz、双声道、16-bit PCM，20ms/3840 字节一块。网络接收和播放都在 Rust 线程内，不把 PCM 逐包发给 Flutter。
@@ -65,6 +66,12 @@ ADB 单条命令上限 15 秒，输出排空且最多保留 4096 字节；端口
 播放器固定 5 个 20ms buffer（最多约 100ms 队列），满时丢弃新块。Swift 每秒最多通知 30 次纹理可用。VideoToolbox 同步解码，Rust 持有最新一帧并在替换时 release；AudioQueue Dispose 不持有回调锁，避免死锁。
 
 多窗口不共享 Riverpod 状态；Rust 库按全局句柄隔离会话。每个 Flutter Engine 向其窗口的薄 Swift 桥接登记句柄，窗口关闭时统一 release，防止 Isolate 退出后遗留音频采集或剪贴板线程。
+
+## 控制页后台音频与设备操作（2026-10-13）
+
+- “只转发音频”使用独立 Rust 系统播放音频 Session，不启动外部 `scrcpy` CLI、不创建视频 Texture 或投屏窗口。底层仍复用应用内置 `scrcpy-server.jar` 的 Android 音频采集协议，不能表述为完全不使用 scrcpy 协议。
+- 音频按钮区分 idle、starting、active 和 stopping；设备离线、Provider 销毁或后台 Session 退出时回收资源并恢复 idle，避免按钮显示运行但后台已结束。
+- Android/HarmonyOS 控制页补充锁屏、截图和录屏入口。锁屏只执行 suspend，不在已息屏时反向唤醒；截图按 ADB/HDC 分流并保存、复制；录屏复用设备级 `screenRecordProvider` 的启停、时长和保存流程。iOS 不展示这些 Android/HarmonyOS 操作。
 
 ## 构建与依赖
 

@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/scrcpy/auxiliary_backend.dart';
 import '../../../core/scrcpy/device_capture_compatibility.dart';
-import '../../../core/scrcpy/scrcpy_launch_options.dart';
 
 /// 纯音频转发（无画面）状态模型
 class AudioForwardState {
@@ -12,7 +12,7 @@ class AudioForwardState {
   const AudioForwardState({
     this.isActive = false,
     this.isStarting = false,
-    this.sessionId,
+    this.isStopping = false,
     this.errorMessage,
   });
 
@@ -22,8 +22,8 @@ class AudioForwardState {
   /// 是否正在启动过程中
   final bool isStarting;
 
-  /// 当前运行的 scrcpy session ID
-  final String? sessionId;
+  /// 是否正在停止并释放后台音频 Session。
+  final bool isStopping;
 
   /// 错误信息（如有）
   final String? errorMessage;
@@ -32,15 +32,14 @@ class AudioForwardState {
   AudioForwardState copyWith({
     bool? isActive,
     bool? isStarting,
-    String? sessionId,
+    bool? isStopping,
     String? errorMessage,
-    bool clearSessionId = false,
     bool clearError = false,
   }) {
     return AudioForwardState(
       isActive: isActive ?? this.isActive,
       isStarting: isStarting ?? this.isStarting,
-      sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
+      isStopping: isStopping ?? this.isStopping,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -52,29 +51,30 @@ final audioForwardControllerProvider =
       AudioForwardController.new,
     );
 
-/// 纯音频转发业务控制器，负责管理 scrcpy 纯音频进程生命周期及异常状态回收。
+/// 纯音频转发业务控制器，负责管理 Rust 后台音频 Session 生命周期。
 class AudioForwardController extends Notifier<AudioForwardState> {
   /// 创建纯音频控制器实例，绑定目标设备 ID
   AudioForwardController(this.deviceId);
 
   /// 目标 ADB 设备 ID / 序列号
   final String deviceId;
+  AuxiliaryBackend? _backend;
 
   @override
   AudioForwardState build() {
     // 监听设备在线状态：如果设备离线且正在运行，则自动停止并回收资源
     ref.listen(deviceOnlineProvider(deviceId), (_, isOnline) {
-      if (!isOnline && (state.isActive || state.sessionId != null)) {
+      if (!isOnline && (state.isActive || _backend != null)) {
         stop();
       }
     });
 
-    // 页面/Provider 销毁时清理进程，防止僵尸进程
+    // 页面/Provider 销毁时清理后台 Session，防止设备端残留服务。
     ref.onDispose(() {
-      final sessionId = state.sessionId;
-      if (sessionId != null) {
-        ref.read(scrcpyServiceProvider).stop(sessionId);
-      }
+      final backend = _backend;
+      _backend = null;
+      backend?.cancel();
+      if (backend != null) unawaited(backend.stop());
     });
 
     return const AudioForwardState();
@@ -83,7 +83,7 @@ class AudioForwardController extends Notifier<AudioForwardState> {
   /// 启动纯音频转发（无画面）
   /// 返回是否启动成功
   Future<bool> start() async {
-    if (state.isStarting || state.isActive) return false;
+    if (state.isStarting || state.isStopping || state.isActive) return false;
 
     // 1. 检查设备是否在线
     final isOnline = ref.read(deviceOnlineProvider(deviceId));
@@ -103,38 +103,33 @@ class AudioForwardController extends Notifier<AudioForwardState> {
 
     try {
       final adb = ref.read(adbServiceProvider);
-      final scrcpy = ref.read(scrcpyServiceProvider);
-
       // 若设备处于休眠或息屏状态，发送唤醒键确保音频系统正常产出
       unawaited(adb.shellArgs(deviceId, ['input', 'keyevent', '224']));
 
-      // 启动纯音频 scrcpy 实例
-      final session = await scrcpy.start(
-        deviceId: deviceId,
-        options: const ScrcpyLaunchOptions(
-          noVideo: true,
-          requireAudio: true,
-        ),
-        adbPath: adb.executable,
-        onExit: (exitCode) {
-          if (ref.mounted && state.sessionId != null) {
+      // 启动内置 Rust 纯音频 Session，不创建视频 Texture 或独立窗口。
+      final backend = ref.read(audioPlaybackBackendFactoryProvider)(deviceId);
+      _backend = backend;
+      await backend.start();
+      unawaited(
+        backend.exited.then((_) {
+          if (ref.mounted && identical(_backend, backend)) {
+            _backend = null;
             state = const AudioForwardState();
           }
-        },
+        }),
       );
 
-      state = state.copyWith(
-        isActive: true,
-        isStarting: false,
-        sessionId: session.id,
-      );
+      state = state.copyWith(isActive: true, isStarting: false);
       return true;
     } catch (e) {
+      final backend = _backend;
+      _backend = null;
+      backend?.cancel();
+      if (backend != null) unawaited(backend.stop());
       if (ref.mounted) {
         state = state.copyWith(
           isActive: false,
           isStarting: false,
-          clearSessionId: true,
           errorMessage: e.toString(),
         );
       }
@@ -144,10 +139,14 @@ class AudioForwardController extends Notifier<AudioForwardState> {
 
   /// 停止纯音频转发
   Future<void> stop() async {
-    final sessionId = state.sessionId;
-    state = const AudioForwardState();
-    if (sessionId != null) {
-      await ref.read(scrcpyServiceProvider).stop(sessionId);
+    if (state.isStopping) return;
+    final backend = _backend;
+    _backend = null;
+    state = state.copyWith(isStopping: true);
+    try {
+      if (backend != null) await backend.stop();
+    } finally {
+      if (ref.mounted) state = const AudioForwardState();
     }
   }
 

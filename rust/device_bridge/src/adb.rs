@@ -175,12 +175,16 @@ impl Transport {
                     "camera_facing=back"
                 },
             ]);
-        } else if kind == 1 {
+        } else if kind == 1 || kind == 4 {
             args.extend([
                 "video=false",
                 "audio=true",
                 "control=false",
-                "audio_source=mic",
+                if kind == 1 {
+                    "audio_source=mic"
+                } else {
+                    "audio_source=output"
+                },
                 "audio_codec=raw",
                 "send_frame_meta=false",
             ]);

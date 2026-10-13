@@ -29,6 +29,21 @@ final auxiliaryBackendFactoryProvider =
       );
     });
 
+/// 创建后台系统播放音频会话，不依赖外部 scrcpy CLI，也不创建投屏窗口。
+final audioPlaybackBackendFactoryProvider =
+    Provider<AuxiliaryBackend Function(String)>((ref) {
+      final adb = ref.watch(adbServiceProvider);
+      final service = ref.watch(embeddedScrcpyServiceProvider);
+      return (deviceId) => RustAuxiliaryBackend(
+        RustDeviceSession(
+          adb: adb.executable,
+          deviceId: deviceId,
+          resolveJar: service.extractScrcpyServerJar,
+          kind: 4,
+        ),
+      );
+    });
+
 /// 仅读写 FFI 会话状态，麦克风和剪贴板底层均在 Rust。
 class RustAuxiliaryBackend implements AuxiliaryBackend {
   RustAuxiliaryBackend(this.session);

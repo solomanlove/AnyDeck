@@ -39,20 +39,32 @@ class AudioForwardButton extends ConsumerWidget {
 
     final isActive = state.isActive;
     final isStarting = state.isStarting;
+    final isStopping = state.isStopping;
 
-    final labelText = context.l10n.t('audioOnlyMirror');
+    final labelText = isStopping
+        ? context.l10n.t('audioOnlyStopping')
+        : isActive
+            ? context.l10n.t('audioOnlyStop')
+            : isStarting
+                ? context.l10n.t('audioOnlyStarting')
+                : context.l10n.t('audioOnlyMirror');
     final tooltipText = context.l10n.t('audioOnlyMirrorTooltip');
 
     Widget button;
     if (isActive) {
       button = FilledButton.icon(
-        icon: const Icon(CupertinoIcons.speaker_2_fill, size: 18),
+        icon: isStopping
+            ? const SizedBox.square(
+                dimension: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(CupertinoIcons.speaker_2_fill, size: 18),
         label: Text(labelText),
         style: FilledButton.styleFrom(
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
         ),
-        onPressed: () async {
+        onPressed: isStopping ? null : () async {
           await controller.stop();
           if (context.mounted) {
             AppToast.show(context, context.l10n.t('audioOnlyStopped'));
