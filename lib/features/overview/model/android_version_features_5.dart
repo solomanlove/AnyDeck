@@ -3,6 +3,20 @@ import 'android_version_distribution_data.dart';
 /// Android 5.1 (Lollipop) 官方特性列表（中英双语对照）
 /// 涵盖 Wireless & Connectivity, API Change
 const List<AndroidFeatureSection> kAndroid51Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'Multi-SIM support: System-level multi-SIM API (SubscriptionManager); telephony apps must query active subscriptions.',
+      'Deprecated HTTP classes: Apache HTTP Client deprecated; projects recommended to migrate to HttpURLConnection.',
+    ],
+    itemsZh: [
+      '多 SIM 卡双卡双待系统级管理：引入 SubscriptionManager，电话与通信类应用需区分活动卡槽与默认数据卡。',
+      'Apache HTTP 客户端废弃：官方正式废弃 Apache HTTP Client 类库，推荐全面转向 HttpURLConnection。',
+    ],
+  ),
   // 左侧列第 1 项：Wireless & Connectivity
   AndroidFeatureSection(
     title: 'Wireless & Connectivity',
@@ -35,6 +49,24 @@ const List<AndroidFeatureSection> kAndroid51Features = [
 /// 涵盖 User Interface, Notifications, Graphics, Media, Storage, Wireless & Connectivity, Battery - Project Volta,
 /// Android in the Workplace and in Education, Printing Framework, System, Testing & Accessibility, IME, Manifest Declarations
 const List<AndroidFeatureSection> kAndroid50Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'ART Default Runtime: Ahead-Of-Time (AOT) compilation completely replaces Dalvik JIT; 64-bit ABI support requires dual-architecture testing.',
+      'Material Design paradigm: Elevation, Z-translation, ripples, shared element transitions, and VectorDrawable vector graphics.',
+      'JobScheduler API: Centralized battery-friendly background task scheduling replacing aggressive background Alarms/Services.',
+      'Camera2 API: Low-level camera hardware pipeline control supporting RAW DNG capture and manual exposures.',
+    ],
+    itemsZh: [
+      'ART 运行时完全取代 Dalvik：AOT 提前编译大幅提升执行性能；引入 64 位 CPU 架构支持；需自测兼容 64 位原生 SO 库。',
+      'Material Design 设计规范推行：引入视图高度 (Elevation)、Z轴阴影、水波纹点击反馈、共享元素转场及 VectorDrawable 矢量图。',
+      '引入 JobScheduler：系统级电池友好型后台调度器，开启后台任务集中批处理机制。',
+      'Camera2 API：全新重构的高性能相机框架，支持细粒度底层传感器参数调节与 RAW 格式输出。',
+    ],
+  ),
   // 左侧列第 1 项：User Interface
   AndroidFeatureSection(
     title: 'User Interface',

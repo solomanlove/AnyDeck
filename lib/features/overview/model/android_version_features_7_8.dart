@@ -3,6 +3,22 @@ import 'android_version_distribution_data.dart';
 /// Android 8.1 (Oreo) 官方特性列表（中英双语对照）
 /// 涵盖 System, User Interface, Media, Security & Privacy
 const List<AndroidFeatureSection> kAndroid81Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'Android Go optimizations: Memory-limited devices require slimmed memory profiles, RAM checks, and optimized APK size.',
+      'SharedMemory API: Direct inter-process shared memory allocation and permission mapping.',
+      'Safe Browsing programmatic check: WebView detects malicious URLs and allows custom programmatic fallback actions.',
+    ],
+    itemsZh: [
+      'Android Go 轻量级设备优化：针对 1GB 及以下低运存设备需做好内存配额控制、RAM 分配检测及安装包精简。',
+      'SharedMemory 跨进程共享内存：底层支持安全高效映射匿名共享内存，提升 IPC 大数据交互性能。',
+      '安全浏览代码级接入：WebView 自动检测恶意网址并支持在代码中拦截与自定义响应策略。',
+    ],
+  ),
   // 左侧列第 1 项：System
   AndroidFeatureSection(
     title: 'System',
@@ -68,6 +84,24 @@ const List<AndroidFeatureSection> kAndroid81Features = [
 /// Android 8.0 (Oreo) 官方特性列表（中英双语对照）
 /// 涵盖 System, User Interface, Media, Wireless & Connectivity, Security & Privacy, Runtime & Tools
 const List<AndroidFeatureSection> kAndroid80Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'Notification Channels mandatory: Apps must assign every notification to a channel; notifications without valid channels are dropped.',
+      'Background execution limits: Background services cannot run indefinitely; must transition to JobScheduler or foreground services with ongoing notifications.',
+      'Implicit broadcast restrictions: Most implicit broadcasts cannot be statically registered in manifest.',
+      'Adaptive Icons: App launcher icons must provide background and foreground layers to match OEM mask shapes.',
+    ],
+    itemsZh: [
+      '通知渠道 (Notification Channels) 强制要求：所有通知必须指定有效的渠道 ID，否则将被系统直接丢弃。',
+      '后台执行与 Service 严格限制：应用退入后台数分钟后禁止启动后台 Service，传统后台轮询必须全面迁移至 JobScheduler 或带有常驻通知的前台服务。',
+      '限制静态隐式广播：大部分隐式广播无法在清单中静态注册（如网络状态变化），必须在运行时动态注册。',
+      '自适应图标 (Adaptive Icons)：图标必须分为前景与背景双层资源，以适配各大厂商不同裁切形状。',
+    ],
+  ),
   // 左侧列第 1 项：System
   AndroidFeatureSection(
     title: 'System',
@@ -177,6 +211,22 @@ const List<AndroidFeatureSection> kAndroid80Features = [
 /// Android 7.1 (Nougat) 官方特性列表（中英双语对照）
 /// 涵盖 System, VR, User Interface, User Input, Wireless & Connectivity, Wear
 const List<AndroidFeatureSection> kAndroid71Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'App Shortcuts API: Static and dynamic deep-link launcher shortcuts revealed upon long-pressing app icon.',
+      'Circular icon resources: android:roundIcon attribute allows providing round launcher icons for Pixel/OEM devices.',
+      'Commit Content API: Soft keyboards can send rich media (GIFs, stickers, custom images) directly to apps.',
+    ],
+    itemsZh: [
+      'App Shortcuts 桌面快捷方式：支持静态与动态桌面深层链接快捷入口，用户长按桌面图标即可触发快捷操作。',
+      '圆形图标资源 (Round Icon)：支持通过 android:roundIcon 为特定桌面启动器提供专属圆形图标适配。',
+      '提交富内容输入法接口 (Commit Content API)：输入法可直接将动图 (GIF)、表情包与富媒体素材安全发送给应用。',
+    ],
+  ),
   // 左侧列第 1 项：System
   AndroidFeatureSection(
     title: 'System',

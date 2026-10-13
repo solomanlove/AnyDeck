@@ -4,6 +4,24 @@ import 'android_version_distribution_data.dart';
 /// 涵盖 User Interface, Performance, Battery Life, Wireless & Connectivity, Graphics, System,
 /// Android for Work, Accessiblity, Security, VR, Printing Framework
 const List<AndroidFeatureSection> kAndroid70Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'FileProvider & FileUriExposedException: Exposing raw file:// URIs outside app sandbox triggers FileUriExposedException; must use content:// with FileProvider.',
+      'Multi-window lifecycle handling: Apps can be resized into split-screen mode; must handle configuration changes and lifecycle transitions properly.',
+      'APK Signature Scheme v2: Full-file binary signature verification improves installation verification speed and security.',
+      'Background broadcast optimization: CONNECTIVITY_ACTION, ACTION_NEW_PICTURE, and ACTION_NEW_VIDEO cannot wake apps from background.',
+    ],
+    itemsZh: [
+      'FileProvider 与文件私有目录隔离：跨应用共享私有文件严禁直接暴露 file:// URI（否则抛出 FileUriExposedException 崩溃），必须使用 FileProvider 封装为 content:// URI。',
+      '多窗口分屏生命周期适配：支持分屏与画中画 (android:resizeableActivity)，需妥善处理 Activity 生命周期与动态尺寸重绘。',
+      'APK 签名方案 v2：全文件二进制签名校验体系，加快安装解析速度并杜绝签名篡改风险。',
+      '后台广播优化：静态注册的网络状态变化 (CONNECTIVITY_ACTION) 及新拍照广播不再唤醒后台进程。',
+    ],
+  ),
   // 左侧列第 1 项：User Interface
   AndroidFeatureSection(
     title: 'User Interface',
@@ -183,6 +201,24 @@ const List<AndroidFeatureSection> kAndroid70Features = [
 /// Android 6.0 (Marshmallow) 官方特性列表（中英双语对照）
 /// 涵盖 Security, System, Multimedia, User Input, User Interface, Wireless & Connectivity, Android for Work
 const List<AndroidFeatureSection> kAndroid60Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'Runtime Dangerous Permissions: Permissions (Location, Storage, Camera, Contacts, etc.) must be requested dynamically at runtime with graceful fallback.',
+      'Doze Mode & App Standby: Device enters deep sleep when stationary; network access and background jobs deferred to maintenance windows.',
+      'Apache HTTP Client removed: org.apache.http classes removed from bootclasspath; migration to HttpURLConnection or OkHttp mandatory.',
+      'Hardware identifier access restricted: Wi-Fi/Bluetooth MAC addresses return constant 02:00:00:00:00:00 to protect privacy.',
+    ],
+    itemsZh: [
+      '运行时危险权限申请机制 (重大里程碑)：定位、存储、相机、通讯录等危险权限必须在代码运行时动态检查并向用户弹窗申请，被拒绝需优雅降级。',
+      '低电耗模式 (Doze Mode) 与应用待机：设备静止息屏进入深度休眠，网络访问与后台任务被冻结延后，需适配电池优化白名单或高优先级推送。',
+      'Apache HTTP Client 彻底移除：从系统类路径中完全移除了 Apache HTTP 客户端类库，应用必须迁移至 HttpURLConnection 或 OkHttp。',
+      '硬件标识符访问限制：通过 Wi-Fi 和蓝牙扫描获取的本地 MAC 地址固定返回 02:00:00:00:00:00，禁止用于设备唯一标识。',
+    ],
+  ),
   // 左侧列第 1 项：Security
   AndroidFeatureSection(
     title: 'Security',

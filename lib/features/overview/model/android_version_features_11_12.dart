@@ -3,6 +3,26 @@ import 'android_version_distribution_data.dart';
 /// Android 12 (S) 官方特性列表（中英双语对照）
 /// 涵盖 New features, Behavior changes, Security and privacy, Large screen support (12L)
 const List<AndroidFeatureSection> kAndroid12Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'SplashScreen API enforcement: System standardizes app splash screen with app icon; apps must migrate using androidx.core.splashscreen.',
+      'Coarse vs fine location: Users can grant only approximate location (ACCESS_COARSE_LOCATION); apps must tolerate coarse coordinates.',
+      'Explicit android:exported declaration: Activities, services, and receivers with intent filters must explicitly specify android:exported="true|false".',
+      'PendingIntent mutability flags: All PendingIntent instances must specify FLAG_IMMUTABLE or FLAG_MUTABLE, or throw an exception.',
+      'Foreground service background launch restrictions: Apps cannot launch foreground services from background except in few whitelisted scenarios.',
+    ],
+    itemsZh: [
+      'SplashScreen 启动页系统级规范：系统统一接管应用冷启动过渡并展示应用图标，必须适配 androidx.core.splashscreen 规范。',
+      '精确位置与粗略位置分离：用户可选择仅授予粗略位置权限 (ACCESS_COARSE_LOCATION)，应用必须兼容只有大约位置的降级逻辑。',
+      '必须显式声明 android:exported：所有包含 <intent-filter> 的组件必须显式声明 exported 属性，否则编译/安装直接报错。',
+      'PendingIntent 强制可变性标记：构建 PendingIntent 时必须显式指定 FLAG_IMMUTABLE 或 FLAG_MUTABLE，否则抛出 IllegalArgumentException。',
+      '禁止后台启动前台服务：应用在后台运行时无法启动前台服务（除少数白名单场景外），必须依赖 WorkManager 调度。',
+    ],
+  ),
   // 左侧列第 1 项：New features
   AndroidFeatureSection(
     title: 'New features',
@@ -100,6 +120,24 @@ const List<AndroidFeatureSection> kAndroid12Features = [
 /// Android 11 (R) 官方特性列表（中英双语对照）
 /// 涵盖 New features, Behavior changes, Security and privacy
 const List<AndroidFeatureSection> kAndroid11Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'Scoped Storage mandatory enforcement: requestLegacyExternalStorage flag ignored; raw file path access restricted; MediaStore/SAF mandatory.',
+      'Package visibility (<queries>): Apps cannot see other installed packages by default; must declare packages or intent filters in <queries>.',
+      'One-time permissions: Location, microphone, and camera can be granted on a "Only this time" basis; revoked when app leaves foreground.',
+      'Background location separation: Background location must be requested in a separate step after foreground location is granted.',
+    ],
+    itemsZh: [
+      '分区存储 (Scoped Storage) 强制执行：targetSdkVersion 30 强制分区存储，requestLegacyExternalStorage 标记失效，公共路径读写必须通过 MediaStore 或 SAF。',
+      '软件包可见性与 <queries> 标签：无法直接遍历已安装应用，必须在清单 <queries> 标签中显式声明需要交互的目标包名或 Intent 意图。',
+      '单次权限 (One-time permission)：位置、麦克风和相机支持“仅本次允许”，切出应用后自动回收，需具备重试申请机制。',
+      '后台位置权限单独申请：禁止同时申请前台位置与后台位置，必须先获得前台位置权限后，再引导用户前往系统设置页面单独开启后台位置。',
+    ],
+  ),
   // 左侧列第 1 项：New features
   AndroidFeatureSection(
     title: 'New features',

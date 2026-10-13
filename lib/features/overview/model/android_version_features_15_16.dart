@@ -4,6 +4,25 @@ import 'android_version_distribution_data.dart';
 /// 涵盖 Camera and media, Connectivity, Developer productivity and tools,
 /// Graphics, Large screens, Performance and battery, Privacy, Security, User experience
 const List<AndroidFeatureSection> kAndroid15Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    items: [
+      'Edge-to-Edge by default: Apps targeting Android 15 (API 35) are forced into edge-to-edge mode. Status and navigation bars are transparent; WindowInsets handling is mandatory.',
+      '16 KB Page Sizes support: Android 15 supports 16 KB memory pages. Native C/C++ SO shared libraries must be built with 16 KB ELF alignment (-Wl,-z,max-page-size=16384) to prevent crashes on 16KB devices.',
+      'Foreground Service Restrictions: Strict timeout limits (6 hours) for dataSync and mediaProcessing foreground service types.',
+      'Private Space Isolation: Apps and sensitive data can be sandboxed into isolated user profiles.',
+      'Screen Recording Detection: New APIs notify apps when their window is being recorded or mirrored.',
+    ],
+    itemsZh: [
+      'EdgeToEdge 全面强制适配：targetSdkVersion 35 默认强制开启边到边沉浸式，系统状态栏与导航栏完全透明，必须显式监听并处理 WindowInsets 边衬区以防界面被遮挡。',
+      '新增 16KB 页面内存对齐要求：引入 16 KB Page Sizes 内存分页支持。包含原生 C/C++ SO 动态库的应用必须以 16 KB ELF 对齐重新构建编译 (-Wl,-z,max-page-size=16384)，否则在 16KB 设备上运行直接崩溃。',
+      '前台服务类型与超时限制：dataSync（数据同步）和 mediaProcessing 类型前台服务最长限制运行 6 小时，超时将触发系统中断；强制约束前台服务规范。',
+      '私密空间 (Private Space) 沙盒隔离：支持将应用独立移入私密空间，通知、快捷方式与应用数据全方位隔离。',
+      '屏幕录制状态感知：新增系统级屏幕录制感知回调 API，敏感界面可检测并实施安全防录屏防截屏防护。',
+    ],
+  ),
   // 左侧列第 1 项：Camera and media
   AndroidFeatureSection(
     title: 'Camera and media',
@@ -169,6 +188,27 @@ const List<AndroidFeatureSection> kAndroid15Features = [
 
 /// Android 16 (B) 官方特性列表（中英双语对照）
 const List<AndroidFeatureSection> kAndroid16Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    items: [
+      'Predictive Back Default Migration: Predictive back gestures are mandatory by default for apps targeting Android 16+; legacy opt-out is deprecated.',
+      'Edge-to-Edge Opt-out Removed: Legacy opt-out attributes for edge-to-edge system bars are completely removed for targeting 16+.',
+      'Large Screen Adaptive Layouts: System defaults to ignoring portrait-only locks and fixed aspect ratios on tablets and foldables for targeting 16+.',
+      'Health Connect Permission Transition: Mandatory migration to granular android.permissions.health permissions for health data access.',
+      'Safer Intent Resolution: Stricter component resolution rules to mitigate Intent redirection and spoofing vulnerabilities.',
+      'MediaStore Version Lockdown: MediaStore locks down legacy storage access paths for apps targeting 16+.',
+    ],
+    itemsZh: [
+      '预测性返回默认强制迁移：针对 Android 16+ 应用默认强制启用预测性返回手势，退出选项已弃用，需完整接入 BackHandler/OnBackPressedCallback。',
+      '边到边沉浸式移除退出开关：彻底移除旧版边缘到边缘的 opt-out 退出属性，应用界面必须全面自适应透明状态栏与导航栏。',
+      '大屏设备忽略屏幕方向限制：针对 16+ 应用在大屏与折叠屏设备上，系统默认忽略 portrait 强制竖屏锁定及固定宽高比，必须适配响应式自适应布局。',
+      'Health Connect 细粒度权限迁移：必须迁移至全新的细粒度健康与运动权限体系 (android.permissions.health)。',
+      '更安全的 Intent 解析机制：针对 16+ 强化显式与隐式 Intent 组件匹配机制，严密防御重定向与特权提升攻击。',
+      'MediaStore 隔离保护加固：系统对多媒体存储访问施加更严密的版本隔离与权限校验。',
+    ],
+  ),
   AndroidFeatureSection(
     title: 'User Experience and System UI',
     titleZh: '用户体验与系统界面',

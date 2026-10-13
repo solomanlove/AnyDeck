@@ -3,6 +3,26 @@ import 'android_version_distribution_data.dart';
 /// Android 10 (Q) 官方特性列表（中英双语对照）
 /// 涵盖 System, User Interface, Camera and media, Security and privacy
 const List<AndroidFeatureSection> kAndroid10Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'Scoped Storage introduced: Replaced raw external storage access with sandboxed spaces; opt-out requestLegacyExternalStorage available temporarily.',
+      'Non-resettable device IDs blocked: Third-party apps cannot access IMEI, serial number, or MAC address; must migrate to OAID or UUID.',
+      'Background Activity starts blocked: Apps in background cannot start Activities directly; must use high-priority notifications with full-screen intents.',
+      'Background clipboard access blocked: Background apps cannot read clipboard data unless they are the default IME.',
+      'System-wide Dark Theme: Apps must support DayNight themes and adapt color assets.',
+    ],
+    itemsZh: [
+      '引入分区存储 (Scoped Storage)：首次引入沙盒化存储模型，限制对外部公共存储目录的随意读写，可临时使用 requestLegacyExternalStorage 过渡。',
+      '禁用不可变设备硬件标识符：普通应用被禁止读取 IMEI、序列号与 MAC 地址，必须转用 OAID 或应用级 UUID。',
+      '禁止后台直接启动 Activity：处于后台的应用无法直接拉起界面，必须通过发送高优先级通知配合 FullScreenIntent 引导用户交互。',
+      '后台剪贴板读取拦截：后台应用无法窃取或读取剪贴板内容，仅前台获焦应用或默认输入法可访问。',
+      '系统级深色模式 (Dark Theme)：系统全局支持暗色主题，应用必须适配 DayNight 主题资源与反色视觉。',
+    ],
+  ),
   // 左侧列第 1 项：System
   AndroidFeatureSection(
     title: 'System',
@@ -90,6 +110,24 @@ const List<AndroidFeatureSection> kAndroid10Features = [
 /// Android 9 (Pie) 官方特性列表（中英双语对照）
 /// 涵盖 System, User Interface, Media, Security and privacy, Accessibility
 const List<AndroidFeatureSection> kAndroid9Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    columnIndex: 0,
+    items: [
+      'Non-SDK interface restrictions: Strict reflection and JNI greylists/blacklists; calling private platform APIs throws NoSuchMethodException.',
+      'Cleartext HTTP blocked by default: Network security config blocks cleartext http:// traffic; apps must use https://.',
+      'Display Cutout handling: Apps must handle display cutouts, notches, and status bar insets using layoutInDisplayCutoutMode.',
+      'Background camera/mic idle: Idle background apps cannot access microphone, camera, or continuous sensors.',
+    ],
+    itemsZh: [
+      '限制使用非 SDK 接口：系统建立黑白名单机制，严厉限制通过反射调用私有内部 API，违规调用直接抛出异常。',
+      '默认禁止明文 HTTP 传输：网络安全配置默认禁用明文 HTTP 流量 (cleartextTrafficPermitted=false)，所有网络请求强制要求 HTTPS。',
+      '刘海屏/凹口屏 (Display Cutout) 适配：引入 layoutInDisplayCutoutMode 属性，应用必须适配屏幕凹口安全边距。',
+      '后台麦克风与相机静默：处于闲置后台的应用无法使用相机传感器与麦克风录音，传感器上报空数据以保护隐私。',
+    ],
+  ),
   // 左侧列第 1 项：System
   AndroidFeatureSection(
     title: 'System',

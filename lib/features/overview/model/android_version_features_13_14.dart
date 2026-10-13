@@ -3,6 +3,25 @@ import 'android_version_distribution_data.dart';
 /// Android 14 (U) 官方特性列表（中英双语对照）
 /// 涵盖 New features, Behavior changes, Security and privacy
 const List<AndroidFeatureSection> kAndroid14Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    items: [
+      'Foreground service types required: All foreground services must declare explicit types with matching manifest permissions, or startForeground fails.',
+      'Explicit broadcast receiver export: Context-registered receivers must specify RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED.',
+      'Selected photos access: Users can grant partial access to media files (READ_MEDIA_VISUAL_USER_SELECTED); apps must support partial selection gracefully.',
+      'Minimum installable target API 23: Android blocks installation of apps targeting below API 23 (Android 6.0).',
+      'Exact alarms denied by default: SCHEDULE_EXACT_ALARM is denied by default; apps must transition to inexact alarms or request USE_EXACT_ALARM.',
+    ],
+    itemsZh: [
+      '强制声明前台服务类型：所有 Foreground Service 必须显式声明类型（如 dataSync, location 等）并申请对应权限，否则启动抛出异常。',
+      '动态注册广播必须指定导出状态：代码注册广播接收器时必须显式传入 RECEIVER_EXPORTED 或 RECEIVER_NOT_EXPORTED，否则抛出 SecurityException。',
+      '仅授权选定照片权限：用户可选择只授权访问部分照片与视频 (READ_MEDIA_VISUAL_USER_SELECTED)，需适配非全量授权的动态刷新场景。',
+      '最低安装 API 级别限制：系统禁止安装 targetSdkVersion 低于 23 (Android 6.0) 的老旧应用。',
+      '精准闹钟权限默认拒绝：SCHEDULE_EXACT_ALARM 权限默认不再自动授予，非核心计时/日历应用需适配非精准闹钟。',
+    ],
+  ),
   // 左侧列第 1 项：New features
   AndroidFeatureSection(
     title: 'New features',
@@ -77,6 +96,25 @@ const List<AndroidFeatureSection> kAndroid14Features = [
 /// Android 13 (T) 官方特性列表（中英双语对照）
 /// 涵盖 New features, Behavior changes, Security and privacy
 const List<AndroidFeatureSection> kAndroid13Features = [
+  // 开发影响与适配要求（置顶展示）
+  AndroidFeatureSection(
+    title: 'Developer Impact & Migration',
+    titleZh: '开发影响与适配要求',
+    items: [
+      'Runtime notification permission: Apps must request POST_NOTIFICATIONS runtime permission before posting notifications to users.',
+      'Granular media permissions: READ_EXTERNAL_STORAGE deprecated and split into READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, and READ_MEDIA_AUDIO.',
+      'System Photo Picker: Embedded system picker allows users to share media without granting any storage runtime permissions.',
+      'Predictive back gesture opt-in: Apps can test and opt in to predictive back animations using android:enableOnBackInvokedCallback="true".',
+      'Clipboard sensitive data auto-clearing: Password and sensitive clipboard items are automatically masked and cleared by the system.',
+    ],
+    itemsZh: [
+      '通知运行时权限：必须在运行时向用户动态申请 POST_NOTIFICATIONS 权限后方可发送通知，否则所有通知被系统默默拦截。',
+      '细分媒体权限替代旧版存储权限：废弃宽泛的 READ_EXTERNAL_STORAGE，拆分为 READ_MEDIA_IMAGES、READ_MEDIA_VIDEO 与 READ_MEDIA_AUDIO 独立细分权限。',
+      '原生系统照片选择器 (Photo Picker)：系统级内嵌照片选择器，应用无需申请任何存储权限即可安全选取照片和视频。',
+      '预测性返回手势启用：引入 enableOnBackInvokedCallback 配置，开启预测性返回动画并适配统一的返回导航回调。',
+      '剪贴板敏感数据自动清理：系统剪贴板编辑器会在复制密码或敏感数据时进行系统级隐藏遮罩与定期自动清理。',
+    ],
+  ),
   // 左侧列第 1 项：New features
   AndroidFeatureSection(
     title: 'New features',

@@ -38,7 +38,7 @@ class _AndroidApiDistributionViewState
   void initState() {
     super.initState();
     _selectedItem = AndroidVersionDistributionData.findItem(
-      widget.initialVersion ?? '16',
+      widget.initialVersion ?? '17',
     );
   }
 
@@ -338,6 +338,7 @@ class _AndroidApiDistributionViewState
     if (apiLevel == 30) return 48.0;
     if (apiLevel == 29) return 38.0;
     if (apiLevel == 28) return 28.0;
+    if (apiLevel <= 19) return 22.0;
     return 20.0;
   }
 
