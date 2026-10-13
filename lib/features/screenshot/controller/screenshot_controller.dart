@@ -415,16 +415,23 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
     );
   }
 
-  /// 保存截图（若在分析模式下同时导出 XML）
-  Future<void> saveScreenshotOrExport(BuildContext context) async {
-    await ScreenshotExportHelper.saveScreenshotOrExport(
+  /// 保存当前截图图片。
+  Future<void> saveScreenshot(BuildContext context) async {
+    await ScreenshotExportHelper.saveScreenshot(
       context,
       deviceId: deviceId,
       rawBytes: state.rawScreenshotBytes,
-      isLayoutAnalysis: state.isLayoutAnalysis,
-      xmlContent: state.xmlContent,
       settings: ref.read(appSettingsProvider),
       hostPlatform: ref.read(hostPlatformServiceProvider),
+    );
+  }
+
+  /// 导出当前完整布局 XML。
+  Future<void> exportXml(BuildContext context) async {
+    await ScreenshotExportHelper.exportXml(
+      context,
+      deviceId: deviceId,
+      xmlContent: state.xmlContent,
     );
   }
 }

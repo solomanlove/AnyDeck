@@ -54,90 +54,89 @@ class ScreenshotExportHelper {
     }
   }
 
-  /// 保存截图（若在分析模式下且具备 XML，则同时导出 PNG 与 XML 配对文件）
-  static Future<void> saveScreenshotOrExport(
+  /// 保存当前截图，并沿用截图工作台的剪贴板同步行为。
+  static Future<void> saveScreenshot(
     BuildContext context, {
     required String deviceId,
     required Uint8List? rawBytes,
-    required bool isLayoutAnalysis,
-    required String? xmlContent,
     required AppSettings settings,
     required HostPlatformService hostPlatform,
   }) async {
     if (rawBytes == null) return;
 
-    if (isLayoutAnalysis && xmlContent != null) {
-      try {
-        final location = await getSaveLocation(
-          acceptedTypeGroups: [
-            const XTypeGroup(label: 'PNG Image', extensions: ['png']),
-          ],
-          suggestedName:
-              'layout_${deviceId}_${DateTime.now().millisecondsSinceEpoch}.png',
+    try {
+      final savePath = hostPlatform.generateScreenshotPath(
+        settings.screenshotSavePath,
+        deviceId,
+      );
+      final file = File(savePath);
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(rawBytes);
+
+      final copied = await hostPlatform.copyImageToClipboard(rawBytes);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (${context.l10n.t('copySuccess')})" : ""}',
+            ),
+            backgroundColor: AppPalette.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        if (location == null) return;
-
-        final basePath = location.path;
-        final pngFile = File(basePath);
-        await pngFile.writeAsBytes(rawBytes);
-
-        final xmlPath =
-            '${basePath.replaceAll(RegExp(r'\.png$', caseSensitive: false), '')}.xml';
-        final xmlFile = File(xmlPath);
-        await xmlFile.writeAsString(xmlContent);
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('已成功保存截图与 XML 至: $basePath'),
-              backgroundColor: AppPalette.primary,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('保存失败: $e'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
       }
-    } else {
-      try {
-        final savePath = hostPlatform.generateScreenshotPath(
-          settings.screenshotSavePath,
-          deviceId,
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${context.l10n.t('error')}: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        final file = File(savePath);
-        await file.parent.create(recursive: true);
-        await file.writeAsBytes(rawBytes);
+      }
+    }
+  }
 
-        final copied = await hostPlatform.copyImageToClipboard(rawBytes);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
-              ),
-              backgroundColor: AppPalette.primary,
-              behavior: SnackBarBehavior.floating,
+  /// 将当前完整布局 XML 导出为独立文件。
+  static Future<void> exportXml(
+    BuildContext context, {
+    required String deviceId,
+    required String? xmlContent,
+  }) async {
+    if (xmlContent == null || xmlContent.isEmpty) return;
+    try {
+      final location = await getSaveLocation(
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'XML', extensions: ['xml']),
+        ],
+        suggestedName:
+            'layout_${deviceId}_${DateTime.now().millisecondsSinceEpoch}.xml',
+      );
+      if (location == null) return;
+      await File(location.path).writeAsString(xmlContent);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n
+                  .t('xmlExportSuccess')
+                  .replaceAll('{path}', location.path),
             ),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${context.l10n.t('error')}: $e'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+            backgroundColor: AppPalette.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${context.l10n.t('error')}: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }

@@ -26,7 +26,6 @@ class ScreenshotToolbar extends StatelessWidget {
     required this.onStopRecording,
     required this.onToggleLayoutAnalysis,
     required this.onShowPropertiesChanged,
-    required this.onShowBordersChanged,
   });
 
   final AdbDevice device;
@@ -43,7 +42,6 @@ class ScreenshotToolbar extends StatelessWidget {
   final VoidCallback onStopRecording;
   final ValueChanged<bool> onToggleLayoutAnalysis;
   final ValueChanged<bool?> onShowPropertiesChanged;
-  final ValueChanged<bool?> onShowBordersChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -84,20 +82,16 @@ class ScreenshotToolbar extends StatelessWidget {
                         : context.l10n.t('refresh'),
                     onPressed: (state.isLoading || isRecActive) ? null : onRefresh,
                   ),
-                  // 2. 保存按钮（普通模式保存图片，分析模式保存图片+XML）
+                  // 2. 保存图片按钮
                   _ToolbarButton(
                     icon: CupertinoIcons.floppy_disk,
-                    tooltip: isAnalysis
-                        ? context.l10n.t('exportPngAndXml')
-                        : context.l10n.t('save'),
+                    tooltip: context.l10n.t('save'),
                     onPressed: (!hasImage || isRecActive) ? null : onSave,
                   ),
-                  // 3. 复制按钮（普通模式复制图片，分析模式复制 XML）
+                  // 3. 复制图片按钮
                   _ToolbarButton(
                     icon: CupertinoIcons.doc_on_doc,
-                    tooltip: isAnalysis
-                        ? context.l10n.t('copyLayout')
-                        : context.l10n.t('copy'),
+                    tooltip: context.l10n.t('copy'),
                     onPressed: (!hasImage || isRecActive) ? null : onCopy,
                   ),
                   _buildDivider(isDark),
@@ -174,19 +168,13 @@ class ScreenshotToolbar extends StatelessWidget {
                       ],
                     ],
                   ],
-                  // 6. 布局分析模式专属：边框显示、点击选中与属性面板
+                  // 6. 布局分析模式专属：属性面板开关
                   if (isAnalysis) ...[
                     _buildDivider(isDark),
                     _ToolbarCheckbox(
                       label: context.l10n.t('showProperties'),
                       value: state.showProperties,
                       onChanged: onShowPropertiesChanged,
-                    ),
-                    const SizedBox(width: 8),
-                    _ToolbarCheckbox(
-                      label: context.l10n.t('showBorders'),
-                      value: state.showBorders,
-                      onChanged: onShowBordersChanged,
                     ),
                   ],
                 ],

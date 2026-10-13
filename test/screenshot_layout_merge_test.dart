@@ -23,6 +23,7 @@ import 'package:any_deck/features/screenshot/controller/screenshot_controller.da
 import 'package:any_deck/features/screenshot/dashboard_screenshot_tab.dart';
 import 'package:any_deck/features/screenshot/model/screenshot_state.dart';
 import 'package:any_deck/features/screenshot/widgets/screenshot_canvas.dart';
+import 'package:any_deck/features/screenshot/widgets/screenshot_toolbar.dart';
 
 import 'fake_adb_service.dart';
 
@@ -384,7 +385,49 @@ void main() {
       expect(find.byType(ScreenshotCanvas), findsOneWidget);
       expect(mockInspector.captureLayoutCallCount, greaterThan(0));
       expect(find.text('点击选中'), findsNothing);
-      expect(find.text('显示布局'), findsOneWidget);
+      expect(find.text('显示布局'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(LayoutHierarchyTree),
+          matching: find.byTooltip('显示布局'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(LayoutHierarchyTree),
+          matching: find.byTooltip('导出 XML'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(LayoutHierarchyTree),
+          matching: find.byTooltip('复制节点 XML'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ScreenshotToolbar),
+          matching: find.text('显示布局'),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ScreenshotToolbar),
+          matching: find.byTooltip('保存'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ScreenshotToolbar),
+          matching: find.byTooltip('复制'),
+        ),
+        findsOneWidget,
+      );
       expect(
         find.descendant(
           of: find.byType(LayoutHierarchyTree),

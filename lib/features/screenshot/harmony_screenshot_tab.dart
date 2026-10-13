@@ -151,7 +151,7 @@ class _HarmonyScreenshotTabState extends ConsumerState<HarmonyScreenshotTab> {
           device: widget.device,
           state: state,
           onRefresh: () => controller.captureScreenshot(),
-          onSave: () => controller.saveScreenshotOrExport(context),
+          onSave: () => controller.saveScreenshot(context),
           onCopy: () => controller.copyScreenshotImage(context),
           onRotateLeft: controller.rotateLeft,
           onRotateRight: controller.rotateRight,
@@ -166,7 +166,6 @@ class _HarmonyScreenshotTabState extends ConsumerState<HarmonyScreenshotTab> {
           onStopRecording: () => controller.stopRecording(context: context),
           onToggleLayoutAnalysis: (_) {},
           onShowPropertiesChanged: (_) {},
-          onShowBordersChanged: (_) {},
         ),
         // 中央复用截图画布
         Expanded(

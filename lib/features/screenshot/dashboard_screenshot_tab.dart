@@ -168,14 +168,8 @@ class _DashboardScreenshotTabState
               controller.captureScreenshot();
             }
           },
-          onSave: () => controller.saveScreenshotOrExport(context),
-          onCopy: () {
-            if (state.isLayoutAnalysis) {
-              controller.copySelectedXml(context);
-            } else {
-              controller.copyScreenshotImage(context);
-            }
-          },
+          onSave: () => controller.saveScreenshot(context),
+          onCopy: () => controller.copyScreenshotImage(context),
           onRotateLeft: controller.rotateLeft,
           onRotateRight: controller.rotateRight,
           onToggleAutoRefresh: controller.toggleAutoRefresh,
@@ -190,8 +184,6 @@ class _DashboardScreenshotTabState
           onToggleLayoutAnalysis: controller.toggleLayoutAnalysis,
           onShowPropertiesChanged: (val) =>
               controller.setShowProperties(val ?? true),
-          onShowBordersChanged: (val) =>
-              controller.setShowBorders(val ?? false),
         ),
         // 2. 主工作区：普通截图模式单画布，布局分析模式三栏展开
         Expanded(
@@ -216,6 +208,12 @@ class _DashboardScreenshotTabState
                                   controller.toggleNodeExpanded,
                               onExpandAll: controller.expandAllNodes,
                               onCollapseAll: controller.collapseAllNodes,
+                              showBorders: state.showBorders,
+                              onShowBordersChanged: (val) =>
+                                  controller.setShowBorders(val ?? false),
+                              onExportXml: () => controller.exportXml(context),
+                              onCopyXml: () =>
+                                  controller.copySelectedXml(context),
                             ),
                     ),
                     VerticalDivider(

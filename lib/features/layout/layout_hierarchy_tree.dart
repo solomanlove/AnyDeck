@@ -17,6 +17,10 @@ class LayoutHierarchyTree extends StatefulWidget {
   final void Function(LayoutNode node, bool expanded) onNodeExpansionChanged;
   final VoidCallback? onExpandAll;
   final VoidCallback? onCollapseAll;
+  final bool showBorders;
+  final ValueChanged<bool?>? onShowBordersChanged;
+  final VoidCallback? onExportXml;
+  final VoidCallback? onCopyXml;
 
   const LayoutHierarchyTree({
     super.key,
@@ -30,6 +34,10 @@ class LayoutHierarchyTree extends StatefulWidget {
     required this.onNodeExpansionChanged,
     this.onExpandAll,
     this.onCollapseAll,
+    this.showBorders = false,
+    this.onShowBordersChanged,
+    this.onExportXml,
+    this.onCopyXml,
   });
 
   @override
@@ -63,7 +71,7 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
         children: [
           // 标题栏
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
             decoration: BoxDecoration(
               color: headerColor,
               border: Border(
@@ -89,6 +97,37 @@ class _LayoutHierarchyTreeState extends State<LayoutHierarchyTree> {
                   ),
                 ),
                 const Spacer(),
+                if (widget.onShowBordersChanged != null)
+                  IconButton(
+                    icon: Icon(
+                      CupertinoIcons.viewfinder,
+                      size: 18,
+                      color: widget.showBorders
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    tooltip: context.l10n.t('showBorders'),
+                    onPressed: widget.loading
+                        ? null
+                        : () => widget.onShowBordersChanged!(
+                            !widget.showBorders,
+                          ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (widget.onExportXml != null)
+                  IconButton(
+                    icon: const Icon(CupertinoIcons.floppy_disk, size: 18),
+                    tooltip: context.l10n.t('exportXml'),
+                    onPressed: widget.loading ? null : widget.onExportXml,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (widget.onCopyXml != null)
+                  IconButton(
+                    icon: const Icon(CupertinoIcons.doc_on_doc, size: 18),
+                    tooltip: context.l10n.t('copyLayout'),
+                    onPressed: widget.loading ? null : widget.onCopyXml,
+                    visualDensity: VisualDensity.compact,
+                  ),
                 IconButton(
                   icon: const Icon(CupertinoIcons.chevron_up_chevron_down, size: 18),
                   tooltip: context.l10n.t('expandAll'),
