@@ -33,10 +33,23 @@ class _EmulatorStandaloneLayoutState extends State<_EmulatorStandaloneLayout> {
           width: compact ? 180 : 220,
           child: TextField(
             controller: widget.filterController,
-            onChanged: widget.onFilterChanged,
+            onChanged: (val) {
+              widget.onFilterChanged(val);
+              setState(() {});
+            },
             decoration: InputDecoration(
               isDense: true,
               prefixIcon: const Icon(CupertinoIcons.search, size: 18),
+              suffixIcon: widget.filterController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(CupertinoIcons.clear_circled, size: 16),
+                      onPressed: () {
+                        widget.filterController.clear();
+                        widget.onFilterChanged('');
+                        setState(() {});
+                      },
+                    )
+                  : null,
               hintText: context.l10n.t('emulatorSearch'),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),

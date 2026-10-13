@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -278,13 +279,12 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                   child: TextField(
                     controller: _filterController,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(
-                        CupertinoIcons.line_horizontal_3_decrease,
-                        size: 16,
-                      ),
                       hintText: context.l10n.t('filterWebpage'),
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide(
@@ -294,9 +294,8 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          color: Theme.of(context).colorScheme.outlineVariant
+                              .withValues(alpha: 0.5),
                         ),
                       ),
                       suffixIcon: _filter.isNotEmpty

@@ -1,4 +1,5 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/adb/adb_device.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
@@ -104,7 +105,8 @@ void main() {
           ).overrideWith(() => _FixedPackagesNotifier(packages: packages)),
           processServiceProvider.overrideWithValue(ProcessService(_DummyAdbService())),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light),
           locale: Locale('zh'),
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: [
@@ -178,7 +180,8 @@ void main() {
           ).overrideWith(() => _FixedPackagesNotifier(packages: const [])),
           processServiceProvider.overrideWithValue(ProcessService(_DummyAdbService())),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light),
           locale: Locale('zh'),
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: [
@@ -200,7 +203,10 @@ void main() {
 
     expect(find.byType(TextField), findsOneWidget);
     expect(find.text('用户进程'), findsOneWidget);
-    expect(find.text('仅 Debug 应用'), findsOneWidget);
+    expect(find.text('仅 Debug 应用'), findsNothing);
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    expect(find.text('筛选 debug 应用'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

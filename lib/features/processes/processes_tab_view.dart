@@ -31,13 +31,21 @@ extension _ProcessesTabView on _ProcessesTabState {
         searchHint: context.l10n.t('filterPackage'),
         hasSearchQuery: _filter.isNotEmpty,
         onSearchChanged: (value) => _updateState(() => _filter = value),
-        onSearchSubmitted: (value) =>
-            ref.read(processesSearchHistoryProvider.notifier).add(value),
-        searchHistory: searchHistory,
-        onSearchHistorySelected: (value) =>
-            ref.read(processesSearchHistoryProvider.notifier).add(value),
+        onSearchSubmitted: _commitFilter,
+        searchHistory: searchHistory
+            .where((item) => item.toLowerCase() != 'debug')
+            .toList(growable: false),
+        searchDefaultOptions: [
+          DashboardHistoryOption(
+            value: 'debug',
+            label: context.l10n.t('filterDebugOnly'),
+          ),
+        ],
+        onSearchHistorySelected: _commitFilter,
         onSearchHistoryRemoved: (value) =>
             ref.read(processesSearchHistoryProvider.notifier).remove(value),
+        onSearchHistoryCleared: () =>
+            ref.read(processesSearchHistoryProvider.notifier).clear(),
         onSearchClear: () {
           _filterController.clear();
           _updateState(() => _filter = '');
@@ -69,14 +77,6 @@ extension _ProcessesTabView on _ProcessesTabState {
             value: _onlyShowApps,
             onChanged: (value) =>
                 _updateState(() => _onlyShowApps = value ?? true),
-          ),
-          const SizedBox(width: 6),
-          _buildToolbarCheckbox(
-            context: context,
-            label: '仅 Debug 应用',
-            value: _onlyShowDebug,
-            onChanged: (value) =>
-                _updateState(() => _onlyShowDebug = value ?? false),
           ),
           const SizedBox(width: 6),
           _buildToolbarCheckbox(

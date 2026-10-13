@@ -106,9 +106,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _filter.isNotEmpty
-                        ? '没有匹配 "$_filter" 的模拟器'
-                        : '请在 DevEco Studio 中通过 "Tools" -> "Device Manager" 创建或管理 HarmonyOS 模拟器。',
+                    _filter.isNotEmpty ? '没有匹配 "$_filter" 的模拟器' : '请在 DevEco Studio 中通过 "Tools" -> "Device Manager" 创建或管理 HarmonyOS 模拟器。',
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 13, color: Colors.grey),
                   ),
@@ -215,7 +213,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
       itemCount: list.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          return _buildTableHeader(context, isDark);
+          return _buildTableHeader(context);
         }
         final item = list[index - 1];
         final isSelected = item.name == _selectedName;
@@ -223,12 +221,25 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
         return InkWell(
           onTap: () => setState(() => _selectedName = item.name),
           child: Container(
-            color: isSelected
-                ? (isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFFE8F4EC))
-                : Colors.transparent,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            height: 56,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: 0.35)
+                  : index % 2 == 0
+                  ? null
+                  : Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.5),
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+                  width: 0.5,
+                ),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Row(
               children: [
                 Container(
@@ -280,14 +291,18 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                     ),
                   ),
                 ),
-                if (item.configPath != null)
-                  IconButton(
-                    icon: const Icon(CupertinoIcons.folder, size: 20),
-                    tooltip: '打开配置目录',
-                    onPressed: () => ref
-                        .read(devecoEmulatorServiceProvider)
-                        .openFolder(item.configPath!),
-                  ),
+                SizedBox(
+                  width: 48,
+                  child: item.configPath != null
+                      ? IconButton(
+                          icon: const Icon(CupertinoIcons.folder, size: 20),
+                          tooltip: '打开配置目录',
+                          onPressed: () => ref
+                              .read(devecoEmulatorServiceProvider)
+                              .openFolder(item.configPath!),
+                        )
+                      : null,
+                ),
               ],
             ),
           ),
@@ -296,21 +311,30 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
     );
   }
 
-  Widget _buildTableHeader(BuildContext context, bool isDark) {
-    const headerStyle = TextStyle(
+  Widget _buildTableHeader(BuildContext context) {
+    final headerStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
       fontSize: 12,
       fontWeight: FontWeight.bold,
-      color: Colors.grey,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
 
     return Container(
-      color: isDark
-          ? Colors.white.withValues(alpha: 0.03)
-          : Colors.black.withValues(alpha: 0.02),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: const Row(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Row(
         children: [
-          SizedBox(width: 20),
+          const SizedBox(width: 20),
           Expanded(flex: 3, child: Text('模拟器名称', style: headerStyle)),
           Expanded(flex: 2, child: Text('系统 / API 版本', style: headerStyle)),
           Expanded(flex: 2, child: Text('设备类型', style: headerStyle)),

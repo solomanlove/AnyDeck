@@ -185,9 +185,6 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
                   ? () => ref.read(emulatorLaunchProvider.notifier).launch(
                       selectedItem.emulator.name, coldBoot: true)
                   : null,
-              onReconnect: selectedItem?.deviceId != null && !_connectionBusy
-                  ? () => _connectionAction(selectedItem!.deviceId!, stop: false)
-                  : null,
               onStop: selectedItem?.deviceId != null && !_connectionBusy
                   ? () => _connectionAction(selectedItem!.deviceId!, stop: true)
                   : null,
@@ -234,6 +231,12 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
                         ? () => _startEmulator(
                             context,
                             selectedItem.emulator.name,
+                          )
+                        : null,
+                    onStop: selectedItem?.deviceId != null && !_connectionBusy
+                        ? () => _connectionAction(
+                            selectedItem!.deviceId!,
+                            stop: true,
                           )
                         : null,
                     onClearData:

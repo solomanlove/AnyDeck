@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +13,7 @@ import '../../core/process/process_service.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/apps/adb_package.dart';
 import '../../core/search/dashboard_search_history_controller.dart';
+import '../../app/widget/dashboard_history_text_field.dart';
 import '../../app/widget/dashboard_tab_layout.dart';
 import '../widgets/dashboard_snack.dart';
 import '../widgets/dashboard_table_header.dart';
@@ -50,7 +52,6 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
   String _filter = '';
   ProcessFilterType _processFilterType = ProcessFilterType.user;
   bool _onlyShowApps = true;
-  bool _onlyShowDebug = false;
   String? _selectedPid;
 
   String _sortColumn = 'cpu'; // 'name', 'cpu', 'time', 'memory', 'pid', 'user'
@@ -100,6 +101,17 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
     _stopRefreshTimer();
     _filterController.dispose();
     super.dispose();
+  }
+
+  /// 搜索历史只记录实际提交的文本，DEBUG 保持为固定快捷选项。
+  void _commitFilter(String value) {
+    final query = value.trim();
+    if (query.isEmpty) return;
+    if (query.toLowerCase() == 'debug') {
+      setState(() => _processFilterType = ProcessFilterType.all);
+      return;
+    }
+    ref.read(processesSearchHistoryProvider.notifier).add(query);
   }
 
   void _startRefreshTimer() {
@@ -400,37 +412,38 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
           .toList();
     }
 
-    if (_onlyShowDebug) {
-      filtered = filtered.where((p) {
-        final basePackage = p.name.contains(':')
-            ? p.name.split(':').first
-            : p.name;
-        final matchedPkg = packageMap[basePackage];
-        return matchedPkg?.debuggable ?? false;
-      }).toList();
-    }
-
     final query = _filter.trim().toLowerCase();
     if (query.isNotEmpty) {
-      filtered = filtered.where((p) {
-        final nameMatch = p.name.toLowerCase().contains(query);
-        final pidMatch = p.pid.contains(query);
-        final userMatch = p.user.toLowerCase().contains(query);
+      if (query == 'debug') {
+        // DEBUG 快捷项只匹配 debuggable 应用进程，不与普通名称搜索混用。
+        filtered = filtered.where((p) {
+          final basePackage = p.name.contains(':')
+              ? p.name.split(':').first
+              : p.name;
+          final matchedPkg = packageMap[basePackage];
+          return matchedPkg?.debuggable ?? false;
+        }).toList();
+      } else {
+        filtered = filtered.where((p) {
+          final nameMatch = p.name.toLowerCase().contains(query);
+          final pidMatch = p.pid.contains(query);
+          final userMatch = p.user.toLowerCase().contains(query);
 
-        // Map label match
-        final basePackage = p.name.contains(':')
-            ? p.name.split(':').first
-            : p.name;
-        final matchedPkg = packages.firstWhere(
-          (pkg) => pkg.name == basePackage,
-          orElse: () => AdbPackage(name: '', system: false, enabled: true),
-        );
-        final labelMatch =
-            matchedPkg.name.isNotEmpty &&
-            matchedPkg.displayName.toLowerCase().contains(query);
+          // Map label match
+          final basePackage = p.name.contains(':')
+              ? p.name.split(':').first
+              : p.name;
+          final matchedPkg = packages.firstWhere(
+            (pkg) => pkg.name == basePackage,
+            orElse: () => AdbPackage(name: '', system: false, enabled: true),
+          );
+          final labelMatch =
+              matchedPkg.name.isNotEmpty &&
+              matchedPkg.displayName.toLowerCase().contains(query);
 
-        return nameMatch || pidMatch || userMatch || labelMatch;
-      }).toList();
+          return nameMatch || pidMatch || userMatch || labelMatch;
+        }).toList();
+      }
     }
 
     // 2. Sort
@@ -460,9 +473,8 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
           cmp = a.cpuTime.compareTo(b.cpuTime);
           break;
         case 'memory':
-          cmp = _parseMemoryToBytes(
-            a.memory,
-          ).compareTo(_parseMemoryToBytes(b.memory));
+          cmp = _parseMemoryToBytes(a.memory)
+              .compareTo(_parseMemoryToBytes(b.memory));
           break;
         case 'pid':
           cmp = (int.tryParse(a.pid) ?? 0).compareTo(int.tryParse(b.pid) ?? 0);

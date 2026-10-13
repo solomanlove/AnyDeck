@@ -41,3 +41,10 @@
 - 源码依据：[ADB reconnect 实现](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/client/commandline.cpp)、[ADB console 实现](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/android15-qpr2-s8-release/client/console.cpp)、[官方调试授权说明](https://developer.android.com/tools/adb)。
 - 验证：`emulator_process_test.dart`、`emulator_launch_test.dart`、`emulator_connection_test.dart`、`emulator_panel_test.dart` 共 20 项通过；覆盖 SDK 环境、冷启动、不误伤物理设备、unauthorized 状态恢复、ADB transport 消失时仍保留进程运行提示、诊断和工具栏。定向 analyze 仅有上述两项原有警告，`git diff --check` 通过。
 - 本次只读检查时 `adb devices -l` 为空，未发现运行中的 qemu/emulator 进程，因此未进行真实授权重连验证；未启动桌面项目或模拟器，也未改动本机密钥。
+
+## 三平台模拟器界面统一（2026-10-13）
+
+- Android、HarmonyOS DevEco 与 iOS Simulator 统一采用分段平台选择、48px 表头、56px 数据行、交替行底色及主题色选中态；颜色优先取 `ColorScheme`，保留平台状态业务色。
+- Android 工具栏与另外两端统一为“启动 / 停止 / 弹出独立窗口 / 刷新 / 更多”，停止操作沿用原有 `adb -s <serial> emu kill` 和确认流程；移除工具栏中的 ADB 重连入口，不改动底层定向重连能力。
+- 模拟器名称搜索在有内容时显示清除按钮；清除后立即同步过滤状态。进程 Tab 将 DEBUG 作为搜索框固定快捷项，不写入普通历史，选择后切到全部进程并按 `AdbPackage.debuggable` 精确过滤；网页筛选框移除前缀图标并保留水平内边距。
+- 本次仅调整既有页面的展示与筛选交互，不新增 ADB/HDC/xcrun 命令，不改变模拟器启动、关闭或数据清理的底层执行方式。

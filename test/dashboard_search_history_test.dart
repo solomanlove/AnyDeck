@@ -1,4 +1,5 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/app/widget/dashboard_history_text_field.dart';
 import 'package:any_deck/app/widget/dashboard_tab_layout.dart';
 import 'package:any_deck/core/search/dashboard_search_history_controller.dart';
@@ -53,6 +54,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: buildAppTheme(Brightness.light),
         locale: const Locale('zh'),
         localizationsDelegates: const [AppLocalizationsDelegate()],
         home: Scaffold(
@@ -102,6 +104,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: buildAppTheme(Brightness.light),
         locale: const Locale('zh'),
         localizationsDelegates: const [AppLocalizationsDelegate()],
         home: Scaffold(
@@ -137,6 +140,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: buildAppTheme(Brightness.light),
         locale: const Locale('zh'),
         localizationsDelegates: const [AppLocalizationsDelegate()],
         home: Scaffold(
@@ -178,6 +182,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: buildAppTheme(Brightness.light),
         locale: const Locale('zh'),
         localizationsDelegates: const [AppLocalizationsDelegate()],
         home: Scaffold(

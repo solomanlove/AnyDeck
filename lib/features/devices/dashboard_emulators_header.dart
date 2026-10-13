@@ -16,6 +16,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
     required this.onOpenFolder,
     required this.onRefresh,
     this.onPopOut,
+    this.onStop,
   });
 
   /// 面板是否已展开
@@ -41,6 +42,9 @@ class _EmulatorPanelHeader extends StatelessWidget {
 
   /// 启动模拟器的回调
   final VoidCallback? onStart;
+
+  /// 停止模拟器的回调
+  final VoidCallback? onStop;
 
   /// 清除模拟器数据的回调
   final VoidCallback? onClearData;
@@ -90,6 +94,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
     // 构建右侧的操作工具栏
     final toolbar = _EmulatorToolbar(
       onStart: onStart,
+      onStop: onStop,
       onClearData: onClearData,
       onDelete: onDelete,
       onOpenFolder: onOpenFolder,
@@ -133,7 +138,7 @@ class _EmulatorPanelHeader extends StatelessWidget {
   }
 }
 
-/// 主操作直接显示文字，清除数据/删除收进更多菜单，避免图标歧义。
+/// 模拟器操作工具栏，样式与华为 DevEco 及 iOS Simulator 保持完全统一。
 class _EmulatorToolbar extends StatelessWidget {
   const _EmulatorToolbar({
     required this.onStart,
@@ -143,7 +148,6 @@ class _EmulatorToolbar extends StatelessWidget {
     required this.onRefresh,
     this.onPopOut,
     this.onColdBoot,
-    this.onReconnect,
     this.onStop,
   });
 
@@ -154,7 +158,6 @@ class _EmulatorToolbar extends StatelessWidget {
   final VoidCallback onRefresh;
   final VoidCallback? onPopOut;
   final VoidCallback? onColdBoot;
-  final VoidCallback? onReconnect;
   final VoidCallback? onStop;
 
   @override
@@ -164,47 +167,59 @@ class _EmulatorToolbar extends StatelessWidget {
       ('openAvdFolder', CupertinoIcons.folder_open, onOpenFolder),
       ('clearEmulatorData', CupertinoIcons.arrow_counterclockwise, onClearData),
       ('deleteEmulator', CupertinoIcons.trash, onDelete),
-      if (onPopOut != null) ('emulatorPopOut', Icons.open_in_new, onPopOut),
     ];
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      FilledButton.tonalIcon(
-        onPressed: onStart,
-        icon: const Icon(CupertinoIcons.play, size: 18),
-        label: Text(context.l10n.t('launch')),
-      ),
-      const SizedBox(width: 8),
-      OutlinedButton.icon(
-        onPressed: onReconnect,
-        icon: const Icon(CupertinoIcons.link, size: 18),
-        label: Text(context.l10n.t('emulatorReconnect')),
-      ),
-      IconButton(
-        tooltip: context.l10n.t('emulatorStop'),
-        onPressed: onStop,
-        icon: const Icon(CupertinoIcons.stop_circle, size: 22),
-      ),
-      IconButton(
-        tooltip: context.l10n.t('refresh'),
-        onPressed: onRefresh,
-        icon: const Icon(CupertinoIcons.refresh, size: 22),
-      ),
-      PopupMenuButton<int>(
-        tooltip: context.l10n.t('emulatorMore'),
-        icon: const Icon(CupertinoIcons.ellipsis, size: 22),
-        onSelected: (index) => actions[index].$3?.call(),
-        itemBuilder: (context) => [
-          for (var i = 0; i < actions.length; i++)
-            PopupMenuItem(
-              value: i,
-              enabled: actions[i].$3 != null,
-              child: Row(children: [
-                Icon(actions[i].$2, size: 18),
-                const SizedBox(width: 12),
-                Text(context.l10n.t(actions[i].$1)),
-              ]),
-            ),
-        ],
-      ),
-    ]);
+    return Wrap(
+      spacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        FilledButton.icon(
+          onPressed: onStart,
+          icon: const Icon(CupertinoIcons.play_arrow, size: 16),
+          label: Text(context.l10n.t('launch')),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppPalette.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: onStop,
+          icon: const Icon(CupertinoIcons.stop, size: 16),
+          label: Text(context.l10n.t('stop')),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          ),
+        ),
+        if (onPopOut != null)
+          IconButton(
+            tooltip: context.l10n.t('emulatorPopOut'),
+            onPressed: onPopOut,
+            icon: const Icon(Icons.open_in_new, size: 20),
+          ),
+        IconButton(
+          tooltip: context.l10n.t('refresh'),
+          onPressed: onRefresh,
+          icon: const Icon(CupertinoIcons.refresh, size: 20),
+        ),
+        PopupMenuButton<int>(
+          tooltip: context.l10n.t('emulatorMore'),
+          icon: const Icon(CupertinoIcons.ellipsis, size: 20),
+          onSelected: (index) => actions[index].$3?.call(),
+          itemBuilder: (context) => [
+            for (var i = 0; i < actions.length; i++)
+              PopupMenuItem(
+                value: i,
+                enabled: actions[i].$3 != null,
+                child: Row(
+                  children: [
+                    Icon(actions[i].$2, size: 18),
+                    const SizedBox(width: 12),
+                    Text(context.l10n.t(actions[i].$1)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
   }
 }

@@ -177,7 +177,7 @@ void main() {
       expect(find.byIcon(Icons.error_outline), findsNothing);
       expect(find.byIcon(Icons.link_off), findsOneWidget);
       expect(find.textContaining('ADB 未授权'), findsOneWidget);
-      expect(find.text('重连 ADB'), findsOneWidget);
+      expect(find.text('停止'), findsOneWidget);
       await tester.tap(find.text('Small Phone'));
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
