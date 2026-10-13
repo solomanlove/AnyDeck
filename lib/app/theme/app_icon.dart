@@ -19,4 +19,5 @@ class AppIcons {
 
   static const String harmonyDefaultAppIcon = 'assets/brand/harmony_default_app_icon.png';
   static const String androidDefaultAppIcon = 'assets/brand/android_default_app_icon.png';
+  static const String huaweiPetal = 'assets/brand/huawei_petal.png';
 }

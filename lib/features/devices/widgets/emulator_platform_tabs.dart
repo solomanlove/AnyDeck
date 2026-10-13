@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/app_icon.dart';
+
 /// 模拟器支持的平台类型。
 enum EmulatorPlatform {
   /// Android AVD 模拟器
@@ -17,9 +19,16 @@ enum EmulatorPlatform {
   /// 平台显示名称
   final String label;
 
-  /// 平台附带前置图标（如 iOS 对应苹果 logo）
+  /// 平台附带前置矢量图标（Android 机器人、Apple 图标）
   IconData? get icon => switch (this) {
+        android => Icons.android_rounded,
         ios => Icons.apple,
+        _ => null,
+      };
+
+  /// 平台附带的自定义资产图片路径（华为花瓣 Logo）
+  String? get imageAsset => switch (this) {
+        harmony => AppIcons.huaweiPetal,
         _ => null,
       };
 }
@@ -96,7 +105,16 @@ class EmulatorPlatformTabs extends StatelessWidget {
         children: [
           if (platform.icon != null) ...[
             Icon(platform.icon, size: 15, color: color),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
+          ] else if (platform.imageAsset != null) ...[
+            Image.asset(
+              platform.imageAsset!,
+              width: 14,
+              height: 14,
+              fit: BoxFit.contain,
+              color: color,
+            ),
+            const SizedBox(width: 2),
           ],
           Text(
             platform.label,
