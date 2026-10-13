@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'desktop_window_title_service.dart';
@@ -12,7 +13,8 @@ const _windowFrameKey = '_windowFrame';
 const _windowTitleKey = '_windowTitle';
 
 const Size defaultMirrorWindowSize = Size(480, 800);
-const double mirrorWindowTopChromeHeight = 58;
+const double mirrorWindowTopChromeHeight = 30;
+const double mirrorWindowSideChromeWidth = 32;
 
 /// 根据设备分辨率或直接指定的宽高比解析投屏初始窗口大小。
 /// 竖屏贴合纵向高度，横屏贴合横向适度视野，消除黑边并保证比例精确。
@@ -29,7 +31,7 @@ Size resolveMirrorInitialWindowSize(String? resolution, {double? ratio}) {
     viewerWidth = maxViewerW;
     viewerHeight = viewerWidth / resolvedRatio;
   } else {
-    // 竖屏：基准高度 742 (800 - 58)，宽度按比例自适应，消除左右黑边
+    // 竖屏：视频高度使用窗口基准高度扣除 30px 标题栏，宽度按比例自适应。
     final maxViewerH =
         defaultMirrorWindowSize.height - mirrorWindowTopChromeHeight;
     viewerHeight = maxViewerH;
@@ -37,7 +39,7 @@ Size resolveMirrorInitialWindowSize(String? resolution, {double? ratio}) {
   }
 
   return Size(
-    max(200.0, viewerWidth),
+    max(200.0, viewerWidth + mirrorWindowSideChromeWidth),
     max(200.0, viewerHeight + mirrorWindowTopChromeHeight),
   );
 }
@@ -145,6 +147,18 @@ Future<void> configureCurrentAdbManageSubWindow(
         DesktopChromePolicy.current.subWindowTitleBarStyle,
         windowButtonVisibility: true,
       );
+    }
+
+    // 投屏窗口的三个控制区允许透出后方桌面；其他子窗口维持实体背景。
+    if (arguments['type'] == 'mirror') {
+      await windowManager.setBackgroundColor(Colors.transparent);
+      try {
+        await const MethodChannel(
+          'any_deck/window',
+        ).invokeMethod<void>('setWindowTransparency', true);
+      } on MissingPluginException {
+        // 非 macOS 或旧 Runner 没有双层透明通道时，保留 window_manager 的透明背景。
+      }
     }
 
     if (arguments['type'] == 'apk_details') {

@@ -159,6 +159,25 @@ class MainFlutterWindow: NSWindow {
           }
           window.title = title
           result(nil)
+        } else if call.method == "setWindowTransparency" {
+          guard let transparent = call.arguments as? Bool else {
+            result(FlutterError(code: "invalid_argument", message: "setWindowTransparency requires bool", details: nil))
+            return
+          }
+          // NSWindow 与 FlutterView 分别维护背景色；两层同时 clear 才能真正透出桌面。
+          window.isOpaque = !transparent
+          window.backgroundColor = transparent ? .clear : .windowBackgroundColor
+          controller?.backgroundColor = transparent ? .clear : .windowBackgroundColor
+          result(nil)
+        } else if call.method == "setWindowButtonVisibility" {
+          guard let visible = call.arguments as? Bool else {
+            result(FlutterError(code: "invalid_argument", message: "setWindowButtonVisibility requires bool", details: nil))
+            return
+          }
+          window.standardWindowButton(.closeButton)?.isHidden = !visible
+          window.standardWindowButton(.miniaturizeButton)?.isHidden = !visible
+          window.standardWindowButton(.zoomButton)?.isHidden = !visible
+          result(nil)
         } else if call.method == "getWindowFrame" {
           let frame = window.frame
           let frameDict: [String: Any] = [

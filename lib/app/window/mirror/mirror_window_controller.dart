@@ -115,6 +115,7 @@ class MirrorWindowController extends ChangeNotifier {
   static const _windowChannel = MethodChannel('any_deck/window');
 
   Timer? _resizeSettleTimer;
+  Timer? _resizeThrottleTimer;
   Timer? _orientationSettleTimer;
   final MirrorAspectResolver _aspectResolver = MirrorAspectResolver();
   bool _isApplyingWindowAutoFit = false;
@@ -171,6 +172,7 @@ class MirrorWindowController extends ChangeNotifier {
     }
     _identifyTimer?.cancel();
     _resizeSettleTimer?.cancel();
+    _resizeThrottleTimer?.cancel();
     _orientationSettleTimer?.cancel();
     unawaited(_setWindowAspectRatio(0));
     if (!isIos && !isHarmony) {
@@ -365,9 +367,14 @@ class MirrorWindowController extends ChangeNotifier {
     unawaited(_fitWindowToCurrentAspect());
   }
 
-  /// 用户拖动缩放结束后做一次收敛，抵消固定标题栏/工具栏高度带来的黑边。
+  /// 用户拖动缩放期间持续收敛，抵消固定标题栏、底栏及右侧工具栏带来的黑边。
   void onWindowResized() {
     if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
+    if (!(_resizeThrottleTimer?.isActive ?? false)) {
+      _resizeThrottleTimer = Timer(const Duration(milliseconds: 16), () {
+        unawaited(_fitWindowToCurrentAspect());
+      });
+    }
     _resizeSettleTimer?.cancel();
     _resizeSettleTimer = Timer(const Duration(milliseconds: 80), () {
       if (_orientationSettleTimer?.isActive ?? false) return;
@@ -880,8 +887,9 @@ class MirrorWindowController extends ChangeNotifier {
       final currentWidth = (frame != null && frame.width > 0)
           ? frame.width
           : (await windowManager.getSize()).width;
-      if (currentWidth > 0 && contentAspect > 0) {
-        final lockedHeight = currentWidth / contentAspect + _contentChromeHeight;
+      final contentWidth = currentWidth - mirrorWindowSideChromeWidth;
+      if (contentWidth > 0 && contentAspect > 0) {
+        final lockedHeight = contentWidth / contentAspect + _contentChromeHeight;
         if (lockedHeight > 0) {
           await _setWindowAspectRatio(currentWidth / lockedHeight);
           return;

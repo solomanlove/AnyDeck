@@ -36,6 +36,14 @@ class HarmonyMirrorService {
     return {'width': width, 'height': height};
   }
 
+  /// 获取累计解码帧数，供投屏窗口低频计算 FPS。
+  int? getDecodedFrames(String deviceId) {
+    final session = _sessions[deviceId];
+    return session == null
+        ? null
+        : RustDeviceBridge.instance.decodedFrames(session.rustHandle);
+  }
+
   /// 向指定鸿蒙设备的 control socket 发送控制二进制报文。
   /// 包含双重保障机制：优先走 Rust 投屏 Control Socket 直通通道；
   /// 若 Socket 尚未就绪或发送失败，则自动降级为 HDC uinput 命令执行。

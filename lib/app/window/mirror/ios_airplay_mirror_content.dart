@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
@@ -11,6 +12,8 @@ import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 import '../multi_window_compat.dart';
 import 'mirror_toolbar_button.dart';
+import 'mirror_immersive_overlay.dart';
+import 'mirror_session_status_bar.dart';
 import 'mirror_window_frame_adapter.dart';
 
 /// 在通用 iOS 投屏窗口内渲染 AirPlay Texture，并复用 USB 窗口的窗口操作。
@@ -155,8 +158,9 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
       viewerH: viewer.size.height,
     );
     final bounds = await windowManager.getBounds();
+    final viewerWidth = bounds.width - mirrorWindowSideChromeWidth;
     final targetHeight =
-        bounds.width / _aspectRatio + mirrorWindowTopChromeHeight;
+        viewerWidth / _aspectRatio + mirrorWindowTopChromeHeight;
     await windowManager.setAspectRatio(bounds.width / targetHeight);
   }
 
@@ -192,22 +196,39 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final foreground = Theme.of(context).appColors.toolbarForeground;
     final resolution = _videoSize == null
         ? ''
         : '${_videoSize!.width.toInt()} × ${_videoSize!.height.toInt()}';
+    final isLiveMirrorVisible = _textureId != null && !_isDisconnected;
+    final windowBackground = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xff121212)
+        : const Color(0xfff8f9fa);
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Column(
-        children: [
-          if (!_isFullScreen)
-            DragToMoveArea(
+      backgroundColor: isLiveMirrorVisible
+          ? Colors.transparent
+          : windowBackground,
+      body: MirrorImmersiveOverlay(
+        autoHide: isLiveMirrorVisible,
+        viewer: SizedBox.expand(key: _viewerKey, child: _buildVideo(context)),
+        titleBar: _isFullScreen
+            ? const SizedBox.shrink()
+            : DragToMoveArea(
               child: Container(
                 height: 30,
-                padding: const EdgeInsets.only(left: 80),
-                color: isDark ? Theme.of(context).cardColor : Colors.white,
+                padding: EdgeInsets.only(
+                  left: defaultTargetPlatform == TargetPlatform.macOS ? 80 : 16,
+                  right: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: windowBackground,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                ),
                 child: Row(
                   children: [
                     Flexible(
@@ -229,52 +250,59 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
                       ),
                     ],
                     const Spacer(),
-                    MirrorToolbarButton(
-                      icon: Icon(
-                        _isAlwaysOnTop
-                            ? CupertinoIcons.pin_fill
-                            : CupertinoIcons.pin,
-                        color: _isAlwaysOnTop ? Colors.orange : foreground,
-                        size: 16,
+                    if (isLiveMirrorVisible)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6),
+                        child: MirrorSessionDuration(),
                       ),
-                      tooltip: context.l10n.t('airplayAlwaysOnTop'),
-                      onPressed: _toggleAlwaysOnTop,
-                    ),
-                    MirrorToolbarButton(
-                      icon: Icon(
-                        CupertinoIcons.arrow_up_left_arrow_down_right,
-                        color: foreground,
-                        size: 16,
-                      ),
-                      tooltip: context.l10n.t('airplayResetAspect'),
-                      onPressed: _fitWindowToVideo,
-                    ),
-                    MirrorToolbarButton(
-                      icon: Icon(
-                        CupertinoIcons.fullscreen,
-                        color: foreground,
-                        size: 16,
-                      ),
-                      tooltip: context.l10n.t('airplayFullscreen'),
-                      onPressed: _toggleFullScreen,
-                    ),
-                    MirrorToolbarButton(
-                      icon: const Icon(
-                        CupertinoIcons.stop_circle,
-                        color: Colors.redAccent,
-                        size: 16,
-                      ),
-                      tooltip: context.l10n.t('airplayStopSession'),
-                      onPressed: _stopAirPlay,
-                    ),
                   ],
                 ),
               ),
             ),
-          if (!_isFullScreen)
-            SizedBox(width: double.infinity, child: widget.toolbar),
-          Expanded(key: _viewerKey, child: _buildVideo(context)),
-        ],
+        toolbar: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      widget.toolbar,
+                      MirrorToolbarButton(
+                        icon: Icon(_isAlwaysOnTop ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
+                          color: _isAlwaysOnTop ? Colors.orange : foreground, size: 16),
+                        tooltip: context.l10n.t('airplayAlwaysOnTop'),
+                        onPressed: _toggleAlwaysOnTop,
+                      ),
+                      MirrorToolbarButton(
+                        icon: Icon(CupertinoIcons.arrow_up_left_arrow_down_right, color: foreground, size: 16),
+                        tooltip: context.l10n.t('airplayResetAspect'),
+                        onPressed: _fitWindowToVideo,
+                      ),
+                      MirrorToolbarButton(
+                        icon: Icon(CupertinoIcons.fullscreen, color: foreground, size: 16),
+                        tooltip: context.l10n.t('airplayFullscreen'),
+                        onPressed: _toggleFullScreen,
+                      ),
+                      MirrorToolbarButton(
+                        icon: const Icon(CupertinoIcons.stop_circle, color: Colors.redAccent, size: 16),
+                        tooltip: context.l10n.t('airplayStopSession'),
+                        onPressed: _stopAirPlay,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              MirrorSessionFps(
+                deviceId: '',
+                isIos: false,
+                isHarmony: false,
+                airplayHandle: widget.handle,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

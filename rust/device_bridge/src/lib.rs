@@ -262,6 +262,14 @@ pub extern "C" fn anydeck_video_size(id: u64) -> u64 {
         0
     }
 }
+/// 返回当前投屏会话累计产出的可渲染帧数；Flutter 每秒做差计算 FPS。
+#[no_mangle]
+pub extern "C" fn anydeck_decoded_frames(id: u64) -> u64 {
+    if let Some(s) = session(id) {
+        return s.frame.produced();
+    }
+    c_api_airplay::anydeck_airplay_decoded_frames(id)
+}
 /// 返回 retain 后的 CVPixelBuffer，由 Flutter Texture 协议接管 release。
 #[no_mangle]
 pub extern "C" fn anydeck_copy_pixel_buffer(id: u64) -> *mut c_void {

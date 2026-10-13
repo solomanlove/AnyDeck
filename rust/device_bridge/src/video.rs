@@ -1,13 +1,17 @@
 //! H.264 Annex-B → AVCC → VideoToolbox；只保存最新 CVPixelBuffer，直接供 Flutter Texture 取用。
 use crate::video_ffi::*;
 use std::ptr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
-pub struct Frame(pub Mutex<usize>);
+pub struct Frame {
+    latest: Mutex<usize>,
+    produced: AtomicU64,
+}
 impl Frame {
     pub fn copy(&self) -> Ref {
-        let Ok(frame) = self.0.lock() else {
+        let Ok(frame) = self.latest.lock() else {
             return ptr::null_mut();
         };
         if *frame == 0 {
@@ -17,7 +21,7 @@ impl Frame {
         }
     }
     pub fn dimensions(&self) -> (u32, u32) {
-        let Ok(frame) = self.0.lock() else {
+        let Ok(frame) = self.latest.lock() else {
             return (0, 0);
         };
         if *frame == 0 {
@@ -32,7 +36,7 @@ impl Frame {
     }
     /// 断流时释放最近一帧，避免重连期间继续显示上一设备的画面。
     pub fn clear(&self) {
-        if let Ok(mut frame) = self.0.lock() {
+        if let Ok(mut frame) = self.latest.lock() {
             if *frame != 0 {
                 unsafe { CFRelease(*frame as Ref); }
                 *frame = 0;
@@ -40,7 +44,7 @@ impl Frame {
         }
     }
     pub fn has_surface(&self) -> bool {
-        let Ok(frame) = self.0.lock() else {
+        let Ok(frame) = self.latest.lock() else {
             return false;
         };
         if *frame == 0 {
@@ -49,10 +53,13 @@ impl Frame {
             unsafe { !CVPixelBufferGetIOSurface(*frame as Ref).is_null() }
         }
     }
+    pub fn produced(&self) -> u64 {
+        self.produced.load(Ordering::Acquire)
+    }
 }
 impl Drop for Frame {
     fn drop(&mut self) {
-        if let Ok(frame) = self.0.lock() {
+        if let Ok(frame) = self.latest.lock() {
             if *frame != 0 {
                 unsafe {
                     CFRelease(*frame as Ref);
@@ -74,7 +81,7 @@ extern "C" fn output(
         return;
     }
     let frame = unsafe { &*(user as *const Frame) };
-    if let Ok(mut latest) = frame.0.lock() {
+    if let Ok(mut latest) = frame.latest.lock() {
         unsafe {
             CFRetain(image);
             if *latest != 0 {
@@ -82,6 +89,7 @@ extern "C" fn output(
             }
         }
         *latest = image as usize;
+        frame.produced.fetch_add(1, Ordering::Relaxed);
     }
 }
 

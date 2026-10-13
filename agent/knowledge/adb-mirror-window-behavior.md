@@ -42,6 +42,24 @@
 - `AppToast` 通过 `OverlayEntry` 渲染在当前窗口居中位置，不依赖 `ScaffoldMessenger`，适合投屏子窗口、设置弹窗返回后的提示、拖拽安装/上传结果、截图/录屏结果、剪贴板发送失败、返回键和音量键长按提示。
 - 新增投屏提示时优先按语义选择 `AppToastType.success`、`error`、`warning`、`info`，只有需要兼容旧调用时才使用 `isError` 参数。
 
+## 沉浸式窗口控件与 Session 状态
+
+- 标题栏和右侧竖排工具栏位于视频 Texture 外部。显隐前后外层窗口与视频区域尺寸保持不变；显示时两块区域绘制 Theme surface 背景，隐藏时背景与内容一起透明，不额外保留隐藏标识条。窗口不再保留底部栏及其占位。
+- 投屏子窗口隐藏 macOS 原生关闭、最小化和最大化按钮；三个控制区与窗口 Scaffold 均使用透明背景，并将原生窗口背景设为 clear，使固定槽位可透出后方桌面。透明区域仍属于当前窗口，不提供鼠标点击穿透。
+- macOS 三个系统窗口按钮跟随标题栏显隐：标题栏出现时恢复按钮，自动隐藏时同时隐藏。右侧工具栏背景由固定槽位完整绘制，必须覆盖按钮列表上方和下方的空白区域。
+- macOS 标题栏左侧必须为原生 Traffic Light 按钮预留空间，设备名位于系统按钮右侧，窗口功能按钮保持右对齐，禁止相互覆盖。
+- 当前窗口显示 Dialog 等 ModalRoute 时，标题栏、系统窗口按钮和右侧工具栏必须保持显示，并暂停自动隐藏；弹框关闭后再恢复空闲隐藏计时。
+- 投屏处于 loading、启动失败或断开等非画面状态时，窗口恢复 Theme surface 实体背景并保持控制区显示；仅在可见投屏画面正常输出后启用外围透明与自动隐藏。
+- loading 阶段仍需构建并显示右侧工具栏，FPS 未取得有效帧样本前显示 `-- FPS`。
+- loading 阶段的内容区、标题栏和右侧工具栏必须使用同一窗口背景色：Light `#F8F9FA`、Dark `#121212`，禁止混用 `colorScheme.surface` 造成色差。
+- macOS 完全透明需要同时清除 `NSWindow.backgroundColor` 与子引擎 `FlutterViewController.backgroundColor`；只调用 `windowManager.setBackgroundColor(Colors.transparent)` 会保留 FlutterView 默认黑底。透明切换不得调用窗口定位或尺寸 API。
+- 鼠标停留在标题栏或工具栏时暂停隐藏；进入对应固定槽位时恢复显示，离开整个窗口时立即隐藏。loading、失败和断开等非活跃状态不启用自动隐藏。
+- 活跃投屏中，鼠标进入视频 Viewer 后延迟 300ms 隐藏标题栏和右侧工具栏，点击 Viewer 时立即隐藏；进入顶部或右侧固定透明槽位时重新显示。区域显隐不得改变窗口和 Viewer 尺寸。
+- 投屏时长位于标题栏刷新按钮左侧，格式为 `MM:SS`，超过一小时后切换为 `H:MM:SS`；右侧工具栏底部以两行展示 FPS，上方为 `FPS` 标签、下方为帧率数值。两者从投屏 Session 首次展示开始按秒局部刷新。
+- Android、HarmonyOS 和 AirPlay FPS 使用 Rust `Frame` 成功产出的可渲染帧累计值按秒做差；iOS USB 复用原生采集状态中的 FPS。不得使用前台 App 的 `dumpsys gfxinfo` FPS 代替投屏 FPS。
+- Rust 帧计数使用 Atomic 累加并由 Dart 低频轮询，禁止为每帧建立 MethodChannel 事件或触发顶层窗口 rebuild。控件显隐不得调整原生窗口 Frame，也不得改变 Texture 的布局尺寸和触控映射。
+- 窗口初始尺寸、横竖屏适配和拖拽缩放比例必须同时扣除右侧 32px 最窄工具栏宽度与顶部 30px 标题栏高度；缩放过程中按真实 Viewer 比例持续收敛，禁止把窗口总宽度直接作为视频宽度，否则竖屏会产生上下黑边。
+
 ## 投屏标题设备信息悬浮层
 
 - 单设备投屏入口 `openStandaloneMirrorWindow()` 优先使用 `deviceRegistryProvider` 中非空的 `customName`，未配置或清空名称时保留 `AdbDevice.displayName` 默认值（model，缺失时使用设备 ID）；按 `id`、`serial`、`connections` 匹配同一设备，覆盖 USB 与无线连接。

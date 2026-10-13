@@ -63,11 +63,6 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
         widget.deviceId,
       ).select((state) => (ready: state.ready, busy: state.busy)),
     );
-    final fps = ref.watch(
-      iosUsbFrameProvider(
-        widget.deviceId,
-      ).select((data) => (data['fps'] as num?)?.toStringAsFixed(1) ?? '-'),
-    );
     ref.listen<String?>(
       iosControlProvider(widget.deviceId).select((state) => state.error),
       (_, error) => _showError(error ?? ''),
@@ -88,13 +83,11 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {},
-      child: Row(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
                   MirrorToolbarButton(
                     icon: const Icon(CupertinoIcons.lock),
                     tooltip: context.l10n.t('iosLock'),
@@ -141,7 +134,7 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
                     onLongPress: widget.onSaveScreenshot,
                   ),
                   const SizedBox(width: 6),
-                  OutlinedButton.icon(
+                  MirrorToolbarButton(
                     key: const ValueKey('ios-control-toggle'),
                     onPressed: () => perform(
                       control.ready || control.busy ? 'stop' : 'start',
@@ -158,32 +151,16 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
                                 : Icons.touch_app_outlined,
                             size: 16,
                           ),
-                    label: Text(
-                      context.l10n.t(
-                        control.busy
-                            ? 'iosCancelControl'
-                            : control.ready
-                            ? 'iosStopControl'
-                            : 'iosStartControl',
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 30),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      visualDensity: VisualDensity.compact,
+                    tooltip: context.l10n.t(
+                      control.busy
+                          ? 'iosCancelControl'
+                          : control.ready
+                          ? 'iosStopControl'
+                          : 'iosStartControl',
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '$fps FPS',
-            key: const ValueKey('ios-mirror-fps'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
         ],
+        ),
       ),
     );
   }

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../multi_window_compat.dart';
+
 /// 处理独立投屏窗口的原生 frame 读取和宽高比适配。
 class MirrorWindowFrameAdapter {
   const MirrorWindowFrameAdapter._();
@@ -49,6 +51,10 @@ class MirrorWindowFrameAdapter {
 
     final centerX = frame.left + frame.width / 2;
     final centerY = frame.top + frame.height / 2;
+    var chromeWidth = frame.width - viewerW;
+    if (chromeWidth < 0 || chromeWidth > 120) {
+      chromeWidth = mirrorWindowSideChromeWidth;
+    }
 
     final isOldPortrait = containerRatio < 1.0;
     final isNewLandscape = aspectRatio > 1.0;
@@ -64,21 +70,21 @@ class MirrorWindowFrameAdapter {
 
     if (isOrientationSwapped) {
       var chromeHeight = frame.height - viewerH;
-      if (chromeHeight < 30 || chromeHeight > 120) {
-        chromeHeight = 58.0;
+      if (chromeHeight < 20 || chromeHeight > 120) {
+        chromeHeight = 30.0;
       }
 
       if (isOldPortrait && isNewLandscape) {
         // 竖屏转横屏：横屏内容基准宽度取原竖屏内容高度 viewerH
         final targetViewerW = viewerH;
         final targetViewerH = targetViewerW / aspectRatio;
-        newWindowW = targetViewerW;
+        newWindowW = targetViewerW + chromeWidth;
         newWindowH = targetViewerH + chromeHeight;
       } else {
         // 横屏转竖屏：竖屏内容基准高度取原横屏内容宽度 viewerW
         final targetViewerH = viewerW;
         final targetViewerW = targetViewerH * aspectRatio;
-        newWindowW = targetViewerW;
+        newWindowW = targetViewerW + chromeWidth;
         newWindowH = targetViewerH + chromeHeight;
       }
 

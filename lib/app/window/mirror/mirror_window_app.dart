@@ -17,7 +17,9 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/apps/adb_package.dart';
 import '../../../features/widgets/drag_drop_target_overlay.dart';
 import 'mirror_floating_toolbar.dart';
+import 'mirror_immersive_overlay.dart';
 import 'mirror_device_info_overlay.dart';
+import 'mirror_session_status_bar.dart';
 import 'mirror_settings_dialog.dart';
 import 'mirror_window_controller.dart';
 import 'widget/mirror_app_quick_actions_dialog.dart';
@@ -311,15 +313,12 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         : (widget.isHarmony
             ? ref.watch(activeHarmonyMirrorProvider(widget.deviceId)) != null
             : ref.watch(activeEmbeddedMirrorProvider(widget.deviceId)) != null);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final headerBgColor = isDark
-        ? Theme.of(context).cardColor
-        : const Color(0xffffffff);
-    final borderColor = isDark
-        ? const Color(0xff2d2d2d)
-        : const Color(0xffeceef1);
-
+    final isLiveMirrorVisible = isMirrorActive &&
+        !_controller.isLoading &&
+        _controller.errorMessage == null;
+    final windowBackground = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xff121212)
+        : const Color(0xfff8f9fa);
     // 根据控制器状态组装核心内容区域
     Widget contentWidget;
     //加载中
@@ -347,20 +346,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     }
     //投屏正常
     else if (isMirrorActive) {
-      contentWidget = Column(
-        children: [
-          // 非全屏状态下展示顶部浮动操作栏
-          if (!_controller.isFullScreen)
-            SizedBox(
-              width: double.infinity,
-              child: MirrorFloatingToolbar(
-                deviceId: widget.deviceId,
-                windowId: widget.windowId,
-                controller: _controller,
-              ),
-            ),
-          Expanded(
-            child: ClipRRect(
+      contentWidget = ClipRRect(
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -416,9 +402,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
       );
     }
     //停止投屏或者设备断开
@@ -430,9 +413,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     }
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xff121212)
-          : const Color(0xfff8f9fa),
+      backgroundColor: isLiveMirrorVisible
+          ? Colors.transparent
+          : windowBackground,
       body: DragDropTargetOverlay(
         // 支持将 APK 或普通文件拖拽入投屏窗口进行安装/上传
         onDragDone: (files) => _controller.handleDrop(context, files),
@@ -447,18 +430,24 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
               }
             }
           },
-          child: Column(
-            children: [
-              // 非全屏状态下渲染窗口自定义拖拽标题栏
-              if (!_controller.isFullScreen)
-                DragToMoveArea(
+          child: MirrorImmersiveOverlay(
+            autoHide: isLiveMirrorVisible,
+            viewer: contentWidget,
+            titleBar: _controller.isFullScreen
+                ? const SizedBox.shrink()
+                : DragToMoveArea(
                   child: Container(
                     height: 30,
-                    padding: EdgeInsets.only(left: Platform.isMacOS ? 80 : 16),
+                    padding: EdgeInsets.only(
+                      left: Platform.isMacOS ? 80 : 16,
+                      right: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: headerBgColor,
+                      color: windowBackground,
                       border: Border(
-                        bottom: BorderSide(color: borderColor, width: 1),
+                        bottom: BorderSide(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
                       ),
                     ),
                     child: Row(
@@ -586,6 +575,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                             ],
                           ),
                         ),
+                        if (isMirrorActive)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6),
+                            child: MirrorSessionDuration(),
+                          ),
                         // 重新连接/刷新按钮
                         MirrorToolbarButton(
                           icon: Icon(
@@ -647,8 +641,25 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                     ),
                   ),
                 ),
-              Expanded(child: contentWidget),
-            ],
+            toolbar: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: MirrorFloatingToolbar(
+                      deviceId: widget.deviceId,
+                      windowId: widget.windowId,
+                      controller: _controller,
+                    ),
+                  ),
+                  MirrorSessionFps(
+                    deviceId: widget.deviceId,
+                    isIos: isIos,
+                    isHarmony: widget.isHarmony,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

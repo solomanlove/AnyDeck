@@ -86,6 +86,11 @@ pub extern "C" fn anydeck_airplay_has_surface(id: u64) -> bool {
     get_server(id).map(|s| s.frame.has_surface()).unwrap_or(false)
 }
 
+/// 返回 AirPlay 会话累计产出的可渲染帧数。
+pub fn anydeck_airplay_decoded_frames(id: u64) -> u64 {
+    get_server(id).map(|s| s.frame.produced()).unwrap_or(0)
+}
+
 /// 读取当前投屏分辨率宽度和高度
 #[no_mangle]
 pub unsafe extern "C" fn anydeck_airplay_get_dimensions(

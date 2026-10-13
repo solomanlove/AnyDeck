@@ -66,6 +66,10 @@ class RustDeviceBridge {
       .lookupFunction<Uint64 Function(Uint64), int Function(int)>(
         'anydeck_video_size',
       );
+  late final decodedFrames = library
+      .lookupFunction<Uint64 Function(Uint64), int Function(int)>(
+        'anydeck_decoded_frames',
+      );
   late final _startMirror = library
       .lookupFunction<
         Uint64 Function(Pointer<Uint8>, Int32, Uint8),

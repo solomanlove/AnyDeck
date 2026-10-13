@@ -42,21 +42,23 @@ void main() {
       final size = resolveMirrorInitialWindowSize('1080x2400');
       expect(size.height, 800.0);
       final viewerHeight = size.height - mirrorWindowTopChromeHeight;
-      expect(viewerHeight, 742.0);
-      expect(size.width, closeTo(742.0 * 0.45, 0.01));
+      expect(viewerHeight, 770.0);
+      final viewerWidth = size.width - mirrorWindowSideChromeWidth;
+      expect(viewerWidth, closeTo(770.0 * 0.45, 0.01));
     });
 
     test('横屏设备按宽度 800 基准计算，具有舒适视野并贴合比例', () {
       // 2400x1080 (ratio = 2400/1080 ≈ 2.2222)
       final size = resolveMirrorInitialWindowSize('2400x1080');
-      expect(size.width, 800.0);
+      final viewerWidth = size.width - mirrorWindowSideChromeWidth;
+      expect(viewerWidth, 800.0);
       final viewerHeight = size.height - mirrorWindowTopChromeHeight;
-      expect(size.width / viewerHeight, closeTo(2400 / 1080, 0.01));
+      expect(viewerWidth / viewerHeight, closeTo(2400 / 1080, 0.01));
     });
 
     test('直接指定 ratio 参数优先于 resolution 字符串', () {
       final size = resolveMirrorInitialWindowSize('1080x1920', ratio: 2.0);
-      expect(size.width, 800.0);
+      expect(size.width, 800.0 + mirrorWindowSideChromeWidth);
       expect(size.height, 800.0 / 2.0 + mirrorWindowTopChromeHeight);
     });
 
@@ -70,7 +72,7 @@ void main() {
   group('MirrorWindowFrameAdapter 横竖屏目标尺寸测试', () {
     test('竖屏转横屏时，窗口中心坐标保持不变', () {
       // 原窗口：left=200, top=100, width=400, height=800
-      // 顶部工具栏高度 58，内容区域 viewerW=400, viewerH=742
+      // 标题栏高度 30，内容区域 viewerW=400, viewerH=770
       const oldFrame = Rect.fromLTWH(200, 100, 400, 800);
       final origCenterX = oldFrame.left + oldFrame.width / 2; // 400
       final origCenterY = oldFrame.top + oldFrame.height / 2; // 500
@@ -80,7 +82,7 @@ void main() {
         frame: oldFrame,
         aspectRatio: 2.0,
         viewerW: 400,
-        viewerH: 742,
+        viewerH: 770,
       );
 
       expect(newFrame, isNotNull);
@@ -90,16 +92,16 @@ void main() {
       expect(newCenterX, closeTo(origCenterX, 0.001));
       expect(newCenterY, closeTo(origCenterY, 0.001));
 
-      // 验证新宽度以竖屏高度 viewerH=742 为基准
-      expect(newFrame.width, 742.0);
-      // 验证新高度包含顶部栏 58
-      final newViewerH = newFrame.height - 58.0;
+      // 验证新宽度以竖屏高度 viewerH=770 为基准
+      expect(newFrame.width, 770.0);
+      // 验证新高度包含标题栏
+      final newViewerH = newFrame.height - mirrorWindowTopChromeHeight;
       expect(newFrame.width / newViewerH, closeTo(2.0, 0.001));
     });
 
     test('横屏转竖屏时，窗口中心坐标保持不变', () {
-      // 原横屏窗口：left=300, top=200, width=742, height=429 (viewerW=742, viewerH=371)
-      const oldFrame = Rect.fromLTWH(300, 200, 742, 429);
+      // 原横屏窗口：left=300, top=200, width=742, height=401 (viewerW=742, viewerH=371)
+      const oldFrame = Rect.fromLTWH(300, 200, 742, 401);
       final origCenterX = oldFrame.left + oldFrame.width / 2;
       final origCenterY = oldFrame.top + oldFrame.height / 2;
 
@@ -118,9 +120,25 @@ void main() {
       expect(newCenterY, closeTo(origCenterY, 0.001));
 
       // 竖屏基准高度以横屏宽度 viewerW=742 为基准
-      final newViewerH = newFrame.height - 58.0;
+      final newViewerH = newFrame.height - mirrorWindowTopChromeHeight;
       expect(newViewerH, 742.0);
       expect(newFrame.width, closeTo(742.0 * 0.5, 0.001));
+    });
+
+    test('横竖屏适配保留右侧工具栏宽度', () {
+      const oldFrame = Rect.fromLTWH(300, 100, 366, 800);
+      final newFrame = MirrorWindowFrameAdapter.calculateFittedFrame(
+        frame: oldFrame,
+        aspectRatio: 2.0,
+        viewerW: 334,
+        viewerH: 770,
+      );
+
+      expect(newFrame, isNotNull);
+      final viewerWidth = newFrame!.width - mirrorWindowSideChromeWidth;
+      final viewerHeight = newFrame.height - mirrorWindowTopChromeHeight;
+      expect(viewerWidth / viewerHeight, closeTo(2.0, 0.001));
+      expect(newFrame.width - viewerWidth, mirrorWindowSideChromeWidth);
     });
 
     test('同方向微调时以中心点进行黑边收敛', () {

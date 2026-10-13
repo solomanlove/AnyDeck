@@ -168,8 +168,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
       behavior: HitTestBehavior.opaque,
       onTap: () {}, // 吸收点击事件，防止穿透
       child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
+        scrollDirection: Axis.vertical,
+        child: Column(
           children: [
             // Group 1: 电源, 设备屏幕
             MirrorToolbarButton(
@@ -463,7 +463,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             ),
             if (recordState.isRecording) ...[
               Padding(
-                padding: const EdgeInsets.only(left: 4, right: 8),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Text(
                   _formatDuration(recordState.durationSeconds),
                   style: const TextStyle(

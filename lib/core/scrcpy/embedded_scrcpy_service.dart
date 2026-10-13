@@ -59,6 +59,12 @@ class EmbeddedScrcpyService {
     return {'width': width, 'height': height};
   }
 
+  /// 获取累计解码帧数，UI 仅需低频做差，不订阅每帧事件。
+  int? getDecodedFrames(String deviceId) {
+    final session = _sessions[deviceId];
+    return session == null ? null : _bridge.decodedFrames(session.rustHandle);
+  }
+
   /// 向指定设备的 control socket 发送控制二进制报文。
   Future<bool> sendControl({
     required String deviceId,
