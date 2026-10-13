@@ -117,9 +117,7 @@ Future<WindowController> createAdbManageWindow({
                   windowArgs['startApp'] == arguments['startApp']) {
                 try {
                   if (type == 'mirror') {
-                    final ready = await window
-                        .invokeMethod<bool>('isFlutterReady')
-                        .timeout(const Duration(milliseconds: 800));
+                    final ready = await _waitForMirrorWindowReady(window);
                     if (ready != true) {
                       throw StateError('Mirror window is not ready');
                     }
@@ -134,11 +132,13 @@ Future<WindowController> createAdbManageWindow({
                   await window.show();
                   return window;
                 } catch (e) {
-                  debugPrint('Failed to show existing window, falling back to create: $e');
+                  debugPrint('Failed to reuse existing window: $e');
                   if (type == 'mirror') {
                     try {
-                      await window.hide();
+                      await window.show();
                     } catch (_) {}
+                    // 初始化或切源失败时保留同设备窗口，防止多个采集会话争用。
+                    return window;
                   }
                   break;
                 }
@@ -180,6 +180,24 @@ Future<WindowController> createAdbManageWindow({
     } catch (_) {}
   }
   return controller;
+}
+
+/// 有界等待子窗口完成 Channel 注册，覆盖 macOS Engine 初始化抖动。
+Future<bool> _waitForMirrorWindowReady(WindowController window) async {
+  for (var attempt = 0; attempt < 5; attempt++) {
+    try {
+      final ready = await window
+          .invokeMethod<bool>('isFlutterReady')
+          .timeout(const Duration(milliseconds: 500));
+      if (ready == true) {
+        return true;
+      }
+    } catch (_) {}
+    if (attempt < 4) {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
+  }
+  return false;
 }
 
 /// 在子窗口自己的 Isolate 内应用初始尺寸、位置与标题。

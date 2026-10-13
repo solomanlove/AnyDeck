@@ -26,12 +26,28 @@ void main() {
         expect((await host.execute('phone', 'start', {}))['ready'], true);
         await host.execute('phone', 'geometry', {});
         await host.execute('phone', 'tap', {'x': 100, 'y': 200});
+        await host.execute('phone', 'button', {'name': 'volumeUp'});
+        await host.execute('phone', 'button', {'name': 'volumeDown'});
+        await host.execute('phone', 'button', {'name': 'home'});
         await host.execute('phone', 'stop', {});
       }
       final calls = (await File(
         '${dir.path}/ios.calls',
       ).readAsLines()).map((line) => jsonDecode(line) as Map).toList();
       expect(calls.where((c) => c['args'][0] == 'runwda'), isEmpty);
+      final payloads = (await File('${dir.path}/ios.payloads').readAsLines())
+          .map((line) => jsonDecode(line) as Map).toList();
+      final volume = payloads.where(
+        (call) => call['path'] == '/session/phone/wda/performIoHidEvent',
+      ).toList();
+      expect(volume.map((call) => call['body']), [
+        for (var i = 0; i < 2; i++) ...[
+          {'page': 12, 'usage': 233, 'duration': 0.1},
+          {'page': 12, 'usage': 234, 'duration': 0.1},
+        ],
+      ]);
+      expect(payloads.where((call) => call['path'] == '/wda/homescreen'),
+          hasLength(2));
       final proxies = calls.where((c) => c['args'][0] == '--source');
       expect(proxies, hasLength(2));
       for (final proxy in proxies) {

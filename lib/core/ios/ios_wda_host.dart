@@ -113,10 +113,25 @@ class IosWdaHost {
           );
         case 'button':
           final name = args['name'] as String;
+          // 音量采用 Consumer IOHID 短按，明确指定硬件 usage 和按压时长。
+          // Home 继续使用已有 homescreen 路由。
+          final volumeUsage = switch (name) {
+            'volumeUp' => 0xE9,
+            'volumeDown' => 0xEA,
+            _ => null,
+          };
           await http.request(
-            name == 'home' ? '/wda/homescreen' : http.path('/wda/pressButton'),
+            name == 'home'
+                ? '/wda/homescreen'
+                : http.path(volumeUsage == null
+                    ? '/wda/pressButton'
+                    : '/wda/performIoHidEvent'),
             method: 'POST',
-            body: name == 'home' ? null : {'name': name},
+            body: name == 'home'
+                ? null
+                : volumeUsage == null
+                    ? {'name': name}
+                    : {'page': 0x0C, 'usage': volumeUsage, 'duration': 0.1},
           );
         case 'lock':
           await http.request('/wda/lock', method: 'POST');

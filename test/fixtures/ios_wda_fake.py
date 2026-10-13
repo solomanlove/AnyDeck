@@ -39,7 +39,10 @@ else:
             self.respond()
 
         def respond(self):
-            self.rfile.read(int(self.headers.get('Content-Length', 0)))
+            body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+            with open(Path(__file__).with_suffix('.payloads'), 'a') as payloads:
+                payloads.write(json.dumps({'path': self.path,
+                                           'body': json.loads(body) if body else None}) + '\n')
             with open(Path(__file__).with_suffix('.requests'), 'a') as requests:
                 requests.write(self.path + '\n')
             # 测试可模拟丢失单次响应、持续无响应或 Session 失效。

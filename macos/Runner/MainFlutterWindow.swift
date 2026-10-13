@@ -8,6 +8,13 @@ class MainFlutterWindow: NSWindow {
   private var screenChangeDebounceWorkItem: DispatchWorkItem?
 
   override func awakeFromNib() {
+    // 在 Flutter Engine/插件访问 AVFoundation 前开放 iPhone 屏幕采集设备。
+    // 延迟到投屏启动时才开放，可能使进程缓存不含 iPhone 的设备列表。
+    do {
+      try IosUsbCapture.enableDevices()
+    } catch {
+      NSLog("[IosUsbCapture] Failed to enable screen devices before Flutter startup: \(error)")
+    }
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
     self.contentViewController = flutterViewController

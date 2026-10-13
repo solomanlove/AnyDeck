@@ -5,7 +5,7 @@
 ## USB 与 Wi-Fi 共用投屏窗口
 
 - iOS 投屏统一使用 `MirrorWindowApp`。USB 画面是主窗口来源，AirPlay 建立后通过子窗口 MethodChannel 将同一个窗口切换为 Wi-Fi Texture，不再创建 `airplay_mirror` 专用窗口。
-- 标题必须明确显示 `USB 原生视频` 或 `Wi-Fi AirPlay`，避免用户混淆当前视频来源。
+- 标题必须明确显示 `USB` 或 `Wi-Fi AirPlay`，避免用户混淆当前视频来源。
 - AirPlay 模式复用 USB 窗口已有的 iOS/WDA 工具栏，并承接置顶、恢复比例、全屏和停止 AirPlay 操作。AirPlay 停止或会话断开后，有有效 USB 会话时切回 USB 画面。
 - AirPlay Bonjour 只发布到具备可路由 IPv4 的 LAN interface，排除 loopback、`utun` 与 `169.254/16` USB link-local。否则 USB 同时连接时，iPhone 可能经 USB 接入并在首帧后因 UDP NTP `No route to host` 终止镜像流。
 - 视频区域按照原始宽高比计算窗口客户区尺寸，窗口比例包含 30px 标题栏和 28px iOS 工具栏，避免因工具栏占用空间而产生上下黑边。
@@ -14,7 +14,17 @@
 - 同一 iOS 设备已存在投屏窗口时，`createAdbManageWindow` 使用 `switchIosMirrorSource` 更新该窗口；AirPlay 自动入口优先绑定当前在线 USB iOS 设备，没有 USB 设备时才回退到在线 iOS 设备。
 - 自动化测试、静态分析和 macOS 构建只能证明代码链路可编译；USB/AirPlay 实际切换、旋转后窗口贴合和触控映射仍须真机验收。
 
+## iOS 音量按钮与 USB 文案
+
+- USB 投屏标题来源文案统一为 `USB`，Wi-Fi 来源仍显示 `Wi-Fi AirPlay`。
+- iOS 工具栏音量增减通过 WDA `/session/{id}/wda/performIoHidEvent` 发送 Consumer page `0x0C`、usage `0xE9/0xEA`、0.1 秒短按，Home 保留 `/wda/homescreen`。
+- 已连接 iPhone 6s 的原 `pressButton` 和 IOHID 路由都返回成功，尚不能据此证明手机实际音量变化；自动回归检查上下行 usage、时长及 Home 路由。
+
 ## USB 采集已识别设备但无首帧
+
+- macOS 主窗口创建 Flutter Engine 前先调用 `IosUsbCapture.enableDevices()`，避免插件首次访问 AVFoundation 时尚未开放 iPhone muxed 屏幕设备；这属于发现时序修正，不能据此宣称所有 0 帧问题已修复。
+- 同设备已有投屏窗口时，Channel readiness 采用有界重试；即便初始化失败，也保留已有窗口，避免超时后再创建多个采集窗口。USB/AirPlay 切源失败会记录日志，后续可重试。
+- 2026-10-13 复测：USB 配对查询 `TrustedHostAttached=true`，独立采集能枚举 iPhone，但退出 AnyDeck 后仍为 `waitingFirstFrameAfterRecovery`、0 帧。用户确认解锁亮屏且重新拔插后，独立采集又报 `iosUsbDeviceMissing`；系统日志出现 `StartStream throwing valeria connection not seen`，视频通道仍未恢复，不能将编译通过当作真机修复成功。
 
 - `iosUsbFirstFrameTimeout` 不等于设备未解锁。先检查错误详情中的 `usbSerials`、`devices`、`cameraAuthorization`、`stage` 和 `frames`；物理 serial 与唯一 Apple muxed 设备均存在且权限已授权时，说明设备选择成功。
 - 旧 iPhone 可能出现 `AVCaptureSession.startRunning()` 返回、状态停在 `waitingFirstFrame`、`frames=0` 的情况。采集器等待 6 秒后只执行一次 session 销毁、设备重新枚举和 session 重建，禁止无限重试或积累采集会话。
