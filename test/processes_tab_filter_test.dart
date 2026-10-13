@@ -4,6 +4,7 @@ import 'package:any_deck/core/adb/adb_device.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
+import 'package:any_deck/core/apps/app_management_service.dart';
 import 'package:any_deck/core/process/process_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/processes/processes_tab.dart';
@@ -208,5 +209,77 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('筛选 debug 应用'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('process row reuses cached app metadata', (
+    WidgetTester tester,
+  ) async {
+    const device = AdbDevice(
+      id: 'test-device',
+      status: 'device',
+      model: 'Test Device',
+      product: 'test',
+      transportId: '1',
+    );
+    final appService = AppManagementService(_DummyAdbService());
+    appService.memoryCache['cached-device'] = [
+      const AdbPackage(name: 'com.example.chat', label: '示例聊天'),
+    ];
+    final process = AdbProcess(
+      pid: '2200',
+      user: 'u0_a331',
+      cpu: '3.2',
+      memory: '39M',
+      cpuTime: '0:10.21',
+      name: 'com.example.chat:push',
+    );
+
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          deviceOnlineProvider(device.id).overrideWithValue(true),
+          processesProvider(
+            device.id,
+          ).overrideWith((ref) => Future.value([process])),
+          packagesProvider(device.id).overrideWith(
+            () => _FixedPackagesNotifier(
+              packages: const [AdbPackage(name: 'com.example.chat')],
+            ),
+          ),
+          packageMetadataResolverProvider.overrideWithValue(
+            PackageMetadataResolver(appService),
+          ),
+          processServiceProvider.overrideWithValue(
+            ProcessService(_DummyAdbService()),
+          ),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light),
+          locale: Locale('zh'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          home: Scaffold(
+            body: ProcessesTab(device: device, isVisible: false),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('示例聊天:push'), findsOneWidget);
+    expect(find.text('com.example.chat:push'), findsOneWidget);
   });
 }

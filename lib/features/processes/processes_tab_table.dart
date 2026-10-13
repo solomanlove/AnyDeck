@@ -48,7 +48,7 @@ class _ProcessTableWidths {
   double get total => name + cpu + time + memory + pid + user;
 }
 
-class _ProcessTable extends StatefulWidget {
+class _ProcessTable extends ConsumerStatefulWidget {
   final String deviceId;
   final List<AdbProcess> processes;
   final List<AdbPackage> packages;
@@ -74,10 +74,10 @@ class _ProcessTable extends StatefulWidget {
   });
 
   @override
-  State<_ProcessTable> createState() => _ProcessTableState();
+  ConsumerState<_ProcessTable> createState() => _ProcessTableState();
 }
 
-class _ProcessTableState extends State<_ProcessTable> {
+class _ProcessTableState extends ConsumerState<_ProcessTable> {
   final ScrollController _horizontalController = ScrollController();
   final ScrollController _verticalController = ScrollController();
 
@@ -90,6 +90,8 @@ class _ProcessTableState extends State<_ProcessTable> {
 
   @override
   Widget build(BuildContext context) {
+    // 应用元数据可能由历史缓存异步补齐，版本变化时刷新可见进程的名称与图标。
+    ref.watch(packageMetadataRevisionProvider);
     final tableWidth = max(
       widget.widths.total,
       MediaQuery.of(context).size.width,
@@ -191,10 +193,17 @@ class _ProcessTableState extends State<_ProcessTable> {
         ? process.name.split(':').first
         : process.name;
 
-    final matchedPackage = widget.packages.firstWhere(
+    final basePackageInfo = widget.packages.firstWhere(
       (pkg) => pkg.name == basePackage,
-      orElse: () => AdbPackage(name: '', system: false, enabled: true),
+      orElse: () => AdbPackage(name: basePackage),
     );
+    final matchedPackage = ref
+        .read(packageMetadataResolverProvider)
+        .resolve(basePackageInfo, preferredDeviceId: widget.deviceId);
+    final iconPath = matchedPackage.iconLocalPath;
+    final hasIcon = iconPath != null && File(iconPath).existsSync();
+    final hasLabel = matchedPackage.label?.trim().isNotEmpty ?? false;
+    final hasAppMetadata = hasIcon || hasLabel;
 
     // Row alternating background
     final Color? rowColor = isSelected
@@ -234,12 +243,9 @@ class _ProcessTableState extends State<_ProcessTable> {
                       width: 28,
                       height: 28,
                       color: Colors.transparent,
-                      child:
-                          matchedPackage.name.isNotEmpty &&
-                              matchedPackage.iconLocalPath != null &&
-                              File(matchedPackage.iconLocalPath!).existsSync()
+                      child: hasIcon
                           ? Image.file(
-                              File(matchedPackage.iconLocalPath!),
+                              File(iconPath),
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) =>
                                   _buildFallbackIcon(matchedPackage),
@@ -254,13 +260,13 @@ class _ProcessTableState extends State<_ProcessTable> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          matchedPackage.name.isNotEmpty
+                          hasLabel
                               ? (process.name.contains(':')
                                     ? '${matchedPackage.displayName}:${process.name.split(':').sublist(1).join(':')}'
                                     : matchedPackage.displayName)
                               : process.name,
                           style: TextStyle(
-                            fontWeight: matchedPackage.name.isNotEmpty
+                            fontWeight: hasAppMetadata
                                 ? FontWeight.bold
                                 : FontWeight.normal,
                             fontSize: 13,
@@ -268,7 +274,7 @@ class _ProcessTableState extends State<_ProcessTable> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (matchedPackage.name.isNotEmpty) ...[
+                        if (hasAppMetadata) ...[
                           const SizedBox(height: 2),
                           Text(
                             process.name,

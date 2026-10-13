@@ -221,7 +221,11 @@
 2. **文本表格解析器**：
    - 根据返回的首行属性表头（PID、USER、RES/RSS、CPU、TIME、ARGS 等）所在的索引位置，动态定位数据列，避免在不同 ROM（其 top 格式可能有微小偏差）上发生错位。
    - 剔除 PID 非纯数字的噪音数据。
-3. **右键进程操作**：
+3. **应用名称与图标复用**：
+   - 进程名先按第一个 `:` 提取主 package，例如 `com.tencent.mm:push` 归属 `com.tencent.mm`；展示时使用“应用名:子进程后缀”，第二行保留原始进程名。
+   - 进程表与应用 Tab 共用 `PackageMetadataResolver`，优先读取当前设备元数据，缺失时复用全局内存、历史 `SharedPreferences` 和本地图标缓存；缓存异步预热完成后通过 `packageMetadataRevisionProvider` 刷新可见行。
+   - 不为 3 秒进程轮询新增图标提取或 ADB package 查询，未命中应用元数据的 native/system 进程继续显示原始进程名和语义占位 icon。
+4. **右键进程操作**：
    - 在进程行的 `onSecondaryTapDown` 中使用全局指针坐标打开 context menu，并将右键目标作为后续确认与执行的唯一对象，避免自动刷新或旧选中态导致停止错误 PID。
    - “复制进程名”通过 `Clipboard.setData` 写入 `AdbProcess.name` 原始值，并复用 Dashboard 全局轻提示反馈复制结果。
    - 对符合包名格式的应用进程，优先执行 `adb shell am force-stop <package>`；命令失败或目标不是应用包时，回退到 `adb shell kill -9 <pid>`。
