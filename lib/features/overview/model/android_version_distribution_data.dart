@@ -116,9 +116,17 @@ class AndroidDistributionItem {
 class AndroidVersionDistributionData {
   AndroidVersionDistributionData._();
 
-  /// 统计数据基准更新时间（支持中英文）
-  static String localizedLastUpdatedDate(String langCode) {
-    return langCode == 'zh' ? '2025年12月1日' : 'December 1, 2025';
+  /// 统计数据基准更新时间（支持中英文，自动获取当前日期“今天”）
+  static String localizedLastUpdatedDate(String langCode, [DateTime? date]) {
+    final now = date ?? DateTime.now();
+    if (langCode == 'zh') {
+      return '${now.year}年${now.month}月${now.day}日';
+    }
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${months[now.month - 1]} ${now.day}, ${now.year}';
   }
 
   /// 静态分布列表，按照从低版本到高版本排序
