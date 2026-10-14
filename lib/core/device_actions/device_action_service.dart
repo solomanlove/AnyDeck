@@ -392,7 +392,7 @@ class DeviceActionService {
     final target = useMax
         ? await _readMediaSessionMaxVolume(deviceId)
         : 0;
-    return _adb.shellArgs(deviceId, [
+    final result = await _adb.shellArgs(deviceId, [
       'cmd',
       'media_session',
       'volume',
@@ -401,6 +401,12 @@ class DeviceActionService {
       '--set',
       '$target',
     ]);
+    return _verifyMediaVolumeBoundary(
+      deviceId,
+      result,
+      useMax: useMax,
+      commandPrefix: const ['cmd', 'media_session', 'volume'],
+    );
   }
 
   Future<int> _readMediaSessionMaxVolume(String deviceId) async {
@@ -420,7 +426,7 @@ class DeviceActionService {
     required bool useMax,
   }) async {
     final target = useMax ? await _readMediaCommandMaxVolume(deviceId) : 0;
-    return _adb.shellArgs(deviceId, [
+    final result = await _adb.shellArgs(deviceId, [
       'media',
       'volume',
       '--stream',
@@ -428,6 +434,12 @@ class DeviceActionService {
       '--set',
       '$target',
     ]);
+    return _verifyMediaVolumeBoundary(
+      deviceId,
+      result,
+      useMax: useMax,
+      commandPrefix: const ['media', 'volume'],
+    );
   }
 
   Future<int> _readMediaCommandMaxVolume(String deviceId) async {
@@ -492,6 +504,44 @@ class DeviceActionService {
     return values.last;
   }
 
+  /// 部分 ROM 会让音量命令返回 0 但不生效，必须回读当前值再决定是否成功。
+  Future<AdbResult> _verifyMediaVolumeBoundary(
+    String deviceId,
+    AdbResult setResult, {
+    required bool useMax,
+    required List<String> commandPrefix,
+  }) async {
+    if (!_isAudioCommandSuccess(setResult)) return setResult;
+    final verifyResult = await _adb.shellArgs(deviceId, [
+      ...commandPrefix,
+      '--stream',
+      '$_streamMusic',
+      '--get',
+    ]);
+    if (!_isAudioCommandSuccess(verifyResult)) return verifyResult;
+
+    final match = RegExp(
+      r'volume\s+is\s+(-?\d+)\s+in\s+range\s+\[\s*(-?\d+)\s*\.\.\s*(-?\d+)\s*\]',
+      caseSensitive: false,
+    ).firstMatch(verifyResult.stdout);
+    final current = int.tryParse(match?.group(1) ?? '');
+    final min = int.tryParse(match?.group(2) ?? '');
+    final max = int.tryParse(match?.group(3) ?? '');
+    final reached =
+        current != null &&
+        min != null &&
+        max != null &&
+        (useMax ? current >= max : current <= min);
+    if (reached) return setResult;
+
+    final boundary = useMax ? '最大' : '最小';
+    return AdbResult(
+      exitCode: 1,
+      stdout: verifyResult.stdout,
+      stderr: '音量命令返回成功，但回读值未达到$boundary边界',
+    );
+  }
+
   bool _isAudioCommandSuccess(AdbResult result) {
     if (!result.isSuccess) return false;
     final message = '${result.stdout}\n${result.stderr}'.toLowerCase();
@@ -502,25 +552,19 @@ class DeviceActionService {
   }
 
   Future<AdbResult> _fallbackVolumeMax(String deviceId) async {
-    AdbResult? lastResult;
-    for (var i = 0; i < 30; i += 1) {
-      lastResult = await volumeUp(deviceId);
-      if (!lastResult.isSuccess) {
-        return lastResult;
-      }
-    }
-    return lastResult ?? const AdbResult(exitCode: 1, stdout: '', stderr: '');
+    return _adb.shellArgs(deviceId, [
+      'input',
+      'keyevent',
+      ...List.filled(30, 'KEYCODE_VOLUME_UP'),
+    ]);
   }
 
   Future<AdbResult> _fallbackVolumeMute(String deviceId) async {
-    AdbResult? lastResult;
-    for (var i = 0; i < 30; i += 1) {
-      lastResult = await volumeDown(deviceId);
-      if (!lastResult.isSuccess) {
-        return lastResult;
-      }
-    }
-    return lastResult ?? const AdbResult(exitCode: 1, stdout: '', stderr: '');
+    return _adb.shellArgs(deviceId, [
+      'input',
+      'keyevent',
+      ...List.filled(30, 'KEYCODE_VOLUME_DOWN'),
+    ]);
   }
 
   /// 模拟菜单键。
