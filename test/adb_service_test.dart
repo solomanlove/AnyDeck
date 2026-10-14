@@ -51,6 +51,20 @@ adb-6618d198-XEvEat (2)._adb-tls-connect._tcp device product:pudding model:25113
     expect(devices[1].model, '25113PN0EC');
   });
 
+  test('filters adb placeholder ids without a serial number', () async {
+    const output = '''
+List of devices attached
+(no serial number) device usb:1-1
+???????????? no permissions (missing udev rules?)
+valid-device device product:pudding model:25113PN0EC transport_id:13
+''';
+
+    final devices = await FakeAdbService(output).listDevices();
+
+    expect(devices, hasLength(1));
+    expect(devices.single.id, 'valid-device');
+  });
+
   group('AdbService.sanitizePngBytes', () {
     const pngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     const iendChunk = [

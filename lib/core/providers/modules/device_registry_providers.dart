@@ -204,6 +204,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   List<RegisteredDevice> _mergeDevices(List<AdbDevice> activeDevices) {
     final activeMap = <String, AdbDevice>{};
     for (final device in activeDevices) {
+      if (!AdbDevice.hasUsableId(device.id)) continue;
       final existing = activeMap[device.id];
       if (existing == null ||
           (device.isOnline && !existing.isOnline) ||

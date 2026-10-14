@@ -91,4 +91,10 @@ HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The
 
 2026-10-06 真机只读查询确认该 iPhone 6s 报告 `ConnectionType: Network`。解析与注册表测试覆盖双通道、网络转 USB、离线清理和 UDID 不变；`ios_connection_indicators_test.dart` 覆盖中英文、明暗主题下的网络/USB/双通道/未知/离线图标。Rust `ios_discovery_preserves_connection_types` 验证 FFI 序列化保留通道、过滤日志。未启动桌面应用；实际 USB 插拔与侧栏渲染待手工验收。
 
+### 2.7 无序列号占位设备清理
+
+部分 USB 枚举异常会让 `adb devices -l` 返回 `(no serial number)` 或全问号占位 ID。此类值不能用于 `adb -s <id>` 路由，也不能作为真实设备写入 `devices.history`。`AdbDevice.hasUsableId()` 统一识别空值、`unknown`、`-`、`no serial number`、`(no serial number)` 和全问号 ID；`AdbService` 在解析设备列表时直接丢弃，`DeviceRegistryNotifier` 在合并前再次过滤。
+
+历史版本已经持久化的占位记录由 `DeviceRegistryStorage.loadFromPrefs()` 自动移除，同时清理别名、型号、产品、IP、系统版本、SDK、备注、标签和 `devices.overview.<id>` 缓存。该清理只针对明确无效的占位 ID，不影响包含空格的合法 mDNS route；无需用户手动删除，重新加载设备注册表后异常行自动消失。
+
 验证结果：31 项 Flutter 定向回归与 1 项 Rust 测试通过，12 个相关 Dart 文件定向静态分析无问题。

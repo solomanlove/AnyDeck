@@ -34,7 +34,7 @@ class DeviceRegistryPrefsData {
 /// 设备注册表持久化与历史脏数据清洗存储服务。
 ///
 /// 负责 SharedPreferences 的读写、历史因 ADB track-devices 协议解析产生的十六进制包头清洗、
-/// iOS 截断 8 位 UDID 恢复合并以及鸿蒙占位型号过滤。
+/// iOS 截断 8 位 UDID 恢复合并、无效设备 ID 以及鸿蒙占位型号过滤。
 class DeviceRegistryStorage {
   static const _historyKey = 'devices.history';
   static const _aliasesKey = 'devices.aliases';
@@ -181,8 +181,27 @@ class DeviceRegistryStorage {
       return current;
     }
 
-    final cleanedHistory = <String>[];
     bool historyPolluted = false;
+    final invalidHistoryIds = history
+        .where((id) => !AdbDevice.hasUsableId(id))
+        .toList(growable: false);
+    if (invalidHistoryIds.isNotEmpty) {
+      historyPolluted = true;
+      history.removeWhere(invalidHistoryIds.contains);
+      for (final id in invalidHistoryIds) {
+        aliases.remove(id);
+        models.remove(id);
+        products.remove(id);
+        ips.remove(id);
+        androidVersions.remove(id);
+        sdkVersions.remove(id);
+        remarks.remove(id);
+        tags.remove(id);
+        await prefs.remove('devices.overview.$id');
+      }
+    }
+
+    final cleanedHistory = <String>[];
     for (final id in history) {
       final realId = stripHexPrefix(id);
       if (realId != id) {
@@ -284,8 +303,15 @@ class DeviceRegistryStorage {
       await prefs.setStringList(_historyKey, cleanedHistory);
       await prefs.setString(_remarksKey, jsonEncode(remarks));
       await prefs.setString(_tagsKey, jsonEncode(tags));
+      await prefs.setString(_aliasesKey, jsonEncode(aliases));
       await prefs.setString(_modelsKey, jsonEncode(models));
       await prefs.setString(_productsKey, jsonEncode(products));
+      await prefs.setString(_ipsKey, jsonEncode(ips));
+      await prefs.setString(
+        _androidVersionsKey,
+        jsonEncode(androidVersions),
+      );
+      await prefs.setString(_sdkVersionsKey, jsonEncode(sdkVersions));
     }
 
     // 加载缓存的序列号映射

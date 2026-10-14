@@ -126,15 +126,17 @@ class AdbService {
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
         .map(_parseDeviceLine)
+        .whereType<AdbDevice>()
         .toList(growable: false);
   }
 
   /// 解析单行 adb 设备信息，并保留可选的 key:value 属性。
   AdbDevice? parseDeviceLine(String line) => _parseDeviceLine(line);
 
-  AdbDevice _parseDeviceLine(String line) {
+  AdbDevice? _parseDeviceLine(String line) {
     final match = _deviceLinePattern.firstMatch(line);
     final id = match?.group(1) ?? line.split(RegExp(r'\s+')).first;
+    if (!AdbDevice.hasUsableId(id)) return null;
     final status = match?.group(2) ?? 'unknown';
     final attributesText = match?.group(3) ?? '';
     final parts = attributesText.split(RegExp(r'\s+'));
