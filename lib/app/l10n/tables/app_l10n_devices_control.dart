@@ -80,7 +80,7 @@ const devicesControlZh = {
   'pairingCode': '配对码',
   'scanningDevices': '正在扫描设备',
   'adbUnavailable': 'ADB 不可用',
-  'noDevices': '未发现 Android 设备',
+  'noDevices': '未发现任何设备',
   'connectUsbOrTcp': '请连接 USB 设备或使用 无线连接。',
   'connectDevice': '连接设备',
   'tcpipAddressLabel': '设备 IP 地址与端口',
