@@ -64,7 +64,7 @@ extension PlatformDistributionTypeExt on PlatformDistributionType {
   String get flagNoticeZh {
     switch (this) {
       case PlatformDistributionType.android:
-        return '示意数据 · 正式版需切 Play Console 自有数据';
+        return '';
       case PlatformDistributionType.harmony:
         return '华为官网存量 API 占比 · 约 15 天更新';
       case PlatformDistributionType.ios:
@@ -76,7 +76,7 @@ extension PlatformDistributionTypeExt on PlatformDistributionType {
   String get flagNoticeEn {
     switch (this) {
       case PlatformDistributionType.android:
-        return 'Sample data · Switch to Play Console for production';
+        return '';
       case PlatformDistributionType.harmony:
         return 'Huawei official API share · Updated every ~15 days';
       case PlatformDistributionType.ios:

@@ -221,8 +221,9 @@ class _PlatformVersionDistributionShellViewState
                   fontSize: 12,
                 ),
               ),
-              const SizedBox(width: 10),
-              Container(
+              if(flagNotice.isNotEmpty) const SizedBox(width: 10),
+              if(flagNotice.isNotEmpty)
+                Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: const Color(0xFFB06000).withValues(alpha: 0.1),

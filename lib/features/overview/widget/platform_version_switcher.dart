@@ -202,13 +202,17 @@ class _HoverablePlatformItemState extends State<_HoverablePlatformItem> {
 
   /// 绘制各平台图标：直接复用项目中现成的 Android、华为与 Apple Logo
   Widget _buildPlatformIcon(PlatformDistributionType platform) {
+    final theme = Theme.of(context);
+    final color = widget.isSelected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
+
     switch (platform) {
       case PlatformDistributionType.android:
-        return Image.asset(
-          AppIcons.androidDefaultAppIcon,
-          width: 15,
-          height: 15,
-          fit: BoxFit.contain,
+        return Icon(
+          Icons.android_rounded,
+          size: 15,
+          color: color,
         );
       case PlatformDistributionType.harmony:
         return Image.asset(
@@ -218,12 +222,10 @@ class _HoverablePlatformItemState extends State<_HoverablePlatformItem> {
           fit: BoxFit.contain,
         );
       case PlatformDistributionType.ios:
-        return Image.asset(
-          AppIcons.apple,
-          width: 15,
-          height: 15,
-          fit: BoxFit.contain,
-          color: widget.isSelected ? widget.selectedFg : widget.unselectedFg,
+        return Icon(
+            Icons.apple,
+            size: 15,
+            color: color,
         );
     }
   }
