@@ -81,8 +81,14 @@ class ScreenshotCanvasState extends State<ScreenshotCanvas> {
   ui.Image? _lastImage;
   int? _lastRotation;
 
-  /// 适应窗口居中重置缩放与平移，保留当前旋转角度
-  void resetZoomAndPan(Size viewportSize) {
+  /// 恢复图片初次加载时的适应窗口大小与居中位置，保留当前旋转角度。
+  void resetZoomAndPan() {
+    final viewportSize = _lastSize;
+    if (viewportSize == null) return;
+    _fitImageToViewport(viewportSize);
+  }
+
+  void _fitImageToViewport(Size viewportSize) {
     if (widget.decodedImage == null) return;
     final imageWidth = widget.decodedImage!.width.toDouble();
     final imageHeight = widget.decodedImage!.height.toDouble();
@@ -199,7 +205,7 @@ class ScreenshotCanvasState extends State<ScreenshotCanvas> {
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              resetZoomAndPan(currentSize);
+              _fitImageToViewport(currentSize);
             }
           });
         }

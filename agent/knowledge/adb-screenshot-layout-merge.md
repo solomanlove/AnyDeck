@@ -101,7 +101,7 @@ enum ScreenRecordPhase {
 
 ## 7. 截图底部工具栏（2026-10-10）
 
-- 将放大、缩小、1:1、重置缩放及 PNG 分辨率/大小信息从 `ScreenshotToolbar` 移至共享 `ScreenshotBottomBar`；顶部保留刷新、保存、复制、旋转、连续截图、录屏和布局分析操作。
+- 将放大、缩小、1:1、重置缩放及 PNG 分辨率/大小信息从 `ScreenshotToolbar` 移至共享 `ScreenshotBottomBar`；顶部保留刷新、保存、复制、旋转、连续截图、录屏和布局分析操作。重置必须复用 `ScreenshotCanvas.resetZoomAndPan()`，按当前视口恢复图片初次加载时的适配大小与居中位置，不能直接写入 `Matrix4.identity()` 导致图片变为 1:1 并移动到左上角。
 - `DashboardScreenshotTab` 与 `HarmonyScreenshotTab` 将底栏放在 `Expanded` 工作区之后，固定显示且不覆盖截图；布局分析模式下仍位于整个三栏工作区底部。
 - 复用现有画布回调和本地化 Tooltip。无截图或录屏活跃阶段禁用缩放；底栏颜色跟随 Theme，窄窗口允许按钮横向滚动、图片信息省略并提供完整 Tooltip。不新增 Provider 或设备命令，不改变截图、录屏和坐标映射逻辑。
 - 验证结果：4 个修改涉及的 Dart 文件定向 analyze 通过，`screenshot_layout_merge_test.dart` 的 7 项既有测试通过；未启动应用，桌面视觉效果尚需实际窗口验收。手动检查普通截图与布局分析模式、明暗主题、窗口缩小、四个缩放操作及录屏时的禁用状态。

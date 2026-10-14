@@ -204,9 +204,7 @@ class _HarmonyScreenshotTabState extends ConsumerState<HarmonyScreenshotTab> {
           onZoomIn: () => _canvasKey.currentState?.zoom(1.2),
           onZoomOut: () => _canvasKey.currentState?.zoom(0.8),
           onZoom1To1: () => _canvasKey.currentState?.zoom1to1(),
-          onZoomReset: () {
-            _transformationController.value = Matrix4.identity();
-          },
+          onZoomReset: () => _canvasKey.currentState?.resetZoomAndPan(),
         ),
       ],
     );
