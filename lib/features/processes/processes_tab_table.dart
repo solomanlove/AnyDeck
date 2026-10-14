@@ -248,9 +248,9 @@ class _ProcessTableState extends ConsumerState<_ProcessTable> {
                               File(iconPath),
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) =>
-                                  _buildFallbackIcon(matchedPackage),
+                                  _buildFallbackIcon(),
                             )
-                          : _buildFallbackIcon(matchedPackage),
+                          : _buildFallbackIcon(),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -324,20 +324,9 @@ class _ProcessTableState extends ConsumerState<_ProcessTable> {
     );
   }
 
-  Widget _buildFallbackIcon(AdbPackage package) {
-    if (package.name.isEmpty) {
-      return const Icon(
-        CupertinoIcons.device_phone_portrait,
-        color: Colors.grey,
-        size: 20,
-      );
-    }
-    final icon = package.flutter
-        ? CupertinoIcons.square_grid_2x2
-        : package.system
-        ? CupertinoIcons.settings
-        : CupertinoIcons.device_phone_portrait;
-    final color = package.system ? Colors.grey[600] : Colors.green[600];
-    return Icon(icon, color: color, size: 20);
-  }
+  /// 与应用 Tab 保持一致：真实图标不可用时展示 Android 默认应用图标。
+  Widget _buildFallbackIcon() => Image.asset(
+    AppIcons.androidDefaultAppIcon,
+    fit: BoxFit.contain,
+  );
 }

@@ -1,4 +1,5 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/adb/adb_device.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
@@ -281,5 +282,15 @@ void main() {
 
     expect(find.text('示例聊天:push'), findsOneWidget);
     expect(find.text('com.example.chat:push'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName ==
+                AppIcons.androidDefaultAppIcon,
+      ),
+      findsOneWidget,
+    );
   });
 }

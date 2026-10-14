@@ -52,3 +52,8 @@ Painter 或 Controller 不应反向依赖 Widget Theme；需要动态主题时�
 - 手动回归：分别切换 Light/Dark/System，检查主窗口、投屏窗口、AirPlay、Android/iOS/HarmonyOS 模拟器管理页的图标、文字和边框对比度。
 - 本次主题治理只修改 UI 样式来源，不修改投屏触控、ADB/HDC 命令、后台进程、Provider 或跨窗口通信协议。
 - 按项目规则不自动运行 App；真实桌面材质和多窗口视觉效果仍需后续人工验收。
+
+## 6. 装饰卡片与 Material 交互层
+
+- 当 `Container` / `DecoratedBox` 提供背景色、边框、圆角或阴影，且内部包含 `ListTile`、`InkWell` 等 Material 交互组件时，装饰层与交互组件之间必须放置 `Material(type: MaterialType.transparency)`。
+- 该透明 Material 负责承载 Hover、Ink splash、`tileColor` 等绘制，外层装饰继续负责卡片背景和裁剪，避免 Flutter 抛出 `ListTile background color or ink splashes may be invisible` 断言。

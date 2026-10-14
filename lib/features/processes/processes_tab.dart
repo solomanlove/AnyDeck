@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../app/theme/app_icon.dart';
 import '../../core/adb/adb_device.dart';
 import '../../core/process/process_service.dart';
 import '../../core/providers/app_providers.dart';

@@ -62,20 +62,23 @@ extension _SettingsTabWidgets on _SettingsTab {
                   ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (var i = 0; i < visibleChildren.length; i++) ...[
-                if (i > 0)
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : const Color(0xFFF1F5F9),
-                  ),
-                visibleChildren[i],
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              children: [
+                for (var i = 0; i < visibleChildren.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : const Color(0xFFF1F5F9),
+                    ),
+                  visibleChildren[i],
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ],
