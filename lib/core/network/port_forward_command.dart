@@ -36,7 +36,10 @@ class PortForwardCommand {
     return adb.run(['-s', deviceId, 'reverse', ...reverseArgs]);
   }
 
-  /// 鸿蒙分支：将 adb reverse 语法映射为 hdc rport。
+  /// 鸿蒙分支：将 adb reverse 语法映射为 hdc 命令。
+  ///
+  /// 实测鸿蒙 `hdc rport` 仅支持创建，列表与删除均需走 `fport`，
+  /// 删除时必须同时给出设备端口与本地端口双节点。
   static Future<AdbResult> _runHdc(
     HdcService hdc,
     String deviceId,
@@ -45,7 +48,7 @@ class PortForwardCommand {
     if (args.length == 1 && args[0] == '--list') {
       return hdc.listReverseForwards(deviceId);
     }
-    if (args.length == 2 && args[0] == '--remove') {
+    if (args.length >= 2 && args[0] == '--remove') {
       final port = _parsePort(args[1]);
       if (port == null) {
         return AdbResult(
@@ -54,7 +57,17 @@ class PortForwardCommand {
           stderr: '无效端口: ${args[1]}',
         );
       }
-      return hdc.removeReverseForward(deviceId, port);
+      if (args.length < 3 ||
+          (!args[2].startsWith('tcp:') &&
+              !args[2].startsWith('localabstract:'))) {
+        return AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: '鸿蒙删除反向转发需要设备端口与本地端口双子节点，如: '
+              '--remove tcp:8788 tcp:8788',
+        );
+      }
+      return hdc.removeReverseForward(deviceId, port, args[2]);
     }
     if (args.length == 2) {
       final devicePort = _parsePort(args[0]);

@@ -331,12 +331,19 @@ class NetworkTab extends ConsumerWidget {
                     final devPort = item.devicePort.startsWith('tcp:')
                         ? item.devicePort
                         : 'tcp:${item.devicePort}';
+                    final localPort = item.localPort.startsWith('tcp:')
+                        ? item.localPort
+                        : 'tcp:${item.localPort}';
+                    // 鸿蒙删除反向转发需设备端口+本地端口双节点，安卓仅需设备端口
+                    final removeArgs = device.isHarmony
+                        ? ['--remove', devPort, localPort]
+                        : ['--remove', devPort];
                     final result = await PortForwardCommand.run(
                       adb,
                       device.isHarmony ? ref.read(hdcServiceProvider) : null,
                       deviceId: device.id,
                       isHarmony: device.isHarmony,
-                      reverseArgs: ['--remove', devPort],
+                      reverseArgs: removeArgs,
                     );
                     if (result.isSuccess) {
                       ref.invalidate(activePortForwardsProvider(device.id));
