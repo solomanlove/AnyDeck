@@ -89,6 +89,11 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
       }
     }
 
+    String formatBoxValue(double pxValue) {
+      final value = widget.useDp ? pxValue / widget.deviceScale : pxValue;
+      return value.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+    }
+
     final properties = <_PropertyItem>[
       _PropertyItem(key: 'index', value: node.index.toString()),
       _PropertyItem(key: 'class', value: node.className),
@@ -233,10 +238,23 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
               child: ListView.builder(
                 controller: _scrollController,
                 primary: false,
-                itemCount: properties.length,
+                itemCount: properties.length + 1,
                 itemBuilder: (context, index) {
-                  final prop = properties[index];
-                  final isEven = index % 2 == 0;
+                  if (index == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: _LayoutBoxModel(
+                        width: formatBoxValue(rect?.width ?? 0),
+                        height: formatBoxValue(rect?.height ?? 0),
+                        marginLeft: formatBoxValue(rect != null && parentRect != null ? rect.left - parentRect.left : 0),
+                        marginTop: formatBoxValue(rect != null && parentRect != null ? rect.top - parentRect.top : 0),
+                        marginRight: formatBoxValue(rect != null && parentRect != null ? parentRect.right - rect.right : 0),
+                        marginBottom: formatBoxValue(rect != null && parentRect != null ? parentRect.bottom - rect.bottom : 0),
+                      ),
+                    );
+                  }
+                  final prop = properties[index - 1];
+                  final isEven = (index - 1) % 2 == 0;
                   final hasValue = prop.value.isNotEmpty;
 
                   return MouseRegion(
@@ -318,6 +336,78 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 以盒模型方式展示节点尺寸及其相对父节点的四向间距。
+class _LayoutBoxModel extends StatelessWidget {
+  const _LayoutBoxModel({
+    required this.width,
+    required this.height,
+    required this.marginLeft,
+    required this.marginTop,
+    required this.marginRight,
+    required this.marginBottom,
+  });
+
+  final String width;
+  final String height;
+  final String marginLeft;
+  final String marginTop;
+  final String marginRight;
+  final String marginBottom;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textStyle = theme.textTheme.labelSmall?.copyWith(
+      color: colorScheme.onSurfaceVariant,
+      fontFamily: 'monospace',
+      fontWeight: FontWeight.w600,
+    );
+
+    return Semantics(
+      container: true,
+      child: Container(
+        key: const ValueKey('layout-box-model'),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          border: Border.all(color: colorScheme.outlineVariant),
+          borderRadius: AppThemeSizes.radiusSmall,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(marginTop, style: textStyle),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: Text(marginLeft, textAlign: TextAlign.center, style: textStyle)),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 96, minHeight: 52),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    border: Border.all(color: colorScheme.primary),
+                  ),
+                  child: Text(
+                    '$width × $height',
+                    textAlign: TextAlign.center,
+                    style: textStyle?.copyWith(color: colorScheme.onPrimaryContainer),
+                  ),
+                ),
+                Expanded(child: Text(marginRight, textAlign: TextAlign.center, style: textStyle)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(marginBottom, style: textStyle),
+          ],
+        ),
       ),
     );
   }

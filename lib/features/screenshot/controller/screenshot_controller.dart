@@ -211,7 +211,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
   }
 
   /// 切换布局分析模式
-  void toggleLayoutAnalysis(bool enable) {
+  void toggleLayoutAnalysis(bool enable, {bool loadContent = true}) {
     if (state.isLayoutAnalysis == enable) return;
 
     if (enable) {
@@ -219,9 +219,10 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
       _autoRefreshTimer?.cancel();
       state = state.copyWith(
         isLayoutAnalysis: true,
+        isLoading: true,
         isAutoRefresh: false,
       );
-      loadLayoutAndScreenshot();
+      if (loadContent) loadLayoutAndScreenshot();
     } else {
       // 关闭分析模式：使正在进行的请求失效，丢弃迟到结果，保留最新截图，收起左右面板与辅助工具
       _requestId++;

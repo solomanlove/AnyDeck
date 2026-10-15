@@ -181,7 +181,21 @@ class _DashboardScreenshotTabState
           },
           onStartRecording: () => controller.startRecording(context: context),
           onStopRecording: () => controller.stopRecording(context: context),
-          onToggleLayoutAnalysis: controller.toggleLayoutAnalysis,
+          onToggleLayoutAnalysis: (enable) {
+            controller.toggleLayoutAnalysis(enable, loadContent: false);
+            if (!enable) return;
+
+            // 先绘制开关与 Loading，再启动可能较慢的设备截图/XML 抓取。
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              final latestState = ref.read(
+                screenshotLayoutControllerProvider(widget.device.id),
+              );
+              if (latestState.isLayoutAnalysis && latestState.isLoading) {
+                controller.loadLayoutAndScreenshot();
+              }
+            });
+          },
           onShowPropertiesChanged: (val) =>
               controller.setShowProperties(val ?? true),
         ),

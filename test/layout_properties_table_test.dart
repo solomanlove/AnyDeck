@@ -63,4 +63,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('LayoutPropertiesTable renders unitless box model before properties', (tester) async {
+    final parent = LayoutNode({'bounds': '[0,0][400,600]'});
+    final node = LayoutNode({
+      'index': '0',
+      'class': 'android.widget.Button',
+      'bounds': '[40,60][240,160]',
+    });
+    node.parent = parent;
+    parent.children.add(node);
+
+    await tester.pumpWidget(_wrapWithApp(LayoutPropertiesTable(selectedNode: node)));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('layout-box-model')), findsOneWidget);
+    expect(find.text('200 × 100'), findsOneWidget);
+    expect(find.text('40'), findsOneWidget);
+    expect(find.text('60'), findsOneWidget);
+    expect(find.text('160'), findsOneWidget);
+    expect(find.text('440'), findsOneWidget);
+    expect(find.text('index'), findsOneWidget);
+  });
 }

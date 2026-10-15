@@ -374,6 +374,13 @@ void main() {
       // 点击开启布局分析开关
       await tester.tap(find.byType(CupertinoSwitch));
       await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byType(ScreenshotToolbar),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
       await tester.runAsync(() async {
         await Future.delayed(const Duration(milliseconds: 300));
       });

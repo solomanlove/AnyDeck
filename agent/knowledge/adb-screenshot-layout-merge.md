@@ -114,3 +114,9 @@ enum ScreenRecordPhase {
 - 顶部工具栏在普通截图和布局分析模式下都只处理图片保存与图片复制；进入布局分析后不再把保存切换为 PNG+XML，也不再把复制切换为 XML。XML 操作不会增加 ADB 请求，继续使用当前原子抓取结果。
 - 顶部工具栏继续保留“显示属性”，不改变三栏显隐、节点选中、截图刷新或坐标换算逻辑。
 - 验证结果：相关 5 个 Dart 文件及回归测试定向 analyze 通过，`screenshot_layout_merge_test.dart` 与 `layout_properties_table_test.dart` 共 9 项测试通过；未启动应用，实际桌面窗口的视觉间距仍需手动验收。
+
+## 9. 布局分析加载反馈与盒模型（2026-10-16）
+
+- 点击“布局分析”后，Controller 先同步切换模式并写入 `isLoading`，UI 使用 `addPostFrameCallback` 等开关与紧凑的 `CircularProgressIndicator` 完成首帧绘制后，再启动截图/XML 抓取；加载期间仍可主动关闭分析模式，结束或失败后指示器自动消失。
+- 属性列表顶部增加盒模型示意：中心展示选中节点的 `width × height`，四周展示相对父节点的 left/top/right/bottom 间距；盒模型只显示数值、不显示单位，但数值仍跟随 PX/DP 开关换算，颜色来自 `ColorScheme`。
+- 盒模型作为属性 `ListView` 的第一项，不新增滚动容器或 Provider，不改变节点坐标计算、布局抓取和画布映射逻辑。
