@@ -216,8 +216,14 @@ settings get global debug_view_attributes
         storage: storage,
         memory: memory.total,
         memoryUsed: memory.used,
-        physicalResolution: _formatResolution(size.physical, density.physical),
-        resolution: _formatResolution(size.current, density.current),
+        physicalResolution: formatDisplayResolution(
+          size.physical,
+          density: density.physical,
+        ),
+        resolution: formatDisplayResolution(
+          size.current,
+          density: density.current,
+        ),
         logicalDensity: logicalDensity,
         refreshRate: refreshRate,
         fontScale: fontScale,
@@ -367,12 +373,16 @@ settings get global debug_view_attributes
     return parts.isEmpty ? '-' : parts.join(' ');
   }
 
-  /// 密度可用时，将像素尺寸和 dpi 合并展示。
-  String _formatResolution(String size, String density) {
+  /// 概览统一按“高 x 宽”展示；原始分辨率仍保留设备返回的“宽 x 高”顺序。
+  static String formatDisplayResolution(String size, {String density = '-'}) {
     if (size == '-') {
       return '-';
     }
-    return density == '-' ? size : '$size (${density}dpi)';
+    final match = RegExp(r'^(\d+)x(\d+)$').firstMatch(size);
+    final displaySize = match == null
+        ? size
+        : '${match.group(2)}x${match.group(1)}';
+    return density == '-' ? displaySize : '$displaySize (${density}dpi)';
   }
 
   String _formatAnimScale(String raw) {

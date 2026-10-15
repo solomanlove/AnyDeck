@@ -48,7 +48,7 @@
    - **鸿蒙型号**：营销名称（如 `nova 12 Ultra`）与产品型号（如 `ADA-AL00U` / `BRA-AL00`）必须分开展示；产品型号统一取 `const.product.model`，不从连接 ID 或营销名称推断。
    - **存储空间**：运行 `df -h /data` 查询用户分区的总容量、已用空间与可用空间。
    - **屏幕参数**：
-     - 分辨率：运行 `wm size` 获取物理分辨率（`Physical size`）及当前缩放分辨率（`Override size`）。
+     - 分辨率：Android 运行 `wm size` 获取物理分辨率（`Physical size`）及当前缩放分辨率（`Override size`），HarmonyOS 解析 RenderService 的 `physical resolution`；设备原始值保持“宽 x 高”供投屏比例计算，概览显示统一转换为“高 x 宽”。
      - 屏幕密度与刷新率：运行 `wm density` 读取逻辑密度；读取 `/sys/class/graphics/fb0/measured_fps` 或 `dumpsys SurfaceFlinger` 帧率参数。
    - **网络状态**：
      - IP 地址：运行 `ip address show wlan0` 或 `ifconfig wlan0`，通过正则过滤 `inet` 后的网段。

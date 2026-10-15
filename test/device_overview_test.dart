@@ -79,6 +79,18 @@ class StubAdbService extends AdbService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('overview resolution is formatted as height by width', () {
+    expect(
+      DeviceInfoService.formatDisplayResolution('1224x2776'),
+      '2776x1224',
+    );
+    expect(
+      DeviceInfoService.formatDisplayResolution('1080x2400', density: '440'),
+      '2400x1080 (440dpi)',
+    );
+    expect(DeviceInfoService.formatDisplayResolution('-'), '-');
+  });
+
   group('DeviceOverview Serialization', () {
     test('toJson and fromJson are symmetrical', () {
       const overview = DeviceOverview(

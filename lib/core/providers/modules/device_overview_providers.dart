@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../device_info/device_memory_info.dart';
+import '../../device_info/device_info_service.dart';
 import '../../device_info/device_overview.dart';
 import '../../harmony/hdc_service.dart';
 import '../../ios/ios_mirror_service.dart';
@@ -87,12 +88,16 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         // 查询屏幕分辨率与刷新率
         final screenRes = await hdc.shell(deviceId, 'hidumper -s RenderService -a screen');
         String physicalRes = '-';
+        String rawPhysicalRes = '-';
         String refreshRate = '-';
         if (screenRes.isSuccess && screenRes.stdout.isNotEmpty) {
           final out = screenRes.stdout;
           final resMatch = RegExp(r'physical resolution=([0-9]+x[0-9]+)').firstMatch(out);
           if (resMatch != null) {
-            physicalRes = resMatch.group(1) ?? '-';
+            rawPhysicalRes = resMatch.group(1) ?? '-';
+            physicalRes = DeviceInfoService.formatDisplayResolution(
+              rawPhysicalRes,
+            );
           }
           final rateMatch = RegExp(r'activeMode: [0-9]+x[0-9]+, refreshRate=([0-9]+)').firstMatch(out);
           if (rateMatch != null) {
@@ -207,7 +212,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           windowAnimationScale: '1.0',
           transitionAnimationScale: '1.0',
           animatorDurationScale: '1.0',
-          rawResolution: physicalRes,
+          rawResolution: rawPhysicalRes,
           hwuiProfile: 'false',
           layoutBoundsEnabled: false,
           showTouchesEnabled: false,
