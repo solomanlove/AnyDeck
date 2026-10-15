@@ -5,115 +5,17 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../process/tool_path_resolver.dart';
+import 'harmony_terminal_command.dart';
 import 'terminal_newline_normalizer.dart';
+import 'terminal_session_models.dart';
 
-enum TerminalLineType { stdout, stderr, input, info }
-
-class TerminalLine {
-  final String text;
-  final TerminalLineType type;
-  final String? l10nKey;
-  final Map<String, String> l10nArgs;
-
-  const TerminalLine({
-    required this.text,
-    required this.type,
-    this.l10nKey,
-    this.l10nArgs = const {},
-  });
-
-  const TerminalLine.localized({
-    required this.l10nKey,
-    required this.type,
-    this.l10nArgs = const {},
-  }) : text = '';
-}
-
-/// 终端会话状态模型
-class AdbTerminalSession {
-  final String id;
-  final String deviceId;
-  final List<TerminalLine> lines;
-  final List<String> commandHistory;
-  final int historyIndex;
-  final Process? process;
-  final bool isRunning;
-  /// 是否为鸿蒙设备会话，决定底层走 hdc 还是 adb。
-  final bool isHarmony;
-
-  const AdbTerminalSession({
-    required this.id,
-    required this.deviceId,
-    required this.lines,
-    required this.commandHistory,
-    required this.historyIndex,
-    this.process,
-    required this.isRunning,
-    this.isHarmony = false,
-  });
-
-  AdbTerminalSession copyWith({
-    String? id,
-    String? deviceId,
-    List<TerminalLine>? lines,
-    List<String>? commandHistory,
-    int? historyIndex,
-    Process? process,
-    bool? isRunning,
-    bool? isHarmony,
-  }) {
-    return AdbTerminalSession(
-      id: id ?? this.id,
-      deviceId: deviceId ?? this.deviceId,
-      lines: lines ?? this.lines,
-      commandHistory: commandHistory ?? this.commandHistory,
-      historyIndex: historyIndex ?? this.historyIndex,
-      process: process ?? this.process,
-      isRunning: isRunning ?? this.isRunning,
-      isHarmony: isHarmony ?? this.isHarmony,
-    );
-  }
-}
-
-/// 终端整体状态 (按设备ID隔离)
-class AdbTerminalState {
-  final Map<String, List<AdbTerminalSession>> deviceSessions;
-  final Map<String, String?> activeSessionIds;
-
-  const AdbTerminalState({
-    this.deviceSessions = const {},
-    this.activeSessionIds = const {},
-  });
-
-  AdbTerminalState copyWith({
-    Map<String, List<AdbTerminalSession>>? deviceSessions,
-    Map<String, String?>? activeSessionIds,
-  }) {
-    return AdbTerminalState(
-      deviceSessions: deviceSessions ?? this.deviceSessions,
-      activeSessionIds: activeSessionIds ?? this.activeSessionIds,
-    );
-  }
-
-  List<AdbTerminalSession> getSessions(String deviceId) {
-    return deviceSessions[deviceId] ?? [];
-  }
-
-  String? getActiveSessionId(String deviceId) {
-    return activeSessionIds[deviceId];
-  }
-
-  AdbTerminalSession? getActiveSession(String deviceId) {
-    final activeId = getActiveSessionId(deviceId);
-    if (activeId == null) return null;
-    final sessions = getSessions(deviceId);
-    final index = sessions.indexWhere((s) => s.id == activeId);
-    return index != -1 ? sessions[index] : null;
-  }
-}
+export 'harmony_terminal_command.dart';
+export 'terminal_session_models.dart';
 
 /// 终端会话管理器 Notifier
 class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
+  final Map<String, Future<void>> _harmonyCommandQueues = {};
+
   @override
   AdbTerminalState build() {
     ref.onDispose(() {
@@ -127,14 +29,13 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     return const AdbTerminalState();
   }
 
-  /// 启动交互式 shell 进程；鸿蒙走 `hdc shell`，安卓走 `adb shell -tt` 强制 PTY。
+  /// 启动 Android 交互式 shell 进程；鸿蒙不支持 stdio TTY，改为逐条执行命令。
   Future<Process> _startShellProcess(
     String deviceId, {
     required bool isHarmony,
   }) async {
     if (isHarmony) {
-      final hdcPath = resolveToolPath('hdc');
-      return Process.start(hdcPath, ['-t', deviceId, 'shell']);
+      throw UnsupportedError('HarmonyOS does not support stdio TTY');
     }
     final adbPath = resolveToolPath('adb');
     // stdin 是管道，必须强制申请 PTY，才能收到设备真实的提示符和输入回显。
@@ -171,6 +72,10 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       activeSessionIds: updatedActiveIdsMap,
     );
 
+    // HarmonyOS 的 `hdc shell` 不支持持续写入 stdin；会话只承载 UI 与历史记录，
+    // 实际命令由 sendCommand 逐条启动 HDC 子进程执行。
+    if (isHarmony) return;
+
     try {
       final process = await _startShellProcess(deviceId, isHarmony: isHarmony);
 
@@ -204,7 +109,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         _updateSession(
           deviceId,
           sessionId,
-          (s) => s.copyWith(isRunning: false, process: null),
+          (s) => s.copyWith(isRunning: false, clearProcess: true),
         );
       });
     } on Object catch (e) {
@@ -218,7 +123,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       _updateSession(
         deviceId,
         sessionId,
-        (s) => s.copyWith(isRunning: false, process: null),
+        (s) => s.copyWith(isRunning: false, clearProcess: true),
       );
     }
   }
@@ -263,14 +168,14 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     );
   }
 
-  /// 发送命令字符串到当前会话的 shell 进程 stdin
+  /// 发送命令；Android 写入 PTY stdin，HarmonyOS 逐条启动 HDC shell。
   void sendCommand(String deviceId, String sessionId, String command) {
     final sessions = state.getSessions(deviceId);
     final index = sessions.indexWhere((s) => s.id == sessionId);
     if (index == -1) return;
 
     final session = sessions[index];
-    if (session.process == null || !session.isRunning) {
+    if (!session.isRunning) {
       _appendLocalizedOutput(
         deviceId,
         sessionId,
@@ -280,16 +185,101 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       return;
     }
 
-    session.process!.stdin.write('$command\n');
+    if (!session.isHarmony && session.process == null) {
+      _appendLocalizedOutput(
+        deviceId,
+        sessionId,
+        'terminalOfflineCannotSend',
+        TerminalLineType.info,
+      );
+      return;
+    }
 
     final newHistory = [...session.commandHistory, command];
-    // 输入及提示符由 PTY 回显，不能本地重复追加，也不能猜测 su 是否成功。
     _updateSession(deviceId, sessionId, (s) {
       return s.copyWith(
         commandHistory: newHistory,
         historyIndex: newHistory.length,
       );
     });
+
+    if (session.isHarmony) {
+      _appendOutput(
+        deviceId,
+        sessionId,
+        '\$ $command\n',
+        TerminalLineType.input,
+      );
+      final previous = _harmonyCommandQueues[sessionId] ?? Future.value();
+      late final Future<void> queued;
+      queued = previous
+          .then((_) => _runHarmonyCommand(deviceId, sessionId, command))
+          .whenComplete(() {
+            if (identical(_harmonyCommandQueues[sessionId], queued)) {
+              _harmonyCommandQueues.remove(sessionId);
+            }
+          });
+      _harmonyCommandQueues[sessionId] = queued;
+      return;
+    }
+
+    session.process!.stdin.write('$command\n');
+
+    // 输入及提示符由 PTY 回显，不能本地重复追加，也不能猜测 su 是否成功。
+  }
+
+  /// HarmonyOS 不支持交互式 stdin，单条命令使用独立 HDC shell 进程执行并回写输出。
+  Future<void> _runHarmonyCommand(
+    String deviceId,
+    String sessionId,
+    String command,
+  ) async {
+    final sessionExists = state
+        .getSessions(deviceId)
+        .any((session) => session.id == sessionId && session.isRunning);
+    if (!sessionExists) return;
+
+    try {
+      final hdcPath = resolveToolPath('hdc');
+      final process = await Process.start(
+        hdcPath,
+        harmonyShellArguments(deviceId, command),
+      );
+      _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
+
+      final stdoutDone = process.stdout
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .transform(const TerminalNewlineNormalizer())
+          .forEach((data) {
+            _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
+          });
+      final stderrDone = process.stderr
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .transform(const TerminalNewlineNormalizer())
+          .forEach((data) {
+            _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
+          });
+
+      await Future.wait([stdoutDone, stderrDone, process.exitCode]);
+      _updateSession(
+        deviceId,
+        sessionId,
+        (s) => s.copyWith(clearProcess: true),
+      );
+    } on Object catch (e) {
+      _appendLocalizedOutput(
+        deviceId,
+        sessionId,
+        'terminalStartFailed',
+        TerminalLineType.info,
+        args: {'error': '$e'},
+      );
+      _updateSession(
+        deviceId,
+        sessionId,
+        (s) => s.copyWith(clearProcess: true),
+      );
+    }
   }
 
   /// 发送 Ctrl+C (SIGINT) 信号到当前进程
@@ -317,8 +307,10 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     _updateSession(
       deviceId,
       sessionId,
-      (s) => s.copyWith(lines: [], isRunning: true, process: null),
+      (s) => s.copyWith(lines: [], isRunning: true, clearProcess: true),
     );
+
+    if (session.isHarmony) return;
 
     try {
       final process = await _startShellProcess(
@@ -353,7 +345,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         _updateSession(
           deviceId,
           sessionId,
-          (s) => s.copyWith(isRunning: false, process: null),
+          (s) => s.copyWith(isRunning: false, clearProcess: true),
         );
       });
     } on Object catch (e) {
@@ -367,7 +359,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       _updateSession(
         deviceId,
         sessionId,
-        (s) => s.copyWith(isRunning: false, process: null),
+        (s) => s.copyWith(isRunning: false, clearProcess: true),
       );
     }
   }

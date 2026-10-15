@@ -391,6 +391,8 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
 | 进程列表 | `adb shell top -b -n 1` | `hdc shell ps -ef` |
 | 强停进程 | `am force-stop <pkg>` | `aa force-stop <bundle>` |
 | 终端 | `adb shell -tt` | `hdc shell` |
+| 终端命令执行 | 长驻 PTY，命令写入 stdin | 不支持 stdio TTY；每条命令独立执行 `hdc -t <device> shell <command>`，输出回写当前会话并按提交顺序排队 |
+| 终端默认收藏 | `pm` / `dumpsys` / `screencap` / `getprop` / `logcat` / `ip` | `bm` / `hidumper` / `uitest` / `param` / `hilog` / `ifconfig`；用户自定义收藏跨平台保留，默认项删除状态按平台隔离 |
 | Web socket 发现 | `adb shell cat /proc/net/unix`（匹配 `devtools_remote`） | `hdc shell cat /proc/net/unix`（匹配含 `devtools`，兼容 ArkWeb 命名） |
 | Web 端口转发 | `adb forward tcp:<p> localabstract:<s>` | `hdc fport tcp:<p> localabstract:<s>` |
 | 反向端口转发 | `adb reverse` | `hdc rport`（`rport ls` / `rport rm` / `rport tcp:<dev> tcp:<loc>`） |
