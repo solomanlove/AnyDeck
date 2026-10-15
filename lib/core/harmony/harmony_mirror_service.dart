@@ -1,5 +1,3 @@
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
@@ -8,6 +6,7 @@ import '../scrcpy/rust_device_bridge.dart';
 import '../providers/app_providers.dart';
 import 'harmony_mirror_session.dart';
 import 'harmony_mirror_operations.dart';
+import 'harmony_sidecar_startup.dart';
 import 'hdc_service.dart';
 
 /// 鸿蒙设备镜像（投屏）管理服务，通过本地 Java 桥接进程运行 HOScrcpy。
@@ -210,32 +209,25 @@ class HarmonyMirrorService {
       '$height',
     ]);
 
-    // 读取就绪信息中的 TCP 端口
-    final completer = Completer<int>();
-    final subscription = serverProcess.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
-      stdout.writeln('[hoscrcpy-sidecar stdout] $line');
-      try {
-        if (line.contains('"ready":true')) {
-          final data = jsonDecode(line.trim()) as Map<String, dynamic>;
-          final port = data['port'] as int;
-          completer.complete(port);
-        }
-      } catch (_) {}
-    });
-
-    serverProcess.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
-      stderr.writeln('[hoscrcpy-sidecar stderr] $line');
-    });
-
+    // 同时监听 ready、stderr 与提前退出，避免把设备离线等真实错误误报为端口超时。
     int tcpPort;
     try {
-      tcpPort = await completer.future.timeout(const Duration(seconds: 15));
-    } catch (e) {
-      subscription.cancel();
+      tcpPort = await HarmonySidecarStartup.waitForPort(
+        stdoutStream: serverProcess.stdout,
+        stderrStream: serverProcess.stderr,
+        exitCode: serverProcess.exitCode,
+      );
+    } catch (_) {
       serverProcess.kill();
-      throw Exception('Failed to start HarmonyOS mirror sidecar: port allocation timeout');
+      await serverProcess.exitCode.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          serverProcess.kill(ProcessSignal.sigkill);
+          return -1;
+        },
+      );
+      rethrow;
     }
-    subscription.cancel();
 
     // 2. 调用纯 Rust + VideoToolbox 解码并注册至 Swift 原生 Texture
     int textureId = 0;

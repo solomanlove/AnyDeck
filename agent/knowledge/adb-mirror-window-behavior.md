@@ -79,6 +79,7 @@
 
 ## HarmonyOS 工具栏控制
 
+- `hoscrcpy-sidecar.jar` 启动握手必须解析完整 JSON 的 `ready` 与 `port` 字段，不能依赖无空格的固定字符串。等待端口期间同时监听 stderr 和 process exit：设备离线、HDC 路径异常或 Java 失败时直接返回真实原因；只有进程仍存活且始终未报告端口时才判定 timeout。失败后先正常终止，再以 `SIGKILL` 兜底，避免残留 sidecar。
 - HarmonyOS NEXT 投屏只复用 scrcpy 的视频渲染协议，系统控制必须走 `HdcService`，不能把 Android ADB command 或 scrcpy control message 直接发给鸿蒙设备。
 - Android key code 到 OpenHarmony key code 的核心映射为：`HOME 3 -> 1`、`BACK 4 -> 2`、`VOLUME_UP 24 -> 16`、`VOLUME_DOWN 25 -> 17`、`POWER 26 -> 18`、`APP_SWITCH 187 -> RECENT 10011`。
 - 剪贴板文本输入优先使用 API 18+ 的 `uitest uiInput text`，可覆盖当前焦点输入框和 Unicode 文本；旧系统命令失败时，仅对 ASCII 文本回退到 `uinput -K -t`。
