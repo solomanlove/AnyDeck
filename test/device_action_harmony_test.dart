@@ -285,4 +285,23 @@ void main() {
       '/local/app.hap',
     ]);
   });
+
+  test('HarmonyOS settings use Want action and Settings bundle fallback', () async {
+    final hdc = _CommandHdcService();
+    final service = DeviceActionService(
+      _HarmonyAdbService(),
+      hdc: hdc,
+      isHarmonyResolver: (_) => true,
+    );
+
+    await service.openWifiSettings(deviceId);
+    await service.openManageApplicationsSettings(deviceId);
+    await service.openMainSettings(deviceId);
+
+    expect(hdc.shellCommands, [
+      'aa start -A ohos.settings.wireless',
+      'aa start -A ohos.settings.manage.applications',
+      'aa start -a MainAbility -b com.huawei.hmos.settings',
+    ]);
+  });
 }

@@ -722,38 +722,49 @@ class DeviceActionService {
   ]);
 
   /// 打开开发者选项。
-  Future<AdbResult> openDeveloperSettings(String deviceId) => _adb.shellArgs(
-    deviceId,
-    ['am', 'start', '-a', 'android.settings.APPLICATION_DEVELOPMENT_SETTINGS'],
-  );
+  Future<AdbResult> openDeveloperSettings(String deviceId) =>
+      _openSettings(deviceId, HarmonySettingsPage.developer, [
+        'am', 'start', '-a', 'android.settings.APPLICATION_DEVELOPMENT_SETTINGS',
+      ]);
+
+  Future<AdbResult> _openSettings(
+    String deviceId,
+    HarmonySettingsPage harmonyPage,
+    List<String> androidArgs,
+  ) {
+    if ((_isHarmonyResolver?.call(deviceId) ?? false) && _hdc != null) {
+      return _hdc.openSettings(deviceId, harmonyPage);
+    }
+    return _adb.shellArgs(deviceId, androidArgs);
+  }
 
   /// 打开手机信息。
-  Future<AdbResult> openDeviceInfoSettings(String deviceId) => _adb.shellArgs(
-    deviceId,
+  Future<AdbResult> openDeviceInfoSettings(String deviceId) => _openSettings(
+    deviceId, HarmonySettingsPage.deviceInfo,
     ['am', 'start', '-a', 'android.settings.DEVICE_INFO_SETTINGS'],
   );
 
   /// 打开语言设置。
-  Future<AdbResult> openLocaleSettings(String deviceId) => _adb.shellArgs(
-    deviceId,
+  Future<AdbResult> openLocaleSettings(String deviceId) => _openSettings(
+    deviceId, HarmonySettingsPage.locale,
     ['am', 'start', '-a', 'android.settings.LOCALE_SETTINGS'],
   );
 
   /// 打开系统设置。
-  Future<AdbResult> openMainSettings(String deviceId) => _adb.shellArgs(
-    deviceId,
+  Future<AdbResult> openMainSettings(String deviceId) => _openSettings(
+    deviceId, HarmonySettingsPage.main,
     ['am', 'start', '-a', 'android.settings.SETTINGS'],
   );
 
   /// 打开 Wi-Fi 设置。
-  Future<AdbResult> openWifiSettings(String deviceId) => _adb.shellArgs(
-    deviceId,
+  Future<AdbResult> openWifiSettings(String deviceId) => _openSettings(
+    deviceId, HarmonySettingsPage.wifi,
     ['am', 'start', '-a', 'android.settings.WIFI_SETTINGS'],
   );
 
   /// 打开应用管理。
   Future<AdbResult> openManageApplicationsSettings(String deviceId) =>
-      _adb.shellArgs(deviceId, [
+      _openSettings(deviceId, HarmonySettingsPage.apps, [
         'am',
         'start',
         '-a',

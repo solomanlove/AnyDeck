@@ -538,6 +538,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               onPressed: () => showDeviceSettingsPopup(
                 context: context,
                 deviceId: widget.deviceId,
+                isHarmony: widget.controller.isHarmony,
               ),
             ),
           ],
