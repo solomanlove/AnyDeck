@@ -273,6 +273,7 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
 1. **UI 控件树提取与解析**：
    - 执行 `adb shell uiautomator dump /data/local/tmp/uidump.xml` 将 UI 层次树以 XML 格式存储到手机临时目录。
    - 执行 `adb shell cat /data/local/tmp/uidump.xml` 读取此 XML 内容，在 Flutter 中通过 XML 解析器构建 `LayoutNode` 对象树。
+   - HarmonyOS 执行 `hdc shell uitest dumpLayout -p <temp.json>`，读取 JSON 后将 `type/id/bundleName/description/bounds` 映射为共享 `LayoutNode` 字段；临时文件在读取后删除，导出时转换为 XML 以复用现有工具链。
 2. **原始屏幕截图截取**：
    - 异步并发执行 `adb exec-out screencap -p` 实时流输出 PNG 字节。由于使用 `exec-out` 直接走标准输出获取二进制，比先 `screencap` 再 `pull` 速度快 3 倍以上。
 3. **坐标映射碰撞检测（交互核心）**：

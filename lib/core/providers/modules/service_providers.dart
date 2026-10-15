@@ -120,9 +120,17 @@ final deviceInfoServiceProvider = Provider<DeviceInfoService>((ref) {
   return DeviceInfoService(ref.watch(adbServiceProvider));
 });
 
-/// 布局分析服务 Provider，负责抓取 `uiautomator` 结构 XML 和屏幕截图。
+/// 布局分析服务 Provider，按设备平台抓取 Android XML 或 HarmonyOS JSON 控件树。
 final layoutInspectorServiceProvider = Provider<LayoutInspectorService>((ref) {
-  return LayoutInspectorService(ref.watch(adbServiceProvider));
+  return LayoutInspectorService(
+    ref.watch(adbServiceProvider),
+    hdc: ref.watch(hdcServiceProvider),
+    isHarmonyResolver: (deviceId) {
+      return ref
+          .read(deviceRegistryProvider)
+          .any((device) => device.id == deviceId && device.isHarmony);
+    },
+  );
 });
 
 /// Scrcpy 进程管理器 Provider。Provider 销毁时会停止并回收所有活跃会话。

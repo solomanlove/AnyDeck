@@ -83,7 +83,7 @@ enum ScreenRecordPhase {
 | :--- | :---: | :---: | :---: | :--- |
 | **Android** | 支持 (ADB) | 支持 (Screenrecord / Scrcpy) | **展示并支持** | 完整支持 UI Automator 转储与节点选中 |
 | **iOS** | 支持 (go-ios) | 保持原有策略 | **隐藏** | 专注投屏与基础诊断 |
-| **HarmonyOS** | 支持 (HDC) | 保持原有策略 | **隐藏** | 支持基础截图 |
+| **HarmonyOS** | 支持 (HDC) | 保持原有策略 | **展示并支持** | `uitest dumpLayout` JSON 转换为共享 `LayoutNode`，复用三栏树、画布高亮、属性与 XML 导出 |
 
 ---
 

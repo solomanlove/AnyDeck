@@ -300,7 +300,7 @@ void main() {
       expect(find.text('布局分析'), findsNothing);
       expect(find.byType(CupertinoSwitch), findsNothing);
 
-      // 3. HarmonyOS 设备也不显示布局分析开关
+      // 3. HarmonyOS 设备显示布局分析开关
       await tester.pumpWidget(
         _wrapTestWidget(
           const DashboardScreenshotTab(device: _mockHarmonyDevice),
@@ -327,8 +327,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('布局分析'), findsNothing);
-      expect(find.byType(CupertinoSwitch), findsNothing);
+      expect(find.text('布局分析'), findsOneWidget);
+      expect(find.byType(CupertinoSwitch), findsOneWidget);
     });
 
     testWidgets('Toggling layout analysis opens side panels and closing collapses them', (

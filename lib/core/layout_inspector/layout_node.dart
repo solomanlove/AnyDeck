@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui';
 
 /// Android `uiautomator dump` 输出中的单个布局节点。
@@ -51,7 +52,7 @@ class LayoutNode {
     final indent = '  ' * depth;
     buffer.write('$indent<node');
     attributes.forEach((key, val) {
-      buffer.write(' $key="${val.replaceAll('"', '&quot;')}"');
+      buffer.write(' $key="${_escapeXmlAttribute(val)}"');
     });
     if (children.isEmpty) {
       buffer.writeln(' />');
@@ -63,6 +64,15 @@ class LayoutNode {
       buffer.writeln('$indent</node>');
     }
   }
+}
+
+String _escapeXmlAttribute(String input) {
+  return input
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;');
 }
 
 /// 解析 `uiautomator dump` XML 字符串为 LayoutNode 树。
@@ -119,4 +129,44 @@ String _unescapeXml(String input) {
       .replaceAll('&amp;', '&')
       .replaceAll('&quot;', '"')
       .replaceAll('&apos;', "'");
+}
+
+/// 将 HarmonyOS `uitest dumpLayout` 的 JSON 控件树转换为共享布局节点。
+LayoutNode? parseHarmonyLayoutJson(String jsonText) {
+  final decoded = jsonDecode(jsonText);
+  if (decoded is! Map<String, dynamic>) return null;
+  return _parseHarmonyNode(decoded);
+}
+
+LayoutNode _parseHarmonyNode(Map<String, dynamic> json) {
+  final rawAttributes = json['attributes'];
+  final attributes = <String, String>{};
+  if (rawAttributes is Map) {
+    for (final entry in rawAttributes.entries) {
+      attributes[entry.key.toString()] = entry.value?.toString() ?? '';
+    }
+  }
+
+  // 统一为 Layout Inspector 已使用的 Android 语义字段，同时保留鸿蒙原字段供属性表展示。
+  attributes['class'] = attributes['type']?.isNotEmpty == true
+      ? attributes['type']!
+      : 'HarmonyRoot';
+  attributes['resource-id'] = attributes['id']?.isNotEmpty == true
+      ? attributes['id']!
+      : attributes['key'] ?? '';
+  attributes['package'] = attributes['bundleName'] ?? '';
+  attributes['content-desc'] = attributes['description'] ?? '';
+
+  final node = LayoutNode(attributes);
+  final children = json['children'];
+  if (children is List) {
+    for (final childJson in children.whereType<Map>()) {
+      final child = _parseHarmonyNode(
+        childJson.map((key, value) => MapEntry(key.toString(), value)),
+      );
+      child.parent = node;
+      node.children.add(child);
+    }
+  }
+  return node;
 }
