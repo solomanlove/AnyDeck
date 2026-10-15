@@ -27,6 +27,7 @@ const overviewTerminalEmulatorsZh = {
   'harmonyApiDistribution': 'HarmonyOS 版本与 API 版本分布',
   'iosApiDistribution': 'iOS 版本采用率与工具链分布',
   'androidApiDistributionTooltip': 'Android 平台与 API 版本分布 (点击在新窗口中打开)',
+  'harmonyApiDistributionTooltip': 'HarmonyOS 版本与 API 版本分布 (点击在新窗口中打开)',
   'androidPlatformVersionHeader': 'Android 平台版本',
   'apiLevelHeader': 'API 级别',
   'cumulativeDistributionHeader': '累计设备分布',
@@ -162,6 +163,8 @@ const overviewTerminalEmulatorsEn = {
   'harmonyApiDistribution': 'HarmonyOS Version & API Level Distribution',
   'iosApiDistribution': 'iOS Version Adoption & Toolchain Distribution',
   'androidApiDistributionTooltip': 'Android Platform/API Version Distribution (Click to open in new window)',
+  'harmonyApiDistributionTooltip':
+      'HarmonyOS Version/API Distribution (Click to open in new window)',
   'androidPlatformVersionHeader': 'ANDROID PLATFORM\nVERSION',
   'apiLevelHeader': 'API LEVEL',
   'cumulativeDistributionHeader': 'CUMULATIVE\nDISTRIBUTION',

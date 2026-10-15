@@ -378,8 +378,13 @@ class _OverviewVersionCard extends StatelessWidget {
     return _OverviewHeroCard(
       icon: CupertinoIcons.device_phone_portrait,
       label: label,
-      trailing: isAndroid
-          ? AndroidVersionInfoIcon(currentVersion: overview.androidVersion)
+      trailing: isAndroid || device.isHarmony
+          ? AndroidVersionInfoIcon(
+              currentVersion: overview.androidVersion,
+              platform: device.isHarmony
+                  ? PlatformDistributionType.harmony
+                  : PlatformDistributionType.android,
+            )
           : null,
       onTap: () => _copyOverviewValue(context, label, overview.androidVersion),
       child: LayoutBuilder(

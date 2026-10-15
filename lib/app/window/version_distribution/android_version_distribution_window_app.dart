@@ -36,7 +36,7 @@ class AndroidVersionDistributionWindowApp extends ConsumerWidget {
 
     return MaterialApp(
       onGenerateTitle: (context) {
-        final title = context.l10n.t('androidApiDistribution');
+        final title = context.l10n.t(initialPlatform.titleL10nKey);
         unawaited(DesktopWindowTitleService.setTitle(title));
         return title;
       },

@@ -4,17 +4,23 @@ import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/window/multi_window_compat.dart';
+import '../model/platform_distribution_type.dart';
 import 'platform_version_distribution_shell_view.dart';
 
 /// 打开平台与 API 版本分布独立 macOS 窗口，若环境不支持则优雅降级为居中弹窗。
 Future<void> openAndroidVersionDistributionWindow(
   BuildContext context, {
   String? currentVersion,
+  PlatformDistributionType platform = PlatformDistributionType.android,
 }) async {
-  final windowTitle = context.l10n.t('androidApiDistribution');
+  final windowTitle = context.l10n.t(platform.titleL10nKey);
 
   if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux) {
-    showAndroidVersionDistributionDialog(context, currentVersion: currentVersion);
+    showAndroidVersionDistributionDialog(
+      context,
+      currentVersion: currentVersion,
+      platform: platform,
+    );
     return;
   }
 
@@ -23,6 +29,7 @@ Future<void> openAndroidVersionDistributionWindow(
       arguments: {
         'type': 'version_distribution',
         'initialVersion': currentVersion,
+        'platform': platform.id,
       },
       frame: const Offset(140, 120) & const Size(980, 640),
       title: windowTitle,
@@ -33,6 +40,7 @@ Future<void> openAndroidVersionDistributionWindow(
       showAndroidVersionDistributionDialog(
         context,
         currentVersion: currentVersion,
+        platform: platform,
       );
     }
   }
@@ -42,6 +50,7 @@ Future<void> openAndroidVersionDistributionWindow(
 void showAndroidVersionDistributionDialog(
   BuildContext context, {
   String? currentVersion,
+  PlatformDistributionType platform = PlatformDistributionType.android,
 }) {
   showDialog(
     context: context,
@@ -58,6 +67,7 @@ void showAndroidVersionDistributionDialog(
           ),
           child: PlatformVersionDistributionShellView(
             isStandaloneWindow: false,
+            initialPlatform: platform,
             initialVersion: currentVersion,
             onClose: () => Navigator.of(ctx).pop(),
           ),
@@ -73,13 +83,19 @@ class AndroidVersionInfoIcon extends StatelessWidget {
   const AndroidVersionInfoIcon({
     super.key,
     this.currentVersion,
+    this.platform = PlatformDistributionType.android,
   });
 
   final String? currentVersion;
+  final PlatformDistributionType platform;
 
   @override
   Widget build(BuildContext context) {
-    final tooltipText = context.l10n.t('androidApiDistributionTooltip');
+    final tooltipText = context.l10n.t(
+      platform == PlatformDistributionType.harmony
+          ? 'harmonyApiDistributionTooltip'
+          : 'androidApiDistributionTooltip',
+    );
 
     return Tooltip(
       message: tooltipText.isNotEmpty
@@ -94,6 +110,7 @@ class AndroidVersionInfoIcon extends StatelessWidget {
           onTap: () => openAndroidVersionDistributionWindow(
             context,
             currentVersion: currentVersion,
+            platform: platform,
           ),
           child: Padding(
             padding: const EdgeInsets.all(2),
