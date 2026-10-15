@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 
 import '../../../core/device_actions/device_action_service.dart';
+import '../../../core/harmony/harmony_foreground_window.dart';
 import '../../../core/scrcpy/screen_record_provider.dart';
 import '../../../core/scrcpy/scrcpy_keycode_helper.dart';
 import '../../../core/providers/app_providers.dart';
@@ -190,14 +191,19 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('power'),
-              onPressed: () {
-                pressPowerKeyAndResetScreenPower(
-                  actions: actions,
-                  deviceId: widget.deviceId,
-                  screenPowerOffNotifier: ref.read(
-                    screenPowerOffProvider(widget.deviceId).notifier,
-                  ),
-                );
+              onPressed: () async {
+                final result = widget.controller.isHarmony
+                    ? await actions.lockScreen(widget.deviceId)
+                    : await pressPowerKeyAndResetScreenPower(
+                        actions: actions,
+                        deviceId: widget.deviceId,
+                        screenPowerOffNotifier: ref.read(
+                          screenPowerOffProvider(widget.deviceId).notifier,
+                        ),
+                      );
+                if (!result.isSuccess && context.mounted) {
+                  AppToast.show(context, result.message, isError: true);
+                }
               },
             ),
             if (!widget.controller.isIos && !widget.controller.isHarmony)
@@ -375,6 +381,9 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                           .read(hdcServiceProvider)
                           .currentFocus(widget.deviceId)
                     : await actions.currentFocus(widget.deviceId);
+                final harmonyWindow = widget.controller.isHarmony
+                    ? HarmonyForegroundWindow.parse(res.stdout)
+                    : null;
                 if (context.mounted) {
                   showDialog<void>(
                     context: context,
@@ -420,7 +429,15 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                           ],
                         ),
                         content: SelectableText(
-                          res.stdout,
+                          harmonyWindow == null
+                              ? res.message
+                              : _formatHarmonyFocus(
+                                  context,
+                                  harmonyWindow,
+                                  fallback: res.isSuccess
+                                      ? context.l10n.t('foregroundUnavailable')
+                                      : res.message,
+                                ),
                           style: const TextStyle(fontSize: 13),
                         ),
                         actions: [
@@ -527,5 +544,21 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         ),
       ),
     );
+  }
+
+  String _formatHarmonyFocus(
+    BuildContext context,
+    HarmonyForegroundWindow window, {
+    required String fallback,
+  }) {
+    if (window.isEmpty) return fallback;
+    final missing = context.l10n.t('foregroundUnknown');
+    final page = window.pageName ?? window.abilityName?.split('.').last;
+    return [
+      '${context.l10n.t('foregroundPage')}: ${page ?? missing}',
+      '${context.l10n.t('foregroundAppId')}: ${window.bundleName ?? missing}',
+      '${context.l10n.t('foregroundAbility')}: ${window.abilityName ?? missing}',
+      '${context.l10n.t('foregroundWindow')}: ${window.windowName ?? missing}',
+    ].join('\n');
   }
 }

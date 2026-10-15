@@ -63,7 +63,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
         );
 
       case MouseRecorderStatus.recording:
-        return Row(
+        return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             MirrorToolbarButton(
@@ -77,7 +77,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
               onPressed: notifier.stopRecording,
             ),
             Padding(
-              padding: const EdgeInsets.only(left: 2, right: 6),
+              padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
                 _formatDuration(state.recordDurationMs),
                 style: const TextStyle(
@@ -99,7 +99,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
             .replaceAll('{count}', '$count')
             .replaceAll('{duration}', seconds);
 
-        return Row(
+        return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             MirrorToolbarButton(
@@ -124,7 +124,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
         );
 
       case MouseRecorderStatus.playing:
-        return Row(
+        return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             MirrorToolbarButton(
@@ -147,7 +147,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
             ),
             if (state.playProgress > 0)
               Padding(
-                padding: const EdgeInsets.only(left: 2, right: 6),
+                padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Text(
                   '${(state.playProgress * 100).toInt()}%',
                   style: const TextStyle(
@@ -162,7 +162,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
         );
 
       case MouseRecorderStatus.paused:
-        return Row(
+        return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             MirrorToolbarButton(
@@ -184,7 +184,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
               onPressed: notifier.stopPlaying,
             ),
             Padding(
-              padding: const EdgeInsets.only(left: 2, right: 6),
+              padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
                 '${(state.playProgress * 100).toInt()}% (暂停)',
                 style: const TextStyle(
