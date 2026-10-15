@@ -63,7 +63,7 @@ class PrimaryRail extends ConsumerWidget {
         return const {0, 1, 2, 3, 4, 6, 9}.contains(tabIndex);
       }
       // 鸿蒙 NEXT（纯血鸿蒙）支持：
-      // 主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)
+      // 主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、网络(11，HTTP 代理面板对鸿蒙隐藏)
       if (selectedDevice!.isHarmony) {
         if (!selectedDevice!.isOnline) {
           return tabIndex == 0;
@@ -76,7 +76,8 @@ class PrimaryRail extends ConsumerWidget {
             tabIndex == 5 ||
             tabIndex == 6 ||
             tabIndex == 7 ||
-            tabIndex == 9;
+            tabIndex == 9 ||
+            tabIndex == 11;
       }
       if (selectedDevice!.isOnline) {
         return true;
@@ -148,7 +149,7 @@ class PrimaryRail extends ConsumerWidget {
         ),
       ];
     } else if (isHarmony) {
-      // 3. 鸿蒙设备专属 Tab 列表（支持主页、控制、应用、文件、日志、终端、进程、网页调试、截图）
+      // 3. 鸿蒙设备专属 Tab 列表（支持主页、控制、应用、文件、日志、终端、进程、网页调试、截图、网络端口转发）
       tools = [
         _RailToolItem(
           tabIndex: 0,
@@ -194,6 +195,11 @@ class PrimaryRail extends ConsumerWidget {
           tabIndex: 9,
           icon: CupertinoIcons.camera,
           label: context.l10n.t('screenshotRecord'),
+        ),
+        _RailToolItem(
+          tabIndex: 11,
+          icon: CupertinoIcons.wifi,
+          label: context.l10n.t('network'),
         ),
       ];
     } else {
