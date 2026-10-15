@@ -14,7 +14,7 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final favorites = ref.watch(favoriteCommandsProvider);
+    final favorites = ref.watch(favoriteCommandsProvider(device.isHarmony));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -76,7 +76,9 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                     );
                     if (confirmed == true) {
                       await ref
-                          .read(favoriteCommandsProvider.notifier)
+                          .read(
+                            favoriteCommandsProvider(device.isHarmony).notifier,
+                          )
                           .resetFavorites();
                     }
                   },
@@ -144,7 +146,11 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
                           onFill: () => onFillCommand(cmd.command),
                           onDelete: () {
                             ref
-                                .read(favoriteCommandsProvider.notifier)
+                                .read(
+                                  favoriteCommandsProvider(
+                                    device.isHarmony,
+                                  ).notifier,
+                                )
                                 .deleteFavorite(cmd.id);
                           },
                         );
@@ -211,7 +217,7 @@ class _FavoriteCommandsPanel extends ConsumerWidget {
         titleController.text.isNotEmpty &&
         commandController.text.isNotEmpty) {
       await ref
-          .read(favoriteCommandsProvider.notifier)
+          .read(favoriteCommandsProvider(device.isHarmony).notifier)
           .addFavorite(titleController.text, commandController.text);
     }
   }

@@ -37,49 +37,101 @@ class FavoriteCommand {
       );
 }
 
-/// 收藏命令管理器 Notifier。
+/// 收藏命令管理器 Notifier，按 Android/HarmonyOS 提供各自的默认命令。
 class FavoriteCommandsNotifier extends Notifier<List<FavoriteCommand>> {
-  static const _prefsKey = 'terminal.favorites';
-  static const _deletedDefaultsKey = 'terminal.favorites.deleted_defaults';
+  FavoriteCommandsNotifier(this._isHarmony);
 
-  final List<FavoriteCommand> _defaultCommands = [
-    const FavoriteCommand(
+  static const _prefsKey = 'terminal.favorites';
+  static const _androidDeletedDefaultsKey =
+      'terminal.favorites.deleted_defaults';
+  static const _harmonyDeletedDefaultsKey =
+      'terminal.favorites.deleted_defaults.harmony';
+
+  static const List<FavoriteCommand> _androidDefaultCommands = [
+    FavoriteCommand(
       id: 'default_packages',
       title: '',
       titleKey: 'favoritePackages',
       command: 'pm list packages',
     ),
-    const FavoriteCommand(
+    FavoriteCommand(
       id: 'default_focus',
       title: '',
       titleKey: 'favoriteFocusActivity',
       command: 'dumpsys window | grep mCurrentFocus',
     ),
-    const FavoriteCommand(
+    FavoriteCommand(
       id: 'default_screenshot',
       title: '',
       titleKey: 'favoriteScreenshot',
       command: 'screencap -p /sdcard/screenshot.png',
     ),
-    const FavoriteCommand(
+    FavoriteCommand(
       id: 'default_version',
       title: '',
       titleKey: 'favoriteAndroidVersion',
       command: 'getprop ro.build.version.release',
     ),
-    const FavoriteCommand(
+    FavoriteCommand(
       id: 'default_logcat_dump',
       title: '',
       titleKey: 'favoriteLogcatDump',
       command: 'logcat -d',
     ),
-    const FavoriteCommand(
+    FavoriteCommand(
       id: 'default_ip',
       title: '',
       titleKey: 'favoriteIpInfo',
       command: 'ip addr show wlan0',
     ),
   ];
+
+  static const List<FavoriteCommand> _harmonyDefaultCommands = [
+    FavoriteCommand(
+      id: 'harmony_default_packages',
+      title: '',
+      titleKey: 'favoritePackages',
+      command: 'bm dump -a',
+    ),
+    FavoriteCommand(
+      id: 'harmony_default_focus',
+      title: '',
+      titleKey: 'favoriteHarmonyFocusWindow',
+      command: "hidumper -s WindowManagerService -a '-a'",
+    ),
+    FavoriteCommand(
+      id: 'harmony_default_screenshot',
+      title: '',
+      titleKey: 'favoriteScreenshot',
+      command: 'uitest screenCap -p /data/local/tmp/screenshot.png',
+    ),
+    FavoriteCommand(
+      id: 'harmony_default_version',
+      title: '',
+      titleKey: 'favoriteHarmonyVersion',
+      command: 'param get const.ohos.fullname',
+    ),
+    FavoriteCommand(
+      id: 'harmony_default_hilog_dump',
+      title: '',
+      titleKey: 'favoriteLogcatDump',
+      command: 'hilog -x',
+    ),
+    FavoriteCommand(
+      id: 'harmony_default_ip',
+      title: '',
+      titleKey: 'favoriteIpInfo',
+      command: 'ifconfig wlan0',
+    ),
+  ];
+
+  final bool _isHarmony;
+
+  List<FavoriteCommand> get _defaultCommands =>
+      _isHarmony ? _harmonyDefaultCommands : _androidDefaultCommands;
+
+  String get _deletedDefaultsKey =>
+      _isHarmony ? _harmonyDeletedDefaultsKey : _androidDeletedDefaultsKey;
 
   @override
   List<FavoriteCommand> build() {

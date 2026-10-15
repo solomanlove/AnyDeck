@@ -17,11 +17,13 @@ final adbTerminalProvider =
       AdbTerminalNotifier.new,
     );
 
-/// 收藏与常用调试命令列表 Provider。
+/// 收藏与常用调试命令列表 Provider，按设备平台隔离默认命令。
 final favoriteCommandsProvider =
-    NotifierProvider<FavoriteCommandsNotifier, List<FavoriteCommand>>(
-      FavoriteCommandsNotifier.new,
-    );
+    NotifierProvider.family<
+      FavoriteCommandsNotifier,
+      List<FavoriteCommand>,
+      bool
+    >(FavoriteCommandsNotifier.new);
 
 /// 模拟器底层管理服务实例 Provider。
 final emulatorServiceProvider = Provider<EmulatorService>((ref) {
