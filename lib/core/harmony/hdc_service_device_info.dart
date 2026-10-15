@@ -61,6 +61,28 @@ extension HdcServiceDeviceInfo on HdcService {
     return null;
   }
 
+  /// 从 `nproc`、HarmonyOS ABI 参数和 `uname -m` 的组合输出中解析 CPU 概要。
+  ///
+  /// 该结果只表示设备公开的逻辑核心数与 CPU ABI，不把架构误写成具体 SoC 型号。
+  static String? parseCpuSummary(String output) {
+    final lines = const LineSplitter()
+        .convert(output)
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return null;
+
+    final cores = int.tryParse(lines.first);
+    if (cores == null || cores <= 0) return null;
+
+    final architecture = lines
+        .skip(1)
+        .firstWhere((line) => !isGenericOrInvalidModel(line), orElse: () => '');
+    return architecture.isEmpty
+        ? '$cores cores'
+        : '$cores cores ($architecture)';
+  }
+
   /// 获取鸿蒙设备的真实硬件序列号 (SN)。
   ///
   /// 优先通过 `param get ohos.boot.sn` 等参数获取底层硬件序列号；

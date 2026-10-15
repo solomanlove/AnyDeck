@@ -149,6 +149,12 @@ class _OverviewIdentityCard extends ConsumerWidget {
             ? overview.model
             : overview.brand,
       ),
+      if (device.isHarmony && overview.model != '-')
+        _OverviewIdentityData(
+          icon: CupertinoIcons.tag,
+          label: context.l10n.t('model'),
+          value: overview.model,
+        ),
       _OverviewIdentityData(
         icon: CupertinoIcons.number_square,
         label: context.l10n.t('serial'),

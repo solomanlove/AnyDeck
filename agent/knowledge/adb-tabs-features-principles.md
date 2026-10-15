@@ -44,7 +44,8 @@
      - 系统版本：`ro.build.version.release`
      - API 级别：`ro.build.version.sdk`
    - **标识符**：Android ID 采用 `settings get secure android_id` 查询。
-   - **处理器与内存**：解析 `/proc/cpuinfo` (处理器名称与核数) 及 `/proc/meminfo`。`DeviceMemoryInfo` 从已有分组查询中解析 `MemTotal` 和 `MemAvailable`，已用内存为两者之差；旧内核无 `MemAvailable` 时，以 `MemFree + Buffers + Cached + SReclaimable - Shmem` 估算可用量并限制范围，字段不足则显示未知，不新增 ADB command 或后台轮询。`DeviceOverview.memory` 保留总量语义，新增 `memoryUsed` 存储当前已用量并同步 JSON 缓存；旧缓存和暂不支持的平台默认为 `-`，占用随概览刷新更新。参考 [Linux meminfo 文档](https://docs.kernel.org/filesystems/proc.html)。
+   - **处理器与内存**：解析 `/proc/cpuinfo` (处理器名称与核数) 及 `/proc/meminfo`。鸿蒙真机可能不开放 SoC 名称与 `/proc/cpuinfo`，此时只展示 `nproc` 逻辑核心数和 `const.product.cpu.abilist` CPU ABI，标题明确为“CPU 核心与架构”，禁止根据机型猜测芯片型号。`DeviceMemoryInfo` 从已有分组查询中解析 `MemTotal` 和 `MemAvailable`，已用内存为两者之差；旧内核无 `MemAvailable` 时，以 `MemFree + Buffers + Cached + SReclaimable - Shmem` 估算可用量并限制范围，字段不足则显示未知，不新增 ADB command 或后台轮询。`DeviceOverview.memory` 保留总量语义，新增 `memoryUsed` 存储当前已用量并同步 JSON 缓存；旧缓存和暂不支持的平台默认为 `-`，占用随概览刷新更新。参考 [Linux meminfo 文档](https://docs.kernel.org/filesystems/proc.html)。
+   - **鸿蒙型号**：营销名称（如 `nova 12 Ultra`）与产品型号（如 `ADA-AL00U` / `BRA-AL00`）必须分开展示；产品型号统一取 `const.product.model`，不从连接 ID 或营销名称推断。
    - **存储空间**：运行 `df -h /data` 查询用户分区的总容量、已用空间与可用空间。
    - **屏幕参数**：
      - 分辨率：运行 `wm size` 获取物理分辨率（`Physical size`）及当前缩放分辨率（`Override size`）。

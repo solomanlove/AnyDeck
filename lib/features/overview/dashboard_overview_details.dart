@@ -6,7 +6,9 @@ extension _OverviewDetails on DeviceOverviewContent {
     if (device.isIos) return _iosSystemItems(context, overview);
     return [
       _OverviewDetailData(
-        label: context.l10n.t('processor'),
+        label: context.l10n.t(
+          device.isHarmony ? 'cpuCoresAndArchitecture' : 'processor',
+        ),
         value: overview.processor,
       ),
       _OverviewDetailData(

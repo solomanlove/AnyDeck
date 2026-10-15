@@ -105,7 +105,10 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           hdc.shell(deviceId, 'cat /proc/meminfo'),
           hdc.shell(deviceId, 'df -k /data'),
           hdc.shell(deviceId, 'ifconfig wlan0'),
-          hdc.shell(deviceId, 'nproc ; uname -m'),
+          hdc.shell(
+            deviceId,
+            'nproc ; param get const.product.cpu.abilist ; uname -m',
+          ),
           hdc.shell(deviceId, 'hidumper -s DisplayManagerService -a -a'),
         ]);
 
@@ -157,15 +160,9 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         }
 
         // 4. 处理器 CPU
-        String processor = '-';
-        if (cpuRes.isSuccess && cpuRes.stdout.isNotEmpty) {
-          final cpuLines = cpuRes.stdout.trim().split('\n');
-          final cores = cpuLines.first.trim();
-          final arch = cpuLines.length > 1 ? cpuLines[1].trim() : '';
-          if (cores.isNotEmpty && int.tryParse(cores) != null) {
-            processor = arch.isNotEmpty ? '$cores cores ($arch)' : '$cores cores';
-          }
-        }
+        final processor = cpuRes.isSuccess
+            ? HdcServiceDeviceInfo.parseCpuSummary(cpuRes.stdout) ?? '-'
+            : '-';
 
         // 5. 屏幕逻辑密度
         String logicalDensity = '-';
