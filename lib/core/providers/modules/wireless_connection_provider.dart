@@ -100,9 +100,51 @@ class WirelessConnectionNotifier
   Future<void> waitForPreparation(String id) =>
       _coordinator.waitForPreparation(id);
 
+  /// 概览探针晚于自动准备取得 IP 时，更新连接缓存并清除过期的无地址失败状态。
+  void syncDiscoveredIp(String deviceId, String ip) {
+    final validIp = wirelessIpv4(ip);
+    if (validIp == null) return;
+    _coordinator.rememberIp(deviceId, validIp);
+    final next = reconcileDiscoveredIp(state, deviceId, validIp);
+    if (!identical(next, state)) state = next;
+  }
+
   Future<AdbWirelessResult> pair(String address, String code) => _isMain
       ? _coordinator.pair(address, code)
       : Future.value(const AdbWirelessResult('wirelessMainOnly'));
+}
+
+/// 用概览探针的最新地址修正同设备过期的 `wirelessNoIp` 状态。
+Map<String, AdbWirelessState> reconcileDiscoveredIp(
+  Map<String, AdbWirelessState> states,
+  String deviceId,
+  String ip,
+) {
+  MapEntry<String, AdbWirelessState>? matched;
+  for (final entry in states.entries.toList().reversed) {
+    if (entry.key == deviceId ||
+        entry.value.deviceId == deviceId ||
+        entry.value.serial == deviceId) {
+      matched = entry;
+      break;
+    }
+  }
+  if (matched == null ||
+      matched.value.busy ||
+      matched.value.messageKey != 'wirelessNoIp') {
+    return states;
+  }
+
+  final current = matched.value;
+  return {
+    ...states,
+    matched.key: AdbWirelessState(
+      deviceId: current.deviceId,
+      messageKey: 'wirelessReady',
+      ip: ip,
+      serial: current.serial,
+    ),
+  };
 }
 
 /// 合并前后都可使用 USB ID 或硬件 serial 找到同一份连接进度。

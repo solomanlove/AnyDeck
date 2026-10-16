@@ -81,4 +81,21 @@ void main() {
     };
     expect(wirelessStateFor(states, device)?.messageKey, 'wirelessConnected');
   });
+
+  test('概览晚于自动准备取得 IP 时清除无地址失败状态', () {
+    const states = {
+      'USB': AdbWirelessState(
+        deviceId: 'USB',
+        serial: 'PHONE',
+        messageKey: 'wirelessNoIp',
+        failed: true,
+      ),
+    };
+
+    final next = reconcileDiscoveredIp(states, 'PHONE', '192.168.1.9');
+
+    expect(next['USB']?.messageKey, 'wirelessReady');
+    expect(next['USB']?.failed, isFalse);
+    expect(next['USB']?.ip, '192.168.1.9');
+  });
 }

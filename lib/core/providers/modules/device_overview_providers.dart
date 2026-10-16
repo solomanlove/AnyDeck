@@ -12,6 +12,17 @@ import 'device_registry_providers.dart';
 import 'device_tracking_providers.dart';
 import 'registered_device_model.dart';
 import 'service_providers.dart';
+import 'wireless_connection_provider.dart';
+
+/// 将概览探针取得的 Wi-Fi IP 同步到设备列表与无线连接状态。
+void _syncDiscoveredIp(Ref ref, String deviceId, String ip) {
+  final registry = ref.read(deviceRegistryProvider.notifier);
+  final wireless = ref.read(wirelessConnectionProvider.notifier);
+  Future.microtask(() {
+    wireless.syncDiscoveredIp(deviceId, ip);
+    registry.updateDeviceIp(deviceId, ip);
+  });
+}
 
 /// 单台设备的硬件与系统信息概览 StreamProvider。
 ///
@@ -285,13 +296,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         }
         if (displayCached.ipAddress != '-' &&
             displayCached.ipAddress.isNotEmpty) {
-          Future.microtask(() {
-            if (ref.mounted) {
-              ref
-                  .read(deviceRegistryProvider.notifier)
-                  .updateDeviceIp(deviceId, displayCached.ipAddress);
-            }
-          });
+          _syncDiscoveredIp(ref, deviceId, displayCached.ipAddress);
         }
         yield displayCached;
       }
@@ -321,13 +326,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         });
       }
       if (fresh.ipAddress != '-' && fresh.ipAddress.isNotEmpty) {
-        Future.microtask(() {
-          if (ref.mounted) {
-            ref
-                .read(deviceRegistryProvider.notifier)
-                .updateDeviceIp(deviceId, fresh.ipAddress);
-          }
-        });
+        _syncDiscoveredIp(ref, deviceId, fresh.ipAddress);
       }
       yield fresh;
     });

@@ -121,6 +121,12 @@ class AdbWirelessCoordinator {
     await _preparations[id];
   }
 
+  /// 接收其他设备信息探针取得的最新地址，供后续无线连接直接复用。
+  void rememberIp(String id, String ip) {
+    if (_disposed || wirelessIpv4(ip) == null) return;
+    _ips[id] = ip;
+  }
+
   Future<AdbWirelessResult> _prepareUsb(String id) async {
     _ips.remove(id);
     if (!await probe.online(id)) {

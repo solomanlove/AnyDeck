@@ -46,6 +46,12 @@ adb -s <device_id> shell ip -o -4 addr show
 - 自动验证：`test/device_registry_ip_test.dart` 新增 7 项回归，覆盖旧缓存、双通道、离线 / 未授权、TCP/TLS 优先级、mDNS / 回环、无缓存和持久化重载；连同无线编排、Provider、HDC 合并及无线控件测试共 46 项通过。三个改动源码和新增测试定向 `flutter analyze --no-pub` 通过。
 - 待 UI 验收：使用新版本检查仅 TCP 在线、插入 USB、断开 TCP 和重启后的设备行地址及网段提示。未启动或构建应用；真机仅做上述只读地址核验，未进行连接切换。
 
+### 2.1.2 概览取得 IP 后同步设备管理页（2026-10-16）
+
+- Android 概览读取到有效 Wi-Fi IPv4 后，同时回写 `deviceRegistryProvider` 与 `wirelessConnectionProvider`；设备管理页依靠现有 Provider 订阅即时展示地址，无需返回页面时重新扫描设备。
+- 若 USB 自动准备先因暂时未取得地址进入 `wirelessNoIp`，后续概览探针成功时将该过期失败状态恢复为 `wirelessReady`，避免地址已经可用仍显示红色错误。
+- 地址同时写入 `AdbWirelessCoordinator` 的会话缓存，后续点击无线连接可直接复用；不新增 ADB 命令、Timer、全列表刷新或投屏链路变更。
+
 ### 2.2 身份与 mDNS
 
 - 优先 `ro.serialno`，其次 `ro.boot.serialno`；USB transport ID 与硬件 serial 不同的设备也可连接。
