@@ -19,6 +19,7 @@ import '../../../features/control/device_settings_popup.dart';
 import '../../../features/widgets/device_power_actions.dart';
 import 'mirror_back_long_press_handler.dart';
 import 'mirror_toolbar_button.dart';
+import 'harmony_power_button.dart';
 import 'ios_mirror_toolbar.dart';
 import 'mirror_volume_long_press_handler.dart';
 import 'mirror_window_controller.dart';
@@ -185,16 +186,16 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         child: Column(
           children: [
             // Group 1: 电源, 设备屏幕
-            MirrorToolbarButton(
+            if (widget.controller.isHarmony)
+              HarmonyPowerButton(deviceId: widget.deviceId)
+            else MirrorToolbarButton(
               icon: Icon(
                 CupertinoIcons.power,
                 color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('power'),
               onPressed: () async {
-                final result = widget.controller.isHarmony
-                    ? await actions.lockScreen(widget.deviceId)
-                    : await pressPowerKeyAndResetScreenPower(
+                final result = await pressPowerKeyAndResetScreenPower(
                         actions: actions,
                         deviceId: widget.deviceId,
                         screenPowerOffNotifier: ref.read(

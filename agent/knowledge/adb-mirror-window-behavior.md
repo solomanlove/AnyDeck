@@ -80,7 +80,7 @@
 ## HarmonyOS 工具栏控制
 
 - `hoscrcpy-sidecar.jar` 启动握手必须解析完整 JSON 的 `ready` 与 `port` 字段，不能依赖无空格的固定字符串。等待端口期间同时监听 stderr 和 process exit：设备离线、HDC 路径异常或 Java 失败时直接返回真实原因；只有进程仍存活且始终未报告端口时才判定 timeout。失败后先正常终止，再以 `SIGKILL` 兜底，避免残留 sidecar。
-- HarmonyOS 工具栏电源按钮执行单向 `power-shell suspend` 锁屏，不再发送可能反向唤醒的 Power key；鼠标路径录制、回放、暂停状态在窄工具栏内必须纵向排列，禁止使用 `Row` 横向溢出。
+- HarmonyOS 工具栏电源按钮打开“唤醒屏幕 / 息屏休眠”菜单，复用控制 Tab 的 `HdcService.setScreenPower`，分别执行 `power-shell wakeup` / `power-shell suspend`。不缓存或猜测设备亮灭状态，避免实体按键与主窗口操作导致状态不同步；命令执行期间禁用重复点击。验收路径：投屏电源菜单息屏后再次打开菜单唤醒，并在实体按键息屏后验证唤醒；设备断开时显示命令失败反馈。鼠标路径录制、回放、暂停状态在窄工具栏内必须纵向排列，禁止使用 `Row` 横向溢出。
 - 投屏窗口右侧“手机设置”按钮在 HarmonyOS 下展示“系统页面跳转”，按系统设置、Wi-Fi、应用管理排列；具体页优先使用 HDC/Want action，商用系统拒绝隐式启动或目标 action 不存在时回退 Settings 首页，不展示 Android 专属 density、font scale 与 layout helper。
 - 前台窗口弹框只展示从 WindowManagerService dump 中提取的页面、Bundle、Ability 与窗口名称；无法解析时展示友好提示，不直接把整段 hidumper 原始输出暴露给用户。
 - HarmonyOS NEXT 投屏只复用 scrcpy 的视频渲染协议，系统控制必须走 `HdcService`，不能把 Android ADB command 或 scrcpy control message 直接发给鸿蒙设备。
