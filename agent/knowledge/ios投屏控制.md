@@ -4,8 +4,11 @@
 
 ## USB 与 Wi-Fi 共用投屏窗口
 
+- AirPlay 窗口操作（置顶、全屏、停止）固定在标题栏右上角，移除手动等比还原，手机控制继续放右侧工具栏；标题不再显示编码视频尺寸。置顶状态及点击操作共用 USB 窗口控制器，初始化默认置顶设置后同步首屏图标，避免独立 false 状态导致图标错误；图标配色与 Android 一致，置顶为橙色，未置顶使用主题工具栏前景色；自动视频比例适配继续保留。
+- AirPlay `Idle` 也可能表示视频流重置。界面等待 3 秒持续非 Mirroring 才报断线，Stopped 则立即处理；恢复 Mirroring 后不依赖尺寸变化就清除断线状态，避免相同尺寸重连后一直白屏。断线文案跟随主题，并记录 status/lastError；这不能证明底层网络断流已修复，仍需真机连续投屏验收。
+
 - iOS 投屏统一使用 `MirrorWindowApp`。USB 画面是主窗口来源，AirPlay 建立后通过子窗口 MethodChannel 将同一个窗口切换为 Wi-Fi Texture，不再创建 `airplay_mirror` 专用窗口。
-- 标题必须明确显示 `USB` 或 `Wi-Fi AirPlay`，避免用户混淆当前视频来源。
+- 标题必须明确显示 `USB` 或 `AirPlay`，避免用户混淆当前视频来源。
 - AirPlay 模式复用 USB 窗口已有的 iOS/WDA 工具栏，并承接置顶、恢复比例、全屏和停止 AirPlay 操作。AirPlay 停止或会话断开后，有有效 USB 会话时切回 USB 画面。
 - AirPlay Bonjour 只发布到具备可路由 IPv4 的 LAN interface，排除 loopback、`utun` 与 `169.254/16` USB link-local。否则 USB 同时连接时，iPhone 可能经 USB 接入并在首帧后因 UDP NTP `No route to host` 终止镜像流。
 - 视频区域按照原始宽高比计算窗口客户区尺寸，窗口比例包含 30px 标题栏和 28px iOS 工具栏，避免因工具栏占用空间而产生上下黑边。
@@ -16,7 +19,7 @@
 
 ## iOS 音量按钮与 USB 文案
 
-- USB 投屏标题来源文案统一为 `USB`，Wi-Fi 来源仍显示 `Wi-Fi AirPlay`。
+- USB 投屏标题来源文案统一为 `USB`，Wi-Fi 来源仍显示 `AirPlay`。
 - iOS 工具栏音量增减通过 WDA `/session/{id}/wda/performIoHidEvent` 发送 Consumer page `0x0C`、usage `0xE9/0xEA`、0.1 秒短按，Home 保留 `/wda/homescreen`。
 - 已连接 iPhone 6s 的原 `pressButton` 和 IOHID 路由都返回成功，尚不能据此证明手机实际音量变化；自动回归检查上下行 usage、时长及 Home 路由。
 

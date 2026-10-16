@@ -277,7 +277,7 @@ Future<void> openAirPlayMirrorWindow(
         'airplayAspectRatio': aspect,
       },
       frame: Offset.zero & initialSize,
-      title: '$resolvedDeviceName · Wi-Fi AirPlay',
+      title: '$resolvedDeviceName · AirPlay',
     );
   } catch (e) {
     debugPrint('[AirPlay] Failed to open mirror window: $e');

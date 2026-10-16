@@ -7,11 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../core/airplay/airplay_server_service.dart';
+import '../../../core/airplay/airplay_connection_monitor.dart';
 import '../../../core/airplay/airplay_server_state.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 import '../multi_window_compat.dart';
-import 'mirror_toolbar_button.dart';
 import 'mirror_immersive_overlay.dart';
 import 'mirror_session_status_bar.dart';
 import 'mirror_window_frame_adapter.dart';
@@ -26,6 +26,8 @@ class IosAirPlayMirrorContent extends StatefulWidget {
     required this.autoHideControls,
     required this.toolbar,
     required this.onDisconnected,
+    required this.isAlwaysOnTop,
+    required this.onToggleAlwaysOnTop,
   });
 
   final int handle;
@@ -34,6 +36,9 @@ class IosAirPlayMirrorContent extends StatefulWidget {
   final bool autoHideControls;
   final Widget toolbar;
   final VoidCallback onDisconnected;
+  /// 与 USB 共用控制器的置顶状态，避免 AirPlay 自行初始化为 false。
+  final bool isAlwaysOnTop;
+  final VoidCallback onToggleAlwaysOnTop;
 
   @override
   State<IosAirPlayMirrorContent> createState() =>
@@ -50,10 +55,10 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
   Size? _videoSize;
   late double _aspectRatio;
   bool _isDisconnected = false;
-  bool _isAlwaysOnTop = false;
   bool _isFullScreen = false;
   bool _hasMirrored = false;
   bool _reportedDisconnect = false;
+  AirPlayConnectionMonitor _connectionMonitor = AirPlayConnectionMonitor();
 
   @override
   void initState() {
@@ -95,6 +100,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
     _isDisconnected = false;
     _hasMirrored = false;
     _reportedDisconnect = false;
+    _connectionMonitor = AirPlayConnectionMonitor();
     if (mounted) setState(() {});
     if (previous != null) {
       await _textureChannel.invokeMethod<void>('unregister', {
@@ -125,8 +131,14 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
       final service = AirPlayServerService.instance;
       final status = service.getStatus(widget.handle);
       final size = service.getDimensions(widget.handle);
+      final disconnected = _connectionMonitor.isDisconnected(status, DateTime.now());
       if (status != AirPlayServerStatus.mirroring) {
-        if (!_isDisconnected) setState(() => _isDisconnected = true);
+        if (!disconnected) return;
+        if (!_isDisconnected) {
+          debugPrint('[AirPlayWindow] Disconnected: status=$status, '
+              'error=${service.getLastError(widget.handle)}');
+          setState(() => _isDisconnected = true);
+        }
         if (_hasMirrored && !_reportedDisconnect) {
           _reportedDisconnect = true;
           widget.onDisconnected();
@@ -135,6 +147,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
       }
       _hasMirrored = true;
       _reportedDisconnect = false;
+      if (_isDisconnected) setState(() => _isDisconnected = false);
       if (size == null || size.width <= 0 || size.height <= 0) return;
       final nextRatio = size.width / size.height;
       final changed =
@@ -166,12 +179,6 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
     await windowManager.setAspectRatio(bounds.width / targetHeight);
   }
 
-  Future<void> _toggleAlwaysOnTop() async {
-    final next = !_isAlwaysOnTop;
-    await windowManager.setAlwaysOnTop(next);
-    if (mounted) setState(() => _isAlwaysOnTop = next);
-  }
-
   Future<void> _toggleFullScreen() async {
     final next = !_isFullScreen;
     await windowManager.setFullScreen(next);
@@ -198,10 +205,6 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = Theme.of(context).appColors.toolbarForeground;
-    final resolution = _videoSize == null
-        ? ''
-        : '${_videoSize!.width.toInt()} × ${_videoSize!.height.toInt()}';
     final isLiveMirrorVisible = _textureId != null && !_isDisconnected;
     final windowBackground = Theme.of(context).brightness == Brightness.dark
         ? const Color(0xff121212)
@@ -233,7 +236,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
                 ),
                 child: Row(
                   children: [
-                    Flexible(
+                    Expanded(
                       child: Text(
                         '${widget.deviceName} · ${context.l10n.t('iosMirrorWifiAirPlay')}',
                         maxLines: 1,
@@ -244,19 +247,12 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
                         ),
                       ),
                     ),
-                    if (resolution.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        resolution,
-                        style: TextStyle(fontSize: 11, color: foreground),
-                      ),
-                    ],
-                    const Spacer(),
                     if (isLiveMirrorVisible)
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 6),
                         child: MirrorSessionDuration(),
                       ),
+                    ..._windowActions(context),
                   ],
                 ),
               ),
@@ -271,27 +267,6 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       widget.toolbar,
-                      MirrorToolbarButton(
-                        icon: Icon(_isAlwaysOnTop ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
-                          color: _isAlwaysOnTop ? Colors.orange : foreground, size: 16),
-                        tooltip: context.l10n.t('airplayAlwaysOnTop'),
-                        onPressed: _toggleAlwaysOnTop,
-                      ),
-                      MirrorToolbarButton(
-                        icon: Icon(CupertinoIcons.arrow_up_left_arrow_down_right, color: foreground, size: 16),
-                        tooltip: context.l10n.t('airplayResetAspect'),
-                        onPressed: _fitWindowToVideo,
-                      ),
-                      MirrorToolbarButton(
-                        icon: Icon(CupertinoIcons.fullscreen, color: foreground, size: 16),
-                        tooltip: context.l10n.t('airplayFullscreen'),
-                        onPressed: _toggleFullScreen,
-                      ),
-                      MirrorToolbarButton(
-                        icon: const Icon(CupertinoIcons.stop_circle, color: Colors.redAccent, size: 16),
-                        tooltip: context.l10n.t('airplayStopSession'),
-                        onPressed: _stopAirPlay,
-                      ),
                     ],
                   ),
                 ),
@@ -309,12 +284,37 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
     );
   }
 
+  /// 窗口操作固定在标题栏，避免混入手机控制工具栏。
+  List<Widget> _windowActions(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return [
+      for (final action in [
+        (widget.isAlwaysOnTop ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
+          'airplayAlwaysOnTop', widget.onToggleAlwaysOnTop,
+          // 与 Android 投屏窗口一致：置顶为橙色，未置顶使用工具栏前景色。
+          widget.isAlwaysOnTop ? Colors.orange : Theme.of(context).appColors.toolbarForeground),
+        (CupertinoIcons.fullscreen,
+          'airplayFullscreen', _toggleFullScreen, colors.onSurface),
+        (CupertinoIcons.stop_circle,
+          'airplayStopSession', _stopAirPlay, colors.error),
+      ])
+        IconButton(
+          icon: Icon(action.$1, size: 16, color: action.$4),
+          tooltip: context.l10n.t(action.$2),
+          onPressed: action.$3,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+          visualDensity: VisualDensity.compact,
+        ),
+    ];
+  }
+
   Widget _buildVideo(BuildContext context) {
     if (_isDisconnected) {
       return Center(
         child: Text(
           context.l10n.t('airplayDisconnected'),
-          style: const TextStyle(color: Colors.white70),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
     }

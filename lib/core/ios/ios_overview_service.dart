@@ -99,6 +99,7 @@ class IosOverviewService {
         productType: productType,
         buildVersion: _string(data['BuildVersion']),
         hardwareModel: _string(data['HardwareModel']),
+        modelNumber: _modelNumber(data),
         cpuCores: cores,
         networkInterfaces: interfaces is Map
             ? interfaces.entries
@@ -112,6 +113,13 @@ class IosOverviewService {
   }
 
   static String _string(Object? value) => value is String ? value.trim() : '';
+  /// 部分服务已返回完整料号，避免重复拼接地区后缀；缺失时不猜测。
+  static String _modelNumber(Map<String, dynamic> data) {
+    final model = _string(data['ModelNumber']);
+    final region = _string(data['RegionInfo']);
+    if (model.isEmpty || region.isEmpty || model.endsWith(region)) return model;
+    return '$model$region';
+  }
   static String _orUnknown(String value) => value.isEmpty ? '-' : value;
   static int? _nonNegativeInt(Object? value) {
     final parsed = value is int ? value : int.tryParse('$value');

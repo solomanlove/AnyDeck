@@ -166,6 +166,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     // 初始化控制器
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.init(_viewerKey, initialAlwaysOnTop: widget.initialAlwaysOnTop);
+      // 初始化读取了默认置顶设置，同步 AirPlay 标题栏的首次图标状态。
+      if (mounted) setState(() {});
     });
   }
 
@@ -255,6 +257,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         deviceName: widget.deviceName,
         initialAspectRatio: _airplayAspectRatio,
         autoHideControls: !settings.mirrorControlsAlwaysVisible,
+        isAlwaysOnTop: _controller.isAlwaysOnTop,
+        onToggleAlwaysOnTop: _controller.toggleAlwaysOnTop,
         toolbar: MirrorFloatingToolbar(
           deviceId: widget.deviceId,
           windowId: widget.windowId,

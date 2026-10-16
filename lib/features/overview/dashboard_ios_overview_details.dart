@@ -20,6 +20,10 @@ List<_OverviewDetailData> _iosSystemItems(
   final cores = details?.cpuCores;
   return [
     _OverviewDetailData(
+      label: context.l10n.t('iosModelNumber'),
+      value: _iosValue(context, details?.modelNumber),
+    ),
+    _OverviewDetailData(
       label: context.l10n.t('iosHardwareModel'),
       value: _iosValue(context, details?.hardwareModel),
     ),
@@ -50,7 +54,7 @@ List<_OverviewDetailData> _iosSystemItems(
       value: _iosValue(context, details?.networkInterfaces),
     ),
     _OverviewDetailData(
-      label: context.l10n.t('wifi'),
+      label: context.l10n.t('iosWifiName'),
       value: _iosValue(context, overview.wifi),
     ),
     _OverviewDetailData(

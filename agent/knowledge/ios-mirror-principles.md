@@ -123,6 +123,12 @@ iOS 在线设备开放“控制、应用、进程、文件、日志、截图”�
 
 ## 9. 截图缺少 Developer Disk Image 的自动恢复（2026-10-05）
 
+### 概览型号与网络字段补齐（2026-10-16）
+
+- 型号表新增 `iPhone10,3` / `iPhone10,6` → iPhone X；芯片、分辨率和 PPI 依据 [Apple 规格](https://support.apple.com/en-us/111864)，继续标记为型号规格，不作为实时读数。共享身份解析也可使用该映射。
+- `IosOverviewDetails.modelNumber` 保存 `ModelNumber + RegionInfo` 销售料号，例如 `MQA52CH/A`；完整料号不重复拼接，缺少 ModelNumber 时不单独展示地区。中英文 UI 明确标注销售料号，避免冒充 `Axxxx` 硬件型号；旧缓存缺失字段兼容空值。
+- Wi-Fi 硬件 MAC 继续读取 `WiFiAddress`。Wi-Fi 行明确标注 SSID；当前读取链路未返回 IP/SSID 时显示“暂未读取”，不使用电脑网络、连接类型或型号推测。未增加网络扫描或额外常驻进程。
+
 ### Instruments 超时回退（2026-10-16）
 
 - 当前 USB iPhone X 复现 `TakeScreenshot: Timed out waiting for response`；同机独立 `com.apple.mobile.screenshotr` 服务可返回 1125×2436 PNG，不能把 Instruments 超时直接判为断连或缺少镜像。

@@ -4,6 +4,7 @@ class IosOverviewDetails {
     this.productType = '',
     this.buildVersion = '',
     this.hardwareModel = '',
+    this.modelNumber = '',
     this.networkInterfaces = '',
     this.cpuCores,
     this.partial = false,
@@ -12,6 +13,8 @@ class IosOverviewDetails {
   final String productType;
   final String buildVersion;
   final String hardwareModel;
+  /// ModelNumber 与 RegionInfo 组成的销售料号，不等同于 Axxxx 硬件型号。
+  final String modelNumber;
   final String networkInterfaces;
   final int? cpuCores;
   final bool partial;
@@ -20,6 +23,7 @@ class IosOverviewDetails {
     'productType': productType,
     'buildVersion': buildVersion,
     'hardwareModel': hardwareModel,
+    'modelNumber': modelNumber,
     'networkInterfaces': networkInterfaces,
     'cpuCores': cpuCores,
     'partial': partial,
@@ -30,6 +34,7 @@ class IosOverviewDetails {
         productType: json['productType'] as String? ?? '',
         buildVersion: json['buildVersion'] as String? ?? '',
         hardwareModel: json['hardwareModel'] as String? ?? '',
+        modelNumber: json['modelNumber'] as String? ?? '',
         networkInterfaces: json['networkInterfaces'] as String? ?? '',
         cpuCores: json['cpuCores'] as int?,
         partial: json['partial'] as bool? ?? false,
@@ -48,5 +53,8 @@ class IosModelSpec {
   // 来源：https://support.apple.com/en-us/111952 。未知型号不猜测参数。
   static const byProductType = {
     'iPhone8,1': IosModelSpec('iPhone 6s', 'Apple A9', '750 × 1334', 326),
+    // iPhone X：https://support.apple.com/en-us/111864 。
+    'iPhone10,3': IosModelSpec('iPhone X', 'Apple A11 Bionic', '1125 × 2436', 458),
+    'iPhone10,6': IosModelSpec('iPhone X', 'Apple A11 Bionic', '1125 × 2436', 458),
   };
 }

@@ -69,6 +69,34 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  test('iPhone X 展示型号及销售料号，缓存兼容旧字段', () {
+    for (final productType in ['iPhone10,3', 'iPhone10,6']) {
+      final overview = IosOverviewService.parse({
+        ..._info,
+        'ProductType': productType,
+        'ModelNumber': 'MQA52',
+        'RegionInfo': 'CH/A',
+      }, _disk, fallbackName: 'fallback');
+      expect(overview.model, 'iPhone X ($productType)');
+      expect(overview.iosDetails?.modelNumber, 'MQA52CH/A');
+      final restored = DeviceOverview.fromJson(overview.toJson());
+      expect(restored.iosDetails?.modelNumber, 'MQA52CH/A');
+      expect(IosModelSpec.byProductType[productType]?.ppi, 458);
+      expect(overview.macAddress, '00:11:22:33:44:55');
+      expect(overview.wifi, '-');
+      expect(overview.ipAddress, '-');
+    }
+    expect(IosOverviewDetails.fromJson({}).modelNumber, '');
+    final complete = IosOverviewService.parse({
+      ..._info, 'ModelNumber': 'MQA52CH/A', 'RegionInfo': 'CH/A',
+    }, _disk, fallbackName: 'fallback');
+    expect(complete.iosDetails?.modelNumber, 'MQA52CH/A');
+    final missing = IosOverviewService.parse({
+      ..._info, 'RegionInfo': 'CH/A',
+    }, _disk, fallbackName: 'fallback');
+    expect(missing.iosDetails?.modelNumber, '');
+  });
+
   test('读取型号、真实序列号和存储，保留 CPU/网络且不伪造其它读数', () async {
     final commands = _Commands();
     final result = await IosOverviewService(
