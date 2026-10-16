@@ -6,6 +6,8 @@
 
 ## 1. 投屏机制（2026-10-06 更新）
 
+- 设备列表的 iOS 投屏图标仅在设备在线且 `hasUsbConnection=true` 时显示，纯 Wi-Fi 或连接类型未知时隐藏；USB + Wi-Fi 双通道保留。该规则同时适用于列表内的 AirPlay 重开入口，不改变 AirPlay 接收服务本身及 Android/HarmonyOS 入口。
+
 macOS 已将原 `go-ios screenshot --stream` / MJPEG / `Image.memory` 投屏替换为 CoreMediaIO + AVFoundation + Flutter Texture。单张截图功能继续独立保留。视频不再占用固定 3333 端口，也不再按端口清理其他进程。
 
 控制统一由主窗口持有 WDA Runner、iproxy USB 转发和 Session；模拟 BLE 已删除。当前面向 macOS + iPhone 6s 的实现、部署脚本、两个 PoC 的范围和未完成的真机验收见 [iOS 投屏控制](ios投屏控制.md)。不能将编译通过当作流畅度或真机控制已经通过。

@@ -219,6 +219,9 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     final airplaySession = ref.watch(airplaySessionProvider);
     final isAirplayMirroring = airplaySession != null &&
         airplaySession.status == AirPlayServerStatus.mirroring;
+    // iOS 列表入口只支持 USB 投屏；双通道设备保留入口，纯 Wi-Fi 隐藏。
+    final canMirror = device.isOnline &&
+        (!device.isIos || device.hasUsbConnection);
 
     return Expanded(
       flex: 2,
@@ -228,7 +231,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // 0. 若为 iOS 设备且当前 AirPlay 正在投屏中，展示专属重新打开投屏窗口按钮
-          if (device.isIos && isAirplayMirroring) ...[
+          if (canMirror && device.isIos && isAirplayMirroring) ...[
             Tooltip(
               message: context.l10n.t('airplayOpenMirrorWindow'),
               child: InkWell(
@@ -272,7 +275,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             ),
           ]
           // 1. 若设备在线且非 AirPlay 独占状态，显示常规独立投屏按钮
-          else if (device.isOnline) ...[
+          else if (canMirror) ...[
             IconButton(
               icon: const Icon(
                 CupertinoIcons.tv,
