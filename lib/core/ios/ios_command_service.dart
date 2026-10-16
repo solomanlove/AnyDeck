@@ -10,6 +10,7 @@ import 'ios_app_info.dart';
 import 'ios_process_info.dart';
 import 'ios_process_parser.dart';
 import 'ios_screenshot_capture.dart';
+import 'ios_screenshot_fallback.dart';
 
 /// 统一封装 go-ios 的短命令、持续流和 JSON 解析。
 class IosCommandService {
@@ -24,7 +25,16 @@ class IosCommandService {
 
   final String executable;
   final void Function(String message, {String tag, String level})? _onLog;
-  late final _screenshotCapture = IosScreenshotCapture(run);
+  late final _screenshotCapture = IosScreenshotCapture(
+    run,
+    fallback: Platform.isMacOS
+        ? (udid) => captureIosScreenshotFallback(
+            udid,
+            iosExecutable: executable,
+            runPython: IosCommandService(executable: 'python3', onLog: _onLog).run,
+          )
+        : null,
+  );
 
   static String _resolveBinary() {
     final ios = resolveToolPath('ios');

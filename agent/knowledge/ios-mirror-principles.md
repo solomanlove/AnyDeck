@@ -123,6 +123,13 @@ iOS 在线设备开放“控制、应用、进程、文件、日志、截图”�
 
 ## 9. 截图缺少 Developer Disk Image 的自动恢复（2026-10-05）
 
+### Instruments 超时回退（2026-10-16）
+
+- 当前 USB iPhone X 复现 `TakeScreenshot: Timed out waiting for response`；同机独立 `com.apple.mobile.screenshotr` 服务可返回 1125×2436 PNG，不能把 Instruments 超时直接判为断连或缺少镜像。
+- macOS 上仅对明确的 `TakeScreenshot` 响应超时调用一次 screenshotr 回退，保留原截图与 DDI 恢复流程。失败保留两条错误，不循环重试；其他平台及普通断连不启用此路径。
+- `ios_screenshot_fallback.dart` 从 Flutter assets 提取 Python helper，复用命令执行器的 20 秒超时和进程回收。脚本复用图标 helper 的 usbmux/plist 能力，只选择目标 UDID 的 USB 连接，完成 DeviceLink 握手后读取截图；无需第三方 Python 库或 WDA。
+- 证书、脚本、图片在私有临时目录中清理，socket 有超时，响应沿用 helper 的 16 MiB 上限。定向测试 22 项通过，包含当前真机正常截图、回退及 asset 提取后的图片解码；未启动桌面 App，未验证 iOS 17+ 的 screenshotr 支持。
+
 ### 问题与实现
 
 截图页通过 `IosCommandService.captureScreenshot` 执行一次性截图，此前没有投屏入口中的镜像挂载恢复流程。未挂载时，go-ios 会返回 `DVTSecureSocketProxy` / `InvalidService` 或 `Developer Disk Image must be mounted`，页面直接展示失败。

@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/ios/ios_command_service.dart';
 import 'package:any_deck/core/ios/ios_screenshot_capture.dart';
+import 'package:any_deck/core/ios/ios_screenshot_fallback.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _success = AdbResult(exitCode: 0, stdout: '', stderr: '');
@@ -47,6 +48,37 @@ class _ScreenshotRunner {
 }
 
 void main() {
+  test('Instruments 截图超时只回退一次，不误挂载镜像', () async {
+    final runner = _ScreenshotRunner()..results.add(const AdbResult(
+      exitCode: 1, stdout: '',
+      stderr: 'TakeScreenshot: Timed out waiting for response for message:1 channel:1',
+    ));
+    var fallbackCalls = 0;
+    final capture = IosScreenshotCapture(runner.run, fallback: (udid) async {
+      expect(udid, 'device-a');
+      fallbackCalls++;
+      return Uint8List.fromList([1, 2, 3]);
+    });
+    expect(await capture.capture('device-a'), [1, 2, 3]);
+    expect(fallbackCalls, 1);
+    expect(runner.calls, hasLength(1));
+    expect(await File(runner.outputPath!).parent.exists(), isFalse);
+  });
+
+  test('截图回退失败保留两条错误且允许后续重试', () async {
+    final runner = _ScreenshotRunner()..results.add(const AdbResult(
+      exitCode: 1, stdout: '',
+      stderr: 'TakeScreenshot: Timed out waiting for response',
+    ));
+    final capture = IosScreenshotCapture(runner.run, fallback: (_) async {
+      throw StateError('DeviceLocked');
+    });
+    await expectLater(capture.capture('device-a'), throwsA(predicate(
+      (error) => '$error'.contains('TakeScreenshot') && '$error'.contains('DeviceLocked'),
+    )));
+    expect(await capture.capture('device-a'), isA<Uint8List>());
+  });
+
   test('正常截图不挂载镜像，返回字节并清理临时目录', () async {
     final runner = _ScreenshotRunner();
     final bytes = await IosScreenshotCapture(runner.run).capture('device-a');
@@ -169,6 +201,20 @@ void main() {
   // 仅显式传入 UDID 时访问真机；常规回归不调用真实 go-ios。
   const udid = String.fromEnvironment('IOS_SCREENSHOT_UDID');
   if (udid.isNotEmpty) {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    test('真机 screenshotr 回退及 asset 提取可解码', () async {
+      final bytes = await captureIosScreenshotFallback(
+        udid,
+        iosExecutable: IosCommandService().executable,
+        runPython: IosCommandService(executable: 'python3').run,
+      );
+      final codec = await ui.instantiateImageCodec(bytes);
+      final image = (await codec.getNextFrame()).image;
+      expect(image.width, greaterThan(0));
+      expect(image.height, greaterThan(0));
+      image.dispose();
+      codec.dispose();
+    });
     test('真机截图字节可以被 Flutter 解码', () async {
       final bytes = await IosCommandService().captureScreenshot(udid);
       final codec = await ui.instantiateImageCodec(bytes);

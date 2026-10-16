@@ -10,9 +10,10 @@ typedef IosScreenshotCommand =
 
 /// 单次截图在缺少开发者镜像时自动挂载并重试，按设备合并并发请求。
 class IosScreenshotCapture {
-  IosScreenshotCapture(this._run);
+  IosScreenshotCapture(this._run, {this.fallback});
 
   final IosScreenshotCommand _run;
+  final Future<Uint8List> Function(String udid)? fallback;
   final _pending = <String, Future<Uint8List>>{};
 
   Future<Uint8List> capture(String udid) {
@@ -43,7 +44,20 @@ class IosScreenshotCapture {
         if (await file.exists()) await file.delete();
         result = await _run(args);
       }
-      if (!result.isSuccess) throw Exception(_errorDetail(result));
+      if (!result.isSuccess) {
+        final detail = _errorDetail(result);
+        // Instruments 超时不等于缺少镜像；独立 screenshotr 只回退一次。
+        if (fallback != null &&
+            detail.contains('TakeScreenshot') &&
+            detail.contains('Timed out waiting for response')) {
+          try {
+            return await fallback!(udid);
+          } catch (error) {
+            throw Exception('$detail; screenshotr: $error');
+          }
+        }
+        throw Exception(detail);
+      }
       if (!await file.exists() || await file.length() == 0) {
         throw Exception('go-ios 未生成截图文件');
       }
