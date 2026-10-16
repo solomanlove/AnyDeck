@@ -365,6 +365,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
             const MirrorToolbarDivider(),
 
             // Group 5: 截图, 录屏, 前台窗口
+            // 鸿蒙投屏隐藏前台窗口入口。
+            if (!widget.controller.isHarmony)
             MirrorToolbarButton(
               icon: Icon(
                 CupertinoIcons.scope,
@@ -530,6 +532,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               isDark: isDark,
             ),
 
+            // 鸿蒙投屏隐藏手机设置入口。
+            if (!widget.controller.isHarmony)
             MirrorToolbarButton(
               icon: DeviceSettingsIcon(
                 color: Theme.of(context).appColors.toolbarForeground,
