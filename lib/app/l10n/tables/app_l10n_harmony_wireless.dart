@@ -1,0 +1,51 @@
+/// HarmonyOS HDC 无线调试增强功能文案。新增 key 必须同步补齐 zh/en。
+const harmonyWirelessZh = {
+  'harmonySelectUsbDevice': '选择 USB 连接的鸿蒙设备',
+  'harmonyDisablePort': '关闭 TCP 通道',
+  'harmonyConnecting': '正在连接 HDC 设备…',
+  'harmonyHistory': '连接历史',
+  'harmonyHistoryEmpty': '暂无成功连接记录',
+  'harmonyAutoReconnect': 'TCP 断线自动重连',
+  'harmonyAutoReconnectDesc': '绑定设备身份并重连最近地址；USB 在线时自动回读新 IP，失败最多重试 5 次',
+  'harmonyAdvanced': '高级设置',
+  'harmonyAdvancedDesc': 'Remote HDC Server 与开发板 UART，不参与普通手机自动扫描',
+  'harmonyRemoteServer': 'Remote HDC Server',
+  'harmonyRemoteServerDesc': '允许其他电脑通过当前电脑访问已连接设备；对局域网监听时请配置防火墙',
+  'harmonyListenAddress': '监听地址',
+  'harmonyRemoteStarted': 'Remote HDC Server 已启动',
+  'harmonyRemoteStopped': 'Remote HDC Server 已停止',
+  'harmonyRemoteFailed': 'Remote HDC Server 操作失败',
+  'harmonyUartBoardOnly': 'UART（仅 OpenHarmony 开发板）',
+  'harmonyUartPlaceholder': '/dev/cu.usbserial-xxxx',
+  'harmonyUartCheck': '检查串口',
+  'harmonyUartConnect': '连接首个设备',
+  'paste': '粘贴',
+  'port': '端口',
+};
+
+const harmonyWirelessEn = {
+  'harmonySelectUsbDevice': 'Select a USB-connected HarmonyOS device',
+  'harmonyDisablePort': 'Close TCP Channel',
+  'harmonyConnecting': 'Connecting to the HDC device…',
+  'harmonyHistory': 'Connection History',
+  'harmonyHistoryEmpty': 'No successful connections yet',
+  'harmonyAutoReconnect': 'Auto-reconnect TCP',
+  'harmonyAutoReconnectDesc':
+      'Bind device identity and reconnect the latest address; refresh IP over USB and stop after 5 failures',
+  'harmonyAdvanced': 'Advanced Settings',
+  'harmonyAdvancedDesc':
+      'Remote HDC Server and board-only UART are excluded from normal phone scans',
+  'harmonyRemoteServer': 'Remote HDC Server',
+  'harmonyRemoteServerDesc':
+      'Let other computers access attached devices through this host. Configure a firewall for LAN binding.',
+  'harmonyListenAddress': 'Listen Address',
+  'harmonyRemoteStarted': 'Remote HDC Server started',
+  'harmonyRemoteStopped': 'Remote HDC Server stopped',
+  'harmonyRemoteFailed': 'Remote HDC Server operation failed',
+  'harmonyUartBoardOnly': 'UART (OpenHarmony boards only)',
+  'harmonyUartPlaceholder': '/dev/cu.usbserial-xxxx',
+  'harmonyUartCheck': 'Check Port',
+  'harmonyUartConnect': 'Connect First Device',
+  'paste': 'Paste',
+  'port': 'Port',
+};

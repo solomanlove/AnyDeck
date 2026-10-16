@@ -65,6 +65,25 @@ void main() {
       expect(hdc.executedRuns.last, ['tconn', '192.168.3.45:5555', '-remove']);
     });
 
+    test('disableTcpMode closes the selected HDC network channel', () async {
+      final res = await hdc.disableTcpMode('device_123');
+      expect(res.isSuccess, isTrue);
+      expect(hdc.executedRuns.last, ['-t', 'device_123', 'tmode', 'port', 'close']);
+    });
+
+    test('UART commands remain explicit board-only HDC actions', () async {
+      await hdc.checkUart('/dev/cu.usbserial-123');
+      expect(hdc.executedRuns.last, ['checkdevice', '/dev/cu.usbserial-123']);
+      await hdc.connectAnyUart();
+      expect(hdc.executedRuns.last, ['any']);
+    });
+
+    test('checkUart rejects unsafe serial-port arguments', () async {
+      final result = await hdc.checkUart('/dev/cu.test; reboot');
+      expect(result.isSuccess, isFalse);
+      expect(hdc.executedRuns, isEmpty);
+    });
+
     test('getDeviceIp parses IP from ifconfig wlan0 output', () async {
       final ip = await hdc.getDeviceIp('device_123');
       expect(ip, '192.168.3.45');

@@ -52,6 +52,7 @@ export 'modules/device_registry_actions.dart';
 export 'modules/device_registry_merger.dart';
 export 'modules/device_registry_probe_service.dart';
 export 'modules/device_registry_providers.dart';
+export 'modules/harmony_wireless_provider.dart';
 export 'modules/device_registry_storage.dart';
 export 'modules/device_tracking_providers.dart';
 export 'modules/emulator_terminal_providers.dart';

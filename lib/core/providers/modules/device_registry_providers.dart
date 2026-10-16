@@ -14,6 +14,7 @@ import 'registered_device_model.dart';
 import 'service_providers.dart';
 import 'wireless_connection_provider.dart';
 import 'device_registry_cleaner.dart';
+import 'harmony_wireless_provider.dart';
 
 part 'device_registry_item_actions.dart';
 
@@ -95,6 +96,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       _isDisposed = true;
     });
     _listenWirelessState();
+    // 主窗口设备注册表常驻期间同步保持 HDC 自动重连控制器活跃。
+    ref.read(harmonyWirelessProvider);
 
     final activeDevicesAsync = ref.watch(devicesProvider);
     final activeDevices = activeDevicesAsync.value ?? _lastActiveDevices;
@@ -392,12 +395,17 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
 
   /// 断开网络设备连接
   Future<AdbResult> disconnectDevice(String address) async {
-    final result = await DeviceRegistryActions.disconnectDevice(
-      address: address,
-      devices: state,
-      deviceActionService: ref.read(deviceActionServiceProvider),
-      hdcService: ref.read(hdcServiceProvider),
-    );
+    final isHarmony = state.any((device) =>
+        device.isHarmony &&
+        (device.id == address || device.connections.contains(address)));
+    final result = isHarmony
+        ? await ref.read(harmonyWirelessProvider.notifier).disconnect(address)
+        : await DeviceRegistryActions.disconnectDevice(
+            address: address,
+            devices: state,
+            deviceActionService: ref.read(deviceActionServiceProvider),
+            hdcService: ref.read(hdcServiceProvider),
+          );
     await _refreshRegistryAfterAdbCommand();
     return result;
   }

@@ -50,12 +50,22 @@ extension HdcServiceDeviceInfo on HdcService {
 
   /// 从 `bm get -u` 输出中解析 UDID 标识
   static String? parseUdidFromBmOutput(String output) {
-    if (isGenericOrInvalidModel(output)) return null;
-    final match = RegExp(r'(?:udid:?\s*)?([a-zA-Z0-9_-]{10,})').firstMatch(output.trim());
-    if (match != null) {
-      final udid = match.group(1);
-      if (udid != null && !isGenericOrInvalidModel(udid)) {
-        return udid;
+    // 部分 HDC 版本会把提示语与 64 位 UDID 分两行输出：
+    // `udid of current device is :\n<UDID>`。UDID 不能复用型号校验，
+    // 因为型号校验会把长度超过 50 的合法 UDID 判为异常。
+    final labeledMatch = RegExp(
+      r'\budid\b[^\r\n]*[:：]\s*([a-zA-Z0-9_-]{10,128})',
+      caseSensitive: false,
+    ).firstMatch(output);
+    final labeledUdid = labeledMatch?.group(1);
+    if (labeledUdid != null) {
+      return labeledUdid;
+    }
+
+    for (final rawLine in const LineSplitter().convert(output)) {
+      final line = rawLine.trim();
+      if (RegExp(r'^[a-zA-Z0-9_-]{10,128}$').hasMatch(line)) {
+        return line;
       }
     }
     return null;

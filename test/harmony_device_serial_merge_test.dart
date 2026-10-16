@@ -92,6 +92,17 @@ void main() {
         HdcServiceDeviceInfo.parseUdidFromBmOutput('70010054583239333230343734613233'),
         '70010054583239333230343734613233',
       );
+      expect(
+        HdcServiceDeviceInfo.parseUdidFromBmOutput(
+          'udid of current device is :\n'
+          'DFBD34EBE1CCFCC79D6F21C2DD44CDD9EFEA96C325C103484F36BD6AFA44CF5B',
+        ),
+        'DFBD34EBE1CCFCC79D6F21C2DD44CDD9EFEA96C325C103484F36BD6AFA44CF5B',
+      );
+      expect(
+        HdcServiceDeviceInfo.parseUdidFromBmOutput('[Fail] get udid error'),
+        isNull,
+      );
     });
 
     test('getDeviceSerial queries param and returns hardware SN for wireless target', () async {

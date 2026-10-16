@@ -119,6 +119,13 @@ class RegisteredDevice {
   /// 设备当前是否包含 TCP/IP 连接（传统网络调试，默认 5555 端口）
   bool get hasTcpConnection {
     if (isIos) return false;
+    if (isHarmony) {
+      final ids = connections.isEmpty ? [id] : connections;
+      return ids.any((connection) =>
+          connection.contains(':') ||
+          connection.contains('.') ||
+          connection == '127.0.0.1');
+    }
     if (connections.isEmpty) {
       if (!isNetwork) return false;
       final port = parseConnectionPort(id);

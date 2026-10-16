@@ -14,6 +14,7 @@ import '../../device_info/device_info_service.dart';
 import '../../files/file_manager_service.dart';
 import '../../harmony/harmony_mirror_service.dart';
 import '../../harmony/hdc_service.dart';
+import '../../harmony/hdc_remote_server.dart';
 import '../../layout_inspector/layout_inspector_service.dart';
 import '../../process/host_platform_service.dart';
 import '../../process/process_service.dart';
@@ -50,6 +51,13 @@ final hdcServiceProvider = Provider<HdcService>((ref) {
           .log(message, tag: tag, level: level);
     },
   );
+});
+
+/// 高级设置中的 Remote HDC Server，默认不启动并在应用退出时强制回收。
+final hdcRemoteServerProvider = Provider<HdcRemoteServer>((ref) {
+  final server = HdcRemoteServer(ref.watch(hdcServiceProvider).executable);
+  ref.onDispose(server.stop);
+  return server;
 });
 
 /// 鸿蒙镜像（投屏）管理服务单例 Provider。

@@ -453,11 +453,34 @@ class HdcService {
       run(['-t', deviceId, 'tmode', 'port', '$port']);
 
   /// 通过无线网络连接到指定鸿蒙设备地址 (如 192.168.1.10:5555)。
-  Future<AdbResult> connectWireless(String address) => run(['tconn', address]);
+  Future<AdbResult> connectWireless(
+    String address, {
+    Duration timeout = const Duration(seconds: 8),
+  }) => run(['tconn', address], timeout: timeout);
 
   /// 断开指定的鸿蒙无线设备连接。
   Future<AdbResult> disconnectWireless(String address) =>
       run(['tconn', address, '-remove']);
+
+  /// 关闭指定设备的 TCP 调试监听并恢复设备设置控制的连接模式。
+  Future<AdbResult> disableTcpMode(String deviceId) =>
+      run(['-t', deviceId, 'tmode', 'port', 'close']);
+
+  /// 检查 UART 串口是否空闲且可用于连接调试设备。
+  Future<AdbResult> checkUart(String serialPort) {
+    final value = serialPort.trim();
+    if (!RegExp(r'^[a-zA-Z0-9_./-]{1,128}$').hasMatch(value)) {
+      return Future.value(const AdbResult(
+        exitCode: 2,
+        stdout: '',
+        stderr: 'Invalid UART serial port',
+      ));
+    }
+    return run(['checkdevice', value]);
+  }
+
+  /// 连接首个可用 UART 设备，仅供开发板高级入口使用。
+  Future<AdbResult> connectAnyUart() => run(['any']);
 
   /// 查询鸿蒙设备的局域网 IPv4 地址。
   Future<String?> getDeviceIp(String deviceId) async {
