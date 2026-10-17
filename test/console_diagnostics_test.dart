@@ -1,4 +1,5 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/app/window/console/console_window_panel.dart';
 import 'package:any_deck/core/logging/log_service.dart';
 import 'package:any_deck/features/developer/widget/developer_local_logs_card.dart';
@@ -22,6 +23,14 @@ class _FixtureLogs extends LogService {
 }
 
 void main() {
+  test('控制台时间使用空格分隔日期与时间', () {
+    expect(
+      formatConsoleTimestamp('2026-10-17T08:41:02.540920'),
+      '2026-10-17 08:41:02.540920',
+    );
+    expect(formatConsoleTimestamp('08:41:02.540920'), '08:41:02.540920');
+  });
+
   testWidgets('隐藏心跳保留错误，关键日志筛选排除普通信息', (tester) async {
     tester.view.physicalSize = const Size(1100, 700);
     tester.view.devicePixelRatio = 1;
@@ -30,10 +39,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [logHistoryProvider.overrideWith(_FixtureLogs.new)],
-        child: const MaterialApp(
-          locale: Locale('en'),
-          localizationsDelegates: [AppLocalizationsDelegate()],
-          home: Scaffold(body: ConsoleWindowPanel()),
+        child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: const [AppLocalizationsDelegate()],
+          theme: buildAppTheme(Brightness.light),
+          home: const Scaffold(body: ConsoleWindowPanel()),
         ),
       ),
     );
@@ -46,7 +56,7 @@ void main() {
       find.textContaining('app: connected', findRichText: true),
       findsOneWidget,
     );
-    await tester.tap(find.byType(FilterChip));
+    await tester.tap(find.byKey(const Key('consoleKeyLogsFilter')));
     await tester.pumpAndSettle();
     expect(
       find.textContaining('devices -l failed', findRichText: true),
@@ -56,7 +66,15 @@ void main() {
       find.textContaining('app: connected', findRichText: true),
       findsNothing,
     );
-    expect(find.text('Capture local logs'), findsOneWidget);
+    expect(
+      find.textContaining('2026-10-04 00:00:00.002', findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.text('View AnyDeck runtime logs, commands, and errors'),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Capture local logs'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   for (final language in ['zh', 'en']) {
