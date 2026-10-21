@@ -221,6 +221,9 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                     final secondaryStyle = theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     );
+                    final toolbarButtonStyle = _consoleToolbarButtonStyle(
+                      theme,
+                    );
                     return Row(
                       children: [
                         DragToMoveArea(
@@ -250,7 +253,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                         const SizedBox(width: 12),
                         SizedBox(
                           width: compact ? 130 : 180,
-                          height: 32,
+                          height: 36,
                           child: TextField(
                             controller: _searchController,
                             style: const TextStyle(fontSize: 12),
@@ -262,12 +265,18 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                               ),
                               contentPadding: EdgeInsets.zero,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide.none,
+                                borderRadius: AppThemeSizes.radiusMedium,
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outlineVariant,
+                                ),
                               ),
-                              fillColor: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.05,
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: AppThemeSizes.radiusMedium,
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outlineVariant,
+                                ),
                               ),
+                              fillColor: theme.appColors.subtleSurface,
                               filled: true,
                             ),
                             onChanged: (value) => setState(
@@ -275,50 +284,47 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Tooltip(
-                          message: context.l10n.t('consoleKeyLogs'),
-                          child: FilterChip(
-                            key: const Key('consoleKeyLogsFilter'),
-                            avatar: compact
-                                ? const Icon(
-                                    Icons.filter_alt_outlined,
-                                    size: 16,
-                                  )
-                                : null,
-                            label: compact
-                                ? const SizedBox.shrink()
-                                : Text(context.l10n.t('consoleKeyLogs')),
-                            selected: _keyLogsOnly,
-                            onSelected: (value) =>
-                                setState(() => _keyLogsOnly = value),
+                        const SizedBox(width: 8),
+                        _ConsoleToolbarButton(
+                          key: const Key('consoleKeyLogsFilter'),
+                          tooltip: context.l10n.t('consoleKeyLogs'),
+                          icon: Icons.filter_alt_outlined,
+                          selected: _keyLogsOnly,
+                          onPressed: () =>
+                              setState(() => _keyLogsOnly = !_keyLogsOnly),
+                        ),
+                        const SizedBox(width: 8),
+                        LocalLogCaptureButton(
+                          iconOnly: true,
+                          iconButtonStyle: toolbarButtonStyle,
+                        ),
+                        const Spacer(),
+                        _ConsoleToolbarButton(
+                          tooltip: context.l10n.t('hideHeartbeats'),
+                          icon: Icons.monitor_heart_outlined,
+                          selected: _hideHeartbeats,
+                          onPressed: () => setState(
+                            () => _hideHeartbeats = !_hideHeartbeats,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        LocalLogCaptureButton(iconOnly: compact),
-                        const Spacer(),
-                        _ConsoleToggle(
-                          label: context.l10n.t('hideHeartbeats'),
-                          value: _hideHeartbeats,
-                          compact: compact,
-                          onChanged: (value) =>
-                              setState(() => _hideHeartbeats = value ?? true),
+                        _ConsoleToolbarButton(
+                          tooltip: context.l10n.t('autoScroll'),
+                          icon: Icons.vertical_align_bottom_rounded,
+                          selected: _autoScroll,
+                          onPressed: () =>
+                              setState(() => _autoScroll = !_autoScroll),
                         ),
-                        _ConsoleToggle(
-                          label: context.l10n.t('autoScroll'),
-                          value: _autoScroll,
-                          compact: compact,
-                          onChanged: (value) =>
-                              setState(() => _autoScroll = value ?? true),
-                        ),
-                        IconButton(
+                        const SizedBox(width: 8),
+                        _ConsoleToolbarButton(
                           tooltip: context.l10n.t('copyAll'),
-                          icon: const Icon(CupertinoIcons.doc_on_doc, size: 18),
+                          icon: CupertinoIcons.doc_on_doc,
                           onPressed: () => _copyAllLogs(filteredLogs),
                         ),
-                        IconButton(
+                        const SizedBox(width: 8),
+                        _ConsoleToolbarButton(
                           tooltip: context.l10n.t('clear'),
-                          icon: const Icon(CupertinoIcons.trash, size: 18),
+                          icon: CupertinoIcons.trash,
                           onPressed: () =>
                               ref.read(logHistoryProvider.notifier).clear(),
                         ),
@@ -366,32 +372,56 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
   }
 }
 
-/// 空间不足时仅保留 Checkbox，并通过 Tooltip 暴露完整配置名称。
-class _ConsoleToggle extends StatelessWidget {
-  const _ConsoleToggle({
-    required this.label,
-    required this.value,
-    required this.compact,
-    required this.onChanged,
+/// 控制台 Toolbar 的统一 Icon 操作，选中态使用主题主色表达开关状态。
+class _ConsoleToolbarButton extends StatelessWidget {
+  const _ConsoleToolbarButton({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.selected = false,
   });
 
-  final String label;
-  final bool value;
-  final bool compact;
-  final ValueChanged<bool?> onChanged;
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: label,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Checkbox(value: value, onChanged: onChanged),
-          if (!compact)
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-        ],
-      ),
+    final theme = Theme.of(context);
+    return IconButton(
+      tooltip: tooltip,
+      isSelected: selected,
+      style: _consoleToolbarButtonStyle(theme, selected: selected),
+      icon: Icon(icon, size: 18),
+      selectedIcon: Icon(icon, size: 18),
+      onPressed: onPressed,
     );
   }
+}
+
+ButtonStyle _consoleToolbarButtonStyle(
+  ThemeData theme, {
+  bool selected = false,
+}) {
+  return IconButton.styleFrom(
+    minimumSize: const Size.square(36),
+    maximumSize: const Size.square(36),
+    padding: EdgeInsets.zero,
+    foregroundColor: selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant,
+    backgroundColor: selected
+        ? theme.colorScheme.primary.withValues(alpha: 0.12)
+        : theme.appColors.subtleSurface,
+    side: BorderSide(
+      color: selected
+          ? theme.colorScheme.primary.withValues(alpha: 0.35)
+          : theme.colorScheme.outlineVariant,
+    ),
+    shape: const RoundedRectangleBorder(
+      borderRadius: AppThemeSizes.radiusMedium,
+    ),
+  );
 }

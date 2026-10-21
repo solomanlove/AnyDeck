@@ -7,10 +7,17 @@ import 'app_toast.dart';
 
 /// 本地日志抓取按钮。控制台与调试页复用，自动处理保存、取消、失败及防重复点击。
 class LocalLogCaptureButton extends ConsumerWidget {
-  const LocalLogCaptureButton({super.key, this.iconOnly = false});
+  const LocalLogCaptureButton({
+    super.key,
+    this.iconOnly = false,
+    this.iconButtonStyle,
+  });
 
   /// 是否仅显示图标；用于空间受限的 Toolbar，完整操作名称由 Tooltip 提供。
   final bool iconOnly;
+
+  /// Icon 模式下的按钮样式，由所在 Toolbar 注入以保持同组操作视觉一致。
+  final ButtonStyle? iconButtonStyle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -53,7 +60,12 @@ class LocalLogCaptureButton extends ConsumerWidget {
           )
         : const Icon(Icons.file_download_outlined, size: 18);
     if (iconOnly) {
-      return IconButton(tooltip: label, icon: icon, onPressed: onPressed);
+      return IconButton(
+        tooltip: label,
+        style: iconButtonStyle,
+        icon: icon,
+        onPressed: onPressed,
+      );
     }
     return OutlinedButton.icon(
       icon: icon,
