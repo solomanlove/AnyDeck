@@ -217,6 +217,15 @@ class _QuickActionsPanel extends ConsumerWidget {
         ),
         if (!device.isIos)
           ...buildDeviceCaptureActions(context, ref, device),
+        if (!device.isIos && !device.isHarmony)
+          _ActionButton(
+            icon: CupertinoIcons.videocam,
+            label: context.l10n.t('cameraTitle'),
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => CameraPreviewDialog(deviceId: device.id),
+            ),
+          ),
         if (!device.isIos)
           AudioForwardButton(device: device),
         if (!device.isIos)

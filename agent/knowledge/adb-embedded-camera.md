@@ -19,7 +19,7 @@
 
 使用现有原生解码器把手机摄像头画面显示在本项目 Flutter Texture 中，不启动外部 scrcpy/SDL 窗口。
 
-入口：Android 设备 → 应用 → 使用时长 → 摄像头 → 选择前置/后置/前后双摄（仅支持设备可见） → 开始预览。切换镜头先停止再选择；关闭弹窗或切到其它页即停止。默认无音频、不录像、不保存摄像头数据到历史库。
+入口（2026-10-21 迁移）：Android 设备 → 控制 → 摄像头 → 选择前置/后置/前后双摄（仅支持设备可见） → 开始预览。切换镜头先停止再选择；关闭弹窗或切到其它页即停止。默认无音频、不录像、不保存摄像头数据到历史库。摄像头入口原挂在应用 Tab 的使用时长弹窗分页，现已移除该分页，弹窗仅保留使用时长与位置历史。
 
 当前支持 macOS + Android 12（API 31）及以上。现有 Windows/Linux scrcpy 插件只有模板接口，不能宣称支持内嵌摄像头；界面在启动前给出平台限制。手机保留正常摄像头隐私提示，不实现隐藏采集或提示规避。无需安装/更新使用统计手机 App。
 
@@ -41,7 +41,7 @@
 | `lib/core/scrcpy/embedded_camera_backend.dart` | 摄像头会话适配与测试注入边界，复用 ScrcpyFlutter |
 | `lib/features/apps/controller/camera_preview_controller.dart` | 手动启动、停止、首帧等待、尺寸读取、断线和销毁回收 |
 | `lib/features/apps/widgets/camera_preview_view.dart` | 前后镜头选择、状态、开始/停止与按视频尺寸展示 Texture |
-| `lib/features/apps/widgets/usage_report_dialog.dart` | 摄像头分页入口，与原有使用统计/地图并列 |
+| `lib/features/control/widgets/camera_preview_dialog.dart` | 控制 Tab 摄像头弹窗入口，包装 CameraPreviewView；打开不自动启动，关闭即释放会话 |
 
 没有新增三方依赖、没有修改 Rust/C++/Objective-C 解码协议，没有新增 App 图标或包名获取逻辑。摄像头状态只在当前页面存活，不跨窗口广播，也不持久化成自动恢复设置。
 

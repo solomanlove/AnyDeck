@@ -6,6 +6,7 @@ import 'package:any_deck/core/scrcpy/embedded_camera_backend.dart';
 import 'package:any_deck/core/scrcpy/device_capture_compatibility.dart';
 import 'package:any_deck/features/apps/controller/camera_preview_controller.dart';
 import 'package:any_deck/features/apps/widgets/camera_preview_view.dart';
+import 'package:any_deck/features/control/widgets/camera_preview_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -221,5 +222,45 @@ void main() {
 
     expect(backBackend.stops, greaterThanOrEqualTo(1));
     expect(frontBackend.stops, greaterThanOrEqualTo(1));
+  });
+
+  testWidgets('控制 Tab 摄像头弹窗打开不自动启动，关闭即释放会话', (tester) async {
+    tester.view.physicalSize = const Size(720, 680);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final backend = PreviewBackendFake();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          deviceOnlineProvider('phone').overrideWith((ref) => true),
+          captureSdkProvider('phone').overrideWith((ref) async => 36),
+          captureHostSupportedProvider.overrideWithValue(true),
+          concurrentCameraSupportedProvider('phone').overrideWith((ref) async => false),
+          cameraBackendFactoryProvider.overrideWithValue((_, _) => backend),
+        ],
+        child: const MaterialApp(
+          locale: Locale('zh'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Scaffold(body: CameraPreviewDialog(deviceId: 'phone')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(backend.starts, 0);
+    await tester.tap(find.text('开始预览'));
+    await tester.pumpAndSettle();
+    expect(backend.starts, 1);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('关闭'));
+    await tester.pumpAndSettle();
+    expect(backend.cancelled, true);
+    expect(backend.stops, greaterThanOrEqualTo(1));
   });
 }

@@ -87,6 +87,10 @@ Flutter 测试替换 backend，无需动态库。独立 FFI 测试可以显式�
 
 ## 验证与交接
 
+摄像头预览入口从应用页的使用时长弹窗迁到 Android 控制 Tab 快捷操作区。点击“摄像头”打开 `CameraPreviewDialog`，内部复用 `CameraPreviewView` 与现有独立 Rust 会话；打开弹窗不自动启动摄像头，关闭后由 autoDispose 回收。HarmonyOS 与 iOS 不显示入口；使用时长弹窗仅保留使用统计与位置记录。
+
+迁移验收：控制 Tab 打开弹窗，分别预览前后摄像头并停止；关闭弹窗后确认会话释放，再与投屏并行验证。静态测试无法替代真机摄像头与系统权限提示验收。
+
 执行结果和人工回归见 [adb-device-rust-sessions-test.md](adb-device-rust-sessions-test.md)。尚未运行桌面项目或访问真实设备摄像头/麦克风，实际采集、ROM 权限和长时间并发需要真机回归。
 
 协议依据：[scrcpy 4.0](https://github.com/Genymobile/scrcpy/tree/v4.0)、[audio](https://github.com/Genymobile/scrcpy/blob/v4.0/doc/audio.md)、[camera](https://github.com/Genymobile/scrcpy/blob/v4.0/doc/camera.md)、[Controller](https://github.com/Genymobile/scrcpy/blob/v4.0/server/src/main/java/com/genymobile/scrcpy/control/Controller.java)。

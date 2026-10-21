@@ -75,6 +75,7 @@ import '../core/device_actions/wifi_credentials.dart';
 import 'control/device_settings_popup.dart';
 import 'control/deeplink_feedback.dart';
 import 'control/widgets/audio_forward_button.dart';
+import 'control/widgets/camera_preview_dialog.dart';
 import '../app/window/mirror/mirror_screen_recording_action.dart';
 import 'terminal/terminal_tab.dart';
 import 'terminal/harmony_terminal_tab.dart';
@@ -106,9 +107,7 @@ import 'apps/controller/usage_report_controller.dart';
 import 'apps/controller/usage_report_view_controller.dart';
 import '../core/usage/usage_snapshot.dart';
 import 'apps/widgets/location_history_view.dart';
-import 'apps/widgets/camera_preview_view.dart';
 import 'apps/widgets/apps_alphabet_sidebar.dart';
-
 import 'airplay/airplay_toolbar_button.dart';
 import 'airplay/airplay_mirror_target.dart';
 import 'airplay/widgets/airplay_active_banner.dart';
