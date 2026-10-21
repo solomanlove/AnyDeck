@@ -77,6 +77,15 @@
 - 悬浮层使用 `IgnorePointer`，不能拦截投屏画面的点击、拖拽、右键返回或中键 Home；hover 状态只由设备名称的 `MouseRegion.onEnter/onExit` 更新，避免鼠标移动造成高频 rebuild。
 - 信息卡颜色取自 `ThemeData.colorScheme`，字段名复用 l10n 的 `memory`、`storage` 和 `reading`，保证子窗口的 Dark/Light Mode 与中英文切换一致。
 
+## 手机剪贴板入口
+
+- Android 投屏工具栏的剪贴板图标打开独立 Dialog，复用 `DeviceClipboardView`；使用统计弹窗移除原剪贴板 Tab。原有 `T` 按钮仍负责电脑文本输入手机。
+- `MirrorClipboardButton` 接收当前投屏的 ADB deviceId，支持主屏和应用副屏；HarmonyOS 与 iOS 不展示 Android 剪贴板监听入口。
+- 面板不自动开始读取，用户点击开始后由 `deviceAuxiliaryProvider` 创建独立 Rust 辅助会话。关闭 Dialog 后 autoDispose 取消订阅、定时器与辅助会话，不停止投屏 Session；记录只保存在当前面板内存中。
+- 复用已有中英文文案、Theme 和设备版本门槛；不新增跨窗口广播。原工具栏文本输入按钮及前台窗口摘要拆分为独立文件，使工具栏保持 500 行以内。
+- 回归路径：Android 投屏打开面板，开始监听、手机复制文本、刷新、复制到电脑、清空、停止；关闭重开检查记录清空和投屏持续。检查中英文、Light/Dark、窄窗口弹框及设备断开状态。
+- 验证边界：针对性静态检查与剪贴板测试；未启动 App，仍需真机验收。完整 `device_auxiliary_test.dart` 中 API 31 摄像头版本门槛的 4 个用例因 ADB/日志 pending Timer 失败，属于此次未修改的摄像头测试路径。
+
 ## HarmonyOS 工具栏控制
 
 - HarmonyOS 投屏工具栏隐藏“前台窗口”和“手机设置”入口；平台判断使用 `controller.isHarmony`，Android 工具栏继续显示这两个入口。

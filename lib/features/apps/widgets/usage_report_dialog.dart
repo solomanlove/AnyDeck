@@ -92,10 +92,7 @@ class UsageReportDialog extends ConsumerWidget {
                   value: 2,
                   label: Text(context.l10n.t('cameraTitle')),
                 ),
-                ButtonSegment(
-                  value: 3,
-                  label: Text(context.l10n.t('clipboardTitle')),
-                ),
+
               ],
               selected: {tab},
               onSelectionChanged: (value) =>
@@ -134,9 +131,7 @@ class UsageReportDialog extends ConsumerWidget {
                       },
               ),
             Expanded(
-              child: tab == 3
-                  ? DeviceClipboardView(deviceId: deviceId)
-                  : tab == 2
+              child: tab == 2
                   ? CameraPreviewView(deviceId: deviceId)
                   : tab == 1
                   ? LocationHistoryView(

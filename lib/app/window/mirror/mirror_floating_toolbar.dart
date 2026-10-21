@@ -1,15 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
-
 import '../../../core/device_actions/device_action_service.dart';
 import '../../../core/harmony/harmony_foreground_window.dart';
+import '../../../core/ios/ios_mirror_service.dart';
+import 'mirror_foreground_window_label.dart';
 import '../../../core/scrcpy/screen_record_provider.dart';
-import '../../../core/scrcpy/scrcpy_keycode_helper.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
@@ -23,9 +22,10 @@ import 'harmony_power_button.dart';
 import 'ios_mirror_toolbar.dart';
 import 'mirror_volume_long_press_handler.dart';
 import 'mirror_window_controller.dart';
-import '../../../core/ios/ios_mirror_service.dart';
 import '../../../features/control/recorder/widgets/mirror_mouse_recorder_button.dart';
 import 'mirror_screen_recording_action.dart';
+import 'mirror_clipboard_input_button.dart';
+import 'mirror_clipboard_button.dart';
 
 export 'mirror_toolbar_button.dart';
 
@@ -302,66 +302,12 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 tooltip: context.l10n.t('menuKey'),
                 onPressed: () => actions.keyEvent(widget.deviceId, 187),
               ),
-            // const _VerticalDivider(),
-            // Group 4: 通知栏, T
-            // MirrorToolbarButton(
-            //   icon: Icon(
-            //     CupertinoIcons.bell,
-            //     color: Theme.of(context).appColors.toolbarForeground,
-            //   ),
-            //   tooltip: context.l10n.t('notificationBar'),
-            //   onPressed: () => actions.openNotificationBar(widget.deviceId),
-            // ),
-            MirrorToolbarButton(
-              icon: Text(
-                'T',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).appColors.toolbarForeground,
-                ),
-              ),
-              tooltip: context.l10n.t('getClipboardInput'),
-              onPressed: () async {
-                final clipboardData = await Clipboard.getData(
-                  Clipboard.kTextPlain,
-                );
-                if (clipboardData != null &&
-                    clipboardData.text != null &&
-                    clipboardData.text!.isNotEmpty) {
-                  final text = clipboardData.text!;
-                  final success = widget.controller.isIos
-                      ? await ref.read(iosControlProvider(widget.deviceId).notifier).perform('text', {'text': text})
-                      : (widget.controller.isHarmony
-                          ? (await ref
-                                    .read(hdcServiceProvider)
-                                    .inputText(widget.deviceId, text))
-                                .isSuccess
-                          : await ref
-                                  .read(embeddedScrcpyServiceProvider)
-                                  .sendControl(
-                                    deviceId: widget.deviceId,
-                                    controlMessage:
-                                        ScrcpyKeycodeHelper.serializeTextEvent(text),
-                                  ));
-                  if (!success && context.mounted) {
-                    AppToast.show(
-                      context,
-                      context.l10n.t('sendClipboardFailed'),
-                      isError: true,
-                    );
-                  }
-                } else {
-                  if (context.mounted) {
-                    AppToast.show(
-                      context,
-                      context.l10n.t('clipboardEmpty'),
-                      type: AppToastType.warning,
-                    );
-                  }
-                }
-              },
+            MirrorClipboardInputButton(
+              deviceId: widget.deviceId,
+              controller: widget.controller,
             ),
+            if (!widget.controller.isHarmony && !widget.controller.isIos)
+              MirrorClipboardButton(deviceId: widget.deviceId),
             const MirrorToolbarDivider(),
 
             // Group 5: 截图, 录屏, 前台窗口
@@ -434,7 +380,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                         content: SelectableText(
                           harmonyWindow == null
                               ? res.message
-                              : _formatHarmonyFocus(
+                              : formatMirrorHarmonyFocus(
                                   context,
                                   harmonyWindow,
                                   fallback: res.isSuccess
@@ -550,21 +496,5 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         ),
       ),
     );
-  }
-
-  String _formatHarmonyFocus(
-    BuildContext context,
-    HarmonyForegroundWindow window, {
-    required String fallback,
-  }) {
-    if (window.isEmpty) return fallback;
-    final missing = context.l10n.t('foregroundUnknown');
-    final page = window.pageName ?? window.abilityName?.split('.').last;
-    return [
-      '${context.l10n.t('foregroundPage')}: ${page ?? missing}',
-      '${context.l10n.t('foregroundAppId')}: ${window.bundleName ?? missing}',
-      '${context.l10n.t('foregroundAbility')}: ${window.abilityName ?? missing}',
-      '${context.l10n.t('foregroundWindow')}: ${window.windowName ?? missing}',
-    ].join('\n');
   }
 }
