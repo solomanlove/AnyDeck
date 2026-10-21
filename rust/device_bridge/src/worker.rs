@@ -151,28 +151,22 @@ pub fn run_mirror(
         .parse()
         .unwrap_or_else(|_| SocketAddr::from(([127, 0, 0, 1], port)));
     let deadline = Instant::now() + Duration::from_secs(15);
-    // scrcpy 按 video -> audio -> control 接受连接。已经成功的前序 Socket 必须保留，
-    // 否则较慢设备上 control 尚未就绪时重建 video，会让 Server 与客户端顺序错位。
-    let mut video = connect_mirror_socket(&address, deadline, s, "video")?;
-    let audio = if audio_enabled {
-        Some(connect_mirror_socket(&address, deadline, s, "audio")?)
-    } else {
-        None
-    };
-    let control = connect_mirror_socket(&address, deadline, s, "control")?;
+    // scrcpy 按 video -> audio -> control 接受连接。
+    // 在部分低算力或冷启动设备（如荣耀 Play3 / 麒麟 710F）上，app_process 启动耗时波动较大（可达 800ms~1500ms）。
+    // adb forward 本地端口会先于设备端就绪而接受 TCP 握手，但在远端未监听到 abstract socket 时会发送 EOF。
+    // connect_mirror_sockets 会重试建立连接并验证 dummy byte，确保握手稳定。
+    let (mut video, audio, control) = connect_mirror_sockets(&address, audio_enabled, deadline, s)?;
 
     video
-        .set_read_timeout(Some(Duration::from_secs(2)))
-        .map_err(|e| e.to_string())?;
-    let mut dummy = [0u8; 1];
-    stream::read(&mut video, &mut dummy, &s.stopped)
-        .map_err(|error| format!("scrcpy handshake failed: {error}"))?;
-    video
-        .set_read_timeout(Some(Duration::from_millis(500)))
+        .set_read_timeout(Some(Duration::from_secs(5)))
         .map_err(|e| e.to_string())?;
 
     let mut meta = [0u8; 80];
-    stream::read(&mut video, &mut meta, &s.stopped).map_err(|e| e.to_string())?;
+    stream::read(&mut video, &mut meta, &s.stopped)
+        .map_err(|error| format!("Failed to read scrcpy device metadata: {error}"))?;
+    video
+        .set_read_timeout(Some(Duration::from_millis(500)))
+        .map_err(|e| e.to_string())?;
 
     *s.socket.lock().map_err(|_| "Socket lock poisoned")? =
         Some(video.try_clone().map_err(|e| e.to_string())?);
@@ -235,6 +229,76 @@ pub fn run_mirror(
         }
     }
     Ok(())
+}
+
+fn connect_mirror_sockets(
+    address: &SocketAddr,
+    audio_enabled: bool,
+    deadline: Instant,
+    s: &Session,
+) -> Result<(TcpStream, Option<TcpStream>, TcpStream), String> {
+    loop {
+        if s.stopped.load(Ordering::Acquire) {
+            return Err("Mirror connection cancelled".into());
+        }
+        if Instant::now() >= deadline {
+            return Err("Timed out connecting to scrcpy server".into());
+        }
+
+        // 1. 尝试连接 video socket 并验证 1 字节 dummy byte (0x00)
+        let video_attempt = (|| -> Result<TcpStream, String> {
+            let mut socket = TcpStream::connect_timeout(address, Duration::from_millis(500))
+                .map_err(|e| e.to_string())?;
+            let _ = socket.set_read_timeout(Some(Duration::from_millis(500)));
+            let _ = socket.set_write_timeout(Some(Duration::from_secs(2)));
+            let _ = socket.set_nodelay(true);
+
+            let mut dummy = [0u8; 1];
+            stream::read(&mut socket, &mut dummy, &s.stopped)
+                .map_err(|e| format!("scrcpy handshake failed: {e}"))?;
+            if dummy[0] != 0 {
+                return Err("Invalid scrcpy dummy byte".into());
+            }
+            Ok(socket)
+        })();
+
+        let video = match video_attempt {
+            Ok(v) => v,
+            Err(_) => {
+                // 服务端尚未就绪（如返回 EOF）或 TCP 未就绪，退避后重试
+                std::thread::sleep(Duration::from_millis(150));
+                continue;
+            }
+        };
+
+        // 2. video 握手成功，说明 scrcpy-server 已就绪并正在等待后续 socket。依次连接 audio 与 control。
+        let audio = if audio_enabled {
+            match connect_mirror_socket(address, deadline, s, "audio") {
+                Ok(a) => Some(a),
+                Err(_) => {
+                    let _ = video.shutdown(std::net::Shutdown::Both);
+                    std::thread::sleep(Duration::from_millis(150));
+                    continue;
+                }
+            }
+        } else {
+            None
+        };
+
+        let control = match connect_mirror_socket(address, deadline, s, "control") {
+            Ok(c) => c,
+            Err(_) => {
+                let _ = video.shutdown(std::net::Shutdown::Both);
+                if let Some(ref a) = audio {
+                    let _ = a.shutdown(std::net::Shutdown::Both);
+                }
+                std::thread::sleep(Duration::from_millis(150));
+                continue;
+            }
+        };
+
+        return Ok((video, audio, control));
+    }
 }
 
 fn connect_mirror_socket(
@@ -397,14 +461,33 @@ mod tests {
         let port = listener.local_addr().unwrap().port();
         let server = std::thread::spawn(move || {
             let (mut video, _) = listener.accept().unwrap();
-            let (_control, _) = listener.accept().unwrap();
             video.write_all(&[0]).unwrap();
+            let (_control, _) = listener.accept().unwrap();
             video.write_all(&[0; 80]).unwrap();
         });
         let session = Arc::new(state());
 
         let error = run_mirror("127.0.0.1".into(), port, false, 1, &session).unwrap_err();
 
+        server.join().unwrap();
+        assert!(error.contains("Video header read failed"));
+        assert_eq!(session.status.load(Ordering::Acquire), 0);
+    }
+
+    #[test]
+    fn mirror_handshake_retries_on_initial_eof() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            let (dead_socket, _) = listener.accept().unwrap();
+            drop(dead_socket);
+            let (mut video, _) = listener.accept().unwrap();
+            video.write_all(&[0]).unwrap();
+            let (_control, _) = listener.accept().unwrap();
+            video.write_all(&[0; 80]).unwrap();
+        });
+        let session = Arc::new(state());
+        let error = run_mirror("127.0.0.1".into(), port, false, 1, &session).unwrap_err();
         server.join().unwrap();
         assert!(error.contains("Video header read failed"));
         assert_eq!(session.status.load(Ordering::Acquire), 0);

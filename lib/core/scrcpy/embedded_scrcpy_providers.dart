@@ -96,9 +96,9 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
     final service = ref.read(embeddedScrcpyServiceProvider);
     if (service.isActive(deviceId)) {
       await service.stop(deviceId);
-      ref.read(screenPowerOffProvider(deviceId).notifier).setOff(false);
-      state = null;
     }
+    ref.read(screenPowerOffProvider(deviceId).notifier).setOff(false);
+    state = null;
   }
 }
 

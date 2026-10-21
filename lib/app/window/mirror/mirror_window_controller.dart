@@ -313,7 +313,8 @@ class MirrorWindowController extends ChangeNotifier {
         await ref
             .read(activeEmbeddedMirrorProvider(deviceId).notifier)
             .forceStop();
-        await Future<void>.delayed(const Duration(milliseconds: 350));
+        // 预留充分的资源释放与 MediaCodec 冷却时间，避免在荣耀Play3等芯片上重试立即碰撞
+        await Future<void>.delayed(const Duration(milliseconds: 800));
         await startMirroring();
         return;
       }

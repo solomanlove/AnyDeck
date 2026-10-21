@@ -24,6 +24,7 @@ class EmbeddedScrcpySession {
     required this.startedAt,
     this.virtualDisplayId,
     this.camera,
+    this.scid,
   });
 
   final String deviceId;
@@ -34,6 +35,7 @@ class EmbeddedScrcpySession {
   final DateTime startedAt;
   final int? virtualDisplayId;
   final ScrcpyCameraOptions? camera;
+  final String? scid;
 }
 
 class EmbeddedScrcpyService {
@@ -339,6 +341,7 @@ class EmbeddedScrcpyService {
         startedAt: DateTime.now(),
         virtualDisplayId: virtualDisplayId,
         camera: camera,
+        scid: scid,
       );
 
       _sessions[sessionId] = session;
@@ -356,6 +359,8 @@ class EmbeddedScrcpyService {
         _bridge.release(rustHandle);
       }
       serverProcess.kill();
+      // 终止远端残留的 app_process 孤儿进程，避免低算力设备硬件编码器或套接字被占用
+      unawaited(_adbService.shellArgs(deviceId, ['pkill', '-9', '-f', 'scid=$scid']));
       if (camera != null) {
         await camera.removeForward?.call();
       } else {
@@ -396,6 +401,9 @@ class EmbeddedScrcpyService {
     _bridge.release(session.rustHandle);
 
     session.serverProcess.kill();
+    if (session.scid != null) {
+      unawaited(_adbService.shellArgs(session.deviceId, ['pkill', '-9', '-f', 'scid=${session.scid}']));
+    }
     if (session.camera != null) {
       await session.camera!.removeForward?.call();
     } else {
