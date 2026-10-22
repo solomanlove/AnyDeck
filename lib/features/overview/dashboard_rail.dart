@@ -63,7 +63,7 @@ class PrimaryRail extends ConsumerWidget {
         return const {0, 1, 2, 3, 4, 6, 9}.contains(tabIndex);
       }
       // 鸿蒙 NEXT（纯血鸿蒙）支持：
-      // 主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、网络(11，HTTP 代理面板对鸿蒙隐藏)
+      // 主页(0)、控制(1)、应用(2)、进程(6)、文件(3)、日志(4)、终端(5)、网页调试(7)、截图(9)、网络(11，HTTP 代理面板对鸿蒙隐藏)
       if (selectedDevice!.isHarmony) {
         if (!selectedDevice!.isOnline) {
           return tabIndex == 0;
@@ -149,7 +149,7 @@ class PrimaryRail extends ConsumerWidget {
         ),
       ];
     } else if (isHarmony) {
-      // 3. 鸿蒙设备专属 Tab 列表（支持主页、控制、应用、文件、日志、终端、进程、网页调试、截图、网络端口转发）
+      // 3. 鸿蒙设备专属 Tab 列表（支持主页、控制、应用、进程、文件、日志、终端、网页调试、截图、网络端口转发）
       tools = [
         _RailToolItem(
           tabIndex: 0,
@@ -167,6 +167,11 @@ class PrimaryRail extends ConsumerWidget {
           label: context.l10n.t('apps'),
         ),
         _RailToolItem(
+          tabIndex: 6,
+          icon: CupertinoIcons.list_bullet,
+          label: context.l10n.t('processes'),
+        ),
+        _RailToolItem(
           tabIndex: 3,
           icon: CupertinoIcons.folder,
           label: context.l10n.t('files'),
@@ -180,11 +185,6 @@ class PrimaryRail extends ConsumerWidget {
           tabIndex: 5,
           icon: CupertinoIcons.chevron_left_slash_chevron_right,
           label: context.l10n.t('terminal'),
-        ),
-        _RailToolItem(
-          tabIndex: 6,
-          icon: CupertinoIcons.list_bullet,
-          label: context.l10n.t('processes'),
         ),
         _RailToolItem(
           tabIndex: 7,
