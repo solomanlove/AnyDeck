@@ -91,6 +91,7 @@ class _ContentTitleBar extends ConsumerWidget {
         ),
         //ios投屏
         AirPlayToolbarButton(iconColor: iconColor),
+        DlnaToolbarButton(iconColor: iconColor),
         //打开控制台
         IconButton(
           tooltip: context.l10n.t('console'),
