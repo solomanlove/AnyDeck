@@ -5,6 +5,9 @@ void main() {
   test('设备描述声明 MediaRenderer 与控制服务', () {
     final xml = DlnaProtocol.deviceDescription('http://192.168.1.2:1234');
     expect(xml, contains(DlnaProtocol.deviceType));
+    expect(xml, contains('<friendlyName>AnyDeck DLNA</friendlyName>'));
+    expect(xml, contains('<manufacturer>AnyDeck</manufacturer>'));
+    expect(xml, contains('<modelName>AnyDeck DLNA Renderer</modelName>'));
     expect(xml, contains('http://192.168.1.2:1234/'));
     expect(xml, contains('/avtransport/control'));
     expect(xml, contains('/rendering/control'));

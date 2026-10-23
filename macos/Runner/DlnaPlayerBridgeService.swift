@@ -70,7 +70,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
       let newWindow = NSWindow(contentRect: frame,
                                styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                backing: .buffered, defer: false)
-      newWindow.title = "DLNA"
+      newWindow.title = "AnyDeck DLNA"
       newWindow.isReleasedWhenClosed = false
       newWindow.delegate = self
       newWindow.center()
@@ -84,13 +84,16 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
       if item.status == .failed {
         DispatchQueue.main.async {
-          self?.window?.title = "DLNA · \(item.error?.localizedDescription ?? "Playback failed")"
+          let failure = item.error as NSError?
+          let detail = "\(failure?.domain ?? "AVPlayerItem")/\(failure?.code ?? -1): \(item.error?.localizedDescription ?? "Playback failed")"
+          self?.window?.title = "AnyDeck DLNA · \(item.error?.localizedDescription ?? "Playback failed")"
+          self?.channel?.invokeMethod("playerFailed", arguments: detail)
         }
       }
     }
     player?.pause()
     player = newPlayer
-    window?.title = "DLNA"
+    window?.title = "AnyDeck DLNA"
     playerView?.player = newPlayer
     window?.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)

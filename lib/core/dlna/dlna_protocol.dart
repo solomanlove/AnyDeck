@@ -8,8 +8,8 @@ class DlnaProtocol {
       'urn:schemas-upnp-org:service:ConnectionManager:1';
   static const renderingType =
       'urn:schemas-upnp-org:service:RenderingControl:1';
-  static const uuid = '9db93654-1c19-48af-984f-adb00000d1aa';
-  static const serverName = 'AdbManage DLNA';
+  static const uuid = '43c0b6d7-bc0d-4667-82a0-a11dec000001';
+  static const serverName = 'AnyDeck DLNA';
   static const searchTargets = [
     'upnp:rootdevice',
     'uuid:$uuid',
@@ -24,7 +24,7 @@ class DlnaProtocol {
 
   static String deviceDescription(String baseUrl) =>
       '''<?xml version="1.0" encoding="utf-8"?>
-<root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>$baseUrl/</URLBase><device><deviceType>$deviceType</deviceType><friendlyName>$serverName</friendlyName><manufacturer>AdbManage</manufacturer><modelName>AdbManage DLNA Renderer</modelName><UDN>uuid:$uuid</UDN><serviceList>${_service(transportType, 'AVTransport', '/avtransport')}${_service(renderingType, 'RenderingControl', '/rendering')}${_service(connectionType, 'ConnectionManager', '/connection')}</serviceList></device></root>''';
+<root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>$baseUrl/</URLBase><device><deviceType>$deviceType</deviceType><friendlyName>$serverName</friendlyName><manufacturer>AnyDeck</manufacturer><modelName>AnyDeck DLNA Renderer</modelName><UDN>uuid:$uuid</UDN><serviceList>${_service(transportType, 'AVTransport', '/avtransport')}${_service(renderingType, 'RenderingControl', '/rendering')}${_service(connectionType, 'ConnectionManager', '/connection')}</serviceList></device></root>''';
 
   static String _service(String type, String id, String path) =>
       '<service><serviceType>$type</serviceType><serviceId>urn:upnp-org:serviceId:$id</serviceId><SCPDURL>$path.xml</SCPDURL><controlURL>$path/control</controlURL><eventSubURL>$path/event</eventSubURL></service>';

@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import 'dlna_protocol.dart';
+import 'dlna_player_bridge.dart';
 
 /// macOS DLNA MediaRenderer：SSDP 发现、UPnP 控制与原生播放器生命周期。
 class DlnaRendererService extends ChangeNotifier {
@@ -15,13 +15,20 @@ class DlnaRendererService extends ChangeNotifier {
         _transportState = 'STOPPED';
         notifyListeners();
         unawaited(_notifySubscribers());
+      } else if (call.method == 'playerFailed') {
+        _transportState = 'STOPPED';
+        _error = '${call.arguments}';
+        debugPrint('[DLNA] player failed: $_error');
+        notifyListeners();
+        unawaited(_notifySubscribers());
       }
     });
   }
 
   static final instance = DlnaRendererService._();
-  static const _player = MethodChannel('any_deck/dlna_player');
+  static const _player = DlnaPlayerBridge.channel;
   static final _multicast = InternetAddress('239.255.255.250');
+  static const _httpPort = 18583;
 
   HttpServer? _http;
   RawDatagramSocket? _ssdp;
@@ -47,11 +54,7 @@ class DlnaRendererService extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final server = await HttpServer.bind(
-        InternetAddress.anyIPv4,
-        0,
-        shared: true,
-      );
+      final server = await HttpServer.bind(InternetAddress.anyIPv4, _httpPort);
       _http = server;
       server.listen(_serve, onError: (Object error) => _error = '$error');
       final socket = await RawDatagramSocket.bind(
@@ -138,6 +141,7 @@ class DlnaRendererService extends ChangeNotifier {
         !['ssdp:all', ...DlnaProtocol.searchTargets].contains(st)) {
       return;
     }
+    debugPrint('[DLNA] discovery from=${packet.address.address} st=$st');
     unawaited(_replySearch(packet.address, packet.port, st));
   }
 
@@ -156,7 +160,7 @@ class DlnaRendererService extends ChangeNotifier {
             ? target
             : 'uuid:${DlnaProtocol.uuid}::$target';
         final message =
-            'HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=300\r\nEXT:\r\nLOCATION: http://${address.address}:${server.port}/device.xml\r\nSERVER: macOS/1.0 UPnP/1.0 AdbManage/1.0\r\nST: $target\r\nUSN: $usn\r\n\r\n';
+            'HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=300\r\nEXT:\r\nLOCATION: http://${address.address}:${server.port}/device.xml\r\nSERVER: macOS/1.0 UPnP/1.0 AnyDeck/1.0\r\nST: $target\r\nUSN: $usn\r\n\r\n';
         socket.send(ascii.encode(message), destination, port);
       }
     }
@@ -172,7 +176,7 @@ class DlnaRendererService extends ChangeNotifier {
             ? target
             : 'uuid:${DlnaProtocol.uuid}::$target';
         final message =
-            'NOTIFY * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nCACHE-CONTROL: max-age=300\r\nLOCATION: http://${address.address}:${server.port}/device.xml\r\nNT: $target\r\nNTS: ssdp:${alive ? 'alive' : 'byebye'}\r\nSERVER: macOS/1.0 UPnP/1.0 AdbManage/1.0\r\nUSN: $usn\r\n\r\n';
+            'NOTIFY * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nCACHE-CONTROL: max-age=300\r\nLOCATION: http://${address.address}:${server.port}/device.xml\r\nNT: $target\r\nNTS: ssdp:${alive ? 'alive' : 'byebye'}\r\nSERVER: macOS/1.0 UPnP/1.0 AnyDeck/1.0\r\nUSN: $usn\r\n\r\n';
         socket.send(ascii.encode(message), _multicast, 1900);
       }
     }
@@ -180,9 +184,12 @@ class DlnaRendererService extends ChangeNotifier {
 
   Future<void> _serve(HttpRequest request) async {
     final response = request.response;
-    response.headers.set('Server', 'macOS/1.0 UPnP/1.0 AdbManage/1.0');
+    response.headers.set('Server', 'macOS/1.0 UPnP/1.0 AnyDeck/1.0');
     try {
       final path = request.uri.path;
+      debugPrint(
+        '[DLNA] HTTP ${request.method} $path from=${request.connectionInfo?.remoteAddress.address}',
+      );
       if (request.method == 'GET' && path == '/device.xml') {
         response.headers.contentType = ContentType(
           'text',
@@ -273,6 +280,15 @@ class DlnaRendererService extends ChangeNotifier {
     final soapAction =
         request.headers.value('SOAPACTION')?.replaceAll('"', '').trim() ?? '';
     final action = soapAction.split('#').last;
+    if ([
+      'SetAVTransportURI',
+      'Play',
+      'Pause',
+      'Stop',
+      'Seek',
+    ].contains(action)) {
+      debugPrint('[DLNA] SOAP $service/$action');
+    }
     if (type.isEmpty || !soapAction.startsWith(type) || action.isEmpty) {
       response.statusCode = HttpStatus.badRequest;
       return;
@@ -297,6 +313,7 @@ class DlnaRendererService extends ChangeNotifier {
             uri.host.isEmpty) {
           return null;
         }
+        debugPrint('[DLNA] media scheme=${uri.scheme} host=${uri.host}');
         if (_transportState == 'PLAYING' ||
             _transportState == 'PAUSED_PLAYBACK') {
           await _player.invokeMethod<void>('stop');
@@ -342,8 +359,8 @@ class DlnaRendererService extends ChangeNotifier {
           'CurrentSpeed': '1',
         };
       case 'GetPositionInfo':
-        final seconds = await _player.invokeMethod<double>('position') ?? 0;
-        final duration = await _player.invokeMethod<double>('duration') ?? 0;
+        final seconds = await DlnaPlayerBridge.readNumber('position');
+        final duration = await DlnaPlayerBridge.readNumber('duration');
         return {
           'Track': _currentUrl == null ? '0' : '1',
           'TrackDuration': DlnaProtocol.formatTime(duration),
@@ -358,7 +375,7 @@ class DlnaRendererService extends ChangeNotifier {
         return {
           'NrTracks': _currentUrl == null ? '0' : '1',
           'MediaDuration': DlnaProtocol.formatTime(
-            await _player.invokeMethod<double>('duration') ?? 0,
+            await DlnaPlayerBridge.readNumber('duration'),
           ),
           'CurrentURI': _currentUrl ?? '',
           'CurrentURIMetaData': '',
@@ -405,7 +422,10 @@ class DlnaRendererService extends ChangeNotifier {
         );
         return {};
       case 'GetVolume':
-        final volume = await _player.invokeMethod<double>('getVolume') ?? 1;
+        final volume = await DlnaPlayerBridge.readNumber(
+          'getVolume',
+          fallback: 1,
+        );
         return {'CurrentVolume': '${(volume * 100).round()}'};
       case 'SetMute':
         await _player.invokeMethod<void>(
@@ -414,7 +434,10 @@ class DlnaRendererService extends ChangeNotifier {
         );
         return {};
       case 'GetMute':
-        final volume = await _player.invokeMethod<double>('getVolume') ?? 1;
+        final volume = await DlnaPlayerBridge.readNumber(
+          'getVolume',
+          fallback: 1,
+        );
         return {'CurrentMute': volume == 0 ? '1' : '0'};
       default:
         return null;
@@ -432,7 +455,7 @@ class DlnaRendererService extends ChangeNotifier {
         try {
           final state = entry.value;
           final volume = state.path.startsWith('/rendering/')
-              ? await _player.invokeMethod<double>('getVolume') ?? 1
+              ? await DlnaPlayerBridge.readNumber('getVolume', fallback: 1)
               : 1.0;
           final lastChange = state.path.startsWith('/rendering/')
               ? '<Event xmlns="urn:schemas-upnp-org:metadata-1-0/RCS/"><InstanceID val="0"><Volume channel="Master" val="${(volume * 100).round()}"/></InstanceID></Event>'
