@@ -18,4 +18,13 @@ void main() {
       expect(updated.scrcpyAlwaysOnTop, isFalse);
     });
   });
+
+  test('DLNA 名称默认值与 copyWith 保留其他设置', () {
+    const settings = AppSettings(airplayServerName: '卧室 AirPlay');
+    final updated = settings.copyWith(dlnaServerName: '客厅电视');
+
+    expect(settings.dlnaServerName, AppSettings.defaultDlnaServerName);
+    expect(updated.dlnaServerName, '客厅电视');
+    expect(updated.airplayServerName, '卧室 AirPlay');
+  });
 }

@@ -21,6 +21,7 @@ enum AppLanguage {
 /// 可持久化的应用级设置，控制语言和外观。
 class AppSettings {
   static const defaultAirplayServerName = 'AnyDeck-AirPlay';
+  static const defaultDlnaServerName = 'AnyDeck DLNA';
 
   const AppSettings({
     this.language = AppLanguage.zh,
@@ -32,6 +33,7 @@ class AppSettings {
     this.mirrorAudioEnabled = true,
     this.iosMirrorAudioEnabled = true,
     this.airplayServerName = defaultAirplayServerName,
+    this.dlnaServerName = defaultDlnaServerName,
     this.screenshotSavePath = '',
     this.autoIdentifyForegroundApp = false,
     this.autoIdentifyInterval = 3,
@@ -53,6 +55,7 @@ class AppSettings {
   final bool mirrorAudioEnabled;
   final bool iosMirrorAudioEnabled;
   final String airplayServerName;
+  final String dlnaServerName;
   final String screenshotSavePath;
   final bool autoIdentifyForegroundApp;
   final int autoIdentifyInterval;
@@ -77,6 +80,7 @@ class AppSettings {
     bool? mirrorAudioEnabled,
     bool? iosMirrorAudioEnabled,
     String? airplayServerName,
+    String? dlnaServerName,
     String? screenshotSavePath,
     bool? autoIdentifyForegroundApp,
     int? autoIdentifyInterval,
@@ -100,6 +104,7 @@ class AppSettings {
       iosMirrorAudioEnabled:
           iosMirrorAudioEnabled ?? this.iosMirrorAudioEnabled,
       airplayServerName: airplayServerName ?? this.airplayServerName,
+      dlnaServerName: dlnaServerName ?? this.dlnaServerName,
       screenshotSavePath: screenshotSavePath ?? this.screenshotSavePath,
       autoIdentifyForegroundApp: autoIdentifyForegroundApp ?? this.autoIdentifyForegroundApp,
       autoIdentifyInterval: autoIdentifyInterval ?? this.autoIdentifyInterval,

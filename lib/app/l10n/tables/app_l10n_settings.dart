@@ -47,6 +47,9 @@ const settingsZh = {
   'iosAirplayName': 'iOS 投屏名称',
   'iosAirplayNameDesc': '设置 iOS 控制中心屏幕镜像列表显示的接收端名称（默认 AnyDeck-AirPlay）',
   'iosAirplayNameReset': '恢复默认名称 (AnyDeck-AirPlay)',
+  'androidDlnaName': 'Android DLNA 投屏名称',
+  'androidDlnaNameDesc': '设置投屏设备列表名称（默认 AnyDeck DLNA）；DLNA 不同步视频 App 的弹幕',
+  'androidDlnaNameReset': '恢复默认名称 (AnyDeck DLNA)',
   'videoBitrate': '传输码率',
   'videoBitrateDesc': '调整投屏视频传输码率品质',
   'maxResolution': '最大分辨率限制',
@@ -175,6 +178,10 @@ const settingsEn = {
   'iosAirplayNameDesc':
       'Receiver name shown in iOS Control Center Screen Mirroring (default AnyDeck-AirPlay)',
   'iosAirplayNameReset': 'Reset to default (AnyDeck-AirPlay)',
+  'androidDlnaName': 'Android DLNA Receiver Name',
+  'androidDlnaNameDesc':
+      'Receiver name in Android video apps (default AnyDeck DLNA); DLNA does not transfer in-app danmaku',
+  'androidDlnaNameReset': 'Reset to default (AnyDeck DLNA)',
   'videoBitrate': 'Video Bitrate',
   'videoBitrateDesc': 'Adjust mirroring video quality',
   'maxResolution': 'Max Resolution',

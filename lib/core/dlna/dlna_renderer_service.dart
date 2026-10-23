@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'dlna_protocol.dart';
 import 'dlna_player_bridge.dart';
 
+part 'dlna_renderer_name.dart';
+
 /// macOS DLNA MediaRenderer：SSDP 发现、UPnP 控制与原生播放器生命周期。
 class DlnaRendererService extends ChangeNotifier {
   DlnaRendererService._() {
@@ -35,6 +37,7 @@ class DlnaRendererService extends ChangeNotifier {
   StreamSubscription<RawSocketEvent>? _ssdpSubscription;
   Timer? _advertiseTimer;
   bool _starting = false;
+  String _serverName = DlnaProtocol.serverName;
   String? _currentUrl;
   String _transportState = 'NO_MEDIA_PRESENT';
   String? _error;
@@ -44,6 +47,7 @@ class DlnaRendererService extends ChangeNotifier {
   bool get isRunning => _http != null && _ssdp != null;
   bool get isBusy => _starting;
   String? get error => _error;
+  void _notifyNameChange() => notifyListeners();
 
   Future<void> start() async {
     if (isRunning || _starting) return;
@@ -199,7 +203,9 @@ class DlnaRendererService extends ChangeNotifier {
         final host =
             request.headers.value(HttpHeaders.hostHeader) ??
             '127.0.0.1:${_http!.port}';
-        response.write(DlnaProtocol.deviceDescription('http://$host'));
+        response.write(
+          DlnaProtocol.deviceDescription('http://$host', name: _serverName),
+        );
       } else if (request.method == 'GET' &&
           [
             '/avtransport.xml',
@@ -428,17 +434,16 @@ class DlnaRendererService extends ChangeNotifier {
         );
         return {'CurrentVolume': '${(volume * 100).round()}'};
       case 'SetMute':
+        final mute = DlnaProtocol.element(body, 'DesiredMute');
+        if (mute != '0' && mute != '1') return null;
         await _player.invokeMethod<void>(
-          'setVolume',
-          DlnaProtocol.element(body, 'DesiredMute') == '1' ? 0.0 : 1.0,
+          'setMute',
+          mute == '1',
         );
         return {};
       case 'GetMute':
-        final volume = await DlnaPlayerBridge.readNumber(
-          'getVolume',
-          fallback: 1,
-        );
-        return {'CurrentMute': volume == 0 ? '1' : '0'};
+        final muted = await _player.invokeMethod<bool>('getMute') ?? false;
+        return {'CurrentMute': muted ? '1' : '0'};
       default:
         return null;
     }
@@ -487,13 +492,4 @@ class DlnaRendererService extends ChangeNotifier {
       client.close(force: true);
     }
   }
-}
-
-class _DlnaSubscription {
-  _DlnaSubscription(this.callback, this.path);
-
-  final Uri callback;
-  final String path;
-  DateTime expires = DateTime.now().add(const Duration(minutes: 5));
-  int sequence = 0;
 }

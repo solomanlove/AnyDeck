@@ -128,7 +128,7 @@ import 'overview/widget/android_version_distribution_launcher.dart';
 import 'overview/model/platform_distribution_type.dart';
 import 'overview/widget/tool_directory_menu_button.dart';
 import 'overview/widget/service_restart_menu_button.dart';
-import 'overview/widget/airplay_name_setting_field.dart';
+import 'overview/widget/receiver_name_setting_field.dart';
 import 'messages/presentation/messages_tab.dart';
 import 'messages/presentation/controller/messages_controller.dart';
 import '../core/notifications/notification_providers.dart';

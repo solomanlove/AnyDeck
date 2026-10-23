@@ -10,10 +10,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_settings.dart';
 import 'desktop_autostart_service.dart';
 import '../../core/airplay/airplay_server_service.dart';
+import '../../core/dlna/dlna_renderer_service.dart';
 import '../../core/ios/ios_usb_mirror_service.dart';
 import '../window/desktop_window_title_service.dart';
 import '../window/desktop_window_manager_service.dart';
 import '../window/sub_window_method_dispatcher.dart';
+
+part 'app_settings_broadcast.dart';
 
 /// 全局唯一的窗口 ID Provider，主窗口默认为空字符串。
 final windowIdProvider = Provider<String>((ref) => '');
@@ -25,7 +28,7 @@ final appSettingsProvider =
     );
 
 /// 负责加载和保存设置，并通过乐观更新保持 UI 响应。
-class AppSettingsController extends Notifier<AppSettings> {
+class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
@@ -36,6 +39,7 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _mirrorAudioEnabledKey = 'settings.mirrorAudioEnabled';
   static const _iosMirrorAudioEnabledKey = 'settings.iosMirrorAudioEnabled';
   static const _airplayServerNameKey = 'settings.airplayServerName';
+  static const _dlnaServerNameKey = 'settings.dlnaServerName';
   static const _screenshotSavePathKey = 'settings.screenshotSavePath';
   static const _autoIdentifyForegroundAppKey = 'settings.autoIdentifyForegroundApp';
   static const _autoIdentifyIntervalKey = 'settings.autoIdentifyInterval';
@@ -97,6 +101,8 @@ class AppSettingsController extends Notifier<AppSettings> {
       await setIosMirrorAudioEnabled(value, broadcast: false);
     } else if (call.method == 'update_airplay_server_name') {
       await setAirplayServerName(call.arguments as String, broadcast: false);
+    } else if (call.method == 'update_dlna_server_name') {
+      await setDlnaServerName(call.arguments as String, broadcast: false);
     } else if (call.method == 'update_auto_identify_app') {
       final value = call.arguments as bool;
       await setAutoIdentifyForegroundApp(value, broadcast: false);
@@ -258,6 +264,15 @@ class AppSettingsController extends Notifier<AppSettings> {
     if (broadcast) try { await _broadcastSettingChange('update_airplay_server_name', clean); } catch (_) {}
   }
 
+  /// 更新 Android DLNA 发现名称，不中断当前视频播放。
+  Future<void> setDlnaServerName(String value, {bool broadcast = true}) async {
+    final clean = value.trim().isEmpty ? AppSettings.defaultDlnaServerName : value.trim();
+    state = state.copyWith(dlnaServerName: clean);
+    await (await SharedPreferences.getInstance()).setString(_dlnaServerNameKey, clean);
+    if (ref.read(windowIdProvider).isEmpty) await DlnaRendererService.instance.setServerName(clean);
+    if (broadcast) try { await _broadcastSettingChange('update_dlna_server_name', clean); } catch (_) {}
+  }
+
   /// 更新截图/录屏保存路径，并持久化和广播。
   Future<void> setScreenshotSavePath(
     String value, {
@@ -413,6 +428,8 @@ class AppSettingsController extends Notifier<AppSettings> {
     final iosMirrorAudioEnabled = preferences.getBool(_iosMirrorAudioEnabledKey) ?? true;
     final rawAirplayName = preferences.getString(_airplayServerNameKey)?.trim() ?? '';
     final airplayServerName = rawAirplayName.isEmpty ? AppSettings.defaultAirplayServerName : rawAirplayName;
+    final rawDlnaName = preferences.getString(_dlnaServerNameKey)?.trim() ?? '';
+    final dlnaServerName = rawDlnaName.isEmpty ? AppSettings.defaultDlnaServerName : rawDlnaName;
     AirPlayServerService.instance.setAudioEnabled(iosMirrorAudioEnabled);
     unawaited(IosUsbMirrorService.setGlobalAudioEnabled(iosMirrorAudioEnabled));
     final screenshotSavePath =
@@ -450,6 +467,7 @@ class AppSettingsController extends Notifier<AppSettings> {
       mirrorAudioEnabled: mirrorAudioEnabled,
       iosMirrorAudioEnabled: iosMirrorAudioEnabled,
       airplayServerName: airplayServerName,
+      dlnaServerName: dlnaServerName,
       screenshotSavePath: screenshotSavePath,
       autoIdentifyForegroundApp: autoIdentifyForegroundApp,
       autoIdentifyInterval: autoIdentifyInterval,
@@ -463,6 +481,7 @@ class AppSettingsController extends Notifier<AppSettings> {
     );
 
     if (ref.read(windowIdProvider).isEmpty) {
+      unawaited(DlnaRendererService.instance.setServerName(dlnaServerName));
       unawaited(DesktopWindowTitleService.setMenuLanguage(language.code));
       unawaited(DesktopWindowManagerService.updateTrayMenu(language.code));
     }
@@ -475,20 +494,5 @@ class AppSettingsController extends Notifier<AppSettings> {
       'dark' => ThemeMode.dark,
       _ => ThemeMode.system,
     };
-  }
-
-  Future<void> _broadcastSettingChange(String method, Object value) async {
-    final currentId = ref.read(windowIdProvider);
-    if (currentId.isNotEmpty) {
-      await _mainSettingsChannel.invokeMethod(method, value);
-    }
-
-    final windows = await WindowController.getAll();
-    for (final window in windows) {
-      if (window.windowId == currentId || window.arguments.isEmpty) {
-        continue;
-      }
-      await window.invokeMethod(method, value);
-    }
   }
 }

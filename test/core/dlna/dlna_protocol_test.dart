@@ -15,6 +15,15 @@ void main() {
     expect(DlnaProtocol.searchTargets, contains(DlnaProtocol.transportType));
   });
 
+  test('自定义接收端名称在设备描述中正确转义', () {
+    final xml = DlnaProtocol.deviceDescription(
+      'http://192.168.1.2:18583',
+      name: '客厅 & <电视>',
+    );
+    expect(xml, contains('<friendlyName>客厅 &amp; &lt;电视&gt;</friendlyName>'));
+    expect(xml, contains('<modelName>AnyDeck DLNA Renderer</modelName>'));
+  });
+
   test('AVTransport 描述包含输入参数和状态变量', () {
     final xml = DlnaProtocol.serviceDescription('avtransport');
     expect(xml, contains('<name>SetAVTransportURI</name>'));

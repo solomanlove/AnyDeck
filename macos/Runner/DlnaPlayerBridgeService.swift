@@ -11,6 +11,9 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   private var playerView: DlnaPlayerView?
   private var statusObserver: NSKeyValueObservation?
   private var channel: FlutterMethodChannel?
+  private var displayName = "AnyDeck DLNA"
+  private var playbackVolume: Float = 1
+  private var playbackMuted = false
 
   func setup(messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: "any_deck/dlna_player", binaryMessenger: messenger)
@@ -26,6 +29,14 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
           return
         }
         self.play(url)
+        result(nil)
+      case "setTitle":
+        guard let name = call.arguments as? String, !name.isEmpty else {
+          result(FlutterError(code: "invalid_title", message: "DLNA title required", details: nil))
+          return
+        }
+        self.displayName = name
+        self.window?.title = name
         result(nil)
       case "play":
         self.player?.play()
@@ -54,10 +65,21 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
           result(FlutterError(code: "invalid_volume", message: "Invalid volume", details: nil))
           return
         }
-        self.player?.volume = Float(max(0, min(1, volume)))
+        self.playbackVolume = Float(max(0, min(1, volume)))
+        self.player?.volume = self.playbackVolume
         result(nil)
       case "getVolume":
-        result(Double(self.player?.volume ?? 1))
+        result(Double(self.playbackVolume))
+      case "setMute":
+        guard let muted = call.arguments as? Bool else {
+          result(FlutterError(code: "invalid_mute", message: "Invalid mute state", details: nil))
+          return
+        }
+        self.playbackMuted = muted
+        self.player?.isMuted = muted
+        result(nil)
+      case "getMute":
+        result(self.playbackMuted)
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -70,7 +92,8 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
       let newWindow = NSWindow(contentRect: frame,
                                styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                backing: .buffered, defer: false)
-      newWindow.title = "AnyDeck DLNA"
+      newWindow.title = displayName
+      newWindow.backgroundColor = .black
       newWindow.isReleasedWhenClosed = false
       newWindow.delegate = self
       newWindow.center()
@@ -81,19 +104,21 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     }
     let item = AVPlayerItem(url: url)
     let newPlayer = AVPlayer(playerItem: item)
+    newPlayer.volume = playbackVolume
+    newPlayer.isMuted = playbackMuted
     statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
       if item.status == .failed {
         DispatchQueue.main.async {
           let failure = item.error as NSError?
           let detail = "\(failure?.domain ?? "AVPlayerItem")/\(failure?.code ?? -1): \(item.error?.localizedDescription ?? "Playback failed")"
-          self?.window?.title = "AnyDeck DLNA · \(item.error?.localizedDescription ?? "Playback failed")"
+          self?.window?.title = "\(self?.displayName ?? "AnyDeck DLNA") · \(item.error?.localizedDescription ?? "Playback failed")"
           self?.channel?.invokeMethod("playerFailed", arguments: detail)
         }
       }
     }
     player?.pause()
     player = newPlayer
-    window?.title = "AnyDeck DLNA"
+    window?.title = displayName
     playerView?.player = newPlayer
     window?.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
@@ -128,6 +153,8 @@ private final class DlnaPlayerView: NSView {
   override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
     wantsLayer = true
+    // 视频保持原比例时，使用黑色填充上下或左右留白。
+    (layer as? AVPlayerLayer)?.backgroundColor = NSColor.black.cgColor
     (layer as? AVPlayerLayer)?.videoGravity = .resizeAspect
   }
 

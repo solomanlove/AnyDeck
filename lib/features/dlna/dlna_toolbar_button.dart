@@ -1,22 +1,24 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../app/settings/app_settings_controller.dart';
 import '../../app/widget/app_toast.dart';
 import '../../core/dlna/dlna_renderer_service.dart';
 
 /// 主窗口 DLNA 接收开关；Android 视频 App 可在同一局域网发现电脑。
-class DlnaToolbarButton extends StatefulWidget {
+class DlnaToolbarButton extends ConsumerStatefulWidget {
   const DlnaToolbarButton({super.key, required this.iconColor});
 
   final Color iconColor;
 
   @override
-  State<DlnaToolbarButton> createState() => _DlnaToolbarButtonState();
+  ConsumerState<DlnaToolbarButton> createState() => _DlnaToolbarButtonState();
 }
 
-class _DlnaToolbarButtonState extends State<DlnaToolbarButton> {
+class _DlnaToolbarButtonState extends ConsumerState<DlnaToolbarButton> {
   final _service = DlnaRendererService.instance;
 
   @override
@@ -41,12 +43,15 @@ class _DlnaToolbarButtonState extends State<DlnaToolbarButton> {
       if (_service.isRunning) {
         await _service.stop();
       } else {
+        await _service.setServerName(ref.read(appSettingsProvider).dlnaServerName);
         await _service.start();
       }
       if (mounted) {
         AppToast.show(
           context,
-          context.l10n.t(_service.isRunning ? 'dlnaStarted' : 'dlnaStopped'),
+          context.l10n
+              .t(_service.isRunning ? 'dlnaStarted' : 'dlnaStopped')
+              .replaceAll('{name}', _service.serverName),
         );
       }
     } catch (error) {

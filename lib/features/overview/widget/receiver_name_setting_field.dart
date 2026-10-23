@@ -3,36 +3,43 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/settings/app_settings.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/airplay/airplay_server_service.dart';
 
-/// 设置页 iOS AirPlay 投屏广播名称编辑组件。
+/// 设置页投屏接收端名称编辑组件，供 AirPlay 与 DLNA 共用。
 ///
-/// 用途：在“设置 -> 投屏设置”中展示并修改 iOS 控制中心屏幕镜像列表显示的接收端名称。
+/// 用途：在“设置 -> 投屏设置”中展示并修改手机投屏设备列表中的接收端名称。
 /// 参数说明：
-/// - [value]: 当前保存的 AirPlay 接收端名称（默认 `AnyDeck-AirPlay`）。
+/// - [value]: 当前保存的接收端名称。
+/// - [defaultName]: 空白输入和恢复默认时使用的名称。
 /// - [onChanged]: 名称提交变更时的持久化回调。
 /// - [resetTooltip]: 恢复默认名称按钮的悬停提示文案。
+/// - [onApplied]: 提交后需要执行的协议专属操作。
 ///
 /// 用法示例：
 /// ```dart
-/// AirPlayNameSettingField(
+/// ReceiverNameSettingField(
 ///   value: settings.airplayServerName,
+///   defaultName: AppSettings.defaultAirplayServerName,
 ///   resetTooltip: '恢复默认',
 ///   onChanged: controller.setAirplayServerName,
 /// )
 /// ```
-class AirPlayNameSettingField extends ConsumerStatefulWidget {
-  const AirPlayNameSettingField({
+class ReceiverNameSettingField extends ConsumerStatefulWidget {
+  const ReceiverNameSettingField({
     super.key,
     required this.value,
+    required this.defaultName,
     required this.onChanged,
-    this.resetTooltip = 'AnyDeck-AirPlay',
+    required this.resetTooltip,
+    this.onApplied,
   });
 
-  /// 当前配置的 AirPlay 服务名称
+  /// 当前配置的接收端名称
   final String value;
+
+  /// 空白输入时恢复的默认名称
+  final String defaultName;
 
   /// 提交新名称时的回调
   final ValueChanged<String> onChanged;
@@ -40,13 +47,16 @@ class AirPlayNameSettingField extends ConsumerStatefulWidget {
   /// 恢复默认按钮提示文案
   final String resetTooltip;
 
+  /// 提交后的协议专属处理
+  final void Function(WidgetRef ref, String name)? onApplied;
+
   @override
-  ConsumerState<AirPlayNameSettingField> createState() =>
-      _AirPlayNameSettingFieldState();
+  ConsumerState<ReceiverNameSettingField> createState() =>
+      _ReceiverNameSettingFieldState();
 }
 
-class _AirPlayNameSettingFieldState
-    extends ConsumerState<AirPlayNameSettingField> {
+class _ReceiverNameSettingFieldState
+    extends ConsumerState<ReceiverNameSettingField> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
 
@@ -58,7 +68,7 @@ class _AirPlayNameSettingFieldState
   }
 
   @override
-  void didUpdateWidget(covariant AirPlayNameSettingField oldWidget) {
+  void didUpdateWidget(covariant ReceiverNameSettingField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.value != oldWidget.value && !_focusNode.hasFocus) {
       _controller.text = widget.value;
@@ -81,30 +91,19 @@ class _AirPlayNameSettingFieldState
 
   void _commit(String raw) {
     final trimmed = raw.trim();
-    final resolved = trimmed.isEmpty
-        ? AppSettings.defaultAirplayServerName
-        : trimmed;
+    final resolved = trimmed.isEmpty ? widget.defaultName : trimmed;
     if (_controller.text != resolved) {
       _controller.text = resolved;
     }
     if (resolved == widget.value) return;
     widget.onChanged(resolved);
-
-    // 若当前 AirPlay 处于空闲广播态（无设备正在投屏），自动使用新名称重启广播
-    final session = ref.read(airplaySessionProvider);
-    if (session != null &&
-        !session.hasAnyMirroring &&
-        session.hasAnyBroadcasting) {
-      unawaited(
-        ref.read(airplaySessionProvider.notifier).startServer(name: resolved),
-      );
-    }
+    widget.onApplied?.call(ref, resolved);
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isCustom = widget.value != AppSettings.defaultAirplayServerName;
+    final isCustom = widget.value != widget.defaultName;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -114,7 +113,7 @@ class _AirPlayNameSettingFieldState
             message: widget.resetTooltip,
             child: InkWell(
               borderRadius: BorderRadius.circular(6),
-              onTap: () => _commit(AppSettings.defaultAirplayServerName),
+              onTap: () => _commit(widget.defaultName),
               child: Padding(
                 padding: const EdgeInsets.all(6),
                 child: Icon(
@@ -140,7 +139,7 @@ class _AirPlayNameSettingFieldState
             ),
             decoration: InputDecoration(
               isDense: true,
-              hintText: AppSettings.defaultAirplayServerName,
+              hintText: widget.defaultName,
               hintStyle: TextStyle(
                 fontSize: 13,
                 color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
@@ -172,6 +171,18 @@ class _AirPlayNameSettingFieldState
           ),
         ),
       ],
+    );
+  }
+}
+
+/// AirPlay 空闲广播时以新名称重新发布，不影响正在镜像的 iPhone。
+void restartAirplayBroadcastIfIdle(WidgetRef ref, String name) {
+  final session = ref.read(airplaySessionProvider);
+  if (session != null &&
+      !session.hasAnyMirroring &&
+      session.hasAnyBroadcasting) {
+    unawaited(
+      ref.read(airplaySessionProvider.notifier).startServer(name: name),
     );
   }
 }

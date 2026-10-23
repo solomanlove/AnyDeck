@@ -240,11 +240,24 @@ class _SettingsTab extends ConsumerWidget {
                           context,
                           label: context.l10n.t('iosAirplayName'),
                           subtitle: context.l10n.t('iosAirplayNameDesc'),
-                          child: AirPlayNameSettingField(
+                          child: ReceiverNameSettingField(
                             value: settings.airplayServerName,
+                            defaultName: AppSettings.defaultAirplayServerName,
                             resetTooltip: context.l10n.t('iosAirplayNameReset'),
                             onChanged: (val) =>
                                 controller.setAirplayServerName(val),
+                            onApplied: restartAirplayBroadcastIfIdle,
+                          ),
+                        ),
+                        _buildSettingRow(
+                          context,
+                          label: context.l10n.t('androidDlnaName'),
+                          subtitle: context.l10n.t('androidDlnaNameDesc'),
+                          child: ReceiverNameSettingField(
+                            value: settings.dlnaServerName,
+                            defaultName: AppSettings.defaultDlnaServerName,
+                            resetTooltip: context.l10n.t('androidDlnaNameReset'),
+                            onChanged: (val) => controller.setDlnaServerName(val),
                           ),
                         ),
                         _buildSettingRow(

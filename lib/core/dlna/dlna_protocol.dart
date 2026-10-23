@@ -22,9 +22,9 @@ class DlnaProtocol {
   static String escape(String value) =>
       const HtmlEscape(HtmlEscapeMode.element).convert(value);
 
-  static String deviceDescription(String baseUrl) =>
+  static String deviceDescription(String baseUrl, {String name = serverName}) =>
       '''<?xml version="1.0" encoding="utf-8"?>
-<root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>$baseUrl/</URLBase><device><deviceType>$deviceType</deviceType><friendlyName>$serverName</friendlyName><manufacturer>AnyDeck</manufacturer><modelName>AnyDeck DLNA Renderer</modelName><UDN>uuid:$uuid</UDN><serviceList>${_service(transportType, 'AVTransport', '/avtransport')}${_service(renderingType, 'RenderingControl', '/rendering')}${_service(connectionType, 'ConnectionManager', '/connection')}</serviceList></device></root>''';
+<root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>$baseUrl/</URLBase><device><deviceType>$deviceType</deviceType><friendlyName>${escape(name)}</friendlyName><manufacturer>AnyDeck</manufacturer><modelName>AnyDeck DLNA Renderer</modelName><UDN>uuid:$uuid</UDN><serviceList>${_service(transportType, 'AVTransport', '/avtransport')}${_service(renderingType, 'RenderingControl', '/rendering')}${_service(connectionType, 'ConnectionManager', '/connection')}</serviceList></device></root>''';
 
   static String _service(String type, String id, String path) =>
       '<service><serviceType>$type</serviceType><serviceId>urn:upnp-org:serviceId:$id</serviceId><SCPDURL>$path.xml</SCPDURL><controlURL>$path/control</controlURL><eventSubURL>$path/event</eventSubURL></service>';
