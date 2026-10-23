@@ -12,6 +12,7 @@ fn server() -> Arc<AirPlayServer> {
         status: Arc::new(AtomicU8::new(0)),
         stopped: Arc::new(AtomicBool::new(false)),
         last_error: Arc::new(Mutex::new(String::new())),
+        client_info: Arc::new(Mutex::new((String::new(), String::new(), String::new()))),
         _advertiser: Mutex::new(None), task: Mutex::new(None), native: Mutex::new(None),
     })
 }
@@ -76,8 +77,10 @@ fn native_pairing_info_restart_and_failed_start_cleanup() {
 fn invalid_video_and_reset_never_report_mirroring_or_revive_stopped() {
     let server = server();
     let mut context = Box::new(Context {
-        status: server.status.clone(), error: server.last_error.clone(), frame: server.frame.clone(),
+        status: server.status.clone(), error: server.last_error.clone(),
+        client_info: server.client_info.clone(), frame: server.frame.clone(),
         decoder: Mutex::new(Decoder::new(server.frame.clone())),
+        audio_decoder: Mutex::new(None),
     });
     let ptr = &mut *context as *mut Context as *mut c_void;
     let bad = [0u8; 4];
@@ -95,8 +98,10 @@ fn invalid_video_and_reset_never_report_mirroring_or_revive_stopped() {
 fn decoded_surface_reset_and_reconnect() {
     let server = server();
     let mut context = Box::new(Context {
-        status: server.status.clone(), error: server.last_error.clone(), frame: server.frame.clone(),
+        status: server.status.clone(), error: server.last_error.clone(),
+        client_info: server.client_info.clone(), frame: server.frame.clone(),
         decoder: Mutex::new(Decoder::new(server.frame.clone())),
+        audio_decoder: Mutex::new(None),
     });
     let ptr = &mut *context as *mut Context as *mut c_void;
     let data = include_bytes!("testdata/blue_64x48.h264");

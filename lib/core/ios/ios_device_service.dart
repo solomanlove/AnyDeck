@@ -201,7 +201,10 @@ class IosDeviceService {
   }
 
   /// 原生采集会话由当前 Flutter Engine 持有；不再创建截图流和固定端口。
-  Future<int> startMirroring({required String udid}) => usbMirror.start(udid);
+  Future<int> startMirroring({
+    required String udid,
+    bool audioEnabled = true,
+  }) => usbMirror.start(udid, audioEnabled: audioEnabled);
 
   Future<void> stopMirroring(String udid) => usbMirror.stop(udid);
 

@@ -110,7 +110,7 @@ import 'apps/widgets/location_history_view.dart';
 import 'apps/widgets/apps_alphabet_sidebar.dart';
 import 'airplay/airplay_toolbar_button.dart';
 import 'airplay/airplay_mirror_target.dart';
-import 'airplay/widgets/airplay_active_banner.dart';
+import 'devices/widgets/device_airplay_row_widgets.dart';
 import '../core/airplay/airplay_server_service.dart';
 import '../core/airplay/airplay_server_state.dart';
 import 'files/controller/file_favorite_folders_controller.dart';
@@ -127,6 +127,7 @@ import 'overview/widget/android_version_distribution_launcher.dart';
 import 'overview/model/platform_distribution_type.dart';
 import 'overview/widget/tool_directory_menu_button.dart';
 import 'overview/widget/service_restart_menu_button.dart';
+import 'overview/widget/airplay_name_setting_field.dart';
 import 'messages/presentation/messages_tab.dart';
 import 'messages/presentation/controller/messages_controller.dart';
 import '../core/notifications/notification_providers.dart';
@@ -426,18 +427,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     ref.watch(deviceConnectionNotificationServiceProvider);
     ref.watch(notificationForwardingServiceProvider);
 
-    // 监听 AirPlay 镜像建立事件，自动弹出独立投屏小窗口
+    // 监听 AirPlay 镜像建立事件，自动弹出独立投屏小窗口（支持多台设备并发投屏）
     ref.listen<AirPlaySessionData?>(airplaySessionProvider, (previous, next) {
-      if (next != null &&
-          next.status == AirPlayServerStatus.mirroring &&
-          previous?.status != AirPlayServerStatus.mirroring) {
-        final preferred = resolveAirPlayMirrorTarget(
-          ref.read(deviceRegistryProvider),
-        );
+      if (next == null) return;
+      final prevIds =
+          previous?.mirroringSessions.map((s) => s.id).toSet() ?? const {};
+      final newlyMirroring = next.mirroringSessions
+          .where((s) => !prevIds.contains(s.id))
+          .toList();
+      if (newlyMirroring.isEmpty) return;
+
+      final merged = mergeAirPlayDevicesIntoList(
+        ref.read(deviceRegistryProvider),
+        next,
+      );
+      for (final session in newlyMirroring) {
+        final matchedId = merged.sessionByDeviceId.entries
+            .where((e) => e.value.id == session.id)
+            .map((e) => e.key)
+            .firstOrNull;
+        final target = matchedId == null
+            ? null
+            : merged.devices.where((d) => d.id == matchedId).firstOrNull;
         openAirPlayMirrorWindow(
-          next,
-          deviceId: preferred?.id,
-          deviceName: preferred?.displayName,
+          session,
+          deviceId: target?.id,
+          deviceName: target?.displayName,
         );
       }
     });

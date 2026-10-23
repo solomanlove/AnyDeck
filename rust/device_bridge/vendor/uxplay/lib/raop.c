@@ -102,6 +102,7 @@ struct raop_s {
 
 struct raop_conn_s {
     raop_t *raop;
+    raop_callbacks_t callbacks;
     raop_ntp_t *raop_ntp;
     raop_rtp_t *raop_rtp;
     raop_rtp_mirror_t *raop_rtp_mirror;
@@ -180,9 +181,15 @@ conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remot
     conn->authenticated = false;
 
     conn->have_active_remote = false;
-    
-    if (raop->callbacks.conn_init) {
-        raop->callbacks.conn_init(raop->callbacks.cls);
+    memcpy(&conn->callbacks, &raop->callbacks, sizeof(raop_callbacks_t));
+    if (raop->callbacks.conn_cls_attach) {
+        void *conn_cls = raop->callbacks.conn_cls_attach(raop->callbacks.cls);
+        if (conn_cls) {
+            conn->callbacks.cls = conn_cls;
+        }
+    }
+    if (conn->callbacks.conn_init) {
+        conn->callbacks.conn_init(conn->callbacks.cls);
     }
 
     return conn;
@@ -274,11 +281,14 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
             if (httpd_count_connection_type(raop->httpd, CONNECTION_TYPE_RAOP)) {
                 char ipaddr[40] = { '\0' };
                 utils_ipaddress_to_string(conn->remotelen, conn->remote, conn->zone_id, ipaddr, (int) (sizeof(ipaddr)));
-                if (httpd_nohold(raop->httpd)) {
+                int nohold_mode = httpd_nohold_mode(raop->httpd);
+                if (nohold_mode >= 2) {
+                    logger_log(raop->logger, LOGGER_INFO, "multi-client mode: accepting concurrent connection from %s", ipaddr);
+                } else if (nohold_mode == 1) {
                     logger_log(raop->logger, LOGGER_INFO, "*****\"nohold\" feature: switch to new connection request from %s", ipaddr);		  
                     httpd_remove_known_connections(raop->httpd);
-                    if (raop->callbacks.video_reset) {
-                        raop->callbacks.video_reset(raop->callbacks.cls, RESET_TYPE_NOHOLD);
+                    if (conn->callbacks.video_reset) {
+                        conn->callbacks.video_reset(conn->callbacks.cls, RESET_TYPE_NOHOLD);
                     }
                 } else {
                     logger_log(raop->logger, LOGGER_WARNING, "rejecting new connection request from %s", ipaddr);
@@ -343,9 +353,9 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
         const char *active_remote = http_request_get_header(request, "Active-Remote");
         if (active_remote) {
             conn->have_active_remote = true;
-            if (raop->callbacks.export_dacp) {
+            if (conn->callbacks.export_dacp) {
                 const char *dacp_id = http_request_get_header(request, "DACP-ID");
-                raop->callbacks.export_dacp(raop->callbacks.cls, active_remote, dacp_id);
+                conn->callbacks.export_dacp(conn->callbacks.cls, active_remote, dacp_id);
             }
         }
     }
@@ -551,10 +561,6 @@ conn_destroy(void *ptr) {
     raop_t *raop = conn->raop;
     logger_log(raop->logger, LOGGER_DEBUG, "Destroying connection");
 
-    if (raop->callbacks.conn_destroy) {
-        raop->callbacks.conn_destroy(raop->callbacks.cls);
-    }
-
     if (conn->raop_rtp) {
         /* This is done in case TEARDOWN was not called */
         raop_rtp_destroy(conn->raop_rtp);
@@ -567,8 +573,15 @@ conn_destroy(void *ptr) {
         raop_ntp_destroy(conn->raop_ntp);
     }
 
-    if (raop->callbacks.video_flush) {
-        raop->callbacks.video_flush(raop->callbacks.cls);
+    if (conn->callbacks.video_flush) {
+        conn->callbacks.video_flush(conn->callbacks.cls);
+    }
+    if (conn->callbacks.conn_destroy) {
+        conn->callbacks.conn_destroy(conn->callbacks.cls);
+    }
+    if (raop->callbacks.conn_cls_detach && conn->callbacks.cls != raop->callbacks.cls) {
+        raop->callbacks.conn_cls_detach(raop->callbacks.cls, conn->callbacks.cls);
+        conn->callbacks.cls = raop->callbacks.cls;
     }
 
     free(conn->local);
@@ -842,6 +855,25 @@ raop_stop_httpd(raop_t *raop) {
     assert(raop);
     /* AnyDeck: init2 may fail before creating the HTTP daemon. */
     if (raop->httpd) httpd_stop(raop->httpd);
+}
+
+typedef struct {
+    int (*match)(void *conn_cls, void *ctx);
+    void *ctx;
+} raop_disconnect_ctx_t;
+
+static int
+raop_match_conn_cls(void *user_data, void *opaque) {
+    raop_conn_t *conn = (raop_conn_t *)user_data;
+    raop_disconnect_ctx_t *dctx = (raop_disconnect_ctx_t *)opaque;
+    if (!conn || !dctx || !dctx->match) return 0;
+    return dctx->match(conn->callbacks.cls, dctx->ctx);
+}
+
+void raop_disconnect_cls(raop_t *raop, int (*match)(void *conn_cls, void *ctx), void *ctx) {
+    if (!raop || !raop->httpd || !match) return;
+    raop_disconnect_ctx_t dctx = { match, ctx };
+    httpd_disconnect_matching(raop->httpd, raop_match_conn_cls, &dctx);
 }
 
 void raop_remove_known_connections(raop_t * raop) {

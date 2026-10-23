@@ -227,6 +227,28 @@ class _SettingsTab extends ConsumerWidget {
                         ),
                         _buildSettingRow(
                           context,
+                          label: context.l10n.t('iosAudioForwarding'),
+                          subtitle: context.l10n.t('iosAudioForwardingDesc'),
+                          child: CupertinoSwitch(
+                            activeTrackColor: const Color(0xFF34C759),
+                            value: settings.iosMirrorAudioEnabled,
+                            onChanged: (val) =>
+                                controller.setIosMirrorAudioEnabled(val),
+                          ),
+                        ),
+                        _buildSettingRow(
+                          context,
+                          label: context.l10n.t('iosAirplayName'),
+                          subtitle: context.l10n.t('iosAirplayNameDesc'),
+                          child: AirPlayNameSettingField(
+                            value: settings.airplayServerName,
+                            resetTooltip: context.l10n.t('iosAirplayNameReset'),
+                            onChanged: (val) =>
+                                controller.setAirplayServerName(val),
+                          ),
+                        ),
+                        _buildSettingRow(
+                          context,
                           label: context.l10n.t('videoBitrate'),
                           subtitle: context.l10n.t('videoBitrateDesc'),
                           child: _buildDropdownSelector<int>(

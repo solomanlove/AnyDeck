@@ -24,6 +24,17 @@ final class IosUsbCapturePlugin: NSObject, FlutterPlugin {
   }
 
   func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    if call.method == "setAudioEnabled" {
+      let args = call.arguments as? [String: Any]
+      let enabled = (args?["audioEnabled"] as? Bool) ?? true
+      if let udid = args?["udid"] as? String, !udid.isEmpty {
+        captures[udid]?.setAudioEnabled(enabled)
+      } else {
+        captures.values.forEach { $0.setAudioEnabled(enabled) }
+      }
+      result(nil)
+      return
+    }
     guard let args = call.arguments as? [String: Any], let udid = args["udid"] as? String,
           !udid.isEmpty else {
       result(FlutterError(code: "iosInvalidDevice", message: nil, details: nil)); return
@@ -31,7 +42,9 @@ final class IosUsbCapturePlugin: NSObject, FlutterPlugin {
     switch call.method {
     case "start":
       guard !closing else { result(FlutterError(code: "iosUsbCaptureStopped", message: nil, details: nil)); return }
+      let audioEnabled = (args["audioEnabled"] as? Bool) ?? true
       if let id = textures[udid], pending[udid] == nil {
+        captures[udid]?.setAudioEnabled(audioEnabled)
         result(id); return
       }
       guard captures[udid] == nil else {
@@ -42,7 +55,7 @@ final class IosUsbCapturePlugin: NSObject, FlutterPlugin {
       pending[udid] = result
       let begin = { [weak self, weak capture] in
         guard let self, let capture, self.captures[udid] === capture else { return }
-        self.begin(udid, capture: capture)
+        self.begin(udid, capture: capture, audioEnabled: audioEnabled)
       }
       if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
@@ -61,7 +74,7 @@ final class IosUsbCapturePlugin: NSObject, FlutterPlugin {
     }
   }
 
-  private func begin(_ udid: String, capture: IosUsbCapture) {
+  private func begin(_ udid: String, capture: IosUsbCapture, audioEnabled: Bool) {
     let id = registrar.textures.register(IosUsbPixelTexture(capture))
     guard id != 0 else { stop(udid, code: "iosUsbTextureFailed"); return }
     textures[udid] = id
@@ -71,7 +84,7 @@ final class IosUsbCapturePlugin: NSObject, FlutterPlugin {
       // 只有真实首帧到达后，Dart 才能将会话显示为已启动。
       self.pending.removeValue(forKey: udid)?(id)
     }
-    capture.start(udid: udid) { [weak self, weak capture] error in
+    capture.start(udid: udid, audioEnabled: audioEnabled) { [weak self, weak capture] error in
       guard let self, let capture, self.captures[udid] === capture else { return }
       if let error { self.stop(udid, code: error.localizedDescription) }
     }

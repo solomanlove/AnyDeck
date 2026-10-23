@@ -20,6 +20,8 @@ enum AppLanguage {
 
 /// 可持久化的应用级设置，控制语言和外观。
 class AppSettings {
+  static const defaultAirplayServerName = 'AnyDeck-AirPlay';
+
   const AppSettings({
     this.language = AppLanguage.zh,
     this.themeMode = ThemeMode.system,
@@ -28,6 +30,8 @@ class AppSettings {
     this.mirrorVideoBitrate = 8000000,
     this.mirrorMaxSize = 1080,
     this.mirrorAudioEnabled = true,
+    this.iosMirrorAudioEnabled = true,
+    this.airplayServerName = defaultAirplayServerName,
     this.screenshotSavePath = '',
     this.autoIdentifyForegroundApp = false,
     this.autoIdentifyInterval = 3,
@@ -47,6 +51,8 @@ class AppSettings {
   final int mirrorVideoBitrate;
   final int mirrorMaxSize;
   final bool mirrorAudioEnabled;
+  final bool iosMirrorAudioEnabled;
+  final String airplayServerName;
   final String screenshotSavePath;
   final bool autoIdentifyForegroundApp;
   final int autoIdentifyInterval;
@@ -69,6 +75,8 @@ class AppSettings {
     int? mirrorVideoBitrate,
     int? mirrorMaxSize,
     bool? mirrorAudioEnabled,
+    bool? iosMirrorAudioEnabled,
+    String? airplayServerName,
     String? screenshotSavePath,
     bool? autoIdentifyForegroundApp,
     int? autoIdentifyInterval,
@@ -89,6 +97,9 @@ class AppSettings {
       mirrorVideoBitrate: mirrorVideoBitrate ?? this.mirrorVideoBitrate,
       mirrorMaxSize: mirrorMaxSize ?? this.mirrorMaxSize,
       mirrorAudioEnabled: mirrorAudioEnabled ?? this.mirrorAudioEnabled,
+      iosMirrorAudioEnabled:
+          iosMirrorAudioEnabled ?? this.iosMirrorAudioEnabled,
+      airplayServerName: airplayServerName ?? this.airplayServerName,
       screenshotSavePath: screenshotSavePath ?? this.screenshotSavePath,
       autoIdentifyForegroundApp: autoIdentifyForegroundApp ?? this.autoIdentifyForegroundApp,
       autoIdentifyInterval: autoIdentifyInterval ?? this.autoIdentifyInterval,

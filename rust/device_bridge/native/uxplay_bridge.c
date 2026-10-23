@@ -25,12 +25,22 @@ typedef struct {
     unsigned short port;
     void *rust_context;
     void (*video_callback)(void *ctx, const uint8_t *data, int len, uint64_t ntp_time);
+    void (*audio_callback)(void *ctx, const uint8_t *data, int len, uint8_t ct, uint16_t spf);
     void (*reset_callback)(void *ctx);
     void (*log_callback)(void *ctx, int level, const char *msg);
+    void *(*client_callback)(void *ctx, const char *device_id, const char *model, const char *name);
+    void (*detach_callback)(void *ctx, void *slot_ctx);
+    unsigned short audio_spf;
     pthread_t dnssd_thread;
     atomic_bool running;
     bool worker_started;
 } anydeck_uxplay_handle_t;
+
+typedef struct {
+    anydeck_uxplay_handle_t *server;
+    void *slot_context;
+    unsigned short audio_spf;
+} anydeck_uxplay_conn_t;
 
 /* AirPlay 只在可路由 LAN 上广播，避免 iPhone 通过 USB 169.254 链路建连后 UDP timing 断流。 */
 static uint32_t find_lan_interface_index(void) {
@@ -52,10 +62,40 @@ static uint32_t find_lan_interface_index(void) {
     return selected;
 }
 
+static void *on_conn_cls_attach(void *cls) {
+    anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)cls;
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)calloc(1, sizeof(anydeck_uxplay_conn_t));
+    if (!c) return cls;
+    c->server = h;
+    c->slot_context = NULL;
+    c->audio_spf = 480;
+    return c;
+}
+
+static void on_conn_cls_detach(void *cls, void *conn_cls) {
+    anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)cls;
+    if (!conn_cls || conn_cls == cls) return;
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)conn_cls;
+    if (c->slot_context) {
+        if (h && h->reset_callback) {
+            h->reset_callback(c->slot_context);
+        }
+        if (h && h->detach_callback) {
+            h->detach_callback(h->rust_context, c->slot_context);
+        }
+        c->slot_context = NULL;
+    }
+    free(c);
+}
+
 static void on_audio_process(void *cls, raop_ntp_t *ntp, audio_decode_struct *data) {
-    (void)cls;
     (void)ntp;
-    (void)data;
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)cls;
+    anydeck_uxplay_handle_t *h = c ? c->server : NULL;
+    void *target_ctx = (c && c->slot_context) ? c->slot_context : (h ? h->rust_context : NULL);
+    if (h && h->audio_callback && target_ctx && data && data->data && data->data_len > 0 && data->data_len <= 4096) {
+        h->audio_callback(target_ctx, data->data, data->data_len, data->ct, c->audio_spf);
+    }
 }
 
 static double on_audio_set_client_volume(void *cls) {
@@ -102,9 +142,11 @@ static int on_video_set_codec(void *cls, video_codec_t codec) {
 }
 
 static void on_audio_get_format(void *cls, unsigned char *ct, unsigned short *spf, bool *usingScreen, bool *isMedia, uint64_t *audioFormat) {
-    (void)cls;
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)cls;
+    if (c && spf) {
+        c->audio_spf = *spf;
+    }
     (void)ct;
-    (void)spf;
     (void)usingScreen;
     (void)isMedia;
     (void)audioFormat;
@@ -148,16 +190,28 @@ static void on_audio_set_progress(void *cls, uint32_t *start, uint32_t *curr, ui
 }
 
 static void on_mirror_video_running(void *cls, bool is_running) {
-    anydeck_uxplay_handle_t *h = cls;
-    if (!is_running && h->reset_callback) h->reset_callback(h->rust_context);
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)cls;
+    anydeck_uxplay_handle_t *h = c ? c->server : NULL;
+    void *target_ctx = (c && c->slot_context) ? c->slot_context : (h ? h->rust_context : NULL);
+    if (!is_running && h && h->reset_callback && target_ctx) h->reset_callback(target_ctx);
 }
 
 static void on_report_client_request(void *cls, char *deviceid, char *model, char *name, bool *admit) {
-    (void)cls;
-    (void)deviceid;
-    (void)model;
-    (void)name;
-    if (admit) *admit = true;
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)cls;
+    if (!c || !c->server) {
+        if (admit) *admit = false;
+        return;
+    }
+    anydeck_uxplay_handle_t *h = c->server;
+    if (!c->slot_context && h->client_callback) {
+        c->slot_context = h->client_callback(
+            h->rust_context,
+            deviceid ? deviceid : "",
+            model ? model : "",
+            name ? name : ""
+        );
+    }
+    if (admit) *admit = (c->slot_context != NULL);
 }
 
 static bool on_check_register(void *cls, const char *pk_str) {
@@ -180,26 +234,32 @@ static void on_export_dacp(void *cls, const char *active_remote, const char *dac
 
 static void on_video_process(void *cls, raop_ntp_t *ntp, video_decode_struct *data) {
     (void)ntp;
-    anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)cls;
-    if (h && h->video_callback && data && data->data && data->data_len > 0 &&
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)cls;
+    anydeck_uxplay_handle_t *h = c ? c->server : NULL;
+    void *target_ctx = (c && c->slot_context) ? c->slot_context : (h ? h->rust_context : NULL);
+    if (h && h->video_callback && target_ctx && data && data->data && data->data_len > 0 &&
         data->data_len <= 10 * 1024 * 1024 && !data->is_h265) {
-        h->video_callback(h->rust_context, data->data, data->data_len, data->ntp_time_local / 1000); // ns → VideoToolbox µs
+        h->video_callback(target_ctx, data->data, data->data_len, data->ntp_time_local / 1000); // ns → VideoToolbox µs
     }
 }
 
 static void on_video_reset(void *cls, reset_type_t reset_type) {
     (void)reset_type;
-    anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)cls;
-    if (h && h->reset_callback) {
-        h->reset_callback(h->rust_context);
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)cls;
+    anydeck_uxplay_handle_t *h = c ? c->server : NULL;
+    void *target_ctx = (c && c->slot_context) ? c->slot_context : (h ? h->rust_context : NULL);
+    if (h && h->reset_callback && target_ctx) {
+        h->reset_callback(target_ctx);
     }
 }
 
 static void on_conn_reset(void *cls, int reason) {
     (void)reason;
-    anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)cls;
-    if (h && h->reset_callback) {
-        h->reset_callback(h->rust_context);
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)cls;
+    anydeck_uxplay_handle_t *h = c ? c->server : NULL;
+    void *target_ctx = (c && c->slot_context) ? c->slot_context : (h ? h->rust_context : NULL);
+    if (h && h->reset_callback && target_ctx) {
+        h->reset_callback(target_ctx);
     }
 }
 
@@ -278,16 +338,22 @@ void *anydeck_uxplay_start(
     bool publish,
     void *context,
     void (*video)(void *ctx, const uint8_t *data, int len, uint64_t ntp_time),
+    void (*audio)(void *ctx, const uint8_t *data, int len, uint8_t ct, uint16_t spf),
     void (*reset)(void *ctx),
-    void (*log_fn)(void *ctx, int level, const char *msg)
+    void (*log_fn)(void *ctx, int level, const char *msg),
+    void *(*client_fn)(void *ctx, const char *device_id, const char *model, const char *name),
+    void (*detach_fn)(void *ctx, void *slot_ctx)
 ) {
     anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)calloc(1, sizeof(anydeck_uxplay_handle_t));
     if (!h) return NULL;
 
     h->rust_context = context;
     h->video_callback = video;
+    h->audio_callback = audio;
     h->reset_callback = reset;
     h->log_callback = log_fn;
+    h->client_callback = client_fn;
+    h->detach_callback = detach_fn;
     atomic_init(&h->running, true);
 
     raop_callbacks_t cbs;
@@ -319,6 +385,8 @@ void *anydeck_uxplay_start(
     cbs.passwd = on_passwd;
     cbs.export_dacp = on_export_dacp;
     cbs.video_set_codec = on_video_set_codec;
+    cbs.conn_cls_attach = on_conn_cls_attach;
+    cbs.conn_cls_detach = on_conn_cls_detach;
 
     h->raop = raop_init(&cbs);
     if (!h->raop) {
@@ -331,7 +399,7 @@ void *anydeck_uxplay_start(
         raop_set_log_level(h->raop, LOGGER_INFO);
     }
 
-    if (raop_init2(h->raop, 1, mac, keyfile) != 0) {
+    if (raop_init2(h->raop, 2, mac, keyfile) != 0) {
         anydeck_uxplay_stop(h);
         return NULL;
     }
@@ -403,4 +471,18 @@ unsigned short anydeck_uxplay_port(void *handle) {
     if (!handle) return 0;
     anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)handle;
     return h->port;
+}
+
+static int match_slot_context(void *conn_cls, void *target_slot_ctx) {
+    if (!conn_cls || !target_slot_ctx) return 0;
+    anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)conn_cls;
+    return c->slot_context == target_slot_ctx ? 1 : 0;
+}
+
+void anydeck_uxplay_disconnect_slot(void *handle, void *slot_context) {
+    if (!handle || !slot_context) return;
+    anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)handle;
+    if (h->raop) {
+        raop_disconnect_cls(h->raop, match_slot_context, slot_context);
+    }
 }

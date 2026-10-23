@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/settings/app_settings_controller.dart';
 import '../logging/log_service.dart';
 import '../logging/app_log_recorder.dart';
 import 'ios_command_service.dart';
@@ -75,9 +76,13 @@ class ActiveIosMirrorNotifier extends Notifier<int?> {
     _changing = true;
     final generation = ++_generation;
     final service = ref.read(iosDeviceServiceProvider);
+    final audioEnabled = ref.read(appSettingsProvider).iosMirrorAudioEnabled;
     ref.read(iosUsbFrameProvider(udid).notifier).update({});
     try {
-      final texture = await service.startMirroring(udid: udid);
+      final texture = await service.startMirroring(
+        udid: udid,
+        audioEnabled: audioEnabled,
+      );
       if (!ref.mounted || generation != _generation) return;
       state = texture;
       await _readStatus();

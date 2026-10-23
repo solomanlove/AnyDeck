@@ -7,13 +7,18 @@ import '../../../core/providers/modules/registered_device_model.dart';
 /// 设备标识旁的只读 USB / TCP / TLS / iOS 网络通道状态，不提供连接操作。
 /// [device] 为合并后的设备；消费点击以避免触发外层设备行的概览导航。
 class DeviceConnectionIndicators extends StatelessWidget {
-  const DeviceConnectionIndicators({super.key, required this.device});
+  const DeviceConnectionIndicators({
+    super.key,
+    required this.device,
+    this.isAirplayMirroring = false,
+  });
   final RegisteredDevice device;
+  final bool isAirplayMirroring;
 
   @override
   Widget build(BuildContext context) {
-    // 当设备处于离线状态时，不展示 USB / TCP 等连接类型图标
-    if (!device.isOnline) {
+    // 当设备处于离线状态且非 AirPlay 投屏时，不展示 USB / TCP 等连接类型图标
+    if (!device.isOnline && !isAirplayMirroring) {
       return const SizedBox.shrink();
     }
 
@@ -31,6 +36,8 @@ class DeviceConnectionIndicators extends StatelessWidget {
               _indicator(context, 'connectionUsb', Icons.usb, const Color(0xFF26A69A)),
             if (device.hasIosNetworkConnection)
               _indicator(context, 'connectionIosNetwork', CupertinoIcons.wifi, Theme.of(context).colorScheme.primary),
+            if (isAirplayMirroring)
+              _indicator(context, 'airplayServer', Icons.airplay_rounded, const Color(0xFF34C759)),
             if (device.hasTcpConnection)
               _indicator(context, 'connectionTcp', CupertinoIcons.link, const Color(0xFF00ACC1)),
             if (device.hasWifiDebuggingConnection)

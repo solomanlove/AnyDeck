@@ -9,6 +9,8 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
   private let frames = DispatchQueue(label: "anydeck.ios.usb.frames")
   private let lock = NSLock()
   private var session: AVCaptureSession?
+  private var audioOutput: AVCaptureAudioPreviewOutput?
+  private var audioEnabled = true
   private var pixel: CVPixelBuffer?
   private var count = 0
   private var lastFrame: TimeInterval = 0
@@ -42,7 +44,8 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
   }
 
   /// 延迟枚举允许 iOSScreenCaptureAssistant 完成设备发现；启动工作不阻塞主线程。
-  func start(udid: String, completion: @escaping (Error?) -> Void) {
+  func start(udid: String, audioEnabled: Bool = true, completion: @escaping (Error?) -> Void) {
+    lock.lock(); self.audioEnabled = audioEnabled; lock.unlock()
     queue.async { [self] in
       do {
         setStage("enablingDevices")
@@ -96,6 +99,13 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
       throw NSError(domain: "IosUsbCapture", code: 3)
     }
     capture.addOutput(output)
+    let audioPreview = AVCaptureAudioPreviewOutput()
+    lock.lock(); let initialAudioEnabled = audioEnabled; lock.unlock()
+    audioPreview.volume = initialAudioEnabled ? 1.0 : 0.0
+    if capture.canAddOutput(audioPreview) {
+      capture.addOutput(audioPreview)
+      audioOutput = audioPreview
+    }
     capture.commitConfiguration()
     session = capture
     observers.append(NotificationCenter.default.addObserver(
@@ -149,8 +159,19 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
   private func stopSession() {
     session?.stopRunning()
     session = nil
+    audioOutput = nil
     observers.forEach { NotificationCenter.default.removeObserver($0) }
     observers.removeAll()
+  }
+
+  /// 动态更新 iOS USB 投屏音频转发开关（通过调节 AVCaptureAudioPreviewOutput 音量实现实时静音/恢复）
+  func setAudioEnabled(_ enabled: Bool) {
+    lock.lock(); audioEnabled = enabled; lock.unlock()
+    queue.async { [weak self] in
+      guard let self else { return }
+      self.lock.lock(); let target = self.audioEnabled; self.lock.unlock()
+      self.audioOutput?.volume = target ? 1.0 : 0.0
+    }
   }
 
   private var isClosed: Bool {

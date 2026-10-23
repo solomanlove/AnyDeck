@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import '../logging/app_log_recorder.dart';
@@ -9,19 +10,42 @@ class IosUsbMirrorService {
   final Map<String, Future<int>> _starting = {};
   int? texture(String udid) => _textures[udid];
 
-  Future<int> start(String udid) {
+  Future<int> start(String udid, {bool audioEnabled = true}) {
     if (!Platform.isMacOS) throw UnsupportedError('iosUsbMacOnly');
-    if (_textures[udid] case final id?) return Future.value(id);
-    return _starting.putIfAbsent(udid, () => _start(udid));
+    if (_textures[udid] case final id?) {
+      unawaited(setGlobalAudioEnabled(audioEnabled, udid: udid));
+      return Future.value(id);
+    }
+    return _starting.putIfAbsent(
+      udid,
+      () => _start(udid, audioEnabled: audioEnabled),
+    );
   }
 
-  Future<int> _start(String udid) async {
+  /// 动态更新当前窗口引擎内 iOS USB 采集的音频转发开关。
+  static Future<void> setGlobalAudioEnabled(
+    bool enabled, {
+    String? udid,
+  }) async {
+    if (!Platform.isMacOS) return;
+    try {
+      await channel.invokeMethod<void>('setAudioEnabled', {
+        'audioEnabled': enabled,
+        'udid': ?udid,
+      });
+    } catch (_) {}
+  }
+
+  Future<int> _start(String udid, {required bool audioEnabled}) async {
     try {
       AppLogRecorder.instance.record(
-        'USB capture start: $udid',
+        'USB capture start: $udid (audio=$audioEnabled)',
         tag: 'ios-video',
       );
-      final id = await channel.invokeMethod<int>('start', {'udid': udid});
+      final id = await channel.invokeMethod<int>('start', {
+        'udid': udid,
+        'audioEnabled': audioEnabled,
+      });
       if (id == null || id == 0) throw StateError('iosUsbTextureFailed');
       _textures[udid] = id;
       AppLogRecorder.instance.record(

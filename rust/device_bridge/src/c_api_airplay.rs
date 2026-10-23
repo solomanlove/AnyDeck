@@ -7,6 +7,7 @@ use std::ptr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
+use crate::airplay::audio::set_global_airplay_audio_enabled;
 use crate::airplay::{AirPlayServer, AirPlayStatus};
 
 static AIRPLAY_SERVERS: OnceLock<Mutex<HashMap<u64, Arc<AirPlayServer>>>> = OnceLock::new();
@@ -18,6 +19,13 @@ fn servers() -> &'static Mutex<HashMap<u64, Arc<AirPlayServer>>> {
 
 fn get_server(id: u64) -> Option<Arc<AirPlayServer>> {
     servers().lock().ok()?.get(&id).cloned()
+}
+
+pub(crate) fn list_registered_servers() -> Vec<Arc<AirPlayServer>> {
+    let Ok(map) = servers().lock() else { return Vec::new(); };
+    let mut list: Vec<Arc<AirPlayServer>> = map.values().cloned().collect();
+    list.sort_by_key(|s| s.id);
+    list
 }
 
 /// 启动 AirPlay 屏幕镜像服务
@@ -43,11 +51,9 @@ pub unsafe extern "C" fn anydeck_airplay_start(
     };
 
     let p_rtsp = if rtsp_port == 0 { 7000 } else { rtsp_port };
-    let p_video = if video_port == 0 { 7100 } else { video_port };
-
     let id = NEXT_AIRPLAY_ID.fetch_add(1, Ordering::Relaxed);
 
-    match AirPlayServer::start(id, name_str, p_rtsp, p_video) {
+    match AirPlayServer::start(id, name_str, p_rtsp, video_port) {
         Ok(server) => {
             if let Ok(mut map) = servers().lock() {
                 map.insert(id, server);
@@ -70,6 +76,15 @@ pub extern "C" fn anydeck_airplay_stop(id: u64) {
     let server = servers().lock().ok().and_then(|mut map| map.remove(&id));
     if let Some(server) = server {
         server.stop();
+    }
+}
+
+/// 仅断开指定会话槽位上的客户端连接并重置为空闲，不销毁底层广播监听
+#[no_mangle]
+pub extern "C" fn anydeck_airplay_disconnect(id: u64) {
+    let all = list_registered_servers();
+    if let Some(server) = get_server(id) {
+        server.disconnect_client(&all);
     }
 }
 
@@ -132,5 +147,29 @@ pub unsafe extern "C" fn anydeck_airplay_copy_last_error(id: u64, out: *mut u8, 
     let Ok(error) = server.last_error.lock() else { return 0; };
     let length = error.len().min(capacity);
     ptr::copy_nonoverlapping(error.as_ptr(), out, length);
+    length
+}
+
+/// 设置 AirPlay 音频转发开关（`enabled != 0` 开启音频，`0` 静音）
+#[no_mangle]
+pub extern "C" fn anydeck_airplay_set_audio_enabled(enabled: u8) {
+    set_global_airplay_audio_enabled(enabled != 0);
+}
+
+/// 复制当前连接的 AirPlay 客户端元数据 (`device_id\tmodel\tname`) UTF-8 字节，返回写入长度。
+///
+/// # Safety
+/// `out` 须指向至少 `capacity` 字节的可写区域。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_airplay_copy_client_info(id: u64, out: *mut u8, capacity: usize) -> usize {
+    if out.is_null() || capacity == 0 { return 0; }
+    let Some(server) = get_server(id) else { return 0; };
+    let Ok(info) = server.client_info.lock() else { return 0; };
+    if info.0.is_empty() && info.1.is_empty() && info.2.is_empty() {
+        return 0;
+    }
+    let formatted = format!("{}\t{}\t{}", info.0, info.1, info.2);
+    let length = formatted.len().min(capacity);
+    ptr::copy_nonoverlapping(formatted.as_ptr(), out, length);
     length
 }

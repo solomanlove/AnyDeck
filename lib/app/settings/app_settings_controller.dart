@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings.dart';
 import 'desktop_autostart_service.dart';
+import '../../core/airplay/airplay_server_service.dart';
+import '../../core/ios/ios_usb_mirror_service.dart';
 import '../window/desktop_window_title_service.dart';
 import '../window/desktop_window_manager_service.dart';
 import '../window/sub_window_method_dispatcher.dart';
@@ -32,6 +34,8 @@ class AppSettingsController extends Notifier<AppSettings> {
   static const _mirrorVideoBitrateKey = 'settings.mirrorVideoBitrate';
   static const _mirrorMaxSizeKey = 'settings.mirrorMaxSize';
   static const _mirrorAudioEnabledKey = 'settings.mirrorAudioEnabled';
+  static const _iosMirrorAudioEnabledKey = 'settings.iosMirrorAudioEnabled';
+  static const _airplayServerNameKey = 'settings.airplayServerName';
   static const _screenshotSavePathKey = 'settings.screenshotSavePath';
   static const _autoIdentifyForegroundAppKey = 'settings.autoIdentifyForegroundApp';
   static const _autoIdentifyIntervalKey = 'settings.autoIdentifyInterval';
@@ -88,6 +92,11 @@ class AppSettingsController extends Notifier<AppSettings> {
     } else if (call.method == 'update_audio_enabled') {
       final value = call.arguments as bool;
       await setMirrorAudioEnabled(value, broadcast: false);
+    } else if (call.method == 'update_ios_audio_enabled') {
+      final value = call.arguments as bool;
+      await setIosMirrorAudioEnabled(value, broadcast: false);
+    } else if (call.method == 'update_airplay_server_name') {
+      await setAirplayServerName(call.arguments as String, broadcast: false);
     } else if (call.method == 'update_auto_identify_app') {
       final value = call.arguments as bool;
       await setAutoIdentifyForegroundApp(value, broadcast: false);
@@ -230,6 +239,23 @@ class AppSettingsController extends Notifier<AppSettings> {
         debugPrint('Failed to broadcast audio enabled change: $e');
       }
     }
+  }
+
+  /// 更新 iOS 投屏音频转发状态（同时同步 AirPlay 与 USB 采集音频开关），并持久化。
+  Future<void> setIosMirrorAudioEnabled(bool value, {bool broadcast = true}) async {
+    state = state.copyWith(iosMirrorAudioEnabled: value);
+    AirPlayServerService.instance.setAudioEnabled(value);
+    unawaited(IosUsbMirrorService.setGlobalAudioEnabled(value));
+    await (await SharedPreferences.getInstance()).setBool(_iosMirrorAudioEnabledKey, value);
+    if (broadcast) try { await _broadcastSettingChange('update_ios_audio_enabled', value); } catch (_) {}
+  }
+
+  /// 更新 iOS AirPlay 投屏广播名称（默认 AnyDeck-AirPlay），并持久化与跨窗口同步。
+  Future<void> setAirplayServerName(String value, {bool broadcast = true}) async {
+    final clean = value.trim().isEmpty ? AppSettings.defaultAirplayServerName : value.trim();
+    state = state.copyWith(airplayServerName: clean);
+    await (await SharedPreferences.getInstance()).setString(_airplayServerNameKey, clean);
+    if (broadcast) try { await _broadcastSettingChange('update_airplay_server_name', clean); } catch (_) {}
   }
 
   /// 更新截图/录屏保存路径，并持久化和广播。
@@ -384,6 +410,11 @@ class AppSettingsController extends Notifier<AppSettings> {
     final mirrorMaxSize = preferences.getInt(_mirrorMaxSizeKey) ?? 1080;
     final mirrorAudioEnabled =
         preferences.getBool(_mirrorAudioEnabledKey) ?? true;
+    final iosMirrorAudioEnabled = preferences.getBool(_iosMirrorAudioEnabledKey) ?? true;
+    final rawAirplayName = preferences.getString(_airplayServerNameKey)?.trim() ?? '';
+    final airplayServerName = rawAirplayName.isEmpty ? AppSettings.defaultAirplayServerName : rawAirplayName;
+    AirPlayServerService.instance.setAudioEnabled(iosMirrorAudioEnabled);
+    unawaited(IosUsbMirrorService.setGlobalAudioEnabled(iosMirrorAudioEnabled));
     final screenshotSavePath =
         preferences.getString(_screenshotSavePathKey) ?? '';
     final autoIdentifyForegroundApp =
@@ -417,6 +448,8 @@ class AppSettingsController extends Notifier<AppSettings> {
       mirrorVideoBitrate: mirrorVideoBitrate,
       mirrorMaxSize: mirrorMaxSize,
       mirrorAudioEnabled: mirrorAudioEnabled,
+      iosMirrorAudioEnabled: iosMirrorAudioEnabled,
+      airplayServerName: airplayServerName,
       screenshotSavePath: screenshotSavePath,
       autoIdentifyForegroundApp: autoIdentifyForegroundApp,
       autoIdentifyInterval: autoIdentifyInterval,

@@ -28,6 +28,9 @@ class AirPlaySessionData {
     this.height = 0,
     this.textureId,
     this.clientName,
+    this.clientDeviceId,
+    this.clientModel,
+    this.additionalSessions = const [],
   });
 
   /// 会话唯一标识句柄
@@ -57,12 +60,41 @@ class AirPlaySessionData {
   /// 连接的客户端设备名 (例如 "iPhone")
   final String? clientName;
 
+  /// 连接的客户端硬件标识 (例如 AirPlay SETUP 上报的 deviceID / MAC)
+  final String? clientDeviceId;
+
+  /// 连接的客户端机型标识 (例如 "iPhone10,3")
+  final String? clientModel;
+
+  /// 多设备并发投屏时的附加 AirPlay 会话列表
+  final List<AirPlaySessionData> additionalSessions;
+
+  /// 当前汇总的所有 AirPlay 会话实例（含主会话与并发附加会话）
+  List<AirPlaySessionData> get allSessions => [this, ...additionalSessions];
+
+  /// 当前所有处于活跃投屏（mirroring）状态的会话列表
+  List<AirPlaySessionData> get mirroringSessions => allSessions
+      .where((session) => session.status == AirPlayServerStatus.mirroring)
+      .toList();
+
+  /// 是否存在任一正在投屏的会话
+  bool get hasAnyMirroring =>
+      allSessions.any((s) => s.status == AirPlayServerStatus.mirroring);
+
+  /// 是否存在任一处于待机广播中的会话
+  bool get hasAnyBroadcasting =>
+      allSessions.any((s) => s.status == AirPlayServerStatus.idle);
+
   AirPlaySessionData copyWith({
     AirPlayServerStatus? status,
     int? width,
     int? height,
     int? textureId,
     String? clientName,
+    String? clientDeviceId,
+    String? clientModel,
+    bool clearClient = false,
+    List<AirPlaySessionData>? additionalSessions,
   }) {
     return AirPlaySessionData(
       id: id,
@@ -73,7 +105,11 @@ class AirPlaySessionData {
       width: width ?? this.width,
       height: height ?? this.height,
       textureId: textureId ?? this.textureId,
-      clientName: clientName ?? this.clientName,
+      clientName: clearClient ? null : (clientName ?? this.clientName),
+      clientDeviceId:
+          clearClient ? null : (clientDeviceId ?? this.clientDeviceId),
+      clientModel: clearClient ? null : (clientModel ?? this.clientModel),
+      additionalSessions: additionalSessions ?? this.additionalSessions,
     );
   }
 }

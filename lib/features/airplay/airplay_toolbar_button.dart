@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../app/settings/app_settings_controller.dart';
 import '../../app/widget/app_toast.dart';
 import '../../core/airplay/airplay_server_service.dart';
 import '../../core/airplay/airplay_server_state.dart';
@@ -64,23 +65,34 @@ class _AirPlayToolbarButtonState extends ConsumerState<AirPlayToolbarButton>
     try {
       final notifier = ref.read(airplaySessionProvider.notifier);
       if (session == null || session.status == AirPlayServerStatus.stopped) {
-        await notifier.startServer();
+        final serverName = ref.read(appSettingsProvider).airplayServerName;
+        await notifier.startServer(name: serverName);
         if (mounted) {
           AppToast.show(
             context,
-            context.l10n.t('airplayBroadcasting').replaceAll('{name}', 'AnyDeck-AirPlay'),
+            context.l10n.t('airplayBroadcasting').replaceAll('{name}', serverName),
           );
         }
-      } else if (session.status == AirPlayServerStatus.mirroring) {
-        // 当前正处于投屏中，点击重新打开并置顶投屏窗口
-        final preferred = resolveAirPlayMirrorTarget(
+      } else if (session.hasAnyMirroring) {
+        // 当前正处于投屏中，点击重新打开并置顶所有活跃投屏窗口
+        final merged = mergeAirPlayDevicesIntoList(
           ref.read(deviceRegistryProvider),
-        );
-        await openAirPlayMirrorWindow(
           session,
-          deviceId: preferred?.id,
-          deviceName: preferred?.displayName,
         );
+        for (final activeSession in session.mirroringSessions) {
+          final matchedId = merged.sessionByDeviceId.entries
+              .where((e) => e.value.id == activeSession.id)
+              .map((e) => e.key)
+              .firstOrNull;
+          final preferred = matchedId == null
+              ? null
+              : merged.devices.where((d) => d.id == matchedId).firstOrNull;
+          await openAirPlayMirrorWindow(
+            activeSession,
+            deviceId: preferred?.id,
+            deviceName: preferred?.displayName,
+          );
+        }
         if (mounted) {
           AppToast.show(context, context.l10n.t('airplayOpenMirrorWindow'));
         }
@@ -107,8 +119,9 @@ class _AirPlayToolbarButtonState extends ConsumerState<AirPlayToolbarButton>
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
-    final isBroadcasting = session != null && session.status == AirPlayServerStatus.idle;
-    final isMirroring = session != null && session.status == AirPlayServerStatus.mirroring;
+    final isMirroring = session != null && session.hasAnyMirroring;
+    final isBroadcasting =
+        session != null && !isMirroring && session.hasAnyBroadcasting;
 
     // 计算当前按钮外观与提示文案
     final Color buttonColor;

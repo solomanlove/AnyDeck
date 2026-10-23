@@ -8,30 +8,40 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     RegisteredDevice device,
     bool isSelected,
     bool isCompact,
-    int index,
-  ) {
+    int index, {
+    AirPlaySessionData? airplaySession,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final Color? rowColor = isSelected
         ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
+        : airplaySession != null
+        ? const Color(0xFF34C759).withValues(alpha: isDark ? 0.10 : 0.06)
         : index % 2 == 0
         ? null
         : Theme.of(
             context,
           ).colorScheme.surfaceContainerLowest.withValues(alpha: 0.5);
 
+    void handleRowOpen() {
+      // 纯 AirPlay 接入的虚拟设备未注册 go-ios UDID，点击直接打开其 AirPlay 投屏窗口
+      if (device.id.startsWith('airplay-') && airplaySession != null) {
+        openAirPlayMirrorWindow(
+          airplaySession,
+          deviceId: device.id,
+          deviceName: device.displayName,
+        );
+        return;
+      }
+      // 已注册设备行直接进入概览，批量选择继续由 Checkbox 承担。
+      context.goNamed(
+        AppRouteNames.deviceTool,
+        pathParameters: {'deviceId': device.id, 'tool': 'overview'},
+      );
+    }
+
     return InkWell(
-      onTap: () {
-        // 设备行直接进入概览，批量选择继续由 Checkbox 承担。
-        context.goNamed(
-          AppRouteNames.deviceTool,
-          pathParameters: {'deviceId': device.id, 'tool': 'overview'},
-        );
-      },
-      onDoubleTap: () {
-        context.goNamed(
-          AppRouteNames.deviceTool,
-          pathParameters: {'deviceId': device.id, 'tool': 'overview'},
-        );
-      },
+      onTap: handleRowOpen,
+      onDoubleTap: handleRowOpen,
       child: Container(
         // 长状态文案、放大字体和操作换行时允许行高增长。
         constraints: const BoxConstraints(minHeight: 56),
@@ -52,23 +62,25 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 width: 45,
                 child: Checkbox(
                   value: device.isChecked,
-                  onChanged: (_) {
-                    // 切换该设备的勾选状态
-                    ref
-                        .read(deviceRegistryProvider.notifier)
-                        .toggleCheck(device.id);
-                  },
+                  onChanged: device.id.startsWith('airplay-')
+                      ? null
+                      : (_) {
+                          // 切换该设备的勾选状态
+                          ref
+                              .read(deviceRegistryProvider.notifier)
+                              .toggleCheck(device.id);
+                        },
                 ),
               ),
               const SizedBox(width: 10),
             ],
-            _buildIdentifierCell(context, device),
+            _buildIdentifierCell(context, device, airplaySession),
             const SizedBox(width: 10),
             _buildRemarkCell(context, device),
             const SizedBox(width: 10),
             _buildAndroidVersionCell(context, device),
             const SizedBox(width: 10),
-            _buildActionsCell(context, device),
+            _buildActionsCell(context, device, airplaySession),
             if (!isCompact) ...[
               const SizedBox(width: 10),
               const SizedBox(
@@ -82,12 +94,28 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     );
   }
 
-  /// 构建设备标识与自定义名称列（展示设备 Logo、自定义名称、Wi-Fi IP 以及通道状态图标）
-  Widget _buildIdentifierCell(BuildContext context, RegisteredDevice device) {
+  /// 构建设备标识与自定义名称列（展示设备 Logo、自定义名称、Wi-Fi IP、分辨率以及通道状态图标）
+  Widget _buildIdentifierCell(
+    BuildContext context,
+    RegisteredDevice device,
+    AirPlaySessionData? airplaySession,
+  ) {
     final wifiIp = device.wifiIp;
+    final hasIp = wifiIp != null && wifiIp.isNotEmpty;
+    final resolutionText =
+        (airplaySession != null &&
+            airplaySession.width > 0 &&
+            airplaySession.height > 0)
+        ? '${airplaySession.width} × ${airplaySession.height}'
+        : null;
 
-    // 次行只展示 IP；实际型号和序列号统一在编辑设备信息中查看。
-    final subtitleText = wifiIp != null && wifiIp.isNotEmpty ? wifiIp : null;
+    // 次行展示 IP 与投屏分辨率（不展示冗长的“正在投屏”文案，节省列宽）
+    final String? subtitleText = switch ((hasIp, resolutionText != null)) {
+      (true, true) => '$wifiIp · $resolutionText',
+      (true, false) => wifiIp,
+      (false, true) => resolutionText,
+      (false, false) => null,
+    };
 
     return Expanded(
       flex: 4,
@@ -102,7 +130,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 1. 首行展示设备名称，若包含标签标识则紧随其后展示（无标签时不展示）
+                // 1. 首行展示设备名称，若处于 AirPlay 投屏中展示 LIVE 徽章，随后展示自定义标签
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -113,6 +141,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (airplaySession != null) ...[
+                      const SizedBox(width: 6),
+                      const DeviceAirPlayLiveBadge(),
+                    ],
                     if (device.tags.isNotEmpty) ...[
                       const SizedBox(width: 6),
                       ...device.tags.map((tag) => Container(
@@ -137,7 +169,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                     ],
                   ],
                 ),
-                // 2. 次行展示已获取的局域网 Wi-Fi IP 地址及警告图标
+                // 2. 次行展示已获取的局域网 Wi-Fi IP 地址 / 投屏分辨率及警告图标
                 if (subtitleText != null) ...[
                   const SizedBox(height: 2),
                   Row(
@@ -145,11 +177,16 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                       Flexible(
                         child: Text(
                           subtitleText,
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: airplaySession != null && !hasIp
+                                ? const Color(0xFF34C759)
+                                : Colors.grey,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (wifiIp != null && wifiIp.isNotEmpty) ...[
+                      if (hasIp) ...[
                         DeviceSubnetWarning(wifiIp: wifiIp),
                       ],
                     ],
@@ -161,7 +198,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             ),
           ),
           // 标识列只显示通道状态，所有连接操作统一放在右侧操作列；离线时由组件内部隐藏
-          DeviceConnectionIndicators(device: device),
+          DeviceConnectionIndicators(
+            device: device,
+            isAirplayMirroring: airplaySession != null,
+          ),
         ],
       ),
     );
@@ -202,7 +242,11 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
   }
 
   /// 构建操作按钮单元格（投屏、断开无线调试、连接无线调试以及物理记录的删除）
-  Widget _buildActionsCell(BuildContext context, RegisteredDevice device) {
+  Widget _buildActionsCell(
+    BuildContext context,
+    RegisteredDevice device,
+    AirPlaySessionData? airplaySession,
+  ) {
     // 找出设备在线的无线连接 ID (如 192.168.1.100:5555)
     final activeWifiId = device.isOnline
         ? device.connections.firstWhere(
@@ -216,10 +260,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
 
     final hasActiveWifi = activeWifiId.isNotEmpty;
     final wifiIp = device.wifiIp;
-    final airplaySession = ref.watch(airplaySessionProvider);
-    final isAirplayMirroring = airplaySession != null &&
-        airplaySession.status == AirPlayServerStatus.mirroring;
-    // iOS 列表入口只支持 USB 投屏；双通道设备保留入口，纯 Wi-Fi 隐藏。
+    // iOS 列表常规入口只支持 USB 投屏；AirPlay 活跃时无论是否连接 USB 均展示方案 C 纯图标按钮组
     final canMirror = device.isOnline &&
         (!device.isIos || device.hasUsbConnection);
 
@@ -230,51 +271,14 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
         runSpacing: 4,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          // 0. 若为 iOS 设备且当前 AirPlay 正在投屏中，展示专属重新打开投屏窗口按钮
-          if (canMirror && device.isIos && isAirplayMirroring) ...[
-            Tooltip(
-              message: context.l10n.t('airplayOpenMirrorWindow'),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(6),
-                onTap: () => openAirPlayMirrorWindow(
-                  airplaySession,
-                  deviceId: device.id,
-                  deviceName: device.displayName,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF34C759).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: const Color(0xFF34C759).withValues(alpha: 0.4),
-                      width: 0.8,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.airplay_rounded,
-                        size: 15,
-                        color: Color(0xFF34C759),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        context.l10n.t('airplayOpenMirrorWindow'),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF34C759),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          // 0. 若当前设备正通过 AirPlay 投屏中，展示方案 C 纯图标按钮组（打开投屏窗口 + 停止投屏）
+          if (airplaySession != null) ...[
+            DeviceAirPlayActionButtons(
+              device: device,
+              session: airplaySession,
             ),
           ]
-          // 1. 若设备在线且非 AirPlay 独占状态，显示常规独立投屏按钮
+          // 1. 若设备在线且非 AirPlay 投屏状态，显示常规独立投屏按钮
           else if (canMirror) ...[
             IconButton(
               icon: const Icon(
@@ -336,16 +340,17 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             ),
           ],
           // 4. 编辑设备信息按钮（修改设备名称、标签标识、备注，并在弹窗内展示详情及提供删除功能）
-          IconButton(
-            icon: const Icon(
-              CupertinoIcons.pencil,
-              color: Color(0xFF1976D2),
+          if (!device.id.startsWith('airplay-'))
+            IconButton(
+              icon: const Icon(
+                CupertinoIcons.pencil,
+                color: Color(0xFF1976D2),
+              ),
+              tooltip: context.l10n.t('editDeviceInfo'),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () => _showEditDeviceInfoDialog(context, device),
             ),
-            tooltip: context.l10n.t('editDeviceInfo'),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () => _showEditDeviceInfoDialog(context, device),
-          ),
         ],
       ),
     );

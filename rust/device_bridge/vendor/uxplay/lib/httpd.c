@@ -168,7 +168,7 @@ httpd_init(logger_t *logger, httpd_callbacks_t *callbacks, int nohold)
         return NULL;
     }
 
-    httpd->nohold = (nohold ? 1 : 0);
+    httpd->nohold = nohold;
     httpd->max_connections = MAX_CONNECTIONS;  
     httpd->connections = calloc(httpd->max_connections, sizeof(http_connection_t));
     if (!httpd->connections) {
@@ -343,6 +343,25 @@ httpd_accept_connection(httpd_t *httpd, int server_fd, int is_ipv6)
 bool
 httpd_nohold(httpd_t *httpd) {
     return (httpd->nohold ? true: false);
+}
+
+int
+httpd_nohold_mode(httpd_t *httpd) {
+    return httpd ? httpd->nohold : 0;
+}
+
+void
+httpd_disconnect_matching(httpd_t *httpd, int (*match)(void *user_data, void *ctx), void *ctx) {
+    if (!httpd || !match) return;
+    for (int i = 0; i < httpd->max_connections; i++) {
+        http_connection_t *connection = &httpd->connections[i];
+        if (!connection->connected || !connection->user_data) {
+            continue;
+        }
+        if (match(connection->user_data, ctx)) {
+            connection->pending_remove = 1;
+        }
+    }
 }
 
 void

@@ -122,6 +122,8 @@ struct raop_callbacks_s {
     void  (*on_video_acquire_playback_info) (void *cls, playback_info_t *playback_video);
     float  (*on_video_playlist_remove) (void *cls);
     void  (*get_custom_profile) (void *cls, const char **custom_profile);
+    void* (*conn_cls_attach) (void *cls);
+    void  (*conn_cls_detach) (void *cls, void *conn_cls);
 };
 
 typedef struct raop_callbacks_s raop_callbacks_t;
@@ -155,6 +157,7 @@ RAOP_API void raop_stop_httpd(raop_t *raop);
 RAOP_API void raop_set_dnssd(raop_t *raop, dnssd_t *dnssd);
 RAOP_API void raop_destroy(raop_t *raop);
 RAOP_API void raop_remove_known_connections(raop_t * raop);
+RAOP_API void raop_disconnect_cls(raop_t *raop, int (*match)(void *conn_cls, void *ctx), void *ctx);
 RAOP_API void raop_remove_hls_connections(raop_t * raop);
 RAOP_API void raop_destroy_airplay_video(raop_t *raop, int id);
 RAOP_API void raop_playlist_remove(raop_t *raop, void *airplay_video, float position);

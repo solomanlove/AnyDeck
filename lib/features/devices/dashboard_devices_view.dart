@@ -5,7 +5,12 @@ extension _DeviceListPanelView on _DeviceListPanelState {
   Widget _buildDeviceListPanel(BuildContext context) {
     final activeDevicesAsync = ref.watch(devicesProvider);
     final items = ref.watch(deviceRegistryProvider);
-    final sortedItems = _sortedDevices(items);
+    final airplayRoot = ref.watch(airplaySessionProvider);
+    final mergedAirPlay = mergeAirPlayDevicesIntoList(items, airplayRoot);
+    final sortedItems = _sortedDevices(
+      mergedAirPlay.devices,
+      mergedAirPlay.sessionByDeviceId,
+    );
     final selectedCount = items.where((device) => device.isChecked).length;
     final allChecked = items.isNotEmpty && selectedCount == items.length;
     final hasChecked = selectedCount > 0;
@@ -18,6 +23,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           context: context,
           activeDevicesAsync: activeDevicesAsync,
           sortedItems: sortedItems,
+          sessionByDeviceId: mergedAirPlay.sessionByDeviceId,
           isCompact: isCompact,
           hasBoundedHeight: hasBoundedHeight,
         );
@@ -63,7 +69,6 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AirPlayActiveBanner(),
             if (hasChecked) ...[
               _buildBatchActionsToolbar(
                 context,
@@ -81,12 +86,21 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     );
   }
 
-  List<RegisteredDevice> _sortedDevices(List<RegisteredDevice> items) {
+  List<RegisteredDevice> _sortedDevices(
+    List<RegisteredDevice> items, [
+    Map<String, AirPlaySessionData> sessionByDeviceId = const {},
+  ]) {
     final sortedItems = List<RegisteredDevice>.from(items);
     sortedItems.sort((a, b) {
       // 在线设备始终置顶，避免离线历史记录打断当前调试流程。
       if (a.isOnline && !b.isOnline) return -1;
       if (!a.isOnline && b.isOnline) return 1;
+
+      // AirPlay 正在投屏的设备在在线列表中优先展示
+      final aMirroring = sessionByDeviceId.containsKey(a.id);
+      final bMirroring = sessionByDeviceId.containsKey(b.id);
+      if (aMirroring && !bMirroring) return -1;
+      if (!aMirroring && bMirroring) return 1;
 
       final cmp = switch (_sortColumn) {
         'name' => a.displayName.compareTo(b.displayName),
@@ -102,6 +116,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     required BuildContext context,
     required AsyncValue<List<AdbDevice>> activeDevicesAsync,
     required List<RegisteredDevice> sortedItems,
+    required Map<String, AirPlaySessionData> sessionByDeviceId,
     required bool isCompact,
     required bool hasBoundedHeight,
   }) {
@@ -140,7 +155,14 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       itemBuilder: (context, index) {
         final device = sortedItems[index];
         final isSelected = ref.watch(selectedDeviceProvider)?.id == device.id;
-        return _buildDeviceRow(context, device, isSelected, isCompact, index);
+        return _buildDeviceRow(
+          context,
+          device,
+          isSelected,
+          isCompact,
+          index,
+          airplaySession: sessionByDeviceId[device.id],
+        );
       },
     );
   }

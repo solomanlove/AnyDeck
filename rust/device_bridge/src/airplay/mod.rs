@@ -1,6 +1,7 @@
 //! AirPlay 投屏服务端总控模块：
 //! 组合 Bonjour 发现、RTSP 信令处理、TCP/RTP 视频流接收、解密及 VideoToolbox 原生硬解码。
 
+pub mod audio;
 pub mod bonjour;
 pub mod crypto;
 pub mod packet;
@@ -50,6 +51,8 @@ pub struct AirPlayServer {
     pub status: Arc<AtomicU8>,
     /// 最近的协商错误，通过 FFI 转发到 Dart 本地诊断日志。
     pub last_error: Arc<Mutex<String>>,
+    /// 当前连接客户端的元数据 (device_id, model, name)
+    pub client_info: Arc<Mutex<(String, String, String)>>,
     /// 运行中断标志
     stopped: Arc<AtomicBool>,
     /// Bonjour 广播句柄
@@ -146,14 +149,17 @@ impl AirPlayServer {
                 status: status.clone(),
                 stopped: stopped.clone(),
                 last_error: Arc::new(Mutex::new(String::new())),
+                client_info: Arc::new(Mutex::new((String::new(), String::new(), String::new()))),
                 _advertiser: Mutex::new(None),
                 task: Mutex::new(None),
                 native: Mutex::new(None),
             });
 
-            let receiver = uxplay::Receiver::start(&server, name, rtsp_port)?;
-            eprintln!("[AirPlay UxPlay] Listening on port {}", receiver.port);
-            *server.native.lock().map_err(|_| "AirPlay native lock poisoned")? = Some(receiver);
+            if video_port != 0 {
+                let receiver = uxplay::Receiver::start(&server, name, rtsp_port)?;
+                eprintln!("[AirPlay UxPlay] Listening on port {}", receiver.port);
+                *server.native.lock().map_err(|_| "AirPlay native lock poisoned")? = Some(receiver);
+            }
             return Ok(server);
         }
 
@@ -191,6 +197,7 @@ impl AirPlayServer {
             status: status.clone(),
             stopped: stopped.clone(),
             last_error: Arc::new(Mutex::new(String::new())),
+            client_info: Arc::new(Mutex::new((String::new(), String::new(), String::new()))),
             _advertiser: Mutex::new(Some(advertiser)),
             task: Mutex::new(None),
         });
@@ -402,6 +409,33 @@ impl AirPlayServer {
         eprintln!("[AirPlay] {error}");
         if let Ok(mut latest) = self.last_error.lock() {
             *latest = error.chars().take(512).collect();
+        }
+    }
+
+    /// 断开当前绑定在该槽位上的客户端连接，但保持服务继续监听（供多设备单台停止投屏使用）
+    pub fn disconnect_client(&self, all_servers: &[Arc<Self>]) {
+        #[cfg(feature = "airplay-uxplay")]
+        {
+            let ptrs = uxplay::Receiver::find_slot_ptrs_for_server(self.id);
+            for server in all_servers {
+                if let Ok(nat) = server.native.lock() {
+                    if let Some(receiver) = nat.as_ref() {
+                        for &ptr in &ptrs {
+                            receiver.disconnect_slot(ptr as *mut std::ffi::c_void);
+                        }
+                    }
+                }
+            }
+        }
+        self.frame.clear();
+        let _ = self.status.compare_exchange(
+            AirPlayStatus::Mirroring as u8,
+            AirPlayStatus::Idle as u8,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        );
+        if let Ok(mut info) = self.client_info.lock() {
+            *info = (String::new(), String::new(), String::new());
         }
     }
 
