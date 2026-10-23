@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_icon.dart';
 import '../model/ios_version_distribution_data.dart';
 
@@ -34,45 +36,47 @@ class IosDistributionDetailsPane extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.7)
         : const Color(0xFF57606A);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. 顶部 Hero：Apple 灰色矢量图标 + 大标题 + 副标题
-          _buildHeroHeader(isDark, textPrimary, textSecondary),
-          const SizedBox(height: 12),
+    return SelectionArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. 顶部 Hero：Apple 灰色矢量图标 + 大标题 + 副标题
+            _buildHeroHeader(isDark, textPrimary, textSecondary),
+            const SizedBox(height: 12),
 
-          // 2. 概要说明
-          Text(
-            item.summary,
-            style: TextStyle(
-              fontSize: 12.5,
-              color: textSecondary,
-              height: 1.45,
+            // 2. 概要说明
+            Text(
+              item.summary,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: textSecondary,
+                height: 1.45,
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
+            const SizedBox(height: 14),
 
-          // 3. 工具链矩阵表格（Xcode / Swift / SDK / 部署目标）
-          _buildToolchainMatrixTable(cardBg, cardBorder, textPrimary, textSecondary),
-          const SizedBox(height: 14),
+            // 3. 工具链矩阵表格（Xcode / Swift / SDK / 部署目标）
+            _buildToolchainMatrixTable(cardBg, cardBorder, textPrimary, textSecondary),
+            const SizedBox(height: 14),
 
-          // 4. 专属口径边界说明卡片
-          _buildNoticeCard(isDark),
-          const SizedBox(height: 14),
+            // 4. 专属口径边界说明卡片
+            _buildNoticeCard(isDark),
+            const SizedBox(height: 14),
 
-          // 5. 编译与适配要求卡片
-          _buildImpactsCard(cardBg, cardBorder, textPrimary, textSecondary),
-          const SizedBox(height: 14),
+            // 5. 编译与适配要求卡片
+            _buildImpactsCard(context, cardBg, cardBorder, textPrimary, textSecondary),
+            const SizedBox(height: 14),
 
-          // 6. 分割两列：平台核心与 AI 能力 + 安全与隐私保护
-          _buildCapabilitiesSplit(cardBg, cardBorder, textPrimary),
-          const SizedBox(height: 14),
+            // 6. 分割两列：平台核心与 AI 能力 + 安全与隐私保护
+            _buildCapabilitiesSplit(cardBg, cardBorder, textPrimary),
+            const SizedBox(height: 14),
 
-          // 7. 底部开发者网站链接
-          _buildDocLink(),
-        ],
+            // 7. 底部开发者网站链接
+            _buildDocLink(context),
+          ],
+        ),
       ),
     );
   }
@@ -214,8 +218,8 @@ class IosDistributionDetailsPane extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: RichText(
-              text: const TextSpan(
+            child: const Text.rich(
+              TextSpan(
                 text: '口径说明：',
                 style: TextStyle(
                   fontSize: 11,
@@ -243,6 +247,7 @@ class IosDistributionDetailsPane extends StatelessWidget {
 
   /// 编译与适配要求卡片
   Widget _buildImpactsCard(
+    BuildContext context,
     Color cardBg,
     Color cardBorder,
     Color textPrimary,
@@ -260,14 +265,39 @@ class IosDistributionDetailsPane extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Text(
+            children: [
+              const Text(
                 '◈ 编译与适配要求',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF0969DA),
                 ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(
+                  Icons.copy_rounded,
+                  size: 14,
+                  color: Color(0xFF0969DA),
+                ),
+                tooltip: '复制编译与适配要求',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  final buffer = StringBuffer();
+                  buffer.writeln('【iOS ${item.version} 编译与适配要求】');
+                  for (final impact in item.impacts) {
+                    buffer.writeln('• $impact');
+                  }
+                  Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                    SnackBar(
+                      content: Text(context.l10n.t('copySuccess')),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -297,8 +327,8 @@ class IosDistributionDetailsPane extends StatelessWidget {
     if (colonIdx > 0 && colonIdx < 30) {
       final title = text.substring(0, colonIdx + 1);
       final body = text.substring(colonIdx + 1);
-      return RichText(
-        text: TextSpan(
+      return Text.rich(
+        TextSpan(
           text: title,
           style: TextStyle(
             fontSize: 12,
@@ -405,17 +435,43 @@ class IosDistributionDetailsPane extends StatelessWidget {
   }
 
   /// 底部开发文档链接
-  Widget _buildDocLink() {
-    return InkWell(
-      onTap: () => onOpenUrl(item.link),
-      child: Text(
-        item.link,
-        style: const TextStyle(
-          fontSize: 11.5,
-          color: Color(0xFF0969DA),
-          decoration: TextDecoration.underline,
+  Widget _buildDocLink(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () => onOpenUrl(item.link),
+            child: Text(
+              item.link,
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: Color(0xFF0969DA),
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(
+            Icons.copy_rounded,
+            size: 13,
+            color: Color(0xFF0969DA),
+          ),
+          tooltip: context.l10n.t('copyUrl'),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: item.link));
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              SnackBar(
+                content: Text(context.l10n.t('copySuccess')),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

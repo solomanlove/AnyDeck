@@ -366,48 +366,50 @@ class _HarmonyApiDistributionViewState
             ),
           ),
           if (_isHistoryExpanded)
-            Container(
-              height: 125,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: ListView(
-                children: [
-                  Table(
-                    columnWidths: const {
-                      0: FlexColumnWidth(2),
-                      1: FlexColumnWidth(1.5),
-                      2: FlexColumnWidth(3),
-                      3: FlexColumnWidth(3),
-                      4: FlexColumnWidth(1.2),
-                    },
-                    children: [
-                      TableRow(
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.04)
-                              : Colors.black.withValues(alpha: 0.04),
-                        ),
-                        children: const [
-                          _HistHeadCell('版本'),
-                          _HistHeadCell('API 版本'),
-                          _HistHeadCell('发布时间'),
-                          _HistHeadCell('技术底座'),
-                          _HistHeadCell('存量占比'),
-                        ],
-                      ),
-                      ...HarmonyVersionDistributionData.historyItems.map(
-                        (h) => TableRow(
-                          children: [
-                            _HistCell(h.version),
-                            _HistCell(h.api),
-                            _HistCell(h.releaseDate),
-                            _HistCell(h.architecture),
-                            const _HistCell('已 EOL', isBadge: true),
+            SelectionArea(
+              child: Container(
+                height: 125,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: ListView(
+                  children: [
+                    Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(2),
+                        1: FlexColumnWidth(1.5),
+                        2: FlexColumnWidth(3),
+                        3: FlexColumnWidth(3),
+                        4: FlexColumnWidth(1.2),
+                      },
+                      children: [
+                        TableRow(
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.04)
+                                : Colors.black.withValues(alpha: 0.04),
+                          ),
+                          children: const [
+                            _HistHeadCell('版本'),
+                            _HistHeadCell('API 版本'),
+                            _HistHeadCell('发布时间'),
+                            _HistHeadCell('技术底座'),
+                            _HistHeadCell('存量占比'),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        ...HarmonyVersionDistributionData.historyItems.map(
+                          (h) => TableRow(
+                            children: [
+                              _HistCell(h.version),
+                              _HistCell(h.api),
+                              _HistCell(h.releaseDate),
+                              _HistCell(h.architecture),
+                              const _HistCell('已 EOL', isBadge: true),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
         ],

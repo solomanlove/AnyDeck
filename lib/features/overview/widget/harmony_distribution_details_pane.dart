@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../../app/l10n/app_localizations.dart';
 import '../model/harmony_version_distribution_data.dart';
 import 'harmony_profile_config_card.dart';
 
@@ -35,32 +37,34 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
         : const Color(0xFF57606A);
     final brandRed = const Color(0xFFE84335);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. 顶部 Hero：红底双层 Badge + 标题 + 元数据 Chips
-          _buildHeroHeader(textPrimary, textSecondary, brandRed),
-          const SizedBox(height: 16),
+    return SelectionArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. 顶部 Hero：红底双层 Badge + 标题 + 元数据 Chips
+            _buildHeroHeader(textPrimary, textSecondary, brandRed),
+            const SizedBox(height: 16),
 
-          // 2. 开发影响与适配要求卡片
-          _buildImpactsCard(cardBg, cardBorder, textPrimary, textSecondary),
-          const SizedBox(height: 16),
+            // 2. 开发影响与适配要求卡片
+            _buildImpactsCard(context, cardBg, cardBorder, textPrimary, textSecondary),
+            const SizedBox(height: 16),
 
-          // 3. 左右分栏：工程配置建议（带代码块） + 核心与安全能力
-          _buildSplitSection(
-            context,
-            cardBg,
-            cardBorder,
-            textPrimary,
-            textSecondary,
-          ),
-          const SizedBox(height: 14),
+            // 3. 左右分栏：工程配置建议（带代码块） + 核心与安全能力
+            _buildSplitSection(
+              context,
+              cardBg,
+              cardBorder,
+              textPrimary,
+              textSecondary,
+            ),
+            const SizedBox(height: 14),
 
-          // 4. 底部开发者联盟文档链接
-          _buildDocLink(context),
-        ],
+            // 4. 底部开发者联盟文档链接
+            _buildDocLink(context),
+          ],
+        ),
       ),
     );
   }
@@ -166,8 +170,8 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
             : Colors.grey.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: RichText(
-        text: TextSpan(
+      child: Text.rich(
+        TextSpan(
           text: '$label ',
           style: TextStyle(
             fontSize: 11,
@@ -193,6 +197,7 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
 
   /// 开发影响与适配要求卡片
   Widget _buildImpactsCard(
+    BuildContext context,
     Color cardBg,
     Color cardBorder,
     Color textPrimary,
@@ -210,14 +215,39 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Text(
+            children: [
+              const Text(
                 '◆ 开发影响与适配要求',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFFE84335),
                 ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(
+                  Icons.copy_rounded,
+                  size: 14,
+                  color: Color(0xFFE84335),
+                ),
+                tooltip: '复制开发影响与适配要求',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  final buffer = StringBuffer();
+                  buffer.writeln('【HarmonyOS ${item.version} 开发影响与适配要求】');
+                  for (final impact in item.impacts) {
+                    buffer.writeln('• $impact');
+                  }
+                  Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                    SnackBar(
+                      content: Text(context.l10n.t('copySuccess')),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -247,8 +277,8 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
     if (colonIdx > 0 && colonIdx < 30) {
       final title = text.substring(0, colonIdx + 1);
       final body = text.substring(colonIdx + 1);
-      return RichText(
-        text: TextSpan(
+      return Text.rich(
+        TextSpan(
           text: title,
           style: TextStyle(
             fontSize: 12,
@@ -423,16 +453,42 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
 
   /// 底部文档链接
   Widget _buildDocLink(BuildContext context) {
-    return InkWell(
-      onTap: () => onOpenUrl(item.link),
-      child: Text(
-        item.link,
-        style: const TextStyle(
-          fontSize: 11.5,
-          color: Color(0xFF0969DA),
-          decoration: TextDecoration.underline,
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () => onOpenUrl(item.link),
+            child: Text(
+              item.link,
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: Color(0xFF0969DA),
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(
+            Icons.copy_rounded,
+            size: 13,
+            color: Color(0xFF0969DA),
+          ),
+          tooltip: context.l10n.t('copyUrl'),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: item.link));
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              SnackBar(
+                content: Text(context.l10n.t('copySuccess')),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

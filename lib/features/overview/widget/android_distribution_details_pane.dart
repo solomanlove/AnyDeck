@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../model/android_version_distribution_data.dart';
+import 'android_developer_impact_card.dart';
 
 /// Android 平台与 API 版本分布视图中的右侧特性详情面板。
 /// 包含稳定版发布时间、开发影响与适配要求重点卡片以及全量新特性列表。
@@ -36,58 +38,83 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
         .where((s) => !_isDeveloperImpactSection(s))
         .toList();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. 顶部版本大标题与元信息徽章栏（包含稳定版上线时间）
-          _buildHeaderMetadata(context, isDark, langCode),
-          const SizedBox(height: 14),
-          // 2. 特性列表或预留空态
-          Expanded(
-            child: sections.isEmpty
-                ? _buildEmptySectionsPlaceholder(context, isDark)
-                : SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 2.1 若存在“开发影响与适配要求”，置顶以高亮卡片呈现
-                        if (impactSection != null) ...[
-                          _buildDeveloperImpactCard(
-                            impactSection,
-                            isDark,
-                            langCode,
-                          ),
-                          const SizedBox(height: 16),
+    return SelectionArea(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. 顶部版本大标题与元信息徽章栏（包含稳定版上线时间）
+            _buildHeaderMetadata(context, isDark, langCode),
+            const SizedBox(height: 14),
+            // 2. 特性列表或预留空态
+            Expanded(
+              child: sections.isEmpty
+                  ? _buildEmptySectionsPlaceholder(context, isDark)
+                  : SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 2.1 若存在“开发影响与适配要求”，置顶以高亮卡片呈现
+                          if (impactSection != null) ...[
+                            AndroidDeveloperImpactCard(
+                              section: impactSection,
+                              platformVersion: item.platformVersion,
+                              isDark: isDark,
+                              langCode: langCode,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          // 2.2 普通特性排版（确保靠左对齐与多列均衡）
+                          if (regularSections.isNotEmpty)
+                            _buildRegularSectionsLayout(
+                              regularSections,
+                              isDark,
+                              langCode,
+                            ),
                         ],
-                        // 2.2 普通特性排版（确保靠左对齐与多列均衡）
-                        if (regularSections.isNotEmpty)
-                          _buildRegularSectionsLayout(
-                            regularSections,
-                            isDark,
-                            langCode,
-                          ),
-                      ],
+                      ),
+                    ),
+            ),
+            // 3. 底部官方文档链接
+            if (item.summaryUrl != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => onOpenUrl(item.summaryUrl!),
+                      child: Text(
+                        item.summaryUrl!,
+                        style: TextStyle(
+                          color: linkColor,
+                          fontSize: 12,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
                     ),
                   ),
-          ),
-          // 3. 底部官方文档链接
-          if (item.summaryUrl != null) ...[
-            const SizedBox(height: 10),
-            InkWell(
-              onTap: () => onOpenUrl(item.summaryUrl!),
-              child: Text(
-                item.summaryUrl!,
-                style: TextStyle(
-                  color: linkColor,
-                  fontSize: 12,
-                  decoration: TextDecoration.underline,
-                ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(Icons.copy_rounded, size: 13, color: linkColor),
+                    tooltip: context.l10n.t('copyUrl'),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: item.summaryUrl!));
+                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                        SnackBar(
+                          content: Text(context.l10n.t('copySuccess')),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -198,92 +225,6 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-
-  /// 构建开发影响与适配要求高亮强调卡片
-  Widget _buildDeveloperImpactCard(
-    AndroidFeatureSection section,
-    bool isDark,
-    String langCode,
-  ) {
-    final cardBg = isDark
-        ? const Color(0xFF2C281F)
-        : const Color(0xFFFFF9E6);
-    final cardBorder = isDark
-        ? const Color(0xFFB08800).withValues(alpha: 0.45)
-        : const Color(0xFFF1C40F).withValues(alpha: 0.6);
-    final headerColor = isDark
-        ? const Color(0xFFFFD54F)
-        : const Color(0xFFB7791F);
-    final itemColor = isDark
-        ? Colors.white.withValues(alpha: 0.9)
-        : const Color(0xFF2D3748);
-    final bulletColor = isDark
-        ? const Color(0xFFFFD54F).withValues(alpha: 0.8)
-        : const Color(0xFFD69E2E);
-
-    final title = section.localizedTitle(langCode);
-    final items = section.localizedItems(langCode);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cardBorder, width: 1.2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.bolt_rounded,
-                size: 16,
-                color: headerColor,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  color: headerColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ...items.map(
-            (subItem) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '•  ',
-                    style: TextStyle(
-                      color: bulletColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Expanded(
-                    child: _buildFormattedItemText(
-                      text: subItem,
-                      itemColor: itemColor,
-                      isDark: isDark,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/features/overview/model/platform_distribution_type.dart';
+import 'package:any_deck/features/overview/model/android_version_distribution_data.dart';
 import 'package:any_deck/features/overview/model/harmony_version_distribution_data.dart';
 import 'package:any_deck/features/overview/model/ios_version_distribution_data.dart';
-import 'package:any_deck/features/overview/widget/platform_version_switcher.dart';
+import 'package:any_deck/features/overview/model/platform_distribution_type.dart';
+import 'package:any_deck/features/overview/widget/android_distribution_details_pane.dart';
+import 'package:any_deck/features/overview/widget/harmony_distribution_details_pane.dart';
+import 'package:any_deck/features/overview/widget/ios_distribution_details_pane.dart';
 import 'package:any_deck/features/overview/widget/platform_version_distribution_shell_view.dart';
+import 'package:any_deck/features/overview/widget/platform_version_switcher.dart';
 
 void main() {
   group('PlatformVersionDistribution Model Tests', () {
@@ -140,6 +145,235 @@ void main() {
 
       // 检查当前显示 iOS 27
       expect(find.text('iOS 27'), findsWidgets);
+    });
+  });
+
+  group('Details Pane Copy & Selection Tests', () {
+    testWidgets('AndroidDistributionDetailsPane supports SelectionArea and copy buttons',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      String? copiedText;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copiedText = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      final item = AndroidVersionDistributionData.findItem('12');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: const [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SizedBox(
+              width: 600,
+              height: 700,
+              child: AndroidDistributionDetailsPane(
+                item: item,
+                onOpenUrl: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // 验证外层包裹了 SelectionArea
+      expect(find.byType(SelectionArea), findsOneWidget);
+
+      // 验证存在“复制适配要求”按钮
+      final copyImpactBtn = find.byTooltip('复制适配要求');
+      expect(copyImpactBtn, findsOneWidget);
+
+      await tester.tap(copyImpactBtn);
+      await tester.pump();
+
+      expect(copiedText, contains('【Android 12 开发影响与适配要求】'));
+      expect(copiedText, contains('SplashScreen'));
+
+      // 验证存在“复制 URL 地址”按钮
+      final copyUrlBtn = find.byTooltip('复制 URL 地址');
+      expect(copyUrlBtn, findsOneWidget);
+
+      await tester.tap(copyUrlBtn, warnIfMissed: false);
+      await tester.pump();
+
+      expect(copiedText, equals(item.summaryUrl));
+    });
+
+    testWidgets('HarmonyDistributionDetailsPane supports SelectionArea and copy buttons',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      String? copiedText;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copiedText = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      final item = HarmonyVersionDistributionData.items.first;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: const [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SizedBox(
+              width: 600,
+              height: 700,
+              child: HarmonyDistributionDetailsPane(
+                item: item,
+                onOpenUrl: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // 验证包裹了 SelectionArea
+      expect(find.byType(SelectionArea), findsOneWidget);
+
+      // 验证存在“复制开发影响与适配要求”按钮
+      final copyImpactBtn = find.byTooltip('复制开发影响与适配要求');
+      expect(copyImpactBtn, findsOneWidget);
+
+      await tester.tap(copyImpactBtn);
+      await tester.pump();
+
+      expect(copiedText, contains('【HarmonyOS 7.0.0 开发影响与适配要求】'));
+
+      // 验证存在“复制 URL 地址”按钮
+      final copyUrlBtn = find.byTooltip('复制 URL 地址');
+      await tester.scrollUntilVisible(
+        copyUrlBtn,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(copyUrlBtn, findsOneWidget);
+
+      await tester.tap(copyUrlBtn);
+      await tester.pump();
+
+      expect(copiedText, equals(item.link));
+    });
+
+    testWidgets('IosDistributionDetailsPane supports SelectionArea and copy buttons',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      String? copiedText;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copiedText = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      final item = IosVersionDistributionData.items.first;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('zh'),
+          localizationsDelegates: const [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SizedBox(
+              width: 600,
+              height: 700,
+              child: IosDistributionDetailsPane(
+                item: item,
+                onOpenUrl: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // 验证包裹了 SelectionArea
+      expect(find.byType(SelectionArea), findsOneWidget);
+
+      // 验证存在“复制编译与适配要求”按钮
+      final copyImpactBtn = find.byTooltip('复制编译与适配要求');
+      expect(copyImpactBtn, findsOneWidget);
+
+      await tester.tap(copyImpactBtn);
+      await tester.pump();
+
+      expect(copiedText, contains('【iOS 27 编译与适配要求】'));
+
+      // 验证存在“复制 URL 地址”按钮
+      final copyUrlBtn = find.byTooltip('复制 URL 地址');
+      await tester.scrollUntilVisible(
+        copyUrlBtn,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(copyUrlBtn, findsOneWidget);
+
+      await tester.tap(copyUrlBtn);
+      await tester.pump();
+
+      expect(copiedText, equals(item.link));
     });
   });
 }
