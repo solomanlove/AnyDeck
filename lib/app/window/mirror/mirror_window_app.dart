@@ -165,7 +165,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
     // 初始化控制器
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.init(_viewerKey, initialAlwaysOnTop: widget.initialAlwaysOnTop);
+      _controller.init(
+        _viewerKey,
+        initialAlwaysOnTop: widget.initialAlwaysOnTop,
+        autoStartMirroring: _airplayHandle == null,
+      );
       // 初始化读取了默认置顶设置，同步 AirPlay 标题栏的首次图标状态。
       if (mounted) setState(() {});
     });
@@ -242,6 +246,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
   @override
   void onWindowResized() {
+    if (_airplayHandle != null) return;
     _controller.onWindowResized();
   }
 
@@ -259,6 +264,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         autoHideControls: !settings.mirrorControlsAlwaysVisible,
         isAlwaysOnTop: _controller.isAlwaysOnTop,
         onToggleAlwaysOnTop: _controller.toggleAlwaysOnTop,
+        isFullScreen: _controller.isFullScreen,
+        onToggleFullScreen: () => _controller.toggleFullScreen(
+          context,
+          !_controller.isFullScreen,
+        ),
         toolbar: MirrorFloatingToolbar(
           deviceId: widget.deviceId,
           windowId: widget.windowId,
@@ -439,9 +449,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
             autoHide:
                 isLiveMirrorVisible && !settings.mirrorControlsAlwaysVisible,
             viewer: contentWidget,
-            titleBar: _controller.isFullScreen
-                ? const SizedBox.shrink()
-                : DragToMoveArea(
+            titleBar: DragToMoveArea(
                   child: Container(
                     height: 30,
                     padding: EdgeInsets.only(

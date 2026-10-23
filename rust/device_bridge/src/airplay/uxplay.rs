@@ -149,7 +149,7 @@ impl Receiver {
             if context.status.load(Ordering::Acquire) == AirPlayStatus::Stopped as u8 { return; }
             let Ok(mut audio_guard) = context.audio_decoder.lock() else { return; };
             let needs_reinit = match &*audio_guard {
-                Some(dec) => dec.ct() != ct,
+                Some(dec) => dec.should_reinit(ct, spf),
                 None => true,
             };
             if needs_reinit {

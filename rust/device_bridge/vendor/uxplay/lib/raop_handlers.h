@@ -1031,6 +1031,9 @@ raop_handler_setup(raop_conn_t *conn,
                 }
 
                 if (conn->raop_rtp) {
+                    if (raop_rtp_is_running(conn->raop_rtp)) {
+                        raop_rtp_stop(conn->raop_rtp);
+                    }
                     raop_rtp_start_audio(conn->raop_rtp, &remote_cport, &cport, &dport, &ct, &sr);
                     logger_log(raop->logger, LOGGER_DEBUG, "RAOP initialized success");
                 } else {
@@ -1283,8 +1286,6 @@ raop_handler_teardown(raop_conn_t *conn,
     plist_free(req_root_node);
     logger_log(raop->logger, LOGGER_DEBUG, "TEARDOWN request,  96=%d, 110=%d", teardown_96, teardown_110);
   
-    http_response_add_header(response, "Connection", "close");
-  
     if (teardown_96) {
         if (conn->raop_rtp) {
             /* Stop our audio RTP session */
@@ -1294,7 +1295,8 @@ raop_handler_teardown(raop_conn_t *conn,
                 conn->callbacks.audio_stop_coverart_rendering(conn->callbacks.cls);
             }
         }
-    } else if (teardown_110) {
+    }
+    if (teardown_110) {
         if (raop->hls_pending) {
             conn->callbacks.video_reset(conn->callbacks.cls, RESET_TYPE_RTP_TO_HLS_TEARDOWN);
         } else {
@@ -1304,7 +1306,9 @@ raop_handler_teardown(raop_conn_t *conn,
         /* Stop our video RTP session */
             raop_rtp_mirror_stop(conn->raop_rtp_mirror);
         }
-    } else {
+    }
+    if (!teardown_96 && !teardown_110) {
+        http_response_add_header(response, "Connection", "close");
         /* Destroy our sessions */
         if (conn->raop_rtp) {
             raop_rtp_destroy(conn->raop_rtp);

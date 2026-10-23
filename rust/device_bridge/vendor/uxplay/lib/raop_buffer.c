@@ -172,11 +172,8 @@ raop_buffer_enqueue(raop_buffer_t *raop_buffer, unsigned char *data, unsigned sh
     if (datalen < 12 || datalen > RAOP_PACKET_LEN) {
         return -1;
     }
-    /* before time is synchronized, some empty data packets are sent */
-    if (datalen == 12 || (datalen == 16 && !memcmp(&data[12], empty_packet_marker, 4))) {
-        return 0;
-    }
-    int payload_size = datalen - 12;
+    int is_empty_marker = (datalen == 12 || (datalen == 16 && !memcmp(&data[12], empty_packet_marker, 4)));
+    int payload_size = is_empty_marker ? 0 : (datalen - 12);
 
     /* Get correct seqnum for the packet */
     unsigned short seqnum = 0;
@@ -186,13 +183,17 @@ raop_buffer_enqueue(raop_buffer_t *raop_buffer, unsigned char *data, unsigned sh
         seqnum = raop_buffer->first_seqnum;
     }
 
-    /* If this packet is too late, just skip it */
+    /* If this packet is too late, skip minor reorderings; re-anchor on large sequence jumps after pause */
     if (!raop_buffer->is_empty && seqnum_cmp(seqnum, raop_buffer->first_seqnum) < 0) {
-        return 0;
+        if (seqnum_cmp(seqnum, raop_buffer->first_seqnum) < -64) {
+            raop_buffer_flush(raop_buffer, -1);
+        } else {
+            return 0;
+        }
     }
 
     /* Check that there is always space in the buffer, otherwise flush */
-    if (seqnum_cmp(seqnum, raop_buffer->first_seqnum + RAOP_BUFFER_LENGTH) >= 0) {
+    if (!raop_buffer->is_empty && seqnum_cmp(seqnum, raop_buffer->first_seqnum + RAOP_BUFFER_LENGTH) >= 0) {
         raop_buffer_flush(raop_buffer, seqnum);
     }
 
@@ -202,15 +203,24 @@ raop_buffer_enqueue(raop_buffer_t *raop_buffer, unsigned char *data, unsigned sh
         /* Packet resend, we can safely ignore */
         return 0;
     }
+    if (entry->payload_data) {
+        free(entry->payload_data);
+        entry->payload_data = NULL;
+    }
 
     /* Update the raop_buffer entry header */
     entry->seqnum = seqnum;
     entry->rtp_timestamp = byteutils_get_int_be(data, 4);
     entry->filled = 1;
 
-    entry->payload_data = malloc(payload_size);
-    raop_buffer_decrypt(raop_buffer, data, entry->payload_data, payload_size, &entry->payload_size);
-    assert((int) entry->payload_size <= payload_size);
+    if (is_empty_marker) {
+        entry->payload_data = NULL;
+        entry->payload_size = 0;
+    } else {
+        entry->payload_data = malloc(payload_size);
+        raop_buffer_decrypt(raop_buffer, data, entry->payload_data, payload_size, &entry->payload_size);
+        assert((int) entry->payload_size <= payload_size);
+    }
 
     /* Update the raop_buffer seqnums */
     if (raop_buffer->is_empty) {
@@ -227,43 +237,40 @@ raop_buffer_enqueue(raop_buffer_t *raop_buffer, unsigned char *data, unsigned sh
 void *
 raop_buffer_dequeue(raop_buffer_t *raop_buffer, unsigned int *length, uint32_t *rtp_timestamp, unsigned short *seqnum, int no_resend) {
     assert(raop_buffer);
-
-    /* Calculate number of entries in the current buffer */
-    short entry_count = seqnum_cmp(raop_buffer->last_seqnum, raop_buffer->first_seqnum)+1;
-
-    /* Cannot dequeue from empty buffer */
-    if (raop_buffer->is_empty || entry_count <= 0) {
+    if (raop_buffer->is_empty) {
         return NULL;
     }
 
-    /* Get the first buffer entry for inspection */
-    raop_buffer_entry_t *entry = &raop_buffer->entries[raop_buffer->first_seqnum % RAOP_BUFFER_LENGTH];
-    if (no_resend) {
-        /* If we do no resends, always return the first entry */
-    } else if (!entry->filled) {
-        /* Check how much we have space left in the buffer */
-        if (entry_count < RAOP_BUFFER_LENGTH) {
-            /* Return nothing and hope resend gets on time */
-            return NULL;
+    while (seqnum_cmp(raop_buffer->last_seqnum, raop_buffer->first_seqnum) >= 0) {
+        short entry_count = seqnum_cmp(raop_buffer->last_seqnum, raop_buffer->first_seqnum) + 1;
+        raop_buffer_entry_t *entry = &raop_buffer->entries[raop_buffer->first_seqnum % RAOP_BUFFER_LENGTH];
+        if (!entry->filled) {
+            if (!no_resend && entry_count < 16) {
+                /* Wait briefly for UDP resend before skipping */
+                return NULL;
+            }
+            raop_buffer->first_seqnum += 1;
+            continue;
         }
-        /* Risk of buffer overrun, return empty buffer */
+
+        raop_buffer->first_seqnum += 1;
+        entry->filled = 0;
+        if (entry->payload_data == NULL || entry->payload_size == 0) {
+            entry->payload_size = 0;
+            continue;
+        }
+
+        /* Return entry payload buffer */
+        *rtp_timestamp = entry->rtp_timestamp;
+        *seqnum = entry->seqnum;
+        *length = entry->payload_size;
+        entry->payload_size = 0;
+        void *data = entry->payload_data;
+        entry->payload_data = NULL;
+        return data;
     }
 
-    /* Update buffer and validate entry */
-    raop_buffer->first_seqnum += 1;
-    if (!entry->filled) {
-        return NULL;
-    }
-    entry->filled = 0;
-
-    /* Return entry payload buffer */
-    *rtp_timestamp = entry->rtp_timestamp;
-    *seqnum = entry->seqnum;
-    *length = entry->payload_size;
-    entry->payload_size = 0;
-    void* data = entry->payload_data;
-    entry->payload_data = NULL;
-    return data;
+    return NULL;
 }
 
 void raop_buffer_handle_resends(raop_buffer_t *raop_buffer, raop_resend_cb_t resend_cb, void *opaque) {

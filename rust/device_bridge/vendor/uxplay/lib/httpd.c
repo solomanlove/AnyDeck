@@ -393,7 +393,6 @@ httpd_thread(void *arg)
     char http[] = "HTTP/1.1";
     char event[] = "EVENT/1.0";
     char buffer[1024];
-    int timeout_limit = 60; //drop connection after 60 secs of silence
 
     bool logger_debug = (logger_get_level(httpd->logger) >= LOGGER_DEBUG);
     assert(httpd);
@@ -489,12 +488,7 @@ httpd_thread(void *arg)
             if (!FD_ISSET(connection->socket_fd, &rfds)) {
                 continue;
             }
-            if (now - connection->last_active > timeout_limit) {
-                logger_log(httpd->logger, LOGGER_WARNING,
-                           "httpd closing dead connection on socket %d after timeout_limit = %d seconds of inactivity",
-                            connection->socket_fd, timeout_limit);
-                httpd_remove_connection(httpd, connection, 0);
-            }
+            connection->last_active = now;
             /* If not in the middle of request, allocate one */
             if (!connection->request) {
                 connection->request = http_request_init();

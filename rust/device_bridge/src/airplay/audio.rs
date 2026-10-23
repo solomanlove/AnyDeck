@@ -5,6 +5,7 @@ use std::ffi::c_void;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 type Queue = *mut c_void;
 
@@ -43,7 +44,7 @@ struct AudioQueueBuffer {
 const K_AUDIO_QUEUE_PROPERTY_MAGIC_COOKIE: u32 = u32::from_be_bytes(*b"aqmc");
 const K_AUDIO_QUEUE_PARAM_VOLUME: u32 = 1;
 const BUFFER_CAPACITY: u32 = 4096;
-const BUFFER_COUNT: usize = 16;
+const BUFFER_COUNT: usize = 64;
 
 #[allow(clashing_extern_declarations)]
 #[link(name = "AudioToolbox", kind = "framework")]
@@ -109,7 +110,9 @@ pub struct AirPlayAudioDecoder {
     queue: Queue,
     pool: Box<BufferPool>,
     ct: u8,
+    spf: u16,
     last_muted: bool,
+    last_enqueue_at: Option<Instant>,
 }
 
 unsafe impl Send for AirPlayAudioDecoder {}
@@ -148,7 +151,9 @@ impl AirPlayAudioDecoder {
             queue: ptr::null_mut(),
             pool: Box::new(BufferPool(Mutex::new(Vec::with_capacity(BUFFER_COUNT)))),
             ct,
+            spf,
             last_muted: !is_global_airplay_audio_enabled(),
+            last_enqueue_at: None,
         };
 
         unsafe {
@@ -194,7 +199,6 @@ impl AirPlayAudioDecoder {
 
             let initial_vol = if decoder.last_muted { 0.0 } else { 1.0 };
             let _ = AudioQueueSetParameter(decoder.queue, K_AUDIO_QUEUE_PARAM_VOLUME, initial_vol);
-            let _ = AudioQueueStart(decoder.queue, ptr::null());
         }
 
         Ok(decoder)
@@ -204,11 +208,25 @@ impl AirPlayAudioDecoder {
         self.ct
     }
 
+    /// 判断是否需要重建 AudioQueue（编码参数变化，或暂停静默超过 1.5s 后恢复播放）
+    pub fn should_reinit(&self, ct: u8, spf: u16) -> bool {
+        if self.ct != ct || (spf > 0 && self.spf != spf) {
+            return true;
+        }
+        if let Some(last) = self.last_enqueue_at {
+            if last.elapsed() > Duration::from_millis(1500) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// 入队一帧解密后的 AirPlay 音频包
     pub fn enqueue(&mut self, packet: &[u8]) {
         if packet.is_empty() || packet.len() > BUFFER_CAPACITY as usize {
             return;
         }
+        self.last_enqueue_at = Some(Instant::now());
         let muted = !is_global_airplay_audio_enabled();
         if muted != self.last_muted {
             self.last_muted = muted;
@@ -241,7 +259,7 @@ impl AirPlayAudioDecoder {
                 *(*buf).packets = desc;
                 (*buf).packet_count = 1;
             }
-            if AudioQueueEnqueueBuffer(self.queue, buf, 1, &desc) == 0 {
+            if AudioQueueEnqueueBuffer(self.queue, buf, 0, ptr::null()) == 0 {
                 let _ = AudioQueueStart(self.queue, ptr::null());
             } else if let Ok(mut list) = self.pool.0.lock() {
                 list.push(addr);

@@ -128,7 +128,11 @@ class MirrorWindowController extends ChangeNotifier {
   // ==================== 初始化与销毁 (Init & Dispose) ====================
 
   /// 初始化控制器，绑定视图 Key 并启动投屏相关逻辑
-  void init(GlobalKey viewerKey, {bool? initialAlwaysOnTop}) {
+  void init(
+    GlobalKey viewerKey, {
+    bool? initialAlwaysOnTop,
+    bool autoStartMirroring = true,
+  }) {
     _viewerKey = viewerKey;
     if (!isIos && !isHarmony) {
       SubWindowMethodDispatcher.registerHandler(_audioFocusHandler);
@@ -163,8 +167,12 @@ class MirrorWindowController extends ChangeNotifier {
     unawaited(_setAlwaysOnTop(_isAlwaysOnTop));
     unawaited(windowManager.setMinimumSize(_minimumWindowSize));
 
-    // 异步启动投屏服务
-    startMirroring();
+    // 异步启动投屏服务（纯 AirPlay 窗口不自动拉起 USB 采集，避免抢占音频路由）
+    if (autoStartMirroring) {
+      startMirroring();
+    } else {
+      _isLoading = false;
+    }
   }
 
   /// 释放控制器持有的资源

@@ -28,6 +28,8 @@ class IosAirPlayMirrorContent extends StatefulWidget {
     required this.onDisconnected,
     required this.isAlwaysOnTop,
     required this.onToggleAlwaysOnTop,
+    this.isFullScreen = false,
+    this.onToggleFullScreen,
   });
 
   final int handle;
@@ -39,34 +41,43 @@ class IosAirPlayMirrorContent extends StatefulWidget {
   /// 与 USB 共用控制器的置顶状态，避免 AirPlay 自行初始化为 false。
   final bool isAlwaysOnTop;
   final VoidCallback onToggleAlwaysOnTop;
+  final bool isFullScreen;
+  final VoidCallback? onToggleFullScreen;
 
   @override
   State<IosAirPlayMirrorContent> createState() =>
       _IosAirPlayMirrorContentState();
 }
 
-class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
+class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
+    with WindowListener {
   static const _textureChannel = MethodChannel('anydeck/rust_texture');
-  static const _windowChannel = MethodChannel('adb_manage/window');
+  static const _windowChannel = MethodChannel('any_deck/window');
 
   final GlobalKey _viewerKey = GlobalKey();
   Timer? _pollTimer;
+  Timer? _resizeSettleTimer;
   int? _textureId;
   Size? _videoSize;
   late double _aspectRatio;
   bool _isDisconnected = false;
   bool _isFullScreen = false;
+  bool _isFittingWindow = false;
   bool _hasMirrored = false;
   bool _reportedDisconnect = false;
   AirPlayConnectionMonitor _connectionMonitor = AirPlayConnectionMonitor();
+
+  bool get _effectiveFullScreen => widget.isFullScreen || _isFullScreen;
 
   @override
   void initState() {
     super.initState();
     _aspectRatio = widget.initialAspectRatio;
+    windowManager.addListener(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _registerTexture();
       _startPolling();
+      await _fitWindowToVideo();
     });
   }
 
@@ -76,11 +87,17 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
     if (oldWidget.handle != widget.handle) {
       unawaited(_replaceTexture());
     }
+    if (oldWidget.isFullScreen && !widget.isFullScreen) {
+      _isFullScreen = false;
+      unawaited(_fitWindowToVideo());
+    }
   }
 
   @override
   void dispose() {
+    windowManager.removeListener(this);
     _pollTimer?.cancel();
+    _resizeSettleTimer?.cancel();
     final textureId = _textureId;
     if (textureId != null) {
       unawaited(
@@ -90,6 +107,25 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
       );
     }
     super.dispose();
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    if (_isFullScreen) {
+      setState(() => _isFullScreen = false);
+    }
+    unawaited(_fitWindowToVideo());
+  }
+
+  @override
+  void onWindowResized() {
+    if (_effectiveFullScreen || _isFittingWindow) return;
+    _resizeSettleTimer?.cancel();
+    _resizeSettleTimer = Timer(const Duration(milliseconds: 80), () {
+      if (mounted && !_effectiveFullScreen) {
+        unawaited(_fitWindowToVideo());
+      }
+    });
   }
 
   Future<void> _replaceTexture() async {
@@ -161,40 +197,57 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
   }
 
   Future<void> _fitWindowToVideo() async {
-    if (_isFullScreen) return;
-    await Future<void>.delayed(const Duration(milliseconds: 16));
-    final viewer = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
-    if (viewer == null || viewer.size.isEmpty) return;
-    await windowManager.setAspectRatio(0);
-    await MirrorWindowFrameAdapter.fitWindowToAspectRatio(
-      windowChannel: _windowChannel,
-      aspectRatio: _aspectRatio,
-      viewerW: viewer.size.width,
-      viewerH: viewer.size.height,
-    );
-    final bounds = await windowManager.getBounds();
-    final viewerWidth = bounds.width - mirrorWindowSideChromeWidth;
-    final targetHeight =
-        viewerWidth / _aspectRatio + mirrorWindowTopChromeHeight;
-    await windowManager.setAspectRatio(bounds.width / targetHeight);
+    if (_effectiveFullScreen || _isFittingWindow || _aspectRatio <= 0) return;
+    _isFittingWindow = true;
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      if (!mounted || _effectiveFullScreen) return;
+      final viewer = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+      if (viewer == null || viewer.size.isEmpty) return;
+      await windowManager.setAspectRatio(0);
+      await MirrorWindowFrameAdapter.fitWindowToAspectRatio(
+        windowChannel: _windowChannel,
+        aspectRatio: _aspectRatio,
+        viewerW: viewer.size.width,
+        viewerH: viewer.size.height,
+      );
+      final frame = await MirrorWindowFrameAdapter.getWindowFrame(_windowChannel);
+      final width = (frame != null && frame.width > 0)
+          ? frame.width
+          : (await windowManager.getBounds()).width;
+      final viewerWidth = width - mirrorWindowSideChromeWidth;
+      if (viewerWidth > 0) {
+        final targetHeight =
+            viewerWidth / _aspectRatio + mirrorWindowTopChromeHeight;
+        await windowManager.setAspectRatio(width / targetHeight);
+      }
+    } finally {
+      _isFittingWindow = false;
+    }
   }
 
   Future<void> _toggleFullScreen() async {
+    if (widget.onToggleFullScreen != null) {
+      widget.onToggleFullScreen!();
+      return;
+    }
     final next = !_isFullScreen;
-    await windowManager.setFullScreen(next);
+    if (next) {
+      await windowManager.setAspectRatio(0);
+    }
+    try {
+      await _windowChannel.invokeMethod('setFullScreen', next);
+    } on MissingPluginException {
+      await windowManager.setFullScreen(next);
+    }
     if (mounted) setState(() => _isFullScreen = next);
+    if (!next) {
+      unawaited(_fitWindowToVideo());
+    }
   }
 
   Future<void> _stopAirPlay() async {
-    await AirPlayServerService.instance.stop(
-      AirPlaySessionData(
-        id: widget.handle,
-        serverName: widget.deviceName,
-        rtspPort: 7000,
-        videoPort: 7100,
-        status: AirPlayServerStatus.stopped,
-      ),
-    );
+    await AirPlayServerService.instance.disconnect(widget.handle);
     if (!mounted) return;
     setState(() => _isDisconnected = true);
     if (!_reportedDisconnect) {
@@ -217,46 +270,44 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
       body: MirrorImmersiveOverlay(
         autoHide: isLiveMirrorVisible && widget.autoHideControls,
         viewer: SizedBox.expand(key: _viewerKey, child: _buildVideo(context)),
-        titleBar: _isFullScreen
-            ? const SizedBox.shrink()
-            : DragToMoveArea(
-              child: Container(
-                height: 30,
-                padding: EdgeInsets.only(
-                  left: defaultTargetPlatform == TargetPlatform.macOS ? 80 : 16,
-                  right: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: windowBackground,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${widget.deviceName} · ${context.l10n.t('iosMirrorWifiAirPlay')}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    if (isLiveMirrorVisible)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 6),
-                        child: MirrorSessionDuration(),
-                      ),
-                    ..._windowActions(context),
-                  ],
+        titleBar: DragToMoveArea(
+          child: Container(
+            height: 30,
+            padding: EdgeInsets.only(
+              left: defaultTargetPlatform == TargetPlatform.macOS ? 80 : 16,
+              right: 4,
+            ),
+            decoration: BoxDecoration(
+              color: windowBackground,
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
                 ),
               ),
             ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${widget.deviceName} · ${context.l10n.t('iosMirrorWifiAirPlay')}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontSize: 16),
+                  ),
+                ),
+                if (isLiveMirrorVisible)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: MirrorSessionDuration(),
+                  ),
+                ..._windowActions(context),
+              ],
+            ),
+          ),
+        ),
         toolbar: Container(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
@@ -287,16 +338,29 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
   /// 窗口操作固定在标题栏，避免混入手机控制工具栏。
   List<Widget> _windowActions(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final toolbarFg = Theme.of(context).appColors.toolbarForeground;
     return [
       for (final action in [
-        (widget.isAlwaysOnTop ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
-          'airplayAlwaysOnTop', widget.onToggleAlwaysOnTop,
-          // 与 Android 投屏窗口一致：置顶为橙色，未置顶使用工具栏前景色。
-          widget.isAlwaysOnTop ? Colors.orange : Theme.of(context).appColors.toolbarForeground),
-        (CupertinoIcons.fullscreen,
-          'airplayFullscreen', _toggleFullScreen, colors.onSurface),
-        (CupertinoIcons.stop_circle,
-          'airplayStopSession', _stopAirPlay, colors.error),
+        (
+          widget.isAlwaysOnTop ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
+          'airplayAlwaysOnTop',
+          widget.onToggleAlwaysOnTop,
+          widget.isAlwaysOnTop ? Colors.orange : toolbarFg,
+        ),
+        (
+          _effectiveFullScreen
+              ? CupertinoIcons.fullscreen_exit
+              : CupertinoIcons.fullscreen,
+          'airplayFullscreen',
+          _toggleFullScreen,
+          toolbarFg,
+        ),
+        (
+          CupertinoIcons.stop_circle,
+          'airplayStopSession',
+          _stopAirPlay,
+          colors.error,
+        ),
       ])
         IconButton(
           icon: Icon(action.$1, size: 16, color: action.$4),
@@ -321,6 +385,15 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent> {
     if (_textureId == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    return SizedBox.expand(child: Texture(textureId: _textureId!));
+    final safeRatio = _aspectRatio > 0 ? _aspectRatio : (9.0 / 19.5);
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: AspectRatio(
+          aspectRatio: safeRatio,
+          child: Texture(textureId: _textureId!),
+        ),
+      ),
+    );
   }
 }

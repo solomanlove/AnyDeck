@@ -347,6 +347,7 @@ raop_rtp_process_events(raop_rtp_t *raop_rtp, void *cb_data)
 
     /* Handle flush if requested */
     if (flush != NO_FLUSH) {
+        raop_buffer_flush(raop_rtp->buffer, flush);
         if (raop_rtp->callbacks.audio_flush) {
             raop_rtp->callbacks.audio_flush(raop_rtp->callbacks.cls);
         }
@@ -427,6 +428,7 @@ raop_rtp_thread_udp(void *arg)
     raop_rtp->ntp_start_time = raop_ntp_get_local_time();
 
     int no_resend = (raop_rtp->control_rport == 0); /* true when control_rport is not set */
+    int idle_timeouts = 0;
 
     logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp start_time = %8.6f (raop_rtp audio)",
                ((double) raop_rtp->ntp_start_time) / SEC);
@@ -469,6 +471,13 @@ raop_rtp_thread_udp(void *arg)
         int ret = select(nfds, &rfds, NULL, NULL, &tv);
         if (ret == 0) {
             /* Timeout happened */
+            if (idle_timeouts < 1000) {
+                idle_timeouts++;
+                if (idle_timeouts == 200) {
+                    /* Flush stale sequence state after 1s of audio inactivity */
+                    raop_buffer_flush(raop_rtp->buffer, -1);
+                }
+            }
             continue;
         } else if (ret == -1) {
             int sock_err = SOCKET_GET_ERROR();
@@ -591,6 +600,7 @@ raop_rtp_thread_udp(void *arg)
 
 
         if (FD_ISSET(raop_rtp->dsock, &rfds)) {
+            idle_timeouts = 0;
             if (!raop_rtp->initial_sync && !video_arrival_offset) {
                 video_arrival_offset = raop_ntp_get_video_arrival_offset(raop_rtp->ntp);
             }
@@ -625,12 +635,6 @@ raop_rtp_thread_udp(void *arg)
                  raop_rtp->initial_sync = true;
             }	    
 
-            if (packetlen == 12 ||(packetlen == 16 && memcmp(packet + 12, no_data_marker, 4) == 0)) {
-                /* this is a "no data" packet */
-	        /* the first such packet could be used to provide the initial rtptime and seqnum formerly given in the RECORD request */
-                continue;
-            }
-	    
             if (raop_rtp->ct == 2 && packetlen == 44)  continue;   /* ignore the ALAC packets with format information only. */
 
             raop_buffer_enqueue(raop_rtp->buffer, packet, packetlen, 1);
@@ -852,17 +856,29 @@ raop_rtp_stop(raop_rtp_t *raop_rtp)
     /* Join the thread */
     THREAD_JOIN(raop_rtp->thread);
 
-    if (raop_rtp->csock != -1) {
+    if (raop_rtp->rtp_session_csock != NULL) {
+        kernel_timestamp_session_destroy(raop_rtp->rtp_session_csock);
+        raop_rtp->rtp_session_csock = NULL;
+        raop_rtp->csock = -1;
+    } else if (raop_rtp->csock != -1) {
         CLOSESOCKET(raop_rtp->csock);
         raop_rtp->csock = -1;
     }
-    if (raop_rtp->dsock != -1) {
+    if (raop_rtp->rtp_session_dsock != NULL) {
+        kernel_timestamp_session_destroy(raop_rtp->rtp_session_dsock);
+        raop_rtp->rtp_session_dsock = NULL;
+        raop_rtp->dsock = -1;
+    } else if (raop_rtp->dsock != -1) {
         CLOSESOCKET(raop_rtp->dsock);
         raop_rtp->dsock = -1;
     }
 
-    /* Flush buffer into initial state */
+    /* Flush buffer and sync state into initial state */
     raop_buffer_flush(raop_rtp->buffer, -1);
+    raop_rtp->initial_sync = false;
+    raop_rtp->rtp_sync = 0;
+    raop_rtp->client_ntp_sync = 0;
+    raop_rtp->flush = NO_FLUSH;
 
     /* Mark thread as joined */
     MUTEX_LOCK(raop_rtp->run_mutex);
