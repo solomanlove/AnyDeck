@@ -1,5 +1,11 @@
 # iOS AirPlay Wi-Fi 投屏：UxPlay 实验接入与验收边界
 
+## 音频持续播放恢复（2026-10-23）
+
+AirPlay 音频由 `raop_rtp` 解密后送入 `AirPlayAudioDecoder`，再通过 macOS `AudioQueue` 播放。缓冲池暂时耗尽时允许丢包以维持实时性；连续超过 500 ms 没有可回收缓冲，或 `AudioQueueStart` / 入队失败时，在下一音频包重建 AudioQueue。首次播放及队列停止后的恢复先预填 8 个音频包，再启动 AudioQueue；运行中不重复调用启动。重建与队列停止原因写入 native stderr，供本地诊断定位。
+
+2026-10-23 真机诊断接收端在连续出画期间每 2 秒收到约 185 个音频包，播放层丢包为 0；上次“只启动一次”的处理缺少队列停止后的恢复。加入预填与重启后，日志观察到启动初期多次队列停止并自动恢复，用户确认同一台 iPhone 在蓝牙耳机中连续有声。150 秒测试程序结束时会主动关闭接收端，关闭后的无声不属于持续播放验证。随后 macOS Debug 构建通过，直接运行构建目录中的 App 并确认它与 iPhone 建立 AirPlay 连接；用户持续播放期间未再遇到断续。macOS `open -n` 曾优先启动 `/Applications/AnyDeck.app` 旧版，不能用同名窗口或广播名判断测试的是新构建，须核对进程路径及监听端口。
+
 ## 当前状态（2026-10-09）
 
 用户授权先完成投屏实验，暂不以商业化依赖限制阻塞实现。默认后端已接入 UxPlay 协议核心，提供 legacy 配对、FairPlay 媒体密钥处理、SETUP、NTP 和镜像流解密；H.264 交给现有 VideoToolbox，输出 IOSurface 供 Flutter Texture 使用。没有引入 GStreamer 窗口或改变 Android / iOS USB / WDA 链路。

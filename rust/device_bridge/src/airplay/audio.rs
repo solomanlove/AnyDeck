@@ -42,9 +42,11 @@ struct AudioQueueBuffer {
 }
 
 const K_AUDIO_QUEUE_PROPERTY_MAGIC_COOKIE: u32 = u32::from_be_bytes(*b"aqmc");
+const K_AUDIO_QUEUE_PROPERTY_IS_RUNNING: u32 = u32::from_be_bytes(*b"aqrn");
 const K_AUDIO_QUEUE_PARAM_VOLUME: u32 = 1;
 const BUFFER_CAPACITY: u32 = 4096;
 const BUFFER_COUNT: usize = 64;
+const START_BUFFER_COUNT: u32 = 8;
 
 #[allow(clashing_extern_declarations)]
 #[link(name = "AudioToolbox", kind = "framework")]
@@ -70,6 +72,7 @@ extern "C" {
         data: *const c_void,
         data_size: u32,
     ) -> i32;
+    fn AudioQueueGetProperty(queue: Queue, property_id: u32, data: *mut c_void, data_size: *mut u32) -> i32;
     fn AudioQueueEnqueueBuffer(
         queue: Queue,
         buffer: *mut AudioQueueBuffer,
@@ -113,6 +116,10 @@ pub struct AirPlayAudioDecoder {
     spf: u16,
     last_muted: bool,
     last_enqueue_at: Option<Instant>,
+    pool_exhausted_at: Option<Instant>,
+    playback_failed: bool,
+    started: bool,
+    queued_before_start: u32,
 }
 
 unsafe impl Send for AirPlayAudioDecoder {}
@@ -154,6 +161,10 @@ impl AirPlayAudioDecoder {
             spf,
             last_muted: !is_global_airplay_audio_enabled(),
             last_enqueue_at: None,
+            pool_exhausted_at: None,
+            playback_failed: false,
+            started: false,
+            queued_before_start: 0,
         };
 
         unsafe {
@@ -210,6 +221,9 @@ impl AirPlayAudioDecoder {
 
     /// 判断是否需要重建 AudioQueue（编码参数变化，或暂停静默超过 1.5s 后恢复播放）
     pub fn should_reinit(&self, ct: u8, spf: u16) -> bool {
+        if self.playback_failed || self.pool_exhausted_at.is_some_and(|at| at.elapsed() > Duration::from_millis(500)) {
+            return true;
+        }
         if self.ct != ct || (spf > 0 && self.spf != spf) {
             return true;
         }
@@ -219,6 +233,10 @@ impl AirPlayAudioDecoder {
             }
         }
         false
+    }
+
+    pub fn is_stalled(&self) -> bool {
+        self.playback_failed || self.pool_exhausted_at.is_some_and(|at| at.elapsed() > Duration::from_millis(500))
     }
 
     /// 入队一帧解密后的 AirPlay 音频包
@@ -244,8 +262,10 @@ impl AirPlayAudioDecoder {
 
         let buf_addr = self.pool.0.lock().ok().and_then(|mut list| list.pop());
         let Some(addr) = buf_addr else {
+            self.pool_exhausted_at.get_or_insert_with(Instant::now);
             return;
         };
+        self.pool_exhausted_at = None;
         let buf = addr as *mut AudioQueueBuffer;
         unsafe {
             ptr::copy_nonoverlapping(packet.as_ptr(), (*buf).data as *mut u8, packet.len());
@@ -260,9 +280,36 @@ impl AirPlayAudioDecoder {
                 (*buf).packet_count = 1;
             }
             if AudioQueueEnqueueBuffer(self.queue, buf, 0, ptr::null()) == 0 {
-                let _ = AudioQueueStart(self.queue, ptr::null());
+                if self.started {
+                    let mut running = 0u32;
+                    let mut size = std::mem::size_of::<u32>() as u32;
+                    let status = AudioQueueGetProperty(self.queue, K_AUDIO_QUEUE_PROPERTY_IS_RUNNING,
+                        &mut running as *mut u32 as *mut c_void, &mut size);
+                    if status != 0 {
+                        eprintln!("[AirPlay Audio] AudioQueueGetProperty failed: {status}");
+                        self.playback_failed = true;
+                    } else if running == 0 {
+                        self.started = false;
+                        self.queued_before_start = 0;
+                        eprintln!("[AirPlay Audio] AudioQueue stopped; buffering before restart");
+                    }
+                }
+                if !self.started {
+                    self.queued_before_start += 1;
+                }
+                if !self.started && self.queued_before_start >= START_BUFFER_COUNT {
+                    let status = AudioQueueStart(self.queue, ptr::null());
+                    self.started = status == 0;
+                    self.queued_before_start = 0;
+                    if status != 0 {
+                        eprintln!("[AirPlay Audio] AudioQueueStart failed: {status}");
+                        self.playback_failed = true;
+                    }
+                }
             } else if let Ok(mut list) = self.pool.0.lock() {
                 list.push(addr);
+                eprintln!("[AirPlay Audio] AudioQueueEnqueueBuffer failed");
+                self.playback_failed = true;
             }
         }
     }
@@ -351,5 +398,28 @@ mod tests {
 
         let alac_cookie = AirPlayAudioDecoder::build_magic_cookie(2, 352);
         assert_eq!(alac_cookie.len(), 24);
+    }
+
+    #[test]
+    fn stalled_audio_queue_requires_rebuild() {
+        let mut decoder = AirPlayAudioDecoder {
+            queue: ptr::null_mut(),
+            pool: Box::new(BufferPool(Mutex::new(Vec::new()))),
+            ct: 8,
+            spf: 480,
+            last_muted: false,
+            last_enqueue_at: None,
+            pool_exhausted_at: None,
+            playback_failed: false,
+            started: false,
+            queued_before_start: 0,
+        };
+        assert!(!decoder.should_reinit(8, 480));
+        decoder.pool_exhausted_at = Some(Instant::now() - Duration::from_millis(600));
+        assert!(decoder.is_stalled());
+        assert!(decoder.should_reinit(8, 480));
+        decoder.pool_exhausted_at = None;
+        decoder.playback_failed = true;
+        assert!(decoder.should_reinit(8, 480));
     }
 }
