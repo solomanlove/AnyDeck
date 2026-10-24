@@ -58,3 +58,11 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 - 定向静态检查两个修改文件无新增诊断，仅存在原有 `avatarBorder` unused local variable；`git diff --check` 通过。
 - 现有图片资源与网段提示测试共 12 项通过。品牌 helper 的 4 项测试失败：旧用例仍期望小米 PNG 及 Meitu 无匹配，而当前 helper 已返回 SVG 并匹配 Meitu；测试、helper 与资源常量均与 HEAD 一致，本次未修改这些既有差异。
 - 手动回归：检查有 / 无自定义名、有 / 无 IP 的设备行；在明暗主题、在线 / 离线状态下检查 Xiaomi、Apple、Huawei Logo 圆角和右下角状态点，并确认编辑弹窗仍可查看型号 / 序列号。按约定未启动桌面项目，真实窗口视觉效果待验收。
+
+## 设备列表与身份区共用 Logo（2026-10-24）
+
+- 设备列表和选中设备后的左侧身份区统一使用 `DeviceStatusAvatar`，由 `RegisteredDevice`、`deviceOverviewProvider` 与 `BrandLogoHelper` 决定同一品牌资源及回退顺序；身份区不再单独解析 Logo 或绘制头像。
+- Logo 裁剪圆角统一采用 `AppThemeSizes.radiusSmall`（4 logical pixels），避免 16px 裁剪使 Apple、Huawei 位图和 Xiaomi SVG 显得过圆。状态点保留在裁剪层外，列表默认展示状态 Tooltip；身份区关闭内部 Tooltip，保留外层包含连接方式的提示。
+- 身份区尚未从注册表匹配到设备时，临时 `RegisteredDevice` 继续携带 iOS / HarmonyOS 平台标志，避免首帧 Logo 与列表不同。未新增资源、文案、Provider、ADB 命令或跨窗口协议。
+- 自动验证：定向 `flutter analyze --no-pub` 仅报告 `dashboard_screen.dart` 既有 `liquid_glass_background.dart` 未使用 import；本次修改的 Widget 无诊断。`git diff --check` 通过。未运行桌面项目。
+- 手动回归：在设备列表选中 Apple、Huawei、Xiaomi 及未知品牌设备，对比左侧身份区 Logo、圆角和状态点；覆盖宽 / 窄侧栏、在线 / 离线、Light / Dark，以及概览数据尚未到达的首帧。

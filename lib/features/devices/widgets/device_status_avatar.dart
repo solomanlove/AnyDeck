@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_icon.dart';
+import '../../../app/theme/app_theme_sizes.dart';
 import '../../../app/widget/app_asset_image.dart';
 import '../../../core/device_info/brand_logo_helper.dart';
 import '../../../core/providers/modules/device_overview_providers.dart';
@@ -19,11 +20,13 @@ import '../../../core/providers/modules/registered_device_model.dart';
 /// 参数：
 /// - [device]：要渲染的设备注册模型，包含在线状态、系统类型、型号等；
 /// - [size]：头像尺寸正方形宽高，默认 38.0。
+/// - [showTooltip]：是否显示设备状态提示；外层已有 Tooltip 时可关闭。
 class DeviceStatusAvatar extends ConsumerWidget {
   const DeviceStatusAvatar({
     super.key,
     required this.device,
     this.size = 38.0,
+    this.showTooltip = true,
   });
 
   /// 设备数据模型
@@ -31,6 +34,9 @@ class DeviceStatusAvatar extends ConsumerWidget {
 
   /// 头像正方形边长尺寸
   final double size;
+
+  /// 是否显示设备名称与状态 Tooltip
+  final bool showTooltip;
 
   /// 标准 ITU-R BT.709 灰阶加权滤镜矩阵，用于将彩色图片转换为纯灰度图像
   static const ColorFilter _greyscaleFilter = ColorFilter.matrix(<double>[
@@ -87,50 +93,47 @@ class DeviceStatusAvatar extends ConsumerWidget {
         ? (isDark ? const Color(0xFF1E293B) : const Color(0xFFFFFFFF))
         : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9));
 
-    final avatarBorder = isOnline
-        ? (Theme.of(context).colorScheme.outlineVariant)
-        : (isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1).withValues(alpha: 0.4));
-
     final dotSize = (size * 0.26).clamp(8.0, 10.0);
 
-    return Tooltip(
-      message: '${device.displayName} ($statusText)',
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          // 按容器圆角裁剪所有品牌图片，避免 Apple/Huawei 位图的直角背景外露。
-          Container(
-            width: size,
-            height: size,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: avatarBg,
-              borderRadius: BorderRadius.circular(16),
-              // border: Border.all(color: avatarBorder, width: 1),
-            ),
-            alignment: Alignment.center,
-            child: logoWidget,
+    final avatar = Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        // 按容器圆角裁剪所有品牌图片，避免 Apple/Huawei 位图的直角背景外露。
+        Container(
+          width: size,
+          height: size,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: avatarBg,
+            borderRadius: AppThemeSizes.radiusSmall,
           ),
-          // 右下角在线/离线状态指示小圆点
-          Positioned(
-            right: -1,
-            bottom: -1,
-            child: Container(
-              width: dotSize,
-              height: dotSize,
-              decoration: BoxDecoration(
-                color: statusDotColor,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.surface,
-                  width: 1.5,
-                ),
+          alignment: Alignment.center,
+          child: logoWidget,
+        ),
+        // 右下角在线/离线状态指示小圆点
+        Positioned(
+          right: -1,
+          bottom: -1,
+          child: Container(
+            width: dotSize,
+            height: dotSize,
+            decoration: BoxDecoration(
+              color: statusDotColor,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.surface,
+                width: 1.5,
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+    if (!showTooltip) return avatar;
+    return Tooltip(
+      message: '${device.displayName} ($statusText)',
+      child: avatar,
     );
   }
 

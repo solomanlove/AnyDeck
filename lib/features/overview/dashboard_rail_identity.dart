@@ -30,21 +30,15 @@ class _RailIdentity extends ConsumerWidget {
         isOnline: device.isOnline,
         serial: device.id,
         isIos: device.isIos,
+        isHarmony: device.isHarmony,
         iosConnectionTypes: device.iosConnectionTypes,
       ),
     );
-    final overviewAsync = ref.watch(deviceOverviewProvider(device.id));
     final mirrorAudioEnabled = ref.watch(
       appSettingsProvider.select((settings) => settings.mirrorAudioEnabled),
     );
     final sdkVersion = ref.watch(deviceSdkVersionProvider(device.id)) ?? 0;
     final isAudioForwarded = sdkVersion >= 30 && mirrorAudioEnabled;
-    final logoAsset = overviewAsync.hasValue
-        ? BrandLogoHelper.getBrandLogoAsset(
-            overviewAsync.value!.brand,
-            manufacturer: overviewAsync.value!.manufacturer,
-          )
-        : null;
     final isNetwork = matchedDevice.isNetwork;
     final isUnknown = matchedDevice.isIos && matchedDevice.iosConnectionTypes.isEmpty;
     final connectionLabel = isUnknown
@@ -54,14 +48,22 @@ class _RailIdentity extends ConsumerWidget {
             : isNetwork ? 'Wi-Fi' : 'USB';
 
     final identity = isNarrow
-        ? _buildDeviceAvatar(device, logoAsset, 50)
+        ? DeviceStatusAvatar(
+            device: matchedDevice,
+            size: 50,
+            showTooltip: false,
+          )
         : SizedBox(
             height: 38,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  _buildDeviceAvatar(device, logoAsset, 36),
+                  DeviceStatusAvatar(
+                    device: matchedDevice,
+                    size: 36,
+                    showTooltip: false,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -170,54 +172,6 @@ class _RailIdentity extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDeviceAvatar(AdbDevice device, String? logoAsset, double size) {
-    final Color backgroundColor;
-    final Color iconColor;
-    if (device.status == 'device') {
-      backgroundColor = const Color(0xFFE2F7EB);
-      iconColor = const Color(0xFF2EC46B);
-    } else if (device.status == 'unauthorized') {
-      backgroundColor = const Color(0xFFFFF3E0);
-      iconColor = const Color(0xFFE65100);
-    } else {
-      backgroundColor = const Color(0xFFF5F5F5);
-      iconColor = const Color(0xFF9E9E9E);
-    }
-
-    final radius = size == 36 ? 8.0 : 12.0;
-
-    Widget child;
-    if (logoAsset == null) {
-      child = Icon(
-        CupertinoIcons.device_phone_portrait,
-        size: size * 0.58,
-        color: iconColor,
-      );
-    } else {
-      child = AppAssetImage(
-        logoAsset,
-        fit: BoxFit.contain,
-        width: double.infinity,
-        height: double.infinity,
-      );
-    }
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: logoAsset == null ? backgroundColor : Colors.white,
-        borderRadius: BorderRadius.circular(radius),
-        border: logoAsset == null
-            ? null
-            : Border.all(color: backgroundColor, width: 1.5),
-      ),
-      clipBehavior: Clip.antiAlias,
-      alignment: Alignment.center,
-      child: child,
     );
   }
 }
