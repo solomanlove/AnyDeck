@@ -28,7 +28,24 @@ void main() {
     final xml = DlnaProtocol.serviceDescription('avtransport');
     expect(xml, contains('<name>SetAVTransportURI</name>'));
     expect(xml, contains('<name>CurrentURI</name><direction>in</direction>'));
-    expect(xml, contains('<name>A_ARG_TYPE_CurrentURI</name>'));
+    expect(
+      xml,
+      contains('<relatedStateVariable>AVTransportURI</relatedStateVariable>'),
+    );
+    expect(
+      xml,
+      contains(
+        '<name>CurrentTransportState</name><direction>out</direction><relatedStateVariable>TransportState</relatedStateVariable>',
+      ),
+    );
+    expect(
+      xml,
+      contains('<name>TransportState</name><dataType>string</dataType>'),
+    );
+    expect(
+      xml,
+      contains('<name>A_ARG_TYPE_InstanceID</name><dataType>ui4</dataType>'),
+    );
   });
 
   test('SOAP URI 解码并拒绝实体声明', () {

@@ -86,13 +86,21 @@ void main() {
           Uri.parse('http://127.0.0.1:${service.httpPort}/$path/control'),
         );
         request.headers.set('SOAPACTION', '"$type#$action"');
-        request.write(
-          '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">'
-          '<s:Body><u:$action xmlns:u="$type">$arguments</u:$action>'
-          '</s:Body></s:Envelope>',
+        request.add(
+          utf8.encode(
+            '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">'
+            '<s:Body><u:$action xmlns:u="$type">$arguments</u:$action>'
+            '</s:Body></s:Envelope>',
+          ),
         );
         final response = await request.close();
         expect(response.statusCode, HttpStatus.ok, reason: action);
+        expect(response.headers.contentLength, greaterThan(0), reason: action);
+        expect(
+          response.headers.value(HttpHeaders.transferEncodingHeader),
+          isNull,
+          reason: action,
+        );
         return await utf8.decoder.bind(response).join();
       } finally {
         client.close(force: true);
@@ -101,7 +109,20 @@ void main() {
 
     await send(
       'SetAVTransportURI',
-      '<CurrentURI>http://127.0.0.1/media.mp4</CurrentURI>',
+      '<CurrentURI>http://127.0.0.1/media.mp4</CurrentURI>'
+          '<CurrentURIMetaData>&lt;item&gt;测试 &amp; 视频&lt;/item&gt;</CurrentURIMetaData>',
+    );
+    expect(
+      await send('GetMediaInfo', ''),
+      contains(
+        '<CurrentURIMetaData>&lt;item&gt;测试 &amp; 视频&lt;/item&gt;</CurrentURIMetaData>',
+      ),
+    );
+    expect(
+      await send('GetPositionInfo', ''),
+      contains(
+        '<TrackMetaData>&lt;item&gt;测试 &amp; 视频&lt;/item&gt;</TrackMetaData>',
+      ),
     );
     await send('Play', '<Speed>1</Speed>');
     expect(calls, contains('playUrl'));

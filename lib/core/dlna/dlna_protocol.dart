@@ -118,11 +118,46 @@ class DlnaProtocol {
         ),
       },
     };
+    // AVTransport 的输出参数必须关联协议规定的状态变量，控制端据此解释响应。
+    const transportVariables = <String, String>{
+      'InstanceID': 'A_ARG_TYPE_InstanceID',
+      'CurrentURI': 'AVTransportURI',
+      'CurrentURIMetaData': 'AVTransportURIMetaData',
+      'Speed': 'TransportPlaySpeed',
+      'Unit': 'A_ARG_TYPE_SeekMode',
+      'Target': 'A_ARG_TYPE_SeekTarget',
+      'CurrentTransportState': 'TransportState',
+      'CurrentTransportStatus': 'TransportStatus',
+      'CurrentSpeed': 'TransportPlaySpeed',
+      'Track': 'CurrentTrack',
+      'TrackDuration': 'CurrentTrackDuration',
+      'TrackMetaData': 'CurrentTrackMetaData',
+      'TrackURI': 'CurrentTrackURI',
+      'RelTime': 'RelativeTimePosition',
+      'AbsTime': 'AbsoluteTimePosition',
+      'RelCount': 'RelativeCounterPosition',
+      'AbsCount': 'AbsoluteCounterPosition',
+      'NrTracks': 'NumberOfTracks',
+      'MediaDuration': 'CurrentMediaDuration',
+      'NextURI': 'NextAVTransportURI',
+      'NextURIMetaData': 'NextAVTransportURIMetaData',
+      'PlayMedium': 'PlaybackStorageMedium',
+      'RecordMedium': 'RecordStorageMedium',
+      'WriteStatus': 'RecordMediumWriteStatus',
+      'PlayMedia': 'PossiblePlaybackStorageMedia',
+      'RecMedia': 'PossibleRecordStorageMedia',
+      'RecQualityModes': 'PossibleRecordQualityModes',
+      'PlayMode': 'CurrentPlayMode',
+      'RecQualityMode': 'CurrentRecordQualityMode',
+    };
     final variables = <String>{};
     final actionList = actions.entries.map((entry) {
       String argument(String name, String direction) {
-        variables.add(name);
-        return '<argument><name>$name</name><direction>$direction</direction><relatedStateVariable>A_ARG_TYPE_$name</relatedStateVariable></argument>';
+        final variable = service == 'avtransport'
+            ? transportVariables[name] ?? 'A_ARG_TYPE_$name'
+            : 'A_ARG_TYPE_$name';
+        variables.add(variable);
+        return '<argument><name>$name</name><direction>$direction</direction><relatedStateVariable>$variable</relatedStateVariable></argument>';
       }
 
       final arguments = [
@@ -131,12 +166,22 @@ class DlnaProtocol {
       ].join();
       return '<action><name>${entry.key}</name><argumentList>$arguments</argumentList></action>';
     }).join();
-    final stateTable = variables
-        .map(
-          (name) =>
-              '<stateVariable sendEvents="no"><name>A_ARG_TYPE_$name</name><dataType>string</dataType></stateVariable>',
-        )
-        .join();
+    final stateTable = variables.map((name) {
+      final dataType =
+          {
+            'A_ARG_TYPE_InstanceID',
+            'NumberOfTracks',
+            'CurrentTrack',
+          }.contains(name)
+          ? 'ui4'
+          : {
+              'RelativeCounterPosition',
+              'AbsoluteCounterPosition',
+            }.contains(name)
+          ? 'i4'
+          : 'string';
+      return '<stateVariable sendEvents="no"><name>$name</name><dataType>$dataType</dataType></stateVariable>';
+    }).join();
     final eventState = service == 'connection'
         ? '<stateVariable sendEvents="yes"><name>SinkProtocolInfo</name><dataType>string</dataType></stateVariable>'
         : '<stateVariable sendEvents="yes"><name>LastChange</name><dataType>string</dataType></stateVariable>';

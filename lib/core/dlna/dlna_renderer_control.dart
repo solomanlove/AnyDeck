@@ -18,6 +18,8 @@ extension DlnaRendererControl on DlnaRendererService {
             uri.path.toLowerCase().endsWith('.mpd') ||
             body.toLowerCase().contains('application/dash+xml');
         _currentUrl = raw;
+        _currentMetadata =
+            DlnaProtocol.element(body, 'CurrentURIMetaData') ?? '';
         _transportState = 'STOPPED';
         _error = null;
         final generation = _mediaGeneration;
@@ -99,7 +101,7 @@ extension DlnaRendererControl on DlnaRendererService {
         return {
           'Track': _currentUrl == null ? '0' : '1',
           'TrackDuration': DlnaProtocol.formatTime(duration),
-          'TrackMetaData': '',
+          'TrackMetaData': _currentMetadata,
           'TrackURI': _currentUrl ?? '',
           'RelTime': DlnaProtocol.formatTime(seconds),
           'AbsTime': DlnaProtocol.formatTime(seconds),
@@ -111,7 +113,7 @@ extension DlnaRendererControl on DlnaRendererService {
           'NrTracks': _currentUrl == null ? '0' : '1',
           'MediaDuration': DlnaProtocol.formatTime(await _readDuration()),
           'CurrentURI': _currentUrl ?? '',
-          'CurrentURIMetaData': '',
+          'CurrentURIMetaData': _currentMetadata,
           'NextURI': '',
           'NextURIMetaData': '',
           'PlayMedium': 'NETWORK',

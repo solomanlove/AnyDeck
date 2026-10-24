@@ -44,6 +44,8 @@
 - 2026-10-24 08:10 的现有运行进程记录到 B 站 `SetAVTransportURI`、`Play`、`Seek`，随后手机发来 `Stop`；用户反馈视频 A → B → A 后没有播放窗口且手机可以本地操作。`Stop` 之后日志只有设备发现请求，没有第二次 `SetAVTransportURI` / `Play`。这一次无窗口直接对应手机未下发新的播放命令，接收端没有可打开的新媒体；需要在 B 站投屏页断开后重新选设备确认其会话恢复路径。该进程在修复前启动，不能用来验证切源竞态修复。
 - 用户在 B 站断开并重选同一设备后仍无窗口，接收端日志没有新的 SOAP 请求。手机通过 ADB 执行到电脑 `192.168.31.12:18583/device.xml` 的 HTTP GET 得到 `200 OK`，说明该时刻手机到接收端的 TCP 路径可达；仍需与爱奇艺等 App 对照，区分 B 站会话行为与接收端兼容性。
 - 同一手机的抖音可以发现设备并读取 `device.xml`，选中设备后同样没有发 `SetAVTransportURI` 或 `Play`。随后对仍在运行的 AnyDeck 进程用本地 MP4 手动发送标准 SOAP `SetAVTransportURI` / `Play`，两次请求均返回 200；AVPlayer 通过 HTTP Range 读取媒体，`GetPositionInfo` 显示时长 30 秒、进度 11 秒。测试结束发送 `Stop` 并关闭临时 HTTP 服务器。这证明该进程在上一轮手机 `Stop` 后仍能接收控制并实际播放；手机 App 未下发播放动作是本轮无窗口的直接原因，但 App 为什么不下发仍需查其投屏会话或设备兼容条件。
+- 2026-10-24 19:33 从 `25113PN0EC`（`192.168.31.128`）重试抖音时，手机 Logcat 的 `BDDLNASourceWrapper.detect` 报 `SocketTimeoutException`：它连接 `10.190.1.229:18583` 超时。该地址属于电脑的 `utun5` VPN，电脑 Wi-Fi `en0` 为 `192.168.31.12`，路由到手机走 `en0`。旧 SSDP 实现对所有 IPv4 网卡逐个回复 `LOCATION` 并逐个广播，导致手机选中无法访问的 VPN 地址；这解释了为何发现设备后没有进一步的 SOAP 播放命令。现按 macOS 路由选择对应网卡地址，单次 M-SEARCH 仅回复一个 `LOCATION`，组播广播也只公布组播出接口地址；地址缓存 30 秒且最多 32 条，停止服务时清空。20:06 真机复测确认 SSDP 公布 Wi-Fi 地址，并收到后续 SOAP 命令。
+- 2026-10-24 晚间复测：修复 SSDP 地址后，抖音下发 `SetAVTransportURI` / `Play`，电脑视频持续播放，但手机停在“设备连接中”，持续轮询 `GetTransportInfo`，没有发送暂停或快进。接收端当时的 SOAP 响应为 `Transfer-Encoding: chunked`、无 `Content-Length`，且 AVTransport SCPD 将状态参数错误关联到普通字符串变量，`GetMediaInfo` 也丢弃发送端 metadata。现按 AVTransport:1 规范关联状态变量、保存并回读 `CurrentURIMetaData`，SOAP 响应按 UTF-8 字节长度写入 `Content-Length`。只修正 SCPD 与 metadata 后，手机仍显示连接中；再加入 `Content-Length` 的 Debug 构建后，`25113PN0EC` 显示绿色 `AnyDeck DLNA` 和实际播放进度，暂停按钮使接收端状态变成 `PAUSED_PLAYBACK`，快进按钮下发 `Seek`。这是本机真机结果，单轮验证不能排除手机缓存或视频差异对恢复的影响。
 
 ## B 站手机端能力边界
 
@@ -60,6 +62,8 @@
 - 运行中的 AnyDeck 已占用固定端口 `18583`，再次并行执行 SOAP 集成测试会因端口占用失败；这是测试环境冲突，不是断言失败。其余 10 项定向测试、定向分析、`git diff --check` 和包含黑色留白改动的 macOS Debug 构建通过；最新留白颜色及声音、控制仍待实机验收。
 - DASH 回退增量：定向 `flutter analyze --no-pub` 通过；4 个 DLNA 测试文件共 9 项通过，SOAP 集成测试改用临时 HTTP 端口且不广播 SSDP，可与运行中的 AnyDeck 并行。`flutter build macos --debug --no-pub` 通过；随包 libmpv 对本地 HTTP MPD 成功读取音视频 `.m4s` 分片，播放进度超过 0.5 秒。尚未运行新构建进行 Flutter 子窗口和 B 站真机验收。
 - 切源竞态增量：定向分析通过；SOAP 集成测试加入旧窗口停止期间立即收到新 `Play`，以及视频 A → B → A 的地址断言，测试通过；macOS Debug 构建通过。新构建的 B 站真机复测仍需运行中的 App 重启后进行。
+- SSDP 多网卡修复：用模拟 `route -n get` 的单测确认 `en0` 的 `192.168.31.12` 优先于 `utun5` 的 `10.190.1.229`，无可用路由时不公布错误地址；DLNA 定向分析和相关测试通过。同时有 Wi-Fi 与 VPN 的 macOS 上已重启 AnyDeck，抖音重选设备后收到正确 `LOCATION` 和后续 SOAP 命令。
+- 抖音控制状态兼容：AVTransport SCPD 与 metadata 回读的定向分析、SOAP 测试通过；SOAP 响应增加 `Content-Length` 后，定向测试验证不再使用 chunked 传输，macOS Debug 构建通过。`25113PN0EC` 真机显示已连接和进度，发送了 `Pause` 与 `Seek`；暂停后接收端 `GetTransportInfo` 返回 `PAUSED_PLAYBACK`。不同视频连续切换时，个别视频出现加载提示和进度归零，仍需单独检查媒体 URL 与播放器错误，不能据此断定所有视频均可播。
 
 ## 真机验收清单
 

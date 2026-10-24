@@ -5,11 +5,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'dlna_protocol.dart';
+import 'dlna_discovery_address.dart';
 import 'dlna_player_bridge.dart';
 import 'dlna_fallback_player.dart';
 
 part 'dlna_renderer_name.dart';
 part 'dlna_renderer_control.dart';
+part 'dlna_renderer_discovery.dart';
 
 /// macOS DLNA MediaRenderer：SSDP 发现、UPnP 控制与原生播放器生命周期。
 class DlnaRendererService extends ChangeNotifier {
@@ -79,9 +81,12 @@ class DlnaRendererService extends ChangeNotifier {
   int _mediaGeneration = 0;
   String _serverName = DlnaProtocol.serverName;
   String? _currentUrl;
+  String _currentMetadata = '';
   String _transportState = 'NO_MEDIA_PRESENT';
   String? _error;
   final Map<String, _DlnaSubscription> _subscriptions = {};
+  final Map<String, ({Future<InternetAddress?> address, DateTime expires})>
+  _discoveryAddressCache = {};
   int _nextSubscription = 0;
 
   bool get isRunning => _http != null && (_ssdp != null || !_discoveryEnabled);
@@ -160,10 +165,12 @@ class DlnaRendererService extends ChangeNotifier {
     await _http?.close(force: true);
     _http = null;
     _currentUrl = null;
+    _currentMetadata = '';
     _mediaGeneration++;
     _dashSource = false;
     _transportState = 'NO_MEDIA_PRESENT';
     _subscriptions.clear();
+    _discoveryAddressCache.clear();
     await _fallback.stop();
     try {
       await _player.invokeMethod<void>('stop');
@@ -247,70 +254,6 @@ class DlnaRendererService extends ChangeNotifier {
       operation.complete();
       notifyListeners();
       unawaited(_notifySubscribers());
-    }
-  }
-
-  Future<List<InternetAddress>> _addresses() async {
-    final interfaces = await NetworkInterface.list(
-      type: InternetAddressType.IPv4,
-      includeLoopback: false,
-    );
-    return interfaces
-        .expand((interface) => interface.addresses)
-        .where((address) => !address.isLoopback && !address.isLinkLocal)
-        .toList();
-  }
-
-  void _handleSearch(Datagram packet) {
-    final text = ascii.decode(packet.data, allowInvalid: true);
-    if (!text.toUpperCase().startsWith('M-SEARCH * HTTP/1.1')) return;
-    final st = RegExp(
-      r'^ST:\s*(.+)$',
-      multiLine: true,
-      caseSensitive: false,
-    ).firstMatch(text)?.group(1)?.trim();
-    if (st == null ||
-        !['ssdp:all', ...DlnaProtocol.searchTargets].contains(st)) {
-      return;
-    }
-    debugPrint('[DLNA] discovery from=${packet.address.address} st=$st');
-    unawaited(_replySearch(packet.address, packet.port, st));
-  }
-
-  Future<void> _replySearch(
-    InternetAddress destination,
-    int port,
-    String st,
-  ) async {
-    final socket = _ssdp;
-    final server = _http;
-    if (socket == null || server == null) return;
-    for (final address in await _addresses()) {
-      for (final target
-          in st == 'ssdp:all' ? DlnaProtocol.searchTargets : [st]) {
-        final usn = target.startsWith('uuid:')
-            ? target
-            : 'uuid:${DlnaProtocol.uuid}::$target';
-        final message =
-            'HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=300\r\nEXT:\r\nLOCATION: http://${address.address}:${server.port}/device.xml\r\nSERVER: macOS/1.0 UPnP/1.0 AnyDeck/1.0\r\nST: $target\r\nUSN: $usn\r\n\r\n';
-        socket.send(ascii.encode(message), destination, port);
-      }
-    }
-  }
-
-  Future<void> _advertise({required bool alive}) async {
-    final socket = _ssdp;
-    final server = _http;
-    if (socket == null || server == null) return;
-    for (final address in await _addresses()) {
-      for (final target in DlnaProtocol.searchTargets) {
-        final usn = target.startsWith('uuid:')
-            ? target
-            : 'uuid:${DlnaProtocol.uuid}::$target';
-        final message =
-            'NOTIFY * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nCACHE-CONTROL: max-age=300\r\nLOCATION: http://${address.address}:${server.port}/device.xml\r\nNT: $target\r\nNTS: ssdp:${alive ? 'alive' : 'byebye'}\r\nSERVER: macOS/1.0 UPnP/1.0 AnyDeck/1.0\r\nUSN: $usn\r\n\r\n';
-        socket.send(ascii.encode(message), _multicast, 1900);
-      }
     }
   }
 
@@ -429,12 +372,16 @@ class DlnaRendererService extends ChangeNotifier {
     }
     final values = await _dispatch(action, body);
     response.headers.contentType = ContentType('text', 'xml', charset: 'utf-8');
+    final payload = values == null
+        ? DlnaProtocol.soapFault
+        : DlnaProtocol.soapResponse(type, action, values);
     if (values == null) {
       response.statusCode = HttpStatus.internalServerError;
-      response.write(DlnaProtocol.soapFault);
-    } else {
-      response.write(DlnaProtocol.soapResponse(type, action, values));
     }
+    // SOAP 响应写入明确长度，兼容不解析 chunked 响应的 DLNA 控制端。
+    final bytes = utf8.encode(payload);
+    response.contentLength = bytes.length;
+    response.add(bytes);
   }
 
   Future<void> _notifySubscribers() async {
