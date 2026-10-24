@@ -10,6 +10,9 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   private var window: NSWindow?
   private var playerView: DlnaPlayerView?
   private var statusObserver: NSKeyValueObservation?
+  private var startupTimer: Timer?
+  private var reportedItem: ObjectIdentifier?
+  private var mediaGeneration = 0
   private var channel: FlutterMethodChannel?
   private var displayName = "AnyDeck DLNA"
   private var playbackVolume: Float = 1
@@ -22,13 +25,15 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
       guard let self = self else { result(nil); return }
       switch call.method {
       case "playUrl":
-        guard let raw = call.arguments as? String,
+        guard let media = call.arguments as? [String: Any],
+              let raw = media["url"] as? String,
+              let generation = media["generation"] as? Int,
               let url = URL(string: raw),
               ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
           result(FlutterError(code: "invalid_url", message: "HTTP(S) URL required", details: nil))
           return
         }
-        self.play(url)
+        self.play(url, generation: generation)
         result(nil)
       case "setTitle":
         guard let name = call.arguments as? String, !name.isEmpty else {
@@ -86,7 +91,8 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     }
   }
 
-  private func play(_ url: URL) {
+  private func play(_ url: URL, generation: Int) {
+    mediaGeneration = generation
     if window == nil {
       let frame = NSRect(x: 0, y: 0, width: 960, height: 540)
       let newWindow = NSWindow(contentRect: frame,
@@ -109,13 +115,17 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
       if item.status == .failed {
         DispatchQueue.main.async {
-          let failure = item.error as NSError?
-          let detail = "\(failure?.domain ?? "AVPlayerItem")/\(failure?.code ?? -1): \(item.error?.localizedDescription ?? "Playback failed")"
-          self?.window?.title = "\(self?.displayName ?? "AnyDeck DLNA") · \(item.error?.localizedDescription ?? "Playback failed")"
-          self?.channel?.invokeMethod("playerFailed", arguments: detail)
+          self?.reportFailure(item, reason: "item failed")
         }
       }
     }
+    startupTimer?.invalidate()
+    startupTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self, weak item] _ in
+      guard let self = self, let item = item, self.player?.currentItem === item else { return }
+      let ready = (self.playerView?.layer as? AVPlayerLayer)?.isReadyForDisplay ?? false
+      if !ready { self.reportFailure(item, reason: "first frame timeout") }
+    }
+    reportedItem = nil
     player?.pause()
     player = newPlayer
     window?.title = displayName
@@ -125,7 +135,23 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     newPlayer.play()
   }
 
+  /// 只上报当前媒体的首次失败；日志保留状态码但不泄露签名 URL。
+  private func reportFailure(_ item: AVPlayerItem, reason: String) {
+    guard player?.currentItem === item else { return }
+    let identity = ObjectIdentifier(item)
+    guard reportedItem != identity else { return }
+    reportedItem = identity
+    startupTimer?.invalidate()
+    startupTimer = nil
+    let failure = item.error as NSError?
+    let event = item.errorLog()?.events.last
+    let detail = "\(reason); AVPlayer=\(failure?.domain ?? "unknown")/\(failure?.code ?? -1); HTTP=\(event?.errorStatusCode ?? 0); domain=\(event?.errorDomain ?? "unknown")"
+    channel?.invokeMethod("playerFailed", arguments: ["generation": mediaGeneration, "detail": detail])
+  }
+
   private func stop() {
+    startupTimer?.invalidate()
+    startupTimer = nil
     statusObserver = nil
     player?.pause()
     player?.replaceCurrentItem(with: nil)
@@ -136,7 +162,9 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
 
   func windowWillClose(_ notification: Notification) {
     stop()
-    channel?.invokeMethod("playerStopped", arguments: nil)
+    window = nil
+    playerView = nil
+    channel?.invokeMethod("playerStopped", arguments: ["generation": mediaGeneration])
   }
 }
 

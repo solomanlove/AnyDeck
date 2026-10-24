@@ -6,37 +6,77 @@ import 'package:flutter/foundation.dart';
 
 import 'dlna_protocol.dart';
 import 'dlna_player_bridge.dart';
+import 'dlna_fallback_player.dart';
 
 part 'dlna_renderer_name.dart';
+part 'dlna_renderer_control.dart';
 
 /// macOS DLNA MediaRenderer：SSDP 发现、UPnP 控制与原生播放器生命周期。
 class DlnaRendererService extends ChangeNotifier {
-  DlnaRendererService._() {
+  DlnaRendererService._({
+    int httpPort = _defaultHttpPort,
+    bool discovery = true,
+    DlnaFallbackPlayer? fallback,
+  }) : _configuredHttpPort = httpPort,
+       _discoveryEnabled = discovery {
+    _fallback =
+        fallback ??
+        DlnaFallbackPlayer(
+          onStopped: () {
+            _transportState = 'STOPPED';
+            notifyListeners();
+            unawaited(_notifySubscribers());
+          },
+          onFailed: (detail) {
+            _transportState = 'STOPPED';
+            _error = detail;
+            debugPrint('[DLNA] libmpv playback failed: $detail');
+            notifyListeners();
+            unawaited(_notifySubscribers());
+          },
+        );
     _player.setMethodCallHandler((call) async {
       if (call.method == 'playerStopped') {
-        _transportState = 'STOPPED';
-        notifyListeners();
-        unawaited(_notifySubscribers());
+        final arguments = call.arguments;
+        if (arguments is Map && arguments['generation'] == _mediaGeneration) {
+          _transportState = 'STOPPED';
+          notifyListeners();
+          unawaited(_notifySubscribers());
+        }
       } else if (call.method == 'playerFailed') {
-        _transportState = 'STOPPED';
-        _error = '${call.arguments}';
-        debugPrint('[DLNA] player failed: $_error');
-        notifyListeners();
-        unawaited(_notifySubscribers());
+        final arguments = call.arguments;
+        if (arguments is Map && arguments['generation'] == _mediaGeneration) {
+          await _handleNativeFailure(
+            '${arguments['detail']}',
+            arguments['generation'] as int,
+          );
+        }
       }
     });
   }
 
+  @visibleForTesting
+  DlnaRendererService.forTest({DlnaFallbackPlayer? fallback})
+    : this._(httpPort: 0, discovery: false, fallback: fallback);
+
   static final instance = DlnaRendererService._();
   static const _player = DlnaPlayerBridge.channel;
   static final _multicast = InternetAddress('239.255.255.250');
-  static const _httpPort = 18583;
+  static const _defaultHttpPort = 18583;
+  final int _configuredHttpPort;
+  final bool _discoveryEnabled;
+
+  late final DlnaFallbackPlayer _fallback;
 
   HttpServer? _http;
   RawDatagramSocket? _ssdp;
   StreamSubscription<RawSocketEvent>? _ssdpSubscription;
   Timer? _advertiseTimer;
   bool _starting = false;
+  Future<void>? _fallbackOperation;
+  Future<void>? _playerReset;
+  bool _dashSource = false;
+  int _mediaGeneration = 0;
   String _serverName = DlnaProtocol.serverName;
   String? _currentUrl;
   String _transportState = 'NO_MEDIA_PRESENT';
@@ -44,10 +84,12 @@ class DlnaRendererService extends ChangeNotifier {
   final Map<String, _DlnaSubscription> _subscriptions = {};
   int _nextSubscription = 0;
 
-  bool get isRunning => _http != null && _ssdp != null;
+  bool get isRunning => _http != null && (_ssdp != null || !_discoveryEnabled);
+  int get httpPort => _http?.port ?? _configuredHttpPort;
   bool get isBusy => _starting;
   String? get error => _error;
   void _notifyNameChange() => notifyListeners();
+  void _notifyControlChange() => notifyListeners();
 
   Future<void> start() async {
     if (isRunning || _starting) return;
@@ -58,9 +100,13 @@ class DlnaRendererService extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final server = await HttpServer.bind(InternetAddress.anyIPv4, _httpPort);
+      final server = await HttpServer.bind(
+        InternetAddress.anyIPv4,
+        _configuredHttpPort,
+      );
       _http = server;
       server.listen(_serve, onError: (Object error) => _error = '$error');
+      if (!_discoveryEnabled) return;
       final socket = await RawDatagramSocket.bind(
         InternetAddress.anyIPv4,
         1900,
@@ -114,12 +160,94 @@ class DlnaRendererService extends ChangeNotifier {
     await _http?.close(force: true);
     _http = null;
     _currentUrl = null;
+    _mediaGeneration++;
+    _dashSource = false;
     _transportState = 'NO_MEDIA_PRESENT';
     _subscriptions.clear();
+    await _fallback.stop();
     try {
       await _player.invokeMethod<void>('stop');
     } catch (_) {}
     notifyListeners();
+  }
+
+  /// AVPlayer 报错后只对当前仍在播放的媒体执行一次 libmpv 回退。
+  Future<void> _handleNativeFailure(String detail, int generation) async {
+    debugPrint('[DLNA] AVPlayer failed: $detail');
+    await _openFallback(detail, generation: generation, stopNative: true);
+  }
+
+  /// 切源和停止按顺序清理播放器；后续 Play 必须等待本轮清理完成。
+  Future<void> _resetPlayers() async {
+    final previous = _playerReset;
+    final operation = () async {
+      if (previous != null) await previous;
+      await _fallback.stop();
+      await _player.invokeMethod<void>('stop');
+    }();
+    _playerReset = operation;
+    try {
+      await operation;
+    } finally {
+      if (identical(_playerReset, operation)) _playerReset = null;
+    }
+  }
+
+  Future<void> _openFallback(
+    String detail, {
+    required int generation,
+    required bool stopNative,
+  }) async {
+    while (true) {
+      final pending = _fallbackOperation;
+      if (pending == null) break;
+      await pending;
+    }
+    final url = _currentUrl;
+    if (generation != _mediaGeneration ||
+        url == null ||
+        _transportState != 'PLAYING') {
+      return;
+    }
+    if (_fallback.isActive) return;
+    final operation = Completer<void>();
+    _fallbackOperation = operation.future;
+    try {
+      final volume = await DlnaPlayerBridge.readNumber(
+        'getVolume',
+        fallback: 1,
+      );
+      final muted = await _player.invokeMethod<bool>('getMute') ?? false;
+      if (stopNative) await _player.invokeMethod<void>('stop');
+      debugPrint('[DLNA] starting libmpv fallback');
+      final opened = await _fallback.open(
+        url,
+        title: _serverName,
+        volume: volume,
+        muted: muted,
+      );
+      if (_mediaGeneration != generation || _transportState != 'PLAYING') {
+        await _fallback.stop();
+        return;
+      }
+      if (!opened) {
+        _transportState = 'STOPPED';
+        _error = '$detail; libmpv could not render a video frame';
+      } else {
+        _error = null;
+        debugPrint('[DLNA] libmpv fallback playing');
+      }
+    } catch (error) {
+      if (_mediaGeneration != generation) return;
+      _error = detail;
+      _transportState = 'STOPPED';
+      debugPrint('[DLNA] libmpv fallback exception: $error');
+    } finally {
+      _fallbackOperation = null;
+      operation.complete();
+      notifyListeners();
+      unawaited(_notifySubscribers());
+    }
   }
 
   Future<List<InternetAddress>> _addresses() async {
@@ -309,146 +437,6 @@ class DlnaRendererService extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, String>?> _dispatch(String action, String body) async {
-    switch (action) {
-      case 'SetAVTransportURI':
-        final raw = DlnaProtocol.element(body, 'CurrentURI')?.trim();
-        final uri = raw == null ? null : Uri.tryParse(raw);
-        if (uri == null ||
-            !['http', 'https'].contains(uri.scheme) ||
-            uri.host.isEmpty) {
-          return null;
-        }
-        debugPrint('[DLNA] media scheme=${uri.scheme} host=${uri.host}');
-        if (_transportState == 'PLAYING' ||
-            _transportState == 'PAUSED_PLAYBACK') {
-          await _player.invokeMethod<void>('stop');
-        }
-        _currentUrl = raw;
-        _transportState = 'STOPPED';
-        notifyListeners();
-        unawaited(_notifySubscribers());
-        return {};
-      case 'Play':
-        if (_currentUrl == null) return null;
-        if (_transportState == 'PAUSED_PLAYBACK') {
-          await _player.invokeMethod<void>('play');
-        } else {
-          await _player.invokeMethod<void>('playUrl', _currentUrl);
-        }
-        _transportState = 'PLAYING';
-        notifyListeners();
-        unawaited(_notifySubscribers());
-        return {};
-      case 'Pause':
-        await _player.invokeMethod<void>('pause');
-        _transportState = 'PAUSED_PLAYBACK';
-        notifyListeners();
-        unawaited(_notifySubscribers());
-        return {};
-      case 'Stop':
-        await _player.invokeMethod<void>('stop');
-        _transportState = 'STOPPED';
-        notifyListeners();
-        unawaited(_notifySubscribers());
-        return {};
-      case 'Seek':
-        final target = DlnaProtocol.element(body, 'Target');
-        final seconds = target == null ? null : DlnaProtocol.parseTime(target);
-        if (seconds == null) return null;
-        await _player.invokeMethod<void>('seek', seconds);
-        return {};
-      case 'GetTransportInfo':
-        return {
-          'CurrentTransportState': _transportState,
-          'CurrentTransportStatus': 'OK',
-          'CurrentSpeed': '1',
-        };
-      case 'GetPositionInfo':
-        final seconds = await DlnaPlayerBridge.readNumber('position');
-        final duration = await DlnaPlayerBridge.readNumber('duration');
-        return {
-          'Track': _currentUrl == null ? '0' : '1',
-          'TrackDuration': DlnaProtocol.formatTime(duration),
-          'TrackMetaData': '',
-          'TrackURI': _currentUrl ?? '',
-          'RelTime': DlnaProtocol.formatTime(seconds),
-          'AbsTime': DlnaProtocol.formatTime(seconds),
-          'RelCount': '0',
-          'AbsCount': '0',
-        };
-      case 'GetMediaInfo':
-        return {
-          'NrTracks': _currentUrl == null ? '0' : '1',
-          'MediaDuration': DlnaProtocol.formatTime(
-            await DlnaPlayerBridge.readNumber('duration'),
-          ),
-          'CurrentURI': _currentUrl ?? '',
-          'CurrentURIMetaData': '',
-          'NextURI': '',
-          'NextURIMetaData': '',
-          'PlayMedium': 'NETWORK',
-          'RecordMedium': 'NOT_IMPLEMENTED',
-          'WriteStatus': 'NOT_IMPLEMENTED',
-        };
-      case 'GetDeviceCapabilities':
-        return {
-          'PlayMedia': 'NETWORK',
-          'RecMedia': 'NOT_IMPLEMENTED',
-          'RecQualityModes': 'NOT_IMPLEMENTED',
-        };
-      case 'GetTransportSettings':
-        return {'PlayMode': 'NORMAL', 'RecQualityMode': 'NOT_IMPLEMENTED'};
-      case 'GetProtocolInfo':
-        return {
-          'Source': '',
-          'Sink':
-              'http-get:*:video/mp4:*,http-get:*:application/vnd.apple.mpegurl:*',
-        };
-      case 'GetCurrentConnectionIDs':
-        return {'ConnectionIDs': '0'};
-      case 'GetCurrentConnectionInfo':
-        return {
-          'RcsID': '0',
-          'AVTransportID': '0',
-          'ProtocolInfo': 'http-get:*:video/mp4:*',
-          'PeerConnectionManager': '',
-          'PeerConnectionID': '-1',
-          'Direction': 'Input',
-          'Status': 'OK',
-        };
-      case 'SetVolume':
-        final volume = int.tryParse(
-          DlnaProtocol.element(body, 'DesiredVolume') ?? '',
-        );
-        if (volume == null) return null;
-        await _player.invokeMethod<void>(
-          'setVolume',
-          volume.clamp(0, 100) / 100,
-        );
-        return {};
-      case 'GetVolume':
-        final volume = await DlnaPlayerBridge.readNumber(
-          'getVolume',
-          fallback: 1,
-        );
-        return {'CurrentVolume': '${(volume * 100).round()}'};
-      case 'SetMute':
-        final mute = DlnaProtocol.element(body, 'DesiredMute');
-        if (mute != '0' && mute != '1') return null;
-        await _player.invokeMethod<void>(
-          'setMute',
-          mute == '1',
-        );
-        return {};
-      case 'GetMute':
-        final muted = await _player.invokeMethod<bool>('getMute') ?? false;
-        return {'CurrentMute': muted ? '1' : '0'};
-      default:
-        return null;
-    }
-  }
-
   Future<void> _notifySubscribers() async {
     final now = DateTime.now();
     _subscriptions.removeWhere(
@@ -466,7 +454,7 @@ class DlnaRendererService extends ChangeNotifier {
               ? '<Event xmlns="urn:schemas-upnp-org:metadata-1-0/RCS/"><InstanceID val="0"><Volume channel="Master" val="${(volume * 100).round()}"/></InstanceID></Event>'
               : '<Event xmlns="urn:schemas-upnp-org:metadata-1-0/AVT/"><InstanceID val="0"><TransportState val="$_transportState"/></InstanceID></Event>';
           final property = state.path.startsWith('/connection/')
-              ? '<SinkProtocolInfo>http-get:*:video/mp4:*,http-get:*:application/vnd.apple.mpegurl:*</SinkProtocolInfo>'
+              ? '<SinkProtocolInfo>${DlnaProtocol.sinkProtocolInfo}</SinkProtocolInfo>'
               : '<LastChange>${DlnaProtocol.escape(lastChange)}</LastChange>';
           final body =
               '<?xml version="1.0"?><e:propertyset xmlns:e="urn:schemas-upnp-org:event-1-0"><e:property>$property</e:property></e:propertyset>';

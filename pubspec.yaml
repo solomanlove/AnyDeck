@@ -57,6 +57,10 @@ dependencies:
 
   # 内嵌 WebView
   flutter_inappwebview: ^6.1.5
+  # macOS DLNA 播放器回退：使用内置 libmpv 处理非 DRM DASH 等媒体。
+  media_kit: ^1.2.6
+  media_kit_video: ^2.0.1
+  media_kit_libs_macos_video: ^1.1.4
   # 跨桌面平台地图底图与 WGS84 经纬度
   flutter_map: ^8.3.2
   latlong2: ^0.10.1

@@ -8,6 +8,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 
 import 'app/any_deck_app.dart';
 import 'app/window/apk/apk_open_coordinator.dart';
@@ -16,6 +17,7 @@ import 'app/window/desktop_window_manager_service.dart';
 import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
 import 'app/window/console/console_window_app.dart';
+import 'app/window/dlna/dlna_player_window_app.dart';
 import 'app/window/version_distribution/android_version_distribution_window_app.dart';
 import 'app/window/multi_window_compat.dart';
 
@@ -94,6 +96,8 @@ Future<void> _startApplication(List<String> args) async {
         ? 'mirror_window_$windowId'
         : type == 'console'
             ? 'console_window_$windowId'
+            : type == 'dlna_player'
+                ? 'dlna_player_window_$windowId'
             : type == 'version_distribution'
                 ? 'version_distribution_window_$windowId'
                 : 'emulator_window_$windowId';
@@ -162,6 +166,20 @@ Future<void> _startApplication(List<String> args) async {
             overrides: [windowIdProvider.overrideWithValue(windowId)],
             child: AppLogScope(
               child: ConsoleWindowApp(windowId: windowId, argument: argument),
+            ),
+          ),
+        );
+      } else if (type == 'dlna_player') {
+        MediaKit.ensureInitialized();
+        await configureCurrentAdbManageSubWindow(
+          argument,
+          showWhenReady: false,
+        );
+        runApp(
+          ProviderScope(
+            overrides: [windowIdProvider.overrideWithValue(windowId)],
+            child: AppLogScope(
+              child: DlnaPlayerWindowApp(windowId: windowId),
             ),
           ),
         );

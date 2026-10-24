@@ -10,6 +10,8 @@ class DlnaProtocol {
       'urn:schemas-upnp-org:service:RenderingControl:1';
   static const uuid = '43c0b6d7-bc0d-4667-82a0-a11dec000001';
   static const serverName = 'AnyDeck DLNA';
+  static const sinkProtocolInfo =
+      'http-get:*:video/mp4:*,http-get:*:application/vnd.apple.mpegurl:*,http-get:*:application/dash+xml:*';
   static const searchTargets = [
     'upnp:rootdevice',
     'uuid:$uuid',
