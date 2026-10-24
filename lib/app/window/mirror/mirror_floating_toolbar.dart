@@ -34,11 +34,13 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   const MirrorFloatingToolbar({
     super.key,
     required this.deviceId,
+    required this.deviceName,
     required this.windowId,
     required this.controller,
   });
 
   final String deviceId;
+  final String deviceName;
   final String windowId;
   final MirrorWindowController controller;
 
@@ -307,7 +309,10 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               controller: widget.controller,
             ),
             if (!widget.controller.isHarmony && !widget.controller.isIos)
-              MirrorClipboardButton(deviceId: widget.deviceId),
+              MirrorClipboardButton(
+                deviceId: widget.deviceId,
+                deviceName: widget.deviceName,
+              ),
             const MirrorToolbarDivider(),
 
             // Group 5: 截图, 录屏, 前台窗口

@@ -86,6 +86,13 @@
 - 回归路径：Android 投屏打开面板，开始监听、手机复制文本、刷新、复制到电脑、清空、停止；关闭重开检查记录清空和投屏持续。检查中英文、Light/Dark、窄窗口弹框及设备断开状态。
 - 验证边界：针对性静态检查与剪贴板测试；未启动 App，仍需真机验收。完整 `device_auxiliary_test.dart` 中 API 31 摄像头版本门槛的 4 个用例因 ADB/日志 pending Timer 失败，属于此次未修改的摄像头测试路径。
 
+### 投屏双栏剪贴板（2026-10-24）
+
+- Android 投屏剪贴板入口改为双栏 Dialog，分别展示电脑和当前手机的文本剪贴板；顶部“自动同步”默认开启。电脑内容每 500ms 读取一次，手机内容由现有 Rust 辅助会话推送；只在内容变化时同步，并抑制自己写入产生的回环。弹窗关闭即停止轮询、释放辅助会话。
+- 电脑写入手机使用当前投屏 control socket 的 scrcpy 4.0 `SET_CLIPBOARD`（type 9、sequence 0、paste flag、UTF-8 长度及正文），文本上限为 256 KiB 减 14 字节；手动“粘贴到设备”请求 Android 粘贴键（Android 7+），自动同步仅更新设备剪贴板，不向焦点输入框注入文字。手机写入电脑使用 Flutter `Clipboard.setData`。
+- 活跃 Android 投屏子窗口没有主窗口 Registry SDK 缓存时，剪贴板辅助会话可以凭活跃投屏状态通过 UI 版本门槛；Rust 启动时继续回读 SDK。HarmonyOS、iOS 投屏不显示此入口。仅同步文本，系统清空手机剪贴板不一定推送事件，面板可能显示最近一次收到的内容。
+- 验证：`test/mirror_clipboard_sync_test.dart` 覆盖协议字节、首条手机文本、回环抑制、手动粘贴、关闭自动同步、子窗口 SDK 缺失及双栏渲染；定向 `flutter analyze --no-pub` 和 `git diff --check` 通过。未运行桌面 App，仍需 macOS + Android 真机检查剪贴板变化、焦点粘贴、断连及明暗主题。
+
 ## HarmonyOS 工具栏控制
 
 - HarmonyOS 投屏工具栏隐藏“前台窗口”和“手机设置”入口；平台判断使用 `controller.isHarmony`，Android 工具栏继续显示这两个入口。

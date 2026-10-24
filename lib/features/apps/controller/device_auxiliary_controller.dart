@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/settings/app_settings_controller.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/scrcpy/auxiliary_backend.dart';
 import '../../../core/scrcpy/device_capture_compatibility.dart';
+import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 
 /// 麦克风与剪贴板按设备及用途隔离，切页后自动停止。
 typedef AuxiliaryKey = ({String deviceId, bool microphone});
@@ -82,8 +84,15 @@ class DeviceAuxiliaryController extends Notifier<DeviceAuxiliaryState> {
       }
       final sdk = await ref.read(captureSdkProvider(key.deviceId).future);
       if (!_current(revision)) return;
-      if (sdk == null ||
-          sdk < (key.microphone ? 30 : 21) ||
+      // 投屏子窗口没有主窗口 Registry；活跃 Android 投屏已满足 API 21 门槛，
+      // Rust 辅助会话启动时仍会回读 SDK 作最终校验。
+      final activeAndroidMirror = !key.microphone &&
+          ref.read(windowIdProvider).isNotEmpty &&
+          ref.read(activeEmbeddedMirrorProvider(key.deviceId)) != null;
+      final sdkSupported = sdk == null
+          ? activeAndroidMirror
+          : sdk >= (key.microphone ? 30 : 21);
+      if (!sdkSupported ||
           !ref.read(captureHostSupportedProvider)) {
         state = const DeviceAuxiliaryState(
           messageKey: 'auxUnsupported',

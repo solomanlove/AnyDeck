@@ -209,4 +209,19 @@ class ScrcpyKeycodeHelper {
     }
     return buffer.buffer.asUint8List();
   }
+
+  /// scrcpy 4.0 SET_CLIPBOARD：写入手机剪贴板；[paste] 同时触发粘贴键。
+  static Uint8List serializeSetClipboard(String text, {bool paste = false}) {
+    final textBytes = utf8.encode(text);
+    if (textBytes.length > (1 << 18) - 14) {
+      throw ArgumentError('Clipboard text exceeds 256 KiB');
+    }
+    final buffer = ByteData(14 + textBytes.length);
+    buffer.setUint8(0, 9);
+    buffer.setUint64(1, 0, Endian.big); // 无需 ACK；当前投屏 control socket 只写不读。
+    buffer.setUint8(9, paste ? 1 : 0);
+    buffer.setUint32(10, textBytes.length, Endian.big);
+    buffer.buffer.asUint8List().setRange(14, 14 + textBytes.length, textBytes);
+    return buffer.buffer.asUint8List();
+  }
 }

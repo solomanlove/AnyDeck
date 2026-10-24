@@ -271,6 +271,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         ),
         toolbar: MirrorFloatingToolbar(
           deviceId: widget.deviceId,
+          deviceName: widget.deviceName,
           windowId: widget.windowId,
           controller: _controller,
         ),
@@ -662,6 +663,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                   Expanded(
                     child: MirrorFloatingToolbar(
                       deviceId: widget.deviceId,
+                      deviceName: widget.deviceName,
                       windowId: widget.windowId,
                       controller: _controller,
                     ),
