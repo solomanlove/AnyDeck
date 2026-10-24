@@ -35,8 +35,11 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
   StreamSubscription<String>? _errorSubscription;
   bool _closing = false;
   bool _opening = false;
+  bool _loading = true;
+  bool _renderedFrame = false;
   bool _muted = false;
   double _volume = 1;
+  String _loadingText = '';
   String? _lastError;
 
   @override
@@ -88,6 +91,12 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
         }
         _opening = true;
         _lastError = null;
+        if (mounted) {
+          setState(() {
+            _loading = true;
+            _loadingText = args['loadingText'] as String? ?? '';
+          });
+        }
         try {
           final title = args['title'];
           if (title is String && title.isNotEmpty) {
@@ -97,11 +106,22 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
           _muted = args['muted'] == true;
           await _player.setVolume(_muted ? 0 : _volume * 100);
           await _player.open(Media(raw));
-          await _video.waitUntilFirstFrameRendered.timeout(
-            const Duration(seconds: 18),
-          );
+          // media_kit_video 的首帧 Future 只完成一次；复用窗口时改等新媒体进度。
+          if (_renderedFrame) {
+            if (_player.state.position <= Duration.zero) {
+              await _player.stream.position
+                  .firstWhere((position) => position > Duration.zero)
+                  .timeout(const Duration(seconds: 18));
+            }
+          } else {
+            await _video.waitUntilFirstFrameRendered.timeout(
+              const Duration(seconds: 18),
+            );
+          }
           if (_lastError != null || _closing) return false;
           await showCurrentAdbManageSubWindow();
+          _renderedFrame = true;
+          if (mounted) setState(() => _loading = false);
           debugPrint('[DLNA] libmpv first frame rendered');
           return true;
         } catch (error) {
@@ -110,6 +130,20 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
         } finally {
           _opening = false;
         }
+      case 'dlnaPrepare':
+        _opening = true;
+        if (mounted) setState(() => _loading = true);
+        try {
+          await _player.stop();
+        } finally {
+          _opening = false;
+        }
+        return true;
+      case 'dlnaSetLoadingText':
+        final text = call.arguments;
+        if (text is! String) return false;
+        if (mounted) setState(() => _loadingText = text);
+        return true;
       case 'dlnaPlay':
         await _player.play();
         return true;
@@ -182,11 +216,35 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
     home: WindowCloseShortcut(
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: Video(
-          controller: _video,
-          fit: BoxFit.contain,
-          fill: Colors.black,
-          controls: (_) => const SizedBox.shrink(),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Video(
+              controller: _video,
+              fit: BoxFit.contain,
+              fill: Colors.black,
+              controls: (_) => const SizedBox.shrink(),
+            ),
+            if (_loading)
+              ColoredBox(
+                color: Colors.black,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(color: Colors.white),
+                      if (_loadingText.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          _loadingText,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     ),

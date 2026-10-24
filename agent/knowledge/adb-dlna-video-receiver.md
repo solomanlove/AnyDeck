@@ -15,6 +15,7 @@
 4. `macos/Runner/DlnaPlayerBridgeService.swift` 通过 `any_deck/dlna_player` MethodChannel 接收播放命令，使用 `AVPlayerLayer` 在独立 macOS 窗口显示；视频保持原比例时，窗口与播放层以黑色填充留白。
 5. libmpv 通过 `media_kit`、`media_kit_video` 和随包内置的 `media_kit_libs_macos_video` 在独立 Flutter 子窗口播放；URL 只经窗口 MethodChannel 传递，不放入启动参数或日志。播放、暂停、跳转、音量、静音、进度和关闭控制都由主窗口的 DLNA 服务路由。
 6. 关闭播放窗口会停止播放器并通知 Dart；关闭 DLNA 接收开关会发送 SSDP `byebye`、释放 UDP/TCP 端口、清空订阅及两种播放器。
+- 同一投屏会话切换视频时，`SetAVTransportURI` 只清空旧媒体，AVPlayer 与 libmpv 窗口保留原尺寸并显示加载状态；新视频首帧出现后隐藏加载层。抖音切视频可能先发送 `Stop`，接收端等待 5 秒：期间收到新的 `SetAVTransportURI` / `Play` 就取消关窗，超时才关闭窗口并清除媒体会话。用户主动关闭窗口立即结束当前会话；再次投屏需重新下发媒体地址。AVPlayer 与 libmpv 相互切换时会在新窗口可见后隐藏旧窗口，跨播放器不复用同一个原生窗口。
 - `RenderingControl` 的音量与静音由原生播放器分别保存；取消静音不会把先前音量重置为 100%，换片源后仍使用当前音量与静音状态。
 
 ## 名称设置与热更新
@@ -64,6 +65,7 @@
 - 切源竞态增量：定向分析通过；SOAP 集成测试加入旧窗口停止期间立即收到新 `Play`，以及视频 A → B → A 的地址断言，测试通过；macOS Debug 构建通过。新构建的 B 站真机复测仍需运行中的 App 重启后进行。
 - SSDP 多网卡修复：用模拟 `route -n get` 的单测确认 `en0` 的 `192.168.31.12` 优先于 `utun5` 的 `10.190.1.229`，无可用路由时不公布错误地址；DLNA 定向分析和相关测试通过。同时有 Wi-Fi 与 VPN 的 macOS 上已重启 AnyDeck，抖音重选设备后收到正确 `LOCATION` 和后续 SOAP 命令。
 - 抖音控制状态兼容：AVTransport SCPD 与 metadata 回读的定向分析、SOAP 测试通过；SOAP 响应增加 `Content-Length` 后，定向测试验证不再使用 chunked 传输，macOS Debug 构建通过。`25113PN0EC` 真机显示已连接和进度，发送了 `Pause` 与 `Seek`；暂停后接收端 `GetTransportInfo` 返回 `PAUSED_PLAYBACK`。不同视频连续切换时，个别视频出现加载提示和进度归零，仍需单独检查媒体 URL 与播放器错误，不能据此断定所有视频均可播。
+- 连续切视频窗口生命周期：DLNA 定向分析、11 项测试及 macOS Debug 构建通过；SOAP 测试确认 `Stop` 后窗口先保留、短时间内切源取消延迟关窗、等待期结束后清除会话且可重新投屏。`25113PN0EC` 抖音真机上下切视频后，新旧视频均在 macOS 的同一 `AnyDeck DLNA` 窗口 ID `25519` 播放；手机点“结束投屏”后该窗口关闭，DLNA 服务仍监听。加载层瞬间画面、手动关窗及结束后的手机重新选择设备尚未逐项目视验证；如果 App 超过 5 秒才下发新媒体，仍会按结束投屏关闭窗口。
 
 ## 真机验收清单
 

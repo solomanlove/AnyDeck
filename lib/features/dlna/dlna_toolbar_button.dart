@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ class DlnaToolbarButton extends ConsumerStatefulWidget {
 
 class _DlnaToolbarButtonState extends ConsumerState<DlnaToolbarButton> {
   final _service = DlnaRendererService.instance;
+  String? _loadingText;
 
   @override
   void initState() {
@@ -31,6 +33,16 @@ class _DlnaToolbarButtonState extends ConsumerState<DlnaToolbarButton> {
   void dispose() {
     _service.removeListener(_refresh);
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!Platform.isMacOS) return;
+    final text = context.l10n.t('dlnaLoading');
+    if (_loadingText == text) return;
+    _loadingText = text;
+    unawaited(_service.setLoadingText(text).catchError((_) {}));
   }
 
   void _refresh() {

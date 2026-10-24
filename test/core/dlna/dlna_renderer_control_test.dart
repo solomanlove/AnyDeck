@@ -42,7 +42,10 @@ void main() {
       return null;
     });
     final fallback = _RecordingFallbackPlayer();
-    final service = DlnaRendererService.forTest(fallback: fallback);
+    final service = DlnaRendererService.forTest(
+      fallback: fallback,
+      stopWindowDelay: const Duration(milliseconds: 500),
+    );
     await service.start();
     addTearDown(() async {
       await service.stop();
@@ -166,7 +169,8 @@ void main() {
 
     await send('Stop', '');
     expect((await send('GetTransportInfo', '')).contains('STOPPED'), isTrue);
-    expect(calls, contains('stop'));
+    expect(calls, contains('prepare'));
+    expect(calls, isNot(contains('close')));
 
     // 手机可能在旧窗口清理期间立即下发 Play；应使用刚设置的新地址。
     fallback.stopGate = Completer<void>();
@@ -182,6 +186,8 @@ void main() {
     fallback.stopGate!.complete();
     await Future.wait([switchToB, playB]);
     expect(playedUrls.last, 'http://127.0.0.1/video-b.mp4');
+    await Future<void>.delayed(const Duration(milliseconds: 550));
+    expect(calls, isNot(contains('close')));
     await send(
       'SetAVTransportURI',
       '<CurrentURI>http://127.0.0.1/media.mp4</CurrentURI>',
@@ -220,8 +226,35 @@ void main() {
       )).contains('<RelTime>00:00:12</RelTime>'),
       isTrue,
     );
+    await send(
+      'SetAVTransportURI',
+      '<CurrentURI>http://127.0.0.1/next-media.mpd</CurrentURI>',
+    );
+    await send('Play', '<Speed>1</Speed>');
+    for (
+      var i = 0;
+      i < 20 && fallback.openedUrl != 'http://127.0.0.1/next-media.mpd';
+      i++
+    ) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(fallback.openedUrl, 'http://127.0.0.1/next-media.mpd');
+    expect(calls, isNot(contains('close')));
     await send('Stop', '');
     expect(fallback.isActive, isFalse);
+    expect(calls, isNot(contains('close')));
+    await Future<void>.delayed(const Duration(milliseconds: 550));
+    expect(calls, contains('close'));
+    expect(
+      (await send('GetTransportInfo', '')).contains('NO_MEDIA_PRESENT'),
+      isTrue,
+    );
+    await send(
+      'SetAVTransportURI',
+      '<CurrentURI>http://127.0.0.1/reconnected.mp4</CurrentURI>',
+    );
+    await send('Play', '<Speed>1</Speed>');
+    expect(playedUrls.last, 'http://127.0.0.1/reconnected.mp4');
   });
 }
 
@@ -241,6 +274,7 @@ class _RecordingFallbackPlayer extends DlnaFallbackPlayer {
   Future<bool> open(
     String url, {
     required String title,
+    required String loadingText,
     required double volume,
     required bool muted,
   }) async {
@@ -258,11 +292,16 @@ class _RecordingFallbackPlayer extends DlnaFallbackPlayer {
   }
 
   @override
-  Future<void> stop() async {
+  Future<void> prepare() async {
     stopEntered?.complete();
     stopEntered = null;
     await stopGate?.future;
     stopGate = null;
+    _active = false;
+  }
+
+  @override
+  Future<void> stop() async {
     _active = false;
   }
 }

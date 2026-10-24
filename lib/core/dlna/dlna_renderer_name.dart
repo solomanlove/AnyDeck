@@ -14,7 +14,7 @@ extension DlnaRendererName on DlnaRendererService {
     } catch (error) {
       debugPrint('[DLNA] player title update failed: $error');
     }
-    if (_fallback.isActive) {
+    if (_fallback.hasWindow) {
       await _fallback.invoke<bool>('dlnaSetTitle', name);
     }
     if (isRunning) await _advertise(alive: true);

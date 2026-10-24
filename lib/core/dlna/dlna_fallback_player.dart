@@ -17,45 +17,52 @@ class DlnaFallbackPlayer {
   );
   WindowController? _window;
   bool _registered = false;
+  bool _mediaActive = false;
 
-  bool get isActive => _window != null;
+  bool get isActive => _mediaActive;
+  bool get hasWindow => _window != null;
 
   Future<bool> open(
     String url, {
     required String title,
+    required String loadingText,
     required double volume,
     required bool muted,
   }) async {
-    await stop();
     if (!_registered) {
       await _events.setMethodCallHandler(_handleEvent);
       _registered = true;
     }
-    final window = await WindowController.create(
-      WindowConfiguration(
-        hiddenAtLaunch: true,
-        arguments: jsonEncode({'type': 'dlna_player'}),
-      ),
-    );
+    final window =
+        _window ??
+        await WindowController.create(
+          WindowConfiguration(
+            hiddenAtLaunch: true,
+            arguments: jsonEncode({'type': 'dlna_player'}),
+          ),
+        );
     try {
-      var ready = false;
-      for (var attempt = 0; attempt < 12; attempt++) {
-        try {
-          ready =
-              await window
-                  .invokeMethod<bool>('isFlutterReady')
-                  .timeout(const Duration(seconds: 1)) ==
-              true;
-          if (ready) break;
-        } catch (_) {}
-        await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (_window == null) {
+        var ready = false;
+        for (var attempt = 0; attempt < 12; attempt++) {
+          try {
+            ready =
+                await window
+                    .invokeMethod<bool>('isFlutterReady')
+                    .timeout(const Duration(seconds: 1)) ==
+                true;
+            if (ready) break;
+          } catch (_) {}
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+        if (!ready) throw StateError('DLNA fallback window did not start');
+        _window = window;
       }
-      if (!ready) throw StateError('DLNA fallback window did not start');
-      _window = window;
       final opened = await window
           .invokeMethod<bool>('dlnaOpen', {
             'url': url,
             'title': title,
+            'loadingText': loadingText,
             'volume': volume,
             'muted': muted,
           })
@@ -63,10 +70,12 @@ class DlnaFallbackPlayer {
       if (opened != true) {
         throw StateError('libmpv did not render a video frame');
       }
+      _mediaActive = true;
       return true;
     } catch (error) {
       debugPrint('[DLNA] libmpv fallback failed: $error');
       if (_window?.windowId == window.windowId) _window = null;
+      _mediaActive = false;
       try {
         await window.invokeMethod<void>('dlnaStop');
       } catch (_) {}
@@ -79,9 +88,11 @@ class DlnaFallbackPlayer {
     if (data is! Map || data['windowId'] != _window?.windowId) return null;
     if (call.method == 'stopped') {
       _window = null;
+      _mediaActive = false;
       onStopped();
     } else if (call.method == 'failed') {
       _window = null;
+      _mediaActive = false;
       onFailed('${data['detail'] ?? 'libmpv playback failed'}');
     }
     return null;
@@ -97,15 +108,32 @@ class DlnaFallbackPlayer {
     } catch (error) {
       debugPrint('[DLNA] libmpv control failed: $error');
       _window = null;
+      _mediaActive = false;
       unawaited(window.invokeMethod<void>('dlnaStop').catchError((_) {}));
       onStopped();
       return null;
     }
   }
 
+  /// 切片源时保留窗口，只释放当前媒体并显示加载状态。
+  Future<void> prepare() async {
+    final window = _window;
+    _mediaActive = false;
+    if (window == null) return;
+    try {
+      await window
+          .invokeMethod<void>('dlnaPrepare')
+          .timeout(const Duration(seconds: 3));
+    } catch (error) {
+      debugPrint('[DLNA] libmpv prepare failed: $error');
+      await stop();
+    }
+  }
+
   Future<void> stop() async {
     final window = _window;
     _window = null;
+    _mediaActive = false;
     if (window == null) return;
     try {
       await window.hide();

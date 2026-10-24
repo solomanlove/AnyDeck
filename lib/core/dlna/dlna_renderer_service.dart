@@ -19,15 +19,15 @@ class DlnaRendererService extends ChangeNotifier {
     int httpPort = _defaultHttpPort,
     bool discovery = true,
     DlnaFallbackPlayer? fallback,
+    Duration stopWindowDelay = const Duration(seconds: 5),
   }) : _configuredHttpPort = httpPort,
-       _discoveryEnabled = discovery {
+       _discoveryEnabled = discovery,
+       _stopWindowDelay = stopWindowDelay {
     _fallback =
         fallback ??
         DlnaFallbackPlayer(
           onStopped: () {
-            _transportState = 'STOPPED';
-            notifyListeners();
-            unawaited(_notifySubscribers());
+            _endMediaSession();
           },
           onFailed: (detail) {
             _transportState = 'STOPPED';
@@ -41,9 +41,7 @@ class DlnaRendererService extends ChangeNotifier {
       if (call.method == 'playerStopped') {
         final arguments = call.arguments;
         if (arguments is Map && arguments['generation'] == _mediaGeneration) {
-          _transportState = 'STOPPED';
-          notifyListeners();
-          unawaited(_notifySubscribers());
+          _endMediaSession();
         }
       } else if (call.method == 'playerFailed') {
         final arguments = call.arguments;
@@ -58,8 +56,15 @@ class DlnaRendererService extends ChangeNotifier {
   }
 
   @visibleForTesting
-  DlnaRendererService.forTest({DlnaFallbackPlayer? fallback})
-    : this._(httpPort: 0, discovery: false, fallback: fallback);
+  DlnaRendererService.forTest({
+    DlnaFallbackPlayer? fallback,
+    Duration stopWindowDelay = const Duration(seconds: 5),
+  }) : this._(
+         httpPort: 0,
+         discovery: false,
+         fallback: fallback,
+         stopWindowDelay: stopWindowDelay,
+       );
 
   static final instance = DlnaRendererService._();
   static const _player = DlnaPlayerBridge.channel;
@@ -67,6 +72,7 @@ class DlnaRendererService extends ChangeNotifier {
   static const _defaultHttpPort = 18583;
   final int _configuredHttpPort;
   final bool _discoveryEnabled;
+  final Duration _stopWindowDelay;
 
   late final DlnaFallbackPlayer _fallback;
 
@@ -74,12 +80,14 @@ class DlnaRendererService extends ChangeNotifier {
   RawDatagramSocket? _ssdp;
   StreamSubscription<RawSocketEvent>? _ssdpSubscription;
   Timer? _advertiseTimer;
+  Timer? _stopWindowTimer;
   bool _starting = false;
   Future<void>? _fallbackOperation;
   Future<void>? _playerReset;
   bool _dashSource = false;
   int _mediaGeneration = 0;
   String _serverName = DlnaProtocol.serverName;
+  String _loadingText = '';
   String? _currentUrl;
   String _currentMetadata = '';
   String _transportState = 'NO_MEDIA_PRESENT';
@@ -95,6 +103,29 @@ class DlnaRendererService extends ChangeNotifier {
   String? get error => _error;
   void _notifyNameChange() => notifyListeners();
   void _notifyControlChange() => notifyListeners();
+
+  /// 用户关窗或 Stop 等待期结束后清除会话；下一次投屏需重新设置媒体地址。
+  void _endMediaSession() {
+    _stopWindowTimer?.cancel();
+    _stopWindowTimer = null;
+    _mediaGeneration++;
+    _currentUrl = null;
+    _currentMetadata = '';
+    _dashSource = false;
+    _transportState = 'NO_MEDIA_PRESENT';
+    notifyListeners();
+    unawaited(_notifySubscribers());
+  }
+
+  /// 播放窗口的加载文案由主窗口当前语言提供。
+  Future<void> setLoadingText(String value) async {
+    if (_loadingText == value) return;
+    _loadingText = value;
+    await _player.invokeMethod<void>('setLoadingText', value);
+    if (_fallback.hasWindow) {
+      await _fallback.invoke<bool>('dlnaSetLoadingText', value);
+    }
+  }
 
   Future<void> start() async {
     if (isRunning || _starting) return;
@@ -155,6 +186,8 @@ class DlnaRendererService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    _stopWindowTimer?.cancel();
+    _stopWindowTimer = null;
     _advertiseTimer?.cancel();
     _advertiseTimer = null;
     if (_ssdp != null) await _advertise(alive: false);
@@ -171,10 +204,11 @@ class DlnaRendererService extends ChangeNotifier {
     _transportState = 'NO_MEDIA_PRESENT';
     _subscriptions.clear();
     _discoveryAddressCache.clear();
-    await _fallback.stop();
     try {
-      await _player.invokeMethod<void>('stop');
-    } catch (_) {}
+      await _resetPlayers(keepWindow: false);
+    } catch (error) {
+      debugPrint('[DLNA] stop player failed: $error');
+    }
     notifyListeners();
   }
 
@@ -184,13 +218,25 @@ class DlnaRendererService extends ChangeNotifier {
     await _openFallback(detail, generation: generation, stopNative: true);
   }
 
-  /// 切源和停止按顺序清理播放器；后续 Play 必须等待本轮清理完成。
-  Future<void> _resetPlayers() async {
+  /// 切源只清空画面；真正结束投屏时才销毁窗口。
+  Future<void> _resetPlayers({
+    required bool keepWindow,
+    int? expectedGeneration,
+  }) async {
     final previous = _playerReset;
     final operation = () async {
       if (previous != null) await previous;
-      await _fallback.stop();
-      await _player.invokeMethod<void>('stop');
+      if (expectedGeneration != null &&
+          expectedGeneration != _mediaGeneration) {
+        return;
+      }
+      if (keepWindow) {
+        await _fallback.prepare();
+        await _player.invokeMethod<void>('prepare', _loadingText);
+      } else {
+        await _fallback.stop();
+        await _player.invokeMethod<void>('close');
+      }
     }();
     _playerReset = operation;
     try {
@@ -225,11 +271,14 @@ class DlnaRendererService extends ChangeNotifier {
         fallback: 1,
       );
       final muted = await _player.invokeMethod<bool>('getMute') ?? false;
-      if (stopNative) await _player.invokeMethod<void>('stop');
+      if (stopNative) {
+        await _player.invokeMethod<void>('prepare', _loadingText);
+      }
       debugPrint('[DLNA] starting libmpv fallback');
       final opened = await _fallback.open(
         url,
         title: _serverName,
+        loadingText: _loadingText,
         volume: volume,
         muted: muted,
       );
@@ -241,6 +290,7 @@ class DlnaRendererService extends ChangeNotifier {
         _transportState = 'STOPPED';
         _error = '$detail; libmpv could not render a video frame';
       } else {
+        await _player.invokeMethod<void>('stop');
         _error = null;
         debugPrint('[DLNA] libmpv fallback playing');
       }

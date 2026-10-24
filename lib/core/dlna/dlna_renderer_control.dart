@@ -12,6 +12,8 @@ extension DlnaRendererControl on DlnaRendererService {
             uri.host.isEmpty) {
           return null;
         }
+        _stopWindowTimer?.cancel();
+        _stopWindowTimer = null;
         debugPrint('[DLNA] media scheme=${uri.scheme} host=${uri.host}');
         _mediaGeneration++;
         _dashSource =
@@ -24,7 +26,7 @@ extension DlnaRendererControl on DlnaRendererService {
         _error = null;
         final generation = _mediaGeneration;
         debugPrint('[DLNA] source accepted generation=$generation');
-        await _resetPlayers();
+        await _resetPlayers(keepWindow: true);
         if (generation != _mediaGeneration) return {};
         _notifyControlChange();
         unawaited(_notifySubscribers());
@@ -34,6 +36,8 @@ extension DlnaRendererControl on DlnaRendererService {
         await _playerReset;
         if (generation != _mediaGeneration) return {};
         if (_currentUrl == null) return null;
+        _stopWindowTimer?.cancel();
+        _stopWindowTimer = null;
         if (_transportState == 'PAUSED_PLAYBACK') {
           if (_fallback.isActive) {
             await _fallback.invoke<bool>('dlnaPlay');
@@ -53,7 +57,9 @@ extension DlnaRendererControl on DlnaRendererService {
           await DlnaRendererService._player.invokeMethod<void>('playUrl', {
             'url': _currentUrl,
             'generation': generation,
+            'loadingText': _loadingText,
           });
+          await _fallback.stop();
         }
         if (generation != _mediaGeneration) return {};
         debugPrint('[DLNA] play accepted generation=$generation');
@@ -72,10 +78,37 @@ extension DlnaRendererControl on DlnaRendererService {
         unawaited(_notifySubscribers());
         return {};
       case 'Stop':
+        _stopWindowTimer?.cancel();
         _mediaGeneration++;
+        if (_currentUrl == null) {
+          _transportState = 'NO_MEDIA_PRESENT';
+          _notifyControlChange();
+          return {};
+        }
         _transportState = 'STOPPED';
-        debugPrint('[DLNA] stop accepted generation=$_mediaGeneration');
-        await _resetPlayers();
+        final generation = _mediaGeneration;
+        debugPrint('[DLNA] stop accepted generation=$generation');
+        await _resetPlayers(keepWindow: true);
+        if (generation == _mediaGeneration && _transportState == 'STOPPED') {
+          // 抖音切视频也会发送 Stop，短暂等待后再判定投屏真正结束。
+          _stopWindowTimer = Timer(_stopWindowDelay, () {
+            if (generation == _mediaGeneration &&
+                _transportState == 'STOPPED') {
+              unawaited(() async {
+                try {
+                  await _resetPlayers(
+                    keepWindow: false,
+                    expectedGeneration: generation,
+                  );
+                } catch (error) {
+                  debugPrint('[DLNA] close after Stop failed: $error');
+                } finally {
+                  if (generation == _mediaGeneration) _endMediaSession();
+                }
+              }());
+            }
+          });
+        }
         _notifyControlChange();
         unawaited(_notifySubscribers());
         return {};

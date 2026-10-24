@@ -10,11 +10,13 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   private var window: NSWindow?
   private var playerView: DlnaPlayerView?
   private var statusObserver: NSKeyValueObservation?
+  private var readyObserver: NSKeyValueObservation?
   private var startupTimer: Timer?
   private var reportedItem: ObjectIdentifier?
   private var mediaGeneration = 0
   private var channel: FlutterMethodChannel?
   private var displayName = "AnyDeck DLNA"
+  private var loadingText = ""
   private var playbackVolume: Float = 1
   private var playbackMuted = false
 
@@ -33,6 +35,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
           result(FlutterError(code: "invalid_url", message: "HTTP(S) URL required", details: nil))
           return
         }
+        if let text = media["loadingText"] as? String { self.loadingText = text }
         self.play(url, generation: generation)
         result(nil)
       case "setTitle":
@@ -43,6 +46,14 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
         self.displayName = name
         self.window?.title = name
         result(nil)
+      case "setLoadingText":
+        guard let text = call.arguments as? String else {
+          result(FlutterError(code: "invalid_text", message: "Loading text required", details: nil))
+          return
+        }
+        self.loadingText = text
+        self.playerView?.updateLoadingText(text)
+        result(nil)
       case "play":
         self.player?.play()
         result(nil)
@@ -51,6 +62,13 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
         result(nil)
       case "stop":
         self.stop()
+        result(nil)
+      case "prepare":
+        if let text = call.arguments as? String { self.loadingText = text }
+        self.prepare()
+        result(nil)
+      case "close":
+        self.close()
         result(nil)
       case "seek":
         guard let seconds = call.arguments as? Double, seconds.isFinite, seconds >= 0 else {
@@ -129,6 +147,14 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     player?.pause()
     player = newPlayer
     window?.title = displayName
+    playerView?.showLoading(loadingText)
+    readyObserver = (playerView?.layer as? AVPlayerLayer)?.observe(\.isReadyForDisplay, options: [.new]) { [weak self, weak item] layer, _ in
+      guard layer.isReadyForDisplay, let item = item else { return }
+      DispatchQueue.main.async {
+        guard let self = self, self.player?.currentItem === item else { return }
+        self.playerView?.showVideo()
+      }
+    }
     playerView?.player = newPlayer
     window?.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
@@ -149,19 +175,38 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     channel?.invokeMethod("playerFailed", arguments: ["generation": mediaGeneration, "detail": detail])
   }
 
-  private func stop() {
+  private func resetPlayer() {
     startupTimer?.invalidate()
     startupTimer = nil
     statusObserver = nil
+    readyObserver = nil
     player?.pause()
     player?.replaceCurrentItem(with: nil)
     player = nil
     playerView?.player = nil
+  }
+
+  /// 切视频时保留原窗口和尺寸，释放上一条媒体后显示加载状态。
+  private func prepare() {
+    resetPlayer()
+    playerView?.showLoading(loadingText)
+  }
+
+  private func stop() {
+    resetPlayer()
     window?.orderOut(nil)
   }
 
+  private func close() {
+    if let window = window {
+      window.close()
+    } else {
+      resetPlayer()
+    }
+  }
+
   func windowWillClose(_ notification: Notification) {
-    stop()
+    resetPlayer()
     window = nil
     playerView = nil
     channel?.invokeMethod("playerStopped", arguments: ["generation": mediaGeneration])
@@ -170,6 +215,10 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
 
 /// 使用 AVPlayerLayer 播放视频，避免将媒体帧送入 Flutter Widget 树。
 private final class DlnaPlayerView: NSView {
+  private let loadingBackdrop = NSView()
+  private let loadingLabel = NSTextField(labelWithString: "")
+  private let loadingOverlay = NSStackView()
+
   override func makeBackingLayer() -> CALayer { AVPlayerLayer() }
   override var wantsUpdateLayer: Bool { true }
 
@@ -184,7 +233,48 @@ private final class DlnaPlayerView: NSView {
     // 视频保持原比例时，使用黑色填充上下或左右留白。
     (layer as? AVPlayerLayer)?.backgroundColor = NSColor.black.cgColor
     (layer as? AVPlayerLayer)?.videoGravity = .resizeAspect
+    let spinner = NSProgressIndicator()
+    spinner.style = .spinning
+    spinner.controlSize = .large
+    spinner.isIndeterminate = true
+    spinner.startAnimation(nil)
+    loadingLabel.textColor = .white
+    loadingLabel.font = .systemFont(ofSize: 16)
+    loadingLabel.alignment = .center
+    loadingOverlay.orientation = .vertical
+    loadingOverlay.alignment = .centerX
+    loadingOverlay.spacing = 12
+    loadingOverlay.addArrangedSubview(spinner)
+    loadingOverlay.addArrangedSubview(loadingLabel)
+    loadingBackdrop.wantsLayer = true
+    loadingBackdrop.layer?.backgroundColor = NSColor.black.cgColor
+    loadingBackdrop.translatesAutoresizingMaskIntoConstraints = false
+    loadingOverlay.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(loadingBackdrop)
+    loadingBackdrop.addSubview(loadingOverlay)
+    NSLayoutConstraint.activate([
+      loadingBackdrop.leadingAnchor.constraint(equalTo: leadingAnchor),
+      loadingBackdrop.trailingAnchor.constraint(equalTo: trailingAnchor),
+      loadingBackdrop.topAnchor.constraint(equalTo: topAnchor),
+      loadingBackdrop.bottomAnchor.constraint(equalTo: bottomAnchor),
+      loadingOverlay.centerXAnchor.constraint(equalTo: loadingBackdrop.centerXAnchor),
+      loadingOverlay.centerYAnchor.constraint(equalTo: loadingBackdrop.centerYAnchor),
+      loadingOverlay.widthAnchor.constraint(lessThanOrEqualTo: loadingBackdrop.widthAnchor, constant: -40),
+    ])
+    loadingBackdrop.isHidden = true
   }
+
+  func updateLoadingText(_ text: String) {
+    loadingLabel.stringValue = text
+    loadingLabel.isHidden = text.isEmpty
+  }
+
+  func showLoading(_ text: String) {
+    updateLoadingText(text)
+    loadingBackdrop.isHidden = false
+  }
+
+  func showVideo() { loadingBackdrop.isHidden = true }
 
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
