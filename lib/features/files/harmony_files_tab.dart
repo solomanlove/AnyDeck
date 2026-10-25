@@ -42,8 +42,8 @@ class HarmonyFilesTab extends ConsumerWidget {
         child: Column(
           children: [
             // Toolbar
-            Row(
-              children: [
+            _FilesToolbarLayout(
+              navigation: [
                 IconButton(
                   tooltip: '后退',
                   icon: const Icon(CupertinoIcons.back),
@@ -74,77 +74,67 @@ class HarmonyFilesTab extends ConsumerWidget {
                     ref.invalidate(remoteFilesProvider(request));
                   },
                 ),
-                ActionChip(
-                  avatar: const Icon(CupertinoIcons.folder_badge_person_crop, size: 14),
-                  label: const Text('/data/local/tmp/'),
-                  onPressed: () {
-                    ref.read(fileNavigationProvider.notifier).navigateTo(_defaultHarmonyPath);
-                  },
-                ),
                 const SizedBox(width: 8),
-                // Path bar
-                Expanded(
-                  child: Container(
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: navState.isEditingPath
-                        ? _PathTextField(
-                            initialPath: path,
-                            onSubmitted: (value) {
-                              ref
-                                  .read(fileNavigationProvider.notifier)
-                                  .navigateTo(value);
-                            },
-                          )
-                        : GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onDoubleTap: () {
-                              ref
-                                  .read(fileNavigationProvider.notifier)
-                                  .setEditingPath(true);
-                            },
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: _buildFileBreadcrumbs(
-                                        context,
-                                        ref,
-                                        path,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    CupertinoIcons.pencil,
-                                    size: 14,
-                                  ),
-                                  onPressed: () {
-                                    ref
-                                        .read(fileNavigationProvider.notifier)
-                                        .setEditingPath(true);
-                                  },
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  splashRadius: 16,
-                                ),
-                              ],
-                            ),
-                          ),
+              ],
+              // Path bar
+              pathBar: Container(
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                   ),
                 ),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: navState.isEditingPath
+                    ? _PathTextField(
+                        initialPath: path,
+                        onSubmitted: (value) {
+                          ref
+                              .read(fileNavigationProvider.notifier)
+                              .navigateTo(value);
+                        },
+                      )
+                    : GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onDoubleTap: () {
+                          ref
+                              .read(fileNavigationProvider.notifier)
+                              .setEditingPath(true);
+                        },
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: _buildFileBreadcrumbs(
+                                    context,
+                                    ref,
+                                    path,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(CupertinoIcons.pencil, size: 14),
+                              onPressed: () {
+                                ref
+                                    .read(fileNavigationProvider.notifier)
+                                    .setEditingPath(true);
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              splashRadius: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+              actions: [
                 const SizedBox(width: 12),
                 // Filter search
                 const FileHistoryFilterField(),
@@ -206,141 +196,145 @@ class HarmonyFilesTab extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 16),
-            if (!navState.isGridView) _buildTableHeader(context, ref),
             Expanded(
-              child: filesAsync.when(
-                loading: () => _PanelMessage(
-                  icon: CupertinoIcons.arrow_2_circlepath,
-                  title: context.l10n.t('loadingFiles'),
-                  animateIcon: true,
-                ),
-                error: (error, stackTrace) => _PanelMessage(
-                  icon: CupertinoIcons.exclamationmark_circle,
-                  title: context.l10n.t('fileListFailed'),
-                  subtitle: error.toString(),
-                ),
-                data: (items) {
-                  var filtered = items;
-                  if (!navState.showHiddenFiles) {
-                    filtered = filtered
-                        .where((f) => !f.name.startsWith('.'))
-                        .toList();
-                  }
-                  if (filterQuery.isNotEmpty) {
-                    filtered = filtered
-                        .where(
-                          (f) => f.name.toLowerCase().contains(
-                            filterQuery.toLowerCase(),
-                          ),
-                        )
-                        .toList();
-                  }
+              child: filesAsync
+                  .when(
+                    loading: () => _PanelMessage(
+                      icon: CupertinoIcons.arrow_2_circlepath,
+                      title: context.l10n.t('loadingFiles'),
+                      animateIcon: true,
+                    ),
+                    error: (error, stackTrace) => _PanelMessage(
+                      icon: CupertinoIcons.exclamationmark_circle,
+                      title: context.l10n.t('fileListFailed'),
+                      subtitle: error.toString(),
+                    ),
+                    data: (items) {
+                      var filtered = items;
+                      if (!navState.showHiddenFiles) {
+                        filtered = filtered
+                            .where((f) => !f.name.startsWith('.'))
+                            .toList();
+                      }
+                      if (filterQuery.isNotEmpty) {
+                        filtered = filtered
+                            .where(
+                              (f) => f.name.toLowerCase().contains(
+                                filterQuery.toLowerCase(),
+                              ),
+                            )
+                            .toList();
+                      }
 
-                  filtered = List<RemoteFile>.from(filtered)
-                    ..sort(
-                      (a, b) => _compareFiles(
-                        a,
-                        b,
-                        navState.sortColumn,
-                        navState.sortAscending,
-                      ),
-                    );
-
-                  if (filtered.isEmpty) {
-                    return _PanelMessage(
-                      icon: CupertinoIcons.folder_open,
-                      title: filterQuery.isNotEmpty
-                          ? '未找到匹配的文件'
-                          : context.l10n.t('emptyFolder'),
-                    );
-                  }
-
-                  if (navState.isGridView) {
-                    return _FilePreviewShortcut(
-                      files: filtered,
-                      selectedFile: selectedFile,
-                      deviceId: device.id,
-                      currentPath: path,
-                      child: GridView.builder(
-                        padding: const EdgeInsets.only(top: 8),
-                        gridDelegate:
-                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 110,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: 0.8,
-                            ),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final file = filtered[index];
-                          return _FileGridItem(
-                            file: file,
-                            deviceId: device.id,
-                            currentPath: path,
-                            canExportToPhoneFiles: true,
-                            selected:
-                                selectedFile?.matches(
-                                  device.id,
-                                  _joinRemotePath(path, file.name),
-                                ) ??
-                                false,
-                            onSelected: () => _selectRemoteFile(
-                              ref,
-                              device.id,
-                              _joinRemotePath(path, file.name),
-                            ),
-                            onOpened: () => _openRemoteFile(
-                              context,
-                              ref,
-                              device.id,
-                              path,
-                              file,
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  }
-
-                  return _FilePreviewShortcut(
-                    files: filtered,
-                    selectedFile: selectedFile,
-                    deviceId: device.id,
-                    currentPath: path,
-                    child: ListView.builder(
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final file = filtered[index];
-                        return _FileRow(
-                          index: index,
-                          file: file,
-                          deviceId: device.id,
-                          currentPath: path,
-                          canExportToPhoneFiles: true,
-                          selected:
-                              selectedFile?.matches(
-                                device.id,
-                                _joinRemotePath(path, file.name),
-                              ) ??
-                              false,
-                          onSelected: () => _selectRemoteFile(
-                            ref,
-                            device.id,
-                            _joinRemotePath(path, file.name),
-                          ),
-                          onOpened: () => _openRemoteFile(
-                            context,
-                            ref,
-                            device.id,
-                            path,
-                            file,
+                      filtered = List<RemoteFile>.from(filtered)
+                        ..sort(
+                          (a, b) => _compareFiles(
+                            a,
+                            b,
+                            navState.sortColumn,
+                            navState.sortAscending,
                           ),
                         );
-                      },
-                    ),
-                  );
-                },
-              ),
+
+                      if (filtered.isEmpty) {
+                        return _PanelMessage(
+                          icon: CupertinoIcons.folder_open,
+                          title: filterQuery.isNotEmpty
+                              ? '未找到匹配的文件'
+                              : context.l10n.t('emptyFolder'),
+                        );
+                      }
+
+                      if (navState.isGridView) {
+                        return _FilePreviewShortcut(
+                          files: filtered,
+                          selectedFile: selectedFile,
+                          deviceId: device.id,
+                          currentPath: path,
+                          child: GridView.builder(
+                            padding: const EdgeInsets.only(top: 8),
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 110,
+                                  mainAxisSpacing: 12,
+                                  crossAxisSpacing: 12,
+                                  childAspectRatio: 0.8,
+                                ),
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final file = filtered[index];
+                              return _FileGridItem(
+                                file: file,
+                                deviceId: device.id,
+                                currentPath: path,
+                                canExportToPhoneFiles: true,
+                                selected:
+                                    selectedFile?.matches(
+                                      device.id,
+                                      _joinRemotePath(path, file.name),
+                                    ) ??
+                                    false,
+                                onSelected: () => _selectRemoteFile(
+                                  ref,
+                                  device.id,
+                                  _joinRemotePath(path, file.name),
+                                ),
+                                onOpened: () => _openRemoteFile(
+                                  context,
+                                  ref,
+                                  device.id,
+                                  path,
+                                  file,
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      }
+
+                      return _FilePreviewShortcut(
+                        files: filtered,
+                        selectedFile: selectedFile,
+                        deviceId: device.id,
+                        currentPath: path,
+                        child: ListView.builder(
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final file = filtered[index];
+                            return _FileRow(
+                              index: index,
+                              file: file,
+                              deviceId: device.id,
+                              currentPath: path,
+                              canExportToPhoneFiles: true,
+                              selected:
+                                  selectedFile?.matches(
+                                    device.id,
+                                    _joinRemotePath(path, file.name),
+                                  ) ??
+                                  false,
+                              onSelected: () => _selectRemoteFile(
+                                ref,
+                                device.id,
+                                _joinRemotePath(path, file.name),
+                              ),
+                              onOpened: () => _openRemoteFile(
+                                context,
+                                ref,
+                                device.id,
+                                path,
+                                file,
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  )
+                  ._withFilesTableViewport(
+                    isGridView: navState.isGridView,
+                    header: _buildTableHeader(context, ref),
+                  ),
             ),
           ],
         ),

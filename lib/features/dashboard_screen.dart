@@ -184,6 +184,7 @@ part 'files/dashboard_file_breadcrumbs.dart';
 part 'files/dashboard_file_preview.dart';
 part 'files/dashboard_file_path_field.dart';
 part 'files/dashboard_files_table_header.dart';
+part 'files/dashboard_files_layout.dart';
 part 'files/dashboard_file_items.dart';
 part 'logcat/dashboard_logcat.dart';
 part 'logcat/harmony_logcat_tab.dart';
