@@ -18,9 +18,11 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
   @override
   AdbTerminalState build() {
+    var latestState = const AdbTerminalState();
+    listenSelf((_, next) => latestState = next);
     ref.onDispose(() {
       // 销毁时停止所有设备的所有交互式进程
-      for (final sessions in state.deviceSessions.values) {
+      for (final sessions in latestState.deviceSessions.values) {
         for (final session in sessions) {
           session.process?.kill();
         }
@@ -173,9 +175,8 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     final sessions = state.getSessions(deviceId);
     final index = sessions.indexWhere((s) => s.id == sessionId);
     if (index == -1) return;
-
     final session = sessions[index];
-    if (!session.isRunning) {
+    if (!session.isRunning || (!session.isHarmony && session.process == null)) {
       _appendLocalizedOutput(
         deviceId,
         sessionId,
@@ -184,14 +185,13 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       );
       return;
     }
-
-    if (!session.isHarmony && session.process == null) {
-      _appendLocalizedOutput(
-        deviceId,
-        sessionId,
-        'terminalOfflineCannotSend',
-        TerminalLineType.info,
-      );
+    // 空回车只换行：Android 交给 PTY 回显，鸿蒙在本地生成下一行提示符。
+    if (command.isEmpty) {
+      if (session.isHarmony) {
+        _appendOutput(deviceId, sessionId, '\$ \n', TerminalLineType.input);
+      } else {
+        session.process!.stdin.write('\n');
+      }
       return;
     }
 

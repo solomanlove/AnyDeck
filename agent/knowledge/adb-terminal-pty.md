@@ -14,6 +14,8 @@ MIX3 的 `/sbin/su` 在普通管道中可以成功进入 root shell，但不输�
 - `lib/core/terminal/terminal_newline_normalizer.dart`：按流隔离回车状态，将 CR、CRLF、MIX3 的 CRCRLF 统一为 LF；支持跨数据块换行，不等待完整行，提示符可立即显示。
 - 保留 1500 行输出上限、命令历史、原有明暗主题和进程关闭机制。无新依赖、全局 Provider 或跨窗口通信变更，不涉及投屏。
 - HarmonyOS 的 HDC 会话不提供持续的 shell 提示符；输入行固定显示本地 `$ `，提交命令的历史行显示 `$ <command>`。此提示符只用于 UI，不推断 root 权限，也不拼接到发送给 HDC 的命令。
+- Android/HarmonyOS 输入框都将空回车送到会话：Android 向 PTY 写入换行并等待设备回显；HarmonyOS 仅在本地追加 `$ ` 提示符，不启动空的 HDC 命令，也不记录空命令历史。列表末尾用于流式拼接的空行不重复渲染，输入光标紧接下一行提示符。
+- 会话销毁回调使用最近一次状态快照停止进程，避免在 Riverpod `onDispose` 生命周期中读取 `state` 触发断言。
 
 ## 行为边界
 

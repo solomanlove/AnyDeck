@@ -105,7 +105,6 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
   }
 
   void _handleSendCommand(String sessionId, String text) {
-    if (text.trim().isEmpty) return;
     ref
         .read(adbTerminalProvider.notifier)
         .sendCommand(widget.device.id, sessionId, text.trim());
@@ -380,9 +379,10 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     final promptText = session.isHarmony ? r'$ ' : rawPrompt.isEmpty
         ? ''
         : (rawPrompt.endsWith(' ') ? rawPrompt : '$rawPrompt ');
-    // 若末行是提示符，则将其收口到命令行输入行内展示，避免换行割裂
-    final historyLinesCount =
-        hasPrompt ? session.lines.length - 1 : session.lines.length;
+    // 设备提示符或换行占位空行由输入行承接，避免回车后多出空白行。
+    final lastLine = session.lines.lastOrNull;
+    final hideLast = hasPrompt || (lastLine?.text == '' && lastLine?.l10nKey == null);
+    final historyLinesCount = session.lines.length - (hideLast ? 1 : 0);
 
     return Card(
       elevation: 4,
