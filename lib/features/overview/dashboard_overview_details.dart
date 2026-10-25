@@ -7,7 +7,9 @@ extension _OverviewDetails on DeviceOverviewContent {
     return [
       _OverviewDetailData(
         label: context.l10n.t(
-          device.isHarmony ? 'cpuCoresAndArchitecture' : 'processor',
+          device.isHarmony && !overview.processor.startsWith('Kirin ')
+              ? 'cpuCoresAndArchitecture'
+              : 'processor',
         ),
         value: overview.processor,
       ),

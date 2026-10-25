@@ -116,7 +116,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           }
         }
 
-        // 并行获取鸿蒙内存、存储、IP网络、CPU及显示密度
+        // 并行获取鸿蒙内存、存储、网络、CPU、内核及显示密度
         final results = await Future.wait([
           hdc.shell(deviceId, 'cat /proc/meminfo'),
           hdc.shell(deviceId, 'df -k /data'),
@@ -126,6 +126,8 @@ final deviceOverviewProvider = StreamProvider.autoDispose
             'nproc ; param get const.product.cpu.abilist ; uname -m',
           ),
           hdc.shell(deviceId, 'hidumper -s DisplayManagerService -a -a'),
+          hdc.shell(deviceId, 'hidumper -s WifiDevice'),
+          hdc.shell(deviceId, 'uname -a'),
         ]);
 
         final memRes = results[0];
@@ -133,6 +135,8 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         final ipRes = results[2];
         final cpuRes = results[3];
         final displayRes = results[4];
+        final wifiRes = results[5];
+        final kernelRes = results[6];
 
         // 1. 内存 (RAM)
         final memInfo = DeviceMemoryInfo.parse(memRes.stdout);
@@ -174,11 +178,24 @@ final deviceOverviewProvider = StreamProvider.autoDispose
             macAddress = mac;
           }
         }
+        final ssid = wifiRes.isSuccess
+            ? HdcServiceDeviceInfo.parseWifiSsid(wifiRes.stdout)
+            : null;
+        if (ssid != null) {
+          wifiEnabled = true;
+          wifi = ssid;
+        }
 
         // 4. 处理器 CPU
-        final processor = cpuRes.isSuccess
-            ? HdcServiceDeviceInfo.parseCpuSummary(cpuRes.stdout) ?? '-'
-            : '-';
+        final processor = HdcServiceDeviceInfo.formatProcessor(
+          model,
+          cpuRes.isSuccess
+              ? HdcServiceDeviceInfo.parseCpuSummary(cpuRes.stdout)
+              : null,
+        );
+        final kernelVersion = kernelRes.isSuccess
+            ? HdcServiceDeviceInfo.parseKernelVersion(kernelRes.stdout) ?? 'OpenHarmony'
+            : 'OpenHarmony';
 
         // 5. 屏幕逻辑密度
         String logicalDensity = '-';
@@ -203,7 +220,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           serial: harmonySerial,
           androidId: '-',
           androidVersion: systemVersion,
-          kernelVersion: 'OpenHarmony',
+          kernelVersion: kernelVersion,
           processor: processor,
           storage: storage,
           memory: memoryTotal,

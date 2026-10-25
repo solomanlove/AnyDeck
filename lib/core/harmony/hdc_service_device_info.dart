@@ -93,6 +93,40 @@ extension HdcServiceDeviceInfo on HdcService {
         : '$cores cores ($architecture)';
   }
 
+  /// 仅对已确认的硬件型号补充 SoC 名称，其余设备保留 HDC 实测的 CPU 信息。
+  static String formatProcessor(String model, String? cpuSummary) {
+    final chipset = switch (model.trim().toUpperCase()) {
+      'ADA-AL00U' => 'Kirin 9000SL',
+      _ => null,
+    };
+    if (chipset == null) return cpuSummary ?? '-';
+    return cpuSummary == null ? chipset : '$chipset · $cpuSummary';
+  }
+
+  /// 从 WifiDevice 的系统能力输出中提取当前已连接网络的 SSID。
+  static String? parseWifiSsid(String output) {
+    if (!RegExp(
+      r'^\s*WiFi connection status:\s*connected\s*$',
+      caseSensitive: false,
+      multiLine: true,
+    ).hasMatch(output)) {
+      return null;
+    }
+    final ssid = RegExp(
+      r'^\s*Connection\.ssid:\s*(.+?)\s*$',
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(output)?.group(1)?.trim();
+    if (ssid == null || ssid.isEmpty || ssid == '<unknown ssid>') return null;
+    return ssid;
+  }
+
+  /// `uname -a` 中的构建编号及日期会变化，概览只展示内核标识和版本。
+  static String? parseKernelVersion(String output) {
+    final version = output.trim().split('#').first.trim();
+    return version.isEmpty ? null : version;
+  }
+
   /// 获取鸿蒙设备的真实硬件序列号 (SN)。
   ///
   /// 优先通过 `param get ohos.boot.sn` 等参数获取底层硬件序列号；
