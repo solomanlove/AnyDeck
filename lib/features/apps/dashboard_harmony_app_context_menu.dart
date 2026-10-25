@@ -52,7 +52,7 @@ extension _HarmonyAppContextMenu on _AppsTabState {
         _harmonyMenuItem(
           _HarmonyAppAction.clearCache,
           CupertinoIcons.clear_circled,
-          'clearCache',
+          'clearAppCache',
         ),
         _harmonyMenuItem(
           _HarmonyAppAction.clearData,
@@ -90,7 +90,7 @@ extension _HarmonyAppContextMenu on _AppsTabState {
         if (await _confirm(
               context,
               context.l10n
-                  .t('clearCacheFor')
+                  .t('clearAppCacheFor')
                   .replaceAll('{package}', packageName),
             ) &&
             mounted &&
@@ -104,7 +104,7 @@ extension _HarmonyAppContextMenu on _AppsTabState {
               _showSnack(
                 context,
                 context.l10n
-                    .t('clearCacheFailed')
+                    .t('clearAppCacheFailed')
                     .replaceAll('{error}', '$error'),
                 isError: true,
               );
