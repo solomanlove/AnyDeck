@@ -52,6 +52,12 @@ adb -s <device_id> shell ip -o -4 addr show
 - 若 USB 自动准备先因暂时未取得地址进入 `wirelessNoIp`，后续概览探针成功时将该过期失败状态恢复为 `wirelessReady`，避免地址已经可用仍显示红色错误。
 - 地址同时写入 `AdbWirelessCoordinator` 的会话缓存，后续点击无线连接可直接复用；不新增 ADB 命令、Timer、全列表刷新或投屏链路变更。
 
+### 2.1.3 Android 列表地址与概览保持一致（2026-10-26）
+
+- `RegisteredDevice.wifiIp` 优先解析在线 ADB transport 的地址；在代理或 NAT 环境下，它可能与概览从手机 `wlan0` 读到的 IP 不同。注册表仍保留该地址用于无线连接，不改变命令路由。
+- 设备列表 Android 行的 IP 和网段提示改为优先读取同一个 `deviceOverviewProvider` 的 `ipAddress`。概览尚未返回时暂用 `device.wifiIp`；概览明确返回 `-` 时隐藏 IP。iOS、HarmonyOS 行沿用原逻辑。
+- 设备头像已经订阅 Android 概览，行内只选择 IP 字段订阅；不增加单独的 ADB 查询或全表重绘。概览缓存先展示、在线刷新后更新，列表与详情显示同一来源。
+
 ### 2.2 身份与 mDNS
 
 - 优先 `ro.serialno`，其次 `ro.boot.serialno`；USB transport ID 与硬件 serial 不同的设备也可连接。
