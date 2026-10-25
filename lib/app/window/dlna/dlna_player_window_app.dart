@@ -254,7 +254,8 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
       await _player.stop();
     } finally {
       await windowManager.setPreventClose(false);
-      await windowManager.destroy();
+      // macOS 的 destroy 会调用 NSApp.terminate；这里只关闭当前播放子窗口。
+      await windowManager.close();
     }
   }
 

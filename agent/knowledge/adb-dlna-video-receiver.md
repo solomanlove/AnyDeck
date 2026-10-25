@@ -17,6 +17,7 @@
 6. 关闭播放窗口会停止播放器并通知 Dart；关闭 DLNA 接收开关会发送 SSDP `byebye`、释放 UDP/TCP 端口、清空订阅及两种播放器。
 - 同一投屏会话切换视频时，`SetAVTransportURI` 只清空旧媒体，AVPlayer 与 libmpv 窗口保留原尺寸并显示加载状态；新视频首帧出现后隐藏加载层。抖音切视频可能先发送 `Stop`，接收端等待 5 秒：期间收到新的 `SetAVTransportURI` / `Play` 就取消关窗，超时才关闭窗口并清除媒体会话。用户主动关闭窗口立即结束当前会话；再次投屏需重新下发媒体地址。AVPlayer 与 libmpv 相互切换时会在新窗口可见后隐藏旧窗口，跨播放器不复用同一个原生窗口。
 - 视频窗口可手动切换置顶：AVPlayer 的图钉位于 macOS 标题栏，libmpv 的图钉位于视频右上角；点击只改变当前窗口的 `floating` / `normal` 层级，不改变 DLNA 播放状态。置顶状态经主窗口服务在 AVPlayer 与 libmpv 间传递，切换媒体时沿用，关闭窗口或结束会话后恢复默认不置顶。图钉 Tooltip 复用现有中英文文案，并由主窗口在语言变化时同步到两种播放窗口。
+- libmpv 子窗口结束播放时先解除关闭拦截，再调用 `windowManager.close()` 关闭当前窗口；macOS 版 `window_manager.destroy()` 会执行 `NSApp.terminate()`，不能用于子窗口清理。
 - `RenderingControl` 的音量与静音由原生播放器分别保存；取消静音不会把先前音量重置为 100%，换片源后仍使用当前音量与静音状态。
 
 ## 名称设置与热更新
@@ -49,6 +50,7 @@
 - 2026-10-24 19:33 从 `25113PN0EC`（`192.168.31.128`）重试抖音时，手机 Logcat 的 `BDDLNASourceWrapper.detect` 报 `SocketTimeoutException`：它连接 `10.190.1.229:18583` 超时。该地址属于电脑的 `utun5` VPN，电脑 Wi-Fi `en0` 为 `192.168.31.12`，路由到手机走 `en0`。旧 SSDP 实现对所有 IPv4 网卡逐个回复 `LOCATION` 并逐个广播，导致手机选中无法访问的 VPN 地址；这解释了为何发现设备后没有进一步的 SOAP 播放命令。现按 macOS 路由选择对应网卡地址，单次 M-SEARCH 仅回复一个 `LOCATION`，组播广播也只公布组播出接口地址；地址缓存 30 秒且最多 32 条，停止服务时清空。20:06 真机复测确认 SSDP 公布 Wi-Fi 地址，并收到后续 SOAP 命令。
 - 2026-10-24 晚间复测：修复 SSDP 地址后，抖音下发 `SetAVTransportURI` / `Play`，电脑视频持续播放，但手机停在“设备连接中”，持续轮询 `GetTransportInfo`，没有发送暂停或快进。接收端当时的 SOAP 响应为 `Transfer-Encoding: chunked`、无 `Content-Length`，且 AVTransport SCPD 将状态参数错误关联到普通字符串变量，`GetMediaInfo` 也丢弃发送端 metadata。现按 AVTransport:1 规范关联状态变量、保存并回读 `CurrentURIMetaData`，SOAP 响应按 UTF-8 字节长度写入 `Content-Length`。只修正 SCPD 与 metadata 后，手机仍显示连接中；再加入 `Content-Length` 的 Debug 构建后，`25113PN0EC` 显示绿色 `AnyDeck DLNA` 和实际播放进度，暂停按钮使接收端状态变成 `PAUSED_PLAYBACK`，快进按钮下发 `Seek`。这是本机真机结果，单轮验证不能排除手机缓存或视频差异对恢复的影响。
 - 2026-10-25 鸿蒙 NEXT `nova 12 Ultra` 的 B 站真机复现：手机发送 `SetAVTransportURI` 后仅轮询 `GetTransportInfo` / `GetPositionInfo`，不发送 `Play`，因此接收端一直保持 `STOPPED` 且无窗口；其 SOAP `User-Agent` 为 `Linux/3.0.0 UPnP/1.0 Platinum/1.0.5.13`。同一投屏会话手动补发标准 `Play` 后，AVPlayer 首帧超时并切到 libmpv，电脑出现 B 站实际画面，手机进度从 `00:00/00:00` 恢复正常。现仅对该 Platinum 控制端在设置新媒体后首次查询播放状态时补发一次内部 `Play`；显式 `Play`、`Pause`、`Stop`、换源及结束会话均取消待补发状态，不记录带签名的媒体 URL。
+- 2026-10-25 `Stop` 后出现 Flutter `Lost connection to device`：这条提示指调试器与 macOS App 进程失联，不是 Android 手机断连。系统日志显示 AnyDeck 走 `NSApplication terminate:` 正常退出，且没有对应崩溃报告；源码确认 libmpv 子窗口的 `dlnaStop` 清理曾调用 `windowManager.destroy()`，其 macOS 实现直接调用 `NSApp.terminate()`。现改为只关闭当前窗口；尚需在 libmpv 实际播放后由手机结束投屏，确认主窗口和 DLNA 服务继续运行。
 
 ## B 站手机端能力边界
 
@@ -70,6 +72,7 @@
 - 连续切视频窗口生命周期：DLNA 定向分析、11 项测试及 macOS Debug 构建通过；SOAP 测试确认 `Stop` 后窗口先保留、短时间内切源取消延迟关窗、等待期结束后清除会话且可重新投屏。`25113PN0EC` 抖音真机上下切视频后，新旧视频均在 macOS 的同一 `AnyDeck DLNA` 窗口 ID `25519` 播放；手机点“结束投屏”后该窗口关闭，DLNA 服务仍监听。加载层瞬间画面、手动关窗及结束后的手机重新选择设备尚未逐项目视验证；如果 App 超过 5 秒才下发新媒体，仍会按结束投屏关闭窗口。
 - 鸿蒙 B 站状态轮询兼容：定向 `flutter analyze --no-pub`、SOAP 控制测试和 macOS Debug 构建通过。重启新构建后，同一台 `nova 12 Ultra` 的 B 站发送 `SetAVTransportURI`，约 2 秒后首次 `GetTransportInfo` 触发内部播放；电脑窗口实际出画面，手机显示 `20:46` 时长和持续变化的进度。手机暂停和继续分别到达 `Pause` / `Play`，均由新构建处理。本次视频由 AVPlayer 播放；其他视频格式、声音与切换视频仍需各自真机验证。
 - 播放窗口置顶增量：`flutter analyze --no-pub lib/core/dlna lib/features/dlna lib/app/window/dlna test/core/dlna/dlna_renderer_control_test.dart` 无问题，`flutter test --no-pub test/core/dlna` 的 11 项测试通过，`flutter build macos --debug --no-pub` 通过；尚未在实际播放窗口点击图钉验证层级与切源后的状态。
+- libmpv 关窗修复：定向 `flutter analyze --no-pub lib/app/window/dlna/dlna_player_window_app.dart lib/core/dlna` 无问题，11 项 DLNA 测试及 macOS Debug 构建通过；尚未启动新构建做手机端 `Stop` 后主窗口存活的实际验收。
 
 ## 真机验收清单
 
