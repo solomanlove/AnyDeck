@@ -72,6 +72,7 @@ void main() {
       String arguments, {
       bool rendering = false,
       bool connection = false,
+      String? userAgent,
     }) async {
       final path = connection
           ? 'connection'
@@ -89,6 +90,9 @@ void main() {
           Uri.parse('http://127.0.0.1:${service.httpPort}/$path/control'),
         );
         request.headers.set('SOAPACTION', '"$type#$action"');
+        if (userAgent != null) {
+          request.headers.set(HttpHeaders.userAgentHeader, userAgent);
+        }
         request.add(
           utf8.encode(
             '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">'
@@ -255,6 +259,31 @@ void main() {
     );
     await send('Play', '<Speed>1</Speed>');
     expect(playedUrls.last, 'http://127.0.0.1/reconnected.mp4');
+
+    // 鸿蒙版 B 站只设置 URI 并轮询状态；首次轮询应触发一次播放。
+    await send(
+      'SetAVTransportURI',
+      '<CurrentURI>http://127.0.0.1/harmony-bili.mp4</CurrentURI>',
+      userAgent: 'Linux/3.0.0 UPnP/1.0 Platinum/1.0.5.13',
+    );
+    final beforePoll = playedUrls.length;
+    await send('GetPositionInfo', '');
+    expect(playedUrls.length, beforePoll);
+    expect(await send('GetTransportInfo', ''), contains('PLAYING'));
+    expect(playedUrls.last, 'http://127.0.0.1/harmony-bili.mp4');
+    await send('GetTransportInfo', '');
+    expect(playedUrls.length, beforePoll + 1);
+
+    // 控制端自己发送 Play 时，随后轮询不得重复打开窗口。
+    await send(
+      'SetAVTransportURI',
+      '<CurrentURI>http://127.0.0.1/explicit-play.mp4</CurrentURI>',
+      userAgent: 'Linux/3.0.0 UPnP/1.0 Platinum/1.0.5.13',
+    );
+    final beforeExplicitPlay = playedUrls.length;
+    await send('Play', '<Speed>1</Speed>');
+    await send('GetTransportInfo', '');
+    expect(playedUrls.length, beforeExplicitPlay + 1);
   });
 }
 

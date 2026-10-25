@@ -2,7 +2,11 @@ part of 'dlna_renderer_service.dart';
 
 /// DLNA SOAP 控制动作与播放器路由。
 extension DlnaRendererControl on DlnaRendererService {
-  Future<Map<String, String>?> _dispatch(String action, String body) async {
+  Future<Map<String, String>?> _dispatch(
+    String action,
+    String body, {
+    String? userAgent,
+  }) async {
     switch (action) {
       case 'SetAVTransportURI':
         final raw = DlnaProtocol.element(body, 'CurrentURI')?.trim();
@@ -28,10 +32,16 @@ extension DlnaRendererControl on DlnaRendererService {
         debugPrint('[DLNA] source accepted generation=$generation');
         await _resetPlayers(keepWindow: true);
         if (generation != _mediaGeneration) return {};
+        // 鸿蒙版 B 站的 Platinum 控制端只轮询状态，不发送 Play。
+        _pendingPlatinumPlayGeneration =
+            userAgent?.contains('Platinum/1.0.5.13') == true
+            ? generation
+            : null;
         _notifyControlChange();
         unawaited(_notifySubscribers());
         return {};
       case 'Play':
+        _pendingPlatinumPlayGeneration = null;
         final generation = _mediaGeneration;
         await _playerReset;
         if (generation != _mediaGeneration) return {};
@@ -68,6 +78,7 @@ extension DlnaRendererControl on DlnaRendererService {
         unawaited(_notifySubscribers());
         return {};
       case 'Pause':
+        _pendingPlatinumPlayGeneration = null;
         if (_fallback.isActive) {
           await _fallback.invoke<bool>('dlnaPause');
         } else {
@@ -78,6 +89,7 @@ extension DlnaRendererControl on DlnaRendererService {
         unawaited(_notifySubscribers());
         return {};
       case 'Stop':
+        _pendingPlatinumPlayGeneration = null;
         _stopWindowTimer?.cancel();
         _mediaGeneration++;
         if (_currentUrl == null) {
@@ -123,6 +135,15 @@ extension DlnaRendererControl on DlnaRendererService {
         }
         return {};
       case 'GetTransportInfo':
+        if (_pendingPlatinumPlayGeneration == _mediaGeneration &&
+            _currentUrl != null &&
+            _transportState == 'STOPPED') {
+          _pendingPlatinumPlayGeneration = null;
+          debugPrint(
+            '[DLNA] Platinum controller requested playback status; starting media',
+          );
+          await _dispatch('Play', '');
+        }
         return {
           'CurrentTransportState': _transportState,
           'CurrentTransportStatus': 'OK',

@@ -47,6 +47,7 @@
 - 同一手机的抖音可以发现设备并读取 `device.xml`，选中设备后同样没有发 `SetAVTransportURI` 或 `Play`。随后对仍在运行的 AnyDeck 进程用本地 MP4 手动发送标准 SOAP `SetAVTransportURI` / `Play`，两次请求均返回 200；AVPlayer 通过 HTTP Range 读取媒体，`GetPositionInfo` 显示时长 30 秒、进度 11 秒。测试结束发送 `Stop` 并关闭临时 HTTP 服务器。这证明该进程在上一轮手机 `Stop` 后仍能接收控制并实际播放；手机 App 未下发播放动作是本轮无窗口的直接原因，但 App 为什么不下发仍需查其投屏会话或设备兼容条件。
 - 2026-10-24 19:33 从 `25113PN0EC`（`192.168.31.128`）重试抖音时，手机 Logcat 的 `BDDLNASourceWrapper.detect` 报 `SocketTimeoutException`：它连接 `10.190.1.229:18583` 超时。该地址属于电脑的 `utun5` VPN，电脑 Wi-Fi `en0` 为 `192.168.31.12`，路由到手机走 `en0`。旧 SSDP 实现对所有 IPv4 网卡逐个回复 `LOCATION` 并逐个广播，导致手机选中无法访问的 VPN 地址；这解释了为何发现设备后没有进一步的 SOAP 播放命令。现按 macOS 路由选择对应网卡地址，单次 M-SEARCH 仅回复一个 `LOCATION`，组播广播也只公布组播出接口地址；地址缓存 30 秒且最多 32 条，停止服务时清空。20:06 真机复测确认 SSDP 公布 Wi-Fi 地址，并收到后续 SOAP 命令。
 - 2026-10-24 晚间复测：修复 SSDP 地址后，抖音下发 `SetAVTransportURI` / `Play`，电脑视频持续播放，但手机停在“设备连接中”，持续轮询 `GetTransportInfo`，没有发送暂停或快进。接收端当时的 SOAP 响应为 `Transfer-Encoding: chunked`、无 `Content-Length`，且 AVTransport SCPD 将状态参数错误关联到普通字符串变量，`GetMediaInfo` 也丢弃发送端 metadata。现按 AVTransport:1 规范关联状态变量、保存并回读 `CurrentURIMetaData`，SOAP 响应按 UTF-8 字节长度写入 `Content-Length`。只修正 SCPD 与 metadata 后，手机仍显示连接中；再加入 `Content-Length` 的 Debug 构建后，`25113PN0EC` 显示绿色 `AnyDeck DLNA` 和实际播放进度，暂停按钮使接收端状态变成 `PAUSED_PLAYBACK`，快进按钮下发 `Seek`。这是本机真机结果，单轮验证不能排除手机缓存或视频差异对恢复的影响。
+- 2026-10-25 鸿蒙 NEXT `nova 12 Ultra` 的 B 站真机复现：手机发送 `SetAVTransportURI` 后仅轮询 `GetTransportInfo` / `GetPositionInfo`，不发送 `Play`，因此接收端一直保持 `STOPPED` 且无窗口；其 SOAP `User-Agent` 为 `Linux/3.0.0 UPnP/1.0 Platinum/1.0.5.13`。同一投屏会话手动补发标准 `Play` 后，AVPlayer 首帧超时并切到 libmpv，电脑出现 B 站实际画面，手机进度从 `00:00/00:00` 恢复正常。现仅对该 Platinum 控制端在设置新媒体后首次查询播放状态时补发一次内部 `Play`；显式 `Play`、`Pause`、`Stop`、换源及结束会话均取消待补发状态，不记录带签名的媒体 URL。
 
 ## B 站手机端能力边界
 
@@ -66,6 +67,7 @@
 - SSDP 多网卡修复：用模拟 `route -n get` 的单测确认 `en0` 的 `192.168.31.12` 优先于 `utun5` 的 `10.190.1.229`，无可用路由时不公布错误地址；DLNA 定向分析和相关测试通过。同时有 Wi-Fi 与 VPN 的 macOS 上已重启 AnyDeck，抖音重选设备后收到正确 `LOCATION` 和后续 SOAP 命令。
 - 抖音控制状态兼容：AVTransport SCPD 与 metadata 回读的定向分析、SOAP 测试通过；SOAP 响应增加 `Content-Length` 后，定向测试验证不再使用 chunked 传输，macOS Debug 构建通过。`25113PN0EC` 真机显示已连接和进度，发送了 `Pause` 与 `Seek`；暂停后接收端 `GetTransportInfo` 返回 `PAUSED_PLAYBACK`。不同视频连续切换时，个别视频出现加载提示和进度归零，仍需单独检查媒体 URL 与播放器错误，不能据此断定所有视频均可播。
 - 连续切视频窗口生命周期：DLNA 定向分析、11 项测试及 macOS Debug 构建通过；SOAP 测试确认 `Stop` 后窗口先保留、短时间内切源取消延迟关窗、等待期结束后清除会话且可重新投屏。`25113PN0EC` 抖音真机上下切视频后，新旧视频均在 macOS 的同一 `AnyDeck DLNA` 窗口 ID `25519` 播放；手机点“结束投屏”后该窗口关闭，DLNA 服务仍监听。加载层瞬间画面、手动关窗及结束后的手机重新选择设备尚未逐项目视验证；如果 App 超过 5 秒才下发新媒体，仍会按结束投屏关闭窗口。
+- 鸿蒙 B 站状态轮询兼容：定向 `flutter analyze --no-pub`、SOAP 控制测试和 macOS Debug 构建通过。重启新构建后，同一台 `nova 12 Ultra` 的 B 站发送 `SetAVTransportURI`，约 2 秒后首次 `GetTransportInfo` 触发内部播放；电脑窗口实际出画面，手机显示 `20:46` 时长和持续变化的进度。手机暂停和继续分别到达 `Pause` / `Play`，均由新构建处理。本次视频由 AVPlayer 播放；其他视频格式、声音与切换视频仍需各自真机验证。
 
 ## 真机验收清单
 

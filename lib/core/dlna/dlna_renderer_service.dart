@@ -86,6 +86,7 @@ class DlnaRendererService extends ChangeNotifier {
   Future<void>? _playerReset;
   bool _dashSource = false;
   int _mediaGeneration = 0;
+  int? _pendingPlatinumPlayGeneration;
   String _serverName = DlnaProtocol.serverName;
   String _loadingText = '';
   String? _currentUrl;
@@ -109,6 +110,7 @@ class DlnaRendererService extends ChangeNotifier {
     _stopWindowTimer?.cancel();
     _stopWindowTimer = null;
     _mediaGeneration++;
+    _pendingPlatinumPlayGeneration = null;
     _currentUrl = null;
     _currentMetadata = '';
     _dashSource = false;
@@ -420,7 +422,11 @@ class DlnaRendererService extends ChangeNotifier {
       response.statusCode = HttpStatus.badRequest;
       return;
     }
-    final values = await _dispatch(action, body);
+    final values = await _dispatch(
+      action,
+      body,
+      userAgent: request.headers.value(HttpHeaders.userAgentHeader),
+    );
     response.headers.contentType = ContentType('text', 'xml', charset: 'utf-8');
     final payload = values == null
         ? DlnaProtocol.soapFault
