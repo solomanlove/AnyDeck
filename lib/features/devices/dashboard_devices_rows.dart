@@ -100,23 +100,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     RegisteredDevice device,
     AirPlaySessionData? airplaySession,
   ) {
-    final wifiIp = device.wifiIp;
-    final hasIp = wifiIp != null && wifiIp.isNotEmpty;
-    final resolutionText =
-        (airplaySession != null &&
-            airplaySession.width > 0 &&
-            airplaySession.height > 0)
-        ? '${airplaySession.width} × ${airplaySession.height}'
-        : null;
-
-    // 次行展示 IP 与投屏分辨率（不展示冗长的“正在投屏”文案，节省列宽）
-    final String? subtitleText = switch ((hasIp, resolutionText != null)) {
-      (true, true) => '$wifiIp · $resolutionText',
-      (true, false) => wifiIp,
-      (false, true) => resolutionText,
-      (false, false) => null,
-    };
-
     return Expanded(
       flex: 4,
       child: Row(
@@ -170,28 +153,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                   ],
                 ),
                 // 2. 次行展示已获取的局域网 Wi-Fi IP 地址 / 投屏分辨率及警告图标
-                if (subtitleText != null) ...[
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          subtitleText,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: airplaySession != null && !hasIp
-                                ? const Color(0xFF34C759)
-                                : Colors.grey,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (hasIp) ...[
-                        DeviceSubnetWarning(wifiIp: wifiIp),
-                      ],
-                    ],
-                  ),
-                ],
+                _buildIdentifierSubtitle(device, airplaySession),
                 if (!device.isIos && !device.isHarmony)
                   DeviceWirelessStatusLabel(device: device),
               ],
@@ -204,6 +166,62 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           ),
         ],
       ),
+    );
+  }
+
+  /// Android 设备行复用概览的 WLAN IP；ADB 连接端点仍由设备模型负责命令路由。
+  Widget _buildIdentifierSubtitle(
+    RegisteredDevice device,
+    AirPlaySessionData? airplaySession,
+  ) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final overviewIp = device.isIos || device.isHarmony
+            ? null
+            : ref.watch(
+                deviceOverviewProvider(device.id).select(
+                  (value) => value.value?.ipAddress,
+                ),
+              );
+        final wifiIp = overviewIp == null
+            ? device.wifiIp
+            : (overviewIp == '-' || overviewIp.isEmpty ? null : overviewIp);
+        final hasIp = wifiIp != null && wifiIp.isNotEmpty;
+        final resolutionText =
+            (airplaySession != null &&
+                airplaySession.width > 0 &&
+                airplaySession.height > 0)
+            ? '${airplaySession.width} × ${airplaySession.height}'
+            : null;
+        final String? subtitleText = switch ((hasIp, resolutionText != null)) {
+          (true, true) => '$wifiIp · $resolutionText',
+          (true, false) => wifiIp,
+          (false, true) => resolutionText,
+          (false, false) => null,
+        };
+        if (subtitleText == null) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  subtitleText,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: airplaySession != null && !hasIp
+                        ? const Color(0xFF34C759)
+                        : Colors.grey,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (hasIp) DeviceSubnetWarning(wifiIp: wifiIp),
+            ],
+          ),
+        );
+      },
     );
   }
 
