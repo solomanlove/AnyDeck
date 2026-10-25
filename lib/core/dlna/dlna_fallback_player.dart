@@ -7,10 +7,15 @@ import 'package:flutter/services.dart';
 
 /// 在独立 Flutter 窗口中使用内置 libmpv；媒体 URL 只通过窗口通道传递。
 class DlnaFallbackPlayer {
-  DlnaFallbackPlayer({required this.onStopped, required this.onFailed});
+  DlnaFallbackPlayer({
+    required this.onStopped,
+    required this.onFailed,
+    this.onPinChanged,
+  });
 
   final void Function() onStopped;
   final void Function(String) onFailed;
+  final void Function(bool)? onPinChanged;
   static const _events = WindowMethodChannel(
     'any_deck/dlna_fallback_events',
     mode: ChannelMode.unidirectional,
@@ -18,6 +23,8 @@ class DlnaFallbackPlayer {
   WindowController? _window;
   bool _registered = false;
   bool _mediaActive = false;
+  String _pinLabel = '';
+  String _unpinLabel = '';
 
   bool get isActive => _mediaActive;
   bool get hasWindow => _window != null;
@@ -28,6 +35,7 @@ class DlnaFallbackPlayer {
     required String loadingText,
     required double volume,
     required bool muted,
+    bool alwaysOnTop = false,
   }) async {
     if (!_registered) {
       await _events.setMethodCallHandler(_handleEvent);
@@ -65,6 +73,9 @@ class DlnaFallbackPlayer {
             'loadingText': loadingText,
             'volume': volume,
             'muted': muted,
+            'alwaysOnTop': alwaysOnTop,
+            'pinLabel': _pinLabel,
+            'unpinLabel': _unpinLabel,
           })
           .timeout(const Duration(seconds: 25));
       if (opened != true) {
@@ -94,8 +105,25 @@ class DlnaFallbackPlayer {
       _window = null;
       _mediaActive = false;
       onFailed('${data['detail'] ?? 'libmpv playback failed'}');
+    } else if (call.method == 'pinChanged' && data['pinned'] is bool) {
+      onPinChanged?.call(data['pinned'] as bool);
     }
     return null;
+  }
+
+  /// 更新当前及下次创建的回退窗口图钉文案。
+  Future<void> setPinLabels(String pin, String unpin) async {
+    _pinLabel = pin;
+    _unpinLabel = unpin;
+    final window = _window;
+    if (window == null) return;
+    try {
+      await window
+          .invokeMethod<void>('dlnaSetPinLabels', {'pin': pin, 'unpin': unpin})
+          .timeout(const Duration(seconds: 3));
+    } catch (error) {
+      debugPrint('[DLNA] fallback pin label update failed: $error');
+    }
   }
 
   Future<T?> invoke<T>(String method, [Object? arguments]) async {

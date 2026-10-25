@@ -10,6 +10,7 @@ import 'package:window_manager/window_manager.dart';
 import '../multi_window_compat.dart';
 import '../sub_window_method_dispatcher.dart';
 import '../window_close_shortcut.dart';
+import 'widget/dlna_pin_button.dart';
 
 /// DLNA 的 libmpv 回退窗口；主窗口仍负责 UPnP 协议和播放状态。
 ///
@@ -38,8 +39,12 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
   bool _loading = true;
   bool _renderedFrame = false;
   bool _muted = false;
+  bool _isAlwaysOnTop = false;
+  bool _pinBusy = false;
   double _volume = 1;
   String _loadingText = '';
+  String _pinLabel = '';
+  String _unpinLabel = '';
   String? _lastError;
 
   @override
@@ -91,6 +96,9 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
         }
         _opening = true;
         _lastError = null;
+        _pinLabel = args['pinLabel'] as String? ?? _pinLabel;
+        _unpinLabel = args['unpinLabel'] as String? ?? _unpinLabel;
+        await _setAlwaysOnTop(args['alwaysOnTop'] == true);
         if (mounted) {
           setState(() {
             _loading = true;
@@ -144,6 +152,20 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
         if (text is! String) return false;
         if (mounted) setState(() => _loadingText = text);
         return true;
+      case 'dlnaSetPinLabels':
+        final labels = call.arguments;
+        if (labels is! Map ||
+            labels['pin'] is! String ||
+            labels['unpin'] is! String) {
+          return false;
+        }
+        if (mounted) {
+          setState(() {
+            _pinLabel = labels['pin'] as String;
+            _unpinLabel = labels['unpin'] as String;
+          });
+        }
+        return true;
       case 'dlnaPlay':
         await _player.play();
         return true;
@@ -184,6 +206,44 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
         return true;
     }
     return null;
+  }
+
+  /// 优先使用当前子窗口的原生通道，避免误改主窗口的层级。
+  Future<bool> _setAlwaysOnTop(bool value) async {
+    try {
+      await const MethodChannel(
+        'any_deck/window',
+      ).invokeMethod<void>('setAlwaysOnTop', value);
+    } on MissingPluginException {
+      try {
+        await windowManager.setAlwaysOnTop(value);
+      } catch (error) {
+        debugPrint('[DLNA] fallback pin failed: $error');
+        return false;
+      }
+    } catch (error) {
+      debugPrint('[DLNA] fallback pin failed: $error');
+      return false;
+    }
+    if (mounted) setState(() => _isAlwaysOnTop = value);
+    return true;
+  }
+
+  Future<void> _toggleAlwaysOnTop() async {
+    if (_pinBusy) return;
+    setState(() => _pinBusy = true);
+    try {
+      final value = !_isAlwaysOnTop;
+      if (!await _setAlwaysOnTop(value)) return;
+      await _events.invokeMethod<void>('pinChanged', {
+        'windowId': widget.windowId,
+        'pinned': value,
+      });
+    } catch (error) {
+      debugPrint('[DLNA] fallback pin notification failed: $error');
+    } finally {
+      if (mounted) setState(() => _pinBusy = false);
+    }
   }
 
   Future<void> _close({required bool notify}) async {
@@ -244,6 +304,16 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
                   ),
                 ),
               ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: DlnaPinButton(
+                pinned: _isAlwaysOnTop,
+                pinLabel: _pinLabel,
+                unpinLabel: _unpinLabel,
+                onPressed: _pinBusy ? null : _toggleAlwaysOnTop,
+              ),
+            ),
           ],
         ),
       ),

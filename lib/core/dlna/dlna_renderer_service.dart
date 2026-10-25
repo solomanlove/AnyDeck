@@ -10,6 +10,7 @@ import 'dlna_player_bridge.dart';
 import 'dlna_fallback_player.dart';
 
 part 'dlna_renderer_name.dart';
+part 'dlna_renderer_pin.dart';
 part 'dlna_renderer_control.dart';
 part 'dlna_renderer_discovery.dart';
 
@@ -36,6 +37,7 @@ class DlnaRendererService extends ChangeNotifier {
             notifyListeners();
             unawaited(_notifySubscribers());
           },
+          onPinChanged: (pinned) => _alwaysOnTop = pinned,
         );
     _player.setMethodCallHandler((call) async {
       if (call.method == 'playerStopped') {
@@ -51,6 +53,8 @@ class DlnaRendererService extends ChangeNotifier {
             arguments['generation'] as int,
           );
         }
+      } else if (call.method == 'pinChanged' && call.arguments is bool) {
+        _alwaysOnTop = call.arguments as bool;
       }
     });
   }
@@ -85,6 +89,7 @@ class DlnaRendererService extends ChangeNotifier {
   Future<void>? _fallbackOperation;
   Future<void>? _playerReset;
   bool _dashSource = false;
+  bool _alwaysOnTop = false;
   int _mediaGeneration = 0;
   int? _pendingPlatinumPlayGeneration;
   String _serverName = DlnaProtocol.serverName;
@@ -112,6 +117,7 @@ class DlnaRendererService extends ChangeNotifier {
     _mediaGeneration++;
     _pendingPlatinumPlayGeneration = null;
     _currentUrl = null;
+    _alwaysOnTop = false;
     _currentMetadata = '';
     _dashSource = false;
     _transportState = 'NO_MEDIA_PRESENT';
@@ -200,6 +206,7 @@ class DlnaRendererService extends ChangeNotifier {
     await _http?.close(force: true);
     _http = null;
     _currentUrl = null;
+    _alwaysOnTop = false;
     _currentMetadata = '';
     _mediaGeneration++;
     _dashSource = false;
@@ -283,6 +290,7 @@ class DlnaRendererService extends ChangeNotifier {
         loadingText: _loadingText,
         volume: volume,
         muted: muted,
+        alwaysOnTop: _alwaysOnTop,
       );
       if (_mediaGeneration != generation || _transportState != 'PLAYING') {
         await _fallback.stop();

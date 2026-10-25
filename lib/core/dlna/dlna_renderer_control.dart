@@ -68,6 +68,7 @@ extension DlnaRendererControl on DlnaRendererService {
             'url': _currentUrl,
             'generation': generation,
             'loadingText': _loadingText,
+            'alwaysOnTop': _alwaysOnTop,
           });
           await _fallback.stop();
         }

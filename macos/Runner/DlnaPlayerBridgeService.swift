@@ -19,6 +19,10 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   private var loadingText = ""
   private var playbackVolume: Float = 1
   private var playbackMuted = false
+  private var isAlwaysOnTop = false
+  private weak var pinButton: NSButton?
+  private var pinLabel = "Pin window"
+  private var unpinLabel = "Unpin window"
 
   func setup(messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: "any_deck/dlna_player", binaryMessenger: messenger)
@@ -36,7 +40,17 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
           return
         }
         if let text = media["loadingText"] as? String { self.loadingText = text }
-        self.play(url, generation: generation)
+        self.play(url, generation: generation, alwaysOnTop: media["alwaysOnTop"] as? Bool ?? false)
+        result(nil)
+      case "setPinLabels":
+        guard let labels = call.arguments as? [String: String],
+              let pin = labels["pin"], let unpin = labels["unpin"] else {
+          result(FlutterError(code: "invalid_labels", message: "Pin labels required", details: nil))
+          return
+        }
+        self.pinLabel = pin
+        self.unpinLabel = unpin
+        self.updatePinButton()
         result(nil)
       case "setTitle":
         guard let name = call.arguments as? String, !name.isEmpty else {
@@ -109,7 +123,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     }
   }
 
-  private func play(_ url: URL, generation: Int) {
+  private func play(_ url: URL, generation: Int, alwaysOnTop: Bool) {
     mediaGeneration = generation
     if window == nil {
       let frame = NSRect(x: 0, y: 0, width: 960, height: 540)
@@ -121,11 +135,24 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
       newWindow.isReleasedWhenClosed = false
       newWindow.delegate = self
       newWindow.center()
+      // 图钉放在系统标题栏，避免遮挡视频画面。
+      let button = NSButton(frame: NSRect(x: 0, y: 0, width: 36, height: 28))
+      button.isBordered = false
+      button.target = self
+      button.action = #selector(toggleAlwaysOnTop)
+      let accessory = NSTitlebarAccessoryViewController()
+      accessory.view = button
+      accessory.layoutAttribute = .right
+      newWindow.addTitlebarAccessoryViewController(accessory)
+      pinButton = button
       let view = DlnaPlayerView(frame: frame)
       newWindow.contentView = view
       playerView = view
       window = newWindow
     }
+    isAlwaysOnTop = alwaysOnTop
+    window?.level = alwaysOnTop ? .floating : .normal
+    updatePinButton()
     let item = AVPlayerItem(url: url)
     let newPlayer = AVPlayer(playerItem: item)
     newPlayer.volume = playbackVolume
@@ -159,6 +186,21 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     window?.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
     newPlayer.play()
+  }
+
+  @objc private func toggleAlwaysOnTop() {
+    isAlwaysOnTop.toggle()
+    window?.level = isAlwaysOnTop ? .floating : .normal
+    updatePinButton()
+    channel?.invokeMethod("pinChanged", arguments: isAlwaysOnTop)
+  }
+
+  private func updatePinButton() {
+    pinButton?.image = NSImage(systemSymbolName: isAlwaysOnTop ? "pin.fill" : "pin", accessibilityDescription: nil)
+    pinButton?.contentTintColor = isAlwaysOnTop ? .systemOrange : .secondaryLabelColor
+    let label = isAlwaysOnTop ? unpinLabel : pinLabel
+    pinButton?.toolTip = label
+    pinButton?.setAccessibilityLabel(label)
   }
 
   /// 只上报当前媒体的首次失败；日志保留状态码但不泄露签名 URL。
@@ -208,6 +250,8 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   func windowWillClose(_ notification: Notification) {
     resetPlayer()
     window = nil
+    pinButton = nil
+    isAlwaysOnTop = false
     playerView = nil
     channel?.invokeMethod("playerStopped", arguments: ["generation": mediaGeneration])
   }

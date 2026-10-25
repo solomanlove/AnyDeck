@@ -22,6 +22,8 @@ class DlnaToolbarButton extends ConsumerStatefulWidget {
 class _DlnaToolbarButtonState extends ConsumerState<DlnaToolbarButton> {
   final _service = DlnaRendererService.instance;
   String? _loadingText;
+  String? _pinLabel;
+  String? _unpinLabel;
 
   @override
   void initState() {
@@ -40,9 +42,17 @@ class _DlnaToolbarButtonState extends ConsumerState<DlnaToolbarButton> {
     super.didChangeDependencies();
     if (!Platform.isMacOS) return;
     final text = context.l10n.t('dlnaLoading');
-    if (_loadingText == text) return;
-    _loadingText = text;
-    unawaited(_service.setLoadingText(text).catchError((_) {}));
+    if (_loadingText != text) {
+      _loadingText = text;
+      unawaited(_service.setLoadingText(text).catchError((_) {}));
+    }
+    final pin = context.l10n.t('pinAlwaysOnTop');
+    final unpin = context.l10n.t('unpinAlwaysOnTop');
+    if (_pinLabel != pin || _unpinLabel != unpin) {
+      _pinLabel = pin;
+      _unpinLabel = unpin;
+      unawaited(_service.setPinLabels(pin, unpin).catchError((_) {}));
+    }
   }
 
   void _refresh() {

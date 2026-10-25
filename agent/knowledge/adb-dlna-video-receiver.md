@@ -16,6 +16,7 @@
 5. libmpv 通过 `media_kit`、`media_kit_video` 和随包内置的 `media_kit_libs_macos_video` 在独立 Flutter 子窗口播放；URL 只经窗口 MethodChannel 传递，不放入启动参数或日志。播放、暂停、跳转、音量、静音、进度和关闭控制都由主窗口的 DLNA 服务路由。
 6. 关闭播放窗口会停止播放器并通知 Dart；关闭 DLNA 接收开关会发送 SSDP `byebye`、释放 UDP/TCP 端口、清空订阅及两种播放器。
 - 同一投屏会话切换视频时，`SetAVTransportURI` 只清空旧媒体，AVPlayer 与 libmpv 窗口保留原尺寸并显示加载状态；新视频首帧出现后隐藏加载层。抖音切视频可能先发送 `Stop`，接收端等待 5 秒：期间收到新的 `SetAVTransportURI` / `Play` 就取消关窗，超时才关闭窗口并清除媒体会话。用户主动关闭窗口立即结束当前会话；再次投屏需重新下发媒体地址。AVPlayer 与 libmpv 相互切换时会在新窗口可见后隐藏旧窗口，跨播放器不复用同一个原生窗口。
+- 视频窗口可手动切换置顶：AVPlayer 的图钉位于 macOS 标题栏，libmpv 的图钉位于视频右上角；点击只改变当前窗口的 `floating` / `normal` 层级，不改变 DLNA 播放状态。置顶状态经主窗口服务在 AVPlayer 与 libmpv 间传递，切换媒体时沿用，关闭窗口或结束会话后恢复默认不置顶。图钉 Tooltip 复用现有中英文文案，并由主窗口在语言变化时同步到两种播放窗口。
 - `RenderingControl` 的音量与静音由原生播放器分别保存；取消静音不会把先前音量重置为 100%，换片源后仍使用当前音量与静音状态。
 
 ## 名称设置与热更新
@@ -68,6 +69,7 @@
 - 抖音控制状态兼容：AVTransport SCPD 与 metadata 回读的定向分析、SOAP 测试通过；SOAP 响应增加 `Content-Length` 后，定向测试验证不再使用 chunked 传输，macOS Debug 构建通过。`25113PN0EC` 真机显示已连接和进度，发送了 `Pause` 与 `Seek`；暂停后接收端 `GetTransportInfo` 返回 `PAUSED_PLAYBACK`。不同视频连续切换时，个别视频出现加载提示和进度归零，仍需单独检查媒体 URL 与播放器错误，不能据此断定所有视频均可播。
 - 连续切视频窗口生命周期：DLNA 定向分析、11 项测试及 macOS Debug 构建通过；SOAP 测试确认 `Stop` 后窗口先保留、短时间内切源取消延迟关窗、等待期结束后清除会话且可重新投屏。`25113PN0EC` 抖音真机上下切视频后，新旧视频均在 macOS 的同一 `AnyDeck DLNA` 窗口 ID `25519` 播放；手机点“结束投屏”后该窗口关闭，DLNA 服务仍监听。加载层瞬间画面、手动关窗及结束后的手机重新选择设备尚未逐项目视验证；如果 App 超过 5 秒才下发新媒体，仍会按结束投屏关闭窗口。
 - 鸿蒙 B 站状态轮询兼容：定向 `flutter analyze --no-pub`、SOAP 控制测试和 macOS Debug 构建通过。重启新构建后，同一台 `nova 12 Ultra` 的 B 站发送 `SetAVTransportURI`，约 2 秒后首次 `GetTransportInfo` 触发内部播放；电脑窗口实际出画面，手机显示 `20:46` 时长和持续变化的进度。手机暂停和继续分别到达 `Pause` / `Play`，均由新构建处理。本次视频由 AVPlayer 播放；其他视频格式、声音与切换视频仍需各自真机验证。
+- 播放窗口置顶增量：`flutter analyze --no-pub lib/core/dlna lib/features/dlna lib/app/window/dlna test/core/dlna/dlna_renderer_control_test.dart` 无问题，`flutter test --no-pub test/core/dlna` 的 11 项测试通过，`flutter build macos --debug --no-pub` 通过；尚未在实际播放窗口点击图钉验证层级与切源后的状态。
 
 ## 真机验收清单
 
@@ -77,3 +79,4 @@
 4. 关闭播放器窗口与关闭 DLNA 开关，确认手机端状态更新、电脑停止播放。
 5. 验证 macOS Light/Dark 下图标状态与中英文文案；确认 Android scrcpy 与 iOS AirPlay 原有操作不受影响。
 6. 用可公开访问的非 DRM DASH MPD 验证 libmpv 子窗口首帧、音画同步、暂停/继续、Seek、音量/静音、关闭与重新投屏；再用此前失败的 B 站视频对照 `AVPlayer failed`、`starting libmpv fallback`、`libmpv first frame rendered` 或脱敏错误日志。验证失败/窗口关闭后没有残留子窗口或播放资源。
+7. 分别在 AVPlayer 与 libmpv 播放窗口点击图钉，切换到其他 App 确认置顶，再取消置顶确认恢复；切换视频及播放器验证状态沿用，结束投屏后重新投屏确认默认不置顶。

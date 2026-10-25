@@ -306,6 +306,7 @@ class _RecordingFallbackPlayer extends DlnaFallbackPlayer {
     required String loadingText,
     required double volume,
     required bool muted,
+    bool alwaysOnTop = false,
   }) async {
     openedUrl = url;
     _active = true;
