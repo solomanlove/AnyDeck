@@ -14,11 +14,11 @@
 | `adb-github-feedback` | GitHub Issues 意见反馈 | active | 设置页标题与正文编辑、环境信息快照、分类草稿保留、长正文复制兜底、网页模板及验证边界 | `features/feedback/`, `core/process/`, `.github/ISSUE_TEMPLATE/` |
 | `adb-local-apk-inspector` | macOS 本地 APK 详情与安装 | active | Finder 文件关联、独立窗口、Rust 离线解析、签名信息与主窗口安装队列、缓存刷新及回归边界 | `core/apk/`, `features/apk/`, `app/window/apk/`, `rust/apk_inspector/` |
 | `adb-unified-app-detail-view` | 应用详情统一展示模型与 UI | active | 记录本地 APK 与已安装应用如何转换为统一 `AppDetailViewData`，并复用同一分栏、概要与 Tabs Widget | `app/widget/`, `features/apk/`, `features/apps/` |
-| `adb-terminal-pty` | 终端 PTY 与 root 提示符 | active | 记录真实 shell 回显、su 提权显示、目录变化、流式换行处理与回归边界 | `core/terminal/`, `features/terminal/` |
+| `adb-terminal-pty` | 终端 PTY 与 root 提示符 | active | 记录 Android 真实 shell 回显与 root 提示符、HarmonyOS 本地 `$` 输入提示符、流式换行处理与回归边界 | `core/terminal/`, `features/terminal/` |
 | `adb-app-permissions` | 应用权限分类与批量撤销 | active | 记录动态 / 静态 / 未知权限分类、当前用户隔离、批量撤销与回读结果、共享面板及回归验证 | `core/apps/`, `features/apps/` |
 | `adb-app-native-library-copy` | 应用原生库名称复制 | active | 记录应用详情原生库 Tab 的 `.so` 库名 Clipboard 复制、统一反馈与原生库规则拆分边界 | `features/apps/` |
-| `adb-app-default-icons` | 应用图标缺失时的平台回退 | active | 记录真实图标优先、文件缺失或损坏时按 Android/HarmonyOS 展示本地默认资源，以及资源来源和验证边界 | `features/apps/`, `assets/brand/` |
-| `adb-harmony-app-analysis` | HarmonyOS 已安装应用独立分析 | active | 记录 HDC `bm dump` 能力探测、HarmonyOS 专属详情模型与页面、失败不跳转和 Android 链路隔离 | `core/apps/`, `features/apps/` |
+| `adb-app-default-icons` | 应用图标缺失时的平台回退 | active | 记录应用与进程真实图标优先、文件缺失或损坏时按 Android/HarmonyOS 展示本地默认资源，以及资源来源和验证边界 | `features/apps/`, `features/processes/`, `assets/brand/` |
+| `adb-harmony-app-analysis` | HarmonyOS 已安装应用独立分析 | active | 记录 HDC `bm dump` 能力探测、独立的开发厂商与开发者/组织字段、HarmonyOS 专属详情页、失败不跳转和 Android 链路隔离 | `core/apps/`, `features/apps/` |
 | `adb-app-signature-details` | 应用签名证书详情 | active | 记录已安装应用当前/历史 signer、X.509 证书字段、MD5/SHA-1/SHA-256 指纹及 Android Helper DEX 数据链路 | `core/apps/`, `features/apps/`, `tool/android_helper/` |
 | `adb-usage-companion` | 手机使用统计、位置记录与 ADB 历史同步 | active | 可见授权、系统统计口径、位置前台服务、手机离线库、分页游标与 SQLite 事务、内嵌地图底图、图标复用及验证边界 | `core/usage/`, `features/apps/`, `tool/usage_companion/` |
 | `adb-device-rust-sessions` | 屏幕投屏、摄像头、麦克风与手机剪贴板 Rust 底座 | active | 彻底移除 C++ 插件，屏幕投屏、VideoToolbox 硬解、AudioQueue、触控注入、摄像头、麦克风、剪贴板全面由纯 Rust 底座承接 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
@@ -28,9 +28,10 @@
 | `adb-emulator-management` | 模拟器启动诊断与配置详情 | active | 记录启动诊断、ADB 授权与离线状态、定向重连/关闭、冷启动与 SDK 环境、标题工具栏、详情及中英文配置搜索 | `core/emulator/`, `core/providers/`, `features/devices/` |
 | `adb-desktop-platform-chrome` | 跨平台桌面窗口与工作区 UI | active | macOS 原生按钮避让、Windows 主窗口标题栏、Linux 原生装饰、子窗口标题同步、公共主题表面与宿主验证边界 | `app/window/`, `features/overview/`, `linux/runner/` |
 | `adb-desktop-window-shortcuts` | 桌面独立窗口快捷键机制 | active | 记录控制台窗口、模拟器管理窗口等独立子窗口的本地快捷键关闭策略与职责边界 | `app/window/` (桌面多窗口) |
-| `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、内存占用与容量卡布局，以及控制（含快捷跳转友好反馈）、应用（含 DEBUG 标识保留与缓存恢复）、文件预览、鸿蒙文件导出到手机文件管理、日志、终端、进程右键复制与停止、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
+| `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、内存占用与容量卡布局，以及控制、应用、鸿蒙文件页单一路径导航、日志紧凑视图时间配色、终端、鸿蒙进程 CPU/内存采样及进程操作、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录 USB 自动准备监听、2 秒等待与就绪检测、实时 Wi-Fi IP、在线 TCP 地址优先与旧缓存修复、网段提示与主机网络快照同步、TCP 优先和目标 mDNS 回退、TLS 切换恢复、双语状态及手动连接指南 | `core/adb/wireless/`, `core/providers/`, `features/devices/` |
 | `hdc-wireless-debugging` | HarmonyOS HDC 无线调试增强 | active | 记录身份绑定历史、USB/TCP 双通道、USB 回读 IP、退避重连、Remote HDC Server 与开发板 UART 边界 | `core/harmony/wireless/`, `core/providers/`, `features/devices/` |
+| `hdc-harmony-overview-hardware-network` | 鸿蒙设备概览硬件与网络信息 | active | 记录 HDC 读取当前 SSID、精确型号处理器映射和内核版本解析及回退边界 | `core/harmony/`, `core/providers/`, `features/overview/` |
 | `devices_manager` | 设备唯一标识判断机制 | active | 记录 AdbDevice.id 命令路由、HDC 在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
 | `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、设备信息悬浮层、手机剪贴板入口、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `rust/device_bridge/`, `core/harmony/` |

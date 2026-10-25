@@ -141,6 +141,10 @@
 ### 功能说明
 设备沙盒与外部存储的文件浏览器，支持以表格和网格视图呈现，并按目录、链接、图片、视频、音频、文档、压缩包、Android 安装包、源码等类型显示差异化 icon。提供基础的目录跳转历史记录（前进、后退、返回上级目录、手动编辑绝对路径）、显示隐藏文件开关、目录与文件的增删查改。左侧快捷栏可直接访问 Internal Storage、DCIM、Download、Pictures、Music、Movies、Documents 等 Android 公共目录，也支持把当前目录保存为设备级常用文件夹；窄窗口会自动收缩为图标模式。支持设备间的双向文件传输：提供下载（Pull）到本地、上传（Push）到设备；并深度集成桌面拖拽功能（Drag & Drop）。
 
+HarmonyOS 文件页默认进入 `/data/local/tmp/`，工具栏只保留可点击、可编辑的面包屑路径，不再重复显示固定路径 Chip。
+
+文件页在窄窗口下将工具栏拆成导航/路径与筛选/操作两行；列表模式的表头和文件行共用横向滚动区域，最小内容宽度为 820px，避免固定列宽导致 `RenderFlex` 黄色溢出警告。网格模式继续使用窗口实际宽度。
+
 ### 底层原理与命令
 1. **文件目录列表解析**：
    - 运行 `adb shell ls -la <path>`。
@@ -182,6 +186,8 @@
 ### 功能说明
 实时的 Android 系统日志（Logcat）流监视器。提供日志级别的多色渲染；支持根据日志级别（V/D/I/W/E/F）、特定 Tag、包名（PID）以及任意关键词进行实时正则表达式检索过滤；支持暂停/继续（防进程泄漏）、快速清空日志缓存区以及导出当前日志文件。
 
+紧凑视图的时间列使用 `ColorScheme.onSurfaceVariant`，随 Light/Dark Theme 切换；日志级别颜色仍按 Level 独立渲染。
+
 ### 底层原理与命令
 1. **实时数据流订阅**：
    - 后台通过 `Process.start` 启动 `adb -s <deviceId> logcat -v threadtime`，返回标准输出流。
@@ -218,6 +224,7 @@
 ### 底层原理与命令
 1. **单次非阻塞快照获取**：
    - 使用 `adb shell top -b -n 1`（`-b` batch mode 批处理模式，`-n 1` 执行一次后退出）。
+   - HarmonyOS 使用 `hdc shell top -b -n 1` 同时读取 `%CPU`、`RES` 与 CPU 时间；设备不支持 `top` 或表格不可解析时回退 `hdc shell ps -ef`，此时 CPU 与内存保持未知。
    - 规避使用持续输出的 `top` 导致频繁解析阻塞 UI 线程。
 2. **文本表格解析器**：
    - 根据返回的首行属性表头（PID、USER、RES/RSS、CPU、TIME、ARGS 等）所在的索引位置，动态定位数据列，避免在不同 ROM（其 top 格式可能有微小偏差）上发生错位。
@@ -225,7 +232,8 @@
 3. **应用名称与图标复用**：
    - 进程名先按第一个 `:` 提取主 package，例如 `com.tencent.mm:push` 归属 `com.tencent.mm`；展示时使用“应用名:子进程后缀”，第二行保留原始进程名。
    - 进程表与应用 Tab 共用 `PackageMetadataResolver`，优先读取当前设备元数据，缺失时复用全局内存、历史 `SharedPreferences` 和本地图标缓存；缓存异步预热完成后通过 `packageMetadataRevisionProvider` 刷新可见行。
-   - 不为 3 秒进程轮询新增图标提取或 ADB package 查询，未命中应用元数据的 native/system 进程继续显示原始进程名和语义占位 icon。
+   - 真实图标缺失或解码失败时，进程列表按设备平台选择 `android_default_app_icon` 或 `harmony_default_app_icon`。
+   - 不为 3 秒进程轮询新增图标提取或 ADB package 查询，未命中应用元数据的 native/system 进程继续显示原始进程名和平台默认图标。
 4. **右键进程操作**：
    - 在进程行的 `onSecondaryTapDown` 中使用全局指针坐标打开 context menu，并将右键目标作为后续确认与执行的唯一对象，避免自动刷新或旧选中态导致停止错误 PID。
    - “复制进程名”通过 `Clipboard.setData` 写入 `AdbProcess.name` 原始值，并复用 Dashboard 全局轻提示反馈复制结果。
@@ -388,7 +396,7 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
 | 清除数据 | `pm clear <pkg>` | `bm clean -n <bundle> -d` |
 | 冻结/解冻 | `pm disable-user` / `pm enable` | `bm disable -n` / `bm enable -n` |
 | 日志 | `adb logcat -v threadtime` | `hdc hilog` |
-| 进程列表 | `adb shell top -b -n 1` | `hdc shell ps -ef` |
+| 进程列表 | `adb shell top -b -n 1` | `hdc shell top -b -n 1`，失败回退 `ps -ef` |
 | 强停进程 | `am force-stop <pkg>` | `aa force-stop <bundle>` |
 | 终端 | `adb shell -tt` | `hdc shell` |
 | 终端命令执行 | 长驻 PTY，命令写入 stdin | 不支持 stdio TTY；每条命令独立执行 `hdc -t <device> shell <command>`，输出回写当前会话并按提交顺序排队 |
