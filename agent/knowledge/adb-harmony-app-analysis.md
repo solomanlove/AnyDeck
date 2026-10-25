@@ -25,7 +25,7 @@ HarmonyAppsTab
 
 `bm dump -n` JSON 当前提取以下信息：
 
-1. Bundle：`bundleName`、版本、兼容/目标 API、Compile SDK、CPU ABI、发布类型、安装来源、开发者/组织、签名指纹、安装/更新时间和 code path。
+1. Bundle：`bundleName`、版本、兼容/目标 API、Compile SDK、CPU ABI、发布类型、安装来源、开发厂商（`vendor`）、开发者/组织（`applicationInfo.organization`）、签名指纹、安装/更新时间和 code path。两者作为独立字段展示，避免 `organization` 覆盖 `vendor`。
 2. HAP Module：模块名、主入口、HAP 路径、设备类型、Native Library。
 3. 组件：`UIAbility`、`ExtensionAbility`、入口源码、进程、可见状态、Action、Entity 和组件权限。
 4. 权限：声明权限、所属 Module、申请原因与使用场景。

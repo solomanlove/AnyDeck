@@ -96,6 +96,7 @@ void main() {
     expect(detail.bundleName, 'com.example.harmony');
     expect(detail.versionName, '1.2.3');
     expect(detail.targetApiVersion, 60101024);
+    expect(detail.vendor, 'example');
     expect(detail.organization, 'Example Ltd.');
     expect(detail.modules, hasLength(1));
     expect(detail.modules.single.nativeLibraries, ['libexample.so']);

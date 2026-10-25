@@ -129,6 +129,10 @@ class _HarmonyAppAnalysisViewState extends State<_HarmonyAppAnalysisView> {
         ]),
       ),
       AppDetailSummaryField(
+        label: context.l10n.t('harmonyVendor'),
+        value: _harmonyValue(detail.vendor),
+      ),
+      AppDetailSummaryField(
         label: context.l10n.t('harmonyPublisher'),
         value: _harmonyValue(
           detail.organization.isNotEmpty ? detail.organization : detail.vendor,
