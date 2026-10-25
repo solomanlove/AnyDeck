@@ -165,6 +165,7 @@ extension _ProcessesTabView on _ProcessesTabState {
 
               return _ProcessTable(
                 deviceId: widget.device.id,
+                isHarmony: widget.device.isHarmony,
                 processes: filtered,
                 packages: packages,
                 selectedPid: _selectedPid,

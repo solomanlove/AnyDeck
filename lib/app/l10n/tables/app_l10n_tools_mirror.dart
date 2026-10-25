@@ -1,6 +1,6 @@
 /// tools_mirror 模块文案表。新增 key 时必须同时补齐 zh/en。
 const toolsMirrorZh = {
-  'processes': '进程管理',
+  'processes': '进程',
   'processName': '进程名称',
   'cpuPercent': '% CPU',
   'cpuTime': 'CPU 时间',

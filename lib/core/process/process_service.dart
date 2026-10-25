@@ -33,17 +33,22 @@ class ProcessService {
 
   ProcessService(this._adb, [this._hdc]);
 
-  /// 获取设备上当前运行的所有进程。鸿蒙走 `ps -ef`，安卓走 `top -b -n 1`。
+  /// 获取设备上当前运行的所有进程。鸿蒙优先使用 `top` 读取 CPU/内存，失败时回退 `ps`。
   Future<List<AdbProcess>> getProcesses(
     String deviceId, {
     bool isHarmony = false,
   }) async {
     if (isHarmony && _hdc != null) {
-      final result = await _hdc.shell(deviceId, 'ps -ef');
-      if (!result.isSuccess) {
-        throw Exception(result.message);
+      final topResult = await _hdc.shell(deviceId, 'top -b -n 1');
+      if (topResult.isSuccess) {
+        final processes = parseTopOutput(topResult.stdout);
+        if (processes.isNotEmpty) return processes;
       }
-      return parseHarmonyPsOutput(result.stdout);
+      final psResult = await _hdc.shell(deviceId, 'ps -ef');
+      if (!psResult.isSuccess) {
+        throw Exception(psResult.message);
+      }
+      return parseHarmonyPsOutput(psResult.stdout);
     }
     final result = await _adb.shellArgs(deviceId, ['top', '-b', '-n', '1']);
     if (!result.isSuccess) {

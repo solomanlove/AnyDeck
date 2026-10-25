@@ -50,6 +50,7 @@ class _ProcessTableWidths {
 
 class _ProcessTable extends ConsumerStatefulWidget {
   final String deviceId;
+  final bool isHarmony;
   final List<AdbProcess> processes;
   final List<AdbPackage> packages;
   final String? selectedPid;
@@ -62,6 +63,7 @@ class _ProcessTable extends ConsumerStatefulWidget {
 
   const _ProcessTable({
     required this.deviceId,
+    required this.isHarmony,
     required this.processes,
     required this.packages,
     required this.selectedPid,
@@ -324,9 +326,11 @@ class _ProcessTableState extends ConsumerState<_ProcessTable> {
     );
   }
 
-  /// 与应用 Tab 保持一致：真实图标不可用时展示 Android 默认应用图标。
+  /// 与应用 Tab 保持一致：真实图标不可用时按设备系统展示默认应用图标。
   Widget _buildFallbackIcon() => Image.asset(
-    AppIcons.androidDefaultAppIcon,
+    widget.isHarmony
+        ? AppIcons.harmonyDefaultAppIcon
+        : AppIcons.androidDefaultAppIcon,
     fit: BoxFit.contain,
   );
 }

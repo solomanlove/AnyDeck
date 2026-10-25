@@ -126,18 +126,18 @@ void main() {
           .skip(1)
           .toList();
 
-      // 验证 Android 工具列表前几个按顺序为：主页、控制、应用、进程管理、文件、日志、终端调试
+      // 验证 Android 工具列表前几个按顺序为：主页、控制、应用、进程、文件、日志、终端调试
       final androidAppsIndex = androidTooltips.indexOf('应用');
-      final androidProcessesIndex = androidTooltips.indexOf('进程管理');
+      final androidProcessesIndex = androidTooltips.indexOf('进程');
       final androidFilesIndex = androidTooltips.indexOf('文件');
 
       expect(androidAppsIndex != -1, isTrue);
       expect(androidProcessesIndex != -1, isTrue);
       expect(androidFilesIndex != -1, isTrue);
       expect(androidProcessesIndex, equals(androidAppsIndex + 1),
-          reason: 'Android 端 进程管理 应紧随 应用');
+          reason: 'Android 端 进程 应紧随 应用');
       expect(androidFilesIndex, equals(androidProcessesIndex + 1),
-          reason: 'Android 端 文件 应紧随 进程管理');
+          reason: 'Android 端 文件 应紧随 进程');
 
       // 2. 渲染 HarmonyOS 设备侧边栏
       await tester.pumpWidget(
@@ -178,18 +178,18 @@ void main() {
           .skip(1)
           .toList();
 
-      // 验证 HarmonyOS 端 进程管理 也紧随 应用，且在 文件 之前
+      // 验证 HarmonyOS 端 进程 也紧随 应用，且在 文件 之前
       final harmonyAppsIndex = harmonyTooltips.indexOf('应用');
-      final harmonyProcessesIndex = harmonyTooltips.indexOf('进程管理');
+      final harmonyProcessesIndex = harmonyTooltips.indexOf('进程');
       final harmonyFilesIndex = harmonyTooltips.indexOf('文件');
 
       expect(harmonyAppsIndex != -1, isTrue);
       expect(harmonyProcessesIndex != -1, isTrue);
       expect(harmonyFilesIndex != -1, isTrue);
       expect(harmonyProcessesIndex, equals(harmonyAppsIndex + 1),
-          reason: 'HarmonyOS 端 进程管理 应紧随 应用');
+          reason: 'HarmonyOS 端 进程 应紧随 应用');
       expect(harmonyFilesIndex, equals(harmonyProcessesIndex + 1),
-          reason: 'HarmonyOS 端 文件 应紧随 进程管理');
+          reason: 'HarmonyOS 端 文件 应紧随 进程');
 
       // 3. 验证 HarmonyOS 所包含的所有共享工具在 Android 中的相对顺序完全一致
       final sharedInAndroid =
