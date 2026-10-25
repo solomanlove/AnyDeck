@@ -90,7 +90,7 @@ class _CompactLogcatListState extends State<_CompactLogcatList> {
                                 child: Text(
                                   _compactLogcatTime(entry.timestamp),
                                   style: textStyle.copyWith(
-                                    color: Colors.black87,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
