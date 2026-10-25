@@ -235,8 +235,10 @@ class _AppsTabState extends ConsumerState<AppsTab> {
           const SizedBox(width: 8),
           FilledButton.icon(
             icon: const Icon(CupertinoIcons.square_arrow_down),
-            label: Text(context.l10n.t('installApk')),
-            onPressed: _installApk,
+            label: Text(
+              context.l10n.t(widget.device.isHarmony ? 'installHap' : 'installApk'),
+            ),
+            onPressed: _installPackage,
           ),
         ],
       ),
@@ -267,7 +269,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (_checkedPackages.isNotEmpty) ...[
+                    if (widget.device.isHarmony || _checkedPackages.isNotEmpty) ...[
                       _AppsBatchActionsToolbar(
                         deviceId: widget.device.id,
                         checkedPackages: _checkedPackages,
@@ -335,15 +337,18 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                       child: _isGridView
                           ? _PackageGrid(
                               deviceId: widget.device.id,
+                              isHarmony: widget.device.isHarmony,
                               packages: filtered,
                               selectedPackage: _selectedPackage,
                               checkedPackages: _checkedPackages,
                               onToggleCheck: _toggleCheckPackage,
                               onOpened: _openPackage,
+                              onContextMenuRequested: _showHarmonyAppContextMenu,
                               gridItemSize: _gridItemSize,
                             )
                           : _PackageTable(
                               deviceId: widget.device.id,
+                              isHarmony: widget.device.isHarmony,
                               packages: filtered,
                               totalCount: items.length,
                               selectedPackage: _selectedPackage,
@@ -352,6 +357,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                               onToggleCheckAll: () =>
                                   _toggleCheckAllPackages(filtered),
                               onOpened: _openPackage,
+                              onContextMenuRequested: _showHarmonyAppContextMenu,
                             ),
                     ),
                   ],
@@ -597,16 +603,24 @@ class _AppsTabState extends ConsumerState<AppsTab> {
   String _harmonyDetailKey(String packageName) =>
       '${widget.device.id}:$packageName';
 
-  /// 打开宿主机文件选择器并安装选中的 APK。
-  Future<void> _installApk() async {
-    const group = XTypeGroup(label: 'APK', extensions: ['apk']);
+  /// 按设备平台选择 HAP 或 APK，并调用对应的安装命令。
+  Future<void> _installPackage() async {
+    final isHarmony = widget.device.isHarmony;
+    final group = XTypeGroup(
+      label: isHarmony ? 'HAP' : 'APK',
+      extensions: [isHarmony ? 'hap' : 'apk'],
+    );
     final file = await openFile(acceptedTypeGroups: [group]);
     if (file == null || !mounted) {
       return;
     }
-    final result = await ref
-        .read(appManagementServiceProvider)
-        .installApk(widget.device.id, file.path);
+    final result = isHarmony
+        ? await ref
+            .read(hdcServiceProvider)
+            .installApp(widget.device.id, file.path)
+        : await ref
+            .read(appManagementServiceProvider)
+            .installApk(widget.device.id, file.path);
     if (!mounted) {
       return;
     }

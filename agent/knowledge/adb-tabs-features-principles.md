@@ -104,6 +104,8 @@
 
 应用页安装入口按设备平台区分：Android 显示“安装 APK”，只选择 `.apk` 并调用 ADB 安装；HarmonyOS 显示“安装 HAP”，只选择 `.hap` 并调用 `HdcService.installApp`。安装成功后复用当前应用列表刷新流程。
 
+HarmonyOS 列表先显示 `bm dump -a -l` 的基础名称，再以有限并发逐包调用 `bm dump -n` 补齐版本、目标 API 和安装时间；`du -sk` 仅读取安装目录占用，权限拒绝时显示“无权限”，不得把它伪装成包含应用数据与缓存的总占用。鸿蒙列表隐藏最低 SDK 列，单应用操作移入右键菜单，批量管理栏常驻且无选中应用时禁用批量动作；Android 列表交互保持原样。
+
 ### 底层原理与命令
 1. **应用列表获取**：
    - 第三方应用列表：`adb shell pm list packages -f -3`

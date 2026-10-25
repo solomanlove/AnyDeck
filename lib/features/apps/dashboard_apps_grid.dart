@@ -3,20 +3,24 @@ part of '../dashboard_screen.dart';
 class _PackageGrid extends ConsumerWidget {
   const _PackageGrid({
     required this.deviceId,
+    required this.isHarmony,
     required this.packages,
     required this.selectedPackage,
     required this.checkedPackages,
     required this.onToggleCheck,
     required this.onOpened,
+    required this.onContextMenuRequested,
     required this.gridItemSize,
   });
 
   final String deviceId;
+  final bool isHarmony;
   final List<AdbPackage> packages;
   final String? selectedPackage;
   final Set<String> checkedPackages;
   final ValueChanged<String> onToggleCheck;
   final ValueChanged<String> onOpened;
+  final void Function(AdbPackage package, Offset position) onContextMenuRequested;
   final double gridItemSize;
 
   @override
@@ -34,12 +38,15 @@ class _PackageGrid extends ConsumerWidget {
         final package = packages[index];
         return _PackageGridItem(
           deviceId: deviceId,
+          isHarmony: isHarmony,
           package: package,
           selected: package.name == selectedPackage,
           checked: checkedPackages.contains(package.name),
           isAnyChecked: checkedPackages.isNotEmpty,
           onCheckChanged: (_) => onToggleCheck(package.name),
           onOpened: () => onOpened(package.name),
+          onContextMenuRequested: (position) =>
+              onContextMenuRequested(package, position),
           size: gridItemSize,
         );
       },
@@ -50,22 +57,26 @@ class _PackageGrid extends ConsumerWidget {
 class _PackageGridItem extends ConsumerStatefulWidget {
   const _PackageGridItem({
     required this.deviceId,
+    required this.isHarmony,
     required this.package,
     required this.selected,
     required this.checked,
     required this.isAnyChecked,
     required this.onCheckChanged,
     required this.onOpened,
+    required this.onContextMenuRequested,
     required this.size,
   });
 
   final String deviceId;
+  final bool isHarmony;
   final AdbPackage package;
   final bool selected;
   final bool checked;
   final bool isAnyChecked;
   final ValueChanged<bool?> onCheckChanged;
   final VoidCallback onOpened;
+  final ValueChanged<Offset> onContextMenuRequested;
   final double size;
 
   @override
@@ -91,6 +102,9 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onOpened,
+        onSecondaryTapDown: widget.isHarmony
+            ? (details) => widget.onContextMenuRequested(details.globalPosition)
+            : null,
         child: AnimatedScale(
           scale: _isHovered ? 1.04 : 1.0,
           duration: const Duration(milliseconds: 150),

@@ -1,6 +1,7 @@
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/apps/app_management_service.dart';
+import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/apps/harmony_app_detail.dart';
 import 'package:any_deck/core/harmony/hdc_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +20,28 @@ class _FakeHarmonyHdcService extends HdcService {
   }) async {
     commands.add('$deviceId:$command');
     return result;
+  }
+}
+
+/// 按命令返回不同的 HDC 输出，覆盖元数据与目录权限两条路径。
+class _FakeSummaryHdcService extends HdcService {
+  _FakeSummaryHdcService(this.sizeOutput) : super(executable: 'hdc');
+
+  final String sizeOutput;
+  final commands = <String>[];
+
+  @override
+  Future<AdbResult> shell(
+    String deviceId,
+    String command, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    commands.add(command);
+    return AdbResult(
+      exitCode: 0,
+      stdout: command.startsWith('bm dump') ? _dumpOutput : sizeOutput,
+      stderr: '',
+    );
   }
 }
 
@@ -90,6 +113,41 @@ com.example.harmony:
 ''';
 
 void main() {
+  test('鸿蒙列表补齐版本、安装时间与可读取的安装目录大小', () async {
+    final hdc = _FakeSummaryHdcService('2048\t/data/app/com.example.harmony');
+    final service = AppManagementService(AdbService(executable: 'adb'), hdc: hdc);
+
+    final summary = await service.getHarmonyPackageSummary(
+      'harmony-device',
+      const AdbPackage(name: 'com.example.harmony'),
+    );
+
+    expect(summary?.versionName, '1.2.3');
+    expect(summary?.versionCode, '123');
+    expect(summary?.targetSdk, 60101024);
+    expect(summary?.firstInstallTime, 1700000000000);
+    expect(summary?.storageBytes, 2048 * 1024);
+    expect(summary?.storagePermissionDenied, isFalse);
+    expect(hdc.commands, [
+      'bm dump -n com.example.harmony',
+      'du -sk /data/app/com.example.harmony 2>&1',
+    ]);
+  });
+
+  test('HDC 拒绝读取安装目录时保留元数据并标记无权限', () async {
+    final hdc = _FakeSummaryHdcService('du: Permission denied');
+    final service = AppManagementService(AdbService(executable: 'adb'), hdc: hdc);
+
+    final summary = await service.getHarmonyPackageSummary(
+      'harmony-device',
+      const AdbPackage(name: 'com.example.harmony'),
+    );
+
+    expect(summary?.versionName, '1.2.3');
+    expect(summary?.storageBytes, isNull);
+    expect(summary?.storagePermissionDenied, isTrue);
+  });
+
   test('解析 bm dump 的应用、HAP、Ability、权限与元数据', () {
     final detail = HarmonyAppDetailParser.parse(_dumpOutput);
 

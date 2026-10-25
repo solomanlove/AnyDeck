@@ -10,6 +10,7 @@ class AdbPackage {
     this.targetSdk,
     this.maxSdk,
     this.storageBytes,
+    this.storagePermissionDenied = false,
     this.iconLocalPath,
     this.iconRemotePath,
     this.enabled = true,
@@ -36,6 +37,7 @@ class AdbPackage {
   final int? targetSdk;
   final int? maxSdk;
   final int? storageBytes;
+  final bool storagePermissionDenied;
   final String? iconLocalPath;
   final String? iconRemotePath;
   final bool enabled;
@@ -57,6 +59,7 @@ class AdbPackage {
       targetSdk: json['targetSdk'] as int?,
       maxSdk: json['maxSdk'] as int?,
       storageBytes: json['storageBytes'] as int?,
+      storagePermissionDenied: json['storagePermissionDenied'] as bool? ?? false,
       iconLocalPath: json['iconLocalPath'] as String?,
       iconRemotePath: json['iconRemotePath'] as String?,
       enabled: json['enabled'] as bool? ?? true,
@@ -80,6 +83,7 @@ class AdbPackage {
       'targetSdk': targetSdk,
       'maxSdk': maxSdk,
       'storageBytes': storageBytes,
+      'storagePermissionDenied': storagePermissionDenied,
       'iconLocalPath': iconLocalPath,
       'iconRemotePath': iconRemotePath,
       'enabled': enabled,
@@ -94,6 +98,11 @@ class AdbPackage {
 
   AdbPackage copyWith({
     String? label,
+    String? versionName,
+    String? versionCode,
+    int? targetSdk,
+    int? storageBytes,
+    bool? storagePermissionDenied,
     String? iconLocalPath,
     String? iconRemotePath,
     String? signatureMd5,
@@ -105,12 +114,13 @@ class AdbPackage {
       name: name,
       label: label ?? this.label,
       apkPath: apkPath,
-      versionName: versionName,
-      versionCode: versionCode,
+      versionName: versionName ?? this.versionName,
+      versionCode: versionCode ?? this.versionCode,
       minSdk: minSdk,
-      targetSdk: targetSdk,
+      targetSdk: targetSdk ?? this.targetSdk,
       maxSdk: maxSdk,
-      storageBytes: storageBytes,
+      storageBytes: storageBytes ?? this.storageBytes,
+      storagePermissionDenied: storagePermissionDenied ?? this.storagePermissionDenied,
       iconLocalPath: iconLocalPath ?? this.iconLocalPath,
       iconRemotePath: iconRemotePath ?? this.iconRemotePath,
       enabled: enabled,

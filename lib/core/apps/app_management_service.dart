@@ -647,6 +647,11 @@ fi
           }
           return package.copyWith(
             label: cached.label,
+            versionName: cached.versionName,
+            versionCode: cached.versionCode,
+            targetSdk: cached.targetSdk,
+            storageBytes: cached.storageBytes,
+            storagePermissionDenied: cached.storagePermissionDenied,
             iconLocalPath: cached.iconLocalPath,
             iconRemotePath: cached.iconRemotePath,
             signatureMd5: cached.signatureMd5,

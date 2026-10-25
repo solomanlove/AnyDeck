@@ -3,6 +3,7 @@ part of '../dashboard_screen.dart';
 class _PackageTable extends StatefulWidget {
   const _PackageTable({
     required this.deviceId,
+    required this.isHarmony,
     required this.packages,
     this.totalCount,
     required this.selectedPackage,
@@ -10,9 +11,11 @@ class _PackageTable extends StatefulWidget {
     required this.onToggleCheck,
     required this.onToggleCheckAll,
     required this.onOpened,
+    required this.onContextMenuRequested,
   });
 
   final String deviceId;
+  final bool isHarmony;
   final List<AdbPackage> packages;
   final int? totalCount;
   final String? selectedPackage;
@@ -20,6 +23,7 @@ class _PackageTable extends StatefulWidget {
   final ValueChanged<String> onToggleCheck;
   final VoidCallback onToggleCheckAll;
   final ValueChanged<String> onOpened;
+  final void Function(AdbPackage package, Offset position) onContextMenuRequested;
 
   @override
   State<_PackageTable> createState() => _PackageTableState();
@@ -73,10 +77,10 @@ class _PackageTableState extends State<_PackageTable> {
   List<AdbPackage> _sortedPackages() {
     final sortedList = List<AdbPackage>.from(widget.packages);
     sortedList.sort((a, b) {
-      if (a.isLoaded && !b.isLoaded) {
+      if (!widget.isHarmony && a.isLoaded && !b.isLoaded) {
         return -1;
       }
-      if (!a.isLoaded && b.isLoaded) {
+      if (!widget.isHarmony && !a.isLoaded && b.isLoaded) {
         return 1;
       }
       final cmp = switch (_sortColumn) {
@@ -88,6 +92,7 @@ class _PackageTableState extends State<_PackageTable> {
           b.versionLabel.toLowerCase(),
         ),
         'minSdk' => (a.minSdk ?? 0).compareTo(b.minSdk ?? 0),
+        'installTime' => (a.firstInstallTime ?? 0).compareTo(b.firstInstallTime ?? 0),
         'targetSdk' => (a.targetSdk ?? 0).compareTo(b.targetSdk ?? 0),
         'storage' => (a.storageBytes ?? 0).compareTo(b.storageBytes ?? 0),
         _ => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
@@ -141,6 +146,7 @@ class _PackageTableState extends State<_PackageTable> {
           packages: sorted,
           viewportWidth: effectiveWidth,
           totalCount: widget.totalCount,
+          isHarmony: widget.isHarmony,
         );
         final tableWidth = max(widths.total, effectiveWidth);
 
@@ -164,6 +170,7 @@ class _PackageTableState extends State<_PackageTable> {
                       children: [
                         _PackageTableHeader(
                           widths: widths,
+                          isHarmony: widget.isHarmony,
                           sortColumn: _sortColumn,
                           sortAscending: _sortAscending,
                           onSort: _toggleSort,
@@ -190,12 +197,15 @@ class _PackageTableState extends State<_PackageTable> {
                                 final package = sorted[index];
                                 return _PackageTableRow(
                                   deviceId: widget.deviceId,
+                                  isHarmony: widget.isHarmony,
                                   package: package,
                                   selected: package.name == widget.selectedPackage,
                                   checked: widget.checkedPackages.contains(package.name),
                                   widths: widths,
                                   onCheckChanged: (_) => widget.onToggleCheck(package.name),
                                   onOpened: () => widget.onOpened(package.name),
+                                  onContextMenuRequested: (position) =>
+                                      widget.onContextMenuRequested(package, position),
                                   index: index,
                                 );
                               },
@@ -225,6 +235,7 @@ class _PackageTableState extends State<_PackageTable> {
 class _PackageTableHeader extends StatelessWidget {
   const _PackageTableHeader({
     required this.widths,
+    required this.isHarmony,
     required this.sortColumn,
     required this.sortAscending,
     required this.onSort,
@@ -237,6 +248,7 @@ class _PackageTableHeader extends StatelessWidget {
   });
 
   final _PackageTableWidths widths;
+  final bool isHarmony;
   final String sortColumn;
   final bool sortAscending;
   final ValueChanged<String> onSort;
@@ -296,26 +308,38 @@ class _PackageTableHeader extends StatelessWidget {
             sortIcon: sortIconBuilder('version'),
             onTap: () => onSort('version'),
           ),
-          DashboardSortableHeaderCell(
-            width: widths.minSdk,
-            label: context.l10n.t('minSdkVersion'),
-            style: style,
-            sortIcon: sortIconBuilder('minSdk'),
-            onTap: () => onSort('minSdk'),
-          ),
+          if (!isHarmony)
+            DashboardSortableHeaderCell(
+              width: widths.minSdk,
+              label: context.l10n.t('minSdkVersion'),
+              style: style,
+              sortIcon: sortIconBuilder('minSdk'),
+              onTap: () => onSort('minSdk'),
+            ),
+          if (isHarmony)
+            DashboardSortableHeaderCell(
+              width: widths.installTime,
+              label: context.l10n.t('harmonyInstallTime'),
+              style: style,
+              sortIcon: sortIconBuilder('installTime'),
+              onTap: () => onSort('installTime'),
+            ),
           DashboardSortableHeaderCell(
             width: widths.targetSdk,
-            label: context.l10n.t('targetMaxSdk'),
+            label: context.l10n.t(isHarmony ? 'harmonyTargetApi' : 'targetMaxSdk'),
             style: style,
             sortIcon: sortIconBuilder('targetSdk'),
             onTap: () => onSort('targetSdk'),
           ),
-          DashboardSortableHeaderCell(
-            width: widths.storage,
-            label: context.l10n.t('storageUsed'),
-            style: style,
-            sortIcon: sortIconBuilder('storage'),
-            onTap: () => onSort('storage'),
+          Tooltip(
+            message: context.l10n.t(isHarmony ? 'harmonyStorageScope' : 'storageUsed'),
+            child: DashboardSortableHeaderCell(
+              width: widths.storage,
+              label: context.l10n.t('storageUsed'),
+              style: style,
+              sortIcon: sortIconBuilder('storage'),
+              onTap: () => onSort('storage'),
+            ),
           ),
         ],
       ),
@@ -453,25 +477,6 @@ class _AppNameCell extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _TableText extends StatelessWidget {
-  const _TableText(this.value);
-
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: value,
-      child: Text(
-        value,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 13),
-      ),
     );
   }
 }

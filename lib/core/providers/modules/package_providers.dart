@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../apps/adb_package.dart';
-import '../../apps/package_metadata_resolver.dart';
+import '../../apps/app_management_service.dart';
 import '../../apps/package_refresh_progress.dart';
 import '../../apps/package_refresh_runner.dart';
 import 'device_registry_providers.dart';
@@ -99,11 +99,17 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       if (cached != null && cached.isNotEmpty) {
         if (isDisposed || revision != _loadRevision) return;
         state = AsyncValue.data(cached);
+        if (_isHarmony && ref.read(deviceOnlineProvider(deviceId))) {
+          unawaited(_loadHarmonySummaries(cached, revision));
+        }
         return;
       }
 
       // 如果已有初始内存数据（由同一设备上一通道继承），且本地无新数据，保留现状不打断用户
       if (hasInitialData && state.hasValue) {
+        if (_isHarmony && ref.read(deviceOnlineProvider(deviceId))) {
+          unawaited(_loadHarmonySummaries(state.value!, revision));
+        }
         return;
       }
 
@@ -122,12 +128,72 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       );
       if (isDisposed || revision != _loadRevision) return;
       state = AsyncValue.data(initialPackages);
+      if (_isHarmony) {
+        unawaited(_loadHarmonySummaries(initialPackages, revision));
+      }
     } catch (err, stack) {
       // 若当前已有数据，网络或瞬态异常时不冲掉已有数据
       if (!isDisposed && revision == _loadRevision && !state.hasValue) {
         state = AsyncValue.error(err, stack);
       }
     }
+  }
+
+  /// 鸿蒙批量列表仅含名称；限制并发逐包读取详情并分批更新可见列表。
+  Future<void> _loadHarmonySummaries(
+    List<AdbPackage> packages,
+    int revision, {
+    bool force = false,
+  }) async {
+    final targets = packages.where((package) =>
+        force ||
+        package.versionLabel == '-' ||
+        package.firstInstallTime == null ||
+        (package.storageBytes == null && !package.storagePermissionDenied),
+    ).toList(growable: false);
+    if (targets.isEmpty) return;
+    final service = ref.read(appManagementServiceProvider);
+    const batchSize = 4;
+    for (var start = 0; start < targets.length; start += batchSize) {
+      if (!ref.mounted || revision != _loadRevision) return;
+      final batch = targets.skip(start).take(batchSize);
+      final updates = await Future.wait(batch.map((package) async {
+        try {
+          return await service.getHarmonyPackageSummary(deviceId, package);
+        } catch (_) {
+          return null;
+        }
+      }));
+      if (!ref.mounted || revision != _loadRevision) return;
+      final byName = <String, AdbPackage>{};
+      for (final update in updates) {
+        if (update != null) byName[update.name] = update;
+      }
+      if (byName.isEmpty) continue;
+      final current = state.value;
+      if (current == null) return;
+      state = AsyncValue.data([
+        for (final package in current)
+          if (byName[package.name] case final update?)
+            package.copyWith(
+              versionName: update.versionName,
+              versionCode: update.versionCode,
+              targetSdk: update.targetSdk,
+              firstInstallTime: update.firstInstallTime,
+              storageBytes: update.storageBytes,
+              storagePermissionDenied: update.storagePermissionDenied,
+            )
+          else
+            package,
+      ]);
+    }
+    if (!ref.mounted || revision != _loadRevision) return;
+    await service.savePackageCache(
+      deviceId,
+      state.value!,
+      canonicalId: _canonicalId,
+      fallbackKeys: _fallbackKeys,
+    );
   }
 
   /// 手动刷新全部或指定类型应用时，重新读取元数据并分批加载应用图标。
@@ -149,7 +215,11 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
       isHarmony: _isHarmony,
       filter: filter,
     );
-    return _refreshAllTask = runner.run(onProgress: onProgress).whenComplete(() {
+    return _refreshAllTask = runner.run(onProgress: onProgress).then((_) {
+      if (ref.mounted && _isHarmony && state.hasValue) {
+        unawaited(_loadHarmonySummaries(state.value!, _loadRevision, force: true));
+      }
+    }).whenComplete(() {
       _refreshAllTask = null;
     });
   }
@@ -160,11 +230,14 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
     if (current == null) return;
 
     final service = ref.read(appManagementServiceProvider);
-    final updated = await service.getSinglePackageInfo(
+    var updated = await service.getSinglePackageInfo(
       deviceId,
       packageName,
       isHarmony: _isHarmony,
     );
+    if (_isHarmony && updated != null) {
+      updated = await service.getHarmonyPackageSummary(deviceId, updated) ?? updated;
+    }
 
     final List<AdbPackage> newList;
     if (updated == null) {
@@ -178,6 +251,12 @@ class PackagesNotifier extends Notifier<AsyncValue<List<AdbPackage>>> {
         final old = current[index];
         final merged = updated.copyWith(
           label: updated.label ?? old.label,
+          versionName: updated.versionName ?? old.versionName,
+          versionCode: updated.versionCode ?? old.versionCode,
+          targetSdk: updated.targetSdk ?? old.targetSdk,
+          storageBytes: updated.storageBytes ?? old.storageBytes,
+          storagePermissionDenied: updated.storagePermissionDenied,
+          firstInstallTime: updated.firstInstallTime ?? old.firstInstallTime,
           iconLocalPath: updated.iconLocalPath ?? old.iconLocalPath,
           iconRemotePath: updated.iconRemotePath ?? old.iconRemotePath,
         );

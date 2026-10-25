@@ -6,6 +6,7 @@ class _PackageTableWidths {
     required this.appName,
     required this.version,
     required this.minSdk,
+    required this.installTime,
     required this.targetSdk,
     required this.storage,
   });
@@ -14,6 +15,7 @@ class _PackageTableWidths {
     required BuildContext context,
     required List<AdbPackage> packages,
     required double viewportWidth,
+    required bool isHarmony,
     int? totalCount,
   }) {
     final textTheme = Theme.of(context).textTheme;
@@ -46,24 +48,31 @@ class _PackageTableWidths {
       headerWidth('version'),
       contentWidth(packages.map((package) => package.versionLabel)),
     ).clamp(88.0, 150.0);
-    final minSdk = max(
+    final minSdk = isHarmony ? 0.0 : max(
       headerWidth('minSdkVersion'),
       contentWidth(packages.map((package) => _sdkLabel(package.minSdk))),
     ).clamp(88.0, 112.0);
+    final installTime = isHarmony ? max(
+      headerWidth('harmonyInstallTime'),
+      contentWidth(packages.map((package) => _formatDetailTime(package.firstInstallTime))),
+    ).clamp(155.0, 190.0) : 0.0;
     final targetSdk = max(
-      headerWidth('targetMaxSdk'),
+      headerWidth(isHarmony ? 'harmonyTargetApi' : 'targetMaxSdk'),
       contentWidth(packages.map(_targetMaxSdkLabel)),
     ).clamp(108.0, 136.0);
     final storage = max(
       headerWidth('storageUsed'),
-      contentWidth(packages.map((package) => package.storageLabel)),
+      contentWidth(packages.map((package) => package.storagePermissionDenied
+          ? l10n.t('storagePermissionDenied')
+          : package.storageLabel)),
     ).clamp(104.0, 136.0);
     const checkboxWidth = 44.0;
     final base = _PackageTableWidths(
       checkbox: checkboxWidth,
       appName: appName + _PackageCell.horizontalPadding + 38,
       version: version + _PackageCell.horizontalPadding,
-      minSdk: minSdk + _PackageCell.horizontalPadding,
+      minSdk: isHarmony ? 0 : minSdk + _PackageCell.horizontalPadding,
+      installTime: isHarmony ? installTime + _PackageCell.horizontalPadding : 0,
       targetSdk: targetSdk + _PackageCell.horizontalPadding + 38,
       storage: storage + _PackageCell.horizontalPadding,
     );
@@ -86,6 +95,7 @@ class _PackageTableWidths {
   final double appName;
   final double version;
   final double minSdk;
+  final double installTime;
   final double targetSdk;
   final double storage;
 
@@ -94,6 +104,7 @@ class _PackageTableWidths {
       appName +
       version +
       minSdk +
+      installTime +
       targetSdk +
       storage;
 
@@ -103,6 +114,7 @@ class _PackageTableWidths {
       appName: appName ?? this.appName,
       version: version,
       minSdk: minSdk,
+      installTime: installTime,
       targetSdk: targetSdk,
       storage: storage,
     );

@@ -174,6 +174,8 @@ part 'apps/dashboard_apps_grid.dart';
 part 'apps/widgets/package_icon.dart';
 part 'apps/dashboard_apps_actions.dart';
 part 'apps/dashboard_apps_batch_actions.dart';
+part 'apps/dashboard_apps_batch_progress_state.dart';
+part 'apps/dashboard_harmony_app_context_menu.dart';
 part 'apps/widgets/usage_report_dialog.dart';
 part 'files/dashboard_files_tab.dart';
 part 'files/harmony_files_tab.dart';

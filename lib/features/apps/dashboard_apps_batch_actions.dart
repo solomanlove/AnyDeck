@@ -1,22 +1,5 @@
 part of '../dashboard_screen.dart';
 
-/// 批量应用操作进度模型。
-class _BatchProgressState {
-  const _BatchProgressState({
-    required this.title,
-    required this.current,
-    required this.total,
-    required this.currentName,
-  });
-
-  final String title;
-  final int current;
-  final int total;
-  final String currentName;
-
-  double get progress => total == 0 ? 0.0 : current / total;
-}
-
 /// 批量操作进度卡片（仅限制在当前 Tab 区域内展示，避免弹窗遮挡侧边导航）。
 class _AppsBatchProgressCard extends StatelessWidget {
   const _AppsBatchProgressCard({
@@ -129,6 +112,7 @@ class _AppsBatchActionsToolbar extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final isOnline = ref.watch(deviceOnlineProvider(deviceId));
     final count = checkedPackages.length;
+    final hasTargets = isOnline && _getSelectedPackageModels().isNotEmpty;
     final isAllSelected =
         allFilteredPackages.isNotEmpty && count == allFilteredPackages.length;
 
@@ -192,16 +176,18 @@ class _AppsBatchActionsToolbar extends ConsumerWidget {
               child: Row(
                 children: [
                   // 1. 批量导出包
-                  FilledButton.tonalIcon(
-                    onPressed: isOnline ? () => _exportPackages(context, ref) : null,
-                    icon: const Icon(CupertinoIcons.square_arrow_up, size: 15),
-                    label: Text(context.l10n.t('batchExportApk')),
-                    style: _buttonStyle(),
-                  ),
-                  const SizedBox(width: 8),
+                  if (!isHarmony) ...[
+                    FilledButton.tonalIcon(
+                      onPressed: hasTargets ? () => _exportPackages(context, ref) : null,
+                      icon: const Icon(CupertinoIcons.square_arrow_up, size: 15),
+                      label: Text(context.l10n.t('batchExportApk')),
+                      style: _buttonStyle(),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   // 2. 批量卸载包
                   FilledButton.tonalIcon(
-                    onPressed: isOnline ? () => _uninstallPackages(context, ref) : null,
+                    onPressed: hasTargets ? () => _uninstallPackages(context, ref) : null,
                     icon: const Icon(CupertinoIcons.trash, size: 15),
                     label: Text(context.l10n.t('batchUninstall')),
                     style: _buttonStyle(
@@ -212,7 +198,7 @@ class _AppsBatchActionsToolbar extends ConsumerWidget {
                   const SizedBox(width: 8),
                   // 3. 批量清除数据
                   FilledButton.tonalIcon(
-                    onPressed: isOnline ? () => _clearDataPackages(context, ref) : null,
+                    onPressed: hasTargets ? () => _clearDataPackages(context, ref) : null,
                     icon: const Icon(CupertinoIcons.clear, size: 15),
                     label: Text(context.l10n.t('batchClearData')),
                     style: _buttonStyle(),
@@ -220,7 +206,7 @@ class _AppsBatchActionsToolbar extends ConsumerWidget {
                   const SizedBox(width: 8),
                   // 4. 批量冻结应用
                   FilledButton.tonalIcon(
-                    onPressed: isOnline ? () => _freezePackages(context, ref) : null,
+                    onPressed: hasTargets ? () => _freezePackages(context, ref) : null,
                     icon: const Icon(CupertinoIcons.snow, size: 15),
                     label: Text(context.l10n.t('batchFreezeApp')),
                     style: _buttonStyle(),
@@ -228,7 +214,7 @@ class _AppsBatchActionsToolbar extends ConsumerWidget {
                   const SizedBox(width: 8),
                   // 5. 批量解冻应用
                   FilledButton.tonalIcon(
-                    onPressed: isOnline ? () => _unfreezePackages(context, ref) : null,
+                    onPressed: hasTargets ? () => _unfreezePackages(context, ref) : null,
                     icon: const Icon(CupertinoIcons.flame, size: 15),
                     label: Text(context.l10n.t('batchUnfreezeApp')),
                     style: _buttonStyle(),
@@ -244,7 +230,7 @@ class _AppsBatchActionsToolbar extends ConsumerWidget {
             icon: const Icon(CupertinoIcons.xmark, size: 16),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            onPressed: onClearSelection,
+            onPressed: count == 0 ? null : onClearSelection,
           ),
         ],
       ),
