@@ -234,7 +234,7 @@ class _QuickActionsPanel extends ConsumerWidget {
             label: context.l10n.t('remoteController'),
             onPressed: () => showDialog<void>(
               context: context,
-              builder: (_) => _RemoteControllerDialog(device: device),
+              builder: (_) => RemoteControllerDialog(device: device),
             ),
           ),
       ],

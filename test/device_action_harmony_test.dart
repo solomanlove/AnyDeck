@@ -120,6 +120,27 @@ void main() {
     expect(adb.shellCommands, isEmpty);
   });
 
+  test('HarmonyOS remote D-pad maps all directions and OK to HDC', () async {
+    final hdc = _FakeHdcService();
+    final service = DeviceActionService(
+      _HarmonyAdbService(),
+      hdc: hdc,
+      isHarmonyResolver: (_) => true,
+    );
+
+    for (final keyCode in [19, 20, 21, 22, 23]) {
+      await service.keyEvent(deviceId, keyCode);
+    }
+
+    expect(hdc.keyEvents, [
+      (2012, 1),
+      (2013, 1),
+      (2014, 1),
+      (2015, 1),
+      (2016, 1),
+    ]);
+  });
+
   test('HarmonyOS volume boundaries repeat the matching key', () async {
     final hdc = _FakeHdcService();
     final service = DeviceActionService(

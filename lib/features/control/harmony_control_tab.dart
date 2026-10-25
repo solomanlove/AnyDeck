@@ -10,6 +10,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/scrcpy/scrcpy_session.dart';
 import '../widgets/dashboard_snack.dart';
 import '../widgets/glass_section_card.dart';
+import '../widgets/remote_controller_dialog.dart';
 
 /// 鸿蒙手机专属控制面板 Tab。
 ///
@@ -190,6 +191,14 @@ class _HarmonyControlTabState extends ConsumerState<HarmonyControlTab> {
           spacing: 10,
           runSpacing: 10,
           children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.settings_remote, size: 16),
+              label: Text(context.l10n.t('remoteController')),
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => RemoteControllerDialog(device: widget.device),
+              ),
+            ),
             OutlinedButton.icon(
               icon: const Icon(CupertinoIcons.back, size: 16),
               label: const Text('返回键'),

@@ -1,7 +1,19 @@
-part of '../dashboard_screen.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class _RemoteControllerDialog extends ConsumerWidget {
-  const _RemoteControllerDialog({required this.device});
+import '../../app/l10n/app_localizations.dart';
+import '../../app/theme/app_theme_colors.dart';
+import '../../core/adb/adb_device.dart';
+import '../../core/adb/adb_result.dart';
+import '../../core/providers/app_providers.dart';
+import 'dashboard_snack.dart';
+import 'device_power_actions.dart';
+import 'remote_direction_pad.dart';
+
+/// Android 与 HarmonyOS 共用的设备遥控器弹窗。
+class RemoteControllerDialog extends ConsumerWidget {
+  const RemoteControllerDialog({super.key, required this.device});
 
   final AdbDevice device;
 
@@ -105,7 +117,13 @@ class _RemoteControllerDialog extends ConsumerWidget {
                   ),
                   const SizedBox(height: 32),
                   // Row 2: D-Pad
-                  _buildDPad(context, ref, actions),
+                  RemoteDirectionPad(
+                    onKey: (keyCode) => _runAdb(
+                      context,
+                      ref,
+                      actions.keyEvent(device.id, keyCode),
+                    ),
+                  ),
                   const SizedBox(height: 32),
                   // Row 3: Home, Back (Capsule), Recents
                   Row(
@@ -139,7 +157,7 @@ class _RemoteControllerDialog extends ConsumerWidget {
                       ),
                       _buildCircularButton(
                         icon: CupertinoIcons.square,
-                        tooltip: 'Recents',
+                        tooltip: context.l10n.t('recentTasks'),
                         color: Theme.of(
                           context,
                         ).colorScheme.surfaceContainerHighest,
@@ -215,131 +233,6 @@ class _RemoteControllerDialog extends ConsumerWidget {
     );
   }
 
-  Widget _buildDPad(
-    BuildContext context,
-    WidgetRef ref,
-    DeviceActionService actions,
-  ) {
-    return Container(
-      width: 190,
-      height: 190,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        shape: BoxShape.circle,
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Directional buttons/sectors (Up, Down, Left, Right)
-          // Up
-          Positioned(
-            top: 4,
-            left: 55,
-            right: 55,
-            height: 50,
-            child: _buildDPadSector(
-              context: context,
-              tooltip: 'Up',
-              onPressed: () =>
-                  _runAdb(context, ref, actions.keyEvent(device.id, 19)),
-            ),
-          ),
-          // Down
-          Positioned(
-            bottom: 4,
-            left: 55,
-            right: 55,
-            height: 50,
-            child: _buildDPadSector(
-              context: context,
-              tooltip: 'Down',
-              onPressed: () =>
-                  _runAdb(context, ref, actions.keyEvent(device.id, 20)),
-            ),
-          ),
-          // Left
-          Positioned(
-            left: 4,
-            top: 55,
-            bottom: 55,
-            width: 50,
-            child: _buildDPadSector(
-              context: context,
-              tooltip: 'Left',
-              onPressed: () =>
-                  _runAdb(context, ref, actions.keyEvent(device.id, 21)),
-            ),
-          ),
-          // Right
-          Positioned(
-            right: 4,
-            top: 55,
-            bottom: 55,
-            width: 50,
-            child: _buildDPadSector(
-              context: context,
-              tooltip: 'Right',
-              onPressed: () =>
-                  _runAdb(context, ref, actions.keyEvent(device.id, 22)),
-            ),
-          ),
-
-          // Center OK button
-          Material(
-            color: Theme.of(context).colorScheme.surface,
-            shape: const CircleBorder(),
-            elevation: 2,
-            child: InkWell(
-              onTap: () =>
-                  _runAdb(context, ref, actions.keyEvent(device.id, 23)),
-              customBorder: const CircleBorder(),
-              hoverColor: Theme.of(context).appColors.hoverSurface,
-              child: SizedBox(
-                width: 84,
-                height: 84,
-                child: Center(
-                  child: Text(
-                    'OK',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDPadSector({
-    required BuildContext context,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const CircleBorder(),
-        hoverColor: Colors.black.withValues(alpha: 0.05),
-        child: Center(
-          child: Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSurface,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _runAdb(
     BuildContext context,
     WidgetRef ref,
@@ -348,11 +241,11 @@ class _RemoteControllerDialog extends ConsumerWidget {
     try {
       final res = await actionFuture;
       if (!res.isSuccess && context.mounted) {
-        _showSnack(context, res.stderr, isError: true);
+        DashboardSnack.show(context, res.message, isError: true);
       }
     } catch (e) {
       if (context.mounted) {
-        _showSnack(context, e.toString(), isError: true);
+        DashboardSnack.show(context, e.toString(), isError: true);
       }
     }
   }
