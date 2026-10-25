@@ -3,14 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../app/settings/app_settings_controller.dart';
+import '../../app/window/mirror/mirror_screen_recording_action.dart';
 import '../../core/adb/adb_device.dart';
 import '../../core/adb/adb_result.dart';
 import '../../core/harmony/hdc_service.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/scrcpy/screen_record_provider.dart';
 import '../../core/scrcpy/scrcpy_session.dart';
+import '../screenshot/controller/screenshot_export_helper.dart';
 import '../widgets/dashboard_snack.dart';
 import '../widgets/glass_section_card.dart';
 import '../widgets/remote_controller_dialog.dart';
+
+part 'widgets/harmony_control_quick_actions.dart';
 
 /// 鸿蒙手机专属控制面板 Tab。
 ///
@@ -191,6 +197,7 @@ class _HarmonyControlTabState extends ConsumerState<HarmonyControlTab> {
           spacing: 10,
           runSpacing: 10,
           children: [
+            ..._buildSystemQuickActions(context),
             OutlinedButton.icon(
               icon: const Icon(Icons.settings_remote, size: 16),
               label: Text(context.l10n.t('remoteController')),

@@ -11,7 +11,7 @@ import '../../app/l10n/app_localizations.dart';
 ///
 /// 参数说明：
 /// - [uptime]：开机持续时间格式化文本（如 "00时02分13秒"）
-/// - [batteryLevel]：电池剩余百分比数值（0 ~ 100）
+/// - [batteryLevel]：电池剩余百分比数值（0 ~ 100），-1 表示设备未提供。
 /// - [isCharging]：当前是否处于充电状态。为 true 时显示充电标识（绿色闪电图标），为 false 时保持现有常规电池样式。
 class PerformanceTopStatusRow extends StatelessWidget {
   const PerformanceTopStatusRow({
@@ -54,7 +54,7 @@ class PerformanceTopStatusRow extends StatelessWidget {
           Row(
             children: [
               Text(
-                '$batteryLevel%',
+                batteryLevel >= 0 ? '$batteryLevel%' : '-',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
@@ -216,7 +216,9 @@ class CpuCoresGrid extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'CPU${core.id} ${core.frequencyMHz.toStringAsFixed(0)}MHz',
+                      core.frequencyMHz > 0
+                          ? 'CPU${core.id} ${core.frequencyMHz.toStringAsFixed(0)}MHz'
+                          : 'CPU${core.id} -',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 11,

@@ -1,0 +1,28 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "AVScreenCapture"
+    },
+    {
+      "name": "microphone_reason",
+      "value": "For recording audio"
+    },
+    {
+      "name": "camera_reason",
+      "value": "For camera preview"
+    },
+    {
+      "name": "record_audio_base_on_avscreencapture",
+      "value": "Record Audio Base On AVScreenCapture"
+    }
+  ]
+}

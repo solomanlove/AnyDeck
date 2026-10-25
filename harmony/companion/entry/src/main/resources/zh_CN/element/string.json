@@ -1,0 +1,28 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "AVScreenCapture"
+    },
+    {
+      "name": "microphone_reason",
+      "value": "用于录制音频"
+    },
+    {
+      "name": "camera_reason",
+      "value": "用于摄像头预览"
+    },
+    {
+      "name": "record_audio_base_on_avscreencapture",
+      "value": "基于AVScreenCapture录制音频"
+    }
+  ]
+}

@@ -77,6 +77,7 @@ class PrimaryRail extends ConsumerWidget {
             tabIndex == 6 ||
             tabIndex == 7 ||
             tabIndex == 9 ||
+            tabIndex == 10 ||
             tabIndex == 11;
       }
       if (selectedDevice!.isOnline) {
@@ -195,6 +196,11 @@ class PrimaryRail extends ConsumerWidget {
           tabIndex: 9,
           icon: CupertinoIcons.camera,
           label: context.l10n.t('screenshotRecord'),
+        ),
+        _RailToolItem(
+          tabIndex: 10,
+          icon: CupertinoIcons.chart_bar,
+          label: context.l10n.t('performance'),
         ),
         _RailToolItem(
           tabIndex: 11,

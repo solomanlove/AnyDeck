@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import '../../core/device_info/device_battery_info.dart';
+
 /// 单个 CPU 核心的性能采样快照。
 class CpuCoreSnapshot {
   const CpuCoreSnapshot({
@@ -90,13 +92,14 @@ class PerformanceSnapshot {
     required DateTime? prevFpsTime,
     required double lastFps,
     required Map<String, double> outFpsInfo, // 用于向外传递帧数和时间戳缓存
+    bool isHarmony = false,
   }) {
     final sections = stdout.split('\n---\n');
     final timestamp = DateTime.now();
 
     // 默认空/回退值
     String uptime = '-';
-    int batteryLevel = 100;
+    int batteryLevel = isHarmony ? -1 : 100;
     bool isCharging = false;
     double totalMemoryMB = 0;
     double usedMemoryMB = 0;
@@ -113,7 +116,19 @@ class PerformanceSnapshot {
       if (line.isNotEmpty) {
         final parts = line.split(RegExp(r'\s+'));
         if (parts.isNotEmpty) {
-          final seconds = double.tryParse(parts[0]) ?? 0.0;
+          var seconds = double.tryParse(parts[0]) ?? 0.0;
+          if (seconds == 0 && isHarmony) {
+            final uptimeMatch = RegExp(
+              r'\bup\s+(?:(\d+)\s+days?,\s*)?(\d+):(\d+)',
+            ).firstMatch(line);
+            if (uptimeMatch != null) {
+              final days = int.tryParse(uptimeMatch.group(1) ?? '') ?? 0;
+              final hours = int.tryParse(uptimeMatch.group(2) ?? '') ?? 0;
+              final minutes = int.tryParse(uptimeMatch.group(3) ?? '') ?? 0;
+              seconds = (days * 86400 + hours * 3600 + minutes * 60)
+                  .toDouble();
+            }
+          }
           if (seconds > 0) {
             final int totalSecs = seconds.toInt();
             final int days = totalSecs ~/ 86400;
@@ -132,16 +147,24 @@ class PerformanceSnapshot {
 
     // 2. 解析 Battery (Section 1)
     if (sections.length > 1) {
-      final lines = sections[1].split('\n');
-      for (final line in lines) {
-        final trimmed = line.trim();
-        if (trimmed.startsWith('level:')) {
-          batteryLevel = int.tryParse(trimmed.split(':').last.trim()) ?? 100;
-        } else if (trimmed.startsWith('status:')) {
-          final status = int.tryParse(trimmed.split(':').last.trim()) ?? 1;
-          isCharging = (status == 2 || status == 5);
-        } else if (trimmed.contains('powered: true')) {
-          isCharging = true;
+      if (isHarmony) {
+        final battery = DeviceBatteryInfo.fromHarmonyDump(sections[1]);
+        batteryLevel = battery.level ?? -1;
+        isCharging =
+            battery.chargingState == DeviceChargingState.charging ||
+            battery.chargingState == DeviceChargingState.full;
+      } else {
+        final lines = sections[1].split('\n');
+        for (final line in lines) {
+          final trimmed = line.trim();
+          if (trimmed.startsWith('level:')) {
+            batteryLevel = int.tryParse(trimmed.split(':').last.trim()) ?? 100;
+          } else if (trimmed.startsWith('status:')) {
+            final status = int.tryParse(trimmed.split(':').last.trim()) ?? 1;
+            isCharging = (status == 2 || status == 5);
+          } else if (trimmed.contains('powered: true')) {
+            isCharging = true;
+          }
         }
       }
     }

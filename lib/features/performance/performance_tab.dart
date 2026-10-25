@@ -30,6 +30,7 @@ class PerformanceTab extends ConsumerStatefulWidget {
 
 class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   Timer? _timer;
+  bool _isPolling = false;
   bool _isLoading = true;
   String? _errorMsg;
   bool _wasMirrorWindowOpen = false;
@@ -50,7 +51,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
 
   // 当前实时指标
   String _uptime = '-';
-  int _batteryLevel = 100;
+  int _batteryLevel = -1;
   bool _isCharging = false;
   double _usedMemoryMB = 0;
   double _memoryUsagePercent = 0;
@@ -66,7 +67,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
 
   // 鸿蒙系统统一的 HDC Shell 性能采样命令
   static const String _harmonyUnifiedCommand =
-      r'''cat /proc/uptime 2>/dev/null || echo "0"; echo "---"; if [ -f "/sys/class/power_supply/battery/capacity" ]; then cap=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo "100"); echo "level: $cap"; else echo "level: 100"; fi; echo "---"; cat /proc/meminfo 2>/dev/null; echo "---"; echo ""; echo "---"; cat /proc/stat 2>/dev/null | grep "^cpu"; echo "---"; for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32; do if [ -d "/sys/devices/system/cpu/cpu$i" ]; then freq_file="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq"; if [ -f "$freq_file" ]; then cat "$freq_file"; else echo "0"; fi; fi; done; echo "---"; echo ""; true''';
+      r'''cat /proc/uptime 2>/dev/null || uptime; echo "---"; hidumper -s BatteryService -a -i; echo "---"; cat /proc/meminfo 2>/dev/null; echo "---"; echo ""; echo "---"; cat /proc/stat 2>/dev/null | grep "^cpu"; echo "---"; echo ""; echo "---"; echo ""; true''';
 
   @override
   void initState() {
@@ -157,6 +158,16 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   }
 
   Future<void> _pollData() async {
+    if (_isPolling) return;
+    _isPolling = true;
+    try {
+      await _pollDataCore();
+    } finally {
+      _isPolling = false;
+    }
+  }
+
+  Future<void> _pollDataCore() async {
     final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
     // 如果不在线或不可见，停止轮询并返回
     if (!isOnline || !widget.device.isOnline || !widget.isVisible) {
@@ -176,10 +187,12 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
       PerformanceSnapshot? snapshot;
 
       // 1. 优先通过 Rust Direct ADB Socket 进行零拷贝采样 (彻底消除子进程与 Dart GC)
-      try {
-        snapshot = RustPerformanceBridge.instance.poll(widget.device.id);
-      } catch (e) {
-        debugPrint('Rust performance bridge fallback to CLI: $e');
+      if (!widget.device.isHarmony) {
+        try {
+          snapshot = RustPerformanceBridge.instance.poll(widget.device.id);
+        } catch (e) {
+          debugPrint('Rust performance bridge fallback to CLI: $e');
+        }
       }
 
       // 2. 若 Rust 采样未命中，平滑回退到 ADB CLI 聚合命令
@@ -219,6 +232,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
           prevFpsTime: _prevFpsTime,
           lastFps: _lastFps,
           outFpsInfo: outFpsInfo,
+          isHarmony: widget.device.isHarmony,
         );
 
         // 更新缓存的 CPU 状态计数器
@@ -276,14 +290,16 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
       if (_historyMemory.length > 90) _historyMemory.removeAt(0);
 
       // 4. 更新 FPS 历史列表
-      _historyFps.add(
-        ChartDataPoint(
-          value: currentSnapshot.fps,
-          label: timeStr,
-          timestamp: currentSnapshot.timestamp,
-        ),
-      );
-      if (_historyFps.length > 90) _historyFps.removeAt(0);
+      if (!widget.device.isHarmony) {
+        _historyFps.add(
+          ChartDataPoint(
+            value: currentSnapshot.fps,
+            label: timeStr,
+            timestamp: currentSnapshot.timestamp,
+          ),
+        );
+        if (_historyFps.length > 90) _historyFps.removeAt(0);
+      }
 
       setState(() {
         _isLoading = false;
@@ -375,8 +391,9 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
     }
 
     // 通过包名检索 App 友好的展示名称
-    final packagesAsync = ref.watch(packagesProvider(widget.device.id));
-    final packageList = packagesAsync.value ?? [];
+    final packageList = widget.device.isHarmony
+        ? <AdbPackage>[]
+        : ref.watch(packagesProvider(widget.device.id)).value ?? <AdbPackage>[];
     final matchedPkg = packageList.firstWhere(
       (p) => p.name == _foregroundAppPackage,
       orElse: () => AdbPackage(name: _foregroundAppPackage, system: false),
@@ -418,11 +435,12 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
           const SizedBox(height: 16),
 
           // FPS 卡片
-          FpsOverviewCard(
-            fps: _fps,
-            appDisplayName: appDisplayName,
-            historyFps: _historyFps,
-          ),
+          if (!widget.device.isHarmony)
+            FpsOverviewCard(
+              fps: _fps,
+              appDisplayName: appDisplayName,
+              historyFps: _historyFps,
+            ),
         ],
       ),
     );

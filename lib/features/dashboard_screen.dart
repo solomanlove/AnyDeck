@@ -519,7 +519,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             _goToDeviceTool(effectiveSelectedDevice.id, 0);
           }
         } else if (effectiveSelectedDevice.isHarmony) {
-          // 鸿蒙设备支持主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、网络(11)、设置(12)、玩安卓(13)、AI MCP(14)
+          // 鸿蒙设备支持主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、性能(10)、网络(11)、设置(12)、玩安卓(13)、AI MCP(14)
           final selectedTool = ref.read(selectedToolTabProvider);
           if (selectedTool >= 0 &&
               selectedTool != 0 &&
@@ -531,6 +531,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               selectedTool != 6 &&
               selectedTool != 7 &&
               selectedTool != 9 &&
+              selectedTool != 10 &&
               selectedTool != 11 &&
               selectedTool != 12 &&
               selectedTool != 13 &&

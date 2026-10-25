@@ -1,0 +1,10 @@
+**/build/
+**/.cxx/
+.hvigor/
+**/oh_modules/
+**/node_modules/
+*.hap
+*.p12
+*.p7b
+*.cer
+*.csr
