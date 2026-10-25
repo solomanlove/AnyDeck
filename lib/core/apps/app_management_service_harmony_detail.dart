@@ -2,6 +2,32 @@ part of 'app_management_service.dart';
 
 /// HarmonyOS 应用详情只通过 HDC/BM 获取，禁止回退到 Android ADB Helper。
 extension HarmonyAppDetailService on AppManagementService {
+  /// 仅清除指定鸿蒙应用缓存；校验 bundleName，避免拼接 HDC shell 命令时注入参数。
+  Future<AdbResult> clearHarmonyCache(
+    String deviceId,
+    String bundleName,
+  ) async {
+    if (!RegExp(r'^[A-Za-z][A-Za-z0-9_.]{6,127}$').hasMatch(bundleName)) {
+      return const AdbResult(exitCode: 2, stdout: '', stderr: 'Invalid bundleName');
+    }
+    final hdc = _hdc;
+    if (hdc == null) {
+      return const AdbResult(exitCode: 127, stdout: '', stderr: 'HDC unavailable');
+    }
+    final result = await hdc.shell(
+      deviceId,
+      'bm clean -c -n $bundleName',
+      timeout: AppManagementService._metadataTimeout,
+    );
+    // 部分 HDC 传输成功时仍以退出码 0 返回 bm 业务错误。
+    final output = '${result.stdout}\n${result.stderr}'.toLowerCase();
+    if (result.isSuccess &&
+        (output.contains('error:') || RegExp(r'\bfail(?:ed)?\b').hasMatch(output))) {
+      return AdbResult(exitCode: 1, stdout: result.stdout, stderr: result.stderr);
+    }
+    return result;
+  }
+
   /// 逐包补齐列表中的版本、安装时间与当前 HDC 权限可读取的安装目录大小。
   Future<AdbPackage?> getHarmonyPackageSummary(
     String deviceId,

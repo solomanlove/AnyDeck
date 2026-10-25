@@ -113,6 +113,45 @@ com.example.harmony:
 ''';
 
 void main() {
+  test('清除鸿蒙应用缓存只执行 bm clean -c，不清除应用数据', () async {
+    final hdc = _FakeHarmonyHdcService(
+      const AdbResult(
+        exitCode: 0,
+        stdout: 'clean bundle cache files successfully.',
+        stderr: '',
+      ),
+    );
+    final service = AppManagementService(AdbService(executable: 'adb'), hdc: hdc);
+
+    final result = await service.clearHarmonyCache(
+      'harmony-device',
+      'com.example.harmony',
+    );
+
+    expect(result.isSuccess, isTrue);
+    expect(hdc.commands, ['harmony-device:bm clean -c -n com.example.harmony']);
+  });
+
+  test('清除缓存拒绝非法包名，并识别退出码为零的 bm 错误', () async {
+    final hdc = _FakeHarmonyHdcService(
+      const AdbResult(exitCode: 0, stdout: 'error: permission denied', stderr: ''),
+    );
+    final service = AppManagementService(AdbService(executable: 'adb'), hdc: hdc);
+
+    final invalid = await service.clearHarmonyCache(
+      'harmony-device',
+      'com.example.app;rm -rf /',
+    );
+    expect(invalid.isSuccess, isFalse);
+    expect(hdc.commands, isEmpty);
+
+    final denied = await service.clearHarmonyCache(
+      'harmony-device',
+      'com.example.harmony',
+    );
+    expect(denied.isSuccess, isFalse);
+  });
+
   test('鸿蒙列表补齐版本、安装时间与可读取的安装目录大小', () async {
     final hdc = _FakeSummaryHdcService('2048\t/data/app/com.example.harmony');
     final service = AppManagementService(AdbService(executable: 'adb'), hdc: hdc);

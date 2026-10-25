@@ -4,6 +4,7 @@ enum _HarmonyAppAction {
   details,
   launch,
   forceStop,
+  clearCache,
   clearData,
   uninstall,
   refresh,
@@ -49,6 +50,11 @@ extension _HarmonyAppContextMenu on _AppsTabState {
           'forceStop',
         ),
         _harmonyMenuItem(
+          _HarmonyAppAction.clearCache,
+          CupertinoIcons.clear_circled,
+          'clearCache',
+        ),
+        _harmonyMenuItem(
           _HarmonyAppAction.clearData,
           CupertinoIcons.clear,
           'clearData',
@@ -80,6 +86,33 @@ extension _HarmonyAppContextMenu on _AppsTabState {
         await _showHarmonyResult(
           service.forceStop(deviceId, packageName, isHarmony: true),
         );
+      case _HarmonyAppAction.clearCache:
+        if (await _confirm(
+              context,
+              context.l10n
+                  .t('clearCacheFor')
+                  .replaceAll('{package}', packageName),
+            ) &&
+            mounted &&
+            _clearingHarmonyCache.add(packageName)) {
+          try {
+            await _showHarmonyResult(
+              service.clearHarmonyCache(deviceId, packageName),
+            );
+          } catch (error) {
+            if (mounted) {
+              _showSnack(
+                context,
+                context.l10n
+                    .t('clearCacheFailed')
+                    .replaceAll('{error}', '$error'),
+                isError: true,
+              );
+            }
+          } finally {
+            _clearingHarmonyCache.remove(packageName);
+          }
+        }
       case _HarmonyAppAction.clearData:
         if (await _confirm(
               context,

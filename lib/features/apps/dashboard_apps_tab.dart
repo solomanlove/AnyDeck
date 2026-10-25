@@ -51,6 +51,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
   double _gridItemSize = 100.0;
   final Set<String> _refreshingPackageDetails = <String>{};
   final Set<String> _analyzingHarmonyPackages = <String>{};
+  final Set<String> _clearingHarmonyCache = <String>{};
   final Map<String, HarmonyAppDetail> _harmonyDetails =
       <String, HarmonyAppDetail>{};
   final Set<String> _checkedPackages = <String>{};
