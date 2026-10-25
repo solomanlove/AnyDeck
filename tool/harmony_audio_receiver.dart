@@ -52,6 +52,9 @@ Future<void> main(List<String> args) async {
     var pending = Uint8List(0);
     var headerRead = false;
     int? frameLength;
+    var frameCount = 0;
+    var pcmBytes = 0;
+    var nonZeroBytes = 0;
     client.listen(
       (chunk) {
         final merged = Uint8List(pending.length + chunk.length)
@@ -89,17 +92,27 @@ Future<void> main(List<String> args) async {
             }
           }
           if (pending.length < frameLength!) break;
-          playerInput.add(Uint8List.sublistView(pending, 0, frameLength));
+          final frame = Uint8List.sublistView(pending, 0, frameLength);
+          playerInput.add(frame);
+          frameCount++;
+          pcmBytes += frame.length;
+          nonZeroBytes += frame.where((byte) => byte != 0).length;
+          if (frameCount == 1) {
+            stdout.writeln('收到首帧 PCM：${frame.length} 字节');
+          }
           pending = Uint8List.sublistView(pending, frameLength!);
           frameLength = null;
         }
       },
-      onError: done.completeError,
+      onError: (Object error, StackTrace trace) {
+        if (!done.isCompleted) done.completeError(error, trace);
+      },
       onDone: () {
         if (!done.isCompleted) done.complete();
       },
     );
     await done.future;
+    stdout.writeln('PCM 汇总：$frameCount 帧、$pcmBytes 字节，其中非零字节 $nonZeroBytes');
   } finally {
     client?.destroy();
     await player?.stdin.close();

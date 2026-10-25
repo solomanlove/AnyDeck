@@ -55,7 +55,7 @@ extension HdcServiceSettings on HdcService {
     ]) {
       final result = await shell(
         deviceId,
-        'aa start -a MainAbility -b $bundle',
+        'aa start -a $bundle.MainAbility -b $bundle',
       );
       if (result.isSuccess) return result;
     }

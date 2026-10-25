@@ -322,7 +322,7 @@ void main() {
     expect(hdc.shellCommands, [
       'aa start -A ohos.settings.wireless',
       'aa start -A ohos.settings.manage.applications',
-      'aa start -a MainAbility -b com.huawei.hmos.settings',
+      'aa start -a com.huawei.hmos.settings.MainAbility -b com.huawei.hmos.settings',
     ]);
   });
 }
