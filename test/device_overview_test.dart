@@ -6,11 +6,17 @@ import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 
 class StubAdbService extends AdbService {
-  StubAdbService({this.shouldFail = false, this.getpropOutput, this.meminfoOutput});
+  StubAdbService({
+    this.shouldFail = false,
+    this.getpropOutput,
+    this.meminfoOutput,
+    this.batteryOutput,
+  });
 
   final bool shouldFail;
   final String? getpropOutput;
   final String? meminfoOutput;
+  final String? batteryOutput;
 
   @override
   Future<AdbResult> run(
@@ -27,7 +33,8 @@ class StubAdbService extends AdbService {
     if (args.any((arg) => arg.contains('cat /proc/meminfo'))) {
       return AdbResult(
         exitCode: 0,
-        stdout: '===MEMINFO===\n${meminfoOutput ?? ""}\n===DF===\n',
+        stdout: '===MEMINFO===\n${meminfoOutput ?? ""}\n===DF===\n'
+            '===BATTERY===\n${batteryOutput ?? ""}\n===IP===\n',
         stderr: '',
       );
     }
@@ -191,6 +198,16 @@ void main() {
   group('DeviceInfoService Cache & Fallback', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});
+    });
+
+    test('Android 概览从组合 shell 输出读取电量和充电状态', () async {
+      final service = DeviceInfoService(
+        StubAdbService(batteryOutput: 'status: 2\nlevel: 68\nscale: 100'),
+      );
+
+      final overview = await service.loadOverview('battery_device');
+      expect(overview.battery?.level, 68);
+      expect(overview.battery?.chargingState.name, 'charging');
     });
 
     // 模拟美图版真机：旧缓存在线补齐制造商，离线恢复时保留原始品牌。

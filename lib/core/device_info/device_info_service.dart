@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import 'android_version_helper.dart';
+import 'device_battery_info.dart';
 import 'device_overview.dart';
 import 'device_memory_info.dart';
 
@@ -71,6 +72,8 @@ echo "===MEMINFO==="
 cat /proc/meminfo
 echo "===DF==="
 df -k /data
+echo "===BATTERY==="
+dumpsys battery
 echo "===IP==="
 ip addr show wlan0
 ''';
@@ -135,6 +138,9 @@ settings get global debug_view_attributes
       );
       final memory = DeviceMemoryInfo.parse(basicSections['MEMINFO'] ?? '');
       final storage = _parseStorage(basicSections['DF'] ?? '');
+      final battery = DeviceBatteryInfo.fromAndroidDump(
+        basicSections['BATTERY'] ?? '',
+      );
       final network = basicSections['IP'] ?? '';
       final wifiDump = results[4].stdout;
       final displayDump = results[5].stdout;
@@ -216,6 +222,7 @@ settings get global debug_view_attributes
         storage: storage,
         memory: memory.total,
         memoryUsed: memory.used,
+        battery: battery,
         physicalResolution: formatDisplayResolution(
           size.physical,
           density: density.physical,

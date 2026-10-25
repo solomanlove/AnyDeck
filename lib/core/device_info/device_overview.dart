@@ -1,4 +1,5 @@
 import '../ios/ios_overview_details.dart';
+import 'device_battery_info.dart';
 
 /// 设备概览面板展示的只读聚合信息。
 class DeviceOverview {
@@ -17,6 +18,7 @@ class DeviceOverview {
     required this.storage,
     required this.memory,
     this.memoryUsed = '-',
+    this.battery,
     required this.physicalResolution,
     required this.resolution,
     required this.logicalDensity,
@@ -62,6 +64,7 @@ class DeviceOverview {
 
   /// 最近一次概览查询的已用内存；旧缓存或不支持的平台使用占位值。
   final String memoryUsed;
+  final DeviceBatteryInfo? battery;
   final String physicalResolution;
   final String resolution;
   final String logicalDensity;
@@ -102,6 +105,7 @@ class DeviceOverview {
       'storage': storage,
       'memory': memory,
       'memoryUsed': memoryUsed,
+      if (battery != null) 'battery': battery!.toJson(),
       'physicalResolution': physicalResolution,
       'resolution': resolution,
       'logicalDensity': logicalDensity,
@@ -144,6 +148,9 @@ class DeviceOverview {
       storage: json['storage'] as String? ?? '-',
       memory: json['memory'] as String? ?? '-',
       memoryUsed: json['memoryUsed'] as String? ?? '-',
+      battery: json['battery'] is Map<String, dynamic>
+          ? DeviceBatteryInfo.fromJson(json['battery'] as Map<String, dynamic>)
+          : null,
       physicalResolution: json['physicalResolution'] as String? ?? '-',
       resolution: json['resolution'] as String? ?? '-',
       logicalDensity: json['logicalDensity'] as String? ?? '-',
@@ -189,6 +196,7 @@ class DeviceOverview {
     String? storage,
     String? memory,
     String? memoryUsed,
+    DeviceBatteryInfo? battery,
     String? physicalResolution,
     String? resolution,
     String? logicalDensity,
@@ -228,6 +236,7 @@ class DeviceOverview {
       storage: storage ?? this.storage,
       memory: memory ?? this.memory,
       memoryUsed: memoryUsed ?? this.memoryUsed,
+      battery: battery ?? this.battery,
       physicalResolution: physicalResolution ?? this.physicalResolution,
       resolution: resolution ?? this.resolution,
       logicalDensity: logicalDensity ?? this.logicalDensity,

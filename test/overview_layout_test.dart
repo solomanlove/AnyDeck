@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// 单独验证概览内容，避免启动设备查询与无关 Tab 的原生插件。
 void main() {
-  for (final width in [1000.0, 600.0]) {
+  for (final width in [1000.0, 800.0, 600.0]) {
     for (final locale in ['zh', 'en']) {
       testWidgets('概览容量布局 $width $locale', (tester) async {
         tester.view.physicalSize = Size(width, 1400);
@@ -46,6 +46,7 @@ void main() {
                     'memory': '11.24G',
                     'memoryUsed': '6.00G',
                     'storage': '180.74G / 225.43G',
+                    'battery': {'level': 62, 'chargingState': 'charging'},
                   }),
                   onRefresh: () {},
                 ),
@@ -58,6 +59,8 @@ void main() {
         final storage = find.text('180.74G / 225.43G');
         expect(memory, findsOneWidget);
         expect(storage, findsOneWidget);
+        expect(find.text('62%'), findsOneWidget);
+        expect(find.text(locale == 'zh' ? '充电中' : 'Charging'), findsOneWidget);
         final memoryPosition = tester.getTopLeft(memory);
         final storagePosition = tester.getTopLeft(storage);
         if (width >= 720) {

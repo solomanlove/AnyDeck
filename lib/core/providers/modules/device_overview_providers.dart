@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../device_info/device_memory_info.dart';
+import '../../device_info/device_battery_info.dart';
 import '../../device_info/device_info_service.dart';
 import '../../device_info/device_overview.dart';
 import '../../harmony/hdc_service.dart';
@@ -116,7 +117,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           }
         }
 
-        // 并行获取鸿蒙内存、存储、网络、CPU、内核及显示密度
+        // 并行获取鸿蒙内存、存储、网络、CPU、内核、显示密度及电池状态
         final results = await Future.wait([
           hdc.shell(deviceId, 'cat /proc/meminfo'),
           hdc.shell(deviceId, 'df -k /data'),
@@ -128,6 +129,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           hdc.shell(deviceId, 'hidumper -s DisplayManagerService -a -a'),
           hdc.shell(deviceId, 'hidumper -s WifiDevice'),
           hdc.shell(deviceId, 'uname -a'),
+          hdc.shell(deviceId, 'hidumper -s BatteryService -a -i'),
         ]);
 
         final memRes = results[0];
@@ -137,6 +139,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         final displayRes = results[4];
         final wifiRes = results[5];
         final kernelRes = results[6];
+        final batteryRes = results[7];
 
         // 1. 内存 (RAM)
         final memInfo = DeviceMemoryInfo.parse(memRes.stdout);
@@ -225,6 +228,9 @@ final deviceOverviewProvider = StreamProvider.autoDispose
           storage: storage,
           memory: memoryTotal,
           memoryUsed: memoryUsed,
+          battery: batteryRes.isSuccess
+              ? DeviceBatteryInfo.fromHarmonyDump(batteryRes.stdout)
+              : null,
           physicalResolution: physicalRes,
           resolution: physicalRes,
           logicalDensity: logicalDensity,

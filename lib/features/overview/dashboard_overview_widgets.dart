@@ -174,7 +174,12 @@ class _OverviewIdentityCard extends ConsumerWidget {
           final status = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _OverviewStatusChip(isOnline: device.isOnline),
+              if (device.isIos)
+                _OverviewStatusChip(isOnline: device.isOnline)
+              else
+                _OverviewBatteryChip(
+                  battery: device.isOnline ? overview.battery : null,
+                ),
               if (!device.isIos && !device.isHarmony) ...[
                 const SizedBox(height: 8),
                 _OverviewRootChip(
