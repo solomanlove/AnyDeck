@@ -375,9 +375,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     final inputColor = isDark ? const Color(0xFFA6E3A1) : const Color(0xFF111827);
 
     // 检查末行是否为 shell 回显的就绪提示符（如 "pudding:/ $ "）
-    final hasPrompt = session.lines.isNotEmpty && _isPromptLine(session.lines.last);
+    final hasPrompt = !session.isHarmony && session.lines.isNotEmpty && _isPromptLine(session.lines.last);
     final rawPrompt = hasPrompt ? session.lines.last.text : '';
-    final promptText = rawPrompt.isEmpty
+    final promptText = session.isHarmony ? r'$ ' : rawPrompt.isEmpty
         ? ''
         : (rawPrompt.endsWith(' ') ? rawPrompt : '$rawPrompt ');
     // 若末行是提示符，则将其收口到命令行输入行内展示，避免换行割裂

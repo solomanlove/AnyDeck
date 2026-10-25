@@ -13,6 +13,7 @@ MIX3 的 `/sbin/su` 在普通管道中可以成功进入 root shell，但不输�
 - `lib/features/terminal/terminal_tab.dart`：识别设备端回显的最后一行 Shell 提示符（如 `pudding:/ $ ` 或 `perseus:/ # `），将其收口提取至命令行输入行前缀同屏展示，移除次行割裂的 `›` 符号与占位符；输入框采用 `monospace` 等宽字体与 8px 直角矩形块状光标（`█`），精确还原原生终端视觉与交互体验；同一行追加提示符时触发滚动。
 - `lib/core/terminal/terminal_newline_normalizer.dart`：按流隔离回车状态，将 CR、CRLF、MIX3 的 CRCRLF 统一为 LF；支持跨数据块换行，不等待完整行，提示符可立即显示。
 - 保留 1500 行输出上限、命令历史、原有明暗主题和进程关闭机制。无新依赖、全局 Provider 或跨窗口通信变更，不涉及投屏。
+- HarmonyOS 的 HDC 会话不提供持续的 shell 提示符；输入行固定显示本地 `$ `，提交命令的历史行显示 `$ <command>`。此提示符只用于 UI，不推断 root 权限，也不拼接到发送给 HDC 的命令。
 
 ## 行为边界
 
