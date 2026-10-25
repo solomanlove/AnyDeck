@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
@@ -41,11 +42,18 @@ class _MirrorSessionDurationState extends State<MirrorSessionDuration> {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      _formatSessionDuration(_elapsedSeconds),
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: Theme.of(context).colorScheme.onSurface,
-        fontFeatures: const [FontFeature.tabularFigures()],
+    return Tooltip(
+      message: context.l10n.t('mirrorSessionDurationTooltip'),
+      preferBelow: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Text(
+          _formatSessionDuration(_elapsedSeconds),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
       ),
     );
   }

@@ -591,10 +591,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                           ),
                         ),
                         if (isMirrorActive)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 6),
-                            child: MirrorSessionDuration(),
-                          ),
+                          const MirrorSessionDuration(),
                         // 重新连接/刷新按钮
                         MirrorToolbarButton(
                           icon: Icon(

@@ -4,11 +4,79 @@ import '../harmony/hdc_service.dart';
 
 /// 端口转发命令的平台适配层。
 ///
-/// 安卓使用 `adb reverse`（设备端口 -> 本地端口）；鸿蒙使用 `hdc rport`
-/// （设备侧监听并转发到宿主机），两者语义一致，仅命令通道不同。
-/// 收口各处散落的 adb 调用，UI 与 Provider 统一通过 [run] 执行。
+/// 反向转发使用 `adb reverse` / `hdc rport`；正向转发使用
+/// `adb forward` / `hdc fport`，UI 与 Provider 统一通过本类执行。
 class PortForwardCommand {
   PortForwardCommand._();
+
+  /// 查询宿主机端口到设备端口的正向 TCP 映射。
+  static Future<AdbResult> listForward(
+    AdbService adb,
+    HdcService? hdc, {
+    required String deviceId,
+    required bool isHarmony,
+  }) {
+    if (isHarmony) {
+      return hdc == null
+          ? Future.value(_missingHdc())
+          : hdc.listForwardRules(deviceId);
+    }
+    return adb.run(['-s', deviceId, 'forward', '--list']);
+  }
+
+  /// 建立正向 TCP 映射：电脑 localhost:[localPort] → 设备 localhost:[devicePort]。
+  static Future<AdbResult> addForward(
+    AdbService adb,
+    HdcService? hdc, {
+    required String deviceId,
+    required bool isHarmony,
+    required int localPort,
+    required int devicePort,
+  }) {
+    if (!_validPort(localPort) || !_validPort(devicePort)) {
+      return Future.value(_invalidPort());
+    }
+    if (isHarmony) {
+      return hdc == null
+          ? Future.value(_missingHdc())
+          : hdc.forward(deviceId, localPort, 'tcp:$devicePort');
+    }
+    return adb.run([
+      '-s',
+      deviceId,
+      'forward',
+      'tcp:$localPort',
+      'tcp:$devicePort',
+    ]);
+  }
+
+  /// 删除指定正向映射；HDC 必须同时提供两端端口。
+  static Future<AdbResult> removeForward(
+    AdbService adb,
+    HdcService? hdc, {
+    required String deviceId,
+    required bool isHarmony,
+    required int localPort,
+    required int devicePort,
+  }) {
+    if (!_validPort(localPort) || !_validPort(devicePort)) {
+      return Future.value(_invalidPort());
+    }
+    if (isHarmony) {
+      return hdc == null
+          ? Future.value(_missingHdc())
+          : hdc.removeForward(deviceId, localPort, 'tcp:$devicePort');
+    }
+    return adb.run(['-s', deviceId, 'forward', '--remove', 'tcp:$localPort']);
+  }
+
+  static bool _validPort(int port) => port >= 1 && port <= 65535;
+
+  static AdbResult _invalidPort() =>
+      AdbResult(exitCode: 1, stdout: '', stderr: '端口必须在 1-65535 之间');
+
+  static AdbResult _missingHdc() =>
+      AdbResult(exitCode: 127, stdout: '', stderr: 'HdcService 未注入，无法执行鸿蒙端口转发');
 
   /// 执行"设备端口 -> 本地端口"的反向转发命令。
   ///

@@ -67,6 +67,8 @@
 
 ## 投屏标题设备信息悬浮层
 
+- 标题栏投屏计时由 `MirrorSessionDuration` 复用；计时文本及两侧留白共同响应鼠标悬停，Tooltip 显示本地化“投屏时间”，Android/HarmonyOS 与 iOS AirPlay 标题栏保持一致。
+
 - 单设备投屏入口 `openStandaloneMirrorWindow()` 优先使用 `deviceRegistryProvider` 中非空的 `customName`，未配置或清空名称时保留 `AdbDevice.displayName` 默认值（model，缺失时使用设备 ID）；按 `id`、`serial`、`connections` 匹配同一设备，覆盖 USB 与无线连接。
 - 创建窗口时，原生窗口标题和 JSON 参数 `deviceName` 使用同一解析结果；子窗口标题栏复用该参数。该逻辑覆盖设备列表、控制面板与主窗口投屏快捷入口，批量投屏继续使用已支持别名的 `RegisteredDevice.displayName`。
 - 名称在打开窗口时读取；已打开窗口仍使用启动参数，修改名称后重新打开生效。单 App 投屏继续保留应用名称。

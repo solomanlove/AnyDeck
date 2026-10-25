@@ -29,12 +29,13 @@
 | `adb-desktop-platform-chrome` | 跨平台桌面窗口与工作区 UI | active | macOS 原生按钮避让、Windows 主窗口标题栏、Linux 原生装饰、子窗口标题同步、公共主题表面与宿主验证边界 | `app/window/`, `features/overview/`, `linux/runner/` |
 | `adb-desktop-window-shortcuts` | 桌面独立窗口快捷键机制 | active | 记录控制台窗口、模拟器管理窗口等独立子窗口的本地快捷键关闭策略与职责边界 | `app/window/` (桌面多窗口) |
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、内存占用与容量卡布局，以及控制、应用、鸿蒙文件页单一路径导航、日志紧凑视图时间配色、终端、鸿蒙进程 CPU/内存采样及进程操作、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
+| `adb-forward-port-mapping` | Android/HarmonyOS 正向端口转发 | active | 记录网络页正向规则的用途、ADB/HDC 命令、列表过滤、端口校验及验证边界 | `core/network/`, `core/providers/`, `features/network/` |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录 USB 自动准备监听、2 秒等待与就绪检测、实时 Wi-Fi IP、在线 TCP 地址优先与旧缓存修复、网段提示与主机网络快照同步、TCP 优先和目标 mDNS 回退、TLS 切换恢复、双语状态及手动连接指南 | `core/adb/wireless/`, `core/providers/`, `features/devices/` |
 | `hdc-wireless-debugging` | HarmonyOS HDC 无线调试增强 | active | 记录身份绑定历史、USB/TCP 双通道、USB 回读 IP、退避重连、Remote HDC Server 与开发板 UART 边界 | `core/harmony/wireless/`, `core/providers/`, `features/devices/` |
 | `hdc-harmony-overview-hardware-network` | 鸿蒙设备概览硬件与网络信息 | active | 记录 HDC 读取当前 SSID、精确型号处理器映射和内核版本解析及回退边界 | `core/harmony/`, `core/providers/`, `features/overview/` |
 | `devices_manager` | 设备唯一标识判断机制 | active | 记录 AdbDevice.id 命令路由、HDC 在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
-| `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、设备信息悬浮层、手机剪贴板入口、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `rust/device_bridge/`, `core/harmony/` |
+| `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、设备信息悬浮层与计时 Tooltip、手机剪贴板入口、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `rust/device_bridge/`, `core/harmony/` |
 | `ios投屏控制` | iOS 投屏控制方案与 PoC | active | macOS/iPhone 6s 原生 USB Texture + WDA、USB/AirPlay 共用投屏窗口与来源标识、窗口比例贴合、部署探针及真机验收边界 | `core/ios/`, `core/airplay/`, `app/window/mirror/`, `macos/Runner/`, `script/` |
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、USB/Network 连接类型与旧 Rust 库兼容、概览读取与型号规格边界、USB 投屏、截图镜像恢复、进程应用关联、扩展宿主 Bundle ID、多窗口及验证边界 | `core/ios/`, `features/ios/`, `features/overview/`, `app/window/mirror/` |
 | `ios-airplay-server-architecture` | iOS AirPlay 实验性接收端与连接故障 | experimental | UxPlay/FairPlay 实验接入、VideoToolbox 首帧与重连、AudioQueue 持续静音恢复、后台启停和原子打包；真机音频已完成定向验收 | `core/airplay/`, `rust/device_bridge/src/airplay/` |

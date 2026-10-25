@@ -9,10 +9,16 @@ import '../../core/network/port_forward_command.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/network_providers.dart';
 
+/// 新建指定设备的端口规则；[isForward] 为 true 时创建电脑到设备的正向映射。
 class AddPortForwardDialog extends ConsumerStatefulWidget {
-  const AddPortForwardDialog({super.key, required this.deviceId});
+  const AddPortForwardDialog({
+    super.key,
+    required this.deviceId,
+    this.isForward = false,
+  });
 
   final String deviceId;
+  final bool isForward;
 
   @override
   ConsumerState<AddPortForwardDialog> createState() =>
@@ -25,6 +31,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
   final _presetNameController = TextEditingController();
   bool _saveAsPreset = false;
   bool _autoApplyOnConnect = false;
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -68,7 +75,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                   Icon(Icons.swap_horiz, color: primaryColor, size: 32),
                   const SizedBox(width: 12),
                   Text(
-                    context.l10n.t('addPortForward'),
+                    context.l10n.t(widget.isForward
+                        ? 'addForwardPort'
+                        : 'addReversePortForward'),
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -79,7 +88,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
               ),
               const SizedBox(height: 12),
               Text(
-                context.l10n.t('addPortForwardDesc'),
+                context.l10n.t(widget.isForward
+                    ? 'addForwardPortDesc'
+                    : 'addPortForwardDesc'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -121,11 +132,13 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                       ],
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 12, right: 12, top: 24),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12, right: 12, top: 24),
                     child: Icon(
-                      CupertinoIcons.arrow_right,
-                      color: Color(0xff9ca3af),
+                      widget.isForward
+                          ? CupertinoIcons.arrow_left
+                          : CupertinoIcons.arrow_right,
+                      color: theme.colorScheme.onSurfaceVariant,
                       size: 20,
                     ),
                   ),
@@ -161,78 +174,82 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
               const SizedBox(height: 20),
 
               // 快捷预设
-              Text(
-                context.l10n.t('quickPresets'),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurfaceVariant,
+              if (!widget.isForward) ...[
+                Text(
+                  context.l10n.t('quickPresets'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  _quickPresetButton('React Native', '8081', theme),
-                  const SizedBox(width: 10),
-                  _quickPresetButton('Flutter', '8080', theme),
-                  const SizedBox(width: 10),
-                  _quickPresetButton('Expo', '19000', theme),
-                ],
-              ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _quickPresetButton('React Native', '8081', theme),
+                    const SizedBox(width: 10),
+                    _quickPresetButton('Flutter', '8080', theme),
+                    const SizedBox(width: 10),
+                    _quickPresetButton('Expo', '19000', theme),
+                  ],
+                ),
+              ],
               const SizedBox(height: 20),
               Divider(color: theme.colorScheme.outlineVariant),
               const SizedBox(height: 16),
 
               // 保存为预设复选框
-              _customCheckbox(
-                value: _saveAsPreset,
-                onChanged: (val) {
-                  setState(() {
-                    _saveAsPreset = val;
-                    if (val && _presetNameController.text.isEmpty) {
-                      _presetNameController.text =
-                          'Preset ${_devicePortController.text}';
-                    }
-                  });
-                },
-                label: context.l10n.t('saveAsPreset'),
-                theme: theme,
-                primaryColor: primaryColor,
-              ),
+              if (!widget.isForward) ...[
+                _customCheckbox(
+                  value: _saveAsPreset,
+                  onChanged: (val) {
+                    setState(() {
+                      _saveAsPreset = val;
+                      if (val && _presetNameController.text.isEmpty) {
+                        _presetNameController.text =
+                            'Preset ${_devicePortController.text}';
+                      }
+                    });
+                  },
+                  label: context.l10n.t('saveAsPreset'),
+                  theme: theme,
+                  primaryColor: primaryColor,
+                ),
 
-              // 预设高级选项（带平滑大小动画）
-              AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                child: _saveAsPreset
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            TextField(
-                              controller: _presetNameController,
-                              style: const TextStyle(fontSize: 14),
-                              decoration: _inputDecoration(
-                                theme,
-                                primaryColor,
-                                context.l10n.t('presetNameOptional'),
+                // 预设高级选项（带平滑大小动画）
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  child: _saveAsPreset
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: _presetNameController,
+                                style: const TextStyle(fontSize: 14),
+                                decoration: _inputDecoration(
+                                  theme,
+                                  primaryColor,
+                                  context.l10n.t('presetNameOptional'),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            _customCheckbox(
-                              value: _autoApplyOnConnect,
-                              onChanged: (val) =>
-                                  setState(() => _autoApplyOnConnect = val),
-                              label: context.l10n.t('autoApplyOnConnect'),
-                              theme: theme,
-                              primaryColor: primaryColor,
-                            ),
-                          ],
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
+                              const SizedBox(height: 16),
+                              _customCheckbox(
+                                value: _autoApplyOnConnect,
+                                onChanged: (val) =>
+                                    setState(() => _autoApplyOnConnect = val),
+                                label: context.l10n.t('autoApplyOnConnect'),
+                                theme: theme,
+                                primaryColor: primaryColor,
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
               const SizedBox(height: 28),
 
               // 底部操作按钮
@@ -263,10 +280,21 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                   ),
                   // 添加按钮
                   TextButton(
-                    onPressed: () async {
+                    onPressed: _submitting ? null : () async {
                       final devPort = _devicePortController.text.trim();
                       final locPort = _localPortController.text.trim();
-                      if (devPort.isEmpty || locPort.isEmpty) return;
+                      final devicePort = int.tryParse(devPort.startsWith('tcp:')
+                          ? devPort.substring(4) : devPort);
+                      final localPort = int.tryParse(locPort.startsWith('tcp:')
+                          ? locPort.substring(4) : locPort);
+                      if (devicePort == null || devicePort < 1 || devicePort > 65535 ||
+                          localPort == null || localPort < 1 || localPort > 65535) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(context.l10n.t('portForwardInvalidPort')),
+                        ));
+                        return;
+                      }
+                      setState(() => _submitting = true);
 
                       final adb = ref.read(adbServiceProvider);
                       final fullDevPort = devPort.startsWith('tcp:')
@@ -279,21 +307,24 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                       final isHarmony = ref
                           .read(deviceRegistryProvider)
                           .any((d) => d.id == widget.deviceId && d.isHarmony);
-                      final result = await PortForwardCommand.run(
-                        adb,
-                        isHarmony ? ref.read(hdcServiceProvider) : null,
-                        deviceId: widget.deviceId,
-                        isHarmony: isHarmony,
-                        reverseArgs: [fullDevPort, fullLocPort],
-                      );
+                      final hdc = isHarmony ? ref.read(hdcServiceProvider) : null;
+                      final result = widget.isForward
+                          ? await PortForwardCommand.addForward(adb, hdc,
+                              deviceId: widget.deviceId, isHarmony: isHarmony,
+                              localPort: localPort, devicePort: devicePort)
+                          : await PortForwardCommand.run(adb, hdc,
+                              deviceId: widget.deviceId, isHarmony: isHarmony,
+                              reverseArgs: [fullDevPort, fullLocPort]);
                       if (result.isSuccess) {
                         // 强制刷新列表
                         ref.invalidate(
-                          activePortForwardsProvider(widget.deviceId),
+                          widget.isForward
+                              ? activeForwardPortsProvider(widget.deviceId)
+                              : activePortForwardsProvider(widget.deviceId),
                         );
 
                         // 如果勾选了保存为预设
-                        if (_saveAsPreset) {
+                        if (!widget.isForward && _saveAsPreset) {
                           final name =
                               _presetNameController.text.trim().isNotEmpty
                               ? _presetNameController.text.trim()
@@ -319,13 +350,14 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                '${context.l10n.t('reverseFailed')}: ${result.message}',
+                                  '${context.l10n.t(widget.isForward ? 'forwardFailed' : 'reverseFailed')}: ${result.message}',
                               ),
                               backgroundColor: Colors.red,
                             ),
                           );
                         }
                       }
+                      if (mounted) setState(() => _submitting = false);
                     },
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -337,9 +369,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Add', // Exact mockup label
-                      style: TextStyle(
+                    child: Text(
+                      context.l10n.t('add'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
                       ),

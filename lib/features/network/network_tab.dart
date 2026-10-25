@@ -12,6 +12,8 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/network_providers.dart';
 import 'device_proxy_panel.dart';
 import 'network_dialog.dart';
+import 'forward_port_panel.dart';
+import 'network_section_widgets.dart';
 
 class NetworkTab extends ConsumerWidget {
   const NetworkTab({super.key, required this.device});
@@ -77,18 +79,29 @@ class NetworkTab extends ConsumerWidget {
             ],
 
             // 端口转发部分 (Port Forwarding)
-            _buildSectionHeader(
-              context: context,
+            NetworkSectionHeader(
               title: context.l10n.t('portForwarding'),
+              helpText: context.l10n.t('portForwardHelp'),
               actions: [
                 IconButton(
                   tooltip: context.l10n.t('refresh'),
                   icon: const Icon(CupertinoIcons.refresh),
-                  onPressed: () =>
-                      ref.invalidate(activePortForwardsProvider(device.id)),
+                  onPressed: () {
+                    ref.invalidate(activePortForwardsProvider(device.id));
+                    ref.invalidate(activeForwardPortsProvider(device.id));
+                  },
                 ),
+              ],
+            ),
+            Row(
+              children: [
+                Text(
+                  context.l10n.t('reversePortForwarding'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const Spacer(),
                 IconButton(
-                  tooltip: context.l10n.t('addPortForward'),
+                  tooltip: context.l10n.t('addReversePortForward'),
                   icon: const Icon(CupertinoIcons.plus),
                   onPressed: () => _showAddDialog(context),
                 ),
@@ -97,11 +110,10 @@ class NetworkTab extends ConsumerWidget {
             const SizedBox(height: 16),
             activeForwardsAsync.when(
               data: (forwards) => forwards.isEmpty
-                  ? _buildEmptyState(
+                  ? NetworkEmptyState(
                       icon: Icons.swap_horiz,
                       title: context.l10n.t('noPortForwards'),
                       subtitle: context.l10n.t('addPortForwardSubtitle'),
-                      isDark: isDark,
                     )
                   : _buildActiveForwardsList(context, ref, forwards, isDark),
               loading: () => const Center(
@@ -121,122 +133,24 @@ class NetworkTab extends ConsumerWidget {
               ),
             ),
 
+            const SizedBox(height: 24),
+            ForwardPortPanel(device: device),
             const SizedBox(height: 36),
 
             // 保存的预设部分 (Saved Presets)
-            _buildSectionHeader(
-              context: context,
-              title: context.l10n.t('savedPresets'),
+            NetworkSectionHeader(
+              title: context.l10n.t('reverseSavedPresets'),
               trailingText: '${presets.length}',
             ),
             const SizedBox(height: 16),
             presets.isEmpty
-                ? _buildEmptyState(
+                ? NetworkEmptyState(
                     icon: CupertinoIcons.bookmark,
                     title: context.l10n.t('noSavedPresets'),
                     subtitle: context.l10n.t('saveAsPresetSubtitle'),
-                    isDark: isDark,
                   )
                 : _buildPresetsList(context, ref, presets, isDark),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader({
-    required BuildContext context,
-    required String title,
-    List<Widget>? actions,
-    String? trailingText,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Row(
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : const Color(0xff1f2937),
-          ),
-        ),
-        if (trailingText != null) ...[
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xff334155) : const Color(0xfff3f4f6),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              trailingText,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-        const Spacer(),
-        if (actions != null) ...actions,
-      ],
-    );
-  }
-
-  Widget _buildEmptyState({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool isDark,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 48),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.03)
-                : Colors.white.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.04),
-              width: 1.5,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 48,
-                color: isDark ? Colors.grey[600] : const Color(0xff9ca3af),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.grey[300] : const Color(0xff374151),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? Colors.grey[500] : const Color(0xff9ca3af),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

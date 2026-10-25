@@ -299,10 +299,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
                   ),
                 ),
                 if (isLiveMirrorVisible)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6),
-                    child: MirrorSessionDuration(),
-                  ),
+                  const MirrorSessionDuration(),
                 ..._windowActions(context),
               ],
             ),

@@ -139,6 +139,24 @@ List<PortForward> parseReverseList(String stdout) {
   return list;
 }
 
+/// 解析正向 TCP 映射；ADB 和 HDC 都按“本地端口、设备端口”输出。
+/// HDC 的 `[Reverse]` 行必须由查询层先过滤，非 TCP 设备端点不显示。
+List<PortForward> parseForwardList(String stdout) {
+  final list = <PortForward>[];
+  for (final line in const LineSplitter().convert(stdout)) {
+    if (line.contains('[Reverse]')) continue;
+    final match = RegExp(r'tcp:(\d+)\s+tcp:(\d+)').firstMatch(line);
+    if (match == null) continue;
+    list.add(
+      PortForward(
+        localPort: 'tcp:${match.group(1)}',
+        devicePort: 'tcp:${match.group(2)}',
+      ),
+    );
+  }
+  return list;
+}
+
 /// 查询设备是否为鸿蒙设备。
 bool isHarmonyDevice(Ref ref, String deviceId) {
   try {
@@ -197,6 +215,22 @@ final activePortForwardsProvider = FutureProvider.autoDispose
         return [];
       }
       return parseReverseList(result.stdout);
+    });
+
+/// 当前设备的正向 TCP 映射列表，与反向规则分别查询和刷新。
+final activeForwardPortsProvider = FutureProvider.autoDispose
+    .family<List<PortForward>, String>((ref, deviceId) async {
+      final adb = ref.watch(adbServiceProvider);
+      final isHarmony = isHarmonyDevice(ref, deviceId);
+      final hdc = isHarmony ? ref.watch(hdcServiceProvider) : null;
+      final result = await PortForwardCommand.listForward(
+        adb,
+        hdc,
+        deviceId: deviceId,
+        isHarmony: isHarmony,
+      );
+      if (!result.isSuccess) throw Exception(result.message);
+      return parseForwardList(result.stdout);
     });
 
 /// 读取当前设备的全局 HTTP 代理状态。

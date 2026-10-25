@@ -52,6 +52,20 @@ extension HdcServiceFport on HdcService {
     return run(['-t', deviceId, 'fport', 'ls']);
   }
 
+  /// 仅保留 `fport ls` 中的正向规则，避免把反向映射显示为正向。
+  Future<AdbResult> listForwardRules(String deviceId) async {
+    final result = await listForwards(deviceId);
+    if (!result.isSuccess) return result;
+    return AdbResult(
+      exitCode: result.exitCode,
+      stdout: result.stdout
+          .split('\n')
+          .where((line) => line.contains('[Forward]'))
+          .join('\n'),
+      stderr: result.stderr,
+    );
+  }
+
   /// 建立反向端口转发：设备侧 [remotePort] -> 宿主机 [localSpec]。
   ///
   /// [localSpec] 例如 `tcp:8080`。
