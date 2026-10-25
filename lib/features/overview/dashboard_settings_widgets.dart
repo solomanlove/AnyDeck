@@ -141,11 +141,13 @@ extension _SettingsTabWidgets on _SettingsTab {
   /// [value]: 当前选中的值。
   /// [items]: 下拉选项列表。
   /// [onChanged]: 选项变更回调，为 null 时表示禁用。
+  /// [alignMenu]: 让语言和外观菜单与选择器等宽并从下方展开。
   Widget _buildDropdownSelector<T>(
     BuildContext context, {
     required T value,
     required List<_DropdownOption<T>> items,
     required ValueChanged<T>? onChanged,
+    bool alignMenu = false,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -155,10 +157,14 @@ extension _SettingsTabWidgets on _SettingsTab {
     );
 
     return PopupMenuButton<T>(
-      initialValue: value,
+      initialValue: alignMenu ? null : value,
       tooltip: '',
       enabled: onChanged != null,
-      offset: const Offset(0, 34),
+      position: alignMenu ? PopupMenuPosition.under : null,
+      offset: alignMenu ? const Offset(0, 4) : const Offset(0, 34),
+      constraints: alignMenu
+          ? const BoxConstraints.tightFor(width: 112)
+          : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
         side: BorderSide(
@@ -191,6 +197,9 @@ extension _SettingsTabWidgets on _SettingsTab {
       child: Opacity(
         opacity: onChanged == null ? 0.45 : 1.0,
         child: Container(
+          constraints: alignMenu
+              ? const BoxConstraints.tightFor(width: 112)
+              : null,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: isDark

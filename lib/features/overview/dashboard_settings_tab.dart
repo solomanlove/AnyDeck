@@ -40,6 +40,7 @@ class _SettingsTab extends ConsumerWidget {
                           label: context.l10n.t('language'),
                           child: _buildDropdownSelector<AppLanguage>(
                             context,
+                            alignMenu: true,
                             value: settings.language,
                             items: [
                               _DropdownOption(
@@ -60,6 +61,7 @@ class _SettingsTab extends ConsumerWidget {
                           label: context.l10n.t('theme'),
                           child: _buildDropdownSelector<ThemeMode>(
                             context,
+                            alignMenu: true,
                             value: settings.themeMode,
                             items: [
                               _DropdownOption(
