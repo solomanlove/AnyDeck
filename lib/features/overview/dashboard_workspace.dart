@@ -269,6 +269,7 @@ class _ToolContentCardState extends State<_ToolContentCard> {
             key: ValueKey(widget.device.id),
             device: widget.device,
           ),
+          7 => const IosWebInspectorTab(),
           9 => DashboardScreenshotTab(device: widget.device),
           _ => const SizedBox.shrink(),
         };

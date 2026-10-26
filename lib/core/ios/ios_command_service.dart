@@ -205,7 +205,12 @@ class IosCommandService {
   }
 
   Future<AdbResult> automationStatus(String udid) => _control(udid, 'status');
+  Future<AdbResult> automationGeometry(String udid) => _control(udid, 'geometry');
   Future<AdbResult> automationSource(String udid) => _control(udid, 'source');
+
+  /// 解开控制网关的 JSON 响应；供布局分析和 MCP 复用。
+  Map<String, dynamic> parseAutomationValue(String output) =>
+      Map<String, dynamic>.from(jsonDecode(output) as Map);
   Future<AdbResult> tap(String udid, double x, double y) => _control(udid, 'tap', {'x': x, 'y': y});
   Future<AdbResult> swipe(String udid, {required double fromX, required double fromY,
     required double toX, required double toY}) => _control(udid, 'swipe', {
@@ -213,6 +218,7 @@ class IosCommandService {
     });
   Future<AdbResult> typeText(String udid, String text) => _control(udid, 'text', {'text': text});
   Future<AdbResult> pressButton(String udid, String button) => _control(udid, 'button', {'name': button});
+  Future<AdbResult> lock(String udid) => _control(udid, 'lock');
 
   static List<IosAppInfo> parseApps(String output) {
     final apps = <String, IosAppInfo>{};

@@ -4,12 +4,15 @@ import CoreVideo
 
 /// iPhone USB 屏幕采集：AVFoundation 交付 CVPixelBuffer，只保留最新帧。
 /// 通过物理 USB 身份和唯一 iOS 屏幕候选关联，不按名称选择摄像头。
-final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
+  AVCaptureFileOutputRecordingDelegate {
   private let queue = DispatchQueue(label: "anydeck.ios.usb.capture")
   private let frames = DispatchQueue(label: "anydeck.ios.usb.frames")
   private let lock = NSLock()
   private var session: AVCaptureSession?
   private var audioOutput: AVCaptureAudioPreviewOutput?
+  private var movieOutput: AVCaptureMovieFileOutput?
+  private var recordingCompletion: ((String?, Error?) -> Void)?
   private var audioEnabled = true
   private var pixel: CVPixelBuffer?
   private var count = 0
@@ -106,6 +109,11 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
       capture.addOutput(audioPreview)
       audioOutput = audioPreview
     }
+    let movie = AVCaptureMovieFileOutput()
+    if capture.canAddOutput(movie) {
+      capture.addOutput(movie)
+      movieOutput = movie
+    }
     capture.commitConfiguration()
     session = capture
     observers.append(NotificationCenter.default.addObserver(
@@ -157,11 +165,72 @@ final class IosUsbCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
   }
 
   private func stopSession() {
+    if movieOutput?.isRecording == true { movieOutput?.stopRecording() }
+    if let completion = recordingCompletion {
+      recordingCompletion = nil
+      DispatchQueue.main.async {
+        completion(nil, NSError(domain: "IosUsbCapture", code: 13,
+          userInfo: [NSLocalizedDescriptionKey: "iosUsbCaptureStopped"]))
+      }
+    }
     session?.stopRunning()
     session = nil
     audioOutput = nil
+    movieOutput = nil
     observers.forEach { NotificationCenter.default.removeObserver($0) }
     observers.removeAll()
+  }
+
+  /// 使用同一 USB 采集会话在 macOS 侧保存视频，避免 Dart 逐帧拷贝。
+  func startRecording(path: String, completion: @escaping (Error?) -> Void) {
+    queue.async { [self] in
+      guard !isClosed, session?.isRunning == true, let movieOutput,
+            !movieOutput.isRecording else {
+        DispatchQueue.main.async {
+          completion(NSError(domain: "IosUsbCapture", code: 10,
+            userInfo: [NSLocalizedDescriptionKey: "iosUsbRecordingUnavailable"]))
+        }
+        return
+      }
+      let url = URL(fileURLWithPath: path)
+      do {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+          withIntermediateDirectories: true)
+        if FileManager.default.fileExists(atPath: path) {
+          throw NSError(domain: "IosUsbCapture", code: 11,
+            userInfo: [NSLocalizedDescriptionKey: "iosUsbRecordingFileExists"])
+        }
+        movieOutput.startRecording(to: url, recordingDelegate: self)
+        DispatchQueue.main.async { completion(nil) }
+      } catch {
+        DispatchQueue.main.async { completion(error) }
+      }
+    }
+  }
+
+  func stopRecording(completion: @escaping (String?, Error?) -> Void) {
+    queue.async { [self] in
+      guard let movieOutput, movieOutput.isRecording,
+            recordingCompletion == nil else {
+        DispatchQueue.main.async {
+          completion(nil, NSError(domain: "IosUsbCapture", code: 12,
+            userInfo: [NSLocalizedDescriptionKey: "iosUsbRecordingUnavailable"]))
+        }
+        return
+      }
+      recordingCompletion = completion
+      movieOutput.stopRecording()
+    }
+  }
+
+  func fileOutput(_ output: AVCaptureFileOutput,
+                  didFinishRecordingTo outputFileURL: URL,
+                  from connections: [AVCaptureConnection], error: Error?) {
+    queue.async { [self] in
+      let completion = recordingCompletion
+      recordingCompletion = nil
+      DispatchQueue.main.async { completion?(outputFileURL.path, error) }
+    }
   }
 
   /// 动态更新 iOS USB 投屏音频转发开关（通过调节 AVCaptureAudioPreviewOutput 音量实现实时静音/恢复）

@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/ios/ios_control_provider.dart';
 import '../../../core/ios/ios_mirror_service.dart';
+import '../../../core/providers/app_providers.dart';
 import '../../../features/ios/widgets/ios_control_bar.dart';
 import '../../l10n/app_localizations.dart';
+import '../../settings/app_settings_controller.dart';
 import '../../widget/app_toast.dart';
 import 'mirror_toolbar_button.dart';
 
@@ -19,11 +20,15 @@ class IosMirrorToolbar extends ConsumerStatefulWidget {
     required this.deviceId,
     required this.onScreenshot,
     required this.onSaveScreenshot,
+    this.isAirplay = false,
+    this.airplayHandle,
   });
 
   final String deviceId;
   final VoidCallback onScreenshot;
   final VoidCallback onSaveScreenshot;
+  final bool isAirplay;
+  final int? airplayHandle;
 
   @override
   ConsumerState<IosMirrorToolbar> createState() => _IosMirrorToolbarState();
@@ -31,6 +36,120 @@ class IosMirrorToolbar extends ConsumerStatefulWidget {
 
 class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
   bool _showingError = false;
+  bool _recording = false;
+  bool _recordBusy = false;
+  int? _recordingAirplayHandle;
+  String? _recordingDeviceId;
+  static const _airplayChannel = MethodChannel('anydeck/rust_texture');
+
+  @override
+  void didUpdateWidget(covariant IosMirrorToolbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_recording && (oldWidget.isAirplay != widget.isAirplay ||
+        oldWidget.airplayHandle != widget.airplayHandle ||
+        oldWidget.deviceId != widget.deviceId)) {
+      _stopRecording();
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_recording && !_recordBusy) {
+      if (_recordingAirplayHandle case final handle?) {
+        _airplayChannel.invokeMethod<String>('stopRecording', {
+          'handle': handle,
+        }).ignore();
+      } else {
+        ref.read(iosDeviceServiceProvider).usbMirror
+            .stopRecording(_recordingDeviceId ?? widget.deviceId).ignore();
+      }
+    }
+    super.dispose();
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_recordBusy) return;
+    if (_recording) {
+      await _stopRecording();
+      return;
+    }
+    setState(() => _recordBusy = true);
+    final deviceId = widget.deviceId;
+    final airplayHandle = widget.isAirplay ? widget.airplayHandle : null;
+    final usbMirror = ref.read(iosDeviceServiceProvider).usbMirror;
+    try {
+      final settings = ref.read(appSettingsProvider);
+      final path = ref.read(hostPlatformServiceProvider)
+          .generateRecordPath(settings.screenshotSavePath, deviceId)
+          .replaceFirst(RegExp(r'\.mp4$'), '.mov');
+      if (widget.isAirplay) {
+        final handle = airplayHandle;
+        if (handle == null) throw StateError('airplayRecordingUnavailable');
+        await _airplayChannel.invokeMethod<void>('startRecording', {
+          'handle': handle,
+          'path': path,
+        });
+        _recordingAirplayHandle = handle;
+      } else {
+        await usbMirror.startRecording(deviceId, path);
+        _recordingAirplayHandle = null;
+      }
+      _recordingDeviceId = deviceId;
+      if (mounted && widget.deviceId == deviceId &&
+          widget.isAirplay == (airplayHandle != null) &&
+          widget.airplayHandle == airplayHandle) {
+        setState(() => _recording = true);
+      } else if (airplayHandle != null) {
+        _airplayChannel.invokeMethod<String>('stopRecording', {
+          'handle': airplayHandle,
+        }).ignore();
+        _recordingAirplayHandle = null;
+        _recordingDeviceId = null;
+      } else {
+        usbMirror.stopRecording(deviceId).ignore();
+        _recordingDeviceId = null;
+      }
+    } catch (error) {
+      if (mounted) {
+        AppToast.show(context,
+            context.l10n.t('recordFailed').replaceAll('{error}', '$error'),
+            isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _recordBusy = false);
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    if (_recordBusy || !_recording) return;
+    setState(() => _recordBusy = true);
+    try {
+      final handle = _recordingAirplayHandle;
+      final path = handle != null
+          ? await _airplayChannel.invokeMethod<String>('stopRecording', {
+              'handle': handle,
+            })
+          : await ref.read(iosDeviceServiceProvider).usbMirror
+              .stopRecording(_recordingDeviceId ?? widget.deviceId);
+      if (path == null || path.isEmpty) {
+        throw StateError('iosRecordingFileUnavailable');
+      }
+      if (mounted) {
+        AppToast.show(context,
+            context.l10n.t('recordSuccess').replaceAll('{path}', path));
+      }
+    } catch (error) {
+      if (mounted) {
+        AppToast.show(context,
+            context.l10n.t('recordFailed').replaceAll('{error}', '$error'),
+            isError: true);
+      }
+    } finally {
+      _recordingAirplayHandle = null;
+      _recordingDeviceId = null;
+      if (mounted) setState(() { _recording = false; _recordBusy = false; });
+    }
+  }
 
   Future<void> _showError(String error) async {
     if (_showingError || !mounted || error.isEmpty) return;
@@ -132,6 +251,18 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
                     tooltip: context.l10n.t('screenshotTooltip'),
                     onPressed: widget.onScreenshot,
                     onLongPress: widget.onSaveScreenshot,
+                  ),
+                  MirrorToolbarButton(
+                    key: const ValueKey('ios-usb-record-toggle'),
+                    icon: Icon(_recording ? CupertinoIcons.stop_fill
+                        : CupertinoIcons.videocam),
+                    tooltip: context.l10n.t(_recording ? 'stopRecord'
+                        : widget.isAirplay ? 'iosAirplayRecord' : 'iosUsbRecord'),
+                    onPressed: _recordBusy ||
+                            (widget.isAirplay
+                                ? widget.airplayHandle == null
+                                : ref.watch(activeIosMirrorProvider(widget.deviceId)) == null)
+                        ? null : _toggleRecording,
                   ),
                   const SizedBox(width: 6),
                   MirrorToolbarButton(

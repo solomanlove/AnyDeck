@@ -37,12 +37,16 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
     required this.deviceName,
     required this.windowId,
     required this.controller,
+    this.isAirplay = false,
+    this.airplayHandle,
   });
 
   final String deviceId;
   final String deviceName;
   final String windowId;
   final MirrorWindowController controller;
+  final bool isAirplay;
+  final int? airplayHandle;
 
   @override
   ConsumerState<MirrorFloatingToolbar> createState() =>
@@ -158,6 +162,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         deviceId: widget.deviceId,
         onScreenshot: () => _takeScreenshot(context, widget.deviceId, saveToFile: false),
         onSaveScreenshot: () => _takeScreenshot(context, widget.deviceId, saveToFile: true),
+        isAirplay: widget.isAirplay,
+        airplayHandle: widget.airplayHandle,
       );
     }
     final actions = ref.read(deviceActionServiceProvider);

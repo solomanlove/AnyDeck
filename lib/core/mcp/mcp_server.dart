@@ -7,6 +7,8 @@ import '../device_actions/device_action_service.dart';
 import '../device_info/device_info_service.dart';
 import '../files/file_manager_service.dart';
 import '../layout_inspector/layout_inspector_service.dart';
+import '../ios/ios_command_service.dart';
+import '../ios/ios_device_service.dart';
 import 'models/mcp_request.dart';
 import 'models/mcp_response.dart';
 import 'models/mcp_server_config.dart';
@@ -16,6 +18,7 @@ import 'tools/mcp_device_tools.dart';
 import 'tools/mcp_file_tools.dart';
 import 'tools/mcp_log_tools.dart';
 import 'tools/mcp_ui_tools.dart';
+import 'tools/mcp_ios_tools.dart';
 import 'transport/mcp_sse_transport.dart';
 import 'transport/mcp_transport_interface.dart';
 
@@ -220,13 +223,40 @@ class McpServer {
     final appService = AppManagementService(adb);
     final layoutService = LayoutInspectorService(adb);
     final fileService = FileManagerService(adb);
+    final iosService = IosCommandService();
+    final iosDevices = IosDeviceService();
+    Future<bool> isIosDevice(String deviceId) async {
+      try {
+        return (await iosDevices.listDevices())
+            .any((device) => device.id == deviceId);
+      } catch (_) {
+        return false;
+      }
+    }
 
     final registry = McpToolRegistry();
-    registry.registerAll(McpDeviceTools(adbService: adb, deviceInfoService: deviceInfoService).getTools());
-    registry.registerAll(McpUiTools(adbService: adb, actionService: actionService, layoutService: layoutService).getTools());
+    registry.isIosDevice = isIosDevice;
+    registry.registerAll(McpDeviceTools(
+      adbService: adb,
+      deviceInfoService: deviceInfoService,
+      iosDeviceService: iosDevices,
+      iosCommandService: iosService,
+      isIosDevice: isIosDevice,
+    ).getTools());
+    registry.registerAll(McpUiTools(
+      adbService: adb,
+      actionService: actionService,
+      layoutService: layoutService,
+      iosService: iosService,
+      isIosDevice: isIosDevice,
+    ).getTools());
     registry.registerAll(McpAppTools(appService: appService).getTools());
     registry.registerAll(McpLogTools(adbService: adb).getTools());
     registry.registerAll(McpFileTools(adbService: adb, fileManagerService: fileService).getTools());
+    registry.registerAll(McpIosTools(
+      commands: iosService,
+      isIosDevice: isIosDevice,
+    ).getTools());
     return registry;
   }
 }

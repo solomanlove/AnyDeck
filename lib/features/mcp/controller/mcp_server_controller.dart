@@ -12,6 +12,8 @@ import '../../../core/mcp/tools/mcp_device_tools.dart';
 import '../../../core/mcp/tools/mcp_file_tools.dart';
 import '../../../core/mcp/tools/mcp_log_tools.dart';
 import '../../../core/mcp/tools/mcp_ui_tools.dart';
+import '../../../core/mcp/tools/mcp_ios_tools.dart';
+import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/providers/app_providers.dart';
 import 'mcp_audit_log_controller.dart';
 
@@ -79,15 +81,25 @@ class McpServerNotifier extends Notifier<McpServerState> {
     final appService = ref.read(appManagementServiceProvider);
     final layoutService = ref.read(layoutInspectorServiceProvider);
     final fileManagerService = ref.read(fileManagerServiceProvider);
+    final iosCommands = ref.read(iosCommandServiceProvider);
+    Future<bool> isIosDevice(String deviceId) async => ref
+        .read(deviceRegistryProvider)
+        .any((device) => device.id == deviceId && device.isIos);
+    _registry.isIosDevice = isIosDevice;
 
     final deviceTools = McpDeviceTools(
       adbService: adbService,
       deviceInfoService: deviceInfoService,
+      iosDeviceService: ref.read(iosDeviceServiceProvider),
+      iosCommandService: iosCommands,
+      isIosDevice: isIosDevice,
     );
     final uiTools = McpUiTools(
       adbService: adbService,
       actionService: actionService,
       layoutService: layoutService,
+      iosService: iosCommands,
+      isIosDevice: isIosDevice,
     );
     final appTools = McpAppTools(appService: appService);
     final logTools = McpLogTools(adbService: adbService);
@@ -101,6 +113,10 @@ class McpServerNotifier extends Notifier<McpServerState> {
     _registry.registerAll(appTools.getTools());
     _registry.registerAll(logTools.getTools());
     _registry.registerAll(fileTools.getTools());
+    _registry.registerAll(McpIosTools(
+      commands: iosCommands,
+      isIosDevice: isIosDevice,
+    ).getTools());
 
     // 2. 从本地缓存读取配置
     var config = const McpServerConfig();

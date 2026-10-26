@@ -40,6 +40,25 @@ final class IosUsbCapturePlugin: NSObject, FlutterPlugin {
       result(FlutterError(code: "iosInvalidDevice", message: nil, details: nil)); return
     }
     switch call.method {
+    case "startRecording":
+      guard let capture = captures[udid],
+            let path = args["path"] as? String, !path.isEmpty else {
+        result(FlutterError(code: "iosUsbRecordingUnavailable", message: nil, details: nil)); return
+      }
+      capture.startRecording(path: path) { error in
+        if let error {
+          result(FlutterError(code: "iosUsbRecordingFailed", message: error.localizedDescription, details: nil))
+        } else { result(nil) }
+      }
+    case "stopRecording":
+      guard let capture = captures[udid] else {
+        result(FlutterError(code: "iosUsbRecordingUnavailable", message: nil, details: nil)); return
+      }
+      capture.stopRecording { path, error in
+        if let error {
+          result(FlutterError(code: "iosUsbRecordingFailed", message: error.localizedDescription, details: nil))
+        } else { result(path) }
+      }
     case "start":
       guard !closing else { result(FlutterError(code: "iosUsbCaptureStopped", message: nil, details: nil)); return }
       let audioEnabled = (args["audioEnabled"] as? Bool) ?? true

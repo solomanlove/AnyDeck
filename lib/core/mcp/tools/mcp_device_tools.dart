@@ -1,15 +1,24 @@
 import '../../adb/adb_service.dart';
 import '../../device_info/device_info_service.dart';
+import '../../ios/ios_command_service.dart';
+import '../../ios/ios_device_service.dart';
+import '../../ios/ios_overview_service.dart';
 import '../models/mcp_tool_definition.dart';
 
 /// 设备与系统状态感知相关的 MCP Tools
 class McpDeviceTools {
   final AdbService adbService;
   final DeviceInfoService deviceInfoService;
+  final IosDeviceService? iosDeviceService;
+  final IosCommandService? iosCommandService;
+  final Future<bool> Function(String deviceId)? isIosDevice;
 
   McpDeviceTools({
     required this.adbService,
     required this.deviceInfoService,
+    this.iosDeviceService,
+    this.iosCommandService,
+    this.isIosDevice,
   });
 
   /// 获取所有注册的设备工具
@@ -26,7 +35,7 @@ class McpDeviceTools {
     return McpToolDefinition(
       name: 'list_devices',
       category: 'device',
-      description: '获取当前连接到宿主机的所有设备列表（包含 Android、模拟器及多连接状态）',
+      description: '获取当前连接到宿主机的 Android、iOS 等设备列表',
       inputSchema: {
         'type': 'object',
         'properties': {
@@ -38,7 +47,11 @@ class McpDeviceTools {
         },
       },
       handler: (args) async {
-        final devices = await adbService.listDevices();
+        final devices = (await adbService.listDevices()).toList();
+        // iOS 枚举失败不应使已连接的 Android 设备消失。
+        try {
+          devices.addAll(await iosDeviceService?.listDevices() ?? []);
+        } catch (_) {}
         final deviceListJson = devices.map((d) {
           return {
             'id': d.id,
@@ -65,7 +78,7 @@ class McpDeviceTools {
     return McpToolDefinition(
       name: 'get_device_detail',
       category: 'device',
-      description: '获取指定 Android 设备的详细软硬件参数（型号、品牌、Android版本、SDK、屏幕分辨率、DPI、CPU架构等）',
+      description: '获取指定设备可读取的软硬件参数；iOS 部分字段不可用',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId'],
@@ -82,9 +95,15 @@ class McpDeviceTools {
           throw ArgumentError('必须提供 deviceId');
         }
 
-        final overview = await deviceInfoService.loadOverview(deviceId);
+        final ios = await isIosDevice?.call(deviceId) == true;
+        final overview = ios
+            ? await IosOverviewService(iosCommandService ?? IosCommandService())
+                .load(deviceId, fallbackName: deviceId)
+            : await deviceInfoService.loadOverview(deviceId);
         return {
           'deviceId': deviceId,
+          'isIos': ios,
+          'osVersion': overview.androidVersion,
           'name': overview.name,
           'model': overview.model,
           'brand': overview.brand,

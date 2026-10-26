@@ -270,7 +270,7 @@ void main() {
       expect(find.text('布局分析'), findsOneWidget);
       expect(find.byType(CupertinoSwitch), findsOneWidget);
 
-      // 2. iOS 设备不显示布局分析开关
+      // 2. iOS 设备通过 WDA UI Tree 显示布局分析开关
       await tester.pumpWidget(
         _wrapTestWidget(
           const DashboardScreenshotTab(device: _mockIosDevice),
@@ -297,8 +297,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('布局分析'), findsNothing);
-      expect(find.byType(CupertinoSwitch), findsNothing);
+      expect(find.text('布局分析'), findsOneWidget);
+      expect(find.byType(CupertinoSwitch), findsOneWidget);
 
       // 3. HarmonyOS 设备显示布局分析开关
       await tester.pumpWidget(

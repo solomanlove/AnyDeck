@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/settings/app_settings_controller.dart';
 import '../../../core/ios/ios_mirror_service.dart';
+import '../../../core/ios/ios_layout_service.dart';
 import '../../../core/layout_inspector/layout_inspector_service.dart';
 import '../../../core/layout_inspector/layout_node.dart';
 import '../../../core/providers/app_providers.dart';
@@ -150,19 +152,42 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
     );
 
     try {
+      final device = _getDevice();
       final service = ref.read(layoutInspectorServiceProvider);
 
-      // 并发执行截图与布局转储
-      final (screenshotBytes, layoutData) = await (
-        service.captureScreenshot(deviceId),
-        service.captureLayout(deviceId),
-      ).wait;
-      final (parsedRoot, xmlContent) = layoutData;
+      // Android 保持截图与 UI dump 并发；iOS 需先取得截图像素尺寸。
+      late final Uint8List screenshotBytes;
+      (LayoutNode, String)? androidLayout;
+      if (device?.isIos == true) {
+        screenshotBytes = await ref.read(iosCommandServiceProvider)
+            .captureScreenshot(deviceId);
+      } else {
+        final (bytes, layout) = await (
+          service.captureScreenshot(deviceId),
+          service.captureLayout(deviceId),
+        ).wait;
+        screenshotBytes = bytes;
+        androidLayout = layout;
+      }
 
       final codec = await ui.instantiateImageCodec(screenshotBytes);
       final frameInfo = await codec.getNextFrame();
       final decodedImg = frameInfo.image;
       codec.dispose();
+
+      late final (LayoutNode, String) layoutData;
+      try {
+        layoutData = androidLayout ??
+            await IosLayoutService(ref.read(iosCommandServiceProvider)).capture(
+                deviceId,
+                imageWidth: decodedImg.width,
+                imageHeight: decodedImg.height,
+              );
+      } catch (_) {
+        decodedImg.dispose();
+        rethrow;
+      }
+      final (parsedRoot, xmlContent) = layoutData;
 
       // 请求失效检查（加载期间若被关闭、已销毁或触发了新请求则丢弃）
       if (currentRequestId != _requestId || !ref.mounted) {
@@ -221,6 +246,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
         isLayoutAnalysis: true,
         isLoading: true,
         isAutoRefresh: false,
+        useDp: _getDevice()?.isIos == true ? false : state.useDp,
       );
       if (loadContent) loadLayoutAndScreenshot();
     } else {

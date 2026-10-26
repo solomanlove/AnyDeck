@@ -274,6 +274,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           deviceName: widget.deviceName,
           windowId: widget.windowId,
           controller: _controller,
+          isAirplay: true,
+          airplayHandle: airplayHandle,
         ),
         onDisconnected: () {
           if (!mounted ||

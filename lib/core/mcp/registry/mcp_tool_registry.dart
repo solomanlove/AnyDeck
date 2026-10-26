@@ -4,6 +4,15 @@ import '../security/mcp_security_guard.dart';
 /// MCP 工具注册与调用分发中心
 class McpToolRegistry {
   final Map<String, McpToolDefinition> _tools = {};
+  Future<bool> Function(String deviceId)? isIosDevice;
+
+  static const _iosTools = {
+    'list_devices', 'get_device_detail', 'take_screenshot',
+    'inspect_ui_layout', 'device_input_tap', 'device_input_swipe',
+    'device_input_text', 'device_press_key', 'ios_list_apps',
+    'ios_install_ipa', 'ios_uninstall_app', 'ios_list_files',
+    'ios_file_push', 'ios_file_pull',
+  };
 
   /// 注册单个工具
   void register(McpToolDefinition tool) {
@@ -55,6 +64,13 @@ class McpToolRegistry {
 
     if (blockReason != null) {
       throw StateError(blockReason);
+    }
+
+    final deviceId = arguments['deviceId'];
+    if (deviceId is String && deviceId.isNotEmpty &&
+        await isIosDevice?.call(deviceId) == true &&
+        !_iosTools.contains(name)) {
+      throw UnsupportedError('工具 $name 不支持 iOS 设备');
     }
 
     return await tool.handler(arguments);

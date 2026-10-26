@@ -9,7 +9,7 @@ import '../model/screenshot_state.dart';
 
 /// 截图与布局分析共享控制工具栏。
 /// 左侧和中间操作按钮区支持横向滚动（保证窄窗口下不溢出）；
-/// 右侧固定显示 Android/HarmonyOS 的“布局分析”模式开关；缩放与图片信息由底栏承载。
+/// 右侧固定显示“布局分析”模式开关；缩放与图片信息由底栏承载。
 class ScreenshotToolbar extends StatelessWidget {
   const ScreenshotToolbar({
     super.key,
@@ -187,11 +187,8 @@ class ScreenshotToolbar extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Android 与 HarmonyOS 支持布局分析；iOS 暂无稳定的控件树转储通道。
-              if (!device.isIos) ...[
-                _buildDivider(isDark),
-                _buildLayoutAnalysisToggle(context, isDark),
-              ],
+              _buildDivider(isDark),
+              _buildLayoutAnalysisToggle(context, isDark),
             ],
           ),
         ],

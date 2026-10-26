@@ -271,6 +271,7 @@ class _DashboardScreenshotTabState
                           selectedNode: state.selectedNode,
                           useDp: state.useDp,
                           deviceScale: density,
+                          showDpToggle: !widget.device.isIos,
                           onUseDpChanged: (val) =>
                               controller.setUseDp(val ?? true),
                         ),

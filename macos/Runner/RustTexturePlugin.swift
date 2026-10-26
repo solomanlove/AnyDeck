@@ -1,6 +1,7 @@
 import Cocoa
 import FlutterMacOS
 import CoreVideo
+import AVFoundation
 
 /// 平台必需的 Texture 适配：只注册/通知 Flutter，像素及设备逻辑归 Rust 所有。
 final class RustTexturePlugin: NSObject, FlutterPlugin {
@@ -10,6 +11,7 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
   private let registrar: FlutterPluginRegistrar
   private var tracked = Set<UInt64>()
   private var textures: [Int64: RustPixelTexture] = [:]
+  private var recorders: [UInt64: AirplayTextureRecorder] = [:]
   private var timer: Timer?
   private var copyPixel: CopyPixel?
   private var releaseSession: Release?
@@ -101,8 +103,34 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
       tracked.insert(handle)
       result(nil)
     } else if call.method == "untrack" {
-      if let handle { tracked.remove(handle) }
+      if let handle {
+        tracked.remove(handle)
+        recorders.removeValue(forKey: handle)?.stop { _, _ in }
+      }
       result(nil)
+    } else if call.method == "startRecording" {
+      guard let handle, let path = arguments?["path"] as? String, !path.isEmpty,
+            textures.values.contains(where: { $0.handle == handle }), recorders[handle] == nil else {
+        result(FlutterError(code: "airplayRecordingUnavailable", message: nil, details: nil))
+        return
+      }
+      do {
+        let recorder = try AirplayTextureRecorder(path: path)
+        recorders[handle] = recorder
+        result(nil)
+      } catch {
+        result(FlutterError(code: "airplayRecordingFailed", message: error.localizedDescription, details: nil))
+      }
+    } else if call.method == "stopRecording" {
+      guard let handle, let recorder = recorders.removeValue(forKey: handle) else {
+        result(FlutterError(code: "airplayRecordingUnavailable", message: nil, details: nil))
+        return
+      }
+      recorder.stop { path, error in
+        if let error {
+          result(FlutterError(code: "airplayRecordingFailed", message: error.localizedDescription, details: nil))
+        } else { result(path) }
+      }
     } else if call.method == "register" {
       guard let handle else {
         NSLog("[RustTexturePlugin] register called with missing/invalid handle: \(String(describing: arguments))")
@@ -123,7 +151,10 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
       if timer == nil {
         let t = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
           guard let self else { return }
-          for id in self.textures.keys { self.registry.textureFrameAvailable(id) }
+          for (id, texture) in self.textures {
+            self.registry.textureFrameAvailable(id)
+            self.recorders[texture.handle]?.append(texture: texture)
+          }
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
@@ -131,7 +162,12 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
       result(id)
     } else if call.method == "unregister" {
       if let id = textureId {
-        if textures.removeValue(forKey: id) != nil { registry.unregisterTexture(id) }
+        if let texture = textures.removeValue(forKey: id) {
+          registry.unregisterTexture(id)
+          if !textures.values.contains(where: { $0.handle == texture.handle }) {
+            recorders.removeValue(forKey: texture.handle)?.stop { _, _ in }
+          }
+        }
       }
       if textures.isEmpty { timer?.invalidate(); timer = nil }
       result(nil)
@@ -147,6 +183,8 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
   private func cleanup() {
     timer?.invalidate()
     timer = nil
+    for recorder in recorders.values { recorder.stop { _, _ in } }
+    recorders.removeAll()
     for id in textures.keys { registry.unregisterTexture(id) }
     for handle in tracked { releaseSession?(handle) }
     tracked.removeAll()
@@ -157,6 +195,109 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
     NotificationCenter.default.removeObserver(self)
     cleanup()
     // Rust 的清理线程可能仍在执行，进程退出前不卸载 dylib。
+  }
+}
+
+/// 直接录制 Rust Texture 的 CVPixelBuffer，避免将 AirPlay 视频帧送入 Dart。
+private final class AirplayTextureRecorder {
+  private let url: URL
+  private var writer: AVAssetWriter?
+  private var input: AVAssetWriterInput?
+  private var adaptor: AVAssetWriterInputPixelBufferAdaptor?
+  private var startedAt: TimeInterval?
+  private var lastFrame: TimeInterval = 0
+  private var failure: Error?
+  private var stopped = false
+
+  init(path: String) throws {
+    url = URL(fileURLWithPath: path)
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+      withIntermediateDirectories: true)
+    if FileManager.default.fileExists(atPath: path) {
+      throw NSError(domain: "AirplayTextureRecorder", code: 1,
+        userInfo: [NSLocalizedDescriptionKey: "airplayRecordingFileExists"])
+    }
+  }
+
+  func append(texture: RustPixelTexture) {
+    guard !stopped, failure == nil else { return }
+    let now = ProcessInfo.processInfo.systemUptime
+    if now - lastFrame < 1.0 / 30.0 { return }
+    lastFrame = now
+    guard let retained = texture.copyPixelBuffer() else { return }
+    let pixel = retained.takeRetainedValue()
+    do {
+      if writer == nil { try configure(pixel: pixel, startedAt: now) }
+      guard let writer, let input, let adaptor else { return }
+      if writer.status == .failed {
+        failure = writer.error
+        return
+      }
+      guard input.isReadyForMoreMediaData else { return }
+      let time = CMTime(seconds: now - (startedAt ?? now), preferredTimescale: 600)
+      if !adaptor.append(pixel, withPresentationTime: time) {
+        failure = writer.error ?? NSError(domain: "AirplayTextureRecorder", code: 2)
+      }
+    } catch { failure = error }
+  }
+
+  private func configure(pixel: CVPixelBuffer, startedAt: TimeInterval) throws {
+    let width = CVPixelBufferGetWidth(pixel)
+    let height = CVPixelBufferGetHeight(pixel)
+    let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
+    let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
+      AVVideoCodecKey: AVVideoCodecType.h264,
+      AVVideoWidthKey: width,
+      AVVideoHeightKey: height,
+      AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: min(width * height * 4, 20_000_000)],
+    ])
+    input.expectsMediaDataInRealTime = true
+    guard writer.canAdd(input) else {
+      throw NSError(domain: "AirplayTextureRecorder", code: 3)
+    }
+    writer.add(input)
+    let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input,
+      sourcePixelBufferAttributes: [
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+        kCVPixelBufferWidthKey as String: width,
+        kCVPixelBufferHeightKey as String: height,
+      ])
+    guard writer.startWriting() else {
+      throw writer.error ?? NSError(domain: "AirplayTextureRecorder", code: 4)
+    }
+    writer.startSession(atSourceTime: .zero)
+    self.writer = writer
+    self.input = input
+    self.adaptor = adaptor
+    self.startedAt = startedAt
+  }
+
+  func stop(completion: @escaping (String?, Error?) -> Void) {
+    guard !stopped else { completion(nil, failure); return }
+    stopped = true
+    guard let writer, let input else {
+      try? FileManager.default.removeItem(at: url)
+      completion(nil, failure ?? NSError(domain: "AirplayTextureRecorder", code: 5,
+        userInfo: [NSLocalizedDescriptionKey: "airplayRecordingNoFrames"]))
+      return
+    }
+    guard writer.status == .writing else {
+      try? FileManager.default.removeItem(at: url)
+      completion(nil, failure ?? writer.error)
+      return
+    }
+    input.markAsFinished()
+    writer.finishWriting { [self] in
+      DispatchQueue.main.async { [self] in
+        let error = self.failure ?? writer.error
+        if writer.status != .completed || error != nil {
+          try? FileManager.default.removeItem(at: self.url)
+          completion(nil, error ?? NSError(domain: "AirplayTextureRecorder", code: 6))
+        } else {
+          completion(self.url.path, nil)
+        }
+      }
+    }
   }
 }
 

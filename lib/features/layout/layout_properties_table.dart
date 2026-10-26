@@ -12,6 +12,7 @@ class LayoutPropertiesTable extends StatefulWidget {
   final bool useDp;
   final double deviceScale;
   final ValueChanged<bool?>? onUseDpChanged;
+  final bool showDpToggle;
 
   const LayoutPropertiesTable({
     super.key,
@@ -19,6 +20,7 @@ class LayoutPropertiesTable extends StatefulWidget {
     this.useDp = false,
     this.deviceScale = 1.0,
     this.onUseDpChanged,
+    this.showDpToggle = true,
   });
 
   @override
@@ -213,20 +215,22 @@ class _LayoutPropertiesTableState extends State<LayoutPropertiesTable> {
                   ),
                 ),
                 const Spacer(),
-                Checkbox(
-                  value: widget.useDp,
-                  onChanged: widget.onUseDpChanged,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-                Text(
-                  'DP',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                if (widget.showDpToggle) ...[
+                  Checkbox(
+                    value: widget.useDp,
+                    onChanged: widget.onUseDpChanged,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
                   ),
-                ),
+                  Text(
+                    'DP',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

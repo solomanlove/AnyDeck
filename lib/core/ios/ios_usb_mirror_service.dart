@@ -73,6 +73,27 @@ class IosUsbMirrorService {
             {},
       );
 
+  /// 在当前 Flutter Engine 已建立的 USB 采集会话上录制 .mov 文件。
+  Future<void> startRecording(String udid, String path) async {
+    if (!Platform.isMacOS || !_textures.containsKey(udid)) {
+      throw StateError('iosUsbRecordingUnavailable');
+    }
+    await channel.invokeMethod<void>('startRecording', {
+      'udid': udid,
+      'path': path,
+    });
+  }
+
+  Future<String> stopRecording(String udid) async {
+    final path = await channel.invokeMethod<String>('stopRecording', {
+      'udid': udid,
+    });
+    if (path == null || path.isEmpty) {
+      throw StateError('iosUsbRecordingUnavailable');
+    }
+    return path;
+  }
+
   Future<void> stop(String udid) async {
     if (!_textures.containsKey(udid) && !_starting.containsKey(udid)) return;
     _textures.remove(udid);

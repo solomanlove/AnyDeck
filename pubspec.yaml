@@ -66,6 +66,8 @@ dependencies:
   latlong2: ^0.10.1
   # SVG 矢量资源加载
   flutter_svg: ^2.3.0
+  # 解析 WebDriverAgent 返回的 iOS Accessibility XML。
+  xml: ^7.0.1
 
 dev_dependencies:
   flutter_test:

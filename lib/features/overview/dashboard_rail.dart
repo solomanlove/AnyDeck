@@ -60,7 +60,7 @@ class PrimaryRail extends ConsumerWidget {
       }
       if (selectedDevice!.isIos) {
         if (!selectedDevice!.isOnline) return tabIndex == 0;
-        return const {0, 1, 2, 3, 4, 6, 9}.contains(tabIndex);
+        return const {0, 1, 2, 3, 4, 6, 7, 9}.contains(tabIndex);
       }
       // 鸿蒙 NEXT（纯血鸿蒙）支持：
       // 主页(0)、控制(1)、应用(2)、进程(6)、文件(3)、日志(4)、终端(5)、网页调试(7)、截图(9)、网络(11，HTTP 代理面板对鸿蒙隐藏)
@@ -142,6 +142,11 @@ class PrimaryRail extends ConsumerWidget {
           tabIndex: 4,
           icon: CupertinoIcons.doc_text,
           label: context.l10n.t('logcat'),
+        ),
+        _RailToolItem(
+          tabIndex: 7,
+          icon: CupertinoIcons.globe,
+          label: context.l10n.t('webpages'),
         ),
         _RailToolItem(
           tabIndex: 9,

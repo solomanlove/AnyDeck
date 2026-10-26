@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../adb/adb_service.dart';
+import '../../ios/ios_command_service.dart';
 import '../../device_actions/device_action_service.dart';
 import '../../layout_inspector/layout_inspector_service.dart';
 import '../../layout_inspector/layout_node.dart';
@@ -11,12 +12,22 @@ class McpUiTools {
   final AdbService adbService;
   final DeviceActionService actionService;
   final LayoutInspectorService layoutService;
+  final IosCommandService? iosService;
+  final Future<bool> Function(String deviceId)? isIosDevice;
 
   McpUiTools({
     required this.adbService,
     required this.actionService,
     required this.layoutService,
+    this.iosService,
+    this.isIosDevice,
   });
+
+  Future<bool> _isIos(String deviceId) async =>
+      await isIosDevice?.call(deviceId) ?? false;
+
+  IosCommandService get _ios =>
+      iosService ?? (throw StateError('iOS MCP 服务未配置'));
 
   /// 获取所有 UI 与交互工具
   List<McpToolDefinition> getTools() {
@@ -52,12 +63,16 @@ class McpUiTools {
           throw ArgumentError('必须提供 deviceId');
         }
 
-        final bytes = await layoutService.captureScreenshot(deviceId);
+        final ios = await _isIos(deviceId);
+        final bytes = ios
+            ? await _ios.captureScreenshot(deviceId)
+            : await layoutService.captureScreenshot(deviceId);
         final base64Image = base64Encode(bytes);
 
         return {
           'deviceId': deviceId,
           'mimeType': 'image/png',
+          'coordinateSpace': ios ? 'ios_points' : 'device_pixels',
           'byteLength': bytes.lengthInBytes,
           'base64': base64Image,
           'summary': '截屏成功，生成 ${bytes.lengthInBytes} 字节图像数据',
@@ -97,6 +112,20 @@ class McpUiTools {
           throw ArgumentError('必须提供 deviceId');
         }
 
+        if (await _isIos(deviceId)) {
+          final result = await _ios.automationSource(deviceId);
+          if (!result.isSuccess) throw StateError(result.message);
+          final source = _ios.parseAutomationValue(result.stdout)['value'];
+          if (source is! String || source.isEmpty) {
+            throw const FormatException('WDA UI Source 为空');
+          }
+          return {
+            'deviceId': deviceId,
+            'xml': source,
+            'coordinateSpace': 'ios_points',
+            'summary': '已读取 iOS Accessibility UI Tree',
+          };
+        }
         final (rootNode, rawXml) = await layoutService.captureLayout(deviceId);
         final totalCount = _countNodes(rootNode);
 
@@ -121,16 +150,18 @@ class McpUiTools {
         'required': ['deviceId', 'x', 'y'],
         'properties': {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
-          'x': {'type': 'integer', 'description': 'X 轴绝对像素坐标'},
-          'y': {'type': 'integer', 'description': 'Y 轴绝对像素坐标'},
+          'x': {'type': 'number', 'description': 'Android 像素坐标；iOS 为 point 坐标'},
+          'y': {'type': 'number', 'description': 'Android 像素坐标；iOS 为 point 坐标'},
         },
       },
       handler: (args) async {
         final deviceId = args['deviceId'] as String;
-        final x = (args['x'] as num).toInt();
-        final y = (args['y'] as num).toInt();
+        final x = args['x'] as num;
+        final y = args['y'] as num;
 
-        final result = await actionService.tap(deviceId, x, y);
+        final result = await (await _isIos(deviceId)
+            ? _ios.tap(deviceId, x.toDouble(), y.toDouble())
+            : actionService.tap(deviceId, x.toInt(), y.toInt()));
         if (!result.isSuccess) {
           throw Exception('点击失败: ${result.stderr}');
         }
@@ -156,26 +187,24 @@ class McpUiTools {
         'required': ['deviceId', 'x1', 'y1', 'x2', 'y2'],
         'properties': {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
-          'x1': {'type': 'integer', 'description': '起点 X 坐标'},
-          'y1': {'type': 'integer', 'description': '起点 Y 坐标'},
-          'x2': {'type': 'integer', 'description': '终点 X 坐标'},
-          'y2': {'type': 'integer', 'description': '终点 Y 坐标'},
+          'x1': {'type': 'number', 'description': '起点 X：Android 像素，iOS point'},
+          'y1': {'type': 'number', 'description': '起点 Y：Android 像素，iOS point'},
+          'x2': {'type': 'number', 'description': '终点 X：Android 像素，iOS point'},
+          'y2': {'type': 'number', 'description': '终点 Y：Android 像素，iOS point'},
         },
       },
       handler: (args) async {
         final deviceId = args['deviceId'] as String;
-        final x1 = (args['x1'] as num).toInt();
-        final y1 = (args['y1'] as num).toInt();
-        final x2 = (args['x2'] as num).toInt();
-        final y2 = (args['y2'] as num).toInt();
+        final x1 = args['x1'] as num;
+        final y1 = args['y1'] as num;
+        final x2 = args['x2'] as num;
+        final y2 = args['y2'] as num;
 
-        final result = await actionService.swipe(
-          deviceId,
-          x1,
-          y1,
-          x2,
-          y2,
-        );
+        final result = await (await _isIos(deviceId)
+            ? _ios.swipe(deviceId, fromX: x1.toDouble(), fromY: y1.toDouble(),
+                toX: x2.toDouble(), toY: y2.toDouble())
+            : actionService.swipe(deviceId, x1.toInt(), y1.toInt(),
+                x2.toInt(), y2.toInt()));
         if (!result.isSuccess) {
           throw Exception('滑动失败: ${result.stderr}');
         }
@@ -208,15 +237,16 @@ class McpUiTools {
         final deviceId = args['deviceId'] as String;
         final text = args['text'] as String;
 
-        final result = await actionService.inputText(deviceId, text);
+        final result = await (await _isIos(deviceId)
+            ? _ios.typeText(deviceId, text)
+            : actionService.inputText(deviceId, text));
         if (!result.isSuccess) {
           throw Exception('输入文本失败: ${result.stderr}');
         }
         return {
           'deviceId': deviceId,
-          'text': text,
           'success': true,
-          'summary': '已成功输入文本: "$text"',
+          'summary': '已输入文本',
         };
       },
     );
@@ -240,7 +270,19 @@ class McpUiTools {
         final deviceId = args['deviceId'] as String;
         final keyCode = (args['keyCode'] as num).toInt();
 
-        final result = await actionService.keyEvent(deviceId, keyCode);
+        final bool ios = await _isIos(deviceId);
+        if (ios && !const {3, 24, 25, 26}.contains(keyCode)) {
+          throw ArgumentError('iOS 仅支持 Home、音量增减与锁屏按键');
+        }
+        final result = await (ios
+            ? keyCode == 26
+                ? _ios.lock(deviceId)
+                : _ios.pressButton(deviceId, switch (keyCode) {
+                    3 => 'home',
+                    24 => 'volumeUp',
+                    _ => 'volumeDown',
+                  })
+            : actionService.keyEvent(deviceId, keyCode));
         if (!result.isSuccess) {
           throw Exception('按键事件发送失败: ${result.stderr}');
         }

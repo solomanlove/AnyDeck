@@ -43,6 +43,7 @@
 | `adb-dlna-video-receiver` | Android 视频 DLNA 投到 macOS | experimental | SSDP 多网卡路由地址选择、UPnP 控制、AVPlayer 与 libmpv DASH 回退、播放窗口置顶、接收端名称热更新及真机验收边界 | `core/dlna/`, `features/dlna/`, `app/window/dlna/`, `macos/Runner/` |
 | `ios-process-management` | iOS 进程表格与生命周期管理 | active | 全进程查询、应用归属筛选、图标缓存、3 秒轮询、未知性能指标、PID 身份回读及取消隔离 | `core/ios/`, `features/ios/` |
 | `ios-apps-management` | iOS 应用筛选、收藏与图标管理 | active | Android 风格工具栏与表格、分类/拼音筛选、持久化收藏、字母索引、设备隔离、图标 helper 取消与验证边界 | `core/ios/`, `features/ios/`, `assets/ios/` |
+| `ios-feature-parity` | iOS 布局、网页调试、录屏与 MCP 对齐 | active | WDA point 与截图像素换算、Safari Develop 入口、USB 原生录屏、MCP 平台路由和无真机回归边界 | `core/ios/`, `core/mcp/`, `features/screenshot/`, `features/ios/`, `macos/Runner/` |
 | `adb-app-window-run-config-script` | App 子窗口 Run Configuration 生成脚本 | active | 记录 `script/generate_app_window_run_configs.sh` 如何生成模拟器管理窗口和控制台窗口的 IDE Flutter 运行入口 | `script/`, `.idea/runConfigurations/`, `app/window/` |
 | `adb-macos-icon-assets` | macOS 图标资源机制 | active | 记录 Dock 图标、Flutter App logo、菜单栏 template icon 的资源边界和生成命令 | `assets/brand/`, `macos/Runner/Assets.xcassets/` |
 | `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录设备管理与模拟器列表同级入口、设备行仅显示名称与 IP、品牌 Logo 统一圆角裁剪、左侧导航顶部 App/设备身份切换、品牌优先与制造商兜底、概览缓存兼容、返回点击逻辑及 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |

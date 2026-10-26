@@ -40,6 +40,26 @@ void main() {
     expect(service.texture('phone'), isNull);
   }, skip: !Platform.isMacOS);
 
+  test('USB recording uses the active capture and returns the saved file', () async {
+    final calls = <String>[];
+    messenger.setMockMethodCallHandler(IosUsbMirrorService.channel, (call) async {
+      calls.add(call.method);
+      if (call.method == 'start') return 42;
+      if (call.method == 'stopRecording') return '/tmp/ios-record.mov';
+      return null;
+    });
+    final service = IosUsbMirrorService();
+    await expectLater(
+      service.startRecording('phone', '/tmp/ios-record.mov'),
+      throwsStateError,
+    );
+    await service.start('phone');
+    await service.startRecording('phone', '/tmp/ios-record.mov');
+    expect(await service.stopRecording('phone'), '/tmp/ios-record.mov');
+    expect(calls, containsAllInOrder(['start', 'startRecording', 'stopRecording']));
+    await service.stop('phone');
+  }, skip: !Platform.isMacOS);
+
   test(
     'stop while waiting for native first frame cancels the startup',
     () async {
