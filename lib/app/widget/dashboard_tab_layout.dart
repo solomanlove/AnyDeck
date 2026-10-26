@@ -32,6 +32,7 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
     required this.onSegmentChanged,
     required this.trailingActions,
     this.narrowBreakpoint = 760,
+    this.searchBelowActions = false,
   });
 
   /// 搜索框的文本控制器，用于管理当前输入的文本。
@@ -79,6 +80,9 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
   /// 搜索框、分段及操作按钮所需的最小单行宽度，可按页面文案长度调整。
   final double narrowBreakpoint;
 
+  /// 筛选操作在上、搜索输入框在下；用于需要突出进程分类的页面。
+  final bool searchBelowActions;
+
   /// 内部封装带历史下拉的筛选输入框。
   Widget _buildTextField(BuildContext context) {
     return DashboardHistoryTextField(
@@ -119,6 +123,31 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (searchBelowActions) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                alignment: WrapAlignment.spaceBetween,
+                children: [
+                  _buildSegmentedControl(context),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: trailingActions,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(height: 38, child: _buildTextField(context)),
+            ],
+          );
+        }
         // 当可用宽度低于换行阈值时，避免输入框被过度挤压或右侧操作按钮溢出，
         // 采用双行自适应布局：上行展开搜索框，下行放置分段筛选与操作区。
         final isNarrow = constraints.maxWidth < narrowBreakpoint;

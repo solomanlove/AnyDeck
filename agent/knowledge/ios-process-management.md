@@ -4,6 +4,8 @@
 
 iOS 工作区的「进程管理」改为 Android 风格搜索工具栏和虚拟表格。默认「全部」，可选择用户进程、系统进程、仅显示应用，按名称、PID、所属应用类型及启动时间排序。搜索忽略大小写及首尾空格，覆盖名称、PID、进程/宿主 Bundle ID、执行路径。
 
+工具栏先展示用户/系统/全部分类与右侧选项，再在下一行展示横向铺满的搜索框；窄窗口下分类和选项可以换行，搜索框仍位于它们下方。此排列仅用于 iOS 进程页，其它复用 `DashboardSearchToolbar` 的页面保持原布局。
+
 - 名称和图标沿用 `IosProcessParser` 的完整安装路径关联以及 `IosIconService`、`IosAppIconView`；不按同名 Runner 或 `com.apple` 前缀猜归属。
 - 用户/系统指关联的 `IosAppInfo.system`，不是 Android UID。未关联的条目不会被归入系统应用；`IsApplication=false` 标为非应用进程，其他未关联条目标为归属未知，都可在「全部」查看。
 - 「仅应用」优先依据真实 `IsApplication`；字段缺失时才用明确的应用关联补充。扩展保留自身 Bundle ID，并单独展示/复制宿主 Bundle ID。

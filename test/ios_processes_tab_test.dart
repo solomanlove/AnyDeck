@@ -9,7 +9,10 @@ import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/ios/controller/ios_processes_controller.dart';
 import 'package:any_deck/core/ios/ios_process_info.dart';
 import 'package:any_deck/features/ios/ios_processes_tab.dart';
+import 'package:any_deck/features/ios/model/ios_processes_filter.dart';
 import 'package:any_deck/features/ios/widgets/ios_process_tile.dart';
+import 'package:any_deck/features/ios/widgets/ios_processes_toolbar.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,6 +47,43 @@ Widget _page(
 }
 
 void main() {
+  testWidgets('iOS 进程页筛选行位于搜索框上方', (tester) async {
+    final search = TextEditingController();
+    addTearDown(search.dispose);
+    addTearDown(tester.view.reset);
+    for (final width in [420.0, 1400.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      tester.view.devicePixelRatio = 1;
+      await tester.pumpWidget(
+        _page(
+          IosProcessesToolbar(
+            controller: search,
+            category: IosProcessFilter.all,
+            onlyApps: false,
+            autoRefresh: false,
+            busy: false,
+            onQuery: (_) {},
+            onCategory: (_) {},
+            onOnlyApps: (_) {},
+            onAutoRefresh: (_) {},
+            onRefresh: () {},
+          ),
+        ),
+      );
+      final segment = find.byType(
+        CupertinoSlidingSegmentedControl<IosProcessFilter>,
+      );
+      final input = find.byType(TextField);
+      expect(segment, findsOneWidget);
+      expect(input, findsOneWidget);
+      expect(
+        tester.getBottomLeft(segment).dy,
+        lessThan(tester.getTopLeft(input).dy),
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   for (final language in ['zh', 'en']) {
     testWidgets('$language 窄屏明暗主题展示扩展及宿主信息，无布局溢出', (tester) async {
       tester.view.physicalSize = const Size(420, 800);

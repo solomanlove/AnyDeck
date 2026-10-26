@@ -32,6 +32,7 @@ class IosProcessesToolbar extends StatelessWidget {
   Widget build(BuildContext context) =>
       DashboardSearchToolbar<IosProcessFilter>(
         narrowBreakpoint: 1100,
+        searchBelowActions: true,
         searchController: controller,
         searchHint: context.l10n.t('iosProcessSearch'),
         hasSearchQuery: controller.text.isNotEmpty,
