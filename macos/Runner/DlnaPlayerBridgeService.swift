@@ -20,7 +20,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   private var playbackVolume: Float = 1
   private var playbackMuted = false
   private var isAlwaysOnTop = false
-  private weak var pinButton: NSButton?
+  private var pinControl: DlnaTitlebarPinControl?
   private var pinLabel = "Pin window"
   private var unpinLabel = "Unpin window"
 
@@ -135,16 +135,10 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
       newWindow.isReleasedWhenClosed = false
       newWindow.delegate = self
       newWindow.center()
-      // 图钉放在系统标题栏，避免遮挡视频画面。
-      let button = NSButton(frame: NSRect(x: 0, y: 0, width: 36, height: 28))
-      button.isBordered = false
-      button.target = self
-      button.action = #selector(toggleAlwaysOnTop)
-      let accessory = NSTitlebarAccessoryViewController()
-      accessory.view = button
-      accessory.layoutAttribute = .right
-      newWindow.addTitlebarAccessoryViewController(accessory)
-      pinButton = button
+      // 两种 DLNA 播放窗口共用标题栏图钉，避免遮挡视频画面。
+      pinControl = DlnaTitlebarPinControl.install(on: newWindow) { [weak self] in
+        self?.toggleAlwaysOnTop()
+      }
       let view = DlnaPlayerView(frame: frame)
       newWindow.contentView = view
       playerView = view
@@ -188,7 +182,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     newPlayer.play()
   }
 
-  @objc private func toggleAlwaysOnTop() {
+  private func toggleAlwaysOnTop() {
     isAlwaysOnTop.toggle()
     window?.level = isAlwaysOnTop ? .floating : .normal
     updatePinButton()
@@ -196,11 +190,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   }
 
   private func updatePinButton() {
-    pinButton?.image = NSImage(systemSymbolName: isAlwaysOnTop ? "pin.fill" : "pin", accessibilityDescription: nil)
-    pinButton?.contentTintColor = isAlwaysOnTop ? .systemOrange : .secondaryLabelColor
-    let label = isAlwaysOnTop ? unpinLabel : pinLabel
-    pinButton?.toolTip = label
-    pinButton?.setAccessibilityLabel(label)
+    pinControl?.update(pinned: isAlwaysOnTop, pinLabel: pinLabel, unpinLabel: unpinLabel)
   }
 
   /// 只上报当前媒体的首次失败；日志保留状态码但不泄露签名 URL。
@@ -250,7 +240,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   func windowWillClose(_ notification: Notification) {
     resetPlayer()
     window = nil
-    pinButton = nil
+    pinControl = nil
     isAlwaysOnTop = false
     playerView = nil
     channel?.invokeMethod("playerStopped", arguments: ["generation": mediaGeneration])
@@ -321,4 +311,51 @@ private final class DlnaPlayerView: NSView {
   func showVideo() { loadingBackdrop.isHidden = true }
 
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+/// 两种 DLNA 播放窗口共用的标题栏图钉，窗口释放时一并回收。
+final class DlnaTitlebarPinControl: NSObject {
+  private static var associationKey: UInt8 = 0
+  private let button = NSButton(frame: NSRect(x: 0, y: 0, width: 28, height: 28))
+  private var onTap: (() -> Void)?
+  private var closeObserver: NSObjectProtocol?
+
+  static func install(on window: NSWindow, onTap: @escaping () -> Void) -> DlnaTitlebarPinControl {
+    if let existing = objc_getAssociatedObject(window, &associationKey) as? DlnaTitlebarPinControl {
+      existing.onTap = onTap
+      return existing
+    }
+    let control = DlnaTitlebarPinControl()
+    control.onTap = onTap
+    control.button.isBordered = false
+    control.button.imagePosition = .imageOnly
+    control.button.target = control
+    control.button.action = #selector(tapped)
+    let accessory = NSTitlebarAccessoryViewController()
+    accessory.view = control.button
+    accessory.layoutAttribute = .right
+    window.addTitlebarAccessoryViewController(accessory)
+    control.closeObserver = NotificationCenter.default.addObserver(
+      forName: NSWindow.willCloseNotification, object: window, queue: .main
+    ) { [weak control] _ in
+      control?.onTap = nil
+    }
+    objc_setAssociatedObject(window, &associationKey, control, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    return control
+  }
+
+  func update(pinned: Bool, pinLabel: String, unpinLabel: String) {
+    let symbol = NSImage(systemSymbolName: pinned ? "pin.fill" : "pin", accessibilityDescription: nil)
+    button.image = symbol?.withSymbolConfiguration(.init(pointSize: 16, weight: .regular))
+    button.contentTintColor = pinned ? .systemOrange : .secondaryLabelColor
+    let label = pinned ? unpinLabel : pinLabel
+    button.toolTip = label
+    button.setAccessibilityLabel(label)
+  }
+
+  @objc private func tapped() { onTap?() }
+
+  deinit {
+    if let closeObserver { NotificationCenter.default.removeObserver(closeObserver) }
+  }
 }

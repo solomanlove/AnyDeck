@@ -229,6 +229,21 @@ class MainFlutterWindow: NSWindow {
           }
           window.level = alwaysOnTop ? .floating : .normal
           result(nil)
+        } else if call.method == "setDlnaPin" {
+          guard let args = call.arguments as? [String: Any],
+                let pinned = args["pinned"] as? Bool,
+                let pinLabel = args["pinLabel"] as? String,
+                let unpinLabel = args["unpinLabel"] as? String else {
+            result(FlutterError(code: "invalid_argument", message: "DLNA pin state and labels required", details: nil))
+            return
+          }
+          let pinControl = DlnaTitlebarPinControl.install(on: window) { [weak controller] in
+            guard let messenger = controller?.engine.binaryMessenger else { return }
+            FlutterMethodChannel(name: "any_deck/dlna_pin_events", binaryMessenger: messenger)
+              .invokeMethod("dlnaPinTapped", arguments: nil)
+          }
+          pinControl.update(pinned: pinned, pinLabel: pinLabel, unpinLabel: unpinLabel)
+          result(nil)
         } else if call.method == "setFullScreen" {
           guard let fullscreen = call.arguments as? Bool else {
             result(FlutterError(code: "invalid_argument", message: "Requires bool arguments", details: nil))

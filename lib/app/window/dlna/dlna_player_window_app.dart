@@ -10,7 +10,7 @@ import 'package:window_manager/window_manager.dart';
 import '../multi_window_compat.dart';
 import '../sub_window_method_dispatcher.dart';
 import '../window_close_shortcut.dart';
-import 'widget/dlna_pin_button.dart';
+import 'controller/dlna_window_pin_bridge.dart';
 
 /// DLNA 的 libmpv 回退窗口；主窗口仍负责 UPnP 协议和播放状态。
 ///
@@ -31,6 +31,7 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
     'any_deck/dlna_fallback_events',
     mode: ChannelMode.unidirectional,
   );
+  final _pinBridge = DlnaWindowPinBridge();
   late final Player _player;
   late final VideoController _video;
   StreamSubscription<String>? _errorSubscription;
@@ -61,6 +62,7 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
     });
     windowManager.addListener(this);
     unawaited(windowManager.setPreventClose(true));
+    _pinBridge.listen(_toggleAlwaysOnTop);
     SubWindowMethodDispatcher.registerHandler(_handleCall);
   }
 
@@ -165,6 +167,7 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
             _unpinLabel = labels['unpin'] as String;
           });
         }
+        await _syncPinButton();
         return true;
       case 'dlnaPlay':
         await _player.play();
@@ -211,9 +214,7 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
   /// 优先使用当前子窗口的原生通道，避免误改主窗口的层级。
   Future<bool> _setAlwaysOnTop(bool value) async {
     try {
-      await const MethodChannel(
-        'any_deck/window',
-      ).invokeMethod<void>('setAlwaysOnTop', value);
+      await _pinBridge.setAlwaysOnTop(value);
     } on MissingPluginException {
       try {
         await windowManager.setAlwaysOnTop(value);
@@ -226,7 +227,20 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
       return false;
     }
     if (mounted) setState(() => _isAlwaysOnTop = value);
+    await _syncPinButton();
     return true;
+  }
+
+  Future<void> _syncPinButton() async {
+    try {
+      await _pinBridge.update(
+        pinned: _isAlwaysOnTop,
+        pinLabel: _pinLabel,
+        unpinLabel: _unpinLabel,
+      );
+    } catch (error) {
+      debugPrint('[DLNA] titlebar pin update failed: $error');
+    }
   }
 
   Future<void> _toggleAlwaysOnTop() async {
@@ -264,6 +278,7 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
 
   @override
   void dispose() {
+    _pinBridge.dispose();
     SubWindowMethodDispatcher.removeHandler(_handleCall);
     windowManager.removeListener(this);
     unawaited(_errorSubscription?.cancel());
@@ -305,16 +320,6 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
                   ),
                 ),
               ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: DlnaPinButton(
-                pinned: _isAlwaysOnTop,
-                pinLabel: _pinLabel,
-                unpinLabel: _unpinLabel,
-                onPressed: _pinBusy ? null : _toggleAlwaysOnTop,
-              ),
-            ),
           ],
         ),
       ),
