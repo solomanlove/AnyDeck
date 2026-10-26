@@ -17,6 +17,7 @@
   - `_PackageTableRow`：首列增加 Checkbox，行点击选中背景与高亮，支持双击查看详情与单击勾选操作。
 - **网格视图 (Grid View)**：
   - `_PackageGridItem`：在卡片左上角浮动显示微型 Checkbox，在卡片 Hover、项已被勾选或存在勾选应用时自动展现，支持便捷多选。
+- **视图切换状态**：列表与网格切换按钮通过 `IconButton.isSelected` 表达当前模式，选中的 Icon 使用主题品牌绿色 `AppPalette.primary`，未选中 Icon 保持默认前景色。
 
 ### 2. 批量操作工具栏 (`_AppsBatchActionsToolbar`)
 位于 `lib/features/apps/dashboard_apps_batch_actions.dart`，当 `_checkedPackages.isNotEmpty` 时在搜索栏与应用列表之间动态展开：
@@ -49,3 +50,7 @@
 - 所有新增 Dart 类与重构文件均控制在 500 行以内；
 - 多语言在 `app_l10n_apps_files_logcat.dart` 中同步补齐中英文双语字典；
 - 离线设备或未连接时，批量操作按钮自动灰显禁用。
+
+### 6. 视图切换验证
+
+2026-10-26：新增 `apps_view_mode_button_test.dart`，覆盖 selected Icon 使用品牌绿色、未选中 Icon 保持默认前景色及点击回调；定向 Widget test 与新组件 targeted analyze 通过。按项目规则未运行 App，实际桌面视觉仍需人工验收。

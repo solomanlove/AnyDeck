@@ -216,21 +216,19 @@ class _AppsTabState extends ConsumerState<AppsTab> {
                 ? _refreshPackages
                 : null,
           ),
-          IconButton(
+          AppsViewModeButton(
+            key: const Key('appsGridViewButton'),
             tooltip: context.l10n.t('gridView'),
-            icon: const Icon(CupertinoIcons.square_grid_2x2, size: 20),
-            isSelected: _isGridView,
-            selectedIcon: const Icon(
-              CupertinoIcons.square_grid_2x2_fill,
-              size: 20,
-            ),
+            icon: CupertinoIcons.square_grid_2x2,
+            selected: _isGridView,
+            selectedIcon: CupertinoIcons.square_grid_2x2_fill,
             onPressed: () => setState(() => _isGridView = true),
           ),
-          IconButton(
+          AppsViewModeButton(
+            key: const Key('appsListViewButton'),
             tooltip: context.l10n.t('listView'),
-            icon: const Icon(CupertinoIcons.list_bullet, size: 20),
-            isSelected: !_isGridView,
-            selectedIcon: const Icon(CupertinoIcons.list_bullet, size: 20),
+            icon: CupertinoIcons.list_bullet,
+            selected: !_isGridView,
             onPressed: () => setState(() => _isGridView = false),
           ),
           const SizedBox(width: 8),

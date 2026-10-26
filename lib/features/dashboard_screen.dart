@@ -45,6 +45,7 @@ import 'devices/widgets/device_connection_indicators.dart';
 import 'devices/widgets/device_status_avatar.dart';
 import 'devices/widgets/device_info_edit_dialog.dart';
 import 'apps/widgets/package_refresh_dialog.dart';
+import 'apps/widgets/apps_view_mode_button.dart';
 import '../core/apps/package_refresh_progress.dart';
 import '../core/cache/cache_cleanup_service.dart';
 import '../core/device_info/device_overview.dart';
