@@ -17,7 +17,7 @@
   - `_PackageTableRow`：首列增加 Checkbox，行点击选中背景与高亮，支持双击查看详情与单击勾选操作。
 - **网格视图 (Grid View)**：
   - `_PackageGridItem`：在卡片左上角浮动显示微型 Checkbox，在卡片 Hover、项已被勾选或存在勾选应用时自动展现，支持便捷多选。
-- **视图切换状态**：列表与网格切换按钮通过 `IconButton.isSelected` 表达当前模式，选中的 Icon 使用主题品牌绿色 `AppPalette.primary`，未选中 Icon 保持默认前景色。
+- **视图切换状态**：列表与网格切换按钮复用左侧导航的 `CupertinoIcons.square_grid_2x2` 与 `CupertinoIcons.list_bullet` 线框 Icon，通过 `IconButton.isSelected` 表达当前模式；选中时保持原 Icon 造型，使用主题品牌绿色 Icon 与 12% 透明度浅绿色背景，未选中状态保持默认前景和透明背景。
 
 ### 2. 批量操作工具栏 (`_AppsBatchActionsToolbar`)
 位于 `lib/features/apps/dashboard_apps_batch_actions.dart`，当 `_checkedPackages.isNotEmpty` 时在搜索栏与应用列表之间动态展开：
@@ -53,4 +53,4 @@
 
 ### 6. 视图切换验证
 
-2026-10-26：新增 `apps_view_mode_button_test.dart`，覆盖 selected Icon 使用品牌绿色、未选中 Icon 保持默认前景色及点击回调；定向 Widget test 与新组件 targeted analyze 通过。按项目规则未运行 App，实际桌面视觉仍需人工验收。
+2026-10-26：`apps_view_mode_button_test.dart` 覆盖 selected 状态保持线框 Icon、品牌绿色 Icon、浅绿色背景、未选中透明背景及点击回调；定向 Widget test 与新组件 targeted analyze 通过。按项目规则未运行 App，实际桌面视觉仍需人工验收。
