@@ -4,6 +4,7 @@ import 'package:any_deck/app/window/console/console_window_panel.dart';
 import 'package:any_deck/core/logging/log_service.dart';
 import 'package:any_deck/features/developer/widget/developer_local_logs_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,7 +33,7 @@ void main() {
   });
 
   testWidgets('隐藏心跳保留错误，关键日志筛选排除普通信息', (tester) async {
-    tester.view.physicalSize = const Size(1100, 700);
+    tester.view.physicalSize = const Size(900, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -73,6 +74,23 @@ void main() {
     expect(
       find.text('View AnyDeck runtime logs, commands, and errors'),
       findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('consoleTitleArea'))).width,
+      320,
+    );
+    final description = tester.widget<Text>(
+      find.byKey(const Key('consoleDescription')),
+    );
+    expect(description.softWrap, isFalse);
+    expect(description.overflow, isNull);
+    expect(
+      tester
+          .renderObject<RenderParagraph>(
+            find.byKey(const Key('consoleDescription')),
+          )
+          .didExceedMaxLines,
+      isFalse,
     );
     expect(find.byTooltip('Capture local logs'), findsOneWidget);
     expect(tester.takeException(), isNull);

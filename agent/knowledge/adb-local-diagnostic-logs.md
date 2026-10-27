@@ -6,6 +6,7 @@
 - 控制台新增“仅关键日志（警告 / 错误）”，可与关键词搜索叠加；隐藏心跳不会隐藏 W/E/F 级别的轮询失败。
 - 控制台标题、说明、搜索、筛选、导出和显示开关统一位于单行 Toolbar；窄窗口收起操作文字并保留 Tooltip。界面时间以空格分隔日期与时间，底层日志仍保留 ISO 8601 格式。
 - 控制台 Toolbar 的搜索框与全部操作统一为 36px 高、8px 圆角及主题语义边框；筛选、隐藏心跳、自动滚动使用同规格 Icon 状态按钮，启用态由主题 `primary` 色表达，导出、复制、清空保持相同的普通操作样式。
+- 控制台标题区在 compact / 常规宽度下分别固定为 320px / 360px，副标题保持单行但不再使用 `ellipsis`，确保中英文“运行日志、命令记录与异常信息”说明完整展示；宽度预算仍兼容桌面窗口 900px 最小宽度及右侧完整操作区。
 - 开发者选项 → 本地日志与故障排查 → 抓取本地日志，选择位置保存 `.log` 文件。控制台复用相同按钮。
 - 无需连接手机；导出包含保留的历史会话。控制台实时列表展示当前会话，历史文件通过导出查看。
 - 此功能采集桌面 App 日志；手机日志继续使用 Logcat Tab。
@@ -80,3 +81,5 @@ flutter analyze --no-pub lib/core/logging lib/main.dart lib/app/window/console/c
 未启动桌面 App，未进行 native crash、真机投屏或真实多 Engine 通道验收；自动测试中的窗口通道使用 mock。
 
 2026-10-21 Toolbar 视觉统一定向验证：`test/console_diagnostics_test.dart` 共 6 项测试通过，`console_window_panel.dart`、`local_log_capture_button.dart` 与对应测试 targeted analyze 通过；按项目规则未启动桌面 App，Light/Dark 原生窗口视觉仍需人工验收。
+
+2026-10-27 标题区定向验证：`console_diagnostics_test.dart` 覆盖 compact 标题区宽度、完整英文副标题及无省略号配置；定向 Widget test、targeted analyze 与 whitespace check 通过。按项目规则未运行 App，真实窗口 DPI 下的视觉效果仍需人工验收。

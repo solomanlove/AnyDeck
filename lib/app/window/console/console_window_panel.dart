@@ -228,7 +228,8 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                       children: [
                         DragToMoveArea(
                           child: SizedBox(
-                            width: compact ? 170 : 230,
+                            key: const Key('consoleTitleArea'),
+                            width: compact ? 320 : 360,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,8 +243,9 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                                 ),
                                 Text(
                                   context.l10n.t('consoleDescription'),
+                                  key: const Key('consoleDescription'),
                                   maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
                                   style: secondaryStyle,
                                 ),
                               ],
