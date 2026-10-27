@@ -15,6 +15,14 @@ void main() {
         now.add(const Duration(seconds: 5))), false);
   });
 
+  test('镜像等待首帧不会当作 Idle 断线', () {
+    final monitor = AirPlayConnectionMonitor();
+    final now = DateTime(2026);
+    expect(monitor.isDisconnected(AirPlayServerStatus.mirrorStarting, now), false);
+    expect(monitor.isDisconnected(AirPlayServerStatus.mirrorStarting,
+        now.add(const Duration(seconds: 10))), false);
+  });
+
   test('明确停止立即断线', () {
     expect(AirPlayConnectionMonitor().isDisconnected(
         AirPlayServerStatus.stopped, DateTime(2026)), true);

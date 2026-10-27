@@ -6,6 +6,7 @@ void main() {
     test('AirPlayServerStatus raw mapping is correct', () {
       expect(AirPlayServerStatus.fromRaw(0), AirPlayServerStatus.idle);
       expect(AirPlayServerStatus.fromRaw(1), AirPlayServerStatus.mirroring);
+      expect(AirPlayServerStatus.fromRaw(3), AirPlayServerStatus.mirrorStarting);
       expect(AirPlayServerStatus.fromRaw(2), AirPlayServerStatus.stopped);
       expect(AirPlayServerStatus.fromRaw(99), AirPlayServerStatus.stopped);
     });

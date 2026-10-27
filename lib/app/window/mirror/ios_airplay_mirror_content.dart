@@ -12,6 +12,7 @@ import '../../../core/airplay/airplay_server_state.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 import '../multi_window_compat.dart';
+import '../desktop_window_title_service.dart';
 import 'mirror_immersive_overlay.dart';
 import 'mirror_session_status_bar.dart';
 import 'mirror_window_frame_adapter.dart';
@@ -79,6 +80,15 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
       _startPolling();
       await _fitWindowToVideo();
     });
+  }
+
+  /// 本地化标题同时同步系统窗口标题，便于在 Dock / 窗口菜单区分投屏类型。
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    unawaited(DesktopWindowTitleService.setTitle(
+      '${widget.deviceName} · ${context.l10n.t('iosMirrorWifiAirPlay')}',
+    ));
   }
 
   @override
@@ -181,7 +191,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
         }
         return;
       }
-      _hasMirrored = true;
+      if (!_hasMirrored) setState(() => _hasMirrored = true);
       _reportedDisconnect = false;
       if (_isDisconnected) setState(() => _isDisconnected = false);
       if (size == null || size.width <= 0 || size.height <= 0) return;
@@ -258,7 +268,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
 
   @override
   Widget build(BuildContext context) {
-    final isLiveMirrorVisible = _textureId != null && !_isDisconnected;
+    final isLiveMirrorVisible = _textureId != null && _hasMirrored && !_isDisconnected;
     final windowBackground = Theme.of(context).brightness == Brightness.dark
         ? const Color(0xff121212)
         : const Color(0xfff8f9fa);
@@ -379,8 +389,17 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
         ),
       );
     }
-    if (_textureId == null) {
-      return const Center(child: CircularProgressIndicator());
+    if (_textureId == null || !_hasMirrored) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(context.l10n.t('airplayMirrorWaitingFrame')),
+          ],
+        ),
+      );
     }
     final safeRatio = _aspectRatio > 0 ? _aspectRatio : (9.0 / 19.5);
     return ColoredBox(

@@ -26,6 +26,7 @@ extern "C" {
         detach: extern "C" fn(*mut c_void, *mut c_void),
         media_command: extern "C" fn(*mut c_void, c_int, *const c_char, f64),
         media_info: extern "C" fn(*mut c_void, *mut f64),
+        mirror_started: extern "C" fn(*mut c_void),
     ) -> *mut c_void;
     fn anydeck_uxplay_stop(handle: *mut c_void);
     fn anydeck_uxplay_port(handle: *mut c_void) -> u16;
@@ -112,6 +113,7 @@ impl Receiver {
                 Self::on_client_detach,
                 Self::on_media_command,
                 Self::on_media_info,
+                Self::on_mirror_started,
             )
         };
 
@@ -128,6 +130,15 @@ impl Receiver {
         })
     }
 
+    // 只由 type 110 镜像启动回调调用，音频/HTTP 视频不能触发手机窗口。
+    extern "C" fn on_mirror_started(ctx: *mut c_void) {
+        if ctx.is_null() { return; }
+        let context = unsafe { &*(ctx as *const Context) };
+        let _ = context.status.compare_exchange(
+            AirPlayStatus::Idle as u8, AirPlayStatus::MirrorStarting as u8,
+            Ordering::AcqRel, Ordering::Acquire);
+    }
+
     /// C 回调不得向外 unwind；解码与重置串行，只有有效 IOSurface 才报告 Mirroring。
     extern "C" fn on_video_data(ctx: *mut c_void, data: *const u8, len: c_int, pts: u64) {
         if ctx.is_null() || data.is_null() || len <= 0 || len > 10 * 1024 * 1024 { return; }
@@ -140,9 +151,10 @@ impl Receiver {
                 context.record_error(format!("VideoToolbox decode failed: {error}"));
                 return;
             }
-            if context.frame.has_surface() && context.status.compare_exchange(
-                AirPlayStatus::Idle as u8, AirPlayStatus::Mirroring as u8,
-                Ordering::AcqRel, Ordering::Acquire).is_ok() {
+            if context.frame.has_surface() && context.status.fetch_update(
+                Ordering::AcqRel, Ordering::Acquire, |status|
+                    (status == AirPlayStatus::Idle as u8 || status == AirPlayStatus::MirrorStarting as u8)
+                        .then_some(AirPlayStatus::Mirroring as u8)).is_ok() {
                 eprintln!("[AirPlay UxPlay] First decoded IOSurface ready");
             }
         });
@@ -205,9 +217,8 @@ impl Receiver {
                 // 重新创建同时清除 SPS/PPS；等旧解码回调完成后再清除帧。
                 *decoder = Decoder::new(context.frame.clone());
                 context.frame.clear();
-                let _ = context.status.compare_exchange(
-                    AirPlayStatus::Mirroring as u8, AirPlayStatus::Idle as u8,
-                    Ordering::AcqRel, Ordering::Acquire);
+                let _ = context.status.fetch_update(Ordering::AcqRel, Ordering::Acquire, |status|
+                    (status != AirPlayStatus::Stopped as u8).then_some(AirPlayStatus::Idle as u8));
             }
             if let Ok(mut audio_guard) = context.audio_decoder.lock() {
                 *audio_guard = None;

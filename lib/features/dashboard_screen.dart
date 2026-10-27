@@ -109,6 +109,7 @@ import '../core/usage/usage_snapshot.dart';
 import 'apps/widgets/location_history_view.dart';
 import 'apps/widgets/apps_alphabet_sidebar.dart';
 import 'airplay/airplay_mirror_target.dart';
+import 'airplay/airplay_window_routing_provider.dart';
 import 'receivers/receiver_dashboard_tab.dart';
 import 'devices/widgets/device_airplay_row_widgets.dart';
 import '../core/airplay/airplay_server_service.dart';
@@ -433,38 +434,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     ref.watch(deviceConnectionNotificationServiceProvider);
     ref.watch(notificationForwardingServiceProvider);
 
-    // 监听 AirPlay 镜像建立事件，自动弹出独立投屏小窗口（支持多台设备并发投屏）
+    ref.watch(airplayWindowRoutingProvider);
+    // 接收服务指示灯与独立开窗协调器分离。
     ref.listen<AirPlaySessionData?>(airplaySessionProvider, (previous, next) {
       final isRunning = next != null &&
           (next.hasAnyBroadcasting || next.hasAnyMirroring);
       if (_isAirplayReceiverRunning != isRunning) {
         setState(() => _isAirplayReceiverRunning = isRunning);
-      }
-      if (next == null) return;
-      final prevIds =
-          previous?.mirroringSessions.map((s) => s.id).toSet() ?? const {};
-      final newlyMirroring = next.mirroringSessions
-          .where((s) => !prevIds.contains(s.id))
-          .toList();
-      if (newlyMirroring.isEmpty) return;
-
-      final merged = mergeAirPlayDevicesIntoList(
-        ref.read(deviceRegistryProvider),
-        next,
-      );
-      for (final session in newlyMirroring) {
-        final matchedId = merged.sessionByDeviceId.entries
-            .where((e) => e.value.id == session.id)
-            .map((e) => e.key)
-            .firstOrNull;
-        final target = matchedId == null
-            ? null
-            : merged.devices.where((d) => d.id == matchedId).firstOrNull;
-        openAirPlayMirrorWindow(
-          session,
-          deviceId: target?.id,
-          deviceName: target?.displayName,
-        );
       }
     });
 

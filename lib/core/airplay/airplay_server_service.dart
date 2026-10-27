@@ -239,7 +239,7 @@ class AirPlayServerService {
 /// 在通用 iOS 投屏窗口中显示 AirPlay，不再创建专用 AirPlay 窗口。
 ///
 /// [deviceId] 可关联已打开的 USB 投屏窗口；缺失时使用会话级稳定标识。
-Future<void> openAirPlayMirrorWindow(
+Future<bool> openAirPlayMirrorWindow(
   AirPlaySessionData session, {
   String? deviceId,
   String? deviceName,
@@ -252,7 +252,7 @@ Future<void> openAirPlayMirrorWindow(
   final initialSize = resolveMirrorInitialWindowSize(null, ratio: aspect);
 
   try {
-    await createAdbManageWindow(
+    final window = await createAdbManageWindow(
       arguments: {
         'type': 'mirror',
         'deviceId': resolvedDeviceId,
@@ -264,9 +264,29 @@ Future<void> openAirPlayMirrorWindow(
       frame: Offset.zero & initialSize,
       title: '$resolvedDeviceName · AirPlay',
     );
+    // create 返回不代表子 Engine 已完成初始化；确认通道就绪后再显示。
+    for (var attempt = 0; attempt < 8; attempt++) {
+      try {
+        if (await window.invokeMethod<bool>('isFlutterReady')
+                .timeout(const Duration(milliseconds: 500)) == true) {
+          // 已有 USB 窗口初始化中时 create 的复用可能尚未切源，需确认实际接收了句柄。
+          final switched = await window.invokeMethod<bool>('switchIosMirrorSource', {
+            'airplayHandle': session.id,
+            'airplayAspectRatio': aspect,
+          }).timeout(const Duration(seconds: 2));
+          if (switched != true) continue;
+          await window.show();
+          debugPrint('[AirPlay Mirror] window ready session=${session.id}');
+          return true;
+        }
+      } catch (_) {}
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    debugPrint('[AirPlay Mirror] window not ready session=${session.id}; retry pending');
   } catch (e) {
     debugPrint('[AirPlay] Failed to open mirror window: $e');
   }
+  return false;
 }
 
 /// 后台 Isolate 独立加载同一路径的动态库，复用进程内 Rust 会话表。

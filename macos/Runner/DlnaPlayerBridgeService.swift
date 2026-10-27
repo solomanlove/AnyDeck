@@ -65,6 +65,10 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
         self.unpinLabel = unpin
         self.updatePinButton()
         result(nil)
+      case "show":
+        self.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        result(nil)
       case "setTitle":
         guard let name = call.arguments as? String, !name.isEmpty else {
           result(FlutterError(code: "invalid_title", message: "DLNA title required", details: nil))

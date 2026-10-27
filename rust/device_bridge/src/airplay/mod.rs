@@ -40,6 +40,8 @@ pub enum AirPlayStatus {
     Idle = 0,
     Mirroring = 1,
     Stopped = 2,
+    /// type 110 镜像已建立，等待 VideoToolbox 首帧。
+    MirrorStarting = 3,
 }
 
 /// AirPlay 屏幕镜像服务端实例

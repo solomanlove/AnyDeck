@@ -5,7 +5,7 @@ class AirPlayConnectionMonitor {
   DateTime? _idleSince;
 
   bool isDisconnected(AirPlayServerStatus status, DateTime now) {
-    if (status == AirPlayServerStatus.mirroring) {
+    if (status.isMirrorSession) {
       _idleSince = null;
       return false;
     }

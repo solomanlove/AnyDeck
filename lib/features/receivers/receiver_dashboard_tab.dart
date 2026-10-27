@@ -143,26 +143,30 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
     final session = ref.watch(airplaySessionProvider);
     final settings = ref.watch(appSettingsProvider);
     final isMirroring = session?.hasAnyMirroring ?? false;
+    final isVideoPlaying = session?.isVideoPlaying ?? false;
     final isRunning =
         session != null &&
         (session.hasAnyBroadcasting || session.hasAnyMirroring);
     final activeCount = session?.mirroringSessions.length ?? 0;
 
-    final statusLabel = isMirroring
-        ? context.l10n
-              .t('receiverAirplayMirroring')
-              .replaceAll('{count}', '$activeCount')
+    final activeLabels = [
+      if (isMirroring) context.l10n.t('receiverAirplayMirroring')
+          .replaceAll('{count}', '$activeCount'),
+      if (isVideoPlaying) context.l10n.t('airplayVideoTitle'),
+    ];
+    final statusLabel = activeLabels.isNotEmpty
+        ? activeLabels.join(' · ')
         : isRunning
         ? context.l10n.t('receiverWaiting')
         : context.l10n.t('receiverStopped');
-    final statusDetail = isMirroring
+    final statusDetail = isMirroring || isVideoPlaying
         ? context.l10n.t('receiverAirplayActiveDesc')
         : isRunning
         ? context.l10n
               .t('receiverAirplayReadyDesc')
               .replaceAll('{name}', settings.airplayServerName)
         : context.l10n.t('receiverAirplayStoppedDesc');
-    final statusColor = isMirroring
+    final statusColor = isMirroring || isVideoPlaying
         ? theme.appColors.success
         : isRunning
         ? theme.colorScheme.primary
@@ -179,11 +183,22 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
       isBusy: _isProcessing,
       switchKey: const Key('airplayReceiverSwitch'),
       onChanged: _toggle,
-      action: isMirroring
-          ? OutlinedButton.icon(
-              onPressed: () => _openActiveWindows(session!),
-              icon: const Icon(Icons.open_in_new_rounded, size: 17),
-              label: Text(context.l10n.t('airplayOpenMirrorWindow')),
+      action: isMirroring || isVideoPlaying
+          ? Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (isMirroring) OutlinedButton.icon(
+                  onPressed: () => _openActiveWindows(session!),
+                  icon: const Icon(Icons.phone_iphone_rounded, size: 17),
+                  label: Text(context.l10n.t('airplayOpenMirrorWindow')),
+                ),
+                if (isVideoPlaying) OutlinedButton.icon(
+                  onPressed: () => ref.read(airplaySessionProvider.notifier).showVideoWindow(),
+                  icon: const Icon(Icons.movie_outlined, size: 17),
+                  label: Text(context.l10n.t('airplayOpenVideoWindow')),
+                ),
+              ],
             )
           : null,
       content: _ReceiverNameField(

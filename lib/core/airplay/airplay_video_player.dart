@@ -6,8 +6,9 @@ import 'package:flutter/services.dart';
 /// 将 AirPlay HTTP 视频目标状态串行应用到独立的原生媒体窗口。
 /// 复用 DLNA 的 AVPlayer 窗口实现，但不共享 DLNA 的会话和控制通道。
 class AirPlayVideoPlayer {
-  AirPlayVideoPlayer({required this.read, required this.report});
+  AirPlayVideoPlayer({required this.read, required this.report, this.onActivityChanged});
 
+  final void Function(bool)? onActivityChanged;
   final Map<String, dynamic>? Function(int) read;
   final void Function(int, int, Map<dynamic, dynamic>) report;
   static const channel = MethodChannel('any_deck/airplay_player');
@@ -44,12 +45,28 @@ class AirPlayVideoPlayer {
     required String failure,
     required String pin,
     required String unpin,
+    String? title,
   }) async {
+    if (title != null) {
+      _title = title;
+      await _invoke('setTitle', title);
+    }
     _loadingText = loading;
     _failureText = failure;
     await _invoke('setLoadingText', loading);
     await _invoke('setFailureText', failure);
     await _invoke('setPinLabels', {'pin': pin, 'unpin': unpin});
+  }
+
+  void _setActive(bool active) {
+    if (_active == active) return;
+    _active = active;
+    onActivityChanged?.call(active);
+  }
+
+  /// 恢复已有视频窗口，不重放 URL、不改变播放进度。
+  Future<void> showWindow() async {
+    if (_active) await _invoke('show');
   }
 
   Future<void> _onEvent(MethodCall call) async {
@@ -61,7 +78,7 @@ class AirPlayVideoPlayer {
         args['generation'] == _windowGeneration &&
         call.method == 'playerStopped') {
       report(_handle!, _generation, {'state': 2});
-      _active = false;
+      _setActive(false);
       _pinned = false;
     } else if (call.method == 'playerFailed' &&
         args is Map &&
@@ -94,7 +111,7 @@ class AirPlayVideoPlayer {
       if (revision != _revision) {
         if (url == null) {
           if (_active) await _invoke('close');
-          _active = false;
+          _setActive(false);
           _pinned = false;
         } else {
           final uri = Uri.tryParse(url);
@@ -106,7 +123,7 @@ class AirPlayVideoPlayer {
           if (generation != _generation) {
             _generation = generation;
             _windowGeneration++;
-            _active = true;
+            _setActive(true);
             await _invoke('setTitle', _title);
             if (epoch != _epoch) return;
             await _invoke('playUrl', {
@@ -140,7 +157,7 @@ class AirPlayVideoPlayer {
             actual['generation'] == _windowGeneration) {
           report(handle, generation, actual);
           // 失败保留窗口供用户阅读；收到下一条 Stop/Play 时再关闭或替换。
-          if (actual['state'] == 2) _active = false;
+          if (actual['state'] == 2) _setActive(false);
         }
       }
     } catch (error) {
@@ -150,7 +167,7 @@ class AirPlayVideoPlayer {
       if (requestedGeneration != null) {
         report(handle, requestedGeneration, {'state': 2});
       }
-      _active = false;
+      _setActive(false);
       try {
         await _invoke('close');
       } catch (_) {}
@@ -162,7 +179,7 @@ class AirPlayVideoPlayer {
     _timer?.cancel();
     _timer = null;
     _handle = null;
-    _active = false;
+    _setActive(false);
     await _inflight;
     _inflight = null;
     _generation = -1;

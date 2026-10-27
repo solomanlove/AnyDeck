@@ -1,3 +1,5 @@
+import 'package:any_deck/core/airplay/airplay_server_service.dart';
+import 'package:any_deck/core/airplay/airplay_server_state.dart';
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/features/receivers/receiver_dashboard_tab.dart';
@@ -54,4 +56,40 @@ void main() {
     expect(find.text('当前版本实测支持 DLNA，不支持 AirPlay'), findsOneWidget);
     expect(find.text('待确认'), findsNothing);
   });
+  for (final type in ['mirror', 'video', 'both']) {
+    testWidgets('$type 只展示对应的窗口入口', (tester) async {
+      final state = AirPlaySessionData(
+        id: 1, serverName: 'AirPlay', rtspPort: 7000, videoPort: 7100,
+        status: type == 'video' ? AirPlayServerStatus.idle : AirPlayServerStatus.mirrorStarting,
+        isVideoPlaying: type != 'mirror',
+      );
+      await tester.pumpWidget(ProviderScope(
+        overrides: [airplaySessionProvider.overrideWith(() => _FakeAirPlay(state))],
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light),
+          localizationsDelegates: const [AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate],
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const Scaffold(body: AirPlayReceiverCard()),
+        ),
+      ));
+      await tester.pump();
+      final mirrorLabel = AppLocalizations(const Locale('zh')).t('airplayOpenMirrorWindow');
+      expect(find.text(mirrorLabel), type == 'video' ? findsNothing : findsOneWidget);
+      expect(find.text('打开视频窗口'), type == 'mirror' ? findsNothing : findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+}
+
+
+/// 注入协议状态，避免 Widget 测试启动真实 Bonjour 或 native 接收器。
+class _FakeAirPlay extends AirPlayServerNotifier {
+  _FakeAirPlay(this.initial);
+  final AirPlaySessionData initial;
+  @override
+  AirPlaySessionData? build() => initial;
 }

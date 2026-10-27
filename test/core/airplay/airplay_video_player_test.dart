@@ -119,6 +119,29 @@ void main() {
     },
   );
 
+  test('video activity and localized title stay separate from mirror windows', () async {
+    final activity = <bool>[];
+    player = AirPlayVideoPlayer(
+      read: (_) => Map<String, dynamic>.from(command),
+      report: (_, _, _) {},
+      onActivityChanged: activity.add,
+    );
+    await player.start(1000, 'Receiver');
+    await player.setLabels(loading: 'Loading', failure: 'Failed', pin: 'Pin',
+        unpin: 'Unpin', title: 'Receiver · AirPlay 视频');
+    await player.poll();
+    await player.showWindow();
+    expect(calls.last.method, 'show');
+    expect(calls.lastWhere((c) => c.method == 'setTitle').arguments,
+        'Receiver · AirPlay 视频');
+    command.addAll({'revision': 2, 'url': null});
+    await player.poll();
+    expect(activity, [true, false]);
+    final count = calls.length;
+    await player.showWindow();
+    expect(calls.length, count);
+  });
+
   test('non HTTP source never opens and reports failure', () async {
     command['url'] = 'file:///etc/hosts';
     await player.start(1000, 'AirPlay');

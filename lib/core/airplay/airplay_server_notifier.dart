@@ -6,6 +6,7 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
   AirPlayVideoPlayer? _videoPlayer;
   final Map<int, String> _lastErrors = {};
   bool _spawningStandby = false;
+  bool _disposed = false;
   static const int _initialClientSlots = 3;
   static const int _maxConcurrentSessions = 4;
 
@@ -17,6 +18,7 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
       unawaited(_updateVideoLabels());
     });
     ref.onDispose(() {
+      _disposed = true;
       unawaited(_videoPlayer?.stop());
       _timer?.cancel();
       final current = latestSession;
@@ -59,7 +61,13 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
     // HTTP 视频不产生镜像首帧，需要独立驱动媒体播放器窗口。
     try {
       final bridge = AirPlayVideoBridge();
-      _videoPlayer ??= AirPlayVideoPlayer(read: bridge.read, report: bridge.report);
+      _videoPlayer ??= AirPlayVideoPlayer(
+        read: bridge.read,
+        report: bridge.report,
+        onActivityChanged: (active) {
+          if (!_disposed && state != null) state = state!.copyWith(isVideoPlaying: active);
+        },
+      );
       await _videoPlayer!.start(primary.id, name);
       await _updateVideoLabels();
     } catch (error) {
@@ -91,7 +99,7 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
       final status = service.getStatus(session.id);
       final size = service.getDimensions(session.id);
       final client = service.getClientInfo(session.id);
-      final isMirroring = status == AirPlayServerStatus.mirroring;
+      final isMirroring = status.isMirrorSession;
 
       final nextW = isMirroring ? (size?.width.toInt() ?? session.width) : 0;
       final nextH = isMirroring ? (size?.height.toInt() ?? session.height) : 0;
@@ -111,6 +119,9 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
           nextDevId != session.clientDeviceId ||
           nextModel != session.clientModel ||
           nextName != session.clientName) {
+        if (status != session.status) {
+          debugPrint('[AirPlay] session=${session.id} ${session.status.name} -> ${status.name} size=${nextW}x$nextH');
+        }
         changed = true;
         updatedList.add(
           session.copyWith(
@@ -140,7 +151,7 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
     if (latest != null &&
         !_spawningStandby &&
         latest.allSessions.length < _maxConcurrentSessions &&
-        latest.allSessions.every((s) => s.status == AirPlayServerStatus.mirroring)) {
+        latest.allSessions.every((s) => s.status.isMirrorSession)) {
       _spawningStandby = true;
       final slot = latest.allSessions.length + 1;
       unawaited(_spawnStandbySession(slot));
@@ -201,12 +212,15 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
     );
   }
 
+  Future<void> showVideoWindow() async => _videoPlayer?.showWindow();
+
   Future<void> _updateVideoLabels() async {
     final player = _videoPlayer;
     if (player == null) return;
     final l10n = AppLocalizations(ref.read(appSettingsProvider).language.locale);
     try {
       await player.setLabels(
+        title: '${state?.serverName ?? 'AirPlay'} · ${l10n.t('airplayVideoTitle')}',
         loading: l10n.t('dlnaLoading'),
         failure: l10n.t('airplayVideoFailed'),
         pin: l10n.t('pinAlwaysOnTop'),

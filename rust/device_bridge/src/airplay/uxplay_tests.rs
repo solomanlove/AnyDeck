@@ -111,6 +111,13 @@ fn decoded_surface_reset_and_reconnect() {
     let ptr = &mut *context as *mut Context as *mut c_void;
     let data = include_bytes!("testdata/blue_64x48.h264");
     for _ in 0..2 {
+        Receiver::on_mirror_started(ptr);
+        assert_eq!(server.status.load(Ordering::Acquire), AirPlayStatus::MirrorStarting as u8);
+        assert!(!server.frame.has_surface());
+        // 首帧未到时重置也必须回到 Idle，不能残留一个假镜像会话。
+        Receiver::on_stream_reset(ptr);
+        assert_eq!(server.status.load(Ordering::Acquire), AirPlayStatus::Idle as u8);
+        Receiver::on_mirror_started(ptr);
         Receiver::on_video_data(ptr, data.as_ptr(), data.len() as i32, 0);
         assert_eq!(server.status.load(Ordering::Acquire), AirPlayStatus::Mirroring as u8);
         assert!(server.frame.has_surface());
@@ -120,6 +127,10 @@ fn decoded_surface_reset_and_reconnect() {
         assert!(!server.frame.has_surface());
         assert_eq!(server.frame.dimensions(), (0, 0));
     }
+    server.status.store(AirPlayStatus::Stopped as u8, Ordering::Release);
+    Receiver::on_mirror_started(ptr);
+    Receiver::on_stream_reset(ptr);
+    assert_eq!(server.status.load(Ordering::Acquire), AirPlayStatus::Stopped as u8);
 }
 
 /// 真实 TCP HTTP 信令，不 mock C 回调，验证媒体模式不会被当成镜像首帧。

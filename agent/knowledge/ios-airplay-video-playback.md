@@ -4,6 +4,33 @@
 
 用户从 iPhone 哔哩哔哩点击 AirPlay 后只有声音，没有视频窗口。代码确认原接入显式关闭 Bonjour Video/HLS 能力位，未启用 UxPlay HTTP 视频路由，也未注册媒体播放回调；原窗口仅由 H.264 屏幕镜像首帧触发。此缺口与 App 内视频投放的使用路径一致，但尚未取得本次 B 站实际 `/play` 请求和无线播放证据，不能把代码原因分析当成真机验收。
 
+## 镜像与视频窗口分流（2026-10-28）
+
+- 需求：iPhone 6s 已选择屏幕镜像却没有窗口；按实际协议类型打开手机镜像窗口或视频播放器。
+- 原缺口：Dashboard 仅监听 `Mirroring` 首次变化，依赖解码首帧且开窗失败无重试；创建子 Engine 成功也不等于窗口已就绪。无法仅凭旧日志确定本次旧进程缺失画面的唯一原因，不能将这些代码缺口当作完整故障复现。
+- RTSP type 110 镜像启动回调新增 `MirrorStarting=3`，先打开手机镜像窗口并显示等待画面。首个有效 IOSurface 后进入 `Mirroring=1`；FFI 轮询也检查异步首帧，避免最后一包返回后才完成解码时一直停留在等待状态。重置回到 Idle，Stopped 不可被延迟回调复活。
+- `AirPlayMirrorWindowCoordinator` / `airplayWindowRoutingProvider` 由主 Isolate 持有，首次订阅立即核对现有会话；同一连接单飞开窗、失败每 3 秒重试，断开/换客户端后重新处理。开窗通过 `isFlutterReady` 和 `switchIosMirrorSource` 确认，再显示窗口；复用同设备 USB 窗口的规则保持。
+- `/play` HTTP(S) 媒体仍由 `AirPlayVideoPlayer` 路由到独立原生播放器。音频不会触发手机窗口或视频窗口；普通 App 在屏幕镜像中播放视频，仍属于手机镜像，不按画面内容猜测类型。
+- 手机窗口标题为「设备名 · AirPlay 手机镜像」，视频窗口为「接收端名 · AirPlay 视频」，中英文和系统标题同步。接收页分别显示镜像/视频状态及恢复窗口入口，可同时展示两种会话。
+- 帧仍通过 native Texture 传递；状态轮询仅传递状态/尺寸/客户端元数据，日志不记录媒体 URL。
+
+### 本次验证
+
+- Dart 定向测试 38 项通过，覆盖：首帧前开窗、已有会话订阅、单飞与失败重试、重连/多槽位、视频与音频不误开手机窗口、Engine 就绪/切源确认、视频活动回调和标题、接收页双入口，以及原 DLNA 回归。
+- Rust：39 passed / 1 ignored；包括真实 VideoToolbox 测试帧的 `MirrorStarting → Mirroring → Idle`、无首帧重置和停止后不复活，原 HTTP 视频协议回归通过。
+- 定向静态检查无问题；最终 macOS Debug 构建通过。Dashboard 存在既有 `liquid_glass_background.dart` 未使用导入警告，本次未修改该无关代码。
+- 原生播放器 smoke：MP4/HLS 首帧、进度、暂停/跳转/恢复、DLNA 窗口独立性、加载失败暂停均通过。
+- 真机：2026-10-27 22:43，运行 build/macos/Build/Products/Debug/AnyDeck.app（PID 66255），iPhone 6s / iOS 15.8.8 重新连接。日志记录 `idle → mirrorStarting → mirroring`、608×1080 首帧及 Texture 首次拷贝；实际窗口先显示手机控制中心，随后更新到手机桌面。用户明确确认「画面同步正常」，持续观察超过 1 分钟未断开。
+- 最后的系统标题同步与切源应答检查由定向测试和构建验证；未再次打断已正常镜像的手机。B 站 HTTP 视频实际投放、USB→AirPlay 复用窗口及多手机并发仍需独立真机回归，不由单台镜像验收替代。
+- 诊断文件（本机临时）：`/tmp/anydeck-airplay-type-runtime.log`、`/tmp/airplay-type-final-tests.log`、`/tmp/airplay-type-rust-tests.log`、`/tmp/airplay-type-native-smoke.log`、`/tmp/airplay-type-final-analyze.log`、`/tmp/airplay-type-final-build.log`。历史 `socket 48` 为固定端口被占后动态端口成功监听的残留日志；这次不能据此判定接收器启动失败。
+
+### 回归路径
+
+1. 控制中心开始/结束/重新开始屏幕镜像，检查只出现一个手机窗口，首帧等待态不会假报断开。
+2. 视频 App 发起 HTTP 视频投放，检查独立视频窗口和「打开视频窗口」入口；纯音频不弹空视频窗口。
+3. 镜像与视频互切、已有 USB 手机窗口时切镜像、模拟慢 Engine/切源失败，检查没有重复窗口或永久漏开。
+4. 接收页离开/返回、关闭并恢复视频窗口、切换中英文，检查状态、标题和播放进度。
+
 ## 数据流与模块
 
 ```text

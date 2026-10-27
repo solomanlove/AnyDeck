@@ -7,11 +7,18 @@ enum AirPlayServerStatus {
   mirroring,
 
   /// 服务已停止
-  stopped;
+  stopped,
+
+  /// 镜像流已建立，但尚未解码出画面；仍需打开手机镜像窗口。
+  mirrorStarting;
+
+  bool get isMirrorSession =>
+      this == mirroring || this == mirrorStarting;
 
   static AirPlayServerStatus fromRaw(int value) => switch (value) {
         0 => idle,
         1 => mirroring,
+        3 => mirrorStarting,
         _ => stopped,
       };
 }
@@ -31,6 +38,7 @@ class AirPlaySessionData {
     this.clientDeviceId,
     this.clientModel,
     this.additionalSessions = const [],
+    this.isVideoPlaying = false,
   });
 
   /// 会话唯一标识句柄
@@ -69,17 +77,20 @@ class AirPlaySessionData {
   /// 多设备并发投屏时的附加 AirPlay 会话列表
   final List<AirPlaySessionData> additionalSessions;
 
+  /// HTTP 视频播放器会话，与手机镜像状态独立。
+  final bool isVideoPlaying;
+
   /// 当前汇总的所有 AirPlay 会话实例（含主会话与并发附加会话）
   List<AirPlaySessionData> get allSessions => [this, ...additionalSessions];
 
-  /// 当前所有处于活跃投屏（mirroring）状态的会话列表
+  /// 当前镜像会话（含已建立、等待首帧的会话），不包含 HTTP 视频
   List<AirPlaySessionData> get mirroringSessions => allSessions
-      .where((session) => session.status == AirPlayServerStatus.mirroring)
+      .where((session) => session.status.isMirrorSession)
       .toList();
 
   /// 是否存在任一正在投屏的会话
   bool get hasAnyMirroring =>
-      allSessions.any((s) => s.status == AirPlayServerStatus.mirroring);
+      allSessions.any((s) => s.status.isMirrorSession);
 
   /// 是否存在任一处于待机广播中的会话
   bool get hasAnyBroadcasting =>
@@ -95,9 +106,11 @@ class AirPlaySessionData {
     String? clientModel,
     bool clearClient = false,
     List<AirPlaySessionData>? additionalSessions,
+    bool? isVideoPlaying,
   }) {
     return AirPlaySessionData(
       id: id,
+      isVideoPlaying: isVideoPlaying ?? this.isVideoPlaying,
       serverName: serverName,
       rtspPort: rtspPort,
       videoPort: videoPort,

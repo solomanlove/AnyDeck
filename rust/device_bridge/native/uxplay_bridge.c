@@ -27,6 +27,7 @@ typedef struct {
     void (*video_callback)(void *ctx, const uint8_t *data, int len, uint64_t ntp_time);
     void (*audio_callback)(void *ctx, const uint8_t *data, int len, uint8_t ct, uint16_t spf);
     void (*reset_callback)(void *ctx);
+    void (*mirror_started)(void *ctx);
     void (*log_callback)(void *ctx, int level, const char *msg);
     void *(*client_callback)(void *ctx, const char *device_id, const char *model, const char *name);
     void (*detach_callback)(void *ctx, void *slot_ctx);
@@ -195,6 +196,7 @@ static void on_mirror_video_running(void *cls, bool is_running) {
     anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)cls;
     anydeck_uxplay_handle_t *h = c ? c->server : NULL;
     void *target_ctx = (c && c->slot_context) ? c->slot_context : (h ? h->rust_context : NULL);
+    if (is_running && h && h->mirror_started && target_ctx) h->mirror_started(target_ctx);
     if (!is_running && h && h->reset_callback && target_ctx) h->reset_callback(target_ctx);
 }
 
@@ -350,7 +352,8 @@ void *anydeck_uxplay_start(
     void *(*client_fn)(void *ctx, const char *device_id, const char *model, const char *name),
     void (*detach_fn)(void *ctx, void *slot_ctx),
     void (*media_command)(void *ctx, int command, const char *url, double value),
-    void (*media_info)(void *ctx, double *values)
+    void (*media_info)(void *ctx, double *values),
+    void (*mirror_started)(void *ctx)
 ) {
     anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)calloc(1, sizeof(anydeck_uxplay_handle_t));
     if (!h) return NULL;
@@ -364,6 +367,7 @@ void *anydeck_uxplay_start(
     h->detach_callback = detach_fn;
     h->media_command = media_command;
     h->media_info = media_info;
+    h->mirror_started = mirror_started;
     atomic_init(&h->running, true);
 
     raop_callbacks_t cbs;

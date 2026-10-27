@@ -128,11 +128,19 @@ pub unsafe extern "C" fn anydeck_airplay_get_dimensions(
 }
 
 /// 获取 AirPlay 当前状态
-/// 0: Idle (待机等待连接), 1: Mirroring (投屏中), 2: Stopped (已停止)
+/// 0: Idle, 1: Mirroring（已有首帧）, 2: Stopped, 3: MirrorStarting（镜像等待首帧）
 #[no_mangle]
 pub extern "C" fn anydeck_airplay_get_status(id: u64) -> u8 {
     get_server(id)
-        .map(|s| s.status.load(Ordering::Acquire))
+        .map(|s| {
+            // 异步解码可能在最后一个视频包返回后才产生首帧，轮询也需推进状态。
+            if s.frame.has_surface() {
+                let _ = s.status.compare_exchange(
+                    AirPlayStatus::MirrorStarting as u8, AirPlayStatus::Mirroring as u8,
+                    Ordering::AcqRel, Ordering::Acquire);
+            }
+            s.status.load(Ordering::Acquire)
+        })
         .unwrap_or(AirPlayStatus::Stopped as u8)
 }
 
