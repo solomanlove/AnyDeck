@@ -16,4 +16,12 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - Rust IPC 声明 `discovery=true`、`send=false`、`receive=false`。2026-10-28 原生 CoAP 在局域网发现 nova 12 Ultra；实验发送端完成认证、加密 offer、Bytes/File 通道、DFile 成功回调，手机确认收到 39B 测试 txt。手机通过 Rust 接收端回传同一文件，落盘 SHA-256 与原件一致，手机确认发送成功。同一身份 BLE 广播包含在制品内。双向结果仅覆盖单文件测试命令；一般文件、其他机型、App 包内运行与生产信任策略仍待验证，因此 `send/receive` 不对生产 UI 开放。
 - x86_64 制品、Developer ID签名与公证、Release 包内双向真机验收仍待完成。
 
+## 单文件收发自测入口（2026-10-28）
+
+- 接收中心新增「华为分享（测试）」卡片：扫描手机、选择或手填手机 IPv4/端口、选择一个文件发送、选择父目录接收。扫描失败时可直接填手机 IP；本机与广播地址可按实际网段修正。
+- Flutter IPC 用显式 `ANYDECK_SHARE_EXPERIMENTAL=1` 仅为本次点击启动单次子进程。`hello` 的 `send/receive=false` 仍表示生产能力未发布；测试界面不将其展示为正式支持。页面退出、用户取消及超时均回收进程。发送文件限普通非空文件 1 MiB 内；接收生成新的 `AnyDeck-Share-<时间戳>` 目录，核心再次校验文件和目录边界。
+- 自测路径：使用 `ANYDECK_SHARE_CORE=1 ./script/build_macos.sh <目标目录>` 构建含私有制品的 App；打开「投屏接收 → 华为分享（测试）」。Mac 与手机同 Wi-Fi，手机解锁并开启华为分享。发送时先扫描/填 IP、选文件，手机确认接收；接收时先填手机 IP、选保存父目录，再在手机通过华为分享选择 AnyDeck PoC。只传新建的无敏感小文件，分别核对手机文件和 Mac 接收路径。CLI 响应中的发送完成不等于远端哈希校验，接收 SHA-256 是本机落盘摘要。
+- 验证范围：本轮 IPC 边界与页面 Widget 测试、静态分析及打包验证；完整 App 交互和真机双向需要用户在含核心的构建包上自测。AirPlay/DLNA 与其 Provider 未改动。
+- 本轮实际验证：9 个定向 Flutter 测试通过；改动文件定向 `flutter analyze` 通过。全仓 `flutter analyze` 仍有 40 条既有告警/提示，未涉及本次改动文件。`ANYDECK_SHARE_CORE=1 ./script/build_macos.sh /tmp/anydeck-huawei-share-selftest` 成功，产物约 94 MiB，其中 ShareCore 约 7.3 MiB；`codesign --verify --deep --strict` 与包内 `hello` 握手通过，测试命令门控可接受。尚未在这份新 App 上进行交互与真机传输验收。
+
 当前集成不会替代 HDC 文件管理，也不与其设备身份自动合并。多窗口只应使用一个 Share Core 进程，后续状态通知需由主窗口统一分发。

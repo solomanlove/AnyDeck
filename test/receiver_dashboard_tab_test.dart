@@ -44,7 +44,10 @@ void main() {
     );
     expect(find.byKey(const Key('airplayReceiverSwitch')), findsOneWidget);
     expect(find.byKey(const Key('dlnaReceiverSwitch')), findsOneWidget);
-    expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.text('华为分享（测试）'), findsOneWidget);
+    expect(find.text('选文件发送'), findsOneWidget);
+    expect(find.text('选目录接收'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(6));
     expect(find.text('AnyDeck-DLNA'), findsNWidgets(2));
     expect(find.byKey(const Key('receiverAppSupportGuide')), findsOneWidget);
     expect(find.text('常见视频 App 投放示例'), findsOneWidget);

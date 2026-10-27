@@ -46,4 +46,46 @@ void main() {
       throwsFormatException,
     );
   });
+
+  test(
+    'rejects oversized outgoing file before starting native transfer',
+    () async {
+      final folder = await Directory.systemTemp.createTemp('share-core-test-');
+      try {
+        final file = File('${folder.path}/large.bin');
+        await file.writeAsBytes(List.filled(1024 * 1024 + 1, 0));
+        expect(
+          () => const ShareCoreClient().sendFileForTest(
+            localAddress: InternetAddress('192.168.1.2'),
+            peer: ShareCorePeer(
+              address: InternetAddress('192.168.1.3'),
+              port: 44800,
+              name: 'phone',
+            ),
+            file: file,
+          ),
+          throwsFormatException,
+        );
+      } finally {
+        await folder.delete(recursive: true);
+      }
+    },
+  );
+
+  test('refuses an existing receive directory', () async {
+    final folder = await Directory.systemTemp.createTemp('share-core-receive-');
+    try {
+      expect(
+        () => const ShareCoreClient().receiveFileForTest(
+          localAddress: InternetAddress('192.168.1.2'),
+          broadcastAddress: InternetAddress('192.168.1.255'),
+          peerAddress: InternetAddress('192.168.1.3'),
+          outputDirectory: folder,
+        ),
+        throwsFormatException,
+      );
+    } finally {
+      await folder.delete(recursive: true);
+    }
+  });
 }

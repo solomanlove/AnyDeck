@@ -167,4 +167,119 @@ class ShareCoreClient {
       );
     }
   }
+
+  /// 测试入口仅传输一个不超过 1 MiB 的普通文件；私有核心仍要求显式环境开关。
+  Future<ShareCoreTransfer> sendFileForTest({
+    required InternetAddress localAddress,
+    required ShareCorePeer peer,
+    required File file,
+  }) async {
+    final stat = await file.stat();
+    if (stat.type != FileSystemEntityType.file ||
+        stat.size < 1 ||
+        stat.size > 1024 * 1024) {
+      throw const FormatException('Select one nonempty file up to 1 MiB');
+    }
+    return _startTransfer({
+      'command': 'send_file_experimental',
+      'peer_ip': peer.address.address,
+      'port': peer.port,
+      'local_ip': localAddress.address,
+      'path': file.path,
+    }, expectedEvent: 'file_sent');
+  }
+
+  /// 目录必须尚不存在，由私有核心以受限权限创建，避免覆盖用户文件。
+  Future<ShareCoreTransfer> receiveFileForTest({
+    required InternetAddress localAddress,
+    required InternetAddress broadcastAddress,
+    required InternetAddress peerAddress,
+    required Directory outputDirectory,
+  }) async {
+    if (await outputDirectory.exists() ||
+        !await outputDirectory.parent.exists()) {
+      throw const FormatException('Receive folder must be new');
+    }
+    return _startTransfer({
+      'command': 'receive_file_experimental',
+      'peer_ip': peerAddress.address,
+      'local_ip': localAddress.address,
+      'broadcast_ip': broadcastAddress.address,
+      'output_dir': outputDirectory.path,
+    }, expectedEvent: 'file_received');
+  }
+
+  Future<ShareCoreTransfer> _startTransfer(
+    Map<String, Object> request, {
+    required String expectedEvent,
+  }) async {
+    if (!Platform.isMacOS || !await _executable.exists()) {
+      throw const FileSystemException('Share Core is not bundled');
+    }
+    final process = await Process.start(
+      _executable.path,
+      const [],
+      environment: const {'ANYDECK_SHARE_EXPERIMENTAL': '1'},
+    );
+    try {
+      final transfer = ShareCoreTransfer(process, expectedEvent);
+      process.stdin.writeln(
+        jsonEncode({'version': 1, ...request, 'duration_seconds': 120}),
+      );
+      await process.stdin.flush();
+      await process.stdin.close();
+      return transfer;
+    } catch (_) {
+      process.kill();
+      rethrow;
+    }
+  }
+}
+
+/// 单次原生传输会话；页面关闭或用户取消时终止子进程。
+class ShareCoreTransfer {
+  ShareCoreTransfer(this._process, this._expectedEvent);
+
+  final Process _process;
+  final String _expectedEvent;
+  bool _cancelled = false;
+
+  void cancel() {
+    _cancelled = true;
+    _process.kill();
+  }
+
+  Future<Map<String, dynamic>> get result async {
+    try {
+      final lines = _process.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      final stderr = _process.stderr.transform(utf8.decoder).join();
+      final exit = await _process.exitCode.timeout(
+        const Duration(seconds: 125),
+        onTimeout: () {
+          _process.kill(ProcessSignal.sigkill);
+          return 124;
+        },
+      );
+      final output = await lines;
+      await stderr;
+      if (_cancelled) throw StateError('Transfer cancelled');
+      if (output.isEmpty) throw StateError('Share Core exited: $exit');
+      final response = jsonDecode(output.last);
+      if (response is! Map<String, dynamic>) {
+        throw const FormatException('Invalid Share Core transfer response');
+      }
+      if (exit != 0 || response['event'] != _expectedEvent) {
+        throw StateError(
+          'Share Core ${response['code'] ?? exit}: '
+          '${response['phase'] ?? ''} ${response['reason'] ?? ''}',
+        );
+      }
+      return response;
+    } finally {
+      _process.kill();
+    }
+  }
 }
