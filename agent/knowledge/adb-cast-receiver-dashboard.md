@@ -18,14 +18,14 @@
 - 进入 `/receivers` 时清空当前设备选择，使左侧稳定展示设备管理、模拟器管理和投屏接收三个一级入口。
 - `ReceiverDashboardTab` 使用统一 `DashboardHeaderBar`，内容区按宽度自适应：宽窗口双列、窄窗口单列。
 - `ReceiverServiceCard` 统一协议图标、用途说明、状态、启停 Switch、接收端名称和附加动作。
-- 服务 Card 下方展示常见视频 App 投放示例；协议标签只作为版本相关参考，并明确受平台、内容版权与会员权益影响。爱奇艺官方说明明确支持 DLNA/AirPlay；小红书暂无可靠的通用协议说明，因此标记为待确认。
+- 服务 Card 下方展示常见视频 App 投放示例；协议标签只作为版本相关参考，并明确受平台、内容版权与会员权益影响。爱奇艺官方说明明确支持 DLNA/AirPlay；小红书当前版本实测支持 DLNA、不支持 AirPlay。
 
 ### 兼容示例证据边界
 
 - 哔哩哔哩官方投屏帮助确认移动端投屏与 iOS/iPadOS 本地网络发现，但未提供长期稳定的逐平台协议矩阵：https://www.bilibili.com/blackboard/activity-U_aG4BWWl.html
 - 爱奇艺官方投屏助手明确列出支持 DLNA/AirPlay 的设备，同时提示部分内容受版权限制：https://www.iqiyi.com/common/pushvideo.html
 - 抖音与腾讯视频的协议标签按当前客户端示例展示，仍需在具体 App 版本、平台和内容上以投屏列表为准。
-- 小红书官方公开资料未找到通用 DLNA/AirPlay 视频投放说明，不作为已支持能力宣传。
+- 小红书官方公开资料未找到通用协议说明；2026-10-27 用户实测确认当前版本支持 DLNA、不支持 AirPlay，具体平台与版本未记录，后续仍以 App 内投屏列表为准。
 
 ## 3. 状态与生命周期
 

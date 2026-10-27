@@ -51,6 +51,7 @@ void main() {
     expect(find.text('腾讯视频'), findsOneWidget);
     expect(find.text('爱奇艺'), findsOneWidget);
     expect(find.text('小红书'), findsOneWidget);
-    expect(find.text('待确认'), findsOneWidget);
+    expect(find.text('当前版本实测支持 DLNA，不支持 AirPlay'), findsOneWidget);
+    expect(find.text('待确认'), findsNothing);
   });
 }

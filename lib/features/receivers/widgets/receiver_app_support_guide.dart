@@ -33,8 +33,8 @@ class ReceiverAppSupportGuide extends StatelessWidget {
       ),
       _SupportItem(
         name: context.l10n.t('receiverExampleXiaohongshu'),
-        platforms: context.l10n.t('receiverExampleUnverified'),
-        protocols: const [],
+        platforms: context.l10n.t('receiverExampleXiaohongshuSupport'),
+        protocols: const ['DLNA'],
       ),
     ];
 
@@ -131,38 +131,30 @@ class _SupportItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          if (protocols.isEmpty)
-            Text(
-              context.l10n.t('receiverExamplePending'),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.appColors.mutedForeground,
-              ),
-            )
-          else
-            Wrap(
-              spacing: 6,
-              children: protocols
-                  .map(
-                    (protocol) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        protocol,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.w600,
-                        ),
+          Wrap(
+            spacing: 6,
+            children: protocols
+                .map(
+                  (protocol) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      protocol,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  )
-                  .toList(growable: false),
-            ),
+                  ),
+                )
+                .toList(growable: false),
+          ),
         ],
       ),
     );
