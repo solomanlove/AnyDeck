@@ -13,6 +13,7 @@ fn server() -> Arc<AirPlayServer> {
         stopped: Arc::new(AtomicBool::new(false)),
         last_error: Arc::new(Mutex::new(String::new())),
         client_info: Arc::new(Mutex::new((String::new(), String::new(), String::new()))),
+        media: Arc::new(Mutex::new(crate::airplay::media::MediaState::default())),
         _advertiser: Mutex::new(None), task: Mutex::new(None), native: Mutex::new(None),
     })
 }
@@ -55,6 +56,8 @@ fn native_pairing_info_restart_and_failed_start_cleanup() {
         let info = request(&mut socket, "GET", "/info", &[]);
         let info = plist::Value::from_reader(std::io::Cursor::new(info)).unwrap();
         assert_eq!(info.as_dictionary().unwrap()["name"].as_string(), Some("AnyDeck-Test"));
+        let features = info.as_dictionary().unwrap()["features"].as_unsigned_integer().unwrap();
+        assert_eq!(features & 0x11, 0x11); // Video + HLS 与播放器回调同步启用。
         let pk = request(&mut socket, "POST", "/pair-setup", &[1; 32]);
         assert_eq!(pk.len(), 32);
         if let Some(expected) = &previous_key { assert_eq!(&pk, expected); }
@@ -81,6 +84,7 @@ fn invalid_video_and_reset_never_report_mirroring_or_revive_stopped() {
         client_info: server.client_info.clone(), frame: server.frame.clone(),
         decoder: Mutex::new(Decoder::new(server.frame.clone())),
         audio_decoder: Mutex::new(None),
+        media: server.media.clone(),
     });
     let ptr = &mut *context as *mut Context as *mut c_void;
     let bad = [0u8; 4];
@@ -102,6 +106,7 @@ fn decoded_surface_reset_and_reconnect() {
         client_info: server.client_info.clone(), frame: server.frame.clone(),
         decoder: Mutex::new(Decoder::new(server.frame.clone())),
         audio_decoder: Mutex::new(None),
+        media: server.media.clone(),
     });
     let ptr = &mut *context as *mut Context as *mut c_void;
     let data = include_bytes!("testdata/blue_64x48.h264");
@@ -115,4 +120,84 @@ fn decoded_surface_reset_and_reconnect() {
         assert!(!server.frame.has_surface());
         assert_eq!(server.frame.dimensions(), (0, 0));
     }
+}
+
+/// 真实 TCP HTTP 信令，不 mock C 回调，验证媒体模式不会被当成镜像首帧。
+fn http_request(socket: &mut TcpStream, method: &str, uri: &str, data: &[u8]) -> (String, Vec<u8>) {
+    write!(socket, "{method} {uri} HTTP/1.1\r\nHost: localhost\r\nX-Apple-Session-ID: 00000000-0000-0000-0000-000000000001\r\nContent-Type: application/x-apple-binary-plist\r\nContent-Length: {}\r\n\r\n", data.len()).unwrap();
+    socket.write_all(data).unwrap();
+    let mut header = Vec::new();
+    while !header.ends_with(b"\r\n\r\n") {
+        let mut byte = [0];
+        socket.read_exact(&mut byte).unwrap();
+        header.push(byte[0]);
+        assert!(header.len() < 16384);
+    }
+    let text = String::from_utf8(header).unwrap();
+    let len = text.lines().find_map(|line| {
+        let (key, value) = line.split_once(':')?;
+        key.eq_ignore_ascii_case("content-length").then(|| value.trim().parse::<usize>().unwrap())
+    }).unwrap_or(0);
+    assert!(len < 1024 * 1024);
+    let mut body = vec![0; len];
+    socket.read_exact(&mut body).unwrap();
+    (text, body)
+}
+
+#[test]
+fn native_http_video_play_pause_seek_status_stop_and_switch() {
+    let server = server();
+    let directory = std::env::temp_dir().join(format!("anydeck-http-video-test-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let receiver = Receiver::start_with_identity(&server, "AnyDeck-Video-Test", 0, &directory.join("identity.pem"), false).unwrap();
+    let mut socket = TcpStream::connect(("127.0.0.1", receiver.port)).unwrap();
+    socket.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    let (header, _) = http_request(&mut socket, "GET", "/server-info", &[]);
+    assert!(header.starts_with("HTTP/1.1 200"));
+    for (uuid, uri) in [("first", "https://example.test/video.mp4"), ("second", "https://example.test/master.m3u8")] {
+        let mut dict = plist::Dictionary::new();
+        if uuid == "first" { dict.insert("uuid".into(), plist::Value::String(uuid.into())); }
+        dict.insert("Content-Location".into(), plist::Value::String(uri.into()));
+        dict.insert("Start-Position-Seconds".into(), plist::Value::Real(8.0));
+        let mut body = Vec::new();
+        plist::Value::Dictionary(dict).to_writer_binary(&mut body).unwrap();
+        let (header, _) = http_request(&mut socket, "POST", "/play", &body);
+        assert!(header.starts_with("HTTP/1.1 200"));
+        let generation = {
+            let media = server.media.lock().unwrap();
+            assert_eq!(media.url.as_deref(), Some(uri));
+            assert_eq!(media.start, 8.0);
+            media.generation
+        };
+        assert_eq!(server.status.load(Ordering::Acquire), AirPlayStatus::Idle as u8);
+        assert!(!server.frame.has_surface());
+        for uri in ["/rate?value=0.0", "/scrub?position=25.5"] {
+            assert!(http_request(&mut socket, "POST", uri, &[]).0.starts_with("HTTP/1.1 200"));
+        }
+        {
+            let mut media = server.media.lock().unwrap();
+            assert_eq!((media.start, media.rate), (25.5, 0.0));
+            media.update(generation, 120.0, 25.5, 0.0, 1);
+        }
+        let (_, body) = http_request(&mut socket, "GET", "/playback-info", &[]);
+        let info = plist::Value::from_reader(std::io::Cursor::new(body)).unwrap();
+        let info = info.as_dictionary().unwrap();
+        assert_eq!(info["duration"].as_real(), Some(120.0));
+        assert_eq!(info["position"].as_real(), Some(25.5));
+        assert_eq!(info["rate"].as_real(), Some(0.0));
+        assert!(http_request(&mut socket, "POST", "/rate?value=1.0", &[]).0.starts_with("HTTP/1.1 200"));
+        assert_eq!(server.media.lock().unwrap().rate, 1.0);
+    }
+    for uri in ["/rate?value", "/scrub?position"] {
+        assert!(http_request(&mut socket, "POST", uri, &[]).0.starts_with("HTTP/1.1 400"));
+    }
+    assert!(http_request(&mut socket, "POST", "/stop", &[]).0.starts_with("HTTP/1.1 200"));
+    assert!(server.media.lock().unwrap().url.is_none());
+    // HTTP 结束路径使用连接上下文，不得把 server 指针当连接指针造成崩溃。
+    assert!(http_request(&mut socket, "GET", "/playback-info", &[]).0.starts_with("HTTP/1.1 200"));
+    let mut malformed = TcpStream::connect(("127.0.0.1", receiver.port)).unwrap();
+    malformed.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    assert!(http_request(&mut malformed, "POST", "/play", b"invalid plist").0.starts_with("HTTP/1.1 400"));
+    drop(receiver);
+    std::fs::remove_dir_all(directory).unwrap();
 }

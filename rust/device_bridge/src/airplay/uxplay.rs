@@ -24,6 +24,8 @@ extern "C" {
         log: extern "C" fn(*mut c_void, c_int, *const c_char),
         client: extern "C" fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> *mut c_void,
         detach: extern "C" fn(*mut c_void, *mut c_void),
+        media_command: extern "C" fn(*mut c_void, c_int, *const c_char, f64),
+        media_info: extern "C" fn(*mut c_void, *mut f64),
     ) -> *mut c_void;
     fn anydeck_uxplay_stop(handle: *mut c_void);
     fn anydeck_uxplay_port(handle: *mut c_void) -> u16;
@@ -44,6 +46,7 @@ struct Context {
     frame: Arc<Frame>,
     decoder: Mutex<Decoder>,
     audio_decoder: Mutex<Option<AirPlayAudioDecoder>>,
+    media: Arc<Mutex<super::media::MediaState>>,
 }
 
 pub(super) struct Receiver {
@@ -81,6 +84,7 @@ impl Receiver {
             frame: server.frame.clone(),
             decoder: Mutex::new(Decoder::new(server.frame.clone())),
             audio_decoder: Mutex::new(None),
+            media: server.media.clone(),
         });
 
         let name_c = CString::new(name).map_err(|e| e.to_string())?;
@@ -106,6 +110,8 @@ impl Receiver {
                 Self::on_log_message,
                 Self::on_client_request,
                 Self::on_client_detach,
+                Self::on_media_command,
+                Self::on_media_info,
             )
         };
 
@@ -139,6 +145,32 @@ impl Receiver {
                 Ordering::AcqRel, Ordering::Acquire).is_ok() {
                 eprintln!("[AirPlay UxPlay] First decoded IOSurface ready");
             }
+        });
+    }
+
+    // C 回调只更新短小的状态快照；UI/网络播放器工作不在协议线程执行。
+    extern "C" fn on_media_command(ctx: *mut c_void, command: c_int, url: *const c_char, value: f64) {
+        if ctx.is_null() { return; }
+        let _ = std::panic::catch_unwind(|| {
+            let context = unsafe { &*(ctx as *const Context) };
+            if context.status.load(Ordering::Acquire) == AirPlayStatus::Stopped as u8 { return; }
+            let url = if url.is_null() { None } else { unsafe { CStr::from_ptr(url).to_str().ok() } };
+            if let Ok(mut media) = context.media.lock() {
+                if let Err(error) = media.command(command, url, value) {
+                    context.record_error(error.to_string());
+                }
+            };
+        });
+    }
+
+    extern "C" fn on_media_info(ctx: *mut c_void, values: *mut f64) {
+        if ctx.is_null() || values.is_null() { return; }
+        let _ = std::panic::catch_unwind(|| {
+            let context = unsafe { &*(ctx as *const Context) };
+            if let Ok(media) = context.media.lock() {
+                let info = media.playback_info();
+                unsafe { std::ptr::copy_nonoverlapping(info.as_ptr(), values, info.len()); }
+            };
         });
     }
 
@@ -187,7 +219,9 @@ impl Receiver {
         if ctx.is_null() || msg.is_null() { return; }
         let _ = std::panic::catch_unwind(|| {
             let context = unsafe { &*(ctx as *const Context) };
-            let text = unsafe { CStr::from_ptr(msg).to_string_lossy() };
+            let raw = unsafe { CStr::from_ptr(msg).to_string_lossy() };
+            // 上游 HLS 错误可能包含签名媒体 URL，不写入日志或导出诊断。
+            let text = if raw.contains("://") { "media URL diagnostic redacted" } else { raw.as_ref() };
             if level <= 4 {
                 context.record_error(format!("UxPlay: {text}"));
             } else if level <= 6 {
@@ -241,6 +275,7 @@ impl Receiver {
                         frame: server.frame.clone(),
                         decoder: Mutex::new(Decoder::new(server.frame.clone())),
                         audio_decoder: Mutex::new(None),
+                        media: server.media.clone(),
                     });
                     let ptr = Box::into_raw(slot_ctx);
                     slots.insert(ptr as usize, server.id);

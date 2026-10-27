@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:any_deck/core/airplay/airplay_server_service.dart';
 import 'package:any_deck/core/airplay/airplay_server_state.dart';
+import 'package:any_deck/core/airplay/airplay_video_bridge.dart';
 
 /// 显式指定本机构建的 dylib 才运行，验证后台 Isolate 与主 Isolate 共享 native 会话。
 void main() {
@@ -31,6 +32,12 @@ void main() {
         expect(service.getStatus(session.id), AirPlayServerStatus.idle);
         expect(service.getDimensions(session.id), isNull);
         expect(session.textureId, 1);
+        final video = AirPlayVideoBridge();
+        final media = video.read(session.id)!;
+        expect(media['url'], isNull);
+        expect(media['generation'], 0);
+        video.report(session.id, 99, {'state': 2});
+        expect(video.read(session.id)!['revision'], 0);
       } finally {
         await service.stop(session);
       }

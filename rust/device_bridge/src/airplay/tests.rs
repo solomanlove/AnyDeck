@@ -176,6 +176,7 @@ async fn cancelling_listener_releases_idle_client_and_port() {
         status: Arc::new(AtomicU8::new(0)), stopped: Arc::new(AtomicBool::new(false)),
         last_error: Arc::new(Mutex::new(String::new())),
         client_info: Arc::new(Mutex::new((String::new(), String::new(), String::new()))),
+        media: Arc::new(Mutex::new(crate::airplay::media::MediaState::default())),
         _advertiser: Mutex::new(None), task: Mutex::new(None),
         #[cfg(feature = "airplay-uxplay")]
         native: Mutex::new(None),

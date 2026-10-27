@@ -3,6 +3,7 @@ use std::{env, path::Path};
 
 fn main() {
     println!("cargo:rerun-if-changed=native/uxplay_bridge.c");
+    println!("cargo:rerun-if-changed=native/uxplay_media_callbacks.h");
     println!("cargo:rerun-if-changed=vendor/uxplay");
     if env::var_os("CARGO_FEATURE_AIRPLAY_UXPLAY").is_none() {
         return;

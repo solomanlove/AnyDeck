@@ -83,6 +83,7 @@ class MainFlutterWindow: NSWindow {
     AutoStartBridgeService.shared.setup(messenger: flutterViewController.engine.binaryMessenger)
     HostNetworkBridgeService.shared.setup(messenger: flutterViewController.engine.binaryMessenger)
     DlnaPlayerBridgeService.shared.setup(messenger: flutterViewController.engine.binaryMessenger)
+    DlnaPlayerBridgeService.airplay.setup(messenger: flutterViewController.engine.binaryMessenger)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     RustTexturePlugin.register(with: flutterViewController.registrar(forPlugin: "RustTexturePlugin"))

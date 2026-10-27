@@ -30,6 +30,8 @@ typedef struct {
     void (*log_callback)(void *ctx, int level, const char *msg);
     void *(*client_callback)(void *ctx, const char *device_id, const char *model, const char *name);
     void (*detach_callback)(void *ctx, void *slot_ctx);
+    void (*media_command)(void *ctx, int command, const char *url, double value);
+    void (*media_info)(void *ctx, double *values);
     unsigned short audio_spf;
     pthread_t dnssd_thread;
     atomic_bool running;
@@ -243,11 +245,15 @@ static void on_video_process(void *cls, raop_ntp_t *ntp, video_decode_struct *da
     }
 }
 
+#include "uxplay_media_callbacks.h"
+
 static void on_video_reset(void *cls, reset_type_t reset_type) {
-    (void)reset_type;
     anydeck_uxplay_conn_t *c = (anydeck_uxplay_conn_t *)cls;
     anydeck_uxplay_handle_t *h = c ? c->server : NULL;
     void *target_ctx = (c && c->slot_context) ? c->slot_context : (h ? h->rust_context : NULL);
+    if (h && (reset_type == RESET_TYPE_HLS_SHUTDOWN || reset_type == RESET_TYPE_HLS_EOS)) {
+        on_media_stop(h);
+    }
     if (h && h->reset_callback && target_ctx) {
         h->reset_callback(target_ctx);
     }
@@ -342,7 +348,9 @@ void *anydeck_uxplay_start(
     void (*reset)(void *ctx),
     void (*log_fn)(void *ctx, int level, const char *msg),
     void *(*client_fn)(void *ctx, const char *device_id, const char *model, const char *name),
-    void (*detach_fn)(void *ctx, void *slot_ctx)
+    void (*detach_fn)(void *ctx, void *slot_ctx),
+    void (*media_command)(void *ctx, int command, const char *url, double value),
+    void (*media_info)(void *ctx, double *values)
 ) {
     anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)calloc(1, sizeof(anydeck_uxplay_handle_t));
     if (!h) return NULL;
@@ -354,6 +362,8 @@ void *anydeck_uxplay_start(
     h->log_callback = log_fn;
     h->client_callback = client_fn;
     h->detach_callback = detach_fn;
+    h->media_command = media_command;
+    h->media_info = media_info;
     atomic_init(&h->running, true);
 
     raop_callbacks_t cbs;
@@ -385,6 +395,12 @@ void *anydeck_uxplay_start(
     cbs.passwd = on_passwd;
     cbs.export_dacp = on_export_dacp;
     cbs.video_set_codec = on_video_set_codec;
+    cbs.on_video_play = on_media_play;
+    cbs.on_video_scrub = on_media_scrub;
+    cbs.on_video_rate = on_media_rate;
+    cbs.on_video_stop = on_media_stop;
+    cbs.on_video_acquire_playback_info = on_media_info;
+    cbs.on_video_playlist_remove = on_media_playlist_remove;
     cbs.conn_cls_attach = on_conn_cls_attach;
     cbs.conn_cls_detach = on_conn_cls_detach;
 
@@ -408,6 +424,7 @@ void *anydeck_uxplay_start(
     raop_set_plist(h->raop, "height", 1080);
     raop_set_plist(h->raop, "refreshRate", 60);
     raop_set_plist(h->raop, "maxFPS", 60);
+    raop_set_plist(h->raop, "hls", 1);
 
     // /info 会访问 DNS-SD 元数据，必须在开放监听前初始化（测试也一样）。
     uint8_t mac_bytes[6];
@@ -423,8 +440,8 @@ void *anydeck_uxplay_start(
         }
         dnssd_set_interface_index(h->dnssd, interface_index);
     }
-    dnssd_set_airplay_features(h->dnssd, 0, 0); // 不支持 HLS
-    dnssd_set_airplay_features(h->dnssd, 4, 0);
+    dnssd_set_airplay_features(h->dnssd, 0, 1); // HTTP 视频播放
+    dnssd_set_airplay_features(h->dnssd, 4, 1); // HLS
     dnssd_set_airplay_features(h->dnssd, 42, 0); // 不支持 HEVC
     raop_set_dnssd(h->raop, h->dnssd);
 

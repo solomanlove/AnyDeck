@@ -2,9 +2,19 @@ import AVFoundation
 import Cocoa
 import FlutterMacOS
 
-/// DLNA 仅负责媒体播放；UPnP 发现和控制协议由 Dart 服务处理。
+/// DLNA 与 AirPlay 复用窗口实现，各自持有独立播放器和通道。
 final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   static let shared = DlnaPlayerBridgeService()
+  static let airplay = DlnaPlayerBridgeService(channelName: "any_deck/airplay_player")
+  private let channelName: String
+  private var failureText = ""
+  private var initialPosition: Double = 0
+  private var requestedRate: Float = 1
+
+  init(channelName: String = "any_deck/dlna_player") {
+    self.channelName = channelName
+    super.init()
+  }
 
   private var player: AVPlayer?
   private var window: NSWindow?
@@ -25,7 +35,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   private var unpinLabel = "Unpin window"
 
   func setup(messenger: FlutterBinaryMessenger) {
-    let channel = FlutterMethodChannel(name: "any_deck/dlna_player", binaryMessenger: messenger)
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: messenger)
     self.channel = channel
     channel.setMethodCallHandler { [weak self] call, result in
       guard let self = self else { result(nil); return }
@@ -40,6 +50,9 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
           return
         }
         if let text = media["loadingText"] as? String { self.loadingText = text }
+        self.failureText = media["failureText"] as? String ?? ""
+        self.initialPosition = max(0, media["position"] as? Double ?? 0)
+        self.requestedRate = Float(max(0, min(4, media["rate"] as? Double ?? 1)))
         self.play(url, generation: generation, alwaysOnTop: media["alwaysOnTop"] as? Bool ?? false)
         result(nil)
       case "setPinLabels":
@@ -68,6 +81,29 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
         self.loadingText = text
         self.playerView?.updateLoadingText(text)
         result(nil)
+      case "setFailureText":
+        self.failureText = call.arguments as? String ?? ""
+        if self.reportedItem != nil { self.playerView?.showError(self.failureText) }
+        result(nil)
+      case "playbackState":
+        let item = self.player?.currentItem
+        let duration = item?.duration.seconds ?? 0
+        let position = self.player?.currentTime().seconds ?? 0
+        let ready = item?.status == .readyToPlay
+        let ended = duration.isFinite && duration > 0 && position >= duration - 0.05
+        result(["generation": self.mediaGeneration,
+                "duration": duration.isFinite ? max(0, duration) : 0,
+                "position": position.isFinite ? max(0, position) : 0,
+                "rate": Double(self.player?.rate ?? 0),
+                "state": self.reportedItem != nil || ended ? 2 : (ready ? 1 : 0)])
+      case "setRate":
+        guard let rate = call.arguments as? Double, rate.isFinite, rate >= 0, rate <= 4 else {
+          result(FlutterError(code: "invalid_rate", message: "Invalid rate", details: nil))
+          return
+        }
+        self.requestedRate = Float(rate)
+        self.player?.rate = self.requestedRate
+        result(nil)
       case "play":
         self.player?.play()
         result(nil)
@@ -89,7 +125,11 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
           result(FlutterError(code: "invalid_position", message: "Invalid seek position", details: nil))
           return
         }
-        self.player?.seek(to: CMTime(seconds: seconds, preferredTimescale: 600))
+        if self.player?.currentItem?.status == .readyToPlay {
+          self.player?.seek(to: CMTime(seconds: seconds, preferredTimescale: 600))
+        } else {
+          self.initialPosition = seconds
+        }
         result(nil)
       case "position":
         let seconds = self.player?.currentTime().seconds ?? 0
@@ -152,9 +192,14 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     newPlayer.volume = playbackVolume
     newPlayer.isMuted = playbackMuted
     statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-      if item.status == .failed {
-        DispatchQueue.main.async {
-          self?.reportFailure(item, reason: "item failed")
+      DispatchQueue.main.async {
+        guard let self = self, self.player?.currentItem === item else { return }
+        if item.status == .failed {
+          self.reportFailure(item, reason: "item failed")
+        } else if item.status == .readyToPlay, self.initialPosition > 0 {
+          let position = self.initialPosition
+          self.initialPosition = 0
+          self.player?.seek(to: CMTime(seconds: position, preferredTimescale: 600))
         }
       }
     }
@@ -179,7 +224,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     playerView?.player = newPlayer
     window?.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
-    newPlayer.play()
+    newPlayer.rate = requestedRate
   }
 
   private func toggleAlwaysOnTop() {
@@ -199,6 +244,10 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     let identity = ObjectIdentifier(item)
     guard reportedItem != identity else { return }
     reportedItem = identity
+    if !failureText.isEmpty {
+      player?.pause()
+      playerView?.showError(failureText)
+    }
     startupTimer?.invalidate()
     startupTimer = nil
     let failure = item.error as NSError?
@@ -215,6 +264,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     player?.pause()
     player?.replaceCurrentItem(with: nil)
     player = nil
+    reportedItem = nil
     playerView?.player = nil
   }
 
@@ -249,6 +299,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
 
 /// 使用 AVPlayerLayer 播放视频，避免将媒体帧送入 Flutter Widget 树。
 private final class DlnaPlayerView: NSView {
+  private let spinner = NSProgressIndicator()
   private let loadingBackdrop = NSView()
   private let loadingLabel = NSTextField(labelWithString: "")
   private let loadingOverlay = NSStackView()
@@ -267,7 +318,6 @@ private final class DlnaPlayerView: NSView {
     // 视频保持原比例时，使用黑色填充上下或左右留白。
     (layer as? AVPlayerLayer)?.backgroundColor = NSColor.black.cgColor
     (layer as? AVPlayerLayer)?.videoGravity = .resizeAspect
-    let spinner = NSProgressIndicator()
     spinner.style = .spinning
     spinner.controlSize = .large
     spinner.isIndeterminate = true
@@ -303,7 +353,16 @@ private final class DlnaPlayerView: NSView {
     loadingLabel.isHidden = text.isEmpty
   }
 
+  func showError(_ text: String) {
+    updateLoadingText(text)
+    spinner.stopAnimation(nil)
+    spinner.isHidden = true
+    loadingBackdrop.isHidden = false
+  }
+
   func showLoading(_ text: String) {
+    spinner.isHidden = false
+    spinner.startAnimation(nil)
     updateLoadingText(text)
     loadingBackdrop.isHidden = false
   }

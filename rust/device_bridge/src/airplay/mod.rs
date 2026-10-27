@@ -2,6 +2,7 @@
 //! 组合 Bonjour 发现、RTSP 信令处理、TCP/RTP 视频流接收、解密及 VideoToolbox 原生硬解码。
 
 pub mod audio;
+pub mod media;
 pub mod bonjour;
 pub mod crypto;
 pub mod packet;
@@ -53,6 +54,8 @@ pub struct AirPlayServer {
     pub last_error: Arc<Mutex<String>>,
     /// 当前连接客户端的元数据 (device_id, model, name)
     pub client_info: Arc<Mutex<(String, String, String)>>,
+    /// HTTP 视频播放命令与播放器实际进度，与屏幕镜像状态分离。
+    pub media: Arc<Mutex<media::MediaState>>,
     /// 运行中断标志
     stopped: Arc<AtomicBool>,
     /// Bonjour 广播句柄
@@ -150,6 +153,7 @@ impl AirPlayServer {
                 stopped: stopped.clone(),
                 last_error: Arc::new(Mutex::new(String::new())),
                 client_info: Arc::new(Mutex::new((String::new(), String::new(), String::new()))),
+                media: Arc::new(Mutex::new(crate::airplay::media::MediaState::default())),
                 _advertiser: Mutex::new(None),
                 task: Mutex::new(None),
                 native: Mutex::new(None),
@@ -198,6 +202,7 @@ impl AirPlayServer {
             stopped: stopped.clone(),
             last_error: Arc::new(Mutex::new(String::new())),
             client_info: Arc::new(Mutex::new((String::new(), String::new(), String::new()))),
+            media: Arc::new(Mutex::new(crate::airplay::media::MediaState::default())),
             _advertiser: Mutex::new(Some(advertiser)),
             task: Mutex::new(None),
         });
@@ -443,6 +448,7 @@ impl AirPlayServer {
     pub fn stop(&self) {
         self.stopped.store(true, Ordering::Release);
         self.status.store(AirPlayStatus::Stopped as u8, Ordering::Release);
+        if let Ok(mut media) = self.media.lock() { let _ = media.command(4, None, 0.0); }
         #[cfg(feature = "airplay-uxplay")]
         if let Ok(mut nat) = self.native.lock() {
             nat.take();

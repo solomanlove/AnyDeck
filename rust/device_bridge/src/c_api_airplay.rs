@@ -173,3 +173,29 @@ pub unsafe extern "C" fn anydeck_airplay_copy_client_info(id: u64, out: *mut u8,
     ptr::copy_nonoverlapping(formatted.as_ptr(), out, length);
     length
 }
+
+/// 复制媒体命令 JSON；容量不足返回 0，绝不把截断的 URL 当成有效命令。
+/// # Safety
+/// out 必须指向 capacity 字节可写区域。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_airplay_copy_media_state(id: u64, out: *mut u8, capacity: usize) -> usize {
+    if out.is_null() { return 0; }
+    let Some(server) = get_server(id) else { return 0; };
+    let Ok(media) = server.media.lock() else { return 0; };
+    let Ok(json) = serde_json::to_vec(&*media) else { return 0; };
+    if json.len() > capacity { return 0; }
+    ptr::copy_nonoverlapping(json.as_ptr(), out, json.len());
+    json.len()
+}
+
+/// 回写原生播放器实际进度，旧代次回调由 MediaState 丢弃。
+#[no_mangle]
+pub extern "C" fn anydeck_airplay_update_media_state(
+    id: u64, generation: u64, duration: f64, position: f64, rate: f64, state: u8,
+) {
+    if let Some(server) = get_server(id) {
+        if let Ok(mut media) = server.media.lock() {
+            media.update(generation, duration, position, rate, state);
+        };
+    }
+}

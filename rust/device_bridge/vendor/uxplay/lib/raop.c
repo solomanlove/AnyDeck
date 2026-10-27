@@ -908,7 +908,7 @@ void raop_handle_eos(raop_t *raop) {
     raop_destroy_airplay_video(raop, id);
     raop->current_video = -1;
     /* reset video without deleting raop->airplay_video */
-    raop->callbacks.video_reset(raop->callbacks.cls, RESET_TYPE_HLS_EOS);
+    raop->callbacks.on_video_stop(raop->callbacks.cls);
 }
 
 uint64_t get_local_time() {

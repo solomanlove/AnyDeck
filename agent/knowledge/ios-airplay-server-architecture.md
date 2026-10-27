@@ -1,5 +1,9 @@
 # iOS AirPlay Wi-Fi 投屏：UxPlay 实验接入与验收边界
 
+## HTTP 视频播放增量（2026-10-27）
+
+已启用 UxPlay Video/HLS 能力与媒体回调，App 内视频投放会打开独立 AVPlayer 窗口，复用 DLNA 窗口实现并隔离会话。下文 2026-10-09 的“HLS 关闭”“声音不播放”为历史实现状态。协议、FFI 和本地 MP4/HLS 实际窗口测试通过，B 站 iPhone 无线投放仍待验收，详见 [AirPlay 视频媒体播放窗口](ios-airplay-video-playback.md)。
+
 ## 音频持续播放恢复（2026-10-23）
 
 AirPlay 音频由 `raop_rtp` 解密后送入 `AirPlayAudioDecoder`，再通过 macOS `AudioQueue` 播放。缓冲池暂时耗尽时允许丢包以维持实时性；连续超过 500 ms 没有可回收缓冲，或 `AudioQueueStart` / 入队失败时，在下一音频包重建 AudioQueue。首次播放及队列停止后的恢复先预填 8 个音频包，再启动 AudioQueue；运行中不重复调用启动。重建与队列停止原因写入 native stderr，供本地诊断定位。

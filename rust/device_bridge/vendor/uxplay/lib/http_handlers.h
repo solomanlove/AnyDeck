@@ -115,7 +115,9 @@ http_handler_scrub(raop_conn_t *conn, http_request_t *request, http_response_t *
     float scrub_position = 0.0f;
     if (data) {
         data++;
-        const char *position = strstr(data, "=") + 1;
+        const char *position = strchr(data, '=');
+        if (!position) { http_response_init(response, "HTTP/1.1", 400, "Bad Request"); return; }
+        position++;
         char *end = NULL;
         double value = strtod(position, &end);
         if (end && end != position) {
@@ -138,7 +140,9 @@ http_handler_rate(raop_conn_t *conn, http_request_t *request, http_response_t *r
     float rate_value = 0.0f;
     if (data) {
         data++;
-        const char *rate = strstr(data, "=") + 1;
+        const char *rate = strchr(data, '=');
+        if (!rate) { http_response_init(response, "HTTP/1.1", 400, "Bad Request"); return; }
+        rate++;
         char *end = NULL;
         float value = strtof(rate, &end);
         if (end && end != rate) {
@@ -327,7 +331,7 @@ http_handler_playback_info(raop_conn_t *conn, http_request_t *request, http_resp
         logger_log(raop->logger, LOGGER_DEBUG, "playback_info not available (finishing)");
         //httpd_remove_known_connections(raop->httpd);
         http_response_set_disconnect(response,1);
-        raop->callbacks.video_reset(raop->callbacks.cls, RESET_TYPE_HLS_SHUTDOWN);
+        conn->callbacks.video_reset(conn->callbacks.cls, RESET_TYPE_HLS_SHUTDOWN);
         return;
     } else if (playback_info.position == -1.0) {
         logger_log(raop->logger, LOGGER_DEBUG, "playback_info not available");
@@ -700,7 +704,7 @@ http_handler_play(raop_conn_t *conn, http_request_t *request, http_response_t *r
     logger_log(raop->logger, LOGGER_DEBUG, "http_handler_play");
 
     const char* apple_session_id = http_request_get_header(request, "X-Apple-Session-ID");
-    if (!apple_session_id) {
+    if (!apple_session_id || strlen(apple_session_id) != 36) {
         logger_log(raop->logger, LOGGER_ERR, "Play request had no X-Apple-Session-ID");
         goto play_error;
     }
@@ -722,6 +726,24 @@ http_handler_play(raop_conn_t *conn, http_request_t *request, http_response_t *r
     }
 
     plist_from_bin(request_data, request_datalen, &req_root_node);
+    if (!req_root_node || plist_get_node_type(req_root_node) != PLIST_DICT) goto play_error;
+
+    /* AnyDeck: 直连媒体不需要 FCUP playlist uuid，也不能复用旧 playlist 的地址。 */
+    plist_t direct_node = plist_dict_get_item(req_root_node, "Content-Location");
+    if (!direct_node || plist_get_node_type(direct_node) != PLIST_STRING) goto play_error;
+    plist_get_string_val(direct_node, &playback_location);
+    if (!playback_location || !*playback_location || strlen(playback_location) > 16384) goto play_error;
+    if (!strncmp(playback_location, "http://", 7) || !strncmp(playback_location, "https://", 8)) {
+        double start = 0.0;
+        plist_t start_node = plist_dict_get_item(req_root_node, "Start-Position-Seconds");
+        if (start_node) plist_get_real_val(start_node, &start);
+        raop->callbacks.on_video_play(raop->callbacks.cls, playback_location, (float)start);
+        plist_mem_free(playback_location);
+        plist_free(req_root_node);
+        return;
+    }
+    plist_mem_free(playback_location);
+    playback_location = NULL;
 
     plist_t req_uuid_node = plist_dict_get_item(req_root_node, "uuid");
     if (!req_uuid_node) {
@@ -729,6 +751,10 @@ http_handler_play(raop_conn_t *conn, http_request_t *request, http_response_t *r
     }
     char* playback_uuid = NULL;
     plist_get_string_val(req_uuid_node, &playback_uuid);
+    if (!playback_uuid || strlen(playback_uuid) != 36) {
+        plist_mem_free(playback_uuid);
+        goto play_error;
+    }
 
 #if 0
     for (int i = 0; i < MAX_AIRPLAY_VIDEO; i++) {
@@ -889,7 +915,7 @@ http_handler_play(raop_conn_t *conn, http_request_t *request, http_response_t *r
         set_next_media_uri_id(airplay_video, 0);
         fcup_request((void *) conn, playback_location, apple_session_id, get_next_FCUP_RequestID(airplay_video));
     } else {
-        logger_log(raop->logger, LOGGER_ERR, "Content-Location has unsupported form:\n%s\n", playback_location);
+        logger_log(raop->logger, LOGGER_ERR, "Content-Location has unsupported form");
         goto play_error;
     }
 
@@ -908,7 +934,7 @@ http_handler_play(raop_conn_t *conn, http_request_t *request, http_response_t *r
     logger_log(raop->logger, LOGGER_ERR, "Could not find valid Plist Data for POST/play request, Unhandled");
     http_response_init(response, "HTTP/1.1", 400, "Bad Request");
     http_response_set_disconnect(response, 1);
-    raop->callbacks.conn_reset(raop->callbacks.cls, 2);
+    conn->callbacks.conn_reset(conn->callbacks.cls, 2);
 }
 
 /* the HLS handler handles http requests GET /[uri] on the HLS channel from the media player to the Server, asking for
