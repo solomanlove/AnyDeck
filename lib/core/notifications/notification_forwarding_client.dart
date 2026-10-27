@@ -60,9 +60,15 @@ class NotificationForwardingClient {
       throw Exception('ADB call failed: ${result.stderr}');
     }
 
-    final match = _payloadPattern.firstMatch(result.stdout);
+    final response = '${result.stdout}\n${result.stderr}';
+    if (response.contains('Could not find provider:') ||
+        response.contains('Error while accessing provider:')) {
+      return const {'status': 'companion_unavailable'};
+    }
+
+    final match = _payloadPattern.firstMatch(response);
     if (match == null) {
-      throw Exception('No payload in ADB response: ${result.stdout}');
+      throw Exception('No payload in ADB response: ${response.trim()}');
     }
 
     final decoded = utf8.decode(base64Decode(match.group(1)!));
@@ -74,6 +80,16 @@ class NotificationForwardingClient {
     String deviceId,
     int userId,
   ) async {
+    if (!await isCompanionInstalled(deviceId, userId)) {
+      return NotificationSessionStatus(
+        isSharingEnabled: false,
+        isPermissionGranted: false,
+        installationId: '',
+        androidUserId: userId,
+        rawStatus: 'companion_not_installed',
+      );
+    }
+
     final json = await _call(deviceId, userId, 'notification_status');
     return NotificationSessionStatus(
       isSharingEnabled: json['sharing'] as bool? ?? false,

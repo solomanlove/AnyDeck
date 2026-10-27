@@ -68,6 +68,11 @@ flowchart LR
   - 消息分配单调递增的 `sequenceId`，轮询提供 `ackSequence` 进行确认消费。租约过期（默认 10 秒无心跳）自动释放内存队列。
   - `UsageProvider` 通过 UID 2000（`Process.SHELL_UID`）鉴权与设备解锁状态验证，杜绝越权访问。
 
+### 3.3.1 Android 多用户与 Provider 缺失处理
+- Desktop 每次握手先读取当前 Android user，再通过 `pm path --user <userId>` 检查 Companion 是否安装在该用户中。Companion 仅安装在手机分身、工作资料或安全空间时，不再继续调用当前用户不存在的 `ContentProvider`，状态统一为 `companion_not_installed`。
+- 部分 ROM 在 `content call` 找不到 Provider 时仍返回 exit code 0，并把异常写入 stderr。客户端同时解析 stdout/stderr，将 `Could not find provider` 与 `Error while accessing provider` 归一化为 `companion_unavailable`，避免误报空 payload 并持续输出异常日志。
+- 缺失或不可用状态沿用现有非就绪轮询，不创建通知会话，不影响其他已正确安装 Companion 的 Android 用户和设备。
+
 ### 3.4 桌面端持久化与多进程隔离 (`NotificationDatabase`)
 - 桌面端数据通过 `sqlite3` 存入 SQLite，每次操作在 Worker Isolate 中打开并释放连接，避免阻塞主 UI Isolate。
 - **存储限制与自动清理**：
