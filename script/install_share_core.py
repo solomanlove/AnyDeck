@@ -13,7 +13,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "script/share_core.lock.json"
-FILES = {"anydeck-share-core", "anydeck-dfile", "libcrypto.3.dylib", "libssl.3.dylib", "manifest.json"}
+FILES = {"anydeck-share-core", "anydeck-dfile", "share-discovery", "libcrypto.3.dylib", "libssl.3.dylib", "manifest.json"}
 
 
 def sha256(data):

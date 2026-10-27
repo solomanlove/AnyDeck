@@ -17,7 +17,7 @@ class ShareCoreInstallTests(unittest.TestCase):
         self.app = Path(self.temporary.name) / "AnyDeck.app"
         (self.app / "Contents/MacOS").mkdir(parents=True)
         self.files = {name: name.encode() for name in
-                      ("anydeck-share-core", "anydeck-dfile", "libcrypto.3.dylib", "libssl.3.dylib")}
+                      ("anydeck-share-core", "anydeck-dfile", "share-discovery", "libcrypto.3.dylib", "libssl.3.dylib")}
         self.manifest = {"schema": 1, "ipc_version": 1, "architecture": "arm64",
                          "core_version": "0.1.0", "capabilities": {"send": False},
                          "files": {name: hashlib.sha256(data).hexdigest()
