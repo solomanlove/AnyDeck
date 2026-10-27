@@ -16,6 +16,7 @@ import '../../core/providers/app_providers.dart';
 import '../airplay/airplay_mirror_target.dart';
 import '../overview/widget/receiver_name_setting_field.dart';
 import '../widgets/dashboard_header_bar.dart';
+import 'widgets/receiver_app_support_guide.dart';
 import 'widgets/receiver_service_card.dart';
 
 /// 主窗口统一投屏接收管理页，集中管理 AirPlay 屏幕镜像与 DLNA 视频接收。
@@ -39,21 +40,27 @@ class ReceiverDashboardTab extends StatelessWidget {
                   const AirPlayReceiverCard(),
                   const DlnaReceiverCard(),
                 ];
-                if (constraints.maxWidth < 860) {
-                  return Column(
-                    children: [
-                      cards.first,
-                      const SizedBox(height: 16),
-                      cards.last,
-                    ],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                final serviceCards = constraints.maxWidth < 860
+                    ? Column(
+                        children: [
+                          cards.first,
+                          const SizedBox(height: 16),
+                          cards.last,
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: cards.first),
+                          const SizedBox(width: 16),
+                          Expanded(child: cards.last),
+                        ],
+                      );
+                return Column(
                   children: [
-                    Expanded(child: cards.first),
-                    const SizedBox(width: 16),
-                    Expanded(child: cards.last),
+                    serviceCards,
+                    const SizedBox(height: 16),
+                    const ReceiverAppSupportGuide(),
                   ],
                 );
               },
