@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:any_deck/core/airplay/airplay_video_player.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -140,6 +141,24 @@ void main() {
     final count = calls.length;
     await player.showWindow();
     expect(calls.length, count);
+  });
+
+  test('media diagnostics exclude signed paths and query parameters', () async {
+    final logs = <String>[];
+    final previousPrint = debugPrint;
+    debugPrint = (message, {wrapWidth}) => logs.add(message ?? '');
+    try {
+      command['url'] = 'https://user:password@example.test/private-token/movie.m3u8?sign=secret';
+      await player.start(1000, 'AirPlay');
+      await player.poll();
+      final log = logs.join('\n');
+      expect(log, contains('host=example.test port=443 format=m3u8'));
+      for (final secret in ['user', 'password', 'private-token', 'sign=', 'secret']) {
+        expect(log, isNot(contains(secret)));
+      }
+    } finally {
+      debugPrint = previousPrint;
+    }
   });
 
   test('non HTTP source never opens and reports failure', () async {

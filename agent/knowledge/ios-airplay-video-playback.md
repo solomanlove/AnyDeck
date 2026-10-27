@@ -4,6 +4,15 @@
 
 用户从 iPhone 哔哩哔哩点击 AirPlay 后只有声音，没有视频窗口。代码确认原接入显式关闭 Bonjour Video/HLS 能力位，未启用 UxPlay HTTP 视频路由，也未注册媒体播放回调；原窗口仅由 H.264 屏幕镜像首帧触发。此缺口与 App 内视频投放的使用路径一致，但尚未取得本次 B 站实际 `/play` 请求和无线播放证据，不能把代码原因分析当成真机验收。
 
+## B 站视频首帧超时诊断（2026-10-28）
+
+- 用户提供 AirPlay 视频窗口报错截图，确认来源为 iPhone 哔哩哔哩。历史进程 PID 66255 在 23:01:44 和 23:02:23 两次报告 `first frame timeout; AVPlayer=unknown/-1; HTTP=0`；此证据不说明视频有 DRM。
+- 同一日志出现 iOS 15 的 `EVENT/1.0 200 OK` 被当作 HTTP 请求解析，报 `HPE_INVALID_METHOD` 并关闭 PTTH 反向事件连接。vendor `httpd.c` 为已升级连接创建 request 时误调用 `http_request_is_reverse` getter，修正为 `http_request_set_reverse`。接收线程仍按原协议忽略应答内容，不把它派发到普通请求处理器。
+- 新增真实 TCP 测试 `reverse_event_response_does_not_close_control_connection`：先 `/reverse` 升级，再发送分段 EVENT 应答、连续 HTTP/EVENT 应答，同时验证普通控制请求可用、反向连接不关闭。修复前复现 `HPE_INVALID_METHOD/BrokenPipe`，修复后通过。
+- 移除通用失败提示中的 DRM 断言；保留 HTTP/AVPlayer 错误码，增加 itemStatus、timeControl、waiting 诊断。媒体开播仅记录 scheme/host/port/已知格式，不记录完整路径、query、签名或 userinfo；Dart 测试验证日志脱敏。
+- 真机复测：2026-10-28，运行新构建 `build/macos/Build/Products/Debug/AnyDeck.app`（PID 86576），B 站重新投放后用户明确确认「已经可以播放」。日志记录 PTTH 升级、HTTP MP4 媒体和 generation=1 开播，未再出现 `HPE_INVALID_METHOD` 或首帧超时。此次播放恢复由用户实测确认；旧超时是否还有网络等诱因、其他视频及暂停/跳转仍未完成独立验收。诊断日志：`/tmp/anydeck-airplay-video-failure-runtime.log`。
+- 验证：Rust 40 passed / 1 ignored（含修复前失败、修复后通过的 TCP 回归），Dart 播放器 9 项测试通过，3 个相关 Dart 文件静态分析通过；原生 MP4/HLS 首帧、进度、暂停/跳转/恢复、DLNA 独立窗口 smoke 通过，macOS Debug 构建通过。
+
 ## 镜像与视频窗口分流（2026-10-28）
 
 - 需求：iPhone 6s 已选择屏幕镜像却没有窗口；按实际协议类型打开手机镜像窗口或视频播放器。
@@ -87,6 +96,6 @@ flutter build macos --debug --no-pub
 2. 确认打开以接收端名称命名的视频窗口，实际画面和声音连续播放；日志出现 `[AirPlay Video] opened generation=...` 只证明提交了播放请求，还须以实际首帧和进度确认。
 3. 手机暂停、继续、跳转、切换两条视频，再结束投屏；确认无旧视频抢占、无残留声音。并行 DLNA 视频不应被 AirPlay 停止。
 4. 对“只发音频”、DRM、额外鉴权/HTTP headers、无法访问的 CDN 地址分别诊断；不可把所有 B 站内容都算作已兼容。当前 AirPlay 视频使用 AVPlayer，不自动复用 DLNA 的 libmpv 回退。
-5. 本次未启动完整 AnyDeck App，**尚未完成 B 站 iPhone 无线投放验收**；已完成的是协议、FFI、窗口播放器和构建验证。
+5. 初始实现仅完成协议、FFI、窗口播放器和构建验证；2026-10-28 修复后的 B 站无线投放由用户确认可以播放，详见上方首帧超时诊断。其他视频来源、暂停/跳转/切源及并行 DLNA 仍按上述路径单独验收。
 
 参考：[UxPlay 上游说明](https://github.com/FDH2/UxPlay)；固定 vendor 版本与本地补丁见 `rust/device_bridge/vendor/uxplay/UPSTREAM.md`。

@@ -15,6 +15,8 @@
 - 2026-10-27 `http_handlers.h` / `raop.c`：HTTP 视频结束和错误回调使用正确的连接/全局上下文；直连 HTTP(S) 媒体不依赖 FCUP UUID 缓存，补充 plist、Session ID/UUID、查询参数校验与 URL 日志脱敏。
 - 2026-10-27 `raop_handlers.h`：开始镜像视频时停止当前 HTTP 媒体；不销毁独立 DLNA 播放器。Video/HLS 能力和媒体回调在 vendor 外的 native bridge 中同时开启。
 
+- 2026-10-28 `httpd.c`：PTTH 升级连接新建 request 时调用 `set_reverse` 而非误调用 getter，防止 iOS 的 EVENT/HTTP 应答被解析为请求并断开；真实 TCP 回归覆盖分段与连续应答。
+
 ## 构建
 
 macOS 安装 `brew install pkgconf openssl@3 libplist`。Cargo 默认启用 `airplay-uxplay`，静态链接 libcrypto/libplist；DNS-SD 使用系统 Bonjour。`--no-default-features` 仅保留旧 Rust 协议回归，不能提供完整加密镜像。

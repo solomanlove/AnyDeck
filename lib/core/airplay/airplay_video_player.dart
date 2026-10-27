@@ -121,6 +121,11 @@ class AirPlayVideoPlayer {
             throw const FormatException('Invalid AirPlay media URL');
           }
           if (generation != _generation) {
+            // 仅记录协议、主机与已知格式；不输出路径、查询参数、签名或鉴权信息。
+            final format = const ['m3u8', 'mp4', 'm4v', 'm4s', 'mpd', 'mov']
+                .where((ext) => uri.path.toLowerCase().endsWith('.$ext'))
+                .firstOrNull ?? 'unknown';
+            debugPrint('[AirPlay Video] source scheme=${uri.scheme} host=${uri.host} port=${uri.port} format=$format');
             _generation = generation;
             _windowGeneration++;
             _setActive(true);

@@ -494,7 +494,8 @@ httpd_thread(void *arg)
                 connection->request = http_request_init();
                 assert(connection->request);
                 if (connection->type == CONNECTION_TYPE_PTTH) {
-                    http_request_is_reverse(connection->request);
+                    /* 升级后的连接只接收客户端应答，不再交给 HTTP request parser。 */
+                    http_request_set_reverse(connection->request);
                 }
                 logger_log(httpd->logger, LOGGER_DEBUG, "new request, connection %d, socket %d type %s",
                            i, connection->socket_fd, typename [connection->type]);

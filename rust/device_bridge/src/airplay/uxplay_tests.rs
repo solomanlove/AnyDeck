@@ -212,3 +212,40 @@ fn native_http_video_play_pause_seek_status_stop_and_switch() {
     drop(receiver);
     std::fs::remove_dir_all(directory).unwrap();
 }
+
+#[test]
+fn reverse_event_response_does_not_close_control_connection() {
+    let server = server();
+    let directory = std::env::temp_dir().join(format!("anydeck-reverse-test-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let receiver = Receiver::start_with_identity(&server, "AnyDeck-Reverse-Test", 0,
+        &directory.join("identity.pem"), false).unwrap();
+    let mut reverse = TcpStream::connect(("127.0.0.1", receiver.port)).unwrap();
+    reverse.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    reverse.write_all(b"POST /reverse HTTP/1.1\r\nConnection: Upgrade\r\nUpgrade: PTTH/1.0\r\nX-Apple-Purpose: event\r\nContent-Length: 0\r\n\r\n").unwrap();
+    let mut header = Vec::new();
+    while !header.ends_with(b"\r\n\r\n") {
+        let mut byte = [0];
+        reverse.read_exact(&mut byte).unwrap();
+        header.push(byte[0]);
+        assert!(header.len() < 4096);
+    }
+    assert!(header.starts_with(b"HTTP/1.1 101"));
+    let mut control = TcpStream::connect(("127.0.0.1", receiver.port)).unwrap();
+    control.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    // iOS 15 的 EVENT 应答，以及分段/合并到达的 HTTP 应答，都不能进入请求 parser。
+    for data in [b"EV".as_slice(), b"ENT/1.0 200 OK\r\nContent-Length: 0\r\n\r\n",
+        b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\nEVENT/1.0 200 OK\r\nContent-Length: 0\r\n\r\n"] {
+        reverse.write_all(data).unwrap();
+        assert!(http_request(&mut control, "GET", "/server-info", &[]).0.starts_with("HTTP/1.1 200"));
+    }
+    reverse.set_read_timeout(Some(Duration::from_millis(150))).unwrap();
+    let mut byte = [0];
+    let result = reverse.peek(&mut byte);
+    assert!(matches!(&result, Err(error) if matches!(error.kind(),
+        std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut)),
+        "reverse connection was closed: {result:?}");
+    assert!(!server.last_error.lock().unwrap().contains("HPE_INVALID_METHOD"));
+    drop(receiver);
+    std::fs::remove_dir_all(directory).unwrap();
+}

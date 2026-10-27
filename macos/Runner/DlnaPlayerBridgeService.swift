@@ -256,7 +256,8 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     startupTimer = nil
     let failure = item.error as NSError?
     let event = item.errorLog()?.events.last
-    let detail = "\(reason); AVPlayer=\(failure?.domain ?? "unknown")/\(failure?.code ?? -1); HTTP=\(event?.errorStatusCode ?? 0); domain=\(event?.errorDomain ?? "unknown")"
+    let waiting = player?.reasonForWaitingToPlay?.rawValue ?? "none"
+    let detail = "\(reason); AVPlayer=\(failure?.domain ?? "unknown")/\(failure?.code ?? -1); HTTP=\(event?.errorStatusCode ?? 0); domain=\(event?.errorDomain ?? "unknown"); itemStatus=\(item.status.rawValue); timeControl=\(player?.timeControlStatus.rawValue ?? -1); waiting=\(waiting)"
     channel?.invokeMethod("playerFailed", arguments: ["generation": mediaGeneration, "detail": detail])
   }
 
