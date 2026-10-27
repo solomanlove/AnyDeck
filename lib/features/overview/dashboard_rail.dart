@@ -3,9 +3,14 @@ part of '../dashboard_screen.dart';
 typedef _PrimaryRail = PrimaryRail;
 
 class PrimaryRail extends ConsumerWidget {
-  const PrimaryRail({super.key, required this.selectedDevice});
+  const PrimaryRail({
+    super.key,
+    required this.selectedDevice,
+    this.isAirplayReceiverRunning = false,
+  });
 
   final AdbDevice? selectedDevice;
+  final bool isAirplayReceiverRunning;
 
   static double get _topSpacing => DesktopChromePolicy.current.sidebarTopInset;
   static const double _fullLogoToolGap = 10;
@@ -50,9 +55,9 @@ class PrimaryRail extends ConsumerWidget {
     final selectedTool = ref.watch(selectedToolTabProvider);
     final registeredDevices = ref.watch(deviceRegistryProvider);
 
-    // 判断当前 Tab 是否可用；设备管理(-1)与模拟器(-2)始终可用
+    // 判断当前 Tab 是否可用；三个全局管理页始终可用
     bool isToolEnabled(int tabIndex) {
-      if (tabIndex == -1 || tabIndex == -2) {
+      if (tabIndex == -1 || tabIndex == -2 || tabIndex == -3) {
         return true;
       }
       if (selectedDevice == null) {
@@ -90,8 +95,10 @@ class PrimaryRail extends ConsumerWidget {
     final bool isNarrow = MediaQuery.of(context).size.width < 1000;
     final double railWidth = isNarrow ? 76.0 : 180.0;
 
-    final hasSelectedDevice =
-        selectedDevice != null && selectedTool != -1 && selectedTool != -2;
+    final hasSelectedDevice = selectedDevice != null &&
+        selectedTool != -1 &&
+        selectedTool != -2 &&
+        selectedTool != -3;
     final isIos = hasSelectedDevice && selectedDevice!.isIos;
     final isHarmony = hasSelectedDevice && selectedDevice!.isHarmony;
 
@@ -108,6 +115,11 @@ class PrimaryRail extends ConsumerWidget {
           tabIndex: -2,
           icon: CupertinoIcons.device_desktop,
           label: context.l10n.t('emulators'),
+        ),
+        _RailToolItem(
+          tabIndex: -3,
+          icon: Icons.cast_connected_rounded,
+          label: context.l10n.t('receiverCenter'),
         ),
       ];
     } else if (isIos) {
@@ -288,6 +300,10 @@ class PrimaryRail extends ConsumerWidget {
         context.goNamed(AppRouteNames.emulators);
         return;
       }
+      if (tabIndex == -3) {
+        context.goNamed(AppRouteNames.receivers);
+        return;
+      }
       final device = selectedDevice;
       if (device != null) {
         context.goNamed(
@@ -361,8 +377,9 @@ class PrimaryRail extends ConsumerWidget {
                           child: MouseRegion(
                             cursor: SystemMouseCursors.click,
                             child: _RailIdentity(
-                              selectedDevice:
-                                  (selectedTool == -1 || selectedTool == -2)
+                              selectedDevice: (selectedTool == -1 ||
+                                      selectedTool == -2 ||
+                                      selectedTool == -3)
                                       ? null
                                       : selectedDevice,
                               registeredDevices: registeredDevices,
@@ -382,16 +399,36 @@ class PrimaryRail extends ConsumerWidget {
                   ),
                 ),
                 for (final tool in visibleTools)
-                  _RailButton(
-                    icon: tool.icon,
-                    selected: selectedTool == tool.tabIndex,
-                    tooltip: tool.label,
-                    isNarrow: renderNarrow,
-                    verticalPadding: renderNarrow ? 3.0 : 2.0,
-                    onPressed: isToolEnabled(tool.tabIndex)
-                        ? () => handleTap(tool.tabIndex)
-                        : null,
-                  ),
+                  if (tool.tabIndex == -3)
+                    ListenableBuilder(
+                      listenable: DlnaRendererService.instance,
+                      builder: (context, _) {
+                        final isRunning = isAirplayReceiverRunning ||
+                            DlnaRendererService.instance.isRunning;
+                        return _RailButton(
+                          icon: tool.icon,
+                          selected: selectedTool == tool.tabIndex,
+                          isHighlighted: isRunning,
+                          statusColor:
+                              isRunning ? theme.appColors.success : null,
+                          tooltip: tool.label,
+                          isNarrow: renderNarrow,
+                          verticalPadding: renderNarrow ? 3.0 : 2.0,
+                          onPressed: () => handleTap(tool.tabIndex),
+                        );
+                      },
+                    )
+                  else
+                    _RailButton(
+                      icon: tool.icon,
+                      selected: selectedTool == tool.tabIndex,
+                      tooltip: tool.label,
+                      isNarrow: renderNarrow,
+                      verticalPadding: renderNarrow ? 3.0 : 2.0,
+                      onPressed: isToolEnabled(tool.tabIndex)
+                          ? () => handleTap(tool.tabIndex)
+                          : null,
+                    ),
                 if (hasOverflowTools)
                   _RailMoreButton(
                     tools: overflowTools,
@@ -633,6 +670,7 @@ class _RailButton extends StatelessWidget {
     required this.isNarrow,
     this.selected = false,
     this.isHighlighted = false,
+    this.statusColor,
     this.verticalPadding,
     this.onPressed,
   });
@@ -642,6 +680,7 @@ class _RailButton extends StatelessWidget {
   final bool isNarrow;
   final bool selected;
   final bool isHighlighted;
+  final Color? statusColor;
   final double? verticalPadding;
   final VoidCallback? onPressed;
 
@@ -670,7 +709,12 @@ class _RailButton extends StatelessWidget {
           padding: EdgeInsets.symmetric(vertical: verticalPadding ?? 6),
           child: Center(
             child: IconButton(
-              icon: Icon(icon, color: color),
+              icon: Badge(
+                isLabelVisible: statusColor != null,
+                backgroundColor: statusColor ?? Colors.transparent,
+                smallSize: 8,
+                child: Icon(icon, color: color),
+              ),
               iconSize: 28,
               onPressed: onPressed,
               style: IconButton.styleFrom(
@@ -725,6 +769,11 @@ class _RailButton extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (statusColor != null) ...[
+                      const SizedBox(width: 8),
+                      _RailStatusDot(color: statusColor!),
+                      const SizedBox(width: 10),
+                    ],
                   ],
                 ),
               ),
@@ -733,5 +782,20 @@ class _RailButton extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+class _RailStatusDot extends StatelessWidget {
+  const _RailStatusDot({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
   }
 }

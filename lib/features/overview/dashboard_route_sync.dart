@@ -16,7 +16,8 @@ extension _DashboardRouteSync on _DashboardScreenState {
     if (route.isGlobal) {
       _resolvedRouteDeviceId = null;
       if (route.kind == DashboardRouteKind.devices ||
-          route.kind == DashboardRouteKind.emulators) {
+          route.kind == DashboardRouteKind.emulators ||
+          route.kind == DashboardRouteKind.receivers) {
         ref.read(userClearedDeviceSelectionProvider.notifier).state = true;
         if (ref.read(selectedDeviceProvider) != null) {
           ref.read(selectedDeviceProvider.notifier).clear();

@@ -41,9 +41,11 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
 
   @override
   AirPlaySessionData? build() {
+    AirPlaySessionData? latestSession;
+    listenSelf((_, next) => latestSession = next);
     ref.onDispose(() {
       _timer?.cancel();
-      final current = state;
+      final current = latestSession;
       if (current != null) {
         for (final s in current.allSessions) {
           unawaited(AirPlayServerService.instance.stop(s));

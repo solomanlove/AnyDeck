@@ -108,12 +108,12 @@ import 'apps/controller/usage_report_view_controller.dart';
 import '../core/usage/usage_snapshot.dart';
 import 'apps/widgets/location_history_view.dart';
 import 'apps/widgets/apps_alphabet_sidebar.dart';
-import 'airplay/airplay_toolbar_button.dart';
-import 'dlna/dlna_toolbar_button.dart';
 import 'airplay/airplay_mirror_target.dart';
+import 'receivers/receiver_dashboard_tab.dart';
 import 'devices/widgets/device_airplay_row_widgets.dart';
 import '../core/airplay/airplay_server_service.dart';
 import '../core/airplay/airplay_server_state.dart';
+import '../core/dlna/dlna_renderer_service.dart';
 import 'files/controller/file_favorite_folders_controller.dart';
 import 'files/controller/file_preview_controller.dart';
 import 'files/controller/file_selection_controller.dart';
@@ -264,6 +264,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   DateTime? _lastQuitShortcutAt;
   bool _hasVisitedWanAndroid = false;
+  bool _isAirplayReceiverRunning = false;
   bool _routeSyncScheduled = false;
   String? _resolvedRouteDeviceId;
   StreamSubscription<Map<String, dynamic>>? _notificationClickSub;
@@ -434,6 +435,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     // 监听 AirPlay 镜像建立事件，自动弹出独立投屏小窗口（支持多台设备并发投屏）
     ref.listen<AirPlaySessionData?>(airplaySessionProvider, (previous, next) {
+      final isRunning = next != null &&
+          (next.hasAnyBroadcasting || next.hasAnyMirroring);
+      if (_isAirplayReceiverRunning != isRunning) {
+        setState(() => _isAirplayReceiverRunning = isRunning);
+      }
       if (next == null) return;
       final prevIds =
           previous?.mirroringSessions.map((s) => s.id).toSet() ?? const {};
@@ -573,6 +579,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       stackIndex = 4;
     } else if (selectedTool == -2) {
       stackIndex = 5;
+    } else if (selectedTool == -3) {
+      stackIndex = 6;
     } else if (selectedTool == -1 || effectiveSelectedDevice == null) {
       stackIndex = 0;
     } else {
@@ -599,6 +607,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           body: _WechatStyleShell(
             title: appBarTitle,
             selectedDevice: effectiveSelectedDevice,
+            isAirplayReceiverRunning: _isAirplayReceiverRunning,
             child: IndexedStack(
               index: stackIndex,
               children: [
@@ -616,6 +625,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 // 复用完整模拟器列表布局，仅访问时加载，避免后台扫描。
                 if (selectedTool == -2)
                   const EmulatorListPanel(isStandalone: true, isEmbeddedTab: true)
+                else
+                  const SizedBox.shrink(),
+                if (selectedTool == -3)
+                  const ReceiverDashboardTab()
                 else
                   const SizedBox.shrink(),
               ],

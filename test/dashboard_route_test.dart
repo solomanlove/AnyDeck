@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('DashboardRouteState', () {
-    test('解析三个顶层管理页面', () {
+    test('解析顶层管理页面', () {
       expect(
         DashboardRouteState.fromUri(Uri.parse('/devices')).kind,
         DashboardRouteKind.devices,
@@ -20,6 +20,10 @@ void main() {
       expect(
         DashboardRouteState.fromUri(Uri.parse('/settings')).kind,
         DashboardRouteKind.settings,
+      );
+      expect(
+        DashboardRouteState.fromUri(Uri.parse('/receivers')).kind,
+        DashboardRouteKind.receivers,
       );
     });
 
@@ -55,6 +59,7 @@ void main() {
     final router = container.read(appRouterProvider);
 
     expect(router.routeInformationProvider.value.uri.path, '/devices');
+    expect(router.namedLocation(AppRouteNames.receivers), '/receivers');
     expect(
       router.namedLocation(
         AppRouteNames.deviceTool,

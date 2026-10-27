@@ -82,7 +82,7 @@ cargo run --manifest-path rust/device_bridge/Cargo.toml \
 
 1. iPhone 和 Mac 使用同一 Wi-Fi，控制中心 → 屏幕镜像 → `AnyDeck-AirPlay-Test`。
 2. 观察 native stderr 中连接、协商和首个 decoded IOSurface，以及非零分辨率；仅看到服务名或 RTSP 200 不算出画。
-3. 桌面集成验收需要完整重启重新构建后的 AnyDeck，再启用 App 的 `AnyDeck-AirPlay` 接收端，确认子窗口实际连续出画。
+3. 桌面集成验收需要完整重启重新构建后的 AnyDeck，再从左侧“投屏接收”启用 `AnyDeck-AirPlay` 接收端，确认子窗口实际连续出画。
 4. 测试竖屏/横屏、断开/重新连接、停止后重新启动；停止后不残留旧画面或监听端口。
 5. App 中最近 native 错误经 `anydeck_airplay_copy_last_error` 进入 `[AirPlay] ERROR` 本地日志；独立工具保留 native stderr。不要记录密钥或完整媒体载荷。
 

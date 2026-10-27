@@ -9,6 +9,7 @@
 ```text
 /devices
 /emulators
+/receivers
 /settings
 /wan-android
 /mcp
@@ -25,7 +26,7 @@
 3. `dashboard_route_sync.dart` 负责把 URI 参数同步到迁移期仍在使用的 `selectedDeviceProvider`、`selectedToolTabProvider` 和 `selectedAppPackageProvider`。业务点击只能先更新 Route，禁止新增反向拼接路径的状态分支。
 4. Splash 是 `MaterialApp.router` 外层的 StartupGate。Router 首地址为 `/devices`，动画只覆盖并预热当前路由页面，动画结束不进入返回栈。
 5. `/emulators` 展示主窗口内嵌完整模拟器管理页；`desktop_multi_window` 独立模拟器窗口继续作为弹出能力，两者复用现有 Provider，不共享 Isolate 内存。
-6. `/settings`、`/wan-android`、`/mcp` 是全局页面，不要求 `deviceId`。设置修改仍经 `appSettingsProvider` 和既有 MethodChannel 广播同步子窗口。
+6. `/receivers`、`/settings`、`/wan-android`、`/mcp` 是全局页面，不要求 `deviceId`；进入 `/receivers` 会与设备/模拟器管理页一样清空当前设备选择。设置修改仍经 `appSettingsProvider` 和既有 MethodChannel 广播同步子窗口。
 
 ## 导航行为
 
@@ -37,6 +38,6 @@
 
 ## 验证与回归
 
-- `test/dashboard_route_test.dart` 覆盖顶层页面、含冒号设备 ID、应用包名及工具 slug/index 映射。
+- `test/dashboard_route_test.dart` 覆盖顶层页面（含投屏接收）、含冒号设备 ID、应用包名及工具 slug/index 映射。
 - 手工回归需覆盖 Splash → 设备列表、设备 → 各工具、应用详情返回、模拟器主页面/独立窗口、设置快捷键、通知点击和 Finder APK 安装跳转。
 - 静态检查和 Widget 测试不等同于桌面窗口、真实设备或系统通知验收；按仓库规则不自动启动应用。

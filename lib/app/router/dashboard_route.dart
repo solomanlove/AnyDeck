@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 abstract final class AppRouteNames {
   static const devices = 'devices';
   static const emulators = 'emulators';
+  static const receivers = 'receivers';
   static const settings = 'settings';
   static const wanAndroid = 'wanAndroid';
   static const mcp = 'mcp';
@@ -16,6 +17,7 @@ abstract final class AppRouteNames {
 enum DashboardRouteKind {
   devices,
   emulators,
+  receivers,
   settings,
   wanAndroid,
   mcp,
@@ -37,6 +39,9 @@ class DashboardRouteState {
 
   const DashboardRouteState.emulators()
     : this._(kind: DashboardRouteKind.emulators, tabIndex: -2);
+
+  const DashboardRouteState.receivers()
+    : this._(kind: DashboardRouteKind.receivers, tabIndex: -3);
 
   const DashboardRouteState.settings()
     : this._(kind: DashboardRouteKind.settings, tabIndex: 12);
@@ -74,6 +79,9 @@ class DashboardRouteState {
     }
     if (segments.first == 'emulators') {
       return const DashboardRouteState.emulators();
+    }
+    if (segments.first == 'receivers') {
+      return const DashboardRouteState.receivers();
     }
     if (segments.first == 'settings') {
       return const DashboardRouteState.settings();

@@ -42,6 +42,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SizedBox.shrink(),
           ),
           GoRoute(
+            path: '/receivers',
+            name: AppRouteNames.receivers,
+            builder: (context, state) => const SizedBox.shrink(),
+          ),
+          GoRoute(
             path: '/settings',
             name: AppRouteNames.settings,
             builder: (context, state) => const SizedBox.shrink(),
@@ -88,6 +93,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 String _initialLocation(Ref ref) {
   final tabIndex = ref.read(selectedToolTabProvider);
   if (tabIndex == -2) return '/emulators';
+  if (tabIndex == -3) return '/receivers';
   if (tabIndex == 12) return '/settings';
   if (tabIndex == 13) return '/wan-android';
   if (tabIndex == 14) return '/mcp';

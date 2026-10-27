@@ -2,9 +2,10 @@
 
 ## 1. 目标与背景
 
-AnyDeck 的主窗口包含四个主要的一级功能模块/偏好页面：
+AnyDeck 的主窗口包含五个主要的一级功能模块/偏好页面：
 - **设备管理 (`/devices`)**
 - **模拟器管理 (`/emulators`)**
+- **投屏接收 (`/receivers`)**
 - **AI MCP (`/mcp`)**
 - **设置 (`/settings`)**
 
@@ -37,8 +38,9 @@ DashboardHeaderBar(
 
 | 页面模块 | 标题文案与图标 | 右侧组件 (trailing / actions) | 页面内容区结构与内边距 |
 | :--- | :--- | :--- | :--- |
-| **设备管理** | `devices` / `Icons.devices_rounded` | TCP连接、无线配对、AirPlay、控制台、目录、重启、刷新等 7 个操作按钮 | 下方铺满 `_DeviceListPanel` 设备表格 |
+| **设备管理** | `devices` / `Icons.devices_rounded` | TCP连接、无线配对、控制台、目录、重启、刷新等设备管理操作 | 下方铺满 `_DeviceListPanel` 设备表格 |
 | **模拟器管理** | `emulators` / `CupertinoIcons.device_desktop` | `EmulatorPlatformTabs` 平台切换标签（Android / DevEco / iOS） | 搜索栏与工具栏内边距统一为 `fromLTRB(28, 12, 28, 12)`，与标题栏垂直对齐 |
+| **投屏接收** | `receiverCenter` / `Icons.cast_connected_rounded` | 页面内 AirPlay 与 DLNA Card 分别管理服务，不在标题栏直接启停 | 内容区宽屏双列、窄屏单列，统一 28px 外边距 |
 | **AI MCP** | `aiMcp` / `CupertinoIcons.sparkles` | `_McpServerStatusHeaderBadge` 实时服务运行与端口状态徽章 | 移除 Body 内嵌标题，`SingleChildScrollView(padding: (28, 20))`，卡片间距 16px |
 | **设置** | `settings` / `CupertinoIcons.settings` | 保持清爽留空，支持灵活扩展 | 移除 Body 内嵌标题，`SingleChildScrollView(padding: (28, 24))`，居中最大宽度 860px |
 

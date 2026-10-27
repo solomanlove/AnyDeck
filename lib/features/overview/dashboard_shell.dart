@@ -4,11 +4,13 @@ class _WechatStyleShell extends ConsumerWidget {
   const _WechatStyleShell({
     required this.title,
     required this.selectedDevice,
+    required this.isAirplayReceiverRunning,
     required this.child,
   });
 
   final String title;
   final AdbDevice? selectedDevice;
+  final bool isAirplayReceiverRunning;
   final Widget child;
 
   @override
@@ -18,7 +20,10 @@ class _WechatStyleShell extends ConsumerWidget {
 
     return Row(
       children: [
-        _PrimaryRail(selectedDevice: selectedDevice),
+        _PrimaryRail(
+          selectedDevice: selectedDevice,
+          isAirplayReceiverRunning: isAirplayReceiverRunning,
+        ),
         Expanded(
           child: DesktopWorkspaceSurface(
             border: Border(
@@ -28,6 +33,7 @@ class _WechatStyleShell extends ConsumerWidget {
               children: [
                 if ((selectedDevice == null || selectedTool == -1) &&
                     selectedTool != -2 &&
+                    selectedTool != -3 &&
                     selectedTool != 12 &&
                     selectedTool != 13 &&
                     selectedTool != 14)
@@ -89,9 +95,6 @@ class _ContentTitleBar extends ConsumerWidget {
             ),
           ),
         ),
-        //ios投屏
-        AirPlayToolbarButton(iconColor: iconColor),
-        DlnaToolbarButton(iconColor: iconColor),
         //打开控制台
         IconButton(
           tooltip: context.l10n.t('console'),

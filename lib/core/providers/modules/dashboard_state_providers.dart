@@ -12,7 +12,7 @@ final logcatControllerProvider =
 
 /// 当前选中的 Dashboard 业务工具 Tab 下标 Provider。
 ///
-/// -1 代表设备管理主页，-2 代表与设备管理同级的模拟器列表。
+/// -1 代表设备管理主页，-2 代表模拟器列表，-3 代表投屏接收管理页。
 final selectedToolTabProvider = NotifierProvider<ToolTabNotifier, int>(
   ToolTabNotifier.new,
 );

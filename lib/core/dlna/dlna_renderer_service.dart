@@ -107,6 +107,7 @@ class DlnaRendererService extends ChangeNotifier {
   int get httpPort => _http?.port ?? _configuredHttpPort;
   bool get isBusy => _starting;
   String? get error => _error;
+  bool get hasActiveMedia => _currentUrl != null;
   void _notifyNameChange() => notifyListeners();
   void _notifyControlChange() => notifyListeners();
 

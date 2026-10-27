@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/airplay/airplay_server_service.dart';
 
-/// 设置页投屏接收端名称编辑组件，供 AirPlay 与 DLNA 共用。
+/// 投屏接收端名称编辑组件，供设置页及接收管理页的 AirPlay 与 DLNA 共用。
 ///
 /// 用途：在“设置 -> 投屏设置”中展示并修改手机投屏设备列表中的接收端名称。
 /// 参数说明：
