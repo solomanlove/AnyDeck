@@ -57,3 +57,11 @@ Painter 或 Controller 不应反向依赖 Widget Theme；需要动态主题时�
 
 - 当 `Container` / `DecoratedBox` 提供背景色、边框、圆角或阴影，且内部包含 `ListTile`、`InkWell` 等 Material 交互组件时，装饰层与交互组件之间必须放置 `Material(type: MaterialType.transparency)`。
 - 该透明 Material 负责承载 Hover、Ink splash、`tileColor` 等绘制，外层装饰继续负责卡片背景和裁剪，避免 Flutter 抛出 `ListTile background color or ink splashes may be invisible` 断言。
+
+## 7. 全局轻提示
+
+- 普通成功、失败、警告和信息反馈统一由 `lib/app/widget/app_toast.dart` 的 `AppToast.show(...)` 渲染，位置固定为当前窗口 SafeArea 内顶部居中，距顶部 16px。
+- `AppToast` 是唯一 Overlay 视觉实现；旧 `DashboardSnack.show(...)` 仅保留兼容调用并转发到 `AppToast`，禁止再维护独立布局。
+- 同一 Isolate 同时只展示一条轻提示，新提示替换旧提示并重置隐藏 Timer；页面切换或测试清理可调用 `AppToast.dismiss()`。
+- Dialog、确认框、进度面板以及包含用户操作的 Material SnackBar 不属于无交互轻提示，不应仅为统一位置而移除其交互能力。
+- 2026-10-27 定向验证：`app_toast_test.dart` 覆盖 `AppToast` 与兼容入口均在顶部居中、后发提示替换前一条及主动关闭；Widget test 与 targeted analyze 通过。按项目规则未运行 App，真实多窗口视觉仍需人工验收。

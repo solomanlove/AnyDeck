@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-/// 显示全局居中 Toast 提示。
+/// 显示全局顶部居中的轻提示。
 ///
 /// [context] 上下文；
 /// [message] 提示文案；
@@ -38,7 +38,7 @@ class AppToast {
     final isDark = theme.brightness == Brightness.dark;
     final style = _AppToastStyle.resolve(theme, resolvedType, isDark);
 
-    _hideCurrent();
+    dismiss();
 
     late final OverlayEntry entry;
     entry = OverlayEntry(
@@ -46,47 +46,51 @@ class AppToast {
         return Positioned.fill(
           child: IgnorePointer(
             child: SafeArea(
-              child: Align(
-                alignment: Alignment.center,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: (media.size.width - 48).clamp(0.0, maxWidth)
-                  ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: style.backgroundColor,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: style.borderColor),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.42 : 0.18,
-                          ),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                child: Align(
+                  key: const Key('appToast'),
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: (media.size.width - 48).clamp(0.0, maxWidth),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(style.icon, color: style.iconColor, size: 22),
-                          const SizedBox(width: 10),
-                          Flexible(
-                            child: Text(
-                              message,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: style.textColor,
-                                fontWeight: FontWeight.w600,
-                              ),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: style.backgroundColor,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: style.borderColor),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.42 : 0.18,
                             ),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
                           ),
                         ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(style.icon, color: style.iconColor, size: 22),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Text(
+                                message,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: style.textColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -100,10 +104,11 @@ class AppToast {
 
     _currentEntry = entry;
     overlay.insert(entry);
-    _hideTimer = Timer(duration, _hideCurrent);
+    _hideTimer = Timer(duration, dismiss);
   }
 
-  static void _hideCurrent() {
+  /// 立即关闭当前轻提示，主要用于页面切换或测试清理。
+  static void dismiss() {
     _hideTimer?.cancel();
     _hideTimer = null;
     if (_currentEntry?.mounted ?? false) {
