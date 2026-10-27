@@ -4,7 +4,7 @@
 
 - 将设备管理标题栏中的 AirPlay 与 DLNA 图标迁移到左侧一级入口“投屏接收”。
 - 用户通过 `/receivers` 页面理解两种协议差异并管理服务，避免把全局接收服务误认为当前设备操作。
-- AirPlay 用于 iPhone / iPad 屏幕镜像；DLNA 只接收 Android / HarmonyOS 视频 App 下发的媒体与播放控制，不代表手机屏幕镜像。
+- AirPlay 用于 iPhone / iPad 屏幕镜像；DLNA 接收各平台中支持该协议的视频 App 下发的媒体与播放控制，不代表设备屏幕镜像。
 
 ## 2. 路由与页面结构
 

@@ -36,6 +36,10 @@ void main() {
     expect(find.text('投屏接收'), findsOneWidget);
     expect(find.text('AirPlay 投屏'), findsOneWidget);
     expect(find.text('DLNA 视频'), findsOneWidget);
+    expect(
+      find.text('接收支持 DLNA 的视频 App 投放的媒体，不是设备屏幕镜像。'),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('airplayReceiverSwitch')), findsOneWidget);
     expect(find.byKey(const Key('dlnaReceiverSwitch')), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(2));

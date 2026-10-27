@@ -1,10 +1,10 @@
-# Android 视频 DLNA 投到 macOS
+# 视频 App 通过 DLNA 投到 macOS
 
 ## 目标与入口
 
-- macOS 主窗口左侧进入“投屏接收”，在 DLNA 视频 Card 中启停接收服务；Android 视频 App 与电脑处于同一局域网时，选择 `AnyDeck-DLNA`。
-- “设置 → 投屏设置 → Android DLNA 投屏名称”可以修改手机设备列表中的接收端名称；空白名称恢复为 `AnyDeck-DLNA`。
-- 只接收视频媒体地址与播放控制，不采集 Android 手机屏幕，也不影响现有 scrcpy / AirPlay 会话。
+- macOS 主窗口左侧进入“投屏接收”，在 DLNA 视频 Card 中启停接收服务；各平台中支持 DLNA 的视频 App 与电脑处于同一局域网时，可选择 `AnyDeck-DLNA`。
+- “设置 → 投屏设置 → DLNA 投屏名称”可以修改视频 App 投屏列表中的接收端名称；空白名称恢复为 `AnyDeck-DLNA`。
+- 只接收视频媒体地址与播放控制，不采集投放设备屏幕，也不影响现有 scrcpy / AirPlay 会话。
 - AVPlayer 继续播放 MP4 与 HLS；新增内置 libmpv 回退窗口处理非 DRM DASH（独立音视频分片）及 AVPlayer 无法打开的媒体。平台特定鉴权、DRM 与弹幕仍不在通用 DLNA 能力内。
 
 ## 数据与控制链路

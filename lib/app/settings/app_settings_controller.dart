@@ -264,7 +264,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
     if (broadcast) try { await _broadcastSettingChange('update_airplay_server_name', clean); } catch (_) {}
   }
 
-  /// 更新 Android DLNA 发现名称，不中断当前视频播放。
+  /// 更新 DLNA 发现名称，不中断当前视频播放。
   Future<void> setDlnaServerName(String value, {bool broadcast = true}) async {
     final clean = AppSettings.normalizeDlnaServerName(value);
     state = state.copyWith(dlnaServerName: clean);
