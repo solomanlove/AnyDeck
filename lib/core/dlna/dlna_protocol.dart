@@ -9,7 +9,7 @@ class DlnaProtocol {
   static const renderingType =
       'urn:schemas-upnp-org:service:RenderingControl:1';
   static const uuid = '43c0b6d7-bc0d-4667-82a0-a11dec000001';
-  static const serverName = 'AnyDeck DLNA';
+  static const serverName = 'AnyDeck-DLNA';
   static const sinkProtocolInfo =
       'http-get:*:video/mp4:*,http-get:*:application/vnd.apple.mpegurl:*,http-get:*:application/dash+xml:*';
   static const searchTargets = [
@@ -26,7 +26,7 @@ class DlnaProtocol {
 
   static String deviceDescription(String baseUrl, {String name = serverName}) =>
       '''<?xml version="1.0" encoding="utf-8"?>
-<root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>$baseUrl/</URLBase><device><deviceType>$deviceType</deviceType><friendlyName>${escape(name)}</friendlyName><manufacturer>AnyDeck</manufacturer><modelName>AnyDeck DLNA Renderer</modelName><UDN>uuid:$uuid</UDN><serviceList>${_service(transportType, 'AVTransport', '/avtransport')}${_service(renderingType, 'RenderingControl', '/rendering')}${_service(connectionType, 'ConnectionManager', '/connection')}</serviceList></device></root>''';
+<root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>$baseUrl/</URLBase><device><deviceType>$deviceType</deviceType><friendlyName>${escape(name)}</friendlyName><manufacturer>AnyDeck</manufacturer><modelName>AnyDeck-DLNA Renderer</modelName><UDN>uuid:$uuid</UDN><serviceList>${_service(transportType, 'AVTransport', '/avtransport')}${_service(renderingType, 'RenderingControl', '/rendering')}${_service(connectionType, 'ConnectionManager', '/connection')}</serviceList></device></root>''';
 
   static String _service(String type, String id, String path) =>
       '<service><serviceType>$type</serviceType><serviceId>urn:upnp-org:serviceId:$id</serviceId><SCPDURL>$path.xml</SCPDURL><controlURL>$path/control</controlURL><eventSubURL>$path/event</eventSubURL></service>';

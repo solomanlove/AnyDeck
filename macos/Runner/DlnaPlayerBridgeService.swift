@@ -25,7 +25,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   private var reportedItem: ObjectIdentifier?
   private var mediaGeneration = 0
   private var channel: FlutterMethodChannel?
-  private var displayName = "AnyDeck DLNA"
+  private var displayName = "AnyDeck-DLNA"
   private var loadingText = ""
   private var playbackVolume: Float = 1
   private var playbackMuted = false

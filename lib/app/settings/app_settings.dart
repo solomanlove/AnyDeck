@@ -21,7 +21,16 @@ enum AppLanguage {
 /// 可持久化的应用级设置，控制语言和外观。
 class AppSettings {
   static const defaultAirplayServerName = 'AnyDeck-AirPlay';
-  static const defaultDlnaServerName = 'AnyDeck DLNA';
+  static const defaultDlnaServerName = 'AnyDeck-DLNA';
+  static const _legacyDlnaServerName = 'AnyDeck DLNA';
+
+  /// 统一 DLNA 默认名称，同时保留用户设置的自定义名称。
+  static String normalizeDlnaServerName(String? value) {
+    final clean = value?.trim() ?? '';
+    return clean.isEmpty || clean == _legacyDlnaServerName
+        ? defaultDlnaServerName
+        : clean;
+  }
 
   const AppSettings({
     this.language = AppLanguage.zh,

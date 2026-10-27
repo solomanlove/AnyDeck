@@ -39,5 +39,6 @@ void main() {
     expect(find.byKey(const Key('airplayReceiverSwitch')), findsOneWidget);
     expect(find.byKey(const Key('dlnaReceiverSwitch')), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.text('AnyDeck-DLNA'), findsNWidgets(2));
   });
 }

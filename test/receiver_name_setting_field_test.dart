@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('DLNA 名称可编辑、提交并恢复默认', (tester) async {
-    var currentName = 'AnyDeck DLNA';
+    var currentName = 'AnyDeck-DLNA';
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
@@ -14,7 +14,7 @@ void main() {
             body: StatefulBuilder(
               builder: (context, setState) => ReceiverNameSettingField(
                 value: currentName,
-                defaultName: 'AnyDeck DLNA',
+                defaultName: 'AnyDeck-DLNA',
                 resetTooltip: '恢复默认',
                 onChanged: (value) => setState(() => currentName = value),
               ),
@@ -32,10 +32,10 @@ void main() {
 
     await tester.tap(find.byIcon(CupertinoIcons.refresh));
     await tester.pump();
-    expect(currentName, 'AnyDeck DLNA');
+    expect(currentName, 'AnyDeck-DLNA');
     expect(
       tester.widget<TextField>(find.byType(TextField)).controller!.text,
-      'AnyDeck DLNA',
+      'AnyDeck-DLNA',
     );
   });
 }

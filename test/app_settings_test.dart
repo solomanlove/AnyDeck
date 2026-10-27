@@ -27,4 +27,12 @@ void main() {
     expect(updated.dlnaServerName, '客厅电视');
     expect(updated.airplayServerName, '卧室 AirPlay');
   });
+
+  test('DLNA 旧默认名称迁移且保留自定义名称', () {
+    expect(
+      AppSettings.normalizeDlnaServerName('AnyDeck DLNA'),
+      'AnyDeck-DLNA',
+    );
+    expect(AppSettings.normalizeDlnaServerName('客厅电视'), '客厅电视');
+  });
 }

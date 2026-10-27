@@ -266,7 +266,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
 
   /// 更新 Android DLNA 发现名称，不中断当前视频播放。
   Future<void> setDlnaServerName(String value, {bool broadcast = true}) async {
-    final clean = value.trim().isEmpty ? AppSettings.defaultDlnaServerName : value.trim();
+    final clean = AppSettings.normalizeDlnaServerName(value);
     state = state.copyWith(dlnaServerName: clean);
     await (await SharedPreferences.getInstance()).setString(_dlnaServerNameKey, clean);
     if (ref.read(windowIdProvider).isEmpty) await DlnaRendererService.instance.setServerName(clean);
@@ -428,8 +428,9 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
     final iosMirrorAudioEnabled = preferences.getBool(_iosMirrorAudioEnabledKey) ?? true;
     final rawAirplayName = preferences.getString(_airplayServerNameKey)?.trim() ?? '';
     final airplayServerName = rawAirplayName.isEmpty ? AppSettings.defaultAirplayServerName : rawAirplayName;
-    final rawDlnaName = preferences.getString(_dlnaServerNameKey)?.trim() ?? '';
-    final dlnaServerName = rawDlnaName.isEmpty ? AppSettings.defaultDlnaServerName : rawDlnaName;
+    final dlnaServerName = AppSettings.normalizeDlnaServerName(
+      preferences.getString(_dlnaServerNameKey),
+    );
     AirPlayServerService.instance.setAudioEnabled(iosMirrorAudioEnabled);
     unawaited(IosUsbMirrorService.setGlobalAudioEnabled(iosMirrorAudioEnabled));
     final screenshotSavePath =

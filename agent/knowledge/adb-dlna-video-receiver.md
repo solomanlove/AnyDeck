@@ -2,8 +2,8 @@
 
 ## 目标与入口
 
-- macOS 主窗口左侧进入“投屏接收”，在 DLNA 视频 Card 中启停接收服务；Android 视频 App 与电脑处于同一局域网时，选择 `AnyDeck DLNA`。
-- “设置 → 投屏设置 → Android DLNA 投屏名称”可以修改手机设备列表中的接收端名称；空白名称恢复为 `AnyDeck DLNA`。
+- macOS 主窗口左侧进入“投屏接收”，在 DLNA 视频 Card 中启停接收服务；Android 视频 App 与电脑处于同一局域网时，选择 `AnyDeck-DLNA`。
+- “设置 → 投屏设置 → Android DLNA 投屏名称”可以修改手机设备列表中的接收端名称；空白名称恢复为 `AnyDeck-DLNA`。
 - 只接收视频媒体地址与播放控制，不采集 Android 手机屏幕，也不影响现有 scrcpy / AirPlay 会话。
 - AVPlayer 继续播放 MP4 与 HLS；新增内置 libmpv 回退窗口处理非 DRM DASH（独立音视频分片）及 AVPlayer 无法打开的媒体。平台特定鉴权、DRM 与弹幕仍不在通用 DLNA 能力内。
 
@@ -22,7 +22,7 @@
 
 ## 名称设置与热更新
 
-- `AppSettings.dlnaServerName` 默认 `AnyDeck DLNA`，使用 SharedPreferences 键 `settings.dlnaServerName` 持久化，并沿用设置广播同步到其他窗口。设置页与 iOS AirPlay 名称共用接收端名称编辑组件。
+- `AppSettings.dlnaServerName` 默认 `AnyDeck-DLNA`，使用 SharedPreferences 键 `settings.dlnaServerName` 持久化，并沿用设置广播同步到其他窗口。读取旧默认值 `AnyDeck DLNA` 时自动迁移，用户自定义名称不受影响。设置页与 iOS AirPlay 名称共用接收端名称编辑组件。
 - 主窗口的 `DlnaRendererService.setServerName` 更新设备描述中的 `<friendlyName>`；XML 文本经转义，`UDN` 与 TCP `18583` 保持稳定。服务运行时发送 SSDP `byebye` 再发送 `alive`，不调用 `stop()`，因此不主动关闭正在播放的视频。
 - 工具栏启用服务前读取当前设置，启动提示使用实际名称；macOS 原生播放器标题也通过 `setTitle` MethodChannel 更新。手机端可能缓存设备描述，需要重新搜索设备列表才能看到新名称。
 
@@ -77,7 +77,7 @@
 
 ## 真机验收清单
 
-1. 同一 Wi-Fi 下点击 DLNA 图标，在 Android B 站视频页点 `TV`，确认列表可见 `AnyDeck DLNA`。
+1. 同一 Wi-Fi 下点击 DLNA 图标，在 Android B 站视频页点 `TV`，确认列表可见 `AnyDeck-DLNA`。
 2. 选择接收端，确认视频和声音实际播放；分别验证 MP4 与 HLS 来源，以及暂停、继续、进度跳转、音量和停止。
 3. 手机切换 Wi-Fi、电脑睡眠/唤醒、断开网络后重新启用，确认服务可重新被发现，无遗留端口占用。
 4. 关闭播放器窗口与关闭 DLNA 开关，确认手机端状态更新、电脑停止播放。
