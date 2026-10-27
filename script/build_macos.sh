@@ -76,6 +76,11 @@ APP_NAME=$(basename "$APP_PATH")
 echo "找到应用包: $APP_NAME"
 echo "源路径: $APP_PATH"
 
+if [ "${ANYDECK_SHARE_CORE:-0}" = "1" ]; then
+  # 可选接入固定SHA-256的私有原生制品；协议源码不会进入主仓库。
+  python3 "$SCRIPT_DIR/install_share_core.py" --app "$APP_PATH"
+fi
+
 "$SCRIPT_DIR/fix_macos_app_policy.sh" "$APP_PATH"
 
 # 创建目标的 Products 目录
