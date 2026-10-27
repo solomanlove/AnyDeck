@@ -488,7 +488,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     } catch (_) {}
     List<AdbDevice> harmonyDevices = [];
     try {
-      harmonyDevices = await ref.read(hdcServiceProvider).listDevices();
+      harmonyDevices = await ref.read(adbDeviceTrackerProvider).refreshHarmonyDevices();
     } catch (_) {}
     final activeDevices = [...androidDevices, ...iosDevices, ...harmonyDevices];
     _lastActiveDevices = activeDevices;

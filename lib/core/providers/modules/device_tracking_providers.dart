@@ -12,12 +12,11 @@ import 'service_providers.dart';
 
 /// 自适应心跳控制器 Provider。
 ///
-/// 负责在主窗口处于设备列表页面时周期性轮询 ADB/HDC/iOS 设备状态；在子窗口或非设备管理页面时智能休眠以降低 CPU 占用。
+/// 负责在主窗口处于设备列表页面时周期性轮询 ADB/iOS 设备状态；在子窗口或非设备管理页面时智能休眠以降低 CPU 占用。
 final adbHeartbeatControllerProvider =
     Provider.autoDispose<AdbHeartbeatController>((ref) {
       final adbService = ref.watch(adbServiceProvider);
       final iosDeviceService = ref.watch(iosDeviceServiceProvider);
-      final hdcService = ref.watch(hdcServiceProvider);
       final isSub = ref.watch(windowIdProvider).isNotEmpty;
 
       // 主窗口下，当没有选择设备或正处于设备管理Tab(-1)，且未展示设置页面时（即处于设备管理列表“主页”），才应该运行心跳
@@ -29,7 +28,6 @@ final adbHeartbeatControllerProvider =
       final controller = AdbHeartbeatController(
         adbService: adbService,
         iosDeviceService: iosDeviceService,
-        hdcService: hdcService,
         isSubWindow: isSub,
         isDeviceListVisible: isDeviceListVisible,
       );

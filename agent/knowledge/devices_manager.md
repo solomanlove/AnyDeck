@@ -65,7 +65,9 @@ final deviceAndroidVersionProvider = Provider.autoDispose
 
 `DeviceRegistryNotifier._mergeDevices()` 对相同 `id` 的活动设备先按在线状态去重；双方状态相同时，ADB 记录优先于 HDC 记录。去重结果同时用于设备展示、型号与产品缓存、序列号及版本拉取，防止 Android 的 `IP:Port` 被 HDC 记录覆盖后错误走 Harmony 命令。
 
-回归：`flutter test test/harmony_device_serial_merge_test.dart` 覆盖 HDC `Unknown` 过滤和 ADB/HDC 同地址路由。手工验收可同时观察 `adb devices -l`、`hdc list targets -v` 与控制台日志：当 Android 地址仅在 HDC 中呈 `Unknown` 时，不应再出现针对该地址的 `hdc -t ... shell`。普通 HDC 全局设备扫描仍会执行。
+回归：`flutter test test/harmony_device_serial_merge_test.dart` 覆盖 HDC `Unknown` 过滤和 ADB/HDC 同地址路由。手工验收可同时观察 `adb devices -l`、`hdc list targets -v` 与控制台日志：当 Android 地址仅在 HDC 中呈 `Unknown` 时，不应再出现针对该地址的 `hdc -t ... shell`。
+
+本机 HDC `3.1.0b` 仅提供一次性 `list targets [-v]`，没有与 `adb track-devices` 对等的设备事件流。主窗口只在应用初始化以及用户主动刷新、HDC 连接/断开或服务重启后调用一次 `HdcService.listDevices()`；5 秒 iOS 辅助轮询和自适应 Heartbeat 都不再扫描 HDC，避免后台持续执行 `hdc list targets -v`。HarmonyOS 设备热插拔后如未经过连接操作，需要点击刷新按钮同步列表。
 
 ### 2.4 HDC 瞬态错误与设备信息缓存清洗
 

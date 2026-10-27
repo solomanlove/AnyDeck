@@ -34,7 +34,7 @@ class AdbDeviceTracker {
 
   Process? _trackProcess;
   Timer? _reconnectTimer;
-  Timer? _auxiliaryPollTimer;
+  Timer? _iosPollTimer;
   bool _isDisposed = false;
 
   List<AdbDevice> _androidDevices = [];
@@ -52,14 +52,15 @@ class AdbDeviceTracker {
     // 先同步拉取一次初始设备列表，避免等待 track-devices 首个事件有延迟
     try {
       _androidDevices = await _adbService.listDevices();
-      await _pollAuxiliaryDevices();
+      await _pollIosDevices();
+      await refreshHarmonyDevices(publish: false);
       _publish();
     } catch (e) {
       debugPrint('[AdbDeviceTracker] initial listDevices error: $e');
     }
 
     _startAdbTrackProcess();
-    _startAuxiliaryPolling();
+    _startIosPolling();
   }
 
   void _startAdbTrackProcess() async {
@@ -155,27 +156,39 @@ class AdbDeviceTracker {
     });
   }
 
-  void _startAuxiliaryPolling() {
-    _auxiliaryPollTimer?.cancel();
-    // iOS 与鸿蒙设备每 5 秒轮询一次
-    _auxiliaryPollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+  void _startIosPolling() {
+    _iosPollTimer?.cancel();
+    if (_iosDeviceService == null) return;
+    _iosPollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       if (_isDisposed) return;
-      await _pollAuxiliaryDevices();
+      await _pollIosDevices();
       _publish();
     });
   }
 
-  Future<void> _pollAuxiliaryDevices() async {
+  Future<void> _pollIosDevices() async {
     try {
       if (_iosDeviceService != null) {
         _iosDevices = await _iosDeviceService.listDevices();
       }
+    } catch (e) {
+      debugPrint('[AdbDeviceTracker] iOS poll error: $e');
+    }
+  }
+
+  /// HDC 不支持设备事件流，仅在初始化或显式刷新时查询一次。
+  Future<List<AdbDevice>> refreshHarmonyDevices({bool publish = true}) async {
+    try {
       if (_hdcService != null) {
         _harmonyDevices = await _hdcService.listDevices();
       }
     } catch (e) {
-      debugPrint('[AdbDeviceTracker] auxiliary poll error: $e');
+      debugPrint('[AdbDeviceTracker] HarmonyOS refresh error: $e');
     }
+    if (publish) {
+      _publish();
+    }
+    return _harmonyDevices;
   }
 
   void _publish() {
@@ -203,7 +216,7 @@ class AdbDeviceTracker {
   void dispose() {
     _isDisposed = true;
     _reconnectTimer?.cancel();
-    _auxiliaryPollTimer?.cancel();
+    _iosPollTimer?.cancel();
     _trackProcess?.kill();
     _trackProcess = null;
     _streamController.close();

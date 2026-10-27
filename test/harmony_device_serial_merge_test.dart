@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/adb_device_tracker.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/harmony/hdc_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
@@ -41,10 +42,47 @@ class _FakeHdcSerialService extends HdcService {
   }
 }
 
+class _CountingHdcDeviceService extends HdcService {
+  _CountingHdcDeviceService() : super(executable: 'hdc');
+
+  int listCallCount = 0;
+
+  @override
+  Future<List<AdbDevice>> listDevices() async {
+    listCallCount++;
+    return const [
+      AdbDevice(
+        id: '2UCUT23C18017189',
+        status: 'device',
+        model: 'HarmonyOS Device',
+        product: 'HarmonyOS NEXT',
+        isHarmony: true,
+      ),
+    ];
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('HdcService Device Serial Parsing Tests', () {
+    test('HarmonyOS 设备列表仅在显式刷新时查询', () async {
+      final hdc = _CountingHdcDeviceService();
+      final tracker = AdbDeviceTracker(
+        adbService: FakeAdbService(),
+        hdcService: hdc,
+        isSubWindow: true,
+      );
+      addTearDown(tracker.dispose);
+
+      expect(hdc.listCallCount, 0);
+      final devices = await tracker.refreshHarmonyDevices();
+
+      expect(hdc.listCallCount, 1);
+      expect(devices.single.id, '2UCUT23C18017189');
+      expect(tracker.currentDevices.single.isHarmony, isTrue);
+    });
+
     test('only Connected HDC targets are online', () {
       expect(
         HdcService.connectedTargetIds([
