@@ -9,7 +9,7 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 1. 私有仓库运行 `script/build_artifact.py`，输出按架构区分的 zip、包内 manifest、每文件 SHA-256；把 Swift BLE helper、DFile helper 和 OpenSSL 3 动态库一起签名和打包。
 2. 主仓库 `script/share_core.lock.json` 固定私有仓库 commit、IPC 版本与 zip SHA-256。
 3. 构建 Release 时显式设置 `ANYDECK_SHARE_CORE=1`；`script/install_share_core.py`只读取锁定 commit 的制品，逐层校验后写入 `.app/Contents/MacOS/ShareCore/`，再由现有 `fix_macos_app_policy.sh` 签名整个 App。
-4. `ShareCoreClient.probe()`通过 IPC version 1 握手，只信任显式声明的能力。无二进制或版本不符时失败；不使用外部 Python 或原星河进程。
+4. `ShareCoreClient.probe()`通过当前 IPC version 3 握手，只信任显式声明的能力。无二进制或版本不符时失败；不使用外部 Python 或原星河进程。
 
 ## 当前验收与未完成项
 
@@ -111,3 +111,10 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 记录库原地增加 file_count/batch_id。多文件成功保存一个摘要和有界子文件清单；首页默认摘要，搜索含子文件，详情一次查询且 Theme rebuild 复用 Future。整批删除级联记录，不删除文件；单文件格式兼容旧库。通知只看批次摘要，目录动作打开实际批次目录。
 - 128 focused Flutter tests、targeted analyze、2 Widget 视觉测试通过，Light/Dark 批次详情图已检查。私有测试 commit e040923 通过真实接收 IPC 确认与结果联调，34 常规 lib + 5 integration；隔离 BLE stub，无手机操作。主仓锁/zip 固定7059e22，无生产协议源码变更，生产 send/receive=false。Release 包与验证边界见阶段计划。
 - 发送 UI/队列尚未切换原生批次；手机、大文件双向、真实通知/Finder 与 App 交互仍待人工验收。完整持久化故障重试、持续队列与本机名称同步继续处理。
+
+## 原生批次发送与整批进度（2026-10-28）
+
+- 主窗口发送服务使用一次原生批次会话，全部文件 verifyUnchanged 后才启动 Core。HarmonyShareSendQueue 的原生模式与旧串行模式共用记录/通知消费者，但明确整批取消、失败与完成语义，不进行自动逐文件回退。完整有效终态优先于迟到取消，批次标识隔离旧回调；停止服务等待发送结束及记录写入。
+- ShareSendBatch 保存不可变文件快照与实际总进度；Core 只给总量时不推测逐文件字节。UI 隐藏活动批次的逐文件取消，确认页与队列显示整批语义，说明远端 hash 未验证。SQLite 保存批次摘要及子文件，失败子文件可显式重试，关联原记录；未知子文件进度在详情明确标出。
+- 147 focused Flutter tests、targeted analyze、2 项 Widget 视觉测试通过；Release 包签名、Core/zip hash 和 IPC 3 握手验证通过。未重新运行 Core GiB 压力，不把模型总量测试当作实际传输。制品与私有源码本批未改，仍固定7059e22。详见阶段计划。
+- 待完成持续追加队列/速率、文件级真实进度、名称核心同步、存储故障可靠恢复及真机/发布前验收。手机测试仍按用户要求暂缓。

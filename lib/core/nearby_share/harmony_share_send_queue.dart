@@ -47,7 +47,21 @@ class ShareSendItem {
       );
 }
 
-/// 单个用户选择的发送队列；严格串行，一个文件失败不阻断后续文件。
+/// 原生批次不可变快照；仅有整批字节进度，不推测每个文件的已传字节。
+class ShareSendBatch {
+  ShareSendBatch({
+    required this.id,
+    required List<ShareSendItem> items,
+    required this.transferredBytes,
+  }) : items = List.unmodifiable(items);
+  final String id;
+  final List<ShareSendItem> items;
+  final int transferredBytes;
+  int get bytes => items.fold(0, (sum, item) => sum + item.file.bytes);
+  ShareSendStatus get status => items.first.status;
+}
+
+/// 用户选择对应一次原生批次；未配置 sendBatch 时兼容旧串行调用。
 /// send 完成必须代表核心最终成功；cancelActive 负责终止实际进程，控制器不生成假进度。
 class HarmonyShareSendQueue extends ChangeNotifier {
   HarmonyShareSendQueue({
@@ -55,9 +69,19 @@ class HarmonyShareSendQueue extends ChangeNotifier {
     required this.cancelActive,
     this.onQueued,
     this.onChanged,
+    this.sendBatch,
+    this.onBatchQueued,
+    this.onBatchChanged,
   });
   final Future<void> Function(ShareSendItem, ValueChanged<ShareCoreProgress>)
   send;
+  final Future<void> Function(
+    List<ShareSendItem>,
+    ValueChanged<ShareCoreProgress>,
+  )?
+  sendBatch;
+  final Future<void> Function(ShareSendBatch)? onBatchQueued;
+  final ValueChanged<ShareSendBatch>? onBatchChanged;
   final VoidCallback cancelActive;
   final Future<void> Function(List<ShareSendItem>)? onQueued;
   final ValueChanged<ShareSendItem>? onChanged;
@@ -66,12 +90,20 @@ class HarmonyShareSendQueue extends ChangeNotifier {
   int? _current;
   int _sequence = 0;
   bool running = false;
+  String _batchId = '';
+  int _batchBytes = 0;
+  bool _batchCancelled = false;
+  bool get nativeBatch => sendBatch != null;
+  bool get cancelling => _batchCancelled && running;
+  ShareSendBatch get batch =>
+      ShareSendBatch(id: _batchId, items: items, transferredBytes: _batchBytes);
   List<ShareSendItem> get items => List.unmodifiable(_items);
   ShareSendItem? get current => _current == null ? null : _items[_current!];
   int get totalBytes =>
       _items.fold(0, (total, item) => total + item.file.bytes);
-  int get transferredBytes =>
-      _items.fold(0, (total, item) => total + item.transferredBytes);
+  int get transferredBytes => nativeBatch
+      ? _batchBytes
+      : _items.fold(0, (total, item) => total + item.transferredBytes);
   int get finished => _items.where((item) => item.terminal).length;
   int count(ShareSendStatus status) =>
       _items.where((item) => item.status == status).length;
@@ -85,7 +117,10 @@ class HarmonyShareSendQueue extends ChangeNotifier {
     if (running) throw StateError('Send queue is already running');
     running = true;
     _cancelled.clear();
+    _batchBytes = 0;
+    _batchCancelled = false;
     final batch = DateTime.now().microsecondsSinceEpoch;
+    _batchId = '$batch-${_sequence++}';
     _items = [
       for (final file in selection.files)
         ShareSendItem(
@@ -97,6 +132,11 @@ class HarmonyShareSendQueue extends ChangeNotifier {
     ];
     notifyListeners();
     try {
+      if (nativeBatch) {
+        await onBatchQueued?.call(this.batch);
+        await _runNative();
+        return;
+      }
       if (onQueued != null) {
         await onQueued!(items);
         // 初始落盘期间也允许取消；补齐当时已变成终态的记录。
@@ -158,7 +198,63 @@ class HarmonyShareSendQueue extends ChangeNotifier {
     }
   }
 
+  /// 原生批次只有完整成功/失败，所有文件共用结果；100% 字节仍等待终态。
+  Future<void> _runNative() async {
+    if (_batchCancelled) {
+      _setBatch(ShareSendStatus.cancelled);
+      return;
+    }
+    _setBatch(ShareSendStatus.preparing);
+    final activeBatch = _batchId;
+    try {
+      await sendBatch!(items, (progress) {
+        if (!running ||
+            activeBatch != _batchId ||
+            _items.first.terminal ||
+            _batchCancelled ||
+            progress.direction != 'send' ||
+            progress.totalBytes != totalBytes ||
+            progress.bytes < _batchBytes ||
+            progress.bytes < 0 ||
+            progress.bytes > totalBytes) {
+          return;
+        }
+        _batchBytes = progress.bytes;
+        if (_items.first.status != ShareSendStatus.transferring) {
+          _setBatch(ShareSendStatus.transferring);
+        } else {
+          onBatchChanged?.call(batch);
+          notifyListeners();
+        }
+      });
+      _batchBytes = totalBytes;
+      _setBatch(ShareSendStatus.succeeded);
+    } catch (failure) {
+      _setBatch(
+        _batchCancelled ? ShareSendStatus.cancelled : ShareSendStatus.failed,
+        error: _batchCancelled ? null : '$failure',
+      );
+    }
+  }
+
+  void _setBatch(ShareSendStatus status, {String? error}) {
+    _items = [
+      for (final item in _items)
+        item.update(
+          status: status,
+          bytes: status == ShareSendStatus.succeeded ? item.file.bytes : 0,
+          error: error,
+        ),
+    ];
+    onBatchChanged?.call(batch);
+    notifyListeners();
+  }
+
   void cancel(String id) {
+    if (nativeBatch) {
+      if (_items.any((item) => item.id == id && !item.terminal)) cancelAll();
+      return;
+    }
     final index = _items.indexWhere((item) => item.id == id);
     if (index < 0 || _items[index].terminal) return;
     if (!_cancelled.add(id)) return;
@@ -170,6 +266,16 @@ class HarmonyShareSendQueue extends ChangeNotifier {
   }
 
   void cancelAll() {
+    if (nativeBatch) {
+      if (!running || _batchCancelled || _items.every((item) => item.terminal)) {
+        return;
+      }
+      _batchCancelled = true;
+      _cancelled.addAll(_items.map((item) => item.id));
+      cancelActive();
+      notifyListeners();
+      return;
+    }
     for (final item in List<ShareSendItem>.of(_items)) {
       cancel(item.id);
     }
@@ -178,6 +284,7 @@ class HarmonyShareSendQueue extends ChangeNotifier {
   void clear() {
     if (running) return;
     _items = [];
+    _batchBytes = 0;
     _cancelled.clear();
     notifyListeners();
   }

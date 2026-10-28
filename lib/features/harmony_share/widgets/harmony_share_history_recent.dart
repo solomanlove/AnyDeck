@@ -60,7 +60,7 @@ class HarmonyShareHistoryRecent extends StatelessWidget {
           for (final record in records.take(8))
             HarmonyShareRecordTile(
               record: record,
-              onDetails: () => showHarmonyShareRecordDetails(context, record, history: history, onOpen: onOpen, onFolder: onFolder),
+              onDetails: () => showHarmonyShareRecordDetails(context, record, history: history, onOpen: onOpen, onFolder: onFolder, onRetry: onRetry),
               onOpen: record.path == null || record.fileCount > 1 ? null : () => onOpen(record),
               onFolder: record.path == null ? null : () => onFolder(record),
               onRetry: record.canRetry ? () => onRetry(record) : null,

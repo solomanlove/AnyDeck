@@ -6,7 +6,8 @@ import 'harmony_share_record_tile.dart';
 import 'harmony_share_format.dart';
 
 /// 批次详情：record 为摘要，files 为打开时一次性加载的清单，不在 rebuild 重发查询。
-/// onOpen/onFolder 仅响应显式点击；用法由 showHarmonyShareRecordDetails 统一创建。
+/// onOpen/onFolder/onRetry 仅响应显式点击；onRetry 只用于可重试的发送文件。
+/// 用法由 showHarmonyShareRecordDetails 统一创建。
 class HarmonyShareBatchDetails extends StatelessWidget {
   const HarmonyShareBatchDetails({
     super.key,
@@ -14,11 +15,13 @@ class HarmonyShareBatchDetails extends StatelessWidget {
     required this.files,
     this.onOpen,
     this.onFolder,
+    this.onRetry,
   });
   final ShareTransferRecord record;
   final Future<List<ShareTransferRecord>> files;
   final Future<void> Function(ShareTransferRecord)? onOpen;
   final Future<void> Function(ShareTransferRecord)? onFolder;
+  final Future<void> Function(ShareTransferRecord)? onRetry;
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: Text(
@@ -35,6 +38,8 @@ class HarmonyShareBatchDetails extends StatelessWidget {
           Text(
             '${record.deviceName} · ${formatShareBytes(record.bytes)} · ${context.l10n.t('harmonyShareStatus_${record.status.name}')}',
           ),
+          if (record.direction == ShareTransferDirection.send)
+            Text(context.l10n.t('harmonyShareRemoteHashUnknown')),
           const SizedBox(height: 12),
           Expanded(
             child: FutureBuilder<List<ShareTransferRecord>>(
@@ -59,6 +64,9 @@ class HarmonyShareBatchDetails extends StatelessWidget {
                           showHarmonyShareRecordDetails(context, file),
                       onOpen: onOpen == null ? null : () => onOpen!(file),
                       onFolder: onFolder == null ? null : () => onFolder!(file),
+                      onRetry: onRetry == null || !file.canRetry
+                          ? null
+                          : () => onRetry!(file),
                     );
                   },
                 );

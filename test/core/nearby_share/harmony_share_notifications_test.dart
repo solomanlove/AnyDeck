@@ -241,6 +241,59 @@ void main() {
     expect(bridge.shown, isEmpty);
   });
 
+  test('原生 100 文件批次完成只通知一次，进度不提前发成功', () async {
+    final waiting = Completer<void>();
+    late void Function(ShareCoreProgress) progress;
+    final native = HarmonyShareSendQueue(
+      send: (_, _) => throw StateError('legacy not expected'),
+      sendBatch: (_, callback) {
+        progress = callback;
+        return waiting.future;
+      },
+      cancelActive: () {},
+    );
+    final coordinator = HarmonyShareNotifications(
+      service: service,
+      queue: native,
+      bridge: bridge,
+      enabled: () => true,
+      text: (key) => key == 'harmonyShareNotificationBatchSummary'
+          ? '{success}/{failed}/{cancelled}'
+          : key,
+    );
+    try {
+      final run = native.run(
+        ShareCorePeer(
+          address: InternetAddress.loopbackIPv4,
+          port: 1234,
+          name: 'peer',
+        ),
+        ShareSendSelection([
+          for (var index = 0; index < 100; index++)
+            ShareSendFile(
+              file: File('/synthetic/$index.bin'),
+              bytes: 1,
+              modified: DateTime(2026),
+            ),
+        ]),
+      );
+      await _turns();
+      progress(
+        const ShareCoreProgress(direction: 'send', bytes: 100, totalBytes: 100),
+      );
+      await _turns();
+      expect(bridge.shown, isEmpty);
+      waiting.complete();
+      await run;
+      await _turns();
+      expect(bridge.shown, hasLength(1));
+      expect(bridge.shown.single['body'], '100/0/0');
+    } finally {
+      coordinator.dispose();
+      native.dispose();
+    }
+  });
+
   test('发送多文件只汇总整批一次，并保留三种结果计数', () async {
     final waiting = Completer<void>();
     final mixed = HarmonyShareSendQueue(

@@ -216,6 +216,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('queue');
+      await tester.pumpWidget(host(Padding(padding: const EdgeInsets.all(28),
+        child: HarmonyShareQueuePanel(items: [for (var index = 0; index < 100; index++)
+          ShareSendItem(id: 'native-$index', peer: peer,
+            file: ShareSendFile(file: File('/synthetic/离线测试-$index.bin'), bytes: 10 * 1024 * 1024, modified: DateTime(2026)),
+            status: ShareSendStatus.transferring)], running: true, nativeBatch: true,
+          batchTransferredBytes: 400 * 1024 * 1024,
+          onCancel: (_) {}, onCancelAll: () {}, onClear: () {}))));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('native-send-queue');
       final history = _VisualHistory();
       await tester.pumpWidget(
         host(

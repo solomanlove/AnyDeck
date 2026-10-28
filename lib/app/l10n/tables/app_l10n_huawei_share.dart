@@ -1,5 +1,10 @@
 /// 鸿蒙互联文案；中英文 key 保持一一对应。
 const huaweiShareZh = {
+  'harmonyShareNativeBatchHint': '显示整批进度；取消作用于整批。发送完成尚不代表手机端文件 hash 已校验。',
+  'harmonyShareCancelBatch': '取消整批',
+  'harmonyShareCancellingBatch': '正在取消整批…',
+  'harmonyShareFileProgressUnknown': '没有单文件进度，仅记录整批结果',
+  'harmonyShareRemoteHashUnknown': '尚未校验接收端文件 hash',
   'harmonyShareNotificationBatchReceived': '已接收 {count} 个文件',
   'harmonyShareBatchFiles': '批次 · {count} 个文件',
   'harmonyShareBatchUnknownFiles': '尚未收到完整文件清单；数量和总大小来自来件请求。',
@@ -73,7 +78,7 @@ const huaweiShareZh = {
   'harmonyShareQueue_cancelled': '已取消',
   'harmonyShareSelectionSummary': '{count} 个文件 · 共 {size}',
   'harmonyShareMoreFiles': '另有 {count} 个文件',
-  'harmonyShareQueueConfirmHint': '文件将逐项发送，每项需要手机确认；某项失败后继续发送其余文件。',
+  'harmonyShareQueueConfirmHint': '文件将作为整批发送，手机一次确认整批；取消或失败将结束本批。',
   'harmonyShareSelectionLimit': '一次选择 1–100 个普通非空文件，每个不超过 1 GiB；暂不支持文件夹与链接。',
 
   'harmonyShareReceivingActive': '正在接收',
@@ -130,6 +135,11 @@ const huaweiShareZh = {
 };
 
 const huaweiShareEn = {
+  'harmonyShareNativeBatchHint': 'Progress and cancellation apply to the entire batch. Completion does not verify file hashes on the phone.',
+  'harmonyShareCancelBatch': 'Cancel batch',
+  'harmonyShareCancellingBatch': 'Cancelling batch…',
+  'harmonyShareFileProgressUnknown': 'No per-file progress; batch result only',
+  'harmonyShareRemoteHashUnknown': 'Receiver file hashes have not been verified',
   'harmonyShareNotificationBatchReceived': 'Received {count} files',
   'harmonyShareBatchFiles': 'Batch · {count} files',
   'harmonyShareBatchUnknownFiles': 'No complete file list is available. Count and total size came from the incoming request.',
@@ -209,7 +219,7 @@ const huaweiShareEn = {
   'harmonyShareSelectionSummary': '{count} files · {size} total',
   'harmonyShareMoreFiles': '{count} more files',
   'harmonyShareQueueConfirmHint':
-      'Files are sent one at a time, each requiring phone confirmation. A failed file does not stop the rest.',
+      'Files are sent as one batch with one phone confirmation. Cancellation or failure ends the batch.',
   'harmonyShareSelectionLimit':
       'Choose 1–100 nonempty regular files, up to 1 GiB each. Folders and links are not supported.',
 

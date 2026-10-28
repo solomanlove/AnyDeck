@@ -72,6 +72,7 @@ class HarmonyShareService extends ChangeNotifier {
   Timer? _networkTimer;
   Timer? _windowTimer;
   Future<void>? _startingWindow;
+  Future<void>? _sending;
   int _windowRevision = 0;
   int _closingWindows = 0;
   bool _refreshing = false;
@@ -90,6 +91,9 @@ class HarmonyShareService extends ChangeNotifier {
 
   late final sendQueue = HarmonyShareSendQueue(
     send: _sendOne,
+    sendBatch: _nativeBatch ? _sendNativeBatch : null,
+    onBatchQueued: history?.queuedBatch,
+    onBatchChanged: history?.sentBatchChanged,
     cancelActive: _sender.cancel,
     onQueued: history?.queued,
     onChanged: history?.sentItemChanged,
@@ -148,6 +152,7 @@ class HarmonyShareService extends ChangeNotifier {
     _sendCancelled = true;
     sendQueue.cancelAll();
     await _stopWindow();
+    await _sending;
     await history?.flush();
     notifyListeners();
   }
@@ -281,6 +286,21 @@ class HarmonyShareService extends ChangeNotifier {
     String? retryOf,
   }) async {
     if (busy) return;
+    final operation = _executeBatch(peer, prepare, retryOf: retryOf);
+    _sending = operation;
+    try {
+      await operation;
+    } finally {
+      if (_sending == operation) _sending = null;
+    }
+  }
+
+  /// 停止服务会等待本次发送清理和记录落盘，避免销毁后仍输出状态。
+  Future<void> _executeBatch(
+    ShareCorePeer peer,
+    Future<ShareSendSelection> Function() prepare, {
+    String? retryOf,
+  }) async {
     busy = true;
     _sendCancelled = false;
     error = null;
@@ -324,6 +344,26 @@ class HarmonyShareService extends ChangeNotifier {
       },
     );
     recent.insert(0, item.file.file.path);
+    if (recent.length > 50) recent.removeRange(50, recent.length);
+    unawaited(_saveRecent());
+  }
+
+  /// 一次选择对应一次原生确认与发送，终态前不生成单文件成功结果。
+  Future<void> _sendNativeBatch(
+    List<ShareSendItem> items,
+    ValueChanged<ShareCoreProgress> onProgress,
+  ) async {
+    activeFile = null;
+    progress = null;
+    await _sender.sendBatch(
+      items,
+      cancelled: () => _sendCancelled || sendQueue.cancelling,
+      onProgress: (update) {
+        progress = update;
+        onProgress(update);
+      },
+    );
+    recent.insertAll(0, items.map((item) => item.file.file.path));
     if (recent.length > 50) recent.removeRange(50, recent.length);
     unawaited(_saveRecent());
   }

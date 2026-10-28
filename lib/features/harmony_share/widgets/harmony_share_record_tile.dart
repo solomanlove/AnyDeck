@@ -101,12 +101,13 @@ Future<void> showHarmonyShareRecordDetails(
   ShareTransferHistory? history,
   Future<void> Function(ShareTransferRecord)? onOpen,
   Future<void> Function(ShareTransferRecord)? onFolder,
+  Future<void> Function(ShareTransferRecord)? onRetry,
 }) {
   Future<List<ShareTransferRecord>>? files;
   return showDialog<void>(
     context: context,
     builder: (_) => record.fileCount > 1 && history != null
-        ? HarmonyShareBatchDetails(record: record, files: files ??= history.batchFiles(record.id), onOpen: onOpen, onFolder: onFolder)
+        ? HarmonyShareBatchDetails(record: record, files: files ??= history.batchFiles(record.id), onOpen: onOpen, onFolder: onFolder, onRetry: onRetry)
         : HarmonyShareRecordDetailsDialog(record: record),
   );
 }
@@ -129,7 +130,11 @@ class HarmonyShareRecordDetailsDialog extends StatelessWidget {
               : record.fileName,
           '${record.deviceName} · ${record.address}',
           context.l10n.t('harmonyShareDirection_${record.direction.name}'),
-          '${formatShareBytes(record.transferredBytes)} / ${formatShareBytes(record.bytes)}',
+          record.batchId != null && record.direction == ShareTransferDirection.send && record.status != ShareTransferStatus.succeeded
+              ? '${formatShareBytes(record.bytes)} · ${context.l10n.t('harmonyShareFileProgressUnknown')}'
+              : '${formatShareBytes(record.transferredBytes)} / ${formatShareBytes(record.bytes)}',
+          if (record.direction == ShareTransferDirection.send)
+            context.l10n.t('harmonyShareRemoteHashUnknown'),
           context.l10n.t('harmonyShareStatus_${record.status.name}'),
           '${context.l10n.t('harmonyShareCreatedAt')}: ${record.createdAt.toLocal()}',
           if (record.completedAt != null)

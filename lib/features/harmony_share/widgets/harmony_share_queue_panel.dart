@@ -6,7 +6,8 @@ import '../../../core/nearby_share/harmony_share_send_queue.dart';
 import 'harmony_share_format.dart';
 
 /// 发送队列展示：items 为不可变行快照，取消回调按 id 操作，清除仅清除本次结果面板。
-/// 行列表限制高度并按需构建，避免最多 100 项同时撑满页面。
+/// nativeBatch 使用 batchTransferredBytes 展示真实总进度，隐藏逐文件取消和推测进度。
+/// cancelling 禁用重复取消；行列表限制高度并按需构建，避免 100 项撑满页面。
 class HarmonyShareQueuePanel extends StatelessWidget {
   const HarmonyShareQueuePanel({
     super.key,
@@ -15,17 +16,25 @@ class HarmonyShareQueuePanel extends StatelessWidget {
     required this.onCancel,
     required this.onCancelAll,
     required this.onClear,
+    this.nativeBatch = false,
+    this.batchTransferredBytes = 0,
+    this.cancelling = false,
   });
   final List<ShareSendItem> items;
   final bool running;
   final ValueChanged<String> onCancel;
   final VoidCallback onCancelAll;
   final VoidCallback onClear;
+  final bool nativeBatch;
+  final int batchTransferredBytes;
+  final bool cancelling;
 
   @override
   Widget build(BuildContext context) {
     final finished = items.where((item) => item.terminal).length;
-    final bytes = items.fold(0, (value, item) => value + item.transferredBytes);
+    final bytes = nativeBatch
+        ? batchTransferredBytes
+        : items.fold(0, (value, item) => value + item.transferredBytes);
     final total = items.fold(0, (value, item) => value + item.file.bytes);
     return Card(
       child: Padding(
@@ -42,11 +51,17 @@ class HarmonyShareQueuePanel extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: running ? onCancelAll : onClear,
+                  onPressed: cancelling
+                      ? null
+                      : (running ? onCancelAll : onClear),
                   child: Text(
                     context.l10n.t(
-                      running
-                          ? 'harmonyShareCancelAll'
+                      cancelling
+                          ? 'harmonyShareCancellingBatch'
+                          : running
+                          ? (nativeBatch
+                                ? 'harmonyShareCancelBatch'
+                                : 'harmonyShareCancelAll')
                           : 'harmonyShareClearQueue',
                     ),
                   ),
@@ -76,6 +91,14 @@ class HarmonyShareQueuePanel extends StatelessWidget {
                       '${items.where((item) => item.status == ShareSendStatus.cancelled).length}',
                     ),
                 style: Theme.of(context).textTheme.bodySmall,
+              ),
+            if (nativeBatch)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  context.l10n.t('harmonyShareNativeBatchHint'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ),
             const SizedBox(height: 8),
             LinearProgressIndicator(value: total == 0 ? 0 : bytes / total),
@@ -120,7 +143,7 @@ class HarmonyShareQueuePanel extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${item.peer.name} · ${context.l10n.t('harmonyShareQueue_${item.status.name}')} · ${formatShareBytes(item.transferredBytes)} / ${formatShareBytes(item.file.bytes)}',
+                          '${item.peer.name} · ${context.l10n.t('harmonyShareQueue_${item.status.name}')} · ${nativeBatch ? formatShareBytes(item.file.bytes) : '${formatShareBytes(item.transferredBytes)} / ${formatShareBytes(item.file.bytes)}'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -134,13 +157,14 @@ class HarmonyShareQueuePanel extends StatelessWidget {
                               style: TextStyle(color: color),
                             ),
                           ),
-                        if (item.status == ShareSendStatus.transferring)
+                        if (!nativeBatch &&
+                            item.status == ShareSendStatus.transferring)
                           LinearProgressIndicator(
                             value: item.transferredBytes / item.file.bytes,
                           ),
                       ],
                     ),
-                    trailing: item.terminal
+                    trailing: nativeBatch || item.terminal
                         ? null
                         : IconButton(
                             tooltip: context.l10n.t('harmonyShareCancelItem'),

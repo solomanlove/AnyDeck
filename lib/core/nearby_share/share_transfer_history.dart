@@ -105,6 +105,77 @@ class ShareTransferHistory extends ChangeNotifier {
     _update(record);
   }
 
+  /// 发送清单已知：先以事务保存摘要/子文件；不会将总进度分摊到文件。
+  Future<void> queuedBatch(ShareSendBatch batch) async {
+    await initialize();
+    final now = DateTime.now();
+    final first = batch.items.first;
+    final summary = ShareTransferRecord(
+      id: 'send-${batch.id}',
+      direction: ShareTransferDirection.send,
+      status: ShareTransferStatus.queued,
+      deviceName: first.peer.name,
+      address: first.peer.address.address,
+      port: first.peer.port,
+      fileName: batch.items.length == 1 ? first.file.name : '',
+      path: batch.items.length == 1 ? first.file.file.path : null,
+      bytes: batch.bytes,
+      fileCount: batch.items.length,
+      createdAt: now,
+      retryOf: first.retryOf,
+    );
+    _remember(summary);
+    await _save(_sentBatchRecords(summary, batch));
+  }
+
+  void sentBatchChanged(ShareSendBatch batch) {
+    final previous = _cache['send-${batch.id}'];
+    if (previous == null || previous.terminal) return;
+    final next = previous.update(
+      status: ShareTransferStatus.values.byName(batch.status.name),
+      transferredBytes: batch.transferredBytes,
+      completedAt: batch.items.first.terminal ? DateTime.now() : null,
+      error: batch.items.first.error,
+    );
+    final checkpoint = _checkpoints[next.id];
+    final persist =
+        next.terminal ||
+        next.status != previous.status ||
+        checkpoint == null ||
+        DateTime.now().difference(checkpoint).inSeconds >= 1;
+    _remember(next);
+    if (persist) {
+      _checkpoints[next.id] = DateTime.now();
+      unawaited(_save(_sentBatchRecords(next, batch)));
+    }
+  }
+
+  List<ShareTransferRecord> _sentBatchRecords(
+    ShareTransferRecord summary,
+    ShareSendBatch batch,
+  ) => [
+    summary,
+    if (batch.items.length > 1)
+      for (final item in batch.items)
+        ShareTransferRecord(
+          id: 'send-${item.id}',
+          batchId: summary.id,
+          direction: ShareTransferDirection.send,
+          status: summary.status,
+          deviceName: summary.deviceName,
+          address: summary.address,
+          port: summary.port,
+          fileName: item.file.name,
+          path: item.file.file.path,
+          bytes: item.file.bytes,
+          transferredBytes: item.transferredBytes,
+          error: item.error,
+          createdAt: summary.createdAt,
+          completedAt: summary.completedAt,
+          retryOf: item.retryOf,
+        ),
+  ];
+
   /// 来件尚无文件名时只保存已知的设备与字节数，不生成假文件清单。
   String incoming({
     required String address,

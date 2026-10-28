@@ -354,6 +354,9 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                   HarmonyShareQueuePanel(
                     items: _service.sendQueue.items,
                     running: _service.sendQueue.running,
+                    nativeBatch: _service.sendQueue.nativeBatch,
+                    batchTransferredBytes: _service.sendQueue.transferredBytes,
+                    cancelling: _service.sendQueue.cancelling,
                     onCancel: _service.sendQueue.cancel,
                     onCancelAll: _service.cancelTransfer,
                     onClear: _service.sendQueue.clear,
