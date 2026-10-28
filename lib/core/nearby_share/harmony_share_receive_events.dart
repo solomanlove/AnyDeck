@@ -65,14 +65,21 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
             count <= ShareBatchContract.maxFiles &&
             bytes >= count &&
             bytes <= count * ShareCoreContract.maxFileBytes) {
-          pendingOffer = ShareIncomingOffer(address, bytes, fileCount: count);
-          _batchOffer = pendingOffer;
-          _incomingHistoryId = history?.incoming(
-            address: address.address,
-            name: peers[address.address]?.name ?? address.address,
-            bytes: bytes,
-            fileCount: count,
-          );
+          try {
+            // 先预留记录清单容量，存储积压时在用户接受之前拒绝新来件。
+            _incomingHistoryId = history?.incoming(
+              address: address.address,
+              name: peers[address.address]?.name ?? address.address,
+              bytes: bytes,
+              fileCount: count,
+            );
+            pendingOffer = ShareIncomingOffer(address, bytes, fileCount: count);
+            _batchOffer = pendingOffer;
+          } catch (failure) {
+            error = '$failure';
+            pendingOffer = null;
+            receiver.decide(false);
+          }
           _changed();
         } else {
           receiver.decide(false);

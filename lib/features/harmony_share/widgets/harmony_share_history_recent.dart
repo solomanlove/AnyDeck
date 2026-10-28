@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../core/nearby_share/share_transfer_record.dart';
 import 'harmony_share_record_tile.dart';
+import 'harmony_share_storage_warning.dart';
 import '../../../core/nearby_share/share_transfer_history.dart';
 
 /// 首页最近完整任务摘要；records 最多展示 8 条，storageError 控制存储异常提示。
@@ -47,7 +48,9 @@ class HarmonyShareHistoryRecent extends StatelessWidget {
               ),
             ],
           ),
-          if (storageError)
+          if (storageError && history != null)
+            HarmonyShareStorageWarning(onRetry: history!.retryPending)
+          else if (storageError)
             Text(
               context.l10n.t('harmonyShareHistoryError'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),

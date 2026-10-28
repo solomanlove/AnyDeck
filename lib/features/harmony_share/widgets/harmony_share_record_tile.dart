@@ -140,7 +140,7 @@ class HarmonyShareRecordDetailsDialog extends StatelessWidget {
           if (record.completedAt != null)
             '${context.l10n.t('harmonyShareCompletedAt')}: ${record.completedAt!.toLocal()}',
           if (record.path != null) record.path!,
-          if (record.error != null) record.error!,
+          if (record.error != null) formatShareError(record.error!, context.l10n.t),
           if (record.sha256 != null)
             '${context.l10n.t('harmonyShareLocalHash')}: ${record.sha256}',
         ].join('\n\n'),

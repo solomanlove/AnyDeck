@@ -149,9 +149,9 @@ class HarmonyShareQueuePanel extends StatelessWidget {
                         ),
                         if (item.error != null)
                           Tooltip(
-                            message: item.error!,
+                            message: formatShareError(item.error!, context.l10n.t),
                             child: Text(
-                              item.error!,
+                              formatShareError(item.error!, context.l10n.t),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: color),

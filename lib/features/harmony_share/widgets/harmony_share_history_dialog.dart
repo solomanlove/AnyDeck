@@ -6,6 +6,7 @@ import '../../../app/l10n/app_localizations.dart';
 import '../../../core/nearby_share/share_transfer_history.dart';
 import '../../../core/nearby_share/share_transfer_record.dart';
 import 'harmony_share_record_tile.dart';
+import 'harmony_share_storage_warning.dart';
 
 /// history 提供持久化分页；onOpen/onFolder/onRetry 交由上层执行路径操作或重试确认。
 /// legacyPaths 仅兼容旧路径缓存，不补造方向和时间；删除按钮只删除记录。
@@ -38,6 +39,7 @@ class _HarmonyShareHistoryDialogState extends State<HarmonyShareHistoryDialog> {
   bool _more = true;
   bool _changed = false;
   bool _failed = false;
+  bool _storageFailed = false;
   int _revision = 0;
 
   @override
@@ -48,7 +50,13 @@ class _HarmonyShareHistoryDialogState extends State<HarmonyShareHistoryDialog> {
   }
 
   void _historyChanged() {
-    if (mounted && !_changed) setState(() => _changed = true);
+    final storageFailed = widget.history.error != null;
+    if (mounted && (!_changed || storageFailed != _storageFailed)) {
+      setState(() {
+        _changed = true;
+        _storageFailed = storageFailed;
+      });
+    }
   }
 
   @override
@@ -189,23 +197,19 @@ class _HarmonyShareHistoryDialogState extends State<HarmonyShareHistoryDialog> {
               child: Text(context.l10n.t('harmonyShareHistoryUpdated')),
             ),
           if (_loading) const LinearProgressIndicator(),
-          if (_failed && _records.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                context.l10n.t('harmonyShareHistoryError'),
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
+          if (_failed || widget.history.error != null)
+            HarmonyShareStorageWarning(onRetry: () async {
+              final recovered = await widget.history.retryPending();
+              if (recovered && mounted) await _load();
+              return recovered;
+            }),
           const SizedBox(height: 8),
           Expanded(
             child: _records.isEmpty && !_loading
                 ? Center(
                     child: Text(
                       context.l10n.t(
-                        _failed
-                            ? 'harmonyShareHistoryError'
-                            : 'harmonyShareNoRecent',
+                        _failed ? 'harmonyShareHistoryUnavailable' : 'harmonyShareNoRecent',
                       ),
                     ),
                   )

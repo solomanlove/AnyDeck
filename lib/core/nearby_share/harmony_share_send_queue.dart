@@ -191,6 +191,26 @@ class HarmonyShareSendQueue extends ChangeNotifier {
           );
         }
       }
+    } catch (failure) {
+      // 记录缓冲区满时在网络启动前结束本任务；不保留假排队状态。
+      if (nativeBatch) {
+        _setBatch(
+          _batchCancelled ? ShareSendStatus.cancelled : ShareSendStatus.failed,
+          error: '$failure',
+        );
+      } else {
+        for (var index = 0; index < _items.length; index++) {
+          if (!_items[index].terminal) {
+            _set(
+              index,
+              _items[index].update(
+                status: ShareSendStatus.failed,
+                error: '$failure',
+              ),
+            );
+          }
+        }
+      }
     } finally {
       _current = null;
       running = false;

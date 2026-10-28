@@ -321,7 +321,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              _service.error!,
+                              formatShareError(_service.error!, context.l10n.t),
                               style: TextStyle(color: colors.error),
                             ),
                           ),

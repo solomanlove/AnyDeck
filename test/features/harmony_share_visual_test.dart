@@ -16,6 +16,7 @@ import 'package:any_deck/features/harmony_share/widgets/harmony_share_panels.dar
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_settings_panel.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_batch_details.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_storage_warning.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -226,6 +227,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('native-send-queue');
+      await tester.pumpWidget(host(Center(child: SizedBox(width: 480,
+        child: Card(child: Padding(padding: const EdgeInsets.all(20),
+          child: HarmonyShareStorageWarning(onRetry: () async => false)))))));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('storage-warning');
       final history = _VisualHistory();
       await tester.pumpWidget(
         host(

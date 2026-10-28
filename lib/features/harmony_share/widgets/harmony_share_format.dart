@@ -9,3 +9,7 @@ String formatShareBytes(int bytes) {
   }
   return '${unit == 0 ? bytes : value.toStringAsFixed(1)} ${units[unit]}';
 }
+
+/// 已知业务错误映射双语提示，其他原生诊断保持原文便于排查。
+String formatShareError(String error, String Function(String) text) =>
+    error == 'history_buffer_full' ? text('harmonyShareHistoryBufferFull') : error;

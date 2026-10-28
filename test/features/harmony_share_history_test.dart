@@ -52,6 +52,24 @@ class _FailHistory extends ShareTransferHistory {
   }) async => throw StateError('storage unavailable');
 }
 
+class _RecoverHistory extends _History {
+  String? failure;
+  int retries = 0;
+  @override
+  String? get error => failure;
+  void changed(String? error) {
+    failure = error;
+    notifyListeners();
+  }
+
+  @override
+  Future<bool> retryPending() async {
+    retries++;
+    changed(null);
+    return true;
+  }
+}
+
 void main() {
   Widget host(
     Widget child, {
@@ -157,9 +175,37 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('还没有传输记录'), findsNothing);
-    expect(find.text('记录暂时无法读取或保存，请稍后重试。文件传输可继续。'), findsOneWidget);
+    expect(find.text('记录读取或保存失败，请恢复存储后重试。待保存记录仅保留在本次运行中。'), findsOneWidget);
     history.dispose();
   });
+  testWidgets('记录已变化后仍即时刷新保存错误，显式重试后恢复列表', (tester) async {
+    final history = _RecoverHistory();
+    await tester.pumpWidget(
+      host(
+        HarmonyShareHistoryDialog(
+          history: history,
+          onOpen: (_) async {},
+          onFolder: (_) async {},
+          onRetry: (_) async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    history.changed(null);
+    await tester.pump();
+    history.changed('synthetic storage fault');
+    await tester.pump();
+    expect(find.text('重试记录存储'), findsOneWidget);
+    expect(history.retries, 0);
+    await tester.tap(find.text('重试记录存储'));
+    await tester.pumpAndSettle();
+    expect(history.retries, 1);
+    expect(find.text('重试记录存储'), findsNothing);
+    expect(find.text('synthetic.bin'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    history.dispose();
+  });
+
   testWidgets('重试由明确点击触发，保留原记录', (tester) async {
     final history = _History();
     ShareTransferRecord? retried;

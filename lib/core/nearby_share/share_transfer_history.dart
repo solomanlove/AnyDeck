@@ -6,11 +6,15 @@ import 'harmony_share_send_queue.dart';
 import 'share_history_database.dart';
 import 'share_transfer_record.dart';
 import 'share_batch_contract.dart';
+import 'share_history_writer.dart';
 
 /// 主窗口唯一记录协调器：小型内存摘要 + 串行持久化，进度最多每秒落盘一次。
 class ShareTransferHistory extends ChangeNotifier {
-  ShareTransferHistory({Future<ShareHistoryDatabase> Function()? open})
-    : _open = open ?? ShareHistoryDatabase.openDefault;
+  ShareTransferHistory({
+    Future<ShareHistoryDatabase> Function()? open,
+    int maxPendingRecords = 1024,
+  }) : _maxPendingRecords = maxPendingRecords,
+       _open = open ?? ShareHistoryDatabase.openDefault;
   final Future<ShareHistoryDatabase> Function() _open;
   final Map<String, ShareTransferRecord> _cache = {};
   final _changes = StreamController<ShareTransferRecord>.broadcast();
@@ -19,9 +23,18 @@ class ShareTransferHistory extends ChangeNotifier {
   final Map<String, DateTime> _checkpoints = {};
   ShareHistoryDatabase? _database;
   Future<void>? _initializing;
-  Future<void> _writes = Future.value();
+  final int _maxPendingRecords;
+  bool _disposed = false;
+  late final _writer = ShareHistoryWriter(
+    maxRecords: _maxPendingRecords,
+    persist: _persist,
+    changed: () {
+      if (!_disposed) notifyListeners();
+    },
+  );
   bool initialized = false;
-  String? error;
+  String? _loadError;
+  String? get error => _loadError ?? _writer.error;
   int _sequence = 0;
 
   List<ShareTransferRecord> get recent =>
@@ -54,11 +67,11 @@ class ShareTransferHistory extends ChangeNotifier {
         _cache.putIfAbsent(record.id, () => record);
       }
       initialized = true;
-      error = null;
+      _loadError = null;
     } catch (failure) {
-      error = '$failure';
+      _loadError = '$failure';
     }
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
   Future<void> queued(List<ShareSendItem> items) async {
@@ -80,10 +93,11 @@ class ShareTransferHistory extends ChangeNotifier {
           retryOf: item.retryOf,
         ),
     ];
+    final saving = _save(records);
     for (final record in records) {
       _remember(record);
     }
-    await _save(records);
+    await saving;
   }
 
   void sentItemChanged(ShareSendItem item) {
@@ -124,8 +138,9 @@ class ShareTransferHistory extends ChangeNotifier {
       createdAt: now,
       retryOf: first.retryOf,
     );
+    final saving = _save(_sentBatchRecords(summary, batch));
     _remember(summary);
-    await _save(_sentBatchRecords(summary, batch));
+    await saving;
   }
 
   void sentBatchChanged(ShareSendBatch batch) {
@@ -196,8 +211,9 @@ class ShareTransferHistory extends ChangeNotifier {
       bytes: bytes,
       createdAt: DateTime.now(),
     );
+    final saving = _save([record]);
     _remember(record);
-    unawaited(_save([record]));
+    unawaited(saving);
     return id;
   }
 
@@ -254,14 +270,15 @@ class ShareTransferHistory extends ChangeNotifier {
           sha256: files[index]['sha256'] as String, batchId: previous.id,
           createdAt: previous.createdAt, completedAt: now),
     ];
+    final saving = _save(records);
     _remember(summary);
-    unawaited(_save(records));
+    unawaited(saving);
     return true;
   }
 
   Future<List<ShareTransferRecord>> batchFiles(String id) async {
     await initialize(); await flush();
-    if (_database == null) throw StateError(error ?? 'History unavailable');
+    if (_database == null || error != null) throw StateError(error ?? 'History unavailable');
     return _database!.batchFiles(id);
   }
 
@@ -299,26 +316,29 @@ class ShareTransferHistory extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _save(List<ShareTransferRecord> records) {
-    final operation = _writes.then((_) async {
-      try {
-        if (_database == null) await initialize();
-        if (_database == null) throw StateError('History storage unavailable');
-        await _database!.save(records);
-        error = null;
-      } catch (failure) {
-        error = '$failure';
-      }
-      notifyListeners();
-    });
-    _writes = operation;
-    return operation;
+  Future<void> _save(List<ShareTransferRecord> records) => _writer.save(records);
+
+  Future<void> _persist(List<ShareTransferRecord> records) async {
+    if (_database == null) await initialize();
+    if (_database == null) {
+      throw StateError(_loadError ?? 'History storage unavailable');
+    }
+    await _database!.save(records);
   }
 
-  Future<void> flush() => _writes;
+  Future<void> flush() => _writer.flush();
+
+  /// 手动恢复仅补写元数据，不重发文件或重放传输结果通知。
+  Future<bool> retryPending() async {
+    await initialize();
+    await flush();
+    return error == null;
+  }
 
   @override
   void dispose() {
+    _disposed = true;
+    _writer.dispose();
     unawaited(_changes.close());
     super.dispose();
   }
@@ -330,7 +350,7 @@ class ShareTransferHistory extends ChangeNotifier {
   }) async {
     await initialize();
     await flush();
-    if (_database == null) {
+    if (_database == null || error != null) {
       throw StateError(error ?? 'History storage unavailable');
     }
     return _database!.query(
@@ -344,7 +364,7 @@ class ShareTransferHistory extends ChangeNotifier {
     if (!record.terminal) return;
     await flush();
     if (_database == null) await initialize();
-    if (_database == null) {
+    if (_database == null || error != null) {
       throw StateError(error ?? 'History storage unavailable');
     }
     await _database!.remove(record.id);

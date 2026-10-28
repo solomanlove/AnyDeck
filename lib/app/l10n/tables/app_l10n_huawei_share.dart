@@ -1,5 +1,9 @@
 /// 鸿蒙互联文案；中英文 key 保持一一对应。
 const huaweiShareZh = {
+  'harmonyShareHistoryBufferFull': '待保存记录已达上限，请先恢复记录存储，再开始新传输。',
+  'harmonyShareRetryStorage': '重试记录存储',
+  'harmonyShareRetryingStorage': '正在重试记录…',
+  'harmonyShareHistoryUnavailable': '记录暂不可用',
   'harmonyShareNativeBatchHint': '显示整批进度；取消作用于整批。发送完成尚不代表手机端文件 hash 已校验。',
   'harmonyShareCancelBatch': '取消整批',
   'harmonyShareCancellingBatch': '正在取消整批…',
@@ -48,7 +52,7 @@ const huaweiShareZh = {
   'harmonyShareHistoryRefresh': '刷新记录',
   'harmonyShareHistorySearch': '搜索文件名或设备名',
   'harmonyShareHistoryUpdated': '记录有更新，点击刷新',
-  'harmonyShareHistoryError': '记录暂时无法读取或保存，请稍后重试。文件传输可继续。',
+  'harmonyShareHistoryError': '记录读取或保存失败，请恢复存储后重试。待保存记录仅保留在本次运行中。',
   'harmonyShareHistoryMore': '加载更多记录',
   'harmonyShareLegacyPaths': '路径快捷列表（旧版兼容）',
   'harmonyShareOpenError': '无法打开文件或文件夹，请检查路径与访问权限。',
@@ -135,6 +139,10 @@ const huaweiShareZh = {
 };
 
 const huaweiShareEn = {
+  'harmonyShareHistoryBufferFull': 'Unsaved history is at its limit. Restore history storage before starting another transfer.',
+  'harmonyShareRetryStorage': 'Retry history storage',
+  'harmonyShareRetryingStorage': 'Retrying history…',
+  'harmonyShareHistoryUnavailable': 'History unavailable',
   'harmonyShareNativeBatchHint': 'Progress and cancellation apply to the entire batch. Completion does not verify file hashes on the phone.',
   'harmonyShareCancelBatch': 'Cancel batch',
   'harmonyShareCancellingBatch': 'Cancelling batch…',
@@ -185,7 +193,7 @@ const huaweiShareEn = {
   'harmonyShareHistorySearch': 'Search files or devices',
   'harmonyShareHistoryUpdated': 'History changed. Click to refresh.',
   'harmonyShareHistoryError':
-      'History could not be read or saved. Try again later. File transfers can continue.',
+      'History could not be read or saved. Restore storage and retry. Unsaved records are kept only for this app session.',
   'harmonyShareHistoryMore': 'Load more records',
   'harmonyShareLegacyPaths': 'Path shortcuts (legacy)',
   'harmonyShareOpenError':
