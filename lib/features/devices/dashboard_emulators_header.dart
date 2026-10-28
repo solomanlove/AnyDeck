@@ -15,7 +15,6 @@ class _EmulatorPanelHeader extends StatelessWidget {
     required this.onDelete,
     required this.onOpenFolder,
     required this.onRefresh,
-    this.onPopOut,
     this.onStop,
   });
 
@@ -58,9 +57,6 @@ class _EmulatorPanelHeader extends StatelessWidget {
   /// 刷新模拟器列表的回调
   final VoidCallback onRefresh;
 
-  /// 独立窗口显示的回调
-  final VoidCallback? onPopOut;
-
   @override
   Widget build(BuildContext context) {
     // 构建标题区域，点击可折叠/展开面板
@@ -99,7 +95,6 @@ class _EmulatorPanelHeader extends StatelessWidget {
       onDelete: onDelete,
       onOpenFolder: onOpenFolder,
       onRefresh: onRefresh,
-      onPopOut: onPopOut,
     );
 
     // 如果面板未展开，只显示标题和工具栏
@@ -146,7 +141,6 @@ class _EmulatorToolbar extends StatelessWidget {
     required this.onDelete,
     required this.onOpenFolder,
     required this.onRefresh,
-    this.onPopOut,
     this.onColdBoot,
     this.onStop,
   });
@@ -156,7 +150,6 @@ class _EmulatorToolbar extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onOpenFolder;
   final VoidCallback onRefresh;
-  final VoidCallback? onPopOut;
   final VoidCallback? onColdBoot;
   final VoidCallback? onStop;
 
@@ -189,12 +182,6 @@ class _EmulatorToolbar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           ),
         ),
-        if (onPopOut != null)
-          IconButton(
-            tooltip: context.l10n.t('emulatorPopOut'),
-            onPressed: onPopOut,
-            icon: const Icon(Icons.open_in_new, size: 20),
-          ),
         IconButton(
           tooltip: context.l10n.t('refresh'),
           onPressed: onRefresh,

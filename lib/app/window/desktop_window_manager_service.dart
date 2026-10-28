@@ -101,7 +101,6 @@ class DesktopWindowManagerService {
       // macOS 状态栏退出项显示快捷键备注 (⌘Q)
       final rawExitLabel = localizedValues[langCode]?['trayExit'] ?? (langCode == 'en' ? 'Exit' : '退出');
       final exitLabel = Platform.isMacOS ? '$rawExitLabel (⌘Q)' : rawExitLabel;
-      final emulatorsLabel = langCode == 'en' ? 'Emulator Manager Window' : '模拟器管理窗口';
       final consoleLabel = langCode == 'en' ? 'Console Window' : '控制台窗口';
       final mcpToggleLabel = _isMcpRunning
           ? (langCode == 'en' ? 'Stop MCP Service' : '停止 MCP 服务')
@@ -109,7 +108,6 @@ class DesktopWindowManagerService {
 
       final menuItems = [
         MenuItem(key: 'show_window', label: showLabel),
-        MenuItem(key: 'open_emulators', label: emulatorsLabel),
         MenuItem(key: 'open_console', label: consoleLabel),
         MenuItem.separator(),
         MenuItem(key: 'toggle_mcp', label: mcpToggleLabel),
@@ -154,20 +152,6 @@ class _AppTrayListener extends TrayListener {
     if (menuItem.key == 'show_window') {
       await windowManager.show();
       await windowManager.focus();
-    } else if (menuItem.key == 'open_emulators') {
-      String langCode = 'zh';
-      try {
-        final preferences = await SharedPreferences.getInstance();
-        final savedCode = preferences.getString('settings.language');
-        if (savedCode == 'en' || savedCode == 'zh') {
-          langCode = savedCode!;
-        }
-      } catch (_) {}
-      await createAdbManageWindow(
-        arguments: const {'type': 'emulator_manager'},
-        frame: const Offset(100, 100) & const Size(900, 600),
-        title: langCode == 'en' ? 'Emulators' : '模拟器管理',
-      );
     } else if (menuItem.key == 'open_console') {
       String langCode = 'zh';
       try {

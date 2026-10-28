@@ -17,6 +17,10 @@ void main() {
         DashboardRouteState.fromUri(Uri.parse('/emulators')).kind,
         DashboardRouteKind.emulators,
       );
+      final versions = DashboardRouteState.fromUri(Uri.parse('/system-versions'));
+      expect(versions.kind, DashboardRouteKind.systemVersions);
+      expect(versions.tabIndex, -5);
+      expect(versions.isGlobal, isTrue);
       expect(
         DashboardRouteState.fromUri(Uri.parse('/settings')).kind,
         DashboardRouteKind.settings,
@@ -64,6 +68,7 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/devices');
     expect(router.namedLocation(AppRouteNames.receivers), '/receivers');
+    expect(router.namedLocation(AppRouteNames.systemVersions), '/system-versions');
     expect(router.namedLocation(AppRouteNames.harmonyShare), '/harmony-share');
     expect(
       router.namedLocation(

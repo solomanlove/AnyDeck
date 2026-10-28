@@ -83,3 +83,7 @@ flutter analyze --no-pub lib/core/logging lib/main.dart lib/app/window/console/c
 2026-10-21 Toolbar 视觉统一定向验证：`test/console_diagnostics_test.dart` 共 6 项测试通过，`console_window_panel.dart`、`local_log_capture_button.dart` 与对应测试 targeted analyze 通过；按项目规则未启动桌面 App，Light/Dark 原生窗口视觉仍需人工验收。
 
 2026-10-27 标题区定向验证：`console_diagnostics_test.dart` 覆盖 compact 标题区宽度、完整英文副标题及无省略号配置；定向 Widget test、targeted analyze 与 whitespace check 通过。按项目规则未运行 App，真实窗口 DPI 下的视觉效果仍需人工验收。
+
+## 2026-10-28 主窗口底部面板
+
+控制台入口移动到左侧底部、设置上方；打开可调整高度的底部日志面板，不改变当前 Route 或设备。底部与独立控制台复用同一日志组件和工具按钮，独立开窗成功后收起面板，失败保留日志。关闭面板不停止 LogService。详情和验证见 `adb-main-window-navigation.md`。

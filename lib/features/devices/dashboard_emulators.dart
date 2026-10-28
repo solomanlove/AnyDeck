@@ -1,30 +1,12 @@
 part of '../dashboard_screen.dart';
 
 /// 模拟器列表面板组件。
-/// 用于管理和启动 Android 模拟器，支持以普通卡片组件嵌入主界面，或以独立子窗口形式运行。
+/// 用于管理和启动 Android 模拟器，支持完整管理页和可折叠卡片两种主窗口布局。
 class EmulatorListPanel extends ConsumerStatefulWidget {
-  const EmulatorListPanel({super.key, this.isStandalone = false, this.isEmbeddedTab = false});
+  const EmulatorListPanel({super.key, this.isFullPage = false});
 
-  /// 是否作为独立窗口运行
-  final bool isStandalone;
-
-  /// 主窗口 Tab 已有系统窗口按钮，不预留独立窗口的交通灯区域。
-  final bool isEmbeddedTab;
-
-  /// 打开模拟器管理器的独立窗口。
-  static Future<void> openStandaloneWindow(BuildContext context) async {
-    final title = context.l10n.t('emulators');
-    try {
-      // 创建一个新的类型为 'emulator_manager' 的子窗口
-      await createAdbManageWindow(
-        arguments: {'type': 'emulator_manager'},
-        frame: const Offset(100, 100) & const Size(900, 600),
-        title: title,
-      );
-    } catch (e) {
-      debugPrint('Failed to open multi-window: $e');
-    }
-  }
+  /// 是否使用包含平台切换和工具栏的完整管理页。
+  final bool isFullPage;
 
   @override
   ConsumerState<EmulatorListPanel> createState() => EmulatorListPanelState();
@@ -91,8 +73,8 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
 
   @override
   Widget build(BuildContext context) {
-    // 独立窗口默认展开，主界面中则根据用户的折叠状态决定
-    final isExpanded = widget.isStandalone
+    // 完整管理页始终展开，卡片布局保留用户的折叠状态
+    final isExpanded = widget.isFullPage
         ? true
         : ref.watch(_emulatorListExpandedProvider);
     // 监听模拟器列表异步状态
@@ -170,11 +152,10 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
 
         final layoutWidget = contentWidget;
 
-        // 主窗口 Tab 与独立窗口复用完整页面布局。
-        if (widget.isStandalone) {
-          return _EmulatorStandaloneLayout(
+        // 主窗口中的完整模拟器管理页。
+        if (widget.isFullPage) {
+          return _EmulatorPageLayout(
             layoutWidget: layoutWidget,
-            isEmbeddedTab: widget.isEmbeddedTab,
             filterController: _filterController,
             onFilterChanged: (value) => setState(() => _filter = value),
             toolbar: _EmulatorToolbar(
@@ -198,7 +179,6 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
                   ? () => _openAvdFolder(context, selectedItem.emulator)
                   : null,
               onRefresh: _refreshEmulators,
-              onPopOut: widget.isEmbeddedTab ? _popOutWindow : null,
             ),
           );
         }
@@ -251,7 +231,6 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
                         ? () => _openAvdFolder(context, selectedItem.emulator)
                         : null,
                     onRefresh: _refreshEmulators,
-                    onPopOut: _popOutWindow,
                   ),
                   if (isExpanded) ...[
                     const SizedBox(height: 12),
@@ -362,14 +341,6 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   void _refreshEmulators() {
     ref.invalidate(emulatorListProvider);
     ref.invalidate(emulatorConnectionsProvider);
-  }
-
-  /// 弹出独立窗口展示列表，同时折叠主界面的面板
-  Future<void> _popOutWindow() async {
-    await EmulatorListPanel.openStandaloneWindow(context);
-    if (ref.read(_emulatorListExpandedProvider)) {
-      ref.read(_emulatorListExpandedProvider.notifier).toggle();
-    }
   }
 
   /// 异步执行启动模拟器操作

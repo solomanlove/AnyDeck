@@ -209,7 +209,6 @@ Future<void> configureCurrentAdbManageSubWindow(
     await windowManager.ensureInitialized();
 
     if (arguments['type'] == 'mirror' ||
-        arguments['type'] == 'emulator_manager' ||
         arguments['type'] == 'console' ||
         arguments['type'] == 'version_distribution' ||
         arguments['type'] == 'apk_details') {

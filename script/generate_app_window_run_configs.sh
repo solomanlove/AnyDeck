@@ -17,7 +17,6 @@ show_usage() {
   echo "  -h, --help                 显示此帮助并退出。"
   echo ""
   echo "生成内容:"
-  echo "模拟器子窗口 -> type=emulator_manager"
   echo "控制台子窗口 -> type=console"
   echo "投屏子窗口 -> type=mirror，按 adb devices -l 中在线设备逐台生成"
   echo "=========================================="
@@ -98,15 +97,6 @@ output_dir = sys.argv[1]
 mirror_devices = sys.argv[2:]
 
 configs = [
-    {
-        "file": "emulator_window.xml",
-        "name": "模拟器子窗口",
-        "window_id": "debug_emulator_window",
-        "params": {
-            "type": "emulator_manager",
-            "_windowTitle": "模拟器管理",
-        },
-    },
     {
         "file": "console_window.xml",
         "name": "控制台子窗口",

@@ -8,8 +8,7 @@
 
 | 文件 | IDE 显示名称 | 子窗口参数 |
 | --- | --- | --- |
-| `.idea/runConfigurations/debug_emulator_window.xml` | `模拟器子窗口` | `type=emulator_manager` |
-| `.idea/runConfigurations/debug_console_window.xml` | `控制台子窗口` | `type=console` |
+| `.idea/runConfigurations/console_window.xml` | `控制台子窗口` | `type=console` |
 | `.idea/runConfigurations/mirror_window_<serial>.xml` | `投屏子窗口 - <deviceName>` | `type=mirror&deviceId=<serial>` |
 
 ## 参数机制
@@ -22,9 +21,9 @@
 --dart-entrypoint-args type=<sub_window_type>
 ```
 
-`lib/main.dart` 会把非 `mirror`、非 `console` 的类型交给 `EmulatorManagerWindowApp`，但模拟器管理窗口的业务类型应保持为 `emulator_manager`，与主窗口菜单和 `createAdbManageWindow()` 的参数一致。
+`lib/main.dart` 按明确的子窗口类型分发。独立模拟器管理窗口已移除，未知类型不再回退到管理页。
 
-投屏配置会为每台在线设备生成一个独立入口；如果没有在线设备，脚本仍会生成模拟器管理窗口和控制台窗口配置，并跳过投屏配置。
+投屏配置会为每台在线设备生成一个独立入口；如果没有在线设备，脚本仍会生成控制台窗口配置，并跳过投屏配置。
 
 ## 使用方式
 

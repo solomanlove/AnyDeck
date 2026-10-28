@@ -149,9 +149,11 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
+        // 版本徽章在窄内容区和英文下换行，避免占比说明挤出右侧边界。
+        Wrap(
+          spacing: 14,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             // 大号代号
             Text(
@@ -163,7 +165,6 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
                 letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(width: 14),
             // Android 版本与 API 级别胶囊
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -182,7 +183,6 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
               ),
             ),
             if (item.cumulativeDistributionText.isNotEmpty) ...[
-              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(

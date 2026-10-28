@@ -11,7 +11,6 @@
 | --- | --- | --- | --- |
 | 主窗口 | `DashboardScreen` | `Command + W` | 触发 `windowManager.close()`，由主窗口 close listener 隐藏到托盘 |
 | 控制台窗口 | `ConsoleWindowApp` | `Command + W` | 关闭当前控制台子窗口 |
-| 模拟器管理窗口 | `EmulatorManagerWindowApp` | `Command + W` | 关闭当前模拟器管理子窗口 |
 | 投屏窗口 | `MirrorWindowApp` | `Command + W` | 关闭当前投屏子窗口，仅拦截本地窗口关闭组合键 |
 | 应用级退出 | `DashboardScreen` | 连按两次 `Command + Q` | 第一次显示顶部提示并取消退出，2 秒内第二次按下才退出应用 |
 | Dock 退出 | macOS `NSApplication` | Dock 图标右键 → 退出 | 使用系统标准退出流程，单次点击立即退出应用 |

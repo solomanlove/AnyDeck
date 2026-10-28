@@ -52,6 +52,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SizedBox.shrink(),
           ),
           GoRoute(
+            path: '/system-versions',
+            name: AppRouteNames.systemVersions,
+            builder: (context, state) => const SizedBox.shrink(),
+          ),
+          GoRoute(
             path: '/settings',
             name: AppRouteNames.settings,
             builder: (context, state) => const SizedBox.shrink(),
@@ -100,6 +105,7 @@ String _initialLocation(Ref ref) {
   if (tabIndex == -2) return '/emulators';
   if (tabIndex == -3) return '/receivers';
   if (tabIndex == -4) return '/harmony-share';
+  if (tabIndex == -5) return '/system-versions';
   if (tabIndex == 12) return '/settings';
   if (tabIndex == 13) return '/wan-android';
   if (tabIndex == 14) return '/mcp';

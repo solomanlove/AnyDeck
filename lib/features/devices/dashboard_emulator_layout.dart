@@ -1,27 +1,25 @@
 part of '../dashboard_screen.dart';
 
 /// 模拟器页标题、分平台 Tab 切换（Android AVD、DevEco Emulator、Xcode Simulator）与操作栏。
-class _EmulatorStandaloneLayout extends StatefulWidget {
-  const _EmulatorStandaloneLayout({
+class _EmulatorPageLayout extends StatefulWidget {
+  const _EmulatorPageLayout({
     required this.layoutWidget,
     required this.toolbar,
-    required this.isEmbeddedTab,
     required this.filterController,
     required this.onFilterChanged,
   });
 
   final Widget layoutWidget;
   final Widget toolbar;
-  final bool isEmbeddedTab;
   final TextEditingController filterController;
   final ValueChanged<String> onFilterChanged;
 
   @override
-  State<_EmulatorStandaloneLayout> createState() =>
-      _EmulatorStandaloneLayoutState();
+  State<_EmulatorPageLayout> createState() =>
+      _EmulatorPageLayoutState();
 }
 
-class _EmulatorStandaloneLayoutState extends State<_EmulatorStandaloneLayout> {
+class _EmulatorPageLayoutState extends State<_EmulatorPageLayout> {
   EmulatorPlatform _selectedPlatform = EmulatorPlatform.android;
 
   @override
@@ -61,8 +59,6 @@ class _EmulatorStandaloneLayoutState extends State<_EmulatorStandaloneLayout> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!widget.isEmbeddedTab && Platform.isMacOS)
-              const DragToMoveArea(child: SizedBox(height: 30)),
             // 顶部公用标题栏：左侧为标题与副标题，右上角为共用的模拟器平台切换 Tab
             DashboardHeaderBar(
               title: context.l10n.t('emulators'),

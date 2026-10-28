@@ -454,9 +454,7 @@ class MainFlutterWindow: NSWindow {
         if submenu.items.count > 3 { submenu.items[3].title = isChinese ? "前置全部窗口" : "Bring All to Front" }
         
         for item in submenu.items {
-          if item.action == #selector(openEmulatorManagerClicked(_:)) {
-            item.title = isChinese ? "模拟器管理窗口" : "Simulator Management Window"
-          } else if item.action == #selector(openMirrorWindowClicked(_:)) {
+          if item.action == #selector(openMirrorWindowClicked(_:)) {
             item.title = isChinese ? "投屏窗口" : "Screen Casting Window"
           } else if item.action == #selector(openConsoleWindowClicked(_:)) {
             item.title = isChinese ? "控制台窗口" : "Console Window"
@@ -472,16 +470,6 @@ class MainFlutterWindow: NSWindow {
       if let submenu = helpMenuItem.submenu {
         submenu.title = isChinese ? "帮助" : "Help"
       }
-    }
-  }
-
-  @objc func openEmulatorManagerClicked(_ sender: Any) {
-    if let controller = self.contentViewController as? FlutterViewController {
-      let channel = FlutterMethodChannel(
-        name: "any_deck/window",
-        binaryMessenger: controller.engine.binaryMessenger
-      )
-      channel.invokeMethod("openEmulatorManager", arguments: nil)
     }
   }
 
@@ -530,21 +518,12 @@ class MainFlutterWindow: NSWindow {
     }
     
     let hasCustomItems = submenu.items.contains { item in
-      item.action == #selector(openEmulatorManagerClicked(_:)) ||
       item.action == #selector(openMirrorWindowClicked(_:)) ||
       item.action == #selector(openConsoleWindowClicked(_:))
     }
     
     if !hasCustomItems {
       submenu.addItem(NSMenuItem.separator())
-      
-      let emulatorItem = NSMenuItem(
-        title: "模拟器管理窗口",
-        action: #selector(openEmulatorManagerClicked(_:)),
-        keyEquivalent: ""
-      )
-      emulatorItem.target = self
-      submenu.addItem(emulatorItem)
       
       let mirrorItem = NSMenuItem(
         title: "投屏窗口",

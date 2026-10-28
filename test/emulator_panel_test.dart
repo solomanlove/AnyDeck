@@ -125,10 +125,11 @@ void main() {
           emulatorConnectionsProvider.overrideWith((ref) async => {}),
           emulatorLaunchProvider.overrideWith(_FailedLaunch.new),
         ],
-        child: _app(const EmulatorListPanel(isStandalone: true)),
+        child: _app(const EmulatorListPanel(isFullPage: true)),
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.byTooltip('在独立窗口显示'), findsNothing);
     expect(find.byIcon(Icons.error_outline), findsOneWidget);
     expect(find.byIcon(CupertinoIcons.info_circle), findsOneWidget);
     expect(find.textContaining('Missing system image'), findsOneWidget);
@@ -169,7 +170,7 @@ void main() {
             emulatorLaunchProvider.overrideWith(_FailedLaunch.new),
           ],
           child: _app(
-            const EmulatorListPanel(isStandalone: true, isEmbeddedTab: true),
+            const EmulatorListPanel(isFullPage: true),
           ),
         ),
       );
@@ -212,7 +213,7 @@ void main() {
           emulatorLaunchProvider.overrideWith(_AliveLaunch.new),
         ],
         child: _app(
-          const EmulatorListPanel(isStandalone: true, isEmbeddedTab: true),
+          const EmulatorListPanel(isFullPage: true),
         ),
       ),
     );

@@ -29,18 +29,21 @@ class _WechatStyleShell extends ConsumerWidget {
             border: Border(
               left: BorderSide(color: theme.colorScheme.outlineVariant),
             ),
-            child: Column(
-              children: [
-                if ((selectedDevice == null || selectedTool == -1) &&
-                    selectedTool != -2 &&
-                    selectedTool != -3 &&
-                    selectedTool != -4 &&
-                    selectedTool != 12 &&
-                    selectedTool != 13 &&
-                    selectedTool != 14)
-                  _ContentTitleBar(title: title),
-                Expanded(child: child),
-              ],
+            child: ConsoleDock(
+              child: Column(
+                children: [
+                  if ((selectedDevice == null || selectedTool == -1) &&
+                      selectedTool != -2 &&
+                      selectedTool != -3 &&
+                      selectedTool != -4 &&
+                      selectedTool != -5 &&
+                      selectedTool != 12 &&
+                      selectedTool != 13 &&
+                      selectedTool != 14)
+                    _ContentTitleBar(title: title),
+                  Expanded(child: child),
+                ],
+              ),
             ),
           ),
         ),
@@ -96,20 +99,6 @@ class _ContentTitleBar extends ConsumerWidget {
             ),
           ),
         ),
-        //打开控制台
-        IconButton(
-          tooltip: context.l10n.t('console'),
-          icon: const Icon(CupertinoIcons.doc_plaintext),
-          iconSize: 30,
-          color: iconColor,
-          onPressed: () => _openConsoleWindow(context),
-          style: IconButton.styleFrom(
-            fixedSize: const Size(48, 48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
         //打开文件位置
         ToolDirectoryMenuButton(iconColor: iconColor),
         //重置服务
@@ -130,19 +119,6 @@ class _ContentTitleBar extends ConsumerWidget {
         ),
       ],
     );
-  }
-}
-
-Future<void> _openConsoleWindow(BuildContext context) async {
-  final title = context.l10n.t('console');
-  try {
-    await createAdbManageWindow(
-      arguments: const {'type': 'console'},
-      frame: const Offset(150, 150) & const Size(850, 550),
-      title: title,
-    );
-  } catch (e) {
-    debugPrint('Failed to open console window: $e');
   }
 }
 

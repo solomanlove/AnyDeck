@@ -1,5 +1,8 @@
 /// AnyDeck 自身运行日志与本地诊断导出文案。
 const localLogsZh = {
+  'consolePopOut': '独立窗口',
+  'consoleResize': '拖动调整控制台高度',
+  'consoleWindowFailed': '无法打开独立控制台窗口，请重试。',
   'localLogsTitle': '本地日志与故障排查',
   'localLogsDescription': '抓取 AnyDeck 运行日志、异常堆栈与命令记录，包含保留的历史会话，无需连接手机。',
   'localLogsPrivacy':
@@ -14,6 +17,9 @@ const localLogsZh = {
 };
 
 const localLogsEn = {
+  'consolePopOut': 'Separate window',
+  'consoleResize': 'Drag to resize the console',
+  'consoleWindowFailed': 'Unable to open the console window. Please try again.',
   'localLogsTitle': 'Local logs & diagnostics',
   'localLogsDescription':
       'Capture AnyDeck runtime logs, exception stacks and command records, including retained sessions. No phone connection required.',

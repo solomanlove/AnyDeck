@@ -29,6 +29,10 @@ import '../app/widget/app_toast.dart';
 import '../app/settings/app_settings.dart';
 import '../app/settings/app_settings_controller.dart';
 import '../app/window/multi_window_compat.dart';
+import '../app/window/console/console_window_launcher.dart';
+import 'console/controller/console_dock_controller.dart';
+import 'console/widgets/console_dock.dart';
+import 'overview/widget/system_versions_page.dart';
 import '../app/window/model/desktop_chrome_policy.dart';
 import '../app/window/widget/desktop_workspace_surface.dart';
 import '../app/window/mirror/mirror_aspect_resolver.dart';
@@ -146,7 +150,10 @@ import 'developer/widget/settings_developer_entry.dart';
 import 'feedback/widget/settings_feedback_entry.dart';
 
 part 'overview/dashboard_shell.dart';
+part 'overview/dashboard_content.dart';
 part 'overview/dashboard_rail.dart';
+part 'overview/dashboard_rail_buttons.dart';
+part 'overview/dashboard_rail_footer.dart';
 part 'overview/dashboard_rail_identity.dart';
 part 'widgets/dashboard_dialogs.dart';
 part 'widgets/dashboard_update_dialog.dart';
@@ -394,9 +401,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   Future<void> _handleWindowMethodCall(MethodCall call) async {
-    if (call.method == 'openEmulatorManager') {
-      context.goNamed(AppRouteNames.emulators);
-    } else if (call.method == 'openMirrorWindow') {
+    if (call.method == 'openMirrorWindow') {
       final selectedDevice = ref.read(selectedDeviceProvider);
       if (selectedDevice != null && selectedDevice.isOnline) {
         openStandaloneMirrorWindow(context, ref, selectedDevice);
@@ -410,7 +415,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         }
       }
     } else if (call.method == 'openConsoleWindow') {
-      _openConsoleWindow(context);
+      openConsoleWindow(context);
     } else if (call.method == 'openPreferences') {
       context.goNamed(AppRouteNames.settings);
     }
@@ -460,181 +465,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       }
     });
 
-    final selectedDevice = ref.watch(selectedDeviceProvider);
-    final sessions = ref.watch(scrcpySessionsProvider);
-    final registeredDevices = ref.watch(deviceRegistryProvider);
-    final lastActiveDevice = ref.watch(lastActiveDeviceProvider);
-    final settings = ref.watch(appSettingsProvider);
-    _scheduleDashboardRouteSync();
-
-    var effectiveSelectedDevice = selectedDevice;
-    String appBarTitle = context.l10n.t('appTitle');
-    if (selectedDevice != null) {
-      final matchedDevice = registeredDevices.firstWhere(
-        (d) =>
-            d.id == selectedDevice.id ||
-            (d.serial != null &&
-                d.serial!.isNotEmpty &&
-                d.serial == selectedDevice.id) ||
-            (selectedDevice.id.length > d.id.length &&
-                selectedDevice.id.endsWith(d.id)),
-        orElse: () => RegisteredDevice(
-          id: selectedDevice.id,
-          status: selectedDevice.status,
-          model: selectedDevice.model,
-          product: selectedDevice.product,
-          transportId: selectedDevice.transportId,
-          isOnline: selectedDevice.isOnline,
-          serial: selectedDevice.id,
-        ),
-      );
-      effectiveSelectedDevice = matchedDevice.toAdbDevice;
-      appBarTitle = matchedDevice.displayName;
-
-      if (_hasDeviceSnapshotChanged(selectedDevice, effectiveSelectedDevice)) {
-        final syncedDevice = effectiveSelectedDevice;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          final current = ref.read(selectedDeviceProvider);
-          if (current != null &&
-              _hasDeviceSnapshotChanged(current, syncedDevice)) {
-            ref.read(selectedDeviceProvider.notifier).select(syncedDevice);
-          }
-        });
-      }
-    }
-
-    if (effectiveSelectedDevice != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final current = ref.read(lastActiveDeviceProvider);
-        if (_hasDeviceSnapshotChanged(effectiveSelectedDevice!, current)) {
-          ref.read(lastActiveDeviceProvider.notifier).state =
-              effectiveSelectedDevice;
-        }
-
-        // iOS 仅开放已接入 go-ios 的工具页。
-        if (effectiveSelectedDevice.isIos) {
-          final selectedTool = ref.read(selectedToolTabProvider);
-          const iosTabs = {0, 1, 2, 3, 4, 6, 7, 9, 12, 13, 14};
-          if (selectedTool >= 0 && !iosTabs.contains(selectedTool)) {
-            _goToDeviceTool(effectiveSelectedDevice.id, 0);
-          }
-        } else if (effectiveSelectedDevice.isHarmony) {
-          // 鸿蒙设备支持主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、性能(10)、网络(11)、设置(12)、玩安卓(13)、AI MCP(14)
-          final selectedTool = ref.read(selectedToolTabProvider);
-          if (selectedTool >= 0 &&
-              selectedTool != 0 &&
-              selectedTool != 1 &&
-              selectedTool != 2 &&
-              selectedTool != 3 &&
-              selectedTool != 4 &&
-              selectedTool != 5 &&
-              selectedTool != 6 &&
-              selectedTool != 7 &&
-              selectedTool != 9 &&
-              selectedTool != 10 &&
-              selectedTool != 11 &&
-              selectedTool != 12 &&
-              selectedTool != 13 &&
-              selectedTool != 14) {
-            _goToDeviceTool(effectiveSelectedDevice.id, 0);
-          }
-        } else if (!effectiveSelectedDevice.isOnline) {
-          // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)、消息(15)、设置(12)、玩安卓(13)或 AI MCP(14) Tab，则自动重定向回主页 Tab
-          final selectedTool = ref.read(selectedToolTabProvider);
-          if (selectedTool >= 0 &&
-              selectedTool != 0 &&
-              selectedTool != 1 &&
-              selectedTool != 2 &&
-              selectedTool != 15 &&
-              selectedTool != 12 &&
-              selectedTool != 13 &&
-              selectedTool != 14) {
-            _goToDeviceTool(effectiveSelectedDevice.id, 0);
-          }
-        }
-      });
-    }
-
-    final selectedTool = ref.watch(selectedToolTabProvider);
-    final workspace = _WorkspacePanel(
-      selectedDevice: effectiveSelectedDevice ?? lastActiveDevice,
-      sessions: sessions,
-    );
-
-    final int stackIndex;
-    if (selectedTool == 12) {
-      stackIndex = 2;
-    } else if (selectedTool == 13) {
-      stackIndex = 3;
-      _hasVisitedWanAndroid = true;
-    } else if (selectedTool == 14) {
-      stackIndex = 4;
-    } else if (selectedTool == -2) {
-      stackIndex = 5;
-    } else if (selectedTool == -3) {
-      stackIndex = 6;
-    } else if (selectedTool == -4) {
-      stackIndex = 7;
-    } else if (selectedTool == -1 || effectiveSelectedDevice == null) {
-      stackIndex = 0;
-    } else {
-      stackIndex = 1;
-    }
-
-    return CallbackShortcuts(
-      bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.keyQ, meta: true):
-            _handleQuitShortcut,
-        const SingleActivator(LogicalKeyboardKey.keyQ, control: true):
-            _handleQuitShortcut,
-        const SingleActivator(LogicalKeyboardKey.comma, meta: true): () {
-          context.goNamed(AppRouteNames.settings);
-        },
-        const SingleActivator(LogicalKeyboardKey.comma, control: true): () {
-          context.goNamed(AppRouteNames.settings);
-        },
-      },
-      child: MainWindowCloseShortcut(
-        showWindowKey: settings.showWindowShortcutKey,
-        onQuit: _handleQuitShortcut,
-        child: Scaffold(
-          body: _WechatStyleShell(
-            title: appBarTitle,
-            selectedDevice: effectiveSelectedDevice,
-            isAirplayReceiverRunning: _isAirplayReceiverRunning,
-            child: IndexedStack(
-              index: stackIndex,
-              children: [
-                const _DashboardHomeContent(),
-                workspace,
-                const _SettingsTab(),
-                if (_hasVisitedWanAndroid)
-                  const InAppWebViewWidget(
-                    initialUrl: 'https://www.wanandroid.com/',
-                    title: '玩Android',
-                  )
-                else
-                  const SizedBox.shrink(),
-                const McpDashboardTab(),
-                // 复用完整模拟器列表布局，仅访问时加载，避免后台扫描。
-                if (selectedTool == -2)
-                  const EmulatorListPanel(isStandalone: true, isEmbeddedTab: true)
-                else
-                  const SizedBox.shrink(),
-                if (selectedTool == -3)
-                  const ReceiverDashboardTab()
-                else
-                  const SizedBox.shrink(),
-                if (selectedTool == -4)
-                  const HarmonyShareDashboardTab()
-                else
-                  const SizedBox.shrink(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    return _buildDashboardContent(context);
   }
 
   bool _hasDeviceSnapshotChanged(AdbDevice left, AdbDevice? right) {

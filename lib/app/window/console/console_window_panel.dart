@@ -12,14 +12,26 @@ import '../../theme/app_theme.dart';
 import '../../../core/logging/log_service.dart';
 import '../../../core/logging/app_log_recorder.dart';
 import '../../widget/local_log_capture_button.dart';
+import 'console_toolbar_button.dart';
+import 'console_embedded_toolbar.dart';
 
 /// 将 ISO 8601 时间转换为控制台使用的可读格式，不改变底层日志内容。
 String formatConsoleTimestamp(String timestamp) =>
     timestamp.replaceFirst('T', ' ');
 
-/// 控制台独立窗口的 UI 内容组件。
+/// 主窗口底部面板和独立控制台共用的日志视图。
 class ConsoleWindowPanel extends ConsumerStatefulWidget {
-  const ConsoleWindowPanel({super.key});
+  /// [isEmbedded] 使用紧凑 Toolbar；[onPopOut] 和 [onClose] 由宿主处理窗口与面板。
+  const ConsoleWindowPanel({
+    super.key,
+    this.isEmbedded = false,
+    this.onPopOut,
+    this.onClose,
+  });
+
+  final bool isEmbedded;
+  final VoidCallback? onPopOut;
+  final VoidCallback? onClose;
 
   @override
   ConsumerState<ConsoleWindowPanel> createState() => _ConsoleWindowPanelState();
@@ -168,6 +180,24 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
         color: glassBgColor,
         child: Column(
           children: [
+            if (widget.isEmbedded)
+              ConsoleEmbeddedToolbar(
+                searchController: _searchController,
+                onSearchChanged: (value) => setState(
+                  () => _searchQuery = value.trim().toLowerCase(),
+                ),
+                keyLogsOnly: _keyLogsOnly,
+                onToggleKeyLogs: () => setState(() => _keyLogsOnly = !_keyLogsOnly),
+                hideHeartbeats: _hideHeartbeats,
+                onToggleHeartbeats: () => setState(() => _hideHeartbeats = !_hideHeartbeats),
+                autoScroll: _autoScroll,
+                onToggleAutoScroll: () => setState(() => _autoScroll = !_autoScroll),
+                onCopy: () => _copyAllLogs(filteredLogs),
+                onClear: () => ref.read(logHistoryProvider.notifier).clear(),
+                onPopOut: widget.onPopOut,
+                onClose: widget.onClose,
+              )
+            else
             // 自定义顶部标题与操作栏，仅标题区域参与窗口拖拽，避免拦截控件点击。
             GlassmorphicContainer(
               width: double.infinity,
@@ -221,7 +251,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                     final secondaryStyle = theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     );
-                    final toolbarButtonStyle = _consoleToolbarButtonStyle(
+                    final toolbarButtonStyle = consoleToolbarButtonStyle(
                       theme,
                     );
                     return Row(
@@ -287,7 +317,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _ConsoleToolbarButton(
+                        ConsoleToolbarButton(
                           key: const Key('consoleKeyLogsFilter'),
                           tooltip: context.l10n.t('consoleKeyLogs'),
                           icon: Icons.filter_alt_outlined,
@@ -301,7 +331,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                           iconButtonStyle: toolbarButtonStyle,
                         ),
                         const Spacer(),
-                        _ConsoleToolbarButton(
+                        ConsoleToolbarButton(
                           tooltip: context.l10n.t('hideHeartbeats'),
                           icon: Icons.monitor_heart_outlined,
                           selected: _hideHeartbeats,
@@ -310,7 +340,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _ConsoleToolbarButton(
+                        ConsoleToolbarButton(
                           tooltip: context.l10n.t('autoScroll'),
                           icon: Icons.vertical_align_bottom_rounded,
                           selected: _autoScroll,
@@ -318,13 +348,13 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                               setState(() => _autoScroll = !_autoScroll),
                         ),
                         const SizedBox(width: 8),
-                        _ConsoleToolbarButton(
+                        ConsoleToolbarButton(
                           tooltip: context.l10n.t('copyAll'),
                           icon: CupertinoIcons.doc_on_doc,
                           onPressed: () => _copyAllLogs(filteredLogs),
                         ),
                         const SizedBox(width: 8),
-                        _ConsoleToolbarButton(
+                        ConsoleToolbarButton(
                           tooltip: context.l10n.t('clear'),
                           icon: CupertinoIcons.trash,
                           onPressed: () =>
@@ -372,58 +402,4 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
       ),
     );
   }
-}
-
-/// 控制台 Toolbar 的统一 Icon 操作，选中态使用主题主色表达开关状态。
-class _ConsoleToolbarButton extends StatelessWidget {
-  const _ConsoleToolbarButton({
-    super.key,
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    this.selected = false,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return IconButton(
-      tooltip: tooltip,
-      isSelected: selected,
-      style: _consoleToolbarButtonStyle(theme, selected: selected),
-      icon: Icon(icon, size: 18),
-      selectedIcon: Icon(icon, size: 18),
-      onPressed: onPressed,
-    );
-  }
-}
-
-ButtonStyle _consoleToolbarButtonStyle(
-  ThemeData theme, {
-  bool selected = false,
-}) {
-  return IconButton.styleFrom(
-    minimumSize: const Size.square(36),
-    maximumSize: const Size.square(36),
-    padding: EdgeInsets.zero,
-    foregroundColor: selected
-        ? theme.colorScheme.primary
-        : theme.colorScheme.onSurfaceVariant,
-    backgroundColor: selected
-        ? theme.colorScheme.primary.withValues(alpha: 0.12)
-        : theme.appColors.subtleSurface,
-    side: BorderSide(
-      color: selected
-          ? theme.colorScheme.primary.withValues(alpha: 0.35)
-          : theme.colorScheme.outlineVariant,
-    ),
-    shape: const RoundedRectangleBorder(
-      borderRadius: AppThemeSizes.radiusMedium,
-    ),
-  );
 }

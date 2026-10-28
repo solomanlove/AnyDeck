@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'dart:isolate';
 import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
@@ -14,7 +15,6 @@ import 'app/any_deck_app.dart';
 import 'app/window/apk/apk_open_coordinator.dart';
 import 'app/window/apk/apk_details_window_app.dart';
 import 'app/window/desktop_window_manager_service.dart';
-import 'app/window/emulator/emulator_manager_window_app.dart';
 import 'app/window/mirror/mirror_window_app.dart';
 import 'app/window/console/console_window_app.dart';
 import 'app/window/dlna/dlna_player_window_app.dart';
@@ -100,7 +100,7 @@ Future<void> _startApplication(List<String> args) async {
                 ? 'dlna_player_window_$windowId'
             : type == 'version_distribution'
                 ? 'version_distribution_window_$windowId'
-                : 'emulator_window_$windowId';
+                : 'sub_window_$windowId';
     PlatformDispatcher.instance.setIsolateDebugName(windowName);
 
     // 获取当前子窗口 of VM Service URI 和 Isolate ID 并输出，用于在 DevTools 中连接调试
@@ -198,19 +198,10 @@ Future<void> _startApplication(List<String> args) async {
           ),
         );
       } else {
-        await configureCurrentAdbManageSubWindow(argument);
-        //模拟器管理窗口
-        runApp(
-          ProviderScope(
-            overrides: [windowIdProvider.overrideWithValue(windowId)],
-            child: AppLogScope(
-              child: EmulatorManagerWindowApp(
-                windowId: windowId,
-                argument: argument,
-              ),
-            ),
-          ),
-        );
+        // 已移除的窗口类型和未知参数不再回退到模拟器管理窗口。
+        debugPrint('Unsupported sub-window type: $type');
+        await windowManager.ensureInitialized();
+        await windowManager.destroy();
       }
     } catch (e, stack) {
       AppLogRecorder.instance.record(
