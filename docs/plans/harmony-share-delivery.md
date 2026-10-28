@@ -111,3 +111,13 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 接收完成按“逐文件结果 + 最终批次摘要”输出，不把 100 个深目录路径集中到一个超长 JSONL。Flutter 独立 `share_batch_contract.dart` 验证 UTF-8 请求长度、数量/大小、重复文件名、目标 IPv4、结果 index/路径归属/hash/大小/精确总量；收齐终态后返回不可变结果，不能仅靠字节 100% 或部分文件事件确认整批成功。
 - 验证：Rust 32 常规 lib + 5 integration 与 Release 编译通过；覆盖 IPC 2 拦截、实验门控、坏参数、声明与 snapshot 大小变化在联网前失败。GiB 压力本批显式跳过，前批独立验证结果不冒作本批完整 IPC 成功链路。主仓 nearby_share 58 项测试与 targeted analyze 通过。
 - 本批为契约与解析模型准备。主仓运行入口仍用 IPC 2，未切换 Client/Session、收发服务、历史/通知或制品锁；未生成/替换 zip、启动 App、操作手机。下一批接通完整调用与任务状态后，再打包 IPC 3 制品并联调。
+
+## 阶段 3 第五批：Client/Session 与 IPC 3 制品（2026-10-28）
+
+- 主仓 ShareCoreContract 切换 IPC 3，握手严格要求 native_batch、100 文件与精确最大总量声明；旧 IPC 2 明确拒绝。新增 ShareBatchClient 与双向 Session，沿用通用进程资源回收，支持 stdin 请求/确认、严格总量/方向/单调进度、完整终态、不完整/重复/非法事件拦截。
+- 原生接收文件事件先有界收集，逐文件及最终摘要齐全才向服务输出完整文件集合；不根据单独 100% 进度确认整批成功。有效发送终态优先于迟到取消，重复取消幂等。启动写管道失败/解析失败回收已启动进程；接收确认只写一次，退出清理 stdin，失败不生成假文件结果。
+- 私有仓 `7059e220004229e7f1df347c667bd11a064ccd16` 包含 Core 0.3.0 / IPC 3 arm64 zip；SHA-256 `2c23cab15e578e3d0d3cfe1cd9268d734f7764bbc84149acdfb4a43cc66c8d58`。主仓锁同步，生产 send/receive 仍 false。私有新 commit 未推送，本轮以相同 hash 本地 archive override 构建。
+- 实际 IPC 子进程发送联调通过：从 stdin 输入新批次命令，执行真实 Core 认证/传输并返回批次终态，接收各文件 hash 一致；隔离 BLE stub 不访问蓝牙。显式“1 GiB + 64 KiB”真实 IPC 模式也通过（约 15.12 秒完整测试用例，非手机 Wi-Fi 速度）。
+- 自动回归：Flutter 115 focused tests 与 targeted analyze 通过；installer 3 tests 通过，包含 IPC 3 拒绝旧制品；私有 Rust 33 常规 lib + 5 integration 通过，另有显式真实 IPC GiB 测试通过。前批双角色 SDK GiB 压力本批未重复。
+- 本批新包路径 `/tmp/anydeck-harmony-ipc3-offline/Products/AnyDeck.app`；Release 构建、codesign 深度严格校验、Core 成员 hash、IPC 3 握手与 IPC 2 拦截均通过。未启动新 App、未停止原实例、未操作手机。
+- **仍待服务接线**：现有 UI 继续使用 IPC 3 下兼容的逐项单文件队列与接收命令。新批次 API 已可调用，但收发状态、确认、记录/通知与 UI 尚未切换；不能描述为 UI 已支持一次手机确认的原生批次。

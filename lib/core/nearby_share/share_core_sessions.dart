@@ -40,7 +40,7 @@ class ShareCoreReceiveSession {
     _output = _process.stdout
         .transform(utf8.decoder)
         .transform(const LineSplitter())
-        .map(_decode)
+        .map(decodeShareCoreEvent)
         .listen(
           _events.add,
           onError: _events.addError,
@@ -64,9 +64,14 @@ class ShareCoreReceiveSession {
   }
 
   void decide(bool accept) {
-    _process.stdin.writeln(
-      jsonEncode({'command': accept ? 'accept' : 'reject'}),
-    );
+    try {
+      _process.stdin.writeln(jsonEncode({'command': accept ? 'accept' : 'reject'}));
+      unawaited(_process.stdin.flush().timeout(const Duration(seconds: 2)).catchError((Object error) {
+        if (!_events.isClosed) _events.addError(error);
+      }));
+    } catch (error) {
+      if (!_events.isClosed) _events.addError(error);
+    }
   }
 
   Future<void> stop() async {
@@ -81,11 +86,17 @@ class ShareCoreReceiveSession {
     await _output.cancel();
     if (!_events.isClosed) unawaited(_events.close());
     await _errors.cancel();
+    try {
+      await _process.stdin.close().timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // 已退出核心的 stdin 可能已关闭；资源清理不覆盖原始传输结果。
+    }
   }
 }
 
-Map<String, dynamic> _decode(String line) {
-  if (line.length > 65536) {
+/// 对单行 UTF-8 事件执行统一大小和对象边界校验。
+Map<String, dynamic> decodeShareCoreEvent(String line) {
+  if (utf8.encode(line).length > 65536) {
     throw const FormatException('Share Core event too large');
   }
   final value = jsonDecode(line);
@@ -133,7 +144,7 @@ class ShareCoreTransfer {
           in _process.stdout
               .transform(utf8.decoder)
               .transform(const LineSplitter())) {
-        final event = _decode(line);
+        final event = decodeShareCoreEvent(line);
         if (event['event'] == 'progress') {
           final update = ShareCoreProgress.parse(event);
           if (!_progress.isClosed) _progress.add(update);

@@ -1,6 +1,6 @@
 # Huawei Share 私有核心集成边界
 
-当前基线：Core 0.2.1 / IPC 2，大文件实验上限 1 GiB 已完成离线验证，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
+当前基线：Core 0.3.0 / IPC 3，大文件实验上限 1 GiB 已完成离线验证，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
@@ -98,3 +98,9 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 私有仓 `468f828` 的 Core 0.3.0 新增有界批次 IPC 与严格版本/实验门控，声明大小在全部 snapshot 后逐项复核；最终接收结果分成文件事件与批次摘要，避免超过 JSONL 行上限。生产能力仍关闭。
 - 主仓新增独立 ShareBatchContract/Request/Received 模型，包含请求 UTF-8 大小限制与结果完整性/路径/hash/计数检查；当前 ShareCoreContract、Client、运行服务和锁仍为 IPC 2，没有提前启用未打包制品。
 - 58 项 nearby_share tests、targeted analyze；私有 32 常规 lib + 5 integration/Release 编译通过。成功 IPC 到实际 App、状态机/记录/通知接线、新 zip/锁和手机验收仍未完成。
+
+## 批次 Client/Session 与制品切换（2026-10-28）
+
+- 主仓握手/安装锁切换 Core 0.3.0 / IPC 3，仍可调用旧单文件命令。新增 ShareBatchClient/Transfer/ReceiveSession 管理原生批次请求、确认、严格进度、逐文件集合与摘要验证；只有完整终态才生成完成结果。资源失败/取消均有回归；实际批次服务/记录/通知/确认 UI 接线仍待完成。
+- 私有制品 commit `7059e220004229e7f1df347c667bd11a064ccd16`，zip SHA-256 `2c23cab15e578e3d0d3cfe1cd9268d734f7764bbc84149acdfb4a43cc66c8d58`；生产能力 false。实际新 IPC 命令子进程与 1 GiB + 64 KiB 模式通过，BLE 使用隔离 stub，无真实设备操作。
+- 115 focused Flutter tests、targeted analyze、3 installer tests；私有 33 常规 lib + 5 integration 与单独真实 IPC GiB 用例通过。Release 包验证见阶段计划。私有 commit 未推送，使用本地 archive override；未启动/停止用户 App。

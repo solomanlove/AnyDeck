@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'share_core_contract.dart';
 
-/// 待接入的 IPC 3 批次契约；当前运行入口仍使用 IPC 2，不隐式启用新制品。
+/// IPC 3 批次契约；实际批次能力由已校验的原生制品和服务接线共同提供。
 abstract final class ShareBatchContract {
   static const version = 3;
   static const maxFiles = 100;

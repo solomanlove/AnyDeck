@@ -40,8 +40,9 @@ class ShareCoreInstallTests(unittest.TestCase):
                          b"anydeck-share-core")
 
     def test_rejects_previous_ipc_before_installing(self):
+        self.manifest["ipc_version"] = 2
         data = self.archive()
-        lock = {"ipc_version": 2, "artifacts": {"arm64": {
+        lock = {"ipc_version": 3, "artifacts": {"arm64": {
             "sha256": hashlib.sha256(data).hexdigest()}}}
         with self.assertRaises(ValueError):
             install(data, self.app, lock, "arm64")

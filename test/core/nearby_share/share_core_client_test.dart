@@ -4,11 +4,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:any_deck/core/nearby_share/share_core_client.dart';
 
 void main() {
+  test('IPC 2 不静默降级，新版本需要完整批次声明', () {
+    const hello =
+        '{"event":"hello","version":3,"core_version":"0.3.0",'
+        '"capabilities":{"discovery":true,"send":false,"receive":false},'
+        '"experimental":{"max_file_bytes":1073741824,"max_transfer_seconds":1800,"progress":true,"graceful_cancel":true,"native_batch":true,"max_files":100,"max_batch_bytes":107374182400}}';
+    expect(
+      () => ShareCoreCapabilities.parse(
+        hello.replaceFirst('"version":3', '"version":2'),
+      ),
+      throwsFormatException,
+    );
+    for (final change in [
+      '"native_batch":false',
+      '"max_files":101',
+      '"max_batch_bytes":1',
+    ]) {
+      final field = change.split(':').first;
+      final mutated = hello.replaceFirst(RegExp('$field:[^,}]+'), change);
+      expect(() => ShareCoreCapabilities.parse(mutated), throwsFormatException);
+    }
+  });
   test('accepts explicit versioned capabilities', () {
     final result = ShareCoreCapabilities.parse(
-      '{"event":"hello","version":2,"core_version":"0.1.0",'
+      '{"event":"hello","version":3,"core_version":"0.1.0",'
       '"capabilities":{"discovery":false,"send":false,"receive":false},'
-      '"experimental":{"max_file_bytes":1073741824,"max_transfer_seconds":1800,"progress":true,"graceful_cancel":true}}',
+      '"experimental":{"max_file_bytes":1073741824,"max_transfer_seconds":1800,"progress":true,"graceful_cancel":true,"native_batch":true,"max_files":100,"max_batch_bytes":107374182400}}',
     );
     expect(result.send, isFalse);
     expect(result.coreVersion, '0.1.0');
@@ -16,12 +37,12 @@ void main() {
 
   test('rejects missing or incompatible capability declarations', () {
     expect(
-      () => ShareCoreCapabilities.parse('{"event":"hello","version":2}'),
+      () => ShareCoreCapabilities.parse('{"event":"hello","version":3}'),
       throwsFormatException,
     );
     expect(
       () => ShareCoreCapabilities.parse(
-        '{"event":"hello","version":2,"core_version":"0.1.0",'
+        '{"event":"hello","version":3,"core_version":"0.1.0",'
         '"capabilities":{"discovery":true,"send":"yes","receive":false}}',
       ),
       throwsFormatException,

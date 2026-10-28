@@ -1,6 +1,6 @@
 /// 主仓与私有制品之间的通用 IPC 契约，不包含底层传输协议字段。
 abstract final class ShareCoreContract {
-  static const version = 2;
+  static const version = 3;
   static const maxFileBytes = 1024 * 1024 * 1024;
   static const transferTimeout = Duration(minutes: 30);
 }
@@ -17,7 +17,7 @@ class ShareCoreProgress {
   final int totalBytes;
   double get fraction => bytes / totalBytes;
 
-  static ShareCoreProgress parse(Map<String, dynamic> event) {
+  static ShareCoreProgress parse(Map<String, dynamic> event, {int maxTotalBytes = ShareCoreContract.maxFileBytes}) {
     final direction = event['direction'];
     final bytes = event['bytes'];
     final total = event['total_bytes'];
@@ -26,7 +26,7 @@ class ShareCoreProgress {
         bytes is! int ||
         total is! int ||
         total < 1 ||
-        total > ShareCoreContract.maxFileBytes ||
+        total > maxTotalBytes ||
         bytes < 0 ||
         bytes > total) {
       throw const FormatException('Invalid Share Core progress');

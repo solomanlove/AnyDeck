@@ -3,10 +3,15 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'share_core_contract.dart';
+import 'share_batch_contract.dart';
+import 'share_batch_client.dart';
+import 'share_batch_sessions.dart';
 import 'share_core_sessions.dart';
 
 export 'share_core_contract.dart';
 export 'share_core_sessions.dart';
+export 'share_batch_contract.dart';
+export 'share_batch_sessions.dart';
 
 /// 私有 Share Core 的公开 IPC 契约；不包含任何 Huawei Share 协议字段。
 class ShareCoreCapabilities {
@@ -46,7 +51,10 @@ class ShareCoreCapabilities {
         experimental['max_transfer_seconds'] !=
             ShareCoreContract.transferTimeout.inSeconds ||
         experimental['progress'] != true ||
-        experimental['graceful_cancel'] != true) {
+        experimental['graceful_cancel'] != true ||
+        experimental['native_batch'] != true ||
+        experimental['max_files'] != ShareBatchContract.maxFiles ||
+        experimental['max_batch_bytes'] != ShareBatchContract.maxBytes) {
       throw const FormatException(
         'Incompatible experimental transfer contract',
       );
@@ -264,6 +272,25 @@ class ShareCoreClient {
     await process.stdin.flush();
     return session;
   }
+
+  /// 原生批次发送入口；声明大小已由 UI 确认，核心启动网络前再逐项核对。
+  Future<ShareBatchTransfer> sendBatchForTest({required InternetAddress localAddress,
+    required ShareCorePeer peer, required ShareBatchRequest request}) =>
+      _batchClient.send(request: request, local: localAddress, peer: peer.address, port: peer.port);
+
+  /// 原生批次来件必须明确确认，文件与最终摘要齐全后才通知服务完成。
+  Future<ShareBatchReceiveSession> startBatchReceiver({required InternetAddress localAddress,
+    required InternetAddress broadcastAddress, required Directory outputDirectory}) =>
+      _batchClient.receive(local: localAddress, broadcast: broadcastAddress, output: outputDirectory);
+
+  ShareBatchClient get _batchClient => ShareBatchClient(
+    probe: () async {
+      if (ShareCoreContract.version != ShareBatchContract.version) throw StateError('Batch contract not active');
+      await probe();
+    },
+    launch: () => Process.start(_executable.path, const [],
+      environment: const {'ANYDECK_SHARE_EXPERIMENTAL': '1'}),
+  );
 
   Future<ShareCoreTransfer> _startTransfer(
     Map<String, Object> request, {

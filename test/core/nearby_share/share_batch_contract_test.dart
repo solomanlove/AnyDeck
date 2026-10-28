@@ -10,7 +10,7 @@ void main() {
     ]).request(localIp: '127.0.0.1', peerIp: '127.0.0.2', port: 44800);
     expect(request['version'], 3);
     expect((request['files'] as List).length, 2);
-    expect(ShareCoreContract.version, 2);
+    expect(ShareCoreContract.version, 3);
     expect(
       () => ShareBatchRequest([const ShareBatchFile('/a', 1073741825)]),
       throwsFormatException,
