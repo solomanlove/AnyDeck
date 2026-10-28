@@ -1,5 +1,15 @@
 /// 鸿蒙互联文案；中英文 key 保持一一对应。
 const huaweiShareZh = {
+  'harmonyShareErrorDetails': '技术详情',
+  'harmonyShareOperationFailed': '操作未完成，请重试；持续失败时查看技术详情。',
+  'harmonyShareCoreUnavailable': '互传组件缺失或版本不匹配，请安装包含互传组件的新版 AnyDeck。',
+  'harmonyShareNetworkUnavailable': '未找到可用的本机 IPv4 网络，请检查 Wi-Fi 连接。',
+  'harmonyShareSourceChanged': '排队中的文件已更改或不可用，请重新选择文件。',
+  'harmonyShareOperationTimedOut': '操作超时，请检查设备连接与接收确认后重试。',
+  'harmonySharePeerRejected': '手机拒绝了本次发送。可重新发起并在手机上确认接收。',
+  'harmonySharePeerUnavailable': '无法连接手机，请确认两端处于同一 Wi-Fi，并在手机上开启华为分享。',
+  'harmonyShareInsufficientSpace': 'Mac 可用空间不足，请释放接收目录所在磁盘的空间后重新发送。',
+  'harmonyShareReceiveValidationFailed': '接收文件校验未通过，请让发送方重新发送。',
   'harmonyShareOutboxTitle': '发送队列',
   'harmonyShareBatchTitle': '发送批次',
   'harmonyShareNotificationOutbox': '发送队列已结束',
@@ -163,6 +173,16 @@ const huaweiShareZh = {
 };
 
 const huaweiShareEn = {
+  'harmonyShareErrorDetails': 'Technical details',
+  'harmonyShareOperationFailed': 'The operation did not complete. Retry, or view technical details if it keeps failing.',
+  'harmonyShareCoreUnavailable': 'The transfer component is missing or incompatible. Install a newer AnyDeck package that includes it.',
+  'harmonyShareNetworkUnavailable': 'No active local IPv4 network was found. Check the Wi-Fi connection.',
+  'harmonyShareSourceChanged': 'A queued file changed or is unavailable. Select the files again.',
+  'harmonyShareOperationTimedOut': 'The operation timed out. Check the connection and receiving confirmation, then retry.',
+  'harmonySharePeerRejected': 'The phone rejected this send. Try again and accept on the phone.',
+  'harmonySharePeerUnavailable': 'Cannot connect to the phone. Use the same Wi-Fi and enable Huawei Share on the phone.',
+  'harmonyShareInsufficientSpace': 'The Mac has insufficient space. Free space on the receive folder’s disk, then send again.',
+  'harmonyShareReceiveValidationFailed': 'Received file validation failed. Ask the sender to send again.',
   'harmonyShareOutboxTitle': 'Send queue',
   'harmonyShareBatchTitle': 'Send batch',
   'harmonyShareNotificationOutbox': 'Send queue finished',

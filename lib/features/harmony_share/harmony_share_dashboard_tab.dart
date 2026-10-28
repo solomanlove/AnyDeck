@@ -15,6 +15,7 @@ import '../../app/theme/app_theme_sizes.dart';
 import 'widgets/harmony_share_stage.dart';
 import 'widgets/harmony_share_panels.dart';
 import 'widgets/harmony_share_format.dart';
+import 'widgets/harmony_share_error_details.dart';
 import 'widgets/harmony_share_queue_panel.dart';
 import 'widgets/harmony_share_outbox_panel.dart';
 import 'widgets/harmony_share_history_dialog.dart';
@@ -326,7 +327,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                   context.l10n.t('harmonyShareLimit'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                if (_service.error != null) ...[
+                if (_service.error case final error?) ...[
                   const SizedBox(height: 12),
                   Card(
                     child: Padding(
@@ -337,9 +338,16 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              formatShareError(_service.error!, context.l10n.t),
+                              formatShareError(error, context.l10n.t),
                               style: TextStyle(color: colors.error),
                             ),
+                          ),
+                          IconButton(
+                            tooltip: context.l10n.t('harmonyShareErrorDetails'),
+                            onPressed: () => showHarmonyShareErrorDetails(
+                              context, error,
+                            ),
+                            icon: const Icon(Icons.info_outline),
                           ),
                           TextButton(
                             onPressed: _service.busy

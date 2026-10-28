@@ -90,7 +90,9 @@ void main() {
         });
       }
       final key = GlobalKey();
-      Widget host(Widget child) => MaterialApp(
+      // 包含 Navigator overlay，主动打开的诊断弹窗也必须进入实际截图。
+      Widget host(Widget child) => RepaintBoundary(key: key, child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: buildAppTheme(brightness).copyWith(
           textTheme: buildAppTheme(
             brightness,
@@ -102,11 +104,8 @@ void main() {
           AppLocalizationsDelegate(),
           ...GlobalMaterialLocalizations.delegates,
         ],
-        home: RepaintBoundary(
-          key: key,
-          child: Scaffold(body: child),
-        ),
-      );
+        home: Scaffold(body: child),
+      ));
       Future<void> capture(String name) async {
         if (output.isEmpty) return;
         await tester.runAsync(() async {
@@ -299,6 +298,20 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('record-details');
+      await tester.pumpWidget(host(Center(child: HarmonyShareRecordDetailsDialog(
+        record: ShareTransferRecord(id: 'error-fixture', direction: ShareTransferDirection.receive,
+          status: ShareTransferStatus.failed, deviceName: 'nova 12 Ultra', address: '192.168.1.3',
+          fileName: '', fileCount: 2, bytes: 110 * 1024 * 1024, createdAt: DateTime(2026,10,28),
+          error: 'receive_failed: insufficient_space'),
+      ))));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('error-message');
+      await tester.tap(find.text('技术详情'));
+      await tester.pumpAndSettle();
+      expect(find.text('receive_failed: insufficient_space'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await capture('error-details');
       await tester.pumpWidget(host(Center(child: AlertDialog(
         title: const Text('互传设置'),
         content: HarmonyShareSettingsPanel(

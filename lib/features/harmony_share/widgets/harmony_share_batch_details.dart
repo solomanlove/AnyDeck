@@ -4,6 +4,7 @@ import '../../../app/l10n/app_localizations.dart';
 import '../../../core/nearby_share/share_transfer_record.dart';
 import 'harmony_share_record_tile.dart';
 import 'harmony_share_format.dart';
+import 'harmony_share_error_details.dart';
 
 /// 批次详情：record 为摘要，files 为打开时一次性加载的清单，不在 rebuild 重发查询。
 /// onOpen/onFolder/onRetry 仅响应显式点击；onRetry 只用于可重试的发送文件。
@@ -40,6 +41,8 @@ class HarmonyShareBatchDetails extends StatelessWidget {
           ),
           if (record.direction == ShareTransferDirection.send)
             Text(context.l10n.t('harmonyShareRemoteHashUnknown')),
+          if (record.error != null)
+            Text(formatShareError(record.error!, context.l10n.t)),
           const SizedBox(height: 12),
           Expanded(
             child: FutureBuilder<List<ShareTransferRecord>>(
@@ -81,6 +84,11 @@ class HarmonyShareBatchDetails extends StatelessWidget {
       ),
     ),
     actions: [
+      if (record.error != null)
+        TextButton(
+          onPressed: () => showHarmonyShareErrorDetails(context, record.error!),
+          child: Text(context.l10n.t('harmonyShareErrorDetails')),
+        ),
       TextButton(
         onPressed: () => Navigator.pop(context),
         child: Text(context.l10n.t('harmonyShareGotIt')),

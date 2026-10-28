@@ -1,6 +1,8 @@
 import '../../../core/nearby_share/share_transfer_rate.dart';
 import '../../../core/nearby_share/share_transfer_record.dart';
 
+export 'harmony_share_error.dart';
+
 /// 未知接收文件名只显示稳定序号，不将占位文案写入文件元数据。
 String formatShareRecordName(ShareTransferRecord record, String Function(String) text) {
   if (record.fileName.isNotEmpty) return record.fileName;
@@ -21,17 +23,6 @@ String formatShareBytes(int bytes) {
   }
   return '${unit == 0 ? bytes : value.toStringAsFixed(1)} ${units[unit]}';
 }
-
-/// 已知业务错误映射双语提示，其他原生诊断保持原文便于排查。
-String formatShareError(String error, String Function(String) text) =>
-    switch (error) {
-      'history_buffer_full' => text('harmonyShareHistoryBufferFull'),
-      'outbox_full' ||
-      'Bad state: outbox_full' => text('harmonyShareOutboxFull'),
-      'outbox_cancelling' ||
-      'Bad state: outbox_cancelling' => text('harmonyShareOutboxUnavailable'),
-      _ => error,
-    };
 
 /// 速度与剩余时间只估算当前批次；舍入时间避免展示虚假的秒级精确值。
 String formatShareRate(ShareRateEstimate rate, String Function(String) text) {

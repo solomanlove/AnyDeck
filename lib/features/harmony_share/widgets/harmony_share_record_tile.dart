@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../core/nearby_share/share_transfer_record.dart';
 import 'harmony_share_format.dart';
+import 'harmony_share_error_details.dart';
 import 'harmony_share_batch_details.dart';
 import '../../../core/nearby_share/share_transfer_history.dart';
 
@@ -143,6 +144,11 @@ class HarmonyShareRecordDetailsDialog extends StatelessWidget {
       ),
     ),
     actions: [
+      if (record.error != null)
+        TextButton(
+          onPressed: () => showHarmonyShareErrorDetails(context, record.error!),
+          child: Text(context.l10n.t('harmonyShareErrorDetails')),
+        ),
       TextButton(
         onPressed: () => Navigator.pop(context),
         child: Text(context.l10n.t('harmonyShareGotIt')),

@@ -1,6 +1,6 @@
 # Huawei Share 私有核心集成边界
 
-当前基线：Core 0.3.0 / IPC 3，大文件实验上限 1 GiB 已完成离线验证，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
+当前基线：Core 0.3.2 / IPC 3，大文件实验上限 1 GiB 已完成离线验证，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
@@ -163,3 +163,10 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - SQLite增加progress_known/file_index，部分接收检查点和终态以原有完整事务/容量预留/失败重试保存，未发布文件无路径。旧库可迁移、完整成功补齐实际文件名/路径/hash，详情区分未知与真实字节；没有路径不显示打开文件/目录菜单。
 - 当前锁固定20893ba4307af53bfeec8851fff4d10f9a59c68a的Core0.3.2/IPC3，zip SHA-256 f356fda56a569bdd9418b449bc18b57ceaf87747d8a0780253dd7fc0ceb64ea2，hello要求file_progress，生产能力仍false。227 focused tests、targeted analyze、3 installer tests、2额外Widget渲染及最终Release签名/hash/hello通过。制品真实小文件双向/legacy三项、72f5163的签名制品GiB双向中途进度/完整结果/源hash通过，详见阶段计划。
 - GiB样本限定到独立TMPDIR、方向串行并检查6 GiB余量；每轮结束确认空目录并删除根目录。测试后删除Rust/Swift缓存和独立App，含菜单保护重建后再清理的App，约467 MiB分配空间，清单已追加；Core target/Swift .build当前不存在。已有小型DFile底座、锁定zip与小型日志截图保留，未push/启动App/操作手机或真实BLE，手工/真机/最终发布验收仍待完成。
+
+
+## 用户错误说明与主动诊断（2026-10-28）
+
+- formatShareError 由独立 UI helper 统一处理公开 IPC/异常边界，原入口继续 export；明确原因提供 zh/en 恢复建议，未知内容不直接显示路径或原始错误码。原始错误仍保留在服务/记录，发现页和文件/批次详情通过主动“技术详情”本地查看；批次摘要显示失败说明，发现页回调捕获当前错误快照。
+- 235 focused tests、targeted analyze、3 installer tests 通过；最终 8 错误交互与 2 带字体 Widget 导出复验通过。截图边界包含 Navigator overlay，已检查明暗提示及诊断弹窗。最终 Release 签名、成员 hash、锁定 zip 与 0.3.2 hello 通过；验证后删除临时 App 约97 MiB，没有新增大样本，之前 GiB 根目录和 Rust/Swift 缓存仍不存在。
+- 本批不改 Core 制品或能力声明，锁仍为20893ba / f356fda56a569bdd9418b449bc18b57ceaf87747d8a0780253dd7fc0ceb64ea2，生产 send/receive=false。未运行 App 或操作手机，手机及人工/发布验收继续待完成；以阶段计划末尾的需求验收表为当前证据边界。
