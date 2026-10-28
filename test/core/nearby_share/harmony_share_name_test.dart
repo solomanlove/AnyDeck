@@ -79,6 +79,7 @@ void main() {
       final writing = Completer<void>();
       try {
         await service.start();
+        expect(service.scanning, isTrue);
         expect(client.names, ['初始 Mac']);
         final operation = service.configureLocalName('新名称', () async {
           entered.complete();
@@ -92,6 +93,7 @@ void main() {
             : operation;
         await entered.future;
         expect(service.configuring, isTrue);
+        expect(service.scanning, isFalse);
         expect(service.busy, isFalse);
         expect(service.canSelectFiles, isFalse);
         expect(service.localName, '初始 Mac');
@@ -109,6 +111,7 @@ void main() {
         await result;
         final expected = fail ? '初始 Mac' : '新名称';
         expect(service.configuring, isFalse);
+        expect(service.scanning, isTrue);
         expect(service.localName, expected);
         expect(client.names, ['初始 Mac', expected]);
         final file = await File('${root.path}/tiny.bin').writeAsBytes([1, 2]);
@@ -141,6 +144,7 @@ void main() {
     try {
       await service.start();
       service.busy = true;
+      expect(service.scanning, isFalse);
       await expectLater(
         service.configureLocalName('Mac', () async {
           writes++;

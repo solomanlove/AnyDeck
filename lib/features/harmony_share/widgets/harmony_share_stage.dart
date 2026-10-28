@@ -6,9 +6,10 @@ import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_theme_sizes.dart';
 import '../../../core/nearby_share/share_core_client.dart';
 import 'harmony_share_drop_target.dart';
+import 'harmony_share_scan_backdrop.dart';
 
 /// 原型中的发现舞台。peers 为真实发现结果；onDrop 和 onPick 共用发送确认入口。
-/// 不持有服务或动画 Timer，页面离开后不会新增后台负担。
+/// scanning 由服务明确提供，收发/关闭/不可用时保持静态；动画在独立重绘层。
 class HarmonyShareStage extends StatelessWidget {
   const HarmonyShareStage({
     super.key,
@@ -18,11 +19,13 @@ class HarmonyShareStage extends StatelessWidget {
     required this.onPick,
     required this.onDrop,
     required this.onInvalidDrop,
+    this.scanning = false,
   });
 
   final List<ShareCorePeer> peers;
   final bool enabled;
   final bool busy;
+  final bool scanning;
   final ValueChanged<ShareCorePeer> onPick;
   final void Function(ShareCorePeer, List<File>) onDrop;
   final VoidCallback onInvalidDrop;
@@ -46,18 +49,10 @@ class HarmonyShareStage extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: CustomPaint(
-                        painter: _OrbitPainter(
-                          colors.primary.withValues(alpha: .1),
-                        ),
-                      ),
-                    ),
-                  ),
                   Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         if (peers.isNotEmpty)
                           Wrap(
@@ -75,71 +70,92 @@ class HarmonyShareStage extends StatelessWidget {
                                 ),
                             ],
                           ),
-                        const SizedBox(height: 24),
-                        HarmonyShareDropTarget(
-                          enabled: enabled && !busy,
-                          circular: true,
-                          // 设备卡片与中央区域不嵌套，避免一次拖放重复弹出确认。
-                          onDrop: (files) {
-                            if (busy || !enabled) return;
-                            if (files.isNotEmpty && peers.length == 1) {
-                              onDrop(peers.single, files);
-                            } else {
-                              onInvalidDrop();
-                            }
-                          },
-                          child: Container(
-                            width: 300,
-                            height: 300,
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: colors.surface.withValues(alpha: .8),
-                              border: Border.all(color: colors.outlineVariant),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.near_me_outlined,
-                                  size: 36,
-                                  color: colors.primary,
-                                ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  context.l10n.t(
-                                    !enabled
-                                        ? 'harmonyShareDisabled'
-                                        : peers.isEmpty
-                                        ? 'harmonyShareEmpty'
-                                        : 'harmonyShareDrop',
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  context.l10n.t('harmonyShareTapDevice'),
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 16),
-                                FilledButton(
-                                  onPressed:
-                                      enabled && !busy && peers.length == 1
-                                      ? () => onPick(peers.single)
-                                      : null,
-                                  child: Text(
-                                    context.l10n.t('harmonySharePick'),
+                        // 以中央投递区为扫描圆心，设备卡片换行不会移动波纹中心。
+                        SizedBox(
+                          width: double.infinity,
+                          height: 348,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: HarmonyShareScanBackdrop(
+                                    active: scanning && enabled && !busy,
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                              HarmonyShareDropTarget(
+                                enabled: enabled && !busy,
+                                circular: true,
+                                // 设备卡片与中央区域不嵌套，避免一次拖放重复弹出确认。
+                                onDrop: (files) {
+                                  if (busy || !enabled) return;
+                                  if (files.isNotEmpty && peers.length == 1) {
+                                    onDrop(peers.single, files);
+                                  } else {
+                                    onInvalidDrop();
+                                  }
+                                },
+                                child: Container(
+                                  width: 300,
+                                  height: 300,
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: colors.surface.withValues(alpha: .8),
+                                    border: Border.all(
+                                      color: colors.outlineVariant,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.near_me_outlined,
+                                        size: 36,
+                                        color: colors.primary,
+                                      ),
+                                      const SizedBox(height: 14),
+                                      Text(
+                                        context.l10n.t(
+                                          !enabled
+                                              ? 'harmonyShareDisabled'
+                                              : peers.isEmpty
+                                              ? 'harmonyShareEmpty'
+                                              : 'harmonyShareDrop',
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        context.l10n.t('harmonyShareTapDevice'),
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      FilledButton(
+                                        onPressed:
+                                            enabled &&
+                                                !busy &&
+                                                peers.length == 1
+                                            ? () => onPick(peers.single)
+                                            : null,
+                                        child: Text(
+                                          context.l10n.t('harmonySharePick'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 24),
                       ],
                     ),
                   ),
@@ -221,23 +237,4 @@ class _PeerCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 静态同心圆替代持续动画；颜色由 Theme 注入。
-class _OrbitPainter extends CustomPainter {
-  const _OrbitPainter(this.color);
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke;
-    for (final radius in [170.0, 260.0, 350.0]) {
-      canvas.drawCircle(size.center(Offset.zero), radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_OrbitPainter oldDelegate) => color != oldDelegate.color;
 }

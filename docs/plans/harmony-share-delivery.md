@@ -194,3 +194,13 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 197 项 focused Flutter tests、targeted analyze、3 项安装器测试通过。新增覆盖名称中英文/emoji/特殊字符/字节边界、双向 IPC 字段、保存失败/并发写入/收发互斥、主子窗口单写入与迟到广播。额外 2 项 Widget 渲染测试导出 `/tmp/anydeck-harmony-name-ui/`，明暗设置面板已视觉检查；截图来自离线 Widget，非运行 App 或手机。
 - Release 构建成功；包内 Core 0.3.1 / IPC 3、全部成员 hash、zip/commit 对齐和 codesign --verify --deep --strict 通过，摘要 `/tmp/anydeck-harmony-name-package-verify.log`。验证后删除 `/tmp/anydeck-harmony-name-offline` 与本轮私有 core/target、Swift .build，合计约234.6 MiB；未保留新增大样本或独立 App，清理清单已追加。磁盘短暂降至112 MiB，清理后观察约1.4 GiB，可用值仍随其他工作流变化。
 - 手机继续按用户要求暂缓。本轮没有启动/停止用户 App、操作手机/BLE/系统权限；未重跑 GiB 压力。尚待 Core 文件级真实进度、原 HTML 渲染对照、运行 App 交互/真实系统通知/Finder、手机大文件双向与发布前验收，完整目标保持未完成。
+
+## 扫描动画与逐文件进度 Core 准备（2026-10-28）
+
+- 根据新增要求接入扫描动画：HarmonyShareService.scanning 仅在真实发现窗口存活、空闲且无错误时为 true；发送/接收/名称保存/关闭不显示假扫描。3秒双波纹使用 AnimationController + CustomPainter(repaint) + RepaintBoundary，不重建设备卡片，不新增 Timer；禁用动画、无障碍导航、TickerMode 与页面销毁时停止。Dashboard 仅选中互联页时创建页面，离页销毁 Ticker。
+- 波纹圆心绑定中央投递区，修复有界布局拉高舞台、设备卡片换行后圆心偏移的问题。Theme 提供颜色，无新增硬编码文案；保留原发送/拖放功能。扫描 UI/样式与服务判定分文件，本机名称编辑及跨窗口安全保存保持已实现状态。
+- 203项 focused Flutter tests、targeted analyze通过；新增图像帧变化、前景不重建、停止/减少动态效果/无障碍/TickerMode/销毁回收与空设备/三设备换行几何用例。另2项 Widget导出测试通过，`/tmp/anydeck-harmony-scan-ui/scanning[-next]-{light,dark}.png` 已检查，属于离线渲染，不是运行App或手机证据。
+- 私有原生底座60810f0：完整加密帧写入socket后计发送明文字节，实际文件块写入后计接收字节；按文件/块去重，支持乱序/重传/并发，bitmap合计最多16 MiB，字节完成即释放，缺失遥测不推算。18项原生回归执行，17通过、1可选LAN跳过，含小文件/100文件双向hash、ASan/UBSan与legacy AES/UDP回归。
+- 私有Core准备6ca9ade：Core源码0.3.2/IPC3声明file_progress，发送按snapshot文件大小、接收按完整清单严格校验，整批总量改用观察到的文件IO进度之和；100%字节仍等待完整终态。40项全库lib回归（排除GiB压力）、6 integration及4项文件进度专项通过，含真实双向IPC文件进度/hash、legacy不新增事件与100 GiB纯算术边界；Release/hello通过。未生成0.3.2新zip，Flutter逐文件模型/展示/历史检查点及新制品仍需接线。
+- 本批App继续锁定c517780的Core0.3.1。最终UI源码Release构建、包整体/5个原生成员严格签名、manifest/hash/锁定commit中的zip/hello验证通过，摘要`/tmp/anydeck-harmony-scan-package-verify.log`。没有把准备阶段Core0.3.2放进尚未适配新事件的App；生产send/receive=false。
+- 按低存储要求删除本轮Rust编译缓存、两份新增依赖clone与隔离App约363.1 MiB，清单已追加；小型样本与sanitizer工具自动回收，保留已有约16 MiB DFile底座、锁定zip与小型日志截图。磁盘当前观察约9.6 GiB可用，其他工作流也会影响该值。未启动/停止用户App、操作手机或真实BLE，未push；手机大文件双向/运行App/原HTML/真实通知和发布验收仍未完成。

@@ -287,6 +287,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                                   enabled ? _service.start() : _service.stop(),
                       ),
                       HarmonyShareStage(
+                        scanning: _service.scanning,
                         peers: peers,
                         enabled: _service.enabled,
                         busy: !_service.canSelectFiles,

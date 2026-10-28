@@ -147,6 +147,8 @@ class HarmonyShareService extends ChangeNotifier {
   }) => _appendSelection(peer, selection, retryOf: retryOf);
 
   bool get enabled => _enabled;
+  /// 仅实际接收/发现窗口存活且空闲时显示扫描动画，发送期间不伪装仍在扫描。
+  bool get scanning => _enabled && !busy && !_configuring && _receiver != null && error == null;
 
   Future<void> start() async {
     if (_enabled || !_supported) return;

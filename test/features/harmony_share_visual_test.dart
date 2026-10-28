@@ -154,6 +154,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('nearby');
+      await tester.pumpWidget(host(Center(child: HarmonyShareStage(
+        peers: const [], enabled: true, busy: false, scanning: true,
+        onPick: (_) {}, onDrop: (_, _) {}, onInvalidDrop: () {},
+      ))));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.takeException(), isNull);
+      await capture('scanning');
+      await tester.pump(const Duration(milliseconds: 650));
+      await capture('scanning-next');
       await tester.pumpWidget(
         host(
           const Center(
