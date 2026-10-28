@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_theme_sizes.dart';
+import '../../../core/nearby_share/share_core_contract.dart';
 
 /// 鸿蒙互联的本机身份栏；名称必须与核心对外广播身份保持一致。
 class HarmonyShareIdentity extends StatelessWidget {
@@ -57,8 +58,17 @@ class HarmonyShareIdentity extends StatelessWidget {
 
 /// 仅展示核心真实忙碌态；未知字节进度时明确显示等待，不生成模拟百分比。
 class HarmonyShareTransferPanel extends StatelessWidget {
-  const HarmonyShareTransferPanel({super.key, required this.onCancel});
+  const HarmonyShareTransferPanel({
+    super.key,
+    required this.onCancel,
+    this.progress,
+    this.receiving = false,
+    this.fileName,
+  });
   final VoidCallback onCancel;
+  final ShareCoreProgress? progress;
+  final bool receiving;
+  final String? fileName;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -66,10 +76,13 @@ class HarmonyShareTransferPanel extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          const SizedBox(
+          SizedBox(
             width: 22,
             height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              value: progress?.fraction,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -77,11 +90,19 @@ class HarmonyShareTransferPanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.l10n.t('harmonyShareSending'),
+                  context.l10n.t(
+                    receiving
+                        ? 'harmonyShareReceivingActive'
+                        : 'harmonyShareSending',
+                  ),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
+                if (fileName != null)
+                  Text(fileName!, maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(
-                  context.l10n.t('harmonyShareWaiting'),
+                  progress == null
+                      ? context.l10n.t('harmonyShareWaiting')
+                      : '${(progress!.fraction * 100).toStringAsFixed(1)}% · ${(progress!.bytes / 1048576).toStringAsFixed(1)} / ${(progress!.totalBytes / 1048576).toStringAsFixed(1)} MiB',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

@@ -69,7 +69,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
       if (!mounted) return;
       if (stat.type != FileSystemEntityType.file ||
           stat.size == 0 ||
-          stat.size > 1024 * 1024) {
+          stat.size > ShareCoreContract.maxFileBytes) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.l10n.t('harmonyShareLimit'))),
         );
@@ -113,7 +113,9 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
     final colors = Theme.of(context).colorScheme;
     final peers = _service.peers.values.toList();
     final status = _service.busy
-        ? 'harmonyShareSending'
+        ? (_service.receiving
+              ? 'harmonyShareReceivingActive'
+              : 'harmonyShareSending')
         : _service.error != null
         ? 'harmonyShareUnavailable'
         : _service.enabled
@@ -270,7 +272,12 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                 ],
                 if (_service.busy) ...[
                   const SizedBox(height: 12),
-                  HarmonyShareTransferPanel(onCancel: _service.cancelTransfer),
+                  HarmonyShareTransferPanel(
+                    onCancel: _service.cancelTransfer,
+                    progress: _service.progress,
+                    receiving: _service.receiving,
+                    fileName: _service.activeFile,
+                  ),
                 ],
                 const SizedBox(height: 20),
                 HarmonyShareRecent(paths: _service.recent),

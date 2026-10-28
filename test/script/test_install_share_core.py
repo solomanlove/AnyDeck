@@ -39,6 +39,14 @@ class ShareCoreInstallTests(unittest.TestCase):
         self.assertEqual((self.app / "Contents/MacOS/ShareCore/anydeck-share-core").read_bytes(),
                          b"anydeck-share-core")
 
+    def test_rejects_previous_ipc_before_installing(self):
+        data = self.archive()
+        lock = {"ipc_version": 2, "artifacts": {"arm64": {
+            "sha256": hashlib.sha256(data).hexdigest()}}}
+        with self.assertRaises(ValueError):
+            install(data, self.app, lock, "arm64")
+        self.assertFalse((self.app / "Contents/MacOS/ShareCore").exists())
+
     def test_rejects_modified_archive_before_creating_directory(self):
         data = self.archive()
         lock = {"ipc_version": 1, "artifacts": {"arm64": {"sha256": "0" * 64}}}

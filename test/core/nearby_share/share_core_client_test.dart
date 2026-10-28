@@ -6,8 +6,9 @@ import 'package:any_deck/core/nearby_share/share_core_client.dart';
 void main() {
   test('accepts explicit versioned capabilities', () {
     final result = ShareCoreCapabilities.parse(
-      '{"event":"hello","version":1,"core_version":"0.1.0",'
-      '"capabilities":{"discovery":false,"send":false,"receive":false}}',
+      '{"event":"hello","version":2,"core_version":"0.1.0",'
+      '"capabilities":{"discovery":false,"send":false,"receive":false},'
+      '"experimental":{"max_file_bytes":1073741824,"max_transfer_seconds":1800,"progress":true,"graceful_cancel":true}}',
     );
     expect(result.send, isFalse);
     expect(result.coreVersion, '0.1.0');
@@ -20,7 +21,7 @@ void main() {
     );
     expect(
       () => ShareCoreCapabilities.parse(
-        '{"event":"hello","version":1,"core_version":"0.1.0",'
+        '{"event":"hello","version":2,"core_version":"0.1.0",'
         '"capabilities":{"discovery":true,"send":"yes","receive":false}}',
       ),
       throwsFormatException,
@@ -53,7 +54,9 @@ void main() {
       final folder = await Directory.systemTemp.createTemp('share-core-test-');
       try {
         final file = File('${folder.path}/large.bin');
-        await file.writeAsBytes(List.filled(1024 * 1024 + 1, 0));
+        final handle = await file.open(mode: FileMode.write);
+        await handle.truncate(ShareCoreContract.maxFileBytes + 1);
+        await handle.close();
         expect(
           () => const ShareCoreClient().sendFileForTest(
             localAddress: InternetAddress('192.168.1.2'),

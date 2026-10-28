@@ -42,7 +42,7 @@ void main() {
           ),
         );
         expect(find.byType(DashboardHeaderBar), findsOneWidget);
-        expect(find.textContaining('1 MiB'), findsOneWidget);
+        expect(find.textContaining('1 GiB'), findsOneWidget);
         expect(find.byType(Switch), findsOneWidget);
         expect(find.byType(HarmonyShareStage), findsOneWidget);
         expect(tester.takeException(), isNull);

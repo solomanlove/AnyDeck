@@ -1,5 +1,7 @@
 # Huawei Share 私有核心集成边界
 
+当前基线：Core 0.2.0 / IPC 2，大文件实验上限 1 GiB 已完成离线验证，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
+
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
 ## 构建链路
@@ -41,3 +43,14 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - Widget 验证覆盖 zh/en、Light/Dark、无手机、多设备目标、忙碌禁用、来件拒绝及 480px 窄窗口。视觉测试支持通过 `HARMONY_CAPTURE_DIR` 导出真实 Widget PNG；可选 `HARMONY_CAPTURE_FONT` 使用本机字体，不提交字体文件。
 - 本轮 14 项定向测试与 2 项视觉布局测试通过，targeted analyze 无问题。已检查 Light/Dark 空态、附近设备与来件面板截图（`/tmp/anydeck-harmony-ui/`）。测试截图不是运行中 App 真机截图。原 HTML 的 file URL 被浏览器策略拦截，未完成实际渲染逐项对照，阶段 1 视觉验收仍保留该项。
 - 本批未修改协议、大小限制、能力声明或制品锁；1 MiB 限制继续有效。完整记录、系统通知、真实进度后续实施，不显示虚假成功百分比。阶段进度与验收入口：`docs/plans/harmony-share-delivery.md`。
+
+## 大文件离线批次（2026-10-28）
+
+- 主仓 `ShareCoreContract` 升级 IPC 2；握手必须显式符合实验上限、进度和 graceful cancel 字段，旧制品拒绝使用。会话从 Client 拆出到 `share_core_sessions.dart`，stdout 流式消费，不保存完整事件列表；最终成功事件才表示任务完成。
+- 私有 Core 0.2.0 / commit `21d8bee605793b6183e4f91233c95028df4942d9` 的实验上限为单文件 1 GiB、30 分钟；生产 send/receive 仍 false。主仓只集成元数据和状态事件，协议改动与诊断资料留在私有仓。
+- 接收收到 `session_started` 后进入互斥忙碌态并撤销发现 watchdog，网络刷新暂停；进度只接受合法、单调字节数。发送准备时取消也会保留取消意图，避免核心稍后启动后继续发送。先 SIGTERM 清理，5 秒无响应再回收子进程并 SIGKILL。
+- 离线压力样本 10/100/512 MiB/1 GiB 均通过加密 DFile 双进程与 SHA-256，1 GiB 最终复验单进程采样峰值 RSS 约 180 MiB；不是手机双向完整链路验证。用户明确先做离线验证，真机阶段待方便时继续。
+- 主仓 24 项 focused tests、3 项 installer tests 与 targeted analyze 通过；新增 fake_async 为测试既有依赖的显式声明，用于跨 125 秒的生命周期回归，不增加 runtime 依赖。
+- 锁定 zip SHA-256 为 `106026e891b971c8c004c37a9b67213fe2a43cc087a688ba7ec37970b623a119`；新私有 commit 暂未推送，构建使用私有仓本地 zip override。阶段记录和测试包位置见 `docs/plans/harmony-share-delivery.md`。
+
+本轮曾因磁盘空间不足中断一轮验证；只清理本轮已停止合成样本的临时目录后，串行重跑压力测试和 Flutter 验证通过。启动/停止竞态新增独立回归用例，避免异步启动迟到后残留接收进程。

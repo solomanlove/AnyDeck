@@ -1,5 +1,6 @@
 /// 华为分享单文件自测入口文案；中英文 key 保持一一对应。
 const huaweiShareZh = {
+  'harmonyShareReceivingActive': '正在接收',
   'harmonyShareDisabled': '接收已关闭',
   'harmonyShareTapDevice': '或点击设备头像选择文件',
   'harmonySharePeerReady': '附近 · 无需预先连接',
@@ -30,7 +31,7 @@ const huaweiShareZh = {
   'harmonyShareRecent': '最近互传',
   'harmonyShareNoRecent': '还没有传输记录',
   'harmonyShareConfirm': '确认发送',
-  'harmonyShareLimit': '当前测试版支持同一 Wi-Fi 下单个不超过 1 MiB 的文件',
+  'harmonyShareLimit': '实验版：同一 Wi-Fi 下单文件上限 1 GiB，大文件待真机验收',
   'harmonyShareSending': '正在发送',
   'harmonyShareReceiving': '等待手机发送',
   'harmonyShareReceive': '开启接收',
@@ -53,6 +54,7 @@ const huaweiShareZh = {
 };
 
 const huaweiShareEn = {
+  'harmonyShareReceivingActive': 'Receiving',
   'harmonyShareDisabled': 'Receiving is off',
   'harmonyShareTapDevice': 'Or click a device to choose a file',
   'harmonySharePeerReady': 'Nearby · No connection required',
@@ -88,7 +90,8 @@ const huaweiShareEn = {
   'harmonyShareRecent': 'Recent transfers',
   'harmonyShareNoRecent': 'No transfers yet',
   'harmonyShareConfirm': 'Send file',
-  'harmonyShareLimit': 'Test version: one file up to 1 MiB on the same Wi-Fi',
+  'harmonyShareLimit':
+      'Experimental: one file up to 1 GiB on the same Wi-Fi; large-file phone validation pending',
   'harmonyShareSending': 'Sending',
   'harmonyShareReceiving': 'Waiting for phone',
   'harmonyShareReceive': 'Enable receiving',

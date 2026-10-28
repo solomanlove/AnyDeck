@@ -2,6 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'share_core_contract.dart';
+import 'share_core_sessions.dart';
+
+export 'share_core_contract.dart';
+export 'share_core_sessions.dart';
+
 /// 私有 Share Core 的公开 IPC 契约；不包含任何 Huawei Share 协议字段。
 class ShareCoreCapabilities {
   const ShareCoreCapabilities({
@@ -9,19 +15,21 @@ class ShareCoreCapabilities {
     required this.send,
     required this.receive,
     required this.coreVersion,
+    required this.maxFileBytes,
   });
 
   final bool discovery;
   final bool send;
   final bool receive;
   final String coreVersion;
+  final int maxFileBytes;
 
   /// 仅接受与当前主仓库兼容的握手版本与明确声明的布尔能力。
   static ShareCoreCapabilities parse(String line) {
     final value = jsonDecode(line);
     if (value is! Map<String, dynamic> ||
         value['event'] != 'hello' ||
-        value['version'] != 1 ||
+        value['version'] != ShareCoreContract.version ||
         value['core_version'] is! String) {
       throw const FormatException('Incompatible Share Core handshake');
     }
@@ -32,11 +40,23 @@ class ShareCoreCapabilities {
         capabilities['receive'] is! bool) {
       throw const FormatException('Invalid Share Core capabilities');
     }
+    final experimental = value['experimental'];
+    if (experimental is! Map<String, dynamic> ||
+        experimental['max_file_bytes'] != ShareCoreContract.maxFileBytes ||
+        experimental['max_transfer_seconds'] !=
+            ShareCoreContract.transferTimeout.inSeconds ||
+        experimental['progress'] != true ||
+        experimental['graceful_cancel'] != true) {
+      throw const FormatException(
+        'Incompatible experimental transfer contract',
+      );
+    }
     return ShareCoreCapabilities(
       discovery: capabilities['discovery'] as bool,
       send: capabilities['send'] as bool,
       receive: capabilities['receive'] as bool,
       coreVersion: value['core_version'] as String,
+      maxFileBytes: experimental['max_file_bytes'] as int,
     );
   }
 }
@@ -87,7 +107,9 @@ class ShareCoreClient {
     }
     final process = await Process.start(_executable.path, const []);
     try {
-      process.stdin.writeln(jsonEncode({'version': 1, 'command': 'hello'}));
+      process.stdin.writeln(
+        jsonEncode({'version': ShareCoreContract.version, 'command': 'hello'}),
+      );
       await process.stdin.flush();
       final line = await process.stdout
           .transform(utf8.decoder)
@@ -126,7 +148,7 @@ class ShareCoreClient {
     try {
       process.stdin.writeln(
         jsonEncode({
-          'version': 1,
+          'version': ShareCoreContract.version,
           'command': 'discover',
           'local_ip': localAddress.address,
           'broadcast_ip': broadcastAddress.address,
@@ -168,7 +190,7 @@ class ShareCoreClient {
     }
   }
 
-  /// 测试入口仅传输一个不超过 1 MiB 的普通文件；私有核心仍要求显式环境开关。
+  /// 测试入口仅传输一个不超过 1 GiB 的普通文件；私有核心仍要求显式环境开关。
   Future<ShareCoreTransfer> sendFileForTest({
     required InternetAddress localAddress,
     required ShareCorePeer peer,
@@ -177,8 +199,8 @@ class ShareCoreClient {
     final stat = await file.stat();
     if (stat.type != FileSystemEntityType.file ||
         stat.size < 1 ||
-        stat.size > 1024 * 1024) {
-      throw const FormatException('Select one nonempty file up to 1 MiB');
+        stat.size > ShareCoreContract.maxFileBytes) {
+      throw const FormatException('Select one nonempty file up to 1 GiB');
     }
     return _startTransfer({
       'command': 'send_file_experimental',
@@ -222,6 +244,7 @@ class ShareCoreClient {
         !await outputDirectory.parent.exists()) {
       throw const FormatException('Receive folder must be new');
     }
+    await probe();
     final process = await Process.start(
       _executable.path,
       const [],
@@ -230,7 +253,7 @@ class ShareCoreClient {
     final session = ShareCoreReceiveSession(process);
     process.stdin.writeln(
       jsonEncode({
-        'version': 1,
+        'version': ShareCoreContract.version,
         'command': 'receive_file_interactive',
         'local_ip': localAddress.address,
         'broadcast_ip': broadcastAddress.address,
@@ -249,6 +272,7 @@ class ShareCoreClient {
     if (!Platform.isMacOS || !await _executable.exists()) {
       throw const FileSystemException('Share Core is not bundled');
     }
+    await probe();
     final process = await Process.start(
       _executable.path,
       const [],
@@ -257,7 +281,13 @@ class ShareCoreClient {
     try {
       final transfer = ShareCoreTransfer(process, expectedEvent);
       process.stdin.writeln(
-        jsonEncode({'version': 1, ...request, 'duration_seconds': 120}),
+        jsonEncode({
+          'version': ShareCoreContract.version,
+          ...request,
+          'duration_seconds': expectedEvent == 'file_sent'
+              ? ShareCoreContract.transferTimeout.inSeconds
+              : 120,
+        }),
       );
       await process.stdin.flush();
       await process.stdin.close();
@@ -265,104 +295,6 @@ class ShareCoreClient {
     } catch (_) {
       process.kill();
       rethrow;
-    }
-  }
-}
-
-/// 单个接收窗口的 JSONL 事件与用户决策通道。
-class ShareCoreReceiveSession {
-  ShareCoreReceiveSession(this._process);
-
-  final Process _process;
-
-  Stream<Map<String, dynamic>> get events => _process.stdout
-      .transform(utf8.decoder)
-      .transform(const LineSplitter())
-      .map((line) {
-        final value = jsonDecode(line);
-        if (value is! Map<String, dynamic>) {
-          throw const FormatException('Invalid Share Core event');
-        }
-        return value;
-      });
-
-  void decide(bool accept) {
-    _process.stdin.writeln(
-      jsonEncode({'command': accept ? 'accept' : 'reject'}),
-    );
-  }
-
-  Future<void> stop() async {
-    // 核心被信号终止时无法执行 Rust Drop，先回收其 BLE/DFile 子进程。
-    if (Platform.isMacOS) {
-      try {
-        final children = await Process.run('/usr/bin/pgrep', [
-          '-P',
-          '${_process.pid}',
-        ]);
-        for (final line in children.stdout.toString().split('\n')) {
-          final pid = int.tryParse(line.trim());
-          if (pid != null) Process.killPid(pid);
-        }
-      } catch (_) {
-        // 原生进程可能已自行结束。
-      }
-    }
-    _process.kill();
-    await _process.exitCode.timeout(
-      const Duration(seconds: 3),
-      onTimeout: () {
-        _process.kill(ProcessSignal.sigkill);
-        return -1;
-      },
-    );
-  }
-}
-
-/// 单次原生传输会话；页面关闭或用户取消时终止子进程。
-class ShareCoreTransfer {
-  ShareCoreTransfer(this._process, this._expectedEvent);
-
-  final Process _process;
-  final String _expectedEvent;
-  bool _cancelled = false;
-
-  void cancel() {
-    _cancelled = true;
-    _process.kill();
-  }
-
-  Future<Map<String, dynamic>> get result async {
-    try {
-      final lines = _process.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .toList();
-      final stderr = _process.stderr.transform(utf8.decoder).join();
-      final exit = await _process.exitCode.timeout(
-        const Duration(seconds: 125),
-        onTimeout: () {
-          _process.kill(ProcessSignal.sigkill);
-          return 124;
-        },
-      );
-      final output = await lines;
-      await stderr;
-      if (_cancelled) throw StateError('Transfer cancelled');
-      if (output.isEmpty) throw StateError('Share Core exited: $exit');
-      final response = jsonDecode(output.last);
-      if (response is! Map<String, dynamic>) {
-        throw const FormatException('Invalid Share Core transfer response');
-      }
-      if (exit != 0 || response['event'] != _expectedEvent) {
-        throw StateError(
-          'Share Core ${response['code'] ?? exit}: '
-          '${response['phase'] ?? ''} ${response['reason'] ?? ''}',
-        );
-      }
-      return response;
-    } finally {
-      _process.kill();
     }
   }
 }
