@@ -4,10 +4,12 @@ import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/nearby_share/harmony_share_send_queue.dart';
 import 'harmony_share_format.dart';
+import '../../../core/nearby_share/share_transfer_rate.dart';
 
 /// 发送队列展示：items 为不可变行快照，取消回调按 id 操作，清除仅清除本次结果面板。
 /// nativeBatch 使用 batchTransferredBytes 展示真实总进度，隐藏逐文件取消和推测进度。
-/// cancelling 禁用重复取消；行列表限制高度并按需构建，避免 100 项撑满页面。
+/// cancelling 禁用重复取消，rate 只估算当前批次，null 时隐藏。
+/// 行列表限制高度并按需构建，避免 100 项撑满页面。
 class HarmonyShareQueuePanel extends StatelessWidget {
   const HarmonyShareQueuePanel({
     super.key,
@@ -19,6 +21,7 @@ class HarmonyShareQueuePanel extends StatelessWidget {
     this.nativeBatch = false,
     this.batchTransferredBytes = 0,
     this.cancelling = false,
+    this.rate,
   });
   final List<ShareSendItem> items;
   final bool running;
@@ -28,6 +31,7 @@ class HarmonyShareQueuePanel extends StatelessWidget {
   final bool nativeBatch;
   final int batchTransferredBytes;
   final bool cancelling;
+  final ShareRateEstimate? rate;
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +50,11 @@ class HarmonyShareQueuePanel extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    context.l10n.t('harmonyShareQueueTitle'),
+                    context.l10n.t(
+                      nativeBatch
+                          ? 'harmonyShareBatchTitle'
+                          : 'harmonyShareQueueTitle',
+                    ),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -107,6 +115,13 @@ class HarmonyShareQueuePanel extends StatelessWidget {
               '${formatShareBytes(bytes)} / ${formatShareBytes(total)}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
+            if (running && rate != null)
+              Text(
+                formatShareRate(rate!, context.l10n.t),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            if (running && nativeBatch && bytes == total && total > 0)
+              Text(context.l10n.t('harmonyShareAwaitingBatchResult')),
             const SizedBox(height: 12),
             SizedBox(
               height: (items.length * 78.0).clamp(78, 312),
@@ -149,7 +164,10 @@ class HarmonyShareQueuePanel extends StatelessWidget {
                         ),
                         if (item.error != null)
                           Tooltip(
-                            message: formatShareError(item.error!, context.l10n.t),
+                            message: formatShareError(
+                              item.error!,
+                              context.l10n.t,
+                            ),
                             child: Text(
                               formatShareError(item.error!, context.l10n.t),
                               maxLines: 1,

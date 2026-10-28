@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'share_core_client.dart';
 import 'share_send_selection.dart';
+import 'share_transfer_rate.dart';
 
 /// 文件状态独立于字节进度；字节达到 100% 后仍需等待核心最终成功事件。
 enum ShareSendStatus {
@@ -72,7 +75,8 @@ class HarmonyShareSendQueue extends ChangeNotifier {
     this.sendBatch,
     this.onBatchQueued,
     this.onBatchChanged,
-  });
+    ShareTransferRate? rateTracker,
+  }) : _rate = rateTracker ?? ShareTransferRate();
   final Future<void> Function(ShareSendItem, ValueChanged<ShareCoreProgress>)
   send;
   final Future<void> Function(
@@ -90,6 +94,9 @@ class HarmonyShareSendQueue extends ChangeNotifier {
   int? _current;
   int _sequence = 0;
   bool running = false;
+  final ShareTransferRate _rate;
+  Timer? _rateTicker;
+  ShareRateEstimate? get rate => running && !cancelling ? _rate.estimate : null;
   String _batchId = '';
   int _batchBytes = 0;
   bool _batchCancelled = false;
@@ -109,31 +116,56 @@ class HarmonyShareSendQueue extends ChangeNotifier {
       _items.where((item) => item.status == status).length;
   bool isCancelled(String id) => _cancelled.contains(id);
 
+  /// 排队时即分配稳定 ID，持久化 queued 后激活时沿用同一任务。
+  ShareSendBatch prepare(
+    ShareCorePeer peer,
+    ShareSendSelection selection, {
+    String? retryOf,
+  }) {
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    return ShareSendBatch(
+      id: '$stamp-${_sequence++}',
+      transferredBytes: 0,
+      items: [
+        for (final file in selection.files)
+          ShareSendItem(
+            id: '$stamp-${_sequence++}',
+            peer: peer,
+            file: file,
+            retryOf: retryOf,
+          ),
+      ],
+    );
+  }
+
   Future<void> run(
     ShareCorePeer peer,
     ShareSendSelection selection, {
     String? retryOf,
-  }) async {
+  }) => _run(prepare(peer, selection, retryOf: retryOf), stored: false);
+
+  /// 仅供原生调度器激活已持久化的批次，避免生成第二套排队记录。
+  Future<void> runPrepared(ShareSendBatch batch) {
+    if (!nativeBatch) {
+      throw StateError('Prepared batches require native transfers');
+    }
+    return _run(batch, stored: true);
+  }
+
+  Future<void> _run(ShareSendBatch prepared, {required bool stored}) async {
     if (running) throw StateError('Send queue is already running');
     running = true;
     _cancelled.clear();
     _batchBytes = 0;
     _batchCancelled = false;
-    final batch = DateTime.now().microsecondsSinceEpoch;
-    _batchId = '$batch-${_sequence++}';
-    _items = [
-      for (final file in selection.files)
-        ShareSendItem(
-          id: '$batch-${_sequence++}',
-          peer: peer,
-          file: file,
-          retryOf: retryOf,
-        ),
-    ];
+    _rate.reset();
+    _rateTicker?.cancel();
+    _batchId = prepared.id;
+    _items = List.of(prepared.items);
     notifyListeners();
     try {
       if (nativeBatch) {
-        await onBatchQueued?.call(this.batch);
+        if (!stored) await onBatchQueued?.call(batch);
         await _runNative();
         return;
       }
@@ -212,6 +244,8 @@ class HarmonyShareSendQueue extends ChangeNotifier {
         }
       }
     } finally {
+      _rateTicker?.cancel();
+      _rateTicker = null;
       _current = null;
       running = false;
       notifyListeners();
@@ -238,6 +272,19 @@ class HarmonyShareSendQueue extends ChangeNotifier {
             progress.bytes < 0 ||
             progress.bytes > totalBytes) {
           return;
+        }
+        _rate.observe(progress.bytes, progress.totalBytes);
+        if (progress.bytes < progress.totalBytes) {
+          _rateTicker ??= Timer.periodic(const Duration(seconds: 1), (timer) {
+            notifyListeners();
+            if (_rate.estimate == null) {
+              timer.cancel();
+              _rateTicker = null;
+            }
+          });
+        } else {
+          _rateTicker?.cancel();
+          _rateTicker = null;
         }
         _batchBytes = progress.bytes;
         if (_items.first.status != ShareSendStatus.transferring) {
@@ -304,9 +351,16 @@ class HarmonyShareSendQueue extends ChangeNotifier {
   void clear() {
     if (running) return;
     _items = [];
+    _rate.reset();
     _batchBytes = 0;
     _cancelled.clear();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _rateTicker?.cancel();
+    super.dispose();
   }
 
   void _set(int index, ShareSendItem item) {

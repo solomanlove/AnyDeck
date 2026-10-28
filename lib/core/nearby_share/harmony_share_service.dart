@@ -12,8 +12,10 @@ import 'share_transfer_history.dart';
 import 'share_transfer_record.dart';
 import 'harmony_share_sender.dart';
 import 'share_receive_directory.dart';
+import 'harmony_share_outbox.dart';
 
 part 'harmony_share_receive_events.dart';
+part 'harmony_share_send_service.dart';
 
 /// 展示给用户的来件摘要；协议内容不进入主仓库。
 class ShareIncomingOffer {
@@ -93,11 +95,42 @@ class HarmonyShareService extends ChangeNotifier {
     send: _sendOne,
     sendBatch: _nativeBatch ? _sendNativeBatch : null,
     onBatchQueued: history?.queuedBatch,
-    onBatchChanged: history?.sentBatchChanged,
+    onBatchChanged: _batchChanged,
     cancelActive: _sender.cancel,
     onQueued: history?.queued,
     onChanged: history?.sentItemChanged,
   )..addListener(notifyListeners);
+
+  late final outbox = HarmonyShareOutbox(
+    persist: (batch) async => history?.queuedBatch(batch),
+    execute: (batch) async {
+      await sendQueue.runPrepared(batch);
+      return sendQueue.batch;
+    },
+    cancelActive: sendQueue.cancelAll,
+    changed: (batch) => history?.sentBatchChanged(batch),
+  )..addListener(notifyListeners);
+  bool get canAppend => _nativeBatch && busy && !receiving && outbox.accepting;
+  bool get canSelectFiles => !busy || canAppend;
+
+  Future<void> send(ShareCorePeer peer, File file) => sendFiles(peer, [file]);
+
+  Future<void> sendFiles(ShareCorePeer peer, List<File> files) =>
+      _runBatch(peer, () => ShareSendSelection.inspect(files));
+
+  /// UI 确认过的元数据保持不变，队列开始每项前再检查文件是否被修改。
+  Future<void> sendSelection(
+    ShareCorePeer peer,
+    ShareSendSelection selection, {
+    String? retryOf,
+  }) => _runBatch(peer, () async => selection, retryOf: retryOf);
+
+  /// 只将已确认选择加入待发队列，返回表示已提交排队，不表示发送成功。
+  Future<void> appendSelection(
+    ShareCorePeer peer,
+    ShareSendSelection selection, {
+    String? retryOf,
+  }) => _appendSelection(peer, selection, retryOf: retryOf);
 
   bool get enabled => _enabled;
 
@@ -150,6 +183,7 @@ class HarmonyShareService extends ChangeNotifier {
     _networkTimer?.cancel();
     _networkTimer = null;
     _sendCancelled = true;
+    outbox.cancelAll();
     sendQueue.cancelAll();
     await _stopWindow();
     await _sending;
@@ -268,111 +302,12 @@ class HarmonyShareService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> send(ShareCorePeer peer, File file) => sendFiles(peer, [file]);
-
-  Future<void> sendFiles(ShareCorePeer peer, List<File> files) =>
-      _runBatch(peer, () => ShareSendSelection.inspect(files));
-
-  /// UI 确认过的元数据保持不变，队列开始每项前再检查文件是否被修改。
-  Future<void> sendSelection(
-    ShareCorePeer peer,
-    ShareSendSelection selection, {
-    String? retryOf,
-  }) => _runBatch(peer, () async => selection, retryOf: retryOf);
-
-  Future<void> _runBatch(
-    ShareCorePeer peer,
-    Future<ShareSendSelection> Function() prepare, {
-    String? retryOf,
-  }) async {
-    if (busy) return;
-    final operation = _executeBatch(peer, prepare, retryOf: retryOf);
-    _sending = operation;
-    try {
-      await operation;
-    } finally {
-      if (_sending == operation) _sending = null;
-    }
-  }
-
-  /// 停止服务会等待本次发送清理和记录落盘，避免销毁后仍输出状态。
-  Future<void> _executeBatch(
-    ShareCorePeer peer,
-    Future<ShareSendSelection> Function() prepare, {
-    String? retryOf,
-  }) async {
-    busy = true;
-    _sendCancelled = false;
-    error = null;
-    sendQueue.clear();
-    notifyListeners();
-    try {
-      await _stopWindow();
-      if (_sendCancelled) throw StateError('Transfer cancelled');
-      final selection = await prepare();
-      if (_sendCancelled) throw StateError('Transfer cancelled');
-      await sendQueue.run(peer, selection, retryOf: retryOf);
-      await history?.flush();
-      final failures = sendQueue.items.where(
-        (item) => item.status == ShareSendStatus.failed,
-      );
-      error = failures.isEmpty ? null : failures.first.error;
-    } catch (failure) {
-      error = '$failure';
-    } finally {
-      activeFile = null;
-      progress = null;
-      busy = false;
-      notifyListeners();
-      if (_enabled) await _startWindow();
-    }
-  }
-
-  /// 每项只占用一个核心会话；整个 batch 结束后才恢复接收监听。
-  Future<void> _sendOne(
-    ShareSendItem item,
-    ValueChanged<ShareCoreProgress> onProgress,
-  ) async {
-    activeFile = item.file.name;
-    progress = null;
-    await _sender.send(
-      item,
-      cancelled: () => _sendCancelled || sendQueue.isCancelled(item.id),
-      onProgress: (update) {
-        progress = update;
-        onProgress(update);
-      },
-    );
-    recent.insert(0, item.file.file.path);
-    if (recent.length > 50) recent.removeRange(50, recent.length);
-    unawaited(_saveRecent());
-  }
-
-  /// 一次选择对应一次原生确认与发送，终态前不生成单文件成功结果。
-  Future<void> _sendNativeBatch(
-    List<ShareSendItem> items,
-    ValueChanged<ShareCoreProgress> onProgress,
-  ) async {
-    activeFile = null;
-    progress = null;
-    await _sender.sendBatch(
-      items,
-      cancelled: () => _sendCancelled || sendQueue.cancelling,
-      onProgress: (update) {
-        progress = update;
-        onProgress(update);
-      },
-    );
-    recent.insertAll(0, items.map((item) => item.file.file.path));
-    if (recent.length > 50) recent.removeRange(50, recent.length);
-    unawaited(_saveRecent());
-  }
-
   void cancelTransfer() {
-    if (receiving) {
+    if (receiving && _sending == null) {
       unawaited(_cancelReceiving());
     } else {
       _sendCancelled = true;
+      outbox.cancelAll();
       sendQueue.cancelAll();
     }
   }
@@ -412,6 +347,9 @@ class HarmonyShareService extends ChangeNotifier {
       _windowTimer = null;
       await _receiver?.stop();
       await _events?.cancel();
+      // stop 排空期间可能迟到 session_started，再次清理它创建的 watchdog。
+      _windowTimer?.cancel();
+      _windowTimer = null;
       _events = null;
       _receiver = null;
       _incomingHistoryId = null;
@@ -427,6 +365,7 @@ class HarmonyShareService extends ChangeNotifier {
           _enabled &&
           !busy &&
           !_refreshing &&
+          _sending == null &&
           _receiver == null) {
         unawaited(_startWindow());
       }
@@ -436,6 +375,8 @@ class HarmonyShareService extends ChangeNotifier {
   @override
   void dispose() {
     history?.removeListener(notifyListeners);
+    outbox.removeListener(notifyListeners);
+    outbox.dispose();
     sendQueue.removeListener(notifyListeners);
     sendQueue.dispose();
     super.dispose();

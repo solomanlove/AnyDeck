@@ -21,8 +21,10 @@ class HarmonyShareNotifications {
   }) {
     service.addListener(_serviceChanged);
     queue.addListener(_queueChanged);
+    service.outbox.addListener(_outboxChanged);
     _history = service.history?.changes.listen(_recordChanged);
     _queueRunning = queue.running;
+    _outboxRunning = service.outbox.running;
     _enqueue(() => bridge.removeNotificationsWithPrefix('${prefix}offer_'));
     _serviceChanged();
   }
@@ -39,6 +41,7 @@ class HarmonyShareNotifications {
   ShareIncomingOffer? _offer;
   String? _offerId;
   bool _queueRunning = false;
+  bool _outboxRunning = false;
   bool _working = false;
   bool _disposed = false;
   static const prefix = 'harmony_share_';
@@ -93,7 +96,7 @@ class HarmonyShareNotifications {
   void _queueChanged() {
     final completed = _queueRunning && !queue.running;
     _queueRunning = queue.running;
-    if (!completed || queue.items.isEmpty) return;
+    if (!completed || queue.items.isEmpty || service.outbox.running) return;
     final id = '${prefix}batch_${queue.items.first.id}';
     final success = queue.count(ShareSendStatus.succeeded);
     final failed = queue.count(ShareSendStatus.failed);
@@ -102,6 +105,28 @@ class HarmonyShareNotifications {
       () => _show(
         id: id,
         title: text('harmonyShareNotificationBatch'),
+        body: text('harmonyShareNotificationBatchSummary')
+            .replaceAll('{success}', '$success')
+            .replaceAll('{failed}', '$failed')
+            .replaceAll('{cancelled}', '$cancelled'),
+      ),
+    );
+  }
+
+  /// 原生连续队列按整个调度周期通知一次；单批兼容队列仍走原回调。
+  void _outboxChanged() {
+    final outbox = service.outbox;
+    final completed = _outboxRunning && !outbox.running;
+    _outboxRunning = outbox.running;
+    if (!completed) return;
+    final success = outbox.succeeded;
+    final failed = outbox.failed;
+    final cancelled = outbox.cancelled;
+    final id = '${prefix}outbox_${outbox.cycleId}';
+    _enqueue(
+      () => _show(
+        id: id,
+        title: text('harmonyShareNotificationOutbox'),
         body: text('harmonyShareNotificationBatchSummary')
             .replaceAll('{success}', '$success')
             .replaceAll('{failed}', '$failed')
@@ -177,6 +202,7 @@ class HarmonyShareNotifications {
     _disposed = true;
     service.removeListener(_serviceChanged);
     queue.removeListener(_queueChanged);
+    service.outbox.removeListener(_outboxChanged);
     unawaited(_history?.cancel());
     _tasks.clear();
     final id = _offerId;

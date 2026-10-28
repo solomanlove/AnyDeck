@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
@@ -15,6 +16,7 @@ import 'widgets/harmony_share_stage.dart';
 import 'widgets/harmony_share_panels.dart';
 import 'widgets/harmony_share_format.dart';
 import 'widgets/harmony_share_queue_panel.dart';
+import 'widgets/harmony_share_outbox_panel.dart';
 import 'widgets/harmony_share_history_dialog.dart';
 import 'widgets/harmony_share_history_recent.dart';
 import 'widgets/harmony_share_settings_dialog.dart';
@@ -50,7 +52,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
   }
 
   Future<void> _pick(ShareCorePeer peer) async {
-    if (_choosing || _service.busy) return;
+    if (_choosing || !_service.canSelectFiles) return;
     _choosing = true;
     try {
       final selected = await openFiles();
@@ -74,7 +76,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
     List<File> files, {
     String? retryOf,
   }) async {
-    if (_service.busy || _confirming) return;
+    if (!_service.canSelectFiles || _confirming) return;
     _confirming = true;
     try {
       final selection = await ShareSendSelection.inspect(files);
@@ -100,12 +102,23 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
         ),
       );
       if (confirmed == true && mounted) {
-        await _service.sendSelection(peer, selection, retryOf: retryOf);
+        if (_service.canAppend) {
+          await _service.appendSelection(peer, selection, retryOf: retryOf);
+        } else if (!_service.busy) {
+          unawaited(_service.sendSelection(peer, selection, retryOf: retryOf));
+        } else {
+          throw StateError('outbox_cancelling');
+        }
       }
     } on FormatException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.t('harmonyShareSelectionLimit'))),
+      );
+    } on StateError catch (failure) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(formatShareError('$failure', context.l10n.t))),
       );
     } on FileSystemException {
       if (!mounted) return;
@@ -131,7 +144,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
 
   Future<void> _retryRecord(ShareTransferRecord record) async {
     final peer = _service.peers[record.address];
-    if (_service.busy ||
+    if (!_service.canSelectFiles ||
         peer == null ||
         peer.name != record.deviceName ||
         record.path == null) {
@@ -275,7 +288,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                       HarmonyShareStage(
                         peers: peers,
                         enabled: _service.enabled,
-                        busy: _service.busy,
+                        busy: !_service.canSelectFiles,
                         onPick: _pick,
                         onDrop: _confirm,
                         onInvalidDrop: _invalidDrop,
@@ -340,13 +353,32 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                     ),
                   ),
                 ],
-                if (_service.busy) ...[
+                if (_service.busy &&
+                    (_service.receiving ||
+                        !_service.sendQueue.nativeBatch ||
+                        _service.sendQueue.items.isEmpty)) ...[
                   const SizedBox(height: 12),
                   HarmonyShareTransferPanel(
                     onCancel: _service.cancelTransfer,
                     progress: _service.progress,
                     receiving: _service.receiving,
                     fileName: _service.activeFile,
+                  ),
+                ],
+                if (_service.outbox.entries.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  HarmonyShareOutboxPanel(
+                    batches: _service.outbox.waiting,
+                    onCancel: _service.outbox.cancel,
+                    onCancelAll: _service.cancelTransfer,
+                    running: _service.outbox.running,
+                    succeeded: _service.outbox.succeeded,
+                    failed: _service.outbox.failed,
+                    cancelled: _service.outbox.cancelled,
+                    onClear: () {
+                      _service.outbox.clear();
+                      _service.sendQueue.clear();
+                    },
                   ),
                 ],
                 if (_service.sendQueue.items.isNotEmpty) ...[
@@ -357,8 +389,9 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                     nativeBatch: _service.sendQueue.nativeBatch,
                     batchTransferredBytes: _service.sendQueue.transferredBytes,
                     cancelling: _service.sendQueue.cancelling,
+                    rate: _service.sendQueue.rate,
                     onCancel: _service.sendQueue.cancel,
-                    onCancelAll: _service.cancelTransfer,
+                    onCancelAll: _service.sendQueue.cancelAll,
                     onClear: _service.sendQueue.clear,
                   ),
                 ],

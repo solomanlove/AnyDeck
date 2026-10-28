@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:any_deck/core/nearby_share/harmony_share_notifications.dart';
 import 'package:any_deck/core/nearby_share/harmony_share_send_queue.dart';
+import 'package:any_deck/core/nearby_share/harmony_share_outbox.dart';
 import 'package:any_deck/core/nearby_share/harmony_share_service.dart';
 import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:any_deck/core/nearby_share/share_history_database.dart';
@@ -55,6 +56,13 @@ class _Service extends HarmonyShareService {
     pendingOffer = offer;
     notifyListeners();
   }
+}
+
+class _OutboxService extends _Service {
+  _OutboxService(super.history, this.testOutbox);
+  final HarmonyShareOutbox testOutbox;
+  @override
+  HarmonyShareOutbox get outbox => testOutbox;
 }
 
 class _Bridge extends Fake implements MacNotificationBridge {
@@ -239,6 +247,65 @@ void main() {
     }
     await _turns();
     expect(bridge.shown, isEmpty);
+  });
+
+  test('连续原生批次等待队列结束后只通知一次，失败不阻断后批', () async {
+    final first = Completer<ShareSendBatch>();
+    final second = Completer<ShareSendBatch>();
+    ShareSendBatch batch(String id, ShareSendStatus status, int count) =>
+        ShareSendBatch(
+          id: id,
+          transferredBytes: 0,
+          items: [
+            for (var i = 0; i < count; i++)
+              ShareSendItem(
+                id: '$id-$i',
+                status: status,
+                peer: ShareCorePeer(
+                  address: InternetAddress.loopbackIPv4,
+                  port: 1234,
+                  name: 'private',
+                ),
+                file: ShareSendFile(
+                  file: File('/synthetic/$i'),
+                  bytes: 1,
+                  modified: DateTime(2026),
+                ),
+              ),
+          ],
+        );
+    final outbox = HarmonyShareOutbox(
+      persist: (_) async {},
+      execute: (item) => item.id == 'first' ? first.future : second.future,
+      cancelActive: () {},
+      changed: (_) {},
+    );
+    final queuedService = _OutboxService(history, outbox);
+    final coordinator = HarmonyShareNotifications(
+      service: queuedService,
+      queue: queuedService.sendQueue,
+      bridge: bridge,
+      enabled: () => true,
+      text: (key) => key == 'harmonyShareNotificationBatchSummary'
+          ? '{success}/{failed}/{cancelled}'
+          : key,
+    );
+    try {
+      await outbox.enqueue(batch('first', ShareSendStatus.queued, 1));
+      await outbox.enqueue(batch('second', ShareSendStatus.queued, 2));
+      first.complete(batch('first', ShareSendStatus.failed, 1));
+      await _turns();
+      expect(bridge.shown, isEmpty);
+      second.complete(batch('second', ShareSendStatus.succeeded, 2));
+      await outbox.idle;
+      await _turns();
+      expect(bridge.shown, hasLength(1));
+      expect(bridge.shown.single['body'], '2/1/0');
+      expect(bridge.shown.single.toString(), isNot(contains('private')));
+    } finally {
+      coordinator.dispose();
+      queuedService.dispose();
+    }
   });
 
   test('原生 100 文件批次完成只通知一次，进度不提前发成功', () async {
