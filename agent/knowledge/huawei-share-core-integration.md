@@ -170,3 +170,10 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - formatShareError 由独立 UI helper 统一处理公开 IPC/异常边界，原入口继续 export；明确原因提供 zh/en 恢复建议，未知内容不直接显示路径或原始错误码。原始错误仍保留在服务/记录，发现页和文件/批次详情通过主动“技术详情”本地查看；批次摘要显示失败说明，发现页回调捕获当前错误快照。
 - 235 focused tests、targeted analyze、3 installer tests 通过；最终 8 错误交互与 2 带字体 Widget 导出复验通过。截图边界包含 Navigator overlay，已检查明暗提示及诊断弹窗。最终 Release 签名、成员 hash、锁定 zip 与 0.3.2 hello 通过；验证后删除临时 App 约97 MiB，没有新增大样本，之前 GiB 根目录和 Rust/Swift 缓存仍不存在。
 - 本批不改 Core 制品或能力声明，锁仍为20893ba / f356fda56a569bdd9418b449bc18b57ceaf87747d8a0780253dd7fc0ceb64ea2，生产 send/receive=false。未运行 App 或操作手机，手机及人工/发布验收继续待完成；以阶段计划末尾的需求验收表为当前证据边界。
+
+
+## 通知权限查询失败与恢复（2026-10-28）
+
+- 共享 MacNotificationBridge 的权限异常/空值/畸形或未知响应返回 unknown，不再伪造成 notDetermined；明确合法授权状态不变。互传协调器对查询失败提供 deliveryFailed 提示，后续成功通知恢复；拒绝/未申请不误报；停用/销毁/来件失效后的超时与迟到失败不覆盖当前健康状态，迟到成功仍撤回，也不后台申请权限。
+- 259 项相关回归和 targeted analyze 通过，包括实际 Dart MethodChannel + 协调器组合及明暗/双语窄窗口 unknown 提示。原生即时通知的 pending 清理怀疑经 SDK 头文件核对不成立，本批未改原生通知代码或 Core 制品；手机及真实系统交互仍未验收。
+- 最终生产源码 hash 一致，Release 构建、严格签名、5 成员 hash、锁定 zip 与 0.3.2 hello 通过；本阶段三次临时 App 产物均删除，按删除事件累计约290.9 MiB，旧 GiB 样本及私有 Rust/Swift 缓存仍不存在。验证未启动/停止 App 或操作真实设备/通知，未 push。

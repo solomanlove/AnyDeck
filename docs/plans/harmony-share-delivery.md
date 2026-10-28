@@ -236,3 +236,14 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 | 清理与分批提交 | 合成大文件和临时 App 已清理，各阶段独立本地 commit | 无需为本轮提示修改重跑 GiB 压力；新验证仍须及时清理 |
 
 手机继续按用户要求暂缓，未启动/停止原 App、操作手机或系统权限，未 push。早期改版方案的 Finder 共享扩展、安全作用域书签、更多机型、x86_64、Developer ID 与公证仍有实施/验收待办；Finder 拖放不等同共享扩展，不能据此宣称方案 B/C 或完整目标已完成。
+
+
+## 通知权限故障保真（2026-10-28）
+
+- 实际 MacNotificationBridge 在权限 MethodChannel 异常或空响应时原先返回 notDetermined，导致互传设置误显示“尚未申请”，还可能进入不必要的授权分支。现仅透传 authorized/provisional/denied/notDetermined，异常、空值、畸形类型及未知状态统一返回 unknown；既有设备通知和消息转发仍复用同一个桥接。
+- HarmonyShareNotifications 对权限查询失败设置 deliveryFailed，沿用现有双语失败提示；明确拒绝或尚未申请不误报桥接故障。每个异步边界仍先复核停用/销毁/来件有效性；查询或投递挂起期间失效后的超时、迟到失败不覆盖当前健康状态，迟到成功仍撤回。不后台申请权限、不改变接收决策，后续成功通知清除失败状态。
+- 新增实际 Dart MethodChannel + 通知协调器组合回归，覆盖通道异常/空值/畸形响应、合法状态、恢复、停用与销毁后的迟到结果；设置 Widget 补充 zh/en × Light/Dark × 480px 的 unknown 提示、系统设置/刷新入口且不自动触发授权。259 项最终相关功能回归及 targeted analyze 全部通过，日志 `/tmp/anydeck-harmony-permission-{focused,regression,analyze}.log`。
+- 原生通知撤回代码本批未修改。核对本机 macOS SDK 的 UNUserNotificationCenter.h 后确认即时通知（trigger=nil）无需按定时请求清理 pending；未把这个最初怀疑项当作已证实缺陷，也未增加仅为测试而重构的原生清理抽象。
+- 本批未生成传输样本，未启动/停止 App、执行真实设备发现/传输、投递系统通知或操作手机/系统权限，未 push。手机、运行 App、真实通知/Finder 及其他人工验收边界仍见上一节需求表，完整目标保持未完成。
+- 最终 Release 构建、deep/strict 签名、5 个 Core 成员 hash/签名、锁定 commit 的 zip hash 和 Core 0.3.2 / IPC 3 hello 通过。两处生产源码的构建前后 SHA-256 一致，摘要 `/tmp/anydeck-harmony-permission-package-verify.log`；仅执行 hello，不启动真实发现或广播，锁与生产能力声明保持不变。
+- 本阶段三次隔离 App 删除事件均已写入清理清单，累计约 290.9 MiB 分配空间；最终 `/tmp/anydeck-harmony-permission-offline` 已删除。之前 GiB 根目录及私有 Rust/Swift 缓存仍不存在，未生成新传输样本，保留共享 Flutter 构建、锁定 zip 与小型日志。

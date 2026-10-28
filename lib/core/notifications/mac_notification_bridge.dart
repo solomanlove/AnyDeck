@@ -40,7 +40,7 @@ class MacNotificationBridge {
     }
   }
 
-  /// 获取当前通知权限授权状态：'authorized' | 'denied' | 'notDetermined'。
+  /// 获取当前通知权限；桥接失败、空值或未知状态返回 unknown，不伪造首次授权状态。
   Future<String> getAuthorizationStatus() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) {
       return 'denied';
@@ -48,10 +48,13 @@ class MacNotificationBridge {
     try {
       final status =
           await _channel.invokeMethod<String>('getAuthorizationStatus');
-      return status ?? 'notDetermined';
+      return switch (status) {
+        'authorized' || 'provisional' || 'denied' || 'notDetermined' => status!,
+        _ => 'unknown',
+      };
     } catch (e) {
       debugPrint('[MacNotificationBridge] getAuthorizationStatus error: $e');
-      return 'notDetermined';
+      return 'unknown';
     }
   }
 

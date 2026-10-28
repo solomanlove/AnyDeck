@@ -26,11 +26,11 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         var chosen = 0;
         var permission = 0;
-        Widget panel({bool busy = false, bool saving = false}) =>
+        Widget panel({bool busy = false, bool saving = false, String state = 'denied'}) =>
             HarmonyShareSettingsPanel(
               notifications: true,
               directory: '/synthetic/folder-with-a-long-name/接收文件目录',
-              permission: 'denied',
+              permission: state,
               saving: saving,
               busy: busy,
               deliveryFailed: true,
@@ -68,6 +68,19 @@ void main() {
           isNull,
         );
         expect(permission, 0);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(host(panel(state: 'unknown'), brightness, language));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.t('harmonySharePermissionUnknown')), findsOneWidget);
+        expect(find.text(l10n.t('harmonySharePermissionNeeded')), findsNothing);
+        expect(find.text(l10n.t('harmonyShareNotificationFailed')), findsOneWidget);
+        expect(find.text(l10n.t('openSystemSettings')), findsOneWidget);
+        expect(find.text(l10n.t('requestPermission')), findsNothing);
+        expect(permission, 0);
+        final refresh = find.byTooltip(l10n.t('harmonySharePermissionRefresh'));
+        await tester.ensureVisible(refresh);
+        await tester.tap(refresh);
+        expect(permission, 1);
         expect(tester.takeException(), isNull);
       });
     }

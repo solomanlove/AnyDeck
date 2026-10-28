@@ -143,29 +143,39 @@ class HarmonyShareNotifications {
   }) async {
     bool allowed() => !_disposed && enabled() && (valid?.call() ?? true);
     if (!allowed()) return;
-    final status = await bridge.getAuthorizationStatus().timeout(
-      operationTimeout,
-    );
-    if (!allowed() || (status != 'authorized' && status != 'provisional')) {
-      return;
+    try {
+      final status = await bridge.getAuthorizationStatus().timeout(
+        operationTimeout,
+      );
+      if (!allowed()) return;
+      if (status != 'authorized' && status != 'provisional') {
+        // 无法查询权限不同于用户拒绝/尚未申请；提示失败，等待后续通知恢复。
+        if (status != 'denied' && status != 'notDetermined') {
+          deliveryFailed.value = true;
+        }
+        return;
+      }
+      // 通知仅包含通用摘要，设备名、文件名和本地路径留在应用内。
+      final delivery = bridge
+          .showNotification(
+            id: id,
+            title: title,
+            body: body,
+            payload: const {'type': 'harmony_share', 'targetTab': -4},
+          )
+          .then((sent) async {
+            // 保留迟到完成回调；外层超时后到达的原生送达也要撤回失效来件。
+            if (!allowed()) {
+              await bridge.removeNotification(id).timeout(operationTimeout);
+            }
+            return sent;
+          });
+      final sent = await delivery.timeout(operationTimeout);
+      if (allowed()) deliveryFailed.value = !sent;
+    } catch (_) {
+      // 失效来件或停用期间的迟到异常不应覆盖当前通知健康状态。
+      if (allowed()) rethrow;
     }
-    // 通知仅包含通用摘要，设备名、文件名和本地路径留在应用内。
-    final delivery = bridge
-        .showNotification(
-          id: id,
-          title: title,
-          body: body,
-          payload: const {'type': 'harmony_share', 'targetTab': -4},
-        )
-        .then((sent) async {
-          // 保留迟到完成回调；外层超时后到达的原生送达也要撤回失效来件。
-          if (!allowed()) {
-            await bridge.removeNotification(id).timeout(operationTimeout);
-          }
-          return sent;
-        });
-    final sent = await delivery.timeout(operationTimeout);
-    if (!_disposed) deliveryFailed.value = !sent;
   }
 
   /// 有界串行通知队列；系统 API 挂起不会阻断收发或无限积压。
@@ -184,7 +194,7 @@ class HarmonyShareNotifications {
         try {
           await _tasks.removeFirst()().timeout(operationTimeout * 3);
         } catch (_) {
-          if (!_disposed) deliveryFailed.value = true;
+          if (!_disposed && enabled()) deliveryFailed.value = true;
         }
       }
     } finally {

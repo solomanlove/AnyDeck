@@ -48,4 +48,38 @@ void main() {
       }
     },
   );
+
+  test('permission errors and missing or malformed responses remain unknown', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    const channel = MethodChannel('test/notification_permission');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    var reply = <String, dynamic>{'value': null};
+    final calls = <String>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method);
+      if (reply['throws'] == true) {
+        throw PlatformException(code: 'unavailable');
+      }
+      return reply['value'];
+    });
+    final bridge = MacNotificationBridge(channel: channel);
+    try {
+      for (final state in [null, 'new_unknown_status', 42]) {
+        reply = {'value': state};
+        expect(await bridge.getAuthorizationStatus(), 'unknown');
+      }
+      reply = {'throws': true};
+      expect(await bridge.getAuthorizationStatus(), 'unknown');
+      for (final state in ['authorized', 'provisional', 'denied', 'notDetermined']) {
+        reply = {'value': state};
+        expect(await bridge.getAuthorizationStatus(), state);
+      }
+      expect(calls, everyElement('getAuthorizationStatus'));
+    } finally {
+      bridge.dispose();
+      messenger.setMockMethodCallHandler(channel, null);
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
 }
