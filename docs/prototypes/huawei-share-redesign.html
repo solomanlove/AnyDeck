@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AnyDeck 互传 · 界面原型</title>
+  <link rel="stylesheet" href="huawei-share-redesign.css">
+  <script src="huawei-share-redesign.js" defer></script>
+</head>
+<body>
+<div class="app">
+  <aside class="rail" aria-label="AnyDeck 导航">
+    <div class="brand"><span class="brand-icon">A</span><span>AnyDeck</span></div>
+    <div class="rail-caption">工作台</div>
+    <button class="rail-item" type="button">⌂ <span>概览</span></button>
+    <button class="rail-item" type="button">▣ <span>设备</span></button>
+    <button class="rail-item active" type="button">↗ <span>互传</span></button>
+    <button class="rail-item" type="button">▤ <span>文件</span></button>
+    <div class="rail-spacer"></div>
+    <button class="rail-item" type="button" id="settingsNav">⚙ <span>设置</span></button>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div><p class="eyebrow">NEARBY SHARE · 交互原型</p><h1>互传</h1></div>
+      <div class="top-actions"><span class="connection"><i></i> 正在发现附近设备</span><button id="historyBtn" type="button">互传记录</button></div>
+    </header>
+    <section class="hero" id="home">
+      <div class="identity"><div class="mac-icon">▣</div><div><span>以此身份接收文件</span><strong>张世杰的 MacBook Pro</strong></div><button type="button" id="identityMenu" aria-label="更多设置">•••</button></div>
+      <div class="share-stage" id="dropZone">
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <div class="device" id="device" role="button" tabindex="0" aria-label="向 nova 12 Ultra 发送文件"><div class="device-avatar">▯</div><b>nova 12 Ultra</b><span>附近 · 可接收</span></div>
+        <div class="center-disc"><div class="wave">↗</div><strong>拖入文件，发送到附近设备</strong><span>或点击设备头像选择文件</span><button type="button" id="pickBtn">选择文件</button></div>
+      </div>
+      <div class="footer-row"><div><strong>找不到设备？</strong><span>确认手机已解锁，且“华为分享”对所有人可见</span></div><button id="helpBtn" type="button">查看连接指引 →</button></div>
+    </section>
+    <section class="recent"><div><p class="eyebrow">ACTIVITY</p><h2>最近互传</h2></div><div id="recentList"><p class="empty">还没有传输记录。手机发来的文件会在这里显示。</p></div></section>
+  </main>
+</div>
+<div class="shade hidden" id="shade" aria-hidden="true"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><button class="close" id="closeDialog" type="button" aria-label="关闭">×</button><div class="dialog-icon" id="dialogIcon">↗</div><p class="eyebrow" id="dialogEyebrow">TRANSFER</p><h2 id="dialogTitle">准备发送</h2><p id="dialogText"></p><div class="file-summary" id="fileSummary"></div><div class="dialog-actions" id="dialogActions"></div></div></div>
+<input id="fileInput" type="file" hidden>
+</body>
+</html>
