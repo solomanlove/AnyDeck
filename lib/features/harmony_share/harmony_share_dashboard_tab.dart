@@ -6,10 +6,13 @@ import 'package:flutter/material.dart';
 import '../../app/l10n/app_localizations.dart';
 import '../../core/nearby_share/harmony_share_service.dart';
 import '../../core/nearby_share/share_core_client.dart';
+import '../../core/nearby_share/share_send_selection.dart';
 import '../widgets/dashboard_header_bar.dart';
 import '../../app/theme/app_theme_sizes.dart';
 import 'widgets/harmony_share_stage.dart';
 import 'widgets/harmony_share_panels.dart';
+import 'widgets/harmony_share_format.dart';
+import 'widgets/harmony_share_queue_panel.dart';
 
 /// 独立互联页面；附近设备与任务状态均来自主窗口常驻服务。
 class HarmonyShareDashboardTab extends StatefulWidget {
@@ -45,9 +48,9 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
     if (_choosing || _service.busy) return;
     _choosing = true;
     try {
-      final selected = await openFile();
-      if (selected != null && mounted) {
-        await _confirm(peer, File(selected.path));
+      final selected = await openFiles();
+      if (selected.isNotEmpty && mounted) {
+        await _confirm(peer, selected.map((file) => File(file.path)).toList());
       }
     } finally {
       _choosing = false;
@@ -61,29 +64,40 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
     );
   }
 
-  Future<void> _confirm(ShareCorePeer peer, File file) async {
+  Future<void> _confirm(ShareCorePeer peer, List<File> files) async {
     if (_service.busy || _confirming) return;
     _confirming = true;
     try {
-      final stat = await file.stat();
+      final selection = await ShareSendSelection.inspect(files);
       if (!mounted) return;
-      if (stat.type != FileSystemEntityType.file ||
-          stat.size == 0 ||
-          stat.size > ShareCoreContract.maxFileBytes) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.t('harmonyShareLimit'))),
-        );
-        return;
-      }
+      final summary = context.l10n
+          .t('harmonyShareSelectionSummary')
+          .replaceAll('{count}', '${selection.files.length}')
+          .replaceAll('{size}', formatShareBytes(selection.bytes));
+      final names = selection.files
+          .take(8)
+          .map((file) => '${file.name} · ${formatShareBytes(file.bytes)}')
+          .join('\n');
+      final remaining = selection.files.length > 8
+          ? '\n${context.l10n.t('harmonyShareMoreFiles').replaceAll('{count}', '${selection.files.length - 8}')}'
+          : '';
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (_) => HarmonyShareConfirmDialog(
           receiving: false,
           device: peer.name.isEmpty ? peer.address.address : peer.name,
-          summary: '${file.uri.pathSegments.last} · ${stat.size} B',
+          summary:
+              '$summary\n\n$names$remaining\n\n${context.l10n.t('harmonyShareQueueConfirmHint')}',
         ),
       );
-      if (confirmed == true && mounted) await _service.send(peer, file);
+      if (confirmed == true && mounted) {
+        await _service.sendSelection(peer, selection);
+      }
+    } on FormatException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.t('harmonyShareSelectionLimit'))),
+      );
     } on FileSystemException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -277,6 +291,16 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                     progress: _service.progress,
                     receiving: _service.receiving,
                     fileName: _service.activeFile,
+                  ),
+                ],
+                if (_service.sendQueue.items.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  HarmonyShareQueuePanel(
+                    items: _service.sendQueue.items,
+                    running: _service.sendQueue.running,
+                    onCancel: _service.sendQueue.cancel,
+                    onCancelAll: _service.cancelTransfer,
+                    onClear: _service.sendQueue.clear,
                   ),
                 ],
                 const SizedBox(height: 20),

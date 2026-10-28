@@ -1,11 +1,11 @@
 import 'dart:io';
 
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_theme_sizes.dart';
 import '../../../core/nearby_share/share_core_client.dart';
+import 'harmony_share_drop_target.dart';
 
 /// 原型中的发现舞台。peers 为真实发现结果；onDrop 和 onPick 共用发送确认入口。
 /// 不持有服务或动画 Timer，页面离开后不会新增后台负担。
@@ -24,7 +24,7 @@ class HarmonyShareStage extends StatelessWidget {
   final bool enabled;
   final bool busy;
   final ValueChanged<ShareCorePeer> onPick;
-  final void Function(ShareCorePeer, File) onDrop;
+  final void Function(ShareCorePeer, List<File>) onDrop;
   final VoidCallback onInvalidDrop;
 
   @override
@@ -76,15 +76,14 @@ class HarmonyShareStage extends StatelessWidget {
                             ],
                           ),
                         const SizedBox(height: 24),
-                        DropTarget(
+                        HarmonyShareDropTarget(
+                          enabled: enabled && !busy,
+                          circular: true,
                           // 设备卡片与中央区域不嵌套，避免一次拖放重复弹出确认。
-                          onDragDone: (detail) {
+                          onDrop: (files) {
                             if (busy || !enabled) return;
-                            if (detail.files.length == 1 && peers.length == 1) {
-                              onDrop(
-                                peers.single,
-                                File(detail.files.single.path),
-                              );
+                            if (files.isNotEmpty && peers.length == 1) {
+                              onDrop(peers.single, files);
                             } else {
                               onInvalidDrop();
                             }
@@ -154,7 +153,7 @@ class HarmonyShareStage extends StatelessWidget {
   }
 }
 
-/// 手机卡片以真实设备名展示；可键盘激活，也接受 Finder 单文件拖放。
+/// 手机卡片以真实设备名展示；可键盘激活，也接受 Finder 多文件拖放。
 class _PeerCard extends StatelessWidget {
   const _PeerCard({
     required this.peer,
@@ -166,17 +165,18 @@ class _PeerCard extends StatelessWidget {
   final ShareCorePeer peer;
   final bool enabled;
   final VoidCallback onPick;
-  final ValueChanged<File> onDrop;
+  final ValueChanged<List<File>> onDrop;
   final VoidCallback onInvalidDrop;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return DropTarget(
-      onDragDone: (detail) {
+    return HarmonyShareDropTarget(
+      enabled: enabled,
+      onDrop: (files) {
         if (!enabled) return;
-        if (detail.files.length == 1) {
-          onDrop(File(detail.files.single.path));
+        if (files.isNotEmpty) {
+          onDrop(files);
         } else {
           onInvalidDrop();
         }

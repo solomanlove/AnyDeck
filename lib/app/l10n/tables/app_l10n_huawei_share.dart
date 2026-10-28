@@ -1,5 +1,22 @@
-/// 华为分享单文件自测入口文案；中英文 key 保持一一对应。
+/// 鸿蒙互联文案；中英文 key 保持一一对应。
 const huaweiShareZh = {
+  'harmonyShareQueueResults': '成功 {sent} · 失败 {failed} · 取消 {cancelled}',
+  'harmonyShareQueueTitle': '发送队列',
+  'harmonyShareCancelAll': '取消剩余任务',
+  'harmonyShareClearQueue': '收起队列',
+  'harmonyShareCancelItem': '取消此文件',
+  'harmonyShareQueueCount': '已处理 {done} / {total} 个文件',
+  'harmonyShareQueue_queued': '等待发送',
+  'harmonyShareQueue_preparing': '准备发送',
+  'harmonyShareQueue_transferring': '正在传输',
+  'harmonyShareQueue_succeeded': '发送完成',
+  'harmonyShareQueue_failed': '发送失败',
+  'harmonyShareQueue_cancelled': '已取消',
+  'harmonyShareSelectionSummary': '{count} 个文件 · 共 {size}',
+  'harmonyShareMoreFiles': '另有 {count} 个文件',
+  'harmonyShareQueueConfirmHint': '文件将逐项发送，每项需要手机确认；某项失败后继续发送其余文件。',
+  'harmonyShareSelectionLimit': '一次选择 1–100 个普通非空文件，每个不超过 1 GiB；暂不支持文件夹与链接。',
+
   'harmonyShareReceivingActive': '正在接收',
   'harmonyShareDisabled': '接收已关闭',
   'harmonyShareTapDevice': '或点击设备头像选择文件',
@@ -8,9 +25,9 @@ const huaweiShareZh = {
   'harmonyShareWaiting': '等待手机确认或传输完成',
   'harmonyShareHelp': '找不到设备？查看连接指引 →',
   'harmonyShareGuide':
-      '1. Mac 与手机连接同一 Wi-Fi。\n2. 保持手机解锁，开启“华为分享”，并选择所有人可见。\n3. 开启本页接收开关，点击重新扫描。\n4. 发送：点击手机头像，或将单个文件拖到头像上。\n5. 接收：在手机分享菜单中选择 AnyDeck，再在电脑上确认。',
+      '1. Mac 与手机连接同一 Wi-Fi。\n2. 保持手机解锁，开启“华为分享”，并选择所有人可见。\n3. 开启本页接收开关，点击重新扫描。\n4. 发送：点击手机头像，或将文件拖到头像上。\n5. 接收：在手机分享菜单中选择 AnyDeck，再在电脑上确认。',
   'harmonyShareGotIt': '知道了',
-  'harmonyShareDropHint': '请将单个文件拖到目标设备头像；只有一台设备时也可拖到中央区域',
+  'harmonyShareDropHint': '请将文件拖到目标设备头像；只有一台设备时也可拖到中央区域',
   'harmonyShareFileUnavailable': '无法读取文件，请检查文件是否存在及访问权限',
   'harmonyShareIncoming': '收到文件请求',
   'harmonyShareIncomingHint': '确认后接收至 Downloads。30 秒未响应将自动拒绝。',
@@ -54,6 +71,26 @@ const huaweiShareZh = {
 };
 
 const huaweiShareEn = {
+  'harmonyShareQueueResults':
+      'Sent {sent} · Failed {failed} · Cancelled {cancelled}',
+  'harmonyShareQueueTitle': 'Send queue',
+  'harmonyShareCancelAll': 'Cancel remaining',
+  'harmonyShareClearQueue': 'Dismiss queue',
+  'harmonyShareCancelItem': 'Cancel this file',
+  'harmonyShareQueueCount': 'Processed {done} of {total} files',
+  'harmonyShareQueue_queued': 'Queued',
+  'harmonyShareQueue_preparing': 'Preparing',
+  'harmonyShareQueue_transferring': 'Transferring',
+  'harmonyShareQueue_succeeded': 'Sent',
+  'harmonyShareQueue_failed': 'Failed',
+  'harmonyShareQueue_cancelled': 'Cancelled',
+  'harmonyShareSelectionSummary': '{count} files · {size} total',
+  'harmonyShareMoreFiles': '{count} more files',
+  'harmonyShareQueueConfirmHint':
+      'Files are sent one at a time, each requiring phone confirmation. A failed file does not stop the rest.',
+  'harmonyShareSelectionLimit':
+      'Choose 1–100 nonempty regular files, up to 1 GiB each. Folders and links are not supported.',
+
   'harmonyShareReceivingActive': 'Receiving',
   'harmonyShareDisabled': 'Receiving is off',
   'harmonyShareTapDevice': 'Or click a device to choose a file',
@@ -63,10 +100,10 @@ const huaweiShareEn = {
   'harmonyShareWaiting': 'Waiting for the phone or transfer completion',
   'harmonyShareHelp': 'Device missing? Connection guide →',
   'harmonyShareGuide':
-      '1. Connect this Mac and phone to the same Wi-Fi.\n2. Unlock the phone and make Huawei Share visible to everyone.\n3. Enable receiving here and scan again.\n4. Send: click a phone or drop one file on its avatar.\n5. Receive: choose AnyDeck in the phone share menu and accept on this Mac.',
+      '1. Connect this Mac and phone to the same Wi-Fi.\n2. Unlock the phone and make Huawei Share visible to everyone.\n3. Enable receiving here and scan again.\n4. Send: click a phone or drop files on its avatar.\n5. Receive: choose AnyDeck in the phone share menu and accept on this Mac.',
   'harmonyShareGotIt': 'Got it',
   'harmonyShareDropHint':
-      'Drop one file on the target device. With one device, you can also use the center area.',
+      'Drop files on the target device. With one device, you can also use the center area.',
   'harmonyShareFileUnavailable':
       'Cannot read this file. Check its location and permissions.',
   'harmonyShareIncoming': 'Incoming file request',
@@ -84,7 +121,7 @@ const huaweiShareEn = {
   'harmonyShareUnavailable': 'Service unavailable',
   'harmonyShareEmpty': 'No nearby devices found',
   'harmonyShareDrop': 'Drop a file to send to a nearby device',
-  'harmonySharePick': 'Choose file',
+  'harmonySharePick': 'Choose files',
   'harmonyShareHint':
       'Unlock your phone and make Huawei Share visible to everyone',
   'harmonyShareRecent': 'Recent transfers',

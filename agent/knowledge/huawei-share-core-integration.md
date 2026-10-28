@@ -54,3 +54,11 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 锁定 zip SHA-256 为 `106026e891b971c8c004c37a9b67213fe2a43cc087a688ba7ec37970b623a119`；新私有 commit 暂未推送，构建使用私有仓本地 zip override。阶段记录和测试包位置见 `docs/plans/harmony-share-delivery.md`。
 
 本轮曾因磁盘空间不足中断一轮验证；只清理本轮已停止合成样本的临时目录后，串行重跑压力测试和 Flutter 验证通过。启动/停止竞态新增独立回归用例，避免异步启动迟到后残留接收进程。
+
+## 多文件发送队列第一批（2026-10-28）
+
+- `share_send_selection.dart` 负责 1–100 文件元数据选择与边界校验，按规范化绝对路径去重；每项开始前检查文件是否变化，不读取内容。私有核心依旧负责流式快照。
+- `harmony_share_send_queue.dart` 是串行队列状态机，文件失败后继续，单项/整队取消独立，重复取消幂等，迟到进度/错误总量不污染当前项；字节与最终状态分开。核心最终成功优先于迟到取消，保持最近路径与任务结果一致。
+- `HarmonyShareService` 对整个 batch 持有忙碌态，暂停接收一次，所有文件结束后恢复一次。它由主窗口持有，队列不依赖页面生命周期。UI 的多选/多文件拖放共用同一确认与发送入口。
+- `HarmonyShareQueuePanel` 展示处理数量、结果数量与真实字节进度，并限制列表高度；`HarmonyShareDropTarget` 用局部 ValueNotifier 控制拖入反馈，不启动持续动画或混入 ADB 安装/上传 Provider。所有新增文件 <500 行，zh/en、Theme 语义色同步。
+- 本批 40 focused Flutter tests、targeted analyze 通过；Light/Dark 队列 Widget 截图已检查。原生单文件 IPC 2/私有制品锁保持不变；每项仍需手机确认，原生多文件接收、持久化队列/完整记录、通知、真机回归尚未完成。

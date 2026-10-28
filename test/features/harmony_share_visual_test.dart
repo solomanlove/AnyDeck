@@ -4,6 +4,9 @@ import 'dart:ui' as ui;
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/nearby_share/share_core_client.dart';
+import 'package:any_deck/core/nearby_share/harmony_share_send_queue.dart';
+import 'package:any_deck/core/nearby_share/share_send_selection.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_queue_panel.dart';
 import 'package:any_deck/features/harmony_share/harmony_share_dashboard_tab.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_panels.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
@@ -116,6 +119,58 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('incoming');
+      final statuses = [
+        ShareSendStatus.succeeded,
+        ShareSendStatus.transferring,
+        ShareSendStatus.failed,
+        ShareSendStatus.cancelled,
+        ShareSendStatus.queued,
+      ];
+      final peer = ShareCorePeer(
+        address: InternetAddress('192.168.1.2'),
+        port: 44800,
+        name: 'nova 12 Ultra',
+      );
+      await tester.pumpWidget(
+        host(
+          Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              children: [
+                HarmonyShareIdentity(enabled: true, onChanged: (_) {}),
+                HarmonyShareQueuePanel(
+                  items: [
+                    for (var index = 0; index < statuses.length; index++)
+                      ShareSendItem(
+                        id: '$index',
+                        peer: peer,
+                        file: ShareSendFile(
+                          file: File('/synthetic/file-$index.bin'),
+                          bytes: 10 * 1024 * 1024,
+                          modified: DateTime(2026),
+                        ),
+                        status: statuses[index],
+                        transferredBytes: index == 0
+                            ? 10 * 1024 * 1024
+                            : index == 1
+                            ? 3 * 1024 * 1024
+                            : 0,
+                        error: index == 2 ? 'send_failed' : null,
+                      ),
+                  ],
+                  running: true,
+                  onCancel: (_) {},
+                  onCancelAll: () {},
+                  onClear: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('queue');
     });
   }
 }

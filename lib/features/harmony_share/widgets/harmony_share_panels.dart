@@ -190,6 +190,7 @@ class HarmonyShareConfirmDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return AlertDialog(
+      scrollable: true,
       icon: Icon(
         receiving ? Icons.download_rounded : Icons.near_me_outlined,
         color: colors.primary,

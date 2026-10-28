@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'share_core_client.dart';
 import 'share_network.dart';
+import 'harmony_share_send_queue.dart';
+import 'share_send_selection.dart';
 
 /// 展示给用户的来件摘要；协议内容不进入主仓库。
 class ShareIncomingOffer {
@@ -61,6 +63,11 @@ class HarmonyShareService extends ChangeNotifier {
   String? activeFile;
   String? error;
 
+  late final sendQueue = HarmonyShareSendQueue(
+    send: _sendOne,
+    cancelActive: () => _transfer?.cancel(),
+  )..addListener(notifyListeners);
+
   bool get enabled => _enabled;
 
   Future<void> start() async {
@@ -110,7 +117,7 @@ class HarmonyShareService extends ChangeNotifier {
     _networkTimer?.cancel();
     _networkTimer = null;
     _sendCancelled = true;
-    _transfer?.cancel();
+    sendQueue.cancelAll();
     await _stopWindow();
     notifyListeners();
   }
@@ -252,43 +259,40 @@ class HarmonyShareService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> send(ShareCorePeer peer, File file) async {
+  Future<void> send(ShareCorePeer peer, File file) => sendFiles(peer, [file]);
+
+  Future<void> sendFiles(ShareCorePeer peer, List<File> files) =>
+      _runBatch(peer, () => ShareSendSelection.inspect(files));
+
+  /// UI 确认过的元数据保持不变，队列开始每项前再检查文件是否被修改。
+  Future<void> sendSelection(
+    ShareCorePeer peer,
+    ShareSendSelection selection,
+  ) => _runBatch(peer, () async => selection);
+
+  Future<void> _runBatch(
+    ShareCorePeer peer,
+    Future<ShareSendSelection> Function() prepare,
+  ) async {
     if (busy) return;
     busy = true;
     _sendCancelled = false;
-    activeFile = file.uri.pathSegments.last;
-    progress = null;
+    error = null;
+    sendQueue.clear();
     notifyListeners();
     try {
       await _stopWindow();
       if (_sendCancelled) throw StateError('Transfer cancelled');
-      final currentNetwork = await _detectNetwork();
+      final selection = await prepare();
       if (_sendCancelled) throw StateError('Transfer cancelled');
-      final transfer = await _client.sendFileForTest(
-        localAddress: currentNetwork.local,
-        peer: peer,
-        file: file,
+      await sendQueue.run(peer, selection);
+      final failures = sendQueue.items.where(
+        (item) => item.status == ShareSendStatus.failed,
       );
-      _transfer = transfer;
-      if (_sendCancelled) transfer.cancel();
-      _progressEvents = transfer.progress.listen((update) {
-        if (update.direction == 'send' &&
-            (progress == null || update.bytes >= progress!.bytes)) {
-          progress = update;
-          notifyListeners();
-        }
-      });
-      final result = await transfer.result;
-      if (result['event'] == 'file_sent') recent.insert(0, file.path);
-      if (recent.length > 50) recent.removeRange(50, recent.length);
-      unawaited(_saveRecent());
-      error = null;
+      error = failures.isEmpty ? null : failures.first.error;
     } catch (failure) {
       error = '$failure';
     } finally {
-      await _progressEvents?.cancel();
-      _progressEvents = null;
-      _transfer = null;
       activeFile = null;
       progress = null;
       busy = false;
@@ -297,12 +301,58 @@ class HarmonyShareService extends ChangeNotifier {
     }
   }
 
+  /// 每项只占用一个核心会话；整个 batch 结束后才恢复接收监听。
+  Future<void> _sendOne(
+    ShareSendItem item,
+    ValueChanged<ShareCoreProgress> onProgress,
+  ) async {
+    void checkCancelled() {
+      if (_sendCancelled || sendQueue.isCancelled(item.id)) {
+        throw StateError('Transfer cancelled');
+      }
+    }
+
+    activeFile = item.file.name;
+    progress = null;
+    try {
+      checkCancelled();
+      await item.file.verifyUnchanged();
+      checkCancelled();
+      final currentNetwork = await _detectNetwork();
+      checkCancelled();
+      final transfer = await _client.sendFileForTest(
+        localAddress: currentNetwork.local,
+        peer: item.peer,
+        file: item.file.file,
+      );
+      _transfer = transfer;
+      if (_sendCancelled || sendQueue.isCancelled(item.id)) transfer.cancel();
+      _progressEvents = transfer.progress.listen((update) {
+        if (update.direction == 'send' &&
+            update.totalBytes == item.file.bytes &&
+            (progress == null || update.bytes >= progress!.bytes)) {
+          progress = update;
+          onProgress(update);
+        }
+      });
+      await transfer.result;
+      recent.insert(0, item.file.file.path);
+      if (recent.length > 50) recent.removeRange(50, recent.length);
+      unawaited(_saveRecent());
+    } finally {
+      await _progressEvents?.cancel();
+      _progressEvents = null;
+      _transfer = null;
+      progress = null;
+    }
+  }
+
   void cancelTransfer() {
     if (receiving) {
       unawaited(_cancelReceiving());
     } else {
       _sendCancelled = true;
-      _transfer?.cancel();
+      sendQueue.cancelAll();
     }
   }
 
@@ -339,5 +389,12 @@ class HarmonyShareService extends ChangeNotifier {
       busy = false;
       progress = null;
     }
+  }
+
+  @override
+  void dispose() {
+    sendQueue.removeListener(notifyListeners);
+    sendQueue.dispose();
+    super.dispose();
   }
 }
