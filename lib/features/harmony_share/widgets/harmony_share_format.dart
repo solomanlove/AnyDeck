@@ -1,4 +1,14 @@
 import '../../../core/nearby_share/share_transfer_rate.dart';
+import '../../../core/nearby_share/share_transfer_record.dart';
+
+/// 未知接收文件名只显示稳定序号，不将占位文案写入文件元数据。
+String formatShareRecordName(ShareTransferRecord record, String Function(String) text) {
+  if (record.fileName.isNotEmpty) return record.fileName;
+  if (record.fileIndex != null) return text('harmonyShareFileIndex').replaceAll('{index}', '${record.fileIndex! + 1}');
+  return record.fileCount > 1
+      ? text('harmonyShareBatchFiles').replaceAll('{count}', '${record.fileCount}')
+      : text('harmonyShareUnknownFile');
+}
 
 /// 二进制字节单位供确认、队列和传输面板共用，不涉及文件内容。
 String formatShareBytes(int bytes) {

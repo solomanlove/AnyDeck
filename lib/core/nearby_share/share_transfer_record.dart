@@ -33,6 +33,8 @@ class ShareTransferRecord {
     this.retryOf,
     this.fileCount = 1,
     this.batchId,
+    this.progressKnown = false,
+    this.fileIndex,
   });
   final String id;
   final ShareTransferDirection direction;
@@ -52,6 +54,10 @@ class ShareTransferRecord {
   /// 批次摘要的原始文件数量；子文件通过 batchId 关联。
   final int fileCount;
   final String? batchId;
+  /// false 表示没有观察到文件遥测，不能把 0 当作实际已传字节。
+  final bool progressKnown;
+  /// 未获得文件名的接收子项仍保留确认后稳定的顺序。
+  final int? fileIndex;
   bool get terminal => switch (status) {
     ShareTransferStatus.queued ||
     ShareTransferStatus.preparing ||
@@ -74,6 +80,7 @@ class ShareTransferRecord {
     DateTime? completedAt,
     String? error,
     String? sha256,
+    bool? progressKnown,
   }) => ShareTransferRecord(
     id: id,
     direction: direction,
@@ -92,6 +99,8 @@ class ShareTransferRecord {
     retryOf: retryOf,
     fileCount: fileCount,
     batchId: batchId,
+    progressKnown: progressKnown ?? this.progressKnown,
+    fileIndex: fileIndex,
   );
 
   Map<String, Object?> toMap() => {
@@ -112,6 +121,8 @@ class ShareTransferRecord {
     'retry_of': retryOf,
     'file_count': fileCount,
     'batch_id': batchId,
+    'progress_known': progressKnown ? 1 : 0,
+    'file_index': fileIndex,
   };
   factory ShareTransferRecord.fromMap(Map<String, Object?> value) =>
       ShareTransferRecord(
@@ -138,5 +149,7 @@ class ShareTransferRecord {
         retryOf: value['retry_of'] as String?,
         fileCount: value['file_count'] as int? ?? 1,
         batchId: value['batch_id'] as String?,
+        progressKnown: value['progress_known'] == 1,
+        fileIndex: value['file_index'] as int?,
       );
 }

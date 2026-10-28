@@ -156,3 +156,10 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 主仓203 focused tests、targeted analyze、2额外Widget导出与Release严格签名/hash/hello通过，详见阶段计划。当前App锁/zip仍为Core0.3.1/c517780，不能依据私有源码准备宣称App有单文件进度。
 - 私有60810f0为真实socket/文件写入增加有界逐文件bitmap计数；17项原生回归通过、1可选LAN跳过。6ca9ade的Core0.3.2新增严格file_progress校验，并用逐文件IO值汇总总量，legacy事件集不变；40全库lib+6integration+4专项/Release/hello通过。Flutter模型/队列/接收展示/记录检查点及0.3.2制品切换继续推进。
 - 本轮删除Rust缓存、新clone和隔离App约363.1 MiB，清单已追加；Core target当前不存在，已有小型DFile构建底座保留。未push/启动App/操作手机或真实BLE，真机与最终发布验收继续暂缓。
+
+## 文件进度 App 接线与 0.3.2 制品（2026-10-28）
+
+- ShareCoreFileProgress继承通用进度，ShareFileProgressLedger限制数量/大小/索引/单调性及最终结果一致性；发送依声明、接收按已知项核对总量。队列文件与整批进度分离，保留失败/取消字节；接收只在用户接受后展示，未知文件用稳定序号，不伪造0%或文件名，100%仍等待整批结果。
+- SQLite增加progress_known/file_index，部分接收检查点和终态以原有完整事务/容量预留/失败重试保存，未发布文件无路径。旧库可迁移、完整成功补齐实际文件名/路径/hash，详情区分未知与真实字节；没有路径不显示打开文件/目录菜单。
+- 当前锁固定20893ba4307af53bfeec8851fff4d10f9a59c68a的Core0.3.2/IPC3，zip SHA-256 f356fda56a569bdd9418b449bc18b57ceaf87747d8a0780253dd7fc0ceb64ea2，hello要求file_progress，生产能力仍false。227 focused tests、targeted analyze、3 installer tests、2额外Widget渲染及最终Release签名/hash/hello通过。制品真实小文件双向/legacy三项、72f5163的签名制品GiB双向中途进度/完整结果/源hash通过，详见阶段计划。
+- GiB样本限定到独立TMPDIR、方向串行并检查6 GiB余量；每轮结束确认空目录并删除根目录。测试后删除Rust/Swift缓存和独立App，含菜单保护重建后再清理的App，约467 MiB分配空间，清单已追加；Core target/Swift .build当前不存在。已有小型DFile底座、锁定zip与小型日志截图保留，未push/启动App/操作手机或真实BLE，手工/真机/最终发布验收仍待完成。

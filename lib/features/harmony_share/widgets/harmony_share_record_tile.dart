@@ -41,14 +41,12 @@ class HarmonyShareRecordTile extends StatelessWidget {
             : colors.primary,
       ),
       title: Text(
-        record.fileName.isEmpty
-            ? (record.fileCount > 1 ? context.l10n.t('harmonyShareBatchFiles').replaceAll('{count}', '${record.fileCount}') : context.l10n.t('harmonyShareUnknownFile'))
-            : record.fileName,
+        formatShareRecordName(record, context.l10n.t),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        '${record.deviceName} · ${context.l10n.t('harmonyShareDirection_${record.direction.name}')} · ${formatShareBytes(record.bytes)}\n$time · ${context.l10n.t('harmonyShareStatus_${record.status.name}')}',
+        '${record.deviceName} · ${context.l10n.t('harmonyShareDirection_${record.direction.name}')} · ${record.batchId != null && record.progressKnown ? '${formatShareBytes(record.transferredBytes)} / ' : ''}${formatShareBytes(record.bytes)}\n$time · ${context.l10n.t('harmonyShareStatus_${record.status.name}')}',
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
@@ -68,12 +66,12 @@ class HarmonyShareRecordTile extends StatelessWidget {
             value: 'details',
             child: Text(context.l10n.t('harmonyShareRecordDetails')),
           ),
-          if (onOpen != null)
+          if (onOpen != null && record.path != null)
             PopupMenuItem(
               value: 'open',
               child: Text(context.l10n.t('harmonyShareOpenFile')),
             ),
-          if (onFolder != null)
+          if (onFolder != null && record.path != null)
             PopupMenuItem(
               value: 'folder',
               child: Text(context.l10n.t('harmonyShareOpenFolder')),
@@ -125,12 +123,10 @@ class HarmonyShareRecordDetailsDialog extends StatelessWidget {
       width: 480,
       child: SelectableText(
         [
-          record.fileName.isEmpty
-              ? (record.fileCount > 1 ? context.l10n.t('harmonyShareBatchFiles').replaceAll('{count}', '${record.fileCount}') : context.l10n.t('harmonyShareUnknownFile'))
-              : record.fileName,
+          formatShareRecordName(record, context.l10n.t),
           '${record.deviceName} · ${record.address}',
           context.l10n.t('harmonyShareDirection_${record.direction.name}'),
-          record.batchId != null && record.direction == ShareTransferDirection.send && record.status != ShareTransferStatus.succeeded
+          record.batchId != null && !record.progressKnown && record.status != ShareTransferStatus.succeeded
               ? '${formatShareBytes(record.bytes)} · ${context.l10n.t('harmonyShareFileProgressUnknown')}'
               : '${formatShareBytes(record.transferredBytes)} / ${formatShareBytes(record.bytes)}',
           if (record.direction == ShareTransferDirection.send)

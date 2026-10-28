@@ -7,7 +7,7 @@ import 'harmony_share_format.dart';
 import '../../../core/nearby_share/share_transfer_rate.dart';
 
 /// 发送队列展示：items 为不可变行快照，取消回调按 id 操作，清除仅清除本次结果面板。
-/// nativeBatch 使用 batchTransferredBytes 展示真实总进度，隐藏逐文件取消和推测进度。
+/// nativeBatch 使用真实整批/文件字节，未知项保持未知，取消作用整批。
 /// cancelling 禁用重复取消，rate 只估算当前批次，null 时隐藏。
 /// 行列表限制高度并按需构建，避免 100 项撑满页面。
 class HarmonyShareQueuePanel extends StatelessWidget {
@@ -158,7 +158,7 @@ class HarmonyShareQueuePanel extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${item.peer.name} · ${context.l10n.t('harmonyShareQueue_${item.status.name}')} · ${nativeBatch ? formatShareBytes(item.file.bytes) : '${formatShareBytes(item.transferredBytes)} / ${formatShareBytes(item.file.bytes)}'}',
+                          '${item.peer.name} · ${context.l10n.t('harmonyShareQueue_${item.status.name}')} · ${nativeBatch && !item.progressKnown ? formatShareBytes(item.file.bytes) : '${formatShareBytes(item.transferredBytes)} / ${formatShareBytes(item.file.bytes)}'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -175,11 +175,14 @@ class HarmonyShareQueuePanel extends StatelessWidget {
                               style: TextStyle(color: color),
                             ),
                           ),
-                        if (!nativeBatch &&
+                        if ((!nativeBatch || item.progressKnown) &&
                             item.status == ShareSendStatus.transferring)
                           LinearProgressIndicator(
                             value: item.transferredBytes / item.file.bytes,
                           ),
+                        if (nativeBatch && item.progressKnown && item.status == ShareSendStatus.transferring && item.transferredBytes == item.file.bytes)
+                          Text(context.l10n.t('harmonyShareFileBytesComplete'),
+                            style: Theme.of(context).textTheme.bodySmall),
                       ],
                     ),
                     trailing: nativeBatch || item.terminal

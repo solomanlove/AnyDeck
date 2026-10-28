@@ -16,6 +16,7 @@ import 'package:any_deck/features/harmony_share/widgets/harmony_share_panels.dar
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_settings_panel.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_name_editor.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_receive_progress.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_batch_details.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_storage_warning.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_outbox_panel.dart';
@@ -239,6 +240,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('native-send-queue');
+      await tester.pumpWidget(host(Padding(padding: const EdgeInsets.all(28),
+        child: Column(children: [
+          HarmonyShareQueuePanel(items: [for (var i = 0; i < 3; i++)
+            ShareSendItem(id: 'file-progress-$i', peer: peer,
+              file: ShareSendFile(file: File('/synthetic/合成文件-$i.bin'), bytes: 10 * 1024 * 1024, modified: DateTime(2026)),
+              status: ShareSendStatus.transferring, progressKnown: i < 2,
+              transferredBytes: i == 0 ? 5 * 1024 * 1024 : i == 1 ? 10 * 1024 * 1024 : 0)],
+            running: true, nativeBatch: true, batchTransferredBytes: 15 * 1024 * 1024,
+            onCancel: (_) {}, onCancelAll: () {}, onClear: () {}),
+          const HarmonyShareReceiveProgress(files: [
+            ShareCoreFileProgress(index: 0, direction: 'receive', bytes: 5 * 1024 * 1024, totalBytes: 10 * 1024 * 1024),
+            ShareCoreFileProgress(index: 1, direction: 'receive', bytes: 10 * 1024 * 1024, totalBytes: 10 * 1024 * 1024),
+          ]),
+        ]))));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('file-progress');
       final activeFiles = [ShareSendItem(id: 'active', peer: peer,
         file: ShareSendFile(file: File('/synthetic/合成文件.bin'), bytes: 100 * 1024 * 1024, modified: DateTime(2026)),
         status: ShareSendStatus.transferring)];

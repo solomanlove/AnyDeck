@@ -54,7 +54,10 @@ class HarmonyShareBatchDetails extends StatelessWidget {
                 if (snapshot.data!.isEmpty) {
                   return Text(context.l10n.t('harmonyShareBatchUnknownFiles'));
                 }
-                return ListView.builder(
+                return Column(children: [
+                  if (snapshot.data!.length < record.fileCount)
+                    Text(context.l10n.t('harmonySharePartialFileList')),
+                  Expanded(child: ListView.builder(
                   itemCount: snapshot.data!.length,
                   itemBuilder: (context, index) {
                     final file = snapshot.data![index];
@@ -69,7 +72,8 @@ class HarmonyShareBatchDetails extends StatelessWidget {
                           : () => onRetry!(file),
                     );
                   },
-                );
+                  )),
+                ]);
               },
             ),
           ),

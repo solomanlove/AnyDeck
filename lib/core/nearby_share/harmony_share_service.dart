@@ -71,6 +71,9 @@ class HarmonyShareService extends ChangeNotifier {
   final bool _nativeBatch;
   String? _receiveDirectory;
   ShareIncomingOffer? _batchOffer;
+  ShareFileProgressLedger? _receiveProgress;
+  bool _receiveAccepted = false;
+  List<ShareCoreFileProgress> get receiveFileProgress => _receiveProgress?.snapshots ?? const [];
   void _changed() => notifyListeners();
   final ShareTransferHistory? history;
   String? _incomingHistoryId;
@@ -279,6 +282,8 @@ class HarmonyShareService extends ChangeNotifier {
           );
           _incomingHistoryId = null;
           _batchOffer = null;
+          _receiveProgress = null;
+          _receiveAccepted = false;
           pendingOffer = null;
           if (receiving) {
             receiving = false;
@@ -299,6 +304,7 @@ class HarmonyShareService extends ChangeNotifier {
 
   void decide(bool accept) {
     if (pendingOffer == null) return;
+    _receiveAccepted = accept;
     history?.receiveChanged(
       _incomingHistoryId,
       status: accept
@@ -313,6 +319,7 @@ class HarmonyShareService extends ChangeNotifier {
   /// UI 与核心都限制确认期限；超时与用户主动拒绝分别记录。
   void expireOffer(ShareIncomingOffer offer) {
     if (pendingOffer != offer) return;
+    _receiveAccepted = false;
     history?.receiveChanged(
       _incomingHistoryId,
       status: ShareTransferStatus.timedOut,
@@ -373,6 +380,8 @@ class HarmonyShareService extends ChangeNotifier {
       _events = null;
       _receiver = null;
       _incomingHistoryId = null;
+      _receiveProgress = null;
+      _receiveAccepted = false;
       pendingOffer = null;
       if (receiving) {
         receiving = false;

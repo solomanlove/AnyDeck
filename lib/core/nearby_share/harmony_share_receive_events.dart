@@ -18,6 +18,8 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
         }
       case 'session_started':
         _batchOffer = null;
+        _receiveProgress = null;
+        _receiveAccepted = false;
         _incomingHistoryId = null;
         receiving = true;
         busy = true;
@@ -76,6 +78,8 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
             );
             pendingOffer = ShareIncomingOffer(address, bytes, fileCount: count);
             _batchOffer = pendingOffer;
+            _receiveProgress = ShareFileProgressLedger(count: count, bytes: bytes, direction: 'receive');
+            _receiveAccepted = false;
           } catch (failure) {
             error = '$failure';
             pendingOffer = null;
@@ -84,6 +88,15 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
           _changed();
         } else {
           receiver.decide(false);
+        }
+      case 'file_progress':
+        if (!_receiveAccepted || !receiving || _receiveProgress == null) return;
+        try {
+          final update = _receiveProgress!.accept(event);
+          history?.receivedFileProgress(_incomingHistoryId, update);
+          _changed();
+        } on FormatException {
+          // Session 已校验；额外防止注入边界/迟到回调破坏服务展示。
         }
       case 'batch_received':
         try {

@@ -57,6 +57,48 @@ Future<void> until(bool Function() condition) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  for (final accept in [true, false]) {
+    test('接收文件进度仅在接受后展示，100%不结束批次，停止清空 $accept', () async {
+      final root = await Directory.systemTemp.createTemp('receive-file-progress-');
+      final client = _Client();
+      final service = HarmonyShareService.testing(client: client, nativeBatch: true,
+        downloads: () async => root,
+        detectNetwork: () async => ShareNetwork(InternetAddress('192.168.1.2'), InternetAddress('192.168.1.255')));
+      void emit(int bytes, {int total = 4}) => client.receiver.controller.add({
+        'event':'file_progress','direction':'receive','index':1,'bytes':bytes,'total_bytes':total,
+      });
+      try {
+        await service.start();
+        client.receiver.controller.add({'event':'session_started'});
+        client.receiver.controller.add({'event':'incoming_batch','ip':'192.168.1.3','file_count':2,'total_bytes':7});
+        await until(() => service.pendingOffer != null);
+        emit(2);
+        await Future<void>.delayed(Duration.zero);
+        expect(service.receiveFileProgress, isEmpty);
+        service.decide(accept);
+        emit(2);
+        if (accept) {
+          await until(() => service.receiveFileProgress.isNotEmpty);
+          expect(service.receiveFileProgress.single.bytes, 2);
+          emit(1); emit(3, total: 5);
+          await Future<void>.delayed(Duration.zero);
+          expect(service.receiveFileProgress.single.bytes, 2);
+          emit(4);
+          await until(() => service.receiveFileProgress.single.bytes == 4);
+          expect(service.busy, isTrue);
+          expect(service.receiving, isTrue);
+        } else {
+          await Future<void>.delayed(Duration.zero);
+          expect(service.receiveFileProgress, isEmpty);
+        }
+        await service.stop();
+        expect(service.receiveFileProgress, isEmpty);
+      } finally {
+        await service.stop(); service.dispose(); await client.receiver.controller.close();
+        await root.delete(recursive: true);
+      }
+    });
+  }
   for (final mode in [
     'success',
     'reject',

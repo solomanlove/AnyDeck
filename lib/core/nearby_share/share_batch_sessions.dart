@@ -5,6 +5,7 @@ import 'dart:io';
 import 'share_batch_contract.dart';
 import 'share_core_contract.dart';
 import 'share_core_sessions.dart';
+import 'share_file_progress.dart';
 
 /// 一次原生发送批次；进度严格匹配已确认总量，成功终态优先于迟到取消。
 class ShareBatchTransfer {
@@ -30,6 +31,8 @@ class ShareBatchTransfer {
     Map<String, dynamic>? terminal;
     Object? failure;
     var previous = 0;
+    final files = ShareFileProgressLedger(count: request.files.length,
+      bytes: request.bytes, direction: 'send', sizes: request.files.map((file) => file.bytes).toList());
     final errors = _process.stderr.listen((_) {});
     final timer = Timer(
       ShareCoreContract.transferTimeout + const Duration(seconds: 10),
@@ -59,6 +62,8 @@ class ShareBatchTransfer {
           }
           previous = progress.bytes;
           _progress.add(progress);
+        } else if (event['event'] == 'file_progress') {
+          _progress.add(files.accept(event));
         } else if (event['event'] == 'batch_sent') {
           if (event['file_count'] is! int ||
               event['file_count'] != request.files.length ||
@@ -104,6 +109,7 @@ class ShareBatchReceiveSession extends ShareCoreReceiveSession {
   int _previous = 0;
   final _validatedDone = Completer<void>();
   bool _validating = false;
+  ShareFileProgressLedger? _files;
 
   @override
   void decide(bool accept) {
@@ -149,7 +155,13 @@ class ShareBatchReceiveSession extends ShareCoreReceiveSession {
               bytes: bytes,
               directory: directory,
             );
+            _files = ShareFileProgressLedger(count: count, bytes: bytes, direction: 'receive');
             yield event;
+          case 'file_progress':
+            if (!_accepted || _files == null) {
+              throw const FormatException('Unaccepted file progress');
+            }
+            yield _files!.accept(event).toMap();
           case 'progress':
             final progress = ShareCoreProgress.parse(
               event,
@@ -168,6 +180,7 @@ class ShareBatchReceiveSession extends ShareCoreReceiveSession {
               throw const FormatException('Unaccepted batch data');
             }
             _received!.add(event);
+            _files!.checkResult(event['index'] as int, event['bytes'] as int);
           case 'batch_received':
             if (!_accepted) {
               throw const FormatException('Unaccepted batch result');

@@ -10,6 +10,7 @@ import 'share_core_sessions.dart';
 import 'share_local_name.dart';
 
 export 'share_core_contract.dart';
+export 'share_file_progress.dart';
 export 'share_core_sessions.dart';
 export 'share_batch_contract.dart';
 export 'share_batch_sessions.dart';
@@ -54,6 +55,7 @@ class ShareCoreCapabilities {
         experimental['progress'] != true ||
         experimental['graceful_cancel'] != true ||
         experimental['native_batch'] != true ||
+        experimental['file_progress'] != true ||
         experimental['batch_local_name'] != true ||
         experimental['max_local_name_bytes'] != ShareLocalName.maxBytes ||
         experimental['max_files'] != ShareBatchContract.maxFiles ||

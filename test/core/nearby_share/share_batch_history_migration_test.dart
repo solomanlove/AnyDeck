@@ -21,6 +21,8 @@ void main() {
     try {
       await history.initialize();
       expect(history.recent.single.fileCount, 1);
+      expect(history.recent.single.progressKnown, isFalse);
+      expect(history.recent.single.fileIndex, isNull);
       final id = history.incoming(
         address: '1.2.3.4',
         name: 'peer',
@@ -39,6 +41,8 @@ void main() {
       await history.flush();
       expect((await db.query()).length, 2);
       expect((await db.batchFiles(id)).length, 2);
+      expect((await db.batchFiles(id)).map((file) => file.fileIndex), [0, 1]);
+      expect((await db.batchFiles(id)).every((file) => file.progressKnown), isTrue);
       expect((await db.query(search: 'file-0')).single.batchId, id);
       await db.remove(id);
       expect((await db.query()).single.id, 'old');

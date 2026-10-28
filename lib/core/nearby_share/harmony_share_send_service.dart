@@ -117,7 +117,7 @@ extension _HarmonyShareSendService on HarmonyShareService {
       localName: localName,
       cancelled: () => _sendCancelled || sendQueue.cancelling,
       onProgress: (update) {
-        progress = update;
+        if (update is! ShareCoreFileProgress) progress = update;
         onProgress(update);
       },
     );

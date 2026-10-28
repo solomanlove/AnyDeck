@@ -83,6 +83,49 @@ Future<void> until(bool Function() test) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  for (final outcome in ['success', 'failure', 'cancel']) {
+    test('实际文件进度经服务/队列落盘 $outcome，100%不提前成功', () async {
+      final root = await Directory.systemTemp.createTemp('native-file-progress-');
+      final database = ShareHistoryDatabase('${root.path}/history.sqlite');
+      final history = ShareTransferHistory(open: () async => database);
+      final client = _Client();
+      final service = HarmonyShareService.testing(client: client, nativeBatch: true,
+        history: history, downloads: () async => root,
+        detectNetwork: () async => ShareNetwork(InternetAddress('192.168.1.2'), InternetAddress('192.168.1.255')));
+      try {
+        final files = [await File('${root.path}/a').writeAsBytes([1,2,3]),
+          await File('${root.path}/b').writeAsBytes([4,5,6,7])];
+        await service.start();
+        final run = service.sendFiles(ShareCorePeer(address: InternetAddress('192.168.1.3'), port: 44800, name: 'fixture'), files);
+        await until(() => client.request != null);
+        client.transfer.stream.add(const ShareCoreFileProgress(index: 1, direction: 'send', bytes: 4, totalBytes: 4));
+        await until(() => service.sendQueue.items.last.progressKnown);
+        expect(service.progress, isNull);
+        expect(service.sendQueue.items.first.progressKnown, isFalse);
+        expect(service.sendQueue.items.last.status, ShareSendStatus.transferring);
+        expect(service.sendQueue.finished, 0);
+        expect(service.sendQueue.transferredBytes, 4);
+        if (outcome == 'cancel') { service.cancelTransfer(); }
+        else if (outcome == 'failure') { client.transfer.done.completeError(StateError('synthetic failure')); }
+        else { client.transfer.done.complete({}); }
+        await run;
+        await history.flush();
+        final summary = (await database.query()).single;
+        final children = await database.batchFiles(summary.id);
+        expect(children.map((file) => file.fileIndex), [0,1]);
+        expect(children.map((file) => file.transferredBytes), outcome == 'success' ? [3,4] : [0,4]);
+        expect(children.first.progressKnown, outcome == 'success');
+        expect(children.last.progressKnown, isTrue);
+        expect(children.every((file) => file.status == summary.status), isTrue);
+        expect(summary.status, outcome == 'success' ? ShareTransferStatus.succeeded :
+          outcome == 'failure' ? ShareTransferStatus.failed : ShareTransferStatus.cancelled);
+      } finally {
+        await service.stop(); await history.flush(); service.dispose(); history.dispose();
+        for (final receiver in client.receivers) { await receiver.stream.close(); }
+        await client.transfer.stream.close(); await root.delete(recursive: true);
+      }
+    });
+  }
   for (final mode in [
     'success',
     'failure',

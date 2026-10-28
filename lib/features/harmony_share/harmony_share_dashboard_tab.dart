@@ -20,6 +20,7 @@ import 'widgets/harmony_share_outbox_panel.dart';
 import 'widgets/harmony_share_history_dialog.dart';
 import 'widgets/harmony_share_history_recent.dart';
 import 'widgets/harmony_share_settings_dialog.dart';
+import 'widgets/harmony_share_receive_progress.dart';
 
 /// 独立互联页面；附近设备与任务状态均来自主窗口常驻服务。
 class HarmonyShareDashboardTab extends StatefulWidget {
@@ -366,6 +367,10 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                     receiving: _service.receiving,
                     fileName: _service.activeFile,
                   ),
+                ],
+                if (_service.receiving && _service.receiveFileProgress.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  HarmonyShareReceiveProgress(files: _service.receiveFileProgress),
                 ],
                 if (_service.outbox.entries.isNotEmpty) ...[
                   const SizedBox(height: 12),

@@ -7,6 +7,10 @@ import 'share_history_database.dart';
 import 'share_transfer_record.dart';
 import 'share_batch_contract.dart';
 import 'share_history_writer.dart';
+import 'share_file_progress.dart';
+import 'share_core_contract.dart';
+
+part 'share_receive_progress_history.dart';
 
 /// 主窗口唯一记录协调器：小型内存摘要 + 串行持久化，进度最多每秒落盘一次。
 class ShareTransferHistory extends ChangeNotifier {
@@ -21,6 +25,7 @@ class ShareTransferHistory extends ChangeNotifier {
   /// 仅当前会话新产生的记录，不重放启动加载的历史。
   Stream<ShareTransferRecord> get changes => _changes.stream;
   final Map<String, DateTime> _checkpoints = {};
+  final Map<String, Map<int, ShareTransferRecord>> _receiveFiles = {};
   ShareHistoryDatabase? _database;
   Future<void>? _initializing;
   final int _maxPendingRecords;
@@ -113,6 +118,7 @@ class ShareTransferHistory extends ChangeNotifier {
         ShareSendStatus.cancelled => ShareTransferStatus.cancelled,
       },
       transferredBytes: item.transferredBytes,
+      progressKnown: item.progressKnown,
       error: item.error,
       completedAt: item.terminal ? DateTime.now() : null,
     );
@@ -149,6 +155,7 @@ class ShareTransferHistory extends ChangeNotifier {
     final next = previous.update(
       status: ShareTransferStatus.values.byName(batch.status.name),
       transferredBytes: batch.transferredBytes,
+      progressKnown: batch.transferredBytes > 0 || batch.status == ShareSendStatus.succeeded,
       completedAt: batch.items.first.terminal ? DateTime.now() : null,
       error: batch.items.first.error,
     );
@@ -171,7 +178,7 @@ class ShareTransferHistory extends ChangeNotifier {
   ) => [
     summary,
     if (batch.items.length > 1)
-      for (final item in batch.items)
+      for (final (index, item) in batch.items.indexed)
         ShareTransferRecord(
           id: 'send-${item.id}',
           batchId: summary.id,
@@ -184,6 +191,8 @@ class ShareTransferHistory extends ChangeNotifier {
           path: item.file.file.path,
           bytes: item.file.bytes,
           transferredBytes: item.transferredBytes,
+          progressKnown: item.progressKnown,
+          fileIndex: index,
           error: item.error,
           createdAt: summary.createdAt,
           completedAt: summary.completedAt,
@@ -236,6 +245,7 @@ class ShareTransferHistory extends ChangeNotifier {
     final next = previous.update(
       status: status,
       transferredBytes: transferredBytes,
+      progressKnown: transferredBytes != null ? true : null,
       fileName: fileName,
       path: path,
       error: error,
@@ -243,6 +253,10 @@ class ShareTransferHistory extends ChangeNotifier {
     );
     _update(next.terminal ? next.update(completedAt: DateTime.now()) : next);
   }
+
+  /// 只记录已接受来件的实际文件遥测；接收文件名在最终校验后补齐。
+  void receivedFileProgress(String? id, ShareCoreFileProgress progress) =>
+      _recordReceivedProgress(id, progress);
 
   /// 完整验证后的批次一次事务落盘；只发摘要事件，避免通知逐文件刷屏。
   bool receivedBatch(String? id, List<Map<String, Object>> files, String directory) {
@@ -259,7 +273,7 @@ class ShareTransferHistory extends ChangeNotifier {
     final summary = previous.update(status: ShareTransferStatus.succeeded,
       fileName: single == null ? null : single['path'].toString().split('/').last,
       path: single == null ? directory : single['path'] as String,
-      sha256: single?['sha256'] as String?, transferredBytes: previous.bytes, completedAt: now);
+      sha256: single?['sha256'] as String?, transferredBytes: previous.bytes, completedAt: now, progressKnown: true);
     final records = [summary,
       if (single == null) for (var index = 0; index < files.length; index++)
         ShareTransferRecord(id: '${previous.id}-${index.toString().padLeft(3,'0')}',
@@ -267,10 +281,12 @@ class ShareTransferHistory extends ChangeNotifier {
           deviceName: previous.deviceName, address: previous.address,
           fileName: files[index]['path'].toString().split('/').last, path: files[index]['path'] as String,
           bytes: files[index]['bytes'] as int, transferredBytes: files[index]['bytes'] as int,
+          progressKnown: true, fileIndex: index,
           sha256: files[index]['sha256'] as String, batchId: previous.id,
           createdAt: previous.createdAt, completedAt: now),
     ];
     final saving = _save(records);
+    _receiveFiles.remove(previous.id);
     _remember(summary);
     unawaited(saving);
     return true;
@@ -298,7 +314,10 @@ class ShareTransferHistory extends ChangeNotifier {
     _remember(record);
     if (persist) {
       _checkpoints[record.id] = now;
-      unawaited(_save([record]));
+      final records = record.direction == ShareTransferDirection.receive
+          ? _receivedProgressRecords(record) : [record];
+      unawaited(_save(records));
+      if (record.terminal) _receiveFiles.remove(record.id);
     }
   }
 
@@ -339,6 +358,7 @@ class ShareTransferHistory extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _writer.dispose();
+    _receiveFiles.clear();
     unawaited(_changes.close());
     super.dispose();
   }

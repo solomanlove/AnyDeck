@@ -26,6 +26,7 @@ class ShareSendItem {
     this.transferredBytes = 0,
     this.error,
     this.retryOf,
+    this.progressKnown = false,
   });
   final String id;
   final ShareCorePeer peer;
@@ -34,11 +35,12 @@ class ShareSendItem {
   final int transferredBytes;
   final String? error;
   final String? retryOf;
+  final bool progressKnown;
   bool get terminal =>
       status == ShareSendStatus.succeeded ||
       status == ShareSendStatus.failed ||
       status == ShareSendStatus.cancelled;
-  ShareSendItem update({ShareSendStatus? status, int? bytes, String? error}) =>
+  ShareSendItem update({ShareSendStatus? status, int? bytes, String? error, bool? progressKnown}) =>
       ShareSendItem(
         id: id,
         peer: peer,
@@ -47,10 +49,11 @@ class ShareSendItem {
         transferredBytes: bytes ?? transferredBytes,
         error: error ?? this.error,
         retryOf: retryOf,
+        progressKnown: progressKnown ?? (bytes != null ? true : this.progressKnown),
       );
 }
 
-/// 原生批次不可变快照；仅有整批字节进度，不推测每个文件的已传字节。
+/// 原生批次不可变快照；逐文件仅采用实际遥测，不分摊整批字节。
 class ShareSendBatch {
   ShareSendBatch({
     required this.id,
@@ -262,6 +265,22 @@ class HarmonyShareSendQueue extends ChangeNotifier {
     final activeBatch = _batchId;
     try {
       await sendBatch!(items, (progress) {
+        if (progress is ShareCoreFileProgress) {
+          if (!running || activeBatch != _batchId || _items.first.terminal || _batchCancelled ||
+              progress.direction != 'send' || progress.index < 0 || progress.index >= _items.length) {
+            return;
+          }
+          final item = _items[progress.index];
+          if (progress.totalBytes != item.file.bytes || progress.bytes < item.transferredBytes ||
+              progress.bytes < 0 || progress.bytes > item.file.bytes) {
+            return;
+          }
+          _items[progress.index] = item.update(bytes: progress.bytes, progressKnown: true);
+          final observed = _items.fold<int>(0, (sum, item) => sum + item.transferredBytes);
+          if (observed > _batchBytes) _batchBytes = observed;
+          _setBatch(ShareSendStatus.transferring);
+          return;
+        }
         if (!running ||
             activeBatch != _batchId ||
             _items.first.terminal ||
@@ -309,7 +328,8 @@ class HarmonyShareSendQueue extends ChangeNotifier {
       for (final item in _items)
         item.update(
           status: status,
-          bytes: status == ShareSendStatus.succeeded ? item.file.bytes : 0,
+          bytes: status == ShareSendStatus.succeeded ? item.file.bytes : item.transferredBytes,
+          progressKnown: status == ShareSendStatus.succeeded ? true : item.progressKnown,
           error: error,
         ),
     ];

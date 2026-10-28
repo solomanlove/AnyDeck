@@ -36,6 +36,8 @@ class ShareHistoryDatabase {
         final columns = db.select('PRAGMA table_info(transfers)').map((row) => row['name']).toSet();
         if (!columns.contains('file_count')) db.execute('ALTER TABLE transfers ADD COLUMN file_count INTEGER NOT NULL DEFAULT 1');
         if (!columns.contains('batch_id')) db.execute('ALTER TABLE transfers ADD COLUMN batch_id TEXT');
+        if (!columns.contains('progress_known')) db.execute('ALTER TABLE transfers ADD COLUMN progress_known INTEGER NOT NULL DEFAULT 0');
+        if (!columns.contains('file_index')) db.execute('ALTER TABLE transfers ADD COLUMN file_index INTEGER');
         db.execute('CREATE INDEX IF NOT EXISTS idx_transfer_batch ON transfers(batch_id)');
         db.execute(
           'CREATE INDEX IF NOT EXISTS idx_transfer_time ON transfers(created_at DESC, id DESC)',
@@ -124,7 +126,7 @@ class ShareHistoryDatabase {
 
   /// 子文件不挤占首页摘要；仅在查看整批详情时加载有界清单。
   Future<List<ShareTransferRecord>> batchFiles(String id) => _run((db) => db.select(
-    'SELECT * FROM transfers WHERE batch_id=? ORDER BY id LIMIT 100', [id],
+    'SELECT * FROM transfers WHERE batch_id=? ORDER BY file_index,id LIMIT 100', [id],
   ).map((row) => ShareTransferRecord.fromMap(row)).toList());
 
   /// 仅移除终态记录，绝不删除磁盘文件，也不隐藏正在执行的任务。
