@@ -71,3 +71,11 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - `HarmonyShareOfferPresenter` 只关闭持有的 Route，修复确认失效后残留弹窗和误关其他窗口；销毁后不再读取 context。`HarmonyShareSender` 单独持有原生发送会话与订阅，服务文件保持 <500 行。
 - 私有 Core 0.2.1 / IPC 2：commit `13ad17f5ffdc4dadca6e80ba1f3a4a9adb51bd71`；固定 zip SHA-256 `56b5836ec9485f4acdd758b5482a8dcd621ed3b202429c2f074d512b117d0c26`。只新增明确 decision_timeout，DFile/认证/Swift 未改，生产能力仍 false。
 - 本批 68 项 focused tests、targeted analyze 通过；私有 Rust 19 unit + 4 integration 通过。历史列表/详情 Widget 明暗图已检查。真实手机、Finder 与 App 重启人工验证仍待进行；系统通知、相关设置和原生多文件收发继续推进。详细阶段证据见 `docs/plans/harmony-share-delivery.md`。
+
+## 通知与接收目录（2026-10-28）
+
+- `HarmonyShareNotifications` 由主窗口 Provider 持有，复用全局 MacNotificationBridge；监听实时记录事件与队列完成边界，不重放启动加载的历史。来件生命周期对应撤回，接收终态去重，多文件发送只发一条计数汇总。后台不主动请求系统权限。
+- 通知 payload 仅 `type=harmony_share,targetTab=-4`，点击在设备字段解析前直接导航互联页；不执行文件路径或 accept 参数。Swift 原有唤醒/冷启动缓存机制保持不变。通知队列/去重缓存有界，桥接超时与异常不会阻断传输，原生迟到送达仍检查失效并清理。
+- 新设置沿用 AppSettingsController 与 SettingsBroadcast：`update_harmony_share_notifications`（bool）、`update_harmony_share_directory`（绝对路径或空字符串）。主/子窗口均更新同一 SharedPreferences key；主窗口接收服务按新轮次读取目录，子窗口不启动接收器或通知协调器。默认目录为空表示 Downloads，默认开关 true 仍受系统权限约束。写入 false/异常时重读 legacy SharedPreferences 缓存，UI 状态不采用未保存值；真实存储完全不可读仍属待验收异常场景。
+- `ShareReceiveDirectory` 对显式选择进行临时子目录写入探测，结束清理；不存在的自定义目录不静默回退。设置期间不会移动历史文件；收发忙碌时禁用目录修改，后续接收继续使用独立子目录与核心校验。UI 层持有选择器/权限查询生命周期，纯展示面板独立测试 Theme/l10n。
+- 自动验证与打包证据见 `docs/plans/harmony-share-delivery.md` 阶段 4 第二批。系统通知横幅/唤醒、真实选择器、手机收发暂未人工验收；本机名称与原生批量链路仍需继续。

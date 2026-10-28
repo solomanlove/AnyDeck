@@ -50,6 +50,8 @@ class AppSettings {
     this.autoPowerOffScreen = false,
     this.deviceConnectNotification = true,
     this.notificationBodyPreview = true,
+    this.harmonyShareNotifications = true,
+    this.harmonyShareReceiveDirectory = '',
     this.launchAtStartup = false,
     this.showWindowShortcutKey = '1',
     this.developerModeEnabled = false,
@@ -72,6 +74,10 @@ class AppSettings {
   final bool autoPowerOffScreen;
   final bool deviceConnectNotification;
   final bool notificationBodyPreview;
+  /// 鸿蒙互联通知独立开关；系统权限仍需用户授权。
+  final bool harmonyShareNotifications;
+  /// 空字符串表示 Downloads，传输时创建独立子目录。
+  final String harmonyShareReceiveDirectory;
   final bool launchAtStartup;
   /// 显示主窗口的快捷键字符（默认 '1'，即 ⌘1）
   final String showWindowShortcutKey;
@@ -97,6 +103,8 @@ class AppSettings {
     bool? autoPowerOffScreen,
     bool? deviceConnectNotification,
     bool? notificationBodyPreview,
+    bool? harmonyShareNotifications,
+    String? harmonyShareReceiveDirectory,
     bool? launchAtStartup,
     String? showWindowShortcutKey,
     bool? developerModeEnabled,
@@ -121,6 +129,8 @@ class AppSettings {
       autoPowerOffScreen: autoPowerOffScreen ?? this.autoPowerOffScreen,
       deviceConnectNotification: deviceConnectNotification ?? this.deviceConnectNotification,
       notificationBodyPreview: notificationBodyPreview ?? this.notificationBodyPreview,
+      harmonyShareNotifications: harmonyShareNotifications ?? this.harmonyShareNotifications,
+      harmonyShareReceiveDirectory: harmonyShareReceiveDirectory ?? this.harmonyShareReceiveDirectory,
       launchAtStartup: launchAtStartup ?? this.launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey ?? this.showWindowShortcutKey,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'share_core_client.dart';
@@ -12,6 +11,7 @@ import 'share_send_selection.dart';
 import 'share_transfer_history.dart';
 import 'share_transfer_record.dart';
 import 'harmony_share_sender.dart';
+import 'share_receive_directory.dart';
 
 /// 展示给用户的来件摘要；协议内容不进入主仓库。
 class ShareIncomingOffer {
@@ -25,7 +25,7 @@ class HarmonyShareService extends ChangeNotifier {
   HarmonyShareService._()
     : _client = const ShareCoreClient(),
       _detectNetwork = ShareNetwork.detect,
-      _downloads = getDownloadsDirectory,
+      _downloads = ShareReceiveDirectory.resolve,
       _supported = Platform.isMacOS,
       history = ShareTransferHistory() {
     history!.addListener(notifyListeners);

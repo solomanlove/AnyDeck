@@ -112,6 +112,8 @@ import 'airplay/airplay_window_routing_provider.dart';
 import 'receivers/receiver_dashboard_tab.dart';
 import 'harmony_share/harmony_share_dashboard_tab.dart';
 import 'harmony_share/controller/harmony_share_offer_presenter.dart';
+import 'harmony_share/controller/harmony_share_providers.dart';
+import '../core/nearby_share/harmony_share_notifications.dart';
 import '../core/nearby_share/harmony_share_service.dart';
 import 'devices/widgets/device_airplay_row_widgets.dart';
 import '../core/airplay/airplay_server_service.dart';
@@ -283,6 +285,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         .clickStream
         .listen(_handleNotificationClick);
     _shareOfferPresenter = HarmonyShareOfferPresenter(service: HarmonyShareService.instance, context: () => context);
+    ref.read(harmonyShareNotificationsProvider);
     unawaited(HarmonyShareService.instance.start());
     _scheduleDashboardRouteSync();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -319,6 +322,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   Future<void> _handleNotificationClick(Map<String, dynamic> payload) async {
     final revision = ++_notificationClickRevision;
+    if (routeHarmonyShareNotification(payload, () {
+      if (mounted) context.goNamed(AppRouteNames.harmonyShare);
+    })) {
+      return;
+    }
     final type = payload['type'] as String?;
     final deviceId = payload['deviceId'] as String?;
     final deviceSerial = payload['deviceSerial'] as String?;

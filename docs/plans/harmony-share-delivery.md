@@ -7,7 +7,7 @@
 | 1 UI | 实施中 | 按已确认原型拆分发现舞台、本机身份、设备卡片、连接引导、发送/来件面板；zh/en、明暗主题、无手机、失败态测试与视觉检查 |
 | 2 大文件 | 离线链路已实现，真机待验收 | 审计长度/偏移/内存/超时/临时目录；版本化 IPC、真实进度与取消；10/100 MiB 及更大合成样本双向 hash 验证，按证据声明能力 |
 | 3 多文件 | 发送队列已实现，原生批量收发与真机待完成 | 队列、文件级与任务级进度、失败与取消隔离 |
-| 4 完整体验 | 持久化记录已实现，通知/设置待实施 | 系统通知、完整持久化记录、打开路径/重试、设置与发布回归 |
+| 4 完整体验 | 持久化记录与通知/目录设置已实现，发布回归待完成 | 系统通知、完整持久化记录、打开路径/重试、设置与发布回归 |
 
 ## 当前证据与边界
 
@@ -72,3 +72,16 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 已视觉检查 `/tmp/anydeck-harmony-history-ui/history-light.png` 与 `record-details-dark.png` 等 Widget 图。详情组件改为独立 Dialog 进行捕获，避免把底层页面截图误当作叠加弹窗。
 - 测试包 `/tmp/anydeck-harmony-history-offline/Products/AnyDeck.app` 的 Release 构建、codesign 深度严格校验、包内全部成员 hash 和 Core 0.2.1 / IPC 2 握手均通过。没有启动新包或停止用户原有实例；未进行手机、真实 Finder 点击和重启 App 的人工验收，数据库持久化/恢复由隔离临时库测试验证。
 - 仍待：系统通知与点击路由、接收目录/通知设置、本机名称的核心同步、原生多文件来件、发送队列追加与更完整速率展示、真机和发布前回归。长期目标保持未完成。
+
+## 阶段 4 第二批：通知与接收目录（2026-10-28）
+
+- 主窗口通过 `harmonyShareNotificationsProvider` 复用现有 `macNotificationBridgeProvider`，不另建 MethodChannel handler。来件提醒、接收成功/失败/确认超时/中断提醒、发送批次完成汇总已接入；发送结果按成功/失败/取消计数，每个 batch 只通知一次。主动拒绝或取消接收不额外提醒。
+- 通知仅含通用摘要与 `{type: harmony_share, targetTab: -4}`，不携带设备名、文件名、本地路径或自动接受动作。点击优先导航 `/harmony-share`，不依赖 ADB/HDC 设备，不打开文件。原有 Swift 桥接继续负责聚焦主窗口与冷启动点击缓存；未更改其他设备/手机消息通知路由。
+- 来件通知随确认处理/超时/会话失效撤回；启动清理旧来件提醒，已完成结果保留。后台只检查已有系统权限，`notDetermined/denied/unknown` 不自动申请或重复补发历史；申请入口位于显式设置操作。通知关闭后移除本模块通知，不影响其他模块。
+- 通知队列上限 16，结果去重缓存上限 256，异步调用 5 秒超时且不阻断传输。即使原生送达在超时后才完成，也会检查失效状态并撤回；系统返回失败/异常通过设置面板提示。记录事件流仅输出当前会话新记录，旧 SQLite 记录不重放通知。
+- 设置位于互联页标题栏：独立通知开关、系统权限状态/申请/打开系统设置/刷新、接收目录选择/恢复 Downloads。目录由 AppSettingsController 校验、可写探测（15 秒上限）、成功保存后更新并沿用跨窗口广播；为保持文件 <500 行，原有两个通知 setter 原逻辑移入同库 mixin。
+- 自定义目录在每轮启动接收器时重新解析，仍创建独立子目录；不存在/不可写时明确失败，不悄悄切回 Downloads。设置仅影响之后的接收，不移动旧文件；收发忙碌时目录按钮禁用，选择器返回后再次检查忙碌。探测只写入新建临时目录并立即清理。
+- 自动验证：99 项 focused Flutter tests 与 targeted analyze 通过。覆盖既有互联流程、通知去重/撤回/迟到/异常/权限、批次计数、设置持久化/主子窗口广播、目录失效/探测清理、设置写入 false/异常后的缓存重载、zh/en/Light/Dark/窄窗口。Widget 视觉测试 2 项通过，`/tmp/anydeck-harmony-notifications-ui/settings-light.png` 与 `settings-dark.png` 已检查。
+- Release 包：`/tmp/anydeck-harmony-notifications-offline/Products/AnyDeck.app`；最终源码 Release 构建、codesign 深度严格校验、全部包内 Core 文件 hash、Core 0.2.1 / IPC 2 握手均通过。未启动新 App、未结束原实例、未弹出真实通知或系统授权、未访问真实接收目录。系统通知横幅/点击唤醒、原生目录选择器和手机链路人工验收仍待进行。
+- SharedPreferences 写入失败时重读缓存后向 UI 报错，避免后续接收使用失败写入留下的内存目录值。测试显式声明已有 transitive `shared_preferences_platform_interface` 为 dev dependency，不增加 runtime 依赖；真实磁盘满/存储完全不可读场景仍待回归。
+- 本批私有协议、Core 0.2.1 / IPC 2 和制品锁不变。本机名称需与核心同步后开放；原生多文件收发、队列追加/速率、真机与发布前回归仍未完成。

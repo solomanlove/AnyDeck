@@ -12,6 +12,9 @@ class ShareTransferHistory extends ChangeNotifier {
     : _open = open ?? ShareHistoryDatabase.openDefault;
   final Future<ShareHistoryDatabase> Function() _open;
   final Map<String, ShareTransferRecord> _cache = {};
+  final _changes = StreamController<ShareTransferRecord>.broadcast();
+  /// 仅当前会话新产生的记录，不重放启动加载的历史。
+  Stream<ShareTransferRecord> get changes => _changes.stream;
   final Map<String, DateTime> _checkpoints = {};
   ShareHistoryDatabase? _database;
   Future<void>? _initializing;
@@ -173,6 +176,7 @@ class ShareTransferHistory extends ChangeNotifier {
 
   void _remember(ShareTransferRecord record) {
     _cache[record.id] = record;
+    _changes.add(record);
     if (_cache.length > 200) {
       final removable = _cache.values.where((item) => item.terminal).toList()
         ..sort((a, b) => a.sortTime.compareTo(b.sortTime));
@@ -201,6 +205,12 @@ class ShareTransferHistory extends ChangeNotifier {
   }
 
   Future<void> flush() => _writes;
+
+  @override
+  void dispose() {
+    unawaited(_changes.close());
+    super.dispose();
+  }
 
   Future<List<ShareTransferRecord>> query({
     ShareTransferDirection? direction,

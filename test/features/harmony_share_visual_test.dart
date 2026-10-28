@@ -14,6 +14,7 @@ import 'package:any_deck/features/harmony_share/widgets/harmony_share_queue_pane
 import 'package:any_deck/features/harmony_share/harmony_share_dashboard_tab.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_panels.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_settings_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -235,6 +236,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('record-details');
+      await tester.pumpWidget(host(Center(child: AlertDialog(
+        title: const Text('互传设置'),
+        content: HarmonyShareSettingsPanel(
+          notifications: true, directory: '/synthetic/Downloads',
+          permission: 'denied', saving: false, busy: false,
+          onNotifications: (_) {}, onChooseDirectory: () {}, onResetDirectory: () {},
+          onPermission: () {}, onRefreshPermission: () {},
+        ),
+      ))));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('settings');
       history.dispose();
     });
   }

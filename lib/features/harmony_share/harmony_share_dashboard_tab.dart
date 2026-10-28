@@ -17,6 +17,7 @@ import 'widgets/harmony_share_format.dart';
 import 'widgets/harmony_share_queue_panel.dart';
 import 'widgets/harmony_share_history_dialog.dart';
 import 'widgets/harmony_share_history_recent.dart';
+import 'widgets/harmony_share_settings_dialog.dart';
 
 /// 独立互联页面；附近设备与任务状态均来自主窗口常驻服务。
 class HarmonyShareDashboardTab extends StatefulWidget {
@@ -190,6 +191,12 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
           title: context.l10n.t('harmonyShareTitle'),
           subtitle: context.l10n.t('harmonyShareSubtitle'),
           actions: [
+            IconButton(
+              tooltip: context.l10n.t('harmonyShareSettings'),
+              onPressed: () => showDialog<void>(context: context,
+                builder: (_) => const HarmonyShareSettingsDialog()),
+              icon: const Icon(Icons.settings_outlined),
+            ),
             IconButton(
               tooltip: context.l10n.t('harmonyShareScanAgain'),
               onPressed: _service.busy || !_service.enabled
