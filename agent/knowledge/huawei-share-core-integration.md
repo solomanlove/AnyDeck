@@ -135,3 +135,10 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 187 focused Flutter tests、targeted analyze、2 Widget 视觉测试与 Release 验证通过。临时库与模拟 Client 用于状态链验证；截图速率为合成 fixture，本批不重跑真实 Core GiB 压力，也不宣称手机吞吐。私有制品/锁保持7059e22，生产 send/receive=false；详见阶段计划。
 
 用户要求最后清理本次大文件。2026-10-28 已在完成校验后删除 12 份隔离 App 与私有 core/target 缓存，约 2.1 GiB，当前可用约 3.5 GiB；历史临时 App 路径不再存在。源码、锁定 zip、日志/小型截图保留，共享/在用构建与其他来源缓存未动。后续按低存储约束验证并清理新生成的临时大文件，不能依赖旧 target 或临时 App 仍存在。
+
+## 本机名称的 Core 准备（2026-10-28）
+
+- 私有仓5bfaf66的 Core 0.3.1 源码新增按会话持有的 local_name：发现、原生批次发送/接收与 Swift helper 保持同一快照；默认 AnyDeck，最大24 UTF-8字节且拒绝非法控制/空白输入。hello 增加 batch_local_name/max_local_name_bytes，旧单文件命令不默默接受名称字段；生产 send/receive 仍 false。
+- 36 Rust lib +6 integration、12 Swift tests、Rust Release 与 hello 通过；真实 loopback offer/meta、接收 IPC helper argv/接收 meta/文件 hash 已验证。BLE 用隔离 stub，Swift 只验证参数与实际广播字典，未验证无线空口或手机显示。
+- 主仓当前运行契约/锁定制品保持 Core 0.3.0（7059e22），未打包0.3.1。下一批需接 Flutter设置/同步、Dart同边界校验、显式能力门控与新制品，不提前开放只改 UI 的名称设置。
+- 本批无主仓功能代码改动；已追加阶段记录。按用户要求清理本轮 Rust/Swift 缓存约528.5 MiB，不重建 GiB 样本；当前可用约2.3 GiB，源码与旧 zip 保留。

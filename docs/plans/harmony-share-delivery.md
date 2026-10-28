@@ -175,3 +175,12 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 最后一份 `/tmp/anydeck-harmony-outbox-offline/Products/AnyDeck.app` 在最终源码构建、严格签名/hash/IPC 验证完成后删除。此前章节的隔离 App 路径是历史验证记录，当前不再保留实体包；需要时通过锁定 zip 和构建脚本重建。
 - 当前 `/tmp` 与系统临时目录未发现本任务残留的 ≥64 MiB 合成传输样本。未删除其他来源的 ADB 日志、媒体缓存、在用 App、共享 Flutter 构建目录、用户源码或锁定 zip。私有仓无关 `.DS_Store` 也保持不动。
 - 小型验证日志、Widget 截图和 `/tmp/anydeck-harmony-cleanup-manifest.json` 清理清单保留；最终包检查摘要为 `/tmp/harmony-outbox-package-verify.log`。后续验证避免重复生成 GiB 样本，临时大文件/隔离 App 在验证后继续清理。
+
+## 阶段 4 第四批：本机名称 Core 准备（2026-10-28）
+
+- 私有仓 commit `5bfaf66`，Core 源码版本 0.3.1 / IPC 3：发现与原生批次命令接受可选 local_name，缺省 AnyDeck；最多 24 UTF-8 字节，空值/非字符串、首尾空格、控制与分隔字符拒绝，不静默截断。hello 显式声明 batch_local_name/max_local_name_bytes，legacy 单文件命令显式带名称时拒绝，避免悄悄忽略设置。
+- 名称绑定当前会话，贯通发现广播/响应、发送 offer、双向 meta 与 Swift helper argv/广播字典；不使用可变全局环境，不改变身份摘要或传输数据链。协议实现、wire 测试及 Swift 参数处理均保留私有仓。
+- 验证：36 项 Rust lib（含显式 SDK/接收 IPC 用例，排除 GiB 用例）、6 integration 与 12 Swift tests 通过；Rust Release 编译和 0.3.1 hello 通过。发送端加密 offer/meta 在 loopback 核对自定义名；真实接收 IPC 核对 helper --name 与接收 meta 的名称、最终文件 hash。Swift 测试只构造字典/解析参数，不启动 manager 或真实广播。
+- 本批是 Core 准备，未生成新 zip、未改主仓锁与 App UI，主仓仍使用7059e22的 Core 0.3.0 / IPC 3。设置入口、跨窗口保存/同步、Dart 同边界校验、能力门控、新制品/锁与 App 验证留待下一批；不能描述为运行 App 已可改名。实际空口名称与手机展示仍待真机。
+- 低存储约束：测试关闭 debug info/incremental，使用小型合成文件，不重跑 GiB 压力；测试目录自动回收后删除本轮 core/target 与 Swift .build 缓存约528.5 MiB。源码/旧锁定 zip/小型日志保留，当前可用空间约2.3 GiB，其他工作流可继续影响该值。
+- 本批未运行主 App、未停止用户原实例、未操作手机/系统权限，未 push。主仓仅追加现有阶段计划和已索引知识库内容，没有纳入其他导航/控制台/模拟器工作区改动。
