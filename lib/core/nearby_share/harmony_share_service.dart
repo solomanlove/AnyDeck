@@ -9,6 +9,9 @@ import 'share_core_client.dart';
 import 'share_network.dart';
 import 'harmony_share_send_queue.dart';
 import 'share_send_selection.dart';
+import 'share_transfer_history.dart';
+import 'share_transfer_record.dart';
+import 'harmony_share_sender.dart';
 
 /// 展示给用户的来件摘要；协议内容不进入主仓库。
 class ShareIncomingOffer {
@@ -23,7 +26,10 @@ class HarmonyShareService extends ChangeNotifier {
     : _client = const ShareCoreClient(),
       _detectNetwork = ShareNetwork.detect,
       _downloads = getDownloadsDirectory,
-      _supported = Platform.isMacOS;
+      _supported = Platform.isMacOS,
+      history = ShareTransferHistory() {
+    history!.addListener(notifyListeners);
+  }
 
   /// 离线生命周期测试注入边界，不访问真实网络或启动核心。
   @visibleForTesting
@@ -31,16 +37,21 @@ class HarmonyShareService extends ChangeNotifier {
     required ShareCoreClient client,
     required Future<ShareNetwork> Function() detectNetwork,
     required Future<Directory?> Function() downloads,
+    this.history,
   }) : _client = client,
        _detectNetwork = detectNetwork,
        _downloads = downloads,
-       _supported = true;
+       _supported = true {
+    history?.addListener(notifyListeners);
+  }
   static final instance = HarmonyShareService._();
 
   final ShareCoreClient _client;
   final Future<ShareNetwork> Function() _detectNetwork;
   final Future<Directory?> Function() _downloads;
   final bool _supported;
+  final ShareTransferHistory? history;
+  String? _incomingHistoryId;
   final Map<String, ShareCorePeer> peers = {};
   final List<String> recent = [];
   static const _recentKey = 'harmony_share_recent_paths';
@@ -48,24 +59,30 @@ class HarmonyShareService extends ChangeNotifier {
   ShareNetwork? network;
   ShareCoreReceiveSession? _receiver;
   StreamSubscription<Map<String, dynamic>>? _events;
-  ShareCoreTransfer? _transfer;
   Timer? _networkTimer;
   Timer? _windowTimer;
   Future<void>? _startingWindow;
   int _windowRevision = 0;
+  int _closingWindows = 0;
   bool _refreshing = false;
   bool _sendCancelled = false;
   bool _enabled = false;
   bool busy = false;
   bool receiving = false;
   ShareCoreProgress? progress;
-  StreamSubscription<ShareCoreProgress>? _progressEvents;
   String? activeFile;
   String? error;
 
+  late final _sender = HarmonyShareSender(
+    client: _client,
+    detectNetwork: _detectNetwork,
+  );
+
   late final sendQueue = HarmonyShareSendQueue(
     send: _sendOne,
-    cancelActive: () => _transfer?.cancel(),
+    cancelActive: _sender.cancel,
+    onQueued: history?.queued,
+    onChanged: history?.sentItemChanged,
   )..addListener(notifyListeners);
 
   bool get enabled => _enabled;
@@ -73,6 +90,8 @@ class HarmonyShareService extends ChangeNotifier {
   Future<void> start() async {
     if (_enabled || !_supported) return;
     _enabled = true;
+    await history?.initialize();
+    if (!_enabled) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       recent
@@ -119,6 +138,7 @@ class HarmonyShareService extends ChangeNotifier {
     _sendCancelled = true;
     sendQueue.cancelAll();
     await _stopWindow();
+    await history?.flush();
     notifyListeners();
   }
 
@@ -135,7 +155,7 @@ class HarmonyShareService extends ChangeNotifier {
 
   /// 同一时间仅创建一轮接收器；stop/send 会使尚未完成的启动失效。
   Future<void> _openWindow() async {
-    if (!_enabled || busy || _receiver != null) return;
+    if (!_enabled || busy || _receiver != null || _closingWindows > 0) return;
     final revision = _windowRevision;
     try {
       network = await _detectNetwork();
@@ -177,6 +197,7 @@ class HarmonyShareService extends ChangeNotifier {
                 /* 忽略不可信发现报文。 */
               }
             case 'session_started':
+              _incomingHistoryId = null;
               receiving = true;
               busy = true;
               progress = null;
@@ -192,6 +213,10 @@ class HarmonyShareService extends ChangeNotifier {
                 if (update.direction == 'receive' &&
                     (progress == null || update.bytes >= progress!.bytes)) {
                   progress = update;
+                  history?.receiveChanged(
+                    _incomingHistoryId,
+                    transferredBytes: update.bytes,
+                  );
                   notifyListeners();
                 }
               } on FormatException {
@@ -205,18 +230,44 @@ class HarmonyShareService extends ChangeNotifier {
                   bytes > 0 &&
                   bytes <= ShareCoreContract.maxFileBytes) {
                 pendingOffer = ShareIncomingOffer(address, bytes);
+                _incomingHistoryId = history?.incoming(
+                  address: address.address,
+                  name: peers[address.address]?.name ?? address.address,
+                  bytes: bytes,
+                );
                 notifyListeners();
               } else {
                 receiver.decide(false);
               }
             case 'file_received':
               final path = event['path'];
-              if (path is String) recent.insert(0, path);
+              if (path is String) {
+                recent.insert(0, path);
+                history?.receiveChanged(
+                  _incomingHistoryId,
+                  status: ShareTransferStatus.succeeded,
+                  fileName: File(path).uri.pathSegments.last,
+                  path: path,
+                  transferredBytes: event['bytes'] is int
+                      ? event['bytes'] as int
+                      : progress?.totalBytes,
+                  sha256: event['sha256'] is String
+                      ? event['sha256'] as String
+                      : null,
+                );
+              }
               if (recent.length > 50) recent.removeRange(50, recent.length);
               unawaited(_saveRecent());
               pendingOffer = null;
               notifyListeners();
             case 'error':
+              history?.receiveChanged(
+                _incomingHistoryId,
+                status: event['reason'] == 'decision_timeout'
+                    ? ShareTransferStatus.timedOut
+                    : ShareTransferStatus.failed,
+                error: '${event['code']}: ${event['reason'] ?? ''}',
+              );
               if (event['reason'] != 'deadline') {
                 error = '${event['code']}: ${event['reason'] ?? ''}';
               }
@@ -226,6 +277,11 @@ class HarmonyShareService extends ChangeNotifier {
         },
         onError: (Object failure) {
           error = '$failure';
+          history?.receiveChanged(
+            _incomingHistoryId,
+            status: ShareTransferStatus.failed,
+            error: '$failure',
+          );
           pendingOffer = null;
           notifyListeners();
         },
@@ -234,6 +290,11 @@ class HarmonyShareService extends ChangeNotifier {
           _windowTimer?.cancel();
           _windowTimer = null;
           _receiver = null;
+          history?.receiveChanged(
+            _incomingHistoryId,
+            status: ShareTransferStatus.interrupted,
+          );
+          _incomingHistoryId = null;
           pendingOffer = null;
           if (receiving) {
             receiving = false;
@@ -241,7 +302,7 @@ class HarmonyShareService extends ChangeNotifier {
             progress = null;
           }
           notifyListeners();
-          if (_enabled && !busy) {
+          if (_enabled && !busy && _closingWindows == 0) {
             Future<void>.delayed(const Duration(seconds: 1), _startWindow);
           }
         },
@@ -254,8 +315,26 @@ class HarmonyShareService extends ChangeNotifier {
 
   void decide(bool accept) {
     if (pendingOffer == null) return;
+    history?.receiveChanged(
+      _incomingHistoryId,
+      status: accept
+          ? ShareTransferStatus.transferring
+          : ShareTransferStatus.rejected,
+    );
     pendingOffer = null;
     _receiver?.decide(accept);
+    notifyListeners();
+  }
+
+  /// UI 与核心都限制确认期限；超时与用户主动拒绝分别记录。
+  void expireOffer(ShareIncomingOffer offer) {
+    if (pendingOffer != offer) return;
+    history?.receiveChanged(
+      _incomingHistoryId,
+      status: ShareTransferStatus.timedOut,
+    );
+    pendingOffer = null;
+    _receiver?.decide(false);
     notifyListeners();
   }
 
@@ -267,13 +346,15 @@ class HarmonyShareService extends ChangeNotifier {
   /// UI 确认过的元数据保持不变，队列开始每项前再检查文件是否被修改。
   Future<void> sendSelection(
     ShareCorePeer peer,
-    ShareSendSelection selection,
-  ) => _runBatch(peer, () async => selection);
+    ShareSendSelection selection, {
+    String? retryOf,
+  }) => _runBatch(peer, () async => selection, retryOf: retryOf);
 
   Future<void> _runBatch(
     ShareCorePeer peer,
-    Future<ShareSendSelection> Function() prepare,
-  ) async {
+    Future<ShareSendSelection> Function() prepare, {
+    String? retryOf,
+  }) async {
     if (busy) return;
     busy = true;
     _sendCancelled = false;
@@ -285,7 +366,8 @@ class HarmonyShareService extends ChangeNotifier {
       if (_sendCancelled) throw StateError('Transfer cancelled');
       final selection = await prepare();
       if (_sendCancelled) throw StateError('Transfer cancelled');
-      await sendQueue.run(peer, selection);
+      await sendQueue.run(peer, selection, retryOf: retryOf);
+      await history?.flush();
       final failures = sendQueue.items.where(
         (item) => item.status == ShareSendStatus.failed,
       );
@@ -306,45 +388,19 @@ class HarmonyShareService extends ChangeNotifier {
     ShareSendItem item,
     ValueChanged<ShareCoreProgress> onProgress,
   ) async {
-    void checkCancelled() {
-      if (_sendCancelled || sendQueue.isCancelled(item.id)) {
-        throw StateError('Transfer cancelled');
-      }
-    }
-
     activeFile = item.file.name;
     progress = null;
-    try {
-      checkCancelled();
-      await item.file.verifyUnchanged();
-      checkCancelled();
-      final currentNetwork = await _detectNetwork();
-      checkCancelled();
-      final transfer = await _client.sendFileForTest(
-        localAddress: currentNetwork.local,
-        peer: item.peer,
-        file: item.file.file,
-      );
-      _transfer = transfer;
-      if (_sendCancelled || sendQueue.isCancelled(item.id)) transfer.cancel();
-      _progressEvents = transfer.progress.listen((update) {
-        if (update.direction == 'send' &&
-            update.totalBytes == item.file.bytes &&
-            (progress == null || update.bytes >= progress!.bytes)) {
-          progress = update;
-          onProgress(update);
-        }
-      });
-      await transfer.result;
-      recent.insert(0, item.file.file.path);
-      if (recent.length > 50) recent.removeRange(50, recent.length);
-      unawaited(_saveRecent());
-    } finally {
-      await _progressEvents?.cancel();
-      _progressEvents = null;
-      _transfer = null;
-      progress = null;
-    }
+    await _sender.send(
+      item,
+      cancelled: () => _sendCancelled || sendQueue.isCancelled(item.id),
+      onProgress: (update) {
+        progress = update;
+        onProgress(update);
+      },
+    );
+    recent.insert(0, item.file.file.path);
+    if (recent.length > 50) recent.removeRange(50, recent.length);
+    unawaited(_saveRecent());
   }
 
   void cancelTransfer() {
@@ -357,6 +413,10 @@ class HarmonyShareService extends ChangeNotifier {
   }
 
   Future<void> _cancelReceiving() async {
+    history?.receiveChanged(
+      _incomingHistoryId,
+      status: ShareTransferStatus.cancelled,
+    );
     await _stopWindow();
     receiving = false;
     busy = false;
@@ -375,24 +435,42 @@ class HarmonyShareService extends ChangeNotifier {
   }
 
   Future<void> _stopWindow() async {
+    _closingWindows++;
     _windowRevision++;
-    await _startingWindow;
-    _windowTimer?.cancel();
-    _windowTimer = null;
-    await _events?.cancel();
-    _events = null;
-    await _receiver?.stop();
-    _receiver = null;
-    pendingOffer = null;
-    if (receiving) {
-      receiving = false;
-      busy = false;
-      progress = null;
+    history?.receiveChanged(
+      _incomingHistoryId,
+      status: ShareTransferStatus.interrupted,
+    );
+    try {
+      await _startingWindow;
+      _windowTimer?.cancel();
+      _windowTimer = null;
+      await _receiver?.stop();
+      await _events?.cancel();
+      _events = null;
+      _receiver = null;
+      _incomingHistoryId = null;
+      pendingOffer = null;
+      if (receiving) {
+        receiving = false;
+        busy = false;
+        progress = null;
+      }
+    } finally {
+      _closingWindows--;
+      if (_closingWindows == 0 &&
+          _enabled &&
+          !busy &&
+          !_refreshing &&
+          _receiver == null) {
+        unawaited(_startWindow());
+      }
     }
   }
 
   @override
   void dispose() {
+    history?.removeListener(notifyListeners);
     sendQueue.removeListener(notifyListeners);
     sendQueue.dispose();
     super.dispose();

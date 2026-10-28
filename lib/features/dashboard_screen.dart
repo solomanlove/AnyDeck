@@ -111,7 +111,7 @@ import 'airplay/airplay_mirror_target.dart';
 import 'airplay/airplay_window_routing_provider.dart';
 import 'receivers/receiver_dashboard_tab.dart';
 import 'harmony_share/harmony_share_dashboard_tab.dart';
-import 'harmony_share/widgets/harmony_share_panels.dart';
+import 'harmony_share/controller/harmony_share_offer_presenter.dart';
 import '../core/nearby_share/harmony_share_service.dart';
 import 'devices/widgets/device_airplay_row_widgets.dart';
 import '../core/airplay/airplay_server_service.dart';
@@ -271,7 +271,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   bool _routeSyncScheduled = false;
   String? _resolvedRouteDeviceId;
   StreamSubscription<Map<String, dynamic>>? _notificationClickSub;
-  ShareIncomingOffer? _shownShareOffer;
+  late final HarmonyShareOfferPresenter _shareOfferPresenter;
 
   @override
   void initState() {
@@ -282,7 +282,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         .read(macNotificationBridgeProvider)
         .clickStream
         .listen(_handleNotificationClick);
-    HarmonyShareService.instance.addListener(_handleShareOffer);
+    _shareOfferPresenter = HarmonyShareOfferPresenter(service: HarmonyShareService.instance, context: () => context);
     unawaited(HarmonyShareService.instance.start());
     _scheduleDashboardRouteSync();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -307,41 +307,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   void dispose() {
-    HarmonyShareService.instance.removeListener(_handleShareOffer);
+    _shareOfferPresenter.dispose();
     unawaited(HarmonyShareService.instance.stop());
     _notificationClickSub?.cancel();
     _windowChannel.setMethodCallHandler(null);
     windowManager.removeListener(this);
     super.dispose();
-  }
-
-  /// 来件确认由主窗口持有，离开鸿蒙互联页仍能弹出。
-  void _handleShareOffer() {
-    final offer = HarmonyShareService.instance.pendingOffer;
-    if (offer == null || identical(offer, _shownShareOffer) || !mounted) return;
-    _shownShareOffer = offer;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || HarmonyShareService.instance.pendingOffer != offer) {
-        return;
-      }
-      final navigator = Navigator.of(context, rootNavigator: true);
-      final timeout = Timer(const Duration(seconds: 30), () {
-        if (navigator.mounted && HarmonyShareService.instance.pendingOffer == offer) {
-          navigator.pop(false);
-        }
-      });
-      final accept = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => HarmonyShareConfirmDialog(
-          receiving: true,
-          device: HarmonyShareService.instance.peers[offer.address.address]?.name ?? offer.address.address,
-          summary: '${offer.bytes} B',
-        ),
-      );
-      timeout.cancel();
-      HarmonyShareService.instance.decide(accept == true);
-    });
   }
 
   int _notificationClickRevision = 0;

@@ -6,6 +6,10 @@ import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:any_deck/core/nearby_share/harmony_share_send_queue.dart';
 import 'package:any_deck/core/nearby_share/share_send_selection.dart';
+import 'package:any_deck/core/nearby_share/share_transfer_history.dart';
+import 'package:any_deck/core/nearby_share/share_transfer_record.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_history_dialog.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_record_tile.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_queue_panel.dart';
 import 'package:any_deck/features/harmony_share/harmony_share_dashboard_tab.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_panels.dart';
@@ -15,6 +19,45 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+/// 视觉 fixture 不接触用户数据库。
+class _VisualHistory extends ShareTransferHistory {
+  @override
+  Future<List<ShareTransferRecord>> query({
+    ShareTransferDirection? direction,
+    String search = '',
+    ShareTransferRecord? before,
+  }) async => [
+    ShareTransferRecord(
+      id: 'visual-received',
+      direction: ShareTransferDirection.receive,
+      status: ShareTransferStatus.succeeded,
+      deviceName: 'nova 12 Ultra',
+      address: '192.168.1.3',
+      fileName: 'synthetic-received.bin',
+      path: '/synthetic/received.bin',
+      bytes: 10 * 1024 * 1024,
+      transferredBytes: 10 * 1024 * 1024,
+      createdAt: DateTime(2026, 10, 28, 10),
+      completedAt: DateTime(2026, 10, 28, 10, 1),
+      sha256: 'a' * 64,
+    ),
+    ShareTransferRecord(
+      id: 'visual-failed',
+      direction: ShareTransferDirection.send,
+      status: ShareTransferStatus.failed,
+      deviceName: 'nova 12 Ultra',
+      address: '192.168.1.3',
+      fileName: 'synthetic-failed.bin',
+      path: '/synthetic/failed.bin',
+      bytes: 100 * 1024 * 1024,
+      transferredBytes: 20 * 1024 * 1024,
+      createdAt: DateTime(2026, 10, 28, 9),
+      completedAt: DateTime(2026, 10, 28, 9, 1),
+      error: 'send_failed',
+    ),
+  ];
+}
 
 /// 可选导出 Widget 渲染图，无需启动或停止用户的 App。
 /// 使用 --dart-define=HARMONY_CAPTURE_DIR=绝对路径；字体路径仅用于本机视觉验收。
@@ -171,6 +214,28 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('queue');
+      final history = _VisualHistory();
+      await tester.pumpWidget(
+        host(
+          HarmonyShareHistoryDialog(
+            history: history,
+            onOpen: (_) async {},
+            onFolder: (_) async {},
+            onRetry: (_) async {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('history');
+      final details = (await history.query()).first;
+      await tester.pumpWidget(
+        host(Center(child: HarmonyShareRecordDetailsDialog(record: details))),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('record-details');
+      history.dispose();
     });
   }
 }

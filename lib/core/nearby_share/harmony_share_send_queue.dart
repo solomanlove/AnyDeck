@@ -22,6 +22,7 @@ class ShareSendItem {
     this.status = ShareSendStatus.queued,
     this.transferredBytes = 0,
     this.error,
+    this.retryOf,
   });
   final String id;
   final ShareCorePeer peer;
@@ -29,6 +30,7 @@ class ShareSendItem {
   final ShareSendStatus status;
   final int transferredBytes;
   final String? error;
+  final String? retryOf;
   bool get terminal =>
       status == ShareSendStatus.succeeded ||
       status == ShareSendStatus.failed ||
@@ -41,16 +43,24 @@ class ShareSendItem {
         status: status ?? this.status,
         transferredBytes: bytes ?? transferredBytes,
         error: error ?? this.error,
+        retryOf: retryOf,
       );
 }
 
 /// 单个用户选择的发送队列；严格串行，一个文件失败不阻断后续文件。
 /// send 完成必须代表核心最终成功；cancelActive 负责终止实际进程，控制器不生成假进度。
 class HarmonyShareSendQueue extends ChangeNotifier {
-  HarmonyShareSendQueue({required this.send, required this.cancelActive});
+  HarmonyShareSendQueue({
+    required this.send,
+    required this.cancelActive,
+    this.onQueued,
+    this.onChanged,
+  });
   final Future<void> Function(ShareSendItem, ValueChanged<ShareCoreProgress>)
   send;
   final VoidCallback cancelActive;
+  final Future<void> Function(List<ShareSendItem>)? onQueued;
+  final ValueChanged<ShareSendItem>? onChanged;
   List<ShareSendItem> _items = [];
   final Set<String> _cancelled = {};
   int? _current;
@@ -67,17 +77,33 @@ class HarmonyShareSendQueue extends ChangeNotifier {
       _items.where((item) => item.status == status).length;
   bool isCancelled(String id) => _cancelled.contains(id);
 
-  Future<void> run(ShareCorePeer peer, ShareSendSelection selection) async {
+  Future<void> run(
+    ShareCorePeer peer,
+    ShareSendSelection selection, {
+    String? retryOf,
+  }) async {
     if (running) throw StateError('Send queue is already running');
     running = true;
     _cancelled.clear();
     final batch = DateTime.now().microsecondsSinceEpoch;
     _items = [
       for (final file in selection.files)
-        ShareSendItem(id: '$batch-${_sequence++}', peer: peer, file: file),
+        ShareSendItem(
+          id: '$batch-${_sequence++}',
+          peer: peer,
+          file: file,
+          retryOf: retryOf,
+        ),
     ];
     notifyListeners();
     try {
+      if (onQueued != null) {
+        await onQueued!(items);
+        // 初始落盘期间也允许取消；补齐当时已变成终态的记录。
+        for (final item in _items.where((item) => item.terminal)) {
+          onChanged?.call(item);
+        }
+      }
       for (var index = 0; index < _items.length; index++) {
         if (_items[index].terminal) continue;
         _current = index;
@@ -158,6 +184,7 @@ class HarmonyShareSendQueue extends ChangeNotifier {
 
   void _set(int index, ShareSendItem item) {
     _items[index] = item;
+    onChanged?.call(item);
     notifyListeners();
   }
 }

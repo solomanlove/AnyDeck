@@ -123,4 +123,20 @@ void main() {
       );
     }
   });
+  test('接收停止前交付已经到达的终态事件', () async {
+    final process = _Process();
+    final session = ShareCoreReceiveSession(process);
+    final events = <Map<String, dynamic>>[];
+    final subscription = session.events.listen(events.add);
+    process.emit({'event': 'file_received', 'path': '/synthetic/received.bin'});
+    await session.stop();
+    expect(events.single['event'], 'file_received');
+    await subscription.cancel();
+  });
+  test('尚未被订阅的接收会话也可有界停止', () async {
+    final process = _Process();
+    final session = ShareCoreReceiveSession(process);
+    await session.stop().timeout(const Duration(seconds: 1));
+    expect(process.killed, isTrue);
+  });
 }

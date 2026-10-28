@@ -1,6 +1,6 @@
 # Huawei Share 私有核心集成边界
 
-当前基线：Core 0.2.0 / IPC 2，大文件实验上限 1 GiB 已完成离线验证，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
+当前基线：Core 0.2.1 / IPC 2，大文件实验上限 1 GiB 已完成离线验证，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
@@ -62,3 +62,12 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - `HarmonyShareService` 对整个 batch 持有忙碌态，暂停接收一次，所有文件结束后恢复一次。它由主窗口持有，队列不依赖页面生命周期。UI 的多选/多文件拖放共用同一确认与发送入口。
 - `HarmonyShareQueuePanel` 展示处理数量、结果数量与真实字节进度，并限制列表高度；`HarmonyShareDropTarget` 用局部 ValueNotifier 控制拖入反馈，不启动持续动画或混入 ADB 安装/上传 Provider。所有新增文件 <500 行，zh/en、Theme 语义色同步。
 - 本批 40 focused Flutter tests、targeted analyze 通过；Light/Dark 队列 Widget 截图已检查。原生单文件 IPC 2/私有制品锁保持不变；每项仍需手机确认，原生多文件接收、持久化队列/完整记录、通知、真机回归尚未完成。
+
+## 持久化互传记录第一批（2026-10-28）
+
+- `ShareHistoryDatabase` 在工作 Isolate 管理独立 SQLite/WAL；`ShareTransferHistory` 负责小型摘要缓存、顺序写入、每秒进度检查点、终态保存和重启中断恢复。记录只保存元数据，接收 SHA-256 明确为本机落盘摘要。
+- 发送队列通过 onQueued/onChanged 保存所有任务；等待首次落盘期间的取消会重放终态，重试有 retry_of 关联，不覆盖原记录。接收拒绝/确认超时/取消/失败/中断独立；关闭接收器前排空终态消息，晚到的已验证成功可修正取消/中断，但不覆盖明确拒绝。
+- UI：首页完整记录摘要、方向筛选、搜索、游标分页、详情复制、路径操作、显式发送重试和仅删除记录。旧路径缓存单独保留，不伪造历史。未知来件文件名保留摘要，成功后补齐。
+- `HarmonyShareOfferPresenter` 只关闭持有的 Route，修复确认失效后残留弹窗和误关其他窗口；销毁后不再读取 context。`HarmonyShareSender` 单独持有原生发送会话与订阅，服务文件保持 <500 行。
+- 私有 Core 0.2.1 / IPC 2：commit `13ad17f5ffdc4dadca6e80ba1f3a4a9adb51bd71`；固定 zip SHA-256 `56b5836ec9485f4acdd758b5482a8dcd621ed3b202429c2f074d512b117d0c26`。只新增明确 decision_timeout，DFile/认证/Swift 未改，生产能力仍 false。
+- 本批 68 项 focused tests、targeted analyze 通过；私有 Rust 19 unit + 4 integration 通过。历史列表/详情 Widget 明暗图已检查。真实手机、Finder 与 App 重启人工验证仍待进行；系统通知、相关设置和原生多文件收发继续推进。详细阶段证据见 `docs/plans/harmony-share-delivery.md`。

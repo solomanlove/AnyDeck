@@ -37,14 +37,31 @@ Future<void> stopShareCoreProcess(Process process) async {
 class ShareCoreReceiveSession {
   ShareCoreReceiveSession(this._process) {
     _errors = _process.stderr.listen((_) {});
+    _output = _process.stdout
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .map(_decode)
+        .listen(
+          _events.add,
+          onError: _events.addError,
+          onDone: () async {
+            final closed = _events.close();
+            if (_listened) await closed;
+            if (!_drained.isCompleted) _drained.complete();
+          },
+        );
   }
   final Process _process;
+  final _events = StreamController<Map<String, dynamic>>();
+  final _drained = Completer<void>();
   late final StreamSubscription<List<int>> _errors;
+  late final StreamSubscription<Map<String, dynamic>> _output;
+  bool _listened = false;
 
-  Stream<Map<String, dynamic>> get events => _process.stdout
-      .transform(utf8.decoder)
-      .transform(const LineSplitter())
-      .map(_decode);
+  Stream<Map<String, dynamic>> get events {
+    _listened = true;
+    return _events.stream;
+  }
 
   void decide(bool accept) {
     _process.stdin.writeln(
@@ -54,6 +71,15 @@ class ShareCoreReceiveSession {
 
   Future<void> stop() async {
     await stopShareCoreProcess(_process);
+    // 保留已经发出的终态事件，再解除订阅，避免取消与成功同时到达时丢失真实结果。
+    if (_listened) {
+      await _drained.future.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {},
+      );
+    }
+    await _output.cancel();
+    if (!_events.isClosed) unawaited(_events.close());
     await _errors.cancel();
   }
 }

@@ -7,12 +7,16 @@ import '../../app/l10n/app_localizations.dart';
 import '../../core/nearby_share/harmony_share_service.dart';
 import '../../core/nearby_share/share_core_client.dart';
 import '../../core/nearby_share/share_send_selection.dart';
+import '../../core/nearby_share/share_transfer_record.dart';
+import '../../core/nearby_share/share_record_file_actions.dart';
 import '../widgets/dashboard_header_bar.dart';
 import '../../app/theme/app_theme_sizes.dart';
 import 'widgets/harmony_share_stage.dart';
 import 'widgets/harmony_share_panels.dart';
 import 'widgets/harmony_share_format.dart';
 import 'widgets/harmony_share_queue_panel.dart';
+import 'widgets/harmony_share_history_dialog.dart';
+import 'widgets/harmony_share_history_recent.dart';
 
 /// 独立互联页面；附近设备与任务状态均来自主窗口常驻服务。
 class HarmonyShareDashboardTab extends StatefulWidget {
@@ -64,7 +68,11 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
     );
   }
 
-  Future<void> _confirm(ShareCorePeer peer, List<File> files) async {
+  Future<void> _confirm(
+    ShareCorePeer peer,
+    List<File> files, {
+    String? retryOf,
+  }) async {
     if (_service.busy || _confirming) return;
     _confirming = true;
     try {
@@ -91,7 +99,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
         ),
       );
       if (confirmed == true && mounted) {
-        await _service.sendSelection(peer, selection);
+        await _service.sendSelection(peer, selection, retryOf: retryOf);
       }
     } on FormatException {
       if (!mounted) return;
@@ -106,6 +114,47 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
     } finally {
       _confirming = false;
     }
+  }
+
+  Future<void> _openRecord(
+    ShareTransferRecord record, {
+    bool folder = false,
+  }) async {
+    final opened = await ShareRecordFileActions().open(record, folder: folder);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.t('harmonyShareOpenError'))),
+      );
+    }
+  }
+
+  Future<void> _retryRecord(ShareTransferRecord record) async {
+    final peer = _service.peers[record.address];
+    if (_service.busy ||
+        peer == null ||
+        peer.name != record.deviceName ||
+        record.path == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.t('harmonyShareRetryUnavailable'))),
+      );
+      return;
+    }
+    await _confirm(peer, [File(record.path!)], retryOf: record.id);
+  }
+
+  void _showHistory() {
+    final history = _service.history;
+    if (history == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (_) => HarmonyShareHistoryDialog(
+        history: history,
+        legacyPaths: List.of(_service.recent),
+        onOpen: _openRecord,
+        onFolder: (record) => _openRecord(record, folder: true),
+        onRetry: _retryRecord,
+      ),
+    );
   }
 
   void _showGuide() => showDialog<void>(
@@ -304,7 +353,14 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                HarmonyShareRecent(paths: _service.recent),
+                HarmonyShareHistoryRecent(
+                  records: _service.history?.recent ?? const [],
+                  storageError: _service.history?.error != null,
+                  onHistory: _showHistory,
+                  onOpen: _openRecord,
+                  onFolder: (record) => _openRecord(record, folder: true),
+                  onRetry: _retryRecord,
+                ),
               ],
             ),
           ),
