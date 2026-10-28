@@ -79,3 +79,9 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 新设置沿用 AppSettingsController 与 SettingsBroadcast：`update_harmony_share_notifications`（bool）、`update_harmony_share_directory`（绝对路径或空字符串）。主/子窗口均更新同一 SharedPreferences key；主窗口接收服务按新轮次读取目录，子窗口不启动接收器或通知协调器。默认目录为空表示 Downloads，默认开关 true 仍受系统权限约束。写入 false/异常时重读 legacy SharedPreferences 缓存，UI 状态不采用未保存值；真实存储完全不可读仍属待验收异常场景。
 - `ShareReceiveDirectory` 对显式选择进行临时子目录写入探测，结束清理；不存在的自定义目录不静默回退。设置期间不会移动历史文件；收发忙碌时禁用目录修改，后续接收继续使用独立子目录与核心校验。UI 层持有选择器/权限查询生命周期，纯展示面板独立测试 Theme/l10n。
 - 自动验证与打包证据见 `docs/plans/harmony-share-delivery.md` 阶段 4 第二批。系统通知横幅/唤醒、真实选择器、手机收发暂未人工验收；本机名称与原生批量链路仍需继续。
+
+## 原生批次底座离线进展（2026-10-28）
+
+- 私有仓 `b729c88` 增加 1–100 文件原生加密批次 helper 与写盘前完整清单校验；数量在分配前限制，大小/平面路径/名称冲突/既有文件与链接均在写盘前处理。测试与实现材料保留私有仓，不进入主仓。
+- batch suite 9 项通过，100 文件与 110 MiB 混合 batch 逐文件 hash、真实总进度通过；12 个直接边界场景与 allocation/NUL 入口通过。既有单文件/大文件和 Rust 回归通过，具体结果见阶段计划。
+- 这只证明传输底座，不证明 Rust 生态认证/批次确认、IPC/Flutter 模型、手机兼容性或生产能力。主仓锁定 Core 0.2.1 / IPC 2 不变，私有 zip 未替换；下一步接入真实批次状态机并扩展离线验证。

@@ -85,3 +85,12 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - Release 包：`/tmp/anydeck-harmony-notifications-offline/Products/AnyDeck.app`；最终源码 Release 构建、codesign 深度严格校验、全部包内 Core 文件 hash、Core 0.2.1 / IPC 2 握手均通过。未启动新 App、未结束原实例、未弹出真实通知或系统授权、未访问真实接收目录。系统通知横幅/点击唤醒、原生目录选择器和手机链路人工验收仍待进行。
 - SharedPreferences 写入失败时重读缓存后向 UI 报错，避免后续接收使用失败写入留下的内存目录值。测试显式声明已有 transitive `shared_preferences_platform_interface` 为 dev dependency，不增加 runtime 依赖；真实磁盘满/存储完全不可读场景仍待回归。
 - 本批私有协议、Core 0.2.1 / IPC 2 和制品锁不变。本机名称需与核心同步后开放；原生多文件收发、队列追加/速率、真机与发布前回归仍未完成。
+
+## 阶段 3 第二批：原生批次底座（2026-10-28）
+
+- 私有仓 commit `b729c88` 完成有界 DFile 原生清单底座：单个加密会话发送 1–100 个文件，单项 ≤1 GiB；接收在分配清单内存前校验数量，在实际写盘前检查所有文件元数据与精确总大小，排他预留避免覆盖已有文件/链接或文件系统名称折叠冲突。legacy 单文件入口继续拒绝批次。
+- 离线 batch suite 9 项通过，包含 12 个直接写盘边界场景及内存分配/NUL 入口验证；100 文件和 110 MiB 混合 batch 逐文件流式 hash 一致，双方总进度单调且到达真实总大小。普通、中文、空格和换行文件名均实际传输验证。
+- 负向验证：错误数量/总大小在写盘前失败且目标目录为空；101 个不同文件、重复名称、链接、空文件、单文件超 1 GiB、清单格式/权限/长度错误在联网前拒绝。既有 DFile 5 通过/1 LAN 跳过，10/100/512 MiB/1 GiB 压力样本全部通过；新一轮 1 GiB 约 7.99 秒、采样单进程峰值 RSS 170576 KiB，仍只代表 loopback。
+- 私有 Rust 19 unit + 4 integration 回归通过。复用已准备固定依赖重新编译 CMake；两处修改过的上游编译输入均与固定 commit 原文件应用精确补丁后的内容逐字一致。全量三依赖 clone/prepare 未重新完成，不宣称 fresh machine 构建通过。
+- **此批仅完成私有 helper 底座**。Rust 生态批次 offer/用户确认、snapshot 与 staging 发布、IPC/Flutter 的批次任务模型尚未接入，不代表手机原生多文件收发完成。主仓生产/实验能力声明和 Core 0.2.1 / IPC 2 制品锁保持不变，未替换 zip 或测试 App，未操作手机。
+- 下一批继续私有 Core 的真实批次状态机与取消/失败验证，再版本化通用 IPC 和 UI；不直接把单文件数量限制改大后宣称完成。
