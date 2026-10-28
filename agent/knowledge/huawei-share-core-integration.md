@@ -188,3 +188,9 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 
 - 用户确认此前两文件请求未出现、没有手动拒绝，并手动允许测试 App 通知。私有仓修正批次数量一致性与宿主退出回收，40 项非 GiB 原生回归、8 项 integration（含签名制品父进程退出）通过；实际手机复验继续，不能据此宣称多文件已通过。
 - 当前主仓锁为 05d7e41911eff34509d17aa9dd7e7317c16b80fe / Core0.3.3 / IPC3，zip SHA-256 2350f8979dc49a4c0aae5d52be6b012164d887cf8ede3d7a0565aab24638460d，生产 send/receive=false。3 项 installer tests、更新独立包 deep/strict、5 成员 hash/签名与 hello 通过；Flutter 源码保持上一批 265 项通过版本。新测试包沿用隔离设置与历史，原有 App 不停止。
+
+## 大文件发送实测与 Core 0.3.4（2026-10-29）
+
+- 独立 0.3.3 App 已实际发完 100 MiB+1 GiB，并在大文件传输中追加 64 KiB 后续批次；用户确认全收，50 个 GiB 中途检查点落盘。0.3.3 真实 App 退出已回收 Core/helper，原 App/投屏保留。小文件诊断回传 hash 一致，但 App 等待确认后的接收仍失败，详见阶段计划，不能宣称双向大文件通过。
+- 用户已允许经连接的 nova 自主测试。诊断确认手机选择 P2P 模式时数据连接未到 LAN 端口；相关试验已撤回，不切换 Mac 网络。当前实验版明确报告 unsupported_network_mode，并用中英文提示其边界；空闲发现到期改为正确的 deadline。协议与诊断留私有仓。
+- 当前锁 ca77499fc94fcaf449b399ac506ddf734c520137 / Core0.3.4 / IPC3，zip SHA-256 ba685fcccbc8c9666f13bbfd063c1e90e3fc1c98b320773a1cda3542eced27fb，生产能力仍 false。41 项非 GiB 原生回归、9 integration、265 Flutter tests、analyze、3 installer 与新 Release 签名/5 成员 hash/hello 通过。LAN 大文件回传、真实通知/Finder及最终清理仍待完成。

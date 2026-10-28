@@ -48,6 +48,8 @@ String formatShareError(String error, String Function(String) text) {
     'deadline' ||
     'dfile_timeout' => 'harmonyShareOperationTimedOut',
     'tcp_failed' => 'harmonySharePeerUnavailable',
+    'unsupported_network_mode' when core?.group(1) == 'receive_failed' =>
+      'harmonyShareDirectModeUnsupported',
     'insufficient_space' when core?.group(1) == 'receive_failed' =>
       'harmonyShareInsufficientSpace',
     'invalid_files' when core?.group(1) == 'send_failed' =>

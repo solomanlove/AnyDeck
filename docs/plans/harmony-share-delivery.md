@@ -262,3 +262,11 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 私有仓已修正批次摘要的数量一致性，并增加宿主退出后的资源回收。主仓仅更新制品锁，不纳入协议实现或诊断数据。锁固定 05d7e41911eff34509d17aa9dd7e7317c16b80fe，Core 0.3.3 / IPC 3，zip SHA-256 为 2350f8979dc49a4c0aae5d52be6b012164d887cf8ede3d7a0565aab24638460d；生产 send/receive 仍 false。
 - 私有 40 项非 GiB 原生库/真实签名 IPC 回归、8 项 integration 通过，含两项签名制品父进程退出测试；摘要与退出回归均有修复前失败证据。本批未重跑 GiB 样本。主仓 3 项 installer tests 通过，上一批最终 Flutter 源码的 265 项回归不受制品锁更新影响。
 - 以已构建的最终 Flutter Release 包替换独立 App 中的锁定 Core，保留隔离设置与历史；重新签名后 deep/strict、5 成员 hash/签名与 0.3.3 hello 全部通过。小型摘要 `/tmp/anydeck-harmony-real-20261028/core033-package-verify.json`。开始更新包运行复验，实际手机批次、系统通知与 App 退出尚不能仅依据离线测试判定通过。
+
+## 首轮大文件与连续队列实测、LAN 边界（2026-10-29）
+
+- Core 0.3.3 的独立 Release App 实际向 nova 12 Ultra 发送 100 MiB + 1 GiB 两文件批次，传输期间追加 64 KiB 后续批次，最终三文件成功，用户确认全部收到。界面显示真实逐文件字节、速率/剩余时间；SQLite 回读得到 50 个 1 GiB 中途检查点。大文件发送记录 send-1793200720395426-6，追加记录 send-1793200816512827-9；只证明发送回调和用户收件，回传 hash 仍待核对。
+- 32/48 KiB 两文件发送经手机确认成功，隔离即时确认的诊断接收回传后大小与源 SHA-256 一致。App 等待接收确认后仍复现失败，不能以诊断接收成功替代完整 App 双向验收。用户随后连上 HDC/投屏并授权自主测试；仅操作当前 nova 和合成文件，原有 App、投屏始终保留。
+- 等待期间手机转入直连模式，数据连接使用 P2P 地址，在 LAN 数据端口持续 SYN_SENT，没有到达 Core。当前实验能力只覆盖 LAN；没有切换 Mac 网络或宣称直连已支持。无效试验已撤回，协议实现/原始诊断仍保留私有边界。现在对该模式及时显示中英文明确提示，避免未知错误或继续等待；该限制仍是未完成验收项。
+- Core 0.3.4 同时将空闲发现到期正确报告为 deadline，避免周期性误报文件输入错误。主仓锁固定 ca77499fc94fcaf449b399ac506ddf734c520137，zip SHA-256 ba685fcccbc8c9666f13bbfd063c1e90e3fc1c98b320773a1cda3542eced27fb，IPC3，生产 send/receive=false。41 项非 GiB 原生库/签名 IPC、9 项 integration、265 项相关 Flutter tests、targeted analyze 与 3 项 installer tests 通过。
+- 本批最终 Flutter 源码重新构建 Release，更新独立 App 后 deep/strict、5 成员 hash/签名与 0.3.4 hello 全部通过，摘要 core034-package-verify.json。0.3.3 实际 App 退出时 Core/BLE helper 已确认全部自动回收，原 App PID90081 与投屏继续运行。大文件 LAN 回传、当前包结果展示及通知/Finder 继续验收；大样本仍复用同一份，结束后清理。
