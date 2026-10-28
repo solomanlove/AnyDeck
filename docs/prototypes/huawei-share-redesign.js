@@ -59,9 +59,10 @@ const zone = $('dropZone');
 zone.addEventListener('dragover', e => {e.preventDefault();zone.classList.add('dragging');});
 zone.addEventListener('dragleave', e => {if (!zone.contains(e.relatedTarget)) zone.classList.remove('dragging');});
 zone.addEventListener('drop', e => {e.preventDefault();zone.classList.remove('dragging');prepare(e.dataTransfer.files[0]);});
+$('incomingBtn').addEventListener('click', incoming);
 $('historyBtn').addEventListener('click', () => dialog({icon:'▤',eyebrow:'HISTORY',title:'互传记录',text:'按发送和接收查看任务。此原型只显示当前页面内模拟的记录。',summary:history.length ? history.map(x => `${x.direction} ${x.name} · ${x.result}`).join('　/　') : '暂无传输记录',actions:[['关闭',close]]}));
 $('helpBtn').addEventListener('click', () => dialog({icon:'?',eyebrow:'HELP',title:'找不到设备？',text:'保持手机解锁，在控制中心打开“华为分享”并设为“所有人可见”；确认 Mac 和手机处于同一 Wi-Fi。',actions:[['知道了',close,true]]}));
-function settings() {dialog({icon:'⚙',eyebrow:'SETTINGS',title:'互传设置',text:'正式版提供本机名称、接收保存位置、通知与权限状态。网络参数由系统自动管理。',summary:'保存位置：下载 / AnyDeck 互传',actions:[['关闭',close],['模拟收到文件',incoming,true]]});}
+function settings() {dialog({icon:'⚙',eyebrow:'SETTINGS',title:'互传设置',text:'正式版在此设置本机名称、接收保存位置、通知与权限状态；接收服务与已连接设备列表无关，网络参数自动管理。',summary:'保存位置：下载 / AnyDeck 互传',actions:[['关闭',close],['模拟收到文件',incoming,true]]});}
 $('settingsNav').addEventListener('click', settings);
 $('identityMenu').addEventListener('click', settings);
 function incoming() {dialog({icon:'↙',eyebrow:'INCOMING',title:'nova 12 Ultra 想发送文件',text:'接收后文件将保存到“下载 / AnyDeck 互传”。',summary:'holiday-photo.jpg · 384 KB',actions:[['拒绝',close],['接收',() => {close();record('接收','holiday-photo.jpg','已接收');dialog({icon:'✓',title:'接收完成',text:'文件已保存。正式版可直接在 Finder 中显示。',summary:'下载 / AnyDeck 互传 / holiday-photo.jpg',actions:[['完成',close,true]]});},true]]});}
