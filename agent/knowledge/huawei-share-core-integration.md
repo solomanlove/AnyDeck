@@ -92,3 +92,9 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 100 文件、三文件混合批次与双角色“1 GiB + 64 KiB”实际 loopback 流程通过，逐文件最终 hash 与独立源 hash 一致。32 常规 lib + 1 显式 GiB 双角色压力用例 + 4 integration、DFile batch/legacy 与 Release 编译通过。SIGTERM 用例先观察真实传输和非空子进程集合，再断言回收与无半批发布。
 - 测试专用 Meta 主动端模拟手机，不进入生产构建，也不代表手机/BLE/发现兼容已验收。发送 ACK 不证明接收最终发布成功或远端 hash；UI/IPC 接入时必须保留该区分。
 - 对外 IPC 2、Core 0.2.1 zip 和主仓锁未改，Flutter 尚未调用新内部批次 API。下一步版本化通用批次契约与任务模型后再更新制品，不能提前把内部测试结论显示为已支持手机原生批量。
+
+## IPC 3 契约准备（2026-10-28）
+
+- 私有仓 `468f828` 的 Core 0.3.0 新增有界批次 IPC 与严格版本/实验门控，声明大小在全部 snapshot 后逐项复核；最终接收结果分成文件事件与批次摘要，避免超过 JSONL 行上限。生产能力仍关闭。
+- 主仓新增独立 ShareBatchContract/Request/Received 模型，包含请求 UTF-8 大小限制与结果完整性/路径/hash/计数检查；当前 ShareCoreContract、Client、运行服务和锁仍为 IPC 2，没有提前启用未打包制品。
+- 58 项 nearby_share tests、targeted analyze；私有 32 常规 lib + 5 integration/Release 编译通过。成功 IPC 到实际 App、状态机/记录/通知接线、新 zip/锁和手机验收仍未完成。

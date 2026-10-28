@@ -104,3 +104,10 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 验证：32 常规 Rust lib tests + 1 显式 GiB 压力用例（双角色）+ 4 integration 通过；DFile batch 9 通过、legacy 5 通过/1 LAN 跳过；Rust Release 编译通过，无 warning，新增/修改文件均小于 500 行。测试仅用临时目录和 loopback 临时端口。
 - **证据边界**：测试专用 Meta 主动端模拟手机行为，不进入 Release；双方生产默认均等待手机发起该步骤，因此不据此宣称 AnyDeck 对 AnyDeck 自动互操作或真实手机兼容。发送 DFile ACK 只说明传输层完成，接收最终发布和远端 hash 仍须分别判断；测试明确覆盖发送 ACK 成功但接收发布失败的场景。
 - 本批未变更对外 IPC 2、能力声明、制品锁或 zip，未替换/启动 App、未操作手机。当前 Flutter 仍调用单文件会话；下一批继续版本化批次 IPC、文件级任务/记录/确认/通知和真实进度 UI，再更新锁定制品。
+
+## 阶段 3 第四批：IPC 3 与 Flutter 批次解析模型（2026-10-28）
+
+- 私有仓 `468f828` 定义 Core 0.3.0 / IPC 3：新批次命令、实验能力/count/总量声明、版本与实验开关门控；发送使用已确认的 path/bytes，全部 snapshot 后逐文件复核大小，不符时在启动网络前失败。生产 send/receive 保持 false。
+- 接收完成按“逐文件结果 + 最终批次摘要”输出，不把 100 个深目录路径集中到一个超长 JSONL。Flutter 独立 `share_batch_contract.dart` 验证 UTF-8 请求长度、数量/大小、重复文件名、目标 IPv4、结果 index/路径归属/hash/大小/精确总量；收齐终态后返回不可变结果，不能仅靠字节 100% 或部分文件事件确认整批成功。
+- 验证：Rust 32 常规 lib + 5 integration 与 Release 编译通过；覆盖 IPC 2 拦截、实验门控、坏参数、声明与 snapshot 大小变化在联网前失败。GiB 压力本批显式跳过，前批独立验证结果不冒作本批完整 IPC 成功链路。主仓 nearby_share 58 项测试与 targeted analyze 通过。
+- 本批为契约与解析模型准备。主仓运行入口仍用 IPC 2，未切换 Client/Session、收发服务、历史/通知或制品锁；未生成/替换 zip、启动 App、操作手机。下一批接通完整调用与任务状态后，再打包 IPC 3 制品并联调。
