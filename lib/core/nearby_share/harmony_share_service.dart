@@ -156,6 +156,8 @@ class HarmonyShareService extends ChangeNotifier {
   Future<void> start() async {
     if (_enabled || !_supported) return;
     _enabled = true;
+    // 新一轮启用必须重新发现，不能沿用已结束窗口的设备。
+    peers.clear();
     await history?.initialize();
     if (!_enabled) return;
     try {
@@ -262,7 +264,8 @@ class HarmonyShareService extends ChangeNotifier {
       _events = receiver.events.listen(
         (event) => _handleReceiverEvent(event, receiver),
         onError: (Object failure) {
-          error = '$failure';
+          // 主动停止时仍排空历史事件，但不污染下一轮操作的错误提示。
+          if (_closingWindows == 0) error = '$failure';
           history?.receiveChanged(
             _incomingHistoryId,
             status: ShareTransferStatus.failed,
@@ -290,8 +293,11 @@ class HarmonyShareService extends ChangeNotifier {
             busy = false;
             progress = null;
           }
+          final rediscover = _enabled && !busy && _closingWindows == 0;
+          // 自然结束后设备可见性失效；发送暂停接收时保留当前目标。
+          if (rediscover) peers.clear();
           notifyListeners();
-          if (_enabled && !busy && _closingWindows == 0) {
+          if (rediscover) {
             Future<void>.delayed(const Duration(seconds: 1), _startWindow);
           }
         },

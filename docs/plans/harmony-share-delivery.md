@@ -247,3 +247,11 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 本批未生成传输样本，未启动/停止 App、执行真实设备发现/传输、投递系统通知或操作手机/系统权限，未 push。手机、运行 App、真实通知/Finder 及其他人工验收边界仍见上一节需求表，完整目标保持未完成。
 - 最终 Release 构建、deep/strict 签名、5 个 Core 成员 hash/签名、锁定 commit 的 zip hash 和 Core 0.3.2 / IPC 3 hello 通过。两处生产源码的构建前后 SHA-256 一致，摘要 `/tmp/anydeck-harmony-permission-package-verify.log`；仅执行 hello，不启动真实发现或广播，锁与生产能力声明保持不变。
 - 本阶段三次隔离 App 删除事件均已写入清理清单，累计约 290.9 MiB 分配空间；最终 `/tmp/anydeck-harmony-permission-offline` 已删除。之前 GiB 根目录及私有 Rust/Swift 缓存仍不存在，未生成新传输样本，保留共享 Flutter 构建、锁定 zip 与小型日志。
+
+## 真机首轮与接收窗口状态修复（2026-10-28）
+
+- 用户已允许独立测试 App 和 nova 12 Ultra 验收，取代之前暂缓真机的安排。隔离 bundle ID、设置与接收目录，使用新建合成文件；用户原有 Debug App 保持运行。实际设置页保存 AnyDeck-Test，手机端已由用户确认可以看到该名称。
+- 64 KiB、1 MiB 分别发送成功；64 KiB 经手机回传，实际接收文件大小与源 SHA-256 一致。这只证明该小文件往返。原生两文件批次先出现连接失败，随后一个已建立 TCP 的批次长时间保持 0 B，已主动取消并确认 Core 与 staging 清理；另一批次返回 phone_rejected，尚未得到用户是否主动拒绝的确认。多文件和大文件不能据此判定通过。
+- 运行界面复现发送准备/刷新时，主动关闭旧接收器的末尾错误污染当前全局提示。现仅在主动排空期间抑制全局错误展示，历史终态及迟到成功处理保留，活动接收器的 IPC/Stream 失败仍可见。自然结束发现窗口和重新启用服务时清理旧设备，下一窗口必须重新发现；发送暂停接收不清空当前目标。
+- 新增 6 项生命周期回归，修复前明确复现两种关闭错误和两种旧设备残留；最终 265 项相关 Flutter tests、targeted analyze、Release 构建与 deep/strict 签名通过。日志 `/tmp/anydeck-harmony-{shutdown-after,real-regression,real-analyze,real-refresh-package-verify}.log`。私有 Core 制品与锁保持 0.3.2 / 20893ba，不因这些 UI 修复修改协议或生产能力声明。
+- 真实通知授权尚未完成：工具拒绝访问系统授权代理，已交由用户手动操作，没有绕过。退出独立测试 App 时发现接收 Core 遗留，已按验证过的独立路径/PID停止本次进程；原有 App 未停止。退出清理修复、更新包真机复验、手机多文件/GiB 双向与通知/Finder 操作仍待继续。

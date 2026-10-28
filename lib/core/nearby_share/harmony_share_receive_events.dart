@@ -167,7 +167,7 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
               : ShareTransferStatus.failed,
           error: '${event['code']}: ${event['reason'] ?? ''}',
         );
-        if (event['reason'] != 'deadline') {
+        if (_closingWindows == 0 && event['reason'] != 'deadline') {
           error = '${event['code']}: ${event['reason'] ?? ''}';
         }
         pendingOffer = null;
