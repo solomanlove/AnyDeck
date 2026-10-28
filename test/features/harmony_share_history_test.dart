@@ -133,7 +133,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('删除记录'));
     await tester.pumpAndSettle();
-    expect(find.text('仅删除这条任务记录，不会删除磁盘文件。'), findsOneWidget);
+    expect(find.text('仅删除此任务及其文件记录，不会删除磁盘文件。'), findsOneWidget);
     expect(history.removed, isEmpty);
     await tester.tap(find.widgetWithText(FilledButton, '删除记录'));
     await tester.pumpAndSettle();

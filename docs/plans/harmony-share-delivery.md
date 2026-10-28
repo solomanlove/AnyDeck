@@ -121,3 +121,14 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 自动回归：Flutter 115 focused tests 与 targeted analyze 通过；installer 3 tests 通过，包含 IPC 3 拒绝旧制品；私有 Rust 33 常规 lib + 5 integration 通过，另有显式真实 IPC GiB 测试通过。前批双角色 SDK GiB 压力本批未重复。
 - 本批新包路径 `/tmp/anydeck-harmony-ipc3-offline/Products/AnyDeck.app`；Release 构建、codesign 深度严格校验、Core 成员 hash、IPC 3 握手与 IPC 2 拦截均通过。未启动新 App、未停止原实例、未操作手机。
 - **仍待服务接线**：现有 UI 继续使用 IPC 3 下兼容的逐项单文件队列与接收命令。新批次 API 已可调用，但收发状态、确认、记录/通知与 UI 尚未切换；不能描述为 UI 已支持一次手机确认的原生批次。
+
+## 阶段 3 第六批：原生批次接收与文件记录（2026-10-28）
+
+- 主窗口接收服务切换 `receive_batch_interactive`。来件一次展示整批数量与总大小，接受/拒绝/30 秒超时作用于整批；已配置接收目录、忙碌互斥与 watchdog 沿用原服务。进度仅接受与来件相符的真实总量，逐文件事件与最终摘要完整验证后才更新结果。
+- 接收会话停止时同时排空原始流和批次验证流，避免取消竞态吞掉已经校验的最终成功；晚到成功只可修正取消/中断，不覆盖明确拒绝。生产能力继续关闭，UI 保留实验状态。
+- SQLite 原地迁移增加 `file_count` / `batch_id`：整批摘要与子文件在同一事务保存；首页只展示摘要，按文件名搜索可找到子文件，详情按需加载至多 100 项。子文件保留独立路径、大小、本机 SHA-256；删除摘要同时删除其文件记录，磁盘文件保留。单文件仍使用原记录形式。
+- 批次详情复用记录行、Theme 与双语文案，支持显式打开文件/目录和详情；Theme rebuild 不重复查库。批次目录动作打开发布目录本身，系统结果通知仅发一条数量摘要，不逐文件刷屏。
+- 自动验证：128 项 focused Flutter tests、targeted analyze、2 项 Widget 视觉布局测试通过；覆盖真实旧库迁移/回读/搜索/级联删除、服务接受/拒绝/超时/坏终态/取消竞态、通知汇总、480px zh/en 与 Light/Dark。已查看 `/tmp/anydeck-harmony-native-receive-ui/batch-details-light.png` 和 `batch-details-dark.png`，属于 Widget 离线渲染。
+- 私有仓测试 commit `e040923` 增加真实接收 IPC 子进程联调：先等 stdin 确认再传输，逐文件结果与完整摘要一致，落盘 hash 与独立源文件一致；隔离 BLE stub，不使用手机。34 常规 Rust lib + 5 integration 通过，最后的独立源 hash 断言用例再次通过。此前 GiB 用例未在本批重复。生产源码和制品未变，主仓锁继续固定 `7059e22` / Core 0.3.0 / IPC 3。
+- Release 包继续输出到 `/tmp/anydeck-harmony-native-receive-offline/Products/AnyDeck.app`；最终源码构建、codesign 深度严格验证、5 个 Core 成员 hash、Core 0.3.0 / IPC 3 握手通过。未启动新 App、未停止原实例、未操作手机或系统通知。
+- **剩余项**：发送 UI/队列仍为逐文件会话；原生发送批次接线、队列追加/速率、本机名称真实同步、存储故障重试和真机/发布前验收继续推进。不能据此宣称手机原生双向批量验收完成。

@@ -326,4 +326,40 @@ void main() {
       await root.delete();
     }
   });
+  test('停止批次接收前排空已到达并完成验证的终态', () async {
+    final process = _Process();
+    final session = ShareBatchReceiveSession(
+      process,
+      directory: '/synthetic/received',
+    );
+    final events = <Map<String, dynamic>>[];
+    final subscription = session.events.listen((event) {
+      events.add(event);
+      if (event['event'] == 'incoming_batch') session.decide(true);
+    });
+    process.emit({
+      'event': 'incoming_batch',
+      'ip': '127.0.0.2',
+      'file_count': 1,
+      'total_bytes': 1,
+    });
+    await Future<void>.delayed(Duration.zero);
+    process.emit({
+      'event': 'batch_file_received',
+      'index': 0,
+      'path': '/synthetic/received/a',
+      'bytes': 1,
+      'sha256': 'a' * 64,
+    });
+    process.emit({
+      'event': 'batch_received',
+      'file_count': 1,
+      'total_bytes': 1,
+      'sender_hash_verified': false,
+    });
+    await session.stop();
+    expect(events.last['event'], 'batch_received');
+    expect((events.last['files'] as List).length, 1);
+    await subscription.cancel();
+  });
 }

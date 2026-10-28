@@ -104,3 +104,10 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 主仓握手/安装锁切换 Core 0.3.0 / IPC 3，仍可调用旧单文件命令。新增 ShareBatchClient/Transfer/ReceiveSession 管理原生批次请求、确认、严格进度、逐文件集合与摘要验证；只有完整终态才生成完成结果。资源失败/取消均有回归；实际批次服务/记录/通知/确认 UI 接线仍待完成。
 - 私有制品 commit `7059e220004229e7f1df347c667bd11a064ccd16`，zip SHA-256 `2c23cab15e578e3d0d3cfe1cd9268d734f7764bbc84149acdfb4a43cc66c8d58`；生产能力 false。实际新 IPC 命令子进程与 1 GiB + 64 KiB 模式通过，BLE 使用隔离 stub，无真实设备操作。
 - 115 focused Flutter tests、targeted analyze、3 installer tests；私有 33 常规 lib + 5 integration 与单独真实 IPC GiB 用例通过。Release 包验证见阶段计划。私有 commit 未推送，使用本地 archive override；未启动/停止用户 App。
+
+## 原生批次接收与文件级记录（2026-10-28）
+
+- HarmonyShareService 正式调用实验批次接收入口；确认摘要包含数量与总大小，整批一次决定。接收事件抽至同库扩展，只有严格匹配 offer、路径/大小/hash/计数和最终摘要的完整结果才更新最近路径及记录。停止会话需等待批次验证流排空，避免 late-success 被取消订阅吞掉。
+- 记录库原地增加 file_count/batch_id。多文件成功保存一个摘要和有界子文件清单；首页默认摘要，搜索含子文件，详情一次查询且 Theme rebuild 复用 Future。整批删除级联记录，不删除文件；单文件格式兼容旧库。通知只看批次摘要，目录动作打开实际批次目录。
+- 128 focused Flutter tests、targeted analyze、2 Widget 视觉测试通过，Light/Dark 批次详情图已检查。私有测试 commit e040923 通过真实接收 IPC 确认与结果联调，34 常规 lib + 5 integration；隔离 BLE stub，无手机操作。主仓锁/zip 固定7059e22，无生产协议源码变更，生产 send/receive=false。Release 包与验证边界见阶段计划。
+- 发送 UI/队列尚未切换原生批次；手机、大文件双向、真实通知/Finder 与 App 交互仍待人工验收。完整持久化故障重试、持续队列与本机名称同步继续处理。

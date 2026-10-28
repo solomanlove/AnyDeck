@@ -102,6 +102,8 @@ class ShareBatchReceiveSession extends ShareCoreReceiveSession {
   bool _accepted = false;
   bool _terminal = false;
   int _previous = 0;
+  final _validatedDone = Completer<void>();
+  bool _validating = false;
 
   @override
   void decide(bool accept) {
@@ -114,9 +116,16 @@ class ShareBatchReceiveSession extends ShareCoreReceiveSession {
   @override
   Stream<Map<String, dynamic>> get events => _validate(super.events);
 
+  @override
+  Future<void> stop() async {
+    await super.stop();
+    if (_validating) await _validatedDone.future.timeout(const Duration(seconds: 2), onTimeout: () {});
+  }
+
   Stream<Map<String, dynamic>> _validate(
     Stream<Map<String, dynamic>> source,
   ) async* {
+    _validating = true;
     try {
       await for (final event in source) {
         if (_terminal) {
@@ -183,6 +192,8 @@ class ShareBatchReceiveSession extends ShareCoreReceiveSession {
     } catch (_) {
       unawaited(stop());
       rethrow;
+    } finally {
+      if (!_validatedDone.isCompleted) _validatedDone.complete();
     }
   }
 }

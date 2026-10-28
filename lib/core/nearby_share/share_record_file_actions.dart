@@ -13,6 +13,10 @@ class ShareRecordFileActions {
       final path = record.path;
       if (path == null || path.isEmpty) return false;
       final file = File(path).absolute;
+      if (folder && record.fileCount > 1) {
+        if (!await Directory(path).exists()) return false;
+        return await _host.openDirectory(path).timeout(const Duration(seconds: 15), onTimeout: () => false);
+      }
       if (folder) {
         if (!await file.parent.exists()) return false;
         return await _host

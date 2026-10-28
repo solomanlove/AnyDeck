@@ -1,5 +1,8 @@
 /// 鸿蒙互联文案；中英文 key 保持一一对应。
 const huaweiShareZh = {
+  'harmonyShareNotificationBatchReceived': '已接收 {count} 个文件',
+  'harmonyShareBatchFiles': '批次 · {count} 个文件',
+  'harmonyShareBatchUnknownFiles': '尚未收到完整文件清单；数量和总大小来自来件请求。',
   'harmonyShareSettings': '互传设置',
   'harmonyShareNotifications': '系统通知',
   'harmonyShareNotificationsHint': '提醒来件与收发结果；多文件发送按整批汇总。',
@@ -33,7 +36,7 @@ const huaweiShareZh = {
   'harmonyShareOpenFolder': '打开所在文件夹',
   'harmonyShareRetry': '重试发送',
   'harmonyShareRemoveRecord': '删除记录',
-  'harmonyShareRemoveRecordHint': '仅删除这条任务记录，不会删除磁盘文件。',
+  'harmonyShareRemoveRecordHint': '仅删除此任务及其文件记录，不会删除磁盘文件。',
   'harmonyShareCreatedAt': '创建时间',
   'harmonyShareCompletedAt': '结束时间',
   'harmonyShareLocalHash': 'SHA-256（本机落盘摘要）',
@@ -86,7 +89,7 @@ const huaweiShareZh = {
   'harmonyShareDropHint': '请将文件拖到目标设备头像；只有一台设备时也可拖到中央区域',
   'harmonyShareFileUnavailable': '无法读取文件，请检查文件是否存在及访问权限',
   'harmonyShareIncoming': '收到文件请求',
-  'harmonyShareIncomingHint': '确认后接收至 Downloads。30 秒未响应将自动拒绝。',
+  'harmonyShareIncomingHint': '确认后接收整批文件至已设置的目录；30 秒未响应将自动拒绝。',
   'harmonyShareReject': '拒绝',
   'harmonyShareAccept': '接收',
 
@@ -127,6 +130,9 @@ const huaweiShareZh = {
 };
 
 const huaweiShareEn = {
+  'harmonyShareNotificationBatchReceived': 'Received {count} files',
+  'harmonyShareBatchFiles': 'Batch · {count} files',
+  'harmonyShareBatchUnknownFiles': 'No complete file list is available. Count and total size came from the incoming request.',
   'harmonyShareSettings': 'Transfer settings',
   'harmonyShareNotifications': 'System notifications',
   'harmonyShareNotificationsHint': 'Notify on incoming requests and results; summarize each send batch.',
@@ -161,7 +167,7 @@ const huaweiShareEn = {
   'harmonyShareRetry': 'Retry sending',
   'harmonyShareRemoveRecord': 'Delete record',
   'harmonyShareRemoveRecordHint':
-      'Delete this task record only. The file on disk will be kept.',
+      'Delete this task and its file records. Files on disk will be kept.',
   'harmonyShareCreatedAt': 'Created',
   'harmonyShareCompletedAt': 'Finished',
   'harmonyShareLocalHash': 'SHA-256 (local file digest)',
@@ -224,7 +230,7 @@ const huaweiShareEn = {
       'Cannot read this file. Check its location and permissions.',
   'harmonyShareIncoming': 'Incoming file request',
   'harmonyShareIncomingHint':
-      'Accept to save in Downloads. Requests expire after 30 seconds.',
+      'Accept the batch into your configured receive folder. Requests expire after 30 seconds.',
   'harmonyShareReject': 'Reject',
   'harmonyShareAccept': 'Accept',
 

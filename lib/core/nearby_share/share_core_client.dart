@@ -279,7 +279,7 @@ class ShareCoreClient {
       _batchClient.send(request: request, local: localAddress, peer: peer.address, port: peer.port);
 
   /// 原生批次来件必须明确确认，文件与最终摘要齐全后才通知服务完成。
-  Future<ShareBatchReceiveSession> startBatchReceiver({required InternetAddress localAddress,
+  Future<ShareCoreReceiveSession> startBatchReceiver({required InternetAddress localAddress,
     required InternetAddress broadcastAddress, required Directory outputDirectory}) =>
       _batchClient.receive(local: localAddress, broadcast: broadcastAddress, output: outputDirectory);
 

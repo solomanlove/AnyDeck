@@ -13,9 +13,12 @@ import 'share_transfer_record.dart';
 import 'harmony_share_sender.dart';
 import 'share_receive_directory.dart';
 
+part 'harmony_share_receive_events.dart';
+
 /// 展示给用户的来件摘要；协议内容不进入主仓库。
 class ShareIncomingOffer {
-  const ShareIncomingOffer(this.address, this.bytes);
+  const ShareIncomingOffer(this.address, this.bytes, {this.fileCount = 1});
+  final int fileCount;
   final InternetAddress address;
   final int bytes;
 }
@@ -27,6 +30,7 @@ class HarmonyShareService extends ChangeNotifier {
       _detectNetwork = ShareNetwork.detect,
       _downloads = ShareReceiveDirectory.resolve,
       _supported = Platform.isMacOS,
+      _nativeBatch = true,
       history = ShareTransferHistory() {
     history!.addListener(notifyListeners);
   }
@@ -38,10 +42,12 @@ class HarmonyShareService extends ChangeNotifier {
     required Future<ShareNetwork> Function() detectNetwork,
     required Future<Directory?> Function() downloads,
     this.history,
+    bool nativeBatch = false,
   }) : _client = client,
        _detectNetwork = detectNetwork,
        _downloads = downloads,
-       _supported = true {
+       _supported = true,
+       _nativeBatch = nativeBatch {
     history?.addListener(notifyListeners);
   }
   static final instance = HarmonyShareService._();
@@ -50,6 +56,10 @@ class HarmonyShareService extends ChangeNotifier {
   final Future<ShareNetwork> Function() _detectNetwork;
   final Future<Directory?> Function() _downloads;
   final bool _supported;
+  final bool _nativeBatch;
+  String? _receiveDirectory;
+  ShareIncomingOffer? _batchOffer;
+  void _changed() => notifyListeners();
   final ShareTransferHistory? history;
   String? _incomingHistoryId;
   final Map<String, ShareCorePeer> peers = {};
@@ -167,16 +177,18 @@ class HarmonyShareService extends ChangeNotifier {
         '${downloads.path}/AnyDeck-Share-'
         '${DateTime.now().microsecondsSinceEpoch}',
       );
-      final receiver = await _client.startInteractiveReceiver(
+      final receiver = await (_nativeBatch ? _client.startBatchReceiver(
         localAddress: network!.local,
         broadcastAddress: network!.broadcast,
         outputDirectory: folder,
-      );
+      ) : _client.startInteractiveReceiver(localAddress: network!.local,
+        broadcastAddress: network!.broadcast, outputDirectory: folder));
       if (!_enabled || busy || revision != _windowRevision) {
         await receiver.stop();
         return;
       }
       _receiver = receiver;
+      _receiveDirectory = folder.path;
       _windowTimer?.cancel();
       _windowTimer = Timer(const Duration(seconds: 125), () {
         if (_enabled && _receiver == receiver && !busy) {
@@ -186,95 +198,7 @@ class HarmonyShareService extends ChangeNotifier {
       error = null;
       notifyListeners();
       _events = receiver.events.listen(
-        (event) {
-          switch (event['event']) {
-            case 'device':
-              try {
-                final peer = ShareCorePeer.parse(event);
-                peers[peer.address.address] = peer;
-                notifyListeners();
-              } catch (_) {
-                /* 忽略不可信发现报文。 */
-              }
-            case 'session_started':
-              _incomingHistoryId = null;
-              receiving = true;
-              busy = true;
-              progress = null;
-              _windowTimer?.cancel();
-              _windowTimer = Timer(
-                ShareCoreContract.transferTimeout + const Duration(minutes: 3),
-                cancelTransfer,
-              );
-              notifyListeners();
-            case 'progress':
-              try {
-                final update = ShareCoreProgress.parse(event);
-                if (update.direction == 'receive' &&
-                    (progress == null || update.bytes >= progress!.bytes)) {
-                  progress = update;
-                  history?.receiveChanged(
-                    _incomingHistoryId,
-                    transferredBytes: update.bytes,
-                  );
-                  notifyListeners();
-                }
-              } on FormatException {
-                // 无效进度不推进状态，最终文件仍由核心校验。
-              }
-            case 'incoming_offer':
-              final address = InternetAddress.tryParse('${event['ip']}');
-              final bytes = event['bytes'];
-              if (address != null &&
-                  bytes is int &&
-                  bytes > 0 &&
-                  bytes <= ShareCoreContract.maxFileBytes) {
-                pendingOffer = ShareIncomingOffer(address, bytes);
-                _incomingHistoryId = history?.incoming(
-                  address: address.address,
-                  name: peers[address.address]?.name ?? address.address,
-                  bytes: bytes,
-                );
-                notifyListeners();
-              } else {
-                receiver.decide(false);
-              }
-            case 'file_received':
-              final path = event['path'];
-              if (path is String) {
-                recent.insert(0, path);
-                history?.receiveChanged(
-                  _incomingHistoryId,
-                  status: ShareTransferStatus.succeeded,
-                  fileName: File(path).uri.pathSegments.last,
-                  path: path,
-                  transferredBytes: event['bytes'] is int
-                      ? event['bytes'] as int
-                      : progress?.totalBytes,
-                  sha256: event['sha256'] is String
-                      ? event['sha256'] as String
-                      : null,
-                );
-              }
-              if (recent.length > 50) recent.removeRange(50, recent.length);
-              unawaited(_saveRecent());
-              pendingOffer = null;
-              notifyListeners();
-            case 'error':
-              history?.receiveChanged(
-                _incomingHistoryId,
-                status: event['reason'] == 'decision_timeout'
-                    ? ShareTransferStatus.timedOut
-                    : ShareTransferStatus.failed,
-                error: '${event['code']}: ${event['reason'] ?? ''}',
-              );
-              if (event['reason'] != 'deadline') {
-                error = '${event['code']}: ${event['reason'] ?? ''}';
-              }
-              pendingOffer = null;
-              notifyListeners();
-          }
-        },
+        (event) => _handleReceiverEvent(event, receiver),
         onError: (Object failure) {
           error = '$failure';
           history?.receiveChanged(
@@ -295,6 +219,7 @@ class HarmonyShareService extends ChangeNotifier {
             status: ShareTransferStatus.interrupted,
           );
           _incomingHistoryId = null;
+          _batchOffer = null;
           pendingOffer = null;
           if (receiving) {
             receiving = false;

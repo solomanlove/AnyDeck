@@ -361,6 +361,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                 ],
                 const SizedBox(height: 20),
                 HarmonyShareHistoryRecent(
+                  history: _service.history,
                   records: _service.history?.recent ?? const [],
                   storageError: _service.history?.error != null,
                   onHistory: _showHistory,

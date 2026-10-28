@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'harmony_share_send_queue.dart';
 import 'share_history_database.dart';
 import 'share_transfer_record.dart';
+import 'share_batch_contract.dart';
 
 /// 主窗口唯一记录协调器：小型内存摘要 + 串行持久化，进度最多每秒落盘一次。
 class ShareTransferHistory extends ChangeNotifier {
@@ -109,6 +110,7 @@ class ShareTransferHistory extends ChangeNotifier {
     required String address,
     required String name,
     required int bytes,
+    int fileCount = 1,
   }) {
     final id =
         'receive-${DateTime.now().microsecondsSinceEpoch}-${_sequence++}';
@@ -119,6 +121,7 @@ class ShareTransferHistory extends ChangeNotifier {
       deviceName: name,
       address: address,
       fileName: '',
+      fileCount: fileCount,
       bytes: bytes,
       createdAt: DateTime.now(),
     );
@@ -152,6 +155,43 @@ class ShareTransferHistory extends ChangeNotifier {
       sha256: sha256,
     );
     _update(next.terminal ? next.update(completedAt: DateTime.now()) : next);
+  }
+
+  /// 完整验证后的批次一次事务落盘；只发摘要事件，避免通知逐文件刷屏。
+  bool receivedBatch(String? id, List<Map<String, Object>> files, String directory) {
+    final previous = _cache[id];
+    if (previous == null || files.length != previous.fileCount ||
+        (previous.terminal && previous.status != ShareTransferStatus.cancelled && previous.status != ShareTransferStatus.interrupted)) { return false; }
+    final checked = ShareBatchReceived(count: previous.fileCount, bytes: previous.bytes, directory: directory);
+    for (var index = 0; index < files.length; index++) {
+      checked.add({'event':'batch_file_received','index':index,...files[index]});
+    }
+    checked.finish({'event':'batch_received','file_count':previous.fileCount,'total_bytes':previous.bytes,'sender_hash_verified':false});
+    final now = DateTime.now();
+    final single = files.length == 1 ? files.single : null;
+    final summary = previous.update(status: ShareTransferStatus.succeeded,
+      fileName: single == null ? null : single['path'].toString().split('/').last,
+      path: single == null ? directory : single['path'] as String,
+      sha256: single?['sha256'] as String?, transferredBytes: previous.bytes, completedAt: now);
+    final records = [summary,
+      if (single == null) for (var index = 0; index < files.length; index++)
+        ShareTransferRecord(id: '${previous.id}-${index.toString().padLeft(3,'0')}',
+          direction: ShareTransferDirection.receive, status: ShareTransferStatus.succeeded,
+          deviceName: previous.deviceName, address: previous.address,
+          fileName: files[index]['path'].toString().split('/').last, path: files[index]['path'] as String,
+          bytes: files[index]['bytes'] as int, transferredBytes: files[index]['bytes'] as int,
+          sha256: files[index]['sha256'] as String, batchId: previous.id,
+          createdAt: previous.createdAt, completedAt: now),
+    ];
+    _remember(summary);
+    unawaited(_save(records));
+    return true;
+  }
+
+  Future<List<ShareTransferRecord>> batchFiles(String id) async {
+    await initialize(); await flush();
+    if (_database == null) throw StateError(error ?? 'History unavailable');
+    return _database!.batchFiles(id);
   }
 
   void _update(ShareTransferRecord record) {

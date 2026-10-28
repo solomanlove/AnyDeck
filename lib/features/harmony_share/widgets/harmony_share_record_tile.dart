@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../core/nearby_share/share_transfer_record.dart';
 import 'harmony_share_format.dart';
+import 'harmony_share_batch_details.dart';
+import '../../../core/nearby_share/share_transfer_history.dart';
 
 /// 完整任务记录行；record 为不可变元数据，不从路径推断来源。
 /// onDetails/onOpen/onFolder/onRetry/onRemove 仅响应用户点击；空操作回调会隐藏对应菜单。
@@ -40,7 +42,7 @@ class HarmonyShareRecordTile extends StatelessWidget {
       ),
       title: Text(
         record.fileName.isEmpty
-            ? context.l10n.t('harmonyShareUnknownFile')
+            ? (record.fileCount > 1 ? context.l10n.t('harmonyShareBatchFiles').replaceAll('{count}', '${record.fileCount}') : context.l10n.t('harmonyShareUnknownFile'))
             : record.fileName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -95,11 +97,19 @@ class HarmonyShareRecordTile extends StatelessWidget {
 /// 记录详情使用可复制文本；本机 SHA-256 与远端完整性确认明确区分。
 Future<void> showHarmonyShareRecordDetails(
   BuildContext context,
-  ShareTransferRecord record,
-) => showDialog<void>(
-  context: context,
-  builder: (_) => HarmonyShareRecordDetailsDialog(record: record),
-);
+  ShareTransferRecord record, {
+  ShareTransferHistory? history,
+  Future<void> Function(ShareTransferRecord)? onOpen,
+  Future<void> Function(ShareTransferRecord)? onFolder,
+}) {
+  Future<List<ShareTransferRecord>>? files;
+  return showDialog<void>(
+    context: context,
+    builder: (_) => record.fileCount > 1 && history != null
+        ? HarmonyShareBatchDetails(record: record, files: files ??= history.batchFiles(record.id), onOpen: onOpen, onFolder: onFolder)
+        : HarmonyShareRecordDetailsDialog(record: record),
+  );
+}
 
 /// record 提供详情元数据，内容可复制；不主动打开或读取磁盘文件。
 /// 通常通过 showHarmonyShareRecordDetails 展示，也可直接放入 Dialog 预览主题。
@@ -115,7 +125,7 @@ class HarmonyShareRecordDetailsDialog extends StatelessWidget {
       child: SelectableText(
         [
           record.fileName.isEmpty
-              ? context.l10n.t('harmonyShareUnknownFile')
+              ? (record.fileCount > 1 ? context.l10n.t('harmonyShareBatchFiles').replaceAll('{count}', '${record.fileCount}') : context.l10n.t('harmonyShareUnknownFile'))
               : record.fileName,
           '${record.deviceName} · ${record.address}',
           context.l10n.t('harmonyShareDirection_${record.direction.name}'),

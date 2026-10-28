@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/nearby_share/harmony_share_service.dart';
 import '../widgets/harmony_share_panels.dart';
+import '../widgets/harmony_share_format.dart';
+import '../../../app/l10n/app_localizations.dart';
 
 /// 主窗口来件弹窗协调器；请求失效/超时只关闭自己的 Route，不误关用户其他弹窗。
 class HarmonyShareOfferPresenter {
@@ -38,7 +40,7 @@ class HarmonyShareOfferPresenter {
           device:
               service.peers[offer.address.address]?.name ??
               offer.address.address,
-          summary: '${offer.bytes} B',
+          summary: root.l10n.t('harmonyShareSelectionSummary').replaceAll('{count}', '${offer.fileCount}').replaceAll('{size}', formatShareBytes(offer.bytes)),
         ),
       );
       _route = route;

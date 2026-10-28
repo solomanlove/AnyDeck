@@ -382,4 +382,22 @@ void main() {
     );
     expect(opened, 1);
   });
+  test('百文件接收只生成一条批次通知，不按子记录刷屏', () async {
+    final id = history.incoming(
+      address: '1.2.3.4',
+      name: 'peer',
+      bytes: 100,
+      fileCount: 100,
+    );
+    history.receivedBatch(id, [
+      for (var i = 0; i < 100; i++)
+        {'path': '/synthetic/$i.bin', 'bytes': 1, 'sha256': 'a' * 64},
+    ], '/synthetic');
+    await _turns();
+    expect(bridge.shown, hasLength(1));
+    expect(
+      bridge.shown.single['title'],
+      'zh:harmonyShareNotificationBatchReceived',
+    );
+  });
 }

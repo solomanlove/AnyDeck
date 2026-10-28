@@ -65,7 +65,7 @@ class HarmonyShareNotifications {
   }
 
   void _recordChanged(ShareTransferRecord record) {
-    if (record.direction != ShareTransferDirection.receive ||
+    if (record.batchId != null || record.direction != ShareTransferDirection.receive ||
         !record.terminal) {
       return;
     }
@@ -73,7 +73,7 @@ class HarmonyShareNotifications {
     _results[record.id] = record.status;
     if (_results.length > 256) _results.remove(_results.keys.first);
     final key = switch (record.status) {
-      ShareTransferStatus.succeeded => 'harmonyShareNotificationReceived',
+      ShareTransferStatus.succeeded => record.fileCount > 1 ? 'harmonyShareNotificationBatchReceived' : 'harmonyShareNotificationReceived',
       ShareTransferStatus.failed ||
       ShareTransferStatus.interrupted ||
       ShareTransferStatus.timedOut => 'harmonyShareNotificationReceiveFailed',
@@ -83,7 +83,7 @@ class HarmonyShareNotifications {
     _enqueue(
       () => _show(
         id: '${prefix}record_${record.id}',
-        title: text(key),
+        title: text(key).replaceAll('{count}', '${record.fileCount}'),
         body: text('harmonyShareNotificationResultHint'),
         valid: () => _results[record.id] == record.status,
       ),

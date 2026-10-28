@@ -32,6 +32,11 @@ class ShareHistoryDatabase {
           transferred_bytes INTEGER NOT NULL, created_at INTEGER NOT NULL,
           completed_at INTEGER, error TEXT, sha256 TEXT, retry_of TEXT
         )''');
+        // 兼容升级前的记录库；同一工作连接内迁移，不改旧记录含义。
+        final columns = db.select('PRAGMA table_info(transfers)').map((row) => row['name']).toSet();
+        if (!columns.contains('file_count')) db.execute('ALTER TABLE transfers ADD COLUMN file_count INTEGER NOT NULL DEFAULT 1');
+        if (!columns.contains('batch_id')) db.execute('ALTER TABLE transfers ADD COLUMN batch_id TEXT');
+        db.execute('CREATE INDEX IF NOT EXISTS idx_transfer_batch ON transfers(batch_id)');
         db.execute(
           'CREATE INDEX IF NOT EXISTS idx_transfer_time ON transfers(created_at DESC, id DESC)',
         );
@@ -84,7 +89,7 @@ class ShareHistoryDatabase {
     int limit = 100,
   }) => _run((db) {
     if (limit < 1 || limit > 200) throw ArgumentError.value(limit, 'limit');
-    final where = <String>[];
+    final where = <String>[if (search.isEmpty) 'batch_id IS NULL'];
     final args = <Object?>[];
     if (direction != null) {
       where.add('direction=?');
@@ -117,11 +122,16 @@ class ShareHistoryDatabase {
     return rows.map((row) => ShareTransferRecord.fromMap(row)).toList();
   });
 
+  /// 子文件不挤占首页摘要；仅在查看整批详情时加载有界清单。
+  Future<List<ShareTransferRecord>> batchFiles(String id) => _run((db) => db.select(
+    'SELECT * FROM transfers WHERE batch_id=? ORDER BY id LIMIT 100', [id],
+  ).map((row) => ShareTransferRecord.fromMap(row)).toList());
+
   /// 仅移除终态记录，绝不删除磁盘文件，也不隐藏正在执行的任务。
   Future<void> remove(String id) => _run((db) {
     db.execute(
-      "DELETE FROM transfers WHERE id=? AND status NOT IN ('queued','preparing','transferring','awaitingAcceptance')",
-      [id],
+      "DELETE FROM transfers WHERE (id=? OR batch_id=?) AND status NOT IN ('queued','preparing','transferring','awaitingAcceptance')",
+      [id, id],
     );
   });
 }

@@ -88,19 +88,19 @@ void main() {
       client.session.controller.add({
         'event': 'progress',
         'direction': 'receive',
-        'bytes': 1024,
-        'total_bytes': 2048,
+        'bytes': 50 * 1024 * 1024,
+        'total_bytes': 100 * 1024 * 1024,
       });
       clock.flushMicrotasks();
       expect(service.progress!.fraction, .5);
       client.session.controller.add({
         'event': 'progress',
         'direction': 'receive',
-        'bytes': 512,
-        'total_bytes': 2048,
+        'bytes': 25 * 1024 * 1024,
+        'total_bytes': 100 * 1024 * 1024,
       });
       clock.flushMicrotasks();
-      expect(service.progress!.bytes, 1024);
+      expect(service.progress!.bytes, 50 * 1024 * 1024);
     });
     await service.stop();
     expect(client.session.stops, 1);

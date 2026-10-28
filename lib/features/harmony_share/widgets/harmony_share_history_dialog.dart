@@ -224,8 +224,8 @@ class _HarmonyShareHistoryDialogState extends State<HarmonyShareHistoryDialog> {
                       return HarmonyShareRecordTile(
                         record: record,
                         onDetails: () =>
-                            showHarmonyShareRecordDetails(context, record),
-                        onOpen: record.path == null
+                            showHarmonyShareRecordDetails(context, record, history: widget.history, onOpen: widget.onOpen, onFolder: widget.onFolder),
+                        onOpen: record.path == null || record.fileCount > 1
                             ? null
                             : () => widget.onOpen(record),
                         onFolder: record.path == null

@@ -31,6 +31,8 @@ class ShareTransferRecord {
     this.error,
     this.sha256,
     this.retryOf,
+    this.fileCount = 1,
+    this.batchId,
   });
   final String id;
   final ShareTransferDirection direction;
@@ -47,6 +49,9 @@ class ShareTransferRecord {
   final String? error;
   final String? sha256;
   final String? retryOf;
+  /// 批次摘要的原始文件数量；子文件通过 batchId 关联。
+  final int fileCount;
+  final String? batchId;
   bool get terminal => switch (status) {
     ShareTransferStatus.queued ||
     ShareTransferStatus.preparing ||
@@ -85,6 +90,8 @@ class ShareTransferRecord {
     error: error ?? this.error,
     sha256: sha256 ?? this.sha256,
     retryOf: retryOf,
+    fileCount: fileCount,
+    batchId: batchId,
   );
 
   Map<String, Object?> toMap() => {
@@ -103,6 +110,8 @@ class ShareTransferRecord {
     'error': error,
     'sha256': sha256,
     'retry_of': retryOf,
+    'file_count': fileCount,
+    'batch_id': batchId,
   };
   factory ShareTransferRecord.fromMap(Map<String, Object?> value) =>
       ShareTransferRecord(
@@ -127,5 +136,7 @@ class ShareTransferRecord {
         error: value['error'] as String?,
         sha256: value['sha256'] as String?,
         retryOf: value['retry_of'] as String?,
+        fileCount: value['file_count'] as int? ?? 1,
+        batchId: value['batch_id'] as String?,
       );
 }

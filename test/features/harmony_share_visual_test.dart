@@ -15,6 +15,7 @@ import 'package:any_deck/features/harmony_share/harmony_share_dashboard_tab.dart
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_panels.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_settings_panel.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_batch_details.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -248,6 +249,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('settings');
+      final batch = ShareTransferRecord(id: 'visual-batch', direction: ShareTransferDirection.receive,
+        status: ShareTransferStatus.succeeded, deviceName: 'nova 12 Ultra', address: '192.168.1.3',
+        fileName: '', fileCount: 2, bytes: 110 * 1024 * 1024, createdAt: DateTime(2026,10,28));
+      await tester.pumpWidget(host(Center(child: HarmonyShareBatchDetails(record: batch,
+        files: Future.value([for (var i = 0; i < 2; i++) ShareTransferRecord(id: 'visual-$i', batchId: batch.id,
+          direction: ShareTransferDirection.receive, status: ShareTransferStatus.succeeded,
+          deviceName: batch.deviceName, address: batch.address, fileName: 'synthetic-$i.bin',
+          path: '/synthetic/$i.bin', bytes: (i == 0 ? 10 : 100) * 1024 * 1024, createdAt: batch.createdAt)],),
+        onOpen: (_) async {}, onFolder: (_) async {}))));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('batch-details');
       history.dispose();
     });
   }
