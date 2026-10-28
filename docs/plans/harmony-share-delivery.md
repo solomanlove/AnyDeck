@@ -255,3 +255,10 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 运行界面复现发送准备/刷新时，主动关闭旧接收器的末尾错误污染当前全局提示。现仅在主动排空期间抑制全局错误展示，历史终态及迟到成功处理保留，活动接收器的 IPC/Stream 失败仍可见。自然结束发现窗口和重新启用服务时清理旧设备，下一窗口必须重新发现；发送暂停接收不清空当前目标。
 - 新增 6 项生命周期回归，修复前明确复现两种关闭错误和两种旧设备残留；最终 265 项相关 Flutter tests、targeted analyze、Release 构建与 deep/strict 签名通过。日志 `/tmp/anydeck-harmony-{shutdown-after,real-regression,real-analyze,real-refresh-package-verify}.log`。私有 Core 制品与锁保持 0.3.2 / 20893ba，不因这些 UI 修复修改协议或生产能力声明。
 - 真实通知授权尚未完成：工具拒绝访问系统授权代理，已交由用户手动操作，没有绕过。退出独立测试 App 时发现接收 Core 遗留，已按验证过的独立路径/PID停止本次进程；原有 App 未停止。退出清理修复、更新包真机复验、手机多文件/GiB 双向与通知/Finder 操作仍待继续。
+
+## Core 0.3.3 数量一致性与退出清理（2026-10-28）
+
+- 用户随后确认：此前两文件请求未显示，且没有主动拒绝；已手动允许测试 App 通知。通知状态仍需 App 实际重查，不将用户授权回复当成通知送达证据。
+- 私有仓已修正批次摘要的数量一致性，并增加宿主退出后的资源回收。主仓仅更新制品锁，不纳入协议实现或诊断数据。锁固定 05d7e41911eff34509d17aa9dd7e7317c16b80fe，Core 0.3.3 / IPC 3，zip SHA-256 为 2350f8979dc49a4c0aae5d52be6b012164d887cf8ede3d7a0565aab24638460d；生产 send/receive 仍 false。
+- 私有 40 项非 GiB 原生库/真实签名 IPC 回归、8 项 integration 通过，含两项签名制品父进程退出测试；摘要与退出回归均有修复前失败证据。本批未重跑 GiB 样本。主仓 3 项 installer tests 通过，上一批最终 Flutter 源码的 265 项回归不受制品锁更新影响。
+- 以已构建的最终 Flutter Release 包替换独立 App 中的锁定 Core，保留隔离设置与历史；重新签名后 deep/strict、5 成员 hash/签名与 0.3.3 hello 全部通过。小型摘要 `/tmp/anydeck-harmony-real-20261028/core033-package-verify.json`。开始更新包运行复验，实际手机批次、系统通知与 App 退出尚不能仅依据离线测试判定通过。
