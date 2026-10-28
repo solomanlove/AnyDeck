@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AnyDeck 投屏接收 · 华为分享原型</title>
+  <title>AnyDeck 鸿蒙互联 · 界面原型</title>
   <link rel="stylesheet" href="huawei-share-redesign.css">
   <script src="huawei-share-redesign.js" defer></script>
 </head>
@@ -14,23 +14,20 @@
     <div class="rail-caption">工作台</div>
     <button class="rail-item" type="button">⌂ <span>概览</span></button>
     <button class="rail-item" type="button">▣ <span>设备</span></button>
-    <button class="rail-item active" type="button">◩ <span>投屏接收</span></button>
+    <button class="rail-item" type="button">◩ <span>投屏接收</span></button>
+    <button class="rail-item active" type="button">↗ <span>鸿蒙互联</span></button>
     <button class="rail-item" type="button">▤ <span>文件</span></button>
     <div class="rail-spacer"></div>
     <button class="rail-item" type="button" id="settingsNav">⚙ <span>设置</span></button>
   </aside>
   <main class="main">
     <header class="topbar">
-      <div><h1>投屏接收</h1><p class="page-subtitle">统一管理 AirPlay 镜像、视频与 DLNA 视频接收</p></div>
+      <div><h1>鸿蒙互联</h1><p class="page-subtitle">自动发现附近的 HarmonyOS 设备，轻松收发文件</p></div>
       <div class="top-actions"><span class="prototype-tag">交互原型 · 模拟设备</span></div>
     </header>
-    <div class="receiver-content">
-    <section class="receiver-services" aria-label="投屏接收服务">
-      <article class="receiver-card"><div class="receiver-heading"><span class="service-icon">▣</span><div><h2>AirPlay 投屏</h2><p>手机镜像打开手机窗口；App 视频投放打开独立播放器。</p></div><span class="service-switch" aria-label="演示状态：服务已停止"></span></div><div class="receiver-status">● 服务已停止</div><label>接收端名称<input value="AnyDeck-AirPlay" readonly></label></article>
-      <article class="receiver-card"><div class="receiver-heading"><span class="service-icon">▤</span><div><h2>DLNA 视频</h2><p>接收支持 DLNA 的视频 App 投放的媒体。</p></div><span class="service-switch" aria-label="演示状态：服务已停止"></span></div><div class="receiver-status">● 服务已停止</div><label>接收端名称<input value="AnyDeck-DLNA" readonly></label></article>
-    </section>
+    <div class="share-content">
     <section class="hero" id="home">
-      <div class="share-heading"><div><p class="eyebrow">HUAWEI SHARE</p><h2>华为分享</h2><span>独立发现附近手机，随时接收手机发来的文件</span></div><div class="share-actions"><span class="connection"><i></i> 接收已开启 · 正在发现</span><button id="historyBtn" type="button">互传记录</button><button id="incomingBtn" type="button">模拟来件</button></div></div>
+      <div class="share-heading"><div><p class="eyebrow">HUAWEI SHARE</p><h2>附近设备</h2><span>独立发现附近手机，随时接收手机发来的文件</span></div><div class="share-actions"><span class="connection"><i></i> 接收已开启 · 正在发现</span><button id="historyBtn" type="button">互传记录</button><button id="incomingBtn" type="button">模拟来件</button></div></div>
       <div class="identity"><div class="mac-icon">▣</div><div><span>以此身份接收文件</span><strong>张世杰的 MacBook Pro</strong></div><button type="button" id="identityMenu" aria-label="更多设置">•••</button></div>
       <div class="share-stage" id="dropZone">
         <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
