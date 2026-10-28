@@ -18,7 +18,6 @@ import '../overview/widget/receiver_name_setting_field.dart';
 import '../widgets/dashboard_header_bar.dart';
 import 'widgets/receiver_app_support_guide.dart';
 import 'widgets/receiver_service_card.dart';
-import 'widgets/huawei_share_test_card.dart';
 
 /// 主窗口统一投屏接收管理页，集中管理 AirPlay 屏幕镜像与 DLNA 视频接收。
 class ReceiverDashboardTab extends StatelessWidget {
@@ -60,9 +59,6 @@ class ReceiverDashboardTab extends StatelessWidget {
                 return Column(
                   children: [
                     serviceCards,
-                    const SizedBox(height: 16),
-                    const HuaweiShareTestCard(),
-                    const SizedBox(height: 16),
                     const ReceiverAppSupportGuide(),
                   ],
                 );

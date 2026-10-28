@@ -209,6 +209,39 @@ class ShareCoreClient {
     }, expectedEvent: 'file_received');
   }
 
+  /// 启动不绑定特定手机的接收窗口；所有认证与传输逻辑由私有核心完成。
+  Future<ShareCoreReceiveSession> startInteractiveReceiver({
+    required InternetAddress localAddress,
+    required InternetAddress broadcastAddress,
+    required Directory outputDirectory,
+  }) async {
+    if (!Platform.isMacOS || !await _executable.exists()) {
+      throw const FileSystemException('Share Core is not bundled');
+    }
+    if (await outputDirectory.exists() ||
+        !await outputDirectory.parent.exists()) {
+      throw const FormatException('Receive folder must be new');
+    }
+    final process = await Process.start(
+      _executable.path,
+      const [],
+      environment: const {'ANYDECK_SHARE_EXPERIMENTAL': '1'},
+    );
+    final session = ShareCoreReceiveSession(process);
+    process.stdin.writeln(
+      jsonEncode({
+        'version': 1,
+        'command': 'receive_file_interactive',
+        'local_ip': localAddress.address,
+        'broadcast_ip': broadcastAddress.address,
+        'output_dir': outputDirectory.path,
+        'duration_seconds': 120,
+      }),
+    );
+    await process.stdin.flush();
+    return session;
+  }
+
   Future<ShareCoreTransfer> _startTransfer(
     Map<String, Object> request, {
     required String expectedEvent,
@@ -233,6 +266,56 @@ class ShareCoreClient {
       process.kill();
       rethrow;
     }
+  }
+}
+
+/// 单个接收窗口的 JSONL 事件与用户决策通道。
+class ShareCoreReceiveSession {
+  ShareCoreReceiveSession(this._process);
+
+  final Process _process;
+
+  Stream<Map<String, dynamic>> get events => _process.stdout
+      .transform(utf8.decoder)
+      .transform(const LineSplitter())
+      .map((line) {
+        final value = jsonDecode(line);
+        if (value is! Map<String, dynamic>) {
+          throw const FormatException('Invalid Share Core event');
+        }
+        return value;
+      });
+
+  void decide(bool accept) {
+    _process.stdin.writeln(
+      jsonEncode({'command': accept ? 'accept' : 'reject'}),
+    );
+  }
+
+  Future<void> stop() async {
+    // 核心被信号终止时无法执行 Rust Drop，先回收其 BLE/DFile 子进程。
+    if (Platform.isMacOS) {
+      try {
+        final children = await Process.run('/usr/bin/pgrep', [
+          '-P',
+          '${_process.pid}',
+        ]);
+        for (final line in children.stdout.toString().split('\n')) {
+          final pid = int.tryParse(line.trim());
+          if (pid != null) Process.killPid(pid);
+        }
+      } catch (_) {
+        // 原生进程可能已自行结束。
+      }
+    }
+    _process.kill();
+    await _process.exitCode.timeout(
+      const Duration(seconds: 3),
+      onTimeout: () {
+        _process.kill(ProcessSignal.sigkill);
+        return -1;
+      },
+    );
   }
 }
 

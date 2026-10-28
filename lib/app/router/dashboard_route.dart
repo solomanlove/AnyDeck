@@ -5,6 +5,7 @@ abstract final class AppRouteNames {
   static const devices = 'devices';
   static const emulators = 'emulators';
   static const receivers = 'receivers';
+  static const harmonyShare = 'harmonyShare';
   static const settings = 'settings';
   static const wanAndroid = 'wanAndroid';
   static const mcp = 'mcp';
@@ -18,6 +19,7 @@ enum DashboardRouteKind {
   devices,
   emulators,
   receivers,
+  harmonyShare,
   settings,
   wanAndroid,
   mcp,
@@ -42,6 +44,9 @@ class DashboardRouteState {
 
   const DashboardRouteState.receivers()
     : this._(kind: DashboardRouteKind.receivers, tabIndex: -3);
+
+  const DashboardRouteState.harmonyShare()
+    : this._(kind: DashboardRouteKind.harmonyShare, tabIndex: -4);
 
   const DashboardRouteState.settings()
     : this._(kind: DashboardRouteKind.settings, tabIndex: 12);
@@ -82,6 +87,9 @@ class DashboardRouteState {
     }
     if (segments.first == 'receivers') {
       return const DashboardRouteState.receivers();
+    }
+    if (segments.first == 'harmony-share') {
+      return const DashboardRouteState.harmonyShare();
     }
     if (segments.first == 'settings') {
       return const DashboardRouteState.settings();

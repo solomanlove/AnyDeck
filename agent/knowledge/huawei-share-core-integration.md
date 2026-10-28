@@ -25,3 +25,11 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 本轮实际验证：9 个定向 Flutter 测试通过；改动文件定向 `flutter analyze` 通过。全仓 `flutter analyze` 仍有 40 条既有告警/提示，未涉及本次改动文件。`ANYDECK_SHARE_CORE=1 ./script/build_macos.sh /tmp/anydeck-huawei-share-selftest` 成功，产物约 94 MiB，其中 ShareCore 约 7.3 MiB；`codesign --verify --deep --strict` 与包内 `hello` 握手通过，测试命令门控可接受。尚未在这份新 App 上进行交互与真机传输验收。
 
 当前集成不会替代 HDC 文件管理，也不与其设备身份自动合并。多窗口只应使用一个 Share Core 进程，后续状态通知需由主窗口统一分发。
+
+## 独立鸿蒙互联入口（2026-10-28）
+
+- Dashboard 全局 Tab `-4` 对应 `/harmony-share`，侧边栏位于投屏接收下方；选中时清空设备管理的当前设备，互联状态不依赖 HDC/ADB。旧投屏接收测试卡片已移除。
+- `HarmonyShareService` 由主窗口启动和回收，`ShareNetwork` 从 macOS 网卡真实 netmask 计算广播地址。单个私有核心进程每轮运行最多 120 秒，向页面输出设备摘要和来件 offer；发送时暂停接收进程，结束后恢复。
+- 私有核心的 `receive_file_interactive` 仅发送 `incoming_offer` 的手机地址与文件字节数，上层答复 accept/reject；30 秒未答复自动拒绝。接收文件保存在 Downloads 下新建目录，失败/拒绝时私有核心清理空目录。主仓不持有认证或传输协议字段。
+- 当前 `hello` 保持 `send=false, receive=false`，实际 UI 明确标注测试版 1 MiB 单文件边界。最近路径保存在本地 SharedPreferences；多文件、进度、系统通知、完整任务模型仍归后续阶段。
+- 构建时 `ANYDECK_SHARE_CORE=1` 从私有仓库固定 commit 安装已校验制品；本机可通过 `ANYDECK_SHARE_CORE_ARCHIVE` 指定相同哈希的本地 zip 以跳过远端下载。协议源文件、PoC 和密钥不进入主仓库。

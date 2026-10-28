@@ -25,6 +25,10 @@ void main() {
         DashboardRouteState.fromUri(Uri.parse('/receivers')).kind,
         DashboardRouteKind.receivers,
       );
+      expect(
+        DashboardRouteState.fromUri(Uri.parse('/harmony-share')).kind,
+        DashboardRouteKind.harmonyShare,
+      );
     });
 
     test('解析设备工具和应用详情参数', () {
@@ -60,6 +64,7 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/devices');
     expect(router.namedLocation(AppRouteNames.receivers), '/receivers');
+    expect(router.namedLocation(AppRouteNames.harmonyShare), '/harmony-share');
     expect(
       router.namedLocation(
         AppRouteNames.deviceTool,

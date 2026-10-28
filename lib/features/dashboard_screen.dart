@@ -63,7 +63,6 @@ import '../core/providers/app_providers.dart';
 import '../core/providers/network_providers.dart';
 import '../core/providers/transfer_provider.dart';
 import 'widgets/drag_drop_target_overlay.dart';
-import '../common/widget/liquid_glass_background.dart';
 import '../core/adb/adb_environment_service.dart';
 import '../core/scrcpy/scrcpy_session.dart';
 import '../core/scrcpy/embedded_scrcpy_service.dart';
@@ -111,6 +110,8 @@ import 'apps/widgets/apps_alphabet_sidebar.dart';
 import 'airplay/airplay_mirror_target.dart';
 import 'airplay/airplay_window_routing_provider.dart';
 import 'receivers/receiver_dashboard_tab.dart';
+import 'harmony_share/harmony_share_dashboard_tab.dart';
+import '../core/nearby_share/harmony_share_service.dart';
 import 'devices/widgets/device_airplay_row_widgets.dart';
 import '../core/airplay/airplay_server_service.dart';
 import '../core/airplay/airplay_server_state.dart';
@@ -269,6 +270,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   bool _routeSyncScheduled = false;
   String? _resolvedRouteDeviceId;
   StreamSubscription<Map<String, dynamic>>? _notificationClickSub;
+  ShareIncomingOffer? _shownShareOffer;
 
   @override
   void initState() {
@@ -279,6 +281,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         .read(macNotificationBridgeProvider)
         .clickStream
         .listen(_handleNotificationClick);
+    HarmonyShareService.instance.addListener(_handleShareOffer);
+    unawaited(HarmonyShareService.instance.start());
     _scheduleDashboardRouteSync();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initialClicks =
@@ -302,10 +306,52 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   void dispose() {
+    HarmonyShareService.instance.removeListener(_handleShareOffer);
+    unawaited(HarmonyShareService.instance.stop());
     _notificationClickSub?.cancel();
     _windowChannel.setMethodCallHandler(null);
     windowManager.removeListener(this);
     super.dispose();
+  }
+
+  /// 来件确认由主窗口持有，离开鸿蒙互联页仍能弹出。
+  void _handleShareOffer() {
+    final offer = HarmonyShareService.instance.pendingOffer;
+    if (offer == null || identical(offer, _shownShareOffer) || !mounted) return;
+    _shownShareOffer = offer;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || HarmonyShareService.instance.pendingOffer != offer) {
+        return;
+      }
+      final navigator = Navigator.of(context, rootNavigator: true);
+      final timeout = Timer(const Duration(seconds: 30), () {
+        if (navigator.mounted && HarmonyShareService.instance.pendingOffer == offer) {
+          navigator.pop(false);
+        }
+      });
+      final accept = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(context.l10n.t('harmonyShareReceiving')),
+          content: Text(
+            '${HarmonyShareService.instance.peers[offer.address.address]?.name ?? offer.address.address} · ${offer.bytes} B',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(context.l10n.t('shareTestCancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(context.l10n.t('harmonyShareReceive')),
+            ),
+          ],
+        ),
+      );
+      timeout.cancel();
+      HarmonyShareService.instance.decide(accept == true);
+    });
   }
 
   int _notificationClickRevision = 0;
@@ -557,6 +603,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       stackIndex = 5;
     } else if (selectedTool == -3) {
       stackIndex = 6;
+    } else if (selectedTool == -4) {
+      stackIndex = 7;
     } else if (selectedTool == -1 || effectiveSelectedDevice == null) {
       stackIndex = 0;
     } else {
@@ -605,6 +653,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   const SizedBox.shrink(),
                 if (selectedTool == -3)
                   const ReceiverDashboardTab()
+                else
+                  const SizedBox.shrink(),
+                if (selectedTool == -4)
+                  const HarmonyShareDashboardTab()
                 else
                   const SizedBox.shrink(),
               ],

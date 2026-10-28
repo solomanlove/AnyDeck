@@ -34,6 +34,7 @@ class _WechatStyleShell extends ConsumerWidget {
                 if ((selectedDevice == null || selectedTool == -1) &&
                     selectedTool != -2 &&
                     selectedTool != -3 &&
+                    selectedTool != -4 &&
                     selectedTool != 12 &&
                     selectedTool != 13 &&
                     selectedTool != 14)

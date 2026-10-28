@@ -57,7 +57,7 @@ class PrimaryRail extends ConsumerWidget {
 
     // 判断当前 Tab 是否可用；三个全局管理页始终可用
     bool isToolEnabled(int tabIndex) {
-      if (tabIndex == -1 || tabIndex == -2 || tabIndex == -3) {
+      if (tabIndex == -1 || tabIndex == -2 || tabIndex == -3 || tabIndex == -4) {
         return true;
       }
       if (selectedDevice == null) {
@@ -98,7 +98,8 @@ class PrimaryRail extends ConsumerWidget {
     final hasSelectedDevice = selectedDevice != null &&
         selectedTool != -1 &&
         selectedTool != -2 &&
-        selectedTool != -3;
+        selectedTool != -3 &&
+        selectedTool != -4;
     final isIos = hasSelectedDevice && selectedDevice!.isIos;
     final isHarmony = hasSelectedDevice && selectedDevice!.isHarmony;
 
@@ -120,6 +121,11 @@ class PrimaryRail extends ConsumerWidget {
           tabIndex: -3,
           icon: Icons.cast_connected_rounded,
           label: context.l10n.t('receiverCenter'),
+        ),
+        _RailToolItem(
+          tabIndex: -4,
+          icon: Icons.share_rounded,
+          label: context.l10n.t('harmonyShareTitle'),
         ),
       ];
     } else if (isIos) {
@@ -304,6 +310,10 @@ class PrimaryRail extends ConsumerWidget {
         context.goNamed(AppRouteNames.receivers);
         return;
       }
+      if (tabIndex == -4) {
+        context.goNamed(AppRouteNames.harmonyShare);
+        return;
+      }
       final device = selectedDevice;
       if (device != null) {
         context.goNamed(
@@ -379,7 +389,8 @@ class PrimaryRail extends ConsumerWidget {
                             child: _RailIdentity(
                               selectedDevice: (selectedTool == -1 ||
                                       selectedTool == -2 ||
-                                      selectedTool == -3)
+                                      selectedTool == -3 ||
+                                      selectedTool == -4)
                                       ? null
                                       : selectedDevice,
                               registeredDevices: registeredDevices,
