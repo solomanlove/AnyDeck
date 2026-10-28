@@ -133,42 +133,42 @@ class PrimaryRail extends ConsumerWidget {
       tools = [
         _RailToolItem(
           tabIndex: 0,
-          icon: CupertinoIcons.device_phone_portrait,
+          icon: AppNavigationIcons.overview,
           label: context.l10n.t('overview'),
         ),
         _RailToolItem(
           tabIndex: 1,
-          icon: CupertinoIcons.hand_draw,
+          icon: AppNavigationIcons.control,
           label: context.l10n.t('control'),
         ),
         _RailToolItem(
           tabIndex: 2,
-          icon: CupertinoIcons.square_grid_2x2,
+          icon: AppNavigationIcons.apps,
           label: context.l10n.t('apps'),
         ),
         _RailToolItem(
           tabIndex: 6,
-          icon: CupertinoIcons.list_bullet,
+          icon: AppNavigationIcons.processes,
           label: context.l10n.t('processes'),
         ),
         _RailToolItem(
           tabIndex: 3,
-          icon: CupertinoIcons.folder,
+          icon: AppNavigationIcons.files,
           label: context.l10n.t('files'),
         ),
         _RailToolItem(
           tabIndex: 4,
-          icon: CupertinoIcons.doc_text,
+          icon: AppNavigationIcons.logs,
           label: context.l10n.t('logcat'),
         ),
         _RailToolItem(
           tabIndex: 7,
-          icon: CupertinoIcons.globe,
+          icon: AppNavigationIcons.web,
           label: context.l10n.t('webpages'),
         ),
         _RailToolItem(
           tabIndex: 9,
-          icon: CupertinoIcons.camera,
+          icon: AppNavigationIcons.capture,
           label: context.l10n.t('screenshot'),
         ),
       ];
@@ -177,57 +177,57 @@ class PrimaryRail extends ConsumerWidget {
       tools = [
         _RailToolItem(
           tabIndex: 0,
-          icon: CupertinoIcons.device_phone_portrait,
+          icon: AppNavigationIcons.overview,
           label: context.l10n.t('overview'),
         ),
         _RailToolItem(
           tabIndex: 1,
-          icon: CupertinoIcons.slider_horizontal_3,
+          icon: AppNavigationIcons.control,
           label: context.l10n.t('control'),
         ),
         _RailToolItem(
           tabIndex: 2,
-          icon: CupertinoIcons.square_grid_2x2,
+          icon: AppNavigationIcons.apps,
           label: context.l10n.t('apps'),
         ),
         _RailToolItem(
           tabIndex: 6,
-          icon: CupertinoIcons.list_bullet,
+          icon: AppNavigationIcons.processes,
           label: context.l10n.t('processes'),
         ),
         _RailToolItem(
           tabIndex: 3,
-          icon: CupertinoIcons.folder,
+          icon: AppNavigationIcons.files,
           label: context.l10n.t('files'),
         ),
         _RailToolItem(
           tabIndex: 4,
-          icon: CupertinoIcons.doc_text,
+          icon: AppNavigationIcons.logs,
           label: context.l10n.t('logcat'),
         ),
         _RailToolItem(
           tabIndex: 5,
-          icon: CupertinoIcons.chevron_left_slash_chevron_right,
+          icon: AppNavigationIcons.terminal,
           label: context.l10n.t('terminal'),
         ),
         _RailToolItem(
           tabIndex: 7,
-          icon: CupertinoIcons.globe,
+          icon: AppNavigationIcons.web,
           label: context.l10n.t('webpages'),
         ),
         _RailToolItem(
           tabIndex: 9,
-          icon: CupertinoIcons.camera,
+          icon: AppNavigationIcons.capture,
           label: context.l10n.t('screenshotRecord'),
         ),
         _RailToolItem(
           tabIndex: 10,
-          icon: CupertinoIcons.chart_bar,
+          icon: AppNavigationIcons.performance,
           label: context.l10n.t('performance'),
         ),
         _RailToolItem(
           tabIndex: 11,
-          icon: CupertinoIcons.wifi,
+          icon: AppNavigationIcons.network,
           label: context.l10n.t('network'),
         ),
       ];
@@ -236,57 +236,57 @@ class PrimaryRail extends ConsumerWidget {
       tools = [
         _RailToolItem(
           tabIndex: 0,
-          icon: CupertinoIcons.device_phone_portrait,
+          icon: AppNavigationIcons.overview,
           label: context.l10n.t('overview'),
         ),
         _RailToolItem(
           tabIndex: 1,
-          icon: CupertinoIcons.slider_horizontal_3,
+          icon: AppNavigationIcons.control,
           label: context.l10n.t('control'),
         ),
         _RailToolItem(
           tabIndex: 2,
-          icon: CupertinoIcons.square_grid_2x2,
+          icon: AppNavigationIcons.apps,
           label: context.l10n.t('apps'),
         ),
         _RailToolItem(
           tabIndex: 6,
-          icon: CupertinoIcons.list_bullet,
+          icon: AppNavigationIcons.processes,
           label: context.l10n.t('processes'),
         ),
         _RailToolItem(
           tabIndex: 3,
-          icon: CupertinoIcons.folder,
+          icon: AppNavigationIcons.files,
           label: context.l10n.t('files'),
         ),
         _RailToolItem(
           tabIndex: 4,
-          icon: CupertinoIcons.doc_text,
+          icon: AppNavigationIcons.logs,
           label: context.l10n.t('logcat'),
         ),
         _RailToolItem(
           tabIndex: 5,
-          icon: CupertinoIcons.chevron_left_slash_chevron_right,
+          icon: AppNavigationIcons.terminal,
           label: context.l10n.t('terminal'),
         ),
         _RailToolItem(
           tabIndex: 7,
-          icon: CupertinoIcons.globe,
+          icon: AppNavigationIcons.web,
           label: context.l10n.t('webpages'),
         ),
         _RailToolItem(
           tabIndex: 9,
-          icon: CupertinoIcons.camera,
+          icon: AppNavigationIcons.capture,
           label: context.l10n.t('screenshotRecord'),
         ),
         _RailToolItem(
           tabIndex: 10,
-          icon: CupertinoIcons.speedometer,
+          icon: AppNavigationIcons.performance,
           label: context.l10n.t('performance'),
         ),
         _RailToolItem(
           tabIndex: 11,
-          icon: CupertinoIcons.wifi,
+          icon: AppNavigationIcons.network,
           label: context.l10n.t('network'),
         ),
         _RailToolItem(
@@ -539,9 +539,9 @@ class _RailMoreButton extends StatelessWidget {
         ? disabledColor
         : (selected ? AppPalette.primary : defaultColor);
 
-    final activeBgColor = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.35);
+    final activeBgColor = theme.colorScheme.primary.withValues(
+      alpha: isDark ? 0.18 : 0.09,
+    );
 
     final popupBgColor = isDark ? const Color(0xff1e222b) : const Color(0xfff5f6f8);
     final popupBorderColor = isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xffeceef1);
@@ -709,9 +709,9 @@ class _RailButton extends StatelessWidget {
       color = isDark ? const Color(0xffeceff1) : const Color(0xff455a64);
     }
 
-    final activeBgColor = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.35);
+    final activeBgColor = theme.colorScheme.primary.withValues(
+      alpha: isDark ? 0.18 : 0.09,
+    );
 
     if (isNarrow) {
       return Tooltip(

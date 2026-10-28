@@ -3,6 +3,12 @@
 ## 概述
 本指南记录了 AdbManage 中各个工具 Tab（工具卡片页）的业务功能说明与底层技术实现原理（包括关联的 ADB 命令、系统原理与数据流设计）。在对相关业务进行重构、迭代或优化性能时，应遵循本指南的原则与规范。
 
+### 设备侧栏图标
+
+- Android、HarmonyOS、iOS 设备侧栏的概览、控制、应用、进程、文件、日志、终端、Web、截图、性能和网络入口统一使用 `AppNavigationIcons` 中的 Lucide 线框图标；应用页网格视图按钮复用应用图标。
+- 截图参考中的“布局分析”图标映射为 `AppNavigationIcons.layout`。当前布局分析与截图录屏共用 Tab 9，没有独立的侧栏入口。
+- 选中入口的图标及文字使用主题主色，底色使用主题主色的透明层，以兼容 Light/Dark。图标包为 `lucide_icons_flutter`，新增入口时在集中映射中选择同系列图形。
+
 应用、进程、文件和日志 Tab 内容区的筛选输入框不显示前缀图标，保留筛选提示文字与必要的清除、历史记录按钮。四处复用 `DashboardHistoryTextField` 的焦点下拉、选择、删除与回车提交交互；应用和进程通过 `DashboardSearchToolbar` 接入，文件的 Android/Harmony 页面复用 `FileHistoryFilterField`。应用沿用原有 `apps_search_history` 缓存，进程和文件分别保存最多 10 条历史；文件两种系统页面共用一份记录。应用历史下拉固定显示 DEBUG 快捷项，不将该项作为普通历史，选择后切到“全部”应用并精确筛选 `debuggable` 包。输入框保留水平内边距，避免文字贴边；左侧导航栏图标不受影响。
 
 历史列表项的删除按钮使用固定 24px 宽度，长搜索词由文本区域省略显示，避免窄筛选框展开下拉时发生 `RenderFlex` 横向溢出。应用 Tab 的工具栏只创建一个 `DashboardHistoryTextField`；桌面页面通过 `IndexedStack` 保留其他 Tab 状态，仅绘制当前 Tab。

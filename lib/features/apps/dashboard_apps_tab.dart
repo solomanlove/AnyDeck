@@ -219,7 +219,7 @@ class _AppsTabState extends ConsumerState<AppsTab> {
           AppsViewModeButton(
             key: const Key('appsGridViewButton'),
             tooltip: context.l10n.t('gridView'),
-            icon: CupertinoIcons.square_grid_2x2,
+            icon: AppNavigationIcons.apps,
             selected: _isGridView,
             onPressed: () => setState(() => _isGridView = true),
           ),
