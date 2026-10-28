@@ -111,6 +111,7 @@ import 'airplay/airplay_mirror_target.dart';
 import 'airplay/airplay_window_routing_provider.dart';
 import 'receivers/receiver_dashboard_tab.dart';
 import 'harmony_share/harmony_share_dashboard_tab.dart';
+import 'harmony_share/widgets/harmony_share_panels.dart';
 import '../core/nearby_share/harmony_share_service.dart';
 import 'devices/widgets/device_airplay_row_widgets.dart';
 import '../core/airplay/airplay_server_service.dart';
@@ -332,21 +333,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       final accept = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(context.l10n.t('harmonyShareReceiving')),
-          content: Text(
-            '${HarmonyShareService.instance.peers[offer.address.address]?.name ?? offer.address.address} · ${offer.bytes} B',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(context.l10n.t('shareTestCancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(context.l10n.t('harmonyShareReceive')),
-            ),
-          ],
+        builder: (_) => HarmonyShareConfirmDialog(
+          receiving: true,
+          device: HarmonyShareService.instance.peers[offer.address.address]?.name ?? offer.address.address,
+          summary: '${offer.bytes} B',
         ),
       );
       timeout.cancel();

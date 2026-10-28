@@ -59,7 +59,7 @@
 | `adb-apps-batch-management` | 应用多选与批量管理机制 | active | 记录应用列表/网格多选状态维持、全选/反选/部分选联动、批量导出包、批量卸载、批量清除数据、批量冻结/解冻的工具栏交互、底层 ADB/HDC 命令机制与进度弹窗设计 | `features/apps/`, `core/apps/` |
 | `adb-dashboard-header-bar-unification` | 仪表盘一级模块标题与页面样式统一机制 | active | 记录设备管理、模拟器管理、AI MCP、设置的顶部标题栏组件统一收口（DashboardHeaderBar）、72px 高度与 28px 内边距对齐、窗口拖拽、徽章规范及页面滚动布局一致性设计 | `features/widgets/`, `features/overview/`, `features/devices/`, `features/mcp/` |
 | `hdc-harmony-feature-parity` | HarmonyOS 功能对齐与真机边界 | experimental | 性能 Tab、控制快捷操作的 HDC 实测，以及音频、摄像头、麦克风与跨应用消息的设备侧权限和工具链边界 | `core/harmony/`, `features/control/`, `features/performance/` |
-| `huawei-share-core-integration` | Huawei Share 私有核心接入 | experimental | 私有制品固定版本、SHA-256 校验、原生 IPC 能力门控及 P0/P1 验证边界 | `lib/core/nearby_share/`, `script/` |
+| `huawei-share-core-integration` | Huawei Share 私有核心接入 | experimental | 私有制品固定版本、SHA-256 校验、独立互联 UI、阶段验收与原生 IPC 能力门控 | `lib/core/nearby_share/`, `script/` |
 
 ## 新增知识库规则
 每次新增的需求或重大功能迭代，在开发完成后均必须将其技术设计、关键实现与命令机制以知识文档的形式沉淀在 `agent/knowledge/` 目录下，并在此索引中进行登记。

@@ -33,3 +33,11 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 私有核心的 `receive_file_interactive` 仅发送 `incoming_offer` 的手机地址与文件字节数，上层答复 accept/reject；30 秒未答复自动拒绝。接收文件保存在 Downloads 下新建目录，失败/拒绝时私有核心清理空目录。主仓不持有认证或传输协议字段。
 - 当前 `hello` 保持 `send=false, receive=false`，实际 UI 明确标注测试版 1 MiB 单文件边界。最近路径保存在本地 SharedPreferences；多文件、进度、系统通知、完整任务模型仍归后续阶段。
 - 构建时 `ANYDECK_SHARE_CORE=1` 从私有仓库固定 commit 安装已校验制品；本机可通过 `ANYDECK_SHARE_CORE_ARCHIVE` 指定相同哈希的本地 zip 以跳过远端下载。协议源文件、PoC 和密钥不进入主仓库。
+
+## UI 分阶段落地（2026-10-28）
+
+- 新页面拆分 `HarmonyShareStage`、身份/最近记录/忙碌面板与收发共用确认面板。保留原独立路由与主窗口接收生命周期，不依赖设备管理。样式使用 ColorScheme 与 AppThemeSizes，采用静态同心圆避免持续动画功耗。
+- 单文件拖放区与设备卡片不再嵌套；多设备时中央区域不猜测目标，提示拖到对应头像；重复文件选择/确认有门控，文件访问异常有本地化提示。服务关闭时不再显示“正在发现”。
+- Widget 验证覆盖 zh/en、Light/Dark、无手机、多设备目标、忙碌禁用、来件拒绝及 480px 窄窗口。视觉测试支持通过 `HARMONY_CAPTURE_DIR` 导出真实 Widget PNG；可选 `HARMONY_CAPTURE_FONT` 使用本机字体，不提交字体文件。
+- 本轮 14 项定向测试与 2 项视觉布局测试通过，targeted analyze 无问题。已检查 Light/Dark 空态、附近设备与来件面板截图（`/tmp/anydeck-harmony-ui/`）。测试截图不是运行中 App 真机截图。原 HTML 的 file URL 被浏览器策略拦截，未完成实际渲染逐项对照，阶段 1 视觉验收仍保留该项。
+- 本批未修改协议、大小限制、能力声明或制品锁；1 MiB 限制继续有效。完整记录、系统通知、真实进度后续实施，不显示虚假成功百分比。阶段进度与验收入口：`docs/plans/harmony-share-delivery.md`。

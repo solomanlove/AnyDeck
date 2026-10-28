@@ -1,5 +1,21 @@
 /// 华为分享单文件自测入口文案；中英文 key 保持一一对应。
 const huaweiShareZh = {
+  'harmonyShareDisabled': '接收已关闭',
+  'harmonyShareTapDevice': '或点击设备头像选择文件',
+  'harmonySharePeerReady': '附近 · 无需预先连接',
+  'harmonyShareIndependent': '独立发现附近手机，随时接收手机发来的文件',
+  'harmonyShareWaiting': '等待手机确认或传输完成',
+  'harmonyShareHelp': '找不到设备？查看连接指引 →',
+  'harmonyShareGuide':
+      '1. Mac 与手机连接同一 Wi-Fi。\n2. 保持手机解锁，开启“华为分享”，并选择所有人可见。\n3. 开启本页接收开关，点击重新扫描。\n4. 发送：点击手机头像，或将单个文件拖到头像上。\n5. 接收：在手机分享菜单中选择 AnyDeck，再在电脑上确认。',
+  'harmonyShareGotIt': '知道了',
+  'harmonyShareDropHint': '请将单个文件拖到目标设备头像；只有一台设备时也可拖到中央区域',
+  'harmonyShareFileUnavailable': '无法读取文件，请检查文件是否存在及访问权限',
+  'harmonyShareIncoming': '收到文件请求',
+  'harmonyShareIncomingHint': '确认后接收至 Downloads。30 秒未响应将自动拒绝。',
+  'harmonyShareReject': '拒绝',
+  'harmonyShareAccept': '接收',
+
   'harmonyShareTitle': '鸿蒙互联',
   'harmonyShareSubtitle': '自动发现附近的 HarmonyOS 设备，轻松收发文件',
   'harmonyShareNearby': '附近设备',
@@ -37,6 +53,26 @@ const huaweiShareZh = {
 };
 
 const huaweiShareEn = {
+  'harmonyShareDisabled': 'Receiving is off',
+  'harmonyShareTapDevice': 'Or click a device to choose a file',
+  'harmonySharePeerReady': 'Nearby · No connection required',
+  'harmonyShareIndependent':
+      'Discover phones independently and receive their files',
+  'harmonyShareWaiting': 'Waiting for the phone or transfer completion',
+  'harmonyShareHelp': 'Device missing? Connection guide →',
+  'harmonyShareGuide':
+      '1. Connect this Mac and phone to the same Wi-Fi.\n2. Unlock the phone and make Huawei Share visible to everyone.\n3. Enable receiving here and scan again.\n4. Send: click a phone or drop one file on its avatar.\n5. Receive: choose AnyDeck in the phone share menu and accept on this Mac.',
+  'harmonyShareGotIt': 'Got it',
+  'harmonyShareDropHint':
+      'Drop one file on the target device. With one device, you can also use the center area.',
+  'harmonyShareFileUnavailable':
+      'Cannot read this file. Check its location and permissions.',
+  'harmonyShareIncoming': 'Incoming file request',
+  'harmonyShareIncomingHint':
+      'Accept to save in Downloads. Requests expire after 30 seconds.',
+  'harmonyShareReject': 'Reject',
+  'harmonyShareAccept': 'Accept',
+
   'harmonyShareTitle': 'Harmony Connect',
   'harmonyShareSubtitle': 'Discover nearby HarmonyOS devices and share files',
   'harmonyShareNearby': 'Nearby devices',
