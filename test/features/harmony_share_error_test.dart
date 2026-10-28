@@ -92,6 +92,43 @@ void main() {
     });
 
     for (final brightness in Brightness.values) {
+      testWidgets('直连模式限制及原始诊断，480px ${brightness.name} $language', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(480, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final service = HarmonyShareService.instance;
+        final oldError = service.error;
+        addTearDown(() => service.error = oldError);
+        const raw = 'receive_failed: unsupported_network_mode';
+        service.error = raw;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: buildAppTheme(brightness),
+            locale: Locale(language),
+            supportedLocales: const [Locale('zh'), Locale('en')],
+            localizationsDelegates: const [
+              AppLocalizationsDelegate(),
+              ...GlobalMaterialLocalizations.delegates,
+            ],
+            home: const Scaffold(body: HarmonyShareDashboardTab()),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.text(l10n.t('harmonyShareDirectModeUnsupported')),
+          findsOneWidget,
+        );
+        expect(find.text(raw), findsNothing);
+        final details = find.byTooltip(l10n.t('harmonyShareErrorDetails'));
+        await tester.ensureVisible(details);
+        await tester.tap(details);
+        await tester.pumpAndSettle();
+        expect(find.text(raw), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
       testWidgets('错误提示与主动诊断，480px ${brightness.name} $language', (
         tester,
       ) async {

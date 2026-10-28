@@ -194,3 +194,9 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 独立 0.3.3 App 已实际发完 100 MiB+1 GiB，并在大文件传输中追加 64 KiB 后续批次；用户确认全收，50 个 GiB 中途检查点落盘。0.3.3 真实 App 退出已回收 Core/helper，原 App/投屏保留。小文件诊断回传 hash 一致，但 App 等待确认后的接收仍失败，详见阶段计划，不能宣称双向大文件通过。
 - 用户已允许经连接的 nova 自主测试。诊断确认手机选择 P2P 模式时数据连接未到 LAN 端口；相关试验已撤回，不切换 Mac 网络。当前实验版明确报告 unsupported_network_mode，并用中英文提示其边界；空闲发现到期改为正确的 deadline。协议与诊断留私有仓。
 - 当前锁 ca77499fc94fcaf449b399ac506ddf734c520137 / Core0.3.4 / IPC3，zip SHA-256 ba685fcccbc8c9666f13bbfd063c1e90e3fc1c98b320773a1cda3542eced27fb，生产能力仍 false。41 项非 GiB 原生回归、9 integration、265 Flutter tests、analyze、3 installer 与新 Release 签名/5 成员 hash/hello 通过。LAN 大文件回传、真实通知/Finder及最终清理仍待完成。
+
+## 自主接收复验、Finder 与清理（2026-10-29）
+
+- 实际0.3.4 App 的两文件回传进入数据阶段，但在1,073,290,790 bytes后 dfile_failed，未发布完整文件或获得回传 hash；另三次100 MiB（含用户手动对照）因 unsupported_network_mode失败。确认后传输期限源码已为1800秒，不能仅按用时归因为两分钟超时，也不能把重试/及时确认宣传为已验证的恢复办法。现已修正中英文提示，新增4项窄窗口错误交互回归，本次12项相关 tests及analyze通过；完整双向验收未完成。
+- 记录菜单实际在Finder打开此前已校验的64 KiB文件目录，路径与本机摘要展示正确。系统通知仍notDetermined，展示/点击未通过；不绕过系统授权工具限制。0.3.4测试App退出后Core/helper全部自动退出，原App/投屏保留。
+- 本轮Mac的100MiB/1GiB样本、隔离App、诊断runtime、大反汇编与私有Rust缓存已删除，约1711.9 MiB；根目录无≥64MiB文件和staging，保留源码/锁定zip/共享构建/小型证据。手机仅7个本轮合成文件移入最近删除，可恢复30天，未清空或触碰个人文件。历史临时App与大样本路径当前已不存在，后续不可直接复用。
