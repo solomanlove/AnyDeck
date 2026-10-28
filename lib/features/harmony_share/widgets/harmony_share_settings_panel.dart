@@ -20,6 +20,7 @@ class HarmonyShareSettingsPanel extends StatelessWidget {
     required this.onRefreshPermission,
     this.deliveryFailed = false,
     this.errorKey,
+    this.nameEditor,
   });
 
   final bool notifications;
@@ -34,6 +35,8 @@ class HarmonyShareSettingsPanel extends StatelessWidget {
   final VoidCallback onRefreshPermission;
   final bool deliveryFailed;
   final String? errorKey;
+  /// 可选名称编辑器，状态与保存逻辑由主窗口持有。
+  final Widget? nameEditor;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +58,10 @@ class HarmonyShareSettingsPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (nameEditor != null) ...[
+            nameEditor!,
+            const Divider(),
+          ],
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             title: Text(l10n.t('harmonyShareNotifications')),

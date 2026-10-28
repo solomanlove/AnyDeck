@@ -3,6 +3,7 @@ import 'dart:async';
 import 'harmony_share_send_queue.dart';
 import 'share_core_client.dart';
 import 'share_network.dart';
+import 'share_local_name.dart';
 
 /// 原生发送会话资源；批次与兼容单文件共用取消边界，退出时解除进度订阅。
 class HarmonyShareSender {
@@ -20,6 +21,7 @@ class HarmonyShareSender {
   /// 整批校验元数据后才启动 Core；Core 再负责 snapshot 与声明大小复核。
   Future<void> sendBatch(
     List<ShareSendItem> items, {
+    String localName = ShareLocalName.defaultName,
     required bool Function() cancelled,
     required void Function(ShareCoreProgress) onProgress,
   }) async {
@@ -33,7 +35,7 @@ class HarmonyShareSender {
       final request = ShareBatchRequest([
         for (final item in items)
           ShareBatchFile(item.file.file.path, item.file.bytes),
-      ]);
+      ], localName: localName);
       for (final item in items) {
         await item.file.verifyUnchanged();
         checkCancelled();

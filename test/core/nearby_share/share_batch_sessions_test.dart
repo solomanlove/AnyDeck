@@ -220,7 +220,7 @@ void main() {
       },
     );
     final transfer = await client.send(
-      request: request(),
+      request: ShareBatchRequest(request().files, localName: '测试 Mac'),
       local: InternetAddress.loopbackIPv4,
       peer: InternetAddress('127.0.0.2'),
       port: 1,
@@ -228,6 +228,7 @@ void main() {
     final value = jsonDecode(utf8.decode(process.written));
     expect(value['version'], 3);
     expect(value['files'].length, 2);
+    expect(value['local_name'], '测试 Mac');
     process.emit(sent());
     await process.finish();
     await transfer.result;
@@ -280,10 +281,12 @@ void main() {
         local: InternetAddress.loopbackIPv4,
         broadcast: InternetAddress('127.255.255.255'),
         output: Directory('${root.path}/received'),
+        localName: '测试 Mac',
       );
       final request = jsonDecode(utf8.decode(process.written));
       expect(request['command'], 'receive_batch_interactive');
       expect(request['version'], 3);
+      expect(request['local_name'], '测试 Mac');
       final result = session.events.toList();
       process.emit({
         'event': 'error',
@@ -325,6 +328,23 @@ void main() {
     } finally {
       await root.delete();
     }
+  });
+
+  test('非法名称在接收 probe 和进程启动前拒绝', () async {
+    var probes = 0;
+    var launches = 0;
+    final client = ShareBatchClient(
+      probe: () async { probes++; },
+      launch: () async { launches++; return _Process(); },
+    );
+    await expectLater(client.receive(
+      local: InternetAddress.loopbackIPv4,
+      broadcast: InternetAddress('127.255.255.255'),
+      output: Directory('/synthetic/unused'),
+      localName: 'invalid\n',
+    ), throwsFormatException);
+    expect(probes, 0);
+    expect(launches, 0);
   });
   test('停止批次接收前排空已到达并完成验证的终态', () async {
     final process = _Process();

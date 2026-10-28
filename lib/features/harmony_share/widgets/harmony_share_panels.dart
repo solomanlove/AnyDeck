@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_theme_sizes.dart';
 import '../../../core/nearby_share/share_core_contract.dart';
+import '../../../core/nearby_share/share_local_name.dart';
 
 /// 鸿蒙互联的本机身份栏；名称必须与核心对外广播身份保持一致。
 class HarmonyShareIdentity extends StatelessWidget {
@@ -12,9 +13,12 @@ class HarmonyShareIdentity extends StatelessWidget {
     super.key,
     required this.enabled,
     required this.onChanged,
+    this.localName = ShareLocalName.defaultName,
   });
   final bool enabled;
   final ValueChanged<bool>? onChanged;
+  /// 已传入会话的名称；不以翻译或平台设备名替换实际身份。
+  final String localName;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +44,9 @@ class HarmonyShareIdentity extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  context.l10n.t('harmonyShareIdentityName'),
+                  localName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ],

@@ -15,6 +15,7 @@ import 'package:any_deck/features/harmony_share/harmony_share_dashboard_tab.dart
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_panels.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_settings_panel.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_name_editor.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_batch_details.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_storage_warning.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_outbox_panel.dart';
@@ -129,7 +130,7 @@ void main() {
           SingleChildScrollView(
             child: Column(
               children: [
-                HarmonyShareIdentity(enabled: true, onChanged: (_) {}),
+                HarmonyShareIdentity(enabled: true, localName: '测试 Mac', onChanged: (_) {}),
                 HarmonyShareStage(
                   peers: [
                     ShareCorePeer(
@@ -274,6 +275,7 @@ void main() {
       await tester.pumpWidget(host(Center(child: AlertDialog(
         title: const Text('互传设置'),
         content: HarmonyShareSettingsPanel(
+          nameEditor: HarmonyShareNameEditor(value: '测试 Mac', disabled: false, onSave: (_) {}),
           notifications: true, directory: '/synthetic/Downloads',
           permission: 'denied', saving: false, busy: false,
           onNotifications: (_) {}, onChooseDirectory: () {}, onResetDirectory: () {},

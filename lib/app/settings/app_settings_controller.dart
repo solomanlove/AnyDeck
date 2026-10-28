@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_settings.dart';
 import 'harmony_share_preference_keys.dart';
 import '../../core/nearby_share/share_receive_directory.dart';
+import '../../core/nearby_share/share_local_name.dart';
+import '../../core/nearby_share/harmony_share_service.dart';
 import 'desktop_autostart_service.dart';
 import '../../core/airplay/airplay_server_service.dart';
 import '../../core/dlna/dlna_renderer_service.dart';
@@ -20,6 +22,7 @@ import '../window/sub_window_method_dispatcher.dart';
 
 part 'app_settings_broadcast.dart';
 part 'app_settings_notifications.dart';
+part 'app_settings_harmony_name.dart';
 
 /// 全局唯一的窗口 ID Provider，主窗口默认为空字符串。
 final windowIdProvider = Provider<String>((ref) => '');
@@ -31,7 +34,7 @@ final appSettingsProvider =
     );
 
 /// 负责加载和保存设置，并通过乐观更新保持 UI 响应。
-class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings {
+class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
@@ -78,7 +81,11 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
 
   Future<dynamic> _handleSettingsCall(MethodCall call) async {
     stdout.writeln('[SettingsController] _handleSettingsCall: method=${call.method}, args=${call.arguments}, currentWindowId=${ref.read(windowIdProvider)}');
-    if (call.method == 'update_harmony_share_notifications' && call.arguments is bool) {
+    if (call.method == 'change_harmony_share_local_name' && call.arguments is String) {
+      await setHarmonyShareLocalName(call.arguments as String);
+    } else if (call.method == 'update_harmony_share_local_name' && call.arguments is String) {
+      await setHarmonyShareLocalName(call.arguments as String, broadcast: false);
+    } else if (call.method == 'update_harmony_share_notifications' && call.arguments is bool) {
       await setHarmonyShareNotifications(call.arguments as bool, broadcast: false);
     } else if (call.method == 'update_harmony_share_directory' && call.arguments is String) {
       await setHarmonyShareReceiveDirectory(call.arguments as String, broadcast: false, validate: false);
@@ -459,6 +466,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       notificationBodyPreview: notificationBodyPreview,
       harmonyShareNotifications: preferences.getBool(HarmonySharePreferenceKeys.notifications) ?? true,
       harmonyShareReceiveDirectory: preferences.getString(HarmonySharePreferenceKeys.receiveDirectory) ?? '',
+      harmonyShareLocalName: preferences.getString(HarmonySharePreferenceKeys.localName) ?? ShareLocalName.defaultName,
       launchAtStartup: launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey,
       developerModeEnabled: developerModeEnabled,

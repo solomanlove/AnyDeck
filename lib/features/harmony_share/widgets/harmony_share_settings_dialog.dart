@@ -11,6 +11,7 @@ import '../../../core/notifications/mac_notification_bridge.dart';
 import '../../../core/notifications/notification_providers.dart';
 import '../controller/harmony_share_providers.dart';
 import 'harmony_share_settings_panel.dart';
+import 'harmony_share_name_editor.dart';
 
 /// 主窗口设置弹窗；持有权限查询与选择器生命周期，不改变正在进行的传输。
 /// 用法：通过 showDialog 展示，设置写入统一经过 AppSettingsController。
@@ -88,7 +89,7 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
   }
 
   void _setDirectory({bool reset = false}) {
-    if (_service.busy) return;
+    if (_service.busy || _service.configuring) return;
     final controller = ref.read(appSettingsProvider.notifier);
     unawaited(
       _save(() async {
@@ -99,6 +100,15 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
         if (_service.enabled && !_service.busy) await _service.refresh();
       }, 'harmonyShareDirectoryError'),
     );
+  }
+
+  void _setName(String value) {
+    if (_service.busy || _service.configuring) return;
+    final controller = ref.read(appSettingsProvider.notifier);
+    unawaited(_save(
+      () => controller.setHarmonyShareLocalName(value),
+      'harmonyShareLocalNameSaveError',
+    ));
   }
 
   void _permissionAction() {
@@ -129,10 +139,15 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
         animation: Listenable.merge([_service, notifications.deliveryFailed]),
         builder: (context, _) => HarmonyShareSettingsPanel(
           notifications: settings.harmonyShareNotifications,
+          nameEditor: HarmonyShareNameEditor(
+            value: settings.harmonyShareLocalName,
+            disabled: _saving || _service.busy || _service.configuring,
+            onSave: _setName,
+          ),
           directory: settings.harmonyShareReceiveDirectory,
           permission: _permission,
           saving: _saving,
-          busy: _service.busy,
+          busy: _service.busy || _service.configuring,
           deliveryFailed: notifications.deliveryFailed.value,
           errorKey: _errorKey,
           onNotifications: _setNotifications,

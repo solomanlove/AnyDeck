@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/nearby_share/share_local_name.dart';
+
 /// 本地字符串表支持的用户可选语言。
 enum AppLanguage {
   zh('zh'),
@@ -52,6 +54,7 @@ class AppSettings {
     this.notificationBodyPreview = true,
     this.harmonyShareNotifications = true,
     this.harmonyShareReceiveDirectory = '',
+    this.harmonyShareLocalName = ShareLocalName.defaultName,
     this.launchAtStartup = false,
     this.showWindowShortcutKey = '1',
     this.developerModeEnabled = false,
@@ -78,6 +81,8 @@ class AppSettings {
   final bool harmonyShareNotifications;
   /// 空字符串表示 Downloads，传输时创建独立子目录。
   final String harmonyShareReceiveDirectory;
+  /// 新会话使用的本机名称，与 Core 的 UTF-8 长度规则保持一致。
+  final String harmonyShareLocalName;
   final bool launchAtStartup;
   /// 显示主窗口的快捷键字符（默认 '1'，即 ⌘1）
   final String showWindowShortcutKey;
@@ -105,6 +110,7 @@ class AppSettings {
     bool? notificationBodyPreview,
     bool? harmonyShareNotifications,
     String? harmonyShareReceiveDirectory,
+    String? harmonyShareLocalName,
     bool? launchAtStartup,
     String? showWindowShortcutKey,
     bool? developerModeEnabled,
@@ -131,6 +137,7 @@ class AppSettings {
       notificationBodyPreview: notificationBodyPreview ?? this.notificationBodyPreview,
       harmonyShareNotifications: harmonyShareNotifications ?? this.harmonyShareNotifications,
       harmonyShareReceiveDirectory: harmonyShareReceiveDirectory ?? this.harmonyShareReceiveDirectory,
+      harmonyShareLocalName: harmonyShareLocalName ?? this.harmonyShareLocalName,
       launchAtStartup: launchAtStartup ?? this.launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey ?? this.showWindowShortcutKey,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,

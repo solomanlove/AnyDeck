@@ -212,7 +212,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
             ),
             IconButton(
               tooltip: context.l10n.t('harmonyShareScanAgain'),
-              onPressed: _service.busy || !_service.enabled
+              onPressed: _service.busy || _service.configuring || !_service.enabled
                   ? null
                   : _service.refresh,
               icon: const Icon(Icons.refresh_rounded),
@@ -279,8 +279,9 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                       ),
                       const Divider(height: 1),
                       HarmonyShareIdentity(
+                        localName: _service.localName,
                         enabled: _service.enabled,
-                        onChanged: _service.busy
+                        onChanged: _service.busy || _service.configuring
                             ? null
                             : (enabled) =>
                                   enabled ? _service.start() : _service.stop(),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'share_core_contract.dart';
+import 'share_local_name.dart';
 
 /// IPC 3 批次契约；实际批次能力由已校验的原生制品和服务接线共同提供。
 abstract final class ShareBatchContract {
@@ -42,8 +43,11 @@ class ShareBatchFile {
 
 /// 一次原生批次请求；有界 JSONL，不允许目录扁平化后名称冲突。
 class ShareBatchRequest {
-  ShareBatchRequest(List<ShareBatchFile> files)
+  ShareBatchRequest(List<ShareBatchFile> files, {
+    this.localName = ShareLocalName.defaultName,
+  })
     : files = List.unmodifiable(files) {
+    ShareLocalName.validate(localName);
     ShareBatchContract.validate(files.length, bytes);
     final names = <String>{};
     for (final file in files) {
@@ -54,6 +58,7 @@ class ShareBatchRequest {
     }
   }
   final List<ShareBatchFile> files;
+  final String localName;
   int get bytes => files.fold(0, (sum, file) => sum + file.bytes);
 
   Map<String, Object> request({
@@ -70,6 +75,7 @@ class ShareBatchRequest {
     final value = <String, Object>{
       'version': ShareBatchContract.version,
       'command': 'send_batch_experimental',
+      'local_name': localName,
       'local_ip': localIp,
       'peer_ip': peerIp,
       'port': port,

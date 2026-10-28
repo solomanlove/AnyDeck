@@ -22,6 +22,7 @@ extension _HarmonyShareSendService on HarmonyShareService {
     Future<ShareSendSelection> Function() prepare, {
     String? retryOf,
   }) async {
+    if (_configuring) throw StateError('Settings active');
     if (busy) {
       if (canAppend) {
         await _appendSelection(peer, await prepare(), retryOf: retryOf);
@@ -108,8 +109,12 @@ extension _HarmonyShareSendService on HarmonyShareService {
   ) async {
     activeFile = null;
     progress = null;
+    final localName = await _resolveLocalName();
+    ShareLocalName.validate(localName);
+    _localName = localName;
     await _sender.sendBatch(
       items,
+      localName: localName,
       cancelled: () => _sendCancelled || sendQueue.cancelling,
       onProgress: (update) {
         progress = update;

@@ -51,6 +51,7 @@ class _Client extends Fake implements ShareCoreClient {
     required InternetAddress localAddress,
     required InternetAddress broadcastAddress,
     required Directory outputDirectory,
+    String localName = 'AnyDeck',
   }) async {
     final result = _Receiver();
     receivers.add(result);

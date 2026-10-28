@@ -13,9 +13,11 @@ import 'share_transfer_record.dart';
 import 'harmony_share_sender.dart';
 import 'share_receive_directory.dart';
 import 'harmony_share_outbox.dart';
+import 'share_local_name.dart';
 
 part 'harmony_share_receive_events.dart';
 part 'harmony_share_send_service.dart';
+part 'harmony_share_configuration.dart';
 
 /// 展示给用户的来件摘要；协议内容不进入主仓库。
 class ShareIncomingOffer {
@@ -31,6 +33,7 @@ class HarmonyShareService extends ChangeNotifier {
     : _client = const ShareCoreClient(),
       _detectNetwork = ShareNetwork.detect,
       _downloads = ShareReceiveDirectory.resolve,
+      _resolveLocalName = ShareLocalName.resolve,
       _supported = Platform.isMacOS,
       _nativeBatch = true,
       history = ShareTransferHistory() {
@@ -45,9 +48,11 @@ class HarmonyShareService extends ChangeNotifier {
     required Future<Directory?> Function() downloads,
     this.history,
     bool nativeBatch = false,
+    Future<String> Function()? resolveLocalName,
   }) : _client = client,
        _detectNetwork = detectNetwork,
        _downloads = downloads,
+       _resolveLocalName = resolveLocalName ?? (() async => ShareLocalName.defaultName),
        _supported = true,
        _nativeBatch = nativeBatch {
     history?.addListener(notifyListeners);
@@ -57,6 +62,11 @@ class HarmonyShareService extends ChangeNotifier {
   final ShareCoreClient _client;
   final Future<ShareNetwork> Function() _detectNetwork;
   final Future<Directory?> Function() _downloads;
+  final Future<String> Function() _resolveLocalName;
+  String _localName = ShareLocalName.defaultName;
+  bool _configuring = false;
+  String get localName => _localName;
+  bool get configuring => _configuring;
   final bool _supported;
   final bool _nativeBatch;
   String? _receiveDirectory;
@@ -111,7 +121,11 @@ class HarmonyShareService extends ChangeNotifier {
     changed: (batch) => history?.sentBatchChanged(batch),
   )..addListener(notifyListeners);
   bool get canAppend => _nativeBatch && busy && !receiving && outbox.accepting;
-  bool get canSelectFiles => !busy || canAppend;
+  bool get canSelectFiles => !_configuring && (!busy || canAppend);
+
+  /// 主窗口预留设置写入边界，防止保存期间启动新收发会话。
+  Future<void> configureLocalName(String value, Future<void> Function() save) =>
+      _configureLocalName(value, save);
 
   Future<void> send(ShareCorePeer peer, File file) => sendFiles(peer, [file]);
 
@@ -166,7 +180,7 @@ class HarmonyShareService extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    if (_refreshing) return;
+    if (_refreshing || _configuring) return;
     _refreshing = true;
     try {
       await _stopWindow();
@@ -204,9 +218,12 @@ class HarmonyShareService extends ChangeNotifier {
 
   /// 同一时间仅创建一轮接收器；stop/send 会使尚未完成的启动失效。
   Future<void> _openWindow() async {
-    if (!_enabled || busy || _receiver != null || _closingWindows > 0) return;
+    if (!_enabled || busy || _configuring || _receiver != null || _closingWindows > 0) return;
     final revision = _windowRevision;
     try {
+      final localName = await _resolveLocalName();
+      ShareLocalName.validate(localName);
+      _localName = localName;
       network = await _detectNetwork();
       final downloads = await _downloads();
       if (downloads == null) {
@@ -220,9 +237,10 @@ class HarmonyShareService extends ChangeNotifier {
         localAddress: network!.local,
         broadcastAddress: network!.broadcast,
         outputDirectory: folder,
+        localName: localName,
       ) : _client.startInteractiveReceiver(localAddress: network!.local,
         broadcastAddress: network!.broadcast, outputDirectory: folder));
-      if (!_enabled || busy || revision != _windowRevision) {
+      if (!_enabled || busy || _configuring || revision != _windowRevision) {
         await receiver.stop();
         return;
       }

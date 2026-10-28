@@ -7,6 +7,7 @@ import 'share_batch_contract.dart';
 import 'share_batch_client.dart';
 import 'share_batch_sessions.dart';
 import 'share_core_sessions.dart';
+import 'share_local_name.dart';
 
 export 'share_core_contract.dart';
 export 'share_core_sessions.dart';
@@ -53,6 +54,8 @@ class ShareCoreCapabilities {
         experimental['progress'] != true ||
         experimental['graceful_cancel'] != true ||
         experimental['native_batch'] != true ||
+        experimental['batch_local_name'] != true ||
+        experimental['max_local_name_bytes'] != ShareLocalName.maxBytes ||
         experimental['max_files'] != ShareBatchContract.maxFiles ||
         experimental['max_batch_bytes'] != ShareBatchContract.maxBytes) {
       throw const FormatException(
@@ -142,7 +145,9 @@ class ShareCoreClient {
     required InternetAddress localAddress,
     required InternetAddress broadcastAddress,
     required Duration duration,
+    String localName = ShareLocalName.defaultName,
   }) async* {
+    ShareLocalName.validate(localName);
     if (!Platform.isMacOS || !await _executable.exists()) {
       throw const FileSystemException('Share Core is not bundled');
     }
@@ -158,6 +163,7 @@ class ShareCoreClient {
         jsonEncode({
           'version': ShareCoreContract.version,
           'command': 'discover',
+          'local_name': localName,
           'local_ip': localAddress.address,
           'broadcast_ip': broadcastAddress.address,
           'duration_seconds': duration.inSeconds,
@@ -280,8 +286,9 @@ class ShareCoreClient {
 
   /// 原生批次来件必须明确确认，文件与最终摘要齐全后才通知服务完成。
   Future<ShareCoreReceiveSession> startBatchReceiver({required InternetAddress localAddress,
-    required InternetAddress broadcastAddress, required Directory outputDirectory}) =>
-      _batchClient.receive(local: localAddress, broadcast: broadcastAddress, output: outputDirectory);
+    required InternetAddress broadcastAddress, required Directory outputDirectory,
+    String localName = ShareLocalName.defaultName}) =>
+      _batchClient.receive(local: localAddress, broadcast: broadcastAddress, output: outputDirectory, localName: localName);
 
   ShareBatchClient get _batchClient => ShareBatchClient(
     probe: () async {

@@ -142,3 +142,10 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 36 Rust lib +6 integration、12 Swift tests、Rust Release 与 hello 通过；真实 loopback offer/meta、接收 IPC helper argv/接收 meta/文件 hash 已验证。BLE 用隔离 stub，Swift 只验证参数与实际广播字典，未验证无线空口或手机显示。
 - 主仓当前运行契约/锁定制品保持 Core 0.3.0（7059e22），未打包0.3.1。下一批需接 Flutter设置/同步、Dart同边界校验、显式能力门控与新制品，不提前开放只改 UI 的名称设置。
 - 本批无主仓功能代码改动；已追加阶段记录。按用户要求清理本轮 Rust/Swift 缓存约528.5 MiB，不重建 GiB 样本；当前可用约2.3 GiB，源码与旧 zip 保留。
+
+## 本机名称设置、主窗口写入与 Core 0.3.1 制品（2026-10-28）
+
+- AppSettings 的 harmonyShareLocalName 默认 AnyDeck。ShareLocalName 统一校验24 UTF-8 bytes 与特殊字符；名称编辑器展示字节数、保存/恢复，中英文与明暗主题覆盖。HarmonyShareIdentity 使用服务已读取的名称，原生批次收发/发现 IPC 传 local_name；握手强制声明名称能力，旧制品不静默忽略。
+- 名称设置由主窗口独占写入：子窗口 change_harmony_share_local_name 先请求主窗口，主窗口配置预留阻止新收发；收发忙碌时拒绝，空闲保存先停接收，失败恢复旧配置，完成后新会话读取一次。主窗口通过既有广播通道发 update_harmony_share_local_name；接收方重读最新落盘值，避免旧广播覆盖新值。设置与 UI 不直接操作协议或蓝牙。
+- 新锁固定私有 c5177809fda428b1847c852472710b3bfed4ec00，Core0.3.1/IPC3，zip SHA-256 08296ff0cdaadec21758499ac860085366530fd6bd8a30085210d2de237485e4；生产 send/receive=false。未 push，构建使用本地 archive override。197 focused Flutter tests、targeted analyze、3 installer tests、2额外 Widget 渲染测试与 Release 包严格签名/hash/hello 校验通过，详见阶段计划。
+- 验证后清理本轮独立 App 与 Rust/Swift 缓存约234.6 MiB，已在/tmp清单记录；保留锁定 zip/源码/小型日志截图，私有 .DS_Store 和共享构建未动。未启动/停止用户 App、操作手机/真实 BLE 或重跑 GiB 压力；真实空口名称、文件级进度、手机大文件双向及完整发布验收仍待完成。

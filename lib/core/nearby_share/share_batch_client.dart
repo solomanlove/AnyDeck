@@ -4,6 +4,7 @@ import 'dart:io';
 import 'share_batch_contract.dart';
 import 'share_batch_sessions.dart';
 import 'share_core_sessions.dart';
+import 'share_local_name.dart';
 
 /// 通用批次 IPC 调用边界；probe/launch 可注入离线进程测试，失败时回收已启动进程。
 class ShareBatchClient {
@@ -40,7 +41,9 @@ class ShareBatchClient {
     required InternetAddress local,
     required InternetAddress broadcast,
     required Directory output,
+    String localName = ShareLocalName.defaultName,
   }) async {
+    ShareLocalName.validate(localName);
     if (local.type != InternetAddressType.IPv4 ||
         broadcast.type != InternetAddressType.IPv4 ||
         !output.isAbsolute ||
@@ -54,6 +57,7 @@ class ShareBatchClient {
     final value = {
       'version': ShareBatchContract.version,
       'command': 'receive_batch_interactive',
+      'local_name': localName,
       'local_ip': local.address,
       'broadcast_ip': broadcast.address,
       'output_dir': output.path,

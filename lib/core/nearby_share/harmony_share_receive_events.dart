@@ -6,6 +6,7 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
     Map<String, dynamic> event,
     ShareCoreReceiveSession receiver,
   ) {
+    if (_configuring) return;
     switch (event['event']) {
       case 'device':
         try {
