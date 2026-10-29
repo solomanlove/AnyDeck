@@ -1,6 +1,6 @@
 # Huawei Share 私有核心集成边界
 
-当前基线：Core 0.3.5 / IPC 3，单文件实验上限 1 GiB；100 MiB 已完成独立 Core 真机双向与 hash 验证，实际 App 的 GiB 回传及系统通知仍待验收，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
+当前基线：Core 0.3.5 / IPC 3，单文件实验上限 1 GiB；100 MiB 已完成独立 Core 真机双向与 hash 验证，正常 App 已完成 1 GiB 单文件接收（源 hash 尚未比对），GiB 双向、多文件及系统通知仍待验收，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
@@ -224,3 +224,10 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - Native 授权 error 原先被忽略；现透传 FlutterError，交互设置使用严格请求入口，旧后台 bool API 保持兼容。申请后复查真实状态，调用失败或仍未确定时保留原权限状态并提供系统设置入口；明确拒绝不报成系统故障。刷新确定状态清除提示，关闭弹窗后不再读取权限或更新已销毁状态。
 - 22 项实际设置弹窗用例与通知/设置回归合计 74 tests、targeted analyze 通过；Swift 文件 typecheck 使用未改窗口的 NSWindow 接口占位，不替代整包构建和真实系统通知验收。具体范围见阶段计划末尾。
 - 用户自测尚在进行，当前运行包保持交接版本，本批源码修复在下次正常构建后生效。未生成新 App 或传输样本，临时检查目录与测试缓存清理完成，完整目标未标记完成。
+
+
+## 用户自测的正常 App 1 GiB 接收记录（2026-10-29）
+
+- 用户继续自行测试期间，只读正常 bundle 的 SQLite 与接收文件 stat。nova 12 Ultra 的 receive-1793238368615964-1 为 succeeded，数量 1、声明/累计/实际普通文件大小均为 1,073,741,824 bytes，记录含合法 SHA-256。未读取文件内容或记录原始文件名；仅凭本机摘要不能认定与手机源 hash 一致，完整双向/多文件验收仍未完成。
+- receive-1793238289461641-0 在 43,908,150 bytes 处为 cancelled，未记录发布路径或 SHA-256。该结果证明取消记录保留实际进度，未把取消列为完成。用户当前自测接收副本仍保留供其使用，收尾清理尚待这轮结束。
+- 正常 App PID1092 持续运行，包内 Core0.3.5/IPC3 的 5 成员 hash 与 manifest 一致；当前无 DFile 活动子进程。没有启动测试包、重启 App、创建样本或改动自测文件。本批只更新验证记录，94a6c0e 的授权源码改动仍待正常重建后生效。
