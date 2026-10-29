@@ -29,6 +29,7 @@ import '../../../core/harmony/harmony_mirror_service.dart';
 import '../desktop_window_title_service.dart';
 import '../sub_window_method_dispatcher.dart';
 import 'ios_airplay_mirror_content.dart';
+import 'android_mirror_transport_host.dart';
 
 /// 投屏独立窗口应用入口。
 class MirrorWindowApp extends ConsumerWidget {
@@ -48,6 +49,22 @@ class MirrorWindowApp extends ConsumerWidget {
     final deviceName = argument['deviceName'] as String? ?? 'Device';
     final newDisplay = argument['newDisplay'] as String?;
     final startApp = argument['startApp'] as String?;
+    final isIos = argument['isIos'] as bool? ?? false;
+    final isHarmony = argument['isHarmony'] as bool? ?? false;
+
+    Widget buildContent(BuildContext context, String route) => MirrorWindowContent(
+          deviceId: route,
+          deviceName: deviceName,
+          windowId: windowId,
+          newDisplay: newDisplay,
+          startApp: startApp,
+          initialAlwaysOnTop: argument['alwaysOnTop'] as bool?,
+          isIos: isIos,
+          isHarmony: isHarmony,
+          initialAirplayHandle: argument['airplayHandle'] as int?,
+          initialAirplayAspectRatio:
+              (argument['airplayAspectRatio'] as num?)?.toDouble(),
+        );
 
     return MaterialApp(
       onGenerateTitle: (context) => deviceName,
@@ -64,19 +81,12 @@ class MirrorWindowApp extends ConsumerWidget {
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: settings.themeMode,
       home: WindowCloseShortcut(
-        child: MirrorWindowContent(
-          deviceId: deviceId,
-          deviceName: deviceName,
-          windowId: windowId,
-          newDisplay: newDisplay,
-          startApp: startApp,
-          initialAlwaysOnTop: argument['alwaysOnTop'] as bool?,
-          isIos: argument['isIos'] as bool? ?? false,
-          isHarmony: argument['isHarmony'] as bool? ?? false,
-          initialAirplayHandle: argument['airplayHandle'] as int?,
-          initialAirplayAspectRatio:
-              (argument['airplayAspectRatio'] as num?)?.toDouble(),
-        ),
+        child: isIos || isHarmony
+            ? Builder(builder: (context) => buildContent(context, deviceId))
+            : AndroidMirrorTransportHost(
+                deviceId: deviceId,
+                builder: buildContent,
+              ),
       ),
     );
   }

@@ -72,6 +72,9 @@ class MirrorWindowController extends ChangeNotifier {
   bool get isAudioMuted => _isAudioMuted;
   bool _audioFocusPrepared = false;
   bool _startupRecoveryAttempted = false;
+  bool _disposed = false;
+  Future<void> Function()? _stopMirror;
+  EmbeddedScrcpyService? _androidMirrorService;
   final MirrorAudioFocusCoordinator _audioFocusCoordinator =
       MirrorAudioFocusCoordinator();
   late final Future<dynamic> Function(MethodCall) _audioFocusHandler =
@@ -134,7 +137,14 @@ class MirrorWindowController extends ChangeNotifier {
     bool autoStartMirroring = true,
   }) {
     _viewerKey = viewerKey;
+    // 缓存停止入口，换线销毁旧内容时不能再通过已卸载 WidgetRef 查找 Provider。
+    _stopMirror = isIos
+        ? ref.read(activeIosMirrorProvider(deviceId).notifier).forceStop
+        : isHarmony
+            ? ref.read(activeHarmonyMirrorProvider(deviceId).notifier).forceStop
+            : ref.read(activeEmbeddedMirrorProvider(deviceId).notifier).forceStop;
     if (!isIos && !isHarmony) {
+      _androidMirrorService = ref.read(embeddedScrcpyServiceProvider);
       SubWindowMethodDispatcher.registerHandler(_audioFocusHandler);
     }
     // 优先从传入的参数（主窗口状态/快照）获取置顶状态，其次从全局配置中读取
@@ -177,6 +187,7 @@ class MirrorWindowController extends ChangeNotifier {
 
   /// 释放控制器持有的资源
   void disposeController() {
+    _disposed = true;
     if (Platform.isMacOS) {
       _windowChannel.setMethodCallHandler(null);
     }
@@ -187,7 +198,7 @@ class MirrorWindowController extends ChangeNotifier {
     unawaited(_setWindowAspectRatio(0));
     if (!isIos && !isHarmony) {
       SubWindowMethodDispatcher.removeHandler(_audioFocusHandler);
-      ref.read(embeddedScrcpyServiceProvider).setMuted(deviceId, true);
+      _androidMirrorService?.setMuted(deviceId, true);
       if (_audioFocusPrepared) {
         unawaited(
           _audioFocusCoordinator.release(
@@ -226,6 +237,11 @@ class MirrorWindowController extends ChangeNotifier {
   Future<void> forceStopMirroring() async {
     _orientationSettleTimer?.cancel();
     try {
+      if (_stopMirror != null) {
+        await _stopMirror!();
+        return;
+      }
+      if (_disposed) return;
       if (isIos) {
         await ref.read(activeIosMirrorProvider(deviceId).notifier).forceStop();
       } else if (isHarmony) {
@@ -251,6 +267,7 @@ class MirrorWindowController extends ChangeNotifier {
 
   /// 开始/重试启动投屏服务
   Future<void> startMirroring() async {
+    if (_disposed) return;
     _isLoading = true;
     _errorMessage = null;
     _lastVideoAspect = null;
@@ -260,6 +277,7 @@ class MirrorWindowController extends ChangeNotifier {
 
     try {
       await _prepareAudioFocus();
+      if (_disposed) return;
       if (isIos) {
         final activeMirror = ref.read(activeIosMirrorProvider(deviceId));
         if (activeMirror == null) {
@@ -288,6 +306,7 @@ class MirrorWindowController extends ChangeNotifier {
       if (!isIos) {
         final deadline = DateTime.now().add(const Duration(seconds: 15));
         while (true) {
+          if (_disposed) return;
           final size = isHarmony
               ? ref.read(harmonyMirrorServiceProvider).getVideoSize(deviceId)
               : ref.read(embeddedScrcpyServiceProvider).getVideoSize(deviceId);
@@ -312,6 +331,7 @@ class MirrorWindowController extends ChangeNotifier {
         _autoFitWindowOnStart();
       }
     } catch (e) {
+      if (_disposed) return;
       if (!isIos &&
           !isHarmony &&
           !_startupRecoveryAttempted &&
@@ -334,6 +354,12 @@ class MirrorWindowController extends ChangeNotifier {
       _errorMessage = msg;
       notifyListeners();
     }
+  }
+
+  /// 换线会重建窗口内容，旧异步任务完成时不再通知已释放的视图。
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
   }
 
   bool _isRecoverableMirrorStartupError(Object error) {
@@ -830,7 +856,7 @@ class MirrorWindowController extends ChangeNotifier {
     int attempts = 0;
     Timer.periodic(const Duration(milliseconds: 200), (timer) async {
       attempts++;
-      if (attempts > 25) { // 最多尝试 5 秒
+      if (_disposed || attempts > 25) { // 最多尝试 5 秒
         timer.cancel();
         return;
       }
@@ -870,7 +896,8 @@ class MirrorWindowController extends ChangeNotifier {
     double? viewerH,
     bool animateOrientationChange = false,
   }) async {
-    if (_isApplyingWindowAutoFit ||
+    if (_disposed ||
+        _isApplyingWindowAutoFit ||
         _isFullScreen ||
         _isNativeFullScreen ||
         _isNativeMaximized) {

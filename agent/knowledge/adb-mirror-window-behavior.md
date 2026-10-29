@@ -42,6 +42,39 @@
 - `AppToast` 通过 `OverlayEntry` 统一渲染在当前窗口顶部居中位置，不依赖 `ScaffoldMessenger`，适合投屏子窗口、设置弹窗返回后的提示、拖拽安装/上传结果、截图/录屏结果、剪贴板发送失败、返回键和音量键长按提示。
 - 新增投屏提示时优先按语义选择 `AppToastType.success`、`error`、`warning`、`info`，只有需要兼容旧调用时才使用 `isError` 参数。
 
+## Android 投屏断线自动换线（2026-10-29）
+
+### 目标与连接选择
+
+- USB 投屏的 `adb shell` server 进程异常退出后，立即重新执行 `adb devices -l`，使用同一手机当前已在线的其他 transport 恢复投屏。传统 TCP/IP 与 Android TLS/mDNS 无线调试均支持，不等待子窗口已停用的设备心跳，也不读取旧 IP 直接重连。
+- `core/scrcpy/mirror_transport_resolver.dart` 保存初始硬件身份：USB 使用设备序列号，网络连接在宿主创建时通过现有 `AdbWirelessProbe.serial` 读取 `ro.serialno / ro.boot.serialno`。候选必须处于 `device` 状态并回读到同一硬件序列号，不能按型号、列表顺序或历史 IP 猜测身份。
+- 排除本轮已失败的连接，候选优先 USB、普通 TCP、TLS/mDNS；mDNS 名称中的空格保持完整。每次恢复都重新查询列表，支持 Wi-Fi 动态端口变化。列表查询最多 3 秒，单候选属性查询最多 2 秒，新列表与候选扫描共享 6 秒预算；网络初始身份读取独立进行。
+- 没有同设备在线替代连接时结束恢复并展示原有停止/失败界面。不自动启用无线调试，不调用 `adb connect` 连接历史地址，不增加常驻 ADB 轮询。
+
+### 会话与窗口生命周期
+
+- `ActiveEmbeddedMirrorNotifier` 通过 `mirrorDisconnectedProvider` 区分异常退出/启动失败与主动停止。异常发生时并行开始旧资源清理与新连接查询；实际新建会话前仍须等待旧 Texture、Rust 会话、server 与 forward 的清理完成。
+- 启动请求合并为单一 Future，generation 让主动停止前的进程退出回调失效；启动中停止或 Provider 已销毁时，迟到的会话立即释放，不再更新 Texture 状态。主动停止、刷新和正常窗口关闭不会触发自动换线。
+- `app/window/mirror/android_mirror_transport_host.dart` 在原生窗口内按新 transport 重建 `MirrorWindowContent`，统一重绑 Viewer、触控、截图、录屏和设备操作，保留原设备名称及应用副屏启动参数。状态提示复用现有 `startingMirrorService` 与 Theme；iOS、HarmonyOS 不进入该宿主。
+- 同一轮恢复每个失败 transport 最多尝试一次，避免 USB/TCP/TLS 之间反复循环；会话持续运行至少 3 秒后发生新的断线时，重新开始一轮选路。关闭窗口会取消解析，并丢弃迟到的查询结果。
+- 重建内容时，Controller 缓存停止入口和 Android service，卸载阶段不再通过 WidgetRef 查找 Provider；旧首帧等待、启动重试与窗口比例适配任务检查 disposed，避免旧内容在换线后重新拉起旧会话或通知已释放的 UI。
+
+### 自动与真机验证
+
+- 新增 21 项选路/会话/宿主测试，覆盖 USB→TCP→TLS、USB 重新可用、DHCP 地址复用、离线/未授权过滤、带空格的 mDNS ID、串号回退、重复事件、并发启动、旧资源清理顺序、全部候选失败终止、恢复中关闭窗口及 Provider 销毁。
+- 与剪贴板、窗口比例、AirPlay 路由、断线状态页、ADB 截图及屏幕电源回归合计 74 项通过；状态页测试补充真实项目 Theme fixture，避免缺少 `AppThemeColors` 时空值异常。9 个修改/新增 Dart 文件定向 analyze 通过；全量 analyze 仍在其他文件报告 39 项既有 warning/info。
+
+```bash
+flutter test test/mirror_transport_resolver_test.dart \
+  test/android_mirror_transport_host_test.dart test/mirror_clipboard_sync_test.dart \
+  test/mirror_window_aspect_and_rotation_test.dart test/airplay_mirror_window_target_test.dart \
+  test/mirror_error_info_test.dart test/adb_service_test.dart \
+  test/adb_screenshot_display_test.dart test/device_power_actions_test.dart
+```
+
+- 只读真机选路验证：SM-F9710 的 USB `R5GL6378JMH` 与 `192.168.1.244:5555` 同时在线；调用修改后的 resolver 并排除 USB，在约 1546ms 内选中 TCP 地址，回读序列号仍为 `R5GL6378JMH`。该验证没有拔线、停止用户正在运行的投屏或新建真机会话。
+- 按项目约定未启动/重新构建 App。真实 USB 拔线后的画面、音频、窗口状态与工具栏操作仍需手动验收：先建立同机 USB+无线连接，USB 投屏后拔线，确认原窗口自动恢复；再断开当前无线连接验证另一个在线通道，并检查主动停止及恢复中关窗不会自行重启。
+
 ## 沉浸式窗口控件与 Session 状态
 
 - 全局“始终显示投屏控制栏”设置默认关闭，继续使用自动隐藏；开启后 Android、HarmonyOS、iOS USB 与 AirPlay 投屏均持续显示标题栏、系统窗口按钮和右侧工具栏。设置通过多窗口通道实时同步到已打开的投屏子窗口。

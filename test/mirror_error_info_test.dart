@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/app/window/mirror/model/mirror_error_info.dart';
 import 'package:any_deck/app/window/mirror/widget/mirror_status_view.dart';
 
@@ -76,6 +77,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: buildAppTheme(Brightness.light),
           locale: const Locale('zh'),
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: _delegates,
@@ -145,11 +147,12 @@ void main() {
     testWidgets('英文环境下展示友好的英文断开提示', (tester) async {
       const raw = 'device offline';
       await tester.pumpWidget(
-        const MaterialApp(
-          locale: Locale('en'),
+        MaterialApp(
+          theme: buildAppTheme(Brightness.light),
+          locale: const Locale('en'),
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: _delegates,
-          home: Scaffold(
+          home: const Scaffold(
             body: MirrorStatusView(
               rawErrorMessage: raw,
               onRetry: _noop,
