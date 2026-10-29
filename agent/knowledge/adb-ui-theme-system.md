@@ -65,3 +65,19 @@ Painter 或 Controller 不应反向依赖 Widget Theme；需要动态主题时�
 - 同一 Isolate 同时只展示一条轻提示，新提示替换旧提示并重置隐藏 Timer；页面切换或测试清理可调用 `AppToast.dismiss()`。
 - Dialog、确认框、进度面板以及包含用户操作的 Material SnackBar 不属于无交互轻提示，不应仅为统一位置而移除其交互能力。
 - 2026-10-27 定向验证：`app_toast_test.dart` 覆盖 `AppToast` 与兼容入口均在顶部居中、后发提示替换前一条及主动关闭；Widget test 与 targeted analyze 通过。按项目规则未运行 App，真实多窗口视觉仍需人工验收。
+
+### 轻提示偶发残留修复（2026-10-29）
+
+- 问题：投屏窗口的“已复制到剪贴板”等提示偶尔超过默认 1600ms 仍不消失。`OverlayEntry.mounted` 仅表示其 Widget 已挂载，不表示 entry 是否仍归 Overlay 所有；刚插入尚未绘制、被 opaque entry 遮挡时都可能为 false。
+- 根因：旧 `dismiss()` 仅在 `mounted == true` 时执行 `remove()`，随后却清空引用并取消 Timer。若同一帧连续显示两条提示，旧 entry 会失去 Timer 并永久残留；被不透明弹层遮挡期间到期也会漏删，弹层关闭后重新出现。新增测试在修复前稳定复现上述两种情况及首帧前主动关闭漏删，共 3 项失败。
+- 修复：成功 `overlay.insert(entry)` 后才记录当前 entry；关闭时先取消 Timer、取出并清空引用，再无条件对所属 entry 执行 `remove()` 与 `dispose()`。不以 Widget 的 mounted 状态判断所有权，重复关闭安全，释放 entry 通知器资源。默认时长、提示样式、交互穿透与新提示重新计时保持原逻辑。
+- 影响范围：公共 `AppToast` 与兼容入口 `DashboardSnack`，包括主窗口和独立投屏窗口。无新增依赖、Provider、MethodChannel、设备命令或轮询，不改变投屏 Texture、输入和剪贴板协议。
+- 自动回归：`app_toast_test.dart` 共 7 项，覆盖顶部居中、默认到期关闭、同帧替换、首帧前关闭、不透明弹层遮挡后到期、重置计时、Overlay 销毁与新窗口重建；连同 `mirror_clipboard_sync_test.dart` 共 11 项通过。修改范围静态检查与 `git diff --check` 通过。
+- 扩展验证：`ios_mirror_toolbar_test.dart` 的 4 项按钮数量断言预期 6 个、实际 8 个；临时使用 HEAD 原版 `AppToast` 重跑同样 4 项仍失败，确认是既有测试问题，已恢复本次修复文件并保持 iOS 工具栏代码不变。该文件的控制失败弹框用例通过。
+- 全量 `flutter analyze --no-pub` 仍在其他未修改文件报告 39 项既有 warning/info，本次修改文件无诊断。
+- 未启动 App。真实投屏窗口中连续截图、隐藏/恢复窗口及弹层覆盖后的视觉效果仍待人工验收；Flutter 无新绘制帧时，屏幕上的旧像素需等窗口恢复绘制才会更新，entry 的逻辑移除不依赖 Ticker 或动画。
+
+```bash
+flutter test test/app_toast_test.dart test/mirror_clipboard_sync_test.dart
+flutter analyze --no-pub lib/app/widget/app_toast.dart test/app_toast_test.dart
+```

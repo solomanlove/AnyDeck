@@ -102,8 +102,8 @@ class AppToast {
       },
     );
 
-    _currentEntry = entry;
     overlay.insert(entry);
+    _currentEntry = entry;
     _hideTimer = Timer(duration, dismiss);
   }
 
@@ -111,10 +111,13 @@ class AppToast {
   static void dismiss() {
     _hideTimer?.cancel();
     _hideTimer = null;
-    if (_currentEntry?.mounted ?? false) {
-      _currentEntry?.remove();
-    }
+    final entry = _currentEntry;
     _currentEntry = null;
+    // mounted 仅表示已构建，未绘制或被遮挡的 entry 仍在 Overlay 中，必须移除。
+    // 先清空引用保证重复 dismiss 安全，再释放 entry 持有的通知器资源。
+    entry
+      ?..remove()
+      ..dispose();
   }
 }
 
