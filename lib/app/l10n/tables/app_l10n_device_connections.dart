@@ -1,5 +1,8 @@
 /// 设备连接状态与无线调试功能本地化文案表。新增 key 时必须同时补齐 zh/en。
 const deviceConnectionsZh = {
+  'mirrorTransportUsb': 'USB 投屏',
+  'mirrorTransportTcp': 'TCP 投屏',
+  'mirrorTransportWifi': 'Wi-Fi 投屏',
   'wirelessConnect': '优先通过 TCP/IP 连接，失败后查找无线调试设备',
   'wirelessPreparing': '正在准备 TCP/IP 监听，请稍候…',
   'wirelessReady': 'TCP/IP 已准备好，点击连接图标即可连接',
@@ -124,6 +127,9 @@ const deviceConnectionsZh = {
 };
 
 const deviceConnectionsEn = {
+  'mirrorTransportUsb': 'USB mirroring',
+  'mirrorTransportTcp': 'TCP mirroring',
+  'mirrorTransportWifi': 'Wi-Fi mirroring',
   'wirelessConnect': 'Connect over TCP/IP first, then try wireless debugging',
   'wirelessPreparing': 'Preparing TCP/IP listener…',
   'wirelessReady': 'TCP/IP is ready. Click the connection icon to connect',

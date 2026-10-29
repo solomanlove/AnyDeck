@@ -2,8 +2,12 @@ import 'dart:async';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/window/mirror/android_mirror_transport_host.dart';
+import 'package:any_deck/app/window/mirror/widget/mirror_device_name_heading.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/scrcpy/embedded_scrcpy_service.dart';
+import 'package:any_deck/core/scrcpy/mirror_transport_devices_provider.dart';
+import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/scrcpy/mirror_transport_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,15 +31,17 @@ class _MirrorContentState extends ConsumerState<_MirrorContent> {
   @override
   void initState() {
     super.initState();
-    _notifier = ref.read(activeEmbeddedMirrorProvider(widget.deviceId).notifier);
+    _notifier = ref.read(
+      activeEmbeddedMirrorProvider(widget.deviceId).notifier,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       try {
         await _notifier.toggleMirroring(
-              newDisplay: '1080x1920',
-              startApp: 'example.app',
-              initiallyMuted: true,
-            );
+          newDisplay: '1080x1920',
+          startApp: 'example.app',
+          initiallyMuted: true,
+        );
       } catch (_) {}
     });
   }
@@ -49,7 +55,15 @@ class _MirrorContentState extends ConsumerState<_MirrorContent> {
   @override
   Widget build(BuildContext context) {
     final texture = ref.watch(activeEmbeddedMirrorProvider(widget.deviceId));
-    return Text('route:${widget.deviceId},texture:$texture');
+    return Column(
+      children: [
+        Text('route:${widget.deviceId},texture:$texture'),
+        MirrorDeviceNameHeading(
+          name: 'phone',
+          transport: MirrorTransportType.fromDeviceId(widget.deviceId),
+        ),
+      ],
+    );
   }
 }
 
@@ -80,19 +94,27 @@ void main() {
   late TransportAdb adb;
   late TransportMirrors mirrors;
   late ProviderContainer container;
+  late StreamController<List<AdbDevice>> deviceEvents;
   setUp(() {
     adb = TransportAdb()
       ..devices = '$_tcp device\n$_tls device'
       ..serials.addAll({_tcp: 'phone', _tls: 'phone'});
     mirrors = TransportMirrors();
+    deviceEvents = StreamController<List<AdbDevice>>.broadcast();
     container = ProviderContainer(
       overrides: [
         adbServiceProvider.overrideWithValue(adb),
         embeddedScrcpyServiceProvider.overrideWithValue(mirrors),
+        mirrorTransportDevicesProvider.overrideWith(
+          (ref) => deviceEvents.stream,
+        ),
       ],
     );
   });
-  tearDown(() => container.dispose());
+  tearDown(() async {
+    container.dispose();
+    await deviceEvents.close();
+  });
 
   test('异常退出立即通知，旧会话清理完成前 forceStop 不提前返回', () async {
     final notifier = container.read(
@@ -245,5 +267,145 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
+  });
+
+  testWidgets('USB 断线转 TCP 后，USB 重新上线自动优先切回 USB', (tester) async {
+    adb.serials['phone'] = 'phone';
+    await _pumpHost(tester, container);
+    expect(find.text('USB 投屏'), findsOneWidget);
+    deviceEvents.add(const [
+      AdbDevice(id: 'phone', status: 'device'),
+      AdbDevice(id: _tcp, status: 'device'),
+    ]);
+    await tester.pump();
+    mirrors.processes['phone']!.ended.complete(1);
+    await tester.pumpAndSettle();
+    expect(find.text('TCP 投屏'), findsOneWidget);
+    deviceEvents.add(const [AdbDevice(id: _tcp, status: 'device')]);
+    await tester.pump();
+    deviceEvents.add(const [
+      AdbDevice(id: 'phone', status: 'device'),
+      AdbDevice(id: _tcp, status: 'device'),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(mirrors.starts.map((start) => start.id), ['phone', _tcp, 'phone']);
+    expect(find.text('route:phone,texture:3'), findsOneWidget);
+    expect(find.text('USB 投屏'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('更高优先级 USB 身份不匹配时继续原 TCP，会话不被打断', (tester) async {
+    await _pumpHost(tester, container);
+    mirrors.processes['phone']!.ended.complete(1);
+    await tester.pumpAndSettle();
+    adb.serials['other'] = 'other-phone';
+    deviceEvents.add(const [
+      AdbDevice(id: 'other', status: 'device'),
+      AdbDevice(id: _tcp, status: 'device'),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(mirrors.starts.map((start) => start.id), ['phone', _tcp]);
+    expect(mirrors.isActive(_tcp), isTrue);
+    expect(adb.calls.where((args) => args.first == 'devices'), hasLength(1));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('回切 USB 失败自动回退健康 TCP，不被坏 USB 循环抢占', (tester) async {
+    await _pumpHost(tester, container);
+    mirrors.processes['phone']!.ended.complete(1);
+    await tester.pumpAndSettle();
+    deviceEvents.add(const [AdbDevice(id: _tcp, status: 'device')]);
+    await tester.pump();
+    mirrors.failStart.add('phone');
+    adb.serials['phone'] = 'phone';
+    deviceEvents.add(const [
+      AdbDevice(id: 'phone', status: 'device'),
+      AdbDevice(id: _tcp, status: 'device'),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(mirrors.starts.map((start) => start.id), [
+      'phone',
+      _tcp,
+      'phone',
+      _tcp,
+    ]);
+    expect(mirrors.isActive(_tcp), isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('主动停止后 USB 接入也不擅自重新投屏', (tester) async {
+    await _pumpHost(tester, container);
+    await container
+        .read(activeEmbeddedMirrorProvider('phone').notifier)
+        .forceStop();
+    adb.serials['phone'] = 'phone';
+    deviceEvents.add(const [AdbDevice(id: 'phone', status: 'device')]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(mirrors.starts, hasLength(1));
+    expect(adb.calls, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('Wi-Fi 投屏期间 TCP 上线自动升级，同级连接增加不反复切换', (tester) async {
+    adb.devices = '$_tls device';
+    await _pumpHost(tester, container);
+    mirrors.processes['phone']!.ended.complete(1);
+    await tester.pumpAndSettle();
+    expect(find.text('Wi-Fi 投屏'), findsOneWidget);
+    deviceEvents.add(const [AdbDevice(id: _tls, status: 'device')]);
+    await tester.pump();
+    adb.devices = '$_tls device\n$_tcp device';
+    deviceEvents.add(const [
+      AdbDevice(id: _tls, status: 'device'),
+      AdbDevice(id: _tcp, status: 'device'),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(mirrors.starts.map((start) => start.id), ['phone', _tls, _tcp]);
+    expect(find.text('TCP 投屏'), findsOneWidget);
+    deviceEvents.add(const [
+      AdbDevice(id: _tls, status: 'device'),
+      AdbDevice(id: _tcp, status: 'device'),
+      AdbDevice(id: '192.168.1.9:5555', status: 'device'),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(mirrors.starts, hasLength(3));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('USB 优选身份校验期间关窗，迟到结果不再启动 USB 会话', (tester) async {
+    await _pumpHost(tester, container);
+    mirrors.processes['phone']!.ended.complete(1);
+    await tester.pumpAndSettle();
+    adb.serials['phone'] = 'phone';
+    adb.serialGate = Completer<void>();
+    deviceEvents.add(const [
+      AdbDevice(id: 'phone', status: 'device'),
+      AdbDevice(id: _tcp, status: 'device'),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpWidget(const SizedBox.shrink());
+    adb.serialGate!.complete();
+    await tester.pumpAndSettle();
+    expect(mirrors.starts.map((start) => start.id), ['phone', _tcp]);
+    expect(tester.takeException(), isNull);
   });
 }

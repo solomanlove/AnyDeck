@@ -68,6 +68,11 @@ class AdbDeviceTracker {
 
     try {
       final process = await _adbService.start(['track-devices', '-l']);
+      // 子窗口可能在启动命令返回前关闭，迟到的监听进程也必须回收。
+      if (_isDisposed) {
+        process.kill();
+        return;
+      }
       _trackProcess = process;
 
       // 缓冲区用于处理 TCP/管道分包和粘包

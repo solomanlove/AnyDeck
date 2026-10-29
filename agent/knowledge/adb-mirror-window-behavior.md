@@ -75,6 +75,27 @@ flutter test test/mirror_transport_resolver_test.dart \
 - 只读真机选路验证：SM-F9710 的 USB `R5GL6378JMH` 与 `192.168.1.244:5555` 同时在线；调用修改后的 resolver 并排除 USB，在约 1546ms 内选中 TCP 地址，回读序列号仍为 `R5GL6378JMH`。该验证没有拔线、停止用户正在运行的投屏或新建真机会话。
 - 按项目约定未启动/重新构建 App。真实 USB 拔线后的画面、音频、窗口状态与工具栏操作仍需手动验收：先建立同机 USB+无线连接，USB 投屏后拔线，确认原窗口自动恢复；再断开当前无线连接验证另一个在线通道，并检查主动停止及恢复中关窗不会自行重启。
 
+### 实时优选与当前通道标签（2026-10-29）
+
+- 原实现只在异常断线时重新选路；现在健康的 TCP/Wi-Fi 投屏也监听设备事件。USB 重新上线并通过同机硬件身份校验后自动优先切回 USB；Wi-Fi 投屏期间普通 TCP 上线也会升级，顺序为 USB → TCP → Wi-Fi。同级或更低优先级连接变化不会重建健康会话。
+- `mirror_transport_devices_provider.dart` 主窗口复用已有 `AdbDeviceTracker`，每个投屏子 Isolate 共享一条仅 ADB 的 `track-devices -l` 事件流，先提供当前快照，再推送变化。不启用子窗口心跳、iOS/HDC 轮询或高频列表命令；订阅释放后关闭监听。Tracker 还会终止窗口关闭后才启动完成的迟到进程。
+- 连接变化做 350ms 防抖，优选探测直接使用事件快照，只查询高优先级候选的序列号；断线恢复仍重新查询实时列表。事件快照中的 iOS/HarmonyOS 不参与 Android 候选选择。选择期间出现新事件会重新评估，迟到结果或已主动停止的会话不能触发切换。
+- 坏 USB 启动失败后可以回退原健康 TCP，不会在 USB 与 TCP 间不断抢占；只有该 USB 真正离线后再次上线，才解除本轮失败限制。所有通道切换均等待旧会话释放，再按新 ID 重建画面和操作，属于短暂重连，不是正在使用的 ADB socket 原地迁移。
+- `mirror_transport_type.dart` 统一优先级与显示类型，沿用项目对 USB、传统 TCP 和 TLS/mDNS/动态端口无线调试的识别约定。设备信息悬浮卡的名称右侧显示 `USB 投屏 / TCP 投屏 / Wi-Fi 投屏`；标签取自当前会话绑定的 `deviceId`，不使用注册表中可能不同的 preferred ID。概览加载中、读取失败时也能显示，iOS/HarmonyOS 不猜测 Android 通道。
+- `widget/mirror_device_name_heading.dart` 复用名称与通道标题，长名称省略时保留完整标签；使用 Theme ColorScheme、共享圆角及中英文字符串。无新增设置项或跨窗口 MethodChannel，主题与语言继续沿用原有同步。
+- 102 项相关测试通过，覆盖 USB→TCP→USB 及标签同步、Wi-Fi→TCP、同级不切换、身份不匹配、坏 USB 回退、主动停止、优选中关窗、共享事件流与迟到进程回收、中英文/明暗主题/窄卡片及概览异常；14 个变更 Dart 文件定向 analyze 无问题。全量 analyze 仍为其他文件的 39 项既有 warning/info。
+- 只读验证还确认本机 `adb track-devices -l` 的初始输出使用 4 字节十六进制长度头，当前 Tracker 的事件解析与实际 CLI 输出一致。未启动或重建桌面 App，实际 USB 热插拔的画面恢复、短暂加载及标签位置仍待窗口验收。
+- 同机只读优选验证：以三星当前 TCP `192.168.1.244:5555` 作为会话通道，传入最新设备快照，约 1550ms 后返回更优的 USB `R5GL6378JMH`，类型为 `usb`；只执行查询和序列号校验，没有切换用户正在运行的真实投屏。
+
+```bash
+flutter test test/mirror_transport_resolver_test.dart test/android_mirror_transport_host_test.dart \
+  test/mirror_transport_devices_provider_test.dart test/mirror_transport_badge_test.dart \
+  test/mirror_device_info_overlay_test.dart test/mirror_clipboard_sync_test.dart \
+  test/mirror_window_aspect_and_rotation_test.dart test/airplay_mirror_window_target_test.dart \
+  test/mirror_error_info_test.dart test/adb_service_test.dart \
+  test/adb_screenshot_display_test.dart test/device_power_actions_test.dart
+```
+
 ## 沉浸式窗口控件与 Session 状态
 
 - 全局“始终显示投屏控制栏”设置默认关闭，继续使用自动隐藏；开启后 Android、HarmonyOS、iOS USB 与 AirPlay 投屏均持续显示标题栏、系统窗口按钮和右侧工具栏。设置通过多窗口通道实时同步到已打开的投屏子窗口。

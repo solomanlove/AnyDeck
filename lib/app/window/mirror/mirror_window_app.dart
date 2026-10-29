@@ -30,6 +30,7 @@ import '../desktop_window_title_service.dart';
 import '../sub_window_method_dispatcher.dart';
 import 'ios_airplay_mirror_content.dart';
 import 'android_mirror_transport_host.dart';
+import '../../../core/scrcpy/mirror_transport_type.dart';
 
 /// 投屏独立窗口应用入口。
 class MirrorWindowApp extends ConsumerWidget {
@@ -422,6 +423,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                               ? MirrorDeviceInfoOverlay(
                                   deviceId: widget.deviceId,
                                   deviceName: widget.deviceName,
+                                  transport: isIos || widget.isHarmony
+                                      ? null
+                                      : MirrorTransportType.fromDeviceId(
+                                          widget.deviceId,
+                                        ),
                                 )
                               : const SizedBox.shrink(),
                         ),

@@ -16,6 +16,7 @@ class TransportAdb extends AdbService {
   final calls = <List<String>>[];
   final timeouts = <Duration>[];
   Completer<void>? listGate;
+  Completer<void>? serialGate;
 
   @override
   Future<AdbResult> run(
@@ -32,6 +33,7 @@ class TransportAdb extends AdbService {
         stderr: '',
       );
     }
+    await serialGate?.future;
     final serial = args.last == 'ro.boot.serialno'
         ? bootSerials[args[1]]
         : serials[args[1]];

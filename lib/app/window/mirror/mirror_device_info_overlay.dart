@@ -4,44 +4,59 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/device_info/device_overview.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../l10n/app_localizations.dart';
+import '../../../core/scrcpy/mirror_transport_type.dart';
+import 'widget/mirror_device_name_heading.dart';
 
 /// 在投屏画面上展示设备概览，数据复用概览 Provider 的本地缓存与单次刷新。
+/// [transport] 表示当前 Android 会话通道；其他平台省略以避免猜测连接方式。
 class MirrorDeviceInfoOverlay extends ConsumerWidget {
   const MirrorDeviceInfoOverlay({
     super.key,
     required this.deviceId,
     required this.deviceName,
+    this.transport,
   });
 
   final String deviceId;
   final String deviceName;
+  final MirrorTransportType? transport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final overviewAsync = ref.watch(deviceOverviewProvider(deviceId));
 
     return overviewAsync.when(
-      data: (overview) =>
-          MirrorDeviceInfoCard(overview: overview, fallbackName: deviceName),
-      loading: () => _MirrorDeviceInfoLoadingCard(deviceName: deviceName),
+      data: (overview) => MirrorDeviceInfoCard(
+        overview: overview,
+        fallbackName: deviceName,
+        transport: transport,
+      ),
+      loading: () => _MirrorDeviceInfoLoadingCard(
+        deviceName: deviceName,
+        transport: transport,
+      ),
       error: (_, _) => _MirrorDeviceInfoLoadingCard(
         deviceName: deviceName,
         showLoading: false,
+        transport: transport,
       ),
     );
   }
 }
 
 /// 设备信息卡只负责数据展示，避免投屏 Texture 因数据刷新而重建。
+/// [transport] 可选，提供时在设备名称旁展示当前投屏方式。
 class MirrorDeviceInfoCard extends StatelessWidget {
   const MirrorDeviceInfoCard({
     super.key,
     required this.overview,
     required this.fallbackName,
+    this.transport,
   });
 
   final DeviceOverview overview;
   final String fallbackName;
+  final MirrorTransportType? transport;
 
   @override
   Widget build(BuildContext context) {
@@ -79,13 +94,7 @@ class MirrorDeviceInfoCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              name,
-              style: textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            MirrorDeviceNameHeading(name: name, transport: transport),
             const SizedBox(height: 10),
             if (brandAndModel.isNotEmpty) Text(brandAndModel),
             if (display.isNotEmpty) Text(display),
@@ -144,10 +153,12 @@ class _MirrorDeviceInfoLoadingCard extends StatelessWidget {
   const _MirrorDeviceInfoLoadingCard({
     required this.deviceName,
     this.showLoading = true,
+    this.transport,
   });
 
   final String deviceName;
   final bool showLoading;
+  final MirrorTransportType? transport;
 
   @override
   Widget build(BuildContext context) {
@@ -164,14 +175,7 @@ class _MirrorDeviceInfoLoadingCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            deviceName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
+          MirrorDeviceNameHeading(name: deviceName, transport: transport),
           if (showLoading) ...[
             const SizedBox(height: 8),
             Text(

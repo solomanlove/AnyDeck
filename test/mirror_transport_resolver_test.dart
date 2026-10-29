@@ -1,10 +1,80 @@
 import 'dart:async';
 
 import 'package:any_deck/core/scrcpy/mirror_transport_resolver.dart';
+import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/scrcpy/mirror_transport_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'support/mirror_transport_fakes.dart';
 
 void main() {
+  test('通道识别与优先级一致：USB、TCP、Wi-Fi', () {
+    expect(MirrorTransportType.fromDeviceId('phone'), MirrorTransportType.usb);
+    expect(
+      MirrorTransportType.fromDeviceId('192.168.1.8:5555'),
+      MirrorTransportType.tcp,
+    );
+    expect(
+      MirrorTransportType.fromDeviceId('adb-phone-xyz._adb-tls-connect._tcp'),
+      MirrorTransportType.wifi,
+    );
+    expect(
+      MirrorTransportType.fromDeviceId('192.168.1.8:37001'),
+      MirrorTransportType.wifi,
+    );
+    expect(
+      MirrorTransportType.usb.index,
+      lessThan(MirrorTransportType.tcp.index),
+    );
+    expect(
+      MirrorTransportType.tcp.index,
+      lessThan(MirrorTransportType.wifi.index),
+    );
+  });
+
+  test('连接事件快照中只选择更优通道，不执行额外列表查询', () async {
+    const tcp = '192.168.1.8:5555';
+    final adb = TransportAdb()
+      ..serials.addAll({'phone': 'phone', tcp: 'phone'});
+    final resolver = MirrorTransportResolver(adb, tcp);
+    addTearDown(resolver.dispose);
+    final route = await resolver.resolve(
+      excluded: {},
+      betterThan: tcp,
+      devices: const [
+        AdbDevice(id: 'phone', status: 'device'),
+        AdbDevice(id: tcp, status: 'device'),
+      ],
+    );
+    expect(route, 'phone');
+    expect(adb.calls.any((args) => args.first == 'devices'), isFalse);
+    final noUpgrade = await resolver.resolve(
+      excluded: {},
+      betterThan: 'phone',
+      devices: const [AdbDevice(id: tcp, status: 'device')],
+    );
+    expect(noUpgrade, isNull);
+  });
+
+  test('主窗口事件中的 iOS 与 HarmonyOS 记录不能成为 Android 投屏候选', () async {
+    const tcp = '192.168.1.8:5555';
+    final adb = TransportAdb()..serials[tcp] = 'phone';
+    final resolver = MirrorTransportResolver(adb, tcp);
+    addTearDown(resolver.dispose);
+    expect(
+      await resolver.resolve(
+        excluded: {},
+        betterThan: tcp,
+        devices: const [
+          AdbDevice(id: 'iphone', status: 'device', isIos: true),
+          AdbDevice(id: 'harmony', status: 'device', isHarmony: true),
+        ],
+      ),
+      isNull,
+    );
+    expect(adb.calls, [
+      ['-s', tcp, 'shell', 'getprop', 'ro.serialno'],
+    ]);
+  });
   test('USB 断开立即查询新列表，只切换到同一硬件的在线 TCP 连接', () async {
     final adb = TransportAdb()
       ..devices = 'phone offline\nother device\n192.168.1.8:5555 device'
