@@ -291,3 +291,24 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 最终签名制品向 nova 12 Ultra 发送新建 g-100MiB.bin，用户确认收到；同一文件回传等待 3 秒接受后完成，独立重读落盘 SHA-256 为 8cf88322bd8ea786a0741982a82639faeda2bc3f69e87c5c61bd5e8f988a4aec，与源一致。证据目录 /tmp/anydeck-harmony-core035-real-20261029，摘要 100MiB-roundtrip-verified.json；这是独立 Core 真机结果，尚不替代实际 App 接收确认、历史与 GiB 验收。
 - 48 项非 GiB 库/实际签名 IPC、9 项 integration 通过；DFile 8 项测试中 7 项通过、1 项可选 LAN 跳过。主仓 25 项错误/Client/Session tests、targeted analyze、3 项 installer tests 和 Release 构建通过；新错误分类复用既有双语提示，技术错误仅在主动诊断中展示。
 - 独立测试 App 已按固定 commit 制品更新，整包 deep/strict、5 成员 hash/签名、Core0.3.5 hello 和 commit 内 zip 摘要核对通过。沿用隔离 bundle ID、设置与记录，不替换或停止原 Debug App；接下来继续运行 App、GiB 双向、系统通知与清理验收，完整目标仍未完成。
+
+
+## 统一正常测试包与用户接管验收（2026-10-29）
+
+- 用户要求停止双 App 验收并删除全部测试产物。独立测试 App 已退出，其 Core/DFile 子进程全部回收；当时 1 GiB 发送最后记录 604,832,800 bytes，追加 64 KiB 仍在队列，均未完成，不能据此判定 GiB 通过或原生失败。
+- 最新 main 已重新构建正常 Debug AnyDeck，并安装锁定 Core0.3.5。bundle ID 保持 com.github.anydeck，包内 5 成员 hash/签名、IPC3 hello、整包 deep/strict 与 Debug JIT entitlement 均核对通过。当前只运行正常 Debug App，实际页面可发现 nova 12 Ultra，本机名称为 AnyDeck；隔离测试记录未迁入正常用户记录。
+- 已按用户要求删除独立测试 App、Mac 合成样本和回传副本、隔离配置/SQLite/缓存、任务临时日志/截图/诊断目录、旧安装测试目录、额外 Release 测试包与私有构建缓存。此前本文引用的临时证据路径现已清理；验证结论保留在本地 Git 记录中。正常 Debug 包、项目源码和锁定交付制品保留。手机端由用户确认测试文件已删除。
+- 正常通知授权由系统保存，无需每次启动重复允许；不同 bundle ID 的独立测试包与正常 App 分别记录权限。独立包不弹窗但返回 notDetermined 的根因未确认，不能宣称通知送达/点击已通过。参考 Apple 官方文档：https://developer.apple.com/documentation/usernotifications/asking-permission-to-use-notifications 。不再启动独立包或主动创建合成样本，后续手机验收由用户操作正常 AnyDeck。
+
+### 自测顺序与预期
+
+| 步骤 | 操作 | 预期 |
+| --- | --- | --- |
+| 发现与名称 | 同一 Wi-Fi，手机解锁并开启所有人可见；Mac 打开鸿蒙互联、开启接收。在设置修改本机名称 | 手机看到当前名称；空闲发现有扫描动画；收发期间名称/目录修改禁用 |
+| Mac → 手机 | 先选一个现有小文件，再验证现有 100 MiB 至 1 GiB 文件和多文件批次；在手机接收 | 最终显示已完成，记录数量/大小正确；进度与文件实际传输同步 |
+| 连续队列 | 大文件发送中追加一个小批次 | 追加项先排队，前一批结束后才发出下一次手机接收请求 |
+| 手机 → Mac | 将相同文件同时通过华为分享发送给当前 Mac 名称，Mac 点接收 | 最终完整落盘，批次及逐文件记录完成；源文件与回传文件 SHA-256 一致 |
+| 通知与重启 | 在系统设置 → 通知 → AnyDeck 检查允许状态；后台收发完成后点击通知，再重启 App | 通知进入鸿蒙互联页；历史仍在，重启无需重复授权 |
+| 取消和失败 | 取消一个批次，或在手机可见期限到期后发起发送 | 不假报成功，记录实际结果；未完成接收不发布成完整文件 |
+
+手机所有人可见有 10 分钟期限；到期后重新开启再测试。可用 shasum -a 256 分别核对原文件与回传文件，不需要再生成合成大文件。100 MiB 独立 Core 双向已通过；正常 App 的 GiB 完整回传、真实系统通知和其他人工验收继续保留未完成状态。

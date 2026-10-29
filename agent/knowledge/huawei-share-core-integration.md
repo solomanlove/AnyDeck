@@ -209,3 +209,11 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 最终签名制品向 nova 12 Ultra 发送新建 g-100MiB.bin，用户确认收到；同一文件回传等待 3 秒接受后完成，独立重读落盘 SHA-256 为 8cf88322bd8ea786a0741982a82639faeda2bc3f69e87c5c61bd5e8f988a4aec，与源一致。证据目录 /tmp/anydeck-harmony-core035-real-20261029，摘要 100MiB-roundtrip-verified.json；这是独立 Core 真机结果，尚不替代实际 App 接收确认、历史与 GiB 验收。
 - 48 项非 GiB 库/实际签名 IPC、9 项 integration 通过；DFile 8 项测试中 7 项通过、1 项可选 LAN 跳过。主仓 25 项错误/Client/Session tests、targeted analyze、3 项 installer tests 和 Release 构建通过；新错误分类复用既有双语提示，技术错误仅在主动诊断中展示。
 - 独立测试 App 已按固定 commit 制品更新，整包 deep/strict、5 成员 hash/签名、Core0.3.5 hello 和 commit 内 zip 摘要核对通过。沿用隔离 bundle ID、设置与记录，不替换或停止原 Debug App；接下来继续运行 App、GiB 双向、系统通知与清理验收，完整目标仍未完成。
+
+
+## 正常包交接与测试产物清理（2026-10-29）
+
+- 用户改为自行操作正常 AnyDeck，要求不再并行运行独立测试 App。正常 Debug 包已重新构建并安装锁定 Core0.3.5，沿用 com.github.anydeck；5 原生成员 hash/签名、整包 deep/strict、IPC3 和 Debug JIT entitlement 通过。当前只保留一个运行实例，设备名称为 AnyDeck。
+- 独立包的 1 GiB 发送在用户要求切换时尚未结束，追加 64 KiB 排队未开始，不计入成功或协议失败；独立配置/记录不迁入正常用户目录。
+- 独立 App、合成源/回传文件、隔离 SQLite/偏好/缓存、临时诊断/日志/截图、旧安装测试目录、额外 Release 测试包和私有构建缓存均已删除，用户确认手机测试文件已删除。本文此前引用的临时证据路径已清理；保留源码与锁定交付制品，后续自测顺序及未验收边界见阶段计划末尾。
+- 系统通知正常只需首次授权，独立 bundle ID 的权限不能替代正常 App。独立包 notDetermined 且无弹窗的原因仍未确认；真实通知和正常 App GiB 回传尚未完成，不再主动创建样本或启动独立包。
