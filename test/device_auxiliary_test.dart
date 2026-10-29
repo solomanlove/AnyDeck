@@ -156,6 +156,8 @@ void main() {
                 captureSdkProvider('phone').overrideWith((ref) async => sdk),
                 captureHostSupportedProvider.overrideWithValue(true),
                 deviceOnlineProvider('phone').overrideWith((ref) => true),
+                // 版本门槛测试不访问真实 ADB，摄像头能力由固定快照提供。
+                concurrentCameraSupportedProvider('phone').overrideWith((ref) async => false),
               ],
               child: MaterialApp(
                 locale: Locale(locale),

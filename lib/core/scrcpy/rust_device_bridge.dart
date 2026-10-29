@@ -3,6 +3,8 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'mirror_stream_health.dart';
+
 /// Rust C ABI 的薄封装；Flutter 不解析设备协议，不承担进程或音视频处理。
 class RustDeviceBridge {
   RustDeviceBridge._(this.library);
@@ -70,6 +72,23 @@ class RustDeviceBridge {
       .lookupFunction<Uint64 Function(Uint64), int Function(int)>(
         'anydeck_decoded_frames',
       );
+  // 兼容尚未更新的旧 dylib；没有健康接口时关闭自动恢复监测。
+  late final int Function(int)? _mirrorHealth = _lookupMirrorHealth();
+  int Function(int)? _lookupMirrorHealth() {
+    try {
+      return library.lookupFunction<Uint64 Function(Uint64), int Function(int)>(
+        'anydeck_mirror_health',
+      );
+    } on ArgumentError {
+      return null;
+    }
+  }
+
+  MirrorStreamHealth? mirrorHealth(int handle) {
+    final read = _mirrorHealth;
+    return read == null ? null : MirrorStreamHealth.fromNative(read(handle));
+  }
+
   late final _startMirror = library
       .lookupFunction<
         Uint64 Function(Pointer<Uint8>, Int32, Uint8),

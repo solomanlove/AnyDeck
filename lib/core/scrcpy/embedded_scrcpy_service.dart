@@ -11,8 +11,11 @@ import '../providers/app_providers.dart';
 import 'app_virtual_display_launcher.dart';
 import 'rust_device_bridge.dart';
 import 'scrcpy_camera_options.dart';
+import 'mirror_stream_health.dart';
+import 'mirror_transport_type.dart';
 
 part 'embedded_scrcpy_providers.dart';
+part 'embedded_scrcpy_recovery.dart';
 
 class EmbeddedScrcpySession {
   EmbeddedScrcpySession({
@@ -25,6 +28,8 @@ class EmbeddedScrcpySession {
     this.virtualDisplayId,
     this.camera,
     this.scid,
+    this.quality = const MirrorVideoQuality(maxSize: 1080, bitrate: 8000000),
+    this.muted = false,
   });
 
   final String deviceId;
@@ -36,6 +41,8 @@ class EmbeddedScrcpySession {
   final int? virtualDisplayId;
   final ScrcpyCameraOptions? camera;
   final String? scid;
+  final MirrorVideoQuality quality;
+  bool muted;
 }
 
 class EmbeddedScrcpyService {
@@ -45,6 +52,8 @@ class EmbeddedScrcpyService {
   final AdbService _adbService;
   final RustDeviceBridge _bridge;
   final Map<String, EmbeddedScrcpySession> _sessions = {};
+  // 保留停止/重建期间最新的窗口音频焦点，避免旧快照在恢复后短暂漏音。
+  final Map<String, bool> _audioMute = {};
   static const _textures = MethodChannel('anydeck/rust_texture');
 
   bool isActive(String deviceId) => _sessions.containsKey(deviceId);
@@ -53,6 +62,16 @@ class EmbeddedScrcpyService {
   int? getVirtualDisplayId(String deviceId) =>
       _sessions[deviceId]?.virtualDisplayId;
   Process? getServerProcess(String deviceId) => _sessions[deviceId]?.serverProcess;
+
+  /// 只读本机 Rust 内存，不发送额外 ADB 网络探测。
+  MirrorStreamHealth? getStreamHealth(String deviceId) {
+    final session = _sessions[deviceId];
+    return session == null ? null : _bridge.mirrorHealth(session.rustHandle);
+  }
+
+  MirrorVideoQuality? getVideoQuality(String deviceId) =>
+      _sessions[deviceId]?.quality;
+  bool isMuted(String deviceId) => _audioMute[deviceId] ?? true;
 
   /// 获取指定已连接镜像的视频帧尺寸。
   Map<String, int>? getVideoSize(String deviceId) {
@@ -112,6 +131,7 @@ class EmbeddedScrcpyService {
     String? startApp,
     ScrcpyCameraOptions? camera,
     bool initiallyMuted = false,
+    MirrorVideoQuality? quality,
   }) async {
     if (camera != null && (newDisplay != null || startApp != null)) {
       throw ArgumentError('Camera cannot create a display or launch an app');
@@ -120,6 +140,11 @@ class EmbeddedScrcpyService {
     camera?.checkActive();
     if (_sessions.containsKey(sessionId)) {
       return _sessions[sessionId]!.textureId;
+    }
+    if (camera == null) {
+      _audioMute[sessionId] = quality == null
+          ? initiallyMuted
+          : _audioMute[sessionId] ?? initiallyMuted;
     }
     final scid = camera?.scid ??
         (Random.secure().nextInt(0x7ffffffe) + 1).toRadixString(16);
@@ -196,8 +221,17 @@ class EmbeddedScrcpyService {
         camera == null &&
         (prefs.getBool('settings.mirrorAudioEnabled') ?? true) &&
         isAudioSupported;
-    final int bitrate = camera != null ? 4000000 : prefs.getInt('settings.mirrorVideoBitrate') ?? 8000000;
-    final int maxSize = camera != null ? 1280 : prefs.getInt('settings.mirrorMaxSize') ?? 1080;
+    final configuredQuality = MirrorVideoQuality(
+      bitrate: prefs.getInt('settings.mirrorVideoBitrate') ?? 8000000,
+      maxSize: prefs.getInt('settings.mirrorMaxSize') ?? 1080,
+    );
+    final effectiveQuality = camera != null
+        ? const MirrorVideoQuality(maxSize: 1280, bitrate: 4000000)
+        : quality == null
+            ? configuredQuality
+            : configuredQuality.cappedBy(quality);
+    final bitrate = effectiveQuality.bitrate;
+    final maxSize = effectiveQuality.maxSize;
 
     // 若设备当前处于休眠或息屏状态，发送 KEYCODE_WAKEUP (224) 唤醒屏幕以确保 SurfaceFlinger 正常产出渲染帧
     if (camera == null) {
@@ -291,7 +325,8 @@ class EmbeddedScrcpyService {
       if (rustHandle == 0) {
         throw Exception('Failed to start Rust mirror session');
       }
-      if (mirrorAudioEnabled && initiallyMuted) {
+      final nativeMuted = isMuted(sessionId);
+      if (mirrorAudioEnabled && nativeMuted) {
         _bridge.mute(rustHandle, 1);
       }
 
@@ -342,9 +377,14 @@ class EmbeddedScrcpyService {
         virtualDisplayId: virtualDisplayId,
         camera: camera,
         scid: scid,
+        quality: effectiveQuality,
+        muted: isMuted(sessionId),
       );
 
       _sessions[sessionId] = session;
+      if (mirrorAudioEnabled && session.muted != nativeMuted) {
+        _bridge.mute(rustHandle, session.muted ? 1 : 0);
+      }
     } catch (e) {
       // Cleanup on failure
       camera?.cancel();
@@ -380,8 +420,10 @@ class EmbeddedScrcpyService {
 
   /// 切换指定 Android 投屏会话的本地音频输出。
   void setMuted(String deviceId, bool muted) {
+    _audioMute[deviceId] = muted;
     final session = _sessions[deviceId];
     if (session == null) return;
+    session.muted = muted;
     _bridge.mute(session.rustHandle, muted ? 1 : 0);
   }
 

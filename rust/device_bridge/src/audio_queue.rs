@@ -2,6 +2,9 @@
 use std::ffi::c_void;
 use std::ptr;
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+use crate::pcm_playback::PcmOutput;
 
 type Queue = *mut c_void;
 #[repr(C)]
@@ -49,6 +52,7 @@ extern "C" {
     fn AudioQueueStop(queue: Queue, immediate: u8) -> i32;
     fn AudioQueueDispose(queue: Queue, immediate: u8) -> i32;
     fn AudioQueueSetParameter(queue: Queue, parameter: u32, value: f32) -> i32;
+    fn AudioQueueGetProperty(queue: Queue, property: u32, data: *mut c_void, size: *mut u32) -> i32;
 }
 
 // 原始指针只作为 Queue 已分配 buffer 的地址保存；不会在锁外并发读写 buffer。
@@ -62,16 +66,27 @@ extern "C" fn recycle(user: *mut c_void, _queue: Queue, buffer: *mut Buffer) {
 
 const BUFFER_CAPACITY: u32 = 16384;
 const BUFFER_COUNT: usize = 8;
+const START_BUFFER_COUNT: usize = 3;
+const STALL_TIMEOUT: Duration = Duration::from_millis(500);
+const HEALTH_INTERVAL: Duration = Duration::from_millis(250);
 
 pub struct Player {
     queue: Queue,
     pool: Box<Pool>,
+    started: bool,
+    queued_before_start: usize,
+    empty_since: Option<Instant>,
+    last_health_check: Option<Instant>,
 }
 impl Player {
     pub fn new() -> Result<Self, String> {
         let mut player = Self {
             queue: ptr::null_mut(),
             pool: Box::new(Pool(Mutex::new(Vec::with_capacity(BUFFER_COUNT)))),
+            started: false,
+            queued_before_start: 0,
+            empty_since: None,
+            last_health_check: None,
         };
         let format = Format {
             sample_rate: 48000.0,
@@ -111,9 +126,6 @@ impl Player {
                     .map_err(|_| "Audio pool poisoned")?
                     .push(buffer as usize);
             }
-            if AudioQueueStart(player.queue, ptr::null()) != 0 {
-                return Err("Audio output start failed".into());
-            }
         }
         Ok(player)
     }
@@ -124,7 +136,7 @@ impl Player {
         if status == 0 {
             Ok(())
         } else {
-            Err("Audio volume failed".into())
+            Err(format!("Audio volume failed (status={status})"))
         }
     }
 
@@ -139,23 +151,68 @@ impl Player {
             return Ok(());
         }
         let data = &pcm[..valid_len];
+        let now = Instant::now();
+        if self.started
+            && self.last_health_check.is_none_or(|last| now.duration_since(last) >= HEALTH_INTERVAL)
+        {
+            let mut running = 0u32;
+            let mut size = std::mem::size_of::<u32>() as u32;
+            let status = unsafe {
+                AudioQueueGetProperty(
+                    self.queue, u32::from_be_bytes(*b"aqrn"),
+                    &mut running as *mut u32 as *mut c_void, &mut size,
+                )
+            };
+            self.last_health_check = Some(now);
+            if status != 0 {
+                return Err(format!("Audio queue health failed (status={status})"));
+            }
+            if running == 0 {
+                return Err("Audio queue stopped unexpectedly".into());
+            }
+        }
 
         for chunk in data.chunks(BUFFER_CAPACITY as usize) {
             let address = self.pool.0.lock().map_err(|_| "Audio pool poisoned")?.pop();
             if let Some(address) = address {
+                self.empty_since = None;
                 let buffer = address as *mut Buffer;
                 unsafe {
                     ptr::copy_nonoverlapping(chunk.as_ptr(), (*buffer).data as *mut u8, chunk.len());
                     (*buffer).size = chunk.len() as u32;
-                    if AudioQueueEnqueueBuffer(self.queue, buffer, 0, ptr::null()) != 0 {
-                        return Err("Audio enqueue failed".into());
+                    let status = AudioQueueEnqueueBuffer(self.queue, buffer, 0, ptr::null());
+                    if status != 0 {
+                        // 入队失败时系统不拥有 buffer，必须归还池，不能逐次丢失固定缓冲。
+                        self.pool.0.lock().map_err(|_| "Audio pool poisoned")?.push(address);
+                        return Err(format!("Audio enqueue failed (status={status})"));
                     }
-                    // 确保 AudioQueue 在饥饿停顿后及时恢复播放
-                    let _ = AudioQueueStart(self.queue, ptr::null());
+                    if !self.started {
+                        self.queued_before_start += 1;
+                        if self.queued_before_start >= START_BUFFER_COUNT {
+                            let status = AudioQueueStart(self.queue, ptr::null());
+                            if status != 0 {
+                                return Err(format!("Audio output start failed (status={status})"));
+                            }
+                            self.started = true;
+                            self.queued_before_start = 0;
+                            self.last_health_check = Some(now);
+                        }
+                    }
                 }
+            } else if now.duration_since(*self.empty_since.get_or_insert(now)) >= STALL_TIMEOUT {
+                return Err("Audio queue stalled: no recycled buffers for 500ms".into());
             }
         }
         Ok(())
+    }
+}
+
+impl PcmOutput for Player {
+    fn mute(&mut self, muted: bool) -> Result<(), String> {
+        Player::mute(self, muted)
+    }
+    fn write(&mut self, pcm: &[u8]) -> Result<(), String> {
+        Player::write(self, pcm)
     }
 }
 impl Drop for Player {
@@ -167,5 +224,33 @@ impl Drop for Player {
                 AudioQueueDispose(self.queue, 1);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 不创建系统音频设备；空池验证耗尽与恢复的边界，Drop 对空 Queue 安全。
+    fn empty_player() -> Player {
+        Player {
+            queue: ptr::null_mut(), pool: Box::new(Pool(Mutex::new(Vec::new()))),
+            started: false, queued_before_start: 0, empty_since: None,
+            last_health_check: None,
+        }
+    }
+
+    #[test]
+    fn transient_full_queue_drops_packet_without_failing() {
+        let mut player = empty_player();
+        assert!(player.write(&[0; 3840]).is_ok());
+        assert!(player.empty_since.is_some());
+    }
+
+    #[test]
+    fn stalled_queue_requests_recovery_instead_of_dropping_forever() {
+        let mut player = empty_player();
+        player.empty_since = Some(Instant::now() - Duration::from_millis(600));
+        assert!(player.write(&[0; 3840]).unwrap_err().contains("stalled"));
     }
 }

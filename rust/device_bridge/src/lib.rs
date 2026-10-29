@@ -2,6 +2,9 @@
 mod adb;
 mod adb_socket;
 mod audio_queue;
+mod pcm_playback;
+mod mirror_audio;
+mod mirror_health;
 pub mod performance;
 pub mod core;
 pub mod c_api_ios;
@@ -28,6 +31,7 @@ pub(crate) struct Session {
     pub(crate) socket: Mutex<Option<TcpStream>>,
     pub(crate) control_socket: Mutex<Option<TcpStream>>,
     pub(crate) frame: Arc<video::Frame>,
+    pub(crate) health: mirror_health::MirrorHealth,
 }
 static SESSIONS: OnceLock<Mutex<HashMap<u64, Arc<Session>>>> = OnceLock::new();
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -71,6 +75,7 @@ pub unsafe extern "C" fn anydeck_start(
         socket: Mutex::new(None),
         control_socket: Mutex::new(None),
         frame: Arc::new(video::Frame::default()),
+        health: mirror_health::MirrorHealth::default(),
     });
     let Ok(mut registry) = sessions().lock() else {
         return 0;
@@ -132,6 +137,7 @@ pub unsafe extern "C" fn anydeck_start_mirror(
         socket: Mutex::new(None),
         control_socket: Mutex::new(None),
         frame: Arc::new(video::Frame::default()),
+        health: mirror_health::MirrorHealth::default(),
     });
     let Ok(mut registry) = sessions().lock() else {
         return 0;

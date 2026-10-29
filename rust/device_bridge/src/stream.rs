@@ -33,6 +33,17 @@ pub fn read_packet(
     target: &mut [u8],
     stopped: &AtomicBool,
 ) -> io::Result<()> {
+    read_packet_with_progress(stream, target, stopped, |_| {})
+}
+
+/// 仅 payload 使用进度探针，长时间接收半帧可报告拥塞；等待下一帧不能当作弱网。
+pub fn read_packet_with_progress(
+    stream: &mut TcpStream,
+    target: &mut [u8],
+    stopped: &AtomicBool,
+    mut progress: impl FnMut(Duration),
+) -> io::Result<()> {
+    let started = Instant::now();
     let mut offset = 0;
     while offset < target.len() {
         if stopped.load(Ordering::Acquire) {
@@ -50,6 +61,7 @@ pub fn read_packet(
             }
             Err(error) => return Err(error),
         }
+        progress(started.elapsed());
     }
     Ok(())
 }
@@ -108,5 +120,26 @@ mod tests {
                 .kind(),
             io::ErrorKind::Interrupted
         );
+    }
+
+    #[test]
+    fn slow_fragmented_payload_reports_progress_without_losing_bytes() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut socket = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        socket.set_read_timeout(Some(Duration::from_millis(15))).unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut writer, _) = listener.accept().unwrap();
+            writer.write_all(&[1, 2]).unwrap();
+            std::thread::sleep(Duration::from_millis(80));
+            writer.write_all(&[3, 4]).unwrap();
+        });
+        let mut bytes = [0; 4];
+        let mut longest = Duration::ZERO;
+        read_packet_with_progress(&mut socket, &mut bytes, &AtomicBool::new(false), |elapsed| {
+            longest = longest.max(elapsed);
+        }).unwrap();
+        server.join().unwrap();
+        assert_eq!(bytes, [1, 2, 3, 4]);
+        assert!(longest >= Duration::from_millis(50));
     }
 }

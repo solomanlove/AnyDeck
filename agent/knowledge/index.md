@@ -22,7 +22,7 @@
 | `adb-harmony-app-analysis` | HarmonyOS 已安装应用独立分析 | active | 记录 HDC `bm dump` 能力探测、独立的开发厂商与开发者/组织字段、HarmonyOS 专属详情页、失败不跳转和 Android 链路隔离 | `core/apps/`, `features/apps/` |
 | `adb-app-signature-details` | 应用签名证书详情 | active | 记录已安装应用当前/历史 signer、X.509 证书字段、MD5/SHA-1/SHA-256 指纹及 Android Helper DEX 数据链路 | `core/apps/`, `features/apps/`, `tool/android_helper/` |
 | `adb-usage-companion` | 手机使用统计、位置记录与 ADB 历史同步 | active | 可见授权、系统统计口径、位置前台服务、手机离线库、分页游标与 SQLite 事务、内嵌地图底图、图标复用及验证边界 | `core/usage/`, `features/apps/`, `tool/usage_companion/` |
-| `adb-device-rust-sessions` | 屏幕投屏、摄像头、麦克风与手机剪贴板 Rust 底座 | active | 彻底移除 C++ 插件，屏幕投屏、VideoToolbox 硬解、AudioQueue、触控注入、摄像头、麦克风、剪贴板全面由纯 Rust 底座承接 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
+| `adb-device-rust-sessions` | 屏幕投屏、摄像头、麦克风与手机剪贴板 Rust 底座 | active | 屏幕投屏、VideoToolbox 硬解、AudioQueue 自恢复、音频断流有限重试、无线积压降分辨率/码率、触控注入、摄像头、麦克风与剪贴板 Rust 底座 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
 | `adb-device-rust-sessions-test` | Rust 设备会话回归验证 | active | 自动验证结果、平台门槛、生成视频帧解码与真机回归清单 | `test/`, `rust/device_bridge/` |
 | `adb-embedded-camera` | 内嵌摄像头预览 | active | scrcpy camera 参数、独立会话/端口、原生 Texture 复用、手动启停及销毁回收、macOS 限制与回归边界 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
 | `adb-cert-management` | 证书管理机制 | active | 记录用户证书与系统证书（Root 权限，包含 Android 10+ 内存挂载与 Conscrypt APEX 挂载）的导入机制与 adb 命令设计 | `control/` (控制面板) |

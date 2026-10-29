@@ -15,12 +15,24 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
   int _generation = 0;
   Future<void>? _starting;
   Future<void>? _stopping;
+  Timer? _healthTimer;
+  final Stopwatch _healthClock = Stopwatch()..start();
+  MirrorRecoveryPolicy _recoveryPolicy = MirrorRecoveryPolicy();
+  bool _recovering = false;
+
+  bool _isRecoveryCurrent(int generation, [int? textureId]) =>
+      ref.mounted && generation == _generation &&
+      (textureId == null || state == textureId);
 
   @override
   int? build() {
     // Keep provider alive so session state is preserved when UI rebuilds or switch tabs
     ref.keepAlive();
-    ref.onDispose(() => _generation++);
+    ref.onDispose(() {
+      _generation++;
+      _healthTimer?.cancel();
+      _healthClock.stop();
+    });
     final textureId = ref.watch(embeddedScrcpyServiceProvider).getTextureId(deviceId);
     if (textureId != null) {
       // 避免在 build 中直接修改 state 或进行副作用，使用 microtask 延迟注册进程监听
@@ -37,6 +49,7 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
     process?.exitCode.then((code) async {
       // 如果当前的投屏状态依然是这个 textureId，且进程已退出，说明是连接断开，自动执行清理
       if (ref.mounted && generation == _generation && state == textureId) {
+        _healthTimer?.cancel();
         final stopping = service.stop(deviceId);
         _stopping = stopping;
         state = null;
@@ -83,8 +96,9 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
   Future<void> _start(
     String? newDisplay,
     String? startApp,
-    bool initiallyMuted,
-  ) {
+    bool initiallyMuted, [
+    MirrorVideoQuality? quality,
+  ]) {
     if (_starting != null) return _starting!;
     final generation = ++_generation;
     final service = ref.read(embeddedScrcpyServiceProvider);
@@ -94,6 +108,7 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
       newDisplay,
       startApp,
       initiallyMuted,
+      quality,
     );
     _starting = operation;
     return operation.whenComplete(() => _starting = null);
@@ -105,13 +120,17 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
     String? newDisplay,
     String? startApp,
     bool initiallyMuted,
+    MirrorVideoQuality? quality,
   ) async {
     try {
+      if (_stopping != null) await _stopping;
+      if (!ref.mounted || generation != _generation) return;
       final textureId = await service.start(
         deviceId: deviceId,
         newDisplay: newDisplay,
         startApp: startApp,
         initiallyMuted: initiallyMuted,
+        quality: quality,
       );
       if (!ref.mounted || generation != _generation) {
         await service.stop(deviceId);
@@ -119,6 +138,7 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
       }
       state = textureId;
       _listenToProcessExit(textureId);
+      _watchStreamHealth(service, textureId, newDisplay, startApp);
     } catch (e) {
       if (ref.mounted && generation == _generation) {
         state = null;
@@ -128,8 +148,12 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
     }
   }
 
-  Future<void> forceStop() async {
+  Future<void> forceStop() => _stop();
+
+  Future<void> _stop({bool resetRecovery = true}) async {
     ++_generation;
+    _healthTimer?.cancel();
+    if (resetRecovery) _recoveryPolicy = MirrorRecoveryPolicy();
     final service = ref.read(embeddedScrcpyServiceProvider);
     // 先使退出回调失效；主动停止和刷新不应触发自动换线。
     try {
@@ -139,7 +163,13 @@ class ActiveEmbeddedMirrorNotifier extends Notifier<int?> {
     if (ref.mounted) state = null;
     await _stopping;
     if (service.isActive(deviceId)) {
-      await service.stop(deviceId);
+      final stopping = service.stop(deviceId);
+      _stopping = stopping;
+      try {
+        await stopping;
+      } finally {
+        if (identical(_stopping, stopping)) _stopping = null;
+      }
     }
     if (ref.mounted) {
       ref.read(screenPowerOffProvider(deviceId).notifier).setOff(false);

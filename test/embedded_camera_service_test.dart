@@ -7,6 +7,7 @@ import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/scrcpy/embedded_scrcpy_service.dart';
 import 'package:any_deck/core/scrcpy/rust_device_bridge.dart';
 import 'package:any_deck/core/scrcpy/scrcpy_camera_options.dart';
+import 'package:any_deck/core/scrcpy/mirror_stream_health.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -258,6 +259,41 @@ void main() {
       ),
       false,
     );
+  });
+
+  test('弱网参数传入 server，不覆盖用户偏好或提高已有分辨率', () async {
+    SharedPreferences.setMockInitialValues({
+      'settings.mirrorMaxSize': 720,
+      'settings.mirrorVideoBitrate': 8000000,
+    });
+    final adb = CameraAdbFake();
+    final service = EmbeddedScrcpyService(adb, BridgeFake());
+    addTearDown(() => service.stop('phone'));
+    await service.start(
+      deviceId: 'phone',
+      quality: const MirrorVideoQuality(maxSize: 1280, bitrate: 4000000),
+    );
+    expect(adb.launches.single, containsAll(['max_size=720', 'video_bit_rate=4000000', 'audio=true']));
+    expect(service.getVideoQuality('phone')?.bitrate, 4000000);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getInt('settings.mirrorVideoBitrate'), 8000000);
+    expect(prefs.getInt('settings.mirrorMaxSize'), 720);
+  });
+
+  test('原生首帧等待期间的焦点变化在注册完成时补齐', () async {
+    final bridge = BridgeFake();
+    final service = EmbeddedScrcpyService(CameraAdbFake(), bridge);
+    addTearDown(() => service.stop('phone'));
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'register') {
+        service.setMuted('phone', true);
+        return 1;
+      }
+      return null;
+    });
+    await service.start(deviceId: 'phone');
+    expect(service.isMuted('phone'), true);
+    expect(bridge.mutes, [(1, 1)]);
   });
 
   test('取消令牌拒绝迟到启动，每次摄像头会话 ID 独立', () async {

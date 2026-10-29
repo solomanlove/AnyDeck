@@ -1,5 +1,6 @@
 //! 每个会话一个可取消工作线程；不同设备/功能有独立 socket 和临时 server。
 use crate::{adb::Transport, audio_queue::Player, stream, video::Decoder, Session};
+use crate::pcm_playback::PcmPlayback;
 use std::io::{ErrorKind, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::sync::atomic::Ordering;
@@ -62,19 +63,12 @@ fn audio(socket: &mut TcpStream, s: &Session) -> Result<(), String> {
     }
     let mut pcm = [0; 3840];
     stream::read(socket, &mut pcm, &s.stopped).map_err(|e| e.to_string())?;
-    let mut player = Player::new()?;
-    let mut muted = s.muted.load(Ordering::Acquire);
-    player.mute(muted)?;
-    player.write(&pcm)?;
+    let mut player = PcmPlayback::with_output(Player::new()?, Player::new);
+    player.write(&pcm, s.muted.load(Ordering::Acquire));
     s.status.store(1, Ordering::Release);
     while !s.stopped.load(Ordering::Acquire) {
-        stream::read(socket, &mut pcm, &s.stopped).map_err(|e| e.to_string())?;
-        let next = s.muted.load(Ordering::Acquire);
-        if next != muted {
-            player.mute(next)?;
-            muted = next;
-        }
-        player.write(&pcm)?;
+        stream::read_packet(socket, &mut pcm, &s.stopped).map_err(|e| e.to_string())?;
+        player.write(&pcm, s.muted.load(Ordering::Acquire));
     }
     Ok(())
 }
@@ -177,13 +171,18 @@ pub fn run_mirror(
         std::thread::Builder::new()
             .name(format!("anydeck-audio-{}", id))
             .spawn(move || {
-                let _ = run_mirror_audio(audio_socket, &s_clone);
+                if let Err(error) = crate::mirror_audio::run(audio_socket, &s_clone) {
+                    if !s_clone.stopped.load(Ordering::Acquire) {
+                        eprintln!("[Android Audio] receive worker stopped: {error}");
+                    }
+                }
             })
             .ok()
     } else {
         None
     };
 
+    let mut lag = crate::mirror_health::VideoLag::default();
     let mut decoder = Decoder::new(s.frame.clone());
     let mut header = [0u8; 12];
     let mut packet = Vec::new();
@@ -207,8 +206,15 @@ pub fn run_mirror(
         if packet.len() < size {
             packet.resize(size, 0);
         }
-        stream::read_packet(&mut video, &mut packet[..size], &s.stopped)
-            .map_err(|error| format!("Video payload read failed: {error}"))?;
+        stream::read_packet_with_progress(&mut video, &mut packet[..size], &s.stopped, |elapsed| {
+            if elapsed >= Duration::from_millis(350) {
+                s.health.record_video(elapsed.as_millis().min(u128::from(u32::MAX)) as u32);
+            }
+        }).map_err(|error| format!("Video payload read failed: {error}"))?;
+        // codec config 不带媒体时间戳；仅真实视频帧用于估算接收积压。
+        if packet_pts & (1u64 << 62) == 0 {
+            s.health.record_video(lag.observe(clean_pts, Instant::now()));
+        }
         decoder.decode(&packet[..size], clean_pts)?;
         if s.frame.dimensions().0 > 0 {
             if !s.frame.has_surface() {
@@ -328,52 +334,6 @@ fn connect_mirror_socket(
     }
 }
 
-fn run_mirror_audio(mut socket: TcpStream, s: &Session) -> Result<(), String> {
-    let mut codec_header = [0u8; 4];
-    stream::read(&mut socket, &mut codec_header, &s.stopped).map_err(|e| e.to_string())?;
-    // 若设备端未成功捕获音频或返回禁用状态（如 [0, 0, 0, 0]），及时退出避免异常读取
-    if codec_header != [0, b'r', b'a', b'w'] {
-        let _ = socket.shutdown(std::net::Shutdown::Both);
-        return Err("Audio stream disabled or unsupported codec".into());
-    }
-    let mut player = Player::new().ok();
-    let mut header = [0u8; 12];
-    let mut packet = Vec::new();
-    let mut last_muted = false;
-    while !s.stopped.load(Ordering::Acquire) {
-        if stream::read_packet(&mut socket, &mut header, &s.stopped).is_err() {
-            break;
-        }
-        let pts = u64::from_be_bytes(header[0..8].try_into().unwrap());
-        let size = u32::from_be_bytes(header[8..12].try_into().unwrap()) as usize;
-        if size == 0 {
-            continue;
-        }
-        if size > 10 * 1024 * 1024 {
-            break;
-        }
-        if packet.len() < size {
-            packet.resize(size, 0);
-        }
-        if stream::read_packet(&mut socket, &mut packet[..size], &s.stopped).is_err() {
-            break;
-        }
-        let is_config = (pts & (1u64 << 63)) != 0 || (pts & (1u64 << 62)) != 0;
-        if !is_config {
-            if let Some(player) = player.as_mut() {
-                let muted = s.muted.load(Ordering::Acquire);
-                if muted != last_muted {
-                    let _ = player.mute(muted);
-                    last_muted = muted;
-                }
-                let _ = player.write(&packet[..size]);
-            }
-        }
-    }
-    let _ = socket.shutdown(std::net::Shutdown::Both);
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -393,6 +353,7 @@ mod tests {
             socket: Mutex::new(None),
             control_socket: Mutex::new(None),
             frame: Arc::new(crate::video::Frame::default()),
+            health: crate::mirror_health::MirrorHealth::default(),
         }
     }
     #[test]

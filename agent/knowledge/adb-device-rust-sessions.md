@@ -63,7 +63,7 @@ macOS 屏幕投屏只有在 VideoToolbox 产出首个非零尺寸且带 `IOSurfa
 
 ADB 单条命令上限 15 秒，输出排空且最多保留 4096 字节；端口分配返回后才处理取消，异常时通过本次唯一 socket 补查映射。整个启动有 75 秒上限，停止异常清理最多等待 65 秒，UI 始终显示正在连接/停止。
 
-播放器固定 5 个 20ms buffer（最多约 100ms 队列），满时丢弃新块。Swift 每秒最多通知 30 次纹理可用。VideoToolbox 同步解码，Rust 持有最新一帧并在替换时 release；AudioQueue Dispose 不持有回调锁，避免死锁。
+Android PCM 播放器固定 8 个 16KiB buffer，通常每包 20ms，预填 3 包后启动；池满时丢弃新块，持续 500ms 无回收则重建输出。Swift 每秒最多通知 30 次纹理可用。VideoToolbox 同步解码，Rust 持有最新一帧并在替换时 release；AudioQueue Dispose 不持有回调锁，避免死锁。
 
 多窗口不共享 Riverpod 状态；Rust 库按全局句柄隔离会话。每个 Flutter Engine 向其窗口的薄 Swift 桥接登记句柄，窗口关闭时统一 release，防止 Isolate 退出后遗留音频采集或剪贴板线程。
 
@@ -94,3 +94,36 @@ Flutter 测试替换 backend，无需动态库。独立 FFI 测试可以显式�
 执行结果和人工回归见 [adb-device-rust-sessions-test.md](adb-device-rust-sessions-test.md)。尚未运行桌面项目或访问真实设备摄像头/麦克风，实际采集、ROM 权限和长时间并发需要真机回归。
 
 协议依据：[scrcpy 4.0](https://github.com/Genymobile/scrcpy/tree/v4.0)、[audio](https://github.com/Genymobile/scrcpy/blob/v4.0/doc/audio.md)、[camera](https://github.com/Genymobile/scrcpy/blob/v4.0/doc/camera.md)、[Controller](https://github.com/Genymobile/scrcpy/blob/v4.0/server/src/main/java/com/genymobile/scrcpy/control/Controller.java)。
+
+## Android 音频恢复与无线弱网降级（2026-10-29）
+
+### 需求与诊断边界
+
+用户反馈投屏播放一段时间后静音，重新连接恢复，并要求弱网时降低分辨率和传输码率。源码确认原 Android AudioQueue 创建、静音、入队失败被投屏线程忽略，池耗尽后无限丢包，音频 socket 结束也没有上报恢复。这些是可确认的恢复缺口；没有故障现场原生日志，不能认定它们是本次真机静音的唯一原因。
+
+### 实现与性能
+
+- `audio_queue.rs`：预填 3 个 buffer 后才 Start；检查入队/启动 OSStatus，失败 buffer 归还池；每 250ms 检查 IsRunning，满池 500ms 无回收报告停滞。Dispose 仍在不持 pool 锁的情况下等待 callback 结束。
+- `pcm_playback.rs`：输出创建、静音、入队失败后释放旧输出，以至少 500ms 的创建间隔重试；超过 1.5 秒无 PCM 后重建本机队列。恢复前应用最新静音值，继续排空 socket，不积压音频。投屏与独立麦克风/系统音频共用该恢复层；独立音频保留首次创建失败的错误返回，后续读包允许暂停并响应取消。
+- `mirror_audio.rs`：记录音频收包错误；只有已收到 PCM 后意外结束才设置 audioFailed，启动即不支持采集不触发重连。正常主动停止不触发恢复。
+- `mirror_health.rs`：视频 PTS 与接收端单调时钟的相对偏差估算新增积压，不要求手机与电脑对时。PTS 回退重置基准，超过 1.5 秒无更新的样本作废；`stream.rs` 另监测正在接收的 payload，持续收不完半帧也能上报积压。等待下一帧不判断拥塞，因此静态画面、暂停或低 FPS 不直接触发降级。
+- `anydeck_mirror_health`：低 32 位为积压毫秒，bit 32 为音频意外退出。Flutter 每秒读一次本机 FFI；旧 dylib 缺少该接口时返回 null、禁用自动监测，不新增 ADB 网络探测，不向 Dart 逐帧传递数据。
+- `mirror_stream_health.dart`：连续 3 次积压 ≥350ms 才在 TCP/TLS Wi-Fi 投屏下降一档，重建决策至少间隔 20 秒；USB 不自动降画质。参数同时受用户配置上限约束，不会反向增大任何值。
+
+| 档位 | 最长边上限 | 视频码率上限 |
+| --- | --- | --- |
+| 第一档 | 1280 | 4 Mbps |
+| 第二档 | 960 | 2 Mbps |
+| 第三档 | 640 | 1 Mbps |
+
+`max_size` 指最长边，不是“720p/1080p”的短边。音频继续使用 48kHz、16-bit、双声道 RAW，数据率约 1.536 Mbps；此次通过降低视频负载给音频留带宽，没有降低音频码率。带宽不足以承载 RAW 音频、设备端采集权限/DRM、输出设备异常等情况仍可能不流畅。
+
+### 会话与兼容
+
+- `embedded_scrcpy_recovery.dart` / `embedded_scrcpy_providers.dart` 复用已有 stop/start，串行清理旧 Texture、Rust handle、server 和 forward，再用相同 deviceId/newDisplay/startApp 建立会话。参数仅写入本次启动，不覆盖 SharedPreferences。
+- 当前接入未实现编码参数热更新，调整通过重建生效，画面和音频会短暂中断；这不是无缝切换。音频 socket 异常最多自动重建两次，同样有 20 秒冷却。
+- 恢复期间保留最新音频焦点，启动等待过程中收到的静音变化在 Texture 注册完成时补齐。窗口关闭、用户刷新、通道切换会递增 generation 并取消监测，迟到的任务不再拉起旧会话。
+- 自动降级只向低档移动，不主动探测升档；手动刷新或切回 USB 用用户原设置重新开始。与现有 USB → TCP → TLS 优选机制协作，不改变通道标签。
+- 新增 stderr `[Android Audio]` 与 Dart `[MirrorRecovery]` 诊断；原生 stderr 不等于已经写入 Dart 本地日志。需要重新编译打包 native dylib 才能获得新行为；本轮只构建 crate，没有覆盖正在运行的 App。
+
+验证与未验收项见 [adb-device-rust-sessions-test.md](adb-device-rust-sessions-test.md)。

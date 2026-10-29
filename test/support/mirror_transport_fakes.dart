@@ -5,6 +5,7 @@ import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/scrcpy/embedded_scrcpy_service.dart';
 import 'package:any_deck/core/scrcpy/scrcpy_camera_options.dart';
+import 'package:any_deck/core/scrcpy/mirror_stream_health.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 模拟实时 adb 列表与每条 transport 的硬件身份，不依赖设备缓存。
@@ -67,6 +68,19 @@ class TransportMirrors extends Fake implements EmbeddedScrcpyService {
   final stopGates = <String, Completer<void>>{};
   Completer<void>? startGate;
   int _nextTexture = 0;
+  final health = <String, MirrorStreamHealth>{};
+  final qualities = <String, MirrorVideoQuality>{};
+  final requestedQualities = <MirrorVideoQuality?>[];
+  final mutes = <String, bool>{};
+
+  @override
+  MirrorStreamHealth? getStreamHealth(String deviceId) => health[deviceId];
+  @override
+  MirrorVideoQuality? getVideoQuality(String deviceId) => qualities[deviceId];
+  @override
+  bool isMuted(String deviceId) => mutes[deviceId] ?? true;
+  @override
+  void setMuted(String deviceId, bool muted) => mutes[deviceId] = muted;
 
   @override
   bool isActive(String deviceId) => textures.containsKey(deviceId);
@@ -82,8 +96,12 @@ class TransportMirrors extends Fake implements EmbeddedScrcpyService {
     String? startApp,
     ScrcpyCameraOptions? camera,
     bool initiallyMuted = false,
+    MirrorVideoQuality? quality,
   }) async {
     events.add('start:$deviceId');
+    requestedQualities.add(quality);
+    qualities[deviceId] = quality ?? const MirrorVideoQuality(maxSize: 1080, bitrate: 8000000);
+    mutes[deviceId] = initiallyMuted;
     starts.add((
       id: deviceId,
       display: newDisplay,

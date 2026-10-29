@@ -58,3 +58,38 @@ adb forward --list
 - 并发隔离：整机投屏保留 `scrcpy_00000000`，单 App 使用独立随机 socket `scrcpy_19ee9bfa`；单 App server 参数为 `audio=false`，未再创建第二路设备音频播放。
 - 自动验证：5 个投屏相关测试文件共 25 项通过；4 个相关 Dart 文件定向 `dart analyze` 无问题；`flutter build macos --debug` 成功。
 - 诊断窗口使用 `Ctrl+C` 强退绕过 Dart `dispose`，手动移除了该次测试的 `tcp:64633` forward；Android virtual display 已由 server 清理。正常窗口关闭继续由 `EmbeddedScrcpyService.stop()` 回收 Texture、Rust handle、server process 与 forward。
+
+## 2026-10-29 Android 音频恢复与弱网降级
+
+自动回归新增覆盖：
+
+- Rust mock 输出：队列错误后重建、创建/音量失败限频、恢复时应用最新静音、长暂停后重建、健康持续写入复用同一个输出。
+- 空 AudioQueue 池：短暂耗尽只丢包，持续耗尽请求恢复；不创建可听音频设备。
+- 本地 TCP：fragmented PCM 不丢字节、有效音频 EOF 上报异常、不支持采集不循环重连、超大包在分配前拒绝、慢速半帧持续报告进度。
+- PTS：连续积压、追平恢复、暂停/静态画面、时间戳重置、过期样本与 audioFailed bit。
+- Flutter：三次连续积压、20 秒冷却、三档下限、USB 不降级、用户低参数不被提高、音频最多两次自动重建；fake server 验证参数/静音保留、关闭取消、失败转交既有选路恢复、旧退出回调隔离。
+- 实际启动命令（fake ADB）：max_size/video_bit_rate 正确、SharedPreferences 不变、启动中焦点变化补齐。摄像头、单 App、USB/TCP/TLS 选路与几何映射继续回归。
+
+真机验收仍待执行：
+
+1. 三星折叠/展开分别在 USB、TCP 与 TLS Wi-Fi 连续播放有声视频至少 30 分钟，确认无永久静音。
+2. 无线限制带宽/引入抖动，确认连续积压后分档降级；查看 `[MirrorRecovery]` 及 server 启动参数。恢复正常网络后本轮保持低档，手动刷新恢复原配置。
+3. 暂停视频、切换 App、长静音后恢复；切换 macOS 音频输出设备，检查 `[Android Audio]` 和实际可听输出。
+4. 重建中关闭窗口、拔线和重新插 USB；确认只保留一个有效会话，音频焦点不丢失，触控按新的解码尺寸映射。
+5. 视频通畅但手机停止发送音频且 socket 仍开放、DRM/录音权限限制没有通用恢复判据，不以本轮自动测试视为已解决。
+
+本轮不启动桌面 App，不替换运行包。长时间声音、真实弱网阈值与实际重连中断时长尚未真机验收。
+
+本轮最终结果：
+
+| 验证 | 结果 |
+| --- | --- |
+| 12 个相关 Flutter 测试文件 | 112 项通过 |
+| Rust crate 单元回归 | 56 项通过，1 项原有生成 H.264 fixture 测试维持 ignored |
+| 10 个修改/新增 Dart 文件定向 analyze | No issues found |
+| `cargo build --manifest-path rust/device_bridge/Cargo.toml` | 通过，未复制到运行包 |
+| `git diff --check` | 通过 |
+
+Flutter 回归文件为 `mirror_stream_health_test.dart`、`embedded_mirror_recovery_test.dart`、`android_mirror_transport_host_test.dart`、`embedded_camera_service_test.dart`、`audio_forward_controller_test.dart`、`device_auxiliary_test.dart`、`camera_preview_test.dart`、`embedded_scrcpy_geometry_test.dart`、`mirror_window_aspect_and_rotation_test.dart`、`mirror_transport_resolver_test.dart`、`mirror_transport_devices_provider_test.dart`、`mirror_transport_badge_test.dart`。
+
+扩展回归时发现 `device_auxiliary_test.dart` 的 API 31 视图测试遗漏摄像头并发能力 mock，导致实际 ADB 调用及 timeout 残留；已补齐固定能力快照，隔离测试环境，业务摄像头逻辑未改。
