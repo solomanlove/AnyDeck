@@ -120,3 +120,32 @@ enum ScreenRecordPhase {
 - 点击“布局分析”后，Controller 先同步切换模式并写入 `isLoading`，UI 使用 `addPostFrameCallback` 等开关与紧凑的 `CircularProgressIndicator` 完成首帧绘制后，再启动截图/XML 抓取；加载期间仍可主动关闭分析模式，结束或失败后指示器自动消失。
 - 属性列表顶部增加盒模型示意：中心展示选中节点的 `width × height`，四周展示相对父节点的 left/top/right/bottom 间距；盒模型只显示数值、不显示单位，但数值仍跟随 PX/DP 开关换算，颜色来自 `ColorScheme`。
 - 盒模型作为属性 `ListView` 的第一项，不新增滚动容器或 Provider，不改变节点坐标计算、布局抓取和画布映射逻辑。
+
+## 10. Android 折叠屏截图自动选屏（2026-10-29）
+
+### 问题与实现
+
+- Samsung SM-F9710 展开时，默认 `screencap -p` 实测选中处于 OFF 的外屏，输出全黑 PNG；显式指定 ON 内屏的物理 ID 后画面正常。PNG 数据清理无法解决截错屏幕的问题。
+- `lib/core/adb/screenshot_display_selector.dart` 解析 `dumpsys display` 中的 `DisplayDeviceInfo`：只选择 `type INTERNAL / BUILT_IN`、`state ON`、`uniqueId="local:<数字>"` 的屏幕。虚拟屏、外接屏、OFF、DOZE 与 ON_SUSPEND 不参与选择；`committedState` 不能替代当前 `state`。
+- 多个内置屏同时 ON 时，优先选择逻辑主屏 `mDisplayId=0` 对应的物理屏，否则选择首个 ON 内置屏。返回字符串形式的 physical displayId，避免与逻辑 ID `0/1` 混用或发生 uint64 截断。
+- `AdbService.captureScreenshot` 每次截图先执行 `adb -s <deviceId> shell dumpsys display`，再执行 `adb -s <deviceId> exec-out screencap -p -d <physicalId>`。不缓存屏幕 ID，下一次截图自然跟随折叠或展开后的状态。
+- 探测失败、超时、无 ON 内置屏或旧系统输出无法解析时，保留原有不带 `-d` 的截图路径。继续复用 PNG 前后警告文本清理、截图错误与超时进程终止逻辑。
+- 探测上限为 `min(3 秒, 调用方总超时 / 4)`，截图只使用总预算的剩余时间；探测进程复用 `AdbService.run` 的超时回收。不启动常驻轮询，不新增依赖、Provider、UI 或跨窗口消息。
+
+### 影响范围与回归
+
+- 自动覆盖使用公共 `captureScreenshot` 的截图工作台、布局分析、控制页截图、批量截图、物理投屏窗口截图与 MCP 截图。显式 Display 截图、录屏与 Rust 投屏流保持原路径；iOS/HarmonyOS 分流保持原逻辑。
+- 新增 `test/adb_screenshot_display_test.dart` 的 14 项测试：展开/折叠、同一服务展开→折叠→展开、普通单屏、主屏优先、CRLF、虚拟/外接/休眠屏过滤、uint64、异常回退、USB/TCP 参数、PNG 清理、截图错误、超时终止与共享预算。
+- 下列相关回归共 36 项通过：
+
+```bash
+flutter test test/adb_screenshot_display_test.dart test/adb_service_test.dart \
+  test/screenshot_layout_merge_test.dart test/harmony_layout_inspector_test.dart \
+  test/ios_capability_route_test.dart
+flutter analyze --no-pub lib/core/adb/adb_service.dart \
+  lib/core/adb/screenshot_display_selector.dart test/adb_screenshot_display_test.dart
+```
+
+- 修改范围静态检查通过。全量 `flutter analyze --no-pub` 在其他未修改文件中报告 39 项 warning/info，未发现本次修改文件的诊断；未改动无关代码以消除这些存量问题。
+- 直接调用修改后的 Dart 服务进行真机验证：SM-F9710 展开状态 USB 与 Wi-Fi 均自动选中内屏 `4630947004648141459`，得到可读的 2448 × 1848 PNG；Mi MIX 3 自动选中单屏，得到可读的 1080 × 2340 PNG。单次总耗时分别约 441 / 1197 / 742 ms（包含状态探测和 PNG 获取，仅代表本次采样）。
+- 未启动或重新构建桌面应用。实体合屏后的外屏截图和桌面 UI 切换验收仍待手动验证；折叠路径由自动测试覆盖。读取状态与抓取画面之间若恰好发生折叠切换，当前请求仍可能捕获过渡帧，下一次截图会重新选屏。安全窗口与受保护视频的截图限制仍由 Android 执行。

@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import '../process/tool_path_resolver.dart';
 import 'adb_device.dart';
 import 'adb_result.dart';
+import 'screenshot_display_selector.dart';
 
 /// adb 薄封装，集中处理进程执行和设备列表解析。
 class AdbService {
@@ -166,23 +167,45 @@ class AdbService {
     String deviceId, {
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    final cmdStr = 'adb -s $deviceId exec-out screencap -p';
-    _onLog?.call(cmdStr, tag: 'adb', level: 'I');
+    final elapsed = Stopwatch()..start();
     Process? process;
     try {
-      process = await Process.start(executable, [
+      // 每次重读物理屏状态，折叠切换后不会沿用已关闭屏幕的 ID。
+      // 探测最多占用 3 秒且不超过总预算的四分之一，失败时兼容旧截图路径。
+      final probeTimeout = Duration(
+        microseconds: (timeout.inMicroseconds ~/ 4).clamp(1, 3000000),
+      );
+      final displayResult = await shellArgs(
+        deviceId,
+        ['dumpsys', 'display'],
+        timeout: probeTimeout,
+      );
+      final displayId = displayResult.isSuccess
+          ? ScreenshotDisplaySelector.select(displayResult.stdout)
+          : null;
+      if (!displayResult.isSuccess) {
+        _onLog?.call(
+          'Screenshot display probe failed; using default display',
+          tag: 'adb',
+          level: 'W',
+        );
+      }
+      final remaining = timeout - elapsed.elapsed;
+      if (remaining <= Duration.zero) throw TimeoutException('Screenshot');
+      process = await start([
         '-s',
         deviceId,
         'exec-out',
         'screencap',
         '-p',
+        if (displayId != null) ...['-d', displayId],
       ]);
       final stdoutFuture = process.stdout.fold<List<int>>(
         <int>[],
         (buffer, chunk) => buffer..addAll(chunk),
       );
       final stderrFuture = process.stderr.transform(utf8.decoder).join();
-      final exitCode = await process.exitCode.timeout(timeout);
+      final exitCode = await process.exitCode.timeout(remaining);
       final stderr = await stderrFuture;
       if (exitCode != 0) {
         final err = stderr.isNotEmpty
