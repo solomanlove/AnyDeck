@@ -28,6 +28,7 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
   bool _saving = false;
   String? _permission;
   String? _errorKey;
+  bool _permissionRequestFailed = false;
   int _permissionRevision = 0;
 
   @override
@@ -44,7 +45,17 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
         const Duration(seconds: 6),
       );
       if (mounted && revision == _permissionRevision) {
-        setState(() => _permission = status);
+        setState(() {
+          _permission = status;
+          if (status == 'authorized' ||
+              status == 'provisional' ||
+              status == 'denied') {
+            _permissionRequestFailed = false;
+            if (_errorKey == 'harmonySharePermissionRequestFailed') {
+              _errorKey = null;
+            }
+          }
+        });
       }
     } catch (_) {
       if (mounted && revision == _permissionRevision) {
@@ -68,6 +79,28 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
     }
   }
 
+  /// 保留系统查询状态；申请调用失败后引导设置，避免反复点击仍无反馈。
+  Future<void> _requestPermission() async {
+    try {
+      await _bridge.requestAuthorizationOrThrow().timeout(
+        const Duration(seconds: 30),
+      );
+      if (!mounted) return;
+      await _refreshPermission();
+      if (!mounted) return;
+      if (_permission == 'notDetermined' || _permission == 'unknown') {
+        throw StateError('Notification authorization unresolved');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _permissionRequestFailed = true;
+          _errorKey = 'harmonySharePermissionRequestFailed';
+        });
+      }
+    }
+  }
+
   void _setNotifications(bool enabled) {
     final controller = ref.read(appSettingsProvider.notifier);
     unawaited(
@@ -78,9 +111,8 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
             const Duration(seconds: 6),
           );
           if (status == 'notDetermined' && mounted) {
-            await _bridge.requestAuthorization().timeout(
-              const Duration(seconds: 30),
-            );
+            if (!_permissionRequestFailed) await _requestPermission();
+            return;
           }
           await _refreshPermission();
         }
@@ -114,10 +146,9 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
   void _permissionAction() {
     unawaited(
       _save(() async {
-        if (_permission == 'notDetermined') {
-          await _bridge.requestAuthorization().timeout(
-            const Duration(seconds: 30),
-          );
+        if (_permission == 'notDetermined' && !_permissionRequestFailed) {
+          await _requestPermission();
+          return;
         } else {
           await _bridge.openNotificationSettings().timeout(
             const Duration(seconds: 6),
@@ -146,6 +177,7 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
           ),
           directory: settings.harmonyShareReceiveDirectory,
           permission: _permission,
+          permissionRequestFailed: _permissionRequestFailed,
           saving: _saving,
           busy: _service.busy || _service.configuring,
           deliveryFailed: notifications.deliveryFailed.value,

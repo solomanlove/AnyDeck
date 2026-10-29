@@ -6,6 +6,43 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('交互授权保留错误与缺失响应，旧入口继续返回 false', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    const channel = MethodChannel('test/notification_authorization');
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    dynamic response;
+    messenger.setMockMethodCallHandler(channel, (_) async {
+      if (response is PlatformException) throw response;
+      return response;
+    });
+    final bridge = MacNotificationBridge(channel: channel);
+    try {
+      for (final granted in [true, false]) {
+        response = granted;
+        expect(await bridge.requestAuthorizationOrThrow(), granted);
+        expect(await bridge.requestAuthorization(), granted);
+      }
+      for (final failure in [null, 42, PlatformException(code: 'authorization_failed')]) {
+        response = failure;
+        await expectLater(
+          bridge.requestAuthorizationOrThrow(),
+          throwsA(failure == 42
+              ? isA<TypeError>()
+              : isA<PlatformException>().having(
+                  (error) => error.code,
+                  'code',
+                  failure == null ? 'invalid_authorization_response' : 'authorization_failed',
+                )),
+        );
+        expect(await bridge.requestAuthorization(), isFalse);
+      }
+    } finally {
+      bridge.dispose();
+      messenger.setMockMethodCallHandler(channel, null);
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   test(
     'forwards device title and message subtitle while preserving payload',
     () async {

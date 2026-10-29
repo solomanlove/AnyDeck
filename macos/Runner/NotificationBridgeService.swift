@@ -24,8 +24,13 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
       }
       switch call.method {
       case "requestAuthorization":
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
           DispatchQueue.main.async {
+            // 系统调用失败不等同用户拒绝，让交互界面保留错误并提供设置入口。
+            if let error = error {
+              result(FlutterError(code: "authorization_failed", message: error.localizedDescription, details: nil))
+              return
+            }
             result(granted)
           }
         }

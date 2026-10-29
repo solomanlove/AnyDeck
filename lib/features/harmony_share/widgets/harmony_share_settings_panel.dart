@@ -4,6 +4,7 @@ import '../../../app/l10n/app_localizations.dart';
 
 /// 互传设置展示面板；directory 为空表示 Downloads，permission 为系统权限原值。
 /// saving/busy 控制写入与收发互斥；所有回调由主窗口设置控制器处理。
+/// permissionRequestFailed 仅调整失败后的操作入口，不改写系统返回的 permission。
 /// 用法：放入 AlertDialog.content，并传入当前 AppSettings 与操作回调。
 class HarmonyShareSettingsPanel extends StatelessWidget {
   const HarmonyShareSettingsPanel({
@@ -19,6 +20,7 @@ class HarmonyShareSettingsPanel extends StatelessWidget {
     required this.onPermission,
     required this.onRefreshPermission,
     this.deliveryFailed = false,
+    this.permissionRequestFailed = false,
     this.errorKey,
     this.nameEditor,
   });
@@ -34,6 +36,7 @@ class HarmonyShareSettingsPanel extends StatelessWidget {
   final VoidCallback onPermission;
   final VoidCallback onRefreshPermission;
   final bool deliveryFailed;
+  final bool permissionRequestFailed;
   final String? errorKey;
   /// 可选名称编辑器，状态与保存逻辑由主窗口持有。
   final Widget? nameEditor;
@@ -78,7 +81,7 @@ class HarmonyShareSettingsPanel extends StatelessWidget {
                 onPressed: saving || permission == null ? null : onPermission,
                 child: Text(
                   l10n.t(
-                    permission == 'notDetermined'
+                    permission == 'notDetermined' && !permissionRequestFailed
                         ? 'requestPermission'
                         : 'openSystemSettings',
                   ),

@@ -28,16 +28,26 @@ class MacNotificationBridge {
 
   /// 请求系统本地通知权限（alert, sound, badge）。
   Future<bool> requestAuthorization() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) {
-      return false;
-    }
     try {
-      final result = await _channel.invokeMethod<bool>('requestAuthorization');
-      return result ?? false;
+      return await requestAuthorizationOrThrow();
     } catch (e) {
       debugPrint('[MacNotificationBridge] requestAuthorization error: $e');
       return false;
     }
+  }
+
+  /// 交互授权使用严格入口：false 仅表示未授权，通道异常及缺失结果交给调用者处理。
+  /// 旧的后台调用继续通过 requestAuthorization 将异常收敛为 false。
+  Future<bool> requestAuthorizationOrThrow() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) return false;
+    final result = await _channel.invokeMethod<bool>('requestAuthorization');
+    if (result == null) {
+      throw PlatformException(
+        code: 'invalid_authorization_response',
+        message: 'Missing notification authorization response',
+      );
+    }
+    return result;
   }
 
   /// 获取当前通知权限；桥接失败、空值或未知状态返回 unknown，不伪造首次授权状态。
