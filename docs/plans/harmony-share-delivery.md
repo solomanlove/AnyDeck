@@ -282,3 +282,12 @@ UI 变更不触及投屏、HDC/ADB 或私有协议；接收服务继续由主窗
 - 实际 App 的记录详情正确展示此前接收的 64 KiB 文件路径与本机摘要；菜单“打开所在文件夹”已在 Finder 打开相应目录并看到该合成文件，验证后关闭本次 Finder 窗口。通知设置仍为 notDetermined，真实系统通知展示/点击未通过，未再次操作被工具禁止访问的系统授权代理。
 - Core0.3.4 独立 App 正常退出后，记录的 Core53562/helper53563 全部自动退出，原 App PID90081 和投屏保留。删除 Mac 本轮 100 MiB/1 GiB 源文件、隔离 App、两个诊断 runtime、大型反汇编与本轮私有 Rust 缓存，删除前分配空间合计约1711.9 MiB；任务根目录复查无 ≥64 MiB 文件和接收 staging。锁定 zip、源码、共享构建及小型证据保留，清单已追加到 /tmp/anydeck-harmony-cleanup-manifest.json。
 - 手机仅选中本轮 a–f 六种样本及重复收到的 b-64KiB(1)，共7项，移入“最近删除”，系统提示最长30天可恢复；原目录确认不再有合成文件，个人文件和旧39B测试文本未动，未清空最近删除。后续先处理接收兼容性及通知授权问题，再按需生成大样本；完整目标继续未完成。
+
+
+## Core 0.3.5 接收终态与 100 MiB 双向（2026-10-29）
+
+- 私有 Core 95574b21510fa26137def60a9ca66412b8251403：接收必须同时满足 helper exit 0、唯一完整成功终态、全部文件大小/hash 校验与原子发布。迟到成功不能覆盖先前失败；取消、期限、文件上限与进程终止分别分类，私有诊断不进入主仓。主仓锁固定 zip SHA-256 c603bcdd028dbd9ab025d6abfaa7bc7b27e243c24e8293e8633c2c89365bd552，IPC3、生产 send/receive=false。
+- 准备版完成两次 1 MiB 回传，均与源 SHA-256 一致；默认配置的对照也成功，显式 Wi-Fi 名称实验已撤回。当前网络已变化，本轮重新读取 Mac 地址和广播地址、重新发现 nova 动态端口后才发起传输，未沿用旧地址。
+- 最终签名制品向 nova 12 Ultra 发送新建 g-100MiB.bin，用户确认收到；同一文件回传等待 3 秒接受后完成，独立重读落盘 SHA-256 为 8cf88322bd8ea786a0741982a82639faeda2bc3f69e87c5c61bd5e8f988a4aec，与源一致。证据目录 /tmp/anydeck-harmony-core035-real-20261029，摘要 100MiB-roundtrip-verified.json；这是独立 Core 真机结果，尚不替代实际 App 接收确认、历史与 GiB 验收。
+- 48 项非 GiB 库/实际签名 IPC、9 项 integration 通过；DFile 8 项测试中 7 项通过、1 项可选 LAN 跳过。主仓 25 项错误/Client/Session tests、targeted analyze、3 项 installer tests 和 Release 构建通过；新错误分类复用既有双语提示，技术错误仅在主动诊断中展示。
+- 独立测试 App 已按固定 commit 制品更新，整包 deep/strict、5 成员 hash/签名、Core0.3.5 hello 和 commit 内 zip 摘要核对通过。沿用隔离 bundle ID、设置与记录，不替换或停止原 Debug App；接下来继续运行 App、GiB 双向、系统通知与清理验收，完整目标仍未完成。

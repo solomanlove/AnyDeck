@@ -1,6 +1,6 @@
 # Huawei Share 私有核心集成边界
 
-当前基线：Core 0.3.2 / IPC 3，大文件实验上限 1 GiB 已完成离线验证，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
+当前基线：Core 0.3.5 / IPC 3，单文件实验上限 1 GiB；100 MiB 已完成独立 Core 真机双向与 hash 验证，实际 App 的 GiB 回传及系统通知仍待验收，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
@@ -200,3 +200,12 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 实际0.3.4 App 的两文件回传进入数据阶段，但在1,073,290,790 bytes后 dfile_failed，未发布完整文件或获得回传 hash；另三次100 MiB（含用户手动对照）因 unsupported_network_mode失败。确认后传输期限源码已为1800秒，不能仅按用时归因为两分钟超时，也不能把重试/及时确认宣传为已验证的恢复办法。现已修正中英文提示，新增4项窄窗口错误交互回归，本次12项相关 tests及analyze通过；完整双向验收未完成。
 - 记录菜单实际在Finder打开此前已校验的64 KiB文件目录，路径与本机摘要展示正确。系统通知仍notDetermined，展示/点击未通过；不绕过系统授权工具限制。0.3.4测试App退出后Core/helper全部自动退出，原App/投屏保留。
 - 本轮Mac的100MiB/1GiB样本、隔离App、诊断runtime、大反汇编与私有Rust缓存已删除，约1711.9 MiB；根目录无≥64MiB文件和staging，保留源码/锁定zip/共享构建/小型证据。手机仅7个本轮合成文件移入最近删除，可恢复30天，未清空或触碰个人文件。历史临时App与大样本路径当前已不存在，后续不可直接复用。
+
+
+## Core 0.3.5 终态与真机验证边界（2026-10-29）
+
+- 私有 Core 95574b21510fa26137def60a9ca66412b8251403：接收必须同时满足 helper exit 0、唯一完整成功终态、全部文件大小/hash 校验与原子发布。迟到成功不能覆盖先前失败；取消、期限、文件上限与进程终止分别分类，私有诊断不进入主仓。主仓锁固定 zip SHA-256 c603bcdd028dbd9ab025d6abfaa7bc7b27e243c24e8293e8633c2c89365bd552，IPC3、生产 send/receive=false。
+- 准备版完成两次 1 MiB 回传，均与源 SHA-256 一致；默认配置的对照也成功，显式 Wi-Fi 名称实验已撤回。当前网络已变化，本轮重新读取 Mac 地址和广播地址、重新发现 nova 动态端口后才发起传输，未沿用旧地址。
+- 最终签名制品向 nova 12 Ultra 发送新建 g-100MiB.bin，用户确认收到；同一文件回传等待 3 秒接受后完成，独立重读落盘 SHA-256 为 8cf88322bd8ea786a0741982a82639faeda2bc3f69e87c5c61bd5e8f988a4aec，与源一致。证据目录 /tmp/anydeck-harmony-core035-real-20261029，摘要 100MiB-roundtrip-verified.json；这是独立 Core 真机结果，尚不替代实际 App 接收确认、历史与 GiB 验收。
+- 48 项非 GiB 库/实际签名 IPC、9 项 integration 通过；DFile 8 项测试中 7 项通过、1 项可选 LAN 跳过。主仓 25 项错误/Client/Session tests、targeted analyze、3 项 installer tests 和 Release 构建通过；新错误分类复用既有双语提示，技术错误仅在主动诊断中展示。
+- 独立测试 App 已按固定 commit 制品更新，整包 deep/strict、5 成员 hash/签名、Core0.3.5 hello 和 commit 内 zip 摘要核对通过。沿用隔离 bundle ID、设置与记录，不替换或停止原 Debug App；接下来继续运行 App、GiB 双向、系统通知与清理验收，完整目标仍未完成。
