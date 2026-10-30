@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import 'android_version_helper.dart';
+import 'android_display_parser.dart';
+import 'foldable_display_parser.dart';
 import 'device_battery_info.dart';
 import 'device_overview.dart';
 import 'device_memory_info.dart';
@@ -76,6 +78,8 @@ echo "===BATTERY==="
 dumpsys battery
 echo "===IP==="
 ip addr show wlan0
+echo "===DEVICESTATES==="
+cmd device_state print-states
 ''';
 
       final settingsScript = '''
@@ -176,10 +180,10 @@ settings get global debug_view_attributes
         'ro.product.vendor.device',
       ]);
 
-      final logicalDensity = _getDensityQualifier(
+      final logicalDensity = AndroidDisplayParser.densityQualifier(
         density.current != '-' ? density.current : density.physical,
       );
-      final refreshRate = _parseRefreshRate(displayDump);
+      final refreshRate = AndroidDisplayParser.refreshRate(displayDump);
 
       final overview = DeviceOverview(
         name: _firstValue(properties, [
@@ -227,6 +231,13 @@ settings get global debug_view_attributes
           size.physical,
           density: density.physical,
         ),
+        foldableDisplays: results[5].isSuccess
+            ? FoldableDisplayParser.parse(
+                displayDump,
+                properties: properties,
+                deviceStates: basicSections['DEVICESTATES'] ?? '',
+              )
+            : null,
         resolution: formatDisplayResolution(
           size.current,
           density: density.current,
@@ -380,16 +391,9 @@ settings get global debug_view_attributes
     return parts.isEmpty ? '-' : parts.join(' ');
   }
 
-  /// 概览统一按“高 x 宽”展示；原始分辨率仍保留设备返回的“宽 x 高”顺序。
+  /// 保留已有调用入口，屏幕格式化统一交给只读解析器。
   static String formatDisplayResolution(String size, {String density = '-'}) {
-    if (size == '-') {
-      return '-';
-    }
-    final match = RegExp(r'^(\d+)x(\d+)$').firstMatch(size);
-    final displaySize = match == null
-        ? size
-        : '${match.group(2)}x${match.group(1)}';
-    return density == '-' ? displaySize : '$displaySize (${density}dpi)';
+    return AndroidDisplayParser.formatResolution(size, density: density);
   }
 
   String _formatAnimScale(String raw) {
@@ -430,83 +434,6 @@ settings get global debug_view_attributes
   String _clean(String output) {
     final lines = output.trim().split('\n');
     return lines.isEmpty ? '-' : lines.first.trim();
-  }
-
-  /// 计算屏幕逻辑密度并返回 qualifier (如: 3.25x (xxxhdpi))。
-  String _getDensityQualifier(String densityStr) {
-    final dpi = int.tryParse(densityStr);
-    if (dpi == null) return '-';
-
-    final scale = dpi / 160.0;
-    final scaleStr = scale == scale.roundToDouble()
-        ? scale.toStringAsFixed(0)
-        : scale
-              .toStringAsFixed(2)
-              .replaceAll(RegExp(r'0+$'), '')
-              .replaceAll(RegExp(r'\.$'), '');
-
-    String qualifier;
-    if (dpi <= 120) {
-      qualifier = 'ldpi';
-    } else if (dpi <= 160) {
-      qualifier = 'mdpi';
-    } else if (dpi <= 240) {
-      qualifier = 'hdpi';
-    } else if (dpi <= 320) {
-      qualifier = 'xhdpi';
-    } else if (dpi <= 480) {
-      qualifier = 'xxhdpi';
-    } else {
-      qualifier = 'xxxhdpi';
-    }
-
-    return '${scaleStr}x ($qualifier)';
-  }
-
-  /// 从 dumpsys display 输出中解析屏幕刷新率。
-  String _parseRefreshRate(String output) {
-    // 1. 尝试匹配 supportedRefreshRates [...] 或 mSupportedRefreshRates=[...]
-    final ratesMatch = RegExp(
-      r'(?:mSupportedRefreshRates|supportedRefreshRates)[=\s]*\[([^\]]+)\]',
-    ).firstMatch(output);
-
-    if (ratesMatch != null) {
-      final listStr = ratesMatch.group(1)!;
-      final rates = listStr
-          .split(',')
-          .map((s) => double.tryParse(s.trim()))
-          .whereType<double>()
-          .map((r) => r.round())
-          .toSet()
-          .toList();
-      if (rates.isNotEmpty) {
-        rates.sort();
-        final maxRate = rates.last;
-        return '$maxRate Hz';
-      }
-    }
-
-    // 2. 尝试匹配 renderFrameRate
-    final renderFrameRateMatch = RegExp(
-      r'renderFrameRate\s+([0-9.]+)',
-    ).firstMatch(output);
-    if (renderFrameRateMatch != null) {
-      final rate = double.tryParse(renderFrameRateMatch.group(1)!);
-      if (rate != null) {
-        return '${rate.round()} Hz';
-      }
-    }
-
-    // 3. 回退匹配 supportedModes 中首个 fps=
-    final fpsMatch = RegExp(r'fps=([0-9.]+)').firstMatch(output);
-    if (fpsMatch != null) {
-      final fps = double.tryParse(fpsMatch.group(1)!);
-      if (fps != null) {
-        return '${fps.round()} Hz';
-      }
-    }
-
-    return '-';
   }
 
   /// 将由 ===SECTION=== 标签分割的 stdout 解析为以 section 名字为 key 的 map。

@@ -38,6 +38,15 @@
 - 回归：`test/overview_identity_test.dart` 覆盖 1000px/800px/600px、中英文、Light/Dark、名称与型号分别复制、型号缺失及 HarmonyOS 展示；同时运行原有概览布局、iOS 布局和数据解析/缓存测试。未启动桌面应用，截图对应真机的最终展示留待手工确认。
 - 验证结果：上述 4 个测试文件合计 29 项通过；修改文件的定向 `flutter analyze --no-pub` 无问题，新增测试文件格式检查及 `git diff --check` 通过。
 
+### 折叠机内外屏分辨率（2026-10-30）
+- 需求：Android 折叠机在“屏幕与显示”卡片中分别显示“内屏分辨率”和“外屏分辨率”；原有分辨率行改为“当前屏幕分辨率”，继续反映 `wm size` 的 override。普通单屏设备与旧缓存保留原布局；中英文标签共用现有主题与点击复制组件。
+- 采集：复用概览已有的 `getprop` 和 `dumpsys display`，仅在现有 basic shell 批次末尾追加只读 `cmd device_state print-states`。仍为 6 个 ADB 请求，沿用 15 秒超时，不新增进程轮询、Provider 或多窗口消息。状态命令不可用时允许使用已知厂商折叠属性，不能影响其他概览字段。
+- 解析：`FoldableDisplayParser` 按 `uniqueId="local:<数字>"` 去重 `INTERNAL / BUILT_IN` 物理屏，包含 OFF 屏幕，过滤 scrcpy、虚拟屏和外接屏。每块屏取最大支持模式的尺寸；尺寸按现有“高 x 宽”约定展示，当前逻辑尺寸和投屏使用的 `rawResolution` 保持独立。`DisplayDeviceInfo` 的尺寸表示自然方向，不随旋转改变，字段语义见 [AOSP DisplayDeviceInfo](https://android.googlesource.com/platform/frameworks/base/+/master/services/core/java/com/android/server/display/DisplayDeviceInfo.java)。
+- 内外屏判断：优先使用明确的 Inner/Cover、内屏/外屏名称；没有名称时，必须先有折叠属性或 CLOSED/FOLDED 与 OPEN/FLAT 等支持姿态证据，再按系统上报 DPI 估算物理面积，较大者作为内屏。缺少 DPI 时回退最大像素面积。这一步属于通用尺寸推断；两屏面积差不超过 10%、尺寸缺失、只有一块物理屏或多于两块屏时不强行标注，回退原有单屏摘要，不维护猜测机型表。
+- 数据与职责：`FoldableDisplayInfo` 独立保存内外屏摘要，`DeviceOverview.foldableDisplays` 接入 JSON 与 `copyWith`，离线可读取；旧缓存默认 `null`。原分辨率格式化、逻辑密度与刷新率解析移入 `AndroidDisplayParser` 复用，保留 `DeviceInfoService.formatDisplayResolution` 兼容入口，服务文件收敛到 500 行内。iOS/HarmonyOS 继续使用各自原字段。
+- 自动验证：双屏解析、缓存往返、缩放分辨率隔离、折叠切换、单屏/虚拟屏过滤，以及中英文、明暗主题、1000px/600px 布局、复制和离线展示均已覆盖；连同原有概览与截图选屏回归，共 68 项测试通过。修改范围定向静态检查与新增文件格式检查通过。
+- 实机证据：2026-10-30 只读查询连接中的 HONOR PNM-AN10，物理内屏为 `2172 x 2352`（ON），外屏为 `1080 x 2420`（OFF），同时存在 scrcpy 虚拟屏。用本次 Dart 解析器读取完整 91,103 字符的原始快照，得到内屏 `2352x2172`、外屏 `2420x1080`；外屏熄灭时仍能读取。Samsung 尺寸与翻盖机由样例回归覆盖，未声称完成对应真机验收；未启动桌面应用，实际 UI 与实体折叠切换仍待手工确认。
+
 ### 本次布局与内存回归
 - `test/overview_layout_test.dart` 独立渲染 `DeviceOverviewContent`，覆盖 1000px/600px、中英文与明暗主题，验证容量可见、左右/上下排列且无 overflow，避免依赖其他 Tab 的原生 WebView。
 - `test/device_memory_info_test.dart` 覆盖新旧内核内存口径、未知值、数值边界与旧缓存；`test/device_overview_test.dart` 覆盖 ADB 查询结果接入与缓存往返；投屏悬浮信息继续保持总内存展示。

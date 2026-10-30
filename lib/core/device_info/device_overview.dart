@@ -1,5 +1,6 @@
 import '../ios/ios_overview_details.dart';
 import 'device_battery_info.dart';
+import 'foldable_display_info.dart';
 
 /// 设备概览面板展示的只读聚合信息。
 class DeviceOverview {
@@ -20,6 +21,7 @@ class DeviceOverview {
     this.memoryUsed = '-',
     this.battery,
     required this.physicalResolution,
+    this.foldableDisplays,
     required this.resolution,
     required this.logicalDensity,
     required this.refreshRate,
@@ -66,6 +68,9 @@ class DeviceOverview {
   final String memoryUsed;
   final DeviceBatteryInfo? battery;
   final String physicalResolution;
+
+  /// 已识别的折叠机内外屏；普通设备、旧缓存或信息不足时为空。
+  final FoldableDisplayInfo? foldableDisplays;
   final String resolution;
   final String logicalDensity;
   final String refreshRate;
@@ -107,6 +112,7 @@ class DeviceOverview {
       'memoryUsed': memoryUsed,
       if (battery != null) 'battery': battery!.toJson(),
       'physicalResolution': physicalResolution,
+      if (foldableDisplays != null) 'foldableDisplays': foldableDisplays!.toJson(),
       'resolution': resolution,
       'logicalDensity': logicalDensity,
       'refreshRate': refreshRate,
@@ -152,6 +158,7 @@ class DeviceOverview {
           ? DeviceBatteryInfo.fromJson(json['battery'] as Map<String, dynamic>)
           : null,
       physicalResolution: json['physicalResolution'] as String? ?? '-',
+      foldableDisplays: FoldableDisplayInfo.fromJson(json['foldableDisplays']),
       resolution: json['resolution'] as String? ?? '-',
       logicalDensity: json['logicalDensity'] as String? ?? '-',
       refreshRate: json['refreshRate'] as String? ?? '-',
@@ -198,6 +205,7 @@ class DeviceOverview {
     String? memoryUsed,
     DeviceBatteryInfo? battery,
     String? physicalResolution,
+    FoldableDisplayInfo? foldableDisplays,
     String? resolution,
     String? logicalDensity,
     String? refreshRate,
@@ -238,6 +246,7 @@ class DeviceOverview {
       memoryUsed: memoryUsed ?? this.memoryUsed,
       battery: battery ?? this.battery,
       physicalResolution: physicalResolution ?? this.physicalResolution,
+      foldableDisplays: foldableDisplays ?? this.foldableDisplays,
       resolution: resolution ?? this.resolution,
       logicalDensity: logicalDensity ?? this.logicalDensity,
       refreshRate: refreshRate ?? this.refreshRate,

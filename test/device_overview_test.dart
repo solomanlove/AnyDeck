@@ -5,18 +5,26 @@ import 'package:any_deck/core/device_info/device_info_service.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 
+import 'fixtures/foldable_display_fixtures.dart';
+
 class StubAdbService extends AdbService {
   StubAdbService({
     this.shouldFail = false,
     this.getpropOutput,
     this.meminfoOutput,
     this.batteryOutput,
+    this.displayOutput,
+    this.deviceStatesOutput,
+    this.wmSizeOutput,
   });
 
   final bool shouldFail;
   final String? getpropOutput;
   final String? meminfoOutput;
   final String? batteryOutput;
+  final String? displayOutput;
+  final String? deviceStatesOutput;
+  final String? wmSizeOutput;
 
   @override
   Future<AdbResult> run(
@@ -34,7 +42,9 @@ class StubAdbService extends AdbService {
       return AdbResult(
         exitCode: 0,
         stdout: '===MEMINFO===\n${meminfoOutput ?? ""}\n===DF===\n'
-            '===BATTERY===\n${batteryOutput ?? ""}\n===IP===\n',
+            '===BATTERY===\n${batteryOutput ?? ""}\n===IP===\n'
+            '===DEVICESTATES===\n${deviceStatesOutput ?? ""}\n'
+            '===WMSIZE===\n${wmSizeOutput ?? ""}\n',
         stderr: '',
       );
     }
@@ -72,6 +82,9 @@ class StubAdbService extends AdbService {
         stderr: '',
       );
     }
+    if (args.contains('display')) {
+      return AdbResult(exitCode: 0, stdout: displayOutput ?? '', stderr: '');
+    }
     if (args.contains('android_id')) {
       return const AdbResult(
         exitCode: 0,
@@ -85,6 +98,46 @@ class StubAdbService extends AdbService {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('折叠机采集同时保存内外屏，当前 override 与原始尺寸保持独立', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = DeviceInfoService(
+      StubAdbService(
+        displayOutput: honorFoldableDisplayDump,
+        deviceStatesOutput: honorFoldableStates,
+        wmSizeOutput: 'Physical size: 2172x2352\nOverride size: 1086x1176',
+      ),
+    );
+    final overview = await service.loadOverview('foldable');
+    expect(overview.foldableDisplays?.innerResolution, '2352x2172');
+    expect(overview.foldableDisplays?.outerResolution, '2420x1080');
+    expect(overview.physicalResolution, '2352x2172');
+    expect(overview.resolution, '1176x1086');
+    expect(overview.rawResolution, '1086x1176');
+
+    final cached = await service.loadFromCache('foldable');
+    expect(cached?.foldableDisplays?.innerResolution, '2352x2172');
+    expect(
+      cached?.copyWith(name: '新名称').foldableDisplays?.outerResolution,
+      '2420x1080',
+    );
+  });
+
+  test('旧缓存与屏幕探测不完整时保留单屏概览', () async {
+    SharedPreferences.setMockInitialValues({});
+    expect(DeviceOverview.fromJson({}).foldableDisplays, isNull);
+    final service = DeviceInfoService(
+      StubAdbService(
+        displayOutput: 'Permission denied',
+        deviceStatesOutput: honorFoldableStates,
+        wmSizeOutput: 'Physical size: 1080x2420',
+      ),
+    );
+    final overview = await service.loadOverview('single');
+    expect(overview.foldableDisplays, isNull);
+    expect(overview.physicalResolution, '2420x1080');
+    expect(overview.resolution, '2420x1080');
+  });
 
   test('overview resolution is formatted as height by width', () {
     expect(

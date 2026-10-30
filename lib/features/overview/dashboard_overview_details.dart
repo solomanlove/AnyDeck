@@ -31,13 +31,27 @@ extension _OverviewDetails on DeviceOverviewContent {
 
   List<_OverviewDetailData> _screenItems(BuildContext context) {
     if (device.isIos) return _iosScreenItems(context, overview);
+    final foldable = device.isHarmony ? null : overview.foldableDisplays;
     return [
+      // 折叠机展示两块物理屏；当前分辨率仍保留 wm override 的真实结果。
+      if (foldable != null) ...[
+        _OverviewDetailData(
+          label: context.l10n.t('innerScreenResolution'),
+          value: foldable.innerResolution,
+        ),
+        _OverviewDetailData(
+          label: context.l10n.t('outerScreenResolution'),
+          value: foldable.outerResolution,
+        ),
+      ] else
+        _OverviewDetailData(
+          label: context.l10n.t('physicalResolution'),
+          value: overview.physicalResolution,
+        ),
       _OverviewDetailData(
-        label: context.l10n.t('physicalResolution'),
-        value: overview.physicalResolution,
-      ),
-      _OverviewDetailData(
-        label: context.l10n.t('resolution'),
+        label: context.l10n.t(
+          foldable == null ? 'resolution' : 'currentScreenResolution',
+        ),
         value: overview.resolution,
       ),
       _OverviewDetailData(
