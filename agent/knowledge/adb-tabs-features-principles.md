@@ -24,11 +24,19 @@
 
 ### 信息层级与响应式布局
 - Android 与 HarmonyOS 的顶部身份卡用电量百分比和充电状态替代重复的“在线”标记；iOS 暂沿用原状态位。Android 在概览的组合 shell 查询中解析 `dumpsys battery` 的 `level/scale/status`；HarmonyOS 调用 `hidumper -s BatteryService -a -i`，以 `capacity` 读取百分比、`chargingStatus` 区分充电中/未充电/已充满，不能把 `batteryLevel` 的等级值当百分比。电池数据写入概览缓存，离线时不展示可能过期的缓存电量。
-- 顶部设备摘要统一展示在线状态、设备名称/品牌、序列号和 Android ID；下方不再重复基本信息。iOS 与 HarmonyOS 的设备 ID 已等同于序列号时不再重复展示第二份标识符。
+- 顶部设备摘要统一展示状态、产品名称/品牌、型号、序列号和 Android ID；下方不再重复基本信息。iOS 与 HarmonyOS 的设备 ID 已等同于序列号时不再重复展示第二份标识符。
 - Android/系统版本独占一行，内存与存储空间作为下一行的重点状态卡。Android 的 `androidVersion` 展示时拆为主版本和 API badge，并在标题后展示 info icon；仅当鼠标悬浮 info icon 时，才通过 `AndroidVersionHelper.getApiMappingTooltip` 显示黑色 API mapping 提示。厂商系统仅在版本卡内展示，与主版本横向排列，空间不足时自动换行。内存与存储共用 `_OverviewCapacityCard`，统一展示“当前已用 / 总量”、已用比例与进度条；容量缺失时隐藏比例及进度条。
 - 可用宽度不小于 720px 时，内存居左、存储居右，详情卡也采用双列布局；更窄时改为单列堆叠。系统与网络、屏幕与显示使用紧凑键值行，并保留点击复制和密度 tooltip。
 - 系统版本卡按内容自然撑高，取消原先 272px 最小高度，收紧厂商系统下方留白；详情卡使用固定比例的 label 列和左对齐 value 列，保证不同长度参数的起点一致。禁止通过 `IntrinsicHeight` 包裹内部含 `LayoutBuilder` 的组件，否则 Flutter intrinsic size 计算会抛异常并导致 Overview 空白。
 - 容量卡按内容导航：点击存储容量、已用比例或进度条切换到文件 Tab（index 3）；点击内存卡对应内容切换到进程管理 Tab（index 6）。标题及卡片空白区域不触发跳转。
+
+### 产品名称与型号展示（2026-10-30）
+- 需求：Android 概览同时保留产品名称与硬件型号，例如“荣耀Magic V6”和“PNM-AN10”，不能仅显示产品名称而遗漏型号。
+- 实现：`dashboard_overview_widgets.dart` 的 `_OverviewIdentityCard` 复用 HarmonyOS 已有的独立型号项，将展示范围扩展到 Android；产品名称与品牌保留原位置，型号使用现有 `model` 中英文标签，并复用身份项的主题样式、响应式布局和点击复制交互。
+- 数据来源：产品名称使用 `DeviceOverview.name`，Android 依次读取 `ro.config.marketing_name`、`ro.product.marketname`、`ro.product.vendor.marketname`，最后回退 `ro.product.model`；型号使用 `DeviceOverview.model`，读取 `ro.product.model` 并回退 `ro.product.vendor.model`。两者已随概览缓存保存，本次仅调整展示，不增加 ADB 查询、Provider 或跨窗口消息。
+- 边界：型号为 `-`、空字符串或纯空白时隐藏型号项，保留产品名称与品牌；名称与型号相同时仍按两个字段展示，便于识别与分别复制。HarmonyOS 保持独立型号项，iOS 保持名称下方的现有型号说明。
+- 回归：`test/overview_identity_test.dart` 覆盖 1000px/800px/600px、中英文、Light/Dark、名称与型号分别复制、型号缺失及 HarmonyOS 展示；同时运行原有概览布局、iOS 布局和数据解析/缓存测试。未启动桌面应用，截图对应真机的最终展示留待手工确认。
+- 验证结果：上述 4 个测试文件合计 29 项通过；修改文件的定向 `flutter analyze --no-pub` 无问题，新增测试文件格式检查及 `git diff --check` 通过。
 
 ### 本次布局与内存回归
 - `test/overview_layout_test.dart` 独立渲染 `DeviceOverviewContent`，覆盖 1000px/600px、中英文与明暗主题，验证容量可见、左右/上下排列且无 overflow，避免依赖其他 Tab 的原生 WebView。

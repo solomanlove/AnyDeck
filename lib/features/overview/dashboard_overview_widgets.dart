@@ -149,7 +149,10 @@ class _OverviewIdentityCard extends ConsumerWidget {
             ? overview.model
             : overview.brand,
       ),
-      if (device.isHarmony && overview.model != '-')
+      // Android 与 HarmonyOS 均保留独立型号，避免产品名称遮蔽硬件型号。
+      if (!device.isIos &&
+          overview.model != '-' &&
+          overview.model.trim().isNotEmpty)
         _OverviewIdentityData(
           icon: CupertinoIcons.tag,
           label: context.l10n.t('model'),
