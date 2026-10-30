@@ -96,6 +96,13 @@ flutter test test/mirror_transport_resolver_test.dart test/android_mirror_transp
   test/adb_screenshot_display_test.dart test/device_power_actions_test.dart
 ```
 
+### 换线加载提示文字样式（2026-10-30）
+
+- 用户反馈“正在启动投屏服务...”显示为大号红字和黄色双下划线。原因是换线遮罩位于 `MirrorWindowContent` 的 `Scaffold` 外层，原 `ColoredBox` 不提供默认文字样式，导致 `Text` 继承 `MaterialApp` 的警示样式（48 号红字、黄色双下划线）。
+- `AndroidMirrorTransportHost` 的遮罩改用 `Material`，独立提供当前 Theme 的 `bodyMedium`，背景继续使用 `colorScheme.surface`，文案继续复用 `startingMirrorService`，中英文与明暗主题同步生效。
+- `test/android_mirror_loading_style_test.dart` 保留 `MaterialApp → AndroidMirrorTransportHost → Scaffold` 的真实层级，用假 ADB 阻塞查询以检查重连中状态，验证实际 `RichText` 字号、字重、颜色及无下划线；覆盖中英文、明暗主题和 320×420 窗口。查询结束后遮罩正常消失。
+- 新增 4 项样式测试与原换线测试合计 21 项通过，2 个相关 Dart 文件定向 analyze 无问题；未启动桌面 App。本次仅修复遮罩样式，不调整连接优先级或音视频会话。
+
 ## 沉浸式窗口控件与 Session 状态
 
 - 全局“始终显示投屏控制栏”设置默认关闭，继续使用自动隐藏；开启后 Android、HarmonyOS、iOS USB 与 AirPlay 投屏均持续显示标题栏、系统窗口按钮和右侧工具栏。设置通过多窗口通道实时同步到已打开的投屏子窗口。

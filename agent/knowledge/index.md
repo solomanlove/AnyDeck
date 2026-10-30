@@ -36,7 +36,7 @@
 | `hdc-harmony-overview-hardware-network` | 鸿蒙设备概览硬件与网络信息 | active | 记录 HDC 读取当前 SSID、精确型号处理器映射和内核版本解析及回退边界 | `core/harmony/`, `core/providers/`, `features/overview/` |
 | `devices_manager` | 设备唯一标识判断机制 | active | 记录 AdbDevice.id 命令路由、HDC 在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
-| `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、Android USB/TCP/TLS 断线恢复与事件驱动优选、当前投屏通道标签、设备信息悬浮层与计时 Tooltip、手机剪贴板入口、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `core/scrcpy/`, `rust/device_bridge/`, `core/harmony/` |
+| `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、Android USB/TCP/TLS 断线恢复与事件驱动优选、当前投屏通道标签与重连提示样式、设备信息悬浮层与计时 Tooltip、手机剪贴板入口、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `core/scrcpy/`, `rust/device_bridge/`, `core/harmony/` |
 | `ios投屏控制` | iOS 投屏控制方案与 PoC | active | macOS/iPhone 6s 原生 USB Texture + WDA、USB/AirPlay 共用投屏窗口与来源标识、窗口比例贴合、部署探针及真机验收边界 | `core/ios/`, `core/airplay/`, `app/window/mirror/`, `macos/Runner/`, `script/` |
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、USB/Network 连接类型与旧 Rust 库兼容、概览读取与型号规格边界、USB 投屏、截图镜像恢复、进程应用关联、扩展宿主 Bundle ID、多窗口及验证边界 | `core/ios/`, `features/ios/`, `features/overview/`, `app/window/mirror/` |
 | `ios-airplay-server-architecture` | iOS AirPlay 实验性接收端与连接故障 | experimental | UxPlay/FairPlay 实验接入、VideoToolbox 首帧与重连、AudioQueue 持续静音恢复、后台启停和原子打包；真机音频已完成定向验收 | `core/airplay/`, `rust/device_bridge/src/airplay/` |

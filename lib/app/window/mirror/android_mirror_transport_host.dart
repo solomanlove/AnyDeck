@@ -193,7 +193,8 @@ class _AndroidMirrorTransportHostState
           child: widget.builder(context, currentId),
         ),
         if (_recovering)
-          ColoredBox(
+          // 遮罩与内容 Scaffold 同级，须独立提供 Material 默认文字样式。
+          Material(
             color: Theme.of(context).colorScheme.surface,
             child: Center(
               child: Column(
