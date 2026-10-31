@@ -19,7 +19,7 @@ macOS 已将原 `go-ios screenshot --stream` / MJPEG / `Image.memory` 投屏替�
 iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
 
 1. **自适应心跳轮询合并 (Heartbeat Integration)**：
-   在 `AdbHeartbeatController` 中，除了通过 ADB 轮询 Android 设备外，还并发启动了 `IosDeviceService.listDevices()` 方法。
+   在 `DevicePollingController` 中，除了通过 ADB 轮询 Android 设备外，还并发启动了 `IosDeviceService.listDevices()` 方法。
    - 使用 `go-ios list --details` 命令检索通过 USB 或网络连接且已与电脑配对的 iOS 设备。
    - 命令成功执行后，返回结构化的 JSON 列表。控制器提取 `Udid` 作为设备 ID，以及 `ProductName`、`ProductType`、`ProductVersion` 等属性。
    - 将 iOS 设备和 Android 设备统一拼装成 `List<DiscoveredDevice>` 并向外派发。
@@ -78,7 +78,7 @@ iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
 为了在没有连接苹果物理机、或者没有全局安装 `go-ios` 工具链的集成/测试环境中安全运行测试：
 
 - **IosDeviceService Mock**：
-  由于心跳模块 `AdbHeartbeatController` 依赖 `IosDeviceService` 去获取设备状态，在 Widget 测试中，为了防止真实的 `Process.run('ios', ...)` 造成 `pumpAndSettle timed out` 悬挂超时，我们在 `test/widget_test.dart` 中实现并注入了 `FakeIosDeviceService`：
+  由于心跳模块 `DevicePollingController` 依赖 `IosDeviceService` 去获取设备状态，在 Widget 测试中，为了防止真实的 `Process.run('ios', ...)` 造成 `pumpAndSettle timed out` 悬挂超时，我们在 `test/widget_test.dart` 中实现并注入了 `FakeIosDeviceService`：
   ```dart
   class FakeIosDeviceService extends IosDeviceService {
     @override

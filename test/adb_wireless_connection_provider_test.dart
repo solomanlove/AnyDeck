@@ -17,7 +17,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         adbServiceProvider.overrideWithValue(adb),
-        devicesProvider.overrideWith(
+        discoveredDevicesProvider.overrideWith(
           (ref) => Stream.value([
             const DiscoveredDevice(id: 'PHONE', status: 'device', model: 'Pixel'),
           ]),
@@ -29,7 +29,7 @@ void main() {
     addTearDown(subscription.close);
     await Future<void>.delayed(const Duration(milliseconds: 100));
     expect(
-      container.read(wirelessConnectionProvider)['PHONE']?.messageKey,
+      container.read(adbWirelessConnectionProvider)['PHONE']?.messageKey,
       'wirelessReady',
     );
     expect(container.read(deviceRegistryProvider).single.wifiIp, '192.168.1.8');
@@ -46,7 +46,7 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
-    final controller = container.read(wirelessConnectionProvider.notifier);
+    final controller = container.read(adbWirelessConnectionProvider.notifier);
     controller.observe([const DiscoveredDevice(id: 'PHONE', status: 'device')]);
     final result = await controller.connect(
       const RegisteredDevice(

@@ -143,10 +143,10 @@ class IosDeviceService {
   }
 
   /// 检测某个设备是否处于活跃投屏会话中。
-  bool isActive(String udid) => usbMirror.texture(udid) != null;
+  bool isMirroring(String udid) => usbMirror.texture(udid) != null;
 
-  /// 获取指定设备的原生 Texture ID（保留旧调用入口名称）。
-  int? getPort(String udid) => usbMirror.texture(udid);
+  /// 获取指定设备的原生 Texture ID。
+  int? getMirrorTextureId(String udid) => usbMirror.texture(udid);
 
   /// 自动下载并挂载 iOS 开发者镜像 (Developer Disk Image)
   Future<AdbResult> mountDeveloperImage(String udid) async {
@@ -208,5 +208,5 @@ class IosDeviceService {
 
   Future<void> stopMirroring(String udid) => usbMirror.stop(udid);
 
-  void stopAll() => usbMirror.stopAll();
+  void stopAllMirroring() => usbMirror.stopAll();
 }

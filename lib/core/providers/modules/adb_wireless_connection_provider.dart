@@ -12,12 +12,12 @@ import 'service_providers.dart';
 export '../../adb/wireless/adb_wireless_state.dart';
 
 /// 主窗口连接状态独立于注册表重建，避免 track-devices 重启事件重复准备。
-final wirelessConnectionProvider =
-    NotifierProvider<WirelessConnectionNotifier, Map<String, AdbWirelessState>>(
-      WirelessConnectionNotifier.new,
+final adbWirelessConnectionProvider =
+    NotifierProvider<AdbWirelessConnectionNotifier, Map<String, AdbWirelessState>>(
+      AdbWirelessConnectionNotifier.new,
     );
 
-class WirelessConnectionNotifier
+class AdbWirelessConnectionNotifier
     extends Notifier<Map<String, AdbWirelessState>> {
   late AdbWirelessCoordinator _coordinator;
   late bool _isMain;
@@ -44,13 +44,13 @@ class WirelessConnectionNotifier
     scheduleMicrotask(() {
       if (ref.mounted) {
         _coordinator.observe(devices);
-        _clearConnectedDevices(devices);
+        _clearStaleConnectionFailures(devices);
       }
     });
   }
 
   /// 若设备当前已在线且已具有网络连接通道，清理陈旧的失败状态
-  void _clearConnectedDevices(List<DiscoveredDevice> devices) {
+  void _clearStaleConnectionFailures(List<DiscoveredDevice> devices) {
     final onlineNetworkIds = devices
         .where((d) => d.isOnline && (d.id.contains(':') || d.id.contains('.')))
         .map((d) => d.id)
@@ -109,8 +109,8 @@ class WirelessConnectionNotifier
     if (!identical(next, state)) state = next;
   }
 
-  Future<AdbWirelessResult> pair(String address, String code) => _isMain
-      ? _coordinator.pair(address, code)
+  Future<AdbWirelessResult> pairAndConnect(String address, String code) => _isMain
+      ? _coordinator.pairAndConnect(address, code)
       : Future.value(const AdbWirelessResult('wirelessMainOnly'));
 }
 

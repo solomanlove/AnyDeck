@@ -44,7 +44,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         adbServiceProvider.overrideWithValue(adb),
-        devicesProvider.overrideWith((ref) => stream.stream),
+        discoveredDevicesProvider.overrideWith((ref) => stream.stream),
       ],
     );
     addTearDown(container.dispose);

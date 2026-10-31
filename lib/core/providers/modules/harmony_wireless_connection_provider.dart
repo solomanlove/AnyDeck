@@ -11,7 +11,7 @@ import '../../harmony/wireless/harmony_wireless_models.dart';
 import 'device_tracking_providers.dart';
 import 'service_providers.dart';
 
-final harmonyWirelessProvider =
+final harmonyWirelessConnectionProvider =
     NotifierProvider<HarmonyWirelessNotifier, HarmonyWirelessState>(
       HarmonyWirelessNotifier.new,
     );
@@ -37,7 +37,7 @@ class HarmonyWirelessNotifier extends Notifier<HarmonyWirelessState> {
       _disposed = true;
       _reconnectTimer?.cancel();
     });
-    ref.listen(devicesProvider, (_, next) {
+    ref.listen(discoveredDevicesProvider, (_, next) {
       final previousAddresses = _onlineAddresses;
       _harmonyDevices =
           next.value?.where((device) => device.isHarmony).toList() ?? const [];

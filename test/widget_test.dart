@@ -154,7 +154,7 @@ Future<void> _pumpDashboard(
       overrides: [
         adbServiceProvider.overrideWithValue(FakeAdbService()),
         iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-        devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
+        discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
         deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
         selectedDeviceProvider.overrideWith(_FixedSelectedDeviceNotifier.new),
         selectedToolTabProvider.overrideWith(
@@ -221,7 +221,7 @@ void main() {
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
+          discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),
           ),
@@ -386,7 +386,7 @@ void main() {
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
+          discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
           selectedDeviceProvider.overrideWith(_StaleSelectedDeviceNotifier.new),
           selectedToolTabProvider.overrideWith(() => _FixedToolTabNotifier(0)),
@@ -431,7 +431,7 @@ void main() {
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
+          discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           deviceRegistryProvider.overrideWith(
             _OfflineDeviceRegistryNotifier.new,
           ),

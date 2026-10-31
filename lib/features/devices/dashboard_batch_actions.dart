@@ -1009,7 +1009,7 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
 // ==========================================
 // 批量计划任务及管理器
 // ==========================================
-class ScheduledTask {
+class ScheduledDeviceTask {
   final String id;
   final String title;
   final String actionType; // 'screenshot', 'install', 'push', 'script'
@@ -1019,7 +1019,7 @@ class ScheduledTask {
   String status; // 'pending', 'running', 'completed', 'failed', 'cancelled'
   String result;
 
-  ScheduledTask({
+  ScheduledDeviceTask({
     required this.id,
     required this.title,
     required this.actionType,
@@ -1031,11 +1031,11 @@ class ScheduledTask {
   });
 }
 
-class ScheduledTasksNotifier extends Notifier<List<ScheduledTask>> {
+class ScheduledDeviceTasksNotifier extends Notifier<List<ScheduledDeviceTask>> {
   final Map<String, Timer> _timers = {};
 
   @override
-  List<ScheduledTask> build() {
+  List<ScheduledDeviceTask> build() {
     ref.onDispose(() {
       for (final timer in _timers.values) {
         timer.cancel();
@@ -1044,7 +1044,7 @@ class ScheduledTasksNotifier extends Notifier<List<ScheduledTask>> {
     return [];
   }
 
-  void scheduleTask(ScheduledTask task, Future<String> Function() execute) {
+  void scheduleTask(ScheduledDeviceTask task, Future<String> Function() execute) {
     state = [...state, task];
     final delay = task.scheduledTime.difference(DateTime.now());
     if (delay.isNegative) {
@@ -1087,9 +1087,9 @@ class ScheduledTasksNotifier extends Notifier<List<ScheduledTask>> {
   }
 }
 
-extension ScheduledTaskExtension on ScheduledTask {
-  ScheduledTask copyWithStatus(String newStatus, String newResult) {
-    return ScheduledTask(
+extension ScheduledDeviceTaskExtension on ScheduledDeviceTask {
+  ScheduledDeviceTask copyWithStatus(String newStatus, String newResult) {
+    return ScheduledDeviceTask(
       id: id,
       title: title,
       actionType: actionType,
@@ -1102,9 +1102,9 @@ extension ScheduledTaskExtension on ScheduledTask {
   }
 }
 
-final scheduledTasksProvider =
-    NotifierProvider<ScheduledTasksNotifier, List<ScheduledTask>>(
-      ScheduledTasksNotifier.new,
+final scheduledDeviceTasksProvider =
+    NotifierProvider<ScheduledDeviceTasksNotifier, List<ScheduledDeviceTask>>(
+      ScheduledDeviceTasksNotifier.new,
     );
 
 class _BatchScheduleDialog extends ConsumerStatefulWidget {
@@ -1143,7 +1143,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final tasks = ref.watch(scheduledTasksProvider);
+    final tasks = ref.watch(scheduledDeviceTasksProvider);
 
     return DefaultTabController(
       length: 2,
@@ -1335,7 +1335,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
     }
   }
 
-  Widget _buildTaskListTab(List<ScheduledTask> tasks) {
+  Widget _buildTaskListTab(List<ScheduledDeviceTask> tasks) {
     if (tasks.isEmpty) {
       return const Center(child: Text('暂无计划任务'));
     }
@@ -1366,7 +1366,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
           trailing: isPending
               ? ElevatedButton(
                   onPressed: () => ref
-                      .read(scheduledTasksProvider.notifier)
+                      .read(scheduledDeviceTasksProvider.notifier)
                       .cancelTask(task.id),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.redAccent,
@@ -1484,7 +1484,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
         return;
     }
 
-    final task = ScheduledTask(
+    final task = ScheduledDeviceTask(
       id: id,
       title: title,
       actionType: _selectedAction,
@@ -1493,7 +1493,7 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
       payload: payload,
     );
 
-    ref.read(scheduledTasksProvider.notifier).scheduleTask(task, execute);
+    ref.read(scheduledDeviceTasksProvider.notifier).scheduleTask(task, execute);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

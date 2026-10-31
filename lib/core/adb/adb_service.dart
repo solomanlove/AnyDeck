@@ -39,7 +39,7 @@ class AdbService {
   }
 
   /// 定时轮询 adb，仅在可见设备列表变化时发出新值。
-  Stream<List<DiscoveredDevice>> trackDevices({
+  Stream<List<DiscoveredDevice>> pollDevices({
     Duration interval = const Duration(seconds: 2),
   }) async* {
     yield await listDevices();

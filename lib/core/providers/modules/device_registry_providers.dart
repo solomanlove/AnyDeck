@@ -5,16 +5,16 @@ import '../../adb/discovered_device.dart';
 import '../../adb/adb_result.dart';
 import '../../ios/ios_mirror_service.dart';
 import 'dashboard_state_providers.dart';
-import 'device_registry_actions.dart';
+import 'device_connection_actions.dart';
 import 'device_registry_merger.dart';
-import 'device_registry_probe_service.dart';
+import 'device_metadata_probe_service.dart';
 import 'device_registry_storage.dart';
 import 'device_tracking_providers.dart';
 import 'registered_device_model.dart';
 import 'service_providers.dart';
-import 'wireless_connection_provider.dart';
-import 'device_registry_cleaner.dart';
-import 'harmony_wireless_provider.dart';
+import 'adb_wireless_connection_provider.dart';
+import 'device_data_cleaner.dart';
+import 'harmony_wireless_connection_provider.dart';
 
 part 'device_registry_item_actions.dart';
 
@@ -63,7 +63,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   bool _isDisposed = false;
 
   void _listenWirelessState() {
-    ref.listen(wirelessConnectionProvider, (previous, next) {
+    ref.listen(adbWirelessConnectionProvider, (previous, next) {
       for (final entry in next.entries) {
         if (identical(previous?[entry.key], entry.value)) continue;
         final value = entry.value;
@@ -78,11 +78,11 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   }
 
   /// Android 设备列表的统一入口，离线历史设备也经过 TCP 优先与 mDNS 回退。
-  Future<AdbResult> connectPreferredWireless(RegisteredDevice device) async {
+  Future<AdbResult> connectPreferredAdbWireless(RegisteredDevice device) async {
     final result = await ref
-        .read(wirelessConnectionProvider.notifier)
+        .read(adbWirelessConnectionProvider.notifier)
         .connect(device);
-    if (!_isDisposed) await _refreshRegistryAfterAdbCommand();
+    if (!_isDisposed) await _tryRefreshDeviceRegistry();
     return result;
   }
 
@@ -97,9 +97,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     });
     _listenWirelessState();
     // 主窗口设备注册表常驻期间同步保持 HDC 自动重连控制器活跃。
-    ref.read(harmonyWirelessProvider);
+    ref.read(harmonyWirelessConnectionProvider);
 
-    final activeDevicesAsync = ref.watch(devicesProvider);
+    final activeDevicesAsync = ref.watch(discoveredDevicesProvider);
     final activeDevices = activeDevicesAsync.value ?? _lastActiveDevices;
     if (activeDevicesAsync.hasValue) {
       _lastActiveDevices = activeDevices;
@@ -126,7 +126,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     _tags = data.tags;
     _serialMap = data.serialMap;
     // 实时连接结果优先于异步加载的磁盘快照，避免 DHCP 更新被旧缓存覆盖。
-    for (final value in ref.read(wirelessConnectionProvider).values) {
+    for (final value in ref.read(adbWirelessConnectionProvider).values) {
       if (value.registryIp == null || value.busy) continue;
       _ipAddresses[value.deviceId] = value.registryIp!;
       if (value.serial != null) _ipAddresses[value.serial!] = value.registryIp!;
@@ -135,24 +135,24 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     state = _mergeDevices(activeDevices);
   }
 
-  void _fetchAndCacheSerial(String id) {
+  void _scheduleDeviceMetadataProbe(String id) {
     Future.microtask(() async {
-      final activeDevs = ref.read(devicesProvider).value ?? _lastActiveDevices;
+      final activeDevs = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
       final dev = activeDevs.firstWhere(
         (d) => d.id == id,
         orElse: () => DiscoveredDevice(id: id, status: 'offline', model: '', product: ''),
       );
 
       if (dev.isHarmony) {
-        _fetchAndCacheHarmony(id);
+        _scheduleHarmonyMetadataProbe(id);
         return;
       }
 
       try {
-        await ref.read(wirelessConnectionProvider.notifier).waitForPreparation(id);
+        await ref.read(adbWirelessConnectionProvider.notifier).waitForPreparation(id);
         if (_isDisposed) return;
         final adb = ref.read(adbServiceProvider);
-        await DeviceRegistryProbeService.probeAndSyncAndroid(
+        await DeviceMetadataProbeService.probeAndSyncAndroid(
           adb: adb,
           id: id,
           androidVersions: _androidVersions,
@@ -166,19 +166,19 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
         _attemptedFetchIds.add(id);
         if (!_isDisposed) {
           final activeDevices =
-              ref.read(devicesProvider).value ?? _lastActiveDevices;
+              ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
           state = _mergeDevices(activeDevices);
         }
       }
     });
   }
 
-  void _fetchAndCacheHarmony(String id) {
+  void _scheduleHarmonyMetadataProbe(String id) {
     Future.microtask(() async {
       bool hasValidInfo = false;
       try {
         final hdc = ref.read(hdcServiceProvider);
-        hasValidInfo = await DeviceRegistryProbeService.probeAndSyncHarmony(
+        hasValidInfo = await DeviceMetadataProbeService.probeAndSyncHarmony(
           hdc: hdc,
           id: id,
           serialMap: _serialMap,
@@ -196,7 +196,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
         }
         if (!_isDisposed) {
           final activeDevices =
-              ref.read(devicesProvider).value ?? _lastActiveDevices;
+              ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
           state = _mergeDevices(activeDevices);
         }
       }
@@ -218,7 +218,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       }
     }
     final resolvedActiveDevices = activeMap.values.toList();
-    ref.read(wirelessConnectionProvider.notifier).observe(resolvedActiveDevices);
+    ref.read(adbWirelessConnectionProvider.notifier).observe(resolvedActiveDevices);
 
     bool historyChanged = false;
     final nextHistory = List<String>.from(_historyIds);
@@ -279,7 +279,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
           !_pendingFetchIds.contains(device.id) &&
           !_attemptedFetchIds.contains(device.id)) {
         _pendingFetchIds.add(device.id);
-        _fetchAndCacheSerial(device.id);
+        _scheduleDeviceMetadataProbe(device.id);
       }
     }
 
@@ -338,7 +338,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
 
     _storage.saveAndroidVersions(_androidVersions, _sdkVersions);
 
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    final activeDevices = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
@@ -358,7 +358,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
 
     _storage.saveModelsAndProducts(_models, _products);
 
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    final activeDevices = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
@@ -378,45 +378,45 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
 
     _storage.saveIps(_ipAddresses);
 
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    final activeDevices = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
   /// 网络连接设备（ADB / HDC）
-  Future<AdbResult> connectDevice(String address) async {
-    final result = await DeviceRegistryActions.connectDevice(
+  Future<AdbResult> connectNetworkDevice(String address) async {
+    final result = await DeviceConnectionActions.connectNetworkDevice(
       address: address,
       deviceActionService: ref.read(deviceActionServiceProvider),
       hdcService: ref.read(hdcServiceProvider),
     );
-    await _refreshRegistryAfterAdbCommand();
+    await _tryRefreshDeviceRegistry();
     return result;
   }
 
   /// 断开网络设备连接
-  Future<AdbResult> disconnectDevice(String address) async {
+  Future<AdbResult> disconnectNetworkDevice(String address) async {
     final isHarmony = state.any((device) =>
         device.isHarmony &&
         (device.id == address || device.connections.contains(address)));
     final result = isHarmony
-        ? await ref.read(harmonyWirelessProvider.notifier).disconnect(address)
-        : await DeviceRegistryActions.disconnectDevice(
+        ? await ref.read(harmonyWirelessConnectionProvider.notifier).disconnect(address)
+        : await DeviceConnectionActions.disconnectNetworkDevice(
             address: address,
             devices: state,
             deviceActionService: ref.read(deviceActionServiceProvider),
             hdcService: ref.read(hdcServiceProvider),
           );
-    await _refreshRegistryAfterAdbCommand();
+    await _tryRefreshDeviceRegistry();
     return result;
   }
 
   /// 通过 TCP/IP 无线连接已连接 USB 的设备
-  Future<AdbResult> connectWireless(
+  Future<AdbResult> enableTcpAndConnect(
     String usbDeviceId,
     String ipAddress, [
     int port = 5555,
   ]) async {
-    final result = await DeviceRegistryActions.connectWireless(
+    final result = await DeviceConnectionActions.enableTcpAndConnect(
       usbDeviceId: usbDeviceId,
       ipAddress: ipAddress,
       port: port,
@@ -424,15 +424,15 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       adbService: ref.read(adbServiceProvider),
       hdcService: ref.read(hdcServiceProvider),
     );
-    await _refreshRegistryAfterAdbCommand();
+    await _tryRefreshDeviceRegistry();
     return result;
   }
 
   /// 主动刷新设备列表，并立即同步到设备注册表
   Future<AdbResult> refreshDevices() async {
     try {
-      ref.read(adbHeartbeatControllerProvider).trigger();
-      await _syncActiveDevices();
+      ref.read(devicePollingControllerProvider).trigger();
+      await _refreshDiscoveredDevicesAndRegistry();
       return const AdbResult(
         exitCode: 0,
         stdout: 'Devices refreshed',
@@ -468,18 +468,18 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   /// 重启 ADB 服务并刷新设备列表
   Future<AdbResult> restartAdb() async {
     final result = await ref.read(adbServiceProvider).restartServer();
-    await _refreshRegistryAfterAdbCommand();
+    await _tryRefreshDeviceRegistry();
     return result;
   }
 
-  Future<void> _refreshRegistryAfterAdbCommand() async {
+  Future<void> _tryRefreshDeviceRegistry() async {
     try {
-      ref.read(adbHeartbeatControllerProvider).trigger();
-      await _syncActiveDevices();
+      ref.read(devicePollingControllerProvider).trigger();
+      await _refreshDiscoveredDevicesAndRegistry();
     } catch (_) {}
   }
 
-  Future<void> _syncActiveDevices() async {
+  Future<void> _refreshDiscoveredDevicesAndRegistry() async {
     _attemptedFetchIds.clear();
     final androidDevices = await ref.read(adbServiceProvider).listDevices();
     List<DiscoveredDevice> iosDevices = [];
@@ -488,7 +488,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     } catch (_) {}
     List<DiscoveredDevice> harmonyDevices = [];
     try {
-      harmonyDevices = await ref.read(adbDeviceTrackerProvider).refreshHarmonyDevices();
+      harmonyDevices = await ref.read(deviceDiscoveryTrackerProvider).refreshHarmonyDevices();
     } catch (_) {}
     final activeDevices = [...androidDevices, ...iosDevices, ...harmonyDevices];
     _lastActiveDevices = activeDevices;
@@ -501,9 +501,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     String hostWithPort,
     String pairingCode,
   ) async {
-    final result = await ref.read(wirelessConnectionProvider.notifier)
-        .pair(hostWithPort, pairingCode);
-    await _refreshRegistryAfterAdbCommand();
+    final result = await ref.read(adbWirelessConnectionProvider.notifier)
+        .pairAndConnect(hostWithPort, pairingCode);
+    await _tryRefreshDeviceRegistry();
     return result;
   }
 }

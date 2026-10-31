@@ -3,7 +3,7 @@ part of '../dashboard_screen.dart';
 /// 设备列表主体布局：负责排序、空态、表头和 Card 容器。
 extension _DeviceListPanelView on _DeviceListPanelState {
   Widget _buildDeviceListPanel(BuildContext context) {
-    final activeDevicesAsync = ref.watch(devicesProvider);
+    final activeDevicesAsync = ref.watch(discoveredDevicesProvider);
     final items = ref.watch(deviceRegistryProvider);
     final airplayRoot = ref.watch(airplaySessionProvider);
     final mergedAirPlay = mergeAirPlayDevicesIntoList(items, airplayRoot);
@@ -205,7 +205,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                 onChanged: (_) {
                   ref
                       .read(deviceRegistryProvider.notifier)
-                      .toggleAll(!allChecked);
+                      .setAllChecked(!allChecked);
                 },
               ),
             ),

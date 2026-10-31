@@ -39,7 +39,7 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
       }
     }
     await _storage.saveAliases(_aliases);
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    final activeDevices = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
@@ -70,7 +70,7 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
       }
     }
     await _storage.saveRemarks(_remarks);
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    final activeDevices = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
@@ -101,7 +101,7 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
       }
     }
     await _storage.saveTags(_tags);
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    final activeDevices = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
@@ -186,7 +186,7 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
       _attemptedFetchIds.remove(removeId);
 
       // 级联彻底清理设备概览、应用图标目录、常用文件夹与 SQLite 数据库等全部缓存
-      await DeviceRegistryCleaner.cleanupAll(ref, removeId);
+      await DeviceDataCleaner.clearDeviceData(ref, removeId);
     }
 
     await _storage.saveHistory(_historyIds);
@@ -197,13 +197,13 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
     await _storage.saveRemarks(_remarks);
     await _storage.saveTags(_tags);
 
-    var activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    var activeDevices = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
     activeDevices = activeDevices
         .where((d) => !idsToRemove.contains(d.id))
         .toList();
     _lastActiveDevices = activeDevices;
     state = _mergeDevices(activeDevices);
-    ref.read(adbHeartbeatControllerProvider).trigger();
+    ref.read(devicePollingControllerProvider).trigger();
   }
 
   /// 切换指定设备代表项的选中状态
@@ -236,12 +236,12 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
       }
     }
 
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    final activeDevices = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 
   /// 全选或全不选所有设备代表项
-  void toggleAll(bool checked) {
+  void setAllChecked(bool checked) {
     if (checked) {
       final allRepresentedSerials = state
           .map((d) => _serialMap[d.id] ?? d.id)
@@ -260,7 +260,7 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
     } else {
       _checkedIds.clear();
     }
-    final activeDevices = ref.read(devicesProvider).value ?? _lastActiveDevices;
+    final activeDevices = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
     state = _mergeDevices(activeDevices);
   }
 }

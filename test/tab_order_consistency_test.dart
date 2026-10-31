@@ -94,7 +94,7 @@ void main() {
           PrimaryRail(selectedDevice: _mockAndroidDevice),
           overrides: [
             adbServiceProvider.overrideWithValue(fakeAdb),
-            devicesProvider.overrideWith((ref) => Stream.value([_mockAndroidDevice])),
+            discoveredDevicesProvider.overrideWith((ref) => Stream.value([_mockAndroidDevice])),
             deviceRegistryProvider.overrideWith(
               () => _TestDeviceRegistryNotifier([
                 RegisteredDevice(
@@ -145,7 +145,7 @@ void main() {
           PrimaryRail(selectedDevice: _mockHarmonyDevice),
           overrides: [
             adbServiceProvider.overrideWithValue(fakeAdb),
-            devicesProvider.overrideWith((ref) => Stream.value([_mockHarmonyDevice])),
+            discoveredDevicesProvider.overrideWith((ref) => Stream.value([_mockHarmonyDevice])),
             deviceRegistryProvider.overrideWith(
               () => _TestDeviceRegistryNotifier([
                 RegisteredDevice(

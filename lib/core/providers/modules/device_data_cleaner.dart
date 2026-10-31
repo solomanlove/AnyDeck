@@ -14,9 +14,9 @@ import 'service_providers.dart';
 /// 3. 文件管理中针对该设备保存的常用收藏文件夹（SharedPreferences）；
 /// 4. Companion 历史使用统计 SQLite 数据库（routes/records/cursors）；
 /// 5. 手机通知转发历史 SQLite 数据库（notification_sources/notifications）。
-class DeviceRegistryCleaner {
+class DeviceDataCleaner {
   /// 彻底清理指定设备标识符（物理序列号或网络连接 ID）的所有关联缓存与数据记录。
-  static Future<void> cleanupAll(Ref ref, String deviceId) async {
+  static Future<void> clearDeviceData(Ref ref, String deviceId) async {
     if (deviceId.isEmpty) return;
 
     // 1. 清理设备概览本地缓存

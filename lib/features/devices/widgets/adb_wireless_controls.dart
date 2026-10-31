@@ -9,8 +9,8 @@ import '../../../core/providers/app_providers.dart';
 
 /// Android 操作列无线按钮，统一提供连接、断开及操作进度。
 /// device 必须是注册表合并后的设备，便于所有入口共享身份、防重复与进度。
-class DeviceWirelessControls extends ConsumerWidget {
-  const DeviceWirelessControls({
+class AdbWirelessControls extends ConsumerWidget {
+  const AdbWirelessControls({
     super.key,
     required this.device,
   });
@@ -20,7 +20,7 @@ class DeviceWirelessControls extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (device.id.startsWith('emulator-')) return const SizedBox.shrink();
     final status = ref.watch(
-      wirelessConnectionProvider.select(
+      adbWirelessConnectionProvider.select(
         (states) => wirelessStateFor(states, device),
       ),
     );
@@ -56,7 +56,7 @@ class DeviceWirelessControls extends ConsumerWidget {
                 : () async {
                     final result = await ref
                         .read(deviceRegistryProvider.notifier)
-                        .connectPreferredWireless(device);
+                        .connectPreferredAdbWireless(device);
                     if (!context.mounted) return;
                     _showResult(context, result);
                   },
@@ -74,7 +74,7 @@ class DeviceWirelessControls extends ConsumerWidget {
                     for (final id in networkIds) {
                       final result = await ref
                           .read(deviceRegistryProvider.notifier)
-                          .disconnectDevice(id);
+                          .disconnectNetworkDevice(id);
                       if (!result.isSuccess) failure = result;
                     }
                     if (!context.mounted) return;
@@ -105,14 +105,14 @@ class DeviceWirelessControls extends ConsumerWidget {
 }
 
 /// 自动准备和回退状态直接展示在设备行；失败原因无需点击即可看到。
-class DeviceWirelessStatusLabel extends ConsumerWidget {
-  const DeviceWirelessStatusLabel({super.key, required this.device});
+class AdbWirelessStatusLabel extends ConsumerWidget {
+  const AdbWirelessStatusLabel({super.key, required this.device});
   final RegisteredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(
-      wirelessConnectionProvider.select(
+      adbWirelessConnectionProvider.select(
         (states) => wirelessStateFor(states, device),
       ),
     );

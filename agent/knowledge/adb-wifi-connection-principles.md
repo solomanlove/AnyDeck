@@ -48,7 +48,7 @@ adb -s <device_id> shell ip -o -4 addr show
 
 ### 2.1.2 概览取得 IP 后同步设备管理页（2026-10-16）
 
-- Android 概览读取到有效 Wi-Fi IPv4 后，同时回写 `deviceRegistryProvider` 与 `wirelessConnectionProvider`；设备管理页依靠现有 Provider 订阅即时展示地址，无需返回页面时重新扫描设备。
+- Android 概览读取到有效 Wi-Fi IPv4 后，同时回写 `deviceRegistryProvider` 与 `adbWirelessConnectionProvider`；设备管理页依靠现有 Provider 订阅即时展示地址，无需返回页面时重新扫描设备。
 - 若 USB 自动准备先因暂时未取得地址进入 `wirelessNoIp`，后续概览探针成功时将该过期失败状态恢复为 `wirelessReady`，避免地址已经可用仍显示红色错误。
 - 地址同时写入 `AdbWirelessCoordinator` 的会话缓存，后续点击无线连接可直接复用；不新增 ADB 命令、Timer、全列表刷新或投屏链路变更。
 
@@ -88,12 +88,12 @@ adb -s <device_id> shell ip -o -4 addr show
 | `lib/core/adb/wireless/adb_wireless_coordinator.dart` | 串行任务、USB 去重、TCP 优先、mDNS 回退、TLS 切换恢复与取消 |
 | `lib/core/adb/wireless/adb_wireless_probe.dart` | 有界 ADB 命令、在线 / serial 校验、实时 Wi-Fi IP 解析 |
 | `lib/core/adb/wireless/adb_wireless_state.dart` | 状态、可本地化结果、mDNS 解析和连接 ID 分类 |
-| `lib/core/providers/modules/wireless_connection_provider.dart` | 主窗口生命周期与按设备可订阅进度 |
+| `lib/core/providers/modules/adb_wireless_connection_provider.dart` | 主窗口生命周期与按设备可订阅进度 |
 | `lib/core/providers/modules/device_registry_providers.dart` | 设备上线入口、IP 缓存回写、统一配对和连接入口 |
-| `lib/core/providers/modules/device_registry_probe_service.dart` | 元数据 IP 探测复用实时查询 |
+| `lib/core/providers/modules/device_metadata_probe_service.dart` | 元数据 IP 探测复用实时查询 |
 | `lib/core/providers/modules/registered_device_model.dart` | 服务名分类、有效 IPv4 与优先命令 ID |
-| `lib/features/devices/widgets/device_wireless_controls.dart` | 公共连接 / 断开按钮、Loading、防重复与状态文案 |
-| `lib/features/devices/dashboard_pairing.dart` | 配对结果展示；TLS 回退时保留提示而不立即关闭弹窗 |
+| `lib/features/devices/widgets/adb_wireless_controls.dart` | 公共连接 / 断开按钮、Loading、防重复与状态文案 |
+| `lib/features/devices/device_wireless_connection_dialog.dart` | 配对结果展示；TLS 回退时保留提示而不立即关闭弹窗 |
 | `lib/app/l10n/tables/app_l10n_device_connections.dart` | 中文 / 英文连接状态及排障提示 |
 
 无需新增依赖、持久化密钥或 MethodChannel。子窗口沿用现有语言广播；新状态只属于主窗口连接管理。销毁编排器后取消离线宽限 Timer、跳过排队命令和后续探测；已经启动的 CLI 由 `AdbService` 原有超时回收机制负责。
@@ -101,7 +101,7 @@ adb -s <device_id> shell ip -o -4 addr show
 ### 自动验证
 
 ```bash
-flutter test --no-pub test/adb_wireless_coordinator_test.dart test/wireless_connection_provider_test.dart test/device_wireless_controls_test.dart test/adb_service_test.dart test/harmony_device_serial_merge_test.dart
+flutter test --no-pub test/adb_wireless_coordinator_test.dart test/adb_wireless_connection_provider_test.dart test/adb_wireless_controls_test.dart test/adb_service_test.dart test/harmony_device_serial_merge_test.dart
 ```
 
 - 41 项测试通过：包含 USB 授权、重启去重、DHCP 更新、重复点击、错误成功退出码、mDNS 目标匹配、错机身份隔离、TCP 优先、TLS 旧 / 新端口恢复、配对端口隔离、销毁、主 / 子窗口、IP 解析、服务名分类与明暗主题 / 中英文 Widget 状态。
@@ -125,7 +125,7 @@ flutter test --no-pub test/adb_wireless_coordinator_test.dart test/wireless_conn
 - `lib/features/widgets/dashboard_common.dart`：原弹窗接入指南，地址标签明确为 IP 与端口，提示只填写地址；使用 `scrollable: true` 和 560 logical pixels 内容宽度，长说明可滚动，操作按钮保持可用。
 - `lib/features/devices/widgets/tcpip_connection_guide.dart`：独立只读 `StatelessWidget`，四步说明默认展示，常见问题折叠收纳；命令使用 `SelectableText` 支持选择复制，颜色与文字样式来自当前 Theme。
 - `lib/app/l10n/tables/app_l10n_devices_control.dart`：新增 `tcpip*` 中英文文案，由现有 `AppLocalizations` 读取。
-- 未新增依赖、Provider、后台进程或 MethodChannel；原 `connectDevice(address.trim())` 调用、取消及 Enter 提交行为保持不变。指南本身不执行命令，“连接”按钮不会自动开启 TCP/IP 监听。
+- 未新增依赖、Provider、后台进程或 MethodChannel；原 `connectNetworkDevice(address.trim())` 调用、取消及 Enter 提交行为保持不变。指南本身不执行命令，“连接”按钮不会自动开启 TCP/IP 监听。
 
 ### 说明内容与命令边界
 1. 电脑终端执行 ADB 命令，手机开启 USB debugging 并授权；同一局域网需允许设备间通信。

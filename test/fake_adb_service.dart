@@ -12,7 +12,7 @@ class FakeAdbService extends AdbService {
   }
 
   @override
-  Stream<List<DiscoveredDevice>> trackDevices({
+  Stream<List<DiscoveredDevice>> pollDevices({
     Duration interval = const Duration(seconds: 2),
   }) {
     return Stream.value([]);

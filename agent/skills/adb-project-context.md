@@ -30,7 +30,7 @@ lib/
 - `windowIdProvider` (Provider<int>): 记录当前 Isolate 所在的窗口 ID（主窗口固定为 0）。
 - `appSettingsProvider` (NotifierProvider): 管理多语言、明暗主题、投屏最前配置。
 - `adbServiceProvider` (Provider): 提供 `AdbService` 实例。
-- `deviceListStreamProvider` (StreamProvider): 监听已连接的 ADB 设备列表流。
+- `discoveredDevicesProvider` (StreamProvider): 聚合 ADB、HDC 与 iOS 设备发现结果，可能包含 offline 或 unauthorized 记录。
 - `selectedDeviceProvider` (StateProvider): 当前用户选中的操作设备。
 - `screenPowerOffProvider` (StateProvider): 设备屏幕物理关闭状态同步（用于投屏时息屏）。
 

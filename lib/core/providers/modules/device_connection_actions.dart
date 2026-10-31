@@ -8,11 +8,11 @@ import '../../harmony/hdc_service.dart';
 import 'registered_device_model.dart';
 
 /// 设备网络连接、断开、无线连接与配对操作服务。
-class DeviceRegistryActions {
+class DeviceConnectionActions {
   /// 连接指定的网络设备地址（如 IP:端口）。
   ///
   /// 内部自动进行局域网网段匹配与 Ping 连通性测试诊断，优先 ADB 连接，失败时自动尝试 HDC 无线连接。
-  static Future<AdbResult> connectDevice({
+  static Future<AdbResult> connectNetworkDevice({
     required String address,
     required DeviceActionService deviceActionService,
     required HdcService hdcService,
@@ -70,7 +70,7 @@ class DeviceRegistryActions {
   }
 
   /// 断开指定的网络设备连接（自动判定鸿蒙 HDC 还是 Android ADB）。
-  static Future<AdbResult> disconnectDevice({
+  static Future<AdbResult> disconnectNetworkDevice({
     required String address,
     required List<RegisteredDevice> devices,
     required DeviceActionService deviceActionService,
@@ -88,7 +88,7 @@ class DeviceRegistryActions {
   /// 通过 TCP/IP 无线连接已连接 USB 的设备。
   ///
   /// 实际执行命令：`adb connect $ipAddress:$port` 或 `hdc tconn $ipAddress:$port`。
-  static Future<AdbResult> connectWireless({
+  static Future<AdbResult> enableTcpAndConnect({
     required String usbDeviceId,
     required String ipAddress,
     int port = 5555,
@@ -206,7 +206,7 @@ class DeviceRegistryActions {
 
     // 3. 执行连接
     final addressToConnect = connectAddress ?? '$ip:5555';
-    final connectResult = await connectDevice(
+    final connectResult = await connectNetworkDevice(
       address: addressToConnect,
       deviceActionService: deviceActionService,
       hdcService: hdcService,

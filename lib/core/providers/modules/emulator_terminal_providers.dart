@@ -189,7 +189,7 @@ class EmulatorLaunchNotifier
 /// 包括未授权/离线的模拟器映射，避免只查 shell 而遗漏已运行的 AVD。
 final emulatorConnectionsProvider =
     FutureProvider.autoDispose<Map<String, DiscoveredDevice>>((ref) async {
-      final devices = ref.watch(devicesProvider).value ?? [];
+      final devices = ref.watch(discoveredDevicesProvider).value ?? [];
       return EmulatorConnectionService(
         ref.read(adbServiceProvider),
       ).inspect(devices);

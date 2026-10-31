@@ -5,27 +5,27 @@ import '../ios/ios_device_service.dart';
 import 'discovered_device.dart';
 import 'adb_service.dart';
 
-/// 心跳频次自适应阶段枚举
-enum HeartbeatPhase {
-  /// 密集阶段：检测到变化或用户交互，每 2 秒心跳一次
+/// 轮询频次自适应阶段枚举
+enum DevicePollingPhase {
+  /// 密集阶段：检测到变化或用户交互，每 2 秒轮询一次
   peak,
 
-  /// 较密集阶段：每 1 分钟心跳一次
+  /// 较密集阶段：每 1 分钟轮询一次
   high,
 
-  /// 中频阶段：每 5 分钟心跳一次
+  /// 中频阶段：每 5 分钟轮询一次
   medium,
 
-  /// 低频阶段：每 10 分钟心跳一次
+  /// 低频阶段：每 10 分钟轮询一次
   low,
 
-  /// 停止阶段：完全暂停心跳，节省资源
+  /// 停止阶段：完全暂停轮询，节省资源
   stopped,
 }
 
-/// 自适应 ADB 设备心跳控制器
+/// ADB 与 iOS 设备列表的自适应轮询控制器
 /// 能够根据用户活跃度、设备插拔变化来智能降频或升频，避免多余的 CPU 背景消耗
-class AdbHeartbeatController {
+class DevicePollingController {
   final AdbService _adbService;
   final IosDeviceService? _iosDeviceService;
   final bool isSubWindow;
@@ -36,12 +36,12 @@ class AdbHeartbeatController {
   
   Timer? _timer;
   DateTime _lastTriggerTime = DateTime.now();
-  HeartbeatPhase _phase = HeartbeatPhase.peak;
+  DevicePollingPhase _phase = DevicePollingPhase.peak;
   List<DiscoveredDevice> _lastDevices = [];
   bool _isDisposed = false;
   bool _isPolling = false;
 
-  AdbHeartbeatController({
+  DevicePollingController({
     required AdbService adbService,
     IosDeviceService? iosDeviceService,
     this.isSubWindow = false,
@@ -49,7 +49,7 @@ class AdbHeartbeatController {
   }) : _adbService = adbService,
        _iosDeviceService = iosDeviceService {
     if (!isSubWindow && isDeviceListVisible) {
-      // 启动时立即执行一次心跳，建立初始状态
+      // 启动时立即执行一次轮询，建立初始状态
       trigger();
     }
   }
@@ -57,14 +57,14 @@ class AdbHeartbeatController {
   /// 获取设备列表数据流
   Stream<List<DiscoveredDevice>> get deviceStream => _streamController.stream;
 
-  /// 获取当前的心跳自适应阶段
-  HeartbeatPhase get phase => _phase;
+  /// 获取当前的轮询自适应阶段
+  DevicePollingPhase get phase => _phase;
 
-  /// 主动唤醒/重置心跳到密集状态 (Peak)
+  /// 主动唤醒/重置轮询到密集状态 (Peak)
   void trigger() {
     if (_isDisposed || isSubWindow || !isDeviceListVisible) return;
     _lastTriggerTime = DateTime.now();
-    _phase = HeartbeatPhase.peak;
+    _phase = DevicePollingPhase.peak;
     
     // 立即安排下一次轮询，取消之前的定时器
     _scheduleNext(Duration.zero);
@@ -77,7 +77,7 @@ class AdbHeartbeatController {
     _streamController.close();
   }
 
-  /// 执行单次心跳检测（获取最新设备列表）
+  /// 执行单次轮询检测（获取最新设备列表）
   Future<void> _poll() async {
     if (_isDisposed || _isPolling || isSubWindow || !isDeviceListVisible) return;
     _isPolling = true;
@@ -111,9 +111,9 @@ class AdbHeartbeatController {
       _streamController.add(devices);
 
       if (hasChanged) {
-        // 感应到变化（如设备插拔、授权状态变化）-> 重新激活密集心跳
+        // 感应到变化（如设备插拔、授权状态变化）-> 重新激活密集轮询
         _lastTriggerTime = DateTime.now();
-        _phase = HeartbeatPhase.peak;
+        _phase = DevicePollingPhase.peak;
       }
     } catch (error, stack) {
       if (!_isDisposed) {
@@ -123,11 +123,11 @@ class AdbHeartbeatController {
       _isPolling = false;
     }
 
-    // 根据自适应规则计算下一次的心跳间隔，并安排定时器
+    // 根据自适应规则计算下一次的轮询间隔，并安排定时器
     _updatePhaseAndSchedule();
   }
 
-  /// 根据自适应降频表，判断当前的阶段并调度下一次心跳
+  /// 根据自适应降频表，判断当前的阶段并调度下一次轮询
   void _updatePhaseAndSchedule() {
     if (_isDisposed) return;
 
@@ -142,19 +142,19 @@ class AdbHeartbeatController {
     // 15m - 30m: 每 10 分钟 (low)
     // > 30m: 停止 (stopped)
     if (elapsed <= const Duration(seconds: 30)) {
-      _phase = HeartbeatPhase.peak;
+      _phase = DevicePollingPhase.peak;
       nextInterval = const Duration(seconds: 2);
     } else if (elapsed <= const Duration(minutes: 5)) {
-      _phase = HeartbeatPhase.high;
+      _phase = DevicePollingPhase.high;
       nextInterval = const Duration(minutes: 1);
     } else if (elapsed <= const Duration(minutes: 15)) {
-      _phase = HeartbeatPhase.medium;
+      _phase = DevicePollingPhase.medium;
       nextInterval = const Duration(minutes: 5);
     } else if (elapsed <= const Duration(minutes: 30)) {
-      _phase = HeartbeatPhase.low;
+      _phase = DevicePollingPhase.low;
       nextInterval = const Duration(minutes: 10);
     } else {
-      _phase = HeartbeatPhase.stopped;
+      _phase = DevicePollingPhase.stopped;
       _timer?.cancel();
       _timer = null;
       return;

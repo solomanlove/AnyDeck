@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:any_deck/core/adb/discovered_device.dart';
-import 'package:any_deck/core/adb/adb_device_tracker.dart';
+import 'package:any_deck/core/adb/device_discovery_tracker.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/harmony/hdc_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
@@ -68,7 +68,7 @@ void main() {
   group('HdcService Device Serial Parsing Tests', () {
     test('HarmonyOS 设备列表仅在显式刷新时查询', () async {
       final hdc = _CountingHdcDeviceService();
-      final tracker = AdbDeviceTracker(
+      final tracker = DeviceDiscoveryTracker(
         adbService: FakeAdbService(),
         hdcService: hdc,
         isSubWindow: true,
@@ -225,7 +225,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          devicesProvider.overrideWith((ref) => Stream.value(const [
+          discoveredDevicesProvider.overrideWith((ref) => Stream.value(const [
                 DiscoveredDevice(
                   id: address,
                   status: 'device',
@@ -293,7 +293,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
+          discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           hdcServiceProvider.overrideWithValue(_FakeHdcSerialService()),
         ],
       );
@@ -332,7 +332,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
+          discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           hdcServiceProvider.overrideWithValue(_FakeHdcSerialService()),
         ],
       );

@@ -18,7 +18,7 @@ final iosDeviceServiceProvider = Provider<IosDeviceService>((ref) {
           .log(message, tag: tag, level: level);
     },
   );
-  ref.onDispose(service.stopAll);
+  ref.onDispose(service.stopAllMirroring);
   return service;
 });
 
@@ -64,7 +64,7 @@ class ActiveIosMirrorNotifier extends Notifier<int?> {
       _poll?.cancel();
       unawaited(service.stopMirroring(udid));
     });
-    return service.getPort(udid);
+    return service.getMirrorTextureId(udid);
   }
 
   Future<void> toggleMirroring() async {

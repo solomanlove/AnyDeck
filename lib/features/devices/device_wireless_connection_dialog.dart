@@ -1,14 +1,14 @@
 part of '../dashboard_screen.dart';
 
-class _DevicePairingDialog extends ConsumerStatefulWidget {
-  const _DevicePairingDialog();
+class _DeviceWirelessConnectionDialog extends ConsumerStatefulWidget {
+  const _DeviceWirelessConnectionDialog();
 
   @override
-  ConsumerState<_DevicePairingDialog> createState() =>
-      _DevicePairingDialogState();
+  ConsumerState<_DeviceWirelessConnectionDialog> createState() =>
+      _DeviceWirelessConnectionDialogState();
 }
 
-class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
+class _DeviceWirelessConnectionDialogState extends ConsumerState<_DeviceWirelessConnectionDialog>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late String _ssid;
@@ -362,7 +362,7 @@ class _DevicePairingDialogState extends ConsumerState<_DevicePairingDialog>
                         ],
                       ],
                     )
-                  : const HarmonyWirelessPairingView(),
+                  : const HarmonyWirelessConnectionView(),
             ),
           ],
         ),

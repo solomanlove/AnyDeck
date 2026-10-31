@@ -62,7 +62,7 @@
 - `macos/Runner/IosUsbCapture.swift`：开启 `kCMIOHardwarePropertyAllowScreenCaptureDevices`，使用 IOKit 确认目标物理 USB UDID，优先精确匹配采集 ID；若 AVFoundation 返回 UUID，仅在一台物理 USB iOS 设备和一个 Apple iOS muxed 屏幕候选时关联，多设备歧义明确失败；不按名称选第一台摄像头。
 - 独立串行队列配置和启动采集，另一串行队列接收帧。输出 BGRA、IOSurface/Metal 可用的 CVPixelBuffer，丢弃迟到帧；只持有最新帧，主线程刷新通知合并。
 - `IosUsbCapturePlugin.swift` 为每个 Flutter Engine 注册独立 Texture；真实首帧到达才返回成功，15 秒未到首帧失败。窗口关闭停止采集，拒绝旧会话回调污染新会话。
-- Dart `IosUsbMirrorService` 仅传控制消息和 Texture ID，不搬运视频字节。`activeIosMirrorProvider` 为兼容窗口现有 `int?` 接口，数值现在是 Texture ID，旧 `port/getPort` 名称不再代表网络端口。
+- Dart `IosUsbMirrorService` 仅传控制消息和 Texture ID，不搬运视频字节。`activeIosMirrorProvider` 为兼容窗口现有 `int?` 接口，数值现在是 Texture ID，通过 `IosDeviceService.getMirrorTextureId()` 读取，不代表网络端口。
 - 500 ms 读取一次宽高、平均采集 FPS、最新帧年龄及错误。运行时异常、断开或连续 10 秒没有帧会结束投屏。FPS 是采集计数/运行时长，不是 Flutter 实际呈现帧率。
 - macOS 摄像头权限用于 AVFoundation USB iPhone 采集。当前保留旧 `muxed` 设备枚举以兼容旧 iPhone；新 SDK 会报告弃用警告。
 - 暂不采集音频，不启用网络视频回退。Windows/Linux 明确返回本期仅支持 macOS，不能悄悄退回截图流并称为原生视频。

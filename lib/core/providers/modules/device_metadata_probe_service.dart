@@ -11,7 +11,7 @@ import 'device_registry_storage.dart';
 ///
 /// 当检测到新设备上线且缺乏关键元数据（如硬件序列号、WLAN0 IP、Android 版本、真实型号）时，
 /// 异步通过 ADB / HDC 底层命令进行非阻塞探测，并持久化到本地 Overview 缓存与 SharedPreferences。
-class DeviceRegistryProbeService {
+class DeviceMetadataProbeService {
   /// 获取 Android 系统的 Release 版本与 SDK API 级别
   static Future<({String label, int sdk})?> fetchAndroidVersion(
     AdbService adb,

@@ -78,7 +78,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             const SizedBox(width: 10),
             _buildRemarkCell(context, device),
             const SizedBox(width: 10),
-            _buildAndroidVersionCell(context, device),
+            _buildSystemVersionCell(context, device),
             const SizedBox(width: 10),
             _buildActionsCell(context, device, airplaySession),
             if (!isCompact) ...[
@@ -155,7 +155,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 // 2. 次行展示已获取的局域网 Wi-Fi IP 地址 / 投屏分辨率及警告图标
                 _buildIdentifierSubtitle(device, airplaySession),
                 if (!device.isIos && !device.isHarmony)
-                  DeviceWirelessStatusLabel(device: device),
+                  AdbWirelessStatusLabel(device: device),
               ],
             ),
           ),
@@ -243,8 +243,8 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     );
   }
 
-  /// 构建设备系统版本列，展示 Android release 与 API 级别。
-  Widget _buildAndroidVersionCell(
+  /// 构建设备系统版本列，展示 Android、HarmonyOS 或 iOS 版本。
+  Widget _buildSystemVersionCell(
     BuildContext context,
     RegisteredDevice device,
   ) {
@@ -315,7 +315,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           ],
           // 2. 如果已有处于激活在线状态的无线网络调试连接，则显示红色“断开”按钮
           if (!device.isIos && !device.isHarmony) ...[
-            DeviceWirelessControls(device: device),
+            AdbWirelessControls(device: device),
           ] else if (hasActiveWifi) ...[
             IconButton(
               icon: const Icon(
@@ -330,7 +330,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 ref,
                 ref
                     .read(deviceRegistryProvider.notifier)
-                    .disconnectDevice(activeWifiId),
+                    .disconnectNetworkDevice(activeWifiId),
               ),
             ),
           ]
@@ -350,10 +350,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 device.isOnline
                     ? ref
                         .read(deviceRegistryProvider.notifier)
-                        .connectWireless(device.id, wifiIp)
+                        .enableTcpAndConnect(device.id, wifiIp)
                     : ref
                         .read(deviceRegistryProvider.notifier)
-                        .connectDevice('$wifiIp:5555'),
+                        .connectNetworkDevice('$wifiIp:5555'),
               ),
             ),
           ],

@@ -300,9 +300,9 @@ class AdbEnvironmentNotifier extends Notifier<AdbEnvironmentInfo> {
 
     state = result;
     if (result.isReady) {
-      // 刷新 ADB 服务并触发心跳，让设备列表立即开始工作
+      // 刷新 ADB 服务并触发设备轮询，让设备列表立即开始工作
       ref.invalidate(adbServiceProvider);
-      ref.read(adbHeartbeatControllerProvider).trigger();
+      ref.read(devicePollingControllerProvider).trigger();
       return true;
     }
     return false;

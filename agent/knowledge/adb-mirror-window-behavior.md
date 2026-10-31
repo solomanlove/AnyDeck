@@ -78,7 +78,7 @@ flutter test test/mirror_transport_resolver_test.dart \
 ### 实时优选与当前通道标签（2026-10-29）
 
 - 原实现只在异常断线时重新选路；现在健康的 TCP/Wi-Fi 投屏也监听设备事件。USB 重新上线并通过同机硬件身份校验后自动优先切回 USB；Wi-Fi 投屏期间普通 TCP 上线也会升级，顺序为 USB → TCP → Wi-Fi。同级或更低优先级连接变化不会重建健康会话。
-- `mirror_transport_devices_provider.dart` 主窗口复用已有 `AdbDeviceTracker`，每个投屏子 Isolate 共享一条仅 ADB 的 `track-devices -l` 事件流，先提供当前快照，再推送变化。不启用子窗口心跳、iOS/HDC 轮询或高频列表命令；订阅释放后关闭监听。Tracker 还会终止窗口关闭后才启动完成的迟到进程。
+- `mirror_transport_devices_provider.dart` 主窗口复用已有 `DeviceDiscoveryTracker`，每个投屏子 Isolate 共享一条仅 ADB 的 `track-devices -l` 事件流，先提供当前快照，再推送变化。不启用子窗口心跳、iOS/HDC 轮询或高频列表命令；订阅释放后关闭监听。Tracker 还会终止窗口关闭后才启动完成的迟到进程。
 - 连接变化做 350ms 防抖，优选探测直接使用事件快照，只查询高优先级候选的序列号；断线恢复仍重新查询实时列表。事件快照中的 iOS/HarmonyOS 不参与 Android 候选选择。选择期间出现新事件会重新评估，迟到结果或已主动停止的会话不能触发切换。
 - 坏 USB 启动失败后可以回退原健康 TCP，不会在 USB 与 TCP 间不断抢占；只有该 USB 真正离线后再次上线，才解除本轮失败限制。所有通道切换均等待旧会话释放，再按新 ID 重建画面和操作，属于短暂重连，不是正在使用的 ADB socket 原地迁移。
 - `mirror_transport_type.dart` 统一优先级与显示类型，沿用项目对 USB、传统 TCP 和 TLS/mDNS/动态端口无线调试的识别约定。设备信息悬浮卡的名称右侧显示 `USB 投屏 / TCP 投屏 / Wi-Fi 投屏`；标签取自当前会话绑定的 `deviceId`，不使用注册表中可能不同的 preferred ID。概览加载中、读取失败时也能显示，iOS/HarmonyOS 不猜测 Android 通道。

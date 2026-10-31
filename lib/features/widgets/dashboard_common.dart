@@ -191,7 +191,7 @@ Future<void> _showConnectDeviceDialog(
   await _runAdbAction(
     context,
     ref,
-    ref.read(deviceRegistryProvider.notifier).connectDevice(address.trim()),
+    ref.read(deviceRegistryProvider.notifier).connectNetworkDevice(address.trim()),
   );
 }
 

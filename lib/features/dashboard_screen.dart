@@ -45,7 +45,7 @@ import '../core/apps/adb_package_detail.dart';
 import '../core/apps/app_management_service.dart';
 import '../core/apps/harmony_app_detail.dart';
 import 'apps/widgets/app_permissions_panel.dart';
-import 'devices/widgets/device_wireless_controls.dart';
+import 'devices/widgets/adb_wireless_controls.dart';
 import 'devices/widgets/device_connection_indicators.dart';
 import 'devices/widgets/device_status_avatar.dart';
 import 'devices/widgets/device_info_edit_dialog.dart';
@@ -99,7 +99,7 @@ import 'widgets/remote_controller_dialog.dart';
 import 'devices/widgets/tcpip_connection_guide.dart';
 import 'devices/widgets/host_network_footer.dart';
 import 'devices/widgets/device_subnet_warning.dart';
-import 'devices/widgets/harmony_wireless_pairing_view.dart';
+import 'devices/widgets/harmony_wireless_connection_view.dart';
 import 'widgets/dashboard_table_header.dart';
 import 'widgets/dashboard_header_bar.dart';
 import 'devices/widgets/emulator_platform_tabs.dart';
@@ -166,7 +166,7 @@ part 'devices/dashboard_emulators_table.dart';
 part 'devices/dashboard_emulator_details.dart';
 part 'overview/dashboard_workspace.dart';
 part 'overview/dashboard_route_sync.dart';
-part 'devices/dashboard_device_header.dart';
+part 'devices/device_mirror_window_launcher.dart';
 part 'overview/dashboard_overview.dart';
 part 'overview/dashboard_overview_widgets.dart';
 part 'overview/dashboard_overview_battery_chip.dart';
@@ -219,7 +219,7 @@ part 'apps/dashboard_app_permissions.dart';
 part 'apps/dashboard_app_functions_view.dart';
 part 'apps/harmony_apps_tab.dart';
 part 'apps/harmony_app_analysis_view.dart';
-part 'devices/dashboard_pairing.dart';
+part 'devices/device_wireless_connection_dialog.dart';
 part 'devices/dashboard_devices_panel.dart';
 part 'devices/dashboard_devices_view.dart';
 part 'devices/dashboard_devices_rows.dart';
@@ -397,7 +397,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   void onWindowFocus() {
-    ref.read(adbHeartbeatControllerProvider).trigger();
+    ref.read(devicePollingControllerProvider).trigger();
   }
 
   Future<void> _handleWindowMethodCall(MethodCall call) async {

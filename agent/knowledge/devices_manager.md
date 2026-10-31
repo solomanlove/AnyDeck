@@ -77,7 +77,7 @@ final deviceAndroidVersionProvider = Provider.autoDispose
 
 回归：`flutter test test/harmony_device_serial_merge_test.dart` 覆盖 HDC `Unknown` 过滤和 ADB/HDC 同地址路由。手工验收可同时观察 `adb devices -l`、`hdc list targets -v` 与控制台日志：当 Android 地址仅在 HDC 中呈 `Unknown` 时，不应再出现针对该地址的 `hdc -t ... shell`。
 
-本机 HDC `3.1.0b` 仅提供一次性 `list targets [-v]`，没有与 `adb track-devices` 对等的设备事件流。主窗口只在应用初始化以及用户主动刷新、HDC 连接/断开或服务重启后调用一次 `HdcService.listDevices()`；5 秒 iOS 辅助轮询和自适应 Heartbeat 都不再扫描 HDC，避免后台持续执行 `hdc list targets -v`。HarmonyOS 设备热插拔后如未经过连接操作，需要点击刷新按钮同步列表。
+本机 HDC `3.1.0b` 仅提供一次性 `list targets [-v]`，没有与 `adb track-devices` 对等的设备事件流。主窗口只在应用初始化以及用户主动刷新、HDC 连接/断开或服务重启后调用一次 `HdcService.listDevices()`；5 秒 iOS 辅助轮询和自适应设备轮询都不再扫描 HDC，避免后台持续执行 `hdc list targets -v`。HarmonyOS 设备热插拔后如未经过连接操作，需要点击刷新按钮同步列表。
 
 ### 2.4 HDC 瞬态错误与设备信息缓存清洗
 
@@ -110,3 +110,62 @@ HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The
 历史版本已经持久化的占位记录由 `DeviceRegistryStorage.loadFromPrefs()` 自动移除，同时清理别名、型号、产品、IP、系统版本、SDK、备注、标签和 `devices.overview.<id>` 缓存。该清理只针对明确无效的占位 ID，不影响包含空格的合法 mDNS route；无需用户手动删除，重新加载设备注册表后异常行自动消失。
 
 验证结果：31 项 Flutter 定向回归与 1 项 Rust 测试通过，12 个相关 Dart 文件定向静态分析无问题。
+
+## 3. 设备管理命名约定（2026-10-31）
+
+本次仅调整类、Provider、方法和文件命名，同步调用处、测试与文档；不改变设备发现、连接、配对、刷新、缓存或投屏逻辑。
+
+### 3.1 类名与 Provider 的职责
+
+| 原名称 | 当前名称 | 职责边界 |
+| --- | --- | --- |
+| `AdbDeviceTracker` | `DeviceDiscoveryTracker` | 汇总 ADB、HDC、iOS 发现结果 |
+| `AdbHeartbeatController` / `HeartbeatPhase` | `DevicePollingController` / `DevicePollingPhase` | ADB/iOS 自适应轮询与频率阶段 |
+| `WirelessConnectionNotifier` | `AdbWirelessConnectionNotifier` | 仅编排 ADB 无线连接 |
+| `DeviceRegistryActions` | `DeviceConnectionActions` | 连接、断开及 TCP 开启 |
+| `DeviceRegistryProbeService` | `DeviceMetadataProbeService` | 设备元数据探测 |
+| `DeviceRegistryCleaner` | `DeviceDataCleaner` | 指定设备的缓存和持久化数据清理 |
+| `HarmonyWirelessPairingView` | `HarmonyWirelessConnectionView` | HDC 无线连接入口 |
+| `DeviceWirelessControls` / `DeviceWirelessStatusLabel` | `AdbWirelessControls` / `AdbWirelessStatusLabel` | ADB 无线按钮及状态 |
+| `ScheduledTask` / `ScheduledTasksNotifier` | `ScheduledDeviceTask` / `ScheduledDeviceTasksNotifier` | 设备批量计划任务 |
+
+发现入口使用 `discoveredDevicesProvider`，与保存历史和合并结果的 `deviceRegistryProvider` 区分；发现结果不保证在线。其他入口统一为 `deviceDiscoveryTrackerProvider`、`devicePollingControllerProvider`、`adbWirelessConnectionProvider`、`harmonyWirelessConnectionProvider` 和 `scheduledDeviceTasksProvider`。
+
+### 3.2 方法名与实际行为
+
+| 当前方法 | 行为 |
+| --- | --- |
+| `_clearStaleConnectionFailures()` | 清理已经连接成功的设备对应的过期失败状态 |
+| `getMirrorTextureId()` / `isMirroring()` / `stopAllMirroring()` | `IosDeviceService` 的 Texture 查询、投屏状态和会话停止 |
+| `_scheduleDeviceMetadataProbe()` / `_scheduleHarmonyMetadataProbe()` | 异步调度元数据探测 |
+| `_tryRefreshDeviceRegistry()` | 连接操作后尝试刷新，保留原有异常处理 |
+| `_refreshDiscoveredDevicesAndRegistry()` | 查询三平台并更新注册表 |
+| `setAllChecked(bool checked)` | 根据参数设置所有设备代表项的选中状态 |
+| `clearDeviceData(ref, deviceId)` | 清理指定设备数据 |
+| `connectNetworkDevice()` / `disconnectNetworkDevice()` | 连接或断开网络 transport |
+| `enableTcpAndConnect()` | Registry / Actions 开启 TCP 监听并连接 |
+| `connectPreferredAdbWireless()` | Registry 的 ADB 无线优选入口 |
+| `pairAndConnect()` | ADB 编排器及 Notifier 的配对后连接流程 |
+| `prepareWirelessOverUsb()` / `_prepareWirelessOverUsb()` | 使用 USB 通道准备无线连接 |
+| `_switchTlsToTcpWithFallback()` | 尝试 TLS 切换 TCP，失败回退 |
+| `AdbService.pollDevices()` | 定时查询设备列表，不是 `adb track-devices` 进程 |
+| `_buildSystemVersionCell()` | 展示 Android、HarmonyOS 或 iOS 系统版本 |
+
+文件名跟随类名调整；`device_mirror_window_launcher.dart` 表达投屏窗口启动职责，`device_wireless_connection_dialog.dart` 同时承载 Android 配对和 HarmonyOS 连接，内部类为 `_DeviceWirelessConnectionDialog`。原目录和 `part` 结构保持不变，相关测试文件名同步更新。
+
+### 3.3 兼容边界与回归范围
+
+- `androidVersion` 字段、JSON Key、SharedPreferences Key、l10n Key、MethodChannel 协议保持不变，无数据迁移。
+- ADB/HDC CLI 参数、真实 `pair` / `track-devices` 命令、HDC 的 `connectWireless()` / `disconnectWireless()` 保持不变。
+- 投屏生命周期、线程和 Isolate 边界、轮询间隔、UI 样式、中英文文案与主题均不调整。
+- 更新现有测试中的导入、Provider override、Fake override 和方法调用，覆盖 ADB 无线编排、设备合并/IP、Harmony 自动重连、iOS 列表与投屏及 Dashboard 消费入口。
+- 手工验收路径：设备列表刷新与选择、Android 配对/USB 转无线/TLS 回退、Harmony 连接与断开、iOS 投屏启停。按要求未启动应用或操作真机，此处仅记录后续验收路径。
+
+
+### 3.4 本次验证结果
+
+- 在修改前与修改后分别执行相同的 18 个测试文件：两次均为 **83 项通过、12 项失败**，失败测试名称完全一致。既有失败来自 `app_pinyin_filter_test.dart`、`apps_tab_filter_test.dart` 及 `widget_test.dart`，涉及旧 UI 查找/断言和布局；本次仅重命名，不扩展修复这些问题。
+- 两次 `flutter analyze --no-pub` 均为 **39 条 warning/info，无 error**；归一化重命名路径和行列号后，诊断内容完全一致，无新增诊断。
+- 45 个 Dart 文件的 token 对比符合限定的重命名映射，额外差异仅为职责注释；`git diff --check` 通过。
+- 旧符号与旧路径检索仅保留本节迁移表及不变的 `connectDevice` l10n Key；CLI 字符串和持久化 Key 不变。
+- 未启动桌面应用，未执行真机验收；上述结果不等于全仓测试通过。

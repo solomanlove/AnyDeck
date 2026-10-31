@@ -1,7 +1,7 @@
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/harmony/hdc_service.dart';
 import 'package:any_deck/core/providers/modules/device_tracking_providers.dart';
-import 'package:any_deck/core/providers/modules/harmony_wireless_provider.dart';
+import 'package:any_deck/core/providers/modules/harmony_wireless_connection_provider.dart';
 import 'package:any_deck/core/providers/modules/service_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,7 +39,7 @@ ProviderContainer _container(HdcService hdc) {
   return ProviderContainer(
     overrides: [
       hdcServiceProvider.overrideWithValue(hdc),
-      devicesProvider.overrideWith((ref) => Stream.value(const [])),
+      discoveredDevicesProvider.overrideWith((ref) => Stream.value(const [])),
     ],
   );
 }
@@ -55,11 +55,11 @@ void main() {
       addTearDown(container.dispose);
 
       final result = await container
-          .read(harmonyWirelessProvider.notifier)
+          .read(harmonyWirelessConnectionProvider.notifier)
           .connect('192.168.1.8:5555');
 
       expect(result.isSuccess, isTrue);
-      final endpoint = container.read(harmonyWirelessProvider).history.single;
+      final endpoint = container.read(harmonyWirelessConnectionProvider).history.single;
       expect(endpoint.address, '192.168.1.8:5555');
       expect(endpoint.deviceSerial, 'DEVICE-SERIAL-001');
     },
@@ -73,11 +73,11 @@ void main() {
       addTearDown(container.dispose);
 
       final result = await container
-          .read(harmonyWirelessProvider.notifier)
+          .read(harmonyWirelessConnectionProvider.notifier)
           .connect('192.168.1.9:5555', expectedSerial: 'EXPECTED-DEVICE');
 
       expect(result.isSuccess, isFalse);
-      expect(container.read(harmonyWirelessProvider).history, isEmpty);
+      expect(container.read(harmonyWirelessConnectionProvider).history, isEmpty);
       expect(
         hdc.commands,
         contains(equals(['tconn', '192.168.1.9:5555', '-remove'])),
@@ -93,11 +93,11 @@ void main() {
       addTearDown(container.dispose);
 
       final result = await container
-          .read(harmonyWirelessProvider.notifier)
+          .read(harmonyWirelessConnectionProvider.notifier)
           .connect('192.168.1.10:5555');
 
       expect(result.isSuccess, isFalse);
-      expect(container.read(harmonyWirelessProvider).history, isEmpty);
+      expect(container.read(harmonyWirelessConnectionProvider).history, isEmpty);
     },
   );
 }

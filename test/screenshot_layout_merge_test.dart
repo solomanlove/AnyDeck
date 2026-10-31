@@ -181,7 +181,7 @@ void main() {
           overrides: [
             adbServiceProvider.overrideWithValue(fakeAdb),
             layoutInspectorServiceProvider.overrideWithValue(mockInspector),
-            devicesProvider.overrideWith((ref) => Stream.value([_mockAndroidDevice])),
+            discoveredDevicesProvider.overrideWith((ref) => Stream.value([_mockAndroidDevice])),
             deviceRegistryProvider.overrideWith(
               () => _TestDeviceRegistryNotifier([
                 RegisteredDevice(

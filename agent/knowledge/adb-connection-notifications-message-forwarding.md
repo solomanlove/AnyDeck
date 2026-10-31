@@ -23,7 +23,7 @@ flowchart LR
     end
 
     subgraph Desktop[macOS Flutter Desktop]
-        ADB[AdbDeviceTracker adb track-devices] --> ConnService[DeviceConnectionNotificationService]
+        ADB[DeviceDiscoveryTracker adb track-devices] --> ConnService[DeviceConnectionNotificationService]
         ConnService --> Bridge[MacNotificationBridge UNUserNotificationCenter]
 
         NClient[NotificationForwardingClient] -->|adb shell content call| CP
@@ -51,7 +51,7 @@ flowchart LR
 - 支持通过 `NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:...")!)` 直达 macOS 系统通知设置。
 - **手机 App 图标附件**：转发服务从现有 `packagesProvider(deviceId)` 读取 `iconLocalPath`，通过 `showNotification` MethodChannel 传给原生端。原生端校验 PNG 文件和 10 MiB 上限，复制临时文件并创建 `UNNotificationAttachment`，保留原始图标缓存；通知提交后清理临时副本。图标缺失或附件创建失败时继续发送文字通知。macOS 左侧仍使用 AnyDeck 的 Bundle 图标，手机 App 图标由系统作为右侧图片附件展示，具体布局由系统控制。
 
-### 3.2 设备的全局单例监听 (`AdbDeviceTracker`)
+### 3.2 设备的全局单例监听 (`DeviceDiscoveryTracker`)
 - 在主窗口进程内托管唯一的 `adb track-devices -l` 长驻子进程 (`Process.start`)。
 - 当窗口隐藏、最小化或切换不同功能 Tab 时保持长连接监听，应用退出时自动销毁进程树。
 - `DeviceConnectionNotificationService` 基于设备硬件序列号（Hardware Serial）维护 2s 的连接与断开防抖窗口，过滤无线调试配对探测或短暂重连造成的通知风暴。

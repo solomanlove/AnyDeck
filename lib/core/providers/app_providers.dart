@@ -36,10 +36,10 @@
 /// 11. [modules/device_registry_merger.dart]
 ///     多通道归一与“在线优先、USB 优先”最佳代表选举服务。
 ///
-/// 12. [modules/device_registry_probe_service.dart]
+/// 12. [modules/device_metadata_probe_service.dart]
 ///     硬件序列号、局域网 IP 与真实型号非阻塞探查服务。
 ///
-/// 13. [modules/device_registry_actions.dart]
+/// 13. [modules/device_connection_actions.dart]
 ///     局域网同一网段测试、Ping 诊断、TCP/IP 无线连接与配对操作。
 ///
 /// 14. [modules/device_registry_providers.dart]
@@ -48,11 +48,11 @@ library;
 
 export 'modules/dashboard_state_providers.dart';
 export 'modules/device_overview_providers.dart';
-export 'modules/device_registry_actions.dart';
+export 'modules/device_connection_actions.dart';
 export 'modules/device_registry_merger.dart';
-export 'modules/device_registry_probe_service.dart';
+export 'modules/device_metadata_probe_service.dart';
 export 'modules/device_registry_providers.dart';
-export 'modules/harmony_wireless_provider.dart';
+export 'modules/harmony_wireless_connection_provider.dart';
 export 'modules/device_registry_storage.dart';
 export 'modules/device_tracking_providers.dart';
 export 'modules/emulator_terminal_providers.dart';
@@ -61,4 +61,4 @@ export 'modules/package_providers.dart';
 export 'modules/registered_device_model.dart';
 export 'modules/screen_power_providers.dart';
 export 'modules/service_providers.dart';
-export 'modules/wireless_connection_provider.dart';
+export 'modules/adb_wireless_connection_provider.dart';

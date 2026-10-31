@@ -11,9 +11,9 @@ UART 仅位于高级折叠区，服务于 OpenHarmony 开发板。Remote HDC Ser
 | 模块 | 职责 |
 | --- | --- |
 | `core/harmony/wireless/harmony_wireless_models.dart` | IPv4:Port 严格校验、端点与状态模型 |
-| `core/providers/modules/harmony_wireless_provider.dart` | SharedPreferences 身份历史、单任务连接、USB 回读 IP 和 3/10/30/60 秒自动重连 |
+| `core/providers/modules/harmony_wireless_connection_provider.dart` | SharedPreferences 身份历史、单任务连接、USB 回读 IP 和 3/10/30/60 秒自动重连 |
 | `core/harmony/hdc_remote_server.dart` | `hdc -s IP:Port -m` 长进程启动、退出与超时强杀 |
-| `features/devices/widgets/harmony_wireless_pairing_view.dart` | 手机 USB/TCP 状态、输入粘贴、发现和历史入口 |
+| `features/devices/widgets/harmony_wireless_connection_view.dart` | 手机 USB/TCP 状态、输入粘贴、发现和历史入口 |
 | `features/devices/widgets/harmony_wireless_advanced.dart` | Remote HDC Server 与开发板 UART |
 
 普通入口不扫描局域网开放端口，因为 TCP 端口开放不能证明目标为 HDC，也不能确认设备身份。USB 场景读取实时 WLAN IP 后直连；手动地址首次成功后读取硬件 serial 并绑定。最多保存 8 条历史，只自动重连最近一次成功设备；连接互斥，失败最多 5 次，主动断开会抑制本次会话重连。
@@ -31,8 +31,8 @@ UART 仅位于高级折叠区，服务于 OpenHarmony 开发板。Remote HDC Ser
 ```bash
 flutter analyze --no-pub lib/core/harmony/wireless \
   lib/core/harmony/hdc_remote_server.dart \
-  lib/core/providers/modules/harmony_wireless_provider.dart \
-  lib/features/devices/widgets/harmony_wireless_pairing_view.dart \
+  lib/core/providers/modules/harmony_wireless_connection_provider.dart \
+  lib/features/devices/widgets/harmony_wireless_connection_view.dart \
   lib/features/devices/widgets/harmony_wireless_advanced.dart
 
 flutter test --no-pub test/harmony_wireless_models_test.dart

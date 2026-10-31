@@ -90,7 +90,7 @@ class _ContentTitleBar extends ConsumerWidget {
           onPressed: () => showDialog<void>(
             context: context,
             barrierDismissible: false,
-            builder: (context) => const _DevicePairingDialog(),
+            builder: (context) => const _DeviceWirelessConnectionDialog(),
           ),
           style: IconButton.styleFrom(
             fixedSize: const Size(48, 48),

@@ -84,7 +84,7 @@ void main() {
       overrides: [
         adbServiceProvider.overrideWithValue(FakeAdbService()),
         iosDeviceServiceProvider.overrideWithValue(_Ios()),
-        devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
+        discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
         deviceRegistryProvider.overrideWith(_Registry.new),
         selectedDeviceProvider.overrideWith(_SelectedDevice.new),
         selectedToolTabProvider.overrideWith(_Tab.new),

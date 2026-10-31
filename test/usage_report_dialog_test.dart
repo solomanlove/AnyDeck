@@ -61,7 +61,7 @@ void main() {
           ProviderScope(
             overrides: [
               // 隔离元数据解析间接订阅的设备流，避免测试启动真实 ADB 监听。
-              devicesProvider.overrideWith((ref) => Stream.value([])),
+              discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
               locationTileProviderFactoryProvider.overrideWithValue(
                 FixtureTileProvider.new,
               ),

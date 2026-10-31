@@ -67,7 +67,7 @@ void main() {
       ProviderScope(
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
-          devicesProvider.overrideWith(
+          discoveredDevicesProvider.overrideWith(
             (ref) => Stream.value(<DiscoveredDevice>[mockDevice]),
           ),
           packagesProvider(

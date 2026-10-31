@@ -8,10 +8,11 @@ import '../ios/ios_device_service.dart';
 import 'discovered_device.dart';
 import 'adb_service.dart';
 
-/// 主窗口常驻的设备监听器，通过 `AdbService.start` 管理 `adb track-devices -l` 进程。
+/// 主窗口常驻的设备发现聚合器，汇总 ADB、HDC 与 iOS 设备。
+/// ADB 使用 `adb track-devices -l` 监听，iOS 定时轮询，HDC 初始化或主动刷新。
 /// 隐藏窗口、最小化、切换 Tab 均保持持续监听，退出应用时释放。
-class AdbDeviceTracker {
-  AdbDeviceTracker({
+class DeviceDiscoveryTracker {
+  DeviceDiscoveryTracker({
     required AdbService adbService,
     IosDeviceService? iosDeviceService,
     HdcService? hdcService,
@@ -56,7 +57,7 @@ class AdbDeviceTracker {
       await refreshHarmonyDevices(publish: false);
       _publish();
     } catch (e) {
-      debugPrint('[AdbDeviceTracker] initial listDevices error: $e');
+      debugPrint('[DeviceDiscoveryTracker] initial listDevices error: $e');
     }
 
     _startAdbTrackProcess();
@@ -137,16 +138,16 @@ class AdbDeviceTracker {
           }
         },
         onError: (err) {
-          debugPrint('[AdbDeviceTracker] track-devices stream error: $err');
+          debugPrint('[DeviceDiscoveryTracker] track-devices stream error: $err');
           _scheduleRestart();
         },
         onDone: () {
-          debugPrint('[AdbDeviceTracker] track-devices process finished');
+          debugPrint('[DeviceDiscoveryTracker] track-devices process finished');
           _scheduleRestart();
         },
       );
     } catch (e) {
-      debugPrint('[AdbDeviceTracker] failed to start track-devices: $e');
+      debugPrint('[DeviceDiscoveryTracker] failed to start track-devices: $e');
       _scheduleRestart();
     }
   }
@@ -177,7 +178,7 @@ class AdbDeviceTracker {
         _iosDevices = await _iosDeviceService.listDevices();
       }
     } catch (e) {
-      debugPrint('[AdbDeviceTracker] iOS poll error: $e');
+      debugPrint('[DeviceDiscoveryTracker] iOS poll error: $e');
     }
   }
 
@@ -188,7 +189,7 @@ class AdbDeviceTracker {
         _harmonyDevices = await _hdcService.listDevices();
       }
     } catch (e) {
-      debugPrint('[AdbDeviceTracker] HarmonyOS refresh error: $e');
+      debugPrint('[DeviceDiscoveryTracker] HarmonyOS refresh error: $e');
     }
     if (publish) {
       _publish();

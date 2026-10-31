@@ -173,7 +173,7 @@ adb-PHONE _adb._tcp 192.168.1.9:5555
   test('配对后只用 mDNS 连接端口，然后切换 TCP，不使用配对端口连接', () async {
     adb.add('192.168.1.8:37001', 'PHONE', connected: false);
     adb.mdns = 'adb-PHONE-abc _adb-tls-connect._tcp 192.168.1.8:37001';
-    final result = await flow.pair('192.168.1.8:40001', '123456');
+    final result = await flow.pairAndConnect('192.168.1.8:40001', '123456');
     expect(result.messageKey, 'wirelessConnected');
     expect(
       commands('connect').any((a) => a[1] == '192.168.1.8:40001'),
@@ -196,7 +196,7 @@ adb-PHONE _adb._tcp 192.168.1.9:5555
   test('销毁后停止排队任务和后续探测', () async {
     adb.add('PHONE', 'PHONE');
     adb.enableGate = Completer<void>();
-    final job = flow.prepareUsb('PHONE');
+    final job = flow.prepareWirelessOverUsb('PHONE');
     await Future<void>.delayed(Duration.zero);
     flow.dispose();
     final count = adb.calls.length;
@@ -231,9 +231,9 @@ adb-PHONE _adb._tcp 192.168.1.9:5555
 
   test('没有 Wi-Fi IP 时准备超时，并明确清空旧地址缓存', () async {
     adb.add('PHONE', 'PHONE');
-    await flow.prepareUsb('PHONE');
+    await flow.prepareWirelessOverUsb('PHONE');
     adb.ips.clear();
-    final result = await flow.prepareUsb('PHONE');
+    final result = await flow.prepareWirelessOverUsb('PHONE');
     expect(result.messageKey, 'wirelessNoIp');
     expect(states.last.registryIp, '-');
     expect(states.last.busy, isFalse);

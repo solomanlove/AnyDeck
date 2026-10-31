@@ -1,6 +1,6 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
-import 'package:any_deck/features/devices/widgets/device_wireless_controls.dart';
+import 'package:any_deck/features/devices/widgets/adb_wireless_controls.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 固定 UI 状态，Widget 测试不会启动后台设备发现或连接。
-class _WirelessUiState extends WirelessConnectionNotifier {
+class _WirelessUiState extends AdbWirelessConnectionNotifier {
   _WirelessUiState(this.value);
   final AdbWirelessState value;
   @override
@@ -30,7 +30,7 @@ void main() {
             ProviderScope(
               key: UniqueKey(),
               overrides: [
-                wirelessConnectionProvider.overrideWith(
+                adbWirelessConnectionProvider.overrideWith(
                   () => _WirelessUiState(status),
                 ),
               ],
@@ -47,8 +47,8 @@ void main() {
                     width: 260,
                     child: Column(
                       children: [
-                        DeviceWirelessControls(device: device),
-                        DeviceWirelessStatusLabel(device: device),
+                        AdbWirelessControls(device: device),
+                        AdbWirelessStatusLabel(device: device),
                       ],
                     ),
                   ),

@@ -54,7 +54,7 @@ class AdbWirelessCoordinator {
     }
     for (final device in usb) {
       _detachTimers.remove(device.id)?.cancel();
-      if (_seenUsb.add(device.id)) unawaited(prepareUsb(device.id));
+      if (_seenUsb.add(device.id)) unawaited(prepareWirelessOverUsb(device.id));
     }
   }
 
@@ -106,11 +106,11 @@ class AdbWirelessCoordinator {
     return job;
   }
 
-  Future<AdbWirelessResult> prepareUsb(String id) {
+  Future<AdbWirelessResult> prepareWirelessOverUsb(String id) {
     _seenUsb.add(id);
     final existing = _preparations[id];
     if (existing != null) return existing;
-    final job = _schedule(id, () => _prepareUsb(id));
+    final job = _schedule(id, () => _prepareWirelessOverUsb(id));
     _preparations[id] = job;
     unawaited(job.then((_) => _preparations.remove(id)));
     return job;
@@ -127,7 +127,7 @@ class AdbWirelessCoordinator {
     _ips[id] = ip;
   }
 
-  Future<AdbWirelessResult> _prepareUsb(String id) async {
+  Future<AdbWirelessResult> _prepareWirelessOverUsb(String id) async {
     _ips.remove(id);
     if (!await probe.online(id)) {
       return const AdbWirelessResult('wirelessAuthorize');
@@ -206,7 +206,7 @@ class AdbWirelessCoordinator {
       }
       serial = actual;
       if (isPhysicalUsbId(source)) {
-        await _prepareUsb(source);
+        await _prepareWirelessOverUsb(source);
         ip = _ips[source];
       } else {
         ip = await probe.ip(source) ?? ip;
@@ -226,7 +226,7 @@ class AdbWirelessCoordinator {
     if (source != null &&
         isWirelessTlsId(source) &&
         await probe.online(source)) {
-      return _upgrade(key, source, serial, ip, connections);
+      return _switchTlsToTcpWithFallback(key, source, serial, ip, connections);
     }
     for (var i = 0; i < 3 && !_disposed; i++) {
       final attempted = <String>{};
@@ -240,7 +240,7 @@ class AdbWirelessCoordinator {
         if (!endpoint.isTls) {
           return _finishTcp(key, endpoint.address, serial, connections);
         }
-        return _upgrade(key, endpoint.address, serial, endpoint.ip, [
+        return _switchTlsToTcpWithFallback(key, endpoint.address, serial, endpoint.ip, [
           ...connections,
           endpoint.address,
           '${endpoint.name}.${endpoint.type}',
@@ -258,7 +258,7 @@ class AdbWirelessCoordinator {
     return const AdbWirelessResult('wirelessUnavailable');
   }
 
-  Future<AdbWirelessResult> _upgrade(
+  Future<AdbWirelessResult> _switchTlsToTcpWithFallback(
     String key,
     String source,
     String serial,
@@ -323,7 +323,7 @@ class AdbWirelessCoordinator {
   }
 
   /// 配对后使用发现的 TLS 连接端口，绝不把配对端口当作连接端口。
-  Future<AdbWirelessResult> pair(String address, String code) => _schedule(
+  Future<AdbWirelessResult> pairAndConnect(String address, String code) => _schedule(
     'pair:$address',
     () async {
       final result = await probe.run([

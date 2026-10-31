@@ -10,16 +10,16 @@ import '../../../core/providers/app_providers.dart';
 import 'harmony_wireless_advanced.dart';
 
 /// HarmonyOS HDC 无线调试入口，统一承载扫描、历史、双通道和自动重连。
-class HarmonyWirelessPairingView extends ConsumerStatefulWidget {
-  const HarmonyWirelessPairingView({super.key});
+class HarmonyWirelessConnectionView extends ConsumerStatefulWidget {
+  const HarmonyWirelessConnectionView({super.key});
 
   @override
-  ConsumerState<HarmonyWirelessPairingView> createState() =>
-      _HarmonyWirelessPairingViewState();
+  ConsumerState<HarmonyWirelessConnectionView> createState() =>
+      _HarmonyWirelessConnectionViewState();
 }
 
-class _HarmonyWirelessPairingViewState
-    extends ConsumerState<HarmonyWirelessPairingView> {
+class _HarmonyWirelessConnectionViewState
+    extends ConsumerState<HarmonyWirelessConnectionView> {
   final _addressController = TextEditingController();
   RegisteredDevice? _selectedUsbDevice;
   bool _isChangingMode = false;
@@ -40,7 +40,7 @@ class _HarmonyWirelessPairingViewState
   Future<void> _connect([String? address, String? expectedSerial]) async {
     final target = address ?? _addressController.text;
     final result = await ref
-        .read(harmonyWirelessProvider.notifier)
+        .read(harmonyWirelessConnectionProvider.notifier)
         .connect(target, expectedSerial: expectedSerial);
     if (result.isSuccess && mounted) {
       _addressController.text = normalizeHarmonyEndpoint(target) ?? target;
@@ -74,7 +74,7 @@ class _HarmonyWirelessPairingViewState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final state = ref.watch(harmonyWirelessProvider);
+    final state = ref.watch(harmonyWirelessConnectionProvider);
     final harmonyDevices = ref
         .watch(deviceRegistryProvider)
         .where((device) => device.isHarmony && device.isOnline)
@@ -112,7 +112,7 @@ class _HarmonyWirelessPairingViewState
             endpoints: state.history,
             busyAddress: state.connectingAddress,
             onConnect: _connect,
-            onRemove: ref.read(harmonyWirelessProvider.notifier).removeHistory,
+            onRemove: ref.read(harmonyWirelessConnectionProvider.notifier).removeHistory,
           ),
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
@@ -120,7 +120,7 @@ class _HarmonyWirelessPairingViewState
             subtitle: Text(context.l10n.t('harmonyAutoReconnectDesc')),
             value: state.autoReconnect,
             onChanged: ref
-                .read(harmonyWirelessProvider.notifier)
+                .read(harmonyWirelessConnectionProvider.notifier)
                 .setAutoReconnect,
           ),
           if (state.messageKey != null || state.error != null)
