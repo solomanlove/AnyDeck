@@ -14,3 +14,10 @@
 - `flutter test --no-pub test/tcpip_connection_dialog_test.dart`：7 项通过，覆盖非法地址、有效输入、中文/英文、明暗主题、退出动画、失败后重试入口、防重复和关闭后的迟到错误。
 - 定向 `flutter analyze --no-pub`：无新增诊断。共享入口保留两个既有 `unused_element`（`_restartAdbServer`、`_openLocalTerminal`），HEAD 中也只有声明，无关代码未改动。
 - 未启动项目或操作真机。需在运行包复核 `invalid:abc` 就地报错、有效地址失败后重试，以及现有投屏不受弹窗退出影响。自动测试不能代替 Release/真机验收。
+
+## AD-002、AD-007：MCP 数据可信度
+
+- `get_device_detail` 保留旧详情字段，新增 `connectionState`、`dataSource`（live/cache/unavailable）、`collectedAt`、`checkedAt`、`stale`；实时失败同时返回 `readError`。Android 失败后通过有界 `get-state` 查询当前连接状态，无法判断时为 unknown；无缓存不生成虚构详情。
+- `DeviceInfoService.loadOverview` 增加 `allowCachedFallback`，UI 默认行为不变，MCP 禁止静默回退。缓存沿用原键与扁平结构，仅真实采集写 UTC 时间；历史缓存及未提供采集时间的写入返回 null。iOS 部分读取标 partial，全部失败不冒充 live，连接状态无法确认时为 unknown。
+- 电池保留原字段/raw，增加 normalized：百分比、摄氏温度、电压 V、充放电与健康枚举，rawUnits 明确十分之一℃与 mV；缺失和非法数值为 null，未知枚举为 unknown。Android 枚举依据 [BatteryManager](https://developer.android.com/reference/android/os/BatteryManager)。
+- 验证：MCP 新增 8 项测试；与设备概览/MCP 协议回归共 26 项通过，5 个相关文件定向 analyze 无诊断。覆盖旧缓存离线、实时采集后断线、无缓存、transport 在线但采集失败、默认 UI 回退兼容、负温度及非法电池值。未连接真机或重启运行中的 MCP 服务。

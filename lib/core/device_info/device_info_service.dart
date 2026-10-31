@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'device_overview_cache.dart';
 
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
@@ -16,49 +15,27 @@ class DeviceInfoService {
 
   final AdbService _adb;
 
-  static const _overviewKeyPrefix = 'devices.overview.';
+  final _cache = DeviceOverviewCache();
 
-  Future<void> _saveToCache(String deviceId, DeviceOverview overview) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonStr = jsonEncode(overview.toJson());
-      await prefs.setString('$_overviewKeyPrefix$deviceId', jsonStr);
-    } catch (_) {
-      // Ignore cache save errors to prevent breaking the main flow
-    }
-  }
+  /// 保存概览；只有实际采集方才能传入 collectedAt，旧数据不补造时间。
+  Future<void> saveToCache(String deviceId, DeviceOverview overview, {
+    DateTime? collectedAt,
+  }) => _cache.save(deviceId, overview, collectedAt: collectedAt);
 
-  /// 保存概览到本地缓存
-  Future<void> saveToCache(String deviceId, DeviceOverview overview) => _saveToCache(deviceId, overview);
+  Future<DeviceOverview?> loadFromCache(String deviceId) async =>
+      (await loadCachedSnapshot(deviceId))?.overview;
 
-  Future<DeviceOverview?> loadFromCache(String deviceId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonStr = prefs.getString('$_overviewKeyPrefix$deviceId');
-      if (jsonStr != null) {
-        final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
-        return DeviceOverview.fromJson(decoded);
-      }
-    } catch (_) {
-      // Ignore cache load errors to prevent breaking the main flow
-    }
-    return null;
-  }
+  /// MCP 读取缓存时同时暴露原始采集时间。
+  Future<DeviceOverviewSnapshot?> loadCachedSnapshot(String deviceId) =>
+      _cache.load(deviceId);
 
-  /// 清理设备概览信息的本地缓存。
-  Future<void> clearDeviceCache(String deviceId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('$_overviewKeyPrefix$deviceId');
-    } catch (_) {
-      // 允许清理失败时不抛出异常
-    }
-  }
+  Future<void> clearDeviceCache(String deviceId) => _cache.clear(deviceId);
 
   /// 并行加载所有概览字段，避免 dashboard 阻塞。
   Future<DeviceOverview> loadOverview(
     String deviceId, {
     String? androidVersion,
+    bool allowCachedFallback = true,
   }) async {
     try {
       final basicScript = '''
@@ -267,10 +244,11 @@ settings get global debug_view_attributes
       );
 
       // 保存到本地缓存
-      await _saveToCache(deviceId, overview);
+      await saveToCache(deviceId, overview, collectedAt: DateTime.now().toUtc());
 
       return overview;
     } catch (e) {
+      if (!allowCachedFallback) rethrow;
       final cached = await loadFromCache(deviceId);
       if (cached != null) {
         return cached;

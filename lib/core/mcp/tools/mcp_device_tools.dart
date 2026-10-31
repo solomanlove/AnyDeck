@@ -1,9 +1,11 @@
 import '../../adb/adb_service.dart';
 import '../../device_info/device_info_service.dart';
+import '../../device_info/device_overview.dart';
 import '../../ios/ios_command_service.dart';
 import '../../ios/ios_device_service.dart';
 import '../../ios/ios_overview_service.dart';
 import '../models/mcp_tool_definition.dart';
+import 'mcp_battery_snapshot.dart';
 
 /// 设备与系统状态感知相关的 MCP Tools
 class McpDeviceTools {
@@ -96,26 +98,53 @@ class McpDeviceTools {
         }
 
         final ios = await isIosDevice?.call(deviceId) == true;
-        final overview = ios
-            ? await IosOverviewService(iosCommandService ?? IosCommandService())
-                .load(deviceId, fallbackName: deviceId)
-            : await deviceInfoService.loadOverview(deviceId);
-        return {
-          'deviceId': deviceId,
-          'isIos': ios,
-          'osVersion': overview.androidVersion,
-          'name': overview.name,
-          'model': overview.model,
-          'brand': overview.brand,
-          'serial': overview.serial,
-          'androidVersion': overview.androidVersion,
-          'processor': overview.processor,
-          'resolution': overview.resolution,
-          'logicalDensity': overview.logicalDensity,
-          'ipAddress': overview.ipAddress,
-          'storage': overview.storage,
-          'memory': overview.memory,
-        };
+        try {
+          final overview = ios
+              ? await IosOverviewService(
+                  iosCommandService ?? IosCommandService(),
+                ).load(deviceId, fallbackName: deviceId)
+              : await deviceInfoService.loadOverview(
+                  deviceId,
+                  allowCachedFallback: false,
+                );
+          if (ios && overview.model == '-' && overview.storage == '-') {
+            throw StateError('iOS device information is unavailable');
+          }
+          final now = DateTime.now().toUtc();
+          if (ios) {
+            await deviceInfoService.saveToCache(
+              deviceId,
+              overview,
+              collectedAt: now,
+            );
+          }
+          return {
+            ..._detailFields(overview),
+            'deviceId': deviceId,
+            'isIos': ios,
+            'connectionState': 'online',
+            'dataSource': 'live',
+            'collectedAt': now.toIso8601String(),
+            'checkedAt': now.toIso8601String(),
+            'stale': false,
+            if (ios) 'partial': overview.iosDetails?.partial ?? true,
+          };
+        } catch (error) {
+          // 失败后的状态重新查询；不能沿用读取前的 online，或隐去缓存来源。
+          final state = ios ? 'unknown' : await _connectionState(deviceId);
+          final cached = await deviceInfoService.loadCachedSnapshot(deviceId);
+          return {
+            if (cached != null) ..._detailFields(cached.overview),
+            'deviceId': deviceId,
+            'isIos': ios,
+            'connectionState': state,
+            'dataSource': cached == null ? 'unavailable' : 'cache',
+            'collectedAt': cached?.collectedAt?.toIso8601String(),
+            'checkedAt': DateTime.now().toUtc().toIso8601String(),
+            'stale': true,
+            'readError': error.toString(),
+          };
+        }
       },
     );
   }
@@ -147,29 +176,45 @@ class McpDeviceTools {
           throw Exception('获取电池信息失败: ${result.stderr}');
         }
 
-        // 解析 dumpsys battery 输出
-        final lines = result.stdout.split('\n');
-        final batteryData = <String, dynamic>{};
-        for (final line in lines) {
-          final parts = line.split(':');
-          if (parts.length >= 2) {
-            final key = parts[0].trim();
-            final value = parts.sublist(1).join(':').trim();
-            batteryData[key] = value;
-          }
-        }
-
         return {
           'deviceId': deviceId,
-          'level': batteryData['level'],
-          'scale': batteryData['scale'],
-          'status': batteryData['status'],
-          'health': batteryData['health'],
-          'temperature': batteryData['temperature'],
-          'voltage': batteryData['voltage'],
-          'raw': result.stdout,
+          'dataSource': 'live',
+          'collectedAt': DateTime.now().toUtc().toIso8601String(),
+          ...McpBatterySnapshot.parse(result.stdout),
         };
       },
     );
+  }
+
+  /// 保留旧字段供已有客户端使用，状态元数据由调用处统一附加。
+  Map<String, dynamic> _detailFields(DeviceOverview overview) => {
+    'osVersion': overview.androidVersion,
+    'name': overview.name,
+    'model': overview.model,
+    'brand': overview.brand,
+    'serial': overview.serial,
+    'androidVersion': overview.androidVersion,
+    'processor': overview.processor,
+    'resolution': overview.resolution,
+    'logicalDensity': overview.logicalDensity,
+    'ipAddress': overview.ipAddress,
+    'storage': overview.storage,
+    'memory': overview.memory,
+  };
+
+  Future<String> _connectionState(String deviceId) async {
+    try {
+      final result = await adbService.run(['-s', deviceId, 'get-state']);
+      if (result.isSuccess && result.stdout.trim() == 'device') return 'online';
+      final message = '${result.stdout} ${result.stderr}'.toLowerCase();
+      if (message.contains('unauthorized')) return 'unauthorized';
+      if (message.contains('offline')) return 'offline';
+      if (message.contains('not found') || message.contains('no devices')) {
+        return 'disconnected';
+      }
+    } catch (_) {
+      // 状态查询失败只能判为未知，不能伪造 online 或 offline。
+    }
+    return 'unknown';
   }
 }
