@@ -121,6 +121,12 @@ void main() {
     expect(device.isOnline, isFalse);
     expect(device.iosConnectionTypes, isEmpty);
     expect(device.hasUsbConnection, isFalse);
+    // 注册表交给页面和通知模块的发现快照也必须保留平台并清空离线通道。
+    final DiscoveredDevice offlineSnapshot = device.toDiscoveredDevice;
+    expect(offlineSnapshot.id, 'test-phone');
+    expect(offlineSnapshot.isIos, isTrue);
+    expect(offlineSnapshot.isOnline, isFalse);
+    expect(offlineSnapshot.iosConnectionTypes, isEmpty);
     expect(device.displayName, 'iPhone 6s');
     expect(device.androidVersion, 'iOS 15.8.9');
     expect(adb.calls, isEmpty);
