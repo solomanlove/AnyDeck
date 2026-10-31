@@ -21,6 +21,7 @@ class ConsoleEmbeddedToolbar extends StatelessWidget {
     required this.autoScroll,
     required this.onToggleAutoScroll,
     required this.onCopy,
+    this.filteredLogs,
     required this.onClear,
     this.onPopOut,
     this.onClose,
@@ -35,6 +36,7 @@ class ConsoleEmbeddedToolbar extends StatelessWidget {
   final bool autoScroll;
   final VoidCallback onToggleAutoScroll;
   final VoidCallback onCopy;
+  final List<String>? filteredLogs;
   final VoidCallback onClear;
   final VoidCallback? onPopOut;
   final VoidCallback? onClose;
@@ -87,6 +89,7 @@ class ConsoleEmbeddedToolbar extends StatelessWidget {
                     onPressed: onToggleKeyLogs,
                   ),
                   LocalLogCaptureButton(
+                    filteredLogs: filteredLogs,
                     iconOnly: true,
                     iconButtonStyle: consoleToolbarButtonStyle(theme),
                   ),
@@ -103,7 +106,7 @@ class ConsoleEmbeddedToolbar extends StatelessWidget {
                     onPressed: onToggleAutoScroll,
                   ),
                   ConsoleToolbarButton(
-                    tooltip: context.l10n.t('copyAll'),
+                    tooltip: context.l10n.t('consoleCopyFiltered'),
                     icon: CupertinoIcons.doc_on_doc,
                     onPressed: onCopy,
                   ),

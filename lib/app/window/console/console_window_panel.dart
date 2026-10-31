@@ -193,6 +193,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                 autoScroll: _autoScroll,
                 onToggleAutoScroll: () => setState(() => _autoScroll = !_autoScroll),
                 onCopy: () => _copyAllLogs(filteredLogs),
+                filteredLogs: filteredLogs,
                 onClear: () => ref.read(logHistoryProvider.notifier).clear(),
                 onPopOut: widget.onPopOut,
                 onClose: widget.onClose,
@@ -327,6 +328,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                         ),
                         const SizedBox(width: 8),
                         LocalLogCaptureButton(
+                          filteredLogs: filteredLogs,
                           iconOnly: true,
                           iconButtonStyle: toolbarButtonStyle,
                         ),
@@ -349,7 +351,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                         ),
                         const SizedBox(width: 8),
                         ConsoleToolbarButton(
-                          tooltip: context.l10n.t('copyAll'),
+                          tooltip: context.l10n.t('consoleCopyFiltered'),
                           icon: CupertinoIcons.doc_on_doc,
                           onPressed: () => _copyAllLogs(filteredLogs),
                         ),

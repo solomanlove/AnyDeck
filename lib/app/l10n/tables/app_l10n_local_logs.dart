@@ -1,5 +1,10 @@
 /// AnyDeck 自身运行日志与本地诊断导出文案。
 const localLogsZh = {
+  'consoleExportLogs': '导出日志',
+  'consoleExportFiltered': '导出当前筛选（{count} 条）',
+  'consoleExportHistory': '抓取全部历史（不受筛选影响）',
+  'consoleCopyFiltered': '复制当前筛选',
+
   'consolePopOut': '独立窗口',
   'consoleResize': '拖动调整控制台高度',
   'consoleWindowFailed': '无法打开独立控制台窗口，请重试。',
@@ -17,6 +22,11 @@ const localLogsZh = {
 };
 
 const localLogsEn = {
+  'consoleExportLogs': 'Export logs',
+  'consoleExportFiltered': 'Export current filter ({count} records)',
+  'consoleExportHistory': 'Capture all history (ignores filters)',
+  'consoleCopyFiltered': 'Copy current filter',
+
   'consolePopOut': 'Separate window',
   'consoleResize': 'Drag to resize the console',
   'consoleWindowFailed': 'Unable to open the console window. Please try again.',

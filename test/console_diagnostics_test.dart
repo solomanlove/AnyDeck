@@ -92,7 +92,13 @@ void main() {
           .didExceedMaxLines,
       isFalse,
     );
-    expect(find.byTooltip('Capture local logs'), findsOneWidget);
+    expect(find.byTooltip('Export logs'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'devices -l failed');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Export logs'));
+    await tester.pumpAndSettle();
+    expect(find.text('Export current filter (1 records)'), findsOneWidget);
+    expect(find.text('Capture all history (ignores filters)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   for (final language in ['zh', 'en']) {

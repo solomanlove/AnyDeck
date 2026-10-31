@@ -76,16 +76,7 @@ class LocalLogExporter {
       listingError = error.toString();
     }
     final outputFile = File(path);
-    if (store != null && await store.directory.exists()) {
-      final managed = await store.directory.resolveSymbolicLinks();
-      final parent = await outputFile.parent.resolveSymbolicLinks();
-      final existingTarget = await outputFile.exists()
-          ? File(await outputFile.resolveSymbolicLinks()).parent.path
-          : parent;
-      if (parent == managed || existingTarget == managed) {
-        throw StateError('Cannot overwrite managed log files');
-      }
-    }
+    await _validateOutputPath(outputFile);
     final output = await outputFile.open(mode: FileMode.write);
     try {
       const version = String.fromEnvironment(
@@ -101,7 +92,7 @@ class LocalLogExporter {
         'Captured: ${DateTime.now().toIso8601String()}\n'
         'App: $version+$build\n'
         'OS: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n'
-        'Scope: Dart runtime and recorded tool commands; native crash reports excluded.\n'
+        'Scope: all retained local history, unaffected by console filters; Dart runtime and recorded tool commands; native crash reports excluded.\n'
         'Review personal data before sharing.\n\n',
       );
       var remaining = maxExportBytes;
@@ -168,6 +159,50 @@ class LocalLogExporter {
     }
     return LocalLogExportResult(path, partial: partial);
   }
+
+  /// 仅导出点击时冻结的当前筛选结果；不读取其它窗口或磁盘历史。
+  Future<LocalLogExportResult> exportFilteredTo(String path, List<String> logs) async {
+    final file = File(path);
+    await _validateOutputPath(file);
+    final output = await file.open(mode: FileMode.write);
+    var count = 0;
+    var bytes = 0;
+    try {
+      await output.writeString('AnyDeck filtered console snapshot\n'
+          'Captured: ${DateTime.now().toUtc().toIso8601String()}\n'
+          'Scope: current console filters; ${logs.length} selected records\n\n');
+      for (final line in logs) {
+        final text = '${AppLogRecorder.sanitize(line)}\n';
+        final size = utf8.encode(text).length;
+        if (bytes + size > maxExportBytes) break;
+        bytes += size;
+        await output.writeString(text);
+        count++;
+      }
+      await output.writeString('\nExported records: $count\n'
+          'Snapshot status: ${count == logs.length ? 'COMPLETE' : 'PARTIAL'}\n');
+      await output.flush();
+    } finally {
+      await output.close();
+    }
+    return LocalLogExportResult(path, partial: count != logs.length);
+  }
+
+  /// 两种导出范围均不能覆盖滚动日志目录里的受管文件。
+  Future<void> _validateOutputPath(File outputFile) async {
+    final store = AppLogRecorder.instance.store;
+    if (store != null && await store.directory.exists()) {
+      final managed = await store.directory.resolveSymbolicLinks();
+      final parent = await outputFile.parent.resolveSymbolicLinks();
+      final existingTarget = await outputFile.exists()
+          ? File(await outputFile.resolveSymbolicLinks()).parent.path
+          : parent;
+      if (parent == managed || existingTarget == managed) {
+        throw StateError('Cannot overwrite managed log files');
+      }
+    }
+  }
+
 }
 
 /// UI 共用导出状态，保存对话框打开期间也阻止重复点击。
@@ -179,9 +214,10 @@ class LocalLogExportController extends Notifier<bool> {
   @override
   bool build() => false;
 
-  Future<LocalLogExportResult?> capture() async {
+  Future<LocalLogExportResult?> capture({List<String>? filteredLogs}) async {
     if (state) return null;
     state = true;
+    final snapshot = filteredLogs == null ? null : List<String>.of(filteredLogs);
     try {
       final location = await getSaveLocation(
         suggestedName:
@@ -191,7 +227,10 @@ class LocalLogExportController extends Notifier<bool> {
         ],
       );
       if (location == null) return null;
-      return await LocalLogExporter().exportTo(location.path);
+      final exporter = LocalLogExporter();
+      return snapshot == null
+          ? await exporter.exportTo(location.path)
+          : await exporter.exportFilteredTo(location.path, snapshot);
     } finally {
       if (ref.mounted) state = false;
     }

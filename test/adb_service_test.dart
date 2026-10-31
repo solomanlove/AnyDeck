@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +19,23 @@ class FakeAdbService extends AdbService {
 }
 
 void main() {
+  test('失败日志在同一条错误中包含设备、完整命令与退出码', () async {
+    final dir = await Directory.systemTemp.createTemp('anydeck_adb_log_');
+    addTearDown(() => dir.delete(recursive: true));
+    final script = File('${dir.path}/adb');
+    await script.writeAsString('#!/bin/sh\nprintf "device offline" >&2\nexit 1\n');
+    await Process.run('chmod', ['+x', script.path]);
+    final errors = <String>[];
+    final adb = AdbService(executable: script.path,
+      onLog: (message, {tag = '', level = ''}) {
+        if (level == 'E') errors.add(message);
+      });
+    await adb.run(['-s', 'test-phone', 'shell', 'dumpsys', 'battery']);
+    expect(errors.single, contains('adb -s test-phone shell dumpsys battery'));
+    expect(errors.single, contains('exit=1'));
+    expect(errors.single, contains('device offline'));
+  }, skip: Platform.isWindows);
+
   test('maps adb device not found errors to disconnected message', () {
     const result = AdbResult(
       exitCode: 1,

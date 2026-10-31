@@ -66,8 +66,8 @@ class AdbService {
         stdout: await stdoutFuture,
         stderr: await stderrFuture,
       );
-      if (!result.isSuccess && result.stderr.isNotEmpty) {
-        _onLog?.call('Command failed: ${result.stderr.trim()}', tag: 'adb', level: 'E');
+      if (!result.isSuccess) {
+        _onLog?.call('Command failed [exit=$exitCode]: $cmdStr\n${result.message}', tag: 'adb', level: 'E');
       }
       return result;
     } on TimeoutException {
@@ -87,7 +87,7 @@ class AdbService {
         stderr: errorMsg,
       );
     } on ProcessException catch (error) {
-      _onLog?.call('Process error: ${error.message}', tag: 'adb', level: 'E');
+      _onLog?.call('Process error: $cmdStr\n${error.message}', tag: 'adb', level: 'E');
       return AdbResult(exitCode: 127, stdout: '', stderr: error.message);
     }
   }

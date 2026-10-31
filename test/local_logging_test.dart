@@ -279,4 +279,20 @@ void main() {
       throwsA(isA<FileSystemException>()),
     );
   });
+  test('筛选导出只保存选中日志，并记录范围、数量与空结果', () async {
+    final target = '${temp.path}/filtered.log';
+    final result = await LocalLogExporter().exportFilteredTo(target, [
+      '2026-10-31T00:00:00 E adb: selected failure',
+    ]);
+    final output = await File(target).readAsString();
+    expect(result.partial, false);
+    expect(output, contains('current console filters; 1 selected records'));
+    expect(output, contains('selected failure'));
+    expect(output, contains('Exported records: 1'));
+    expect(output, isNot(contains('=== Current in-memory logs ===')));
+    await LocalLogExporter().exportFilteredTo(target, []);
+    expect(await File(target).readAsString(), contains('0 selected records'));
+    expect(await File(target).readAsString(), isNot(contains('selected failure')));
+  });
+
 }

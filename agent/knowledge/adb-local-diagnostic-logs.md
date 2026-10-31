@@ -87,3 +87,7 @@ flutter analyze --no-pub lib/core/logging lib/main.dart lib/app/window/console/c
 ## 2026-10-28 主窗口底部面板
 
 控制台入口移动到左侧底部、设置上方；打开可调整高度的底部日志面板，不改变当前 Route 或设备。底部与独立控制台复用同一日志组件和工具按钮，独立开窗成功后收起面板，失败保留日志。关闭面板不停止 LogService。详情和验证见 `adb-main-window-navigation.md`。
+
+## 2026-10-31 产品体验修复
+
+控制台支持按当前筛选或全部历史选择导出范围；ADB 错误行补命令/设备上下文。详见 [AD-008、AD-009 修复记录](adb-product-review-fixes.md)。
