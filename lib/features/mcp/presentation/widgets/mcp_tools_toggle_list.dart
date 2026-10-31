@@ -69,9 +69,45 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
             ),
           ),
           children: [
+            Text(
+              '外部 AI 智能体可发现并调用以下工具。直接在下方列表开启或禁用对应工具权限：',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // 分类与搜索保持同一行；窄窗口下分类可横向滚动。
             Row(
               children: [
-                const Spacer(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      spacing: 8,
+                      children: categories.map((cat) {
+                        final isSelected = _selectedCategory == cat['key'];
+                        return ChoiceChip(
+                          label: Text(cat['label']!),
+                          selected: isSelected,
+                          selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? theme.colorScheme.primary : null,
+                          ),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _selectedCategory = cat['key']!;
+                              });
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 SizedBox(
                   width: 220,
                   height: 36,
@@ -92,39 +128,6 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '外部 AI 智能体可发现并调用以下工具。直接在下方列表开启或禁用对应工具权限：',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // 分类标签栏
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: categories.map((cat) {
-                final isSelected = _selectedCategory == cat['key'];
-                return ChoiceChip(
-                  label: Text(cat['label']!),
-                  selected: isSelected,
-                  selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
-                  labelStyle: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? theme.colorScheme.primary : null,
-                  ),
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() {
-                        _selectedCategory = cat['key']!;
-                      });
-                    }
-                  },
-                );
-              }).toList(),
             ),
             const Divider(height: 24),
             if (filteredTools.isEmpty)

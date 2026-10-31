@@ -110,6 +110,8 @@ AnyDeck MCP 服务基于分层架构实现：
 - **需求与入口**：AI MCP 页面中的 `McpToolsToggleList` 默认收起，点击标题栏切换展开状态，搜索框、分类筛选与工具开关均位于折叠内容区。
 - **实现**：复用 Material `ExpansionTile`，设置 `initiallyExpanded: false`，由组件管理局部展开状态；`maintainState: true` 保留搜索框输入与分类条件，再次展开可继续操作。页面组件销毁后重新创建时默认收起，不新增持久化配置或全局 Provider。
 - **职责边界**：折叠只影响 UI 可见性，不调用 `toggleTool`、不改变工具权限或 MCP 服务运行状态；原有工具开关仍由 `McpServerNotifier` 处理。未新增依赖、后台进程、ADB 命令、多窗口广播或投屏链路改动。
-- **样式与语言**：折叠标题通过 `mcpToolsListTitle` 提供中英文文案，标题与箭头沿用项目 Theme；原清单内容保持现有布局及文案。
+- **样式与语言**：折叠标题通过 `mcpToolsListTitle` 提供中英文文案，标题与箭头沿用项目 Theme。展开后先显示说明文字，下方分类靠左、搜索框靠右，在同一行垂直居中；窄窗口下分类可横向滚动，搜索框保持可见，避免单独占行造成留白。
 - **自动验证**：新增 `test/mcp_tools_toggle_list_test.dart`，覆盖中英文 × Light/Dark 四种组合下默认收起、展开/收起、筛选与输入保留、权限切换以及服务状态刷新不主动展开。与 `test/mcp_server_test.dart`、`test/mcp_sse_transport_test.dart` 合计 13 项测试通过；变更 Dart 文件定向 `flutter analyze` 通过。
 - **人工验证边界**：未启动桌面应用。可进入 AI MCP，确认标题和工具数量可见、工具清单默认隐藏；展开后输入搜索、选择分类、修改工具权限，再收起/展开检查筛选和权限保留。
+
+- **同排布局回归（2026-10-31）**：上述 Widget 测试补充 1100、860、600 logical pixels 三种宽度，验证分类与搜索框中心对齐、搜索框不超出窗口以及无布局溢出；中英文 × Light/Dark 共 4 项通过，变更 Dart 文件定向静态检查通过。未启动桌面应用。

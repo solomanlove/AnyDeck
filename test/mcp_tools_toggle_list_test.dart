@@ -78,6 +78,17 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('device_test'), findsOneWidget);
         expect(find.text('app_test'), findsOneWidget);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        // 常规与窄窗口下搜索框均与分类垂直居中，不再单独占一行。
+        for (final width in [1100.0, 860.0, 600.0]) {
+          await tester.binding.setSurfaceSize(Size(width, 600));
+          await tester.pumpAndSettle();
+          final searchRect = tester.getRect(find.byType(TextField));
+          final categoryRect = tester.getRect(find.byType(ChoiceChip).first);
+          expect(searchRect.center.dy, closeTo(categoryRect.center.dy, 1));
+          expect(searchRect.right, lessThanOrEqualTo(width));
+          expect(tester.takeException(), isNull, reason: 'width=$width');
+        }
         await tester.enterText(find.byType(TextField), 'device');
         await tester.tap(find.widgetWithText(ChoiceChip, '设备状态'));
         await tester.pumpAndSettle();
