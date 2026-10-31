@@ -3,7 +3,7 @@
 ## 1. 概述与背景
 
 **Model Context Protocol (MCP)** 是开放标准的模型上下文协议，用于让大语言模型（LLM）与外部环境、工具、系统资源进行标准化通信。
-AnyDeck (AdbManage) 内置了原生的 AI MCP Server 服务，能够将桌面端丰富的 ADB/HDC/iOS 设备管理、UI 自动化、应用生命周期、日志排查与受控 Shell 能力无缝对外输出，供 **Cursor / Claude Desktop / Antigravity / Cline / Open-Interpreter** 等各种 AI 智能体直接调用。
+AnyDeck 内置了原生的 AI MCP Server 服务，能够将桌面端丰富的 ADB/HDC/iOS 设备管理、UI 自动化、应用生命周期、日志排查与受控 Shell 能力无缝对外输出，供 **Cursor / Claude Desktop / Antigravity / Cline / Open-Interpreter** 等各种 AI 智能体直接调用。
 
 在桌面端 UI 架构上，AI MCP 作为独立的一级导航 Tab，位于左侧导航栏的**玩安卓 Tab 下方、设置 Tab 上方**（`tabIndex: 14`），并在主面板中以平铺卡片的形式完整展开全部 22 个工具集（支持按设备、UI/视觉、应用、日志、文件、Shell 快速分类筛选和即时搜索），无需弹窗即可直接配置各个工具的细粒度开关与运行参数。
 

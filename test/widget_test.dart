@@ -204,7 +204,7 @@ Finder _railIcon(IconData icon, {double? size = 24.0}) {
 
 /// 桌面外壳基础冒烟测试，测试中会 mock adb 设备轮询。
 void main() {
-  testWidgets('shows AdbManage shell in Chinese by default', (
+  testWidgets('shows AnyDeck shell in Chinese by default', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1200, 800);

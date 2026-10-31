@@ -353,7 +353,7 @@ import sys
 app_executable, window_id, argument_json, output_path = sys.argv[1:]
 
 content = f"""#!/bin/bash
-# 自动生成的 AdbManage 投屏子窗口启动文件。
+# 自动生成的 AnyDeck 投屏子窗口启动文件。
 
 set -e
 

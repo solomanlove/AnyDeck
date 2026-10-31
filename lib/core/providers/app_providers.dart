@@ -1,4 +1,4 @@
-/// AdbManage 核心全局 Riverpod Provider 统一聚合导出入口（Barrel File）。
+/// AnyDeck 核心全局 Riverpod Provider 统一聚合导出入口（Barrel File）。
 ///
 /// 为了满足代码架构规范（单个类和文件不超过 500 行），所有 Provider 均已按照职责领域拆分至
 /// [modules/] 子目录下进行高内聚、低耦合的模块化维护：

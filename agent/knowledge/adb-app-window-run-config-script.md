@@ -2,7 +2,7 @@
 
 ## 背景
 
-`script/generate_app_window_run_configs.sh` 用于生成 AdbManage App 子窗口的 Android Studio / IntelliJ Flutter Run Configuration。该脚本只写入 `.idea/runConfigurations/`，不启动 App；投屏子窗口配置会读取 `adb devices -l` 中状态为 `device` 的在线设备。
+`script/generate_app_window_run_configs.sh` 用于生成 AnyDeck App 子窗口的 Android Studio / IntelliJ Flutter Run Configuration。该脚本只写入 `.idea/runConfigurations/`，不启动 App；投屏子窗口配置会读取 `adb devices -l` 中状态为 `device` 的在线设备。
 
 ## 生成文件
 

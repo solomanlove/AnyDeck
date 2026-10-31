@@ -6,7 +6,7 @@
 
 ## 一、产品定位
 
-AnyDeck（AdbManage）是一款基于 Flutter Desktop 的多设备调试与管理工具。它以 Android ADB 为核心，同时接入 HarmonyOS NEXT HDC、iOS go-ios/WDA，并通过纯 Rust 设备会话底座提供低延迟投屏、控制、摄像头、麦克风和剪贴板能力。
+AnyDeck 是一款基于 Flutter Desktop 的多设备调试与管理工具。它以 Android ADB 为核心，同时接入 HarmonyOS NEXT HDC、iOS go-ios/WDA，并通过纯 Rust 设备会话底座提供低延迟投屏、控制、摄像头、麦克风和剪贴板能力。
 
 ## 二、当前功能清单
 

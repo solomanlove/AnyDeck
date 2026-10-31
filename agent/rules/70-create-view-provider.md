@@ -7,7 +7,7 @@ alwaysApply: false
 
 # 新增业务页面与 Provider 开发流程
 
-在为 AdbManage 新增一个功能 Tab、子窗口或全新 UI 页面时，请遵循以下编排和自检流程。
+在为 AnyDeck 新增一个功能 Tab、子窗口或全新 UI 页面时，请遵循以下编排和自检流程。
 
 ## 1. 结构与位置规划
 - 新增 Tab 页面应当存放在 `lib/features/dashboard/presentation/` 的对应子目录下（例如新增 layout tab 存放在 `layout/` 目录下）。

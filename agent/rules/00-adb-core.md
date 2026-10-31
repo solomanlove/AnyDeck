@@ -1,5 +1,5 @@
 ---
-description: AdbManage 核心架构与 Dart/Flutter 开发规范
+description: AnyDeck 核心架构与 Dart/Flutter 开发规范
 alwaysApply: true
 ---
 

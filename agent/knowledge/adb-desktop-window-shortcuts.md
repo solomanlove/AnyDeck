@@ -1,7 +1,7 @@
 # Knowledge: adb-desktop-window-shortcuts (桌面独立窗口快捷键机制)
 
 ## 概述
-本文档记录 AdbManage 桌面端窗口的本地快捷键约定。主窗口由 `window_manager` 管理关闭拦截与托盘隐藏，独立子窗口由 `desktop_multi_window` 创建，并通过 `window_manager` 管理当前窗口的关闭、聚焦与标题栏状态。
+本文档记录 AnyDeck 桌面端窗口的本地快捷键约定。主窗口由 `window_manager` 管理关闭拦截与托盘隐藏，独立子窗口由 `desktop_multi_window` 创建，并通过 `window_manager` 管理当前窗口的关闭、聚焦与标题栏状态。
 
 ---
 

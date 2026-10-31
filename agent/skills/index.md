@@ -1,10 +1,10 @@
 # Skill Index (AI 技能索引)
 
-本索引用于管理 AdbManage 项目内的 AI 技能 (Skills)。所有的 AI 助手在处理本项目的开发和优化需求前，应根据本索引的指引，优先调取对应能力的技能文档。
+本索引用于管理 AnyDeck 项目内的 AI 技能 (Skills)。所有的 AI 助手在处理本项目的开发和优化需求前，应根据本索引的指引，优先调取对应能力的技能文档。
 
 ## 命名与类别规则
 
-- **adb-***：针对当前 AdbManage 桌面端项目技术栈专属，包含 Flutter Desktop, Riverpod, ADB shell 进程以及 scrcpy 投屏深度集成规范。
+- **adb-***：针对当前 AnyDeck 桌面端项目技术栈专属，包含 Flutter Desktop, Riverpod, ADB shell 进程以及 scrcpy 投屏深度集成规范。
 - **doc-***：产出交付类技能，可跨技术栈复用。
 
 ## 技能列表

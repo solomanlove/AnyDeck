@@ -1,5 +1,5 @@
 #!/bin/bash
-# 生成 AdbManage App 子窗口的 Android Studio/IntelliJ Flutter Run Configuration。
+# 生成 AnyDeck App 子窗口的 Android Studio/IntelliJ Flutter Run Configuration。
 
 set -e
 

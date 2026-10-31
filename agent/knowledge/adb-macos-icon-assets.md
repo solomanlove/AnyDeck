@@ -2,7 +2,7 @@
 
 ## 概述
 
-本文档记录 AdbManage macOS 端 Dock 图标、Flutter 内部 App logo、以及右上角菜单栏图标的资源边界。三类图标可以使用同一个视觉来源，但输出文件和使用场景必须分开，避免菜单栏使用带背景的大尺寸 App icon 后在 macOS dark mode / light mode 下显示不清晰。
+本文档记录 AnyDeck macOS 端 Dock 图标、Flutter 内部 App logo、以及右上角菜单栏图标的资源边界。三类图标可以使用同一个视觉来源，但输出文件和使用场景必须分开，避免菜单栏使用带背景的大尺寸 App icon 后在 macOS dark mode / light mode 下显示不清晰。
 
 ## 资源分工
 

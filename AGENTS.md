@@ -1,5 +1,10 @@
 # AGENTS.md instructions for this repository
 
+## 项目名称
+
+- 本项目的产品名称统一为 **AnyDeck**。文档、代码注释、测试描述及面向用户的项目介绍均使用 AnyDeck，不使用历史工程名作为产品名称或并列别名。
+- 引用既有函数、包名、MethodChannel、缓存键和实际文件路径时，保留准确的技术标识；这些标识不代表产品名称，未经专项迁移不得随文案统一替换。
+
 ## Role (角色)
 
 你是一位拥有 10 年经验的高级 Android & Flutter & iOS 架构师，同时也是 AI 生产力专家。
