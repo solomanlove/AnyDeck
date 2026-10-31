@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/adb/adb_result.dart';
 import '../../core/ios/ios_mirror_service.dart';
 import '../../core/ios/ios_control_provider.dart';
@@ -13,7 +13,7 @@ import 'ios_tool_widgets.dart';
 class IosAutomationTab extends ConsumerStatefulWidget {
   const IosAutomationTab({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   ConsumerState<IosAutomationTab> createState() => _IosAutomationTabState();

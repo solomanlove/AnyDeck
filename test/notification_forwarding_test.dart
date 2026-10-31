@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/notifications/device_connection_notification_service.dart';
 import 'package:any_deck/core/notifications/mac_notification_bridge.dart';
@@ -312,7 +312,7 @@ void main() {
       );
 
       service.startForwarding(
-        const AdbDevice(id: 'usb_route', status: 'device'),
+        const DiscoveredDevice(id: 'usb_route', status: 'device'),
         'SERIAL_FORWARDING',
       );
       await Future.delayed(const Duration(milliseconds: 20));
@@ -394,11 +394,11 @@ void main() {
     final received = service.messageChanges.take(2).toList();
     try {
       service.startForwarding(
-        const AdbDevice(id: 'phone_a', status: 'device'),
+        const DiscoveredDevice(id: 'phone_a', status: 'device'),
         'SERIAL_A1234',
       );
       service.startForwarding(
-        const AdbDevice(id: 'phone_b', status: 'device'),
+        const DiscoveredDevice(id: 'phone_b', status: 'device'),
         'SERIAL_B1234',
       );
       await received.timeout(const Duration(seconds: 5));

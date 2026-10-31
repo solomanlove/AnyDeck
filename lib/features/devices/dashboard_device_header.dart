@@ -8,14 +8,14 @@ Size _resolveMirrorInitialWindowSize(String? resolution, {double? ratio}) =>
 Future<void> openStandaloneMirrorWindow(
   BuildContext context,
   WidgetRef ref,
-  AdbDevice device,
+  DiscoveredDevice device,
 ) async {
   if (!device.isOnline) {
     AppToast.show(context, context.l10n.t('selectDeviceToMirror'), isError: true);
     return;
   }
 
-  // AdbDevice 不包含别名，按设备身份从注册表读取用户配置的名称。
+  // DiscoveredDevice 不包含别名，按设备身份从注册表读取用户配置的名称。
   var deviceName = device.displayName;
   for (final registered in ref.read(deviceRegistryProvider)) {
     if (registered.id == device.id ||

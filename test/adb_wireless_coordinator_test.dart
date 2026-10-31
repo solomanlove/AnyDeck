@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/wireless/adb_wireless_coordinator.dart';
 import 'package:any_deck/core/adb/wireless/adb_wireless_probe.dart';
 import 'package:any_deck/core/adb/wireless/adb_wireless_state.dart';
@@ -31,10 +31,10 @@ void main() {
 
   test('USB 授权上线后自动开启监听，再读取 IP；不自动 connect', () async {
     adb.add('PHONE', 'PHONE');
-    flow.observe([const AdbDevice(id: 'PHONE', status: 'unauthorized')]);
+    flow.observe([const DiscoveredDevice(id: 'PHONE', status: 'unauthorized')]);
     await Future<void>.delayed(Duration.zero);
     expect(adb.calls, isEmpty);
-    flow.observe([const AdbDevice(id: 'PHONE', status: 'device')]);
+    flow.observe([const DiscoveredDevice(id: 'PHONE', status: 'device')]);
     await flow.waitForPreparation('PHONE');
     expect(commands('tcpip'), hasLength(1));
     expect(commands('connect'), isEmpty);
@@ -49,7 +49,7 @@ void main() {
   test('adbd 重启导致的离线和重复快照不重复开启监听', () async {
     adb.add('PHONE', 'PHONE');
     adb.enableGate = Completer<void>();
-    const device = AdbDevice(id: 'PHONE', status: 'device');
+    const device = DiscoveredDevice(id: 'PHONE', status: 'device');
     flow.observe([device]);
     await Future<void>.delayed(Duration.zero);
     flow.observe([]);
@@ -184,10 +184,10 @@ adb-PHONE _adb._tcp 192.168.1.9:5555
 
   test('iOS、HDC、模拟器与未授权设备不触发自动准备', () async {
     flow.observe([
-      const AdbDevice(id: 'IPHONE', status: 'device', isIos: true),
-      const AdbDevice(id: 'HDC', status: 'device', isHarmony: true),
-      const AdbDevice(id: 'emulator-5554', status: 'device'),
-      const AdbDevice(id: 'PHONE', status: 'unauthorized'),
+      const DiscoveredDevice(id: 'IPHONE', status: 'device', isIos: true),
+      const DiscoveredDevice(id: 'HDC', status: 'device', isHarmony: true),
+      const DiscoveredDevice(id: 'emulator-5554', status: 'device'),
+      const DiscoveredDevice(id: 'PHONE', status: 'unauthorized'),
     ]);
     await Future<void>.delayed(Duration.zero);
     expect(adb.calls, isEmpty);
@@ -218,7 +218,7 @@ adb-PHONE _adb._tcp 192.168.1.9:5555
 
   test('手机重启或长时间拔线后允许再次准备监听', () async {
     adb.add('PHONE', 'PHONE');
-    const device = AdbDevice(id: 'PHONE', status: 'device');
+    const device = DiscoveredDevice(id: 'PHONE', status: 'device');
     flow.observe([device]);
     await flow.waitForPreparation('PHONE');
     flow.observe([]);

@@ -22,7 +22,7 @@ iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
    在 `AdbHeartbeatController` 中，除了通过 ADB 轮询 Android 设备外，还并发启动了 `IosDeviceService.listDevices()` 方法。
    - 使用 `go-ios list --details` 命令检索通过 USB 或网络连接且已与电脑配对的 iOS 设备。
    - 命令成功执行后，返回结构化的 JSON 列表。控制器提取 `Udid` 作为设备 ID，以及 `ProductName`、`ProductType`、`ProductVersion` 等属性。
-   - 将 iOS 设备和 Android 设备统一拼装成 `List<AdbDevice>` 并向外派发。
+   - 将 iOS 设备和 Android 设备统一拼装成 `List<DiscoveredDevice>` 并向外派发。
    - Rust 与 CLI 共用 `IosDeviceIdentity` 型号和版本规范化：已知 `iPhone8,1` 显示 `iPhone 6s`，未知机型保留 ProductType；版本由 ProductVersion 直达设备列表并缓存，断开后仍可展示，不必先进入概览。注册表跳过 iOS 的 Android 元数据探测，详见 `devices_manager.md` 第 2.5 节。
    - **连接类型不能从 UDID 推断**：go-ios 的 `ConnectionType` 为 `USB` 或 `Network`（通常为 Wi-Fi），Rust FFI 透传为 `connection_type`。Dart 使用 `iosConnectionTypes` 集合合并同一 UDID 的多通道，不再遇到重复 UDID 就丢弃后续记录；心跳比较也包含通道变化。列表可同时显示 USB 与 Wi-Fi，侧栏同步展示；未知类型不冒充 USB，离线不保留在线通道。Android 的 TCP/TLS 标识不适用于 iOS。此字段表示可用通道，不保证某个 go-ios 命令实际选用哪条通道，命令仍使用 UDID。
    - 兼容旧 Rust 动态库：发现返回项缺少 `connection_type` 时，该服务实例后续直接使用 CLI 查询，避免旧库继续丢弃字段或每次心跳重复查询。
@@ -82,7 +82,7 @@ iOS 设备与已有的 Android ADB 心跳监测机制进行了无缝合并：
   ```dart
   class FakeIosDeviceService extends IosDeviceService {
     @override
-    Future<List<AdbDevice>> listDevices() async => [];
+    Future<List<DiscoveredDevice>> listDevices() async => [];
   }
   ```
   在测试的 `ProviderScope` 的 `overrides` 中注入该模拟服务，阻断了对真实进程命令的调用，确保测试能瞬间跑通。

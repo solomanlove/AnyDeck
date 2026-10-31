@@ -3,7 +3,7 @@ part of '../dashboard_screen.dart';
 class _SystemSettingsPanel extends ConsumerStatefulWidget {
   const _SystemSettingsPanel({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   ConsumerState<_SystemSettingsPanel> createState() =>

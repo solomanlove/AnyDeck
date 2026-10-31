@@ -1,8 +1,8 @@
 import '../ios/ios_connection_type.dart';
 
-/// `adb devices -l` 输出中的一行设备信息。
-class AdbDevice {
-  const AdbDevice({
+/// ADB、HDC 与 go-ios 设备发现阶段的跨平台设备快照。
+class DiscoveredDevice {
+  const DiscoveredDevice({
     required this.id,
     required this.status,
     this.model,

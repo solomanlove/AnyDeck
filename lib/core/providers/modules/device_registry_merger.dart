@@ -1,4 +1,4 @@
-import '../../adb/adb_device.dart';
+import '../../adb/discovered_device.dart';
 import '../../ios/ios_device_identity.dart';
 import 'device_registry_storage.dart';
 import 'registered_device_model.dart';
@@ -10,7 +10,7 @@ import 'registered_device_model.dart';
 class DeviceRegistryMerger {
   /// 执行设备列表合并与候选代表选举。
   static List<RegisteredDevice> mergeDevices({
-    required List<AdbDevice> activeDevices,
+    required List<DiscoveredDevice> activeDevices,
     required List<String> historyIds,
     required Map<String, String> aliases,
     required Map<String, String> models,
@@ -23,7 +23,7 @@ class DeviceRegistryMerger {
     required Set<String> checkedIds,
     required Map<String, String> serialMap,
   }) {
-    final activeMap = <String, AdbDevice>{};
+    final activeMap = <String, DiscoveredDevice>{};
     for (final device in activeDevices) {
       final existing = activeMap[device.id];
       // 同一地址被 ADB 与 HDC 同时发现时，在线优先；状态相同时保留 ADB 路由。

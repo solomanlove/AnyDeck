@@ -1,5 +1,5 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/ios/ios_overview_service.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +46,7 @@ void main() {
               ],
               home: Scaffold(
                 body: DeviceOverviewContent(
-                  device: const AdbDevice(
+                  device: const DiscoveredDevice(
                     id: 'udid-not-serial',
                     status: 'device',
                     isIos: true,

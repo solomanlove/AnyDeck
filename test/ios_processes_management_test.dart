@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/ios/ios_app_info.dart';
 import 'package:any_deck/core/ios/ios_command_service.dart';
 import 'package:any_deck/core/ios/ios_icon_service.dart';
@@ -107,7 +107,7 @@ Widget _page(
     theme: ThemeData(brightness: brightness),
     home: const Scaffold(
       body: IosProcessesTab(
-        device: AdbDevice(id: 'a', status: 'device', isIos: true),
+        device: DiscoveredDevice(id: 'a', status: 'device', isIos: true),
       ),
     ),
   ),

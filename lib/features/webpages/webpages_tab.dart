@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/web_debug/webpage_target.dart';
 import '../../core/providers/app_providers.dart';
 import '../widgets/dashboard_snack.dart';
@@ -17,7 +17,7 @@ import '../webview/in_app_webview_widget.dart';
 part 'webpages_table.dart';
 
 class WebpagesTab extends ConsumerStatefulWidget {
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final bool isVisible;
 
   const WebpagesTab({

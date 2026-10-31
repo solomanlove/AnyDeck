@@ -5,7 +5,7 @@ enum AppFilterType { user, system, all, favorites }
 class AppsTab extends ConsumerStatefulWidget {
   const AppsTab({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   ConsumerState<AppsTab> createState() => _AppsTabState();

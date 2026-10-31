@@ -1,7 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/l10n/tables/app_l10n_emulator_config.dart';
 import 'package:any_deck/core/emulator/android_emulator.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/emulator/emulator_process.dart';
 import 'package:any_deck/core/providers/modules/emulator_terminal_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
@@ -161,7 +161,7 @@ void main() {
             emulatorListProvider.overrideWith((ref) async => [_emulator]),
             emulatorConnectionsProvider.overrideWith(
               (ref) async => {
-                'Small_Phone': const AdbDevice(
+                'Small_Phone': const DiscoveredDevice(
                   id: 'emulator-5554',
                   status: 'unauthorized',
                 ),

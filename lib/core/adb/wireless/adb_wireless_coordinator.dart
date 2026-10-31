@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../adb_device.dart';
+import '../discovered_device.dart';
 import '../adb_service.dart';
 import 'adb_wireless_probe.dart';
 import 'adb_wireless_state.dart';
@@ -36,7 +36,7 @@ class AdbWirelessCoordinator {
   bool _disposed = false;
 
   /// 仅处理已授权的 Android 实体 USB；短暂重启离线不清除本次准备标记。
-  void observe(List<AdbDevice> devices) {
+  void observe(List<DiscoveredDevice> devices) {
     if (_disposed) return;
     final usb = devices.where(
       (d) => d.isOnline && !d.isIos && !d.isHarmony && isPhysicalUsbId(d.id),

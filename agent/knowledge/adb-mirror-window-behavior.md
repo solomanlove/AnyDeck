@@ -130,7 +130,7 @@ flutter test test/mirror_transport_resolver_test.dart test/android_mirror_transp
 
 - 标题栏投屏计时由 `MirrorSessionDuration` 复用；计时文本及两侧留白共同响应鼠标悬停，Tooltip 显示本地化“投屏时间”，Android/HarmonyOS 与 iOS AirPlay 标题栏保持一致。
 
-- 单设备投屏入口 `openStandaloneMirrorWindow()` 优先使用 `deviceRegistryProvider` 中非空的 `customName`，未配置或清空名称时保留 `AdbDevice.displayName` 默认值（model，缺失时使用设备 ID）；按 `id`、`serial`、`connections` 匹配同一设备，覆盖 USB 与无线连接。
+- 单设备投屏入口 `openStandaloneMirrorWindow()` 优先使用 `deviceRegistryProvider` 中非空的 `customName`，未配置或清空名称时保留 `DiscoveredDevice.displayName` 默认值（model，缺失时使用设备 ID）；按 `id`、`serial`、`connections` 匹配同一设备，覆盖 USB 与无线连接。
 - 创建窗口时，原生窗口标题和 JSON 参数 `deviceName` 使用同一解析结果；子窗口标题栏复用该参数。该逻辑覆盖设备列表、控制面板与主窗口投屏快捷入口，批量投屏继续使用已支持别名的 `RegisteredDevice.displayName`。
 - 名称在打开窗口时读取；已打开窗口仍使用启动参数，修改名称后重新打开生效。单 App 投屏继续保留应用名称。
 - 回归检查：未配置名称、配置中文或含空格名称、清空名称后，分别从设备列表和控制面板打开投屏，确认窗口标题符合上述优先级；同一设备切换 USB/无线连接后验证别名，批量投屏与单 App 投屏检查既有标题行为。

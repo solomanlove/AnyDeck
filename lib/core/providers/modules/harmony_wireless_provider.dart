@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../adb/adb_result.dart';
-import '../../adb/adb_device.dart';
+import '../../adb/discovered_device.dart';
 import '../../harmony/hdc_service_device_info.dart';
 import '../../harmony/wireless/harmony_wireless_models.dart';
 import 'device_tracking_providers.dart';
@@ -24,7 +24,7 @@ class HarmonyWirelessNotifier extends Notifier<HarmonyWirelessState> {
 
   Timer? _reconnectTimer;
   Set<String> _onlineAddresses = {};
-  List<AdbDevice> _harmonyDevices = const [];
+  List<DiscoveredDevice> _harmonyDevices = const [];
   final Set<String> _suppressedIdentities = {};
   int _reconnectFailureCount = 0;
   bool _disposed = false;

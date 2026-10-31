@@ -3,7 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/providers/app_providers.dart';
 import '../layout/layout_hierarchy_tree.dart';
 import '../layout/layout_properties_table.dart';
@@ -18,7 +18,7 @@ import 'widgets/screenshot_bottom_bar.dart';
 class DashboardScreenshotTab extends ConsumerStatefulWidget {
   const DashboardScreenshotTab({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   ConsumerState<DashboardScreenshotTab> createState() =>

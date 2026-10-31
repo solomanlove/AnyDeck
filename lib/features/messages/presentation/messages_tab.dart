@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
-import '../../../core/adb/adb_device.dart';
+import '../../../core/adb/discovered_device.dart';
 import '../../../core/notifications/notification_models.dart';
 import '../../../core/notifications/notification_device_identity.dart';
 import '../../../core/notifications/notification_providers.dart';
@@ -17,7 +17,7 @@ import 'widgets/messages_list_view.dart';
 class MessagesTab extends ConsumerStatefulWidget {
   const MessagesTab({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   ConsumerState<MessagesTab> createState() => _MessagesTabState();

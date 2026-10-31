@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../adb/adb_device.dart';
+import '../../adb/discovered_device.dart';
 import '../../adb/adb_result.dart';
 import '../../ios/ios_mirror_service.dart';
 import 'dashboard_state_providers.dart';
@@ -55,7 +55,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   @override
   Map<String, String> _serialMap = {};
   @override
-  List<AdbDevice> _lastActiveDevices = [];
+  List<DiscoveredDevice> _lastActiveDevices = [];
   @override
   final Set<String> _pendingFetchIds = {};
   @override
@@ -140,7 +140,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       final activeDevs = ref.read(devicesProvider).value ?? _lastActiveDevices;
       final dev = activeDevs.firstWhere(
         (d) => d.id == id,
-        orElse: () => AdbDevice(id: id, status: 'offline', model: '', product: ''),
+        orElse: () => DiscoveredDevice(id: id, status: 'offline', model: '', product: ''),
       );
 
       if (dev.isHarmony) {
@@ -204,10 +204,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   }
 
   @override
-  List<RegisteredDevice> _mergeDevices(List<AdbDevice> activeDevices) {
-    final activeMap = <String, AdbDevice>{};
+  List<RegisteredDevice> _mergeDevices(List<DiscoveredDevice> activeDevices) {
+    final activeMap = <String, DiscoveredDevice>{};
     for (final device in activeDevices) {
-      if (!AdbDevice.hasUsableId(device.id)) continue;
+      if (!DiscoveredDevice.hasUsableId(device.id)) continue;
       final existing = activeMap[device.id];
       if (existing == null ||
           (device.isOnline && !existing.isOnline) ||
@@ -459,7 +459,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
 
     for (final device in state) {
       if (device.id == selected.id) {
-        ref.read(selectedDeviceProvider.notifier).select(device.toAdbDevice);
+        ref.read(selectedDeviceProvider.notifier).select(device.toDiscoveredDevice);
         return;
       }
     }
@@ -482,11 +482,11 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   Future<void> _syncActiveDevices() async {
     _attemptedFetchIds.clear();
     final androidDevices = await ref.read(adbServiceProvider).listDevices();
-    List<AdbDevice> iosDevices = [];
+    List<DiscoveredDevice> iosDevices = [];
     try {
       iosDevices = await ref.read(iosDeviceServiceProvider).listDevices();
     } catch (_) {}
-    List<AdbDevice> harmonyDevices = [];
+    List<DiscoveredDevice> harmonyDevices = [];
     try {
       harmonyDevices = await ref.read(adbDeviceTrackerProvider).refreshHarmonyDevices();
     } catch (_) {}

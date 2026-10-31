@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/ios/ios_app_info.dart';
 import 'package:any_deck/core/ios/ios_command_service.dart';
 import 'package:any_deck/core/ios/ios_process_service.dart';
@@ -155,7 +155,7 @@ void main() {
       ],
       child: _page(
         IosProcessesTab(
-          device: AdbDevice(id: id, status: 'device', isIos: true),
+          device: DiscoveredDevice(id: id, status: 'device', isIos: true),
         ),
       ),
     );

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
-import '../../../core/adb/adb_device.dart';
+import '../../../core/adb/discovered_device.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/scrcpy/mirror_transport_resolver.dart';
 import '../../../core/scrcpy/mirror_transport_type.dart';
@@ -35,7 +35,7 @@ class _AndroidMirrorTransportHostState
   final _failedRoutes = <String>{};
   bool _recovering = false;
   DateTime? _connectedAt;
-  List<AdbDevice> _devices = const [];
+  List<DiscoveredDevice> _devices = const [];
   Timer? _selectionTimer;
   bool _checkingPreferred = false;
   bool _preferredCheckPending = false;
@@ -149,7 +149,7 @@ class _AndroidMirrorTransportHostState
     }
   }
 
-  void _onDevicesChanged(List<AdbDevice> devices) {
+  void _onDevicesChanged(List<DiscoveredDevice> devices) {
     final previouslyOnline = _devices
         .where((d) => d.isOnline)
         .map((d) => d.id)

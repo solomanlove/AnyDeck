@@ -1,5 +1,5 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
@@ -41,7 +41,7 @@ void main() {
   testWidgets('process row context menu copies name and stops target', (
     WidgetTester tester,
   ) async {
-    const device = AdbDevice(
+    const device = DiscoveredDevice(
       id: 'test-device',
       status: 'device',
       model: 'Test Device',

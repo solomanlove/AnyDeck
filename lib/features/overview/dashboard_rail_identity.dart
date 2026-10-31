@@ -8,7 +8,7 @@ class _RailIdentity extends ConsumerWidget {
     required this.isNarrow,
   });
 
-  final AdbDevice? selectedDevice;
+  final DiscoveredDevice? selectedDevice;
   final List<RegisteredDevice> registeredDevices;
   final bool isNarrow;
 

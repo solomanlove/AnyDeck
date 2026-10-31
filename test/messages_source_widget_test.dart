@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/settings/app_settings.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/notifications/mac_notification_bridge.dart';
@@ -21,8 +21,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _a = AdbDevice(id: 'phone_a', status: 'device');
-const _b = AdbDevice(id: 'phone_b', status: 'device');
+const _a = DiscoveredDevice(id: 'phone_a', status: 'device');
+const _b = DiscoveredDevice(id: 'phone_b', status: 'device');
 
 class _Registry extends DeviceRegistryNotifier {
   @override
@@ -174,7 +174,7 @@ void main() {
         bridge.dispose();
         container.dispose();
       });
-      Future<void> show(AdbDevice device) async {
+      Future<void> show(DiscoveredDevice device) async {
         await tester.pumpWidget(
           UncontrolledProviderScope(
             container: container,

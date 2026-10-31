@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../webpages/webpages_tab.dart';
 
 /// 鸿蒙手机专属网页调试 Tab。
@@ -19,7 +19,7 @@ class HarmonyWebpagesTab extends StatelessWidget {
   });
 
   /// 当前操作的目标鸿蒙设备
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   /// 当前 Tab 是否可见（控制自动刷新定时器）
   final bool isVisible;

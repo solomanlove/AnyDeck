@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import 'dashboard_screenshot_tab.dart';
 
 /// HarmonyOS 截图、录屏与布局分析入口。
@@ -9,7 +9,7 @@ import 'dashboard_screenshot_tab.dart';
 class HarmonyScreenshotTab extends StatelessWidget {
   const HarmonyScreenshotTab({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context) => DashboardScreenshotTab(device: device);

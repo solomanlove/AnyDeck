@@ -1,5 +1,5 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
@@ -121,7 +121,7 @@ Future<void> _pumpOverview(
         ],
         home: Scaffold(
           body: DeviceOverviewContent(
-            device: AdbDevice(
+            device: DiscoveredDevice(
               id: 'test',
               status: 'device',
               isHarmony: isHarmony,

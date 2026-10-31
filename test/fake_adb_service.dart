@@ -1,5 +1,5 @@
 import 'dart:typed_data';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 
@@ -7,12 +7,12 @@ class FakeAdbService extends AdbService {
   FakeAdbService() : super(executable: 'adb');
 
   @override
-  Future<List<AdbDevice>> listDevices() async {
+  Future<List<DiscoveredDevice>> listDevices() async {
     return [];
   }
 
   @override
-  Stream<List<AdbDevice>> trackDevices({
+  Stream<List<DiscoveredDevice>> trackDevices({
     Duration interval = const Duration(seconds: 2),
   }) {
     return Stream.value([]);

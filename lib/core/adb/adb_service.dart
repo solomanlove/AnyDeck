@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../process/tool_path_resolver.dart';
-import 'adb_device.dart';
+import 'discovered_device.dart';
 import 'adb_result.dart';
 import 'screenshot_display_selector.dart';
 
@@ -30,7 +30,7 @@ class AdbService {
   }
 
   /// 获取已连接设备列表；adb 不可用时抛出异常。
-  Future<List<AdbDevice>> listDevices() async {
+  Future<List<DiscoveredDevice>> listDevices() async {
     final result = await run(['devices', '-l']);
     if (!result.isSuccess) {
       throw AdbException(result.message);
@@ -39,7 +39,7 @@ class AdbService {
   }
 
   /// 定时轮询 adb，仅在可见设备列表变化时发出新值。
-  Stream<List<AdbDevice>> trackDevices({
+  Stream<List<DiscoveredDevice>> trackDevices({
     Duration interval = const Duration(seconds: 2),
   }) async* {
     yield await listDevices();
@@ -120,24 +120,24 @@ class AdbService {
   }
 
   /// 解析 `adb devices -l` 返回的表格文本。
-  List<AdbDevice> _parseDevices(String output) {
+  List<DiscoveredDevice> _parseDevices(String output) {
     return output
         .split('\n')
         .skip(1)
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
         .map(_parseDeviceLine)
-        .whereType<AdbDevice>()
+        .whereType<DiscoveredDevice>()
         .toList(growable: false);
   }
 
   /// 解析单行 adb 设备信息，并保留可选的 key:value 属性。
-  AdbDevice? parseDeviceLine(String line) => _parseDeviceLine(line);
+  DiscoveredDevice? parseDeviceLine(String line) => _parseDeviceLine(line);
 
-  AdbDevice? _parseDeviceLine(String line) {
+  DiscoveredDevice? _parseDeviceLine(String line) {
     final match = _deviceLinePattern.firstMatch(line);
     final id = match?.group(1) ?? line.split(RegExp(r'\s+')).first;
-    if (!AdbDevice.hasUsableId(id)) return null;
+    if (!DiscoveredDevice.hasUsableId(id)) return null;
     final status = match?.group(2) ?? 'unknown';
     final attributesText = match?.group(3) ?? '';
     final parts = attributesText.split(RegExp(r'\s+'));
@@ -152,7 +152,7 @@ class AdbService {
       }
     }
 
-    return AdbDevice(
+    return DiscoveredDevice(
       id: id,
       status: status,
       model: attributes['model'],
@@ -425,7 +425,7 @@ class AdbService {
     );
   }
 
-  bool _sameDeviceList(List<AdbDevice> previous, List<AdbDevice> next) {
+  bool _sameDeviceList(List<DiscoveredDevice> previous, List<DiscoveredDevice> next) {
     if (previous.length != next.length) {
       return false;
     }

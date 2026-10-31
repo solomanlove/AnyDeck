@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import '../adb/adb_device.dart';
+import '../adb/discovered_device.dart';
 import '../adb/adb_result.dart';
 import '../dal/device_driver.dart';
 import '../dal/rust_dal_bridge.dart';
@@ -38,7 +38,7 @@ class HdcService {
   }
 
   /// 获取已连接的鸿蒙设备列表。
-  Future<List<AdbDevice>> listDevices() async {
+  Future<List<DiscoveredDevice>> listDevices() async {
     List<String> rawTargets = [];
     if (RustDalBridge.instance.isAvailable) {
       try {
@@ -60,7 +60,7 @@ class HdcService {
     }
     if (rawTargets.isEmpty) return [];
 
-    final devices = <AdbDevice>[];
+    final devices = <DiscoveredDevice>[];
     for (final id in rawTargets) {
       String modelName = _deviceModelCache[id] ?? '';
       if (HdcServiceDeviceInfo.isGenericOrInvalidModel(modelName)) {
@@ -96,7 +96,7 @@ class HdcService {
         }
       }
 
-      devices.add(AdbDevice(
+      devices.add(DiscoveredDevice(
         id: id,
         status: 'device',
         model: !HdcServiceDeviceInfo.isGenericOrInvalidModel(modelName)

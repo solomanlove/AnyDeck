@@ -1,4 +1,4 @@
-import '../adb/adb_device.dart';
+import '../adb/discovered_device.dart';
 import '../adb/adb_service.dart';
 import '../adb/wireless/adb_wireless_probe.dart';
 import 'mirror_transport_type.dart';
@@ -29,7 +29,7 @@ class MirrorTransportResolver {
   /// 新鲜列表中的候选仍须回读序列号，防止 DHCP 地址复用后投到其他手机。
   Future<String?> resolve({
     required Set<String> excluded,
-    List<AdbDevice>? devices,
+    List<DiscoveredDevice>? devices,
     String? betterThan,
   }) async {
     await _identity;
@@ -46,7 +46,7 @@ class MirrorTransportResolver {
           .skip(1)
           .where((line) => line.trim().isNotEmpty)
           .map(adb.parseDeviceLine)
-          .whereType<AdbDevice>()
+          .whereType<DiscoveredDevice>()
           .toList();
     }
     int priority(String id) => MirrorTransportType.fromDeviceId(id).index;

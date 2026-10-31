@@ -2,12 +2,20 @@
 
 在 AdbManage (AnyDeck) 项目中，对于已连接设备的唯一性判断、去重归并以及底层命令操作，分别通过以下几个核心字段和逻辑实现。
 
+## 发现模型命名（2026-10-31）
+
+- 跨平台发现模型统一命名为 `DiscoveredDevice`，文件为 `lib/core/adb/discovered_device.dart`，承载 ADB、HDC 和 go-ios 返回的设备快照；名称不表示设备必然在线。
+- `RegisteredDevice.toDiscoveredDevice` 将注册表记录转换为发现模型。注册表模型、ADB 专属服务和 Tracker 的名称保持原有职责划分。
+- 本次仅重命名类型、文件、转换属性及源码、测试、知识库引用；字段、连接命令、合并规则、缓存键、窗口参数和运行逻辑均不变。
+- 验证采用改名前后静态诊断与受影响测试基线对照，并检查源码差异仅包含命名替换和模型注释；不启动桌面应用或操作真机。
+- 验证结果：102 个 Dart 文件通过精确命名替换校验；全仓分析前后均为相同的 39 条既有 warning/info，无新增诊断。29 个直接受影响测试文件前后均为 168 项通过、13 项既有失败，失败用例完全一致，涉及 APK 安装协调器、应用筛选和旧 Dashboard Widget 测试；额外 6 个设备发现、通道及无线控制测试文件共 24 项全部通过。
+
 ---
 
 ## 1. 核心字段与定义
 
 ### 1.1 `id` 字段 (底层连接与操作标识)
-* **类属性**：`AdbDevice.id` 与 `RegisteredDevice.id`
+* **类属性**：`DiscoveredDevice.id` 与 `RegisteredDevice.id`
 * **值来源**：来源于运行 `adb devices -l` 命令行输出的第一列。
   * **USB 物理连接**：通常为设备的**硬件序列号 (Serial Number)**（例如：`9889db434c44454d4f`）。
   * **TCP/IP 无线连接**：通常为 **`IP:Port`** 格式（例如：`192.168.1.100:5555`）。
@@ -81,7 +89,7 @@ HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The
 
 `IosDeviceService` 对 Rust DAL 和 go-ios CLI 的设备列表共用解析逻辑，使用 `IosDeviceIdentity` 将 `ProductType` 转换为已核对的型号名称。目前复用 `IosModelSpec` 的 `iPhone8,1 → iPhone 6s` 映射，其他型号保留硬件标识，不将系统名称 `ProductName: iPhone OS` 当作机型。带 `level` 的日志即使包含 UDID 也不能生成设备记录。
 
-`ProductVersion` 作为实际版本号存入 `AdbDevice.product` 和 `devices.products`；`DeviceRegistryMerger` 将其填入列表共用的 `RegisteredDevice.androidVersion` 字段，显示为 `iOS 15.8.8`。当前发现版本优先于历史缓存，空值或 `iOS` 占位值不覆盖已知版本。离线记录和旧版 `iPhone OS (iPhone8,1)` 缓存也能直接显示型号与版本，用户别名仍优先，不依赖打开概览页面。
+`ProductVersion` 作为实际版本号存入 `DiscoveredDevice.product` 和 `devices.products`；`DeviceRegistryMerger` 将其填入列表共用的 `RegisteredDevice.androidVersion` 字段，显示为 `iOS 15.8.8`。当前发现版本优先于历史缓存，空值或 `iOS` 占位值不覆盖已知版本。离线记录和旧版 `iPhone OS (iPhone8,1)` 缓存也能直接显示型号与版本，用户别名仍优先，不依赖打开概览页面。
 
 注册表补全元数据时跳过 iOS，不再对 UDID 发起 Android ADB 探测。此变更不增加 CLI 轮询、不修改投屏会话、UI 样式或多窗口设置协议。
 
@@ -89,13 +97,13 @@ HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The
 
 ### 2.6 iOS 连接通道
 
-`AdbDevice` 和 `RegisteredDevice` 通过 `iosConnectionTypes` 保存发现阶段的 USB/Network 集合，`copyWith`、`toAdbDevice` 与注册表合并需完整传递。不能套用 Android 的“ID 不含 IP 就是 USB”规则；iOS 网络连接仍使用 UDID 路由。未知通道不显示 USB 图标，断线后集合清空。同一设备多通道合并和旧 Rust 库兼容策略见 `ios-mirror-principles.md` 第 2 节。
+`DiscoveredDevice` 和 `RegisteredDevice` 通过 `iosConnectionTypes` 保存发现阶段的 USB/Network 集合，`copyWith`、`toDiscoveredDevice` 与注册表合并需完整传递。不能套用 Android 的“ID 不含 IP 就是 USB”规则；iOS 网络连接仍使用 UDID 路由。未知通道不显示 USB 图标，断线后集合清空。同一设备多通道合并和旧 Rust 库兼容策略见 `ios-mirror-principles.md` 第 2 节。
 
 2026-10-06 真机只读查询确认该 iPhone 6s 报告 `ConnectionType: Network`。解析与注册表测试覆盖双通道、网络转 USB、离线清理和 UDID 不变；`ios_connection_indicators_test.dart` 覆盖中英文、明暗主题下的网络/USB/双通道/未知/离线图标。Rust `ios_discovery_preserves_connection_types` 验证 FFI 序列化保留通道、过滤日志。未启动桌面应用；实际 USB 插拔与侧栏渲染待手工验收。
 
 ### 2.7 无序列号占位设备清理
 
-部分 USB 枚举异常会让 `adb devices -l` 返回 `(no serial number)` 或全问号占位 ID。此类值不能用于 `adb -s <id>` 路由，也不能作为真实设备写入 `devices.history`。`AdbDevice.hasUsableId()` 统一识别空值、`unknown`、`-`、`no serial number`、`(no serial number)` 和全问号 ID；`AdbService` 在解析设备列表时直接丢弃，`DeviceRegistryNotifier` 在合并前再次过滤。
+部分 USB 枚举异常会让 `adb devices -l` 返回 `(no serial number)` 或全问号占位 ID。此类值不能用于 `adb -s <id>` 路由，也不能作为真实设备写入 `devices.history`。`DiscoveredDevice.hasUsableId()` 统一识别空值、`unknown`、`-`、`no serial number`、`(no serial number)` 和全问号 ID；`AdbService` 在解析设备列表时直接丢弃，`DeviceRegistryNotifier` 在合并前再次过滤。
 
 历史版本已经持久化的占位记录由 `DeviceRegistryStorage.loadFromPrefs()` 自动移除，同时清理别名、型号、产品、IP、系统版本、SDK、备注、标签和 `devices.overview.<id>` 缓存。该清理只针对明确无效的占位 ID，不影响包含空格的合法 mDNS route；无需用户手动删除，重新加载设备注册表后异常行自动消失。
 

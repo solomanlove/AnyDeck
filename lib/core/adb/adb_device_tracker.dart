@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../harmony/hdc_service.dart';
 import '../ios/ios_device_service.dart';
-import 'adb_device.dart';
+import 'discovered_device.dart';
 import 'adb_service.dart';
 
 /// 主窗口常驻的设备监听器，通过 `AdbService.start` 管理 `adb track-devices -l` 进程。
@@ -30,21 +30,21 @@ class AdbDeviceTracker {
   final bool isSubWindow;
 
   final _streamController =
-      StreamController<List<AdbDevice>>.broadcast();
+      StreamController<List<DiscoveredDevice>>.broadcast();
 
   Process? _trackProcess;
   Timer? _reconnectTimer;
   Timer? _iosPollTimer;
   bool _isDisposed = false;
 
-  List<AdbDevice> _androidDevices = [];
-  List<AdbDevice> _iosDevices = [];
-  List<AdbDevice> _harmonyDevices = [];
-  List<AdbDevice> _lastPublished = [];
+  List<DiscoveredDevice> _androidDevices = [];
+  List<DiscoveredDevice> _iosDevices = [];
+  List<DiscoveredDevice> _harmonyDevices = [];
+  List<DiscoveredDevice> _lastPublished = [];
 
-  Stream<List<AdbDevice>> get deviceStream => _streamController.stream;
+  Stream<List<DiscoveredDevice>> get deviceStream => _streamController.stream;
 
-  List<AdbDevice> get currentDevices => _lastPublished;
+  List<DiscoveredDevice> get currentDevices => _lastPublished;
 
   Future<void> _startTracking() async {
     if (_isDisposed || isSubWindow) return;
@@ -122,7 +122,7 @@ class AdbDeviceTracker {
             buffer = buffer.substring(4 + length);
 
             final lines = payload.split('\n');
-            final devices = <AdbDevice>[];
+            final devices = <DiscoveredDevice>[];
             for (final line in lines) {
               final trimmed = line.trim();
               if (trimmed.isEmpty) continue;
@@ -182,7 +182,7 @@ class AdbDeviceTracker {
   }
 
   /// HDC 不支持设备事件流，仅在初始化或显式刷新时查询一次。
-  Future<List<AdbDevice>> refreshHarmonyDevices({bool publish = true}) async {
+  Future<List<DiscoveredDevice>> refreshHarmonyDevices({bool publish = true}) async {
     try {
       if (_hdcService != null) {
         _harmonyDevices = await _hdcService.listDevices();
@@ -205,7 +205,7 @@ class AdbDeviceTracker {
     }
   }
 
-  bool _sameDeviceList(List<AdbDevice> a, List<AdbDevice> b) {
+  bool _sameDeviceList(List<DiscoveredDevice> a, List<DiscoveredDevice> b) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
       if (a[i].id != b[i].id ||

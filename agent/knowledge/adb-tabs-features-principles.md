@@ -60,7 +60,7 @@
    - 概览页的 Android 版本展示优先复用 `deviceRegistryProvider` 的全局版本值，不再依赖概览页首次查询版本；其他业务逻辑应通过 `deviceAndroidVersionProvider(deviceId)` 或 `deviceSdkVersionProvider(deviceId)` 读取版本，避免重复执行版本查询命令。
    - 概览页“厂商系统”由 `DeviceInfoService` 已执行的整包 `getprop` 结果解析，不新增 ADB 子进程。`AndroidVersionHelper.getCustomOsVersion` 统一识别 HarmonyOS、MagicOS、EMUI、HyperOS、MIUI、ColorOS、OxygenOS、realme UI、OriginOS/Funtouch OS 和 Flyme；识别结果通过 `DeviceOverview.customOs` 缓存并展示，未命中时由 l10n 显示原生 Android/未检测到的兜底说明。
    - `androidVersion` 仅保留 Android release 与 API Level，厂商系统独立展示，避免同一信息在两个概览卡片重复出现。旧版 Overview 缓存没有 `customOs` 时按 `-` 兼容读取，设备在线刷新后自动补齐。
-   - Overview UI 以 `AdbDevice.isHarmony` 为纯血鸿蒙设备的 source-of-truth。HarmonyOS NEXT 将 HDC 已写入 `DeviceOverview.androidVersion` 的系统版本显示为“鸿蒙系统版本”，标题后的 info icon 直接以 HarmonyOS 为初始平台打开版本与 API 分布窗口，不展示 Android API mapping tooltip；同时不构建“厂商系统”字段，避免出现“原生 Android（或未检测到）”误导提示。Android 与 iOS 的现有版本展示不受影响。
+   - Overview UI 以 `DiscoveredDevice.isHarmony` 为纯血鸿蒙设备的 source-of-truth。HarmonyOS NEXT 将 HDC 已写入 `DeviceOverview.androidVersion` 的系统版本显示为“鸿蒙系统版本”，标题后的 info icon 直接以 HarmonyOS 为初始平台打开版本与 API 分布窗口，不展示 Android API mapping tooltip；同时不构建“厂商系统”字段，避免出现“原生 Android（或未检测到）”误导提示。Android 与 iOS 的现有版本展示不受影响。
 2. **核心属性查询命令**：
    - **系统属性**：利用 `adb shell getprop <key>` 读取。
      - 品牌：`ro.product.brand`
@@ -103,7 +103,7 @@
    - **手机快捷设置弹窗**：投屏独立窗口工具栏和控制 Tab 共用 `DeviceSettingsPopup`。弹窗通过 `deviceOverviewProvider` 读取当前字体缩放、显示密度、布局边界、点按反馈状态；写入侧复用 `DeviceActionService` 的 `setFontScale`、`setDisplayDensity`、`toggleLayoutBounds`、`setShowTouches`、`setDarkMode`，执行成功后刷新 `deviceOverviewProvider`，避免重复手写 adb 命令。弹窗内的“快捷跳转”复用已有 `openDeveloperSettings`、`openWifiSettings`、`openMainSettings`、`openDeviceInfoSettings`、`openLocaleSettings`、`openManageApplicationsSettings` 等 Android Settings Intent，作为轻量入口，不在 UI 层手写 `adb shell am start`。
    - **返回键长按强停**：投屏工具栏返回键短按仍发送 `KEYCODE_BACK`。长按时先通过 `dumpsys window | grep mCurrentFocus` 获取前台包名并在窗口内提示应用名；若继续按住且前台不是 HOME/Launcher，则执行 `am force-stop <package>`。桌面包通过系统 HOME resolve 和常见 launcher 包名识别，只提示“桌面”，不执行强停。
    - **电源键与关闭物理屏幕状态同步**：投屏工具栏的“关闭/开启设备屏幕”通过 scrcpy control message 设置 Android 物理屏幕模式，并用 `screenPowerOffProvider` 渲染 UI 状态。用户再点击电源键 (`KEYCODE_POWER`) 时，设备会离开该受控物理屏幕模式；因此电源键命令成功后必须同步将 `screenPowerOffProvider(deviceId)` 重置为 `false`，避免手机真实亮灭状态和软件图标状态不一致。
-   - **截图服务按设备类型分流**：Screenshot Tab 和投屏工具栏必须以 `AdbDevice.isHarmony` 为 source-of-truth。纯血 HarmonyOS NEXT 设备调用 `HdcService.captureScreenshot(deviceId)`，Android 设备调用 `AdbService.captureScreenshot(deviceId)`；不得把 HDC `connectKey` 传给 `adb -s`，否则会得到 `device '<connectKey>' not found`。
+   - **截图服务按设备类型分流**：Screenshot Tab 和投屏工具栏必须以 `DiscoveredDevice.isHarmony` 为 source-of-truth。纯血 HarmonyOS NEXT 设备调用 `HdcService.captureScreenshot(deviceId)`，Android 设备调用 `AdbService.captureScreenshot(deviceId)`；不得把 HDC `connectKey` 传给 `adb -s`，否则会得到 `device '<connectKey>' not found`。
    - **快捷跳转反馈（2026-10-09）**：控制 Tab 的全部快捷跳转（含工程模式、自定义链接）和 `DeviceSettingsPopup` 的系统设置入口共用 `runDeeplinkAction`。使用本地化 `deeplinkSuccess` / `deeplinkFailed` 显示“跳转成功 / 跳转失败”，不在 Toast 中显示 `Starting: Intent` 或原始错误输出；沿用 `DashboardSnack` 成功/错误图标。非零退出码、输出中的明确 `Error:` / `Error type` / 异常行以及 Future 异常均显示失败；已运行 Activity 接收 Intent 的 Warning 仍视为成功。设备断连沿用 registry 同步，异步返回时检查 Context 生命周期；跳转不触发无关的设备概览刷新。
    - **验证与交接边界**：`test/deeplink_feedback_test.dart` 覆盖中英文成功/失败 Toast、零退出码错误、已有 Activity 的正常 Warning、URI 中含 Error 字样和执行异常。手动回归应验证控制 Tab、手机设置弹窗、自定义链接在可打开/不可打开目标、设备断开和中英文切换时的提示；未启动应用，未做真机验收。“跳转成功”表示启动命令执行成功，不代表已回读并确认目标页面实际可见。本次不修改 ADB 命令、工程模式候选回退、投屏流、主题或跨窗口语言同步机制。
 3. **已存 Wi-Fi 密码读取 (需 Root)**：
@@ -407,7 +407,7 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
 ## 附录 A. 鸿蒙 Tab 适配（Harmony Tab Adaptation）
 
 ### 适配范围
-纯血 HarmonyOS NEXT 设备（`AdbDevice.isHarmony == true`）通过 hdc 通道对齐安卓 tab 能力，已开放：主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、设置(12)、玩安卓(13)、AI MCP(14)。不支持且已隐藏：HTTP 代理（无 hdc 对应命令）、单 App 投屏（鸿蒙无虚拟副屏 + `aa start --display` 公开机制）。
+纯血 HarmonyOS NEXT 设备（`DiscoveredDevice.isHarmony == true`）通过 hdc 通道对齐安卓 tab 能力，已开放：主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、设置(12)、玩安卓(13)、AI MCP(14)。不支持且已隐藏：HTTP 代理（无 hdc 对应命令）、单 App 投屏（鸿蒙无虚拟副屏 + `aa start --display` 公开机制）。
 
 ### 复用模式
 采用"独立鸿蒙 tab 文件 + 复用安卓公共 UI 组件"的物理隔离策略：

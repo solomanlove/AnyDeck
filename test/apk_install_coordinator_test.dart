@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:any_deck/app/window/apk/apk_open_coordinator.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
@@ -13,11 +13,11 @@ import 'package:any_deck/core/providers/app_providers.dart';
 
 class _Adb extends AdbService {
   _Adb() : super(executable: 'unused');
-  List<AdbDevice> devices = const [
-    AdbDevice(id: 'target-serial', status: 'device'),
+  List<DiscoveredDevice> devices = const [
+    DiscoveredDevice(id: 'target-serial', status: 'device'),
   ];
   @override
-  Future<List<AdbDevice>> listDevices() async => devices;
+  Future<List<DiscoveredDevice>> listDevices() async => devices;
 }
 
 class _Registry extends DeviceRegistryNotifier {
@@ -129,8 +129,8 @@ void main() {
   });
   test('离线不安装，不自动切换到另一个在线设备', () async {
     adb.devices = const [
-      AdbDevice(id: 'target-serial', status: 'offline'),
-      AdbDevice(id: 'other', status: 'device'),
+      DiscoveredDevice(id: 'target-serial', status: 'offline'),
+      DiscoveredDevice(id: 'other', status: 'device'),
     ];
     final result = await coordinator.handleWindowCall(
       MethodCall('apk_install', args),

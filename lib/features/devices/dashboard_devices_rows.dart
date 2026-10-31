@@ -309,7 +309,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               onPressed: () => openStandaloneMirrorWindow(
                 context,
                 ref,
-                device.toAdbDevice,
+                device.toDiscoveredDevice,
               ),
             ),
           ],

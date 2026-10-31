@@ -31,7 +31,7 @@ extension _DashboardContent on _DashboardScreenState {
           serial: selectedDevice.id,
         ),
       );
-      effectiveSelectedDevice = matchedDevice.toAdbDevice;
+      effectiveSelectedDevice = matchedDevice.toDiscoveredDevice;
       appBarTitle = matchedDevice.displayName;
 
       if (_hasDeviceSnapshotChanged(selectedDevice, effectiveSelectedDevice)) {

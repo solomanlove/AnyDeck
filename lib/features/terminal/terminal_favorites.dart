@@ -2,7 +2,7 @@ part of 'terminal_tab.dart';
 
 /// 常用调试命令收藏侧边栏
 class _FavoriteCommandsPanel extends ConsumerWidget {
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final String? activeSessionId;
   final ValueChanged<String> onFillCommand;
 

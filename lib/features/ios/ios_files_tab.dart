@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/ios/ios_mirror_service.dart';
 import '../widgets/dashboard_snack.dart';
 import 'ios_tool_widgets.dart';
@@ -12,7 +12,7 @@ import 'ios_tool_widgets.dart';
 class IosFilesTab extends ConsumerStatefulWidget {
   const IosFilesTab({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   ConsumerState<IosFilesTab> createState() => _IosFilesTabState();

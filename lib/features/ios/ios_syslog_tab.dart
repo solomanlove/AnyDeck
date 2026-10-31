@@ -6,14 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/ios/ios_mirror_service.dart';
 
 /// 显示 go-ios syslog 持续流，并限制内存和刷新频率。
 class IosSyslogTab extends ConsumerStatefulWidget {
   const IosSyslogTab({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   /// 解析 go-ios syslog --parse 格式的 JSON 字符串，转为清晰易读的日志行
   static String formatSyslogLine(String rawLine) {

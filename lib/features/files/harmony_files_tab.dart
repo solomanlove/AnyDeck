@@ -9,7 +9,7 @@ class HarmonyFilesTab extends ConsumerWidget {
   const HarmonyFilesTab({super.key, required this.device});
 
   /// 目标鸿蒙设备
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   static const String _defaultHarmonyPath = '/data/local/tmp/';
 

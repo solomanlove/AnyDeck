@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/settings/app_settings_controller.dart';
-import '../../adb/adb_device.dart';
+import '../../adb/discovered_device.dart';
 import '../../adb/wireless/adb_wireless_coordinator.dart';
 import '../../adb/wireless/adb_wireless_state.dart';
 import 'registered_device_model.dart';
@@ -39,7 +39,7 @@ class WirelessConnectionNotifier
   }
 
   /// 注册表在 build 内只提交快照，副作用延后到 microtask。
-  void observe(List<AdbDevice> devices) {
+  void observe(List<DiscoveredDevice> devices) {
     if (!_isMain) return;
     scheduleMicrotask(() {
       if (ref.mounted) {
@@ -50,7 +50,7 @@ class WirelessConnectionNotifier
   }
 
   /// 若设备当前已在线且已具有网络连接通道，清理陈旧的失败状态
-  void _clearConnectedDevices(List<AdbDevice> devices) {
+  void _clearConnectedDevices(List<DiscoveredDevice> devices) {
     final onlineNetworkIds = devices
         .where((d) => d.isOnline && (d.id.contains(':') || d.id.contains('.')))
         .map((d) => d.id)

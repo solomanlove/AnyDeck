@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../adb/adb_device.dart';
+import '../../adb/discovered_device.dart';
 import '../../harmony/hdc_service.dart';
 
 /// 设备注册表本地存储所维护的完整元数据聚合实体。
@@ -71,7 +71,7 @@ class DeviceRegistryStorage {
       HdcServiceDeviceInfo.isGenericOrInvalidModel(s);
 
   /// 从本地持久化存储中读取并清洗全部设备元数据。
-  Future<DeviceRegistryPrefsData> loadFromPrefs(List<AdbDevice> activeDevices) async {
+  Future<DeviceRegistryPrefsData> loadFromPrefs(List<DiscoveredDevice> activeDevices) async {
     final prefs = await SharedPreferences.getInstance();
     final history = prefs.getStringList(_historyKey) ?? [];
     
@@ -183,7 +183,7 @@ class DeviceRegistryStorage {
 
     bool historyPolluted = false;
     final invalidHistoryIds = history
-        .where((id) => !AdbDevice.hasUsableId(id))
+        .where((id) => !DiscoveredDevice.hasUsableId(id))
         .toList(growable: false);
     if (invalidHistoryIds.isNotEmpty) {
       historyPolluted = true;

@@ -10,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_selector/file_selector.dart';
 
 import '../../app/l10n/app_localizations.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/layout_inspector/layout_inspector_service.dart';
 import '../../core/layout_inspector/layout_node.dart';
 import '../../core/providers/app_providers.dart';
@@ -20,7 +20,7 @@ import 'layout_properties_table.dart';
 import 'layout_toolbar.dart';
 
 class LayoutTab extends ConsumerStatefulWidget {
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   const LayoutTab({super.key, required this.device});
 

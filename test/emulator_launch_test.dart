@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 
 import 'package:any_deck/core/emulator/emulator_process.dart';
 import 'package:any_deck/core/emulator/emulator_service.dart';
@@ -30,7 +30,7 @@ class _FakeEmulatorService extends EmulatorService {
 void main() {
   late ProviderContainer container;
   late _FakeEmulatorService service;
-  late Map<String, AdbDevice> running;
+  late Map<String, DiscoveredDevice> running;
 
   setUp(() {
     service = _FakeEmulatorService();
@@ -91,7 +91,7 @@ void main() {
     expect(state.processAlive, isTrue);
     await notifier.launch('phone');
     expect(service.exits, hasLength(1));
-    running = {'phone': const AdbDevice(id: 'emulator-5554', status: 'device')};
+    running = {'phone': const DiscoveredDevice(id: 'emulator-5554', status: 'device')};
     container.invalidate(emulatorConnectionsProvider);
     await Future<void>.delayed(const Duration(milliseconds: 1));
     expect(container.read(emulatorLaunchProvider)['phone']!.errorKey, isNull);
@@ -109,7 +109,7 @@ void main() {
     () async {
       await container.read(emulatorLaunchProvider.notifier).launch('phone');
       running = {
-        'phone': const AdbDevice(id: 'emulator-5554', status: 'unauthorized'),
+        'phone': const DiscoveredDevice(id: 'emulator-5554', status: 'unauthorized'),
       };
       container.invalidate(emulatorConnectionsProvider);
       await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -118,7 +118,7 @@ void main() {
       expect(waiting.isConnectionIssue, isTrue);
       expect(waiting.errorKey, 'emulatorAdbUnauthorized');
       running = {
-        'phone': const AdbDevice(id: 'emulator-5554', status: 'device'),
+        'phone': const DiscoveredDevice(id: 'emulator-5554', status: 'device'),
       };
       container.invalidate(emulatorConnectionsProvider);
       await Future<void>.delayed(const Duration(milliseconds: 5));

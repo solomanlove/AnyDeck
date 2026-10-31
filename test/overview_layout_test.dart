@@ -1,5 +1,5 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
@@ -37,7 +37,7 @@ void main() {
               ],
               home: Scaffold(
                 body: DeviceOverviewContent(
-                  device: const AdbDevice(id: 'test', status: 'device'),
+                  device: const DiscoveredDevice(id: 'test', status: 'device'),
                   overview: DeviceOverview.fromJson({
                     'name': 'Redmi K40',
                     'brand': 'Redmi',

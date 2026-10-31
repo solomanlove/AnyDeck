@@ -10,7 +10,7 @@ class HarmonyLogcatTab extends StatelessWidget {
   const HarmonyLogcatTab({super.key, required this.device});
 
   /// 当前操作的目标鸿蒙设备
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context) {

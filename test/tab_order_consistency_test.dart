@@ -6,13 +6,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 
 import 'fake_adb_service.dart';
 
-const _mockAndroidDevice = AdbDevice(
+const _mockAndroidDevice = DiscoveredDevice(
   id: 'android_001',
   status: 'device',
   model: 'Pixel 7',
@@ -20,7 +20,7 @@ const _mockAndroidDevice = AdbDevice(
   transportId: '1',
 );
 
-const _mockHarmonyDevice = AdbDevice(
+const _mockHarmonyDevice = DiscoveredDevice(
   id: 'harmony_001',
   status: 'device',
   model: 'Mate 60',
@@ -38,9 +38,9 @@ class _TestDeviceRegistryNotifier extends DeviceRegistryNotifier {
 
 class _TestSelectedDeviceNotifier extends SelectedDeviceNotifier {
   _TestSelectedDeviceNotifier(this._device);
-  final AdbDevice? _device;
+  final DiscoveredDevice? _device;
   @override
-  AdbDevice? build() => _device;
+  DiscoveredDevice? build() => _device;
 }
 
 class _FixedToolTabNotifier extends ToolTabNotifier {

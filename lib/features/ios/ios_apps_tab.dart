@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
 import '../../app/widget/dashboard_tab_layout.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/adb/adb_result.dart';
 import '../../core/ios/ios_app_info.dart';
 import '../../core/ios/ios_mirror_service.dart';
@@ -18,7 +18,7 @@ import 'widgets/ios_apps_toolbar.dart';
 class IosAppsTab extends ConsumerStatefulWidget {
   const IosAppsTab({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   ConsumerState<IosAppsTab> createState() => _IosAppsTabState();

@@ -1,4 +1,4 @@
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/emulator/emulator_connection.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,8 +28,8 @@ void main() {
       for (final status in ['unauthorized', 'offline', 'device']) {
         final adb = _Adb();
         final result = await EmulatorConnectionService(adb).inspect([
-          AdbDevice(id: 'emulator-5554', status: status),
-          const AdbDevice(id: 'physical-device', status: 'device'),
+          DiscoveredDevice(id: 'emulator-5554', status: status),
+          const DiscoveredDevice(id: 'physical-device', status: 'device'),
         ]);
         expect(result['Small_Phone']!.status, status);
         expect(adb.commands, [

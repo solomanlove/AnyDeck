@@ -11,7 +11,7 @@ class HarmonyAppsTab extends StatelessWidget {
   const HarmonyAppsTab({super.key, required this.device});
 
   /// 当前操作的目标鸿蒙设备
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context) {

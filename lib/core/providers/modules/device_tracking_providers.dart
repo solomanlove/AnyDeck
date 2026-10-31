@@ -4,7 +4,7 @@ import '../../../app/settings/app_settings_controller.dart';
 import '../../harmony/harmony_mirror_service.dart';
 import '../../ios/ios_mirror_service.dart';
 import '../../scrcpy/embedded_scrcpy_service.dart';
-import '../../adb/adb_device.dart';
+import '../../adb/discovered_device.dart';
 import '../../adb/adb_device_tracker.dart';
 import '../../adb/adb_heartbeat_controller.dart';
 import 'dashboard_state_providers.dart';
@@ -58,7 +58,7 @@ final adbDeviceTrackerProvider = Provider<AdbDeviceTracker>((ref) {
 /// 自动轮询/监听的实时 ADB 设备列表 StreamProvider。
 ///
 /// 主窗口接入常驻 `track-devices` 流，子窗口则安全回退到心跳流以保证 Isolate 独立稳定。
-final devicesProvider = StreamProvider.autoDispose<List<AdbDevice>>((ref) {
+final devicesProvider = StreamProvider.autoDispose<List<DiscoveredDevice>>((ref) {
   final isSub = ref.watch(windowIdProvider).isNotEmpty;
   if (isSub) {
     final controller = ref.watch(adbHeartbeatControllerProvider);

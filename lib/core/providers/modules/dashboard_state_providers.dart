@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../adb/adb_device.dart';
+import '../../adb/discovered_device.dart';
 import '../../logcat/logcat_controller.dart';
 import '../../logcat/logcat_state.dart';
 import '../../scrcpy/scrcpy_session.dart';
@@ -31,19 +31,19 @@ class ToolTabNotifier extends Notifier<int> {
 
 /// Workspace 面板当前选中的 ADB / 鸿蒙 / iOS 设备 Provider。
 final selectedDeviceProvider =
-    NotifierProvider<SelectedDeviceNotifier, AdbDevice?>(
+    NotifierProvider<SelectedDeviceNotifier, DiscoveredDevice?>(
       SelectedDeviceNotifier.new,
     );
 
 /// 当前选中设备状态控制器。
 ///
 /// 在切换设备或清空时自动移除原有设备的 Web 调试端口转发，并重置选中应用。
-class SelectedDeviceNotifier extends Notifier<AdbDevice?> {
+class SelectedDeviceNotifier extends Notifier<DiscoveredDevice?> {
   @override
-  AdbDevice? build() => null;
+  DiscoveredDevice? build() => null;
 
   /// 从左侧设备列表中选择指定设备。
-  void select(AdbDevice device) {
+  void select(DiscoveredDevice device) {
     final old = state;
     if (old != null && old.id != device.id) {
       ref.read(webDebugServiceProvider).removeForwards(old.id);

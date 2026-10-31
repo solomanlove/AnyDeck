@@ -9,7 +9,7 @@ class PrimaryRail extends ConsumerWidget {
     this.isAirplayReceiverRunning = false,
   });
 
-  final AdbDevice? selectedDevice;
+  final DiscoveredDevice? selectedDevice;
   final bool isAirplayReceiverRunning;
 
   static double get _topSpacing => DesktopChromePolicy.current.sidebarTopInset;

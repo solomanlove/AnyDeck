@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/network/port_forward_command.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/network_providers.dart';
@@ -13,7 +13,7 @@ import 'network_section_widgets.dart';
 class ForwardPortPanel extends ConsumerStatefulWidget {
   const ForwardPortPanel({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   ConsumerState<ForwardPortPanel> createState() => _ForwardPortPanelState();

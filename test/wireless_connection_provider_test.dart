@@ -1,5 +1,5 @@
 import 'package:any_deck/app/settings/app_settings_controller.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,7 +19,7 @@ void main() {
         adbServiceProvider.overrideWithValue(adb),
         devicesProvider.overrideWith(
           (ref) => Stream.value([
-            const AdbDevice(id: 'PHONE', status: 'device', model: 'Pixel'),
+            const DiscoveredDevice(id: 'PHONE', status: 'device', model: 'Pixel'),
           ]),
         ),
       ],
@@ -47,7 +47,7 @@ void main() {
     );
     addTearDown(container.dispose);
     final controller = container.read(wirelessConnectionProvider.notifier);
-    controller.observe([const AdbDevice(id: 'PHONE', status: 'device')]);
+    controller.observe([const DiscoveredDevice(id: 'PHONE', status: 'device')]);
     final result = await controller.connect(
       const RegisteredDevice(
         id: 'PHONE',

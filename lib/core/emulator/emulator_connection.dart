@@ -1,4 +1,4 @@
-import '../adb/adb_device.dart';
+import '../adb/discovered_device.dart';
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 
@@ -8,8 +8,8 @@ class EmulatorConnectionService {
 
   final AdbService adb;
 
-  Future<Map<String, AdbDevice>> inspect(List<AdbDevice> devices) async {
-    final result = <String, AdbDevice>{};
+  Future<Map<String, DiscoveredDevice>> inspect(List<DiscoveredDevice> devices) async {
+    final result = <String, DiscoveredDevice>{};
     for (final device in devices) {
       if (!RegExp(r'^emulator-\d+$').hasMatch(device.id)) continue;
       final response = await adb.run([

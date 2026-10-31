@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_device_tracker.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/harmony/hdc_service.dart';
@@ -48,10 +48,10 @@ class _CountingHdcDeviceService extends HdcService {
   int listCallCount = 0;
 
   @override
-  Future<List<AdbDevice>> listDevices() async {
+  Future<List<DiscoveredDevice>> listDevices() async {
     listCallCount++;
     return const [
-      AdbDevice(
+      DiscoveredDevice(
         id: '2UCUT23C18017189',
         status: 'device',
         model: 'HarmonyOS Device',
@@ -226,13 +226,13 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           devicesProvider.overrideWith((ref) => Stream.value(const [
-                AdbDevice(
+                DiscoveredDevice(
                   id: address,
                   status: 'device',
                   model: 'Android Phone',
                   product: 'android',
                 ),
-                AdbDevice(
+                DiscoveredDevice(
                   id: address,
                   status: 'device',
                   model: 'HarmonyOS Device',
@@ -293,7 +293,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           hdcServiceProvider.overrideWithValue(_FakeHdcSerialService()),
         ],
       );
@@ -332,7 +332,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           hdcServiceProvider.overrideWithValue(_FakeHdcSerialService()),
         ],
       );

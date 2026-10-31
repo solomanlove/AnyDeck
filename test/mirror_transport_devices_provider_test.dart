@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:any_deck/app/settings/app_settings_controller.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/scrcpy/mirror_transport_devices_provider.dart';
@@ -37,9 +37,9 @@ class _TrackerAdb extends AdbService {
   final calls = <List<String>>[];
   Completer<Process>? launch;
   @override
-  Future<List<AdbDevice>> listDevices() async {
+  Future<List<DiscoveredDevice>> listDevices() async {
     calls.add(['devices', '-l']);
-    return const [AdbDevice(id: '192.168.1.8:5555', status: 'device')];
+    return const [DiscoveredDevice(id: '192.168.1.8:5555', status: 'device')];
   }
 
   @override
@@ -58,7 +58,7 @@ void main() {
         adbServiceProvider.overrideWithValue(adb),
       ],
     );
-    final updates = <List<AdbDevice>>[];
+    final updates = <List<DiscoveredDevice>>[];
     container.listen(mirrorTransportDevicesProvider, (_, next) {
       if (next.hasValue) updates.add(next.requireValue);
     });

@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 
 import '../../app/l10n/app_localizations.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/apps/adb_package.dart';
 import '../../core/performance/rust_performance_bridge.dart';
@@ -21,7 +21,7 @@ class PerformanceTab extends ConsumerStatefulWidget {
     required this.isVisible,
   });
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final bool isVisible;
 
   @override

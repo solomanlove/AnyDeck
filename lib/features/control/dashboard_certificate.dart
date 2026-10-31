@@ -4,7 +4,7 @@ part of '../dashboard_screen.dart';
 class _CertificatePanel extends ConsumerWidget {
   const _CertificatePanel({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

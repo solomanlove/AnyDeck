@@ -2,7 +2,7 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/router/app_router.dart';
 import 'package:any_deck/app/router/dashboard_route.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
@@ -19,7 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_adb_service.dart';
 
-const _device = AdbDevice(
+const _device = DiscoveredDevice(
   id: 'navigation-test',
   status: 'device',
   model: 'Pixel',
@@ -40,7 +40,7 @@ class _Registry extends DeviceRegistryNotifier {
 
 class _SelectedDevice extends SelectedDeviceNotifier {
   @override
-  AdbDevice? build() => _device;
+  DiscoveredDevice? build() => _device;
 }
 
 class _Tab extends ToolTabNotifier {
@@ -62,7 +62,7 @@ class _HostNetwork extends HostNetworkNotifier {
 
 class _Ios extends IosDeviceService {
   @override
-  Future<List<AdbDevice>> listDevices() async => [];
+  Future<List<DiscoveredDevice>> listDevices() async => [];
 }
 
 class _ReadyAdb extends AdbEnvironmentNotifier {
@@ -84,7 +84,7 @@ void main() {
       overrides: [
         adbServiceProvider.overrideWithValue(FakeAdbService()),
         iosDeviceServiceProvider.overrideWithValue(_Ios()),
-        devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+        devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
         deviceRegistryProvider.overrideWith(_Registry.new),
         selectedDeviceProvider.overrideWith(_SelectedDevice.new),
         selectedToolTabProvider.overrideWith(_Tab.new),

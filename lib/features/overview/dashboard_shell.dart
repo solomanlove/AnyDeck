@@ -9,7 +9,7 @@ class _WechatStyleShell extends ConsumerWidget {
   });
 
   final String title;
-  final AdbDevice? selectedDevice;
+  final DiscoveredDevice? selectedDevice;
   final bool isAirplayReceiverRunning;
   final Widget child;
 

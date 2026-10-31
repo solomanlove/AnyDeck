@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
 import '../../../app/l10n/app_localizations.dart';
-import '../../../core/adb/adb_device.dart';
+import '../../../core/adb/discovered_device.dart';
 import '../model/screenshot_state.dart';
 
 /// 截图与布局分析共享控制工具栏。
@@ -28,7 +28,7 @@ class ScreenshotToolbar extends StatelessWidget {
     required this.onShowPropertiesChanged,
   });
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final ScreenshotLayoutState state;
 
   final VoidCallback onRefresh;

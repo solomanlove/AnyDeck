@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/l10n/app_localizations.dart';
-import '../../../../core/adb/adb_device.dart';
+import '../../../../core/adb/discovered_device.dart';
 import '../../../../core/notifications/notification_models.dart';
 import '../../../../core/notifications/notification_providers.dart';
 import '../../../../core/providers/app_providers.dart';
@@ -26,7 +26,7 @@ class MessagesHeaderBar extends ConsumerWidget {
     required this.onRefreshStatus,
   });
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final String serial;
   final NotificationSessionStatus? status;
   final VoidCallback onClearHistory;

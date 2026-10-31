@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
 import '../../app/widget/dashboard_tab_layout.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/ios/ios_process_info.dart';
 import '../../core/ios/ios_process_service.dart';
 import '../../core/providers/app_providers.dart';
@@ -18,7 +18,7 @@ import 'widgets/ios_processes_toolbar.dart';
 /// iOS 全进程管理入口；离页、断线或切换设备使旧会话失去监听并取消。
 class IosProcessesTab extends ConsumerWidget {
   const IosProcessesTab({super.key, required this.device});
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

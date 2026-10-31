@@ -4,7 +4,7 @@ part of '../dashboard_screen.dart';
 class _DeeplinkPanel extends ConsumerWidget {
   const _DeeplinkPanel({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

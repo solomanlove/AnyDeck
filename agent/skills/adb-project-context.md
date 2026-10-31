@@ -15,7 +15,7 @@ lib/
 │   └── window/           # 桌面端原生窗口注册与控制 (desktop_window_manager_service.dart)
 │
 ├── core/                 # 核心基础设施与无状态 ADB/scrcpy 服务包装
-│   ├── adb/              # adb 进程调配、截图、录制封装 (adb_service.dart, adb_device.dart)
+│   ├── adb/              # adb 进程调配、截图、录制封装 (adb_service.dart, discovered_device.dart)
 │   ├── process/          # 环境变量与路径解析 (tool_path_resolver.dart)
 │   ├── providers/        # 全局状态管理 (app_providers.dart)
 │   ├── scrcpy/           # 嵌入式投屏逻辑 (embedded_scrcpy_service.dart)

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:any_deck/core/scrcpy/mirror_transport_resolver.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/scrcpy/mirror_transport_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'support/mirror_transport_fakes.dart';
@@ -41,8 +41,8 @@ void main() {
       excluded: {},
       betterThan: tcp,
       devices: const [
-        AdbDevice(id: 'phone', status: 'device'),
-        AdbDevice(id: tcp, status: 'device'),
+        DiscoveredDevice(id: 'phone', status: 'device'),
+        DiscoveredDevice(id: tcp, status: 'device'),
       ],
     );
     expect(route, 'phone');
@@ -50,7 +50,7 @@ void main() {
     final noUpgrade = await resolver.resolve(
       excluded: {},
       betterThan: 'phone',
-      devices: const [AdbDevice(id: tcp, status: 'device')],
+      devices: const [DiscoveredDevice(id: tcp, status: 'device')],
     );
     expect(noUpgrade, isNull);
   });
@@ -65,8 +65,8 @@ void main() {
         excluded: {},
         betterThan: tcp,
         devices: const [
-          AdbDevice(id: 'iphone', status: 'device', isIos: true),
-          AdbDevice(id: 'harmony', status: 'device', isHarmony: true),
+          DiscoveredDevice(id: 'iphone', status: 'device', isIos: true),
+          DiscoveredDevice(id: 'harmony', status: 'device', isHarmony: true),
         ],
       ),
       isNull,

@@ -3,7 +3,7 @@ part of '../dashboard_screen.dart';
 class _WorkspacePanel extends ConsumerWidget {
   const _WorkspacePanel({required this.selectedDevice, required this.sessions});
 
-  final AdbDevice? selectedDevice;
+  final DiscoveredDevice? selectedDevice;
   final Map<String, ScrcpySession> sessions;
 
   @override
@@ -51,7 +51,7 @@ class _WorkspacePanel extends ConsumerWidget {
   Future<void> _handleDrop(
     BuildContext context,
     WidgetRef ref,
-    AdbDevice device,
+    DiscoveredDevice device,
     List<XFile> files,
   ) async {
     if (files.isEmpty) {
@@ -194,7 +194,7 @@ class _ToolContentCard extends StatefulWidget {
     required this.tabIndex,
   });
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final Map<String, ScrcpySession> sessions;
   final int tabIndex;
 

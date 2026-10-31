@@ -6,7 +6,7 @@ import 'package:any_deck/app/window/mirror/widget/mirror_device_name_heading.dar
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/scrcpy/embedded_scrcpy_service.dart';
 import 'package:any_deck/core/scrcpy/mirror_transport_devices_provider.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/scrcpy/mirror_transport_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -94,13 +94,13 @@ void main() {
   late TransportAdb adb;
   late TransportMirrors mirrors;
   late ProviderContainer container;
-  late StreamController<List<AdbDevice>> deviceEvents;
+  late StreamController<List<DiscoveredDevice>> deviceEvents;
   setUp(() {
     adb = TransportAdb()
       ..devices = '$_tcp device\n$_tls device'
       ..serials.addAll({_tcp: 'phone', _tls: 'phone'});
     mirrors = TransportMirrors();
-    deviceEvents = StreamController<List<AdbDevice>>.broadcast();
+    deviceEvents = StreamController<List<DiscoveredDevice>>.broadcast();
     container = ProviderContainer(
       overrides: [
         adbServiceProvider.overrideWithValue(adb),
@@ -274,18 +274,18 @@ void main() {
     await _pumpHost(tester, container);
     expect(find.text('USB 投屏'), findsOneWidget);
     deviceEvents.add(const [
-      AdbDevice(id: 'phone', status: 'device'),
-      AdbDevice(id: _tcp, status: 'device'),
+      DiscoveredDevice(id: 'phone', status: 'device'),
+      DiscoveredDevice(id: _tcp, status: 'device'),
     ]);
     await tester.pump();
     mirrors.processes['phone']!.ended.complete(1);
     await tester.pumpAndSettle();
     expect(find.text('TCP 投屏'), findsOneWidget);
-    deviceEvents.add(const [AdbDevice(id: _tcp, status: 'device')]);
+    deviceEvents.add(const [DiscoveredDevice(id: _tcp, status: 'device')]);
     await tester.pump();
     deviceEvents.add(const [
-      AdbDevice(id: 'phone', status: 'device'),
-      AdbDevice(id: _tcp, status: 'device'),
+      DiscoveredDevice(id: 'phone', status: 'device'),
+      DiscoveredDevice(id: _tcp, status: 'device'),
     ]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
@@ -303,8 +303,8 @@ void main() {
     await tester.pumpAndSettle();
     adb.serials['other'] = 'other-phone';
     deviceEvents.add(const [
-      AdbDevice(id: 'other', status: 'device'),
-      AdbDevice(id: _tcp, status: 'device'),
+      DiscoveredDevice(id: 'other', status: 'device'),
+      DiscoveredDevice(id: _tcp, status: 'device'),
     ]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
@@ -320,13 +320,13 @@ void main() {
     await _pumpHost(tester, container);
     mirrors.processes['phone']!.ended.complete(1);
     await tester.pumpAndSettle();
-    deviceEvents.add(const [AdbDevice(id: _tcp, status: 'device')]);
+    deviceEvents.add(const [DiscoveredDevice(id: _tcp, status: 'device')]);
     await tester.pump();
     mirrors.failStart.add('phone');
     adb.serials['phone'] = 'phone';
     deviceEvents.add(const [
-      AdbDevice(id: 'phone', status: 'device'),
-      AdbDevice(id: _tcp, status: 'device'),
+      DiscoveredDevice(id: 'phone', status: 'device'),
+      DiscoveredDevice(id: _tcp, status: 'device'),
     ]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
@@ -350,7 +350,7 @@ void main() {
         .read(activeEmbeddedMirrorProvider('phone').notifier)
         .forceStop();
     adb.serials['phone'] = 'phone';
-    deviceEvents.add(const [AdbDevice(id: 'phone', status: 'device')]);
+    deviceEvents.add(const [DiscoveredDevice(id: 'phone', status: 'device')]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(mirrors.starts, hasLength(1));
@@ -365,12 +365,12 @@ void main() {
     mirrors.processes['phone']!.ended.complete(1);
     await tester.pumpAndSettle();
     expect(find.text('Wi-Fi 投屏'), findsOneWidget);
-    deviceEvents.add(const [AdbDevice(id: _tls, status: 'device')]);
+    deviceEvents.add(const [DiscoveredDevice(id: _tls, status: 'device')]);
     await tester.pump();
     adb.devices = '$_tls device\n$_tcp device';
     deviceEvents.add(const [
-      AdbDevice(id: _tls, status: 'device'),
-      AdbDevice(id: _tcp, status: 'device'),
+      DiscoveredDevice(id: _tls, status: 'device'),
+      DiscoveredDevice(id: _tcp, status: 'device'),
     ]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
@@ -378,9 +378,9 @@ void main() {
     expect(mirrors.starts.map((start) => start.id), ['phone', _tls, _tcp]);
     expect(find.text('TCP 投屏'), findsOneWidget);
     deviceEvents.add(const [
-      AdbDevice(id: _tls, status: 'device'),
-      AdbDevice(id: _tcp, status: 'device'),
-      AdbDevice(id: '192.168.1.9:5555', status: 'device'),
+      DiscoveredDevice(id: _tls, status: 'device'),
+      DiscoveredDevice(id: _tcp, status: 'device'),
+      DiscoveredDevice(id: '192.168.1.9:5555', status: 'device'),
     ]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
@@ -397,8 +397,8 @@ void main() {
     adb.serials['phone'] = 'phone';
     adb.serialGate = Completer<void>();
     deviceEvents.add(const [
-      AdbDevice(id: 'phone', status: 'device'),
-      AdbDevice(id: _tcp, status: 'device'),
+      DiscoveredDevice(id: 'phone', status: 'device'),
+      DiscoveredDevice(id: _tcp, status: 'device'),
     ]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));

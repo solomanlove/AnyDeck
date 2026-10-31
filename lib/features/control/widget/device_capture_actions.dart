@@ -4,7 +4,7 @@ part of '../../dashboard_screen.dart';
 List<Widget> buildDeviceCaptureActions(
   BuildContext context,
   WidgetRef ref,
-  AdbDevice device,
+  DiscoveredDevice device,
 ) {
   return [
     _ActionButton(
@@ -28,7 +28,7 @@ List<Widget> buildDeviceCaptureActions(
 Future<void> _captureAndSaveDeviceScreenshot(
   BuildContext context,
   WidgetRef ref,
-  AdbDevice device,
+  DiscoveredDevice device,
 ) async {
   try {
     final bytes = device.isHarmony

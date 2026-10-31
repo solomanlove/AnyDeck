@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../adb/adb_device.dart';
+import '../../adb/discovered_device.dart';
 import '../../adb/wireless/adb_wireless_state.dart';
 import '../../harmony/hdc_service.dart';
 import '../../ios/ios_connection_type.dart';
@@ -231,8 +231,8 @@ class RegisteredDevice {
     return name;
   }
 
-  /// 转换为轻量级的 AdbDevice 对象，供底层命令服务使用
-  AdbDevice get toAdbDevice => AdbDevice(
+  /// 转换为轻量级的 DiscoveredDevice 对象，供底层命令服务使用
+  DiscoveredDevice get toDiscoveredDevice => DiscoveredDevice(
     id: id,
     status: status,
     model: model,

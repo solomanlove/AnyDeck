@@ -54,8 +54,8 @@ extension _DashboardRouteSync on _DashboardScreenState {
 
     ref.read(userClearedDeviceSelectionProvider.notifier).state = false;
     final selected = ref.read(selectedDeviceProvider);
-    if (selected == null || selected.id != matched.toAdbDevice.id) {
-      ref.read(selectedDeviceProvider.notifier).select(matched.toAdbDevice);
+    if (selected == null || selected.id != matched.toDiscoveredDevice.id) {
+      ref.read(selectedDeviceProvider.notifier).select(matched.toDiscoveredDevice);
     }
     if (ref.read(selectedToolTabProvider) != route.tabIndex) {
       ref.read(selectedToolTabProvider.notifier).select(route.tabIndex);

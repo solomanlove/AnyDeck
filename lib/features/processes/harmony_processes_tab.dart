@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import 'processes_tab.dart';
 
 /// 鸿蒙手机专属进程 Tab。
@@ -17,7 +17,7 @@ class HarmonyProcessesTab extends StatelessWidget {
   });
 
   /// 当前操作的目标鸿蒙设备
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   /// 当前 Tab 是否可见（控制定时刷新）
   final bool isVisible;

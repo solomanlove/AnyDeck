@@ -11,7 +11,7 @@ class DeviceOverviewContent extends StatelessWidget {
     required this.onRefresh,
   });
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final DeviceOverview overview;
   final VoidCallback onRefresh;
 
@@ -136,7 +136,7 @@ class _OverviewHeader extends StatelessWidget {
 class _OverviewIdentityCard extends ConsumerWidget {
   const _OverviewIdentityCard({required this.device, required this.overview});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final DeviceOverview overview;
 
   @override
@@ -364,7 +364,7 @@ class _OverviewIdentityItem extends StatelessWidget {
 class _OverviewVersionCard extends StatelessWidget {
   const _OverviewVersionCard({required this.device, required this.overview});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final DeviceOverview overview;
 
   @override

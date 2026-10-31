@@ -3,7 +3,7 @@ part of '../dashboard_screen.dart';
 class _OverviewTab extends StatelessWidget {
   const _OverviewTab({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +15,7 @@ class _OverviewTab extends StatelessWidget {
 class _DeviceOverviewPanel extends ConsumerWidget {
   const _DeviceOverviewPanel({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

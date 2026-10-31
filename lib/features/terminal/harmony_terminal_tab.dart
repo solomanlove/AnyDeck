@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import 'terminal_tab.dart';
 
 /// 鸿蒙手机专属终端 Tab。
@@ -14,7 +14,7 @@ class HarmonyTerminalTab extends StatelessWidget {
   const HarmonyTerminalTab({super.key, required this.device});
 
   /// 当前操作的目标鸿蒙设备
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context) {

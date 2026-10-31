@@ -1,5 +1,5 @@
 import 'package:any_deck/app/any_deck_app.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/emulator/android_emulator.dart';
@@ -19,7 +19,7 @@ class FakeIosDeviceService extends IosDeviceService {
   FakeIosDeviceService() : super();
 
   @override
-  Future<List<AdbDevice>> listDevices() async {
+  Future<List<DiscoveredDevice>> listDevices() async {
     return [];
   }
 }
@@ -32,7 +32,7 @@ class _FixedPackagesNotifier extends PackagesNotifier {
   AsyncValue<List<AdbPackage>> build() => AsyncValue.data(packages);
 }
 
-const _mockDevice = AdbDevice(
+const _mockDevice = DiscoveredDevice(
   id: 'mock_serial_123',
   status: 'device',
   model: 'Redmi K40',
@@ -86,7 +86,7 @@ const _mockOverview = DeviceOverview(
 
 class _FixedSelectedDeviceNotifier extends SelectedDeviceNotifier {
   @override
-  AdbDevice? build() => _mockDevice;
+  DiscoveredDevice? build() => _mockDevice;
 }
 
 class _FixedDeviceRegistryNotifier extends DeviceRegistryNotifier {
@@ -138,7 +138,7 @@ void main() {
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[_mockDevice])),
+          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[_mockDevice])),
           deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
           selectedDeviceProvider.overrideWith(_FixedSelectedDeviceNotifier.new),
           selectedToolTabProvider.overrideWith(_FixedToolTabNotifier.new),

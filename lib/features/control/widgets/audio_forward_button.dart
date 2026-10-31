@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/widget/app_toast.dart';
-import '../../../core/adb/adb_device.dart';
+import '../../../core/adb/discovered_device.dart';
 import '../../../core/providers/app_providers.dart';
 import '../controller/audio_forward_controller.dart';
 
@@ -28,7 +28,7 @@ class AudioForwardButton extends ConsumerWidget {
   });
 
   /// 目标设备对象
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

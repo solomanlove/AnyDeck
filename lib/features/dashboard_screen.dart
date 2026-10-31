@@ -37,7 +37,7 @@ import '../app/window/model/desktop_chrome_policy.dart';
 import '../app/window/widget/desktop_workspace_surface.dart';
 import '../app/window/mirror/mirror_aspect_resolver.dart';
 import '../app/window/window_close_shortcut.dart';
-import '../core/adb/adb_device.dart';
+import '../core/adb/discovered_device.dart';
 import '../core/notifications/notification_click_target.dart';
 import '../core/adb/adb_result.dart';
 import '../core/apps/adb_package.dart';
@@ -246,16 +246,16 @@ final _emulatorListExpandedProvider =
       _EmulatorListExpandedNotifier.new,
     );
 
-class _LastActiveDeviceNotifier extends Notifier<AdbDevice?> {
+class _LastActiveDeviceNotifier extends Notifier<DiscoveredDevice?> {
   @override
-  AdbDevice? build() => null;
+  DiscoveredDevice? build() => null;
 
   @override
-  set state(AdbDevice? value) => super.state = value;
+  set state(DiscoveredDevice? value) => super.state = value;
 }
 
 final lastActiveDeviceProvider =
-    NotifierProvider<_LastActiveDeviceNotifier, AdbDevice?>(
+    NotifierProvider<_LastActiveDeviceNotifier, DiscoveredDevice?>(
       _LastActiveDeviceNotifier.new,
     );
 
@@ -468,7 +468,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return _buildDashboardContent(context);
   }
 
-  bool _hasDeviceSnapshotChanged(AdbDevice left, AdbDevice? right) {
+  bool _hasDeviceSnapshotChanged(DiscoveredDevice left, DiscoveredDevice? right) {
     return right == null ||
         left.id != right.id ||
         left.status != right.status ||

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
 import '../../app/theme/app_theme_colors.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/adb/adb_result.dart';
 import '../../core/providers/app_providers.dart';
 import 'dashboard_snack.dart';
@@ -15,7 +15,7 @@ import 'remote_direction_pad.dart';
 class RemoteControllerDialog extends ConsumerWidget {
   const RemoteControllerDialog({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

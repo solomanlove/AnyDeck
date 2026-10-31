@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/l10n/app_localizations.dart';
 import '../../app/settings/app_settings_controller.dart';
 import '../../app/window/mirror/mirror_screen_recording_action.dart';
-import '../../core/adb/adb_device.dart';
+import '../../core/adb/discovered_device.dart';
 import '../../core/adb/adb_result.dart';
 import '../../core/harmony/hdc_service.dart';
 import '../../core/providers/app_providers.dart';
@@ -31,7 +31,7 @@ class HarmonyControlTab extends ConsumerStatefulWidget {
   });
 
   /// 当前操作的目标鸿蒙设备
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   /// 全局活跃投屏会话列表
   final Map<String, ScrcpySession> sessions;

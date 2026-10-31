@@ -34,7 +34,7 @@
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录 USB 自动准备监听、2 秒等待与就绪检测、实时 Wi-Fi IP、列表与概览 IP 同源展示、在线 TCP 地址优先与旧缓存修复、网段提示与主机网络快照同步、TCP 优先和目标 mDNS 回退、TLS 切换恢复、双语状态及手动连接指南 | `core/adb/wireless/`, `core/providers/`, `features/devices/` |
 | `hdc-wireless-debugging` | HarmonyOS HDC 无线调试增强 | active | 记录身份绑定历史、USB/TCP 双通道、USB 回读 IP、退避重连、Remote HDC Server 与开发板 UART 边界 | `core/harmony/wireless/`, `core/providers/`, `features/devices/` |
 | `hdc-harmony-overview-hardware-network` | 鸿蒙设备概览硬件与网络信息 | active | 记录 HDC 读取当前 SSID、精确型号处理器映射和内核版本解析及回退边界 | `core/harmony/`, `core/providers/`, `features/overview/` |
-| `devices_manager` | 设备唯一标识判断机制 | active | 记录 AdbDevice.id 命令路由、HDC 在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
+| `devices_manager` | 设备唯一标识判断机制 | active | 记录 DiscoveredDevice.id 命令路由、HDC 在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
 | `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、Android USB/TCP/TLS 断线恢复与事件驱动优选、当前投屏通道标签与重连提示样式、设备信息悬浮层与计时 Tooltip、手机剪贴板入口、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `core/scrcpy/`, `rust/device_bridge/`, `core/harmony/` |
 | `ios投屏控制` | iOS 投屏控制方案与 PoC | active | macOS/iPhone 6s 原生 USB Texture + WDA、USB/AirPlay 共用投屏窗口与来源标识、窗口比例贴合、部署探针及真机验收边界 | `core/ios/`, `core/airplay/`, `app/window/mirror/`, `macos/Runner/`, `script/` |

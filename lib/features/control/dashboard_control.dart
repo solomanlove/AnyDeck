@@ -3,7 +3,7 @@ part of '../dashboard_screen.dart';
 class _ControlTab extends ConsumerStatefulWidget {
   const _ControlTab({required this.device, required this.sessions});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final Map<String, ScrcpySession> sessions;
 
   @override
@@ -81,7 +81,7 @@ class _ControlTabState extends ConsumerState<_ControlTab> {
 class _QuickActionsPanel extends ConsumerWidget {
   const _QuickActionsPanel({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -314,7 +314,7 @@ class _InputTextDialogState extends State<_InputTextDialog> {
 class _LayoutHelperPanel extends ConsumerWidget {
   const _LayoutHelperPanel({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -430,7 +430,7 @@ class _LayoutHelperPanel extends ConsumerWidget {
 class _WifiPasswordsPanel extends ConsumerWidget {
   const _WifiPasswordsPanel({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

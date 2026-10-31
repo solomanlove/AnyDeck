@@ -251,7 +251,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
   /// 过滤、排序并组装模拟器列表数据项
   List<_EmulatorItem> _buildItems(
     List<AndroidEmulator> emulators,
-    Map<String, AdbDevice> runningMap,
+    Map<String, DiscoveredDevice> runningMap,
     Map<String, EmulatorLaunchState> launches,
   ) {
     final query = _filter.trim().toLowerCase();

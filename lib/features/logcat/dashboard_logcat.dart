@@ -3,7 +3,7 @@ part of '../dashboard_screen.dart';
 class LogcatTab extends ConsumerStatefulWidget {
   const LogcatTab({super.key, required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   ConsumerState<LogcatTab> createState() => LogcatTabState();

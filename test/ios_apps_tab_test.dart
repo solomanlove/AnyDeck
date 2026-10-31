@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/ios/ios_app_info.dart';
 import 'package:any_deck/core/ios/ios_command_service.dart';
 import 'package:any_deck/core/ios/ios_icon_service.dart';
@@ -61,7 +61,7 @@ Widget page(String udid, {Brightness brightness = Brightness.light}) =>
       theme: ThemeData(brightness: brightness),
       home: Scaffold(
         body: IosAppsTab(
-          device: AdbDevice(id: udid, status: 'device', isIos: true),
+          device: DiscoveredDevice(id: udid, status: 'device', isIos: true),
         ),
       ),
     );

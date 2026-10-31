@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import '../adb/adb_device.dart';
+import '../adb/discovered_device.dart';
 import '../adb/adb_result.dart';
 import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
@@ -34,7 +34,7 @@ class IosDeviceService {
   }
 
   /// 获取已连接的 iOS 设备列表。
-  Future<List<AdbDevice>> listDevices() async {
+  Future<List<DiscoveredDevice>> listDevices() async {
     if (_useNativeDiscovery && RustDalBridge.instance.isAvailable) {
       final nativeList = await RustDalBridge.instance.listIosDevices();
       if (nativeList.isNotEmpty) {
@@ -65,9 +65,9 @@ class IosDeviceService {
   }
 
   /// 解析 go-ios 输出的设备列表，过滤日志并按 UDID 去重。
-  static List<AdbDevice> parseDeviceListOutput(String output) {
+  static List<DiscoveredDevice> parseDeviceListOutput(String output) {
     final lines = LineSplitter.split(output);
-    final devices = <AdbDevice>[];
+    final devices = <DiscoveredDevice>[];
 
     for (final line in lines) {
       final trimmed = line.trim();
@@ -116,7 +116,7 @@ class IosDeviceService {
                 (item['ProductVersion'] ?? item['version'] ?? 'iOS').toString();
 
             final modelName = IosDeviceIdentity.modelName(type, fallback: name);
-            final device = AdbDevice(
+            final device = DiscoveredDevice(
               id: udid,
               status: 'device',
               model: modelName ?? previous?.model,

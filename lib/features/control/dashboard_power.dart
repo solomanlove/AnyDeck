@@ -3,7 +3,7 @@ part of '../dashboard_screen.dart';
 class _PowerPanel extends ConsumerWidget {
   const _PowerPanel({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

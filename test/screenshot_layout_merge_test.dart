@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/harmony/hdc_service.dart';
 import 'package:any_deck/core/ios/ios_command_service.dart';
 import 'package:any_deck/core/ios/ios_mirror_service.dart';
@@ -27,13 +27,13 @@ import 'package:any_deck/features/screenshot/widgets/screenshot_toolbar.dart';
 
 import 'fake_adb_service.dart';
 
-const _mockAndroidDevice = AdbDevice(
+const _mockAndroidDevice = DiscoveredDevice(
   id: 'android_device_001', status: 'device', model: 'Pixel 7', product: 'panther', transportId: '1',
 );
-const _mockIosDevice = AdbDevice(
+const _mockIosDevice = DiscoveredDevice(
   id: 'ios_device_001', status: 'device', model: 'iPhone 14', product: 'iPhone14,7', transportId: '3', isIos: true,
 );
-const _mockHarmonyDevice = AdbDevice(
+const _mockHarmonyDevice = DiscoveredDevice(
   id: 'harmony_device_001', status: 'device', model: 'Mate 60', product: 'ALN-AL00', transportId: '4', isHarmony: true,
 );
 
@@ -84,9 +84,9 @@ class MockLayoutInspectorService extends LayoutInspectorService {
 
 class _TestSelectedDeviceNotifier extends SelectedDeviceNotifier {
   _TestSelectedDeviceNotifier(this.device);
-  final AdbDevice? device;
+  final DiscoveredDevice? device;
   @override
-  AdbDevice? build() => device;
+  DiscoveredDevice? build() => device;
 }
 
 class _TestDeviceRegistryNotifier extends DeviceRegistryNotifier {

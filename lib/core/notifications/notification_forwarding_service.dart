@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/settings/app_settings.dart';
-import '../adb/adb_device.dart';
+import '../adb/discovered_device.dart';
 import 'mac_notification_bridge.dart';
 import 'notification_database.dart';
 import 'notification_forwarding_client.dart';
@@ -80,7 +80,7 @@ class NotificationForwardingService {
 
   /// 切换某物理设备的消息转发开关。
   Future<void> setForwardingEnabled(
-    AdbDevice device,
+    DiscoveredDevice device,
     String serial,
     bool enabled,
   ) async {
@@ -124,7 +124,7 @@ class NotificationForwardingService {
   }
 
   /// 启动某台设备的转发会话。
-  void startForwarding(AdbDevice device, String serial) {
+  void startForwarding(DiscoveredDevice device, String serial) {
     if (_isDisposed) return;
     if (_sessions.containsKey(device.id)) {
       _sessions[device.id]?.stop();
@@ -194,7 +194,7 @@ class _DeviceForwardingSession {
     required this.service,
   });
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
   final String serial;
   final NotificationForwardingService service;
 

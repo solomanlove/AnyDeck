@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../emulator/android_emulator.dart';
 import '../../emulator/emulator_connection.dart';
-import '../../adb/adb_device.dart';
+import '../../adb/discovered_device.dart';
 import '../../emulator/emulator_service.dart';
 import '../../emulator/emulator_process.dart';
 import '../../terminal/adb_terminal_session.dart';
@@ -54,7 +54,7 @@ class EmulatorLaunchNotifier
   final Duration startupTimeout;
   final Map<String, Timer> _timers = {};
   bool _disposed = false;
-  ProviderSubscription<AsyncValue<Map<String, AdbDevice>>>?
+  ProviderSubscription<AsyncValue<Map<String, DiscoveredDevice>>>?
   _runningSubscription;
 
   @override
@@ -77,7 +77,7 @@ class EmulatorLaunchNotifier
       next,
     ) {
       if (_disposed || next.isLoading) return;
-      for (final entry in (next.value ?? <String, AdbDevice>{}).entries) {
+      for (final entry in (next.value ?? <String, DiscoveredDevice>{}).entries) {
         final name = entry.key;
         final current = state[name];
         if (current == null || !current.processAlive) continue;
@@ -188,7 +188,7 @@ class EmulatorLaunchNotifier
 
 /// 包括未授权/离线的模拟器映射，避免只查 shell 而遗漏已运行的 AVD。
 final emulatorConnectionsProvider =
-    FutureProvider.autoDispose<Map<String, AdbDevice>>((ref) async {
+    FutureProvider.autoDispose<Map<String, DiscoveredDevice>>((ref) async {
       final devices = ref.watch(devicesProvider).value ?? [];
       return EmulatorConnectionService(
         ref.read(adbServiceProvider),

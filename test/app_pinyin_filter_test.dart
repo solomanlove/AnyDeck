@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:any_deck/app/any_deck_app.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
@@ -34,7 +34,7 @@ void main() {
 
     SharedPreferences.setMockInitialValues({});
 
-    final mockDevice = const AdbDevice(
+    final mockDevice = const DiscoveredDevice(
       id: 'mock_serial_123',
       status: 'device',
       model: 'Redmi K40',
@@ -68,7 +68,7 @@ void main() {
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           devicesProvider.overrideWith(
-            (ref) => Stream.value(<AdbDevice>[mockDevice]),
+            (ref) => Stream.value(<DiscoveredDevice>[mockDevice]),
           ),
           packagesProvider(
             mockDevice.id,

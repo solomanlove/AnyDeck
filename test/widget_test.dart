@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:any_deck/app/any_deck_app.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/emulator/android_emulator.dart';
@@ -27,7 +27,7 @@ class MockPackagesNotifier extends PackagesNotifier {
   }
 }
 
-const _mockDevice = AdbDevice(
+const _mockDevice = DiscoveredDevice(
   id: 'mock_serial_123',
   status: 'device',
   model: 'Redmi K40',
@@ -35,7 +35,7 @@ const _mockDevice = AdbDevice(
   transportId: '1',
 );
 
-const _offlineMockDevice = AdbDevice(
+const _offlineMockDevice = DiscoveredDevice(
   id: 'mock_serial_123',
   status: 'offline',
   model: 'Redmi K40',
@@ -99,17 +99,17 @@ const _mockOverview = DeviceOverview(
 
 class _FixedSelectedDeviceNotifier extends SelectedDeviceNotifier {
   @override
-  AdbDevice? build() => _mockDevice;
+  DiscoveredDevice? build() => _mockDevice;
 }
 
 class _OfflineSelectedDeviceNotifier extends SelectedDeviceNotifier {
   @override
-  AdbDevice? build() => _offlineMockDevice;
+  DiscoveredDevice? build() => _offlineMockDevice;
 }
 
 class _StaleSelectedDeviceNotifier extends SelectedDeviceNotifier {
   @override
-  AdbDevice? build() => _offlineMockDevice;
+  DiscoveredDevice? build() => _offlineMockDevice;
 }
 
 class _FixedDeviceRegistryNotifier extends DeviceRegistryNotifier {
@@ -154,7 +154,7 @@ Future<void> _pumpDashboard(
       overrides: [
         adbServiceProvider.overrideWithValue(FakeAdbService()),
         iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-        devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+        devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
         deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
         selectedDeviceProvider.overrideWith(_FixedSelectedDeviceNotifier.new),
         selectedToolTabProvider.overrideWith(
@@ -221,7 +221,7 @@ void main() {
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           emulatorListProvider.overrideWith(
             (ref) => Future.value(<AndroidEmulator>[]),
           ),
@@ -386,7 +386,7 @@ void main() {
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
           selectedDeviceProvider.overrideWith(_StaleSelectedDeviceNotifier.new),
           selectedToolTabProvider.overrideWith(() => _FixedToolTabNotifier(0)),
@@ -431,7 +431,7 @@ void main() {
         overrides: [
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-          devicesProvider.overrideWith((ref) => Stream.value(<AdbDevice>[])),
+          devicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
           deviceRegistryProvider.overrideWith(
             _OfflineDeviceRegistryNotifier.new,
           ),
@@ -467,7 +467,7 @@ class FakeIosDeviceService extends IosDeviceService {
   FakeIosDeviceService() : super();
 
   @override
-  Future<List<AdbDevice>> listDevices() async {
+  Future<List<DiscoveredDevice>> listDevices() async {
     return [];
   }
 }

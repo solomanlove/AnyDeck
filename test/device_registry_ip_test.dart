@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,7 +14,7 @@ const _currentIp = '192.168.0.100';
 const _tcp = '$_currentIp:5555';
 
 /// 构造同一物理设备的历史与在线通道，验证缓存不能遮盖真实连接地址。
-List<RegisteredDevice> _merge(List<AdbDevice> active) {
+List<RegisteredDevice> _merge(List<DiscoveredDevice> active) {
   return DeviceRegistryMerger.mergeDevices(
     activeDevices: active,
     historyIds: ['PHONE', '$_oldIp:5555', _tcp],
@@ -35,7 +35,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('单独 TCP 上线时，真实地址覆盖 serial 的历史 IP', () {
-    final device = _merge(const [AdbDevice(id: _tcp, status: 'device')]).single;
+    final device = _merge(const [DiscoveredDevice(id: _tcp, status: 'device')]).single;
     expect(device.id, _tcp);
     expect(device.connections, [_tcp]);
     expect(device.ipAddress, _currentIp);
@@ -44,8 +44,8 @@ void main() {
 
   test('USB 与 TCP 合并后仍走 USB 命令，但 IP 使用在线 TCP 地址', () {
     final device = _merge(const [
-      AdbDevice(id: 'PHONE', status: 'device'),
-      AdbDevice(id: _tcp, status: 'device'),
+      DiscoveredDevice(id: 'PHONE', status: 'device'),
+      DiscoveredDevice(id: _tcp, status: 'device'),
     ]).single;
     expect(device.preferredCommandId, 'PHONE');
     expect(device.connections, ['PHONE', _tcp]);
@@ -56,8 +56,8 @@ void main() {
   test('离线或未授权网络通道不能覆盖 USB 查询的缓存地址', () {
     for (final status in ['offline', 'unauthorized']) {
       final device = _merge([
-        const AdbDevice(id: 'PHONE', status: 'device'),
-        AdbDevice(id: _tcp, status: status),
+        const DiscoveredDevice(id: 'PHONE', status: 'device'),
+        DiscoveredDevice(id: _tcp, status: status),
       ]).single;
       expect(device.connections, ['PHONE']);
       expect(device.connectedNetworkIp, isNull);
@@ -119,7 +119,7 @@ void main() {
         'androidVersion': 'Android 16 (API 36)',
       }),
     });
-    final stream = StreamController<List<AdbDevice>>();
+    final stream = StreamController<List<DiscoveredDevice>>();
     addTearDown(stream.close);
     final adb = WirelessAdbFake()..add(_tcp, 'PHONE', ip: _currentIp);
     final container = ProviderContainer(
@@ -131,7 +131,7 @@ void main() {
     addTearDown(container.dispose);
     container.listen(deviceRegistryProvider, (_, _) {});
     await pumpEventQueue();
-    stream.add(const [AdbDevice(id: _tcp, status: 'device', model: 'Pixel')]);
+    stream.add(const [DiscoveredDevice(id: _tcp, status: 'device', model: 'Pixel')]);
     await pumpEventQueue();
 
     final online = container.read(deviceRegistryProvider).single;

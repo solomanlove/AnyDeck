@@ -1,7 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
@@ -38,7 +38,7 @@ void main() {
   testWidgets('processes tab filters user processes by default, and switches to system / all', (
     WidgetTester tester,
   ) async {
-    const device = AdbDevice(
+    const device = DiscoveredDevice(
       id: 'test-device',
       status: 'device',
       model: 'Test Device',
@@ -155,7 +155,7 @@ void main() {
   testWidgets('processes tab does not overflow on narrow viewport', (
     WidgetTester tester,
   ) async {
-    const device = AdbDevice(
+    const device = DiscoveredDevice(
       id: 'test-device',
       status: 'device',
       model: 'Test Device',
@@ -215,7 +215,7 @@ void main() {
   testWidgets('process row reuses cached app metadata', (
     WidgetTester tester,
   ) async {
-    const device = AdbDevice(
+    const device = DiscoveredDevice(
       id: 'test-device',
       status: 'device',
       model: 'Test Device',

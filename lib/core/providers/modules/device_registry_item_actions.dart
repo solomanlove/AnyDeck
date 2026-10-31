@@ -15,11 +15,11 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
   Set<String> get _checkedIds;
   set _checkedIds(Set<String> v);
   Map<String, String> get _serialMap;
-  List<AdbDevice> get _lastActiveDevices;
-  set _lastActiveDevices(List<AdbDevice> v);
+  List<DiscoveredDevice> get _lastActiveDevices;
+  set _lastActiveDevices(List<DiscoveredDevice> v);
   Set<String> get _pendingFetchIds;
   Set<String> get _attemptedFetchIds;
-  List<RegisteredDevice> _mergeDevices(List<AdbDevice> activeDevices);
+  List<RegisteredDevice> _mergeDevices(List<DiscoveredDevice> activeDevices);
   /// 设置设备别名并保存
   Future<void> setAlias(String id, String alias) async {
     final serial = _serialMap[id] ?? id;

@@ -114,7 +114,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
 
   Widget _buildDeviceListContent({
     required BuildContext context,
-    required AsyncValue<List<AdbDevice>> activeDevicesAsync,
+    required AsyncValue<List<DiscoveredDevice>> activeDevicesAsync,
     required List<RegisteredDevice> sortedItems,
     required Map<String, AirPlaySessionData> sessionByDeviceId,
     required bool isCompact,

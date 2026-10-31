@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:any_deck/core/adb/adb_device.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,7 +38,7 @@ void main() {
 
   test('首次连接、重连更新、缺失版本和重新加载均保留真实信息且不调用 ADB', () async {
     SharedPreferences.setMockInitialValues({});
-    final stream = StreamController<List<AdbDevice>>();
+    final stream = StreamController<List<DiscoveredDevice>>();
     addTearDown(stream.close);
     final adb = WirelessAdbFake();
     final container = ProviderContainer(
@@ -76,7 +76,7 @@ void main() {
     expect(device.hasTcpConnection, isFalse);
     expect(device.hasWifiDebuggingConnection, isFalse);
     expect(device.preferredCommandId, 'test-phone');
-    expect(device.copyWith().toAdbDevice.iosConnectionTypes, device.iosConnectionTypes);
+    expect(device.copyWith().toDiscoveredDevice.iosConnectionTypes, device.iosConnectionTypes);
 
     // 同一 UDID 从网络切换到 USB，注册表必须刷新且移除已断开的通道。
     connect('15.8.8', connection: 'USB');

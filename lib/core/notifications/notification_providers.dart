@@ -94,7 +94,7 @@ final notificationForwardingServiceProvider =
                 (d.serial?.isNotEmpty == true) ? d.serial! : d.id;
             final enabled = await service.isForwardingEnabled(serial);
             if (enabled && !service.isForwardingActive(d.id)) {
-              service.startForwarding(d.toAdbDevice, serial);
+              service.startForwarding(d.toDiscoveredDevice, serial);
             }
           }
         }

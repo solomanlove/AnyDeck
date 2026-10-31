@@ -3,7 +3,7 @@ part of '../dashboard_screen.dart';
 class _FilesTab extends ConsumerWidget {
   const _FilesTab({required this.device});
 
-  final AdbDevice device;
+  final DiscoveredDevice device;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:window_manager/window_manager.dart';
 import '../ios/ios_device_service.dart';
-import 'adb_device.dart';
+import 'discovered_device.dart';
 import 'adb_service.dart';
 
 /// 心跳频次自适应阶段枚举
@@ -32,12 +32,12 @@ class AdbHeartbeatController {
   final bool isDeviceListVisible;
   
   // 广播流控制器，向外部订阅者分发设备列表
-  final StreamController<List<AdbDevice>> _streamController = StreamController<List<AdbDevice>>.broadcast();
+  final StreamController<List<DiscoveredDevice>> _streamController = StreamController<List<DiscoveredDevice>>.broadcast();
   
   Timer? _timer;
   DateTime _lastTriggerTime = DateTime.now();
   HeartbeatPhase _phase = HeartbeatPhase.peak;
-  List<AdbDevice> _lastDevices = [];
+  List<DiscoveredDevice> _lastDevices = [];
   bool _isDisposed = false;
   bool _isPolling = false;
 
@@ -55,7 +55,7 @@ class AdbHeartbeatController {
   }
 
   /// 获取设备列表数据流
-  Stream<List<AdbDevice>> get deviceStream => _streamController.stream;
+  Stream<List<DiscoveredDevice>> get deviceStream => _streamController.stream;
 
   /// 获取当前的心跳自适应阶段
   HeartbeatPhase get phase => _phase;
@@ -98,7 +98,7 @@ class AdbHeartbeatController {
 
     try {
       final androidDevices = await _adbService.listDevices();
-      List<AdbDevice> iosDevices = [];
+      List<DiscoveredDevice> iosDevices = [];
       if (_iosDeviceService != null) {
         iosDevices = await _iosDeviceService.listDevices();
       }
@@ -177,7 +177,7 @@ class AdbHeartbeatController {
   }
 
   /// 比较两个设备列表内容是否完全一致（包括 ID、状态、型号等）
-  bool _sameDeviceList(List<AdbDevice> previous, List<AdbDevice> next) {
+  bool _sameDeviceList(List<DiscoveredDevice> previous, List<DiscoveredDevice> next) {
     if (previous.length != next.length) {
       return false;
     }
