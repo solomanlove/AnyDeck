@@ -11,28 +11,7 @@ class _SoftwareManualDialog extends StatelessWidget {
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ManualSection(
-                title: context.l10n.t('softwareOverviewTitle'),
-                body: context.l10n.t('softwareOverview'),
-              ),
-              _ManualSection(
-                title: context.l10n.t('softwareRequirementsTitle'),
-                body: context.l10n.t('softwareRequirements'),
-              ),
-              _ManualSection(
-                title: context.l10n.t('softwareWorkflowTitle'),
-                body: context.l10n.t('softwareWorkflow'),
-              ),
-              _ManualSection(
-                title: context.l10n.t('softwareNoticeTitle'),
-                body: context.l10n.t('softwareNotice'),
-              ),
-            ],
-          ),
+          child: const SoftwareManualContent(),
         ),
       ),
       actions: [
@@ -69,33 +48,5 @@ class _InfoLine extends StatelessWidget {
     );
   }
 }
-
-class _ManualSection extends StatelessWidget {
-  const _ManualSection({required this.title, required this.body});
-
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 6),
-          Text(body),
-        ],
-      ),
-    );
-  }
-}
-
 
 /// 设备发现卡片，已重构为响应式表格形式。

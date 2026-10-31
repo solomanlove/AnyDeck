@@ -98,6 +98,8 @@ import 'widgets/dashboard_snack.dart';
 import 'widgets/remote_controller_dialog.dart';
 import 'devices/widgets/tcpip_connection_dialog.dart';
 import 'devices/widgets/device_list_filters.dart';
+import 'overview/widget/software_manual_content.dart';
+import 'overview/widget/mirror_quality_presets.dart';
 import 'devices/model/device_list_presentation.dart';
 import 'devices/widgets/host_network_footer.dart';
 import 'devices/widgets/device_subnet_warning.dart';

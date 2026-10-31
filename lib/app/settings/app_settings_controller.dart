@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings.dart';
+import 'mirror_quality_preset.dart';
 import 'harmony_share_preference_keys.dart';
 import '../../core/nearby_share/share_receive_directory.dart';
 import '../../core/nearby_share/share_local_name.dart';
@@ -21,6 +22,7 @@ import '../window/desktop_window_manager_service.dart';
 import '../window/sub_window_method_dispatcher.dart';
 
 part 'app_settings_broadcast.dart';
+part 'app_settings_mirror_presets.dart';
 part 'app_settings_notifications.dart';
 part 'app_settings_harmony_name.dart';
 
@@ -34,7 +36,7 @@ final appSettingsProvider =
     );
 
 /// 负责加载和保存设置，并通过乐观更新保持 UI 响应。
-class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings {
+class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, MirrorPresetSettings {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';

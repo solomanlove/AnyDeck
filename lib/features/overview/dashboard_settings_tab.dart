@@ -145,6 +145,7 @@ class _SettingsTab extends ConsumerWidget {
                       context,
                       title: context.l10n.t('mirrorSettings'),
                       children: [
+                        const MirrorQualityPresets(),
                         _buildSettingRow(
                           context,
                           label: context.l10n.t('mirrorAlwaysOnTop'),
@@ -309,19 +310,19 @@ class _SettingsTab extends ConsumerWidget {
                               ),
                               const _DropdownOption(
                                 value: 720,
-                                label: '720p',
+                                label: '720 px',
                               ),
                               const _DropdownOption(
                                 value: 1080,
-                                label: '1080p',
+                                label: '1080 px',
                               ),
                               const _DropdownOption(
                                 value: 1440,
-                                label: '1440p',
+                                label: '1440 px',
                               ),
                               const _DropdownOption(
                                 value: 1920,
-                                label: '1920p',
+                                label: '1920 px',
                               ),
                             ],
                             onChanged: (val) =>
