@@ -1,4 +1,5 @@
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/l10n/app_localizations.dart';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../controller/mcp_server_controller.dart';
 
-/// MCP 注册工具集平铺列表与细粒度启用/禁用开关
+/// MCP 工具清单：默认收起，展开后可搜索、筛选和配置工具权限。
 class McpToolsToggleList extends ConsumerStatefulWidget {
   const McpToolsToggleList({super.key});
 
@@ -50,20 +51,26 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ExpansionTile(
+          initiallyExpanded: false,
+          // 收起时保留搜索输入和分类筛选，仅改变清单的可见状态。
+          maintainState: true,
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(top: 8),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          leading: Icon(Icons.build_circle_outlined,
+              size: 20, color: theme.colorScheme.primary),
+          title: Text(
+            context.l10n.t('mcpToolsListTitle').replaceAll('{count}', '${tools.length}'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           children: [
             Row(
               children: [
-                Icon(Icons.build_circle_outlined,
-                    size: 20, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  '已注册的 MCP Tools 工具清单 (${tools.length} 个工具已就绪)',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
                 const Spacer(),
                 SizedBox(
                   width: 220,

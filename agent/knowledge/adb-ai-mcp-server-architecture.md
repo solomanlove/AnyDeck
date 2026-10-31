@@ -5,7 +5,7 @@
 **Model Context Protocol (MCP)** 是开放标准的模型上下文协议，用于让大语言模型（LLM）与外部环境、工具、系统资源进行标准化通信。
 AnyDeck 内置了原生的 AI MCP Server 服务，能够将桌面端丰富的 ADB/HDC/iOS 设备管理、UI 自动化、应用生命周期、日志排查与受控 Shell 能力无缝对外输出，供 **Cursor / Claude Desktop / Antigravity / Cline / Open-Interpreter** 等各种 AI 智能体直接调用。
 
-在桌面端 UI 架构上，AI MCP 作为独立的一级导航 Tab，位于左侧导航栏的**玩安卓 Tab 下方、设置 Tab 上方**（`tabIndex: 14`），并在主面板中以平铺卡片的形式完整展开全部 22 个工具集（支持按设备、UI/视觉、应用、日志、文件、Shell 快速分类筛选和即时搜索），无需弹窗即可直接配置各个工具的细粒度开关与运行参数。
+在桌面端 UI 架构上，AI MCP 作为独立的一级导航 Tab，位于左侧导航栏的**玩安卓 Tab 下方、设置 Tab 上方**（`tabIndex: 14`），主面板中的 MCP Tools 清单默认收起，仅展示标题、实际注册工具数量及展开箭头；点击标题或箭头展开后，支持按设备、UI/视觉、应用、日志、文件、Shell 快速分类筛选和即时搜索，无需弹窗即可直接配置各个工具的细粒度开关。
 
 ---
 
@@ -104,3 +104,12 @@ AnyDeck MCP 服务基于分层架构实现：
 `McpSseTransport.stop()` 先复制活动 SSE 客户端列表并清空连接 Map，再逐个关闭 `HttpResponse`。关闭连接会触发 `response.done` 回调删除 Map 项，因此不能在遍历 Map 的同时 `await client.close()`，否则多个客户端连接时可能抛出 `Concurrent modification during iteration`，导致控制台继续显示运行中。连接关闭后再关闭 `HttpServer`，成功返回后由 `McpServerNotifier.stopServer()` 更新运行状态与持久化配置。
 
 验证：`flutter test test/mcp_sse_transport_test.dart` 使用两个真实 SSE 客户端检查停止流程；手工回归可在两个 AI 客户端接入后点击“停止服务”，确认状态变为“已停止”，再次启动后两个客户端可重新连接。此项不涉及 ADB 命令、设备状态或多窗口广播。
+
+## 7. Tools 清单展开与收起（2026-10-31）
+
+- **需求与入口**：AI MCP 页面中的 `McpToolsToggleList` 默认收起，点击标题栏切换展开状态，搜索框、分类筛选与工具开关均位于折叠内容区。
+- **实现**：复用 Material `ExpansionTile`，设置 `initiallyExpanded: false`，由组件管理局部展开状态；`maintainState: true` 保留搜索框输入与分类条件，再次展开可继续操作。页面组件销毁后重新创建时默认收起，不新增持久化配置或全局 Provider。
+- **职责边界**：折叠只影响 UI 可见性，不调用 `toggleTool`、不改变工具权限或 MCP 服务运行状态；原有工具开关仍由 `McpServerNotifier` 处理。未新增依赖、后台进程、ADB 命令、多窗口广播或投屏链路改动。
+- **样式与语言**：折叠标题通过 `mcpToolsListTitle` 提供中英文文案，标题与箭头沿用项目 Theme；原清单内容保持现有布局及文案。
+- **自动验证**：新增 `test/mcp_tools_toggle_list_test.dart`，覆盖中英文 × Light/Dark 四种组合下默认收起、展开/收起、筛选与输入保留、权限切换以及服务状态刷新不主动展开。与 `test/mcp_server_test.dart`、`test/mcp_sse_transport_test.dart` 合计 13 项测试通过；变更 Dart 文件定向 `flutter analyze` 通过。
+- **人工验证边界**：未启动桌面应用。可进入 AI MCP，确认标题和工具数量可见、工具清单默认隐藏；展开后输入搜索、选择分类、修改工具权限，再收起/展开检查筛选和权限保留。
