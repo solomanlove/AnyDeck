@@ -7,12 +7,22 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     final items = ref.watch(deviceRegistryProvider);
     final airplayRoot = ref.watch(airplaySessionProvider);
     final mergedAirPlay = mergeAirPlayDevicesIntoList(items, airplayRoot);
+    final names = {
+      for (final device in mergedAirPlay.devices)
+        device.id: DeviceListPresentation.name(device, ref.watch(
+          cachedDeviceOverviewProvider(device.id).select((value) => value.value?.name),
+        )),
+    };
     final sortedItems = _sortedDevices(
       mergedAirPlay.devices,
       mergedAirPlay.sessionByDeviceId,
-    );
+      names,
+    ).where((device) => DeviceListPresentation.matches(
+        device, names[device.id]!, _query, _onlineOnly)).toList();
+    final selectable = sortedItems.where((device) => !device.id.startsWith('airplay-')).toList();
+    final visibleChecked = selectable.where((device) => device.isChecked).length;
     final selectedCount = items.where((device) => device.isChecked).length;
-    final allChecked = items.isNotEmpty && selectedCount == items.length;
+    final allChecked = selectable.isNotEmpty && visibleChecked == selectable.length;
     final hasChecked = selectedCount > 0;
 
     return LayoutBuilder(
@@ -23,6 +33,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           context: context,
           activeDevicesAsync: activeDevicesAsync,
           sortedItems: sortedItems,
+          names: names,
           sessionByDeviceId: mergedAirPlay.sessionByDeviceId,
           isCompact: isCompact,
           hasBoundedHeight: hasBoundedHeight,
@@ -52,7 +63,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (sortedItems.isNotEmpty) ...[
-                    _buildTableHeader(context, isCompact, allChecked, hasChecked),
+                    _buildTableHeader(context, isCompact, allChecked, visibleChecked > 0, selectable),
                     const SizedBox(height: 4),
                   ],
                   if (hasBoundedHeight)
@@ -69,6 +80,14 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            DeviceListFilters(
+              controller: _searchController,
+              onlineCount: mergedAirPlay.devices.where((d) => d.isOnline).length,
+              totalCount: mergedAirPlay.devices.length,
+              onlineOnly: _onlineOnly,
+              onOnlineOnlyChanged: _changeOnlineOnly,
+              onSearchChanged: _changeQuery,
+            ),
             if (hasChecked) ...[
               _buildBatchActionsToolbar(
                 context,
@@ -89,6 +108,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
   List<RegisteredDevice> _sortedDevices(
     List<RegisteredDevice> items, [
     Map<String, AirPlaySessionData> sessionByDeviceId = const {},
+    Map<String, String> names = const {},
   ]) {
     final sortedItems = List<RegisteredDevice>.from(items);
     sortedItems.sort((a, b) {
@@ -103,7 +123,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       if (!aMirroring && bMirroring) return 1;
 
       final cmp = switch (_sortColumn) {
-        'name' => a.displayName.compareTo(b.displayName),
+        'name' => (names[a.id] ?? a.displayName).compareTo(names[b.id] ?? b.displayName),
         'status' => a.status.compareTo(b.status),
         _ => a.id.compareTo(b.id),
       };
@@ -116,6 +136,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     required BuildContext context,
     required AsyncValue<List<DiscoveredDevice>> activeDevicesAsync,
     required List<RegisteredDevice> sortedItems,
+    required Map<String, String> names,
     required Map<String, AirPlaySessionData> sessionByDeviceId,
     required bool isCompact,
     required bool hasBoundedHeight,
@@ -142,8 +163,8 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       return Center(
         child: _PanelMessage(
           icon: CupertinoIcons.slash_circle,
-          title: context.l10n.t('noDevices'),
-          subtitle: context.l10n.t('connectUsbOrTcp'),
+          title: context.l10n.t(_query.isNotEmpty || _onlineOnly ? 'deviceListNoMatches' : 'noDevices'),
+          subtitle: context.l10n.t(_query.isNotEmpty || _onlineOnly ? 'deviceListResetHint' : 'connectUsbOrTcp'),
         ),
       );
     }
@@ -162,6 +183,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           isCompact,
           index,
           airplaySession: sessionByDeviceId[device.id],
+          displayName: names[device.id]!,
         );
       },
     );
@@ -172,6 +194,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     bool isCompact,
     bool allChecked,
     bool hasChecked,
+    List<RegisteredDevice> selectable,
   ) {
     final titleStyle = Theme.of(
       context,
@@ -203,9 +226,10 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                 tristate: true,
                 value: hasChecked && !allChecked ? null : allChecked,
                 onChanged: (_) {
-                  ref
-                      .read(deviceRegistryProvider.notifier)
-                      .setAllChecked(!allChecked);
+                  final registry = ref.read(deviceRegistryProvider.notifier);
+                  for (final device in selectable) {
+                    if (device.isChecked == allChecked) registry.toggleCheck(device.id);
+                  }
                 },
               ),
             ),

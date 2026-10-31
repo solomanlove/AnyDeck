@@ -351,6 +351,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       if (fresh.ipAddress != '-' && fresh.ipAddress.isNotEmpty) {
         _syncDiscoveredIp(ref, deviceId, fresh.ipAddress);
       }
+      ref.invalidate(cachedDeviceOverviewProvider(deviceId));
       yield fresh;
     });
 

@@ -66,3 +66,7 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 - 身份区尚未从注册表匹配到设备时，临时 `RegisteredDevice` 继续携带 iOS / HarmonyOS 平台标志，避免首帧 Logo 与列表不同。未新增资源、文案、Provider、ADB 命令或跨窗口协议。
 - 自动验证：定向 `flutter analyze --no-pub` 仅报告 `dashboard_screen.dart` 既有 `liquid_glass_background.dart` 未使用 import；本次修改的 Widget 无诊断。`git diff --check` 通过。未运行桌面项目。
 - 手动回归：在设备列表选中 Apple、Huawei、Xiaomi 及未知品牌设备，对比左侧身份区 Logo、圆角和状态点；覆盖宽 / 窄侧栏、在线 / 离线、Light / Dark，以及概览数据尚未到达的首帧。
+
+## 2026-10-31 列表体验修复
+
+设备列表新增在线数量、搜索、在线筛选和文字状态；名称优先使用别名或已缓存的商品名，型号/ID 保留在 Tooltip。详见 [AD-010](adb-product-review-fixes.md)。

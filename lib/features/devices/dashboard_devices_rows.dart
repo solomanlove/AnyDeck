@@ -10,6 +10,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     bool isCompact,
     int index, {
     AirPlaySessionData? airplaySession,
+    required String displayName,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final Color? rowColor = isSelected
@@ -74,7 +75,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               ),
               const SizedBox(width: 10),
             ],
-            _buildIdentifierCell(context, device, airplaySession),
+            _buildIdentifierCell(context, device, airplaySession, displayName),
             const SizedBox(width: 10),
             _buildRemarkCell(context, device),
             const SizedBox(width: 10),
@@ -99,6 +100,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     BuildContext context,
     RegisteredDevice device,
     AirPlaySessionData? airplaySession,
+    String displayName,
   ) {
     return Expanded(
       flex: 4,
@@ -119,7 +121,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                   children: [
                     Flexible(
                       child: Text(
-                        device.displayName,
+                        displayName,
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -151,6 +153,16 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                       )),
                     ],
                   ],
+                ),
+                Tooltip(
+                  message: '${device.id} · ${device.model ?? ""} · ${device.status}',
+                  child: Text(
+                    context.l10n.t(DeviceListPresentation.statusKey(device)),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: device.isOnline ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
                 // 2. 次行展示已获取的局域网 Wi-Fi IP 地址 / 投屏分辨率及警告图标
                 _buildIdentifierSubtitle(device, airplaySession),

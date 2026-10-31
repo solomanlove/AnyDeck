@@ -3,6 +3,7 @@ import 'package:any_deck/app/router/app_router.dart';
 import 'package:any_deck/app/router/dashboard_route.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
+import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
@@ -86,6 +87,8 @@ void main() {
         iosDeviceServiceProvider.overrideWithValue(_Ios()),
         discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
         deviceRegistryProvider.overrideWith(_Registry.new),
+        cachedDeviceOverviewProvider(_device.id).overrideWith((ref) async =>
+            DeviceOverview.fromJson({'name': 'Market Phone'})),
         selectedDeviceProvider.overrideWith(_SelectedDevice.new),
         selectedToolTabProvider.overrideWith(_Tab.new),
         packagesProvider(_device.id).overrideWith(_Packages.new),
@@ -145,6 +148,17 @@ void main() {
     expect(find.byType(EmulatorListPanel), findsOneWidget);
     expect(find.byTooltip('在独立窗口显示'), findsNothing);
     expect(find.byKey(const Key('consoleDockPanel')), findsOneWidget);
+    router.goNamed(AppRouteNames.devices);
+    await tester.pumpAndSettle();
+    expect(find.text('Market Phone'), findsWidgets);
+    expect(find.textContaining('1 在线'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('deviceListSearch')), 'no-match');
+    await tester.pumpAndSettle();
+    expect(find.text('没有匹配的设备'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('deviceListSearch')), 'market');
+    await tester.tap(find.byKey(const Key('deviceListOnlineOnly')));
+    await tester.pumpAndSettle();
+    expect(find.text('Market Phone'), findsWidgets);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     container.dispose();

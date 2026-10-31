@@ -9,8 +9,20 @@ class _DeviceListPanel extends ConsumerStatefulWidget {
 }
 
 class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
+  final _searchController = TextEditingController();
+  String _query = '';
+  bool _onlineOnly = false;
   String _sortColumn = 'id';
   bool _sortAscending = true;
+
+  void _changeQuery(String value) => setState(() => _query = value);
+  void _changeOnlineOnly(bool value) => setState(() => _onlineOnly = value);
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _toggleSort(String column) {
     setState(() {

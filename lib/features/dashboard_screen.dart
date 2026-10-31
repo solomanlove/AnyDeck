@@ -97,6 +97,8 @@ import 'mcp/controller/mcp_server_controller.dart';
 import 'widgets/dashboard_snack.dart';
 import 'widgets/remote_controller_dialog.dart';
 import 'devices/widgets/tcpip_connection_dialog.dart';
+import 'devices/widgets/device_list_filters.dart';
+import 'devices/model/device_list_presentation.dart';
 import 'devices/widgets/host_network_footer.dart';
 import 'devices/widgets/device_subnet_warning.dart';
 import 'devices/widgets/harmony_wireless_connection_view.dart';

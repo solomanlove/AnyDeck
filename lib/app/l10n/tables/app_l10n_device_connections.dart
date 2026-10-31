@@ -1,5 +1,13 @@
 /// 设备连接状态与无线调试功能本地化文案表。新增 key 时必须同时补齐 zh/en。
 const deviceConnectionsZh = {
+  'deviceListSummary': '{online} 在线 · {offline} 离线/不可用 · 共 {total} 台',
+  'deviceListSearchHint': '搜索名称、型号、IP 或序列号',
+  'deviceListOnlineOnly': '仅在线',
+  'deviceListNoMatches': '没有匹配的设备',
+  'deviceListResetHint': '清空搜索或关闭仅在线筛选。',
+  'deviceUnauthorizedLabel': '未授权',
+  'deviceUnavailableLabel': '不可用',
+
   'tcpipHarmonyEnableTitle': '1. 通过 USB 开启调试端口',
   'tcpipHarmonyEnableBody': '先通过 USB 连接并授权鸿蒙手机，再运行下方命令开启 TCP 监听。',
   'tcpipHarmonyEnableCommand': 'hdc tmode port 5555',
@@ -136,6 +144,14 @@ const deviceConnectionsZh = {
 };
 
 const deviceConnectionsEn = {
+  'deviceListSummary': '{online} online · {offline} offline/unavailable · {total} total',
+  'deviceListSearchHint': 'Search name, model, IP or serial',
+  'deviceListOnlineOnly': 'Online only',
+  'deviceListNoMatches': 'No matching devices',
+  'deviceListResetHint': 'Clear search or turn off Online only.',
+  'deviceUnauthorizedLabel': 'Unauthorized',
+  'deviceUnavailableLabel': 'Unavailable',
+
   'tcpipHarmonyEnableTitle': '1. Enable the debug port over USB',
   'tcpipHarmonyEnableBody': 'Connect and authorize the HarmonyOS phone over USB, then run the command below to enable TCP listening.',
   'tcpipHarmonyEnableCommand': 'hdc tmode port 5555',
