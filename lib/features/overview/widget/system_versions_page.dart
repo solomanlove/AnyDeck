@@ -11,6 +11,7 @@ import 'android_api_distribution_view.dart';
 import 'harmony_api_distribution_view.dart';
 import 'ios_version_distribution_view.dart';
 import 'platform_version_switcher.dart';
+import 'version_content_viewport.dart';
 
 /// 主窗口的系统版本资料页，复用既有三平台列表、详情、复制和链接功能。
 ///
@@ -64,28 +65,15 @@ class SystemVersionsPage extends ConsumerWidget {
                       return SingleChildScrollView(
                         child: SizedBox(
                           height: math.max(320, bodyConstraints.maxHeight),
-                          child: Scrollbar(
-                            child: SingleChildScrollView(
-                              key: const Key('systemVersionsHorizontalScroll'),
-                              scrollDirection: Axis.horizontal,
-                              child: SizedBox(
-                                width: math.max(980, bodyConstraints.maxWidth),
-                                height: math.max(
-                                  320,
-                                  bodyConstraints.maxHeight,
-                                ),
-                                child: switch (platform) {
-                                  PlatformDistributionType.android =>
-                                    const AndroidApiDistributionView(
-                                      isEmbedded: true,
-                                    ),
-                                  PlatformDistributionType.harmony =>
-                                    const HarmonyApiDistributionView(),
-                                  PlatformDistributionType.ios =>
-                                    const IosVersionDistributionView(),
-                                },
-                              ),
-                            ),
+                          child: VersionContentViewport(
+                            child: switch (platform) {
+                              PlatformDistributionType.android =>
+                                const AndroidApiDistributionView(isEmbedded: true),
+                              PlatformDistributionType.harmony =>
+                                const HarmonyApiDistributionView(),
+                              PlatformDistributionType.ios =>
+                                const IosVersionDistributionView(),
+                            },
                           ),
                         ),
                       );

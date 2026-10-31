@@ -26,6 +26,8 @@ class IosDistributionItem {
     required this.share,
     required this.sharePercent,
     required this.source,
+    this.sampleDate,
+    this.populationKey = 'iosSamplePopulationUnknown',
     required this.summary,
     required this.matrix,
     required this.impacts,
@@ -57,6 +59,10 @@ class IosDistributionItem {
 
   /// 数据来源说明（如 Apple 官方, 第三方）
   final String source;
+
+  /// 采样日期与统计对象，独立于系统发布日期；未知时明确留空。
+  final String? sampleDate;
+  final String populationKey;
 
   /// 概要说明文字
   final String summary;
@@ -118,6 +124,7 @@ class IosVersionDistributionData {
       share: '16.4%',
       sharePercent: 16.4,
       source: '第三方',
+      sampleDate: '2026-09-30',
       summary:
           '最新大版本，2026 年 9 月正式发布，2026-09-30 快照口径下已约 16.4% 设备升级。',
       matrix: [
@@ -154,6 +161,8 @@ class IosVersionDistributionData {
       share: '79%',
       sharePercent: 79.0,
       source: 'Apple 官方',
+      sampleDate: '2026-06-07',
+      populationKey: 'iosSampleAllIphones',
       summary:
           'Apple 官方采用率（统计基准日 2026-06-07）：iOS 26 占全部 iPhone 的 79%，近四年推出的 iPhone 中达 86%；iPadOS 26 占全部 iPad 的 68%，近四年机型为 79%。',
       matrix: [

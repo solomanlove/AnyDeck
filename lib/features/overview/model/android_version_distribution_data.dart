@@ -116,9 +116,9 @@ class AndroidDistributionItem {
 class AndroidVersionDistributionData {
   AndroidVersionDistributionData._();
 
-  /// 统计数据基准更新时间（支持中英文，自动获取当前日期“今天”）
+  /// 分布统计快照日期，不用用户打开页面的当天冒充数据更新。
   static String localizedLastUpdatedDate(String langCode, [DateTime? date]) {
-    final now = date ?? DateTime.now();
+    final now = date ?? DateTime(2026, 10, 13);
     if (langCode == 'zh') {
       return '${now.year}年${now.month}月${now.day}日';
     }
@@ -462,8 +462,8 @@ class AndroidVersionDistributionData {
       apiLevel: 37,
       cumulativeDistribution: 0.0,
       barColor: Color(0xFF26C6DA),
-      releaseDateZh: '预计 2026 年中',
-      releaseDateEn: 'Expected Q2 2026',
+      releaseDateZh: '已提供系统镜像（官方资料核验：2026-10-31）',
+      releaseDateEn: 'System images available (verified: 2026-10-31)',
       summaryUrl: 'https://developer.android.com/about/versions/17',
       featureSections: kAndroid17Features,
     ),

@@ -68,10 +68,9 @@ void main() {
       expect(AndroidVersionDistributionData.findItem('invalid_version').platformVersion, equals('17'));
     });
 
-    test('localizedLastUpdatedDate 自动获取今天日期并正确本地化', () {
-      final now = DateTime.now();
+    test('localizedLastUpdatedDate 使用统计快照日期并正确本地化', () {
       expect(AndroidVersionDistributionData.localizedLastUpdatedDate('zh'),
-          contains('${now.year}年${now.month}月${now.day}日'));
+          equals('2026年10月13日'));
 
       final testDate = DateTime(2026, 10, 13);
       expect(AndroidVersionDistributionData.localizedLastUpdatedDate('zh', testDate),

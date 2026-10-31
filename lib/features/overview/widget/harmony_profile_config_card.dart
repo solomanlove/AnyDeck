@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../app/l10n/app_localizations.dart';
+
 import '../model/harmony_version_distribution_data.dart';
 
 /// HarmonyOS 工程配置建议与 build-profile.json5 代码块展示卡片。
@@ -44,17 +46,17 @@ class HarmonyProfileConfigCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '工程配置建议（可直接复制）',
+              Expanded(child: Text(
+                context.l10n.t('harmonyConfigTemplate'),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: textPrimary,
                 ),
-              ),
+              )),
               IconButton(
                 icon: const Icon(Icons.copy_rounded, size: 14),
-                tooltip: '复制 build-profile.json5 配置',
+                tooltip: context.l10n.t('harmonyCopyConfig'),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: () {
@@ -62,15 +64,17 @@ class HarmonyProfileConfigCard extends StatelessWidget {
                     ClipboardData(text: item.buildProfileConfig),
                   );
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('已复制 HarmonyOS 工程配置到剪贴板'),
-                      duration: Duration(seconds: 2),
+                    SnackBar(
+                      content: Text(context.l10n.t('harmonyConfigCopied')),
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 },
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Text(context.l10n.t('harmonyConfigTemplateHint')),
           const SizedBox(height: 8),
           _buildConfigRow('targetSdkVersion', item.target),
           _buildConfigRow('compatibleSdkVersion', item.compatible),

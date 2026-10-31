@@ -1,5 +1,20 @@
 /// overview_terminal_emulators 模块文案表。新增 key 时必须同时补齐 zh/en。
 const overviewTerminalEmulatorsZh = {
+  'versionList': '版本列表',
+  'versionDetails': '查看详情',
+  'versionScrollHint': '可横向滚动阅读完整内容',
+  'harmonyConfigTemplate': '工程配置示例（需按项目调整）',
+  'harmonyCopyConfig': '复制配置示例',
+  'harmonyConfigCopied': '已复制配置示例，请核对项目 SDK',
+  'harmonyConfigTemplateHint': '示例采用确定的兼容 API 值；请按已安装 SDK 和最低支持系统修改，合并到现有 products 配置。',
+  'iosSampleOfficial': 'Apple 官方统计',
+  'iosSampleThirdParty': '第三方遥测样本',
+  'iosSampleDateUnknown': '采样日期未记录',
+  'iosSampleAllIphones': '全部 iPhone',
+  'iosSamplePopulationUnknown': '样本范围未核验',
+  'iosSampleSeparation': '不同来源或日期分别展示，不可相加或直接比较。',
+  'iosVersionAdoption': 'iOS 版本采用率',
+
   'result': '结果',
   'error': '错误',
   'confirm': '确认',
@@ -146,6 +161,21 @@ const overviewTerminalEmulatorsZh = {
 };
 
 const overviewTerminalEmulatorsEn = {
+  'versionList': 'Versions',
+  'versionDetails': 'View details',
+  'versionScrollHint': 'Scroll horizontally for full content',
+  'harmonyConfigTemplate': 'Configuration example (adapt to your project)',
+  'harmonyCopyConfig': 'Copy configuration example',
+  'harmonyConfigCopied': 'Example copied. Check your project SDK.',
+  'harmonyConfigTemplateHint': 'This example uses a specific compatible API. Adjust it to your installed SDK and minimum OS, then merge into existing products.',
+  'iosSampleOfficial': 'Apple official statistics',
+  'iosSampleThirdParty': 'Third-party telemetry sample',
+  'iosSampleDateUnknown': 'Sample date not recorded',
+  'iosSampleAllIphones': 'All iPhones',
+  'iosSamplePopulationUnknown': 'Sample scope unverified',
+  'iosSampleSeparation': 'Different sources or dates are separate samples. Do not add or directly compare them.',
+  'iosVersionAdoption': 'iOS adoption by version',
+
   'result': 'Result',
   'error': 'Error',
   'confirm': 'Confirm',

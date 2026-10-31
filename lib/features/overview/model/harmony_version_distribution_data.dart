@@ -62,16 +62,16 @@ class HarmonyDistributionItem {
   /// 华为开发者官方文档链接
   final String link;
 
-  /// build-profile.json5 配置内容（可直接复制）
+  /// build-profile.json5 示例；compatible API 与展示建议分离，项目需按最低支持版本调整。
   String get buildProfileConfig {
-    final comp = compatible.contains('（') ? compatible.split('（')[0].trim() : compatible;
+    final comp = apiNum >= 20 ? 20 : apiNum;
     return '''// build-profile.json5
 {
   "app": {
     "products": [{
       "name": "default",
       "targetSdkVersion": "$target",
-      "compatibleSdkVersion": "$comp",
+      "compatibleSdkVersion": $comp,
       "runtimeOS": "HarmonyOS"
     }]
   }
