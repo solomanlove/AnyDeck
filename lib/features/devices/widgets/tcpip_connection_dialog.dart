@@ -22,6 +22,9 @@ class _TcpipConnectionDialogState extends State<TcpipConnectionDialog> {
   bool _connecting = false;
   String? _error;
 
+  // 退出动画期间 State 仍 mounted，但 Route 已关闭，不能再 pop 底层页面。
+  bool get _isActive => mounted && (ModalRoute.of(context)?.isCurrent ?? false);
+
   @override
   void dispose() {
     _controller.dispose();
@@ -38,7 +41,7 @@ class _TcpipConnectionDialogState extends State<TcpipConnectionDialog> {
     var completed = false;
     try {
       final result = await widget.connect(address.address);
-      if (!mounted) return;
+      if (!mounted || !_isActive) return;
       if (result.isSuccess) {
         completed = true;
         Navigator.of(context).pop(result);
@@ -46,9 +49,9 @@ class _TcpipConnectionDialogState extends State<TcpipConnectionDialog> {
       }
       setState(() => _error = result.message);
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (_isActive) setState(() => _error = error.toString());
     } finally {
-      if (mounted && !completed) setState(() => _connecting = false);
+      if (_isActive && !completed) setState(() => _connecting = false);
     }
   }
 

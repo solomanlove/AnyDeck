@@ -122,6 +122,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('取消后的退出动画内收到成功结果，不再次 pop 底层页面', (tester) async {
+    final pending = Completer<AdbResult>();
+    await _open(tester, connect: (_) => pending.future);
+    await tester.enterText(find.byType(TextFormField), '192.168.31.33:5555');
+    await tester.tap(find.widgetWithText(FilledButton, '连接'));
+    await tester.pump();
+    await tester.tap(find.text('取消'));
+    pending.complete(const AdbResult(exitCode: 0, stdout: 'connected', stderr: ''));
+    await tester.pumpAndSettle();
+    expect(find.text('open'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Future<void> _open(
