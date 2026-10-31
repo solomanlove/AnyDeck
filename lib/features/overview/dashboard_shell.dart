@@ -130,5 +130,3 @@ class _DashboardHomeContent extends ConsumerWidget {
     return _DeviceListPanel();
   }
 }
-
-/// 设置弹窗表单，用于切换语言和主题。
