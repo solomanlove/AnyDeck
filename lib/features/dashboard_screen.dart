@@ -96,7 +96,7 @@ import 'mcp/presentation/mcp_dashboard_tab.dart';
 import 'mcp/controller/mcp_server_controller.dart';
 import 'widgets/dashboard_snack.dart';
 import 'widgets/remote_controller_dialog.dart';
-import 'devices/widgets/tcpip_connection_guide.dart';
+import 'devices/widgets/tcpip_connection_dialog.dart';
 import 'devices/widgets/host_network_footer.dart';
 import 'devices/widgets/device_subnet_warning.dart';
 import 'devices/widgets/harmony_wireless_connection_view.dart';

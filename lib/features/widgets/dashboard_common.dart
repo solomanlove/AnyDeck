@@ -140,59 +140,15 @@ Future<void> _showConnectDeviceDialog(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final controller = TextEditingController(text: '192.168.1.10:5555');
-  final address = await showDialog<String>(
+  final result = await showDialog<AdbResult>(
     context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text(context.l10n.t('connectDevice')),
-        scrollable: true,
-        content: SizedBox(
-          width: 560,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: context.l10n.t('tcpipAddressLabel'),
-                  helperText: context.l10n.t('tcpipAddressHint'),
-                  helperMaxLines: 3,
-                ),
-                onSubmitted: (value) => Navigator.of(context).pop(value),
-              ),
-              const SizedBox(height: 20),
-              const TcpipConnectionGuide(),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(context.l10n.t('cancel')),
-          ),
-          FilledButton.icon(
-            icon: const Icon(CupertinoIcons.link),
-            label: Text(context.l10n.t('connect')),
-            onPressed: () => Navigator.of(context).pop(controller.text),
-          ),
-        ],
-      );
-    },
+    builder: (_) => TcpipConnectionDialog(
+      connect: ref.read(deviceRegistryProvider.notifier).connectNetworkDevice,
+    ),
   );
-  controller.dispose();
-
-  if (address == null || address.trim().isEmpty || !context.mounted) {
-    return;
+  if (result != null && context.mounted) {
+    _showSnack(context, result.message);
   }
-
-  await _runAdbAction(
-    context,
-    ref,
-    ref.read(deviceRegistryProvider.notifier).connectNetworkDevice(address.trim()),
-  );
 }
 
 /// 执行 adb 命令，并在弹窗中展示完整输出。

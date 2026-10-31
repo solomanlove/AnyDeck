@@ -120,12 +120,13 @@ flutter test --no-pub test/adb_wireless_coordinator_test.dart test/adb_wireless_
 ## 5. 手动 TCP/IP 连接弹窗内置指南
 
 ### 需求与入口
-为避免忘记 USB 转 TCP/IP 的准备步骤，设备管理的共享“连接设备”弹窗在地址框下默认展示四步指南：USB 授权与 `adb devices` 检查、`adb tcpip 5555` 开启监听、查询手机 IP 并断开 USB 后连接、通过 `IP:端口 device` 验证。
+设备管理的共享“连接设备”弹窗先展示地址输入与准备提示，地址框下按平台折叠指南。Android 指南包含 USB 授权与 `adb devices` 检查、`adb tcpip 5555` 开启监听、查询手机 IP 并断开 USB 后连接、通过 `IP:端口 device` 验证。
 
-- `lib/features/widgets/dashboard_common.dart`：原弹窗接入指南，地址标签明确为 IP 与端口，提示只填写地址；使用 `scrollable: true` 和 560 logical pixels 内容宽度，长说明可滚动，操作按钮保持可用。
-- `lib/features/devices/widgets/tcpip_connection_guide.dart`：独立只读 `StatelessWidget`，四步说明默认展示，常见问题折叠收纳；命令使用 `SelectableText` 支持选择复制，颜色与文字样式来自当前 Theme。
+- `lib/features/widgets/dashboard_common.dart`：共享入口打开 `TcpipConnectionDialog`，成功后显示结果。
+- `lib/features/devices/widgets/tcpip_connection_dialog.dart`：持有输入控制器、地址校验与连接等待状态；失败留在表单，`scrollable: true` 和 560 logical pixels 内容宽度保证长说明可滚动。
+- `lib/features/devices/widgets/tcpip_connection_guide.dart`：独立只读 `StatelessWidget`，平台指南和常见问题默认折叠；命令使用 `SelectableText` 支持选择复制，颜色与文字样式来自当前 Theme。
 - `lib/app/l10n/tables/app_l10n_devices_control.dart`：新增 `tcpip*` 中英文文案，由现有 `AppLocalizations` 读取。
-- 未新增依赖、Provider、后台进程或 MethodChannel；原 `connectNetworkDevice(address.trim())` 调用、取消及 Enter 提交行为保持不变。指南本身不执行命令，“连接”按钮不会自动开启 TCP/IP 监听。
+- 未新增依赖、Provider、后台进程或 MethodChannel；按钮和 Enter 共用校验与提交路径，校验通过后调用 `connectNetworkDevice`。指南本身不执行命令，“连接”按钮不会自动开启 TCP/IP 监听。
 
 ### 说明内容与命令边界
 1. 电脑终端执行 ADB 命令，手机开启 USB debugging 并授权；同一局域网需允许设备间通信。

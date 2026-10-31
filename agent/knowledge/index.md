@@ -63,4 +63,7 @@
 | `huawei-share-core-integration` | Huawei Share 私有核心接入 | experimental | 私有制品固定版本、SHA-256 校验、独立互联 UI、连续批次追加队列与发送速率、Core 原生批次收发与 IPC 3 Client/Session、整批真实进度、批次/文件记录与存储故障重试、通知/目录设置、阶段验收与原生 IPC 能力门控 | `lib/core/nearby_share/`, `script/` |
 
 ## 新增知识库规则
+
+产品体验修复记录：[AnyDeck 产品体验问题修复](adb-product-review-fixes.md)，按 AD 编号记录实现、测试和未验收范围。
+
 每次新增的需求或重大功能迭代，在开发完成后均必须将其技术设计、关键实现与命令机制以知识文档的形式沉淀在 `agent/knowledge/` 目录下，并在此索引中进行登记。

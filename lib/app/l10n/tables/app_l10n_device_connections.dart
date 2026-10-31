@@ -1,5 +1,14 @@
 /// 设备连接状态与无线调试功能本地化文案表。新增 key 时必须同时补齐 zh/en。
 const deviceConnectionsZh = {
+  'tcpipHarmonyEnableTitle': '1. 通过 USB 开启调试端口',
+  'tcpipHarmonyEnableBody': '先通过 USB 连接并授权鸿蒙手机，再运行下方命令开启 TCP 监听。',
+  'tcpipHarmonyEnableCommand': 'hdc tmode port 5555',
+  'tcpipHarmonyConnectTitle': '2. 连接手机的当前 IP',
+  'tcpipHarmonyConnectBody': '确保手机与电脑在可互通的局域网。将示例地址替换为手机 IP，拔出 USB 后连接。',
+  'tcpipHarmonyConnectCommand': 'hdc tconn 192.168.1.100:5555',
+  'tcpipInvalidAddress': '请输入有效的设备 IP 或主机名，端口范围为 1–65535。不要输入 adb 命令。',
+  'tcpipAddressExample': '示例：192.168.1.100:5555（请替换为手机当前地址）',
+  'tcpipReadyHint': '已开启调试端口：填写手机当前地址即可连接。尚未准备：展开下方对应平台的指南。Android 配对码/二维码请使用设备管理的无线配对入口。',
   'mirrorTransportUsb': 'USB 投屏',
   'mirrorTransportTcp': 'TCP 投屏',
   'mirrorTransportWifi': 'Wi-Fi 投屏',
@@ -127,6 +136,15 @@ const deviceConnectionsZh = {
 };
 
 const deviceConnectionsEn = {
+  'tcpipHarmonyEnableTitle': '1. Enable the debug port over USB',
+  'tcpipHarmonyEnableBody': 'Connect and authorize the HarmonyOS phone over USB, then run the command below to enable TCP listening.',
+  'tcpipHarmonyEnableCommand': 'hdc tmode port 5555',
+  'tcpipHarmonyConnectTitle': '2. Connect to the phone’s current IP',
+  'tcpipHarmonyConnectBody': 'Keep both devices on a reachable LAN. Replace the example with the phone’s IP, unplug USB, then connect.',
+  'tcpipHarmonyConnectCommand': 'hdc tconn 192.168.1.100:5555',
+  'tcpipInvalidAddress': 'Enter a valid device IP or hostname with a port from 1 to 65535. Do not enter an adb command.',
+  'tcpipAddressExample': 'Example: 192.168.1.100:5555 (replace with the phone’s address)',
+  'tcpipReadyHint': 'Debug port ready: enter the phone’s current address. Otherwise, expand the guide for its platform below. For Android pairing codes or QR codes, use Wireless pairing in Device management.',
   'mirrorTransportUsb': 'USB mirroring',
   'mirrorTransportTcp': 'TCP mirroring',
   'mirrorTransportWifi': 'Wi-Fi mirroring',
