@@ -1,7 +1,11 @@
 /// 设备连接状态与无线调试功能本地化文案表。新增 key 时必须同时补齐 zh/en。
 const deviceConnectionsZh = {
   'deviceListSummary': '{online} 在线 · {offline} 离线/不可用 · 共 {total} 台',
-  'deviceListSearchHint': '搜索名称、型号、IP 或序列号',
+  'deviceListTotalCount': '共 {count} 台',
+  'deviceListOnlineCount': '{count} 在线',
+  'deviceListOfflineCount': '{count} 离线/不可用',
+  'deviceListSearchLabel': '搜索设备',
+  'deviceListSearchHint': '按名称、型号、IP、序列号或备注搜索',
   'deviceListOnlineOnly': '仅在线',
   'deviceListNoMatches': '没有匹配的设备',
   'deviceListResetHint': '清空搜索或关闭仅在线筛选。',
@@ -145,7 +149,11 @@ const deviceConnectionsZh = {
 
 const deviceConnectionsEn = {
   'deviceListSummary': '{online} online · {offline} offline/unavailable · {total} total',
-  'deviceListSearchHint': 'Search name, model, IP or serial',
+  'deviceListTotalCount': '{count} devices',
+  'deviceListOnlineCount': '{count} online',
+  'deviceListOfflineCount': '{count} offline/unavailable',
+  'deviceListSearchLabel': 'Search devices',
+  'deviceListSearchHint': 'Search by name, model, IP, serial or notes',
   'deviceListOnlineOnly': 'Online only',
   'deviceListNoMatches': 'No matching devices',
   'deviceListResetHint': 'Clear search or turn off Online only.',

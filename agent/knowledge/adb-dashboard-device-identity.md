@@ -70,3 +70,11 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 ## 2026-10-31 列表体验修复
 
 设备列表新增在线数量、搜索、在线筛选和文字状态；名称优先使用别名或已缓存的商品名，型号/ID 保留在 Tooltip。详见 [AD-010](adb-product-review-fixes.md)。
+
+## 设备列表统计与筛选栏样式（2026-11-01）
+
+- 根据设备管理截图，调整 `DeviceListFilters`：总数、在线、离线/不可用分成独立标签，搜索和“仅在线”靠右；左右 28px、上下 12px 留白与一级标题保持对齐。状态同时提供文字与圆点，屏幕阅读器仍读取完整数量摘要。
+- 宽窗口为搜索和筛选保留固定空间，左侧统计可换行；可用宽度低于 820px 时分两行，低于 360px 时搜索与按钮再分行。阈值随文字缩放增大，避免英文或放大字体挤压输入框。
+- 搜索框显示短提示“搜索设备”，Tooltip 说明名称、型号、IP、序列号和备注范围。通过 `ValueListenableBuilder` 监听已有 controller，仅非空时展示清除按钮；清除仍触发原搜索回调。controller 的创建、释放和筛选状态仍由宿主持有。
+- 所有颜色与圆角复用 `ColorScheme`、`AppThemeColors`、`AppThemeSizes`；在线标签与已选筛选使用主题容器色，搜索和筛选统一描边、圆角及高度。没有新增 Provider、后台扫描、ADB/HDC 命令、持久化或跨窗口协议。
+- 验证：`device_list_filters_test.dart` 5 项与真实 Dashboard 的 `dashboard_shell_navigation_test.dart` 1 项通过；覆盖 zh/en、Light/Dark、920/720/360px、1.6 倍文字、输入清除、在线筛选及缩放后保留查询。定向静态检查无诊断，并导出实际 Widget 渲染图检查。未启动桌面 App；系统字体、鼠标 Hover 与真实窗口效果仍以运行包验收为准。
