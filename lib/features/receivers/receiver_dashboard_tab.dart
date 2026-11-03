@@ -59,6 +59,7 @@ class ReceiverDashboardTab extends StatelessWidget {
                 return Column(
                   children: [
                     serviceCards,
+                    const SizedBox(height: 16),
                     const ReceiverAppSupportGuide(),
                   ],
                 );

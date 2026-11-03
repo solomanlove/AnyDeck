@@ -19,6 +19,7 @@
 - `ReceiverDashboardTab` 使用统一 `DashboardHeaderBar`，内容区按宽度自适应：宽窗口双列、窄窗口单列。
 - `ReceiverServiceCard` 统一协议图标、用途说明、状态、启停 Switch、接收端名称和附加动作。
 - 服务 Card 下方展示常见视频 App 投放示例；协议标签只作为版本相关参考，并明确受平台、内容版权与会员权益影响。爱奇艺官方说明明确支持 DLNA/AirPlay；小红书当前版本实测支持 DLNA、不支持 AirPlay。
+- 服务 Card 区与下方投放示例之间保留 16 px 垂直间距；宽窗口双列和窄窗口单列均一致。
 
 ### 兼容示例证据边界
 
@@ -51,6 +52,8 @@
 ## 5. 测试影响与回归方案
 
 ### 自动验证
+
+`receiver_dashboard_tab_test.dart` 检查宽窄布局中服务 Card 与投放示例的实际垂直间距为 16 px。
 
 ```bash
 flutter analyze --no-pub

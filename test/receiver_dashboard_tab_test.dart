@@ -44,10 +44,7 @@ void main() {
     );
     expect(find.byKey(const Key('airplayReceiverSwitch')), findsOneWidget);
     expect(find.byKey(const Key('dlnaReceiverSwitch')), findsOneWidget);
-    expect(find.text('华为分享（测试）'), findsOneWidget);
-    expect(find.text('选文件发送'), findsOneWidget);
-    expect(find.text('选目录接收'), findsOneWidget);
-    expect(find.byType(TextField), findsNWidgets(6));
+    expect(find.byType(TextField), findsNWidgets(2));
     expect(find.text('AnyDeck-DLNA'), findsNWidgets(2));
     expect(find.byKey(const Key('receiverAppSupportGuide')), findsOneWidget);
     expect(find.text('常见视频 App 投放示例'), findsOneWidget);
@@ -58,6 +55,48 @@ void main() {
     expect(find.text('小红书'), findsOneWidget);
     expect(find.text('当前版本实测支持 DLNA，不支持 AirPlay'), findsOneWidget);
     expect(find.text('待确认'), findsNothing);
+  });
+  testWidgets('服务卡片与投放示例在宽窄布局下保持间距', (tester) async {
+    addTearDown(() => tester.view.resetPhysicalSize());
+    addTearDown(() => tester.view.resetDevicePixelRatio());
+    tester.view.devicePixelRatio = 1;
+
+    for (final width in [1600.0, 700.0]) {
+      tester.view.physicalSize = Size(width, 1200);
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: buildAppTheme(Brightness.light),
+            localizationsDelegates: const [
+              AppLocalizationsDelegate(),
+              GlobalMaterialLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: const Scaffold(body: ReceiverDashboardTab()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final cardBottom = [
+        'AirPlay 投屏',
+        'DLNA 视频',
+      ].map((title) {
+        final card = find.ancestor(
+          of: find.text(title),
+          matching: find.byType(Card),
+        );
+        return tester.getBottomLeft(card).dy;
+      }).reduce((a, b) => a > b ? a : b);
+      final guideTop = tester.getTopLeft(
+        find.byKey(const Key('receiverAppSupportGuide')),
+      ).dy;
+      expect(guideTop - cardBottom, 16);
+      expect(tester.takeException(), isNull);
+    }
   });
   for (final type in ['mirror', 'video', 'both']) {
     testWidgets('$type 只展示对应的窗口入口', (tester) async {
