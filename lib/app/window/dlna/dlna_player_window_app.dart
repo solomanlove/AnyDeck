@@ -3,11 +3,15 @@ import 'dart:async';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../multi_window_compat.dart';
+import '../../settings/app_settings_controller.dart';
+import '../../theme/app_theme.dart';
+import '../desktop_window_title_service.dart';
 import '../sub_window_method_dispatcher.dart';
 import '../window_close_shortcut.dart';
 import 'controller/dlna_window_pin_bridge.dart';
@@ -16,16 +20,16 @@ import 'controller/dlna_window_pin_bridge.dart';
 ///
 /// [windowId] 用于把关闭和失败事件关联到当前子窗口。仅由多窗口入口创建，
 /// 媒体 URL 通过 `dlnaOpen` 通道传入，不能放在窗口启动参数中。
-class DlnaPlayerWindowApp extends StatefulWidget {
+class DlnaPlayerWindowApp extends ConsumerStatefulWidget {
   const DlnaPlayerWindowApp({super.key, required this.windowId});
 
   final String windowId;
 
   @override
-  State<DlnaPlayerWindowApp> createState() => _DlnaPlayerWindowAppState();
+  ConsumerState<DlnaPlayerWindowApp> createState() => _DlnaPlayerWindowAppState();
 }
 
-class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
+class _DlnaPlayerWindowAppState extends ConsumerState<DlnaPlayerWindowApp>
     with WindowListener {
   static const _events = WindowMethodChannel(
     'any_deck/dlna_fallback_events',
@@ -51,6 +55,17 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
   @override
   void initState() {
     super.initState();
+    ref.listenManual(
+      appSettingsProvider.select((settings) => settings.themeMode),
+      (_, mode) => unawaited(DesktopWindowTitleService.setAppearance(mode)),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(DesktopWindowTitleService.setAppearance(
+          ref.read(appSettingsProvider).themeMode,
+        ));
+      }
+    });
     _player = Player();
     _video = VideoController(_player);
     _errorSubscription = _player.stream.error.listen((error) {
@@ -289,6 +304,9 @@ class _DlnaPlayerWindowAppState extends State<DlnaPlayerWindowApp>
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
+    theme: buildAppTheme(Brightness.light),
+    darkTheme: buildAppTheme(Brightness.dark),
+    themeMode: ref.watch(appSettingsProvider.select((settings) => settings.themeMode)),
     home: WindowCloseShortcut(
       child: Scaffold(
         backgroundColor: Colors.black,

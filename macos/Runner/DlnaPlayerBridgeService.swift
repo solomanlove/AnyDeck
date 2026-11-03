@@ -33,6 +33,16 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
   private var pinControl: DlnaTitlebarPinControl?
   private var pinLabel = "Pin window"
   private var unpinLabel = "Unpin window"
+  private var windowAppearance: NSAppearance?
+
+  /// nil 表示跟随 macOS；明确 Light/Dark 时覆盖当前视频窗口的标题栏。
+  static func appearance(for mode: String) -> NSAppearance? {
+    switch mode {
+    case "light": return NSAppearance(named: .aqua)
+    case "dark": return NSAppearance(named: .darkAqua)
+    default: return nil
+    }
+  }
 
   func setup(messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: channelName, binaryMessenger: messenger)
@@ -40,6 +50,15 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
     channel.setMethodCallHandler { [weak self] call, result in
       guard let self = self else { result(nil); return }
       switch call.method {
+      case "setAppearance":
+        guard let mode = call.arguments as? String,
+              ["system", "light", "dark"].contains(mode) else {
+          result(FlutterError(code: "invalid_appearance", message: "Theme mode required", details: nil))
+          return
+        }
+        self.windowAppearance = Self.appearance(for: mode)
+        self.window?.appearance = self.windowAppearance
+        result(nil)
       case "playUrl":
         guard let media = call.arguments as? [String: Any],
               let raw = media["url"] as? String,
@@ -175,6 +194,7 @@ final class DlnaPlayerBridgeService: NSObject, NSWindowDelegate {
                                styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                backing: .buffered, defer: false)
       newWindow.title = displayName
+      newWindow.appearance = windowAppearance
       newWindow.backgroundColor = .black
       newWindow.isReleasedWhenClosed = false
       newWindow.delegate = self

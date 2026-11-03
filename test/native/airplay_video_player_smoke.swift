@@ -71,6 +71,8 @@ struct AirPlayVideoPlayerSmoke {
     messenger.call(dlna, "setMute", true)
     messenger.call(airplay, "setTitle", "AirPlay native regression")
     messenger.call(dlna, "setTitle", "DLNA isolation regression")
+    messenger.call(airplay, "setAppearance", "light")
+    messenger.call(dlna, "setAppearance", "light")
     func state() -> [String: Any] {
       messenger.call(airplay, "playbackState") as! [String: Any]
     }
@@ -89,6 +91,22 @@ struct AirPlayVideoPlayerSmoke {
     }
     messenger.call(dlna, "playUrl", ["url": CommandLine.arguments[1], "generation": 1])
     wait { videoReady("DLNA isolation regression") }
+    for title in ["AirPlay native regression", "DLNA isolation regression"] {
+      let window = NSApp.windows.first { $0.title == title }!
+      precondition(window.appearance?.name == .aqua, "Light theme was not applied to \(title)")
+    }
+    messenger.call(airplay, "setAppearance", "dark")
+    messenger.call(dlna, "setAppearance", "dark")
+    for title in ["AirPlay native regression", "DLNA isolation regression"] {
+      let window = NSApp.windows.first { $0.title == title }!
+      precondition(window.appearance?.name == .darkAqua, "Dark theme was not applied to \(title)")
+    }
+    messenger.call(airplay, "setAppearance", "system")
+    messenger.call(dlna, "setAppearance", "system")
+    for title in ["AirPlay native regression", "DLNA isolation regression"] {
+      let window = NSApp.windows.first { $0.title == title }!
+      precondition(window.appearance == nil, "System theme was not restored for \(title)")
+    }
     precondition(messenger.failures.isEmpty, "Native player reported a failure")
     let missing = URL(string: CommandLine.arguments[1])!.deletingLastPathComponent().appendingPathComponent("missing.mp4")
     messenger.call(airplay, "playUrl", ["url": missing.absoluteString, "generation": 3,

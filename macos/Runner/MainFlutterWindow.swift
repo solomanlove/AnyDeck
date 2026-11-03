@@ -168,6 +168,14 @@ class MainFlutterWindow: NSWindow {
           }
           window.title = title
           result(nil)
+        } else if call.method == "setWindowAppearance" {
+          guard let mode = call.arguments as? String,
+                ["system", "light", "dark"].contains(mode) else {
+            result(FlutterError(code: "invalid_appearance", message: "Theme mode required", details: nil))
+            return
+          }
+          window.appearance = DlnaPlayerBridgeService.appearance(for: mode)
+          result(nil)
         } else if call.method == "setWindowTransparency" {
           guard let transparent = call.arguments as? Bool else {
             result(FlutterError(code: "invalid_argument", message: "setWindowTransparency requires bool", details: nil))

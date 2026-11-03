@@ -17,6 +17,7 @@
 6. 关闭播放窗口会停止播放器并通知 Dart；关闭 DLNA 接收开关会发送 SSDP `byebye`、释放 UDP/TCP 端口、清空订阅及两种播放器。
 - 同一投屏会话切换视频时，`SetAVTransportURI` 只清空旧媒体，AVPlayer 与 libmpv 窗口保留原尺寸并显示加载状态；新视频首帧出现后隐藏加载层。抖音切视频可能先发送 `Stop`，接收端等待 5 秒：期间收到新的 `SetAVTransportURI` / `Play` 就取消关窗，超时才关闭窗口并清除媒体会话。用户主动关闭窗口立即结束当前会话；再次投屏需重新下发媒体地址。AVPlayer 与 libmpv 相互切换时会在新窗口可见后隐藏旧窗口，跨播放器不复用同一个原生窗口。
 - 视频窗口可手动切换置顶：AVPlayer 与 libmpv 共用 macOS 标题栏右侧的 16pt 图钉样式，libmpv 不再在视频画面上叠加大按钮；点击只改变当前窗口的 `floating` / `normal` 层级，不改变 DLNA 播放状态。置顶状态经主窗口服务在两种播放器间传递，切换媒体时沿用，关闭窗口或结束会话后恢复默认不置顶。图钉 Tooltip 复用现有中英文文案，并由主窗口在语言变化时同步到两种播放窗口；libmpv 子窗口用 `any_deck/window` 更新标题栏，用 `any_deck/dlna_pin_events` 接收原生图钉点击。
+- 视频窗口标题栏跟随主程序的 Light/Dark/System 模式：主窗口设置加载及切换时，经播放器通道同步到 DLNA 和 AirPlay 的 AVPlayer 原生窗口；libmpv 子窗口沿用设置广播，再通过 `any_deck/window` 设置自身 `NSWindow.appearance`。System 模式清除窗口覆盖，由 macOS 决定。视频画面、加载层及比例留白继续保持黑底。
 - libmpv 子窗口结束播放时先解除关闭拦截，再调用 `windowManager.close()` 关闭当前窗口；macOS 版 `window_manager.destroy()` 会执行 `NSApp.terminate()`，不能用于子窗口清理。
 - `RenderingControl` 的音量与静音由原生播放器分别保存；取消静音不会把先前音量重置为 100%，换片源后仍使用当前音量与静音状态。
 
@@ -74,6 +75,7 @@
 - 播放窗口置顶增量：`flutter analyze --no-pub lib/core/dlna lib/features/dlna lib/app/window/dlna test/core/dlna/dlna_renderer_control_test.dart` 无问题，`flutter test --no-pub test/core/dlna` 的 11 项测试通过，`flutter build macos --debug --no-pub` 通过；尚未在实际播放窗口点击图钉验证层级与切源后的状态。
 - libmpv 关窗修复：定向 `flutter analyze --no-pub lib/app/window/dlna/dlna_player_window_app.dart lib/core/dlna` 无问题，11 项 DLNA 测试及 macOS Debug 构建通过；尚未启动新构建做手机端 `Stop` 后主窗口存活的实际验收。
 - 标题栏图钉统一：定向 `flutter analyze --no-pub lib/app/window/dlna test/app/window/dlna/dlna_window_pin_bridge_test.dart` 无问题，窗口通道测试与 11 项 DLNA 测试共 12 项通过，macOS Debug 构建通过；尚未启动新构建目视验收按钮位置、Light/Dark 配色及实际点击置顶。
+- 视频标题栏主题同步：Flutter 定向分析与 15 项 DLNA/窗口测试通过；原生 smoke test 验证两类 AVPlayer 窗口在创建前设置 Light、运行中切 Dark、恢复 System，且 MP4/HLS 播放、Seek 与窗口隔离通过；macOS Debug 构建通过。真实主程序内的 Light/Dark/System 目视验收仍需人工执行。
 
 ## 真机验收清单
 

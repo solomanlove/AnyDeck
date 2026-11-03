@@ -16,6 +16,7 @@ import '../../core/nearby_share/harmony_share_service.dart';
 import 'desktop_autostart_service.dart';
 import '../../core/airplay/airplay_server_service.dart';
 import '../../core/dlna/dlna_renderer_service.dart';
+import '../../core/dlna/dlna_player_bridge.dart';
 import '../../core/ios/ios_usb_mirror_service.dart';
 import '../window/desktop_window_title_service.dart';
 import '../window/desktop_window_manager_service.dart';
@@ -178,6 +179,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
     state = state.copyWith(themeMode: themeMode);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_themeModeKey, themeMode.name);
+    await _syncVideoWindowAppearance(themeMode);
     if (broadcast) {
       try {
         await _broadcastSettingChange('update_themeMode', themeMode.name);
@@ -473,6 +475,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       showWindowShortcutKey: showWindowShortcutKey,
       developerModeEnabled: developerModeEnabled,
     );
+    unawaited(_syncVideoWindowAppearance(themeMode));
 
     if (ref.read(windowIdProvider).isEmpty) {
       unawaited(DlnaRendererService.instance.setServerName(dlnaServerName));
