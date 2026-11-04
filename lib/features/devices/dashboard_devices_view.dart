@@ -244,14 +244,6 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           ),
           const SizedBox(width: 10),
           Expanded(
-            flex: 3,
-            child: Text(
-              context.l10n.t('deviceRemarkCol'),
-              style: titleStyle,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
             flex: 2,
             child: Text(
               context.l10n.t('deviceAndroidVersionCol'),

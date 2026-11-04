@@ -77,8 +77,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             ],
             _buildIdentifierCell(context, device, airplaySession, displayName),
             const SizedBox(width: 10),
-            _buildRemarkCell(context, device),
-            const SizedBox(width: 10),
             _buildSystemVersionCell(context, device),
             const SizedBox(width: 10),
             _buildActionsCell(context, device, airplaySession),
@@ -234,24 +232,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           ),
         );
       },
-    );
-  }
-
-  /// 构建设备备注（用途）列
-  Widget _buildRemarkCell(BuildContext context, RegisteredDevice device) {
-    final hasRemark = device.remark != null && device.remark!.isNotEmpty;
-    return Expanded(
-      flex: 3,
-      child: Text(
-        hasRemark ? device.remark! : '-',
-        style: TextStyle(
-          fontSize: 12,
-          color: hasRemark ? Theme.of(context).colorScheme.onSurface : Colors.grey,
-          fontWeight: hasRemark ? FontWeight.w500 : FontWeight.normal,
-        ),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
     );
   }
 

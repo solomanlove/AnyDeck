@@ -35,6 +35,7 @@ class _Registry extends DeviceRegistryNotifier {
       serial: _device.id,
       status: 'device',
       isOnline: true,
+      remark: 'QA phone',
     ),
   ];
 }
@@ -152,6 +153,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Market Phone'), findsWidgets);
     expect(find.textContaining('1 在线'), findsOneWidget);
+    expect(find.text('备注/用途'), findsNothing);
+    expect(find.text('QA phone'), findsNothing);
+    await tester.enterText(find.byKey(const Key('deviceListSearch')), 'qa phone');
+    await tester.pumpAndSettle();
+    expect(find.text('Market Phone'), findsWidgets);
+    expect(find.byTooltip('编辑设备信息'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('deviceListSearch')), 'no-match');
     await tester.pumpAndSettle();
     expect(find.text('没有匹配的设备'), findsOneWidget);
