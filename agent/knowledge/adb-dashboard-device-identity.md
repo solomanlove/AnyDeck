@@ -78,3 +78,8 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 - 搜索框显示短提示“搜索设备”，Tooltip 说明名称、型号、IP、序列号和备注范围。通过 `ValueListenableBuilder` 监听已有 controller，仅非空时展示清除按钮；清除仍触发原搜索回调。controller 的创建、释放和筛选状态仍由宿主持有。
 - 所有颜色与圆角复用 `ColorScheme`、`AppThemeColors`、`AppThemeSizes`；在线标签与已选筛选使用主题容器色，搜索和筛选统一描边、圆角及高度。没有新增 Provider、后台扫描、ADB/HDC 命令、持久化或跨窗口协议。
 - 验证：`device_list_filters_test.dart` 5 项与真实 Dashboard 的 `dashboard_shell_navigation_test.dart` 1 项通过；覆盖 zh/en、Light/Dark、920/720/360px、1.6 倍文字、输入清除、在线筛选及缩放后保留查询。定向静态检查无诊断，并导出实际 Widget 渲染图检查。未启动桌面 App；系统字体、鼠标 Hover 与真实窗口效果仍以运行包验收为准。
+
+## 仅在线筛选图标（2026-11-06）
+
+- “仅在线”使用简洁的三横线筛选图标，并关闭 `FilterChip` 自动绘制的选中勾号，避免勾号与自定义图标叠加。选中态图标跟随文字使用 `onPrimaryContainer`，未选中态使用 `onSurfaceVariant`。
+- 筛选回调、文案、布局和搜索状态保持原有逻辑；`device_list_filters_test.dart` 5 项通过，选中态检查不再叠加勾号。定向 `flutter analyze --no-pub` 无诊断，并检查了 Light 模式的选中与未选中 Widget 渲染图。

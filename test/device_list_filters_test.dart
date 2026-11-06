@@ -91,16 +91,21 @@ void main() {
     addTearDown(controller.dispose);
     final queries = <String>[];
     var onlineOnly = false;
+    final boundary = GlobalKey();
+    await _loadCaptureFonts(tester);
     await tester.pumpWidget(
       _host(
-        child: StatefulBuilder(
-          builder: (context, setState) => DeviceListFilters(
-            controller: controller,
-            onlineCount: 1,
-            totalCount: 13,
-            onlineOnly: onlineOnly,
-            onOnlineOnlyChanged: (value) => setState(() => onlineOnly = value),
-            onSearchChanged: queries.add,
+        child: RepaintBoundary(
+          key: boundary,
+          child: StatefulBuilder(
+            builder: (context, setState) => DeviceListFilters(
+              controller: controller,
+              onlineCount: 1,
+              totalCount: 13,
+              onlineOnly: onlineOnly,
+              onOnlineOnlyChanged: (value) => setState(() => onlineOnly = value),
+              onSearchChanged: queries.add,
+            ),
           ),
         ),
       ),
@@ -114,7 +119,11 @@ void main() {
     await tester.tap(find.byKey(const Key('deviceListOnlineOnly')));
     await tester.pumpAndSettle();
     expect(onlineOnly, isTrue);
-    expect(tester.widget<FilterChip>(find.byType(FilterChip)).selected, isTrue);
+    final filterChip = tester.widget<FilterChip>(find.byType(FilterChip));
+    expect(filterChip.selected, isTrue);
+    expect(filterChip.showCheckmark, isFalse);
+    expect(find.byIcon(Icons.filter_list_rounded), findsOneWidget);
+    await _capture(tester, boundary, 'zh-light-selected');
     tester.view.physicalSize = const Size(360, 480);
     await tester.pumpAndSettle();
     expect(controller.text, 'Xiaomi');

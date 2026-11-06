@@ -195,11 +195,12 @@ class DeviceListFilters extends StatelessWidget {
       key: const Key('deviceListOnlineOnly'),
       label: Text(context.l10n.t('deviceListOnlineOnly')),
       avatar: Icon(
-        Icons.filter_alt_outlined,
+        Icons.filter_list_rounded,
         size: 18,
-        color: scheme.onSurfaceVariant,
+        color: onlineOnly ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
       ),
       selected: onlineOnly,
+      showCheckmark: false,
       onSelected: onOnlineOnlyChanged,
       labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
         color: onlineOnly ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
