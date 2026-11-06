@@ -8,7 +8,7 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 
 1. 私有仓库运行 `script/build_artifact.py`，输出按架构区分的 zip、包内 manifest、每文件 SHA-256；把 Swift BLE helper、DFile helper 和 OpenSSL 3 动态库一起签名和打包。
 2. 主仓库 `script/share_core.lock.json` 固定私有仓库 commit、IPC 版本与 zip SHA-256。
-3. 构建 Release 时显式设置 `ANYDECK_SHARE_CORE=1`；`script/install_share_core.py`只读取锁定 commit 的制品，逐层校验后写入 `.app/Contents/MacOS/ShareCore/`，再由现有 `fix_macos_app_policy.sh` 签名整个 App。
+3. Runner 的 `Embed Share Core` 阶段在 Debug/Profile/Release 构建时自动调用 `script/embed_share_core.sh`；安装器只使用锁定 SHA-256 的私有制品，原生文件写入 `.app/Contents/MacOS/ShareCore/`，manifest 写入 `Contents/Resources/ShareCore/manifest.json`，随后由 Xcode 签名整个 App。无需设置 `ANYDECK_SHARE_CORE=1`。
 4. `ShareCoreClient.probe()`通过当前 IPC version 3 握手，只信任显式声明的能力。无二进制或版本不符时失败；不使用外部 Python 或原星河进程。
 
 ## 当前验收与未完成项
@@ -239,3 +239,27 @@ AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚�
 - 改动仅位于 `harmony_share_dashboard_tab.dart` 的展示层，未引入依赖、Provider、跨窗口消息或进程行为变更；沿用既有 Theme 与 l10n，不涉及投屏和私有协议。
 - 回归入口：`harmony_share_dashboard_tab_test.dart` 覆盖 zh/en、Light/Dark 下重复内容消失、身份栏顶部无残余空白，以及原有开关、舞台、连接指引和窄窗口布局；`harmony_share_visual_test.dart` 提供离线 Widget 渲染验证。人工查看时，卡片应从接收身份栏开始，错误仍通过下方详情卡片呈现。
 - 本次上述 10 项 Widget 测试、改动 Dart 文件的 targeted analyze、测试文件格式校验与 `git diff --check` 均通过；未启动、重建或替换用户的 App，实际运行包将在后续构建后体现该布局。
+
+
+## 正常 Debug / Release 自动打包组件（2026-11-07）
+
+- 触发原因：普通 Debug 构建没有执行原来的可选 Release 安装分支，运行包缺少 `ShareCore`，页面因此提示组件缺失。现由 Runner 公共 `Embed Share Core` 阶段调用 `script/embed_share_core.sh`，覆盖 Flutter CLI 与 Xcode 的 Debug/Profile/Release；安装失败会终止构建，不再生成缺少组件的成功包。旧 `ANYDECK_SHARE_CORE` opt-in 不再参与判断。
+- 制品入口：显式 `ANYDECK_SHARE_CORE_ARCHIVE` → 校验缓存 `build/share_core/<SHA-256>.zip` → 相邻 `AnyDeck-Share-Core/artifacts/` 的锁定制品 → 私有 Git 的固定 commit。显式文件错误直接失败；默认缓存/相邻文件不匹配时继续寻找锁定版本。远端获取仍需要私有仓库访问权限，不自动修改锁或升级版本；主仓不检出协议源码。
+- 安装前同时验证 zip SHA-256、唯一成员集合、总解压大小、manifest 的 IPC/目标架构及每个文件 SHA-256。目标架构取 Xcode `ARCHS`，当前仅锁定 arm64，未发布的 x86_64 或多架构请求明确失败，不能偷偷使用宿主版本。
+- `--replace` 仅由构建入口用于增量更新；成员内容及可执行权限一致时复用，损坏/旧版则先准备完整临时目录，再替换并清理旧成员。发布原生目录或 manifest 失败时还原原生组件，旧 manifest 保持可用。默认手动安装仍拒绝覆盖已有目录，符号链接目标被拒绝。
+- macOS 目录规范：5 个已签名 Mach-O 放在 `Contents/MacOS/ShareCore/`，manifest 放在 `Contents/Resources/ShareCore/manifest.json`。把 JSON 留在 MacOS 嵌套代码目录会让普通签名失败；对整包传入 `--deep --entitlements` 又会修改 helper 权限及字节，因此构建沿用 Xcode 正常签名，并迁移旧布局。运行时核心路径与 Dart IPC 不变。
+- `script/build_macos.sh` 复用 Runner 自动安装，取消重复安装和提前删除目录；`fix_macos_app_policy.sh` 重签保留 entitlements、requirements、flags 与 runtime，保留 Debug JIT 以及 Release 权限。无新增 Provider、UI、l10n、Theme、窗口广播或运行期进程行为。
+- 交叉配置签名保护：`build_device_bridge.sh` 在 Xcode 环境中仅生成桥接库，由当前 Runner 阶段拷贝到当前产物；不再同时改写另一配置已签名 App 的动态库。独立执行脚本的原有更新行为保留，增加离线脚本回归验证边界。
+
+正常使用与定向回归命令：
+
+```bash
+flutter build macos --debug --no-pub
+flutter build macos --release --no-pub
+python3 -m unittest discover -s test/script -v
+flutter test --no-pub test/core/nearby_share/share_core_client_test.dart test/core/nearby_share/share_core_sessions_test.dart
+```
+
+测试范围：离线构建入口覆盖 Debug/Release 无 opt-in、重复安装、空格路径与错误架构；安装器覆盖缓存、固定制品校验、旧布局迁移、损坏修复和发布回滚；macOS 最小签名包覆盖整包 deep/strict、Debug/Release entitlement 与 runtime 保留、helper 字节不变。
+
+本次验证：24 项 Python 构建/安装/签名回归与 13 项 Dart IPC 测试通过，Shell 语法、Xcode project plist 与 `git diff --check` 通过。取消两个 `ANYDECK_SHARE_CORE*` 环境变量后，正常 arm64 Debug/Release 均构建成功；连续构建后两个包同时通过 5 成员 SHA-256/签名、资源 manifest 一致性、整包 deep/strict、声明权限保留（Debug JIT）及实际 Core 0.3.5 / IPC 3 hello 与完整能力契约核对。未主动启动或重启 App，未传输手机文件；这些检查不代表手机双向传输验收。构建仅使用本机校验制品/缓存，私有远端获取路径由离线 mock 验证，未声称新的远端下载验收。

@@ -57,11 +57,6 @@ echo "=========================================="
 echo "开始构建 macOS Release 版本..."
 echo "=========================================="
 
-if [ "${ANYDECK_SHARE_CORE:-0}" = "1" ]; then
-  # 只清理上次生成包内的私有核心，安装器继续拒绝覆盖其它已有内容。
-  rm -rf "$PROJECT_ROOT/build/macos/Build/Products/Release/AnyDeck.app/Contents/MacOS/ShareCore"
-fi
-
 # 运行 Flutter 构建命令
 flutter build macos --release
 
@@ -81,15 +76,7 @@ APP_NAME=$(basename "$APP_PATH")
 echo "找到应用包: $APP_NAME"
 echo "源路径: $APP_PATH"
 
-if [ "${ANYDECK_SHARE_CORE:-0}" = "1" ]; then
-  # 可选接入固定SHA-256的私有原生制品；协议源码不会进入主仓库。
-  if [ -n "${ANYDECK_SHARE_CORE_ARCHIVE:-}" ]; then
-    python3 "$SCRIPT_DIR/install_share_core.py" --app "$APP_PATH" --archive "$ANYDECK_SHARE_CORE_ARCHIVE"
-  else
-    python3 "$SCRIPT_DIR/install_share_core.py" --app "$APP_PATH"
-  fi
-fi
-
+# Runner 构建阶段已自动安装并校验 Share Core，分发脚本只处理整包策略与复制。
 "$SCRIPT_DIR/fix_macos_app_policy.sh" "$APP_PATH"
 
 # 创建目标的 Products 目录

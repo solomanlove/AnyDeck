@@ -22,4 +22,5 @@ xattr -dr com.apple.provenance "$APP_PATH" 2>/dev/null || true
 xattr -dr com.apple.quarantine "$APP_PATH" 2>/dev/null || true
 
 # 清理扩展属性后重新签名，确保 FlutterMacOS.framework 与动态库仍满足本地调试签名要求。
-codesign --force --deep --sign - "$APP_PATH"
+codesign --force --deep --sign - \
+  --preserve-metadata=entitlements,requirements,flags,runtime "$APP_PATH"

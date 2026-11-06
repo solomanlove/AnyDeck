@@ -36,6 +36,9 @@ chmod 755 "$BRIDGE_STAGED"
 codesign --force --sign - "$BRIDGE_STAGED"
 mv -f "$BRIDGE_STAGED" "$BRIDGE_OUTPUT"
 
+# Xcode 由当前 Runner 阶段拷贝动态库，避免改写另一配置已完成签名的 App。
+if [ -n "${TARGET_BUILD_DIR:-}" ]; then exit 0; fi
+
 # 更新已构建 App 的磁盘文件；已运行的进程必须重启才会加载新版本。
 for BRIDGE_CONFIGURATION in Debug Release; do
   BRIDGE_FRAMEWORKS="$PROJECT_ROOT/build/macos/Build/Products/$BRIDGE_CONFIGURATION/AnyDeck.app/Contents/Frameworks"
