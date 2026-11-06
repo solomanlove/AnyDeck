@@ -24,6 +24,7 @@ class AppManagementService {
   AppManagementService(this._adb, {HdcService? hdc}) : _hdc = hdc;
 
   static const _cacheSchemaVersion = 4;
+  static const _maxMemoryCacheKeys = 12;
   static const _packageCachePrefix = 'apps.packages.v4';
   static const _helperAssetPath = 'assets/android/package_icon_helper.dex';
   static const _remoteBaseDir = '/data/local/tmp/any_deck';
@@ -54,13 +55,23 @@ class AppManagementService {
     for (final key in candidateKeys) {
       final cached = _memoryCache[key];
       if (cached != null && cached.isNotEmpty) {
+        _rememberPackages(key, cached);
         if (key != deviceId) {
-          _memoryCache[deviceId] = cached;
+          _rememberPackages(deviceId, cached);
         }
         return cached;
       }
     }
     return null;
+  }
+
+  /// 内存仅保留近期连接通道，历史设备仍可从本地持久化缓存重新读取。
+  void _rememberPackages(String key, List<AdbPackage> packages) {
+    _memoryCache.remove(key);
+    _memoryCache[key] = packages;
+    while (_memoryCache.length > _maxMemoryCacheKeys) {
+      _memoryCache.remove(_memoryCache.keys.first);
+    }
   }
 
   /// 优先读取本地缓存；没有缓存或强制刷新时才访问手机。
@@ -717,10 +728,10 @@ fi
             .toList(growable: false);
         final sorted = packages..sort(_comparePackages);
         if (sorted.isNotEmpty) {
-          _memoryCache[key] = sorted;
-          _memoryCache[deviceId] = sorted;
+          _rememberPackages(key, sorted);
+          _rememberPackages(deviceId, sorted);
           if (canonicalId != null && canonicalId.isNotEmpty) {
-            _memoryCache[canonicalId] = sorted;
+            _rememberPackages(canonicalId, sorted);
           }
           if (key != deviceId) {
             unawaited(preferences.setString(_packageCacheKey(deviceId), raw));
@@ -749,7 +760,7 @@ fi
       'items': packages.map((package) => package.toJson()).toList(),
     });
 
-    _memoryCache[deviceId] = packages;
+    _rememberPackages(deviceId, packages);
     final keysToSave = <String>{
       deviceId,
       if (canonicalId != null && canonicalId.isNotEmpty) canonicalId,
@@ -757,7 +768,7 @@ fi
     };
 
     for (final key in keysToSave) {
-      _memoryCache[key] = packages;
+      _rememberPackages(key, packages);
       final saved = await preferences.setString(_packageCacheKey(key), payload);
       if (!saved && key == deviceId) {
         throw StateError('Package cache write failed');

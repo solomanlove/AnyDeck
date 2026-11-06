@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
@@ -8,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../process/tool_path_resolver.dart';
 import 'logcat_entry.dart';
 import 'logcat_state.dart';
+import 'logcat_line_reader.dart';
 
 /// 管理 adb logcat 进程，并暴露有上限的内存日志缓冲区。
 class LogcatController extends Notifier<LogcatState> {
@@ -24,16 +26,19 @@ class LogcatController extends Notifier<LogcatState> {
   String? _deviceId;
   bool _isHarmony = false;
   Map<String, String> _pidPackages = const {};
-  final List<LogcatEntry> _pendingEntries = [];
+  final Queue<LogcatEntry> _pendingEntries = Queue();
   Timer? _batchTimer;
   int _maxLogLength = 0;
+  int _sessionRevision = 0;
 
   int get maxLogLength => _maxLogLength;
+  String? get activeDeviceId => _deviceId;
 
   @override
   LogcatState build() {
     // Riverpod 销毁控制器时，同步停止外部 logcat 进程。
     ref.onDispose(() {
+      _sessionRevision++;
       unawaited(_releaseProcess(updateState: false));
     });
     unawaited(_loadFilterHistories());
@@ -42,24 +47,28 @@ class LogcatController extends Notifier<LogcatState> {
 
   /// 为选中设备启动新的 logcat 进程。鸿蒙设备走 `hdc hilog`，安卓走 `adb logcat`。
   Future<void> start(String deviceId, {bool isHarmony = false}) async {
-    await stop();
+    final revision = ++_sessionRevision;
+    await _releaseProcess(updateState: true);
+    if (revision != _sessionRevision || !ref.mounted) return;
     _deviceId = deviceId;
     _isHarmony = isHarmony;
     state = state.copyWith(entries: [], isRunning: true, isPaused: false);
     try {
       await _refreshPidPackages();
+      if (revision != _sessionRevision || !ref.mounted) return;
       _pidMapTimer = Timer.periodic(
         const Duration(seconds: 5),
         (_) => _refreshPidPackages(),
       );
+      final Process process;
       if (isHarmony) {
-        _process = await Process.start(resolveToolPath('hdc'), [
+        process = await Process.start(resolveToolPath('hdc'), [
           '-t',
           deviceId,
           'hilog',
         ]);
       } else {
-        _process = await Process.start(resolveToolPath('adb'), [
+        process = await Process.start(resolveToolPath('adb'), [
           '-s',
           deviceId,
           'logcat',
@@ -67,26 +76,34 @@ class LogcatController extends Notifier<LogcatState> {
           'threadtime',
         ]);
       }
-      _subscription = _process!.stdout
+      if (revision != _sessionRevision || !ref.mounted) {
+        process.kill();
+        return;
+      }
+      _process = process;
+      _subscription = process.stdout
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const LineSplitter())
           .listen(_appendLine);
-      _errorSubscription = _process!.stderr
+      _errorSubscription = process.stderr
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const LineSplitter())
           .listen((line) => _appendLine('[stderr] $line'));
-      _process!.exitCode.whenComplete(() {
-        if (_process != null) {
+      process.exitCode.whenComplete(() {
+        if (identical(_process, process) && ref.mounted) {
           state = state.copyWith(isRunning: false);
         }
       });
     } on Object catch (error) {
-      state = state.copyWith(isRunning: false, error: error.toString());
+      if (revision == _sessionRevision && ref.mounted) {
+        state = state.copyWith(isRunning: false, error: error.toString());
+      }
     }
   }
 
   /// 取消流订阅并终止背后的进程。
   Future<void> stop() async {
+    _sessionRevision++;
     await _releaseProcess(updateState: true);
   }
 
@@ -97,16 +114,19 @@ class LogcatController extends Notifier<LogcatState> {
     _batchTimer = null;
     _pendingEntries.clear();
     _maxLogLength = 0;
-    await _subscription?.cancel();
-    await _errorSubscription?.cancel();
+    final subscription = _subscription;
+    final errorSubscription = _errorSubscription;
+    final process = _process;
     _subscription = null;
     _errorSubscription = null;
-    _process?.kill();
     _process = null;
     _deviceId = null;
-    if (updateState) {
+    process?.kill();
+    if (updateState && ref.mounted) {
       state = state.copyWith(isRunning: false);
     }
+    await subscription?.cancel();
+    await errorSubscription?.cancel();
   }
 
   /// 清空可见日志缓冲区，但不重启 logcat。
@@ -120,19 +140,47 @@ class LogcatController extends Notifier<LogcatState> {
 
   /// 导入 Android Studio 或 adb 导出的文本日志。
   void importText(String text) {
+    state = state.copyWith(entries: _parseRecentLines(LineSplitter.split(text)));
+  }
+
+  /// 流式导入文件，只保留最近 3000 行，避免同时持有完整文本和解析列表。
+  Future<void> importFile(File file) async {
+    final lines = readBoundedLogcatLines(
+      file.openRead().transform(const Utf8Decoder(allowMalformed: true)),
+    );
+    final recent = Queue<LogcatEntry>();
     _maxLogLength = 0;
-    final entries = const LineSplitter()
-        .convert(text)
-        .where((line) => line.trim().isNotEmpty)
-        .map((line) => parseLogcatLine(line, pidPackages: _pidPackages))
-        .toList(growable: false);
-    for (final entry in entries) {
-      final len = entry.message.isEmpty ? entry.rawLine.length : entry.message.length;
-      if (len > _maxLogLength) {
-        _maxLogLength = len;
-      }
+    var processed = 0;
+    await for (final line in lines) {
+      if (line.trim().isEmpty) continue;
+      recent.add(parseLogcatLine(line, pidPackages: _pidPackages));
+      if (recent.length > _maxEntries) recent.removeFirst();
+      if (++processed % 500 == 0) await Future<void>.delayed(Duration.zero);
     }
-    state = state.copyWith(entries: _trimEntries(entries));
+    if (!ref.mounted) return;
+    _updateMaxLogLength(recent);
+    state = state.copyWith(entries: recent.toList(growable: false));
+  }
+
+  List<LogcatEntry> _parseRecentLines(Iterable<String> lines) {
+    final recent = Queue<LogcatEntry>();
+    _maxLogLength = 0;
+    for (final line in lines) {
+      if (line.trim().isEmpty) continue;
+      final entry = parseLogcatLine(line, pidPackages: _pidPackages);
+      recent.add(entry);
+      if (recent.length > _maxEntries) recent.removeFirst();
+    }
+    _updateMaxLogLength(recent);
+    return recent.toList(growable: false);
+  }
+
+  void _updateMaxLogLength(Iterable<LogcatEntry> entries) {
+    _maxLogLength = 0;
+    for (final entry in entries) {
+      final length = entry.message.isEmpty ? entry.rawLine.length : entry.message.length;
+      if (length > _maxLogLength) _maxLogLength = length;
+    }
   }
 
   /// 更新全文过滤条件。保留旧 API 名称，兼容现有调用。
@@ -285,12 +333,14 @@ class LogcatController extends Notifier<LogcatState> {
     if (state.isPaused) {
       return;
     }
-    final entry = parseLogcatLine(line, pidPackages: _pidPackages);
+    final boundedLine = line.length > 16384 ? line.substring(0, 16384) : line;
+    final entry = parseLogcatLine(boundedLine, pidPackages: _pidPackages);
     final len = entry.message.isEmpty ? entry.rawLine.length : entry.message.length;
     if (len > _maxLogLength) {
       _maxLogLength = len;
     }
     _pendingEntries.add(entry);
+    if (_pendingEntries.length > _maxEntries) _pendingEntries.removeFirst();
 
     _batchTimer ??= Timer(const Duration(milliseconds: 100), () {
       if (_pendingEntries.isEmpty) return;
@@ -327,7 +377,7 @@ class LogcatController extends Notifier<LogcatState> {
         if (result.exitCode != 0) return;
         stdout = result.stdout.toString();
         final mapping = _parseHarmonyPidPackages(stdout);
-        if (mapping.isEmpty) return;
+        if (mapping.isEmpty || deviceId != _deviceId) return;
         _pidPackages = mapping;
       } else {
         final result = await Process.run(resolveToolPath('adb'), [
@@ -342,7 +392,7 @@ class LogcatController extends Notifier<LogcatState> {
         if (result.exitCode != 0) return;
         stdout = result.stdout.toString();
         final mapping = _parsePidPackages(stdout);
-        if (mapping.isEmpty) return;
+        if (mapping.isEmpty || deviceId != _deviceId) return;
         _pidPackages = mapping;
       }
       _applyPidPackagesToExistingEntries();

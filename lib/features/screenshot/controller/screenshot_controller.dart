@@ -15,15 +15,17 @@ import 'screenshot_export_helper.dart';
 import 'screenshot_edit_session.dart';
 import 'screenshot_record_runner.dart';
 
+part 'screenshot_auto_refresh.dart';
+
 /// 设备会话级截图与布局分析统一状态控制器。
 class ScreenshotController extends Notifier<ScreenshotLayoutState>
-    with ScreenshotEditSession {
+    with ScreenshotEditSession, ScreenshotAutoRefresh {
   ScreenshotController(this.deviceId);
 
   final String deviceId;
 
   int _requestId = 0;
-  Timer? _autoRefreshTimer;
+  int _captureInFlight = 0;
   ScreenshotRecordRunner? _recordRunner;
   ui.Image? _currentDecodedImage;
 
@@ -41,7 +43,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
     );
 
     ref.onDispose(() {
-      _autoRefreshTimer?.cancel();
+      _cancelAutoRefreshTimer();
       _recordRunner?.dispose();
       _currentDecodedImage?.dispose();
       _currentDecodedImage = null;
@@ -70,9 +72,12 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
   }
 
   /// 普通截图拉取（支持单次或连续后台截图）
+  @override
   Future<void> captureScreenshot({bool isAuto = false}) async {
     if (state.isEditing) return;
     if (state.isLoading && !isAuto) return;
+    if (isAuto && _captureInFlight > 0) return;
+    _captureInFlight++;
     final currentRequestId = ++_requestId;
 
     state = state.copyWith(
@@ -87,6 +92,9 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
           : device?.isHarmony == true
           ? await ref.read(hdcServiceProvider).captureScreenshot(deviceId)
           : await ref.read(adbServiceProvider).captureScreenshot(deviceId);
+
+      // 自动刷新期间被切页或切设备取消的请求，不再占用图片解码内存。
+      if (currentRequestId != _requestId || !ref.mounted) return;
 
       final codec = await ui.instantiateImageCodec(bytes);
       final frameInfo = await codec.getNextFrame();
@@ -136,10 +144,12 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
           error: e.toString(),
         );
         if (isAuto) {
-          _autoRefreshTimer?.cancel();
+          _cancelAutoRefreshTimer();
           state = state.copyWith(isAutoRefresh: false);
         }
       }
+    } finally {
+      _captureInFlight--;
     }
   }
 
@@ -251,7 +261,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
 
     if (enable) {
       // 开启分析模式：暂停连续截图，禁止录屏，并发拉取截图与布局数据
-      _autoRefreshTimer?.cancel();
+      _cancelAutoRefreshTimer();
       state = state.copyWith(
         isLayoutAnalysis: true,
         isLoading: true,
@@ -276,14 +286,6 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
     }
   }
 
-  void _startAutoRefreshTimer() {
-    _autoRefreshTimer?.cancel();
-    final interval = state.autoRefreshInterval > 0 ? state.autoRefreshInterval : 3;
-    _autoRefreshTimer = Timer.periodic(Duration(seconds: interval), (_) {
-      captureScreenshot(isAuto: true);
-    });
-  }
-
   /// 切换连续截图
   void toggleAutoRefresh() {
     if (state.isLayoutAnalysis || state.isRecordingActive || state.isEditing) {
@@ -299,8 +301,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
     if (nextVal) {
       _startAutoRefreshTimer();
     } else {
-      _autoRefreshTimer?.cancel();
-      _autoRefreshTimer = null;
+      _cancelAutoRefreshTimer();
     }
   }
 
@@ -324,8 +325,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
       _startAutoRefreshTimer();
       captureScreenshot(isAuto: true);
     } else if (!state.isAutoRefresh) {
-      _autoRefreshTimer?.cancel();
-      _autoRefreshTimer = null;
+      _cancelAutoRefreshTimer();
     } else {
       _startAutoRefreshTimer();
     }
@@ -334,8 +334,9 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
   /// 切出 Tab 时暂停连续截图计时器（保留 state.isAutoRefresh 状态）
   @override
   void pauseAutoRefreshForTabSwitch() {
-    _autoRefreshTimer?.cancel();
-    _autoRefreshTimer = null;
+    _cancelAutoRefreshTimer();
+    _requestId++;
+    if (state.isLoading) state = state.copyWith(isLoading: false);
   }
 
   /// 切回 Tab 时根据先前的开关状态恢复连续截图
@@ -350,8 +351,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
   /// 切换设备或退出时重置分析模式为默认关闭
   void resetForDeviceSwitch() {
     _requestId++;
-    _autoRefreshTimer?.cancel();
-    _autoRefreshTimer = null;
+    _cancelAutoRefreshTimer();
     _currentDecodedImage?.dispose();
     _currentDecodedImage = null;
     disposeEditedImage();
@@ -486,8 +486,8 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
   }
 }
 
-/// 设备会话级 NotifierProvider.family
+/// 设备会话级 Provider；最后一个页面监听者离开后释放截图与录屏资源。
 final screenshotLayoutControllerProvider =
-    NotifierProvider.family<ScreenshotController, ScreenshotLayoutState, String>(
+    NotifierProvider.autoDispose.family<ScreenshotController, ScreenshotLayoutState, String>(
       ScreenshotController.new,
     );

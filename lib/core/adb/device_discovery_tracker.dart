@@ -36,6 +36,7 @@ class DeviceDiscoveryTracker {
   Process? _trackProcess;
   Timer? _reconnectTimer;
   Timer? _iosPollTimer;
+  bool _iosPolling = false;
   bool _isDisposed = false;
 
   List<DiscoveredDevice> _androidDevices = [];
@@ -166,19 +167,28 @@ class DeviceDiscoveryTracker {
     _iosPollTimer?.cancel();
     if (_iosDeviceService == null) return;
     _iosPollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
-      if (_isDisposed) return;
-      await _pollIosDevices();
-      _publish();
+      await refreshIosDevices();
     });
   }
 
+  /// iOS 发现请求串行化；慢查询期间到来的定时 tick 直接跳过。
+  Future<void> refreshIosDevices() async {
+    if (_iosPolling || _isDisposed) return;
+    await _pollIosDevices();
+    _publish();
+  }
+
   Future<void> _pollIosDevices() async {
+    if (_iosPolling || _isDisposed) return;
+    _iosPolling = true;
     try {
       if (_iosDeviceService != null) {
         _iosDevices = await _iosDeviceService.listDevices();
       }
     } catch (e) {
       debugPrint('[DeviceDiscoveryTracker] iOS poll error: $e');
+    } finally {
+      _iosPolling = false;
     }
   }
 

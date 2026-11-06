@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:any_deck/core/logcat/logcat_entry.dart';
+import 'package:any_deck/core/logcat/logcat_line_reader.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -76,5 +80,31 @@ void main() {
       'Slow Binder transaction took 211 ms',
       '--------- beginning of main',
     ]);
+  });
+
+  test('大文件按行导入后只保留最近 3000 条', () async {
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final directory = await Directory.systemTemp.createTemp('anydeck_logcat_test_');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/large.log');
+    await file.writeAsString(List.generate(5000, (i) => 'entry $i').join('\n'));
+
+    final controller = container.read(logcatControllerProvider.notifier);
+    await controller.importFile(file);
+
+    final entries = container.read(logcatControllerProvider).entries;
+    expect(entries, hasLength(3000));
+    expect(entries.first.rawLine, 'entry 2000');
+    expect(entries.last.rawLine, 'entry 4999');
+  });
+
+  test('异常超长行被截断且分块行边界保持正确', () async {
+    final lines = await readBoundedLogcatLines(
+      Stream.fromIterable(['abc', 'def\n12', '3456789\nlast']),
+      maxLineLength: 6,
+    ).toList();
+    expect(lines, ['abcdef', '123456', 'last']);
   });
 }

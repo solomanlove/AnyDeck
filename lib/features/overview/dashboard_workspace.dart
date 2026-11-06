@@ -289,10 +289,16 @@ class _ToolContentCardState extends State<_ToolContentCard> {
             key: ValueKey(widget.device.id),
             device: widget.device,
           ),
-          4 => HarmonyLogcatTab(device: widget.device),
+          4 => HarmonyLogcatTab(
+            device: widget.device,
+            isVisible: widget.tabIndex == 4,
+          ),
           5 => Padding(
             padding: const EdgeInsets.all(16),
-            child: HarmonyTerminalTab(device: widget.device),
+            child: HarmonyTerminalTab(
+              device: widget.device,
+              isVisible: widget.tabIndex == 5,
+            ),
           ),
           6 => HarmonyProcessesTab(
             device: widget.device,
@@ -321,10 +327,16 @@ class _ToolContentCardState extends State<_ToolContentCard> {
     ),
     2 => AppsTab(device: widget.device),
         3 => _FilesTab(device: widget.device),
-        4 => LogcatTab(device: widget.device),
+        4 => LogcatTab(
+          device: widget.device,
+          isVisible: widget.tabIndex == 4,
+        ),
         5 => Padding(
           padding: const EdgeInsets.all(16),
-          child: TerminalTab(device: widget.device),
+          child: TerminalTab(
+            device: widget.device,
+            isVisible: widget.tabIndex == 5,
+          ),
         ),
         6 => ProcessesTab(
           device: widget.device,

@@ -48,14 +48,24 @@ class IosDeviceService {
     }
 
     final exe = _resolveBinary();
+    Process? process;
     try {
-      final result = await Process.run(exe, ['list', '--details']);
-      if (result.exitCode != 0) {
-        _onLog?.call('go-ios list 失败，退出码: ${result.exitCode}, stderr: ${result.stderr}', tag: 'ios', level: 'W');
+      process = await Process.start(exe, ['list', '--details']);
+      final stdout = process.stdout.transform(utf8.decoder).join();
+      final stderr = process.stderr.transform(utf8.decoder).join();
+      final exitCode = await process.exitCode.timeout(const Duration(seconds: 10));
+      if (exitCode != 0) {
+        _onLog?.call('go-ios list 失败，退出码: $exitCode, stderr: ${await stderr}', tag: 'ios', level: 'W');
         return [];
       }
-      
-      return parseDeviceListOutput(result.stdout);
+      return parseDeviceListOutput(await stdout);
+    } on TimeoutException {
+      process?.kill();
+      await process?.exitCode.timeout(const Duration(seconds: 2), onTimeout: () {
+        process?.kill(ProcessSignal.sigkill);
+        return 124;
+      });
+      _onLog?.call('go-ios list 超时', tag: 'ios', level: 'W');
     } on ProcessException catch (e) {
       _onLog?.call('未能启动 go-ios 进程，请检查是否正确安装：${e.message}', tag: 'ios', level: 'W');
     } catch (e) {

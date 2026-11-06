@@ -1,15 +1,17 @@
 part of '../dashboard_screen.dart';
 
 class LogcatTab extends ConsumerStatefulWidget {
-  const LogcatTab({super.key, required this.device});
+  const LogcatTab({super.key, required this.device, required this.isVisible});
 
   final DiscoveredDevice device;
+  final bool isVisible;
 
   @override
   ConsumerState<LogcatTab> createState() => LogcatTabState();
 }
 
 class LogcatTabState extends ConsumerState<LogcatTab> {
+  late final LogcatController _captureController;
   final ScrollController _verticalController = ScrollController();
   final TextEditingController _packageController = TextEditingController();
   final TextEditingController _tagController = TextEditingController();
@@ -29,19 +31,40 @@ class LogcatTabState extends ConsumerState<LogcatTab> {
   @override
   void initState() {
     super.initState();
+    _captureController = ref.read(logcatControllerProvider.notifier);
     _searchController.addListener(_handleSearchTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !ref.read(logcatControllerProvider).isRunning) {
-        ref.read(logcatControllerProvider.notifier).start(
-              widget.device.id,
-              isHarmony: widget.device.isHarmony,
-            );
-      }
+      if (mounted) _syncCapture();
     });
   }
 
   @override
+  void didUpdateWidget(covariant LogcatTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.device.id != widget.device.id ||
+        oldWidget.isVisible != widget.isVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncCapture();
+      });
+    }
+  }
+
+  /// 仅为当前可见设备保留日志进程，切页或切设备时停止旧会话。
+  void _syncCapture() {
+    if (!widget.isVisible) {
+      unawaited(_captureController.stop());
+    } else if (_captureController.activeDeviceId != widget.device.id ||
+        !ref.read(logcatControllerProvider).isRunning) {
+      unawaited(_captureController.start(
+        widget.device.id,
+        isHarmony: widget.device.isHarmony,
+      ));
+    }
+  }
+
+  @override
   void dispose() {
+    scheduleMicrotask(() => unawaited(_captureController.stop()));
     _searchController.removeListener(_handleSearchTextChanged);
     _verticalController.dispose();
     _packageController.dispose();
@@ -409,8 +432,7 @@ class LogcatTabState extends ConsumerState<LogcatTab> {
     }
 
     try {
-      final text = await File(file.path).readAsString();
-      controller.importText(text);
+      await controller.importFile(File(file.path));
       if (context.mounted) {
         _showSnack(context, context.l10n.t('logcatImportSuccess'));
       }

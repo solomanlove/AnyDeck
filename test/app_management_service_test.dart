@@ -180,4 +180,18 @@ void main() {
     expect(directUsbHit, isNotNull);
     expect(directUsbHit!.first.name, 'com.example.wifi');
   });
+
+  test('内存只保留近期设备，旧设备仍能从持久化缓存读取', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = AppManagementService(FakeAppAdbService());
+    for (var i = 0; i < 16; i++) {
+      await service.savePackageCache('device$i', [AdbPackage(name: 'app$i')]);
+    }
+
+    expect(service.memoryCache.length, lessThanOrEqualTo(12));
+    expect(service.memoryCache.containsKey('device0'), isFalse);
+    final restored = await service.loadPackageCache('device0');
+    expect(restored?.single.name, 'app0');
+    expect(service.memoryCache.length, lessThanOrEqualTo(12));
+  });
 }

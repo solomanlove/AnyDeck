@@ -8,6 +8,7 @@
 
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
+| `adb-memory-performance-controls` | 内存与后台性能控制 | active | Logcat、终端、连续截图、iOS 发现和设备包缓存的有界内存、进程生命周期及回归验证 | `core/logcat/`, `core/terminal/`, `features/screenshot/`, `core/ios/`, `core/apps/` |
 | `adb-screenshot-image-editing` | 截图图片编辑 | active | 右上角编辑入口、形状/画笔/马赛克与遮盖、撤销重做、原图坐标、PNG 合成、会话互斥与资源释放 | `features/screenshot/` |
 | `adb-mirror-whiteboard` | 投屏白板本地标注 | active | 画笔入口、颜色/撤销/清空、Texture 透明画布、设备输入阻断、窗口生命周期及回归边界 | `app/window/mirror/`, `features/control/` |
 | `adb-settings-manual-removal` | 设置页说明书入口移除 | active | 记录设置页“软件说明书”入口、弹框和专用文案的移除范围及回归验证 | `features/overview/`, `features/widgets/`, `app/l10n/` |

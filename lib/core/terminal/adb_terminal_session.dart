@@ -12,15 +12,28 @@ import 'terminal_session_models.dart';
 export 'harmony_terminal_command.dart';
 export 'terminal_session_models.dart';
 
+part 'terminal_output_buffer.dart';
+
 /// 终端会话管理器 Notifier
-class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
+class AdbTerminalNotifier extends Notifier<AdbTerminalState>
+    with TerminalOutputBuffer {
+  int _nextSessionId = 0;
   final Map<String, Future<void>> _harmonyCommandQueues = {};
+  final Set<String> _suspendedDevices = {};
+  final Map<String, int> _sessionGenerations = {};
 
   @override
   AdbTerminalState build() {
     var latestState = const AdbTerminalState();
     listenSelf((_, next) => latestState = next);
     ref.onDispose(() {
+      for (final timer in _outputTimers.values) {
+        timer.cancel();
+      }
+      _outputTimers.clear();
+      _pendingOutput.clear();
+      _suspendedDevices.clear();
+      _sessionGenerations.clear();
       // 销毁时停止所有设备的所有交互式进程
       for (final sessions in latestState.deviceSessions.values) {
         for (final session in sessions) {
@@ -46,7 +59,8 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
 
   /// 创建并启动一个新的终端会话
   Future<void> createSession(String deviceId, {bool isHarmony = false}) async {
-    final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    final sessionId = '${DateTime.now().microsecondsSinceEpoch}-${_nextSessionId++}';
+    final generation = _bumpSessionGeneration(sessionId);
     final currentSessions = state.getSessions(deviceId);
 
     final session = AdbTerminalSession(
@@ -81,6 +95,15 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     try {
       final process = await _startShellProcess(deviceId, isHarmony: isHarmony);
 
+      if (!ref.mounted || _suspendedDevices.contains(deviceId) ||
+          _sessionGenerations[sessionId] != generation ||
+          !state.getSessions(deviceId).any(
+        (s) => s.id == sessionId && s.isRunning,
+      )) {
+        process.kill();
+        return;
+      }
+
       _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
 
       // 监听 stdout
@@ -88,7 +111,9 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const TerminalNewlineNormalizer())
           .listen((data) {
-            _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
+            if (ref.mounted && _sessionGenerations[sessionId] == generation) {
+              _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
+            }
           });
 
       // 监听 stderr
@@ -96,11 +121,16 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const TerminalNewlineNormalizer())
           .listen((data) {
-            _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
+            if (ref.mounted && _sessionGenerations[sessionId] == generation) {
+              _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
+            }
           });
 
       // 进程退出处理
       process.exitCode.then((code) {
+        if (!ref.mounted) return;
+        final current = state.getSessions(deviceId).where((s) => s.id == sessionId);
+        if (current.isEmpty || !identical(current.first.process, process)) return;
         _appendLocalizedOutput(
           deviceId,
           sessionId,
@@ -115,6 +145,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         );
       });
     } on Object catch (e) {
+      if (!ref.mounted || _sessionGenerations[sessionId] != generation) return;
       _appendLocalizedOutput(
         deviceId,
         sessionId,
@@ -145,6 +176,10 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     final index = sessions.indexWhere((s) => s.id == sessionId);
     if (index == -1) return;
 
+    _sessionGenerations.remove(sessionId);
+    _outputTimers.remove(sessionId)?.cancel();
+    _pendingOutput.remove(sessionId);
+
     final session = sessions[index];
     session.process?.kill();
 
@@ -168,6 +203,34 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       deviceSessions: updatedSessionsMap,
       activeSessionIds: updatedActiveIdsMap,
     );
+  }
+
+  /// 离开终端页时停止该设备的交互进程，保留已有输出和命令历史。
+  void suspendDevice(String deviceId) {
+    _suspendedDevices.add(deviceId);
+    for (final session in state.getSessions(deviceId)) {
+      _bumpSessionGeneration(session.id);
+      _outputTimers.remove(session.id)?.cancel();
+      _pendingOutput.remove(session.id);
+      session.process?.kill();
+      if (session.process != null || (!session.isHarmony && session.isRunning)) {
+        _updateSession(deviceId, session.id,
+            (s) => s.copyWith(
+              isRunning: s.isHarmony,
+              clearProcess: true,
+            ));
+      }
+    }
+  }
+
+  /// 回到终端页时恢复 Android 会话，原有终端输出保持可见。
+  Future<void> resumeDevice(String deviceId) async {
+    _suspendedDevices.remove(deviceId);
+    for (final session in state.getSessions(deviceId)) {
+      if (!session.isHarmony && !session.isRunning && session.process == null) {
+        await restartSession(deviceId, session.id, clearOutput: false);
+      }
+    }
   }
 
   /// 发送命令；Android 写入 PTY stdin，HarmonyOS 逐条启动 HDC shell。
@@ -195,7 +258,13 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
       return;
     }
 
-    final newHistory = [...session.commandHistory, command];
+    final historyCommand = command.length > TerminalOutputBuffer._maxLineLength
+        ? command.substring(0, TerminalOutputBuffer._maxLineLength)
+        : command;
+    final history = [...session.commandHistory, historyCommand];
+    final newHistory = history.length > TerminalOutputBuffer._maxHistoryCommands
+        ? history.sublist(history.length - TerminalOutputBuffer._maxHistoryCommands)
+        : history;
     _updateSession(deviceId, sessionId, (s) {
       return s.copyWith(
         commandHistory: newHistory,
@@ -234,6 +303,8 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     String sessionId,
     String command,
   ) async {
+    if (_suspendedDevices.contains(deviceId)) return;
+    final generation = _sessionGenerations[sessionId];
     final sessionExists = state
         .getSessions(deviceId)
         .any((session) => session.id == sessionId && session.isRunning);
@@ -245,28 +316,39 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         hdcPath,
         harmonyShellArguments(deviceId, command),
       );
+      if (!ref.mounted || _suspendedDevices.contains(deviceId) ||
+          _sessionGenerations[sessionId] != generation) {
+        process.kill();
+        return;
+      }
       _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
 
       final stdoutDone = process.stdout
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const TerminalNewlineNormalizer())
           .forEach((data) {
-            _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
+            if (_sessionGenerations[sessionId] == generation && ref.mounted) {
+              _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
+            }
           });
       final stderrDone = process.stderr
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const TerminalNewlineNormalizer())
           .forEach((data) {
-            _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
+            if (_sessionGenerations[sessionId] == generation && ref.mounted) {
+              _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
+            }
           });
 
       await Future.wait([stdoutDone, stderrDone, process.exitCode]);
+      if (!ref.mounted || _sessionGenerations[sessionId] != generation) return;
       _updateSession(
         deviceId,
         sessionId,
         (s) => s.copyWith(clearProcess: true),
       );
     } on Object catch (e) {
+      if (!ref.mounted || _sessionGenerations[sessionId] != generation) return;
       _appendLocalizedOutput(
         deviceId,
         sessionId,
@@ -296,10 +378,15 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
   }
 
   /// 重启终端进程
-  Future<void> restartSession(String deviceId, String sessionId) async {
+  Future<void> restartSession(String deviceId, String sessionId,
+      {bool clearOutput = true}) async {
     final sessions = state.getSessions(deviceId);
     final index = sessions.indexWhere((s) => s.id == sessionId);
     if (index == -1) return;
+
+    final generation = _bumpSessionGeneration(sessionId);
+    _outputTimers.remove(sessionId)?.cancel();
+    _pendingOutput.remove(sessionId);
 
     final session = sessions[index];
     session.process?.kill();
@@ -307,7 +394,11 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     _updateSession(
       deviceId,
       sessionId,
-      (s) => s.copyWith(lines: [], isRunning: true, clearProcess: true),
+      (s) => s.copyWith(
+        lines: clearOutput ? [] : s.lines,
+        isRunning: true,
+        clearProcess: true,
+      ),
     );
 
     if (session.isHarmony) return;
@@ -318,23 +409,39 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         isHarmony: session.isHarmony,
       );
 
+      if (!ref.mounted || _suspendedDevices.contains(deviceId) ||
+          _sessionGenerations[sessionId] != generation ||
+          !state.getSessions(deviceId).any(
+        (s) => s.id == sessionId && s.isRunning,
+      )) {
+        process.kill();
+        return;
+      }
+
       _updateSession(deviceId, sessionId, (s) => s.copyWith(process: process));
 
       process.stdout
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const TerminalNewlineNormalizer())
           .listen((data) {
-            _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
+            if (ref.mounted && _sessionGenerations[sessionId] == generation) {
+              _appendOutput(deviceId, sessionId, data, TerminalLineType.stdout);
+            }
           });
 
       process.stderr
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const TerminalNewlineNormalizer())
           .listen((data) {
-            _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
+            if (ref.mounted && _sessionGenerations[sessionId] == generation) {
+              _appendOutput(deviceId, sessionId, data, TerminalLineType.stderr);
+            }
           });
 
       process.exitCode.then((code) {
+        if (!ref.mounted) return;
+        final current = state.getSessions(deviceId).where((s) => s.id == sessionId);
+        if (current.isEmpty || !identical(current.first.process, process)) return;
         _appendLocalizedOutput(
           deviceId,
           sessionId,
@@ -349,6 +456,7 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
         );
       });
     } on Object catch (e) {
+      if (!ref.mounted || _sessionGenerations[sessionId] != generation) return;
       _appendLocalizedOutput(
         deviceId,
         sessionId,
@@ -364,136 +472,6 @@ class AdbTerminalNotifier extends Notifier<AdbTerminalState> {
     }
   }
 
-  /// 清空终端输出缓冲区
-  void clearBuffer(String deviceId, String sessionId) {
-    _updateSession(deviceId, sessionId, (s) => s.copyWith(lines: []));
-  }
-
-  /// 历史命令上下翻页
-  String? getHistoryCommand(
-    String deviceId,
-    String sessionId,
-    bool isUp,
-    String currentInput,
-  ) {
-    final sessions = state.getSessions(deviceId);
-    final index = sessions.indexWhere((s) => s.id == sessionId);
-    if (index == -1) return null;
-
-    final session = sessions[index];
-    if (session.commandHistory.isEmpty) return null;
-
-    int newIndex = session.historyIndex;
-    if (isUp) {
-      newIndex = newIndex - 1;
-      if (newIndex < 0) newIndex = 0;
-    } else {
-      newIndex = newIndex + 1;
-      if (newIndex >= session.commandHistory.length) {
-        newIndex = session.commandHistory.length;
-        _updateSession(
-          deviceId,
-          sessionId,
-          (s) => s.copyWith(historyIndex: newIndex),
-        );
-        return '';
-      }
-    }
-
-    _updateSession(
-      deviceId,
-      sessionId,
-      (s) => s.copyWith(historyIndex: newIndex),
-    );
-    return session.commandHistory[newIndex];
-  }
-
-  /// 辅助更新单个会话的数据
-  void _updateSession(
-    String deviceId,
-    String sessionId,
-    AdbTerminalSession Function(AdbTerminalSession) updater,
-  ) {
-    final sessions = state.getSessions(deviceId);
-    final updatedSessions = sessions.map((s) {
-      if (s.id == sessionId) {
-        return updater(s);
-      }
-      return s;
-    }).toList();
-
-    final updatedSessionsMap = Map<String, List<AdbTerminalSession>>.from(
-      state.deviceSessions,
-    );
-    updatedSessionsMap[deviceId] = updatedSessions;
-
-    state = state.copyWith(deviceSessions: updatedSessionsMap);
-  }
-
-  /// 追加输出数据
-  void _appendOutput(
-    String deviceId,
-    String sessionId,
-    String chunk,
-    TerminalLineType type,
-  ) {
-    final sessions = state.getSessions(deviceId);
-    final index = sessions.indexWhere((s) => s.id == sessionId);
-    if (index == -1) return;
-
-    final session = sessions[index];
-    final currentLines = List<TerminalLine>.from(session.lines);
-
-    final cleanChunk = chunk.replaceAll(RegExp(r'\x1B\[[0-9;]*[a-zA-Z]'), '');
-    if (cleanChunk.isEmpty) return;
-
-    final newParts = cleanChunk.split(RegExp(r'\r\n|\n|\r'));
-
-    if (currentLines.isEmpty) {
-      currentLines.add(TerminalLine(text: '', type: type));
-    }
-
-    final lastLine = currentLines.last;
-    if (lastLine.type == type || lastLine.text.isEmpty) {
-      currentLines[currentLines.length - 1] = TerminalLine(
-        text: lastLine.text + newParts[0],
-        type: type,
-      );
-    } else {
-      currentLines.add(TerminalLine(text: newParts[0], type: type));
-    }
-
-    for (int i = 1; i < newParts.length; i++) {
-      currentLines.add(TerminalLine(text: newParts[i], type: type));
-    }
-
-    if (currentLines.length > 1500) {
-      currentLines.removeRange(0, currentLines.length - 1500);
-    }
-
-    _updateSession(deviceId, sessionId, (s) => s.copyWith(lines: currentLines));
-  }
-
-  /// 追加应用内状态文案，交给 UI 根据当前语言渲染。
-  void _appendLocalizedOutput(
-    String deviceId,
-    String sessionId,
-    String key,
-    TerminalLineType type, {
-    Map<String, String> args = const {},
-  }) {
-    final sessions = state.getSessions(deviceId);
-    final index = sessions.indexWhere((s) => s.id == sessionId);
-    if (index == -1) return;
-
-    final session = sessions[index];
-    final currentLines = List<TerminalLine>.from(session.lines)
-      ..add(TerminalLine.localized(l10nKey: key, type: type, l10nArgs: args));
-
-    if (currentLines.length > 1500) {
-      currentLines.removeRange(0, currentLines.length - 1500);
-    }
-
-    _updateSession(deviceId, sessionId, (s) => s.copyWith(lines: currentLines));
-  }
+  int _bumpSessionGeneration(String sessionId) =>
+      _sessionGenerations[sessionId] = (_sessionGenerations[sessionId] ?? 0) + 1;
 }

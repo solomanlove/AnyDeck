@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -10,17 +12,20 @@ import '../../core/terminal/adb_terminal_session.dart';
 import '../../core/terminal/favorite_commands.dart';
 
 part 'terminal_favorites.dart';
+part 'terminal_session_lifecycle.dart';
 
 class TerminalTab extends ConsumerStatefulWidget {
   final DiscoveredDevice device;
+  final bool isVisible;
 
-  const TerminalTab({super.key, required this.device});
+  const TerminalTab({super.key, required this.device, required this.isVisible});
 
   @override
   ConsumerState<TerminalTab> createState() => _TerminalTabState();
 }
 
 class _TerminalTabState extends ConsumerState<TerminalTab> {
+  late final AdbTerminalNotifier _sessionNotifier;
   final TextEditingController _commandController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late final FocusNode _inputFocusNode;
@@ -28,6 +33,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
   @override
   void initState() {
     super.initState();
+    _sessionNotifier = ref.read(adbTerminalProvider.notifier);
     _inputFocusNode = FocusNode(
       debugLabel: 'TerminalInput',
       onKeyEvent: (node, event) {
@@ -74,42 +80,33 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     );
     // 延迟一帧，如果当前没有会话，自动创建一个默认终端
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final terminalState = ref.read(adbTerminalProvider);
-      if (terminalState.getSessions(widget.device.id).isEmpty) {
-        ref
-            .read(adbTerminalProvider.notifier)
-            .createSession(widget.device.id, isHarmony: widget.device.isHarmony);
-      }
-      if (mounted) {
-        _inputFocusNode.requestFocus();
-      }
+      if (mounted) _syncTerminalSession(this);
     });
   }
 
   @override
+  void didUpdateWidget(covariant TerminalTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.device.id != widget.device.id ||
+        oldWidget.isVisible != widget.isVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (oldWidget.device.id != widget.device.id) {
+          _sessionNotifier.suspendDevice(oldWidget.device.id);
+        }
+        _syncTerminalSession(this);
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    final deviceId = widget.device.id;
+    scheduleMicrotask(() => _sessionNotifier.suspendDevice(deviceId));
     _commandController.dispose();
     _scrollController.dispose();
     _inputFocusNode.dispose();
     super.dispose();
-  }
-
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
-  void _handleSendCommand(String sessionId, String text) {
-    ref
-        .read(adbTerminalProvider.notifier)
-        .sendCommand(widget.device.id, sessionId, text.trim());
-    _commandController.clear();
-    _inputFocusNode.requestFocus();
   }
 
   @override
@@ -138,7 +135,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
       if (nextActive != null &&
           (prevActive == null ||
               prevActive.lines != nextActive.lines)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _scrollTerminalToBottom(_scrollController),
+        );
       }
     });
 
@@ -437,7 +436,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                             contentPadding: EdgeInsets.symmetric(vertical: 2),
                           ),
                           onSubmitted: (text) =>
-                              _handleSendCommand(session.id, text),
+                              _sendTerminalCommand(this, session.id, text),
                         ),
                       ),
                     ],

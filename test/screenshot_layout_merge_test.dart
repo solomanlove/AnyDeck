@@ -519,6 +519,11 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
+      final subscription = container.listen(
+        screenshotLayoutControllerProvider('dev1'),
+        (_, _) {},
+      );
+      addTearDown(subscription.close);
 
       final controller =
           container.read(screenshotLayoutControllerProvider('dev1').notifier);

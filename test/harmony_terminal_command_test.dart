@@ -42,4 +42,42 @@ void main() {
     expect(session.lines.map((line) => line.text), [r'$ ', r'$ ', '']);
     expect(session.commandHistory, isEmpty);
   });
+
+  test('终端命令历史与单行输出保持有界', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final terminal = container.read(_terminalProvider.notifier);
+    await terminal.createSession('harmony-device', isHarmony: true);
+    final sessionId = container
+        .read(_terminalProvider)
+        .getActiveSession('harmony-device')!
+        .id;
+    terminal.suspendDevice('harmony-device');
+
+    for (var i = 0; i < 205; i++) {
+      terminal.sendCommand('harmony-device', sessionId, 'command$i');
+    }
+    terminal.sendCommand('harmony-device', sessionId, 'x' * 20000);
+
+    final session = container
+        .read(_terminalProvider)
+        .getActiveSession('harmony-device')!;
+    expect(session.commandHistory, hasLength(200));
+    expect(session.commandHistory.first, 'command6');
+    expect(session.commandHistory.last.length, 16384);
+    expect(session.lines.last.text.length, lessThanOrEqualTo(16384));
+  });
+
+  test('快速创建的会话 ID 保持唯一', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final terminal = container.read(_terminalProvider.notifier);
+    await terminal.createSession('harmony-device', isHarmony: true);
+    await terminal.createSession('harmony-device', isHarmony: true);
+
+    final sessions = container
+        .read(_terminalProvider)
+        .getSessions('harmony-device');
+    expect(sessions.map((session) => session.id).toSet(), hasLength(2));
+  });
 }

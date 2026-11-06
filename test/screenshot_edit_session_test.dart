@@ -81,6 +81,7 @@ void main() {
   late _CaptureService service;
   late ProviderContainer container;
   late ScreenshotController controller;
+  late ProviderSubscription<ScreenshotLayoutState> subscription;
 
   setUp(() async {
     service = _CaptureService(await _png());
@@ -90,10 +91,14 @@ void main() {
         deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
       ],
     );
+    subscription = container.listen(_provider, (_, _) {});
     controller = container.read(_provider.notifier);
   });
 
-  tearDown(() => container.dispose());
+  tearDown(() {
+    subscription.close();
+    container.dispose();
+  });
 
   test('编辑冻结画面并丢弃进入编辑前已发出的自动截图', () async {
     await controller.captureScreenshot();
@@ -117,6 +122,36 @@ void main() {
     await controller.loadLayoutAndScreenshot();
     expect(service.captures, 2);
     expect(container.read(_provider).isLoading, isFalse);
+  });
+
+  test('上一张自动截图未完成时不会并发发起第二张', () async {
+    final pending = Completer<Uint8List>();
+    service.nextRequest = pending;
+    final first = controller.captureScreenshot(isAuto: true);
+    final second = controller.captureScreenshot(isAuto: true);
+    expect(service.captures, 1);
+
+    pending.complete(service.bytes);
+    await Future.wait([first, second]);
+    expect(service.captures, 1);
+    expect(container.read(_provider).hasImage, isTrue);
+  });
+
+  test('最后一个监听者离开后释放解码图片', () async {
+    final local = ProviderContainer(
+      overrides: [
+        adbServiceProvider.overrideWithValue(service),
+        deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
+      ],
+    );
+    addTearDown(local.dispose);
+    final subscription = local.listen(_provider, (_, _) {});
+    await local.read(_provider.notifier).captureScreenshot();
+    final image = local.read(_provider).decodedImage!;
+
+    subscription.close();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(image.debugDisposed, isTrue);
   });
 
   test('开始编辑停止连续截图且切回 Tab 不恢复定时器', () async {
@@ -223,10 +258,12 @@ void main() {
         deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
       ],
     );
+    final disposedSubscription = disposedContainer.listen(_provider, (_, _) {});
     final disposedController = disposedContainer.read(_provider.notifier);
     await disposedController.captureScreenshot();
     final disposedSource = disposedContainer.read(_provider).displayImage!;
     disposedController.beginEditing();
+    disposedSubscription.close();
     disposedContainer.dispose();
     expect(
       () => disposedController.abandonEditing(disposedSource),
@@ -247,6 +284,8 @@ void main() {
         ],
       );
       addTearDown(recordingContainer.dispose);
+      final recordingSubscription = recordingContainer.listen(_provider, (_, _) {});
+      addTearDown(recordingSubscription.close);
       final recordingController = recordingContainer.read(_provider.notifier);
       await recordingController.captureScreenshot();
       recordingController.beginEditing();
