@@ -55,7 +55,7 @@ class DeveloperInfoSection extends ConsumerWidget {
           ),
           _InfoEntry(
             label: '快捷键 (Shortcut Key)',
-            value: '⌘${settings.showWindowShortcutKey.toUpperCase()}',
+            value: settings.mainWindowBinding.label(),
           ),
         ]),
       ],

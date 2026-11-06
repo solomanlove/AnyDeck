@@ -173,6 +173,102 @@ void main() {
     expect(calls, 1);
     expect(tester.takeException(), null);
   }, variant: const TargetPlatformVariant({TargetPlatform.macOS}));
+
+  for (final platform in [
+    TargetPlatform.macOS,
+    TargetPlatform.windows,
+    TargetPlatform.linux,
+  ]) {
+    testWidgets('$platform 自定义完整修饰键和普通单键精确匹配', (tester) async {
+      final container = ProviderContainer(
+        overrides: [appSettingsProvider.overrideWith(ShortcutTestSettings.new)],
+      );
+      addTearDown(container.dispose);
+      var calls = 0;
+      final forwarded = <LogicalKeyboardKey>[];
+      await tester.pumpWidget(
+        shortcutTestApp(
+          container: container,
+          child: MirrorShortcutScope(
+            child: Column(
+              children: [
+                Focus(
+                  onKeyEvent: (_, event) {
+                    forwarded.add(event.logicalKey);
+                    return KeyEventResult.handled;
+                  },
+                  child: const Text('device'),
+                ),
+                MirrorToolbarButton(
+                  icon: const Icon(Icons.camera),
+                  tooltip: 'capture',
+                  shortcut: MirrorShortcut.screenshot,
+                  onPressed: () => calls++,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      Focus.of(tester.element(find.text('device'))).requestFocus();
+      await tester.pump();
+      const bindings = [
+        KeyboardShortcutBinding(key: LogicalKeyboardKey.f6),
+        KeyboardShortcutBinding(key: LogicalKeyboardKey.keyK, control: true),
+        KeyboardShortcutBinding(key: LogicalKeyboardKey.keyS, shift: true),
+        KeyboardShortcutBinding(
+          key: LogicalKeyboardKey.keyZ,
+          meta: true,
+          shift: true,
+        ),
+        KeyboardShortcutBinding(
+          key: LogicalKeyboardKey.f9,
+          control: true,
+          alt: true,
+          shift: true,
+          meta: true,
+        ),
+      ];
+      for (final binding in bindings) {
+        await container
+            .read(appSettingsProvider.notifier)
+            .setMirrorShortcuts(
+              const MirrorShortcutSettings().withBinding(
+                MirrorShortcut.screenshot,
+                binding,
+              ),
+              broadcast: false,
+            );
+        await tester.pump();
+        forwarded.clear();
+        final before = calls;
+        final modifiers = [
+          if (binding.control) LogicalKeyboardKey.controlRight,
+          if (binding.alt) LogicalKeyboardKey.altRight,
+          if (binding.shift) LogicalKeyboardKey.shiftRight,
+          if (binding.meta) LogicalKeyboardKey.metaRight,
+        ];
+        await pressShortcut(tester, binding.key!, modifiers: modifiers);
+        expect(calls, before + 1);
+        expect(forwarded, isNot(contains(binding.key)));
+        expect(
+          tester.widget<Tooltip>(find.byType(Tooltip).first).message,
+          contains(binding.label()),
+        );
+        if (!binding.alt) {
+          await pressShortcut(
+            tester,
+            binding.key!,
+            modifiers: [...modifiers, LogicalKeyboardKey.altLeft],
+          );
+          expect(calls, before + 1);
+          expect(forwarded, contains(binding.key));
+        }
+      }
+      await tester.pumpWidget(const SizedBox.shrink());
+    }, variant: TargetPlatformVariant({platform}));
+  }
 }
 
 Future<void> _chord(

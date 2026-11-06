@@ -33,7 +33,7 @@
 | `adb-cert-management` | 证书管理机制 | active | 记录用户证书与系统证书（Root 权限，包含 Android 10+ 内存挂载与 Conscrypt APEX 挂载）的导入机制与 adb 命令设计 | `control/` (控制面板) |
 | `adb-emulator-management` | 模拟器启动诊断与配置详情 | active | 记录启动诊断、ADB 授权与离线状态、定向重连/关闭、冷启动与 SDK 环境、标题工具栏、详情及中英文配置搜索 | `core/emulator/`, `core/providers/`, `features/devices/` |
 | `adb-desktop-platform-chrome` | 跨平台桌面窗口与工作区 UI | active | macOS 原生按钮避让、Windows 主窗口标题栏、Linux 原生装饰、子窗口标题同步、公共主题表面与宿主验证边界 | `app/window/`, `features/overview/`, `linux/runner/` |
-| `adb-desktop-window-shortcuts` | 桌面窗口与可配置投屏快捷键 | active | 设置页快捷键目录、修改 / 禁用 / 重置、持久化与多窗口同步、投屏操作绑定及本地输入优先级和窗口关闭约定 | `app/shortcuts/`, `app/settings/`, `app/window/`, `features/overview/` |
+| `adb-desktop-window-shortcuts` | 桌面窗口与可配置投屏快捷键 | active | 完整组合键直接录入、修饰键自定义、冲突 / 禁用 / 重置、旧配置迁移和多窗口同步、投屏与主窗口本地输入优先级及关闭约定 | `app/shortcuts/`, `app/settings/`, `app/window/`, `features/overview/` |
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、产品名称与型号独立展示、折叠机内外屏分辨率、电量/充电状态、内存占用与容量卡布局，以及控制、鸿蒙应用右键清除缓存、鸿蒙文件页单一路径导航、日志紧凑视图时间配色、终端、鸿蒙进程 CPU/内存采样及进程操作、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
 | `adb-forward-port-mapping` | Android/HarmonyOS 正向端口转发 | active | 记录网络页正向规则的用途、ADB/HDC 命令、列表过滤、端口校验及验证边界 | `core/network/`, `core/providers/`, `features/network/` |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录 USB 自动准备监听、2 秒等待与就绪检测、实时 Wi-Fi IP、列表与概览 IP 同源展示、在线 TCP 地址优先与旧缓存修复、网段提示与主机网络快照同步、TCP 优先和目标 mDNS 回退、TLS 切换恢复、双语状态及手动连接指南 | `core/adb/wireless/`, `core/providers/`, `features/devices/` |

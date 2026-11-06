@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../settings/app_settings_controller.dart';
 import 'mirror_shortcut.dart';
+import 'local_shortcut_handler.dart';
 
 /// 在投屏窗口内优先处理本地组合键；child 为窗口内容。
 /// 工具栏通过 MirrorShortcutTarget 注册同一份点击回调，自动隐藏后仍可使用。
@@ -25,52 +26,25 @@ class MirrorShortcutScope extends ConsumerStatefulWidget {
 }
 
 class _MirrorShortcutScopeState extends ConsumerState<MirrorShortcutScope> {
-  final _focus = FocusNode(debugLabel: 'mirror_shortcuts');
   final _registry = MirrorShortcutRegistry();
-  final _pressed = <LogicalKeyboardKey>{};
 
-  @override
-  void initState() {
-    super.initState();
-    FocusManager.instance.addEarlyKeyEventHandler(_handleKey);
-  }
-
-  KeyEventResult _handleKey(KeyEvent event) {
-    // 即使修饰键先抬起或操作打开弹窗，也吞掉已消费按键的 repeat/up。
-    if (event is KeyUpEvent && _pressed.remove(event.logicalKey)) {
-      return KeyEventResult.handled;
-    }
-    if (_pressed.contains(event.logicalKey)) return KeyEventResult.handled;
-    if (!_focus.hasFocus || !(ModalRoute.of(context)?.isCurrent ?? true)) {
-      return KeyEventResult.ignored;
-    }
+  LocalShortcutMatch? _resolve(KeyEvent event) {
     final closeWindow =
         widget.onClose != null &&
         SingleActivator(
           LogicalKeyboardKey.keyW,
           meta: _registry.isMacOS,
           control: !_registry.isMacOS,
-          includeRepeats: false,
         ).accepts(event, HardwareKeyboard.instance);
+    if (closeWindow) return LocalShortcutMatch(widget.onClose);
     final action = _registry.settings.match(event, isMacOS: _registry.isMacOS);
-    if (!closeWindow && action == null) return KeyEventResult.ignored;
-    if (event is KeyDownEvent) {
-      _pressed.add(event.logicalKey);
-      if (!event.synthesized) {
-        if (closeWindow) {
-          widget.onClose!();
-        } else {
-          _registry.invoke(action!);
-        }
-      }
-    }
-    return KeyEventResult.handled;
+    return action == null
+        ? null
+        : LocalShortcutMatch(() => _registry.invoke(action));
   }
 
   @override
   void dispose() {
-    FocusManager.instance.removeEarlyKeyEventHandler(_handleKey);
-    _focus.dispose();
     _registry.clear();
     super.dispose();
   }
@@ -82,10 +56,13 @@ class _MirrorShortcutScopeState extends ConsumerState<MirrorShortcutScope> {
     );
     _registry.settings = settings;
     _registry.isMacOS = defaultTargetPlatform == TargetPlatform.macOS;
-    return _ShortcutScope(
-      registry: _registry,
-      settings: settings,
-      child: Focus(autofocus: true, focusNode: _focus, child: widget.child),
+    return LocalShortcutHandler(
+      resolve: _resolve,
+      child: _ShortcutScope(
+        registry: _registry,
+        settings: settings,
+        child: widget.child,
+      ),
     );
   }
 }

@@ -53,13 +53,14 @@ SingleActivator(
 ### 需求与入口
 
 - 设置 → 快捷键，集中展示主窗口快捷键，以及投屏侧栏和标题栏操作。
-- 主窗口聚焦按键沿用已有配置和支持字符；旧的无效值回退到 `1`。关闭、打开设置和双按退出属于固定窗口约定。
-- 投屏操作可选择字母、数字、方向键或 Enter，可设为“未设置”，并可整体恢复默认。固定前缀为 macOS `Command + Option`，Windows / Linux `Ctrl + Alt`；不抢占普通输入和 `Command/Ctrl + V`。
-- 不同操作不能使用同一按键；冲突时提示已占用的操作，原绑定保持不变。若需交换按键，先禁用其中一个绑定。
+- 主窗口唤起键与 20 项投屏操作均通过弹窗直接按键录入，支持自由组合 Command / Meta、Ctrl、Option / Alt、Shift，也支持不带修饰键的 F6、方向键或普通字符。
+- 仅按修饰键不生成绑定；录入后预览完整组合，点击保存才生效。取消不写入配置，支持清除、单项恢复默认与投屏整组恢复默认。
+- 冲突比较触发键和四种修饰键，同一个主键使用不同修饰键可共存；完全相同时显示占用操作并禁止保存。关闭、打开设置和退出的标准组合键保留原约定，录入时显示具体占用项。
+- 绑定普通字符或编辑组合键后，该组合在目标窗口内优先执行用户指定的操作；未配置的输入继续沿用原链路。
 
 ### 默认按键
 
-下表按键均需加上述固定前缀。
+下表保留已有默认值：macOS 初始使用 `Command + Option`，Windows / Linux 初始使用 `Ctrl + Alt`。这些只是默认组合，可通过直接录入自由更换修饰键与触发键。
 
 | 操作 | 默认按键 | 操作 | 默认按键 |
 | --- | --- | --- | --- |
@@ -76,17 +77,19 @@ SingleActivator(
 
 ### 实现与窗口同步
 
-1. `lib/app/shortcuts/mirror_shortcut.dart` 是操作、默认按键、冲突校验和展示标签的唯一目录。持久化使用 `settings.mirrorShortcuts` JSON，仅保存覆盖项；非法值或重复绑定整体回退默认值。
-2. `AppSettingsController` 的 `ShortcutSettings` mixin 负责持久化、加载和广播。`update_mirror_shortcuts` 参数为 JSON 字符串，沿用现有主窗口单向 Channel 和子窗口枚举链路；接收端使用 `broadcast: false` 防止循环广播。
-3. `MirrorShortcutScope` 每个投屏窗口独立创建，使用 `FocusManager.addEarlyKeyEventHandler` 在设备输入之前处理本地组合键，标准关闭组合键同样优先调用原有窗口关闭入口。仅焦点位于该 Scope 且当前 Route 可用时执行；弹窗、其他窗口和普通文本输入不触发投屏操作。
-4. `MirrorToolbarButton` 通过 `MirrorShortcutTarget` 注册原有点击 / 长按回调。自动隐藏仍保留注册；按钮 Loading、null 回调、平台隐藏和卸载均不能执行对应操作。快捷键 Tooltip 与设置共用配置，截图额外展示保存快捷键。
-5. 同一次按下只执行一次，repeat 和对应 KeyUp 被消费，修饰键先抬起或操作打开弹窗也不会把该 KeyUp 转发给手机。Scope 销毁时移除 early handler 并释放 FocusNode、回调表。
-6. Android、HarmonyOS、iOS 和单 App 投屏沿用原有按钮的能力门禁与控制通道。此功能不新增 ADB/HDC 命令、设备后台进程或轮询。
-7. 投屏页面与标题栏、截图 / 前台窗口动作拆为独立 part 文件，新增及拆分文件均低于 500 行，生命周期仍归原 State 管理。
+1. `keyboard_shortcut_binding.dart` 保存触发键的 `keyId` 和 `control / alt / shift / meta` 四个独立布尔值，负责录入、精确匹配、标签和 JSON 校验。左右修饰键等价；修饰键自身不能作为触发键。`mirror_shortcut.dart` 统一操作目录、默认组合与冲突校验。
+2. 投屏设置继续使用 `settings.mirrorShortcuts`，新格式为 `{"version":2,"bindings":{"action":{"keyId":123,"control":true,"alt":false,"shift":true,"meta":false}}}`；只保存覆盖项，`keyId:null` 且修饰键全 false 表示禁用。兼容旧的 `action -> 字符串` 配置，按原平台前缀迁移后保留用户按键与禁用状态；非法值或重复绑定整体回退默认值。
+3. 主窗口使用 `settings.mainWindowShortcut` 保存完整组合，缺失或损坏时沿用 `settings.showWindowShortcutKey` 的旧值；显式 disabled 不再回退旧按键。`ShortcutSettings` mixin 统一持久化和广播，投屏继续使用 `update_mirror_shortcuts`，主窗口使用 `update_main_window_shortcut`，参数均为 JSON 字符串，接收端使用 `broadcast: false` 防止循环广播。
+4. `LocalShortcutHandler` 统一拥有 FocusNode 和 `FocusManager.addEarlyKeyEventHandler`，在普通控件 / 设备输入之前匹配完整组合。`MirrorShortcutScope` 提供当前窗口的操作查找，主窗口唤起键和录入控件也复用该公共层。仅当前 Route 且焦点位于对应范围时执行；录入弹窗不会触发原页面快捷键。
+5. `MirrorToolbarButton` 通过 `MirrorShortcutTarget` 注册原有点击 / 长按回调。自动隐藏仍保留注册；按钮 Loading、null 回调、平台隐藏和卸载均不能执行对应操作。快捷键 Tooltip 与设置共用完整组合，截图额外展示保存快捷键。
+6. 同一次按下只执行一次，repeat 和对应 KeyUp 被消费，修饰键先抬起、配置改变或操作打开弹窗也不会把该 KeyUp 转发给手机。公共 Handler 销毁时移除 early handler 并释放 FocusNode，投屏 Scope 销毁时清空回调表。
+7. Android、HarmonyOS、iOS 和单 App 投屏沿用原有按钮的能力门禁与控制通道。此功能不新增 ADB/HDC 命令、设备后台进程或轮询。
+8. 录入 UI 位于 `features/overview/widget/keyboard_shortcut_recorder.dart`，录入期间不注册 TextEditingController 或输入法；通过 KeyEvent 读取真实组合，保存前重新验证最新配置中的冲突。
 
 ### 测试与回归边界
 
-- 自动化：配置编解码、非法配置回退、冲突、禁用、恢复默认、SharedPreferences 保存、主 / 子窗口广播；三种桌面平台的本地按键优先级、repeat/up、普通输入、粘贴、弹窗、按钮禁用和卸载；中英文与 Light/Dark 设置 UI。
+- 自动化：完整组合编解码、v1 迁移、非法配置回退、修饰键精确匹配、冲突、禁用、恢复默认、SharedPreferences 保存、主 / 子窗口广播；三种桌面平台的单键和任意修饰键、本地输入优先级、repeat/up、粘贴、弹窗、按钮禁用和卸载；中英文与 Light/Dark 的实际录入、仅修饰键、取消、清除、默认恢复和主窗口绑定。
 - 关联回归：主 / 子窗口关闭与主窗口显示、投屏宽高比和旋转、白板、iOS 工具栏、HarmonyOS 控制、投屏设置、剪贴板与设备快捷设置。
-- 验证结果：4 个新增测试文件与 9 个关联测试文件合计 62 项通过；本次 22 个静态分析目标无问题。全仓初次检查还报告其他模块的既有告警，本次未清理范围外代码。
+- 验证命令：`flutter test --no-pub` 运行四个快捷键测试及上述关联测试；`flutter analyze --no-pub` 检查快捷键、设置、窗口入口、设置 UI 和相关测试。本次未清理范围外既有告警。
+- 本次结果：13 个相关测试文件共 71 项通过；12 个静态分析目标无问题。
 - 本次只运行测试与静态检查，未启动桌面 App。真实系统对组合键的占用、已打开的多个原生窗口间切换，以及真机截图 / 录屏 / 设备操作仍需运行态验收。

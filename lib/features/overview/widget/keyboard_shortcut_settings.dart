@@ -6,9 +6,10 @@ import '../../../app/l10n/app_localizations.dart';
 import '../../../app/settings/app_settings_controller.dart';
 import '../../../app/shortcuts/mirror_shortcut.dart';
 import '../../../app/widget/app_toast.dart';
+import 'keyboard_shortcut_recorder.dart';
 
 /// 设置页的通用与投屏快捷键列表，嵌入已有设置分组卡片使用。
-/// 按键选择、禁用和恢复默认均通过 AppSettingsController 持久化。
+/// 按键录入、禁用和恢复默认均通过 AppSettingsController 持久化。
 class KeyboardShortcutSettings extends ConsumerWidget {
   const KeyboardShortcutSettings({super.key});
 
@@ -17,12 +18,11 @@ class KeyboardShortcutSettings extends ConsumerWidget {
     final shortcuts = ref.watch(
       appSettingsProvider.select((s) => s.mirrorShortcuts),
     );
-    final showKey = ref.watch(
-      appSettingsProvider.select((s) => s.showWindowShortcutKey),
+    final mainBinding = ref.watch(
+      appSettingsProvider.select((s) => s.mainWindowBinding),
     );
     final isMacOS = defaultTargetPlatform == TargetPlatform.macOS;
     final modifier = isMacOS ? '⌘' : 'Ctrl+';
-    final controller = ref.read(appSettingsProvider.notifier);
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -35,21 +35,14 @@ class KeyboardShortcutSettings extends ConsumerWidget {
           ),
           _ShortcutRow(
             label: context.l10n.t('mainWindowShortcut'),
-            control: DropdownButton<String>(
+            control: OutlinedButton(
               key: const ValueKey('shortcut-main-window'),
-              value: normalizeMainWindowShortcut(showKey),
-              menuMaxHeight: 320,
-              underline: const SizedBox.shrink(),
-              items: [
-                for (final key in mainWindowShortcutKeys)
-                  DropdownMenuItem(
-                    value: key,
-                    child: Text('$modifier${key.toUpperCase()}'),
-                  ),
-              ],
-              onChanged: (key) async {
-                if (key != null) await controller.setShowWindowShortcut(key);
-              },
+              onPressed: () => _editMain(context, ref),
+              child: Text(
+                mainBinding.isEnabled
+                    ? mainBinding.label()
+                    : context.l10n.t('shortcutDisabled'),
+              ),
             ),
           ),
           _ShortcutRow(
@@ -91,42 +84,14 @@ class KeyboardShortcutSettings extends ConsumerWidget {
           for (final action in MirrorShortcut.values)
             _ShortcutRow(
               label: context.l10n.t(action.labelKey),
-              control: DropdownButton<String>(
+              control: OutlinedButton(
                 key: ValueKey('shortcut-${action.name}'),
-                value: shortcuts.keyFor(action),
-                menuMaxHeight: 320,
-                underline: const SizedBox.shrink(),
-                items: [
-                  DropdownMenuItem(
-                    value: '',
-                    child: Text(context.l10n.t('shortcutDisabled')),
-                  ),
-                  for (final key in MirrorShortcutSettings.keys.keys)
-                    DropdownMenuItem(
-                      value: key,
-                      child: Text(
-                        '${isMacOS ? '⌘⌥' : 'Ctrl+Alt+'}${MirrorShortcutSettings.keyLabel(key)}',
-                      ),
-                    ),
-                ],
-                onChanged: (key) {
-                  if (key == null) return;
-                  final conflict = shortcuts.conflict(action, key);
-                  if (conflict != null) {
-                    AppToast.show(
-                      context,
-                      context.l10n
-                          .t('shortcutConflict')
-                          .replaceAll(
-                            '{action}',
-                            context.l10n.t(conflict.labelKey),
-                          ),
-                      isError: true,
-                    );
-                    return;
-                  }
-                  _save(context, ref, shortcuts.withKey(action, key));
-                },
+                onPressed: () => _editMirror(context, ref, action),
+                child: Text(
+                  shortcuts.bindingFor(action).isEnabled
+                      ? shortcuts.label(action, isMacOS: isMacOS)
+                      : context.l10n.t('shortcutDisabled'),
+                ),
               ),
             ),
         ],
@@ -134,13 +99,89 @@ class KeyboardShortcutSettings extends ConsumerWidget {
     );
   }
 
+  String? _reservedError(
+    BuildContext context,
+    KeyboardShortcutBinding binding,
+  ) {
+    final reserved = binding.reservedLabelKey;
+    return reserved == null
+        ? null
+        : context.l10n
+              .t('shortcutReserved')
+              .replaceAll('{action}', context.l10n.t(reserved));
+  }
+
+  Future<void> _editMirror(
+    BuildContext context,
+    WidgetRef ref,
+    MirrorShortcut action,
+  ) async {
+    final binding = await showKeyboardShortcutRecorder(
+      context: context,
+      title: context.l10n.t(action.labelKey),
+      current: ref.read(appSettingsProvider).mirrorShortcuts.bindingFor(action),
+      defaultBinding: MirrorShortcutSettings.legacyBinding(action.defaultKey),
+      validate: (binding) {
+        final reserved = _reservedError(context, binding);
+        if (reserved != null) return reserved;
+        final conflict = ref
+            .read(appSettingsProvider)
+            .mirrorShortcuts
+            .conflict(action, binding);
+        return conflict == null
+            ? null
+            : context.l10n
+                  .t('shortcutConflict')
+                  .replaceAll('{action}', context.l10n.t(conflict.labelKey));
+      },
+    );
+    if (binding == null || !context.mounted) return;
+    await _persist(
+      context,
+      () => ref
+          .read(appSettingsProvider.notifier)
+          .setMirrorShortcuts(
+            ref
+                .read(appSettingsProvider)
+                .mirrorShortcuts
+                .withBinding(action, binding),
+          ),
+    );
+  }
+
+  Future<void> _editMain(BuildContext context, WidgetRef ref) async {
+    final binding = await showKeyboardShortcutRecorder(
+      context: context,
+      title: context.l10n.t('mainWindowShortcut'),
+      current: ref.read(appSettingsProvider).mainWindowBinding,
+      defaultBinding: KeyboardShortcutBinding.primary(
+        MirrorShortcutSettings.keys['1']!,
+      ),
+      validate: (binding) => _reservedError(context, binding),
+    );
+    if (binding == null || !context.mounted) return;
+    await _persist(
+      context,
+      () =>
+          ref.read(appSettingsProvider.notifier).setMainWindowShortcut(binding),
+    );
+  }
+
   Future<void> _save(
     BuildContext context,
     WidgetRef ref,
     MirrorShortcutSettings settings,
+  ) => _persist(
+    context,
+    () => ref.read(appSettingsProvider.notifier).setMirrorShortcuts(settings),
+  );
+
+  Future<void> _persist(
+    BuildContext context,
+    Future<void> Function() save,
   ) async {
     try {
-      await ref.read(appSettingsProvider.notifier).setMirrorShortcuts(settings);
+      await save();
     } catch (_) {
       if (context.mounted) {
         AppToast.show(
@@ -167,7 +208,7 @@ class _ShortcutRow extends StatelessWidget {
       children: [
         Expanded(child: Text(label)),
         const SizedBox(width: 16),
-        control,
+        Flexible(child: control),
       ],
     ),
   );

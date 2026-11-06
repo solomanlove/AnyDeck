@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/nearby_share/share_local_name.dart';
 import '../shortcuts/mirror_shortcut.dart';
@@ -58,6 +59,7 @@ class AppSettings {
     this.harmonyShareLocalName = ShareLocalName.defaultName,
     this.launchAtStartup = false,
     this.showWindowShortcutKey = '1',
+    this.mainWindowShortcut,
     this.mirrorShortcuts = const MirrorShortcutSettings(),
     this.developerModeEnabled = false,
   });
@@ -88,6 +90,17 @@ class AppSettings {
   final bool launchAtStartup;
   /// 显示主窗口的快捷键字符（默认 '1'，即 ⌘1）
   final String showWindowShortcutKey;
+  /// 完整主窗口快捷键；缺失时兼容旧的单字符设置。
+  final KeyboardShortcutBinding? mainWindowShortcut;
+  KeyboardShortcutBinding get mainWindowBinding {
+    if (mainWindowShortcut != null) return mainWindowShortcut!;
+    final legacyKey = showWindowShortcutKey.isEmpty
+        ? '1'
+        : showWindowShortcutKey[0].toLowerCase();
+    return KeyboardShortcutBinding.primary(
+      LogicalKeyboardKey(legacyKey.codeUnitAt(0)),
+    );
+  }
   /// 投屏操作的按键覆盖项，未覆盖时使用目录中的默认组合键。
   final MirrorShortcutSettings mirrorShortcuts;
   /// 是否已开启开发者选项
@@ -117,6 +130,7 @@ class AppSettings {
     String? harmonyShareLocalName,
     bool? launchAtStartup,
     String? showWindowShortcutKey,
+    KeyboardShortcutBinding? mainWindowShortcut,
     MirrorShortcutSettings? mirrorShortcuts,
     bool? developerModeEnabled,
   }) {
@@ -145,6 +159,7 @@ class AppSettings {
       harmonyShareLocalName: harmonyShareLocalName ?? this.harmonyShareLocalName,
       launchAtStartup: launchAtStartup ?? this.launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey ?? this.showWindowShortcutKey,
+      mainWindowShortcut: mainWindowShortcut ?? this.mainWindowShortcut,
       mirrorShortcuts: mirrorShortcuts ?? this.mirrorShortcuts,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
     );

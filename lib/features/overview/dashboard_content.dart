@@ -141,6 +141,7 @@ extension _DashboardContent on _DashboardScreenState {
       },
       child: MainWindowCloseShortcut(
         showWindowKey: settings.showWindowShortcutKey,
+        showWindowShortcut: settings.mainWindowBinding,
         onQuit: _handleQuitShortcut,
         child: Scaffold(
           body: _WechatStyleShell(

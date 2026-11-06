@@ -87,6 +87,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
   Future<dynamic> _handleSettingsCall(MethodCall call) async {
     stdout.writeln('[SettingsController] _handleSettingsCall: method=${call.method}, args=${call.arguments}, currentWindowId=${ref.read(windowIdProvider)}');
     if (call.method == MirrorShortcutSettings.channelMethod) return _receiveMirrorShortcuts(call.arguments);
+    if (call.method == mainWindowShortcutChannelMethod) return _receiveMainWindowShortcut(call.arguments);
     if (call.method == 'change_harmony_share_local_name' && call.arguments is String) {
       await setHarmonyShareLocalName(call.arguments as String);
     } else if (call.method == 'update_harmony_share_local_name' && call.arguments is String) {
@@ -468,6 +469,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       harmonyShareLocalName: preferences.getString(HarmonySharePreferenceKeys.localName) ?? ShareLocalName.defaultName,
       launchAtStartup: launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey,
+      mainWindowShortcut: decodeMainWindowShortcut(preferences.getString(mainWindowShortcutPreferenceKey)),
       mirrorShortcuts: MirrorShortcutSettings.decode(
         preferences.getString(MirrorShortcutSettings.preferenceKey),
       ),

@@ -102,7 +102,10 @@ void main() {
       '{"power":"s"}',
       '{"power":"invalid"}',
     ]) {
-      expect(MirrorShortcutSettings.decode(invalid).encode(), '{}');
+      expect(
+        MirrorShortcutSettings.decode(invalid).encode(),
+        const MirrorShortcutSettings().encode(),
+      );
     }
     final swapped = MirrorShortcutSettings.decode(
       '{"power":"s","screenshot":"p"}',
@@ -129,7 +132,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(
         jsonDecode(prefs.getString(MirrorShortcutSettings.preferenceKey)!),
-        {'screenshot': 'z'},
+        jsonDecode(changed.encode()),
       );
       final updates = calls
           .where(
@@ -155,7 +158,147 @@ void main() {
         'z',
       );
       await controller.setMirrorShortcuts(const MirrorShortcutSettings());
-      expect(prefs.getString(MirrorShortcutSettings.preferenceKey), '{}');
+      expect(
+        prefs.getString(MirrorShortcutSettings.preferenceKey),
+        const MirrorShortcutSettings().encode(),
+      );
+    });
+
+    test('完整主窗口快捷键保存、广播和禁用 $windowId', () async {
+      final container = ProviderContainer(
+        overrides: [
+          appSettingsProvider.overrideWith(ShortcutTestSettings.new),
+          windowIdProvider.overrideWithValue(windowId),
+        ],
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(appSettingsProvider.notifier);
+      const binding = KeyboardShortcutBinding(
+        key: LogicalKeyboardKey.f8,
+        shift: true,
+        control: true,
+      );
+      await controller.setMainWindowShortcut(binding);
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        decodeMainWindowShortcut(
+          prefs.getString(mainWindowShortcutPreferenceKey),
+        ),
+        binding,
+      );
+      expect(container.read(appSettingsProvider).mainWindowBinding, binding);
+      expect(
+        calls.where(
+          (call) => call['method'] == mainWindowShortcutChannelMethod,
+        ),
+        hasLength(windowId.isEmpty ? 1 : 2),
+      );
+      calls.clear();
+      await controller.setMainWindowShortcut(
+        const KeyboardShortcutBinding.disabled(),
+        broadcast: false,
+      );
+      expect(
+        container.read(appSettingsProvider).mainWindowBinding.isEnabled,
+        false,
+      );
+      expect(
+        decodeMainWindowShortcut(
+          prefs.getString(mainWindowShortcutPreferenceKey),
+        )?.isEnabled,
+        false,
+      );
+      expect(calls, isEmpty);
     });
   }
+
+  test('v2 保留完整修饰键，同键不同修饰键允许共存，完全相同才冲突', () {
+    const ctrlS = KeyboardShortcutBinding(
+      key: LogicalKeyboardKey.keyS,
+      control: true,
+    );
+    const shiftS = KeyboardShortcutBinding(
+      key: LogicalKeyboardKey.keyS,
+      shift: true,
+    );
+    const all = KeyboardShortcutBinding(
+      key: LogicalKeyboardKey.f12,
+      control: true,
+      alt: true,
+      shift: true,
+      meta: true,
+    );
+    final settings = const MirrorShortcutSettings()
+        .withBinding(MirrorShortcut.screenshot, ctrlS)
+        .withBinding(MirrorShortcut.saveScreenshot, shiftS)
+        .withBinding(MirrorShortcut.recording, all);
+    final decoded = MirrorShortcutSettings.decode(settings.encode());
+    expect(decoded.bindingFor(MirrorShortcut.screenshot), ctrlS);
+    expect(decoded.bindingFor(MirrorShortcut.saveScreenshot), shiftS);
+    expect(decoded.bindingFor(MirrorShortcut.recording), all);
+    expect(
+      decoded.conflict(MirrorShortcut.home, ctrlS),
+      MirrorShortcut.screenshot,
+    );
+    expect(
+      () => decoded.withBinding(MirrorShortcut.home, ctrlS),
+      throwsArgumentError,
+    );
+    expect(jsonDecode(settings.encode())['version'], 2);
+    expect(KeyboardShortcutBinding.decode(all.encode()), all);
+  });
+
+  test('旧按键配置迁移保留键值和禁用状态，再保存使用新格式', () {
+    final migrated = MirrorShortcutSettings.decode(
+      '{"screenshot":"z","power":""}',
+    );
+    expect(
+      migrated.bindingFor(MirrorShortcut.screenshot),
+      MirrorShortcutSettings.legacyBinding('z'),
+    );
+    expect(migrated.bindingFor(MirrorShortcut.power).isEnabled, false);
+    expect(
+      MirrorShortcutSettings.decode(
+        migrated.encode(),
+      ).bindingFor(MirrorShortcut.screenshot),
+      migrated.bindingFor(MirrorShortcut.screenshot),
+    );
+  });
+
+  test('损坏完整组合键、仅修饰键和固定窗口冲突不能写入', () {
+    const reserved = KeyboardShortcutBinding(
+      key: LogicalKeyboardKey.keyW,
+      meta: true,
+    );
+    expect(
+      () => const MirrorShortcutSettings().withBinding(
+        MirrorShortcut.screenshot,
+        reserved,
+      ),
+      throwsArgumentError,
+    );
+    expect(decodeMainWindowShortcut(reserved.encode()), null);
+    expect(KeyboardShortcutBinding.fromJson({'keyId': 123}), null);
+    final modifier = const KeyboardShortcutBinding(
+      key: LogicalKeyboardKey.controlLeft,
+    ).toJson();
+    expect(KeyboardShortcutBinding.fromJson(modifier), null);
+    for (final data in [
+      {'version': 3, 'bindings': {}},
+      {'version': 2, 'bindings': []},
+      {
+        'version': 2,
+        'bindings': {'screenshot': modifier},
+      },
+      {
+        'version': 2,
+        'bindings': {'screenshot': reserved.toJson()},
+      },
+    ]) {
+      expect(
+        MirrorShortcutSettings.decode(jsonEncode(data)).overrides,
+        isEmpty,
+      );
+    }
+  });
 }

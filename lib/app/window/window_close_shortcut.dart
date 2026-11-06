@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
+import '../shortcuts/keyboard_shortcut_binding.dart';
+import '../shortcuts/local_shortcut_handler.dart';
 
 /// 为独立子窗口提供标准关闭快捷键（macOS ⌘W，其他平台 Ctrl+W）。
 class WindowCloseShortcut extends StatelessWidget {
@@ -28,12 +30,13 @@ class WindowCloseShortcut extends StatelessWidget {
 /// 为主窗口提供标准快捷键（其他平台以 Ctrl 替代 ⌘）：
 /// - ⌘W：走 close listener（最小化到托盘）
 /// - ⌘Q（macOS）：退出整个应用
-/// - ⌘[showWindowKey]：显示并聚焦主窗口（默认 ⌘1）
+/// - 可配置完整组合键：显示并聚焦主窗口（默认 ⌘1 / Ctrl+1）
 class MainWindowCloseShortcut extends StatelessWidget {
   const MainWindowCloseShortcut({
     super.key,
     required this.child,
     this.showWindowKey = '1',
+    this.showWindowShortcut,
     this.onQuit,
   });
 
@@ -41,6 +44,8 @@ class MainWindowCloseShortcut extends StatelessWidget {
 
   /// 显示主窗口的按键字符（单字符，默认 '1'）
   final String showWindowKey;
+  /// 完整组合键优先于旧的 showWindowKey；disabled 表示关闭唤起快捷键。
+  final KeyboardShortcutBinding? showWindowShortcut;
 
   /// 退出快捷键回调（若提供则委托，支持双按退出确认）
   final VoidCallback? onQuit;
@@ -88,22 +93,28 @@ class MainWindowCloseShortcut extends StatelessWidget {
       }
     }
 
-    // 注册动态显示主窗口快捷键（默认 ⌘1）
+    // 兼容旧字符配置；完整组合键在输入控件之前处理，保留普通输入链路。
     final showKey = _keyFromChar(showWindowKey);
-    if (showKey != null) {
-      bindings[SingleActivator(
-        showKey,
-        meta: Platform.isMacOS,
-        control: !Platform.isMacOS,
-      )] = () async {
-        await windowManager.show();
-        await windowManager.focus();
-      };
-    }
+    final showBinding = showWindowShortcut ??
+        (showKey == null
+            ? const KeyboardShortcutBinding.disabled()
+            : KeyboardShortcutBinding(
+                key: showKey,
+                meta: Platform.isMacOS,
+                control: !Platform.isMacOS,
+              ));
 
     return CallbackShortcuts(
       bindings: bindings,
-      child: Focus(autofocus: true, child: child),
+      child: LocalShortcutHandler(
+        resolve: (event) => showBinding.matches(event)
+            ? LocalShortcutMatch(() async {
+                await windowManager.show();
+                await windowManager.focus();
+              })
+            : null,
+        child: Focus(autofocus: true, child: child),
+      ),
     );
   }
 }
