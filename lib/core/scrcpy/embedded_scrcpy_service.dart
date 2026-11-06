@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../adb/adb_service.dart';
 import '../providers/app_providers.dart';
 import 'app_virtual_display_launcher.dart';
+import 'fusion_display_density.dart';
+import 'fusion_display_resize.dart';
 import 'rust_device_bridge.dart';
 import 'scrcpy_camera_options.dart';
 import 'mirror_stream_health.dart';
@@ -45,6 +47,8 @@ class EmbeddedScrcpySession {
   final String? scid;
   final MirrorVideoQuality quality;
   bool muted;
+  bool densityOverridden = false;
+  Future<void> densityUpdate = Future<void>.value();
 }
 
 class EmbeddedScrcpyService {
@@ -103,6 +107,32 @@ class EmbeddedScrcpyService {
       session.rustHandle,
       controlMessage,
     );
+  }
+
+  /// 对当前融合副屏设置临时 density；停止会话前恢复，避免 display ID 复用时遗留覆盖值。
+  Future<bool> setFusionDisplayDensity(
+    String deviceId,
+    FusionDisplayGeometry geometry,
+  ) {
+    final session = _sessions[deviceId];
+    if (session?.virtualDisplayId == null) return Future<bool>.value(false);
+    final update = session!.densityUpdate.then((_) async {
+      if (_sessions[deviceId] != session) return false;
+      final applied = await FusionDisplayDensity.applyWhenResized(
+        adbService: _adbService,
+        deviceId: deviceId,
+        displayId: session.virtualDisplayId!,
+        geometry: geometry,
+        isCurrent: () => _sessions[deviceId] == session,
+      );
+      if (applied) {
+        session.densityOverridden = true;
+        return true;
+      }
+      return false;
+    });
+    session.densityUpdate = update.then<void>((_) {}, onError: (_) {});
+    return update;
   }
 
   /// 提取匹配版本的内置 server，供投屏与独立音频/剪贴板会话复用。
@@ -449,6 +479,13 @@ class EmbeddedScrcpyService {
     final session = _sessions.remove(deviceId);
     if (session == null) return;
     session.escapeGuardian?.cancel();
+
+    await session.densityUpdate;
+    if (session.densityOverridden && session.virtualDisplayId != null) {
+      await _adbService.shellArgs(deviceId, [
+        'wm', 'density', 'reset', '-d', '${session.virtualDisplayId}',
+      ], timeout: const Duration(seconds: 4));
+    }
 
     try {
       await _textures.invokeMethod<void>('untrack', {'handle': session.rustHandle});

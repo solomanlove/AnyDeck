@@ -43,7 +43,12 @@ Future<Timer> launchAppOnVirtualDisplay({
     }
   }
 
-  // App 尚无 Task 时才通过 package Intent 启动，避免刷新时重建已有页面。
+  // App 尚无 Task 时解析 LAUNCHER Activity，再显式启动；部分 ROM 不解析仅指定包名的 Intent。
+  final component = await resolveAppLauncherComponent(
+    adbService,
+    deviceId,
+    packageName,
+  );
   final startArguments = <String>[
     '-s',
     deviceId,
@@ -54,15 +59,15 @@ Future<Timer> launchAppOnVirtualDisplay({
     'android.intent.action.MAIN',
     '-c',
     'android.intent.category.LAUNCHER',
-    '-p',
-    packageName,
+    '-n',
+    component,
     '--display',
     displayId.toString(),
     '-f',
     '0x10000000',
   ];
   final startResult = await adbService.run(startArguments);
-  if (!startResult.isSuccess) {
+  if (!startResult.isSuccess || startResult.stdout.contains('Error:')) {
     final message = startResult.stderr.trim().isNotEmpty
         ? startResult.stderr.trim()
         : startResult.stdout.trim();
@@ -100,17 +105,50 @@ Future<void> launchAppOnPrimaryDisplay({
       throw StateError('Failed to move $packageName to display 0: ${move.message}');
     }
   }
+  final component = await resolveAppLauncherComponent(
+    adbService,
+    deviceId,
+    packageName,
+  );
   final start = await adbService.shellArgs(deviceId, [
     'am', 'start',
     '-a', 'android.intent.action.MAIN',
     '-c', 'android.intent.category.LAUNCHER',
-    '-p', packageName,
+    '-n', component,
     '--display', '0',
     '-f', '0x10000000',
   ]);
   if (!start.isSuccess || start.stdout.contains('Error:')) {
     throw StateError('Failed to launch $packageName on display 0: ${start.message}');
   }
+}
+
+/// 按当前用户解析应用的 LAUNCHER Activity，避免厂商 ROM 拒绝隐式包名 Intent。
+Future<String> resolveAppLauncherComponent(
+  AdbService adbService,
+  String deviceId,
+  String packageName,
+) async {
+  final result = await adbService.shellArgs(deviceId, [
+    'cmd', 'package', 'resolve-activity', '--brief', '--user', 'current',
+    '-a', 'android.intent.action.MAIN',
+    '-c', 'android.intent.category.LAUNCHER',
+    '-p', packageName,
+  ]);
+  if (result.isSuccess) {
+    for (final line in const LineSplitter().convert(result.stdout).reversed) {
+      final component = line.trim();
+      final prefix = '$packageName/';
+      if (component.startsWith(prefix) &&
+          RegExp(r'^[A-Za-z0-9_.$]+$')
+              .hasMatch(component.substring(prefix.length))) {
+        return component;
+      }
+    }
+  }
+  throw StateError(
+    '应用 $packageName 没有可启动的主界面：${result.message}',
+  );
 }
 
 /// 从 `cmd activity stack list` 中找到包名所属的 RootTask。

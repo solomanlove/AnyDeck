@@ -16,6 +16,8 @@ class _AdbFake extends AdbService {
   int? sdk = 35;
   String serial = 'PHONE-1';
   bool failMove = false;
+  bool launcherAvailable = true;
+  bool taskAvailable = true;
 
   @override
   Future<AdbResult> shellArgs(
@@ -34,12 +36,22 @@ class _AdbFake extends AdbService {
     if (args.contains('ro.serialno') || args.contains('ro.boot.serialno')) {
       return AdbResult(exitCode: 0, stdout: serial, stderr: '');
     }
-    if (args.contains('list')) {
-      return const AdbResult(
+    if (args.contains('resolve-activity')) {
+      return AdbResult(
         exitCode: 0,
-        stdout:
-            'RootTask id=42 displayId=7\n'
-            '  taskId=42: com.example.gallery/.MainActivity\n',
+        stdout: launcherAvailable
+            ? 'priority=0 preferredOrder=0\ncom.example.gallery/.MainActivity\n'
+            : 'No activity found\n',
+        stderr: '',
+      );
+    }
+    if (args.contains('list')) {
+      return AdbResult(
+        exitCode: 0,
+        stdout: taskAvailable
+            ? 'RootTask id=42 displayId=7\n'
+                '  taskId=42: com.example.gallery/.MainActivity\n'
+            : '',
         stderr: '',
       );
     }
@@ -212,6 +224,13 @@ void main() {
       ),
       isTrue,
     );
+    expect(
+      adb.commands.any(
+        (args) => args.contains('-n') &&
+            args.contains('com.example.gallery/.MainActivity'),
+      ),
+      isTrue,
+    );
   });
 
   test('同一应用的并发点击共享启动与首帧等待', () async {
@@ -237,6 +256,58 @@ void main() {
     expect(results.map((result) => result.windowId), ['1', '1']);
     expect(windows.created, hasLength(1));
     expect(windows.waitCount, 1);
+  });
+
+  test('没有 LAUNCHER Activity 时不创建融合投屏窗口', () async {
+    final adb = _AdbFake()
+      ..launcherAvailable = false
+      ..taskAvailable = false;
+    final windows = _WindowsFake();
+    final coordinator = AppMirrorLaunchCoordinator(
+      adb,
+      FusionModePreference(adb, store: _StoreFake()),
+      windows: windows,
+    );
+
+    await expectLater(
+      coordinator.open(
+        const AppMirrorLaunchRequest(
+          deviceId: 'usb-1',
+          packageName: 'com.example.gallery',
+          appName: 'Gallery',
+          mirrorTitleTemplate: 'Mirror - {name}',
+          alwaysOnTop: false,
+        ),
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(windows.created, isEmpty);
+  });
+
+  test('已有 Task 即使没有 LAUNCHER Activity 也允许迁移', () async {
+    final adb = _AdbFake()..launcherAvailable = false;
+    final windows = _WindowsFake();
+    final coordinator = AppMirrorLaunchCoordinator(
+      adb,
+      FusionModePreference(adb, store: _StoreFake()),
+      windows: windows,
+    );
+
+    final result = await coordinator.open(
+      const AppMirrorLaunchRequest(
+        deviceId: 'usb-1',
+        packageName: 'com.example.gallery',
+        appName: 'Gallery',
+        mirrorTitleTemplate: 'Mirror - {name}',
+        alwaysOnTop: false,
+      ),
+    );
+    expect(result.kind, AppMirrorLaunchKind.fusion);
+    expect(windows.created, hasLength(1));
+    expect(
+      adb.commands.where((args) => args.contains('resolve-activity')),
+      isEmpty,
+    );
   });
 
   test('主屏迁移失败时不创建普通投屏窗口', () async {
@@ -336,12 +407,59 @@ void main() {
     expect(windows.created, isEmpty);
   });
 
-  test('scrcpy resize 消息在拖动后更新宽高并合并相同尺寸', () {
-    final resizer = FusionDisplayResizer('1080x1920/420');
-    expect(resizer.messageFor(540, 960), [21, 0x04, 0x38, 0x07, 0x80]);
-    expect(resizer.messageFor(540, 960), isNull);
-    expect(resizer.messageFor(600, 960), [21, 0x04, 0xB0, 0x07, 0x80]);
+  test('融合副屏随窗口重排并保持逻辑高度', () {
+    final resizer = FusionDisplayResizer();
+    final portrait = resizer.requestFor(692, 800)!;
+    expect(portrait.newDisplay, '1384x1600/197');
+    expect(portrait.resizeMessage, [21, 0x05, 0x68, 0x06, 0x40]);
+    expect(resizer.requestFor(692, 800), isNull);
+
+    final landscape = resizer.requestFor(1600, 924)!;
+    expect(landscape.newDisplay, '1600x924/114');
+    expect(160 * portrait.height / portrait.densityDpi, closeTo(1300, 5));
+    expect(160 * landscape.height / landscape.densityDpi, closeTo(1300, 5));
     resizer.retryLast();
-    expect(resizer.messageFor(600, 960), [21, 0x04, 0xB0, 0x07, 0x80]);
+    expect(resizer.requestFor(1600, 924)?.newDisplay, landscape.newDisplay);
+  });
+
+  test('连续缩放时尺寸与 density 按顺序更新，最终采用窄窗口 DPI', () async {
+    final wide = FusionDisplayGeometry.fromViewport(1128, 780);
+    final narrow = FusionDisplayGeometry.fromViewport(688, 780);
+    final firstDensityStarted = Completer<void>();
+    final releaseFirstDensity = Completer<void>();
+    final operations = <String>[];
+    var currentDpi = 0;
+    final queue = FusionDisplayUpdateQueue(
+      sendResize: (geometry) async {
+        operations.add('resize:${geometry.densityDpi}');
+        return true;
+      },
+      setDensity: (geometry) async {
+        final dpi = geometry.densityDpi;
+        operations.add('density:$dpi');
+        if (dpi == wide.densityDpi) {
+          firstDensityStarted.complete();
+          await releaseFirstDensity.future;
+        }
+        currentDpi = dpi;
+        return true;
+      },
+    );
+
+    final first = queue.submit(wide);
+    await firstDensityStarted.future;
+    final second = queue.submit(narrow);
+    expect(operations, ['resize:${wide.densityDpi}', 'density:${wide.densityDpi}']);
+
+    releaseFirstDensity.complete();
+    expect(await first, isTrue);
+    expect(await second, isTrue);
+    expect(operations, [
+      'resize:${wide.densityDpi}',
+      'density:${wide.densityDpi}',
+      'resize:${narrow.densityDpi}',
+      'density:${narrow.densityDpi}',
+    ]);
+    expect(currentDpi, narrow.densityDpi);
   });
 }

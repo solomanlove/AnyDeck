@@ -24,6 +24,7 @@ import 'mirror_settings_dialog.dart';
 import 'mirror_window_controller.dart';
 import 'widget/mirror_app_quick_actions_dialog.dart';
 import 'widget/mirror_status_view.dart';
+import 'widget/fusion_resize_transition.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/harmony/harmony_mirror_service.dart';
 import '../desktop_window_title_service.dart';
@@ -441,43 +442,47 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Listener(
-                    key: _viewerKey,
-                    behavior: HitTestBehavior.translucent,
-                    onPointerDown: (e) {
-                      if (_whiteboard.active) return;
-                      final now = DateTime.now();
-                      // 判定双击
-                      if (_lastPointerDownTime != null &&
-                          now.difference(_lastPointerDownTime!) <
-                              const Duration(milliseconds: 300)) {
-                        _controller.handleDoubleTap(context, e);
-                      }
-                      _lastPointerDownTime = now;
-                      // 只有开启了自动识别设置，点击手机画面时才触发自动防抖识别
-                      if (settings.autoIdentifyForegroundApp) {
-                        _controller.triggerIdentifyForegroundApp();
-                      }
-                    },
-                    child: EmbeddedScrcpyViewer(
-                      deviceId: widget.deviceId,
-                      whiteboard: _whiteboard,
-                      isHarmony: widget.isHarmony,
-                      isFullScreen: _controller.isFullScreen,
-                      onVideoSizeChanged: (width, height) {
-                        _whiteboard.updateVideoOrientation(width, height);
-                        _controller.onVideoSizeChanged(width, height);
-                      },
-                      onIosVideoGeometryChanged: (width, height, viewport) {
-                        _whiteboard.updateVideoOrientation(width, height);
-                        _controller.onIosVideoGeometryChanged(
-                          width, height, viewport);
-                      },
-                      onEscapePressed: () {
-                        if (_controller.isFullScreen) {
-                          _controller.toggleFullScreen(context, false);
+                  FusionResizeTransition(
+                    resizing: widget.startApp != null &&
+                        _controller.isFusionResizing,
+                    child: Listener(
+                      key: _viewerKey,
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: (e) {
+                        if (_whiteboard.active) return;
+                        final now = DateTime.now();
+                        // 判定双击
+                        if (_lastPointerDownTime != null &&
+                            now.difference(_lastPointerDownTime!) <
+                                const Duration(milliseconds: 300)) {
+                          _controller.handleDoubleTap(context, e);
+                        }
+                        _lastPointerDownTime = now;
+                        // 只有开启了自动识别设置，点击手机画面时才触发自动防抖识别
+                        if (settings.autoIdentifyForegroundApp) {
+                          _controller.triggerIdentifyForegroundApp();
                         }
                       },
+                      child: EmbeddedScrcpyViewer(
+                        deviceId: widget.deviceId,
+                        whiteboard: _whiteboard,
+                        isHarmony: widget.isHarmony,
+                        isFullScreen: _controller.isFullScreen,
+                        onVideoSizeChanged: (width, height) {
+                          _whiteboard.updateVideoOrientation(width, height);
+                          _controller.onVideoSizeChanged(width, height);
+                        },
+                        onIosVideoGeometryChanged: (width, height, viewport) {
+                          _whiteboard.updateVideoOrientation(width, height);
+                          _controller.onIosVideoGeometryChanged(
+                            width, height, viewport);
+                        },
+                        onEscapePressed: () {
+                          if (_controller.isFullScreen) {
+                            _controller.toggleFullScreen(context, false);
+                          }
+                        },
+                      ),
                     ),
                   ),
                   Positioned(

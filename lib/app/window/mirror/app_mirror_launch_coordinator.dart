@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/adb/adb_service.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/scrcpy/app_virtual_display_launcher.dart';
+import '../../../core/scrcpy/fusion_display_resize.dart';
 import '../../../core/scrcpy/fusion_mode_preference.dart';
 import '../multi_window_compat.dart';
 import 'app_mirror_window_creation_gate.dart';
@@ -163,11 +164,29 @@ class AppMirrorLaunchCoordinator {
       );
     } else if (status.state == FusionModeState.enabled &&
         !request.forcePrimary) {
+      // 运行中的 Task 可直接迁移；否则先确认启动入口，避免系统组件留下失败窗口。
+      final tasks = await _adb.shellArgs(
+        request.deviceId,
+        ['cmd', 'activity', 'stack', 'list'],
+      );
+      if (!tasks.isSuccess ||
+          findRootTaskId(tasks.stdout, request.packageName) == null) {
+        await resolveAppLauncherComponent(
+          _adb,
+          request.deviceId,
+          request.packageName,
+        );
+      }
       final resolution = resolveAppMirrorDisplayResolution(
         request.physicalResolution,
         videoWidth: request.videoWidth,
         videoHeight: request.videoHeight,
       );
+      final windowSize = resolveMirrorInitialWindowSize(resolution);
+      final initialDisplay = FusionDisplayGeometry.fromViewport(
+        windowSize.width - mirrorWindowSideChromeWidth,
+        windowSize.height - mirrorWindowTopChromeHeight,
+      ).newDisplay;
       kind = AppMirrorLaunchKind.fusion;
       windowId = await _windows.create(
         {
@@ -175,11 +194,11 @@ class AppMirrorLaunchCoordinator {
           'deviceId': request.deviceId,
           'physicalDeviceKey': physicalKey,
           'deviceName': request.appName,
-          'newDisplay': resolution,
+          'newDisplay': initialDisplay,
           'startApp': request.packageName,
           'alwaysOnTop': request.alwaysOnTop,
         },
-        resolveMirrorInitialWindowSize(resolution),
+        windowSize,
         request.mirrorTitleTemplate.replaceAll('{name}', request.appName),
       );
     } else {

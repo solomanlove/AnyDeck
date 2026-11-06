@@ -36,7 +36,7 @@
 | 缩放、旋转、跳转和输入法 | App 对新 viewport 重排，触控坐标准确；IME 在副屏；跨 App 跳转的 Task 去向可解释 |
 | 关闭、断线、启动失败 | display、server、forward、Rust handle 与 Texture 回收；失败时只由用户主动选择普通投屏 |
 
-API 34、35、36 和厂商 ROM 的上述真机验收尚未完成。DRM/`FLAG_SECURE` 画面及部分 App 的副屏行为可能受平台限制，应按实际设备记录，不把 Server 产生日志或 Texture 注册视作画面成功。
+API 34、35 的上述真机验收尚未完成；API 36 目前仅完成荣耀 Magic V6 图库的首帧、Task、触控和缩放验收。DRM/`FLAG_SECURE` 画面及部分 App 的副屏行为可能受平台限制，应按实际设备记录，不把 Server 产生日志或 Texture 注册视作画面成功。
 
 ## 本次自动验证记录
 
@@ -52,3 +52,13 @@ API 34、35、36 和厂商 ROM 的上述真机验收尚未完成。DRM/`FLAG_SEC
 - 回归测试验证子窗口使用业务通道、主窗口以单向模式注册并本地串行创建。Dart 测试与静态检查只能验证调用契约；需要完全退出并重新启动当前运行的 AnyDeck 后，才能验证主窗口注册以及真实副屏首帧，Hot Reload 不会重新执行主窗口初始化。
 - 修复后定向运行 5 个相关测试文件，26 项通过；全仓 `dart analyze` 仍有 38 条既有 warning/info，无本次新增诊断。尚未对重启后的真实窗口创建、App Task 和首帧完成运行验收。
 - 提交前补充复核 5 个测试文件，38 项通过；对 `app_mirror_window_creation_gate.dart`、`main.dart` 和 `apk_window_open_test.dart` 分别执行 `dart analyze`，均无诊断。
+
+## 图库缩放对齐与真机验收（2026-11-06）
+
+- 参考软件 AndroMeld 在荣耀 Magic V6 的同一图库 Task 上保持独立虚拟屏：窄窗口约 `1384×1600 / 197 dpi`，宽窗口约 `1600×924 / 114 dpi`。两者逻辑高度都约为 1300 dp；图库从三列切为五列，过程中可见模糊旧画面和居中网格图标。设备侧 Helper 调用 `VirtualDisplay.resize(width, height, dpi)`；仓库内 scrcpy 4.0 Server 的 resize 控制报文仅携带宽高，故 AnyDeck 需另外调整副屏 DPI。
+- `FusionDisplayGeometry` 以 Viewer viewport 为输入，最长边限制为 1600 像素，按约 1300 dp 逻辑高度计算 DPI。创建副屏时就传同一规则的初始尺寸；窗口改变后发送 scrcpy 控制报文类型 21。`FusionResizeTransition` 在等待新视频帧时模糊旧画面、显示网格图标，并阻止误触；新帧和 DPI 到位后撤掉过渡层，最长等待 5 秒。
+- 连续 resize 使用 `FusionDisplayUpdateQueue` 串行处理尺寸和 DPI。scrcpy 的 `sendControl` 只确认写入 socket，不代表 Android 已完成 `VirtualDisplay.resize`；先前立即调用 `wm density` 会被稍后的 resize 覆盖。现在轮询 `wm size -d <displayId>`，确认目标物理尺寸后才设置 `wm density <dpi> -d <displayId>`；会话停止时执行 `wm density reset -d <displayId>`。同一会话中的 ADB 命令有超时和设备身份检查。
+- 没有现存 Task 时，先以 `cmd package resolve-activity` 查找 `MAIN/LAUNCHER` Component，再显式 `am start -n`。找不到入口时在创建融合窗口前返回错误；已有 Task 可直接迁移，无需 LAUNCHER Activity。该处理覆盖用户反馈的 `unable to resolve Intent` 和无启动 Activity 的空白投屏窗口，但不使原本不能独立启动的系统组件变为可启动 App。
+- 真机窗口：荣耀 Magic V6，Android 16，USB，`com.hihonor.photos`。AnyDeck 首帧真实可见，图库 Task `#704` 在虚拟屏 `displayId=123` 的 `RESUMED` 状态；首次窄窗口 `714×1600 / 197 dpi` 为三列，宽窗口 `1600×1106 / 136 dpi` 为五列，缩回 `1410×1600 / 197 dpi` 为三列。宽窄两向均观察到模糊与居中网格过渡；点击缩略图进入照片并通过返回键回到图库。调节的是窗口宽高比，实际副屏像素值随窗口尺寸而变。
+- 首次复测发现从宽缩窄后副屏为 `1410×1600`，DPI 却仍为 `136`；排查确认 `wm density 197 -d 122` 可手动生效。加入等待物理尺寸的时序修复后，同样的宽窄往返在 `displayId=123` 实测恢复到 `197 dpi`。21:00–21:22 CST 的 `AndroidRuntime:E` 定向日志中未检出图库或 shell 的 `FATAL EXCEPTION`；图库进程 PID 6878 仍在运行。
+- 四个定向测试文件共 17 项通过；改动 Dart 文件 `dart analyze` 无诊断，`flutter build macos --debug --no-pub` 通过，`git diff --check` 通过。此次真机验收覆盖上述荣耀图库路径；Android 14/15、其他 ROM、受保护画面和像素级动画一致性仍须分别验证。图库私有缩略图未保存到仓库。

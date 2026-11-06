@@ -126,6 +126,15 @@ class MirrorWindowController extends ChangeNotifier {
   Timer? _resizeSettleTimer;
   Timer? _fusionResizeTimer;
   FusionDisplayResizer? _fusionResizer;
+  FusionDisplayUpdateQueue? _fusionUpdateQueue;
+  Timer? _fusionResizeDeadline;
+  FusionDisplayGeometry? _pendingFusionGeometry;
+  int _fusionResizeEpoch = 0;
+  int? _lastFusionFrameWidth;
+  int? _lastFusionFrameHeight;
+  bool _fusionDensityApplied = false;
+  bool _isFusionResizing = false;
+  bool get isFusionResizing => _isFusionResizing;
   Timer? _resizeThrottleTimer;
   Timer? _orientationSettleTimer;
   final MirrorAspectResolver _aspectResolver = MirrorAspectResolver();
@@ -200,6 +209,7 @@ class MirrorWindowController extends ChangeNotifier {
     _identifyTimer?.cancel();
     _resizeSettleTimer?.cancel();
     _fusionResizeTimer?.cancel();
+    _fusionResizeDeadline?.cancel();
     _resizeThrottleTimer?.cancel();
     _orientationSettleTimer?.cancel();
     unawaited(_setWindowAspectRatio(0));
@@ -250,6 +260,10 @@ class MirrorWindowController extends ChangeNotifier {
   /// 强制停止投屏并清理 adb/scrcpy 会话
   Future<void> forceStopMirroring() async {
     _orientationSettleTimer?.cancel();
+    _fusionResizeEpoch++;
+    _fusionResizeTimer?.cancel();
+    _fusionResizeDeadline?.cancel();
+    _pendingFusionGeometry = null;
     try {
       if (_stopMirror != null) {
         await _stopMirror!();
@@ -282,7 +296,16 @@ class MirrorWindowController extends ChangeNotifier {
   /// 开始/重试启动投屏服务
   Future<void> startMirroring() async {
     if (_disposed) return;
+    _fusionResizeEpoch++;
+    _fusionResizeTimer?.cancel();
+    _fusionResizeDeadline?.cancel();
     _fusionResizer = null;
+    _fusionUpdateQueue = null;
+    _pendingFusionGeometry = null;
+    _fusionDensityApplied = false;
+    _isFusionResizing = false;
+    _lastFusionFrameWidth = null;
+    _lastFusionFrameHeight = null;
     _isLoading = true;
     _errorMessage = null;
     _lastVideoAspect = null;
@@ -489,6 +512,9 @@ class MirrorWindowController extends ChangeNotifier {
   void onVideoSizeChanged(int width, int height) {
     if (isAppMirror) {
       if (width > 0 && height > 0) _lastVideoAspect = width / height;
+      _lastFusionFrameWidth = width;
+      _lastFusionFrameHeight = height;
+      _finishFusionResizeIfReady();
       return;
     }
     if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
@@ -514,28 +540,90 @@ class MirrorWindowController extends ChangeNotifier {
   /// 拖动结束后回传 viewport 尺寸，不让设备帧变化反向调整桌面窗口。
   void _scheduleFusionDisplayResize() {
     if (newDisplay == null || _disposed) return;
+    if (!_isLoading && _errorMessage == null && !_isFusionResizing) {
+      _isFusionResizing = true;
+      notifyListeners();
+    }
     _fusionResizeTimer?.cancel();
-    _fusionResizeTimer = Timer(const Duration(milliseconds: 160), () async {
+    _fusionResizeTimer = Timer(const Duration(milliseconds: 160), () {
       if (_disposed || _isLoading || _errorMessage != null) return;
       final box = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
-      if (box == null || box.size.isEmpty) return;
-      final resizer = _fusionResizer ??= FusionDisplayResizer(newDisplay!);
-      final message = resizer.messageFor(box.size.width, box.size.height);
-      if (message == null) return;
-      try {
-        final sent = await ref.read(embeddedScrcpyServiceProvider).sendControl(
-          deviceId: deviceId,
-          controlMessage: message,
-        );
-        if (!sent) {
-          resizer.retryLast();
-          debugPrint('Failed to resize fusion display for $deviceId');
+      if (box == null || box.size.isEmpty) {
+        _finishFusionResize();
+        return;
+      }
+      final resizer = _fusionResizer ??= FusionDisplayResizer();
+      final geometry = resizer.requestFor(box.size.width, box.size.height);
+      if (geometry == null) {
+        if (_pendingFusionGeometry == null) {
+          _finishFusionResize();
         }
-      } catch (error) {
+        return;
+      }
+      _pendingFusionGeometry = geometry;
+      _fusionDensityApplied = false;
+      _fusionResizeDeadline?.cancel();
+      _fusionResizeDeadline = Timer(const Duration(seconds: 5), _finishFusionResize);
+      final service = ref.read(embeddedScrcpyServiceProvider);
+      final epoch = _fusionResizeEpoch;
+      final queue = _fusionUpdateQueue ??= FusionDisplayUpdateQueue(
+        sendResize: (target) {
+          if (_disposed || epoch != _fusionResizeEpoch) {
+            return Future<bool>.value(false);
+          }
+          return service.sendControl(
+            deviceId: deviceId,
+            controlMessage: target.resizeMessage,
+          );
+        },
+        setDensity: (target) {
+          if (_disposed || epoch != _fusionResizeEpoch) {
+            return Future<bool>.value(false);
+          }
+          return service.setFusionDisplayDensity(deviceId, target);
+        },
+      );
+      unawaited(queue.submit(geometry).then<void>((applied) {
+        if (_disposed || epoch != _fusionResizeEpoch ||
+            !identical(_pendingFusionGeometry, geometry)) {
+          return;
+        }
+        if (!applied) {
+          resizer.retryLast();
+          debugPrint('Failed to resize fusion display or update density for $deviceId');
+          _finishFusionResize();
+          return;
+        }
+        _fusionDensityApplied = true;
+        _finishFusionResizeIfReady();
+      }, onError: (Object error, StackTrace stack) {
+        if (_disposed || epoch != _fusionResizeEpoch ||
+            !identical(_pendingFusionGeometry, geometry)) {
+          return;
+        }
         resizer.retryLast();
         debugPrint('Failed to resize fusion display for $deviceId: $error');
-      }
+        _finishFusionResize();
+      }));
     });
+  }
+
+  /// 新视频尺寸和 density 都已生效后，撤掉模糊过渡层。
+  void _finishFusionResizeIfReady() {
+    final target = _pendingFusionGeometry;
+    if (target == null || !_fusionDensityApplied) return;
+    if (_lastFusionFrameWidth == target.width &&
+        _lastFusionFrameHeight == target.height) {
+      _finishFusionResize();
+    }
+  }
+
+  void _finishFusionResize() {
+    _fusionResizeDeadline?.cancel();
+    _pendingFusionGeometry = null;
+    if (!_isFusionResizing) return;
+    _isFusionResizing = false;
+    notifyListeners();
   }
 
   /// iOS 控制栏位于视频区域上方，使用真实视频 viewport 计算窗口比例。
