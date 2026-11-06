@@ -69,6 +69,11 @@ class EmbeddedScrcpyService {
       _sessions[deviceId]?.virtualDisplayId;
   Process? getServerProcess(String deviceId) => _sessions[deviceId]?.serverProcess;
 
+  /// 首帧已确认后结束启动期 Task 回迁守护，让手机上的主动操作生效。
+  void finishAppLaunchGuard(String deviceId) {
+    _sessions[deviceId]?.escapeGuardian?.cancel();
+  }
+
   /// 只读本机 Rust 内存，不发送额外 ADB 网络探测。
   MirrorStreamHealth? getStreamHealth(String deviceId) {
     final session = _sessions[deviceId];

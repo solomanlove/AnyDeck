@@ -13,8 +13,10 @@ import '../../theme/app_theme.dart';
 import '../window_close_shortcut.dart';
 import '../../../features/control/embedded_scrcpy_viewer.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
+import '../../../core/scrcpy/app_mirror_task_monitor.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/apps/adb_package.dart';
+import '../../widget/app_toast.dart';
 import '../../../features/widgets/drag_drop_target_overlay.dart';
 import 'mirror_floating_toolbar.dart';
 import 'mirror_immersive_overlay.dart';
@@ -25,6 +27,7 @@ import 'mirror_window_controller.dart';
 import 'widget/mirror_app_quick_actions_dialog.dart';
 import 'widget/mirror_status_view.dart';
 import 'widget/fusion_resize_transition.dart';
+import 'widget/fusion_app_on_phone_placeholder.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/harmony/harmony_mirror_service.dart';
 import '../desktop_window_title_service.dart';
@@ -137,6 +140,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   /// 投屏业务控制器
   late final MirrorWindowController _controller;
 
+  /// 仅融合应用窗口监测目标 Task 所在的 Android display。
+  AppMirrorTaskMonitor? _appTaskMonitor;
+
   /// 用于捕获键盘事件的 FocusNode
   late final FocusNode _keyboardFocusNode;
 
@@ -178,6 +184,18 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       isIos: widget.isIos,
       isHarmony: widget.isHarmony,
     );
+    if (widget.startApp != null && !widget.isIos && !widget.isHarmony) {
+      _appTaskMonitor = AppMirrorTaskMonitor(
+        adbService: ref.read(adbServiceProvider),
+        deviceId: widget.deviceId,
+        packageName: widget.startApp!,
+        virtualDisplayId: () => ref
+            .read(embeddedScrcpyServiceProvider)
+            .getVirtualDisplayId(widget.deviceId),
+        isReady: () => !_controller.isLoading &&
+            _controller.errorMessage == null,
+      )..start();
+    }
 
     // 监听控制器状态变化，更新 UI
     _controller.addListener(_onControllerChanged);
@@ -201,6 +219,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   @override
   void dispose() {
     // 移除监听并释放控制器资源
+    _appTaskMonitor?.dispose();
     _controller.removeListener(_onControllerChanged);
     _controller.disposeController();
 
@@ -259,6 +278,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   /// 监听控制器属性变动时的回调
   void _onControllerChanged() {
     if (mounted) {
+      if (_controller.isLoading || _controller.errorMessage != null) {
+        _appTaskMonitor?.suspend();
+      }
       setState(() {});
       // 如果进入了全屏，确保键盘焦点不丢失，主动在后帧请求根焦点，使得 ESC 监听有效
       if (_controller.isFullScreen) {
@@ -267,6 +289,22 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
             _keyboardFocusNode.requestFocus();
           }
         });
+      }
+    }
+  }
+
+  /// 用户点击占位页后将目标 App 放回当前虚拟副屏。
+  Future<void> _restartFusionApp() async {
+    try {
+      await _appTaskMonitor?.restartOnVirtualDisplay();
+    } catch (error) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          context.l10n.t('fusionRestartFailed')
+              .replaceAll('{error}', error.toString()),
+          isError: true,
+        );
       }
     }
   }
@@ -485,6 +523,30 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                       ),
                     ),
                   ),
+                  if (_appTaskMonitor != null)
+                    Positioned.fill(
+                      child: AnimatedBuilder(
+                        animation: _appTaskMonitor!,
+                        builder: (context, child) {
+                          final monitor = _appTaskMonitor!;
+                          if (!monitor.isAway) return const SizedBox.shrink();
+                          final app = ref.read(packageMetadataResolverProvider)
+                              .resolve(
+                                AdbPackage(
+                                  name: widget.startApp!,
+                                  label: widget.deviceName,
+                                ),
+                                preferredDeviceId: widget.deviceId,
+                              );
+                          return FusionAppOnPhonePlaceholder(
+                            appName: app.displayName,
+                            iconPath: app.iconLocalPath,
+                            isRestarting: monitor.isRestarting,
+                            onRestart: _restartFusionApp,
+                          );
+                        },
+                      ),
+                    ),
                   Positioned(
                     top: 16,
                     left: 16,

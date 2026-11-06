@@ -355,6 +355,9 @@ class MirrorWindowController extends ChangeNotifier {
           await Future<void>.delayed(const Duration(milliseconds: 50));
         }
       }
+      if (isAppMirror && !isHarmony) {
+        ref.read(embeddedScrcpyServiceProvider).finishAppLaunchGuard(deviceId);
+      }
       _isLoading = false;
       _startupRecoveryAttempted = false;
       notifyListeners();

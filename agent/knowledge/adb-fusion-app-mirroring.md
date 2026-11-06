@@ -62,3 +62,12 @@ API 34、35 的上述真机验收尚未完成；API 36 目前仅完成荣耀 Mag
 - 真机窗口：荣耀 Magic V6，Android 16，USB，`com.hihonor.photos`。AnyDeck 首帧真实可见，图库 Task `#704` 在虚拟屏 `displayId=123` 的 `RESUMED` 状态；首次窄窗口 `714×1600 / 197 dpi` 为三列，宽窗口 `1600×1106 / 136 dpi` 为五列，缩回 `1410×1600 / 197 dpi` 为三列。宽窄两向均观察到模糊与居中网格过渡；点击缩略图进入照片并通过返回键回到图库。调节的是窗口宽高比，实际副屏像素值随窗口尺寸而变。
 - 首次复测发现从宽缩窄后副屏为 `1410×1600`，DPI 却仍为 `136`；排查确认 `wm density 197 -d 122` 可手动生效。加入等待物理尺寸的时序修复后，同样的宽窄往返在 `displayId=123` 实测恢复到 `197 dpi`。21:00–21:22 CST 的 `AndroidRuntime:E` 定向日志中未检出图库或 shell 的 `FATAL EXCEPTION`；图库进程 PID 6878 仍在运行。
 - 四个定向测试文件共 17 项通过；改动 Dart 文件 `dart analyze` 无诊断，`flutter build macos --debug --no-pub` 通过，`git diff --check` 通过。此次真机验收覆盖上述荣耀图库路径；Android 14/15、其他 ROM、受保护画面和像素级动画一致性仍须分别验证。图库私有缩略图未保存到仓库。
+
+## 应用转到手机主屏时的占位页（2026-11-06）
+
+- 融合窗口在首帧后结束启动期的 Activity 回迁守护；之后手机主动操作同一 App 时，不再被 12 秒守护强制搬回副屏。
+- `AppMirrorTaskMonitor` 每 2 秒读取一次 `cmd activity stack list`。目标包仍有虚拟副屏 Task 时继续显示真实画面；仅在主屏有 Task 时立即显示占位页；Task 暂时消失时需要连续两次确认，避免 Activity 切换闪屏。ADB 查询失败时保持上次状态，窗口停止或 display ID 改变时清除旧状态。
+- 占位页覆盖在持续运行的 Viewer 上，展示本地缓存的应用图标、名称和“重新启动”，不绘制截图里的红色标注框。按钮复用虚拟副屏启动链路，优先迁移已有 Task，失败后仍保持占位并提示；重新检测到副屏 Task 后撤去占位页。
+- 定向测试覆盖真实 `RootTask` 文本解析、多 Task 时副屏优先、主屏与缺失状态、重新迁移以及中英文和明暗主题。
+- 22:07–22:13 CST 使用新版 macOS Debug 构建连接荣耀 Magic V6（Android 16，USB）：图库 Task `#704` 在虚拟屏 `displayId=129` 时有真实首帧；通过 `am start -n com.hihonor.photos/com.hihonor.gallery.app.GalleryMain --display 0` 将同一 Task 移到主屏后，窗口显示图库图标、名称和“重新启动”；再将 Task 迁回 `displayId=129` 后，窗口恢复图库实时画面。两次切换均以 `cmd activity stack list` 和窗口截图交叉确认。
+- 桌面自动化对 Flutter 投屏子窗口发送坐标点击时报 `noWindowsAvailable`，因此真机上的“重新启动”按钮点击尚未验收；按钮回调和 `move-stack` 命令链路由定向测试覆盖。手机锁屏阻止了从 Launcher 图标手动点击图库的补充场景，不能把 ADB 显式启动等同于该场景。
