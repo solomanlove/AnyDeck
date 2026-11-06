@@ -69,6 +69,9 @@ dependencies:
   flutter_svg: ^2.3.0
   # 解析 WebDriverAgent 返回的 iOS Accessibility XML。
   xml: ^7.0.1
+  # 局域网设备共享：临时 TLS 证书与证书指纹校验。
+  basic_utils: ^5.8.2
+  crypto: ^3.0.7
 
 dev_dependencies:
   shared_preferences_platform_interface: ^2.4.2

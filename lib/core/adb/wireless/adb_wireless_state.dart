@@ -76,6 +76,7 @@ String? wirelessIpv4(String? value) {
 bool isWirelessTlsId(String id) =>
     id.contains('_adb-tls-connect._tcp') ||
     (!id.contains('._adb._tcp') &&
+        !id.startsWith('127.0.0.1:') &&
         id.contains(':') &&
         int.tryParse(id.split(':').last) != 5555);
 

@@ -86,6 +86,8 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>用于连接局域网设备，并共享你选择的 Android 手机。Used to connect to local devices and share the Android phone you select.</string>
 	<key>NSLocationUsageDescription</key>
 	<string>用于在设备列表显示当前电脑的 Wi-Fi 名称，不采集地理位置。Used to display this computer’s Wi-Fi name without collecting its location.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

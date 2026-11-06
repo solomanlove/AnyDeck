@@ -17,6 +17,8 @@ class DiscoveredDevice {
   final String status;
   final String? model;
   final String? product;
+  /// 共享来源由 Bridge 的产品标记确定，不根据动态端口猜测。
+  bool get isShared => product == 'anydeck_shared_device';
   final String? transportId;
   final bool isIos;
   final bool isHarmony;

@@ -100,6 +100,9 @@ import 'mcp/controller/mcp_server_controller.dart';
 import 'widgets/dashboard_snack.dart';
 import 'widgets/remote_controller_dialog.dart';
 import 'devices/widgets/tcpip_connection_dialog.dart';
+import 'devices/widgets/device_share_dialog.dart';
+import 'devices/widgets/device_share_controls.dart';
+import '../core/device_share/device_share_provider.dart';
 import 'devices/widgets/device_list_filters.dart';
 import 'overview/widget/mirror_quality_presets.dart';
 import 'devices/model/device_list_presentation.dart';
@@ -431,6 +434,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   Future<void> _exitApp() async {
+    await ref.read(deviceShareServiceProvider).dispose();
     // 退出应用，先解除关闭拦截，然后销毁窗口并退出进程
     await windowManager.setPreventClose(false);
     await windowManager.destroy();

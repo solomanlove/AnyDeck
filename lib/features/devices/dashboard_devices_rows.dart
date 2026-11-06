@@ -170,7 +170,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 ),
                 // 2. 次行展示已获取的局域网 Wi-Fi IP 地址 / 投屏分辨率及警告图标
                 _buildIdentifierSubtitle(device, airplaySession),
-                if (!device.isIos && !device.isHarmony)
+                if (device.isShared)
+                  Text(context.l10n.t('deviceShareSource'),
+                    style: Theme.of(context).textTheme.labelSmall),
+                if (!device.isShared && !device.isIos && !device.isHarmony)
                   AdbWirelessStatusLabel(device: device),
               ],
             ),
@@ -233,7 +236,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (hasIp) DeviceSubnetWarning(wifiIp: wifiIp),
+              if (hasIp && !device.isShared) DeviceSubnetWarning(wifiIp: wifiIp),
             ],
           ),
         );
@@ -287,6 +290,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
         runSpacing: 4,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          DeviceShareControls(device: device),
           if (_deviceQuickActionRunning && _contextDeviceId == device.id)
             const SizedBox.square(
               dimension: 16,

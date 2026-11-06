@@ -67,6 +67,12 @@ class _ContentTitleBar extends ConsumerWidget {
       title: context.l10n.t('devices'),
       subtitle: context.l10n.t('devicesSubtitle'),
       actions: [
+        IconButton(
+          tooltip: context.l10n.t('deviceShareJoin'),
+          icon: const Icon(Icons.devices_outlined),
+          onPressed: () => showDialog<void>(context: context,
+            builder: (_) => const DeviceShareDialog()),
+        ),
         //tcp连接
         IconButton(
           tooltip: context.l10n.t('connectTcp'),

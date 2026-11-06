@@ -10,6 +10,8 @@ import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/app/widget/app_toast.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
+import 'package:any_deck/core/device_share/device_share_service.dart';
+import 'package:any_deck/core/device_share/device_share_provider.dart';
 import 'package:any_deck/core/airplay/airplay_server_service.dart';
 import 'package:any_deck/core/airplay/airplay_server_state.dart';
 import 'package:any_deck/core/harmony/hdc_service.dart';
@@ -240,6 +242,7 @@ Future<void> withDeviceMenu(
   AirPlaySessionData? airplay,
   String language = 'zh',
   Brightness brightness = Brightness.light,
+  DeviceShareService? sharing,
 }) async {
   tester.view.physicalSize = const Size(1200, 900);
   tester.view.devicePixelRatio = 1;
@@ -252,6 +255,7 @@ Future<void> withDeviceMenu(
   final host = DeviceMenuHost(directory);
   final container = ProviderContainer(
     overrides: [
+      if (sharing != null) deviceShareServiceProvider.overrideWithValue(sharing),
       adbServiceProvider.overrideWithValue(adb),
       hdcServiceProvider.overrideWithValue(hdc),
       iosCommandServiceProvider.overrideWithValue(ios),

@@ -18,7 +18,7 @@ class AdbWirelessControls extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (device.id.startsWith('emulator-')) return const SizedBox.shrink();
+    if (device.isShared || device.id.startsWith('emulator-')) return const SizedBox.shrink();
     final status = ref.watch(
       adbWirelessConnectionProvider.select(
         (states) => wirelessStateFor(states, device),

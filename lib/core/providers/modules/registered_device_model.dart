@@ -45,6 +45,8 @@ class RegisteredDevice {
 
   /// 产品代号（如 flame, HarmonyOS NEXT 等）
   final String? product;
+  /// 共享设备复用本机 ADB transport，但不参与手机无线调试准备和切换。
+  bool get isShared => product == 'anydeck_shared_device';
 
   /// ADB transport ID
   final String? transportId;
@@ -118,6 +120,7 @@ class RegisteredDevice {
 
   /// 设备当前是否包含 TCP/IP 连接（传统网络调试，默认 5555 端口）
   bool get hasTcpConnection {
+    if (isShared) return isOnline;
     if (isIos) return false;
     if (isHarmony) {
       final ids = connections.isEmpty ? [id] : connections;
@@ -140,6 +143,7 @@ class RegisteredDevice {
 
   /// 设备当前是否包含 WiFi 无线调试连接（Android 11+ 配对或非 5555 动态高位端口）
   bool get hasWifiDebuggingConnection {
+    if (isShared) return false;
     if (isIos) return false;
     if (connections.isEmpty) {
       if (!isNetwork) return false;
