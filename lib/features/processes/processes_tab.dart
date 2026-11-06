@@ -21,6 +21,7 @@ import '../widgets/dashboard_table_header.dart';
 
 part 'processes_tab_view.dart';
 part 'processes_tab_table.dart';
+part 'processes_tab_refresh.dart';
 
 enum _ProcessContextAction { copyName, stop }
 
@@ -61,6 +62,7 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
   Timer? _refreshTimer;
   bool _autoRefresh = true;
   bool _refreshing = false;
+  int _refreshRevision = 0;
 
   @override
   void initState() {
@@ -77,9 +79,8 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
 
     if (!widget.device.isOnline) {
       _stopRefreshTimer();
-      if (_refreshing || _selectedPid != null) {
+      if (_selectedPid != null) {
         setState(() {
-          _refreshing = false;
           _selectedPid = null;
         });
       }
@@ -115,64 +116,9 @@ class _ProcessesTabState extends ConsumerState<ProcessesTab> {
     ref.read(processesSearchHistoryProvider.notifier).add(query);
   }
 
-  void _startRefreshTimer() {
-    _refreshTimer?.cancel();
-    if (!widget.isVisible) return;
-    final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
-    if (_autoRefresh && isOnline) {
-      _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-        if (mounted && !_refreshing) {
-          final stillOnline = ref.read(deviceOnlineProvider(widget.device.id));
-          if (stillOnline && widget.isVisible) {
-            _refreshProcesses(silent: true);
-          } else {
-            _stopRefreshTimer();
-          }
-        }
-      });
-    }
-  }
-
-  void _stopRefreshTimer() {
-    _refreshTimer?.cancel();
-    _refreshTimer = null;
-  }
-
-  void _toggleAutoRefresh(bool? value) {
-    if (value == null) return;
-    setState(() {
-      _autoRefresh = value;
-      if (_autoRefresh) {
-        _startRefreshTimer();
-      } else {
-        _stopRefreshTimer();
-      }
-    });
-  }
-
-  Future<void> _refreshProcesses({bool silent = false}) async {
-    if (!widget.device.isOnline) {
-      if (mounted && _refreshing) {
-        setState(() => _refreshing = false);
-      }
-      return;
-    }
-    if (_refreshing) return;
-    if (!silent) {
-      setState(() => _refreshing = true);
-    }
-    try {
-      ref.invalidate(processesProvider(widget.device.id));
-      await ref.read(processesProvider(widget.device.id).future);
-    } catch (e) {
-      if (mounted && !silent) {
-        DashboardSnack.show(context, e.toString(), isError: true);
-      }
-    } finally {
-      if (mounted && !silent) {
-        setState(() => _refreshing = false);
-      }
-    }
+  /// part 中的刷新流程通过 State 内部入口更新界面。
+  void _updateRefreshUi(VoidCallback action) {
+    if (mounted) setState(action);
   }
 
   /// 右键选中目标进程，并在指针位置展示进程操作菜单。

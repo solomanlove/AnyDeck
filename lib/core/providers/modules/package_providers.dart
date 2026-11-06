@@ -309,6 +309,7 @@ final packageMetadataResolverProvider = Provider<PackageMetadataResolver>((ref) 
     },
   );
   resolver.warmup();
+  ref.onDispose(resolver.dispose);
   return resolver;
 });
 

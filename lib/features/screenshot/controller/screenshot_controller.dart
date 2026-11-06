@@ -13,6 +13,7 @@ import '../../../core/providers/app_providers.dart';
 import '../model/screenshot_state.dart';
 import 'screenshot_export_helper.dart';
 import 'screenshot_edit_session.dart';
+import 'screenshot_auto_save_writer.dart';
 import 'screenshot_record_runner.dart';
 
 part 'screenshot_auto_refresh.dart';
@@ -79,6 +80,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
     if (isAuto && _captureInFlight > 0) return;
     _captureInFlight++;
     final currentRequestId = ++_requestId;
+    final saveGeneration = _autoRefreshGeneration;
 
     state = state.copyWith(
       isLoading: !isAuto,
@@ -124,18 +126,19 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState>
         final savePath = state.autoSavePath.isNotEmpty
             ? state.autoSavePath
             : ref.read(appSettingsProvider).screenshotSavePath;
-        unawaited(
-          ScreenshotExportHelper.autoSaveScreenshot(
-            deviceId: deviceId,
-            rawBytes: bytes,
-            targetPath: savePath,
-            hostPlatform: ref.read(hostPlatformServiceProvider),
-          ).then((saved) {
-            if (saved != null && ref.mounted) {
-              state = state.copyWith(autoSavedCount: state.autoSavedCount + 1);
-            }
-          }),
+        // 保存也属于单次在途任务，慢磁盘不能在后台积压多份 PNG。
+        final saved = await ref.read(screenshotAutoSaveWriterProvider)(
+          deviceId: deviceId,
+          rawBytes: bytes,
+          targetPath: savePath,
+          hostPlatform: ref.read(hostPlatformServiceProvider),
         );
+        if (saved != null &&
+            ref.mounted &&
+            currentRequestId == _requestId &&
+            saveGeneration == _autoRefreshGeneration) {
+          state = state.copyWith(autoSavedCount: state.autoSavedCount + 1);
+        }
       }
     } catch (e) {
       if (currentRequestId == _requestId && ref.mounted) {

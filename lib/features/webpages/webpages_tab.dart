@@ -39,6 +39,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
   Timer? _refreshTimer;
   bool _autoRefresh = true;
   bool _refreshing = false;
+  int _refreshRevision = 0;
 
   @override
   void initState() {
@@ -93,6 +94,7 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
   }
 
   void _stopRefreshTimer() {
+    _refreshRevision++;
     _refreshTimer?.cancel();
     _refreshTimer = null;
   }
@@ -119,20 +121,21 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
 
   Future<void> _refreshTargets({bool silent = false}) async {
     if (_refreshing) return;
-    if (!silent) {
-      setState(() => _refreshing = true);
-    }
+    // 互斥与 Loading 分离：静默刷新同样占用在途标记。
+    _refreshing = true;
+    if (!silent) setState(() {});
+    final deviceId = widget.device.id;
+    final revision = _refreshRevision;
     try {
-      ref.invalidate(webTargetsProvider(widget.device.id));
-      await ref.read(webTargetsProvider(widget.device.id).future);
+      ref.invalidate(webTargetsProvider(deviceId));
+      await ref.read(webTargetsProvider(deviceId).future);
     } catch (e) {
-      if (mounted && !silent) {
+      if (mounted && !silent && revision == _refreshRevision) {
         DashboardSnack.show(context, e.toString(), isError: true);
       }
     } finally {
-      if (mounted && !silent) {
-        setState(() => _refreshing = false);
-      }
+      _refreshing = false;
+      if (mounted && !silent) setState(() {});
     }
   }
 

@@ -3,10 +3,10 @@
 
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub struct AdbSocketClient {
-    stream: TcpStream,
+    stream: DeadlineStream,
 }
 
 impl AdbSocketClient {
@@ -19,17 +19,15 @@ impl AdbSocketClient {
             .parse()
             .map_err(|e| format!("Invalid ADB server socket address: {e}"))?;
 
+        Self::connect_address(addr, timeout)
+    }
+
+    fn connect_address(addr: SocketAddr, timeout: Duration) -> Result<Self, String> {
+        let deadline = Instant::now() + timeout;
         let stream = TcpStream::connect_timeout(&addr, timeout)
             .map_err(|e| format!("Failed to connect to ADB server at 127.0.0.1:5037: {e}"))?;
 
-        stream
-            .set_read_timeout(Some(timeout))
-            .map_err(|e| format!("Failed to set read timeout: {e}"))?;
-        stream
-            .set_write_timeout(Some(timeout))
-            .map_err(|e| format!("Failed to set write timeout: {e}"))?;
-
-        Ok(Self { stream })
+        Ok(Self { stream: DeadlineStream { stream, deadline } })
     }
 
     /// 发送符合 AOSP 规范的 4 字节 Hex 长度前缀请求，并校验 OKAY 回应
@@ -86,26 +84,91 @@ impl AdbSocketClient {
         client.switch_transport(serial)?;
         client.send_request(&format!("shell:{}", command))?;
 
+        client.read_output()
+    }
+
+    /// 输出及总时间双重有界，慢速持续输出也不能绕过整体 deadline。
+    fn read_output(&mut self) -> Result<Vec<u8>, String> {
         let mut output = Vec::new();
-        // 循环读取直到对端关闭写端（EOF）或超时
         let mut buffer = [0u8; 8192];
         loop {
-            match client.stream.read(&mut buffer) {
-                Ok(0) => break, // EOF
-                Ok(n) => output.extend_from_slice(&buffer[..n]),
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock
-                    || e.kind() == std::io::ErrorKind::TimedOut =>
-                {
-                    // 若已读取到部分内容且超时，退出循环返回当前已读内容
-                    if !output.is_empty() {
-                        break;
+            match self.stream.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(n) => {
+                    if output.len() + n > 1024 * 1024 {
+                        return Err("ADB shell output exceeded 1 MiB".into());
                     }
-                    return Err(format!("Timeout executing shell command: {command}"));
+                    output.extend_from_slice(&buffer[..n]);
                 }
-                Err(e) => return Err(format!("Error reading shell output: {e}")),
+                Err(error) => return Err(format!("ADB shell read failed: {error}")),
             }
         }
 
         Ok(output)
+    }
+}
+
+/// read_exact/write_all 的每次底层 IO 都重算剩余时间，覆盖握手与分块读取。
+struct DeadlineStream {
+    stream: TcpStream,
+    deadline: Instant,
+}
+impl DeadlineStream {
+    fn remaining(&self) -> std::io::Result<Duration> {
+        self.deadline.checked_duration_since(Instant::now())
+            .filter(|duration| !duration.is_zero())
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::TimedOut, "ADB deadline exceeded"))
+    }
+}
+impl Read for DeadlineStream {
+    fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> {
+        self.stream.set_read_timeout(Some(self.remaining()?))?;
+        self.stream.read(bytes)
+    }
+}
+impl Write for DeadlineStream {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.stream.set_write_timeout(Some(self.remaining()?))?;
+        self.stream.write(bytes)
+    }
+    fn flush(&mut self) -> std::io::Result<()> { self.stream.flush() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::TcpListener;
+    use std::thread;
+
+    #[test]
+    fn slow_continuous_output_cannot_extend_deadline() {
+        let server = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = server.local_addr().unwrap();
+        let sender = thread::spawn(move || {
+            let (mut peer, _) = server.accept().unwrap();
+            for _ in 0..50 {
+                if peer.write_all(b"x").is_err() { break; }
+                thread::sleep(Duration::from_millis(10));
+            }
+        });
+        let started = Instant::now();
+        let mut client = AdbSocketClient::connect_address(address, Duration::from_millis(80)).unwrap();
+        assert!(client.read_output().is_err());
+        assert!(started.elapsed() < Duration::from_millis(400));
+        drop(client);
+        sender.join().unwrap();
+    }
+
+    #[test]
+    fn oversized_output_is_rejected() {
+        let server = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = server.local_addr().unwrap();
+        let sender = thread::spawn(move || {
+            let (mut peer, _) = server.accept().unwrap();
+            let _ = peer.write_all(&vec![b'x'; 1024 * 1024 + 1]);
+        });
+        let mut client = AdbSocketClient::connect_address(address, Duration::from_secs(2)).unwrap();
+        assert!(client.read_output().unwrap_err().contains("exceeded"));
+        sender.join().unwrap();
     }
 }

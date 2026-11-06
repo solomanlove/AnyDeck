@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/screenshot/controller/screenshot_controller.dart';
+import 'package:any_deck/features/screenshot/controller/screenshot_auto_save_writer.dart';
+import 'package:any_deck/features/screenshot/controller/screenshot_export_helper.dart';
 import 'package:any_deck/features/screenshot/editor/model/screenshot_edit.dart';
 import 'package:any_deck/features/screenshot/editor/renderer/screenshot_edit_renderer.dart';
 import 'package:any_deck/features/screenshot/model/screenshot_state.dart';
@@ -81,13 +83,16 @@ void main() {
   late _CaptureService service;
   late ProviderContainer container;
   late ScreenshotController controller;
+  late ScreenshotAutoSaveWriter saveWriter;
   late ProviderSubscription<ScreenshotLayoutState> subscription;
 
   setUp(() async {
     service = _CaptureService(await _png());
+    saveWriter = ScreenshotExportHelper.autoSaveScreenshot;
     container = ProviderContainer(
       overrides: [
         adbServiceProvider.overrideWithValue(service),
+        screenshotAutoSaveWriterProvider.overrideWith((ref) => saveWriter),
         deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
       ],
     );
@@ -124,6 +129,29 @@ void main() {
     expect(container.read(_provider).isLoading, isFalse);
   });
 
+  test('慢磁盘保存也占用截图在途锁，切页后的旧保存不计入新会话', () async {
+    final entered = Completer<void>();
+    final writing = Completer<String?>();
+    var writes = 0;
+    saveWriter = ({required deviceId, required rawBytes, required targetPath,
+      required hostPlatform}) {
+      writes++;
+      entered.complete();
+      return writing.future;
+    };
+    controller.updateAutoRefreshConfig(autoSave: true, savePath: '/fake',
+      intervalSeconds: 1, startImmediately: false);
+    final capture = controller.captureScreenshot(isAuto: true);
+    await entered.future;
+    await controller.captureScreenshot(isAuto: true);
+    expect(writes, 1);
+    expect(service.captures, 1);
+    controller.pauseAutoRefreshForTabSwitch();
+    writing.complete('/fake/capture.png');
+    await capture;
+    expect(container.read(_provider).autoSavedCount, 0);
+  });
+
   test('上一张自动截图未完成时不会并发发起第二张', () async {
     final pending = Completer<Uint8List>();
     service.nextRequest = pending;
@@ -141,6 +169,7 @@ void main() {
     final local = ProviderContainer(
       overrides: [
         adbServiceProvider.overrideWithValue(service),
+        screenshotAutoSaveWriterProvider.overrideWith((ref) => saveWriter),
         deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
       ],
     );
@@ -255,6 +284,7 @@ void main() {
     final disposedContainer = ProviderContainer(
       overrides: [
         adbServiceProvider.overrideWithValue(service),
+        screenshotAutoSaveWriterProvider.overrideWith((ref) => saveWriter),
         deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
       ],
     );
@@ -279,6 +309,7 @@ void main() {
       final recordingContainer = ProviderContainer(
         overrides: [
           adbServiceProvider.overrideWithValue(service),
+        screenshotAutoSaveWriterProvider.overrideWith((ref) => saveWriter),
           deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
           _provider.overrideWith(() => _RecordingController(phase)),
         ],

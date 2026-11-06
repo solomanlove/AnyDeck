@@ -17,7 +17,13 @@ import 'widgets/ios_processes_toolbar.dart';
 
 /// iOS 全进程管理入口；离页、断线或切换设备使旧会话失去监听并取消。
 class IosProcessesTab extends ConsumerWidget {
-  const IosProcessesTab({super.key, required this.device});
+  const IosProcessesTab({
+    super.key,
+    required this.device,
+    this.isVisible = true,
+  });
+  /// 独立使用可保留 true；IndexedStack 中须传入实际 Tab 可见性以暂停后台工作。
+  final bool isVisible;
   final DiscoveredDevice device;
 
   @override
@@ -25,13 +31,22 @@ class IosProcessesTab extends ConsumerWidget {
     if (!ref.watch(deviceOnlineProvider(device.id))) {
       return Center(child: Text(context.l10n.t('offlineProcessWarning')));
     }
-    return _IosProcessesView(key: ValueKey(device.id), udid: device.id);
+    return _IosProcessesView(
+      key: ValueKey(device.id),
+      udid: device.id,
+      isVisible: isVisible,
+    );
   }
 }
 
 /// 持有输入框与筛选状态，设备操作和计时器交给 autoDispose Notifier。
 class _IosProcessesView extends ConsumerStatefulWidget {
-  const _IosProcessesView({super.key, required this.udid});
+  const _IosProcessesView({
+    super.key,
+    required this.udid,
+    required this.isVisible,
+  });
+  final bool isVisible;
   final String udid;
   @override
   ConsumerState<_IosProcessesView> createState() => _IosProcessesViewState();
@@ -53,6 +68,8 @@ class _IosProcessesViewState extends ConsumerState<_IosProcessesView> {
 
   @override
   Widget build(BuildContext context) {
+    // IndexedStack 隐藏时取消 Provider 监听，保留本地筛选控件并释放 CLI 会话。
+    if (!widget.isVisible) return const SizedBox.shrink();
     final state = ref.watch(iosProcessesProvider(widget.udid));
     final controller = ref.read(iosProcessesProvider(widget.udid).notifier);
     final items = filterIosProcesses(

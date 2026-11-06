@@ -29,18 +29,18 @@ class _PackageIcon extends ConsumerWidget {
       );
     }
 
-    var iconPath = package.iconLocalPath;
-    if (iconPath == null || !File(iconPath).existsSync()) {
-      iconPath = ref
-          .read(packageMetadataResolverProvider)
-          .findIconOnDisk(package.name, preferredDeviceId: deviceId);
-    }
+    ref.watch(packageMetadataRevisionProvider);
+    final resolver = ref.read(packageMetadataResolverProvider);
+    final iconPath = resolver.resolve(package, preferredDeviceId: deviceId).iconLocalPath;
 
-    if (iconPath == null || !File(iconPath).existsSync()) return fallback;
+    if (iconPath == null) return fallback;
     return Image.file(
       File(iconPath),
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => fallback,
+      errorBuilder: (context, error, stackTrace) {
+        resolver.reportMissingIcon(package.name, iconPath, preferredDeviceId: deviceId);
+        return fallback;
+      },
     );
   }
 }

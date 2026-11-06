@@ -9,7 +9,7 @@ import '../../app/l10n/app_localizations.dart';
 import '../../core/adb/discovered_device.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/apps/adb_package.dart';
-import '../../core/performance/rust_performance_bridge.dart';
+import '../../core/performance/performance_sampler.dart';
 import 'performance_charts.dart';
 import 'performance_data.dart';
 import 'performance_widgets.dart';
@@ -31,6 +31,9 @@ class PerformanceTab extends ConsumerStatefulWidget {
 class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   Timer? _timer;
   bool _isPolling = false;
+  int _pollGeneration = 0;
+  PerformanceSampler? _sampler;
+  Future<void>? _samplerStopping;
   bool _isLoading = true;
   String? _errorMsg;
   bool _wasMirrorWindowOpen = false;
@@ -117,6 +120,13 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
   }
 
   void _stopPolling() {
+    _pollGeneration++;
+    final sampler = _sampler;
+    if (sampler != null) {
+      sampler.dispose();
+      _samplerStopping = sampler.stopped;
+    }
+    _sampler = null;
     _timer?.cancel();
     _timer = null;
   }
@@ -130,9 +140,6 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
     _prevTotalFrames = 0;
     _prevFpsTime = null;
     _lastFps = 0.0;
-    try {
-      RustPerformanceBridge.instance.clearCache(widget.device.id);
-    } catch (_) {}
   }
 
   Future<bool> _isMirrorWindowOpen() async {
@@ -161,13 +168,16 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
     if (_isPolling) return;
     _isPolling = true;
     try {
-      await _pollDataCore();
+      await _pollDataCore(_pollGeneration);
     } finally {
       _isPolling = false;
     }
   }
 
-  Future<void> _pollDataCore() async {
+  bool _acceptsPoll(int generation) =>
+      mounted && generation == _pollGeneration && widget.isVisible;
+
+  Future<void> _pollDataCore(int generation) async {
     final isOnline = ref.read(deviceOnlineProvider(widget.device.id));
     // 如果不在线或不可见，停止轮询并返回
     if (!isOnline || !widget.device.isOnline || !widget.isVisible) {
@@ -176,6 +186,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
     }
 
     final isWindowOpen = await _isMirrorWindowOpen();
+    if (!_acceptsPoll(generation)) return;
     if (isWindowOpen) {
       _wasMirrorWindowOpen = true;
     } else if (_wasMirrorWindowOpen) {
@@ -186,14 +197,19 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
     try {
       PerformanceSnapshot? snapshot;
 
-      // 1. 优先通过 Rust Direct ADB Socket 进行零拷贝采样 (彻底消除子进程与 Dart GC)
+      // 1. 常驻 worker 独占 FFI，Socket 等待不阻塞 UI Isolate。
       if (!widget.device.isHarmony) {
         try {
-          snapshot = RustPerformanceBridge.instance.poll(widget.device.id);
+          // 返回页面时等上一 worker 真正退出，快速切页也不会累积原生查询。
+          await _samplerStopping;
+          if (!_acceptsPoll(generation)) return;
+          snapshot = await (_sampler ??= PerformanceSampler()).poll(widget.device.id);
         } catch (e) {
           debugPrint('Rust performance bridge fallback to CLI: $e');
         }
       }
+
+      if (!_acceptsPoll(generation)) return;
 
       // 2. 若 Rust 采样未命中，平滑回退到 ADB CLI 聚合命令
       if (snapshot == null) {
@@ -205,7 +221,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
                 .read(adbServiceProvider)
                 .shell(widget.device.id, _unifiedCommand);
 
-        if (!mounted) return;
+        if (!_acceptsPoll(generation)) return;
 
         if (!result.isSuccess) {
           final errorMsg = (result.stderr + result.stdout).toLowerCase();
@@ -247,7 +263,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
         _lastFps = snapshot.fps;
       }
 
-      if (!mounted) return;
+      if (!_acceptsPoll(generation)) return;
       final currentSnapshot = snapshot;
 
       // 生成时间戳 Label (格式 HH:mm:ss)
@@ -315,7 +331,7 @@ class _PerformanceTabState extends ConsumerState<PerformanceTab> {
         _fps = currentSnapshot.fps;
       });
     } catch (e) {
-      if (mounted) {
+      if (_acceptsPoll(generation)) {
         setState(() {
           _errorMsg = e.toString();
           _isLoading = false;

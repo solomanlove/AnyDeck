@@ -262,10 +262,12 @@ class _ToolContentCardState extends State<_ToolContentCard> {
             device: widget.device,
           ),
           4 => IosSyslogTab(
+            isVisible: widget.tabIndex == 4,
             key: ValueKey(widget.device.id),
             device: widget.device,
           ),
           6 => IosProcessesTab(
+            isVisible: widget.tabIndex == 6,
             key: ValueKey(widget.device.id),
             device: widget.device,
           ),
@@ -302,11 +304,11 @@ class _ToolContentCardState extends State<_ToolContentCard> {
           ),
           6 => HarmonyProcessesTab(
             device: widget.device,
-            isVisible: _currentToolIndex == 6,
+            isVisible: widget.tabIndex == 6,
           ),
           7 => HarmonyWebpagesTab(
             device: widget.device,
-            isVisible: _currentToolIndex == 7,
+            isVisible: widget.tabIndex == 7,
           ),
           9 => HarmonyScreenshotTab(
             key: ValueKey(widget.device.id),
@@ -314,7 +316,7 @@ class _ToolContentCardState extends State<_ToolContentCard> {
           ),
           10 => PerformanceTab(
             device: widget.device,
-            isVisible: _currentToolIndex == 10,
+            isVisible: widget.tabIndex == 10,
           ),
           11 => NetworkTab(device: widget.device),
           _ => const SizedBox.shrink(),
@@ -340,17 +342,17 @@ class _ToolContentCardState extends State<_ToolContentCard> {
         ),
         6 => ProcessesTab(
           device: widget.device,
-          isVisible: _currentToolIndex == 6,
+          isVisible: widget.tabIndex == 6,
         ),
         7 => WebpagesTab(
           device: widget.device,
-          isVisible: _currentToolIndex == 7,
+          isVisible: widget.tabIndex == 7,
         ),
         8 => const SizedBox.shrink(),
         9 => DashboardScreenshotTab(device: widget.device),
         10 => PerformanceTab(
           device: widget.device,
-          isVisible: _currentToolIndex == 10,
+          isVisible: widget.tabIndex == 10,
         ),
         11 => NetworkTab(device: widget.device),
         15 => MessagesTab(device: widget.device),

@@ -6,6 +6,7 @@ import AVFoundation
 /// 平台必需的 Texture 适配：只注册/通知 Flutter，像素及设备逻辑归 Rust 所有。
 final class RustTexturePlugin: NSObject, FlutterPlugin {
   private typealias CopyPixel = @convention(c) (UInt64) -> UnsafeMutableRawPointer?
+  private typealias FrameCount = @convention(c) (UInt64) -> UInt64
   private typealias Release = @convention(c) (UInt64) -> Void
   private let registry: FlutterTextureRegistry
   private let registrar: FlutterPluginRegistrar
@@ -13,6 +14,9 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
   private var textures: [Int64: RustPixelTexture] = [:]
   private var recorders: [UInt64: AirplayTextureRecorder] = [:]
   private var timer: Timer?
+  private var frameCount: FrameCount?
+  private var frameGates: [Int64: TextureFrameGate] = [:]
+  private var timerInterval: TimeInterval?
   private var copyPixel: CopyPixel?
   private var releaseSession: Release?
   private var library: UnsafeMutableRawPointer?
@@ -35,6 +39,9 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
       library = dlopen("@rpath/libanydeck_device_bridge.dylib", RTLD_NOW | RTLD_GLOBAL)
     }
     if let library {
+      if let count = dlsym(library, "anydeck_decoded_frames") {
+        frameCount = unsafeBitCast(count, to: FrameCount.self)
+      }
       if let copy = dlsym(library, "anydeck_copy_pixel_buffer"),
          let release = dlsym(library, "anydeck_release") {
         copyPixel = unsafeBitCast(copy, to: CopyPixel.self)
@@ -46,6 +53,12 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
     } else {
       let err = dlerror().map { String(cString: $0) } ?? "unknown"
       NSLog("[RustTexturePlugin] Failed to dlopen libanydeck_device_bridge.dylib: \(err)")
+    }
+    for name in [NSWindow.didChangeOcclusionStateNotification,
+                 NSWindow.didMiniaturizeNotification, NSWindow.didDeminiaturizeNotification,
+                 NSWindow.didBecomeKeyNotification] {
+      NotificationCenter.default.addObserver(self, selector: #selector(windowVisibilityChanged(_:)),
+                                            name: name, object: nil)
     }
     NotificationCenter.default.addObserver(self, selector: #selector(windowClosing(_:)),
                                           name: NSWindow.willCloseNotification, object: nil)
@@ -106,6 +119,7 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
       if let handle {
         tracked.remove(handle)
         recorders.removeValue(forKey: handle)?.stop { _, _ in }
+        reconcileTimer()
       }
       result(nil)
     } else if call.method == "startRecording" {
@@ -117,6 +131,7 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
       do {
         let recorder = try AirplayTextureRecorder(path: path)
         recorders[handle] = recorder
+        reconcileTimer()
         result(nil)
       } catch {
         result(FlutterError(code: "airplayRecordingFailed", message: error.localizedDescription, details: nil))
@@ -126,6 +141,7 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
         result(FlutterError(code: "airplayRecordingUnavailable", message: nil, details: nil))
         return
       }
+      reconcileTimer()
       recorder.stop { path, error in
         if let error {
           result(FlutterError(code: "airplayRecordingFailed", message: error.localizedDescription, details: nil))
@@ -148,20 +164,11 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
       NSLog("[RustTexturePlugin] Registered texture id=\(id) for handle=\(handle)")
       // 注册后立即触发一帧通知，加速首帧渲染呈现
       registry.textureFrameAvailable(id)
-      if timer == nil {
-        let t = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
-          guard let self else { return }
-          for (id, texture) in self.textures {
-            self.registry.textureFrameAvailable(id)
-            self.recorders[texture.handle]?.append(texture: texture)
-          }
-        }
-        RunLoop.main.add(t, forMode: .common)
-        timer = t
-      }
+      reconcileTimer()
       result(id)
     } else if call.method == "unregister" {
       if let id = textureId {
+        frameGates.removeValue(forKey: id)
         if let texture = textures.removeValue(forKey: id) {
           registry.unregisterTexture(id)
           if !textures.values.contains(where: { $0.handle == texture.handle }) {
@@ -169,11 +176,46 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
           }
         }
       }
-      if textures.isEmpty { timer?.invalidate(); timer = nil }
+      reconcileTimer()
       result(nil)
     } else {
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  private var windowVisible: Bool {
+    guard let window = registrar.view?.window else { return true }
+    return window.isVisible && !window.isMiniaturized && window.occlusionState.contains(.visible)
+  }
+
+  /// 停帧只读帧计数，不通知 Raster；隐藏且没有录制时完全停止定时唤醒。
+  private func reconcileTimer() {
+    let visible = windowVisible
+    let interval = TextureFrameGate.interval(hasTextures: !textures.isEmpty,
+      visible: visible, recording: !recorders.isEmpty)
+    if interval == timerInterval { return }
+    timer?.invalidate()
+    timer = nil
+    timerInterval = interval
+    guard let interval else { return }
+    let ticker = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+      guard let self else { return }
+      for (id, texture) in self.textures {
+        let count = self.frameCount?(texture.handle)
+        if self.frameGates[id, default: TextureFrameGate()].shouldNotify(count, visible: self.windowVisible) {
+          self.registry.textureFrameAvailable(id)
+        }
+        // 录制单独按时间采样，静止画面也保留正确的视频时长。
+        self.recorders[texture.handle]?.append(texture: texture)
+      }
+    }
+    RunLoop.main.add(ticker, forMode: .common)
+    timer = ticker
+  }
+
+  @objc private func windowVisibilityChanged(_ notification: Notification) {
+    if let window = registrar.view?.window,
+       notification.object as? NSWindow === window { reconcileTimer() }
   }
 
   @objc private func windowClosing(_ notification: Notification) {
@@ -183,6 +225,8 @@ final class RustTexturePlugin: NSObject, FlutterPlugin {
   private func cleanup() {
     timer?.invalidate()
     timer = nil
+    timerInterval = nil
+    frameGates.removeAll()
     for recorder in recorders.values { recorder.stop { _, _ in } }
     recorders.removeAll()
     for id in textures.keys { registry.unregisterTexture(id) }
@@ -317,5 +361,23 @@ private final class RustPixelTexture: NSObject, FlutterTexture {
       NSLog("[RustTexturePlugin] First pixel buffer copied successfully for handle=\(handle) buffer=\(buffer)")
     }
     return Unmanaged<CVPixelBuffer>.fromOpaque(buffer)
+  }
+}
+
+/// 帧通知和唤醒策略独立于 Flutter Engine，便于用原生单元测试验证停帧与隐藏场景。
+struct TextureFrameGate {
+  private var lastFrame: UInt64?
+
+  mutating func shouldNotify(_ count: UInt64?, visible: Bool) -> Bool {
+    guard visible else { return false }
+    guard let count else { return true } // 兼容尚无帧计数接口的旧底座。
+    let changed = lastFrame != count
+    lastFrame = count
+    return changed
+  }
+
+  static func interval(hasTextures: Bool, visible: Bool, recording: Bool) -> TimeInterval? {
+    guard hasTextures && (visible || recording) else { return nil }
+    return visible ? 1.0 / 60.0 : 1.0 / 30.0
   }
 }

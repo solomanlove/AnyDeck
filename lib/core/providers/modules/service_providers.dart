@@ -168,8 +168,10 @@ final cacheCleanupServiceProvider = Provider<CacheCleanupService>((ref) {
 /// 入参 [deviceId] 为目标设备 ID，自动在离开相关页面时释放回收。
 final processesProvider = FutureProvider.autoDispose
     .family<List<AdbProcess>, String>((ref, deviceId) {
-      final registry = ref.watch(deviceRegistryProvider);
-      final isHarmony = registry.any((d) => d.id == deviceId && d.isHarmony);
+      // 设备电量/IP/在线状态刷新不能重建采样 Future，避免绕过页面的在途锁。
+      final isHarmony = ref.watch(deviceRegistryProvider.select(
+        (registry) => registry.any((d) => d.id == deviceId && d.isHarmony),
+      ));
       return ref
           .watch(processServiceProvider)
           .getProcesses(deviceId, isHarmony: isHarmony);

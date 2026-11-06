@@ -7,12 +7,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../process/tool_path_resolver.dart';
+import '../process/command_session.dart';
 import 'logcat_entry.dart';
 import 'logcat_state.dart';
 import 'logcat_line_reader.dart';
+import 'logcat_pid_resolver.dart';
 
 /// 管理 adb logcat 进程，并暴露有上限的内存日志缓冲区。
 class LogcatController extends Notifier<LogcatState> {
+  LogcatController({CommandStarter? startProcess})
+      : _startProcess = startProcess ?? ((exe, args) => Process.start(exe, args));
+
+  final CommandStarter _startProcess;
   static const int _maxEntries = 3000;
   static const int _maxHistoryItems = 12;
   static const String _packageHistoryKey = 'logcat.package_filter_history';
@@ -30,6 +36,7 @@ class LogcatController extends Notifier<LogcatState> {
   Timer? _batchTimer;
   int _maxLogLength = 0;
   int _sessionRevision = 0;
+  LogcatPidResolver? _pidResolver;
 
   int get maxLogLength => _maxLogLength;
   String? get activeDeviceId => _deviceId;
@@ -54,21 +61,20 @@ class LogcatController extends Notifier<LogcatState> {
     _isHarmony = isHarmony;
     state = state.copyWith(entries: [], isRunning: true, isPaused: false);
     try {
-      await _refreshPidPackages();
-      if (revision != _sessionRevision || !ref.mounted) return;
+      unawaited(_refreshPidPackages());
       _pidMapTimer = Timer.periodic(
         const Duration(seconds: 5),
         (_) => _refreshPidPackages(),
       );
       final Process process;
       if (isHarmony) {
-        process = await Process.start(resolveToolPath('hdc'), [
+        process = await _startProcess(resolveToolPath('hdc'), [
           '-t',
           deviceId,
           'hilog',
         ]);
       } else {
-        process = await Process.start(resolveToolPath('adb'), [
+        process = await _startProcess(resolveToolPath('adb'), [
           '-s',
           deviceId,
           'logcat',
@@ -77,25 +83,25 @@ class LogcatController extends Notifier<LogcatState> {
         ]);
       }
       if (revision != _sessionRevision || !ref.mounted) {
-        process.kill();
+        process.kill(ProcessSignal.sigkill);
         return;
       }
       _process = process;
-      _subscription = process.stdout
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .transform(const LineSplitter())
-          .listen(_appendLine);
-      _errorSubscription = process.stderr
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .transform(const LineSplitter())
-          .listen((line) => _appendLine('[stderr] $line'));
+      _subscription = readBoundedLogcatLines(
+        process.stdout.transform(const Utf8Decoder(allowMalformed: true)),
+      ).listen(_appendLine);
+      _errorSubscription = readBoundedLogcatLines(
+        process.stderr.transform(const Utf8Decoder(allowMalformed: true)),
+      ).listen((line) => _appendLine('[stderr] $line'));
       process.exitCode.whenComplete(() {
         if (identical(_process, process) && ref.mounted) {
+          _stopPidResolver();
           state = state.copyWith(isRunning: false);
         }
       });
     } on Object catch (error) {
       if (revision == _sessionRevision && ref.mounted) {
+        _stopPidResolver();
         state = state.copyWith(isRunning: false, error: error.toString());
       }
     }
@@ -108,8 +114,8 @@ class LogcatController extends Notifier<LogcatState> {
   }
 
   Future<void> _releaseProcess({required bool updateState}) async {
-    _pidMapTimer?.cancel();
-    _pidMapTimer = null;
+    _stopPidResolver();
+    _pidPackages = const {};
     _batchTimer?.cancel();
     _batchTimer = null;
     _pendingEntries.clear();
@@ -121,12 +127,20 @@ class LogcatController extends Notifier<LogcatState> {
     _errorSubscription = null;
     _process = null;
     _deviceId = null;
-    process?.kill();
+    process?.kill(ProcessSignal.sigkill);
     if (updateState && ref.mounted) {
       state = state.copyWith(isRunning: false);
     }
     await subscription?.cancel();
     await errorSubscription?.cancel();
+  }
+
+  /// 主采集退出或启动失败时，辅助 PID 查询也必须停止。
+  void _stopPidResolver() {
+    _pidMapTimer?.cancel();
+    _pidMapTimer = null;
+    _pidResolver?.close();
+    _pidResolver = null;
   }
 
   /// 清空可见日志缓冲区，但不重启 logcat。
@@ -361,78 +375,20 @@ class LogcatController extends Notifier<LogcatState> {
 
   Future<void> _refreshPidPackages() async {
     final deviceId = _deviceId;
-    if (deviceId == null) {
-      return;
-    }
+    if (deviceId == null || _pidResolver != null) return;
+    final revision = _sessionRevision;
+    final resolver = _pidResolver = LogcatPidResolver(startProcess: _startProcess);
     try {
-      final String stdout;
-      if (_isHarmony) {
-        final result = await Process.run(resolveToolPath('hdc'), [
-          '-t',
-          deviceId,
-          'shell',
-          'ps',
-          '-ef',
-        ]);
-        if (result.exitCode != 0) return;
-        stdout = result.stdout.toString();
-        final mapping = _parseHarmonyPidPackages(stdout);
-        if (mapping.isEmpty || deviceId != _deviceId) return;
-        _pidPackages = mapping;
-      } else {
-        final result = await Process.run(resolveToolPath('adb'), [
-          '-s',
-          deviceId,
-          'shell',
-          'ps',
-          '-A',
-          '-o',
-          'PID,NAME',
-        ]);
-        if (result.exitCode != 0) return;
-        stdout = result.stdout.toString();
-        final mapping = _parsePidPackages(stdout);
-        if (mapping.isEmpty || deviceId != _deviceId) return;
-        _pidPackages = mapping;
-      }
+      final mapping = await resolver.read(deviceId, _isHarmony);
+      if (!ref.mounted || revision != _sessionRevision || mapping.isEmpty) return;
+      _pidPackages = mapping;
       _applyPidPackagesToExistingEntries();
     } on Object {
       // PID 映射只是辅助字段，失败时不影响实时日志展示。
+    } finally {
+      resolver.close();
+      if (identical(_pidResolver, resolver)) _pidResolver = null;
     }
-  }
-
-  /// 解析鸿蒙 `ps -ef` 输出，提取 PID→进程名映射。
-  /// 格式：`UID PID PPID C STIME TTY TIME CMD`
-  Map<String, String> _parseHarmonyPidPackages(String output) {
-    final map = <String, String>{};
-    for (final line in const LineSplitter().convert(output)) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty || trimmed.startsWith('UID')) continue;
-      final parts = trimmed.split(RegExp(r'\s+'));
-      if (parts.length < 8) continue;
-      final pid = parts[1];
-      final cmd = parts.sublist(7).join(' ');
-      if (RegExp(r'^\d+$').hasMatch(pid) && cmd.isNotEmpty) {
-        map[pid] = cmd;
-      }
-    }
-    return map;
-  }
-
-  Map<String, String> _parsePidPackages(String output) {
-    final map = <String, String>{};
-    for (final line in const LineSplitter().convert(output)) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty || trimmed.startsWith('PID ')) {
-        continue;
-      }
-      final match = RegExp(r'^(\d+)\s+(.+)$').firstMatch(trimmed);
-      if (match == null) {
-        continue;
-      }
-      map[match.group(1)!] = match.group(2)!.trim();
-    }
-    return map;
   }
 
   void _applyPidPackagesToExistingEntries() {

@@ -1,258 +1,238 @@
-import 'dart:convert';
-import 'dart:io';
+import 'dart:async';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'adb_package.dart';
 import 'app_management_service.dart';
+import 'package_metadata_index.dart';
 
-/// 全局应用展示元数据解析服务。
-///
-/// 用于跨设备快照（如使用时长、通知记录、进程列表）中，
-/// 当目标设备未安装应用或未拉取图标时，按多级策略尽可能解析并补全
-/// 应用的展示名称 (label) 与本地图标文件路径 (iconLocalPath)。
-///
-/// 解析策略：
-/// 1. 若应用已有名称与存在的图标文件，直接返回；
-/// 2. 特殊内置应用处理（如 AnyDeck Companion 手机端记录）；
-/// 3. 全局内存缓存查找；
-/// 4. [AppManagementService] 所有已连接设备的内存缓存遍历；
-/// 5. 磁盘图标缓存目录（`~/Library/Caches/AnyDeck/package_icons`）快速检索；
-/// 6. 后台异步预热 [SharedPreferences] 中历史设备的全量缓存。
+/// 跨设备展示元数据：UI 只访问有界 LRU，历史快照和图标由磁盘索引按需读取。
 class PackageMetadataResolver {
   PackageMetadataResolver(
     this._appService, {
     this.onCacheUpdated,
-  });
+    PackageMetadataIndex? index,
+    this.maxEntries = 2048,
+  }) : _index = index == null
+           ? PackageMetadataIndex.openDefault
+           : (() async => index);
 
   final AppManagementService _appService;
-
-  /// 当后台异步加载出新的包元数据时触发的回调，通知外部刷新 UI
   final void Function()? onCacheUpdated;
+  final int maxEntries;
+  final Future<PackageMetadataIndex> Function() _index;
+  final _cache = <String, AdbPackage>{};
+  final _checkedAt = <String, DateTime>{};
+  final _pending = <String, (String, String?)>{};
+  final _invalidIcons = <String>{};
+  Future<PackageMetadataIndex>? _opening;
+  Future<void>? _migration;
+  Future<void>? _loading;
+  Timer? _timer;
+  bool _closed = false;
 
-  /// 内存中聚合的全局包元数据缓存，key 为 packageName
-  final Map<String, AdbPackage> _globalCache = {};
+  int get cachedEntries => _cache.length;
+  int get pendingEntries => _pending.length;
+  String _key(String name, String? device) => '${device ?? ''}\n$name';
 
-  /// 本地磁盘图标文件匹配缓存，避免高频文件系统扫描
-  final Map<String, String?> _diskIconCache = {};
-
-  bool _prefsLoaded = false;
-  Future<void>? _loadingPrefsFuture;
-
-  /// 尽力解析单个应用元数据。
+  /// 返回即时展示数据；缺项在后台合批查询，完成后仅广播一次版本更新。
   AdbPackage resolve(AdbPackage basePackage, {String? preferredDeviceId}) {
-    final packageName = basePackage.name;
-    if (packageName.isEmpty) return basePackage;
-
-    // 1. 若已有名称和有效图标，直接记录并返回
-    final currentIcon = basePackage.iconLocalPath;
-    final currentIconValid =
-        currentIcon != null && File(currentIcon).existsSync();
+    final name = basePackage.name;
+    if (name.isEmpty) return basePackage;
+    if (name == 'com.adbmanage.companion') {
+      return basePackage.copyWith(label: basePackage.label ?? 'AnyDeck 手机记录');
+    }
+    final key = _key(name, preferredDeviceId);
+    final cached = _cache.remove(key);
+    if (cached != null) _cache[key] = cached;
     if (basePackage.label != null &&
-        basePackage.label!.trim().isNotEmpty &&
-        currentIconValid) {
-      _globalCache[packageName] = basePackage;
+        basePackage.iconLocalPath != null &&
+        !_invalidIcons.contains(basePackage.iconLocalPath)) {
+      _remember(
+        key,
+        AdbPackage(
+          name: name,
+          label: basePackage.label,
+          iconLocalPath: basePackage.iconLocalPath,
+        ),
+      );
       return basePackage;
     }
-
-    // 2. 特殊内置应用处理
-    if (packageName == 'com.adbmanage.companion') {
-      return basePackage.copyWith(
-        label: basePackage.label ?? 'AnyDeck 手机记录',
-      );
-    }
-
-    // 3. 内存聚合缓存匹配
-    final cached = _globalCache[packageName];
-    String? resolvedLabel = basePackage.label ?? cached?.label;
-    String? resolvedIconPath = currentIconValid
-        ? currentIcon
-        : (cached?.iconLocalPath != null &&
-                File(cached!.iconLocalPath!).existsSync()
-            ? cached.iconLocalPath
-            : null);
-
-    // 4. AppManagementService 内存缓存遍历
-    if (resolvedLabel == null || resolvedIconPath == null) {
-      final fromMemory = _lookupFromMemory(
-        packageName,
-        preferredDeviceId: preferredDeviceId,
-      );
-      if (fromMemory != null) {
-        resolvedLabel ??= fromMemory.label;
-        if (resolvedIconPath == null &&
-            fromMemory.iconLocalPath != null &&
-            File(fromMemory.iconLocalPath!).existsSync()) {
-          resolvedIconPath = fromMemory.iconLocalPath;
-        }
-      }
-    }
-
-    // 5. 磁盘图标目录快速检索
-    resolvedIconPath ??= findIconOnDisk(
-      packageName,
-      preferredDeviceId: preferredDeviceId,
+    final memory = _lookupFromMemory(name, preferredDeviceId);
+    final label = basePackage.label ?? cached?.label ?? memory?.label;
+    final icon =
+        [
+              basePackage.iconLocalPath,
+              cached?.iconLocalPath,
+              memory?.iconLocalPath,
+            ]
+            .whereType<String>()
+            .where((path) => !_invalidIcons.contains(path))
+            .firstOrNull;
+    if (label == null || icon == null) _request(name, preferredDeviceId);
+    _remember(key, AdbPackage(name: name, label: label, iconLocalPath: icon));
+    return basePackage.copyWith(
+      label: label,
+      iconLocalPath: icon,
+      clearIconLocalPath: icon == null,
     );
-
-    // 6. 如果仍然缺少 label 且尚未加载 SharedPreferences 缓存，触发异步预热
-    if ((resolvedLabel == null || !_prefsLoaded) && _loadingPrefsFuture == null) {
-      warmup();
-    }
-
-    final merged = basePackage.copyWith(
-      label: resolvedLabel,
-      iconLocalPath: resolvedIconPath,
-    );
-
-    if (merged.label != null || merged.iconLocalPath != null) {
-      _globalCache[packageName] = merged;
-    }
-
-    return merged;
   }
 
-  /// 在本地磁盘的 package_icons 目录中查找指定包名的图标文件
-  String? findIconOnDisk(String packageName, {String? preferredDeviceId}) {
-    if (packageName.isEmpty) return null;
-    if (_diskIconCache.containsKey(packageName)) {
-      final cachedPath = _diskIconCache[packageName];
-      if (cachedPath != null && File(cachedPath).existsSync()) {
-        return cachedPath;
-      }
-    }
-
-    final home = Platform.environment['HOME'];
-    final baseDir = home != null && home.isNotEmpty
-        ? Directory('$home/Library/Caches/AnyDeck/package_icons')
-        : Directory('${Directory.systemTemp.path}/AnyDeck/package_icons');
-
-    if (!baseDir.existsSync()) {
-      _diskIconCache[packageName] = null;
+  /// 保留原同步 API，但只读内存；目录扫描与文件存在检查不再发生在 build 中。
+  String? findIconOnDisk(String name, {String? preferredDeviceId}) {
+    final icon = _cache[_key(name, preferredDeviceId)]?.iconLocalPath;
+    if (icon == null || _invalidIcons.contains(icon)) {
+      _request(name, preferredDeviceId);
       return null;
     }
-
-    try {
-      final entities = baseDir.listSync();
-      final subDirs = entities.whereType<Directory>().toList();
-
-      // 优先在 preferredDeviceId 目录查找
-      if (preferredDeviceId != null && preferredDeviceId.isNotEmpty) {
-        final safeId =
-            preferredDeviceId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-        subDirs.sort((a, b) {
-          final aMatch = a.path.contains(safeId);
-          final bMatch = b.path.contains(safeId);
-          if (aMatch && !bMatch) return -1;
-          if (!aMatch && bMatch) return 1;
-          return 0;
-        });
-      }
-
-      for (final dir in subDirs) {
-        try {
-          final files = dir.listSync().whereType<File>();
-          for (final file in files) {
-            final fileName = file.uri.pathSegments.last;
-            if (fileName.startsWith('$packageName.') ||
-                fileName == '$packageName.png') {
-              if (file.existsSync() && file.lengthSync() > 0) {
-                final path = file.path;
-                _diskIconCache[packageName] = path;
-                return path;
-              }
-            }
-          }
-        } catch (_) {}
-      }
-    } catch (_) {}
-
-    _diskIconCache[packageName] = null;
-    return null;
+    return icon;
   }
 
-  AdbPackage? _lookupFromMemory(
-    String packageName, {
+  /// Image 解码失败后异步查找替代图标，避免重新把磁盘探测放回 build。
+  void reportMissingIcon(
+    String name,
+    String path, {
     String? preferredDeviceId,
   }) {
-    final memoryCache = _appService.memoryCache;
-    if (preferredDeviceId != null) {
-      final list = memoryCache[preferredDeviceId];
-      if (list != null) {
-        for (final p in list) {
-          if (p.name == packageName &&
-              (p.label != null || p.iconLocalPath != null)) {
-            return p;
-          }
-        }
-      }
+    if (_closed) return;
+    _invalidIcons.add(path);
+    while (_invalidIcons.length > maxEntries) {
+      _invalidIcons.remove(_invalidIcons.first);
     }
-    for (final entry in memoryCache.entries) {
-      if (entry.key == preferredDeviceId) continue;
-      for (final p in entry.value) {
-        if (p.name == packageName &&
-            (p.label != null || p.iconLocalPath != null)) {
-          return p;
+    final key = _key(name, preferredDeviceId);
+    final old = _cache[key];
+    if (old != null) _cache[key] = AdbPackage(name: name, label: old.label);
+    _checkedAt.remove(key);
+    _request(name, preferredDeviceId);
+  }
+
+  AdbPackage? _lookupFromMemory(String name, String? preferred) {
+    final memory = _appService.memoryCache;
+    for (final list in [
+      if (memory[preferred] != null) memory[preferred]!,
+      ...memory.entries
+          .where((entry) => entry.key != preferred)
+          .map((entry) => entry.value),
+    ]) {
+      for (final package in list) {
+        if (package.name == name &&
+            (package.label != null || package.iconLocalPath != null)) {
+          return package;
         }
       }
     }
     return null;
   }
 
-  /// 异步从 SharedPreferences 读取全量历史设备的应用包缓存，构建跨设备全局索引
-  Future<void> warmup() {
-    if (_prefsLoaded) return Future.value();
-    return _loadingPrefsFuture ??= () async {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final allKeys = prefs.getKeys();
-        final packageKeys = allKeys.where(
-          (k) =>
-              k.startsWith('apps.packages.v4.') ||
-              k.startsWith('apps.packages.v3.'),
-        );
+  void _remember(String key, AdbPackage package) {
+    _cache.remove(key);
+    _cache[key] = package;
+    while (_cache.length > maxEntries) {
+      _cache.remove(_cache.keys.first);
+    }
+  }
 
-        var hasNewData = false;
-        for (final key in packageKeys) {
-          final raw = prefs.getString(key);
-          if (raw == null || raw.isEmpty) continue;
-          try {
-            final decoded = jsonDecode(raw);
-            if (decoded is! Map) continue;
-            final items = decoded['items'];
-            if (items is! List) continue;
-            for (final item in items) {
-              if (item is! Map) continue;
-              final name = item['name'] as String?;
-              if (name == null || name.isEmpty) continue;
-              final label = item['label'] as String?;
-              final iconPath = item['iconLocalPath'] as String?;
-              if (label != null || iconPath != null) {
-                final existing = _globalCache[name];
-                final validIcon =
-                    (iconPath != null && File(iconPath).existsSync())
-                        ? iconPath
-                        : (existing?.iconLocalPath != null &&
-                                File(existing!.iconLocalPath!).existsSync()
-                            ? existing.iconLocalPath
-                            : null);
-                final updated = (existing ?? AdbPackage(name: name)).copyWith(
-                  label: existing?.label ?? label,
-                  iconLocalPath: validIcon,
-                );
-                _globalCache[name] = updated;
-                hasNewData = true;
-              }
-            }
-          } catch (_) {}
-        }
-        _prefsLoaded = true;
-        if (hasNewData) {
-          onCacheUpdated?.call();
-        }
+  void _request(String name, String? device) {
+    if (_closed) return;
+    final key = _key(name, device);
+    final checked = _checkedAt[key];
+    if (checked != null &&
+        DateTime.now().difference(checked) < const Duration(minutes: 1)) {
+      return;
+    }
+    if (_pending.length >= 128) return;
+    _pending[key] = (name, device);
+    _timer ??= Timer(const Duration(milliseconds: 20), () {
+      _timer = null;
+      unawaited(_flush());
+    });
+  }
+
+  /// 仅准备磁盘索引，不在首屏预热全部历史设备。
+  Future<void> warmup() async {
+    try {
+      await (_opening ??= _index());
+    } catch (_) {
+      /* 名称/默认图标仍可展示。 */
+    }
+  }
+
+  Future<void> _migrate(PackageMetadataIndex index) async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs
+        .getKeys()
+        .where(
+          (key) =>
+              key.startsWith('apps.packages.v4.') ||
+              key.startsWith('apps.packages.v3.'),
+        )
+        .toSet();
+    await index.retainSources(keys);
+    for (final key in keys) {
+      if (_closed) return;
+      final raw = prefs.getString(key);
+      if (raw == null || raw.isEmpty) continue;
+      try {
+        await index.importLegacy(key, raw);
       } catch (_) {
-      } finally {
-        _loadingPrefsFuture = null;
+        /* 单个旧缓存损坏不阻断其余历史。 */
       }
-    }();
+    }
+  }
+
+  Future<void> _flush() {
+    if (_closed || _pending.isEmpty) return Future.value();
+    return _loading ??= _load().whenComplete(() {
+      _loading = null;
+      if (!_closed && _pending.isNotEmpty) unawaited(_flush());
+    });
+  }
+
+  Future<void> _load() async {
+    final requests = Map<String, (String, String?)>.from(_pending);
+    _pending.clear();
+    try {
+      final index = await (_opening ??= _index());
+      await (_migration ??= _migrate(index));
+      if (_closed) return;
+      final found = await index.lookup(requests);
+      if (_closed) return;
+      for (final request in requests.entries) {
+        final value = found[request.key] ?? const <String, String>{};
+        final old = _cache[request.key];
+        _remember(
+          request.key,
+          AdbPackage(
+            name: request.value.$1,
+            label: old?.label ?? value['label'],
+            iconLocalPath: old?.iconLocalPath ?? value['icon'],
+          ),
+        );
+        _checkedAt.remove(request.key);
+        _checkedAt[request.key] = DateTime.now();
+      }
+      while (_checkedAt.length > maxEntries) {
+        _checkedAt.remove(_checkedAt.keys.first);
+      }
+      onCacheUpdated?.call();
+    } catch (_) {
+      // 路径或数据库不可用时，保留设备即时元数据；短期负缓存避免 build 重试风暴。
+      for (final key in requests.keys) {
+        _checkedAt[key] = DateTime.now();
+      }
+      while (_checkedAt.length > maxEntries) {
+        _checkedAt.remove(_checkedAt.keys.first);
+      }
+    }
+  }
+
+  /// 页面所属 Provider 销毁后，迟到的查询不再写 LRU 或触发 UI 更新。
+  void dispose() {
+    _closed = true;
+    _timer?.cancel();
+    _pending.clear();
+    _cache.clear();
+    _checkedAt.clear();
+    _invalidIcons.clear();
   }
 }

@@ -8,10 +8,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/l10n/app_localizations.dart';
 import '../../core/adb/discovered_device.dart';
 import '../../core/ios/ios_mirror_service.dart';
+import '../../core/logcat/bounded_log_buffer.dart';
+import '../../core/logcat/logcat_line_reader.dart';
 
 /// 显示 go-ios syslog 持续流，并限制内存和刷新频率。
 class IosSyslogTab extends ConsumerStatefulWidget {
-  const IosSyslogTab({super.key, required this.device});
+  const IosSyslogTab({
+    super.key,
+    required this.device,
+    this.isVisible = true,
+  });
+
+  /// 独立使用可保留 true；IndexedStack 中须传入实际 Tab 可见性以暂停后台工作。
+  final bool isVisible;
 
   final DiscoveredDevice device;
 
@@ -62,10 +71,9 @@ class IosSyslogTab extends ConsumerStatefulWidget {
 }
 
 class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
-  static const _maxLines = 3000;
   final _scrollController = ScrollController();
-  final _lines = <String>[];
-  final _pending = <String>[];
+  final _lines = BoundedLogBuffer();
+  final _pending = BoundedLogBuffer(maxLines: 1000, maxCharacters: 1024 * 1024);
   Process? _process;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
@@ -75,9 +83,35 @@ class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
   bool _stopping = false;
   bool _autoScroll = true;
   String _filterKeyword = '';
+  int _sessionRevision = 0;
+  bool _resumeCapture = false;
+  Future<void>? _stopTask;
+
+  @override
+  void didUpdateWidget(covariant IosSyslogTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.device.id != widget.device.id) {
+      _lines.clear();
+      unawaited(_stop());
+    } else if (oldWidget.isVisible != widget.isVisible ||
+        oldWidget.device.isOnline != widget.device.isOnline) {
+      unawaited(_syncVisibility());
+    }
+  }
+
+  /// 自动暂停保留用户的开始意图；手动停止后再次切页不会重启。
+  Future<void> _syncVisibility() async {
+    if (!widget.isVisible || !widget.device.isOnline) {
+      await _stop(preserveIntent: true);
+      return;
+    }
+    await _stopTask;
+    if (mounted && widget.isVisible && _resumeCapture) await _start();
+  }
 
   @override
   void dispose() {
+    _sessionRevision++;
     _running = false;
     _flushTimer?.cancel();
     _flushTimer = null;
@@ -94,7 +128,12 @@ class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
   }
 
   Future<void> _start() async {
-    if (_running || _starting || _stopping) return;
+    if (_running || _starting || _stopping || !widget.isVisible ||
+        !widget.device.isOnline) {
+      return;
+    }
+    final revision = ++_sessionRevision;
+    _resumeCapture = true;
     setState(() => _starting = true);
     try {
       final process = await ref
@@ -102,7 +141,7 @@ class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
           .startSyslog(widget.device.id);
 
       // 若启动期间页面已被销毁或已触发停止，立即强杀该进程
-      if (!mounted || _stopping) {
+      if (!mounted || revision != _sessionRevision || !widget.isVisible) {
         try {
           process.kill(ProcessSignal.sigkill);
         } catch (_) {}
@@ -113,19 +152,18 @@ class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
       _running = true;
       _starting = false;
 
-      _stdoutSubscription = process.stdout
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .transform(const LineSplitter())
-          .listen(_append);
-      _stderrSubscription = process.stderr
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .transform(const LineSplitter())
-          .listen((line) => _append('[stderr] $line'));
+      _stdoutSubscription = readBoundedLogcatLines(
+        process.stdout.transform(const Utf8Decoder(allowMalformed: true)),
+      ).listen(_append);
+      _stderrSubscription = readBoundedLogcatLines(
+        process.stderr.transform(const Utf8Decoder(allowMalformed: true)),
+      ).listen((line) => _append('[stderr] $line'));
 
       process.exitCode.whenComplete(() {
         if (mounted && identical(_process, process)) {
           setState(() {
             _running = false;
+            _resumeCapture = false;
             _starting = false;
             _stopping = false;
             _process = null;
@@ -134,6 +172,8 @@ class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
       });
       if (mounted) setState(() {});
     } catch (error) {
+      if (!mounted || revision != _sessionRevision) return;
+      _resumeCapture = false;
       if (mounted) {
         setState(() {
           _running = false;
@@ -158,11 +198,8 @@ class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
       _flushTimer = null;
       if (!mounted || _pending.isEmpty) return;
       setState(() {
-        _lines.addAll(_pending);
+        _lines.addAll(_pending.lines);
         _pending.clear();
-        if (_lines.length > _maxLines) {
-          _lines.removeRange(0, _lines.length - _maxLines);
-        }
       });
       if (_autoScroll) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -174,7 +211,13 @@ class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
     });
   }
 
-  Future<void> _stop({bool updateUi = true}) async {
+  Future<void> _stop({bool updateUi = true, bool preserveIntent = false}) {
+    if (!preserveIntent) _resumeCapture = false;
+    return _stopTask ??= _stopCore(updateUi).whenComplete(() => _stopTask = null);
+  }
+
+  Future<void> _stopCore(bool updateUi) async {
+    _sessionRevision++;
     if (!_running && !_starting && _process == null) return;
 
     // 1. 立即更新状态并清空暂存，阻断后续日志进入
@@ -228,9 +271,9 @@ class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
   }
 
   List<String> get _displayLines {
-    if (_filterKeyword.trim().isEmpty) return _lines;
+    if (_filterKeyword.trim().isEmpty) return _lines.lines.toList(growable: false);
     final kw = _filterKeyword.toLowerCase();
-    return _lines.where((line) => line.toLowerCase().contains(kw)).toList();
+    return _lines.lines.where((line) => line.toLowerCase().contains(kw)).toList();
   }
 
   @override

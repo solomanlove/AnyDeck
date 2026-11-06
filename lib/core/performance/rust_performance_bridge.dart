@@ -63,6 +63,12 @@ typedef _ClearCacheDart = void Function(Pointer<Uint8>);
 /// 针对 Rust Device Bridge 性能监控接口的 FFI 桥接服务。
 /// 采用单例静态内存复用机制，消除每次轮询产生的堆内存分配。
 class RustPerformanceBridge {
+  /// 每个采样 worker 独立创建，避免跨 Isolate 传递原生指针。
+  factory RustPerformanceBridge.open({String? libraryPath}) =>
+      RustPerformanceBridge._(
+        libraryPath == null ? _open() : DynamicLibrary.open(libraryPath),
+      );
+
   RustPerformanceBridge._(this.library) {
     _alloc = library
         .lookupFunction<
