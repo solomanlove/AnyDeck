@@ -305,8 +305,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         .read(macNotificationBridgeProvider)
         .clickStream
         .listen(_handleNotificationClick);
-    _shareOfferPresenter = HarmonyShareOfferPresenter(service: HarmonyShareService.instance, context: () => context);
-    ref.read(harmonyShareNotificationsProvider);
+    _shareOfferPresenter = HarmonyShareOfferPresenter(
+      incoming: ref.read(harmonyShareNotificationsProvider).incoming,
+      context: () => context,
+    );
     unawaited(HarmonyShareService.instance.start());
     _scheduleDashboardRouteSync();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -342,7 +344,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   int _notificationClickRevision = 0;
 
   Future<void> _handleNotificationClick(Map<String, dynamic> payload) async {
+    if (!mounted) return;
     final revision = ++_notificationClickRevision;
+    if (ref.read(harmonyShareNotificationsProvider).incoming.handleClick(payload)) {
+      return;
+    }
     if (routeHarmonyShareNotification(payload, () {
       if (mounted) context.goNamed(AppRouteNames.harmonyShare);
     })) {

@@ -11,8 +11,9 @@ import 'package:any_deck/core/nearby_share/share_network.dart';
 import 'package:any_deck/core/nearby_share/share_send_selection.dart';
 import 'package:any_deck/core/nearby_share/share_transfer_history.dart';
 import 'package:any_deck/core/nearby_share/share_transfer_record.dart';
-import 'package:any_deck/core/notifications/mac_notification_bridge.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/harmony_share_notification_fakes.dart';
 
 class _Database extends Fake implements ShareHistoryDatabase {
   @override
@@ -65,52 +66,6 @@ class _OutboxService extends _Service {
   HarmonyShareOutbox get outbox => testOutbox;
 }
 
-class _Bridge extends Fake implements MacNotificationBridge {
-  final shown = <Map<String, dynamic>>[];
-  final removed = <String>[];
-  final prefixes = <String>[];
-  String permission = 'authorized';
-  bool sent = true;
-  bool throws = false;
-  int requests = 0;
-  Completer<String>? permissionGate;
-  Completer<bool>? deliveryGate;
-  @override
-  Future<String> getAuthorizationStatus() async {
-    if (throws) throw StateError('notification bridge failed');
-    return permissionGate?.future ?? permission;
-  }
-
-  @override
-  Future<bool> requestAuthorization() async {
-    requests++;
-    return false;
-  }
-
-  @override
-  Future<bool> showNotification({
-    required String id,
-    required String title,
-    String body = '',
-    String subtitle = '',
-    String? iconPath,
-    Map<String, dynamic>? payload,
-  }) async {
-    shown.add({'id': id, 'title': title, 'body': body, 'payload': payload});
-    return deliveryGate?.future ?? sent;
-  }
-
-  @override
-  Future<void> removeNotification(String id) async {
-    removed.add(id);
-  }
-
-  @override
-  Future<void> removeNotificationsWithPrefix(String prefix) async {
-    prefixes.add(prefix);
-  }
-}
-
 Future<void> _turns() async {
   for (var n = 0; n < 12; n++) {
     await Future<void>.delayed(Duration.zero);
@@ -120,7 +75,7 @@ Future<void> _turns() async {
 void main() {
   late ShareTransferHistory history;
   late _Service service;
-  late _Bridge bridge;
+  late ShareNotificationTestBridge bridge;
   late HarmonyShareSendQueue queue;
   late HarmonyShareNotifications notifications;
   var enabled = true;
@@ -128,7 +83,7 @@ void main() {
   setUp(() {
     history = ShareTransferHistory(open: () async => _Database());
     service = _Service(history);
-    bridge = _Bridge();
+    bridge = ShareNotificationTestBridge();
     queue = HarmonyShareSendQueue(
       send: (item, _) async {
         if (item.file.name == 'fail') throw StateError('synthetic failure');
@@ -153,17 +108,22 @@ void main() {
     queue.dispose();
   });
 
-  test('来件只通知一次且处理后移除，不包含路径或自动接收动作', () async {
+  test('来件只通知一次且处理后移除，不包含路径且不自动接收', () async {
     final offer = ShareIncomingOffer(InternetAddress('192.168.1.3'), 100);
     service.offer(offer);
     await _turns();
     service.offer(offer);
     await _turns();
     expect(bridge.shown, hasLength(1));
-    expect(bridge.shown.single['payload'], {
-      'type': 'harmony_share',
-      'targetTab': -4,
-    });
+    expect(
+      bridge.shown.single['payload'],
+      containsPair('type', 'harmony_share_offer'),
+    );
+    expect(
+      bridge.shown.single['payload'],
+      containsPair('offerToken', isA<String>()),
+    );
+    expect(bridge.shown.single.toString(), isNot(contains('192.168.1.3')));
     expect(service.pendingOffer, same(offer));
     service.offer(null);
     await _turns();

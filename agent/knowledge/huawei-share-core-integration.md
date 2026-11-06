@@ -270,3 +270,25 @@ flutter test --no-pub test/core/nearby_share/share_core_client_test.dart test/co
 - 按用户截图移除主卡片下方的“实验版：同一 Wi-Fi 下单文件上限 1 GiB，大文件待真机验收”，同时删除专用中英文资源及前置间距；最近互传区域沿用正常段落间距。
 - 大小与批次限制继续由现有契约校验，并在文件选择失败时给出明确提示。页面回归覆盖 zh/en、Light/Dark 下该常驻文案消失、连接指引及窄窗口布局。
 - 本次 10 项页面/布局测试与 3 个改动 Dart 文件的 targeted analyze、`git diff --check` 通过；未启动、重建或重启 App。
+
+## 来件优先使用 macOS 通知确认（2026-11-07）
+
+- `HarmonyShareIncomingNotifications` 统一持有来件生命周期，`HarmonyShareNotifications.incoming` 由主窗口 Provider 持有。系统通知提供本地化“接收 / 拒绝”操作；按钮直接处理当前请求，不抢占窗口焦点。点击正文打开主窗口并显示原确认弹窗，主动关闭通知也转入弹窗兜底。
+- 通知设置关闭、权限未授予/未知、旧桥接不支持、API 错误或超时，均使用原 `HarmonyShareConfirmDialog`。系统提交成功不等于横幅可见，所以请求到达 10 秒仍未处理也显示弹窗；请求总期限从到达起固定为 30 秒，兜底不会重置期限。后台不主动申请通知权限。
+- 新增 MethodChannel `showIncomingFileOffer`，参数为 `id/title/body/acceptLabel/rejectLabel/payload`。Native 注册固定 `harmony_share_incoming` 类别并保留其他类别，接收按钮要求解锁认证。正文和 payload 不包含设备名称、文件名、目录或可执行路径；普通收发结果通知继续使用原入口。
+- payload 仅含 `type=harmony_share_offer` 与本次请求随机 128-bit `offerToken`。Native 根据系统 actionIdentifier 和实际 request.identifier 覆盖回调的 `notificationAction/notificationId`；Dart 需同时匹配当前 offer、token 和 ID 才能决定。冷启动残留、重复操作、畸形动作和旧弹窗回调均不能影响新请求。
+- 接收/拒绝/过期/替换/销毁会取消计时并撤回 pending 与 delivered 通知。迟到的投递结果仍尝试撤回；启动清理超时期间只用弹窗，保留底层清理 Future，真正完成后后续来件恢复通知，明确失败则允许下一请求重试。
+- `HarmonyShareOfferPresenter` 只负责原弹窗的显示与专属 Route 清理，通知优先逻辑不依赖页面是否可见。未更改私有 Core、收发协议、接收目录、多窗口同步或投屏行为；原弹窗复用现有 Theme，中英文通知按钮由当前语言提供。
+
+定向回归：
+
+```bash
+flutter test --no-pub test/core/nearby_share/harmony_share_incoming_notifications_test.dart test/core/nearby_share/harmony_share_notifications_test.dart test/features/harmony_share_offer_presenter_test.dart
+flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_share/harmony_share_notification_permission_test.dart test/features/harmony_share_permission_request_test.dart test/features/harmony_share_settings_test.dart test/harmony_share_settings_test.dart test/notification_forwarding_test.dart test/notification_click_target_test.dart
+```
+
+原生离线回归：将 `macos/Runner/NotificationBridgeService.swift` 与 `test/native/notification_interaction_test.swift` 一起用 `xcrun swiftc` 编译；`-F` 与 `-rpath` 指向 Flutter SDK 的 `bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework/macos-arm64_x86_64`，链接 `-framework FlutterMacOS`。测试自带 `MainFlutterWindow: NSWindow` 接口占位，验证系统动作映射、伪造字段覆盖、聚焦策略与普通通知兼容，不调用通知中心或创建 App。
+
+人工验收边界：正常 AnyDeck 授权后分别从手机发起请求，检查前台/隐藏窗口时通知按钮、正文点击、通知关闭、10 秒兜底及 30 秒超时；再检查禁用通知或 Focus 模式时的兜底，以及普通 Android 消息通知点击。自动测试不代表真实系统横幅或手机传输验收，本轮不主动运行或重启 App。
+
+本次验证：107 项 Flutter/Dart 测试（46 项来件协调/弹窗/结果通知，61 项权限/设置/桥接与普通通知回归）、6 项原生动作映射场景、12 个相关 Dart 文件的 targeted analyze 均通过。原生桥接使用真实 FlutterMacOS Framework 编译并执行上述离线测试；未进行整包构建或真实 Notification Center 交互。审查修复了启动清理超时后的后续请求恢复，并检查提交不包含其他并行任务的改动。

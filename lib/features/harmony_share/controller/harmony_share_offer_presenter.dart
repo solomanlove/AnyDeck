@@ -1,35 +1,39 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
+import '../../../core/nearby_share/harmony_share_incoming_notifications.dart';
 import '../../../core/nearby_share/harmony_share_service.dart';
 import '../widgets/harmony_share_panels.dart';
 import '../widgets/harmony_share_format.dart';
 import '../../../app/l10n/app_localizations.dart';
 
-/// 主窗口来件弹窗协调器；请求失效/超时只关闭自己的 Route，不误关用户其他弹窗。
+/// 主窗口来件兜底弹窗；通知协调器决定显示时机，失效时只关闭自己的 Route。
 class HarmonyShareOfferPresenter {
-  HarmonyShareOfferPresenter({required this.service, required this.context}) {
-    service.addListener(handle);
+  HarmonyShareOfferPresenter({required this.incoming, required this.context}) {
+    incoming.addListener(handle);
     handle();
   }
-  final HarmonyShareService service;
+  final HarmonyShareIncomingNotifications incoming;
+  HarmonyShareService get service => incoming.service;
   final BuildContext Function() context;
   ShareIncomingOffer? _shown;
   DialogRoute<bool>? _route;
-  Timer? _timeout;
   bool _disposed = false;
 
   void handle() {
-    final offer = service.pendingOffer;
-    if (offer == null) {
+    final offer = incoming.offer;
+    if (offer == null || !incoming.needsConfirmation) {
+      _shown = null;
       _close();
       return;
     }
     if (_disposed || identical(_shown, offer)) return;
+    _close();
     _shown = offer;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (_disposed || service.pendingOffer != offer) return;
+      if (_disposed || service.pendingOffer != offer ||
+          !incoming.needsConfirmation) {
+        return;
+      }
       final root = context();
       if (!root.mounted) return;
       final route = DialogRoute<bool>(
@@ -44,20 +48,15 @@ class HarmonyShareOfferPresenter {
         ),
       );
       _route = route;
-      _timeout = Timer(
-        const Duration(seconds: 30),
-        () => service.expireOffer(offer),
-      );
       final accepted = await Navigator.of(
         root,
         rootNavigator: true,
       ).push(route);
       if (identical(_route, route)) {
         _route = null;
-        _timeout?.cancel();
       }
       if (!_disposed && service.pendingOffer == offer) {
-        service.decide(accepted == true);
+        incoming.decide(offer, accepted == true);
       }
     });
     WidgetsBinding.instance.scheduleFrame();
@@ -66,7 +65,6 @@ class HarmonyShareOfferPresenter {
   void _close() {
     final route = _route;
     _route = null;
-    _timeout?.cancel();
     if (route == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final navigator = route.navigator;
@@ -79,7 +77,7 @@ class HarmonyShareOfferPresenter {
 
   void dispose() {
     _disposed = true;
-    service.removeListener(handle);
+    incoming.removeListener(handle);
     _close();
   }
 }

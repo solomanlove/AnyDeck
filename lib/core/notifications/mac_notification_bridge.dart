@@ -96,7 +96,33 @@ class MacNotificationBridge {
     }
   }
 
-  /// 移除指定标识符的已交付通知。
+  /// 发送带接收/拒绝操作的来件通知；旧版桥接或发送失败返回 false，由来件协调器兜底。
+  Future<bool> showIncomingFileOffer({
+    required String id,
+    required String title,
+    required String body,
+    required String acceptLabel,
+    required String rejectLabel,
+    required Map<String, dynamic> payload,
+  }) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) return false;
+    try {
+      return await _channel.invokeMethod<bool>('showIncomingFileOffer', {
+            'id': id,
+            'title': title,
+            'body': body,
+            'acceptLabel': acceptLabel,
+            'rejectLabel': rejectLabel,
+            'payload': payload,
+          }) ??
+          false;
+    } catch (e) {
+      debugPrint('[MacNotificationBridge] showIncomingFileOffer error: $e');
+      return false;
+    }
+  }
+
+  /// 移除指定标识符的已交付及待发送通知。
   Future<void> removeNotification(String id) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) return;
     try {

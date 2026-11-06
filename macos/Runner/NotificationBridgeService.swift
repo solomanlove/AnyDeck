@@ -10,6 +10,9 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
   private var channel: FlutterMethodChannel?
   private var isFlutterReady = false
   private var pendingClicks: [[String: Any]] = []
+  private static let incomingCategory = "harmony_share_incoming"
+  private static let acceptAction = "harmony_share_accept"
+  private static let rejectAction = "harmony_share_reject"
 
   /// 仅在主 Flutter Engine 初始化时注册通道。
   func setup(messenger: FlutterBinaryMessenger) {
@@ -53,6 +56,8 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
             result(status)
           }
         }
+      case "showIncomingFileOffer":
+        self.showIncomingFileOffer(arguments: call.arguments, result: result)
       case "showNotification":
         guard let args = call.arguments as? [String: Any],
               let id = args["id"] as? String,
@@ -96,6 +101,7 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
           return
         }
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
         result(true)
       case "removeAllNotifications":
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
@@ -134,6 +140,54 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
         result(clicks)
       default:
         result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  /// 先登记当前语言的固定类别，再提交来件；不申请权限，也不写入文件名或本地路径。
+  private func showIncomingFileOffer(arguments: Any?, result: @escaping FlutterResult) {
+    guard let args = arguments as? [String: Any],
+          let id = args["id"] as? String, !id.isEmpty,
+          let title = args["title"] as? String, !title.isEmpty,
+          let body = args["body"] as? String,
+          let acceptLabel = args["acceptLabel"] as? String, !acceptLabel.isEmpty,
+          let rejectLabel = args["rejectLabel"] as? String, !rejectLabel.isEmpty,
+          let payload = args["payload"] as? [String: Any],
+          payload["type"] as? String == "harmony_share_offer",
+          let token = payload["offerToken"] as? String, !token.isEmpty else {
+      result(FlutterError(code: "invalid_args", message: "Valid incoming offer and action labels required", details: nil))
+      return
+    }
+    let center = UNUserNotificationCenter.current()
+    let category = UNNotificationCategory(
+      identifier: Self.incomingCategory,
+      actions: [
+        UNNotificationAction(identifier: Self.acceptAction, title: acceptLabel, options: [.authenticationRequired]),
+        UNNotificationAction(identifier: Self.rejectAction, title: rejectLabel, options: [])
+      ],
+      intentIdentifiers: [],
+      options: [.customDismissAction]
+    )
+    center.getNotificationCategories { existing in
+      // 使用固定类别避免随请求累积，并保留其他功能登记的类别。
+      var categories = existing.filter { $0.identifier != Self.incomingCategory }
+      categories.insert(category)
+      center.setNotificationCategories(categories)
+      let content = UNMutableNotificationContent()
+      content.title = title
+      content.body = body
+      content.sound = .default
+      content.categoryIdentifier = Self.incomingCategory
+      content.userInfo = payload
+      let request = UNNotificationRequest(identifier: id, content: content, trigger: nil)
+      center.add(request) { error in
+        DispatchQueue.main.async {
+          if let error = error {
+            result(FlutterError(code: "add_failed", message: error.localizedDescription, details: nil))
+          } else {
+            result(true)
+          }
+        }
       }
     }
   }
@@ -180,28 +234,57 @@ class NotificationBridgeService: NSObject, UNUserNotificationCenterDelegate {
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
-    let userInfo = response.notification.request.content.userInfo as? [String: Any] ?? [:]
+    let interaction = Self.notificationInteraction(
+      request: response.notification.request, actionIdentifier: response.actionIdentifier
+    )
 
     DispatchQueue.main.async {
-      // 唤醒并聚焦主窗口
-      for window in NSApp.windows {
-        if window is MainFlutterWindow {
-          if window.isMiniaturized {
-            window.deminiaturize(nil)
+      // 正文点击打开主窗口；通知按钮直接决定来件，不抢占用户当前窗口焦点。
+      if interaction.focusWindow {
+        for window in NSApp.windows {
+          if window is MainFlutterWindow {
+            if window.isMiniaturized {
+              window.deminiaturize(nil)
+            }
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            break
           }
-          window.makeKeyAndOrderFront(nil)
-          NSApp.activate(ignoringOtherApps: true)
-          break
         }
       }
 
       if self.isFlutterReady, let channel = self.channel {
-        channel.invokeMethod("onNotificationClicked", arguments: userInfo)
+        channel.invokeMethod("onNotificationClicked", arguments: interaction.payload)
       } else {
-        self.pendingClicks.append(userInfo)
+        self.pendingClicks.append(interaction.payload)
       }
+      completionHandler()
     }
+  }
 
-    completionHandler()
+  /// 只从系统类别及 actionIdentifier 生成可信动作；普通通知不能通过 payload 冒充接收操作。
+  static func notificationInteraction(
+    request: UNNotificationRequest, actionIdentifier: String
+  ) -> (payload: [String: Any], focusWindow: Bool) {
+    var userInfo = request.content.userInfo as? [String: Any] ?? [:]
+    userInfo.removeValue(forKey: "notificationAction")
+    userInfo.removeValue(forKey: "notificationId")
+    let incoming = request.content.categoryIdentifier == Self.incomingCategory
+    var focusWindow = true
+    if incoming {
+      // 动作与通知标识来自系统响应，覆盖 payload 中同名字段，避免伪造确认操作。
+      let action: String
+      switch actionIdentifier {
+      case Self.acceptAction: action = "accept"
+      case Self.rejectAction: action = "reject"
+      case UNNotificationDefaultActionIdentifier: action = "open"
+      case UNNotificationDismissActionIdentifier: action = "dismiss"
+      default: action = "unknown"
+      }
+      userInfo["notificationAction"] = action
+      userInfo["notificationId"] = request.identifier
+      focusWindow = action == "open"
+    }
+    return (userInfo, focusWindow)
   }
 }

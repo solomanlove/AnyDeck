@@ -119,4 +119,127 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     }
   });
+
+  test('来件使用独立能力入口并传递本地化按钮和请求身份', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    const channel = MethodChannel('test/incoming_offer');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return true;
+    });
+    final bridge = MacNotificationBridge(channel: channel);
+    try {
+      expect(
+        await bridge.showIncomingFileOffer(
+          id: 'offer_1',
+          title: '收到文件请求',
+          body: '2 个文件',
+          acceptLabel: '接收',
+          rejectLabel: '拒绝',
+          payload: const {
+            'type': 'harmony_share_offer',
+            'offerToken': 'opaque-current-offer',
+          },
+        ),
+        isTrue,
+      );
+      expect(calls.single.method, 'showIncomingFileOffer');
+      expect(calls.single.arguments, {
+        'id': 'offer_1',
+        'title': '收到文件请求',
+        'body': '2 个文件',
+        'acceptLabel': '接收',
+        'rejectLabel': '拒绝',
+        'payload': {
+          'type': 'harmony_share_offer',
+          'offerToken': 'opaque-current-offer',
+        },
+      });
+    } finally {
+      bridge.dispose();
+      messenger.setMockMethodCallHandler(channel, null);
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  test('旧桥接、发送失败及异常返回值允许来件弹窗兜底', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    const channel = MethodChannel('test/incoming_offer_failure');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    dynamic response;
+    messenger.setMockMethodCallHandler(channel, (_) async {
+      if (response is Exception) throw response;
+      return response;
+    });
+    final bridge = MacNotificationBridge(channel: channel);
+    try {
+      for (final value in [
+        null,
+        false,
+        42,
+        MissingPluginException('old bridge'),
+        PlatformException(code: 'add_failed'),
+      ]) {
+        response = value;
+        expect(
+          await bridge.showIncomingFileOffer(
+            id: 'offer_1',
+            title: 'Incoming files',
+            body: '2 files',
+            acceptLabel: 'Accept',
+            rejectLabel: 'Reject',
+            payload: const {'type': 'harmony_share_offer', 'offerToken': '1'},
+          ),
+          isFalse,
+        );
+      }
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      response = true;
+      expect(
+        await bridge.showIncomingFileOffer(
+          id: 'offer_1',
+          title: 'Incoming files',
+          body: '',
+          acceptLabel: 'Accept',
+          rejectLabel: 'Reject',
+          payload: const {},
+        ),
+        isFalse,
+      );
+    } finally {
+      bridge.dispose();
+      messenger.setMockMethodCallHandler(channel, null);
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  test('原生动作回调保留通知身份，交由来件协调器验证有效性', () async {
+    const channel = MethodChannel('test/incoming_offer_click');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final bridge = MacNotificationBridge(channel: channel);
+    try {
+      final click = bridge.clickStream.first;
+      const payload = {
+        'type': 'harmony_share_offer',
+        'offerToken': 'live-token',
+        'notificationId': 'actual-notification-id',
+        'notificationAction': 'accept',
+      };
+      await messenger.handlePlatformMessage(
+        channel.name,
+        const StandardMethodCodec().encodeMethodCall(
+          const MethodCall('onNotificationClicked', payload),
+        ),
+        (_) {},
+      );
+      expect(await click, payload);
+    } finally {
+      bridge.dispose();
+    }
+  });
 }

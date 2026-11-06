@@ -64,7 +64,7 @@ void main() {
         if (throws) throw PlatformException(code: 'unavailable');
         return permission;
       }
-      if (call.method == 'showNotification') return delivery;
+      if (call.method == 'showIncomingFileOffer') return delivery;
       return true;
     });
     service = _Service();
@@ -94,7 +94,7 @@ void main() {
       await _turns();
       expect(notifications!.deliveryFailed.value, isTrue);
       expect(service.pendingOffer, same(original));
-      expect(calls, isNot(contains('showNotification')));
+      expect(calls, isNot(contains('showIncomingFileOffer')));
       expect(calls, isNot(contains('requestAuthorization')));
 
       throws = false;
@@ -102,7 +102,7 @@ void main() {
       service.offer(101);
       await _turns();
       expect(
-        calls.where((method) => method == 'showNotification'),
+        calls.where((method) => method == 'showIncomingFileOffer'),
         hasLength(1),
       );
       expect(notifications!.deliveryFailed.value, isFalse);
@@ -115,7 +115,7 @@ void main() {
       service.offer(100);
       await _turns();
       expect(notifications!.deliveryFailed.value, isFalse);
-      expect(calls, isNot(contains('showNotification')));
+      expect(calls, isNot(contains('showIncomingFileOffer')));
       expect(calls, isNot(contains('requestAuthorization')));
       expect(service.pendingOffer, isNotNull);
     });
@@ -136,7 +136,7 @@ void main() {
       waiting.complete(null);
       await _turns();
       if (!dispose) expect(notifications!.deliveryFailed.value, isFalse);
-      expect(calls, isNot(contains('showNotification')));
+      expect(calls, isNot(contains('showIncomingFileOffer')));
       expect(calls, isNot(contains('requestAuthorization')));
     });
   }
@@ -146,7 +146,7 @@ void main() {
       delivery = waiting.future;
       service.offer(100);
       await _turns();
-      expect(calls, contains('showNotification'));
+      expect(calls, contains('showIncomingFileOffer'));
       if (action == 'disable') {
         enabled = false;
       } else {
@@ -184,7 +184,7 @@ void main() {
           contains(
             stage == 'permission'
                 ? 'getAuthorizationStatus'
-                : 'showNotification',
+                : 'showIncomingFileOffer',
           ),
         );
         if (action == 'dispose') {

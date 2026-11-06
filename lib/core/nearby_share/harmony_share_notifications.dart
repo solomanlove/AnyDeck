@@ -4,6 +4,7 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 
 import '../notifications/mac_notification_bridge.dart';
+import 'harmony_share_incoming_notifications.dart';
 import 'harmony_share_send_queue.dart';
 import 'harmony_share_service.dart';
 import 'share_transfer_record.dart';
@@ -19,14 +20,21 @@ class HarmonyShareNotifications {
     required this.text,
     this.operationTimeout = const Duration(seconds: 5),
   }) {
-    service.addListener(_serviceChanged);
+    incoming = HarmonyShareIncomingNotifications(
+      service: service,
+      bridge: bridge,
+      enabled: enabled,
+      text: text,
+      operationTimeout: operationTimeout,
+      deliveryFailed: (failed) {
+        if (!_disposed) deliveryFailed.value = failed;
+      },
+    );
     queue.addListener(_queueChanged);
     service.outbox.addListener(_outboxChanged);
     _history = service.history?.changes.listen(_recordChanged);
     _queueRunning = queue.running;
     _outboxRunning = service.outbox.running;
-    _enqueue(() => bridge.removeNotificationsWithPrefix('${prefix}offer_'));
-    _serviceChanged();
   }
 
   final HarmonyShareService service;
@@ -38,34 +46,13 @@ class HarmonyShareNotifications {
   final _tasks = Queue<Future<void> Function()>();
   final _results = <String, ShareTransferStatus>{};
   StreamSubscription<ShareTransferRecord>? _history;
-  ShareIncomingOffer? _offer;
-  String? _offerId;
+  late final HarmonyShareIncomingNotifications incoming;
   bool _queueRunning = false;
   bool _outboxRunning = false;
   bool _working = false;
   bool _disposed = false;
   static const prefix = 'harmony_share_';
   final Duration operationTimeout;
-
-  void _serviceChanged() {
-    final offer = service.pendingOffer;
-    if (identical(offer, _offer)) return;
-    final oldId = _offerId;
-    _offer = offer;
-    _offerId = null;
-    if (oldId != null) _enqueue(() => bridge.removeNotification(oldId));
-    if (offer == null) return;
-    final id = '${prefix}offer_${DateTime.now().microsecondsSinceEpoch}';
-    _offerId = id;
-    _enqueue(
-      () => _show(
-        id: id,
-        title: text('harmonyShareIncoming'),
-        body: text('harmonyShareNotificationOffer'),
-        valid: () => identical(service.pendingOffer, offer),
-      ),
-    );
-  }
 
   void _recordChanged(ShareTransferRecord record) {
     if (record.batchId != null || record.direction != ShareTransferDirection.receive ||
@@ -203,6 +190,7 @@ class HarmonyShareNotifications {
   }
 
   void settingsChanged() {
+    incoming.settingsChanged();
     if (!enabled()) {
       _enqueue(() => bridge.removeNotificationsWithPrefix(prefix));
     }
@@ -210,20 +198,11 @@ class HarmonyShareNotifications {
 
   void dispose() {
     _disposed = true;
-    service.removeListener(_serviceChanged);
+    incoming.dispose();
     queue.removeListener(_queueChanged);
     service.outbox.removeListener(_outboxChanged);
     unawaited(_history?.cancel());
     _tasks.clear();
-    final id = _offerId;
-    if (id != null) {
-      unawaited(
-        bridge
-            .removeNotification(id)
-            .timeout(operationTimeout)
-            .catchError((_) {}),
-      );
-    }
     deliveryFailed.dispose();
   }
 }
