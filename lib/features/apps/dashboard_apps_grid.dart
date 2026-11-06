@@ -102,9 +102,8 @@ class _PackageGridItemState extends ConsumerState<_PackageGridItem> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onOpened,
-        onSecondaryTapDown: widget.isHarmony
-            ? (details) => widget.onContextMenuRequested(details.globalPosition)
-            : null,
+        onSecondaryTapDown: (details) =>
+            widget.onContextMenuRequested(details.globalPosition),
         child: AnimatedScale(
           scale: _isHovered ? 1.04 : 1.0,
           duration: const Duration(milliseconds: 150),

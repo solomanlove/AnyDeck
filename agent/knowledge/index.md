@@ -20,6 +20,7 @@
 | `adb-terminal-pty` | 终端 PTY 与 root 提示符 | active | 记录 Android 真实 shell 回显与 root 提示符、HarmonyOS 本地 `$` 输入提示符、流式换行处理与回归边界 | `core/terminal/`, `features/terminal/` |
 | `adb-remote-controller` | Android 与 HarmonyOS 共用遥控器 | active | 记录四方向扇区交互、中心 OK、ADB/HDC 键码路由及验证边界 | `features/widgets/`, `features/control/`, `core/device_actions/` |
 | `adb-app-permissions` | 应用权限分类与批量撤销 | active | 记录动态 / 静态 / 未知权限分类、当前用户隔离、批量撤销与回读结果、共享面板及回归验证 | `core/apps/`, `features/apps/` |
+| `adb-apps-context-menu` | 应用单项右键菜单 | active | Android 列表/网格的 13 项右键操作、顶部单项工具栏移除、目标应用与批量勾选隔离、断线和重复操作拦截及验证边界 | `features/apps/`, `test/` |
 | `adb-app-native-library-copy` | 应用原生库名称复制 | active | 记录应用详情原生库 Tab 的 `.so` 库名 Clipboard 复制、统一反馈与原生库规则拆分边界 | `features/apps/` |
 | `adb-app-default-icons` | 应用图标缺失时的平台回退 | active | 记录应用与进程真实图标优先、文件缺失或损坏时按 Android/HarmonyOS 展示本地默认资源，以及资源来源和验证边界 | `features/apps/`, `features/processes/`, `assets/brand/` |
 | `adb-harmony-app-analysis` | HarmonyOS 已安装应用独立分析 | active | 记录 HDC `bm dump` 能力探测、独立的开发厂商与开发者/组织字段、HarmonyOS 专属详情页、失败不跳转和 Android 链路隔离 | `core/apps/`, `features/apps/` |

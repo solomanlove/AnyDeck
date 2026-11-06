@@ -58,9 +58,8 @@ class _PackageTableRow extends StatelessWidget {
 
     return InkWell(
       onTap: onOpened,
-      onSecondaryTapDown: isHarmony
-          ? (details) => onContextMenuRequested(details.globalPosition)
-          : null,
+      onSecondaryTapDown: (details) =>
+          onContextMenuRequested(details.globalPosition),
       child: Container(
         height: 56,
         decoration: BoxDecoration(

@@ -188,6 +188,8 @@ part 'control/wifi_passwords_dialog.dart';
 part 'control/dashboard_certificate.dart';
 part 'control/certificate_import_dialog.dart';
 part 'apps/dashboard_apps_tab.dart';
+part 'apps/dashboard_apps_view.dart';
+part 'apps/dashboard_apps_context_menu.dart';
 part 'apps/dashboard_apps_table_widths.dart';
 part 'apps/dashboard_apps_table.dart';
 part 'apps/dashboard_apps_table_row.dart';

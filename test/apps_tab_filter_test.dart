@@ -1,4 +1,4 @@
-import 'package:any_deck/app/any_deck_app.dart';
+import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
@@ -7,8 +7,9 @@ import 'package:any_deck/core/ios/ios_device_service.dart';
 import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/web_debug/webpage_target.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -158,10 +159,27 @@ void main() {
             (ref) => Future.value(<String, String>{}),
           ),
         ],
-        child: const AnyDeckApp(),
+        // 只挂载应用页，避免启动遮罩、侧边栏同名文案和环境探测干扰回归。
+        child: const MaterialApp(
+          locale: Locale('zh'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          home: Scaffold(body: AppsTab(device: _mockDevice)),
+        ),
       ),
     );
     await tester.pumpAndSettle();
+
+    // 只匹配应用列表中的“设置”，避免侧边栏同名导航干扰回归断言。
+    final settingsApp = find.descendant(
+      of: find.byType(AppsTab),
+      matching: find.text('设置'),
+    );
 
     // 默认选中“用户应用”
     expect(find.text('用户应用'), findsOneWidget);
@@ -171,7 +189,7 @@ void main() {
     // 用户应用可见：微信、支付宝；系统应用设置不可见
     expect(find.text('微信'), findsOneWidget);
     expect(find.text('支付宝'), findsOneWidget);
-    expect(find.text('设置'), findsNothing);
+    expect(settingsApp, findsNothing);
 
     // 表头包含计数：共 2/3 个应用
     expect(find.textContaining('共 2/3 个应用'), findsOneWidget);
@@ -182,7 +200,7 @@ void main() {
 
     expect(find.text('微信'), findsNothing);
     expect(find.text('支付宝'), findsNothing);
-    expect(find.text('设置'), findsOneWidget);
+    expect(settingsApp, findsOneWidget);
     expect(find.textContaining('共 1/3 个应用'), findsOneWidget);
 
     // 切换到“全部”
@@ -191,7 +209,7 @@ void main() {
 
     expect(find.text('微信'), findsOneWidget);
     expect(find.text('支付宝'), findsOneWidget);
-    expect(find.text('设置'), findsOneWidget);
+    expect(settingsApp, findsOneWidget);
     expect(find.textContaining('共 3/3 个应用'), findsOneWidget);
   });
 }
