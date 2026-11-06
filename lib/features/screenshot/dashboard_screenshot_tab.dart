@@ -8,6 +8,7 @@ import '../../core/providers/app_providers.dart';
 import '../layout/layout_hierarchy_tree.dart';
 import '../layout/layout_properties_table.dart';
 import 'controller/screenshot_controller.dart';
+import 'editor/widgets/screenshot_edit_workspace.dart';
 import 'widgets/screenshot_auto_save_dialog.dart';
 import 'widgets/screenshot_canvas.dart';
 import 'widgets/screenshot_toolbar.dart';
@@ -99,8 +100,10 @@ class _DashboardScreenshotTabState
       }
     });
 
+    final state =
+        ref.watch(screenshotLayoutControllerProvider(widget.device.id));
     final isOnline = ref.watch(deviceOnlineProvider(widget.device.id));
-    if (!isOnline) {
+    if (!isOnline && !state.isEditing) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -113,11 +116,21 @@ class _DashboardScreenshotTabState
       );
     }
 
-    final state =
-        ref.watch(screenshotLayoutControllerProvider(widget.device.id));
     final controller =
         ref.read(screenshotLayoutControllerProvider(widget.device.id).notifier);
     final density = _getDeviceLogicalDensity();
+
+    // 编辑为工作区局部状态，暂时收起布局面板，完成或取消后恢复原模式。
+    if (state.isEditing && state.displayImage != null) {
+      return ScreenshotEditWorkspace(
+        key: ValueKey(state.displayImage),
+        source: state.displayImage!,
+        screenshotState: state,
+        onDone: (result) => controller.completeEditing(state.displayImage!, result),
+        onCancel: controller.cancelEditing,
+        onAbandon: () => controller.abandonEditing(state.displayImage!),
+      );
+    }
 
     if (state.error != null && !state.hasImage && !state.isLoading) {
       return Center(
@@ -170,6 +183,7 @@ class _DashboardScreenshotTabState
           },
           onSave: () => controller.saveScreenshot(context),
           onCopy: () => controller.copyScreenshotImage(context),
+          onEdit: controller.beginEditing,
           onRotateLeft: controller.rotateLeft,
           onRotateRight: controller.rotateRight,
           onToggleAutoRefresh: controller.toggleAutoRefresh,
@@ -241,7 +255,7 @@ class _DashboardScreenshotTabState
                       flex: state.showProperties ? 4 : 5,
                       child: ScreenshotCanvas(
                         key: _canvasKey,
-                        decodedImage: state.decodedImage,
+                        decodedImage: state.displayImage,
                         rotationAngle: state.rotation,
                         transformationController: _transformationController,
                         isLayoutAnalysis: true,
@@ -281,7 +295,7 @@ class _DashboardScreenshotTabState
                 )
               : ScreenshotCanvas(
                   key: _canvasKey,
-                  decodedImage: state.decodedImage,
+                  decodedImage: state.displayImage,
                   rotationAngle: state.rotation,
                   transformationController: _transformationController,
                   isLayoutAnalysis: false,

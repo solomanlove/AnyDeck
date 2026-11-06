@@ -26,6 +26,9 @@ class ScreenshotLayoutState {
   const ScreenshotLayoutState({
     this.rawScreenshotBytes,
     this.decodedImage,
+    this.editedScreenshotBytes,
+    this.editedImage,
+    this.isEditing = false,
     this.imgWidth = 0,
     this.imgHeight = 0,
     this.rotation = 0,
@@ -55,6 +58,14 @@ class ScreenshotLayoutState {
 
   /// 已解码用于 Canvas 渲染与坐标定位的图片对象
   final ui.Image? decodedImage;
+
+  /// 已完成编辑的扁平 PNG 与预览；保留原图供取消编辑与重新截图使用。
+  final Uint8List? editedScreenshotBytes;
+  final ui.Image? editedImage;
+  final bool isEditing;
+
+  ui.Image? get displayImage => editedImage ?? decodedImage;
+  Uint8List? get exportBytes => editedScreenshotBytes ?? rawScreenshotBytes;
 
   /// 截图原始宽度
   final int imgWidth;
@@ -126,10 +137,11 @@ class ScreenshotLayoutState {
   bool get isRecordingActive => recordPhase != ScreenRecordPhase.idle;
 
   /// 只有不在录屏任何阶段时，才允许切换布局分析模式
-  bool get canToggleLayoutAnalysis => !isRecordingActive;
+  bool get canToggleLayoutAnalysis => !isRecordingActive && !isEditing;
 
   /// 获取不可切换布局分析的原因国际化 key
   String? get cannotToggleReasonKey {
+    if (isEditing) return 'screenshotEditBlocked';
     return switch (recordPhase) {
       ScreenRecordPhase.starting => 'recordingStartingDisableLayout',
       ScreenRecordPhase.recording => 'recordingDisableLayoutAnalysis',
@@ -141,8 +153,8 @@ class ScreenshotLayoutState {
 
   /// 截图文件大小格式化文案
   String get sizeLabel {
-    if (rawScreenshotBytes == null) return '';
-    final bytes = rawScreenshotBytes!.length;
+    if (exportBytes == null) return '';
+    final bytes = exportBytes!.length;
     return '${(bytes / (1024 * 1024)).toStringAsFixed(2)}MB';
   }
 
@@ -152,6 +164,10 @@ class ScreenshotLayoutState {
   ScreenshotLayoutState copyWith({
     Uint8List? rawScreenshotBytes,
     ui.Image? decodedImage,
+    Uint8List? editedScreenshotBytes,
+    ui.Image? editedImage,
+    bool? isEditing,
+    bool clearEditedImage = false,
     int? imgWidth,
     int? imgHeight,
     int? rotation,
@@ -181,6 +197,10 @@ class ScreenshotLayoutState {
     return ScreenshotLayoutState(
       rawScreenshotBytes: rawScreenshotBytes ?? this.rawScreenshotBytes,
       decodedImage: decodedImage ?? this.decodedImage,
+      editedScreenshotBytes: clearEditedImage
+          ? null : (editedScreenshotBytes ?? this.editedScreenshotBytes),
+      editedImage: clearEditedImage ? null : (editedImage ?? this.editedImage),
+      isEditing: isEditing ?? this.isEditing,
       imgWidth: imgWidth ?? this.imgWidth,
       imgHeight: imgHeight ?? this.imgHeight,
       rotation: rotation ?? this.rotation,

@@ -9,7 +9,7 @@ import '../model/screenshot_state.dart';
 
 /// 截图与布局分析共享控制工具栏。
 /// 左侧和中间操作按钮区支持横向滚动（保证窄窗口下不溢出）；
-/// 右侧固定显示“布局分析”模式开关；缩放与图片信息由底栏承载。
+/// 右侧固定显示图片编辑入口与“布局分析”模式开关；缩放与图片信息由底栏承载。
 class ScreenshotToolbar extends StatelessWidget {
   const ScreenshotToolbar({
     super.key,
@@ -26,6 +26,7 @@ class ScreenshotToolbar extends StatelessWidget {
     required this.onStopRecording,
     required this.onToggleLayoutAnalysis,
     required this.onShowPropertiesChanged,
+    this.onEdit,
   });
 
   final DiscoveredDevice device;
@@ -42,6 +43,7 @@ class ScreenshotToolbar extends StatelessWidget {
   final VoidCallback onStopRecording;
   final ValueChanged<bool> onToggleLayoutAnalysis;
   final ValueChanged<bool?> onShowPropertiesChanged;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +189,12 @@ class ScreenshotToolbar extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _ToolbarButton(
+                icon: CupertinoIcons.pencil,
+                tooltip: context.l10n.t('screenshotEdit'),
+                onPressed: (!hasImage || state.isLoading || isRecActive)
+                    ? null : onEdit,
+              ),
               _buildDivider(isDark),
               _buildLayoutAnalysisToggle(context, isDark),
             ],

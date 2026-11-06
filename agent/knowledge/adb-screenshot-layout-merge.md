@@ -1,5 +1,7 @@
 # ADB 截图录屏与布局分析合并架构指南 (adb-screenshot-layout-merge)
 
+截图标注编辑的入口、会话状态、PNG 导出和回归边界见 [AnyDeck 截图图片编辑](adb-screenshot-image-editing.md)。
+
 ## 1. 概述与设计背景
 
 为了提升 AnyDeck 桌面端在多设备调试下的操作流畅度，避免两套重复的截图画布与工具栏，本项目将原有的“截图录屏”与“布局分析”两大功能收口为一个统一的工作台：

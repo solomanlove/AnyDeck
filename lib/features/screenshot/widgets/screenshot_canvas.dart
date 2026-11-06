@@ -25,6 +25,8 @@ class ScreenshotCanvas extends StatefulWidget {
     this.onNodeSelected,
     this.onNodeHovered,
     this.onViewportSizeChanged,
+    this.imageOverlay,
+    this.panEnabled = true,
   });
 
   /// 已解码待渲染图片
@@ -71,6 +73,12 @@ class ScreenshotCanvas extends StatefulWidget {
 
   /// 视口尺寸变化回调
   final ValueChanged<Size>? onViewportSizeChanged;
+
+  /// 图片局部坐标中的附加交互层，随底图共同缩放和移动。
+  final Widget? imageOverlay;
+
+  /// 编辑绘制时关闭 Viewer 手势，拖动画布工具再恢复。
+  final bool panEnabled;
 
   @override
   State<ScreenshotCanvas> createState() => ScreenshotCanvasState();
@@ -252,6 +260,8 @@ class ScreenshotCanvasState extends State<ScreenshotCanvas> {
           children: [
             Positioned.fill(
               child: InteractiveViewer(
+                panEnabled: widget.panEnabled,
+                scaleEnabled: widget.panEnabled,
                 transformationController: widget.transformationController,
                 boundaryMargin: EdgeInsets.symmetric(
                   horizontal: marginX,
@@ -303,23 +313,27 @@ class ScreenshotCanvasState extends State<ScreenshotCanvas> {
                             : _findDeepestNodeAt(widget.rootNode!, nativePoint);
                         widget.onNodeSelected?.call(node);
                       },
-                      child: SizedBox.expand(
-                        child: CustomPaint(
-                          painter: ScreenPreviewPainter(
-                            image: image,
-                            rootNode: widget.isLayoutAnalysis ? widget.rootNode : null,
-                            selectedNode: widget.isLayoutAnalysis
-                                ? widget.selectedNode
-                                : null,
-                            hoveredNode: widget.isLayoutAnalysis
-                                ? widget.hoveredNode
-                                : null,
-                            showBorders: widget.isLayoutAnalysis && widget.showBorders,
-                            rotationAngle: widget.rotationAngle,
-                            useDp: widget.useDp,
-                            deviceScale: widget.deviceScale,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CustomPaint(
+                            painter: ScreenPreviewPainter(
+                              image: image,
+                              rootNode: widget.isLayoutAnalysis ? widget.rootNode : null,
+                              selectedNode: widget.isLayoutAnalysis
+                                  ? widget.selectedNode
+                                  : null,
+                              hoveredNode: widget.isLayoutAnalysis
+                                  ? widget.hoveredNode
+                                  : null,
+                              showBorders: widget.isLayoutAnalysis && widget.showBorders,
+                              rotationAngle: widget.rotationAngle,
+                              useDp: widget.useDp,
+                              deviceScale: widget.deviceScale,
+                            ),
                           ),
-                        ),
+                          if (widget.imageOverlay != null) widget.imageOverlay!,
+                        ],
                       ),
                     ),
                   ),

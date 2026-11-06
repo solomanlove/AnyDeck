@@ -12,10 +12,12 @@ import '../../../core/layout_inspector/layout_node.dart';
 import '../../../core/providers/app_providers.dart';
 import '../model/screenshot_state.dart';
 import 'screenshot_export_helper.dart';
+import 'screenshot_edit_session.dart';
 import 'screenshot_record_runner.dart';
 
 /// 设备会话级截图与布局分析统一状态控制器。
-class ScreenshotController extends Notifier<ScreenshotLayoutState> {
+class ScreenshotController extends Notifier<ScreenshotLayoutState>
+    with ScreenshotEditSession {
   ScreenshotController(this.deviceId);
 
   final String deviceId;
@@ -43,6 +45,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
       _recordRunner?.dispose();
       _currentDecodedImage?.dispose();
       _currentDecodedImage = null;
+      disposeEditedImage();
     });
 
     return const ScreenshotLayoutState();
@@ -68,6 +71,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
 
   /// 普通截图拉取（支持单次或连续后台截图）
   Future<void> captureScreenshot({bool isAuto = false}) async {
+    if (state.isEditing) return;
     if (state.isLoading && !isAuto) return;
     final currentRequestId = ++_requestId;
 
@@ -96,8 +100,10 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
 
       final oldImg = _currentDecodedImage;
       _currentDecodedImage = decodedImg;
+      disposeEditedImage();
       state = state.copyWith(
         rawScreenshotBytes: bytes,
+        clearEditedImage: true,
         decodedImage: decodedImg,
         imgWidth: decodedImg.width,
         imgHeight: decodedImg.height,
@@ -140,6 +146,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
   /// 布局分析模式下的原子化刷新：并发获取截图与 XML 布局。
   /// 当且仅当两者全部获取成功时，整体替换画面与节点树；失败保留上一份完整数据并记录错误。
   Future<void> loadLayoutAndScreenshot({bool clearContent = false}) async {
+    if (state.isEditing) return;
     final currentRequestId = ++_requestId;
 
     state = state.copyWith(
@@ -197,11 +204,13 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
 
       final oldImg = _currentDecodedImage;
       _currentDecodedImage = decodedImg;
+      disposeEditedImage();
       final newExpanded = <LayoutNode>{parsedRoot};
       _expandAll(parsedRoot, newExpanded);
 
       state = state.copyWith(
         rawScreenshotBytes: screenshotBytes,
+        clearEditedImage: true,
         decodedImage: decodedImg,
         imgWidth: decodedImg.width,
         imgHeight: decodedImg.height,
@@ -237,6 +246,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
 
   /// 切换布局分析模式
   void toggleLayoutAnalysis(bool enable, {bool loadContent = true}) {
+    if (state.isEditing) return;
     if (state.isLayoutAnalysis == enable) return;
 
     if (enable) {
@@ -276,7 +286,9 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
 
   /// 切换连续截图
   void toggleAutoRefresh() {
-    if (state.isLayoutAnalysis || state.isRecordingActive) return;
+    if (state.isLayoutAnalysis || state.isRecordingActive || state.isEditing) {
+      return;
+    }
 
     final nextVal = !state.isAutoRefresh;
     state = state.copyWith(
@@ -299,6 +311,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
     required int intervalSeconds,
     bool startImmediately = true,
   }) {
+    if (state.isEditing) return;
     state = state.copyWith(
       isAutoSave: autoSave,
       autoSavePath: savePath,
@@ -319,6 +332,7 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
   }
 
   /// 切出 Tab 时暂停连续截图计时器（保留 state.isAutoRefresh 状态）
+  @override
   void pauseAutoRefreshForTabSwitch() {
     _autoRefreshTimer?.cancel();
     _autoRefreshTimer = null;
@@ -326,7 +340,8 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
 
   /// 切回 Tab 时根据先前的开关状态恢复连续截图
   void resumeAutoRefreshAfterTabSwitch() {
-    if (state.isAutoRefresh && !state.isLayoutAnalysis && !state.isRecordingActive) {
+    if (state.isAutoRefresh && !state.isLayoutAnalysis &&
+        !state.isRecordingActive && !state.isEditing) {
       _startAutoRefreshTimer();
       captureScreenshot(isAuto: true);
     }
@@ -339,12 +354,15 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
     _autoRefreshTimer = null;
     _currentDecodedImage?.dispose();
     _currentDecodedImage = null;
+    disposeEditedImage();
     state = const ScreenshotLayoutState();
   }
 
   /// 启动录屏（状态补齐 starting -> recording）
   Future<void> startRecording({required BuildContext context}) async {
-    if (state.isRecordingActive || state.isLayoutAnalysis) return;
+    if (state.isRecordingActive || state.isLayoutAnalysis || state.isEditing) {
+      return;
+    }
 
     if (state.isAutoRefresh) {
       toggleAutoRefresh();
@@ -359,6 +377,9 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
   }
 
   // 辅助属性修改与交互方法
+  @override
+  void invalidateCaptureForEditing() => _requestId++;
+
   void rotateLeft() {
     state = state.copyWith(rotation: (state.rotation - 90 + 360) % 360);
   }
@@ -435,19 +456,21 @@ class ScreenshotController extends Notifier<ScreenshotLayoutState> {
 
   /// 复制当前截图图片到剪贴板
   Future<void> copyScreenshotImage(BuildContext context) async {
+    if (state.isEditing) return;
     await ScreenshotExportHelper.copyScreenshotImage(
       context,
-      bytes: state.rawScreenshotBytes,
+      bytes: state.exportBytes,
       hostPlatform: ref.read(hostPlatformServiceProvider),
     );
   }
 
   /// 保存当前截图图片。
   Future<void> saveScreenshot(BuildContext context) async {
+    if (state.isEditing) return;
     await ScreenshotExportHelper.saveScreenshot(
       context,
       deviceId: deviceId,
-      rawBytes: state.rawScreenshotBytes,
+      rawBytes: state.exportBytes,
       settings: ref.read(appSettingsProvider),
       hostPlatform: ref.read(hostPlatformServiceProvider),
     );
