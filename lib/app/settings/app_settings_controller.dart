@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings.dart';
 import '../shortcuts/mirror_shortcut.dart';
+import '../shortcuts/window_shortcut.dart';
 import 'mirror_quality_preset.dart';
 import 'harmony_share_preference_keys.dart';
 import '../../core/nearby_share/share_receive_directory.dart';
@@ -88,6 +89,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
     stdout.writeln('[SettingsController] _handleSettingsCall: method=${call.method}, args=${call.arguments}, currentWindowId=${ref.read(windowIdProvider)}');
     if (call.method == MirrorShortcutSettings.channelMethod) return _receiveMirrorShortcuts(call.arguments);
     if (call.method == mainWindowShortcutChannelMethod) return _receiveMainWindowShortcut(call.arguments);
+    if (call.method == WindowShortcutSettings.channelMethod) return _receiveWindowShortcuts(call.arguments);
     if (call.method == 'change_harmony_share_local_name' && call.arguments is String) {
       await setHarmonyShareLocalName(call.arguments as String);
     } else if (call.method == 'update_harmony_share_local_name' && call.arguments is String) {
@@ -470,6 +472,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       launchAtStartup: launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey,
       mainWindowShortcut: decodeMainWindowShortcut(preferences.getString(mainWindowShortcutPreferenceKey)),
+      windowShortcuts: WindowShortcutSettings.decode(preferences.getString(WindowShortcutSettings.preferenceKey)),
       mirrorShortcuts: MirrorShortcutSettings.decode(
         preferences.getString(MirrorShortcutSettings.preferenceKey),
       ),

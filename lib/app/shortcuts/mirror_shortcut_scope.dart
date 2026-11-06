@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../settings/app_settings_controller.dart';
@@ -10,12 +9,9 @@ import 'local_shortcut_handler.dart';
 /// 在投屏窗口内优先处理本地组合键；child 为窗口内容。
 /// 工具栏通过 MirrorShortcutTarget 注册同一份点击回调，自动隐藏后仍可使用。
 class MirrorShortcutScope extends ConsumerStatefulWidget {
-  const MirrorShortcutScope({super.key, required this.child, this.onClose});
+  const MirrorShortcutScope({super.key, required this.child});
 
   final Widget child;
-
-  /// 标准窗口关闭入口，优先于设备键盘转发执行。
-  final VoidCallback? onClose;
 
   static MirrorShortcutRegistry? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_ShortcutScope>()?.registry;
@@ -29,14 +25,10 @@ class _MirrorShortcutScopeState extends ConsumerState<MirrorShortcutScope> {
   final _registry = MirrorShortcutRegistry();
 
   LocalShortcutMatch? _resolve(KeyEvent event) {
-    final closeWindow =
-        widget.onClose != null &&
-        SingleActivator(
-          LogicalKeyboardKey.keyW,
-          meta: _registry.isMacOS,
-          control: !_registry.isMacOS,
-        ).accepts(event, HardwareKeyboard.instance);
-    if (closeWindow) return LocalShortcutMatch(widget.onClose);
+    // 通用操作由外层窗口范围处理，避免配置冲突时同一事件执行两次。
+    if (ref.read(appSettingsProvider).windowShortcuts.match(event) != null) {
+      return null;
+    }
     final action = _registry.settings.match(event, isMacOS: _registry.isMacOS);
     return action == null
         ? null

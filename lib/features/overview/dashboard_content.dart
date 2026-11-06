@@ -126,23 +126,11 @@ extension _DashboardContent on _DashboardScreenState {
       stackIndex = 1;
     }
 
-    return CallbackShortcuts(
-      bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.keyQ, meta: true):
-            _handleQuitShortcut,
-        const SingleActivator(LogicalKeyboardKey.keyQ, control: true):
-            _handleQuitShortcut,
-        const SingleActivator(LogicalKeyboardKey.comma, meta: true): () {
-          context.goNamed(AppRouteNames.settings);
-        },
-        const SingleActivator(LogicalKeyboardKey.comma, control: true): () {
-          context.goNamed(AppRouteNames.settings);
-        },
-      },
-      child: MainWindowCloseShortcut(
+    return MainWindowCloseShortcut(
         showWindowKey: settings.showWindowShortcutKey,
         showWindowShortcut: settings.mainWindowBinding,
         onQuit: _handleQuitShortcut,
+        onOpenSettings: () => context.goNamed(AppRouteNames.settings),
         child: Scaffold(
           body: _WechatStyleShell(
             title: appBarTitle,
@@ -184,7 +172,6 @@ extension _DashboardContent on _DashboardScreenState {
             ),
           ),
         ),
-      ),
     );
   }
 

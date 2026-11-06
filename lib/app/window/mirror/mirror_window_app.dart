@@ -92,9 +92,9 @@ class MirrorWindowApp extends ConsumerWidget {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: settings.themeMode,
-      home: MirrorShortcutScope(
-        onClose: windowManager.close,
-        child: WindowCloseShortcut(
+      home: WindowCloseShortcut(
+        autofocus: false,
+        child: MirrorShortcutScope(
           child: isIos || isHarmony
               ? Builder(builder: (context) => buildContent(context, deviceId))
               : AndroidMirrorTransportHost(

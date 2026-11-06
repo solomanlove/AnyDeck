@@ -1,5 +1,6 @@
 import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/app/shortcuts/mirror_shortcut.dart';
+import 'package:any_deck/app/shortcuts/window_shortcut.dart';
 import 'package:any_deck/features/overview/widget/keyboard_shortcut_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,16 +12,9 @@ import 'support/shortcut_test_fixture.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const windows = MethodChannel('mixin.one/desktop_multi_window');
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(windows, (_) async => []);
-  });
-  tearDown(
-    () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(windows, null),
-  );
+  final platform = ShortcutPlatformMocks();
+  setUp(platform.setUp);
+  tearDown(platform.tearDown);
 
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
@@ -115,9 +109,7 @@ void main() {
           modifiers: [LogicalKeyboardKey.metaLeft],
         );
         expect(
-          find.textContaining(
-            language == 'zh' ? '请选择其他组合键' : 'Choose another shortcut',
-          ),
+          find.textContaining(language == 'zh' ? '已用于' : 'assigned to'),
           findsOneWidget,
         );
         expect(tester.widget<FilledButton>(save).onPressed, null);
@@ -189,6 +181,78 @@ void main() {
             prefs.getString(mainWindowShortcutPreferenceKey),
           ),
           mainBinding,
+        );
+        // 三个通用操作使用同一录入弹窗，覆盖任意修饰键与独立触发键。
+        final keys = [
+          LogicalKeyboardKey.f10,
+          LogicalKeyboardKey.f11,
+          LogicalKeyboardKey.f12,
+        ];
+        for (final action in WindowShortcut.values) {
+          final button = find.byKey(ValueKey('shortcut-window-${action.name}'));
+          await tester.ensureVisible(button);
+          await tester.pumpAndSettle();
+          await tester.tap(button);
+          await tester.pumpAndSettle();
+          final key = keys[action.index];
+          await pressShortcut(
+            tester,
+            key,
+            modifiers: [
+              LogicalKeyboardKey.shiftLeft,
+              LogicalKeyboardKey.controlLeft,
+            ],
+          );
+          await tester.tap(save);
+          await tester.pumpAndSettle();
+          expect(
+            container
+                .read(appSettingsProvider)
+                .windowShortcuts
+                .bindingFor(action),
+            KeyboardShortcutBinding(key: key, shift: true, control: true),
+          );
+        }
+        // 关闭键改绑后，原来的 Command+W 可以分配给投屏操作。
+        await open();
+        await pressShortcut(
+          tester,
+          LogicalKeyboardKey.keyW,
+          modifiers: [LogicalKeyboardKey.metaLeft],
+        );
+        expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+        expect(
+          container
+              .read(appSettingsProvider)
+              .mirrorShortcuts
+              .bindingFor(MirrorShortcut.screenshot),
+          const KeyboardShortcutBinding(
+            key: LogicalKeyboardKey.keyW,
+            meta: true,
+          ),
+        );
+        // 通用操作与投屏使用同一组合时，同样禁止保存。
+        final close = find.byKey(const ValueKey('shortcut-window-closeWindow'));
+        await tester.ensureVisible(close);
+        await tester.pumpAndSettle();
+        await tester.tap(close);
+        await tester.pumpAndSettle();
+        await pressShortcut(
+          tester,
+          LogicalKeyboardKey.keyW,
+          modifiers: [LogicalKeyboardKey.metaLeft],
+        );
+        expect(tester.widget<FilledButton>(save).onPressed, null);
+        await tester.tap(find.text(language == 'zh' ? '取消' : 'Cancel'));
+        await tester.pumpAndSettle();
+        final persisted = WindowShortcutSettings.decode(
+          prefs.getString(WindowShortcutSettings.preferenceKey),
+        );
+        expect(
+          persisted.bindingFor(WindowShortcut.quitApp).key,
+          LogicalKeyboardKey.f12,
         );
         expect(tester.takeException(), null);
         await tester.pumpWidget(const SizedBox.shrink());

@@ -345,7 +345,8 @@ class MainFlutterWindow: NSWindow {
         if submenu.items.count > 10 {
           let quitItem = submenu.items[10]
           quitItem.title = isChinese ? "退出 \(title)" : "Quit \(title)"
-          quitItem.keyEquivalent = "q"
+          // 快捷键由 Flutter 配置处理，避免菜单绕过自定义组合及二次退出。
+          quitItem.keyEquivalent = ""
         }
       }
     }
@@ -514,12 +515,13 @@ class MainFlutterWindow: NSWindow {
   }
 
   private func setupCustomWindowMenuItems() {
-    // 绑定系统偏好设置/设置菜单项的行为，使得 Command+, 能正常传递给 Flutter
+    // 设置菜单保留点击入口，快捷键统一由 Flutter 配置处理。
     if let mainMenu = NSApp.mainMenu, mainMenu.items.count > 0,
        let appMenu = mainMenu.items[0].submenu, appMenu.items.count > 2 {
       let preferencesItem = appMenu.items[2]
       preferencesItem.target = self
       preferencesItem.action = #selector(openPreferencesClicked(_:))
+      preferencesItem.keyEquivalent = ""
     }
 
     guard let mainMenu = NSApp.mainMenu, mainMenu.items.count > 3,

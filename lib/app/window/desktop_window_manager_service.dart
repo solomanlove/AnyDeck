@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/ios/ios_control_gateway.dart';
 import '../../core/device_share/device_share_provider.dart';
+import '../shortcuts/window_shortcut.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -99,9 +100,12 @@ class DesktopWindowManagerService {
 
     try {
       final showLabel = localizedValues[langCode]?['trayShowWindow'] ?? (langCode == 'en' ? 'Show Window' : '显示窗口');
-      // macOS 状态栏退出项显示快捷键备注 (⌘Q)
+      // 托盘使用当前退出组合键；清除绑定后只显示菜单名称。
       final rawExitLabel = localizedValues[langCode]?['trayExit'] ?? (langCode == 'en' ? 'Exit' : '退出');
-      final exitLabel = Platform.isMacOS ? '$rawExitLabel (⌘Q)' : rawExitLabel;
+      final preferences = await SharedPreferences.getInstance();
+      final shortcut = WindowShortcutSettings.decode(preferences.getString(WindowShortcutSettings.preferenceKey))
+          .bindingFor(WindowShortcut.quitApp).label();
+      final exitLabel = shortcut.isEmpty ? rawExitLabel : '$rawExitLabel ($shortcut)';
       final consoleLabel = langCode == 'en' ? 'Console Window' : '控制台窗口';
       final mcpToggleLabel = _isMcpRunning
           ? (langCode == 'en' ? 'Stop MCP Service' : '停止 MCP 服务')

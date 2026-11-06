@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/settings/app_settings_controller.dart';
 import '../../../app/shortcuts/mirror_shortcut.dart';
+import '../../../app/shortcuts/window_shortcut.dart';
 import '../../../app/widget/app_toast.dart';
 import 'keyboard_shortcut_recorder.dart';
 
@@ -22,8 +23,10 @@ class KeyboardShortcutSettings extends ConsumerWidget {
       appSettingsProvider.select((s) => s.mainWindowBinding),
     );
     final isMacOS = defaultTargetPlatform == TargetPlatform.macOS;
-    final modifier = isMacOS ? '⌘' : 'Ctrl+';
 
+    final windowShortcuts = ref.watch(
+      appSettingsProvider.select((s) => s.windowShortcuts),
+    );
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -45,18 +48,19 @@ class KeyboardShortcutSettings extends ConsumerWidget {
               ),
             ),
           ),
-          _ShortcutRow(
-            label: context.l10n.t('shortcutOpenSettings'),
-            control: Text('$modifier,'),
-          ),
-          _ShortcutRow(
-            label: context.l10n.t('shortcutCloseWindow'),
-            control: Text('${modifier}W'),
-          ),
-          _ShortcutRow(
-            label: context.l10n.t('shortcutQuit'),
-            control: Text('$modifier${context.l10n.t('shortcutDoubleQ')}'),
-          ),
+          for (final action in WindowShortcut.values)
+            _ShortcutRow(
+              label: context.l10n.t(action.labelKey),
+              control: OutlinedButton(
+                key: ValueKey('shortcut-window-${action.name}'),
+                onPressed: () => _editWindow(context, ref, action),
+                child: Text(
+                  windowShortcuts.bindingFor(action).isEnabled
+                      ? windowShortcuts.bindingFor(action).label()
+                      : context.l10n.t('shortcutDisabled'),
+                ),
+              ),
+            ),
           const Divider(height: 24),
           Row(
             children: [
@@ -99,16 +103,52 @@ class KeyboardShortcutSettings extends ConsumerWidget {
     );
   }
 
-  String? _reservedError(
+  String? _conflictError(
     BuildContext context,
-    KeyboardShortcutBinding binding,
-  ) {
-    final reserved = binding.reservedLabelKey;
-    return reserved == null
+    WidgetRef ref,
+    KeyboardShortcutBinding binding, {
+    WindowShortcut? windowAction,
+    MirrorShortcut? mirrorAction,
+  }) {
+    final conflict = ref
+        .read(appSettingsProvider)
+        .shortcutConflict(
+          binding,
+          windowAction: windowAction,
+          mirrorAction: mirrorAction,
+        );
+    return conflict == null
         ? null
         : context.l10n
-              .t('shortcutReserved')
-              .replaceAll('{action}', context.l10n.t(reserved));
+              .t('shortcutConflict')
+              .replaceAll('{action}', context.l10n.t(conflict));
+  }
+
+  Future<void> _editWindow(
+    BuildContext context,
+    WidgetRef ref,
+    WindowShortcut action,
+  ) async {
+    final binding = await showKeyboardShortcutRecorder(
+      context: context,
+      title: context.l10n.t(action.labelKey),
+      current: ref.read(appSettingsProvider).windowShortcuts.bindingFor(action),
+      defaultBinding: action.defaultBinding,
+      validate: (binding) =>
+          _conflictError(context, ref, binding, windowAction: action),
+    );
+    if (binding == null || !context.mounted) return;
+    await _persist(
+      context,
+      () => ref
+          .read(appSettingsProvider.notifier)
+          .setWindowShortcuts(
+            ref
+                .read(appSettingsProvider)
+                .windowShortcuts
+                .withBinding(action, binding),
+          ),
+    );
   }
 
   Future<void> _editMirror(
@@ -121,19 +161,8 @@ class KeyboardShortcutSettings extends ConsumerWidget {
       title: context.l10n.t(action.labelKey),
       current: ref.read(appSettingsProvider).mirrorShortcuts.bindingFor(action),
       defaultBinding: MirrorShortcutSettings.legacyBinding(action.defaultKey),
-      validate: (binding) {
-        final reserved = _reservedError(context, binding);
-        if (reserved != null) return reserved;
-        final conflict = ref
-            .read(appSettingsProvider)
-            .mirrorShortcuts
-            .conflict(action, binding);
-        return conflict == null
-            ? null
-            : context.l10n
-                  .t('shortcutConflict')
-                  .replaceAll('{action}', context.l10n.t(conflict.labelKey));
-      },
+      validate: (binding) =>
+          _conflictError(context, ref, binding, mirrorAction: action),
     );
     if (binding == null || !context.mounted) return;
     await _persist(
@@ -157,7 +186,7 @@ class KeyboardShortcutSettings extends ConsumerWidget {
       defaultBinding: KeyboardShortcutBinding.primary(
         MirrorShortcutSettings.keys['1']!,
       ),
-      validate: (binding) => _reservedError(context, binding),
+      validate: (binding) => _conflictError(context, ref, binding),
     );
     if (binding == null || !context.mounted) return;
     await _persist(
@@ -182,13 +211,14 @@ class KeyboardShortcutSettings extends ConsumerWidget {
   ) async {
     try {
       await save();
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
-        AppToast.show(
-          context,
-          context.l10n.t('shortcutSaveFailed'),
-          isError: true,
-        );
+        final message = error is ShortcutConflictException
+            ? context.l10n
+                  .t('shortcutConflict')
+                  .replaceAll('{action}', context.l10n.t(error.labelKey))
+            : context.l10n.t('shortcutSaveFailed');
+        AppToast.show(context, message, isError: true);
       }
     }
   }

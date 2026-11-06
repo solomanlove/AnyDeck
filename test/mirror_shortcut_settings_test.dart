@@ -4,6 +4,7 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/settings/app_settings.dart';
 import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/app/shortcuts/mirror_shortcut.dart';
+import 'package:any_deck/app/shortcuts/window_shortcut.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -265,19 +266,16 @@ void main() {
     );
   });
 
-  test('损坏完整组合键、仅修饰键和固定窗口冲突不能写入', () {
-    const reserved = KeyboardShortcutBinding(
-      key: LogicalKeyboardKey.keyW,
-      meta: true,
-    );
+  test('窗口冲突按当前配置判断，损坏完整组合键和仅修饰键不能写入', () {
+    final occupied = WindowShortcut.closeWindow.defaultBinding;
     expect(
-      () => const MirrorShortcutSettings().withBinding(
-        MirrorShortcut.screenshot,
-        reserved,
+      const AppSettings().shortcutConflict(
+        occupied,
+        mirrorAction: MirrorShortcut.screenshot,
       ),
-      throwsArgumentError,
+      WindowShortcut.closeWindow.labelKey,
     );
-    expect(decodeMainWindowShortcut(reserved.encode()), null);
+    expect(decodeMainWindowShortcut(occupied.encode()), occupied);
     expect(KeyboardShortcutBinding.fromJson({'keyId': 123}), null);
     final modifier = const KeyboardShortcutBinding(
       key: LogicalKeyboardKey.controlLeft,
@@ -289,10 +287,6 @@ void main() {
       {
         'version': 2,
         'bindings': {'screenshot': modifier},
-      },
-      {
-        'version': 2,
-        'bindings': {'screenshot': reserved.toJson()},
       },
     ]) {
       expect(

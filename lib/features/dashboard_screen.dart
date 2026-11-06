@@ -28,6 +28,7 @@ import '../app/widget/app_detail_layout.dart';
 import '../app/widget/app_toast.dart';
 import '../app/settings/app_settings.dart';
 import '../app/settings/app_settings_controller.dart';
+import '../app/shortcuts/window_shortcut.dart';
 import '../app/window/multi_window_compat.dart';
 import '../app/window/console/console_window_launcher.dart';
 import 'console/controller/console_dock_controller.dart';
@@ -162,6 +163,7 @@ import 'feedback/widget/settings_feedback_entry.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_content.dart';
+part 'overview/dashboard_quit_shortcut.dart';
 part 'overview/dashboard_rail.dart';
 part 'overview/dashboard_rail_buttons.dart';
 part 'overview/dashboard_rail_footer.dart';
@@ -446,22 +448,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     await windowManager.setPreventClose(false);
     await windowManager.destroy();
     exit(0);
-  }
-
-  void _handleQuitShortcut() {
-    final now = DateTime.now();
-    final lastPressedAt = _lastQuitShortcutAt;
-    if (lastPressedAt != null &&
-        now.difference(lastPressedAt) <= _quitShortcutInterval) {
-      _lastQuitShortcutAt = null;
-      unawaited(_exitApp());
-      return;
-    }
-
-    _lastQuitShortcutAt = now;
-    if (mounted) {
-      _showSnack(context, context.l10n.t('pressCommandQAgainToQuit'));
-    }
   }
 
   @override

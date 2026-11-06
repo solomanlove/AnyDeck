@@ -14,9 +14,13 @@ class LocalShortcutHandler extends StatefulWidget {
     super.key,
     required this.resolve,
     required this.child,
+    this.autofocus = true,
   });
   final LocalShortcutMatch? Function(KeyEvent event) resolve;
   final Widget child;
+
+  /// 外层窗口范围可关闭自动聚焦，让内层投屏范围取得初始焦点。
+  final bool autofocus;
 
   @override
   State<LocalShortcutHandler> createState() => _LocalShortcutHandlerState();
@@ -58,6 +62,9 @@ class _LocalShortcutHandlerState extends State<LocalShortcutHandler> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      Focus(autofocus: true, focusNode: _focus, child: widget.child);
+  Widget build(BuildContext context) => Focus(
+    autofocus: widget.autofocus,
+    focusNode: _focus,
+    child: widget.child,
+  );
 }

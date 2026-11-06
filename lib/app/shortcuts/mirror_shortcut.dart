@@ -96,7 +96,6 @@ class MirrorShortcutSettings {
   ) {
     if ((binding.key != null &&
             !KeyboardShortcutBinding.isTrigger(binding.key!)) ||
-        binding.reservedLabelKey != null ||
         conflict(action, binding) != null) {
       throw ArgumentError.value(binding, 'binding');
     }
@@ -133,7 +132,7 @@ class MirrorShortcutSettings {
             : value is String && (value.isEmpty || keys.containsKey(value))
             ? legacyBinding(value)
             : null;
-        if (binding == null || binding.reservedLabelKey != null) {
+        if (binding == null) {
           return const MirrorShortcutSettings();
         }
         overrides[action.name] = binding;

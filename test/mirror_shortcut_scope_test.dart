@@ -1,17 +1,20 @@
 import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/app/shortcuts/mirror_shortcut_scope.dart';
 import 'package:any_deck/app/window/mirror/mirror_toolbar_button.dart';
+import 'package:any_deck/app/window/window_close_shortcut.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/shortcut_test_fixture.dart';
 
 /// 重现设备输入层会消费按键的场景，确认本地操作先于设备键盘映射。
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  TestWidgetsFlutterBinding.ensureInitialized();
+  final platformMocks = ShortcutPlatformMocks();
+  setUp(platformMocks.setUp);
+  tearDown(platformMocks.tearDown);
 
   for (final platform in [
     TargetPlatform.macOS,
@@ -26,31 +29,32 @@ void main() {
       final forwarded = <LogicalKeyboardKey>[];
       var screenshots = 0;
       var saved = 0;
-      var closes = 0;
       await tester.pumpWidget(
         shortcutTestApp(
           container: container,
-          child: MirrorShortcutScope(
-            onClose: () => closes++,
-            child: Column(
-              children: [
-                Focus(
-                  autofocus: true,
-                  onKeyEvent: (_, event) {
-                    forwarded.add(event.logicalKey);
-                    return KeyEventResult.handled;
-                  },
-                  child: const Text('device'),
-                ),
-                MirrorToolbarButton(
-                  icon: const Icon(Icons.camera),
-                  tooltip: 'capture',
-                  shortcut: MirrorShortcut.screenshot,
-                  longPressShortcut: MirrorShortcut.saveScreenshot,
-                  onPressed: () => screenshots++,
-                  onLongPress: () => saved++,
-                ),
-              ],
+          child: WindowCloseShortcut(
+            autofocus: false,
+            child: MirrorShortcutScope(
+              child: Column(
+                children: [
+                  Focus(
+                    autofocus: true,
+                    onKeyEvent: (_, event) {
+                      forwarded.add(event.logicalKey);
+                      return KeyEventResult.handled;
+                    },
+                    child: const Text('device'),
+                  ),
+                  MirrorToolbarButton(
+                    icon: const Icon(Icons.camera),
+                    tooltip: 'capture',
+                    shortcut: MirrorShortcut.screenshot,
+                    longPressShortcut: MirrorShortcut.saveScreenshot,
+                    onPressed: () => screenshots++,
+                    onLongPress: () => saved++,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -83,7 +87,10 @@ void main() {
       await tester.sendKeyDownEvent(modifier);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyW);
       await tester.sendKeyUpEvent(modifier);
-      expect(closes, 1);
+      expect(
+        platformMocks.windowCalls.where((method) => method == 'close'),
+        hasLength(1),
+      );
       expect(forwarded, isNot(contains(LogicalKeyboardKey.keyW)));
       await container
           .read(appSettingsProvider.notifier)

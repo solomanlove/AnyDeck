@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/nearby_share/share_local_name.dart';
 import '../shortcuts/mirror_shortcut.dart';
+import '../shortcuts/window_shortcut.dart';
 
 /// 本地字符串表支持的用户可选语言。
 enum AppLanguage {
@@ -60,6 +61,7 @@ class AppSettings {
     this.launchAtStartup = false,
     this.showWindowShortcutKey = '1',
     this.mainWindowShortcut,
+    this.windowShortcuts = const WindowShortcutSettings(),
     this.mirrorShortcuts = const MirrorShortcutSettings(),
     this.developerModeEnabled = false,
   });
@@ -92,6 +94,8 @@ class AppSettings {
   final String showWindowShortcutKey;
   /// 完整主窗口快捷键；缺失时兼容旧的单字符设置。
   final KeyboardShortcutBinding? mainWindowShortcut;
+  /// 关闭窗口、打开设置和退出软件的完整组合键。
+  final WindowShortcutSettings windowShortcuts;
   KeyboardShortcutBinding get mainWindowBinding {
     if (mainWindowShortcut != null) return mainWindowShortcut!;
     final legacyKey = showWindowShortcutKey.isEmpty
@@ -105,6 +109,31 @@ class AppSettings {
   final MirrorShortcutSettings mirrorShortcuts;
   /// 是否已开启开发者选项
   final bool developerModeEnabled;
+
+  /// 按实际作用范围检查组合冲突：通用操作同时覆盖主窗口和投屏窗口。
+  String? shortcutConflict(
+    KeyboardShortcutBinding binding, {
+    WindowShortcut? windowAction,
+    MirrorShortcut? mirrorAction,
+  }) {
+    if (!binding.isEnabled) return null;
+    for (final action in WindowShortcut.values) {
+      if (action != windowAction && windowShortcuts.bindingFor(action) == binding) {
+        return action.labelKey;
+      }
+    }
+    if (windowAction != null && mainWindowBinding == binding) {
+      return 'mainWindowShortcut';
+    }
+    if (windowAction != null || mirrorAction != null) {
+      for (final action in MirrorShortcut.values) {
+        if (action != mirrorAction && mirrorShortcuts.bindingFor(action) == binding) {
+          return action.labelKey;
+        }
+      }
+    }
+    return null;
+  }
 
   /// 创建新的不可变设置对象，未指定字段沿用当前值。
   AppSettings copyWith({
@@ -131,6 +160,7 @@ class AppSettings {
     bool? launchAtStartup,
     String? showWindowShortcutKey,
     KeyboardShortcutBinding? mainWindowShortcut,
+    WindowShortcutSettings? windowShortcuts,
     MirrorShortcutSettings? mirrorShortcuts,
     bool? developerModeEnabled,
   }) {
@@ -160,6 +190,7 @@ class AppSettings {
       launchAtStartup: launchAtStartup ?? this.launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey ?? this.showWindowShortcutKey,
       mainWindowShortcut: mainWindowShortcut ?? this.mainWindowShortcut,
+      windowShortcuts: windowShortcuts ?? this.windowShortcuts,
       mirrorShortcuts: mirrorShortcuts ?? this.mirrorShortcuts,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
     );

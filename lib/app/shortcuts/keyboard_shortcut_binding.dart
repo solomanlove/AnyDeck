@@ -91,15 +91,6 @@ class KeyboardShortcutBinding {
         keyboard.isMetaPressed == meta;
   }
 
-  /// 固定窗口操作保留原有约定，录入时展示具体占用项。
-  String? get reservedLabelKey {
-    if (alt || shift || control == meta) return null;
-    if (key == LogicalKeyboardKey.keyW) return 'shortcutCloseWindow';
-    if (key == LogicalKeyboardKey.keyQ) return 'shortcutQuit';
-    if (key == LogicalKeyboardKey.comma) return 'shortcutOpenSettings';
-    return null;
-  }
-
   Map<String, Object?> toJson() => {
     'keyId': key?.keyId,
     'control': control,
