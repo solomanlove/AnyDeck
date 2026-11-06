@@ -31,11 +31,14 @@ Future<void> _captureAndSaveDeviceScreenshot(
   DiscoveredDevice device,
 ) async {
   try {
-    final bytes = device.isHarmony
-        ? await ref.read(hdcServiceProvider).captureScreenshot(device.id)
-        : await ref.read(adbServiceProvider).captureScreenshot(device.id);
+    // 在设备请求前获取宿主依赖，列表切换或组件销毁后仍能完成本地保存。
     final host = ref.read(hostPlatformServiceProvider);
     final settings = ref.read(appSettingsProvider);
+    final bytes = device.isIos
+        ? await ref.read(iosCommandServiceProvider).captureScreenshot(device.id)
+        : device.isHarmony
+        ? await ref.read(hdcServiceProvider).captureScreenshot(device.id)
+        : await ref.read(adbServiceProvider).captureScreenshot(device.id);
     final savePath = host.generateScreenshotPath(
       settings.screenshotSavePath,
       device.id,
@@ -47,7 +50,7 @@ Future<void> _captureAndSaveDeviceScreenshot(
     if (context.mounted) {
       AppToast.show(
         context,
-        '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
+        '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (${context.l10n.t('copySuccess')})" : ""}',
       );
     }
   } catch (error) {

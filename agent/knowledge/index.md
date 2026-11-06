@@ -54,6 +54,7 @@
 | `adb-app-window-run-config-script` | App 子窗口 Run Configuration 生成脚本 | active | 记录 `script/generate_app_window_run_configs.sh` 如何生成模拟器管理窗口和控制台窗口的 IDE Flutter 运行入口 | `script/`, `.idea/runConfigurations/`, `app/window/` |
 | `adb-macos-icon-assets` | macOS 图标资源机制 | active | 记录 Dock 图标、Flutter App logo、菜单栏 template icon 的资源边界和生成命令 | `assets/brand/`, `macos/Runner/Assets.xcassets/` |
 | `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录设备管理与模拟器列表同级入口、设备列表统计标签与自适应搜索筛选栏、设备行名称与 IP、品牌 Logo 圆角、左侧导航 App/设备身份切换、品牌优先与制造商兜底、概览缓存兼容、返回点击逻辑及 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |
+| `adb-device-context-menu` | 设备列表常用操作右键菜单 | active | 行高亮、截图保存及剪贴板、投屏与工具 Route、三平台能力区分、离线/删除与重复操作拦截及验证边界 | `features/devices/`, `features/control/`, `test/` |
 | `adb-main-window-routing` | 主窗口层级路由 | active | 记录 Splash StartupGate、设备/模拟器/设置顶层 Route、设备工具 slug、应用详情嵌套路由及 Route 与 Riverpod 的职责边界 | `app/router/`, `features/overview/`, `features/apps/`, `features/devices/` |
 | `adb-main-window-navigation` | 主窗口导航、底部控制台与系统版本 | active | 移除独立模拟器管理窗口和原生菜单入口，侧边栏底部控制台、可调高度日志面板、系统版本 Route、验证与人工边界 | `features/overview/`, `features/console/`, `app/window/`, `app/router/` |
 | `adb-device-root-status` | Dashboard 手机 Root 状态标识 | active | 记录主页 Root 标识、检测链路、未知状态与控制 Tab 按钮移除 | `features/overview/`, `features/control/`, `core/providers/` |

@@ -43,6 +43,12 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     return InkWell(
       onTap: handleRowOpen,
       onDoubleTap: handleRowOpen,
+      onSecondaryTapDown: (details) => _showDeviceContextMenu(
+        context,
+        device,
+        details.globalPosition,
+        airplaySession: airplaySession,
+      ),
       child: Container(
         // 长状态文案、放大字体和操作换行时允许行高增长。
         constraints: const BoxConstraints(minHeight: 56),
@@ -281,6 +287,11 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
         runSpacing: 4,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          if (_deviceQuickActionRunning && _contextDeviceId == device.id)
+            const SizedBox.square(
+              dimension: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           // 0. 若当前设备正通过 AirPlay 投屏中，展示方案 C 纯图标按钮组（打开投屏窗口 + 停止投屏）
           if (airplaySession != null) ...[
             DeviceAirPlayActionButtons(

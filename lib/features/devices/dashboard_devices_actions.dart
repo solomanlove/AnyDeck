@@ -2,6 +2,47 @@ part of '../dashboard_screen.dart';
 
 /// 设备列表相关的弹窗和状态色，集中在一处便于调整交互文案。
 extension _DeviceListPanelActions on _DeviceListPanelState {
+  /// 常用操作沿用既有截图、投屏与设备工具 Route，目标始终为右键设备。
+  Future<void> _runDeviceContextAction(
+    BuildContext context,
+    DeviceContextAction action,
+    RegisteredDevice device,
+    AirPlaySessionData? airplaySession,
+  ) async {
+    switch (action) {
+      case DeviceContextAction.screenshot:
+        await _captureAndSaveDeviceScreenshot(
+          context,
+          ref,
+          device.toDiscoveredDevice,
+        );
+      case DeviceContextAction.mirror:
+        if (airplaySession != null) {
+          await openAirPlayMirrorWindow(
+            airplaySession,
+            deviceId: device.id,
+            deviceName: device.displayName,
+          );
+        } else {
+          await openStandaloneMirrorWindow(
+            context,
+            ref,
+            device.toDiscoveredDevice,
+          );
+        }
+      case DeviceContextAction.edit:
+        await _showEditDeviceInfoDialog(context, device);
+      case DeviceContextAction.overview ||
+          DeviceContextAction.apps ||
+          DeviceContextAction.files ||
+          DeviceContextAction.terminal:
+        context.goNamed(
+          AppRouteNames.deviceTool,
+          pathParameters: {'deviceId': device.id, 'tool': action.toolSlug!},
+        );
+    }
+  }
+
   Future<void> _deleteSelectedDevices(
     BuildContext context,
     int selectedCount,

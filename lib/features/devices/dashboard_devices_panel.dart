@@ -14,6 +14,16 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
   bool _onlineOnly = false;
   String _sortColumn = 'id';
   bool _sortAscending = true;
+  String? _contextDeviceId;
+  bool _deviceContextMenuOpen = false;
+  bool _deviceQuickActionRunning = false;
+
+  /// 右键选中只更新行高亮，不切换主窗口 Route 或改变批量勾选。
+  void _selectContextDevice(String deviceId) =>
+      setState(() => _contextDeviceId = deviceId);
+
+  void _setDeviceQuickActionRunning(bool running) =>
+      setState(() => _deviceQuickActionRunning = running);
 
   void _changeQuery(String value) => setState(() => _query = value);
   void _changeOnlineOnly(bool value) => setState(() => _onlineOnly = value);

@@ -175,7 +175,8 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       itemCount: sortedItems.length,
       itemBuilder: (context, index) {
         final device = sortedItems[index];
-        final isSelected = ref.watch(selectedDeviceProvider)?.id == device.id;
+        final isSelected = _contextDeviceId == device.id ||
+            ref.watch(selectedDeviceProvider)?.id == device.id;
         return _buildDeviceRow(
           context,
           device,
