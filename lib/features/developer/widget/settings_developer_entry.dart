@@ -94,7 +94,7 @@ class _SettingsDeveloperEntryState extends ConsumerState<SettingsDeveloperEntry>
       children: [
         // 版本号行（支持点击彩蛋触发）
         ListTile(
-          contentPadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           onTap: _handleVersionTap,
           leading: Icon(
             CupertinoIcons.info_circle,
@@ -118,9 +118,9 @@ class _SettingsDeveloperEntryState extends ConsumerState<SettingsDeveloperEntry>
 
         // 开发者选项入口（激活后展示）
         if (settings.developerModeEnabled) ...[
-          const Divider(height: 16),
+          const Divider(height: 1),
           ListTile(
-            contentPadding: EdgeInsets.zero,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
             leading: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(

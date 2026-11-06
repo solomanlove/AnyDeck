@@ -9,7 +9,7 @@ class SettingsFeedbackEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
     leading: Icon(
       Icons.feedback_outlined,
       color: Theme.of(context).colorScheme.primary,

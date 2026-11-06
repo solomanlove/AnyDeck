@@ -1,6 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/settings/app_settings.dart';
 import 'package:any_deck/features/developer/widget/settings_developer_entry.dart';
+import 'package:any_deck/features/feedback/widget/settings_feedback_entry.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,8 +29,13 @@ void main() {
           child: MaterialApp(
             localizationsDelegates: const [AppLocalizationsDelegate()],
             home: Scaffold(
-              body: SettingsDeveloperEntry(
-                onCheckUpdate: () {},
+              body: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SettingsDeveloperEntry(onCheckUpdate: () {}),
+                  const Divider(height: 1),
+                  const SettingsFeedbackEntry(),
+                ],
               ),
             ),
           ),
@@ -56,6 +62,35 @@ void main() {
       // 成功激活开发者选项，应浮现入口图标与开发者选项条目
       expect(find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right), findsOneWidget);
       expect(find.text('Developer Options'), findsOneWidget);
+
+      // Hover 所在的整行与上下分割线贴合，三行均延伸到相同的左右边缘。
+      final rows = find.byType(ListTile);
+      final dividers = find.byType(Divider);
+      expect(rows, findsNWidgets(3));
+      expect(dividers, findsNWidgets(2));
+      final versionRect = tester.getRect(rows.at(0));
+      final developerRect = tester.getRect(rows.at(1));
+      final feedbackRect = tester.getRect(rows.at(2));
+      final upperDividerRect = tester.getRect(dividers.at(0));
+      final lowerDividerRect = tester.getRect(dividers.at(1));
+      expect(developerRect.left, versionRect.left);
+      expect(developerRect.right, versionRect.right);
+      expect(feedbackRect.left, versionRect.left);
+      expect(feedbackRect.right, versionRect.right);
+      expect(upperDividerRect.height, 1);
+      expect(lowerDividerRect.height, 1);
+      expect(upperDividerRect.top, versionRect.bottom);
+      expect(upperDividerRect.bottom, developerRect.top);
+      expect(lowerDividerRect.top, developerRect.bottom);
+      expect(lowerDividerRect.bottom, feedbackRect.top);
+      expect(
+        tester.getRect(find.byIcon(CupertinoIcons.info_circle)).left,
+        versionRect.left + 20,
+      );
+      expect(
+        tester.getRect(find.byIcon(Icons.feedback_outlined)).left,
+        feedbackRect.left + 20,
+      );
 
       // 推进时间以等待 Toast 提示定时器完成，避免 pending timer
       await tester.pump(const Duration(seconds: 3));

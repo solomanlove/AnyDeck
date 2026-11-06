@@ -360,20 +360,15 @@ class _SettingsTab extends ConsumerWidget {
                       context,
                       title: context.l10n.t('aboutAndSupport'),
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: SettingsDeveloperEntry(
-                            brandGreen: brandGreen,
-                            onCheckUpdate: () => showDialog<void>(
-                              context: context,
-                              builder: (_) => const _UpdateCheckDialog(),
-                            ),
+                        // 行自身负责内容内边距，让 Hover 覆盖到卡片边缘与分割线。
+                        SettingsDeveloperEntry(
+                          brandGreen: brandGreen,
+                          onCheckUpdate: () => showDialog<void>(
+                            context: context,
+                            builder: (_) => const _UpdateCheckDialog(),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: SettingsFeedbackEntry(),
-                        ),
+                        const SettingsFeedbackEntry(),
                       ],
                     ),
                   ],

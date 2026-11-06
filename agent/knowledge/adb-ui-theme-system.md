@@ -57,6 +57,8 @@ Painter 或 Controller 不应反向依赖 Widget Theme；需要动态主题时�
 
 - 当 `Container` / `DecoratedBox` 提供背景色、边框、圆角或阴影，且内部包含 `ListTile`、`InkWell` 等 Material 交互组件时，装饰层与交互组件之间必须放置 `Material(type: MaterialType.transparency)`。
 - 该透明 Material 负责承载 Hover、Ink splash、`tileColor` 等绘制，外层装饰继续负责卡片背景和裁剪，避免 Flutter 抛出 `ListTile background color or ink splashes may be invisible` 断言。
+- 设置页“关于与说明”卡片内的版本、开发者选项和意见反馈行直接占满卡片宽度；`ListTile.contentPadding` 提供左右各 20px 的内容留白，行外不再包水平 `Padding`。开发者选项前的 `Divider` 高度为 1px，Hover 区域因此贴合上下分割线，卡片本身继续裁剪圆角。
+- 回归检查：开发者模式开启后，三行的左右边界一致，版本与开发者选项、开发者选项与反馈行之间没有额外空白；在 Light/Dark 主题下检查 Hover 覆盖范围。对应 Widget test 为 `test/developer_mode_test.dart`。
 
 ## 7. 全局轻提示
 
