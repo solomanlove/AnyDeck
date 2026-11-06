@@ -191,15 +191,6 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final peers = _service.peers.values.toList();
-    final status = _service.busy
-        ? (_service.receiving
-              ? 'harmonyShareReceivingActive'
-              : 'harmonyShareSending')
-        : _service.error != null
-        ? 'harmonyShareUnavailable'
-        : _service.enabled
-        ? 'harmonyShareFinding'
-        : 'harmonyShareDisabled';
     return Column(
       children: [
         DashboardHeaderBar(
@@ -236,50 +227,6 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                   ),
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: Wrap(
-                            alignment: WrapAlignment.spaceBetween,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            spacing: 24,
-                            runSpacing: 12,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    context.l10n.t('harmonyShareNearby'),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleLarge,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    context.l10n.t('harmonyShareIndependent'),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                              Chip(
-                                avatar: Icon(
-                                  _service.error != null
-                                      ? Icons.error_outline
-                                      : _service.enabled
-                                      ? Icons.radar_rounded
-                                      : Icons.pause_circle_outline,
-                                  size: 16,
-                                ),
-                                label: Text(context.l10n.t(status)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const Divider(height: 1),
                       HarmonyShareIdentity(
                         localName: _service.localName,
                         enabled: _service.enabled,

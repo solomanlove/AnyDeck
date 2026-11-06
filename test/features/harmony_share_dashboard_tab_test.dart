@@ -42,6 +42,19 @@ void main() {
           ),
         );
         expect(find.byType(DashboardHeaderBar), findsOneWidget);
+        final l10n = tester.element(find.byType(HarmonyShareDashboardTab)).l10n;
+        expect(find.text(l10n.t('harmonyShareNearby')), findsNothing);
+        expect(find.text(l10n.t('harmonyShareIndependent')), findsNothing);
+        expect(find.byType(Chip), findsNothing);
+        // 身份栏直接位于卡片顶部，仅保留边框，避免删掉文案后仍有空白标题区。
+        final identity = find.byType(HarmonyShareIdentity);
+        final card = find
+            .ancestor(of: identity, matching: find.byType(Container))
+            .first;
+        expect(
+          tester.getTopLeft(identity).dy - tester.getTopLeft(card).dy,
+          inInclusiveRange(0, 1),
+        );
         expect(find.textContaining('1 GiB'), findsOneWidget);
         expect(find.byType(Switch), findsOneWidget);
         expect(find.byType(HarmonyShareStage), findsOneWidget);
