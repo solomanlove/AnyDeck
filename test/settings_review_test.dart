@@ -5,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/l10n/tables/app_l10n_settings.dart';
 import 'package:any_deck/app/settings/app_settings.dart';
 import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/app/settings/mirror_quality_preset.dart';
 import 'package:any_deck/features/overview/widget/mirror_quality_presets.dart';
-import 'package:any_deck/features/overview/widget/software_manual_content.dart';
 
 /// 隔离原生服务初始化，仍调用实际设置持久化与广播方法。
 class _Settings extends AppSettingsController {
@@ -18,6 +18,14 @@ class _Settings extends AppSettingsController {
 }
 
 void main() {
+  test('设置文案不再提供软件说明书入口和正文', () {
+    for (final table in [settingsZh, settingsEn]) {
+      expect(table.containsKey('softwareManual'), isFalse);
+      expect(table.keys.where((key) => key.startsWith('manual')), isEmpty);
+      expect(table.keys.where((key) => key.startsWith('software')), isEmpty);
+    }
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -94,7 +102,7 @@ void main() {
 
   for (final lang in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
-      testWidgets('说明书跨平台内容与画质预设 $lang $brightness', (tester) async {
+      testWidgets('画质预设 $lang $brightness', (tester) async {
         final container = ProviderContainer(
           overrides: [appSettingsProvider.overrideWith(_Settings.new)],
         );
@@ -126,16 +134,6 @@ void main() {
           find.textContaining(lang == 'zh' ? '下次启动' : 'next start'),
           findsOneWidget,
         );
-        expect(tester.takeException(), null);
-        await tester.pumpWidget(harness(const SoftwareManualContent()));
-        expect(
-          find.textContaining('Android', findRichText: false),
-          findsWidgets,
-        );
-        expect(find.textContaining('iOS'), findsWidgets);
-        expect(find.textContaining('HarmonyOS'), findsWidgets);
-        expect(find.textContaining('AI MCP'), findsWidgets);
-        expect(find.textContaining('connectionState'), findsOneWidget);
         expect(tester.takeException(), null);
       });
     }

@@ -360,25 +360,6 @@ class _SettingsTab extends ConsumerWidget {
                       context,
                       title: context.l10n.t('aboutAndSupport'),
                       children: [
-                        ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 4,
-                          ),
-                          leading: const Icon(
-                            CupertinoIcons.book,
-                            color: brandGreen,
-                          ),
-                          title: Text(context.l10n.t('softwareManual')),
-                          trailing: const Icon(
-                            CupertinoIcons.chevron_right,
-                            size: 16,
-                          ),
-                          onTap: () => showDialog<void>(
-                            context: context,
-                            builder: (_) => const _SoftwareManualDialog(),
-                          ),
-                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: SettingsDeveloperEntry(
