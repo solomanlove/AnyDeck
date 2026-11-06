@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -29,6 +27,8 @@ import 'widget/mirror_app_quick_actions_dialog.dart';
 import 'widget/mirror_status_view.dart';
 import 'widget/fusion_resize_transition.dart';
 import 'widget/fusion_app_on_phone_placeholder.dart';
+import 'widget/mirror_foreground_app_button.dart';
+import 'widget/mirror_window_title_bar.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/harmony/harmony_mirror_service.dart';
 import '../desktop_window_title_service.dart';
@@ -162,9 +162,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
   /// 用于获取投屏窗口实际渲染尺寸的 Key
   final GlobalKey _viewerKey = GlobalKey();
-
-  /// 前台应用图标悬浮状态，用于悬浮动画与高亮样式
-  bool _isIconHovered = false;
 
   /// 设备标题悬浮状态，仅在进入/离开标题时更新，避免鼠标移动触发高频 rebuild。
   bool _isTitleHovered = false;
@@ -350,16 +347,6 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   }
 
   // ==================== 界面渲染 (UI Build) ====================
-
-  /// 前台应用图标按设备当前模式展示入口名称。
-  String _appMirrorTooltip(BuildContext context) {
-    final mode = ref.watch(deviceFusionModeProvider(widget.deviceId))
-        .asData?.value.state;
-    final title = context.l10n.t(
-      mode == FusionModeState.enabled ? 'fusionAppTooltip' : 'primaryAppTooltip',
-    );
-    return '$title · ${context.l10n.t('fusionQuickActionsHint')}';
-  }
 
   void _refreshView(VoidCallback callback) => setState(callback);
 

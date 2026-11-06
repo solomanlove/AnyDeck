@@ -71,3 +71,17 @@ API 34、35 的上述真机验收尚未完成；API 36 目前仅完成荣耀 Mag
 - 定向测试覆盖真实 `RootTask` 文本解析、多 Task 时副屏优先、主屏与缺失状态、重新迁移以及中英文和明暗主题。
 - 22:07–22:13 CST 使用新版 macOS Debug 构建连接荣耀 Magic V6（Android 16，USB）：图库 Task `#704` 在虚拟屏 `displayId=129` 时有真实首帧；通过 `am start -n com.hihonor.photos/com.hihonor.gallery.app.GalleryMain --display 0` 将同一 Task 移到主屏后，窗口显示图库图标、名称和“重新启动”；再将 Task 迁回 `displayId=129` 后，窗口恢复图库实时画面。两次切换均以 `cmd activity stack list` 和窗口截图交叉确认。
 - 桌面自动化对 Flutter 投屏子窗口发送坐标点击时报 `noWindowsAvailable`，因此真机上的“重新启动”按钮点击尚未验收；按钮回调和 `move-stack` 命令链路由定向测试覆盖。手机锁屏阻止了从 Launcher 图标手动点击图库的补充场景，不能把 ADB 显式启动等同于该场景。
+
+## 标题栏 App 图标点击入口（2026-11-07）
+
+- 用户反馈：整机投屏窗口中，设备名称右侧的图库图标点击无反应，期望启动图库的融合投屏。原入口已有 `onTap → openAppMirrorWindow()`，但点击范围仅约 20×20，位于整个标题栏的 `DragToMoveArea` 内，且启动和首帧等待期间没有加载提示。
+- [MirrorWindowTitleBar](../../lib/app/window/mirror/widget/mirror_window_title_bar.dart) 将窗口拖拽放在空白背景及标题文字上，App 图标与右侧操作按钮独立命中。标题文字和空白区域继续支持拖动、双击最大化；点击或双击 App 图标不会触发窗口拖动或最大化。
+- [MirrorForegroundAppButton](../../lib/app/window/mirror/widget/mirror_foreground_app_button.dart) 复用 `MirrorToolbarButton`，点击范围扩大到 28×28，包含图标周围的留白。点击后立即显示加载状态，直到 `AppMirrorLaunchCoordinator.open()` 完成首帧等待或返回错误；期间禁止重复启动和快捷操作，结束后恢复按钮。等待过程中关闭窗口时不再更新已销毁的 Widget。
+- 单击仍复用 `MirrorWindowController.openAppMirrorWindow()` 和统一协调器：Android 14+ 且开启融合时创建或聚焦对应 App 副屏；关闭融合或不支持的平台沿用普通投屏路由。长按、右键保留应用快捷操作。错误使用现有双语轻提示；未新增 ADB 命令、窗口 Channel、配置项或依赖。
+- 窗口 State、画面组装与标题栏回调分别放在 `mirror_window_app.dart`、`mirror_window_view.dart`、`mirror_window_title_bar.dart`，新增和拆分文件均少于 500 行；视频、触控映射、Task 监测和会话回收仍由原链路管理。
+
+### 验证与回归路径
+
+- 定向运行 `mirror_foreground_app_button_test.dart`、`fusion_mirroring_test.dart`、`fusion_mode_setting_row_test.dart`、`apk_window_open_test.dart`、`mirror_audio_physical_device_test.dart`、`mirror_window_aspect_and_rotation_test.dart`、`app_mirror_task_monitor_test.dart`、`mirror_shortcut_scope_test.dart`，共 58 项通过。新增用例覆盖真实标题栏中的图标留白点击、融合窗口参数和首帧等待、重复点击、右键/长按、拖拽/双击隔离、错误恢复、等待中销毁、中英文和 Light/Dark 窄窗口布局，以及 macOS / Windows / Linux 的重连、置顶、全屏和设置快捷键。
+- 本次修改涉及的 Dart 文件 `flutter analyze --no-pub` 无诊断；`git diff --check` 通过。
+- 按仓库约定未启动或构建桌面 App。真机回归：在 API 34+ 设备的整机投屏中进入图库，单击标题栏 App 图标，应立即显示加载状态并打开有真实首帧的图库融合窗口；连续点击只复用一个窗口。再确认普通投屏开关、右键/长按菜单、标题栏拖动、窗口关闭及断线回收。Widget 测试不代表真实 macOS 鼠标输入或 Android 副屏首帧已验收。
