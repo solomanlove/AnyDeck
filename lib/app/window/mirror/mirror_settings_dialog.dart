@@ -11,6 +11,9 @@ import '../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../core/scrcpy/scrcpy_launch_options.dart';
 import '../../../core/providers/app_providers.dart';
 
+const _knownMirrorBitrates = {2000000, 4000000, 8000000, 16000000, 32000000};
+const _knownMirrorMaxSizes = {0, 720, 1080, 1440, 1920};
+
 /// 启动外部原生投屏
 Future<void> launchExternalMirror({
   required BuildContext context,
@@ -165,6 +168,12 @@ void showMirrorSettingsDialog({
                             value: 32000000,
                             child: Text(context.l10n.t('bitrate32Mbps')),
                           ),
+                          // 保留旧版本或外部设置写入的值，避免下拉框因缺少当前值而断言。
+                          if (!_knownMirrorBitrates.contains(selectedBitrate))
+                            DropdownMenuItem(
+                              value: selectedBitrate,
+                              child: Text('${selectedBitrate / 1000000} Mbps'),
+                            ),
                         ],
                         onChanged: (val) {
                           if (val != null) {
@@ -210,6 +219,16 @@ void showMirrorSettingsDialog({
                             value: 1440,
                             child: const Text('1440p (2K / 2560x1440)'),
                           ),
+                          const DropdownMenuItem(
+                            value: 1920,
+                            child: Text('1920 px'),
+                          ),
+                          // 自定义尺寸也要有唯一选项，打开设置时保持原值。
+                          if (!_knownMirrorMaxSizes.contains(selectedMaxSize))
+                            DropdownMenuItem(
+                              value: selectedMaxSize,
+                              child: Text('$selectedMaxSize px'),
+                            ),
                         ],
                         onChanged: (val) {
                           if (val != null) {
