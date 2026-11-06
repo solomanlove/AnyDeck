@@ -269,11 +269,6 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  context.l10n.t('harmonyShareLimit'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
                 if (_service.error case final error?) ...[
                   const SizedBox(height: 12),
                   Card(

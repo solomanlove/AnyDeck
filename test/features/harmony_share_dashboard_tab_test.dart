@@ -55,7 +55,7 @@ void main() {
           tester.getTopLeft(identity).dy - tester.getTopLeft(card).dy,
           inInclusiveRange(0, 1),
         );
-        expect(find.textContaining('1 GiB'), findsOneWidget);
+        expect(find.textContaining('1 GiB'), findsNothing);
         expect(find.byType(Switch), findsOneWidget);
         expect(find.byType(HarmonyShareStage), findsOneWidget);
         expect(tester.takeException(), isNull);

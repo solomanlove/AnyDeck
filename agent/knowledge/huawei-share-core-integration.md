@@ -263,3 +263,10 @@ flutter test --no-pub test/core/nearby_share/share_core_client_test.dart test/co
 测试范围：离线构建入口覆盖 Debug/Release 无 opt-in、重复安装、空格路径与错误架构；安装器覆盖缓存、固定制品校验、旧布局迁移、损坏修复和发布回滚；macOS 最小签名包覆盖整包 deep/strict、Debug/Release entitlement 与 runtime 保留、helper 字节不变。
 
 本次验证：24 项 Python 构建/安装/签名回归与 13 项 Dart IPC 测试通过，Shell 语法、Xcode project plist 与 `git diff --check` 通过。取消两个 `ANYDECK_SHARE_CORE*` 环境变量后，正常 arm64 Debug/Release 均构建成功；连续构建后两个包同时通过 5 成员 SHA-256/签名、资源 manifest 一致性、整包 deep/strict、声明权限保留（Debug JIT）及实际 Core 0.3.5 / IPC 3 hello 与完整能力契约核对。未主动启动或重启 App，未传输手机文件；这些检查不代表手机双向传输验收。构建仅使用本机校验制品/缓存，私有远端获取路径由离线 mock 验证，未声称新的远端下载验收。
+
+
+## 移除首页实验版常驻说明（2026-11-07）
+
+- 按用户截图移除主卡片下方的“实验版：同一 Wi-Fi 下单文件上限 1 GiB，大文件待真机验收”，同时删除专用中英文资源及前置间距；最近互传区域沿用正常段落间距。
+- 大小与批次限制继续由现有契约校验，并在文件选择失败时给出明确提示。页面回归覆盖 zh/en、Light/Dark 下该常驻文案消失、连接指引及窄窗口布局。
+- 本次 10 项页面/布局测试与 3 个改动 Dart 文件的 targeted analyze、`git diff --check` 通过；未启动、重建或重启 App。
