@@ -1,5 +1,24 @@
 /// 本地 APK 窗口文案；设备授权状态不与 Manifest 声明混用。
 const apkZh = {
+  'apkPackageTitle': '{format} 详情',
+  'apkFormat': '文件格式',
+  'apkArchiveOverview': '分析概览',
+  'apkArchiveEntries': '分包与扩展文件',
+  'apkModules': '模块',
+  'apkContainerMetadata': '容器元数据',
+  'apkArchiveDescription':
+      '查看内含 APK、扩展文件及应用详情。组件按同包名、同版本汇总，文件和证书保留来源；不同变体不代表设备会同时安装全部内容。此格式当前仅支持分析。',
+  'apkBundleDescription':
+      '查看 AAB 的基础模块、功能模块、资源包及应用详情。AAB 需要生成适合设备的 APK 后才能安装，此处仅提供离线分析。',
+  'apkBundleSignatureNote':
+      '显示 AAB 的 JAR 上传证书；未执行完整性验签，上传证书可能与应用商店分发的 APK 签名不同。',
+  'apkEmptyArchive': '容器中未找到 APK。',
+  'apkInvalidArchive': '安装包容器无效或无法读取其中的应用。',
+  'apkInvalidProto': 'AAB 的 Protobuf 数据损坏或格式无效。',
+  'apkMissingBase': '未找到可用的基础模块或 base APK。',
+  'apkPartWarning': '部分分包或模块无法解析',
+  'apkPackageMismatch': '包名或版本不一致，已排除该部分的汇总',
+
   'apkTitle': 'APK 详情',
   'apkInstallTab': '安装应用',
   'apkLibs': '原生库',
@@ -34,23 +53,43 @@ const apkZh = {
   'apkRefreshWarning': '安装成功，但设备应用信息刷新失败，可重试查看：',
   'apkOffline': '离线详情',
   'apkSplit': '这是 split APK，首版不支持单独安装。',
-  'apkInvalidFile': '请选择存在且可读取的 APK 文件。',
-  'apkParseFailed': 'APK 解析失败。',
-  'apkParseTimeout': 'APK 解析超时，请重试。',
+  'apkInvalidFile': '请选择可读取的 APK、APKS、AAB 或 XAPK 文件。',
+  'apkParseFailed': '安装包解析失败。',
+  'apkParseTimeout': '安装包解析超时，请重试。',
   'apkCancelled': '解析已取消。',
   'apkOutputLimit': '解析结果超过大小限制。',
-  'apkInputLimit': 'APK 或内部资源过大，超过解析限制。',
-  'apkFileChanged': 'APK 已被修改或替换，请刷新详情后重新安装。',
+  'apkInputLimit': '安装包或内部资源过大，超过解析限制。',
+  'apkFileChanged': '安装包已被修改或替换，请刷新详情后重试。',
   'apkDeviceUnavailable': '目标设备已离线或未授权，请检查设备连接。',
   'apkResourceWarning': '部分资源无法解析',
   'apkSignatureWarning': '签名信息无法读取',
   'apkInvalidRequest': '无法处理窗口请求。',
-  'apkRefresh': '重新读取 APK',
+  'apkRefresh': '重新读取安装包',
   'apkAdbError': '无法读取设备，请检查本机 adb：',
   'apkCopy': '复制',
   'apkDebug': 'DEBUG',
 };
 const apkEn = {
+  'apkPackageTitle': '{format} details',
+  'apkFormat': 'File format',
+  'apkArchiveOverview': 'Analysis overview',
+  'apkArchiveEntries': 'APKs and expansion files',
+  'apkModules': 'Modules',
+  'apkContainerMetadata': 'Container metadata',
+  'apkArchiveDescription':
+      'Inspect included APKs, expansion files and app details. Components are combined only for the same package and version, with file and certificate sources retained. Variants do not imply that every APK will be installed together. This format currently supports analysis only.',
+  'apkBundleDescription':
+      'Inspect the base module, feature modules, asset packs and app details. An AAB must be converted into suitable APKs before installation. This view provides offline analysis.',
+  'apkBundleSignatureNote':
+      'JAR upload certificates from the AAB. Integrity has not been verified. The upload certificate may differ from the signing certificate of store-distributed APKs.',
+  'apkEmptyArchive': 'No APK was found in this archive.',
+  'apkInvalidArchive': 'Invalid package archive or no readable app inside.',
+  'apkInvalidProto': 'The AAB Protobuf data is damaged or invalid.',
+  'apkMissingBase': 'No readable base module or base APK was found.',
+  'apkPartWarning': 'Some APKs or modules could not be parsed',
+  'apkPackageMismatch':
+      'Package or version mismatch; excluded from combined details',
+
   'apkTitle': 'APK details',
   'apkInstallTab': 'Install app',
   'apkLibs': 'Native libraries',
@@ -90,20 +129,21 @@ const apkEn = {
   'apkOffline': 'Offline details',
   'apkSplit':
       'This is a split APK. Standalone installation is not supported in this version.',
-  'apkInvalidFile': 'Select an existing, readable APK file.',
-  'apkParseFailed': 'Could not parse APK.',
-  'apkParseTimeout': 'APK parsing timed out. Please retry.',
+  'apkInvalidFile': 'Select an existing, readable APK, APKS, AAB or XAPK file.',
+  'apkParseFailed': 'Could not parse package.',
+  'apkParseTimeout': 'Package parsing timed out. Please retry.',
   'apkCancelled': 'Parsing cancelled.',
   'apkOutputLimit': 'Parser output exceeds the size limit.',
-  'apkInputLimit': 'The APK or an internal resource exceeds the parsing limit.',
+  'apkInputLimit':
+      'The package or an internal resource exceeds the parsing limit.',
   'apkFileChanged':
-      'APK was modified or replaced. Refresh details before installing.',
+      'Package was modified or replaced. Refresh details and retry.',
   'apkDeviceUnavailable':
       'Target device is offline or unauthorized. Check its connection.',
   'apkResourceWarning': 'Some resources could not be parsed',
   'apkSignatureWarning': 'Could not read signatures',
   'apkInvalidRequest': 'Could not process window request.',
-  'apkRefresh': 'Reload APK',
+  'apkRefresh': 'Reload package',
   'apkAdbError': 'Could not read devices. Check local adb:',
   'apkCopy': 'Copy',
   'apkDebug': 'DEBUG',

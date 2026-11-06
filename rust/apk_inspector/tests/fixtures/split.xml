@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="test.anydeck.package" split="feature.tools" android:versionCode="9" android:versionName="1.9">
+    <application android:hasCode="true">
+        <service android:name=".FeatureService" android:exported="false"/>
+    </application>
+</manifest>

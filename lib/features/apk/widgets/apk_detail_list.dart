@@ -178,6 +178,12 @@ String apkErrorText(BuildContext context, Object error) {
   var text = error.toString().replaceFirst('FormatException: ', '');
   for (final key in [
     'apkInvalidFile',
+    'apkEmptyArchive',
+    'apkInvalidArchive',
+    'apkInvalidProto',
+    'apkMissingBase',
+    'apkPartWarning',
+    'apkPackageMismatch',
     'apkFileChanged',
     'apkParseFailed',
     'apkParseTimeout',

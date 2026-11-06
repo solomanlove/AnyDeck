@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'android_package_format.dart';
 
 /// 等待主界面就绪后串行分发文件；规范化路径使符号链接也复用同一窗口。
 class ApkFileOpenQueue {
@@ -17,7 +18,7 @@ class ApkFileOpenQueue {
   void add(Object? paths) {
     if (paths is! List) return;
     for (final path in paths.whereType<String>()) {
-      if (!path.toLowerCase().endsWith('.apk')) continue;
+      if (AndroidPackageFormat.fromPath(path) == null) continue;
       _pending = _pending
           .then((_) async {
             await ready;

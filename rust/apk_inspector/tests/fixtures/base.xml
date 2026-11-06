@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="test.anydeck.package" android:versionCode="9" android:versionName="1.9">
+    <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <application android:label="AnyDeck 包格式测试" android:debuggable="true">
+        <activity android:name=".Main" android:exported="true"/>
+    </application>
+</manifest>

@@ -24,6 +24,7 @@ pub fn parse(xml: &str) -> Result<Value, Box<dyn std::error::Error>> {
         "maxSdk": sdk.and_then(|n| attr(n,"maxSdkVersion")),
         "debuggable": matches!(attr(app,"debuggable"), Some("true" | "1")),
         "split": root.attribute("split").is_some_and(|v| !v.is_empty()),
+        "splitName": root.attribute("split"),
         "signatures": [],
     });
     for (key, tags) in [

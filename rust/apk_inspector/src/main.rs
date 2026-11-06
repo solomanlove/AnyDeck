@@ -1,6 +1,13 @@
 //! 隔离的只读 APK 检查器；stdout 为单个 JSON，所有资源在进程退出时释放。
+mod archive;
+mod bundle;
+#[cfg(test)]
+mod container_tests;
+mod containers;
 mod manifest;
-use apk_info::{AXML, Apk, Signature};
+mod proto;
+mod signatures;
+use apk_info::{AXML, Apk};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde_json::{Value, json};
 use std::{fs::File, io::Read, path::Path};
@@ -56,7 +63,7 @@ fn extract_icon_base64(
     None
 }
 
-fn inspect(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
+fn inspect_apk(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
     // 限制输入及被实际展开的条目，DEX/SO 只读目录索引，不展开内容。
     if path
         .extension()
@@ -162,24 +169,7 @@ fn inspect(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
         }
         match apk.get_signatures() {
             Ok(signatures) => {
-                let mut rows = vec![];
-                for signature in signatures {
-                    let scheme = signature.name();
-                    let certs = match signature {
-                        Signature::V1(c)
-                        | Signature::V2(c)
-                        | Signature::V3(c)
-                        | Signature::V31(c) => c,
-                        _ => continue,
-                    };
-                    for cert in certs {
-                        rows.push(json!({"name": format!("{} · {}", scheme, cert.subject),
-                            "scheme": scheme, "subject": cert.subject, "issuer": cert.issuer,
-                            "MD5": cert.md5_fingerprint, "SHA-1": cert.sha1_fingerprint,
-                            "SHA-256": cert.sha256_fingerprint}));
-                    }
-                }
-                result["signatures"] = json!(rows);
+                result["signatures"] = json!(signatures::rows(signatures, None));
             }
             Err(error) => warnings.push(format!("apkSignatureWarning: {error}")),
         }
@@ -191,13 +181,37 @@ fn inspect(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
     Ok(result)
 }
 
+/// 扩展名只决定容器解码器，包名及应用信息始终从真实 Manifest 读取。
+fn inspect(path: &Path) -> archive::Result<Value> {
+    let format = path
+        .extension()
+        .and_then(|v| v.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let mut result = match format.as_str() {
+        "apk" => inspect_apk(path)?,
+        "apks" | "xapk" => containers::inspect(path)?,
+        "aab" => bundle::inspect(path)?,
+        _ => return Err("apkInvalidFile".into()),
+    };
+    result["format"] = json!(format.to_ascii_uppercase());
+    Ok(result)
+}
+
 fn main() {
     let result = std::panic::catch_unwind(|| {
         let path = std::env::args_os().nth(1).ok_or("apkInvalidFile")?;
         inspect(Path::new(&path))
     });
     match result {
-        Ok(Ok(value)) => println!("{value}"),
+        Ok(Ok(value)) => {
+            let output = value.to_string();
+            if output.len() > 16 * 1024 * 1024 {
+                println!("{}", json!({"error": "apkOutputLimit"}));
+                std::process::exit(1);
+            }
+            println!("{output}");
+        }
         error => {
             let message = match error {
                 Ok(Err(e)) => e.to_string(),

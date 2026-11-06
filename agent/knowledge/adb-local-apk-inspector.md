@@ -1,16 +1,58 @@
-# macOS 本地 APK 详情与安装
+# macOS Android 安装包分析与 APK 安装
 
 ## 用户路径与能力边界
 
-在 Finder 中对 `.apk` 选择「打开方式 → AnyDeck」，应用会为每个文件打开独立详情窗口。同一路径或指向同一文件的符号链接复用已有窗口；不同目录的同名文件分别打开。设置所有 APK 默认由 AnyDeck 打开，需要用户在 Finder「显示简介 → 打开方式 → AnyDeck → 全部更改」中完成；注册文件类型不会覆盖现有默认选择。
+在 Finder 中对 `.apk`、`.apks`、`.aab` 或 `.xapk` 选择「打开方式 → AnyDeck」，应用会为每个文件打开独立详情窗口。同一路径或指向同一文件的符号链接复用已有窗口；不同目录的同名文件分别打开。设置各类安装包默认由 AnyDeck 打开，需要对各扩展名分别在 Finder「显示简介 → 打开方式 → AnyDeck → 全部更改」中完成；注册文件类型不会覆盖现有默认选择。
 
 详情窗口离线展示名称、图标、包名、版本、SDK、ABI、DEBUG、文件大小，以及原生库、组件、声明权限、Metadata、DEX、签名证书。`targetSdk` 明确表示目标 SDK，不能作为最高支持版本。未声明的 `maxSdk`、`exported` 或其他字段不推测填充；本地详情没有安装时间、授权状态、设备启用状态。
 
 - 解析器随 `.app` 分发，无需运行时 Android SDK、Java、Rust 或手机连接。
-- 安装仍复用宿主机 `adb`；首次版本只支持单个 APK。标记为 split 的 APK 禁止单独安装，不处理 AAB、XAPK 或 split 集合。
+- 安装仍复用宿主机 `adb`，只支持可独立安装的单个 APK。APKS、AAB、XAPK 当前支持离线分析，不提供安装操作；标记为 split 的单个 APK 同样禁止单独安装。
 - 签名页为证书读取，**没有执行 APK 完整性验签**；覆盖安装最终由设备 PackageManager 校验。
 - 优先读取 PNG/WebP/JPEG 图标，adaptive XML 会尝试同名位图变体，无法渲染时显示统一 Android 占位图。
 - 原有主窗口及投屏窗口的拖拽安装流程不变。
+
+## APKS / AAB / XAPK 分析（2026-11-07）
+
+| 格式 | 分析能力 | 安装边界 |
+| --- | --- | --- |
+| APK | 原有组件、权限、原生库、DEX、签名及安装 | 沿用单 APK 安装 |
+| APKS | 根据内含 Manifest 选择 base，展示 APK 清单、来源、同包/同版本的组件与文件汇总 | 仅分析，不猜测设备所需 split 组合 |
+| XAPK | APKS 同类能力，额外展示 OBB 清单与 manifest.json 元数据 | 仅分析，不自动推送 OBB |
+| AAB | 读取 base、feature、asset pack 模块和 Protobuf Manifest/resources.pb，解析名称、版本、SDK、组件、权限、模块 ABI/DEX/SO 与 JAR 上传证书 | 仅分析，不生成 APK 或要求用户安装 Java/SDK |
+
+### 入口、模型与 UI
+
+- macOS 的 URL、openFiles 回调及 Info.plist 同时接收四类扩展名。APKS 注册 `com.android.package-set`，AAB 注册 `com.android.app-bundle`，XAPK 注册 `com.android.package-xapk`。
+- Dart 使用 `AndroidPackageFormat` 统一扩展名判断；窗口仍用原路径身份，JSON 在旧字段之外增加 `format`、`splitName`，容器提供 `primaryEntry/archiveEntries/containerMetadata`，AAB 提供 `modules`。
+- `LocalApkInfo.analysisOnly` 与 `installable` 区分展示与安装。容器页面使用统一 `AppDetailView`，新增分包/模块、容器元数据 Tabs；不创建设备查询或安装栏，Controller 也拒绝安装只读格式。
+- 文件格式显示在概况中，标题、警告和说明支持中文/英文及 Light/Dark。原有 APK 详情 Tabs 与安装流程保留。
+
+### 容器与 AAB 解码
+
+- APKS/XAPK 逐个解析内含 APK，最终以真实 Manifest 的 `split` 声明判定 base；不依赖文件名或 XAPK manifest.json 冒充包名、版本。名称只用于同等 base 候选的稳定排序。
+- 只有同包名、同版本的 APK 参与汇总；组件语义去重，DEX/SO/证书保留 `source`。不匹配或损坏的分包仍保留清单和警告。不同设备变体的汇总不代表实际可同时安装。
+- OBB 只记录文件名与未压缩大小，不解包。XAPK manifest.json 仅作为额外元数据，不能覆盖 APK 信息。
+- AAB 解析遵循 [Android App Bundle 格式](https://developer.android.com/guide/app-bundle/app-bundle-format) 和 [AAPT2 Resources.proto](https://github.com/aosp-mirror/platform_frameworks_base/blob/master/tools/aapt2/Resources.proto)。有界 Protobuf reader 跳过未知字段，处理 XML 节点、编译属性、基础类型、字符串、文件和资源引用；资源优先默认配置，循环引用最多追踪 16 次，XML 深度最大 64。
+- AAB 的 base 概况为信息源，其他模块按包名合并组件；资源包允许没有 application，并显示交付类型。资源无法解析或个别非 base 模块损坏时保留其他可用内容。
+- AAB 签名展示标为 `JAR v1` 上传证书；不当作 APK v2/v3 证书，也不声称完成完整性验签。上传证书可能与商店分发 APK 的签名不同。
+
+### 临时文件、限额与依赖
+
+- 无新增 Dart/Rust 第三方依赖，继续使用锁定的 apk-info/zip 等库。
+- 复用现有输入 1 GiB、ZIP 条目 100000、输出 16 MiB、Manifest 16 MiB 限额。每个容器最多分析 256 个 APK，内含 APK 未压缩大小总和最多 1 GiB；AAB 资源表累计最多 128 MiB。
+- 分包采用串行检查，始终写入私有临时目录的固定文件名，不使用容器内路径写文件，防止目录逃逸。Dart 通过 `ANYDECK_APK_WORK_DIR` 指定父目录；完成、失败、超时或窗口释放终止进程后递归清理，Rust 正常退出时也会回收自己的目录。
+- AAB 的 DEX/SO 和模块体积只读 ZIP 清单，不整体解压。解析过程沿用 30 秒超时，超限或损坏时返回明确错误。
+
+### 测试与人工边界
+
+- 本次验证（2026-11-07）：17 项 Rust 测试与 33 项 Dart/Widget 测试通过，定向 analyze 无问题，macOS Debug 构建与包签名检查通过。打包 helper 已直接检查 APKS、XAPK 和 AAPT2 转换的真实 Protobuf AAB 样本。
+- 全仓 analyze 没有编译错误，仍有其他模块既有的 56 条 warning/info；本次未修改这些无关代码。
+
+- Rust 使用 AAPT2 36.0.0 生成的真实 AXML/Protobuf 小型样本，测试运行时不需要 SDK。样本来源和再生成步骤见 `rust/apk_inspector/tests/fixtures/README.md`。
+- 自动覆盖 APKS base 选择、feature 汇总、XAPK OBB/元数据、包名冲突、损坏分包、危险路径、空容器、分包数量限额、AAB 模块/资产交付/资源引用/上传证书，以及原有 APK v1/v2/v3 读取。
+- Dart/Widget 覆盖三种新格式入口、冷启动队列、中文/大写扩展名、只读模式不查询设备或安装、中英文明暗主题、模块/分包清单、最小窗口及临时目录回收。
+- 人工验收：从 Finder 分别选择 APKS/AAB/XAPK 的 AnyDeck 打开方式，检查冷启动、同文件重复打开和多窗口；使用真实业务大包复核模块/分包与名称、SDK、ABI，确保不同变体不被误认为一套安装组合。本次不启动 AnyDeck，不执行真机安装。
 
 ## 架构与数据流
 

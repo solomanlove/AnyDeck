@@ -29,6 +29,7 @@ class _Apps extends AppManagementService {
   _Apps(super.adb);
   final loadGate = Completer<List<AdbPackage>?>();
   final installations = <String>[];
+  final installStarted = Completer<void>();
   AdbResult result = const AdbResult(
     exitCode: 0,
     stdout: 'Success',
@@ -39,6 +40,7 @@ class _Apps extends AppManagementService {
   @override
   Future<AdbResult> installApk(String deviceId, String apkPath) async {
     installations.add(deviceId);
+    if (!installStarted.isCompleted) installStarted.complete();
     return result;
   }
 
@@ -112,7 +114,7 @@ void main() {
     final result = coordinator.handleWindowCall(
       MethodCall('apk_install', args),
     );
-    await Future<void>.delayed(const Duration(milliseconds: 30));
+    await apps.installStarted.future.timeout(const Duration(seconds: 5));
     expect(apps.installations, ['target-serial']);
     expect(apps.refreshes, 0);
     apps.loadGate.complete([const AdbPackage(name: 'cached.old.app')]);

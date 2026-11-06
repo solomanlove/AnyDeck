@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'local_apk_info.dart';
+import 'android_package_format.dart';
 
 /// 运行随应用打包的解析器；每次读取新文件，退出/超时都终止进程。
 class LocalApkService {
@@ -22,15 +23,23 @@ class LocalApkService {
 
   Future<LocalApkInfo> inspect(String path) async {
     final file = File(path);
-    if (!path.toLowerCase().endsWith('.apk') || !await file.exists()) {
+    final format = AndroidPackageFormat.fromPath(path);
+    if (format == null || !await file.exists()) {
       throw const FormatException('apkInvalidFile');
     }
     final before = await file.stat();
     if (_disposed) throw const FormatException('apkCancelled');
-    final process = await Process.start(executable, [file.absolute.path]);
-    _process = process;
-    if (_disposed) process.kill(ProcessSignal.sigkill);
+    // 父目录由 Dart 管理，helper 被超时/关闭强杀后也能清理分包临时文件。
+    final workspace = await Directory.systemTemp.createTemp('anydeck-package-');
+    Process? process;
     try {
+      process = await Process.start(
+        executable,
+        [file.absolute.path],
+        environment: {'ANYDECK_APK_WORK_DIR': workspace.path},
+      );
+      _process = process;
+      if (_disposed) process.kill(ProcessSignal.sigkill);
       final result = await Future.wait<Object>([
         process.exitCode,
         _readLimited(process.stdout, maxOutputBytes, process),
@@ -44,14 +53,22 @@ class LocalApkService {
       if (result[0] != 0 || output['error'] != null) {
         throw FormatException(output['error']?.toString() ?? 'apkParseFailed');
       }
+      output['format'] = format.label;
       output['size'] = after.size;
       output['modified'] = after.modified.microsecondsSinceEpoch;
       return LocalApkInfo(output);
     } on TimeoutException {
       throw const FormatException('apkParseTimeout');
     } finally {
-      process.kill(ProcessSignal.sigkill);
+      process?.kill(ProcessSignal.sigkill);
+      if (process != null) {
+        await process.exitCode.timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => 124,
+        );
+      }
       if (identical(_process, process)) _process = null;
+      await workspace.delete(recursive: true);
     }
   }
 

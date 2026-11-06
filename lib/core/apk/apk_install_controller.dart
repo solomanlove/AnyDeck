@@ -38,7 +38,7 @@ class ApkInstallController extends Notifier<ApkInstallState> {
   }
 
   Future<void> install(String path, String serial, LocalApkInfo info) async {
-    if (state.busy) return;
+    if (state.busy || !info.installable) return;
     state = ApkInstallState(selected: serial, busy: true);
     try {
       final result = await ApkWindowClient(mainWindowId).call('apk_install', {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../features/apk/apk_details_page.dart';
+import '../../../core/apk/android_package_format.dart';
 import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../theme/app_theme.dart';
@@ -21,7 +22,7 @@ class ApkDetailsWindowApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       onGenerateTitle: (context) {
         final title =
-            '${context.l10n.t('apkTitle')} · ${Uri.file(path).pathSegments.last}';
+            "${context.l10n.t('apkPackageTitle').replaceAll('{format}', AndroidPackageFormat.fromPath(path)?.label ?? 'APK')} · ${Uri.file(path).pathSegments.last}";
         unawaited(DesktopWindowTitleService.setTitle(title));
         return title;
       },

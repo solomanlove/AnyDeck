@@ -5,12 +5,13 @@ import '../../app/l10n/app_localizations.dart';
 import '../../app/window/model/desktop_chrome_policy.dart';
 import '../../app/widget/app_detail_layout.dart';
 import '../../core/apk/apk_install_controller.dart';
+import '../../core/apk/android_package_format.dart';
 import '../../core/apk/apk_window_client.dart';
 import 'widgets/apk_detail_list.dart';
 import 'widgets/apk_install_bar.dart';
 import 'widgets/apk_summary.dart';
 
-/// 本地 APK 详情，左侧静态概况与右侧只读 Tabs 均可离线使用。
+/// 本地 Android 安装包详情，左侧静态概况与右侧只读 Tabs 均可离线使用。
 class ApkDetailsPage extends ConsumerWidget {
   const ApkDetailsPage({
     super.key,
@@ -52,7 +53,14 @@ class ApkDetailsPage extends ConsumerWidget {
             width: double.infinity,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(context.l10n.t('apkTitle')),
+              child: Text(
+                context.l10n
+                    .t('apkPackageTitle')
+                    .replaceAll(
+                      '{format}',
+                      AndroidPackageFormat.fromPath(path)?.label ?? 'APK',
+                    ),
+              ),
             ),
           ),
         ),
@@ -83,16 +91,25 @@ class ApkDetailsPage extends ConsumerWidget {
           ),
         ),
         data: (info) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          final summaryBackground = isDark
-              ? Colors.white.withValues(alpha: 0.04)
-              : Colors.white.withValues(alpha: 0.5);
+          final summaryBackground = Theme.of(
+            context,
+          ).colorScheme.surfaceContainerLow;
+          final detailTabs = {
+            if (info.format == 'AAB') 'modules': 'apkModules',
+            if (info.format == 'APKS' || info.format == 'XAPK')
+              'archiveEntries': 'apkArchiveEntries',
+            if (info.rows('containerMetadata').isNotEmpty)
+              'containerMetadata': 'apkContainerMetadata',
+            ...tabs,
+          };
           final tabData = <AppDetailTabData>[
             AppDetailTabData(
               id: 'install',
-              title: context.l10n.t('apkInstallTab'),
+              title: context.l10n.t(
+                info.analysisOnly ? 'apkArchiveOverview' : 'apkInstallTab',
+              ),
             ),
-            for (final tab in tabs.entries)
+            for (final tab in detailTabs.entries)
               AppDetailTabData(
                 id: tab.key,
                 title: context.l10n.t(tab.value),
@@ -121,8 +138,16 @@ class ApkDetailsPage extends ConsumerWidget {
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                         const SizedBox(height: 20),
-                        Text(context.l10n.t('apkInstallDescription')),
-                        if (!info.installable)
+                        Text(
+                          context.l10n.t(
+                            info.analysisOnly
+                                ? info.format == 'AAB'
+                                      ? 'apkBundleDescription'
+                                      : 'apkArchiveDescription'
+                                : 'apkInstallDescription',
+                          ),
+                        ),
+                        if (!info.analysisOnly && !info.installable)
                           Padding(
                             padding: const EdgeInsets.only(top: 16),
                             child: Text(context.l10n.t('apkSplit')),
@@ -137,13 +162,17 @@ class ApkDetailsPage extends ConsumerWidget {
                           ),
                       ],
                     ),
-                    for (final tab in tabs.keys)
+                    for (final tab in detailTabs.keys)
                       ApkDetailList(
                         rows: info.rows(tab),
                         fallbackIcon: info.icon,
                         showComponentIcon: tab == 'activities',
                         note: tab == 'signatures'
-                            ? context.l10n.t('apkSignatureNote')
+                            ? context.l10n.t(
+                                info.format == 'AAB'
+                                    ? 'apkBundleSignatureNote'
+                                    : 'apkSignatureNote',
+                              )
                             : tab == 'permissions'
                             ? context.l10n.t('apkPermissionNote')
                             : null,
@@ -151,7 +180,12 @@ class ApkDetailsPage extends ConsumerWidget {
                   ],
                 ),
               ),
-              ApkInstallBar(info: info, path: path, mainWindowId: mainWindowId),
+              if (!info.analysisOnly)
+                ApkInstallBar(
+                  info: info,
+                  path: path,
+                  mainWindowId: mainWindowId,
+                ),
             ],
           );
         },

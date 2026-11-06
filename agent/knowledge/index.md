@@ -16,7 +16,7 @@
 | `adb-ui-theme-system` | UI Theme 统一机制 | active | 统一品牌色、Light/Dark 语义色、边框、圆角与顶部轻提示，记录轻提示首帧/遮挡时的 Overlay 清理与回归，并明确固定业务色和 Painter 注入边界 | `app/theme/`, `app/widget/`, `app/window/`, `features/` |
 | `adb-local-diagnostic-logs` | 控制台与本地诊断日志 | active | 运行异常采集、关键日志筛选、跨窗口汇总、滚动文件、本地日志导出与验证边界 | `core/logging/`, `app/window/console/`, `features/developer/` |
 | `adb-github-feedback` | GitHub Issues 意见反馈 | active | 设置页标题与正文编辑、环境信息快照、分类草稿保留、长正文复制兜底、网页模板及验证边界 | `features/feedback/`, `core/process/`, `.github/ISSUE_TEMPLATE/` |
-| `adb-local-apk-inspector` | macOS 本地 APK 详情与安装 | active | Finder 文件关联、独立窗口、Rust 离线解析、签名信息与主窗口安装队列、缓存刷新及回归边界 | `core/apk/`, `features/apk/`, `app/window/apk/`, `rust/apk_inspector/` |
+| `adb-local-apk-inspector` | macOS Android 安装包分析与安装 | active | APK/APKS/AAB/XAPK 文件关联与离线分析、Protobuf 模块/分包清单、签名信息、APK 安装队列、临时目录回收与回归边界 | `core/apk/`, `features/apk/`, `app/window/apk/`, `rust/apk_inspector/` |
 | `adb-unified-app-detail-view` | 应用详情统一展示模型与 UI | active | 记录本地 APK 与已安装应用如何转换为统一 `AppDetailViewData`，并复用同一分栏、概要与 Tabs Widget | `app/widget/`, `features/apk/`, `features/apps/` |
 | `adb-terminal-pty` | 终端 PTY 与 root 提示符 | active | 记录 Android 真实 shell 回显与 root 提示符、HarmonyOS 本地 `$` 输入提示符、流式换行处理与回归边界 | `core/terminal/`, `features/terminal/` |
 | `adb-remote-controller` | Android 与 HarmonyOS 共用遥控器 | active | 记录四方向扇区交互、中心 OK、ADB/HDC 键码路由及验证边界 | `features/widgets/`, `features/control/`, `core/device_actions/` |

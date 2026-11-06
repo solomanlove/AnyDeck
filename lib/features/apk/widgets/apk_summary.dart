@@ -50,6 +50,10 @@ AppDetailViewData buildLocalApkDetailViewData(
     tabs: tabs,
     fields: [
       AppDetailSummaryField(
+        label: context.l10n.t('apkFormat'),
+        value: info.format,
+      ),
+      AppDetailSummaryField(
         label: context.l10n.t('apkPackage'),
         value: valueOrMissing(info.packageName),
         copyable: info.packageName.isNotEmpty,
