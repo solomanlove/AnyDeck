@@ -62,7 +62,7 @@ extension _DashboardContent on _DashboardScreenState {
             _goToDeviceTool(effectiveSelectedDevice.id, 0);
           }
         } else if (effectiveSelectedDevice.isHarmony) {
-          // 鸿蒙设备支持主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、性能(10)、网络(11)、设置(12)、玩安卓(13)、AI MCP(14)
+          // 鸿蒙设备支持主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、性能(10)、网络(11)、设置(12)、帮助中心(13)、AI MCP(14)
           final selectedTool = ref.read(selectedToolTabProvider);
           if (selectedTool >= 0 &&
               selectedTool != 0 &&
@@ -82,7 +82,7 @@ extension _DashboardContent on _DashboardScreenState {
             _goToDeviceTool(effectiveSelectedDevice.id, 0);
           }
         } else if (!effectiveSelectedDevice.isOnline) {
-          // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)、消息(15)、设置(12)、玩安卓(13)或 AI MCP(14) Tab，则自动重定向回主页 Tab
+          // 当手机离线时，如果当前选择的不是主页(0)、控制(1)、应用(2)、消息(15)、设置(12)、帮助中心(13)或 AI MCP(14) Tab，则自动重定向回主页 Tab
           final selectedTool = ref.read(selectedToolTabProvider);
           if (selectedTool >= 0 &&
               selectedTool != 0 &&
@@ -155,9 +155,10 @@ extension _DashboardContent on _DashboardScreenState {
                 workspace,
                 const _SettingsTab(),
                 if (_hasVisitedWanAndroid)
-                  const InAppWebViewWidget(
-                    initialUrl: 'https://www.wanandroid.com/',
-                    title: '玩Android',
+                  InAppWebViewWidget(
+                    initialUrl:
+                        'https://solomanlove.github.io/AnyDeckWeb/help.html',
+                    title: context.l10n.t('wanAndroid'),
                   )
                 else
                   const SizedBox.shrink(),

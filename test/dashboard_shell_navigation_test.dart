@@ -12,7 +12,10 @@ import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
+import 'package:any_deck/features/webview/in_app_webview_widget.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -76,7 +79,33 @@ class _ReadyAdb extends AdbEnvironmentNotifier {
   Future<void> checkAndPromptIfNeeded(BuildContext context) async {}
 }
 
+/// 帮助中心测试仅检查页面导航与 WebView 请求，不启动原生浏览器。
+class _TestWebViewPlatform extends InAppWebViewPlatform {
+  @override
+  PlatformInAppWebViewWidget createPlatformInAppWebViewWidget(
+    PlatformInAppWebViewWidgetCreationParams params,
+  ) => _TestWebView(params);
+}
+
+class _TestWebView extends PlatformInAppWebViewWidget {
+  _TestWebView(super.params) : super.implementation();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.expand();
+
+  @override
+  T controllerFromPlatform<T>(PlatformInAppWebViewController controller) =>
+      InAppWebViewController.fromPlatform(platform: controller) as T;
+
+  @override
+  void dispose() {}
+}
+
 void main() {
+  setUpAll(() {
+    InAppWebViewPlatform.instance = _TestWebViewPlatform();
+  });
+
   testWidgets('底部控制台不改变设备上下文，系统版本导航与设备选择同步', (tester) async {
     tester.view.physicalSize = const Size(1200, 900);
     tester.view.devicePixelRatio = 1;
@@ -172,4 +201,107 @@ void main() {
     disposed = true;
     await tester.pumpAndSettle();
   });
+
+  for (final language in ['zh', 'en']) {
+    for (final brightness in Brightness.values) {
+      testWidgets('帮助中心在 $language $brightness 无需选择设备且切页保留浏览状态', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(1200, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        SharedPreferences.setMockInitialValues({});
+        final container = ProviderContainer(
+          overrides: [
+            adbServiceProvider.overrideWithValue(FakeAdbService()),
+            iosDeviceServiceProvider.overrideWithValue(_Ios()),
+            discoveredDevicesProvider.overrideWith(
+              (ref) => Stream.value(<DiscoveredDevice>[]),
+            ),
+            deviceRegistryProvider.overrideWith(_Registry.new),
+            cachedDeviceOverviewProvider(_device.id).overrideWith(
+              (ref) async => DeviceOverview.fromJson({'name': 'Market Phone'}),
+            ),
+            hostNetworkProvider.overrideWith(_HostNetwork.new),
+            adbEnvironmentProvider.overrideWith(_ReadyAdb.new),
+            emulatorListProvider.overrideWith((ref) async => []),
+            emulatorConnectionsProvider.overrideWith((ref) async => {}),
+          ],
+        );
+        var disposed = false;
+        addTearDown(() {
+          if (!disposed) container.dispose();
+        });
+        final router = container.read(appRouterProvider);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp.router(
+              routerConfig: router,
+              locale: Locale(language),
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: const [
+                AppLocalizationsDelegate(),
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              theme: buildAppTheme(brightness),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final label = language == 'zh' ? '帮助中心' : 'Help Center';
+        final entry = find.byTooltip(label);
+        final webView = find.byType(InAppWebViewWidget);
+        expect(container.read(selectedDeviceProvider), isNull);
+        expect(find.byType(InAppWebViewWidget, skipOffstage: false), findsNothing);
+        expect(
+          find.descendant(
+            of: entry,
+            matching: find.byIcon(CupertinoIcons.question_circle),
+          ),
+          findsOneWidget,
+        );
+
+        await tester.tap(entry);
+        await tester.pumpAndSettle();
+        expect(router.routeInformationProvider.value.uri.path, '/wan-android');
+        expect(container.read(selectedToolTabProvider), 13);
+        expect(container.read(selectedDeviceProvider), isNull);
+        expect(webView, findsOneWidget);
+        expect(tester.widget<InAppWebViewWidget>(webView).title, label);
+        expect(
+          find.descendant(of: webView, matching: find.text(label)),
+          findsOneWidget,
+        );
+        expect(
+          tester
+              .widget<InAppWebView>(find.byType(InAppWebView))
+              .platform
+              .params
+              .initialUrlRequest
+              ?.url
+              .toString(),
+          'https://solomanlove.github.io/AnyDeckWeb/help.html',
+        );
+
+        final pageState = tester.state(webView);
+        final browserState = tester.state(find.byType(InAppWebView));
+        router.goNamed(AppRouteNames.systemVersions);
+        await tester.pumpAndSettle();
+        expect(webView, findsNothing);
+        await tester.tap(entry);
+        await tester.pumpAndSettle();
+        expect(tester.state(webView), same(pageState));
+        expect(tester.state(find.byType(InAppWebView)), same(browserState));
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        container.dispose();
+        disposed = true;
+        await tester.pumpAndSettle();
+      });
+    }
+  }
 }

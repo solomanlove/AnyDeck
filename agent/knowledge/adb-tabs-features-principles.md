@@ -407,7 +407,7 @@ Android 的可视化 UI 检查器（类似于 Android Studio Layout Inspector）
 ## 附录 A. 鸿蒙 Tab 适配（Harmony Tab Adaptation）
 
 ### 适配范围
-纯血 HarmonyOS NEXT 设备（`DiscoveredDevice.isHarmony == true`）通过 hdc 通道对齐安卓 tab 能力，已开放：主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、设置(12)、玩安卓(13)、AI MCP(14)。不支持且已隐藏：HTTP 代理（无 hdc 对应命令）、单 App 投屏（鸿蒙无虚拟副屏 + `aa start --display` 公开机制）。
+纯血 HarmonyOS NEXT 设备（`DiscoveredDevice.isHarmony == true`）通过 hdc 通道对齐安卓 tab 能力，已开放：主页(0)、控制(1)、应用(2)、文件(3)、日志(4)、终端(5)、进程(6)、网页调试(7)、截图(9)、设置(12)、帮助中心(13)、AI MCP(14)。不支持且已隐藏：HTTP 代理（无 hdc 对应命令）、单 App 投屏（鸿蒙无虚拟副屏 + `aa start --display` 公开机制）。
 
 ### 复用模式
 采用"独立鸿蒙 tab 文件 + 复用安卓公共 UI 组件"的物理隔离策略：

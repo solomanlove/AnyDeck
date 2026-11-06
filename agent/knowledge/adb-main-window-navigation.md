@@ -1,10 +1,11 @@
-# 主窗口导航、底部控制台与系统版本
+# 主窗口导航、帮助中心、底部控制台与系统版本
 
 ## 业务入口
 
 1. 模拟器管理统一使用主窗口 `/emulators`。移除独立管理窗口 App、子窗口注册、弹出按钮、macOS Window 菜单和系统托盘入口；AVD、DevEco、iOS Simulator 的运行画面及设备投屏不受影响。
 2. 控制台固定在左侧底部、设置上方。点击切换右侧底部面板，不修改 Route、设备选择或设备工具 Tab；打开后可继续操作上方页面。
 3. 系统版本位于鸿蒙互联下方，使用 `/system-versions`，迁移期 Tab index 为 `-5`，不要求设备连接。进入时清空设备选择，侧边栏继续显示全局导航。
+4. 帮助中心固定在左侧底部 AI MCP 上方，点击后在主窗口内打开 AnyDeck 在线帮助，无需选择设备。
 
 ## 文件与职责
 
@@ -12,7 +13,7 @@
 | --- | --- |
 | `lib/features/overview/dashboard_rail.dart` | 全局与设备侧边栏，按高度计算可见工具数量 |
 | `lib/features/overview/dashboard_rail_buttons.dart` | 原有导航按钮、溢出菜单与状态样式 |
-| `lib/features/overview/dashboard_rail_footer.dart` | 玩安卓、AI MCP、控制台、设置，控制台与页面选中态相互独立 |
+| `lib/features/overview/dashboard_rail_footer.dart` | 帮助中心、AI MCP、控制台、设置，控制台与页面选中态相互独立 |
 | `lib/features/overview/dashboard_content.dart` | 主窗口内容编排与全局页面加载 |
 | `lib/features/console/controller/console_dock_controller.dart` | 面板展开状态与用户高度偏好 |
 | `lib/features/console/widgets/console_dock.dart` | 工作区底部分隔条、尺寸约束和独立开窗流程 |
@@ -22,6 +23,17 @@
 | `lib/app/window/console/console_window_launcher.dart` | 复用既有子窗口单例策略，返回开窗成功/失败 |
 | `lib/features/overview/widget/system_versions_page.dart` | 三平台版本列表、适配详情、复制、官方链接与快照时间 |
 | `lib/features/overview/controller/system_versions_controller.dart` | 不依赖设备的平台选择状态 |
+
+## 帮助中心入口（2026-11-07）
+
+- 需求：将原有第三方学习网站入口替换为 AnyDeck 帮助中心，中文显示「帮助中心」，英文显示「Help Center」，图标使用 `CupertinoIcons.question_circle`。
+- 地址：`https://solomanlove.github.io/AnyDeckWeb/help.html`。复用 `InAppWebViewWidget` 的地址栏、导航、重试和系统浏览器打开能力；页面载入前的标题与侧栏共用本地化文案，载入后沿用网页标题。
+- 兼容：内部路由名及文案键 `wanAndroid`、路径 `/wan-android`、Tab index `13` 保持稳定；Android、HarmonyOS、iOS 和未选择设备时均可进入。
+- 生命周期：首次访问才创建 WebView，切换其他页面后由现有 `IndexedStack` 保留浏览状态。复用现有 Theme，不新增依赖、Provider、子窗口、后台命令或跨 Isolate 协议，不涉及投屏和设备控制链路。
+- 实现：地址与标题位于 `dashboard_content.dart`，图标与点击入口位于 `dashboard_rail_footer.dart`，中英文文案位于 `lib/app/l10n/tables/app_l10n_settings.dart`。
+- 自动回归：`test/dashboard_shell_navigation_test.dart` 使用替代原生 WebView 的测试实现，覆盖中英文、明暗主题、无需选择设备、首次访问才创建、实际传给 WebView 的 HTTPS 地址以及往返切页保留状态。自动测试不加载真实网页。
+- 验证结果：导航 Shell、全局导航和 Route 共 15 项定向测试通过；本次修改的 Dart 文件定向 analyze 通过；公网帮助页 HTTP 200，页面标题为「帮助中心｜AnyDeck」。
+- 人工回归：打开侧栏帮助中心，检查帮助文章和搜索；再切换其他 Tab 后返回；断网时检查既有错误提示与重试入口。不启动桌面 App，原生 WebView 网络加载留待人工验收。
 
 ## 控制台布局与生命周期
 

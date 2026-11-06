@@ -58,7 +58,7 @@
 | `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录设备管理与模拟器列表同级入口、设备列表统计标签与自适应搜索筛选栏、设备行名称与 IP、品牌 Logo 圆角、左侧导航 App/设备身份切换、品牌优先与制造商兜底、概览缓存兼容、返回点击逻辑及 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |
 | `adb-device-context-menu` | 设备列表常用操作右键菜单 | active | 行高亮、截图保存及剪贴板、投屏与工具 Route、三平台能力区分、离线/删除与重复操作拦截及验证边界 | `features/devices/`, `features/control/`, `test/` |
 | `adb-main-window-routing` | 主窗口层级路由 | active | 记录 Splash StartupGate、设备/模拟器/设置顶层 Route、设备工具 slug、应用详情嵌套路由及 Route 与 Riverpod 的职责边界 | `app/router/`, `features/overview/`, `features/apps/`, `features/devices/` |
-| `adb-main-window-navigation` | 主窗口导航、底部控制台与系统版本 | active | 移除独立模拟器管理窗口和原生菜单入口，侧边栏底部控制台、可调高度日志面板、系统版本 Route、验证与人工边界 | `features/overview/`, `features/console/`, `app/window/`, `app/router/` |
+| `adb-main-window-navigation` | 主窗口导航、帮助中心、底部控制台与系统版本 | active | AnyDeck 在线帮助入口与中英文文案、侧边栏底部控制台、可调高度日志面板、系统版本 Route、移除独立模拟器管理窗口和原生菜单入口、验证与人工边界 | `features/overview/`, `features/console/`, `app/window/`, `app/router/` |
 | `adb-device-root-status` | Dashboard 手机 Root 状态标识 | active | 记录主页 Root 标识、检测链路、未知状态与控制 Tab 按钮移除 | `features/overview/`, `features/control/`, `core/providers/` |
 | `adb-macos-signature-policy` | macOS 签名与 system policy 修复机制 | active | 记录 `FlutterMacOS.framework` 被 dyld system policy 拒绝加载时的签名、provenance/quarantine 排查与自动修复脚本 | `macos/`, `script/` |
 | `adb-ai-mcp-server-architecture` | AI MCP 服务架构与集成机制 | active | 记录 AnyDeck 作为 AI MCP (Model Context Protocol) Server 的协议路由、Tools 注册、HTTP SSE 传输通道、SSE 停止时的连接回收、安全防御沙箱、默认收起且可展开的 Tools 清单、分类搜索同排布局与桌面管理控制台设计 | `core/mcp/`, `features/mcp/` |

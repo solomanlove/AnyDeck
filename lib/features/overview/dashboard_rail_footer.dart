@@ -20,7 +20,7 @@ class _DashboardRailFooter extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _RailButton(
-          icon: CupertinoIcons.compass,
+          icon: CupertinoIcons.question_circle,
           tooltip: context.l10n.t('wanAndroid'),
           isNarrow: isNarrow,
           selected: selectedTool == 13,
