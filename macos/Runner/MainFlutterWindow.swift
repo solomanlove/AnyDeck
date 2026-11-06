@@ -88,11 +88,13 @@ class MainFlutterWindow: NSWindow {
     RegisterGeneratedPlugins(registry: flutterViewController)
     RustTexturePlugin.register(with: flutterViewController.registrar(forPlugin: "RustTexturePlugin"))
     IosUsbCapturePlugin.register(with: flutterViewController.registrar(forPlugin: "IosUsbCapturePlugin"))
+    VirtualCameraPlugin.register(with: flutterViewController.registrar(forPlugin: "VirtualCameraPlugin"))
 
     FlutterMultiWindowPlugin.setOnWindowCreatedCallback { controller in
       RegisterGeneratedPlugins(registry: controller)
       RustTexturePlugin.register(with: controller.registrar(forPlugin: "RustTexturePlugin"))
       IosUsbCapturePlugin.register(with: controller.registrar(forPlugin: "IosUsbCapturePlugin"))
+      VirtualCameraPlugin.register(with: controller.registrar(forPlugin: "VirtualCameraPlugin"))
       
       let windowChannel = FlutterMethodChannel(
         name: "any_deck/window",

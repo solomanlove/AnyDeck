@@ -1,0 +1,2 @@
+/* 系统摄像头扩展安装说明。 */
+"NSSystemExtensionUsageDescription" = "AnyDeck makes your Android camera available to video apps on this Mac.";

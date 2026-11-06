@@ -7,6 +7,8 @@ import '../controller/camera_preview_controller.dart';
 import '../../../core/scrcpy/device_capture_compatibility.dart';
 import 'capture_compatibility_view.dart';
 import 'microphone_controls.dart';
+import '../../../core/virtual_camera/virtual_camera_controller.dart';
+import '../../control/widgets/virtual_camera_controls.dart';
 
 /// 页面内摄像头预览，deviceId 为 ADB 路由；画面由 Rust 解码并通过薄 Swift Texture 桥接显示。
 /// 仅显式点击开始才打开摄像头，移除此组件后自动释放其 Provider 会话。
@@ -26,6 +28,10 @@ class CameraPreviewView extends ConsumerWidget {
         ref.watch(concurrentCameraSupportedProvider(deviceId));
     final concurrentSupported = concurrentAsync.value ?? false;
     final colors = Theme.of(context).colorScheme;
+    final virtualOwnsCamera = ref.watch(virtualCameraProvider.select(
+      (value) => value.ownsDevice(deviceId),
+    ));
+    final virtualBusy = ref.watch(virtualCameraProvider.select((value) => value.busy));
     final effectiveMode =
         (!concurrentSupported && state.mode == CameraPreviewMode.dual)
             ? CameraPreviewMode.back
@@ -79,6 +85,8 @@ class CameraPreviewView extends ConsumerWidget {
                         onPressed:
                             online &&
                                     compatible &&
+                                    !virtualOwnsCamera &&
+                                    !virtualBusy &&
                                     !state.busy &&
                                     !state.isStreaming
                                 ? controller.start
@@ -98,6 +106,9 @@ class CameraPreviewView extends ConsumerWidget {
                   if (state.messageKey != null)
                     Text(context.l10n.t(state.messageKey!)),
                   MicrophoneControls(deviceId: deviceId),
+                  if (virtualOwnsCamera)
+                    Text(context.l10n.t('virtualCameraPreviewPaused')),
+                  VirtualCameraControls(deviceId: deviceId),
                 ],
               ),
             ),

@@ -38,6 +38,23 @@
 		72D3A0AB3CA54240F46B5FC3 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 12DA9A5741F579E9ACC0D6AB /* Pods_RunnerTests.framework */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		DA4E95143DED7130BFF2177C /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C5CE1F272EBFF35594B87875 /* Pods_Runner.framework */; };
+		ACCA00000000000000000200 /* VirtualCameraPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000100 /* VirtualCameraPlugin.swift */; };
+		ACCA00000000000000000201 /* VirtualCameraCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000101 /* VirtualCameraCoordinator.swift */; };
+		ACCA00000000000000000202 /* VirtualCameraRustSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000102 /* VirtualCameraRustSession.swift */; };
+		ACCA00000000000000000203 /* VirtualCameraSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000103 /* VirtualCameraSink.swift */; };
+		ACCA00000000000000000204 /* VirtualCameraFrameFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000104 /* VirtualCameraFrameFormatter.swift */; };
+		ACCA00000000000000000205 /* VirtualCameraActivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000105 /* VirtualCameraActivation.swift */; };
+		ACCA00000000000000000206 /* VirtualCameraMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000106 /* VirtualCameraMenu.swift */; };
+		ACCA00000000000000000207 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000107 /* main.swift */; };
+		ACCA00000000000000000208 /* CameraProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000108 /* CameraProvider.swift */; };
+		ACCA00000000000000000209 /* CameraDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000109 /* CameraDevice.swift */; };
+		ACCA0000000000000000020A /* CameraStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA0000000000000000010A /* CameraStream.swift */; };
+		ACCA0000000000000000020B /* VirtualCameraContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA0000000000000000010B /* VirtualCameraContract.swift */; };
+		ACCA00000000000000000004 /* AnyDeck Camera.systemextension in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000001; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		ACCA00000000000000000005 /* VirtualCameraContract.swift in Extension Sources */ = {isa = PBXBuildFile; fileRef = ACCA0000000000000000010B; };
+		ACCA00000000000000000220 /* CameraFrameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000120; };
+		ACCA00000000000000000320 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000310; };
+		ACCA00000000000000000420 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000410; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -55,6 +72,7 @@
 			remoteGlobalIDString = 33CC111A2044C6BA0003C045;
 			remoteInfo = FLX;
 		};
+		ACCA00000000000000000020 /* Camera Extension Proxy */ = {isa = PBXContainerItemProxy; containerPortal = 33CC10E52044A3C60003C045; proxyType = 1; remoteGlobalIDString = ACCA0000000000000000001E; remoteInfo = AnyDeckCameraExtension; };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -66,6 +84,15 @@
 			files = (
 			);
 			name = "Bundle Framework";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ACCA00000000000000000014 /* Embed System Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Library/SystemExtensions";
+			dstSubfolderSpec = 16;
+			files = (ACCA00000000000000000004, );
+			name = "Embed System Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -106,6 +133,30 @@
 		C0B487B51982F39093A14F3D /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		C5CE1F272EBFF35594B87875 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FEC563B989749ADC3C329A44 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		ACCA00000000000000000100 /* VirtualCameraPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraPlugin.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000101 /* VirtualCameraCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraCoordinator.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000102 /* VirtualCameraRustSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraRustSession.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000103 /* VirtualCameraSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraSink.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000104 /* VirtualCameraFrameFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraFrameFormatter.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000105 /* VirtualCameraActivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraActivation.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000106 /* VirtualCameraMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraMenu.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000107 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000108 /* CameraProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraProvider.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000109 /* CameraDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraDevice.swift; sourceTree = "<group>"; };
+		ACCA0000000000000000010A /* CameraStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraStream.swift; sourceTree = "<group>"; };
+		ACCA0000000000000000010B /* VirtualCameraContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraContract.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000001 /* AnyDeck Camera.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; path = "com.github.anydeck.camera-extension.systemextension"; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACCA00000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		ACCA00000000000000000003 /* CameraExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CameraExtension.entitlements; sourceTree = "<group>"; };
+		ACCA00000000000000000120 /* CameraFrameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraFrameStore.swift; sourceTree = "<group>"; };
+		ACCA00000000000000000300 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "en.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		ACCA00000000000000000301 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = zh-Hans; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+
+		ACCA00000000000000000400 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "en.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		ACCA00000000000000000401 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = zh-Hans; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+
+		ACCA00000000000000000500 /* CameraDebugProfile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CameraDebugProfile.entitlements; sourceTree = "<group>"; };
+		ACCA00000000000000000501 /* CameraRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CameraRelease.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,6 +177,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ACCA00000000000000000016 /* Extension Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -151,6 +203,8 @@
 		33CC10E42044A3C60003C045 = {
 			isa = PBXGroup;
 			children = (
+				ACCA0000000000000000000B /* AnyDeckCameraExtension */,
+				ACCA0000000000000000000C /* CameraShared */,
 				33FAB671232836740065AC1E /* Runner */,
 				33CEB47122A05771004F2AC0 /* Flutter */,
 				331C80D6294CF71000263BE5 /* RunnerTests */,
@@ -163,6 +217,7 @@
 		33CC10EE2044A3C60003C045 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				ACCA00000000000000000001 /* AnyDeck Camera.systemextension */,
 				33CC10ED2044A3C60003C045 /* adb_manage.app */,
 				331C80D5294CF71000263BE5 /* RunnerTests.xctest */,
 			);
@@ -175,6 +230,7 @@
 				33CC10F22044A3C60003C045 /* Assets.xcassets */,
 				33CC10F42044A3C60003C045 /* MainMenu.xib */,
 				33CC10F72044A3C60003C045 /* Info.plist */,
+				ACCA00000000000000000310 /* InfoPlist.strings */,
 			);
 			name = Resources;
 			path = ..;
@@ -195,6 +251,7 @@
 		33FAB671232836740065AC1E /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				ACCA0000000000000000000A /* VirtualCamera */,
 				33CC10F02044A3C60003C045 /* AppDelegate.swift */,
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				A1D0B1000000000000000002 /* RustTexturePlugin.swift */,
@@ -205,6 +262,8 @@
 				C1D0B1000000000000000002 /* AutoStartBridgeService.swift */,
 				D1D0B1000000000000000002 /* HostNetworkBridgeService.swift */,
 				D2D0B1000000000000000002 /* DlnaPlayerBridgeService.swift */,
+				ACCA00000000000000000500 /* CameraDebugProfile.entitlements */,
+				ACCA00000000000000000501 /* CameraRelease.entitlements */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -234,6 +293,43 @@
 				12DA9A5741F579E9ACC0D6AB /* Pods_RunnerTests.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		ACCA0000000000000000000A /* VirtualCamera */ = {
+			isa = PBXGroup;
+			children = (
+				ACCA00000000000000000100,
+				ACCA00000000000000000101,
+				ACCA00000000000000000102,
+				ACCA00000000000000000103,
+				ACCA00000000000000000104,
+				ACCA00000000000000000105,
+				ACCA00000000000000000106,
+			);
+			path = VirtualCamera;
+			sourceTree = "<group>";
+		};
+		ACCA0000000000000000000B /* AnyDeckCameraExtension */ = {
+			isa = PBXGroup;
+			children = (
+				ACCA00000000000000000120,
+				ACCA00000000000000000107,
+				ACCA00000000000000000108,
+				ACCA00000000000000000109,
+				ACCA0000000000000000010A,
+				ACCA00000000000000000002,
+				ACCA00000000000000000410 /* InfoPlist.strings */,
+				ACCA00000000000000000003,
+			);
+			path = AnyDeckCameraExtension;
+			sourceTree = "<group>";
+		};
+		ACCA0000000000000000000C /* CameraShared */ = {
+			isa = PBXGroup;
+			children = (
+				ACCA0000000000000000010B,
+			);
+			path = CameraShared;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -267,6 +363,7 @@
 				33CC10EA2044A3C60003C045 /* Frameworks */,
 				33CC10EB2044A3C60003C045 /* Resources */,
 				33CC110E2044A8840003C045 /* Bundle Framework */,
+				ACCA00000000000000000014 /* Embed System Extensions */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				78C0A91B2D00000000000001 /* Embed Native Dylibs */,
 				ADBA91012D00000000000001 /* Embed APK Inspector */,
@@ -277,6 +374,7 @@
 			);
 			dependencies = (
 				33CC11202044C79F0003C045 /* PBXTargetDependency */,
+				ACCA00000000000000000021 /* Camera Extension Dependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -285,6 +383,17 @@
 			productName = Runner;
 			productReference = 33CC10ED2044A3C60003C045 /* adb_manage.app */;
 			productType = "com.apple.product-type.application";
+		};
+		ACCA0000000000000000001E /* AnyDeckCameraExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ACCA0000000000000000001F;
+			buildPhases = (ACCA00000000000000000015, ACCA00000000000000000016, ACCA00000000000000000430, );
+			buildRules = ();
+			dependencies = ();
+			name = AnyDeckCameraExtension;
+			productName = "com.github.anydeck.camera-extension";
+			productReference = ACCA00000000000000000001;
+			productType = "com.apple.product-type.system-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -323,6 +432,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = 33CC10E42044A3C60003C045;
@@ -333,6 +443,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				ACCA0000000000000000001E /* AnyDeckCameraExtension */,
 				33CC10EC2044A3C60003C045 /* Runner */,
 				331C80D4294CF70F00263BE5 /* RunnerTests */,
 				33CC111A2044C6BA0003C045 /* Flutter Assemble */,
@@ -354,9 +465,11 @@
 			files = (
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
+				ACCA00000000000000000320 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ACCA00000000000000000430 /* Extension Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (ACCA00000000000000000420, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
@@ -517,6 +630,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */,
+				ACCA00000000000000000200 /* VirtualCameraPlugin.swift in Sources */,
+				ACCA00000000000000000201 /* VirtualCameraCoordinator.swift in Sources */,
+				ACCA00000000000000000202 /* VirtualCameraRustSession.swift in Sources */,
+				ACCA00000000000000000203 /* VirtualCameraSink.swift in Sources */,
+				ACCA00000000000000000204 /* VirtualCameraFrameFormatter.swift in Sources */,
+				ACCA00000000000000000205 /* VirtualCameraActivation.swift in Sources */,
+				ACCA00000000000000000206 /* VirtualCameraMenu.swift in Sources */,
+				ACCA0000000000000000020B /* VirtualCameraContract.swift in Sources */,
 				A1D0B1000000000000000001 /* RustTexturePlugin.swift in Sources */,
 				E1D0B1000000000000000001 /* IosUsbCapturePlugin.swift in Sources */,
 				E0D0B1000000000000000001 /* IosUsbCapture.swift in Sources */,
@@ -527,6 +648,19 @@
 				D2D0B1000000000000000001 /* DlnaPlayerBridgeService.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ACCA00000000000000000015 /* Extension Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ACCA00000000000000000220,
+				ACCA00000000000000000207,
+				ACCA00000000000000000208,
+				ACCA00000000000000000209,
+				ACCA0000000000000000020A,
+				ACCA00000000000000000005,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -543,6 +677,7 @@
 			target = 33CC111A2044C6BA0003C045 /* Flutter Assemble */;
 			targetProxy = 33CC111F2044C79F0003C045 /* PBXContainerItemProxy */;
 		};
+		ACCA00000000000000000021 /* Camera Extension Dependency */ = {isa = PBXTargetDependency; target = ACCA0000000000000000001E; targetProxy = ACCA00000000000000000020; };
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
@@ -555,6 +690,8 @@
 			path = Runner;
 			sourceTree = "<group>";
 		};
+		ACCA00000000000000000310 /* InfoPlist.strings */ = {isa = PBXVariantGroup; children = (ACCA00000000000000000300, ACCA00000000000000000301, ); name = InfoPlist.strings; path = Runner; sourceTree = "<group>"; };
+		ACCA00000000000000000410 /* InfoPlist.strings */ = {isa = PBXVariantGroup; children = (ACCA00000000000000000400, ACCA00000000000000000401, ); name = InfoPlist.strings;  sourceTree = "<group>"; };
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
@@ -659,7 +796,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
+				ANYDECK_CAMERA_ENTITLEMENTS_PREFIX = "";
+				CODE_SIGN_ENTITLEMENTS = "Runner/$(ANYDECK_CAMERA_ENTITLEMENTS_PREFIX)DebugProfile.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -793,7 +931,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
+				ANYDECK_CAMERA_ENTITLEMENTS_PREFIX = "";
+				CODE_SIGN_ENTITLEMENTS = "Runner/$(ANYDECK_CAMERA_ENTITLEMENTS_PREFIX)DebugProfile.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -813,7 +952,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Runner/Release.entitlements;
+				ANYDECK_CAMERA_ENTITLEMENTS_PREFIX = "";
+				CODE_SIGN_ENTITLEMENTS = "Runner/$(ANYDECK_CAMERA_ENTITLEMENTS_PREFIX)Release.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -841,6 +981,78 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
+		};
+		ACCA00000000000000000028 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = AnyDeckCameraExtension/CameraExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AnyDeckCameraExtension/Info.plist;
+				OTHER_LDFLAGS = "";
+				FRAMEWORK_SEARCH_PATHS = "";
+				HEADER_SEARCH_PATHS = "";
+				LIBRARY_SEARCH_PATHS = "";
+				OTHER_SWIFT_FLAGS = "";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.github.anydeck.camera-extension";
+				PRODUCT_NAME = "com.github.anydeck.camera-extension";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		ACCA00000000000000000029 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = AnyDeckCameraExtension/CameraExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AnyDeckCameraExtension/Info.plist;
+				OTHER_LDFLAGS = "";
+				FRAMEWORK_SEARCH_PATHS = "";
+				HEADER_SEARCH_PATHS = "";
+				LIBRARY_SEARCH_PATHS = "";
+				OTHER_SWIFT_FLAGS = "";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.github.anydeck.camera-extension";
+				PRODUCT_NAME = "com.github.anydeck.camera-extension";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		ACCA0000000000000000002A /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = AnyDeckCameraExtension/CameraExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AnyDeckCameraExtension/Info.plist;
+				OTHER_LDFLAGS = "";
+				FRAMEWORK_SEARCH_PATHS = "";
+				HEADER_SEARCH_PATHS = "";
+				LIBRARY_SEARCH_PATHS = "";
+				OTHER_SWIFT_FLAGS = "";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.github.anydeck.camera-extension";
+				PRODUCT_NAME = "com.github.anydeck.camera-extension";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Profile;
 		};
 /* End XCBuildConfiguration section */
 
@@ -885,6 +1097,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		ACCA0000000000000000001F /* Extension configurations */ = {isa = XCConfigurationList; buildConfigurations = (ACCA00000000000000000028, ACCA00000000000000000029, ACCA0000000000000000002A, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */

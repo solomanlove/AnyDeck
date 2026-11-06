@@ -59,6 +59,8 @@
 			<key>public.filename-extension</key><array><string>xapk</string></array>
 		</dict>
 	</dict></array>
+	<key>NSSystemExtensionUsageDescription</key>
+	<string>AnyDeck makes your Android camera available to video apps on this Mac.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>

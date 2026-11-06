@@ -16,6 +16,7 @@ import 'tables/app_l10n_device_connections.dart';
 import 'tables/app_l10n_harmony_wireless.dart';
 import 'tables/app_l10n_huawei_share.dart';
 import 'tables/app_l10n_device_share.dart';
+import 'tables/app_l10n_virtual_camera.dart';
 
 /// 全部 UI 文案字符串表。Widget 直接按 key 访问，key 应保持稳定。
 ///
@@ -47,6 +48,7 @@ const localizedValues = {
     ...harmonyWirelessZh,
     ...huaweiShareZh,
     ...deviceShareZh,
+    ...virtualCameraZh,
   },
   'en': {
     ...settingsEn,
@@ -67,5 +69,6 @@ const localizedValues = {
     ...harmonyWirelessEn,
     ...huaweiShareEn,
     ...deviceShareEn,
+    ...virtualCameraEn,
   },
 };

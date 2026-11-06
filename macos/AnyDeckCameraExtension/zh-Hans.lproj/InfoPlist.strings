@@ -1,0 +1,2 @@
+/* 系统摄像头扩展安装说明。 */
+"NSSystemExtensionUsageDescription" = "AnyDeck 将 Android 手机摄像头提供给这台 Mac 上的视频应用。";
