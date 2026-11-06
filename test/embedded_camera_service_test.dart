@@ -232,6 +232,9 @@ void main() {
     expect(launch, contains('audio=true'));
     expect(launch, contains('audio_codec=raw'));
     expect(launch, contains('vd_destroy_content=false'));
+    expect(launch, contains('flex_display=true'));
+    expect(launch, contains('display_ime_policy=local'));
+    expect(launch, contains('max_size=1920'));
     expect(launch, isNot(contains('vd_destroy_content_on_removal=true')));
     final scid = launch
         .singleWhere((argument) => argument.startsWith('scid='))

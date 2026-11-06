@@ -210,11 +210,15 @@ class DashboardTabLayout extends StatelessWidget {
   const DashboardTabLayout({
     super.key,
     required this.toolbar,
+    this.belowToolbar,
     required this.body,
   });
 
   /// 顶部的工具栏，通常传入 [DashboardSearchToolbar]。
   final Widget toolbar;
+
+  /// 搜索工具栏下方的可选设置行。
+  final Widget? belowToolbar;
 
   /// 下方的核心内容展示区（如列表、网格、表格等），会被包裹在 Expanded 中。
   final Widget body;
@@ -226,6 +230,10 @@ class DashboardTabLayout extends StatelessWidget {
       child: Column(
         children: [
           toolbar,
+          if (belowToolbar != null) ...[
+            const SizedBox(height: 8),
+            belowToolbar!,
+          ],
           const SizedBox(height: 12),
           Expanded(child: body),
         ],

@@ -14,9 +14,11 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/apps/adb_package.dart';
 import '../../../core/providers/transfer_provider.dart';
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
+import '../../../core/scrcpy/fusion_display_resize.dart';
 import '../../widget/app_toast.dart';
 import 'mirror_aspect_resolver.dart';
 import 'mirror_audio_focus_coordinator.dart';
+import 'app_mirror_launch_coordinator.dart';
 import 'mirror_window_frame_adapter.dart';
 import '../multi_window_compat.dart';
 import '../sub_window_method_dispatcher.dart';
@@ -33,6 +35,7 @@ class MirrorWindowController extends ChangeNotifier {
   final String windowId;
   final String? newDisplay;
   final String? startApp;
+  final String? physicalDeviceKey;
   final bool isIos;
   final bool isHarmony;
 
@@ -42,6 +45,7 @@ class MirrorWindowController extends ChangeNotifier {
     required this.windowId,
     this.newDisplay,
     this.startApp,
+    this.physicalDeviceKey,
     this.isIos = false,
     this.isHarmony = false,
   });
@@ -120,6 +124,8 @@ class MirrorWindowController extends ChangeNotifier {
   static const _windowChannel = MethodChannel('any_deck/window');
 
   Timer? _resizeSettleTimer;
+  Timer? _fusionResizeTimer;
+  FusionDisplayResizer? _fusionResizer;
   Timer? _resizeThrottleTimer;
   Timer? _orientationSettleTimer;
   final MirrorAspectResolver _aspectResolver = MirrorAspectResolver();
@@ -193,6 +199,7 @@ class MirrorWindowController extends ChangeNotifier {
     }
     _identifyTimer?.cancel();
     _resizeSettleTimer?.cancel();
+    _fusionResizeTimer?.cancel();
     _resizeThrottleTimer?.cancel();
     _orientationSettleTimer?.cancel();
     unawaited(_setWindowAspectRatio(0));
@@ -204,6 +211,7 @@ class MirrorWindowController extends ChangeNotifier {
           _audioFocusCoordinator.release(
             currentWindowId: windowId,
             deviceId: deviceId,
+            physicalDeviceKey: physicalDeviceKey,
           ),
         );
       }
@@ -214,7 +222,12 @@ class MirrorWindowController extends ChangeNotifier {
   Future<dynamic> _handleAudioFocusCall(MethodCall call) async {
     if (call.method != MirrorAudioFocusCoordinator.methodName) return null;
     final arguments = call.arguments;
-    if (arguments is! Map || arguments['deviceId'] != deviceId) return null;
+    if (arguments is! Map ||
+        (arguments['deviceId'] != deviceId &&
+            (physicalDeviceKey == null ||
+                arguments['physicalDeviceKey'] != physicalDeviceKey))) {
+      return null;
+    }
 
     final muted = arguments['muted'] == true;
     _isAudioMuted = muted;
@@ -228,6 +241,7 @@ class MirrorWindowController extends ChangeNotifier {
     _isAudioMuted = await _audioFocusCoordinator.claim(
       currentWindowId: windowId,
       deviceId: deviceId,
+      physicalDeviceKey: physicalDeviceKey,
       isAppMirror: startApp != null,
     );
     _audioFocusPrepared = true;
@@ -268,6 +282,7 @@ class MirrorWindowController extends ChangeNotifier {
   /// 开始/重试启动投屏服务
   Future<void> startMirroring() async {
     if (_disposed) return;
+    _fusionResizer = null;
     _isLoading = true;
     _errorMessage = null;
     _lastVideoAspect = null;
@@ -328,7 +343,11 @@ class MirrorWindowController extends ChangeNotifier {
         }
 
         // 启动时自动适配窗口大小以消除黑边
-        _autoFitWindowOnStart();
+        if (isAppMirror) {
+          _scheduleFusionDisplayResize();
+        } else {
+          _autoFitWindowOnStart();
+        }
       }
     } catch (e) {
       if (_disposed) return;
@@ -347,6 +366,17 @@ class MirrorWindowController extends ChangeNotifier {
         return;
       }
       _isLoading = false;
+      if (!isIos && !isHarmony) {
+        await forceStopMirroring();
+        if (_audioFocusPrepared) {
+          _audioFocusPrepared = false;
+          await _audioFocusCoordinator.release(
+            currentWindowId: windowId,
+            deviceId: deviceId,
+            physicalDeviceKey: physicalDeviceKey,
+          );
+        }
+      }
       var msg = e.toString();
       if (msg.startsWith('Exception: ')) {
         msg = msg.substring('Exception: '.length);
@@ -374,7 +404,7 @@ class MirrorWindowController extends ChangeNotifier {
     _isFullScreen = fullscreen;
     if (fullscreen) {
       unawaited(_setWindowAspectRatio(0));
-    } else {
+    } else if (!isAppMirror) {
       unawaited(_fitWindowToCurrentAspect());
     }
     notifyListeners();
@@ -390,6 +420,7 @@ class MirrorWindowController extends ChangeNotifier {
         debugPrint('Failed to set fullscreen: $e');
       }
     }
+    if (isAppMirror) _scheduleFusionDisplayResize();
 
     // 仅在进入全屏时弹出提示信息
     if (fullscreen && context.mounted) {
@@ -410,7 +441,11 @@ class MirrorWindowController extends ChangeNotifier {
     if (_isFullScreen) {
       _isFullScreen = false;
     }
-    unawaited(_fitWindowToCurrentAspect());
+    if (isAppMirror) {
+      _scheduleFusionDisplayResize();
+    } else {
+      unawaited(_fitWindowToCurrentAspect());
+    }
     notifyListeners();
   }
 
@@ -418,16 +453,25 @@ class MirrorWindowController extends ChangeNotifier {
   void onWindowMaximize() {
     _isNativeMaximized = true;
     unawaited(_setWindowAspectRatio(0));
+    if (isAppMirror) _scheduleFusionDisplayResize();
   }
 
   /// 外部窗口管理器通知：退出原生最大化后重新贴合并锁定比例。
   void onWindowUnmaximize() {
     _isNativeMaximized = false;
-    unawaited(_fitWindowToCurrentAspect());
+    if (isAppMirror) {
+      _scheduleFusionDisplayResize();
+    } else {
+      unawaited(_fitWindowToCurrentAspect());
+    }
   }
 
   /// 用户拖动缩放期间持续收敛，抵消固定标题栏、底栏及右侧工具栏带来的黑边。
   void onWindowResized() {
+    if (isAppMirror) {
+      _scheduleFusionDisplayResize();
+      return;
+    }
     if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
     if (!(_resizeThrottleTimer?.isActive ?? false)) {
       _resizeThrottleTimer = Timer(const Duration(milliseconds: 16), () {
@@ -443,6 +487,10 @@ class MirrorWindowController extends ChangeNotifier {
 
   /// 视频流分辨率改变时（如设备横竖屏切换），自动调整独立窗口贴合当前画面比例。
   void onVideoSizeChanged(int width, int height) {
+    if (isAppMirror) {
+      if (width > 0 && height > 0) _lastVideoAspect = width / height;
+      return;
+    }
     if (_isFullScreen || _isNativeFullScreen || _isNativeMaximized) return;
     if (width > 0 && height > 0) {
       final aspect = width / height;
@@ -461,6 +509,33 @@ class MirrorWindowController extends ChangeNotifier {
     } else {
       unawaited(_fitWindowToCurrentAspect());
     }
+  }
+
+  /// 拖动结束后回传 viewport 尺寸，不让设备帧变化反向调整桌面窗口。
+  void _scheduleFusionDisplayResize() {
+    if (newDisplay == null || _disposed) return;
+    _fusionResizeTimer?.cancel();
+    _fusionResizeTimer = Timer(const Duration(milliseconds: 160), () async {
+      if (_disposed || _isLoading || _errorMessage != null) return;
+      final box = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null || box.size.isEmpty) return;
+      final resizer = _fusionResizer ??= FusionDisplayResizer(newDisplay!);
+      final message = resizer.messageFor(box.size.width, box.size.height);
+      if (message == null) return;
+      try {
+        final sent = await ref.read(embeddedScrcpyServiceProvider).sendControl(
+          deviceId: deviceId,
+          controlMessage: message,
+        );
+        if (!sent) {
+          resizer.retryLast();
+          debugPrint('Failed to resize fusion display for $deviceId');
+        }
+      } catch (error) {
+        resizer.retryLast();
+        debugPrint('Failed to resize fusion display for $deviceId: $error');
+      }
+    });
   }
 
   /// iOS 控制栏位于视频区域上方，使用真实视频 viewport 计算窗口比例。
@@ -996,10 +1071,7 @@ class MirrorWindowController extends ChangeNotifier {
   Future<void> openAppMirrorWindow(BuildContext context) async {
     final package = _currentForegroundPackage;
     if (package == null) return;
-
-    final windowTitle = context.l10n
-        .t('screenMirrorTitle')
-        .replaceAll('{name}', package.displayName);
+    final mirrorTitleTemplate = context.l10n.t('screenMirrorTitle');
 
     try {
       final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
@@ -1011,26 +1083,33 @@ class MirrorWindowController extends ChangeNotifier {
       final videoSize = ref
           .read(embeddedScrcpyServiceProvider)
           .getVideoSize(deviceId);
-      final vdResolution = resolveAppMirrorDisplayResolution(
-        resolution,
-        videoWidth: videoSize?['width'],
-        videoHeight: videoSize?['height'],
+      final registered = ref.read(deviceRegistryProvider);
+      RegisteredDevice? device;
+      for (final candidate in registered) {
+        if (candidate.id == deviceId || candidate.connections.contains(deviceId)) {
+          device = candidate;
+          break;
+        }
+      }
+      final result = await ref.read(appMirrorLaunchCoordinatorProvider).open(
+        AppMirrorLaunchRequest(
+          deviceId: deviceId,
+          packageName: package.name,
+          appName: package.displayName,
+          mirrorTitleTemplate: mirrorTitleTemplate,
+          alwaysOnTop: _isAlwaysOnTop,
+          device: device,
+          physicalResolution: resolution,
+          videoWidth: videoSize?['width'],
+          videoHeight: videoSize?['height'],
+        ),
       );
-
-      final initialSize = resolveMirrorInitialWindowSize(vdResolution);
-
-      await createAdbManageWindow(
-        arguments: {
-          'type': 'mirror',
-          'deviceId': deviceId,
-          'deviceName': package.displayName,
-          'newDisplay': vdResolution,
-          'startApp': package.name,
-          'alwaysOnTop': _isAlwaysOnTop,
-        },
-        frame: Offset.zero & initialSize,
-        title: windowTitle,
-      );
+      if (context.mounted && result.kind == AppMirrorLaunchKind.existingFusion) {
+        AppToast.show(context, context.l10n.t('fusionExistingWindow'));
+      }
+      if (context.mounted && result.kind == AppMirrorLaunchKind.primaryUnknown) {
+        AppToast.show(context, context.l10n.t('fusionDetectionFallback'));
+      }
     } catch (e) {
       if (context.mounted) {
         AppToast.show(
@@ -1041,6 +1120,32 @@ class MirrorWindowController extends ChangeNotifier {
               .replaceAll('{error}', e.toString()),
           isError: true,
         );
+      }
+    }
+  }
+
+  /// 副屏错误页的显式回退操作；先停旧会话以免迁移守护再次抢走 Task。
+  Future<void> openPrimaryMirrorWindow(BuildContext context) async {
+    if (startApp == null) return;
+    final mirrorTitleTemplate = context.l10n.t('screenMirrorTitle');
+    try {
+      await forceStopMirroring();
+      await ref.read(appMirrorLaunchCoordinatorProvider).open(
+        AppMirrorLaunchRequest(
+          deviceId: deviceId,
+          packageName: startApp!,
+          appName: startApp!,
+          mirrorTitleTemplate: mirrorTitleTemplate,
+          alwaysOnTop: _isAlwaysOnTop,
+          physicalDeviceKey: physicalDeviceKey,
+          forcePrimary: true,
+        ),
+      );
+      await windowManager.close();
+    } catch (e) {
+      if (context.mounted) {
+        AppToast.show(context, context.l10n.t('appMirroringFailed')
+            .replaceAll('{error}', e.toString()), isError: true);
       }
     }
   }

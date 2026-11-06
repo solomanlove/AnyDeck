@@ -31,6 +31,7 @@ import '../sub_window_method_dispatcher.dart';
 import 'ios_airplay_mirror_content.dart';
 import 'android_mirror_transport_host.dart';
 import '../../../core/scrcpy/mirror_transport_type.dart';
+import '../../../core/scrcpy/fusion_mode_preference.dart';
 import '../../../features/control/whiteboard/mirror_whiteboard_controller.dart';
 
 /// 投屏独立窗口应用入口。
@@ -60,6 +61,7 @@ class MirrorWindowApp extends ConsumerWidget {
           windowId: windowId,
           newDisplay: newDisplay,
           startApp: startApp,
+          physicalDeviceKey: argument['physicalDeviceKey'] as String?,
           initialAlwaysOnTop: argument['alwaysOnTop'] as bool?,
           isIos: isIos,
           isHarmony: isHarmony,
@@ -103,6 +105,7 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
     required this.windowId,
     this.newDisplay,
     this.startApp,
+    this.physicalDeviceKey,
     this.initialAlwaysOnTop,
     this.isIos = false,
     this.isHarmony = false,
@@ -115,6 +118,7 @@ class MirrorWindowContent extends ConsumerStatefulWidget {
   final String windowId;
   final String? newDisplay;
   final String? startApp;
+  final String? physicalDeviceKey;
   final bool? initialAlwaysOnTop;
   final bool isIos;
   final bool isHarmony;
@@ -169,6 +173,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
       windowId: widget.windowId,
       newDisplay: widget.newDisplay,
       startApp: widget.startApp,
+      physicalDeviceKey: widget.physicalDeviceKey,
       isIos: widget.isIos,
       isHarmony: widget.isHarmony,
     );
@@ -208,6 +213,29 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
 
   /// AirPlay 建立后切换当前 iOS 投屏窗口的视频源，不创建第二个窗口。
   Future<dynamic> _handleWindowMethod(MethodCall call) async {
+    if (call.method == 'closeMirrorWindow') {
+      await _controller.forceStopMirroring();
+      await windowManager.close();
+      return true;
+    }
+    if (call.method == 'fusionModeChanged') {
+      ref.invalidate(deviceFusionModeProvider(widget.deviceId));
+      return true;
+    }
+    if (call.method == 'mirrorSessionStatus') {
+      final displayId = ref.read(embeddedScrcpyServiceProvider)
+          .getVirtualDisplayId(widget.deviceId);
+      final size = ref.read(embeddedScrcpyServiceProvider)
+          .getVideoSize(widget.deviceId);
+      return {
+        'ready': !_controller.isLoading &&
+            _controller.errorMessage == null &&
+            size != null,
+        'displayId': displayId,
+        if (_controller.errorMessage != null)
+          'error': _controller.errorMessage,
+      };
+    }
     if (call.method != 'switchIosMirrorSource') return null;
     final arguments = call.arguments;
     if (arguments is! Map) return false;
@@ -276,6 +304,16 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   }
 
   // ==================== 界面渲染 (UI Build) ====================
+
+  /// 前台应用图标按设备当前模式展示入口名称。
+  String _appMirrorTooltip(BuildContext context) {
+    final mode = ref.watch(deviceFusionModeProvider(widget.deviceId))
+        .asData?.value.state;
+    final title = context.l10n.t(
+      mode == FusionModeState.enabled ? 'fusionAppTooltip' : 'primaryAppTooltip',
+    );
+    return '$title · ${context.l10n.t('fusionQuickActionsHint')}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -392,6 +430,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           _whiteboard.clear();
           _controller.restartMirroring();
         },
+        onPrimaryMirror: widget.startApp == null
+            ? null
+            : () => _controller.openPrimaryMirrorWindow(context),
       );
     }
     //投屏正常
@@ -563,7 +604,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                               if (widget.startApp == null && _controller.currentForegroundPackage != null) ...[
                                 const SizedBox(width: 8),
                                 Tooltip(
-                                  message: '${context.l10n.t('appMirroring')} (长按或右键打开快捷操作)',
+                                  message: _appMirrorTooltip(context),
                                   child: MouseRegion(
                                     cursor: SystemMouseCursors.click,
                                     onEnter: (_) => setState(() => _isIconHovered = true),

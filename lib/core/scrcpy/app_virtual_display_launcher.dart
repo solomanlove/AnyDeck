@@ -5,7 +5,7 @@ import '../adb/adb_service.dart';
 import 'activity_escape_guardian.dart';
 
 /// 在 scrcpy 虚拟副屏创建后放置指定 App，确保首帧等待不会和 App 迁移互相阻塞。
-Future<void> launchAppOnVirtualDisplay({
+Future<Timer> launchAppOnVirtualDisplay({
   required AdbService adbService,
   required String deviceId,
   required String packageName,
@@ -39,8 +39,7 @@ Future<void> launchAppOnVirtualDisplay({
       displayId.toString(),
     ]);
     if (moveResult.isSuccess) {
-      startActivityEscapeGuardian(adbService, deviceId, packageName, displayId);
-      return;
+      return startActivityEscapeGuardian(adbService, deviceId, packageName, displayId);
     }
   }
 
@@ -73,7 +72,45 @@ Future<void> launchAppOnVirtualDisplay({
   }
 
   // 覆盖开屏广告或页面跳转逃回主屏的短暂窗口。
-  startActivityEscapeGuardian(adbService, deviceId, packageName, displayId);
+  return startActivityEscapeGuardian(adbService, deviceId, packageName, displayId);
+}
+
+/// 普通模式显式把既有 Task 移回主屏，再把目标 App 拉到前台。
+Future<void> launchAppOnPrimaryDisplay({
+  required AdbService adbService,
+  required String deviceId,
+  required String packageName,
+}) async {
+  final taskList = await adbService.shellArgs(
+    deviceId,
+    ['cmd', 'activity', 'stack', 'list'],
+  );
+  final rootTaskId = taskList.isSuccess
+      ? findRootTaskId(taskList.stdout, packageName)
+      : null;
+  final rootDisplayId = taskList.isSuccess
+      ? findRootTaskDisplayId(taskList.stdout, packageName)
+      : null;
+  if (rootTaskId != null && rootDisplayId != 0) {
+    final move = await adbService.shellArgs(
+      deviceId,
+      ['cmd', 'activity', 'display', 'move-stack', '$rootTaskId', '0'],
+    );
+    if (!move.isSuccess) {
+      throw StateError('Failed to move $packageName to display 0: ${move.message}');
+    }
+  }
+  final start = await adbService.shellArgs(deviceId, [
+    'am', 'start',
+    '-a', 'android.intent.action.MAIN',
+    '-c', 'android.intent.category.LAUNCHER',
+    '-p', packageName,
+    '--display', '0',
+    '-f', '0x10000000',
+  ]);
+  if (!start.isSuccess || start.stdout.contains('Error:')) {
+    throw StateError('Failed to launch $packageName on display 0: ${start.message}');
+  }
 }
 
 /// 从 `cmd activity stack list` 中找到包名所属的 RootTask。
@@ -90,6 +127,24 @@ int? findRootTaskId(String output, String packageName) {
     }
     if (currentRootTaskId != null && packageTaskPattern.hasMatch(line)) {
       return currentRootTaskId;
+    }
+  }
+  return null;
+}
+
+/// 返回目标 App 所在 RootTask 的 display ID，避免对主屏 Task 重复迁移。
+int? findRootTaskDisplayId(String output, String packageName) {
+  int? currentDisplayId;
+  final packageTaskPattern = RegExp(
+    r'taskId=\d+:\s+' + RegExp.escape(packageName) + r'/',
+  );
+  for (final line in const LineSplitter().convert(output)) {
+    if (RegExp(r'^\s*RootTask id=\d+\b').hasMatch(line)) {
+      currentDisplayId = int.tryParse(
+        RegExp(r'\bdisplayId=(\d+)').firstMatch(line)?.group(1) ?? '',
+      );
+    } else if (packageTaskPattern.hasMatch(line)) {
+      return currentDisplayId;
     }
   }
   return null;

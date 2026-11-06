@@ -26,6 +26,7 @@ class EmbeddedScrcpySession {
     required this.rustHandle,
     required this.startedAt,
     this.virtualDisplayId,
+    this.escapeGuardian,
     this.camera,
     this.scid,
     this.quality = const MirrorVideoQuality(maxSize: 1080, bitrate: 8000000),
@@ -39,6 +40,7 @@ class EmbeddedScrcpySession {
   final int rustHandle;
   final DateTime startedAt;
   final int? virtualDisplayId;
+  final Timer? escapeGuardian;
   final ScrcpyCameraOptions? camera;
   final String? scid;
   final MirrorVideoQuality quality;
@@ -232,6 +234,16 @@ class EmbeddedScrcpyService {
             : configuredQuality.cappedBy(quality);
     final bitrate = effectiveQuality.bitrate;
     final maxSize = effectiveQuality.maxSize;
+    // flex_display 会把 max_size 同时用于副屏物理尺寸；至少保留初始副屏分辨率。
+    final displayMatch = newDisplay == null
+        ? null
+        : RegExp(r'^(\d+)x(\d+)').firstMatch(newDisplay);
+    final fusionMaxSize = displayMatch == null
+        ? maxSize
+        : max(maxSize, max(
+            int.parse(displayMatch.group(1)!),
+            int.parse(displayMatch.group(2)!),
+          ));
 
     // 若设备当前处于休眠或息屏状态，发送 KEYCODE_WAKEUP (224) 唤醒屏幕以确保 SurfaceFlinger 正常产出渲染帧
     if (camera == null) {
@@ -257,7 +269,7 @@ class EmbeddedScrcpyService {
         if (mirrorAudioEnabled) 'audio_codec=raw',
         'video_codec=h264',
         'video_bit_rate=$bitrate',
-        if (maxSize > 0) 'max_size=$maxSize',
+        if (fusionMaxSize > 0) 'max_size=$fusionMaxSize',
         if (camera == null) 'stay_awake=true',
         // 原生客户端固定连接 video/control，摄像头页不发送触控或键盘消息。
         'control=true',
@@ -266,9 +278,11 @@ class EmbeddedScrcpyService {
           ...camera.serverArguments
         else if (newDisplay != null) ...[
           'new_display=$newDisplay',
+          'flex_display=true',
           // 副屏销毁时让 Android 将 Task 迁回手机屏，不销毁 App 状态。
           'vd_destroy_content=false',
           'vd_system_decorations=false',
+          'display_ime_policy=local',
         ] else
           'display_id=0',
       ]);
@@ -314,6 +328,7 @@ class EmbeddedScrcpyService {
     // 4. Connect via Pure Rust VideoToolbox & AudioQueue
     int textureId = 0;
     int rustHandle = 0;
+    Timer? escapeGuardian;
     try {
       await Future<void>.delayed(const Duration(milliseconds: 600));
       camera?.checkActive();
@@ -332,7 +347,7 @@ class EmbeddedScrcpyService {
 
       // 空虚拟副屏不会产生视频首帧；先启动 App，再等待 Rust/VideoToolbox 可渲染首帧。
       if (newDisplay != null && startApp != null) {
-        await launchAppOnVirtualDisplay(
+        escapeGuardian = await launchAppOnVirtualDisplay(
           adbService: _adbService,
           deviceId: deviceId,
           packageName: startApp,
@@ -375,6 +390,7 @@ class EmbeddedScrcpyService {
         rustHandle: rustHandle,
         startedAt: DateTime.now(),
         virtualDisplayId: virtualDisplayId,
+        escapeGuardian: escapeGuardian,
         camera: camera,
         scid: scid,
         quality: effectiveQuality,
@@ -387,6 +403,7 @@ class EmbeddedScrcpyService {
       }
     } catch (e) {
       // Cleanup on failure
+      escapeGuardian?.cancel();
       camera?.cancel();
       if (rustHandle != 0) {
         try {
@@ -431,6 +448,7 @@ class EmbeddedScrcpyService {
   Future<void> stop(String deviceId) async {
     final session = _sessions.remove(deviceId);
     if (session == null) return;
+    session.escapeGuardian?.cancel();
 
     try {
       await _textures.invokeMethod<void>('untrack', {'handle': session.rustHandle});

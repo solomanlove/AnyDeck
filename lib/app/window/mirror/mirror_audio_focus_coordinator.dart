@@ -14,14 +14,27 @@ class MirrorAudioFocusCoordinator {
   Future<bool> claim({
     required String currentWindowId,
     required String deviceId,
+    String? physicalDeviceKey,
     required bool isAppMirror,
   }) async {
-    final others = await _matchingWindows(currentWindowId, deviceId);
+    final others = await _matchingWindows(currentWindowId, deviceId, physicalDeviceKey);
     if (isAppMirror) {
+      // 两个 App 窗口同时初始化时，各自独立算出同一个获胜者。
+      final appIds = [
+        currentWindowId,
+        ...others.where((window) => window.isAppMirror)
+            .map((window) => window.controller.windowId),
+      ]..sort(_compareWindowIds);
+      final winnerId = appIds.last;
       for (final window in others) {
-        await _setMuted(window.controller, deviceId, true);
+        await _setMuted(
+          window.controller,
+          deviceId,
+          physicalDeviceKey,
+          window.controller.windowId != winnerId,
+        );
       }
-      return false;
+      return currentWindowId != winnerId;
     }
 
     // 整机投屏后打开时不抢占已有窗口的音频，防止双重播放。
@@ -32,24 +45,40 @@ class MirrorAudioFocusCoordinator {
   Future<void> release({
     required String currentWindowId,
     required String deviceId,
+    String? physicalDeviceKey,
   }) async {
-    final others = await _matchingWindows(currentWindowId, deviceId);
+    final others = await _matchingWindows(currentWindowId, deviceId, physicalDeviceKey);
     if (others.isEmpty) return;
 
-    final appMirrors = others.where((window) => window.isAppMirror).toList();
+    final appMirrors = others.where((window) => window.isAppMirror).toList()
+      ..sort((a, b) => _compareWindowIds(
+        a.controller.windowId, b.controller.windowId,
+      ));
     final winner = appMirrors.isNotEmpty ? appMirrors.last : others.first;
     for (final window in others) {
       await _setMuted(
         window.controller,
         deviceId,
+        physicalDeviceKey,
         window.controller.windowId != winner.controller.windowId,
       );
     }
   }
 
+  /// desktop_multi_window 的数字 ID 按创建顺序比较；其他 ID 仍保持确定性。
+  int _compareWindowIds(String left, String right) {
+    final leftNumber = int.tryParse(left);
+    final rightNumber = int.tryParse(right);
+    if (leftNumber != null && rightNumber != null) {
+      return leftNumber.compareTo(rightNumber);
+    }
+    return left.compareTo(right);
+  }
+
   Future<List<_MirrorWindow>> _matchingWindows(
     String currentWindowId,
     String deviceId,
+    String? physicalDeviceKey,
   ) async {
     try {
       final windows = await WindowController.getAll();
@@ -62,7 +91,8 @@ class MirrorAudioFocusCoordinator {
           final arguments = jsonDecode(window.arguments);
           if (arguments is! Map ||
               arguments['type'] != 'mirror' ||
-              arguments['deviceId'] != deviceId ||
+              (arguments['deviceId'] != deviceId &&
+                  (physicalDeviceKey == null || arguments['physicalDeviceKey'] != physicalDeviceKey)) ||
               arguments['isIos'] == true ||
               arguments['isHarmony'] == true) {
             continue;
@@ -87,11 +117,13 @@ class MirrorAudioFocusCoordinator {
   Future<void> _setMuted(
     WindowController controller,
     String deviceId,
+    String? physicalDeviceKey,
     bool muted,
   ) async {
     try {
       await controller.invokeMethod(methodName, {
         'deviceId': deviceId,
+        'physicalDeviceKey': physicalDeviceKey,
         'muted': muted,
       });
     } catch (e) {

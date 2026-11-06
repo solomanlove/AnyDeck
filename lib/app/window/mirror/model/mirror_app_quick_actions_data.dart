@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/apps/adb_package.dart';
 import '../controller/mirror_app_quick_actions_controller.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// 快捷操作项数据模型
 class MirrorActionItemData {
@@ -41,6 +42,7 @@ List<MirrorActionSectionData> buildMirrorAppQuickActionSections({
   required BuildContext context,
   required AdbPackage package,
   required MirrorAppQuickActionsController controller,
+  required bool fusionEnabled,
 }) {
   return [
     // 1. 生命周期与基础控制
@@ -216,8 +218,10 @@ List<MirrorActionSectionData> buildMirrorAppQuickActionSections({
         MirrorActionItemData(
           icon: Icons.cast,
           iconColor: const Color(0xFF8E24AA),
-          title: '应用独立副屏投屏',
-          subtitle: '在独立的虚拟副屏中开启此应用投屏',
+          title: context.l10n.t(
+            fusionEnabled ? 'fusionAppTooltip' : 'primaryAppTooltip',
+          ),
+          subtitle: context.l10n.t('fusionMirrorActionHint'),
           onTap: () {
             Navigator.of(context).pop();
             controller.openAppMirroring();

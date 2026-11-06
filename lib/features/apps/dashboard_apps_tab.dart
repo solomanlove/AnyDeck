@@ -240,6 +240,9 @@ class _AppsTabState extends ConsumerState<AppsTab> {
           ),
         ],
       ),
+      belowToolbar: widget.device.isHarmony || widget.device.isIos
+          ? null
+          : FusionModeSettingRow(deviceId: widget.device.id),
       body: Stack(
         children: [
           Positioned.fill(

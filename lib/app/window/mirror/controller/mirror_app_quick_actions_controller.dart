@@ -10,7 +10,7 @@ import '../../../../core/scrcpy/embedded_scrcpy_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../settings/app_settings_controller.dart';
 import '../../../widget/app_toast.dart';
-import '../../multi_window_compat.dart';
+import '../app_mirror_launch_coordinator.dart';
 
 /// 投屏窗口前台应用快捷操作控制器。
 /// 封装针对当前应用的全部 ADB 快捷操作逻辑，与 UI 组件彻底解耦。
@@ -320,10 +320,7 @@ class MirrorAppQuickActionsController {
 
   /// 开启此应用的虚拟副屏独立投屏
   Future<void> openAppMirroring() async {
-    final windowTitle = context.l10n
-        .t('screenMirrorTitle')
-        .replaceAll('{name}', _displayName);
-
+    final mirrorTitleTemplate = context.l10n.t('screenMirrorTitle');
     try {
       final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
       final resolution = overviewAsync.maybeWhen(
@@ -334,35 +331,36 @@ class MirrorAppQuickActionsController {
       final videoSize = ref
           .read(embeddedScrcpyServiceProvider)
           .getVideoSize(deviceId);
-      final vdResolution = resolveAppMirrorDisplayResolution(
-        resolution,
-        videoWidth: videoSize?['width'],
-        videoHeight: videoSize?['height'],
-      );
-
-      final initialSize = resolveMirrorInitialWindowSize(vdResolution);
       final devReg = ref.read(deviceRegistryProvider);
       final matchingDev = devReg.firstWhere(
         (d) => d.id == deviceId,
         orElse: () => RegisteredDevice(id: deviceId, status: 'unknown', isOnline: false),
       );
 
-      await createAdbManageWindow(
-        arguments: {
-          'type': 'mirror',
-          'deviceId': deviceId,
-          'deviceName': _displayName,
-          'newDisplay': vdResolution,
-          'startApp': _packageName,
-          'alwaysOnTop': ref.read(appSettingsProvider).scrcpyAlwaysOnTop,
-          'isIos': matchingDev.isIos,
-          'isHarmony': matchingDev.isHarmony,
-        },
-        frame: Offset.zero & initialSize,
-        title: windowTitle,
+      final result = await ref.read(appMirrorLaunchCoordinatorProvider).open(
+        AppMirrorLaunchRequest(
+          deviceId: deviceId,
+          packageName: _packageName,
+          appName: _displayName,
+          mirrorTitleTemplate: mirrorTitleTemplate,
+          alwaysOnTop: ref.read(appSettingsProvider).scrcpyAlwaysOnTop,
+          device: matchingDev,
+          physicalResolution: resolution,
+          videoWidth: videoSize?['width'],
+          videoHeight: videoSize?['height'],
+        ),
       );
+      if (context.mounted && result.kind == AppMirrorLaunchKind.existingFusion) {
+        _toast(context.l10n.t('fusionExistingWindow'));
+      }
+      if (context.mounted && result.kind == AppMirrorLaunchKind.primaryUnknown) {
+        _toast(context.l10n.t('fusionDetectionFallback'));
+      }
     } catch (e) {
-      _toast('开启应用投屏失败: $e', isError: true);
+      if (context.mounted) {
+        _toast(context.l10n.t('appMirroringFailed')
+            .replaceAll('{error}', e.toString()), isError: true);
+      }
     }
   }
 

@@ -187,6 +187,7 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
           arguments: {
             'type': 'mirror',
             'deviceId': device.id,
+            'physicalDeviceKey': FusionModePreference.knownPhysicalKey(device, device.id),
             'deviceName': device.displayName,
             'alwaysOnTop': ref.read(appSettingsProvider).scrcpyAlwaysOnTop,
             'isIos': device.isIos,

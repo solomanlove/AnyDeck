@@ -112,9 +112,16 @@ Future<WindowController> createAdbManageWindow({
             if (type == 'apk_details' && windowArgs['path'] != arguments['path']) {
               continue;
             }
-            if (deviceId == null || windowArgs['deviceId'] == deviceId) {
-              if (windowArgs['newDisplay'] == arguments['newDisplay'] &&
-                  windowArgs['startApp'] == arguments['startApp']) {
+            final physicalKey = arguments['physicalDeviceKey'];
+            final sameDevice = deviceId == null || windowArgs['deviceId'] == deviceId ||
+                (type == 'mirror' && physicalKey is String &&
+                    windowArgs['physicalDeviceKey'] == physicalKey);
+            if (sameDevice) {
+              final sameApp = windowArgs['startApp'] == arguments['startApp'];
+              final sameDisplay = type == 'mirror' && arguments['startApp'] != null
+                  ? windowArgs['newDisplay'] != null && arguments['newDisplay'] != null
+                  : windowArgs['newDisplay'] == arguments['newDisplay'];
+              if (sameDisplay && sameApp) {
                 try {
                   if (type == 'mirror') {
                     final ready = await _waitForMirrorWindowReady(window);

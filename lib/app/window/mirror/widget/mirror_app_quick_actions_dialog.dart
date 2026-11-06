@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/apps/adb_package.dart';
+import '../../../../core/scrcpy/fusion_mode_preference.dart';
 import '../controller/mirror_app_quick_actions_controller.dart';
 import '../model/mirror_app_quick_actions_data.dart';
 import 'mirror_app_quick_action_item.dart';
@@ -302,10 +303,13 @@ class _MirrorAppQuickActionsDialogState
     AdbPackage package,
     bool isDark,
   ) {
+    final fusionEnabled = ref.watch(deviceFusionModeProvider(widget.deviceId))
+            .asData?.value.state == FusionModeState.enabled;
     final sections = buildMirrorAppQuickActionSections(
       context: context,
       package: package,
       controller: _controller,
+      fusionEnabled: fusionEnabled,
     );
 
     // 根据分类与搜索关键字过滤

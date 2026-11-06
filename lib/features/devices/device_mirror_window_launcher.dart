@@ -1,9 +1,5 @@
 part of '../dashboard_screen.dart';
 
-/// 兼容既有调用，内部统一使用 [resolveMirrorInitialWindowSize]。
-Size _resolveMirrorInitialWindowSize(String? resolution, {double? ratio}) =>
-    resolveMirrorInitialWindowSize(resolution, ratio: ratio);
-
 /// 打开独立投屏窗口的全局辅助方法
 Future<void> openStandaloneMirrorWindow(
   BuildContext context,
@@ -17,6 +13,7 @@ Future<void> openStandaloneMirrorWindow(
 
   // DiscoveredDevice 不包含别名，按设备身份从注册表读取用户配置的名称。
   var deviceName = device.displayName;
+  String? physicalDeviceKey;
   for (final registered in ref.read(deviceRegistryProvider)) {
     if (registered.id == device.id ||
         registered.serial == device.id ||
@@ -25,6 +22,7 @@ Future<void> openStandaloneMirrorWindow(
       if (customName != null && customName.isNotEmpty) {
         deviceName = customName;
       }
+      physicalDeviceKey = FusionModePreference.knownPhysicalKey(registered, device.id);
       break;
     }
   }
@@ -67,6 +65,7 @@ Future<void> openStandaloneMirrorWindow(
       arguments: {
         'type': 'mirror',
         'deviceId': device.id,
+        'physicalDeviceKey': physicalDeviceKey,
         'deviceName': deviceName,
         'alwaysOnTop': ref.read(appSettingsProvider).scrcpyAlwaysOnTop,
         'isIos': device.isIos,

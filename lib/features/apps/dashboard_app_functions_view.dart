@@ -40,6 +40,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
     final isHarmony = ref.read(deviceRegistryProvider).any(
       (d) => d.id == deviceId && d.isHarmony,
     );
+    final fusionMode = ref.watch(deviceFusionModeProvider(deviceId)).asData?.value;
 
     final Color cardBg = isDark
         ? Colors.white.withValues(alpha: 0.04)
@@ -458,92 +459,51 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                               ),
                                               _AppActionButtonCard(
                                                 icon: Icons.cast,
-                                                title: "应用投屏",
-                                                description: "在虚拟副屏中开启此应用投屏",
+                                                title: context.l10n.t(
+                                                  fusionMode?.state == FusionModeState.enabled
+                                                      ? 'fusionAppTooltip'
+                                                      : 'primaryAppTooltip',
+                                                ),
+                                                description: context.l10n.t('fusionMirrorActionHint'),
                                                 iconColor: const Color(
                                                   0xFF8E24AA,
                                                 ),
                                                 onPressed: isOnline
                                                     ? () async {
-                                                        final windowTitle = context
-                                                            .l10n
-                                                            .t(
-                                                              'screenMirrorTitle',
-                                                            )
-                                                            .replaceAll(
-                                                              '{name}',
-                                                              package
-                                                                  .displayName,
-                                                            );
                                                         try {
-                                                          final overviewAsync =
-                                                              ref.read(
-                                                                deviceOverviewProvider(
-                                                                  deviceId,
-                                                                ),
-                                                              );
-                                                          final resolution =
-                                                              overviewAsync.maybeWhen(
-                                                                data:
-                                                                    (
-                                                                      overview,
-                                                                    ) => overview
-                                                                        .physicalResolution,
-                                                                orElse: () =>
-                                                                    null,
-                                                              );
-                                                          final videoSize = ref
-                                                              .read(
-                                                                embeddedScrcpyServiceProvider,
-                                                              )
-                                                              .getVideoSize(
-                                                                deviceId,
-                                                              );
-                                                          final vdResolution =
-                                                              resolveAppMirrorDisplayResolution(
-                                                                resolution,
-                                                                videoWidth:
-                                                                    videoSize?['width'],
-                                                                videoHeight:
-                                                                    videoSize?['height'],
-                                                              );
-                                                          final initialSize =
-                                                              _resolveMirrorInitialWindowSize(
-                                                                vdResolution,
-                                                              );
+                                                          final overviewAsync = ref.read(deviceOverviewProvider(deviceId));
+                                                          final resolution = overviewAsync.maybeWhen(
+                                                            data: (overview) => overview.physicalResolution,
+                                                            orElse: () => null,
+                                                          );
+                                                          final videoSize = ref.read(embeddedScrcpyServiceProvider)
+                                                              .getVideoSize(deviceId);
                                                           final devReg = ref.read(deviceRegistryProvider);
                                                           final matchingDev = devReg.firstWhere(
                                                             (d) => d.id == deviceId,
-                                                            orElse: () => RegisteredDevice(id: deviceId, status: 'unknown', isOnline: false),
+                                                            orElse: () => RegisteredDevice(
+                                                              id: deviceId, status: 'unknown', isOnline: false,
+                                                            ),
                                                           );
-                                                          await createAdbManageWindow(
-                                                            arguments: {
-                                                              'type':
-                                                                  'mirror',
-                                                              'deviceId':
-                                                                  deviceId,
-                                                              'deviceName':
-                                                                  package
-                                                                      .displayName,
-                                                              'newDisplay':
-                                                                  vdResolution,
-                                                              'startApp':
-                                                                  packageName,
-                                                              'alwaysOnTop':
-                                                                  ref
-                                                                      .read(
-                                                                        appSettingsProvider,
-                                                                      )
-                                                                      .scrcpyAlwaysOnTop,
-                                                              'isIos': matchingDev.isIos,
-                                                              'isHarmony': matchingDev.isHarmony,
-                                                            },
-                                                            frame:
-                                                                Offset.zero &
-                                                                initialSize,
-                                                            title:
-                                                                windowTitle,
+                                                          final result = await ref.read(appMirrorLaunchCoordinatorProvider).open(
+                                                            AppMirrorLaunchRequest(
+                                                              deviceId: deviceId,
+                                                              packageName: packageName,
+                                                              appName: package.displayName,
+                                                              mirrorTitleTemplate: context.l10n.t('screenMirrorTitle'),
+                                                              alwaysOnTop: ref.read(appSettingsProvider).scrcpyAlwaysOnTop,
+                                                              device: matchingDev,
+                                                              physicalResolution: resolution,
+                                                              videoWidth: videoSize?['width'],
+                                                              videoHeight: videoSize?['height'],
+                                                            ),
                                                           );
+                                                          if (context.mounted && result.kind == AppMirrorLaunchKind.existingFusion) {
+                                                            _showSnack(context, context.l10n.t('fusionExistingWindow'));
+                                                          }
+                                                          if (context.mounted && result.kind == AppMirrorLaunchKind.primaryUnknown) {
+                                                            _showSnack(context, context.l10n.t('fusionDetectionFallback'));
+                                                          }
                                                         } catch (e) {
                                                           if (context
                                                               .mounted) {

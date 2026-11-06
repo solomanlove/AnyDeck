@@ -26,6 +26,7 @@ class MirrorStatusView extends StatefulWidget {
     this.rawErrorMessage,
     this.isStoppedState = false,
     required this.onRetry,
+    this.onPrimaryMirror,
   });
 
   /// 底层启动抛出的原始错误信息（若有）
@@ -36,6 +37,9 @@ class MirrorStatusView extends StatefulWidget {
 
   /// 点击重试按钮的回调函数
   final VoidCallback onRetry;
+
+  /// 副屏失败后由用户主动改用手机主屏投屏。
+  final VoidCallback? onPrimaryMirror;
 
   @override
   State<MirrorStatusView> createState() => _MirrorStatusViewState();
@@ -240,6 +244,13 @@ class _MirrorStatusViewState extends State<MirrorStatusView> {
                 ),
               ),
             ),
+            if (widget.onPrimaryMirror != null) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: widget.onPrimaryMirror,
+                child: Text(context.l10n.t('fusionUsePrimaryMirror')),
+              ),
+            ],
           ],
         ),
       ),

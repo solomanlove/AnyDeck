@@ -6,19 +6,22 @@ import '../adb/adb_service.dart';
 /// 启动后台守护轮询，防范 Activity 在跳转时逃逸回主屏幕（Display 0）。
 ///
 /// 轮询持续 12 秒，每 500 毫秒检查一次，主要覆盖开屏广告与主页面过渡期。
-void startActivityEscapeGuardian(
+Timer startActivityEscapeGuardian(
   AdbService adbService,
   String deviceId,
   String packageName,
   int targetDisplayId,
 ) {
   int count = 0;
-  Timer.periodic(const Duration(milliseconds: 500), (timer) async {
+  bool checking = false;
+  return Timer.periodic(const Duration(milliseconds: 500), (timer) async {
     count++;
     if (count > 24) {
       timer.cancel();
       return;
     }
+    if (checking) return;
+    checking = true;
 
     try {
       final res = await adbService.run([
@@ -75,6 +78,8 @@ void startActivityEscapeGuardian(
       }
     } catch (_) {
       // Ignored
+    } finally {
+      checking = false;
     }
   });
 }
