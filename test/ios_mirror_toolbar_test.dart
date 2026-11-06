@@ -1,8 +1,8 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/window/mirror/ios_mirror_toolbar.dart';
 import 'package:any_deck/app/window/mirror/mirror_toolbar_button.dart';
+import 'package:any_deck/features/control/whiteboard/mirror_whiteboard_controller.dart';
 import 'package:any_deck/core/ios/ios_control_provider.dart';
-import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -19,6 +19,8 @@ void main() {
         var ready = false;
         var screenshots = 0;
         var saved = 0;
+        final whiteboard = MirrorWhiteboardController();
+        addTearDown(whiteboard.dispose);
         final calls = <String>[];
         final container = ProviderContainer(
           overrides: [
@@ -54,44 +56,48 @@ void main() {
                   deviceId: 'phone',
                   onScreenshot: () => screenshots++,
                   onSaveScreenshot: () => saved++,
+                  whiteboard: whiteboard,
                 ),
               ),
             ),
           ),
         );
         await tester.pump();
-        container.read(iosUsbFrameProvider('phone').notifier).update({
-          'fps': 44.7,
-        });
-        await tester.pump();
         final buttons = tester
             .widgetList<MirrorToolbarButton>(find.byType(MirrorToolbarButton))
             .toList();
-        expect(buttons, hasLength(6));
+        expect(buttons, hasLength(9));
         expect(buttons.take(5).every((b) => b.onPressed == null), true);
         expect(buttons.last.onPressed, isNotNull);
         expect(find.byIcon(CupertinoIcons.scope), findsNothing);
-        expect(find.byIcon(CupertinoIcons.videocam), findsNothing);
-        expect(find.text('44.7 FPS'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('ios-usb-record-toggle')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('mirror-whiteboard-toggle')),
+          findsOneWidget,
+        );
         expect(
           find.byKey(const ValueKey('ios-control-toggle')),
           findsOneWidget,
         );
         expect(
-          tester.getCenter(find.byIcon(CupertinoIcons.camera)).dx,
+          tester.getCenter(find.byIcon(CupertinoIcons.camera)).dy,
           lessThan(
             tester
                 .getCenter(find.byKey(const ValueKey('ios-control-toggle')))
-                .dx,
+                .dy,
           ),
         );
+        await tester.tap(
+          find.byKey(const ValueKey('mirror-whiteboard-toggle')),
+        );
+        await tester.pump();
+        expect(whiteboard.active, isTrue);
         expect(
-          tester.getCenter(find.byKey(const ValueKey('ios-mirror-fps'))).dx,
-          greaterThan(
-            tester
-                .getCenter(find.byKey(const ValueKey('ios-control-toggle')))
-                .dx,
-          ),
+          find.byKey(const ValueKey('mirror-whiteboard-color')),
+          findsOneWidget,
         );
         await tester.tap(find.byIcon(CupertinoIcons.camera));
         await tester.longPress(find.byIcon(CupertinoIcons.camera));

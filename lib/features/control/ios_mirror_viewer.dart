@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/ios/ios_control_provider.dart';
 import '../../core/ios/ios_mirror_coordinates.dart';
 import '../../core/ios/ios_mirror_service.dart';
+import 'whiteboard/mirror_whiteboard_canvas.dart';
+import 'whiteboard/mirror_whiteboard_controller.dart';
 
 /// macOS iPhone USB Texture 视图；port 为兼容旧调用保留，实际传入 Texture ID。
 /// 所有点击只落入视频区域；WDA 手势在抬起时一次提交，避免逐像素请求。
@@ -13,11 +15,13 @@ class IosMirrorViewer extends ConsumerStatefulWidget {
     required this.deviceId,
     required this.port,
     this.onVideoGeometryChanged,
+    this.whiteboard,
   });
   final String deviceId;
   final int port;
   final void Function(int width, int height, Size viewport)?
   onVideoGeometryChanged;
+  final MirrorWhiteboardController? whiteboard;
   @override
   ConsumerState<IosMirrorViewer> createState() => _IosMirrorViewerState();
 }
@@ -81,6 +85,7 @@ class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
         Offset? convert(Offset position) =>
             IosMirrorCoordinates.toPoints(position, viewport, pixels, points);
         bool canControl() {
+          if (widget.whiteboard?.active ?? false) return false;
           final current = ref.read(iosControlProvider(widget.deviceId));
           return current.ready && !current.busy;
         }
@@ -157,7 +162,16 @@ class _IosMirrorViewerState extends ConsumerState<IosMirrorViewer> {
                         child: SizedBox(
                           width: pixels.width,
                           height: pixels.height,
-                          child: Texture(textureId: widget.port),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Texture(textureId: widget.port),
+                              if (widget.whiteboard != null)
+                                MirrorWhiteboardCanvas(
+                                  controller: widget.whiteboard!,
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

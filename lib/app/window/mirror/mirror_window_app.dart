@@ -31,6 +31,7 @@ import '../sub_window_method_dispatcher.dart';
 import 'ios_airplay_mirror_content.dart';
 import 'android_mirror_transport_host.dart';
 import '../../../core/scrcpy/mirror_transport_type.dart';
+import '../../../features/control/whiteboard/mirror_whiteboard_controller.dart';
 
 /// 投屏独立窗口应用入口。
 class MirrorWindowApp extends ConsumerWidget {
@@ -134,6 +135,10 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   /// 用于捕获键盘事件的 FocusNode
   late final FocusNode _keyboardFocusNode;
 
+  /// 仅当前投屏窗口使用的本地白板；无需跨 Isolate 同步。
+  final MirrorWhiteboardController _whiteboard = MirrorWhiteboardController();
+  bool _whiteboardMode = false;
+
   /// 记录上一次鼠标按下的时间，用于辅助判定双击事件
   DateTime? _lastPointerDownTime;
 
@@ -153,6 +158,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
   void initState() {
     super.initState();
     _keyboardFocusNode = FocusNode(debugLabel: 'MirrorWindowKeyboard');
+    _whiteboard.addListener(_onWhiteboardChanged);
     _airplayHandle = widget.initialAirplayHandle;
     _airplayAspectRatio = widget.initialAirplayAspectRatio ?? _airplayAspectRatio;
 
@@ -195,6 +201,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     windowManager.removeListener(this);
     SubWindowMethodDispatcher.removeHandler(_handleWindowMethod);
     _keyboardFocusNode.dispose();
+    _whiteboard.removeListener(_onWhiteboardChanged);
+    _whiteboard.dispose();
     super.dispose();
   }
 
@@ -206,6 +214,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     final handle = arguments['airplayHandle'];
     if (handle is! int || handle <= 0 || !mounted) return false;
     final ratio = (arguments['airplayAspectRatio'] as num?)?.toDouble();
+    _whiteboard.clear();
     setState(() {
       _airplayHandle = handle;
       if (ratio != null && ratio > 0) _airplayAspectRatio = ratio;
@@ -231,6 +240,11 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         });
       }
     }
+  }
+
+  void _onWhiteboardChanged() {
+    if (!mounted || _whiteboardMode == _whiteboard.active) return;
+    setState(() => _whiteboardMode = _whiteboard.active);
   }
 
   // ==================== WindowListener 接口实现 ====================
@@ -272,7 +286,8 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
         handle: airplayHandle,
         deviceName: widget.deviceName,
         initialAspectRatio: _airplayAspectRatio,
-        autoHideControls: !settings.mirrorControlsAlwaysVisible,
+        autoHideControls:
+            !settings.mirrorControlsAlwaysVisible && !_whiteboardMode,
         isAlwaysOnTop: _controller.isAlwaysOnTop,
         onToggleAlwaysOnTop: _controller.toggleAlwaysOnTop,
         isFullScreen: _controller.isFullScreen,
@@ -287,12 +302,15 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           controller: _controller,
           isAirplay: true,
           airplayHandle: airplayHandle,
+          whiteboard: _whiteboard,
         ),
+        whiteboard: _whiteboard,
         onDisconnected: () {
           if (!mounted ||
               ref.read(activeIosMirrorProvider(widget.deviceId)) == null) {
             return;
           }
+          _whiteboard.clear();
           setState(() => _airplayHandle = null);
           unawaited(
             DesktopWindowTitleService.setTitle(
@@ -370,7 +388,10 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
     else if (_controller.errorMessage != null) {
       contentWidget = MirrorStatusView(
         rawErrorMessage: _controller.errorMessage,
-        onRetry: _controller.restartMirroring,
+        onRetry: () {
+          _whiteboard.clear();
+          _controller.restartMirroring();
+        },
       );
     }
     //投屏正常
@@ -383,6 +404,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                     key: _viewerKey,
                     behavior: HitTestBehavior.translucent,
                     onPointerDown: (e) {
+                      if (_whiteboard.active) return;
                       final now = DateTime.now();
                       // 判定双击
                       if (_lastPointerDownTime != null &&
@@ -398,11 +420,18 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                     },
                     child: EmbeddedScrcpyViewer(
                       deviceId: widget.deviceId,
+                      whiteboard: _whiteboard,
                       isHarmony: widget.isHarmony,
                       isFullScreen: _controller.isFullScreen,
-                      onVideoSizeChanged: _controller.onVideoSizeChanged,
-                      onIosVideoGeometryChanged:
-                          _controller.onIosVideoGeometryChanged,
+                      onVideoSizeChanged: (width, height) {
+                        _whiteboard.updateVideoOrientation(width, height);
+                        _controller.onVideoSizeChanged(width, height);
+                      },
+                      onIosVideoGeometryChanged: (width, height, viewport) {
+                        _whiteboard.updateVideoOrientation(width, height);
+                        _controller.onIosVideoGeometryChanged(
+                          width, height, viewport);
+                      },
                       onEscapePressed: () {
                         if (_controller.isFullScreen) {
                           _controller.toggleFullScreen(context, false);
@@ -466,7 +495,9 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
           },
           child: MirrorImmersiveOverlay(
             autoHide:
-                isLiveMirrorVisible && !settings.mirrorControlsAlwaysVisible,
+                isLiveMirrorVisible &&
+                !settings.mirrorControlsAlwaysVisible &&
+                !_whiteboardMode,
             viewer: contentWidget,
             titleBar: DragToMoveArea(
                   child: Container(
@@ -618,7 +649,10 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                             size: 16,
                           ),
                           tooltip: context.l10n.t('retry'),
-                          onPressed: _controller.restartMirroring,
+                          onPressed: () {
+                            _whiteboard.clear();
+                            _controller.restartMirroring();
+                          },
                         ),
                         // 窗口置顶按钮
                         MirrorToolbarButton(
@@ -681,6 +715,7 @@ class _MirrorWindowContentState extends ConsumerState<MirrorWindowContent>
                       deviceName: widget.deviceName,
                       windowId: widget.windowId,
                       controller: _controller,
+                      whiteboard: _whiteboard,
                     ),
                   ),
                   MirrorSessionFps(

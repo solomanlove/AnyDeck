@@ -18,6 +18,8 @@ import '../../core/harmony/harmony_mirror_service.dart';
 import 'ios_mirror_viewer.dart';
 import 'recorder/controller/mouse_track_recorder_controller.dart';
 import 'recorder/widgets/mouse_track_overlay.dart';
+import 'whiteboard/mirror_whiteboard_canvas.dart';
+import 'whiteboard/mirror_whiteboard_controller.dart';
 
 class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
   const EmbeddedScrcpyViewer({
@@ -28,6 +30,7 @@ class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
     this.isHarmony = false,
     this.onVideoSizeChanged,
     this.onIosVideoGeometryChanged,
+    this.whiteboard,
   });
 
   final String deviceId;
@@ -37,6 +40,7 @@ class EmbeddedScrcpyViewer extends ConsumerStatefulWidget {
   final void Function(int width, int height)? onVideoSizeChanged;
   final void Function(int width, int height, Size viewport)?
       onIosVideoGeometryChanged;
+  final MirrorWhiteboardController? whiteboard;
 
   @override
   ConsumerState<EmbeddedScrcpyViewer> createState() =>
@@ -271,6 +275,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _sendControlMessage(Uint8List message, {String? tag}) {
+    if (widget.whiteboard?.active ?? false) return;
     final future = _isHarmony
         ? ref.read(harmonyMirrorServiceProvider).sendControl(
             deviceId: widget.deviceId,
@@ -361,6 +366,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   KeyEventResult _handleKeyEvent(KeyEvent event) {
+    if (widget.whiteboard?.active ?? false) return KeyEventResult.ignored;
     if (_textController.value.composing.isValid) {
       return KeyEventResult.ignored;
     }
@@ -442,6 +448,10 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _onTextChanged() {
+    if (widget.whiteboard?.active ?? false) {
+      if (_textController.text.isNotEmpty) _textController.clear();
+      return;
+    }
     final value = _textController.value;
     if (value.composing.isValid) {
       return;
@@ -456,6 +466,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _handlePointerDown(PointerDownEvent event, String? resolution) {
+    if (widget.whiteboard?.active ?? false) return;
     _focusNode.requestFocus();
 
     final settings = ref.read(appSettingsProvider);
@@ -487,6 +498,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _handlePointerMove(PointerMoveEvent event, String? resolution) {
+    if (widget.whiteboard?.active ?? false) return;
     if (_ignoredPointers.contains(event.pointer)) {
       return;
     }
@@ -494,6 +506,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _handlePointerUp(PointerUpEvent event, String? resolution) {
+    if (widget.whiteboard?.active ?? false) return;
     if (_ignoredPointers.contains(event.pointer)) {
       _ignoredPointers.remove(event.pointer);
       return;
@@ -502,6 +515,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
   }
 
   void _handlePointerCancel(PointerCancelEvent event, String? resolution) {
+    if (widget.whiteboard?.active ?? false) return;
     if (_ignoredPointers.contains(event.pointer)) {
       _ignoredPointers.remove(event.pointer);
       return;
@@ -568,6 +582,7 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
         deviceId: widget.deviceId,
         port: port,
         onVideoGeometryChanged: widget.onIosVideoGeometryChanged,
+        whiteboard: widget.whiteboard,
       );
     }
 
@@ -636,7 +651,14 @@ class _EmbeddedScrcpyViewerState extends ConsumerState<EmbeddedScrcpyViewer> {
                 _sendScrollEvent(signal, resolution);
               }
             },
-            overlay: MouseTrackOverlay(deviceId: widget.deviceId),
+            overlay: Stack(
+              fit: StackFit.expand,
+              children: [
+                MouseTrackOverlay(deviceId: widget.deviceId),
+                if (widget.whiteboard != null)
+                  MirrorWhiteboardCanvas(controller: widget.whiteboard!),
+              ],
+            ),
           ),
         ],
       ),

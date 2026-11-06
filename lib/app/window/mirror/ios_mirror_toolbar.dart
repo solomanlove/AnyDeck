@@ -10,6 +10,8 @@ import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../widget/app_toast.dart';
 import 'mirror_toolbar_button.dart';
+import 'mirror_whiteboard_controls.dart';
+import '../../../features/control/whiteboard/mirror_whiteboard_controller.dart';
 
 /// iOS 投屏工具栏：deviceId 路由 WDA，两个截图回调复用窗口的复制/保存流程。
 /// 示例：由 MirrorFloatingToolbar 在 iOS 分支传入当前设备与截图回调。
@@ -22,6 +24,7 @@ class IosMirrorToolbar extends ConsumerStatefulWidget {
     required this.onSaveScreenshot,
     this.isAirplay = false,
     this.airplayHandle,
+    this.whiteboard,
   });
 
   final String deviceId;
@@ -29,6 +32,7 @@ class IosMirrorToolbar extends ConsumerStatefulWidget {
   final VoidCallback onSaveScreenshot;
   final bool isAirplay;
   final int? airplayHandle;
+  final MirrorWhiteboardController? whiteboard;
 
   @override
   ConsumerState<IosMirrorToolbar> createState() => _IosMirrorToolbarState();
@@ -252,6 +256,8 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
                     onPressed: widget.onScreenshot,
                     onLongPress: widget.onSaveScreenshot,
                   ),
+                  if (widget.whiteboard != null)
+                    MirrorWhiteboardControls(controller: widget.whiteboard!),
                   MirrorToolbarButton(
                     key: const ValueKey('ios-usb-record-toggle'),
                     icon: Icon(_recording ? CupertinoIcons.stop_fill

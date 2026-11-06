@@ -16,6 +16,8 @@ import '../desktop_window_title_service.dart';
 import 'mirror_immersive_overlay.dart';
 import 'mirror_session_status_bar.dart';
 import 'mirror_window_frame_adapter.dart';
+import '../../../features/control/whiteboard/mirror_whiteboard_canvas.dart';
+import '../../../features/control/whiteboard/mirror_whiteboard_controller.dart';
 
 /// 在通用 iOS 投屏窗口内渲染 AirPlay Texture，并复用 USB 窗口的窗口操作。
 class IosAirPlayMirrorContent extends StatefulWidget {
@@ -31,6 +33,7 @@ class IosAirPlayMirrorContent extends StatefulWidget {
     required this.onToggleAlwaysOnTop,
     this.isFullScreen = false,
     this.onToggleFullScreen,
+    this.whiteboard,
   });
 
   final int handle;
@@ -44,6 +47,7 @@ class IosAirPlayMirrorContent extends StatefulWidget {
   final VoidCallback onToggleAlwaysOnTop;
   final bool isFullScreen;
   final VoidCallback? onToggleFullScreen;
+  final MirrorWhiteboardController? whiteboard;
 
   @override
   State<IosAirPlayMirrorContent> createState() =>
@@ -407,7 +411,14 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
       child: Center(
         child: AspectRatio(
           aspectRatio: safeRatio,
-          child: Texture(textureId: _textureId!),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Texture(textureId: _textureId!),
+              if (widget.whiteboard != null)
+                MirrorWhiteboardCanvas(controller: widget.whiteboard!),
+            ],
+          ),
         ),
       ),
     );

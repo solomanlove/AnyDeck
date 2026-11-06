@@ -26,6 +26,8 @@ import '../../../features/control/recorder/widgets/mirror_mouse_recorder_button.
 import 'mirror_screen_recording_action.dart';
 import 'mirror_clipboard_input_button.dart';
 import 'mirror_clipboard_button.dart';
+import 'mirror_whiteboard_controls.dart';
+import '../../../features/control/whiteboard/mirror_whiteboard_controller.dart';
 
 export 'mirror_toolbar_button.dart';
 
@@ -39,6 +41,7 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
     required this.controller,
     this.isAirplay = false,
     this.airplayHandle,
+    this.whiteboard,
   });
 
   final String deviceId;
@@ -47,6 +50,7 @@ class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   final MirrorWindowController controller;
   final bool isAirplay;
   final int? airplayHandle;
+  final MirrorWhiteboardController? whiteboard;
 
   @override
   ConsumerState<MirrorFloatingToolbar> createState() =>
@@ -164,6 +168,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
         onSaveScreenshot: () => _takeScreenshot(context, widget.deviceId, saveToFile: true),
         isAirplay: widget.isAirplay,
         airplayHandle: widget.airplayHandle,
+        whiteboard: widget.whiteboard,
       );
     }
     final actions = ref.read(deviceActionServiceProvider);
@@ -432,6 +437,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 saveToFile: true,
               ),
             ),
+            if (widget.whiteboard != null)
+              MirrorWhiteboardControls(controller: widget.whiteboard!),
             MirrorToolbarButton(
               icon: Icon(
                 recordState.isRecording
