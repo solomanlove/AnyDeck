@@ -6,31 +6,36 @@
 ## 核心同步工作流
 
 ### 1. 窗口创建与参数注入
-在主窗口（ID 0）拉起子窗口时，采用 JSON 承载初始化状态：
+在主窗口拉起子窗口时，使用项目封装传递窗口参数；窗口 ID 由插件动态生成：
 ```dart
-final window = await DesktopMultiWindow.createWindow(
-  jsonEncode({
+final window = await createAdbManageWindow(
+  arguments: {
     'type': 'mirror',
     'deviceId': deviceId,
     'language': currentLanguageCode,
-  }),
+  },
+  frame: const Rect.fromLTWH(0, 0, 800, 600),
 );
-await window.setFrame(const Rect.fromLTWH(0, 0, 800, 600));
-await window.show();
 ```
 
 ### 2. 状态更新广播编排 (双向广播)
 - **子窗口 -> 主窗口**
-  子窗口触发操作（如在子窗口投屏工具栏中点击切换语言），应向主窗口发送方法调用：
+  子窗口触发操作（如切换语言）时，通过主窗口已注册的单向业务通道发送方法调用；不能把主窗口 ID 写死为 `0`：
   ```dart
-  await DesktopMultiWindow.invokeMethod(0, 'update_language', newLanguageCode);
+  const mainChannel = WindowMethodChannel(
+    'any_deck/settings_main',
+    mode: ChannelMode.unidirectional,
+  );
+  await mainChannel.invokeMethod('update_language', newLanguageCode);
   ```
 - **主窗口 -> 其它所有子窗口**
-  主窗口的方法接收器拦截此消息后，除了更新主 Isolate 的 Riverpod 状态，还要遍历所有活动的子窗口进行同步：
+  主窗口的方法接收器处理消息后，遍历其他活动窗口同步状态：
   ```dart
-  final subWindowIds = await DesktopMultiWindow.getAllSubWindowIds();
-  for (final id in subWindowIds) {
-    await DesktopMultiWindow.invokeMethod(id, 'update_language', newLanguageCode);
+  final windows = await WindowController.getAll();
+  for (final window in windows) {
+    if (window.arguments.isNotEmpty) {
+      await window.invokeMethod('update_language', newLanguageCode);
+    }
   }
   ```
 

@@ -27,7 +27,7 @@ lib/
 ```
 
 ## 全局核心 Provider 清单
-- `windowIdProvider` (Provider<int>): 记录当前 Isolate 所在的窗口 ID（主窗口固定为 0）。
+- `windowIdProvider` (Provider<String>): 主窗口为空字符串，子窗口为插件分配的动态窗口 ID；跨窗口通信不得写死主窗口 ID。
 - `appSettingsProvider` (NotifierProvider): 管理多语言、明暗主题、投屏最前配置。
 - `adbServiceProvider` (Provider): 提供 `AdbService` 实例。
 - `discoveredDevicesProvider` (StreamProvider): 聚合 ADB、HDC 与 iOS 设备发现结果，可能包含 offline 或 unauthorized 记录。

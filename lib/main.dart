@@ -17,7 +17,6 @@ import 'app/window/apk/apk_details_window_app.dart';
 import 'app/window/desktop_window_manager_service.dart';
 import 'app/window/mirror/mirror_window_app.dart';
 import 'app/window/mirror/app_mirror_window_creation_gate.dart';
-import 'app/window/sub_window_method_dispatcher.dart';
 import 'app/window/console/console_window_app.dart';
 import 'app/window/dlna/dlna_player_window_app.dart';
 import 'app/window/version_distribution/android_version_distribution_window_app.dart';
@@ -220,7 +219,7 @@ Future<void> _startApplication(List<String> args) async {
   DesktopWindowManagerService.setProviderContainer(container);
   // 预热主窗口全局日志服务，确保跨窗口通道处理方法在主窗口提前就绪
   container.read(logHistoryProvider);
-  SubWindowMethodDispatcher.registerHandler(AppMirrorWindowCreationGate.handleWindowCall);
+  await AppMirrorWindowCreationGate.initializeMain();
   if (Platform.isMacOS) {
     await ApkOpenCoordinator(container).initialize();
     await IosControlGateway.initializeHost();

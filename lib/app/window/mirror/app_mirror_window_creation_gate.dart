@@ -9,23 +9,33 @@ import '../multi_window_compat.dart';
 class AppMirrorWindowCreationGate {
   static Future<void> _tail = Future<void>.value();
   static const methodName = 'createAppMirrorWindow';
+  static const channelName = 'any_deck/app_mirror_window_creation';
+  static const _channel = WindowMethodChannel(
+    channelName,
+    mode: ChannelMode.unidirectional,
+  );
+  static bool _isMainEngine = false;
+
+  /// 主窗口在显示 UI 前完成注册，子窗口可直接向该单向通道请求创建。
+  static Future<void> initializeMain() async {
+    await _channel.setMethodCallHandler(handleWindowCall);
+    _isMainEngine = true;
+  }
 
   static Future<String> create(
     Map<String, dynamic> arguments,
     Size size,
     String title,
   ) async {
-    final current = await WindowController.fromCurrentEngine();
-    if (current.windowId == '0') {
+    if (_isMainEngine) {
       return createLocal(arguments, size, title);
     }
-    final id = await WindowController.fromWindowId('0')
-        .invokeMethod<String>(methodName, {
-          'arguments': arguments,
-          'width': size.width,
-          'height': size.height,
-          'title': title,
-        });
+    final id = await _channel.invokeMethod<String>(methodName, {
+      'arguments': arguments,
+      'width': size.width,
+      'height': size.height,
+      'title': title,
+    });
     if (id == null || id.isEmpty) {
       throw StateError('Main window could not create app mirror window');
     }
@@ -54,7 +64,7 @@ class AppMirrorWindowCreationGate {
     }
   }
 
-  /// 仅主窗口注册此处理器，子窗口通过 MethodChannel 请求同一创建队列。
+  /// 仅主窗口注册此处理器，子窗口通过单向通道请求同一创建队列。
   static Future<dynamic> handleWindowCall(MethodCall call) async {
     if (call.method != methodName) return null;
     final data = call.arguments;

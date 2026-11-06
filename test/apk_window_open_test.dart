@@ -152,13 +152,6 @@ void main() {
   });
 
   test('子窗口创建请求交给主窗口处理', () async {
-    messenger.setMockMethodCallHandler(channel, (call) async {
-      calls.add(call);
-      if (call.method == 'getWindowDefinition') {
-        return {'windowId': 'child', 'windowArgument': '{}'};
-      }
-      return null;
-    });
     messenger.setMockMethodCallHandler(windowChannel, (call) async {
       calls.add(call);
       return call.method == 'invokeMethod' ? 'main-window-id' : true;
@@ -170,8 +163,37 @@ void main() {
     );
     expect(id, 'main-window-id');
     expect(calls.where((call) => call.method == 'createWindow'), isEmpty);
-    final remoteCall = calls.singleWhere((call) => call.method == 'invokeMethod');
-    expect(remoteCall.arguments['method'], AppMirrorWindowCreationGate.methodName);
-    expect(remoteCall.arguments['channel'], 'mixin.one/window_controller/0');
+    final remoteCall = calls.singleWhere(
+      (call) => call.method == 'invokeMethod',
+    );
+    expect(
+      remoteCall.arguments['method'],
+      AppMirrorWindowCreationGate.methodName,
+    );
+    expect(
+      remoteCall.arguments['channel'],
+      AppMirrorWindowCreationGate.channelName,
+    );
+  });
+
+  test('主窗口注册单向通道后本地串行创建', () async {
+    await AppMirrorWindowCreationGate.initializeMain();
+    final register = calls.singleWhere(
+      (call) => call.method == 'registerMethodHandler',
+    );
+    expect(
+      register.arguments['channel'],
+      AppMirrorWindowCreationGate.channelName,
+    );
+    expect(register.arguments['mode'], 'unidirectional');
+
+    final id = await AppMirrorWindowCreationGate.create(
+      {'type': 'mirror', 'deviceId': 'USB-1'},
+      const Size(500, 800),
+      'Phone',
+    );
+    expect(id, '1');
+    expect(calls.where((call) => call.method == 'createWindow'), hasLength(1));
+    expect(calls.where((call) => call.method == 'invokeMethod'), isEmpty);
   });
 }

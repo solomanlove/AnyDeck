@@ -9,7 +9,7 @@ alwaysApply: false
 # 桌面端多窗口管理规范
 
 1. **主窗口基础特征**
-   - 窗口 ID 为 0，承载 Dashboard 及所有主要 ADB 管理 Tab。
+   - 主窗口承载 Dashboard 及所有主要 ADB 管理 Tab。`desktop_multi_window 0.3.1` 在 macOS、Windows、Linux 均动态生成窗口 ID，不得假设主窗口 ID 为 `0`；跨窗口请求主窗口时使用主窗口注册的单向 `WindowMethodChannel`，或传递运行时获取的真实 ID。
    - 窗口装饰统一由 `DesktopChromePolicy` 决定：macOS 隐藏原生标题文字并保留 traffic lights；Windows 主窗口使用 `DesktopWindowFrame` 提供右侧控制按钮；Linux 保留原生装饰，尊重桌面环境的按钮布局。
    - 拦截原生关闭事件：使用 `windowManager.setPreventClose(true)`，点击关闭时默认**隐藏窗口并最小化到系统托盘**，避免进程意外终止。
    - 双击 macOS Dock 图标或点击托盘图标时，主窗口应自动恢复并重新聚焦 (`windowManager.show()`, `windowManager.focus()`)。

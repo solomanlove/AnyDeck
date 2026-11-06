@@ -13,7 +13,7 @@
 - `deviceFusionModeProvider` 提供 `enabled / disabled / unsupported / unknown`；未知时 UI 不允许修改。应用页切换后使用 `SharedPreferencesAsync` 写入，并对投屏子窗口发送 `fusionModeChanged` 以刷新状态。每次应用投屏启动前回读 SDK 和偏好，避免旧窗口持有过期值。
 - 主窗口与子窗口属于不同 Isolate。窗口参数携带 `physicalDeviceKey`；`createAdbManageWindow()` 对同一物理设备和包名复用融合窗口，副屏初始分辨率变化不产生重复窗口。`AndroidMirrorTransportHost` 负责同一窗口内 USB、TCP、TLS 换线；音频焦点按物理设备归并，因为 scrcpy 采集的音频是设备级。
 - 两个 App 窗口并发启动时，各窗口按窗口 ID 独立算出相同的唯一音频获胜者；较旧数字窗口先静音，避免双方互相静音或同时播放。关闭后以同一顺序选择剩余窗口。
-- 应用窗口创建由主窗口的 `AppMirrorWindowCreationGate` 接收子窗口 MethodChannel 请求并串行化 `getAll/create`，避免跨 Isolate 双击时并发创建两个同 App 副屏。创建队列不覆盖随后最长 55 秒的首帧等待；不能使用 Dart `FileLock` 代替，因为同一进程中的多个句柄不会互斥。
+- 应用窗口创建由主窗口的 `AppMirrorWindowCreationGate` 串行化 `getAll/create`，避免跨 Isolate 双击时并发创建两个同 App 副屏。主窗口在 `runApp` 前注册 `any_deck/app_mirror_window_creation` 单向 `WindowMethodChannel`；子窗口经此通道请求主窗口，主窗口自身直接进入队列。创建队列不覆盖随后最长 55 秒的首帧等待；不能使用 Dart `FileLock` 代替，因为同一进程中的多个句柄不会互斥。
 - `AppMirrorLaunchCoordinator` 在单个 Isolate 中按设备、包名和目标模式合并重复点击，共享启动与首帧等待；跨 Isolate 的窗口创建仍由主窗口队列保证唯一。
 
 ## 副屏、尺寸与回收
@@ -43,4 +43,12 @@ API 34、35、36 和厂商 ROM 的上述真机验收尚未完成。DRM/`FLAG_SEC
 - 2026-11-06：`flutter test --no-pub` 定向运行 5 个相关测试文件，25 项通过，覆盖默认值、关闭后主屏启动、同一 App 点击合并、窗口并发复用、物理设备与并发音频焦点、错误页主动回退、resize 消息和原有摄像头会话。
 - `flutter analyze --no-pub` 无本次新增错误；全仓仍有 38 条已有的 warning/info，命令退出码为 1。提交前的 `git diff --check` 通过。
 - 全量 `flutter test --no-pub --reporter compact` 在最后几项局部修正前运行，结果为 1208 项通过、4 项跳过、28 项失败。失败用例涉及真实设备性能探针、品牌资源路径、旧 Dashboard Widget 断言、应用筛选和其他未改模块；应用筛选相关失败已在独立 HEAD 基线复现。局部修正之后重新运行了上述 25 项定向测试；全仓 `dart analyze` 仍为 38 条已有 warning/info。
-- 本次没有启动 AnyDeck 或操作手机图库。API 34 真机上的首帧、图库 Task、触控、窗口缩放和关闭回收仍须按上表验收；API 35 设备结果不能替代 API 34 验收。
+- 首版提交时没有由开发过程启动 AnyDeck 或操作手机图库。API 34 真机上的首帧、图库 Task、触控、窗口缩放和关闭回收仍须按上表验收；API 35 设备结果不能替代 API 34 验收。
+
+## 运行反馈与修复（2026-11-06）
+
+- 用户在 Mi MIX 3 的应用列表及已打开的投屏窗口点击应用投屏，均出现 `CHANNEL_UNREGISTERED`：`mixin.one/window_controller/0` 不可访问。失败发生在子窗口请求主窗口创建新窗口时，尚未进入副屏启动链路。
+- `desktop_multi_window 0.3.1` 在 macOS、Windows、Linux 均给主窗口分配动态 ID；先前代码将主窗口 ID 写死为 `0`，配套单元测试也模拟了这个错误 ID。现改用插件支持的 `ChannelMode.unidirectional`，由主窗口完成注册后再显示 UI，子窗口调用固定业务通道，不依赖窗口 ID。仓库中写死主窗口 ID 的多窗口规则与技能文档已同步纠正。
+- 回归测试验证子窗口使用业务通道、主窗口以单向模式注册并本地串行创建。Dart 测试与静态检查只能验证调用契约；需要完全退出并重新启动当前运行的 AnyDeck 后，才能验证主窗口注册以及真实副屏首帧，Hot Reload 不会重新执行主窗口初始化。
+- 修复后定向运行 5 个相关测试文件，26 项通过；全仓 `dart analyze` 仍有 38 条既有 warning/info，无本次新增诊断。尚未对重启后的真实窗口创建、App Task 和首帧完成运行验收。
+- 提交前补充复核 5 个测试文件，38 项通过；对 `app_mirror_window_creation_gate.dart`、`main.dart` 和 `apk_window_open_test.dart` 分别执行 `dart analyze`，均无诊断。
