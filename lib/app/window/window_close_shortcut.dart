@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// 为独立子窗口提供 macOS 标准关闭快捷键（⌘W）。
+/// 为独立子窗口提供标准关闭快捷键（macOS ⌘W，其他平台 Ctrl+W）。
 class WindowCloseShortcut extends StatelessWidget {
   const WindowCloseShortcut({super.key, required this.child});
 
@@ -13,7 +13,11 @@ class WindowCloseShortcut extends StatelessWidget {
   Widget build(BuildContext context) {
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.keyW, meta: true):
+        SingleActivator(
+          LogicalKeyboardKey.keyW,
+          meta: Platform.isMacOS,
+          control: !Platform.isMacOS,
+        ):
             windowManager.close,
       },
       child: Focus(autofocus: true, child: child),
@@ -21,7 +25,7 @@ class WindowCloseShortcut extends StatelessWidget {
   }
 }
 
-/// 为主窗口提供 macOS 标准快捷键：
+/// 为主窗口提供标准快捷键（其他平台以 Ctrl 替代 ⌘）：
 /// - ⌘W：走 close listener（最小化到托盘）
 /// - ⌘Q（macOS）：退出整个应用
 /// - ⌘[showWindowKey]：显示并聚焦主窗口（默认 ⌘1）
@@ -61,7 +65,11 @@ class MainWindowCloseShortcut extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bindings = <ShortcutActivator, VoidCallback>{
-      const SingleActivator(LogicalKeyboardKey.keyW, meta: true):
+      SingleActivator(
+        LogicalKeyboardKey.keyW,
+        meta: Platform.isMacOS,
+        control: !Platform.isMacOS,
+      ):
           windowManager.close,
     };
 
@@ -83,7 +91,11 @@ class MainWindowCloseShortcut extends StatelessWidget {
     // 注册动态显示主窗口快捷键（默认 ⌘1）
     final showKey = _keyFromChar(showWindowKey);
     if (showKey != null) {
-      bindings[SingleActivator(showKey, meta: true)] = () async {
+      bindings[SingleActivator(
+        showKey,
+        meta: Platform.isMacOS,
+        control: !Platform.isMacOS,
+      )] = () async {
         await windowManager.show();
         await windowManager.focus();
       };

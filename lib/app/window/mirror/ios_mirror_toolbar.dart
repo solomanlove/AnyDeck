@@ -214,6 +214,7 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
                   MirrorToolbarButton(
                     icon: const Icon(CupertinoIcons.lock),
                     tooltip: context.l10n.t('iosLock'),
+                    shortcut: MirrorShortcut.power,
                     onPressed: canControl ? () => perform('lock') : null,
                   ),
                   for (final button in [
@@ -224,6 +225,7 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
                     MirrorToolbarButton(
                       icon: Icon(button.$1),
                       tooltip: context.l10n.t(button.$2),
+                      shortcut: MirrorShortcut.values.firstWhere((action) => action.name == button.$2),
                       onPressed: canControl
                           ? () => perform('button', {'name': button.$2})
                           : null,
@@ -231,6 +233,7 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
                   MirrorToolbarButton(
                     icon: const Icon(Icons.text_fields),
                     tooltip: context.l10n.t('getClipboardInput'),
+                    shortcut: MirrorShortcut.inputClipboard,
                     onPressed: canControl
                         ? () async {
                             final data = await Clipboard.getData(
@@ -253,6 +256,8 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
                   MirrorToolbarButton(
                     icon: const Icon(CupertinoIcons.camera),
                     tooltip: context.l10n.t('screenshotTooltip'),
+                    shortcut: MirrorShortcut.screenshot,
+                    longPressShortcut: MirrorShortcut.saveScreenshot,
                     onPressed: widget.onScreenshot,
                     onLongPress: widget.onSaveScreenshot,
                   ),
@@ -260,6 +265,7 @@ class _IosMirrorToolbarState extends ConsumerState<IosMirrorToolbar> {
                     MirrorWhiteboardControls(controller: widget.whiteboard!),
                   MirrorToolbarButton(
                     key: const ValueKey('ios-usb-record-toggle'),
+                    shortcut: MirrorShortcut.recording,
                     icon: Icon(_recording ? CupertinoIcons.stop_fill
                         : CupertinoIcons.videocam),
                     tooltip: context.l10n.t(_recording ? 'stopRecord'

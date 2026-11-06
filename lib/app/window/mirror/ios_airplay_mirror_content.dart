@@ -10,6 +10,8 @@ import '../../../core/airplay/airplay_server_service.dart';
 import '../../../core/airplay/airplay_connection_monitor.dart';
 import '../../../core/airplay/airplay_server_state.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shortcuts/mirror_shortcut.dart';
+import '../../shortcuts/mirror_shortcut_scope.dart';
 import '../../theme/app_theme.dart';
 import '../multi_window_compat.dart';
 import '../desktop_window_title_service.dart';
@@ -350,6 +352,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
   List<Widget> _windowActions(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final toolbarFg = Theme.of(context).appColors.toolbarForeground;
+    final shortcuts = MirrorShortcutScope.maybeOf(context);
     return [
       for (final action in [
         (
@@ -357,6 +360,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
           'airplayAlwaysOnTop',
           widget.onToggleAlwaysOnTop,
           widget.isAlwaysOnTop ? Colors.orange : toolbarFg,
+          MirrorShortcut.alwaysOnTop,
         ),
         (
           _effectiveFullScreen
@@ -365,21 +369,28 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
           'airplayFullscreen',
           _toggleFullScreen,
           toolbarFg,
+          MirrorShortcut.fullScreen,
         ),
         (
           CupertinoIcons.stop_circle,
           'airplayStopSession',
           _stopAirPlay,
           colors.error,
+          null,
         ),
       ])
-        IconButton(
-          icon: Icon(action.$1, size: 16, color: action.$4),
-          tooltip: context.l10n.t(action.$2),
-          onPressed: action.$3,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-          visualDensity: VisualDensity.compact,
+        MirrorShortcutTarget(
+          callbacks: {if (action.$5 != null) action.$5!: action.$3},
+          child: IconButton(
+            icon: Icon(action.$1, size: 16, color: action.$4),
+            tooltip:
+                shortcuts?.tooltip(action.$5, context.l10n.t(action.$2)) ??
+                context.l10n.t(action.$2),
+            onPressed: action.$3,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+            visualDensity: VisualDensity.compact,
+          ),
         ),
     ];
   }

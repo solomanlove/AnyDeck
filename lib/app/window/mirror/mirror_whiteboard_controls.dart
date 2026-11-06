@@ -32,6 +32,7 @@ class MirrorWhiteboardControls extends StatelessWidget {
         children: [
           MirrorToolbarButton(
             key: const ValueKey('mirror-whiteboard-toggle'),
+            shortcut: MirrorShortcut.whiteboard,
             icon: Icon(
               CupertinoIcons.paintbrush,
               color: controller.active

@@ -105,6 +105,7 @@ import 'devices/widgets/device_share_controls.dart';
 import '../core/device_share/device_share_provider.dart';
 import 'devices/widgets/device_list_filters.dart';
 import 'overview/widget/mirror_quality_presets.dart';
+import 'overview/widget/keyboard_shortcut_settings.dart';
 import 'devices/model/device_list_presentation.dart';
 import 'devices/model/device_context_action.dart';
 import 'devices/widgets/host_network_footer.dart';

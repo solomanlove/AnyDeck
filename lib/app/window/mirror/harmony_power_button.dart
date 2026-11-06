@@ -73,6 +73,7 @@ class _HarmonyPowerButtonState extends ConsumerState<HarmonyPowerButton> {
       color: Theme.of(context).appColors.toolbarForeground,
     ),
     tooltip: context.l10n.t('power'),
+    shortcut: MirrorShortcut.power,
     isLoading: _busy,
     onPressed: _openMenu,
   );

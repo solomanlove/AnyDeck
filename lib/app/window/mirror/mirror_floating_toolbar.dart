@@ -31,6 +31,8 @@ import '../../../features/control/whiteboard/mirror_whiteboard_controller.dart';
 
 export 'mirror_toolbar_button.dart';
 
+part 'mirror_toolbar_actions.dart';
+
 ///投屏窗口中工具栏
 class MirrorFloatingToolbar extends ConsumerStatefulWidget {
   const MirrorFloatingToolbar({
@@ -88,69 +90,6 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
 
 
 
-  Future<void> _takeScreenshot(BuildContext context, String deviceId, {required bool saveToFile}) async {
-    try {
-      final displayId = widget.controller.isAppMirror
-          ? ref
-              .read(embeddedScrcpyServiceProvider)
-              .getVirtualDisplayId(deviceId)
-          : null;
-      if (widget.controller.isAppMirror && displayId == null) {
-        throw StateError('应用副屏尚未准备完成，无法截图');
-      }
-      final bytes = widget.controller.isIos
-          ? await ref.read(iosCommandServiceProvider).captureScreenshot(deviceId)
-          : (widget.controller.isHarmony
-              ? await ref.read(hdcServiceProvider).captureScreenshot(deviceId)
-              : (displayId == null
-                  ? await ref.read(adbServiceProvider).captureScreenshot(deviceId)
-                  : await ref
-                      .read(adbServiceProvider)
-                      .captureDisplayScreenshot(deviceId, displayId)));
-
-      final hostPlatform = ref.read(hostPlatformServiceProvider);
-
-      // 复制到剪切板
-      final copied = await hostPlatform.copyImageToClipboard(bytes);
-
-      if (saveToFile) {
-        final settings = ref.read(appSettingsProvider);
-        final savePath = hostPlatform.generateScreenshotPath(
-          settings.screenshotSavePath,
-          deviceId,
-        );
-        final file = File(savePath);
-        await file.parent.create(recursive: true);
-        await file.writeAsBytes(bytes);
-
-        if (context.mounted) {
-          AppToast.show(
-            context,
-            '${context.l10n.t('saveSuccess')}: $savePath${copied ? " (已复制到剪贴板)" : ""}',
-          );
-        }
-      } else {
-        if (context.mounted) {
-          if (copied) {
-            AppToast.show(context, context.l10n.t('copySuccess'));
-          } else {
-            AppToast.show(
-              context,
-              context.l10n.locale.languageCode == 'zh'
-                  ? '复制至剪贴板失败'
-                  : 'Failed to copy to clipboard',
-              isError: true,
-            );
-          }
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        AppToast.show(context, '${context.l10n.t('error')}: $e', isError: true);
-      }
-    }
-  }
-
   String _formatDuration(int seconds) {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
     final s = (seconds % 60).toString().padLeft(2, '0');
@@ -207,6 +146,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('power'),
+              shortcut: MirrorShortcut.power,
               onPressed: () async {
                 final result = await pressPowerKeyAndResetScreenPower(
                         actions: actions,
@@ -229,6 +169,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                       : (Theme.of(context).appColors.toolbarForeground),
                 ),
                 tooltip: context.l10n.t('screenPowerToggle'),
+                shortcut: MirrorShortcut.screenPower,
                 onPressed: () {
                   ref
                       .read(screenPowerOffProvider(widget.deviceId).notifier)
@@ -244,6 +185,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('volumeUp'),
+              shortcut: MirrorShortcut.volumeUp,
               onPressed: () {
                 if (_volumeLongPressHandler.shouldSuppressVolumeUp) {
                   return;
@@ -261,6 +203,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('volumeDown'),
+              shortcut: MirrorShortcut.volumeDown,
               onPressed: () {
                 if (_volumeLongPressHandler.shouldSuppressVolumeDown) {
                   return;
@@ -284,6 +227,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   color: Theme.of(context).appColors.toolbarForeground,
                 ),
                 tooltip: context.l10n.t('back'),
+                shortcut: MirrorShortcut.back,
                 onPressed: () {
                   if (_backLongPressHandler.shouldSuppressBack) {
                     return;
@@ -302,6 +246,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   color: Theme.of(context).appColors.toolbarForeground,
                 ),
                 tooltip: context.l10n.t('home'),
+                shortcut: MirrorShortcut.home,
                 onPressed: () {
                   actions.keyEvent(widget.deviceId, 3);
                 },
@@ -313,6 +258,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   color: Theme.of(context).appColors.toolbarForeground,
                 ),
                 tooltip: context.l10n.t('menuKey'),
+                shortcut: MirrorShortcut.recentApps,
                 onPressed: () => actions.keyEvent(widget.deviceId, 187),
               ),
             MirrorClipboardInputButton(
@@ -335,90 +281,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('focus'),
-              onPressed: () async {
-                if (!widget.controller.isHarmony) {
-                  // Android 设备同步刷新标题栏的前台应用 icon。
-                  widget.controller.identifyForegroundApp();
-                }
-
-                final res = widget.controller.isHarmony
-                    ? await ref
-                          .read(hdcServiceProvider)
-                          .currentFocus(widget.deviceId)
-                    : await actions.currentFocus(widget.deviceId);
-                final harmonyWindow = widget.controller.isHarmony
-                    ? HarmonyForegroundWindow.parse(res.stdout)
-                    : null;
-                if (context.mounted) {
-                  showDialog<void>(
-                    context: context,
-                    builder: (context) {
-                      final isDark =
-                          Theme.of(context).brightness == Brightness.dark;
-                      final cardColor = isDark
-                          ? const Color(0xff1e1e1e)
-                          : const Color(0xffffffff);
-                      return AlertDialog(
-                        backgroundColor: cardColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        contentPadding: const EdgeInsets.fromLTRB(
-                          16,
-                          8,
-                          16,
-                          16,
-                        ),
-                        actionsPadding: const EdgeInsets.fromLTRB(
-                          16,
-                          0,
-                          16,
-                          12,
-                        ),
-                        title: Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.scope,
-                              color: Theme.of(context).appColors.toolbarForeground,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              context.l10n.t('currentFocusWindow'),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        content: SelectableText(
-                          harmonyWindow == null
-                              ? res.message
-                              : formatMirrorHarmonyFocus(
-                                  context,
-                                  harmonyWindow,
-                                  fallback: res.isSuccess
-                                      ? context.l10n.t('foregroundUnavailable')
-                                      : res.message,
-                                ),
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text(
-                              context.l10n.t('ok'),
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                }
-              },
+              shortcut: MirrorShortcut.focus,
+              onPressed: () => _showForegroundWindow(context, actions),
             ),
             MirrorToolbarButton(
               icon: Icon(
@@ -426,6 +290,8 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 color: Theme.of(context).appColors.toolbarForeground,
               ),
               tooltip: context.l10n.t('screenshotTooltip'),
+              shortcut: MirrorShortcut.screenshot,
+              longPressShortcut: MirrorShortcut.saveScreenshot,
               onPressed: () => _takeScreenshot(
                 context,
                 widget.deviceId,
@@ -452,6 +318,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
               tooltip: recordState.isRecording
                   ? context.l10n.t('stopRecord')
                   : context.l10n.t('startRecord'),
+              shortcut: MirrorShortcut.recording,
               isLoading: recordState.isStopping,
               badge: recordState.isRecording
                   ? const MirrorPulsingRecordBadge()
@@ -504,6 +371,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 size: 18,
               ),
               tooltip: context.l10n.t('deviceSettings'),
+              shortcut: MirrorShortcut.deviceSettings,
               onPressed: () => showDeviceSettingsPopup(
                 context: context,
                 deviceId: widget.deviceId,

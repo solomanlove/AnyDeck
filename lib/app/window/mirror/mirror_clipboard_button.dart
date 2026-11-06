@@ -25,6 +25,7 @@ class MirrorClipboardButton extends StatelessWidget {
         color: Theme.of(context).appColors.toolbarForeground,
       ),
       tooltip: context.l10n.t('clipboardTitle'),
+      shortcut: MirrorShortcut.clipboard,
       onPressed: () => showDialog<void>(
         context: context,
         builder: (context) => MirrorClipboardDialog(

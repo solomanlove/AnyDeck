@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings.dart';
+import '../shortcuts/mirror_shortcut.dart';
 import 'mirror_quality_preset.dart';
 import 'harmony_share_preference_keys.dart';
 import '../../core/nearby_share/share_receive_directory.dart';
@@ -26,6 +27,7 @@ part 'app_settings_broadcast.dart';
 part 'app_settings_mirror_presets.dart';
 part 'app_settings_notifications.dart';
 part 'app_settings_harmony_name.dart';
+part 'app_settings_shortcuts.dart';
 
 /// 全局唯一的窗口 ID Provider，主窗口默认为空字符串。
 final windowIdProvider = Provider<String>((ref) => '');
@@ -37,7 +39,7 @@ final appSettingsProvider =
     );
 
 /// 负责加载和保存设置，并通过乐观更新保持 UI 响应。
-class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, MirrorPresetSettings {
+class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, MirrorPresetSettings, ShortcutSettings {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
@@ -84,6 +86,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
 
   Future<dynamic> _handleSettingsCall(MethodCall call) async {
     stdout.writeln('[SettingsController] _handleSettingsCall: method=${call.method}, args=${call.arguments}, currentWindowId=${ref.read(windowIdProvider)}');
+    if (call.method == MirrorShortcutSettings.channelMethod) return _receiveMirrorShortcuts(call.arguments);
     if (call.method == 'change_harmony_share_local_name' && call.arguments is String) {
       await setHarmonyShareLocalName(call.arguments as String);
     } else if (call.method == 'update_harmony_share_local_name' && call.arguments is String) {
@@ -381,14 +384,6 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
     }
   }
 
-  /// 更新显示主窗口的快捷键字符（如 '1' 表示 ⌘1），并持久化。
-  Future<void> setShowWindowShortcut(String key) async {
-    final clean = key.trim().isEmpty ? '1' : key.trim()[0].toLowerCase();
-    state = state.copyWith(showWindowShortcutKey: clean);
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_showWindowShortcutKey, clean);
-  }
-
   /// 更新开发者模式开关状态，并持久化和跨窗口同步。
   Future<void> setDeveloperModeEnabled(bool value, {bool broadcast = true}) async {
     state = state.copyWith(developerModeEnabled: value);
@@ -446,8 +441,8 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
         launchAtStartup = await DesktopAutoStartService.isEnabled();
       } catch (_) {}
     }
-    final showWindowShortcutKey =
-        preferences.getString(_showWindowShortcutKey) ?? '1';
+    final showWindowShortcutKey = normalizeMainWindowShortcut(
+        preferences.getString(_showWindowShortcutKey));
     final developerModeEnabled =
         preferences.getBool(_developerModeEnabledKey) ?? false;
     state = AppSettings(
@@ -473,6 +468,9 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       harmonyShareLocalName: preferences.getString(HarmonySharePreferenceKeys.localName) ?? ShareLocalName.defaultName,
       launchAtStartup: launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey,
+      mirrorShortcuts: MirrorShortcutSettings.decode(
+        preferences.getString(MirrorShortcutSettings.preferenceKey),
+      ),
       developerModeEnabled: developerModeEnabled,
     );
     unawaited(_syncVideoWindowAppearance(themeMode));

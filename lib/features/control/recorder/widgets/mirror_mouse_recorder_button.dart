@@ -59,6 +59,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
             color: defaultIconColor,
           ),
           tooltip: context.l10n.t('startRecordMouse'),
+          shortcut: MirrorShortcut.mouseRecording,
           onPressed: notifier.startRecording,
         );
 
@@ -74,6 +75,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
               ),
               badge: const _PulsingDotBadge(),
               tooltip: context.l10n.t('stopRecordMouse'),
+              shortcut: MirrorShortcut.mouseRecording,
               onPressed: notifier.stopRecording,
             ),
             Padding(
@@ -109,6 +111,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
                 color: Colors.greenAccent,
               ),
               tooltip: '${context.l10n.t('playMouseTrack')} ($tooltip)',
+              shortcut: MirrorShortcut.mouseRecording,
               onPressed: () => notifier.playTrack(),
             ),
             MirrorToolbarButton(
@@ -134,6 +137,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
                 color: Colors.orangeAccent,
               ),
               tooltip: context.l10n.t('pauseMouseTrack'),
+              shortcut: MirrorShortcut.mouseRecording,
               onPressed: notifier.pausePlaying,
             ),
             MirrorToolbarButton(
@@ -172,6 +176,7 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
                 color: Colors.orangeAccent,
               ),
               tooltip: context.l10n.t('resumeMouseTrack'),
+              shortcut: MirrorShortcut.mouseRecording,
               onPressed: () => notifier.resumePlaying(),
             ),
             MirrorToolbarButton(

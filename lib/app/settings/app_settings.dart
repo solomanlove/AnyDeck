@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/nearby_share/share_local_name.dart';
+import '../shortcuts/mirror_shortcut.dart';
 
 /// 本地字符串表支持的用户可选语言。
 enum AppLanguage {
@@ -57,6 +58,7 @@ class AppSettings {
     this.harmonyShareLocalName = ShareLocalName.defaultName,
     this.launchAtStartup = false,
     this.showWindowShortcutKey = '1',
+    this.mirrorShortcuts = const MirrorShortcutSettings(),
     this.developerModeEnabled = false,
   });
 
@@ -86,6 +88,8 @@ class AppSettings {
   final bool launchAtStartup;
   /// 显示主窗口的快捷键字符（默认 '1'，即 ⌘1）
   final String showWindowShortcutKey;
+  /// 投屏操作的按键覆盖项，未覆盖时使用目录中的默认组合键。
+  final MirrorShortcutSettings mirrorShortcuts;
   /// 是否已开启开发者选项
   final bool developerModeEnabled;
 
@@ -113,6 +117,7 @@ class AppSettings {
     String? harmonyShareLocalName,
     bool? launchAtStartup,
     String? showWindowShortcutKey,
+    MirrorShortcutSettings? mirrorShortcuts,
     bool? developerModeEnabled,
   }) {
     return AppSettings(
@@ -140,6 +145,7 @@ class AppSettings {
       harmonyShareLocalName: harmonyShareLocalName ?? this.harmonyShareLocalName,
       launchAtStartup: launchAtStartup ?? this.launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey ?? this.showWindowShortcutKey,
+      mirrorShortcuts: mirrorShortcuts ?? this.mirrorShortcuts,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
     );
   }

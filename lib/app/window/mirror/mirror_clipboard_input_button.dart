@@ -34,6 +34,7 @@ class MirrorClipboardInputButton extends ConsumerWidget {
         ),
       ),
       tooltip: context.l10n.t('getClipboardInput'),
+      shortcut: MirrorShortcut.inputClipboard,
       onPressed: () async {
         final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
         if (clipboardData != null &&

@@ -86,6 +86,14 @@ class _SettingsTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
 
+                    // 软件快捷键集中展示和修改，投屏窗口同步使用相同配置。
+                    _buildSectionCard(
+                      context,
+                      title: context.l10n.t('keyboardShortcuts'),
+                      children: const [KeyboardShortcutSettings()],
+                    ),
+                    const SizedBox(height: 24),
+
                     // 2. 存储 (Storage Settings)
                     _buildSectionCard(
                       context,

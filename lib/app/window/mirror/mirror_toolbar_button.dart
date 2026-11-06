@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
+import '../../shortcuts/mirror_shortcut.dart';
+import '../../shortcuts/mirror_shortcut_scope.dart';
+
+export '../../shortcuts/mirror_shortcut.dart';
 
 /// 投屏工具栏公共按钮；icon/tooltip 描述操作，onPressed 为空时禁用。
 /// 可选长按、指针回调和 badge 用于截图保存、按键长按及录制状态。
@@ -14,6 +19,8 @@ class MirrorToolbarButton extends StatefulWidget {
     this.onPointerUp,
     this.onPointerCancel,
     this.onLongPress,
+    this.shortcut,
+    this.longPressShortcut,
   });
 
   final Widget icon;
@@ -25,6 +32,10 @@ class MirrorToolbarButton extends StatefulWidget {
   final VoidCallback? onPointerUp;
   final VoidCallback? onPointerCancel;
   final VoidCallback? onLongPress;
+
+  /// 对应设置页的操作；快捷键复用 onPressed / onLongPress 的可用状态。
+  final MirrorShortcut? shortcut;
+  final MirrorShortcut? longPressShortcut;
 
   @override
   State<MirrorToolbarButton> createState() => _MirrorToolbarButtonState();
@@ -42,54 +53,74 @@ class _MirrorToolbarButtonState extends State<MirrorToolbarButton> {
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.05);
 
-    return Tooltip(
-      message: widget.tooltip,
-      preferBelow: false,
-      margin: const EdgeInsets.only(bottom: 4),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: AnimatedScale(
-          scale: _isHovered ? 1.15 : 1.0,
-          duration: const Duration(milliseconds: 100),
-          curve: Curves.easeOut,
-          child: Listener(
-            onPointerDown: (_) => widget.onPointerDown?.call(),
-            onPointerUp: (_) => widget.onPointerUp?.call(),
-            onPointerCancel: (_) => widget.onPointerCancel?.call(),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                GestureDetector(
-                  onLongPress: widget.isLoading ? null : widget.onLongPress,
-                  child: IconButton(
-                    iconSize: 14,
-                    padding: const EdgeInsets.all(2),
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: _isHovered
-                          ? hoverBg
-                          : Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+    final registry = MirrorShortcutScope.maybeOf(context);
+    final longLabel = widget.longPressShortcut == null
+        ? ''
+        : registry?.label(widget.longPressShortcut!) ?? '';
+    var tooltip =
+        registry?.tooltip(widget.shortcut, widget.tooltip) ?? widget.tooltip;
+    if (longLabel.isNotEmpty) {
+      tooltip +=
+          '\n${context.l10n.t(widget.longPressShortcut!.labelKey)} ($longLabel)';
+    }
+    return MirrorShortcutTarget(
+      callbacks: {
+        if (widget.shortcut != null)
+          widget.shortcut!: widget.isLoading ? null : widget.onPressed,
+        if (widget.longPressShortcut != null)
+          widget.longPressShortcut!: widget.isLoading
+              ? null
+              : widget.onLongPress,
+      },
+      child: Tooltip(
+        message: tooltip,
+        preferBelow: false,
+        margin: const EdgeInsets.only(bottom: 4),
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: AnimatedScale(
+            scale: _isHovered ? 1.15 : 1.0,
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.easeOut,
+            child: Listener(
+              onPointerDown: (_) => widget.onPointerDown?.call(),
+              onPointerUp: (_) => widget.onPointerUp?.call(),
+              onPointerCancel: (_) => widget.onPointerCancel?.call(),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  GestureDetector(
+                    onLongPress: widget.isLoading ? null : widget.onLongPress,
+                    child: IconButton(
+                      iconSize: 14,
+                      padding: const EdgeInsets.all(2),
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
                       ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: _isHovered
+                            ? hoverBg
+                            : Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      icon: widget.isLoading
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : widget.icon,
+                      onPressed: widget.isLoading ? null : widget.onPressed,
                     ),
-                    icon: widget.isLoading
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : widget.icon,
-                    onPressed: widget.isLoading ? null : widget.onPressed,
                   ),
-                ),
-                if (widget.badge != null)
-                  Positioned(top: 2, right: 2, child: widget.badge!),
-              ],
+                  if (widget.badge != null)
+                    Positioned(top: 2, right: 2, child: widget.badge!),
+                ],
+              ),
             ),
           ),
         ),
