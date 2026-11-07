@@ -52,3 +52,13 @@
 ## 2026-10-28 管理入口收口
 
 模拟器管理仅保留主窗口 `/emulators`，移除独立管理窗口、弹出按钮、macOS Window 菜单及系统托盘的管理入口。`EmulatorListPanel(isFullPage: true)` 显示完整页；默认模式仍支持可折叠卡片。管理布局不再预留独立窗口交通灯区域；各平台启动、停止、详情和运行画面保持原有行为。历史章节中的独立管理窗口说明已失效。
+
+## 平台 Tab 复用系统版本切换器（2026-11-07）
+
+- 需求：模拟器管理右上角 Android / HarmonyOS / iOS Tab 与系统版本页的 `PlatformVersionSwitcher` 保持一致。
+- `EmulatorPlatformTabs` 直接组合 `PlatformVersionSwitcher`，复用其图标、间距、圆角、边框、分割线、选中态与 hover 动画；不再单独维护 Cupertino 分段控件及重复样式。
+- 适配层通过穷举 `switch` 在 `EmulatorPlatform` 与 `PlatformDistributionType` 之间双向转换，不依赖枚举顺序。现有参数及回调类型保持兼容，选中状态仍由 `_EmulatorPageLayout` 持有，三平台页面路由与启动/停止逻辑不变。
+- 本次不修改系统版本切换器本身，不新增 Theme 色值、文案、依赖、Provider 或后台命令。
+- `emulator_platform_tabs_test.dart` 在 Light/Dark 下分别从三种初始平台开始验证，覆盖共享控件装配、三平台回调与父级状态更新，并在 650 px 标题栏中检查布局异常；回归 `platform_version_distribution_test.dart` 与 `emulator_panel_test.dart`。
+- 验证结果：`flutter test --no-pub test/emulator_platform_tabs_test.dart test/platform_version_distribution_test.dart test/emulator_panel_test.dart` 共 20 项通过；`dart analyze lib/features/devices/widgets/emulator_platform_tabs.dart test/emulator_platform_tabs_test.dart` 无问题；`git diff --check` 通过。
+- 不启动桌面 App 或真实模拟器；真实窗口中的视觉与 hover 体验仍需手工验收。

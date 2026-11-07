@@ -1,7 +1,8 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_icon.dart';
+import '../../overview/model/platform_distribution_type.dart';
+import '../../overview/widget/platform_version_switcher.dart';
 
 /// 模拟器支持的平台类型。
 enum EmulatorPlatform {
@@ -35,8 +36,8 @@ enum EmulatorPlatform {
 
 /// 模拟器平台分段选择器（Android / HarmonyOS / iOS）。
 ///
-/// 遵循应用和进程 Tab 的统一分段设计规范，采用 [CupertinoSlidingSegmentedControl]，
-/// 选中项呈现纯白圆角浮起卡片与主题主色高亮文本，未选中项以垂直分割线区分。
+/// 复用系统版本页的 [PlatformVersionSwitcher]，统一图标、选中态与 hover 样式。
+/// 仅适配平台枚举，模拟器页面继续持有选中状态并执行原有平台切换。
 class EmulatorPlatformTabs extends StatelessWidget {
   /// 创建模拟器平台切换 Tab 组件。
   ///
@@ -56,76 +57,17 @@ class EmulatorPlatformTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final segments = <EmulatorPlatform, Widget>{
-      for (final platform in EmulatorPlatform.values)
-        platform: _buildSegmentItem(
-          context,
-          platform,
-          platform == selectedPlatform,
-        ),
-    };
-
-    return CupertinoSlidingSegmentedControl<EmulatorPlatform>(
-      groupValue: selectedPlatform,
-      backgroundColor: isDark
-          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-          : const Color(0xFFF1F5F9),
-      thumbColor: isDark
-          ? theme.colorScheme.surfaceContainerHigh
-          : Colors.white,
-      padding: const EdgeInsets.all(3),
-      children: segments,
-      onValueChanged: (val) {
-        if (val != null) {
-          onPlatformChanged(val);
-        }
+    return PlatformVersionSwitcher(
+      selectedPlatform: switch (selectedPlatform) {
+        EmulatorPlatform.android => PlatformDistributionType.android,
+        EmulatorPlatform.harmony => PlatformDistributionType.harmony,
+        EmulatorPlatform.ios => PlatformDistributionType.ios,
       },
-    );
-  }
-
-  /// 构建单个平台分段项，与应用和进程 Tab 的 Segment 样式完全保持一致。
-  Widget _buildSegmentItem(
-    BuildContext context,
-    EmulatorPlatform platform,
-    bool isSelected,
-  ) {
-    final theme = Theme.of(context);
-    final color = isSelected
-        ? theme.colorScheme.primary
-        : theme.colorScheme.onSurfaceVariant;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (platform.icon != null) ...[
-            Icon(platform.icon, size: 15, color: color),
-            const SizedBox(width: 2),
-          ] else if (platform.imageAsset != null) ...[
-            Image.asset(
-              platform.imageAsset!,
-              width: 14,
-              height: 14,
-              fit: BoxFit.contain,
-              color: color,
-            ),
-            const SizedBox(width: 2),
-          ],
-          Text(
-            platform.label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              color: color,
-            ),
-          ),
-        ],
-      ),
+      onPlatformChanged: (platform) => onPlatformChanged(switch (platform) {
+        PlatformDistributionType.android => EmulatorPlatform.android,
+        PlatformDistributionType.harmony => EmulatorPlatform.harmony,
+        PlatformDistributionType.ios => EmulatorPlatform.ios,
+      }),
     );
   }
 }
