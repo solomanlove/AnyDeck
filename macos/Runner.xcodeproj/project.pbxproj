@@ -552,6 +552,7 @@
 		};
 		78C0A91B2D00000000000001 /* Embed Native Dylibs */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -986,7 +987,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = AnyDeckCameraExtension/CameraExtension.entitlements;
+				ANYDECK_CAMERA_ENTITLEMENTS_PREFIX = "";
+				CODE_SIGN_ENTITLEMENTS = "AnyDeckCameraExtension/$(ANYDECK_CAMERA_ENTITLEMENTS_PREFIX)Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1010,7 +1012,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = AnyDeckCameraExtension/CameraExtension.entitlements;
+				ANYDECK_CAMERA_ENTITLEMENTS_PREFIX = "";
+				CODE_SIGN_ENTITLEMENTS = "AnyDeckCameraExtension/$(ANYDECK_CAMERA_ENTITLEMENTS_PREFIX)Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1034,7 +1037,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = AnyDeckCameraExtension/CameraExtension.entitlements;
+				ANYDECK_CAMERA_ENTITLEMENTS_PREFIX = "";
+				CODE_SIGN_ENTITLEMENTS = "AnyDeckCameraExtension/$(ANYDECK_CAMERA_ENTITLEMENTS_PREFIX)Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;

@@ -30,7 +30,7 @@
 | `adb-device-rust-sessions` | 屏幕投屏、摄像头、麦克风与手机剪贴板 Rust 底座 | active | 屏幕投屏、VideoToolbox 硬解、AudioQueue 自恢复、音频断流有限重试、无线积压降分辨率/码率、触控注入、摄像头、麦克风与剪贴板 Rust 底座 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
 | `adb-device-rust-sessions-test` | Rust 设备会话回归验证 | active | 自动验证结果、平台门槛、生成视频帧解码与真机回归清单 | `test/`, `rust/device_bridge/` |
 | `adb-embedded-camera` | 内嵌摄像头预览 | active | scrcpy camera 参数、独立会话/端口、原生 Texture 复用、手动启停及销毁回收、macOS 限制与回归边界 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
-| `adb-virtual-camera` | macOS 系统摄像头 | experimental | Camera Extension source/sink、720p30、按下游需求采集、菜单栏及预览租约互斥；已接入代码，签名激活与会议真实画面尚未验收 | `core/virtual_camera/`, `macos/Runner/VirtualCamera/`, `macos/AnyDeckCameraExtension/` |
+| `adb-virtual-camera` | macOS 系统摄像头 | experimental | Camera Extension source/sink、720p30、按下游需求采集、菜单栏及预览租约互斥；本地 ad-hoc 与 Camera 权限隔离，签名激活与会议真实画面尚未验收 | `core/virtual_camera/`, `macos/Runner/VirtualCamera/`, `macos/AnyDeckCameraExtension/` |
 | `adb-cert-management` | 证书管理机制 | active | 记录用户证书与系统证书（Root 权限，包含 Android 10+ 内存挂载与 Conscrypt APEX 挂载）的导入机制与 adb 命令设计 | `control/` (控制面板) |
 | `adb-emulator-management` | 模拟器启动诊断与配置详情 | active | 记录启动诊断、ADB 授权与离线状态、定向重连/关闭、冷启动与 SDK 环境、标题工具栏、详情及中英文配置搜索 | `core/emulator/`, `core/providers/`, `features/devices/` |
 | `adb-desktop-platform-chrome` | 跨平台桌面窗口与工作区 UI | active | macOS 原生按钮避让、Windows 主窗口标题栏、Linux 原生装饰、子窗口标题同步、公共主题表面与宿主验证边界 | `app/window/`, `features/overview/`, `linux/runner/` |

@@ -64,11 +64,24 @@ AnyDeck.app/Contents/Library/SystemExtensions/
 ```
 
 - 签名构建使用 `CameraDebugProfile.entitlements` / `CameraRelease.entitlements`，包含 `com.apple.developer.system-extension.install` 与 `com.apple.security.application-groups`；不改变主应用现有非 sandbox 配置。
-- 普通构建默认使用原有 entitlements，避免 ad-hoc 调试包带受限权限。正式签名时设置 `ANYDECK_CAMERA_ENTITLEMENTS_PREFIX=Camera`，并由用户提供 `DEVELOPMENT_TEAM` 与对应签名配置；不自动选择本机其它组织证书。
+- 主应用与 Extension 共用 `ANYDECK_CAMERA_ENTITLEMENTS_PREFIX`，默认均为空：主应用使用原有 entitlements，Extension 使用仅含 App Sandbox 的 `Extension.entitlements`，两者保留 ad-hoc 签名。设置 `ANYDECK_CAMERA_ENTITLEMENTS_PREFIX=Camera` 时，主应用使用 `CameraDebugProfile.entitlements` / `CameraRelease.entitlements`，Extension 使用原有 `CameraExtension.entitlements`；由用户提供 `DEVELOPMENT_TEAM`、`CODE_SIGN_IDENTITY` 与对应 provisioning，不自动选择本机其它组织证书。
 - Extension 使用 App Sandbox，App Group 为 `group.com.github.anydeck.camera`，Mach service 为 `group.com.github.anydeck.camera.service`。
 - 正式使用必须配置有效开发团队、主应用及 Extension 的签名与所需 provisioning。当前仓库没有配置可用团队签名。
 - 用户从 `/Applications/AnyDeck.app` 发起激活请求，按系统要求由管理员批准。系统返回需要重启时，UI 保留该状态，不把旧版本可见设备当成新版本激活成功。
 - `CODE_SIGNING_ALLOWED=NO` 仅用于构建验证，生成的包不表示能被系统批准或发布；签名和公证应在交付流程中另行验证。
+
+### 普通构建签名失败修复（2026-11-07）
+
+原配置仅让主应用按前缀切换 entitlements，Extension 的 Debug / Release / Profile 始终使用含 App Group 的权限文件，继承项目的 `CODE_SIGN_IDENTITY=-` 后触发 `has entitlements that require signing with a development certificate`。修复后 Extension 同步按前缀选取权限，不需要全局关闭 `CODE_SIGNING_ALLOWED`。
+
+| 构建模式 | 主应用权限 | Extension 权限 | 使用边界 |
+| --- | --- | --- | --- |
+| 默认本地构建 | 原有调试/发布权限 | App Sandbox | 用于普通调试与本地打包，不能激活系统摄像头扩展 |
+| `ANYDECK_CAMERA_ENTITLEMENTS_PREFIX=Camera` | 扩展安装权限与 App Group | App Sandbox 与同一 App Group | 仍需有效开发团队、证书与 provisioning，才能继续验证激活 |
+
+`Embed Native Dylibs` 阶段设置 `alwaysOutOfDate=1`，明确每次执行，由 Cargo 判断 Rust 源码是否需要增量编译，避免漏掉源码或架构变化，并消除未声明 outputs 的构建警告。
+
+修复仅涉及 Xcode 构建权限选择和脚本阶段调度；不新增依赖、运行时采集任务或跨窗口状态。后续回归应确认普通 Debug 能构建，以及正式签名后的安装权限和主应用/Extension App Group 一致；真实扩展激活仍按下方验收表执行。
 
 ## 自动验证与实际验收
 
@@ -79,9 +92,14 @@ flutter test --no-pub test/virtual_camera_test.dart \
   test/virtual_camera_widget_test.dart \
   test/virtual_camera_preview_lease_test.dart test/camera_preview_test.dart
 bash script/test_virtual_camera_native.sh
+python3 -m unittest discover -s test/script -p test_camera_extension_signing.py -v
 ```
 
 原生脚本以合成像素和假会话验证格式、帧过期、消费者生命周期及资源释放：8 项 Host 检查和 Extension 校验通过。完整 Runner Debug 使用 `CODE_SIGNING_ALLOWED=NO` 构建通过。上述检查不启动 AnyDeck、不安装扩展、不访问真实镜头。
+
+签名回归 3 项测试通过：通过 Xcode 解析 Debug / Release / Profile 的主应用与 Extension 配置，校验默认权限不含 App Group / 安装权限，Camera 模式保留完整权限；另在临时目录以默认 ad-hoc 签名单独构建 Extension，并使用 `codesign --verify --strict` 验证，防止只做全局禁签构建而遗漏本次错误。现有 macOS App policy 与 Rust 构建范围回归各 1 项通过，Xcode 工程和 entitlements 的 `plutil -lint` 通过。未启动 AnyDeck，也未重新验证完整 Runner 构建或真实摄像头激活。
+
+本次全量 `flutter analyze --no-pub` 无 error，但因 38 项现有 warning / info 返回非零；这些报告均位于与 HEAD 一致的 Dart 文件中，本次不改动相关代码。
 
 仍需完成以下实际验收，全部通过后再把此能力标为已验证：
 
