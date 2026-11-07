@@ -58,6 +58,7 @@ class AppSettings {
     this.harmonyShareNotifications = true,
     this.harmonyShareReceiveDirectory = '',
     this.harmonyShareLocalName = ShareLocalName.defaultName,
+    this.harmonyShareDirectMode = false,
     this.launchAtStartup = false,
     this.showWindowShortcutKey = '1',
     this.mainWindowShortcut,
@@ -89,6 +90,8 @@ class AppSettings {
   final String harmonyShareReceiveDirectory;
   /// 新会话使用的本机名称，与 Core 的 UTF-8 长度规则保持一致。
   final String harmonyShareLocalName;
+  /// 手动允许连接手机 WLAN；默认关闭，使用现有 LAN 链路。
+  final bool harmonyShareDirectMode;
   final bool launchAtStartup;
   /// 显示主窗口的快捷键字符（默认 '1'，即 ⌘1）
   final String showWindowShortcutKey;
@@ -157,6 +160,7 @@ class AppSettings {
     bool? harmonyShareNotifications,
     String? harmonyShareReceiveDirectory,
     String? harmonyShareLocalName,
+    bool? harmonyShareDirectMode,
     bool? launchAtStartup,
     String? showWindowShortcutKey,
     KeyboardShortcutBinding? mainWindowShortcut,
@@ -187,6 +191,7 @@ class AppSettings {
       harmonyShareNotifications: harmonyShareNotifications ?? this.harmonyShareNotifications,
       harmonyShareReceiveDirectory: harmonyShareReceiveDirectory ?? this.harmonyShareReceiveDirectory,
       harmonyShareLocalName: harmonyShareLocalName ?? this.harmonyShareLocalName,
+      harmonyShareDirectMode: harmonyShareDirectMode ?? this.harmonyShareDirectMode,
       launchAtStartup: launchAtStartup ?? this.launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey ?? this.showWindowShortcutKey,
       mainWindowShortcut: mainWindowShortcut ?? this.mainWindowShortcut,

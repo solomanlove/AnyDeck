@@ -22,7 +22,7 @@ class ShareCoreInstallTests(unittest.TestCase):
         self.app = Path(self.temporary.name) / "AnyDeck.app"
         (self.app / "Contents/MacOS").mkdir(parents=True)
         self.files = {name: name.encode() for name in
-                      ("anydeck-share-core", "anydeck-dfile", "share-discovery", "libcrypto.3.dylib", "libssl.3.dylib")}
+                      ("anydeck-share-core", "anydeck-dfile", "share-discovery", "share-network", "libcrypto.3.dylib", "libssl.3.dylib")}
         self.manifest = {"schema": 1, "ipc_version": 1, "architecture": "arm64",
                          "core_version": "0.1.0", "capabilities": {"send": False},
                          "files": {name: hashlib.sha256(data).hexdigest()
@@ -50,6 +50,54 @@ class ShareCoreInstallTests(unittest.TestCase):
         install(data, self.app, lock, "arm64")
         self.assertEqual((self.app / "Contents/MacOS/ShareCore/anydeck-share-core").read_bytes(),
                          b"anydeck-share-core")
+        network = self.app / "Contents/MacOS/ShareCore/share-network"
+        self.assertEqual(network.read_bytes(), b"share-network")
+        self.assertTrue(os.access(network, os.X_OK))
+
+    def test_rejects_legacy_archive_without_network_helper_before_installing(self):
+        # 即使旧五成员制品的整体/成员摘要均正确，也不能当作支持直连的完整制品。
+        del self.files["share-network"]
+        del self.manifest["files"]["share-network"]
+        data, lock = self.locked_archive()
+        with self.assertRaisesRegex(ValueError, "contents"):
+            install(data, self.app, lock, "arm64")
+        self.assertFalse((self.app / "Contents/MacOS/ShareCore").exists())
+
+    def test_rejects_manifest_missing_network_helper(self):
+        del self.manifest["files"]["share-network"]
+        data, lock = self.locked_archive()
+        with self.assertRaisesRegex(ValueError, "file list"):
+            install(data, self.app, lock, "arm64")
+        self.assertFalse((self.app / "Contents/MacOS/ShareCore").exists())
+
+    def test_incremental_install_upgrades_previous_five_member_bundle(self):
+        data, lock = self.locked_archive()
+        destination = self.app / "Contents/MacOS/ShareCore"
+        destination.mkdir()
+        for name, content in self.files.items():
+            if name != "share-network":
+                (destination / name).write_bytes(content)
+        old_manifest = {**self.manifest, "files": {
+            name: digest for name, digest in self.manifest["files"].items()
+            if name != "share-network"}}
+        metadata = self.app / MANIFEST_PATH
+        metadata.parent.mkdir(parents=True)
+        metadata.write_text(json.dumps(old_manifest))
+        install(data, self.app, lock, "arm64", replace=True)
+        self.assertEqual({p.name for p in destination.iterdir()}, CODE_FILES)
+        self.assertEqual((destination / "share-network").read_bytes(), b"share-network")
+        self.assertEqual(json.loads(metadata.read_text()), self.manifest)
+
+    def test_tampered_network_helper_does_not_replace_previous_component(self):
+        data, lock = self.locked_archive()
+        install(data, self.app, lock, "arm64")
+        self.files["share-network"] = b"tampered helper"
+        invalid, invalid_lock = self.locked_archive()
+        with self.assertRaisesRegex(ValueError, "member SHA-256"):
+            install(invalid, self.app, invalid_lock, "arm64", replace=True)
+        self.assertEqual((self.app / "Contents/MacOS/ShareCore/share-network").read_bytes(),
+                         b"share-network")
+        self.assertEqual(json.loads((self.app / MANIFEST_PATH).read_text()), self.manifest)
 
     def test_rejects_previous_ipc_before_installing(self):
         self.manifest["ipc_version"] = 2

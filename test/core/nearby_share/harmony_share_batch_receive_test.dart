@@ -31,6 +31,7 @@ class _Receiver extends Fake implements ShareCoreReceiveSession {
 
 class _Client extends Fake implements ShareCoreClient {
   final receiver = _Receiver();
+  int starts = 0;
   late Directory directory;
   @override
   Future<ShareCoreReceiveSession> startBatchReceiver({
@@ -39,6 +40,7 @@ class _Client extends Fake implements ShareCoreClient {
     required Directory outputDirectory,
     String localName = 'AnyDeck',
   }) async {
+    starts++;
     directory = outputDirectory;
     return receiver;
   }
@@ -57,6 +59,87 @@ Future<void> until(bool Function() condition) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  for (final reason in [
+    'direct_network_restore_failed',
+    'direct_network_restore_pending',
+  ]) {
+    test('恢复警告 $reason 保留成功文件与服务错误，结束后不自动重开', () async {
+      final root = await Directory.systemTemp.createTemp('share-network-warning-');
+      final database = ShareHistoryDatabase('${root.path}/history.sqlite');
+      final history = ShareTransferHistory(open: () async => database);
+      final client = _Client();
+      final service = HarmonyShareService.testing(
+        client: client,
+        nativeBatch: true,
+        history: history,
+        downloads: () async => root,
+        detectNetwork: () async => ShareNetwork(
+          InternetAddress('192.168.1.2'),
+          InternetAddress('192.168.1.255'),
+        ),
+      );
+      try {
+        await service.start();
+        client.receiver.controller.add({'event': 'session_started'});
+        client.receiver.controller.add({
+          'event': 'incoming_batch',
+          'ip': '192.168.1.3',
+          'file_count': 2,
+          'total_bytes': 7,
+        });
+        await until(() => service.pendingOffer != null);
+        service.decide(true);
+        final id = history.recent.single.id;
+        client.receiver.controller.add({
+          'event': 'network_warning',
+          'reason': reason,
+        });
+        await until(() => service.error != null);
+        expect(history.recent.single.status, ShareTransferStatus.transferring);
+        expect(history.recent.single.error, isNull);
+        final files = [
+          for (var index = 0; index < 2; index++)
+            {
+              'path': '${client.directory.path}/file-$index.bin',
+              'bytes': index + 3,
+              'sha256': 'a' * 64,
+            },
+        ];
+        client.receiver.controller.add({
+          'event': 'batch_received',
+          'file_count': 2,
+          'total_bytes': 7,
+          'sender_hash_verified': false,
+          'files': files,
+        });
+        await until(() => history.recent.single.terminal);
+        await client.receiver.controller.close();
+        await until(() => !service.busy);
+        // 正常自然结束会在 1 秒后重开；恢复告警必须阻断这条自动路径。
+        await Future<void>.delayed(const Duration(milliseconds: 1100));
+        await history.flush();
+        final record = (await database.query()).single;
+        expect(record.id, id);
+        expect(record.status, ShareTransferStatus.succeeded);
+        expect(record.error, isNull);
+        expect(record.fileCount, 2);
+        expect((await history.batchFiles(id)).length, 2);
+        expect(service.recent, files.map((file) => file['path']));
+        expect(service.error, 'receive_failed: $reason');
+        expect(service.scanning, isFalse);
+        expect(service.startingDiscovery, isFalse);
+        expect(service.enabled, isTrue);
+        expect(client.starts, 1);
+      } finally {
+        await service.stop();
+        await history.flush();
+        service.dispose();
+        history.dispose();
+        await client.receiver.controller.close();
+        await root.delete(recursive: true);
+      }
+    });
+  }
   for (final accept in [true, false]) {
     test('接收文件进度仅在接受后展示，100%不结束批次，停止清空 $accept', () async {
       final root = await Directory.systemTemp.createTemp('receive-file-progress-');

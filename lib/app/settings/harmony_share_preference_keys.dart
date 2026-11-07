@@ -3,4 +3,5 @@ abstract final class HarmonySharePreferenceKeys {
   static const notifications = 'settings.harmonyShareNotifications';
   static const receiveDirectory = 'settings.harmonyShareReceiveDirectory';
   static const localName = 'settings.harmonyShareLocalName';
+  static const directMode = 'settings.harmonyShareDirectMode';
 }

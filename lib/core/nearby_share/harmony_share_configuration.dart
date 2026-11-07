@@ -21,4 +21,21 @@ extension _HarmonyShareConfiguration on HarmonyShareService {
       if (_enabled) await _startWindow();
     }
   }
+  /// 空闲时保存手动授权并重开监听，保存失败继续使用落盘的旧模式。
+  Future<void> _configureDirectMode(bool value, Future<void> Function() save) async {
+    if (busy || _configuring) throw StateError('Transfer or settings active');
+    _configuring = true;
+    _changed();
+    try {
+      await _stopWindow();
+      await save();
+      _directModeEnabled = value;
+      peers.clear();
+    } finally {
+      _configuring = false;
+      _changed();
+      if (_enabled) await _startWindow();
+    }
+  }
+
 }

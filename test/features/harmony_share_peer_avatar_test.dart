@@ -64,6 +64,7 @@ void main() {
     bool busy = false,
     bool unavailable = false,
     bool starting = false,
+    bool directMode = false,
     bool cancelling = false,
     void Function(ShareCorePeer)? onPick,
     void Function(ShareCorePeer, List<File>)? onDrop,
@@ -76,6 +77,7 @@ void main() {
     busy: busy,
     unavailable: unavailable,
     starting: starting,
+    directMode: directMode,
     activeBatchId: 'active',
     cancelling: cancelling,
     onPick: onPick ?? (_) {},
@@ -85,6 +87,14 @@ void main() {
 
   for (final brightness in Brightness.values) {
     for (final language in ['zh', 'en']) {
+      testWidgets('直连就绪提示手机分享且不冒充LAN搜索 ${brightness.name} $language', (tester) async {
+        await tester.pumpWidget(host(stage(peers: [], directMode: true), brightness: brightness, language: language));
+        final l10n = AppLocalizations(Locale(language));
+        expect(find.text(l10n.t('harmonyShareDirectReady')), findsOneWidget);
+        expect(find.text(l10n.t('harmonyShareSearching')), findsNothing);
+        await tester.pumpWidget(host(stage(peers: [], directMode: true, starting: true), brightness: brightness, language: language));
+        expect(find.text(l10n.t('harmonyShareStartingDiscovery')), findsOneWidget);
+      });
       testWidgets('无设备/单设备/多设备/发送批次不改变背景高度 ${brightness.name} $language', (
         tester,
       ) async {

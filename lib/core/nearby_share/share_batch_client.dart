@@ -8,9 +8,10 @@ import 'share_local_name.dart';
 
 /// 通用批次 IPC 调用边界；probe/launch 可注入离线进程测试，失败时回收已启动进程。
 class ShareBatchClient {
-  const ShareBatchClient({required this.probe, required this.launch});
+  const ShareBatchClient({required this.probe, required this.launch, this.coreExecutable});
   final Future<void> Function() probe;
   final Future<Process> Function() launch;
+  final String? coreExecutable;
 
   Future<ShareBatchTransfer> send({
     required ShareBatchRequest request,
@@ -26,13 +27,13 @@ class ShareBatchClient {
     await probe();
     final process = await launch();
     try {
-      final session = ShareBatchTransfer(process, request);
+      final session = ShareBatchTransfer(process, request, coreExecutable: coreExecutable);
       process.stdin.writeln(jsonEncode(value));
       await process.stdin.flush();
       await process.stdin.close();
       return session;
     } catch (_) {
-      await stopShareCoreProcess(process);
+      await stopShareCoreProcess(process, coreExecutable: coreExecutable);
       rethrow;
     }
   }
@@ -42,6 +43,7 @@ class ShareBatchClient {
     required InternetAddress broadcast,
     required Directory output,
     String localName = ShareLocalName.defaultName,
+    bool directMode = false,
   }) async {
     ShareLocalName.validate(localName);
     if (local.type != InternetAddressType.IPv4 ||
@@ -62,13 +64,14 @@ class ShareBatchClient {
       'broadcast_ip': broadcast.address,
       'output_dir': output.path,
       'duration_seconds': 120,
+      'direct_mode': directMode,
     };
     if (utf8.encode(jsonEncode(value)).length > 65536) {
       throw const FormatException('Batch request too large');
     }
     await probe();
     final process = await launch();
-    final session = ShareBatchReceiveSession(process, directory: output.path);
+    final session = ShareBatchReceiveSession(process, directory: output.path, coreExecutable: coreExecutable);
     try {
       process.stdin.writeln(jsonEncode(value));
       await process.stdin.flush();

@@ -21,6 +21,8 @@ String formatShareError(String error, String Function(String) text) {
     'FormatException: Invalid file size total' ||
     'FormatException: Select one nonempty file up to 1 GiB' =>
       'harmonyShareSelectionLimit',
+    'FormatException: Share Core direct mode unavailable' =>
+      'harmonyShareCoreUnavailable',
     'FormatException: Invalid local name' => 'harmonyShareLocalNameInvalid',
     'FormatException: Invalid receive directory' =>
       'harmonyShareDirectoryError',
@@ -59,6 +61,21 @@ String formatShareError(String error, String Function(String) text) {
     'deadline' ||
     'dfile_timeout' => 'harmonyShareOperationTimedOut',
     'tcp_failed' => 'harmonySharePeerUnavailable',
+    'direct_mode_disabled' => 'harmonyShareDirectModeDisabled',
+    'direct_network_permission_required' => 'harmonyShareDirectPermission',
+    'direct_network_restore_unavailable' => 'harmonyShareDirectRestoreUnavailable',
+    'direct_network_restore_failed' || 'direct_network_restore_pending' =>
+      'harmonyShareDirectRestoreFailed',
+    'direct_network_busy' => 'harmonyShareDirectNetworkBusy',
+    'direct_ble_failed' || 'direct_ble_required' ||
+    'direct_auth_channel_unavailable' => 'harmonyShareDirectBleFailed',
+    'direct_network_wifi_unavailable' || 'direct_network_not_found' ||
+    'direct_network_join_failed' || 'direct_network_join_timeout' ||
+    'direct_network_address_unavailable' || 'direct_network_changed' =>
+      'harmonyShareDirectJoinFailed',
+    'direct_network_invalid_request' || 'direct_network_helper_failed' ||
+    'direct_network_lease_expired' => 'harmonyShareDirectProtocolFailed',
+    'direct_network_cancelled' => 'harmonyShareStatus_cancelled',
     'unsupported_network_mode' when core?.group(1) == 'receive_failed' =>
       'harmonyShareDirectModeUnsupported',
     'insufficient_space' when core?.group(1) == 'receive_failed' =>

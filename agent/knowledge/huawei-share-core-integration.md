@@ -1,12 +1,12 @@
 # Huawei Share 私有核心集成边界
 
-当前基线：Core 0.3.7 / IPC 3，已移除应用层单文件1 GiB限制，1 GiB以上的手机收发由用户手动测试。历史Core0.3.5已完成100 MiB独立真机双向hash验证与正常App的1 GiB单文件接收（手机源hash未比对），不代表新版大文件容量或共存验收；生产能力仍未发布。最新证据与限制见本文末尾，早期段落保留为实施历史。
+当前核心：Core 0.3.8 / IPC 3，新增默认 LAN、手动授权的 P2P 直连接收与网络恢复保护，最终制品版本以 `script/share_core.lock.json` 和包内 manifest 为准。Core 0.3.7 已移除应用层单文件1 GiB限制，1 GiB以上的手机收发由用户手动测试。历史Core0.3.5已完成100 MiB独立真机双向hash验证与正常App的1 GiB单文件接收（手机源hash未比对），不代表新版大文件容量、P2P 或共存验收；生产能力仍未发布。最新证据与限制见本文末尾，早期段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
 ## 构建链路
 
-1. 私有仓库运行 `script/build_artifact.py`，输出按架构区分的 zip、包内 manifest、每文件 SHA-256；把 Swift BLE helper、DFile helper 和 OpenSSL 3 动态库一起签名和打包。
+1. 私有仓库运行 `script/build_artifact.py`，输出按架构区分的 zip、包内 manifest、每文件 SHA-256；Core 0.3.8 的六个原生成员为 Core、Swift BLE helper、Swift 网络恢复 helper、DFile helper 和两份 OpenSSL 3 动态库，逐个签名和打包。
 2. 主仓库 `script/share_core.lock.json` 固定私有仓库 commit、IPC 版本与 zip SHA-256。
 3. Runner 的 `Embed Share Core` 阶段在 Debug/Profile/Release 构建时自动调用 `script/embed_share_core.sh`；安装器只使用锁定 SHA-256 的私有制品，原生文件写入 `.app/Contents/MacOS/ShareCore/`，manifest 写入 `Contents/Resources/ShareCore/manifest.json`，随后由 Xcode 签名整个 App。无需设置 `ANYDECK_SHARE_CORE=1`。
 4. `ShareCoreClient.probe()`通过当前 IPC version 3 握手，只信任显式声明的能力。无二进制或版本不符时失败；不使用外部 Python 或原星河进程。
@@ -356,3 +356,48 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 验证：198项nearby_share回归、24项页面/错误回归、11个相关Dart文件targeted analyze通过；覆盖2 GiB稀疏文件只读取stat、5 GiB清单与进度、结果提交和总量溢出。52项原生库/IPC定向回归通过；上次已知受固定端口占用影响的接收父进程退出用例继续排除，保留原有可选真机/大文件ignored用例。DFile22项中20项通过、2项跳过（LAN真机与旧Git缓存补丁检查），包含ASan/UBSan、5 GiB元数据和小文件本地加密收发；未进行GiB真实文件数据传输。
 
 交接：后续正常构建会同时更新Flutter代码与Core制品。用户自行尝试>1 GiB、>4 GiB单文件、混合批次与双向收发，并核对接收hash；失败时保留错误详情。字节100%仍需成功终态，本轮不声称手机大文件稳定性通过，不主动重建或重启当前AnyDeck。
+
+
+## 手动 P2P 直连接收与网络恢复（2026-11-08，Core 0.3.8）
+
+### 默认 LAN 与设置一致性
+
+- 用户要求保留现有 LAN 收发，并在互传设置增加“高速传输模式”。`AppSettings.harmonyShareDirectMode` 与 `settings.harmonyShareDirectMode` 默认均为 false；旧配置不迁移成开启状态。开启表示允许本轮接收连接手机 WLAN，不会因发现手机或收到未认证请求而自动改网，也不代表已测得更高传输速率。
+- 主窗口通过 `HarmonyShareService.configureDirectMode` 统一预留配置边界：空闲时停止旧接收窗口，保存成功后再重新读取配置并启动新窗口；保存失败重新读取原值，恢复原模式。服务关闭时只保存，不擅自启用接收。保存期间禁止文件选择、发送和并发设置；收发忙碌时 UI 禁用开关，Service 也拒绝变更，既有传输不会中途切模式。
+- 子窗口通过 `change_harmony_share_direct_mode` 请求主窗口修改；`update_harmony_share_direct_mode` 只作为重载信号，各窗口重新读取已落盘的 bool，迟到广播不能用旧参数覆盖新值。子窗口不创建接收服务。每轮接收由 `ShareTransferMode.resolve()` 执行 SharedPreferences reload，避免复用旧缓存。
+- IPC 仍为3；`receive_batch_interactive` 明确携带 `direct_mode=false/true`。旧 Core 未声明 `experimental.direct_mode=true` 时仍能走 LAN；用户开启直连后 Client 在启动前明确拒绝不支持的 Core，不静默切换网络或伪装正在搜索。本轮新增链路用于手机发到电脑，电脑发到手机保留既有 LAN 批次发送。
+
+### 私有核心链路与凭据边界
+
+- 直连模式按“BLE 控制通道认证 → 已认证的手机 WLAN 协商 → 连接手机 WLAN → BLE 中继续 metadata/端口协商 → 选定手机建立 Bytes/DFile 数据通道”推进，复用既有 Bytes/File、DFile、整批确认、真实进度、路径/hash 校验及原子发布语义。LAN 接收通路继续保留；不能将一次认证前的 BLE 写入视为允许切网。
+- BLE relay 由私有 `share-discovery` 负责，固定首个合法会话对应的 central，后续报文继续通过既有生态认证状态机处理。metadata 与 Bytes/File 端口协商可保留在原 BLE 上，实际 TCP/数据连接限定选定手机地址并验证会话身份/密钥；Flutter 只接收通用批次与固定错误状态，不持有 BLE 协议报文或 Wi-Fi 凭据。
+- Core 只从已认证的物理连接请求解析受限 SSID、passphrase、私有 IPv4 和超时。`share-network` 是与 Core 同目录的独立 Swift executable；凭据仅经匿名 stdin 的受限 JSON 传递，不写 argv、SharedPreferences、日志或制品。stdout 只输出必要地址及固定状态，未知 helper reason 收敛为固定错误，不能透传含凭据或系统路径的诊断文本。
+- BLE 的 BasicInfo、通道握手、生态消息及 module21 封装已依据原版产物静态证据与离线 fixture 接入；直连模式不占用 LAN 固定发现/控制端口。若手机仍选择现有 LAN 地址，允许已认证 BLE 会话使用 LAN，不为此切换 Wi-Fi。模拟会话、编译通过和接口接线不等于原版手机已经完成 P2P 认证或收发；本轮没有真机 P2P 成功结论。
+
+### Wi-Fi 权限、恢复与并发保护
+
+- `share-network` 只使用公开 CoreWLAN / Keychain API。改变网卡前先确认当前网络可恢复；SSID 被系统隐藏而接口已有可用地址时明确要求定位/网络身份权限，不猜测原网络。原网络需要密码时仅支持可从用户或系统 Keychain 读取恢复凭据的个人 Wi-Fi；企业认证等不能可靠恢复的网络直接拒绝，用户可关闭高速模式继续 LAN。凭据只在 helper 内存中短期持有，不保存新的系统网络密码。
+- 关联前后再次核对当前网络，用户已主动切换时不覆盖其选择。原本已连接目标网络时不重复关联或读取不必要的恢复凭据。接收成功、失败、取消、期限到达、stdin EOF 或直属父进程退出均进入同一恢复路径；恢复到原网络或原本未关联的状态，并等待网络身份确认。
+- CoreWLAN 同步关联无法安全强制中断。join 超时或取消可先报告固定错误，helper 等已发起的关联返回后再恢复，避免迟到关联发生后无人负责恢复。恢复失败、仍在恢复、网络权限、其他直连占用等分别映射 zh/en 提示；网络恢复结果不能替代传输成功终态。
+- 网络切换事件 `network_connecting/network_restoring` 只在来件已被接受后转发；`network_warning` 还必须属于固定的 `direct_network_restore_failed/pending`。数据已收齐并通过 hash/清单验证后先原子发布完整文件，再恢复原 Wi-Fi；恢复失败或尚未完成会发出该警告，仍输出 `batch_received`，避免将网络恢复异常变成已验证文件丢失。Service 保留成功记录、子文件与最近路径，同时持续显示恢复警告，接收窗口结束后不自动重开。zh/en 提示要求在系统 Wi-Fi 菜单检查并重连，并以下方互传记录确认文件接收结果；恢复警告不能把成功文件改写成失败，也不能让不完整批次提前成功。
+- `NetworkOwnership` 在创建 CoreWLAN adapter 前取得 `/tmp/anydeck-share-network-<euid>.lock` 的非阻塞 `flock`。打开使用 `O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK`，只接受当前 uid、普通文件、单 link、0600，并核对锁定 fd 与可见路径的 inode；不修复或跟随可疑文件。锁文件不删除，防止新旧 inode 同时被锁；锁持续到 helper 恢复后退出，因此旧 Core 已超时返回时，新 Core 仍会收到 `direct_network_busy`，不会再次改网。
+- Flutter 先向 Core 发送 SIGTERM，保留既有宽限期。强制回收 Core 的直接子进程前，仅用 `ps comm` 核对真实可执行路径，不读取 argv；只有与实际 Core 路径一致、同目录且为真实普通文件的 `share-network` 才保留恢复机会，收到 SIGTERM 并通过 Core 退出后的 EOF 继续恢复。其他同名程序、symlink、路径不匹配或非直属子进程不享有该豁免；不按名称全局扫描、关闭第三方 App 或取消其他用户进程。
+
+### 六成员制品与验证边界
+
+- Core 0.3.8 的严格原生成员集为 `anydeck-share-core`、`anydeck-dfile`、`share-discovery`、`share-network`、`libcrypto.3.dylib`、`libssl.3.dylib`，另含 `manifest.json`。构建脚本把新增 helper 纳入依赖检查、签名、摘要和 ZIP；主仓安装器继续验证锁定归档 hash、每成员 hash、总大小、manifest 架构、固定路径及链接边界，签名沿用制品构建及 App 嵌入验证链路。
+- 新包必须同时包含六成员与完整 manifest。缺少 helper 的旧五成员包即使其余摘要正确也拒绝；完整新包可原子替换旧五成员运行布局，失败保留现有包。网络 helper 不从 PATH、外部脚本或其他 App 获取，版本锁与归档必须一同更新。
+- 离线覆盖包含默认 LAN/开关持久化与跨窗口重载、busy/保存失败回退、旧 Core capability 门控、明确 IPC 模式、BLE 握手/module21 与 LAN TCP 状态机 fixture、匿名 stdin 与固定错误、join 超时后的 restore/EOF/reaper、Wi-Fi adapter 替身恢复、锁争用与不安全文件拒绝，以及六成员安装/升级/失败保留。直连就绪时显示“等待手机发送文件”，引导从手机分享面板选择本机，避免把等待来件显示成 LAN 搜索。最终验证与制品版本见下文。
+- 本轮不启动、重启或操作用户 App，不连接真实手机、不切换实际 Wi-Fi。离线回归不等于真机 P2P 验收，也不代替定位/Keychain 授权、实际关联/DHCP、原网络恢复、荣耀互联共存或大文件验收；这些由用户在后续正常构建后手动测试。
+
+人工回归顺序：先关闭高速模式验证既有 LAN 双向批次；再手动开启，验证手机发到电脑的 BLE 认证、手机 WLAN、接收确认与真实落盘。分别检查拒绝、等待期间取消、发送期间取消、Core 异常退出、恢复耗时和连续下一批；恢复尚未结束时再次发起应明确提示网络正忙。另测用户主动切换 Wi-Fi 后不被自动改回、权限不足或原网不可恢复时拒绝改网，以及关闭高速模式后恢复 LAN。真机成功仍以完整批次终态、实际文件和独立 hash 核对为准。
+
+本轮验证：296项 Flutter 相关测试、30文件 analyze、26项安装器测试通过；私有 Core 的72项库测试、9项integration、39项Swift及12项显式非GiB批次/DFile/IPC回归通过。既有广播回环用例在本机环境连续超时，固定发现端口父进程退出用例因其他运行中App的占用未执行，均未计入通过数；没有为测试终止其他App或调整系统网络。arm64六成员制品的manifest哈希、架构、签名、实际hello、真实0.3.7五成员到0.3.8六成员隔离升级和增量不改写校验通过。
+
+固定私有制品：commit `d0275ebfaed07e01c74e29a6145d90709584ae6d`，Core0.3.8/IPC3，zip SHA-256 `a27e1fbc7e7444ba93010d1155dc0274bdfd837ae16999e54916d69c7cafff92`。`experimental.direct_mode=true`仅表示实验代码已接入；生产send/receive仍为false。相邻私有zip和本机校验缓存可供常规构建使用，两个仓库均仅本地commit，未push。
+
+直连启动允许尚无LAN IPv4：仅在检测器明确返回无可用地址时使用空地址进入BLE监听，真正数据地址仍由已确认的手机WLAN租约取得；默认LAN和其他检测异常保持失败提示，不伪造已有LAN。
+
+恢复helper在数据成功后异常退出或EOF，同样归一为恢复失败告警；不会把helper内部原因传入仅允许两种恢复warning的Client校验器，避免文件已落盘却在界面被误报整批失败。此分支通过真实匿名helper pipe与事件收集回归，并经独立只读审阅确认。
+
+真实进程清理夹具使用单调时钟的总启动期限并检查worker提前退出；启动失败会回收全部本轮PID、流订阅和目录。完整并行Flutter套件最终296项通过，避免重负载下过短夹具启动等待造成误报。

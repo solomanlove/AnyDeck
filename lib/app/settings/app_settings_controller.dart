@@ -28,6 +28,7 @@ part 'app_settings_broadcast.dart';
 part 'app_settings_mirror_presets.dart';
 part 'app_settings_notifications.dart';
 part 'app_settings_harmony_name.dart';
+part 'app_settings_harmony_transfer.dart';
 part 'app_settings_shortcuts.dart';
 
 /// 全局唯一的窗口 ID Provider，主窗口默认为空字符串。
@@ -40,7 +41,7 @@ final appSettingsProvider =
     );
 
 /// 负责加载和保存设置，并通过乐观更新保持 UI 响应。
-class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, MirrorPresetSettings, ShortcutSettings {
+class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, HarmonyTransferSettings, MirrorPresetSettings, ShortcutSettings {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
@@ -90,15 +91,8 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
     if (call.method == MirrorShortcutSettings.channelMethod) return _receiveMirrorShortcuts(call.arguments);
     if (call.method == mainWindowShortcutChannelMethod) return _receiveMainWindowShortcut(call.arguments);
     if (call.method == WindowShortcutSettings.channelMethod) return _receiveWindowShortcuts(call.arguments);
-    if (call.method == 'change_harmony_share_local_name' && call.arguments is String) {
-      await setHarmonyShareLocalName(call.arguments as String);
-    } else if (call.method == 'update_harmony_share_local_name' && call.arguments is String) {
-      await setHarmonyShareLocalName(call.arguments as String, broadcast: false);
-    } else if (call.method == 'update_harmony_share_notifications' && call.arguments is bool) {
-      await setHarmonyShareNotifications(call.arguments as bool, broadcast: false);
-    } else if (call.method == 'update_harmony_share_directory' && call.arguments is String) {
-      await setHarmonyShareReceiveDirectory(call.arguments as String, broadcast: false, validate: false);
-    } else if (call.method == 'update_language') {
+    if (await _handleHarmonyShareSettingsCall(call)) return null;
+    if (call.method == 'update_language') {
       final langCode = call.arguments as String;
       await setLanguage(AppLanguage.fromCode(langCode), broadcast: false);
     } else if (call.method == 'update_save_path') {
@@ -469,6 +463,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       harmonyShareNotifications: preferences.getBool(HarmonySharePreferenceKeys.notifications) ?? true,
       harmonyShareReceiveDirectory: preferences.getString(HarmonySharePreferenceKeys.receiveDirectory) ?? '',
       harmonyShareLocalName: preferences.getString(HarmonySharePreferenceKeys.localName) ?? ShareLocalName.defaultName,
+      harmonyShareDirectMode: preferences.getBool(HarmonySharePreferenceKeys.directMode) ?? false,
       launchAtStartup: launchAtStartup,
       showWindowShortcutKey: showWindowShortcutKey,
       mainWindowShortcut: decodeMainWindowShortcut(preferences.getString(mainWindowShortcutPreferenceKey)),

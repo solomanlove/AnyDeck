@@ -191,11 +191,12 @@ void main() {
     response = PlatformException(code: 'authorization_failed');
     await tester.pumpWidget(host('zh', Brightness.light, enabled: false));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byType(SwitchListTile));
-    await tester.tap(find.byType(SwitchListTile));
+    final notifications = find.widgetWithText(SwitchListTile, AppLocalizations(const Locale('zh')).t('harmonyShareNotifications'));
+    await tester.ensureVisible(notifications);
+    await tester.tap(notifications);
     await tester.pumpAndSettle();
     expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      tester.widget<SwitchListTile>(notifications).value,
       isTrue,
     );
     expect(

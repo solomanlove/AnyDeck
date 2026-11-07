@@ -143,6 +143,15 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
     ));
   }
 
+  void _setDirectMode(bool enabled) {
+    if (_service.busy || _service.configuring) return;
+    final controller = ref.read(appSettingsProvider.notifier);
+    unawaited(_save(
+      () => controller.setHarmonyShareDirectMode(enabled),
+      'harmonyShareSettingsSaveError',
+    ));
+  }
+
   void _permissionAction() {
     unawaited(
       _save(() async {
@@ -169,6 +178,8 @@ class _SettingsState extends ConsumerState<HarmonyShareSettingsDialog> {
       content: AnimatedBuilder(
         animation: Listenable.merge([_service, notifications.deliveryFailed]),
         builder: (context, _) => HarmonyShareSettingsPanel(
+          directMode: settings.harmonyShareDirectMode,
+          onDirectMode: _setDirectMode,
           notifications: settings.harmonyShareNotifications,
           nameEditor: HarmonyShareNameEditor(
             value: settings.harmonyShareLocalName,

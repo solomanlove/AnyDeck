@@ -9,11 +9,13 @@ import 'share_file_progress.dart';
 
 /// 一次原生发送批次；进度严格匹配已确认总量，成功终态优先于迟到取消。
 class ShareBatchTransfer {
-  ShareBatchTransfer(this._process, this.request) {
+  ShareBatchTransfer(this._process, this.request, {String? coreExecutable})
+      : _coreExecutable = coreExecutable {
     _result = _run();
     unawaited(_result.then<void>((_) {}, onError: (Object _, StackTrace _) {}));
   }
   final Process _process;
+  final String? _coreExecutable;
   final ShareBatchRequest request;
   final _progress = StreamController<ShareCoreProgress>.broadcast();
   late final Future<Map<String, dynamic>> _result;
@@ -24,7 +26,7 @@ class ShareBatchTransfer {
   void cancel() {
     if (_cancelled) return;
     _cancelled = true;
-    unawaited(stopShareCoreProcess(_process));
+    unawaited(stopShareCoreProcess(_process, coreExecutable: _coreExecutable));
   }
 
   Future<Map<String, dynamic>> _run() async {
@@ -38,7 +40,7 @@ class ShareBatchTransfer {
       ShareCoreContract.transferTimeout + const Duration(seconds: 10),
       () {
         _timedOut = true;
-        unawaited(stopShareCoreProcess(_process));
+        unawaited(stopShareCoreProcess(_process, coreExecutable: _coreExecutable));
       },
     );
     try {
@@ -81,7 +83,7 @@ class ShareBatchTransfer {
       }
     } catch (error) {
       failure = error;
-      await stopShareCoreProcess(_process);
+      await stopShareCoreProcess(_process, coreExecutable: _coreExecutable);
     } finally {
       await errors.cancel();
       await _progress.close();
@@ -100,7 +102,7 @@ class ShareBatchTransfer {
 
 /// 复用接收进程资源管理；仅在所有文件和摘要核对通过后发布本地整批完成事件。
 class ShareBatchReceiveSession extends ShareCoreReceiveSession {
-  ShareBatchReceiveSession(super.process, {required this.directory});
+  ShareBatchReceiveSession(super.process, {required this.directory, super.coreExecutable});
   final String directory;
   ShareBatchReceived? _received;
   bool _decided = false;
@@ -190,6 +192,19 @@ class ShareBatchReceiveSession extends ShareCoreReceiveSession {
             yield {...event, 'files': files};
           case 'error':
             _terminal = true;
+            yield event;
+          case 'network_warning':
+            if (!_accepted || _received == null ||
+                !const {'direct_network_restore_failed', 'direct_network_restore_pending'}
+                    .contains(event['reason'])) {
+              throw const FormatException('Invalid network warning');
+            }
+            yield event;
+          case 'network_connecting':
+          case 'network_restoring':
+            if (!_accepted || _received == null) {
+              throw const FormatException('Unaccepted network transition');
+            }
             yield event;
           case 'discovery_ready':
           case 'device':

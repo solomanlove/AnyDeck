@@ -280,6 +280,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                     cancelling: _service.sendQueue.cancelling,
                     unavailable: _service.error != null,
                     starting: _service.startingDiscovery,
+                    directMode: _service.directModeEnabled,
                     scanning: _service.scanning,
                     peers: peers,
                     enabled: _service.enabled,

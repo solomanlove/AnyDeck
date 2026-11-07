@@ -7,6 +7,8 @@ import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 part 'share_file_progress_session_cases.dart';
+part 'share_direct_mode_ipc_cases.dart';
+part 'share_network_transition_session_cases.dart';
 
 /// 内存 IPC fixture；不启动网络进程或访问真实设备。
 class _Process extends Fake implements Process {
@@ -60,6 +62,8 @@ class _BrokenProcess extends _Process {
 
 void main() {
   _fileProgressSessionCases();
+  _directModeIpcCases();
+  _networkTransitionSessionCases();
   ShareBatchRequest request() => ShareBatchRequest([
     const ShareBatchFile('/synthetic/a', 1073741824),
     const ShareBatchFile('/synthetic/b', 1),

@@ -23,6 +23,7 @@ class ShareCoreCapabilities {
     required this.receive,
     required this.coreVersion,
     required this.maxFileBytes,
+    this.directMode = false,
   });
 
   final bool discovery;
@@ -30,6 +31,7 @@ class ShareCoreCapabilities {
   final bool receive;
   final String coreVersion;
   final int maxFileBytes;
+  final bool directMode;
 
   /// 仅接受与当前主仓库兼容的握手版本与明确声明的布尔能力。
   static ShareCoreCapabilities parse(String line) {
@@ -70,6 +72,7 @@ class ShareCoreCapabilities {
       receive: capabilities['receive'] as bool,
       coreVersion: value['core_version'] as String,
       maxFileBytes: experimental['max_file_bytes'] as int,
+      directMode: experimental['direct_mode'] == true,
     );
   }
 }
@@ -268,7 +271,7 @@ class ShareCoreClient {
       const [],
       environment: const {'ANYDECK_SHARE_EXPERIMENTAL': '1'},
     );
-    final session = ShareCoreReceiveSession(process);
+    final session = ShareCoreReceiveSession(process, coreExecutable: _executable.path);
     process.stdin.writeln(
       jsonEncode({
         'version': ShareCoreContract.version,
@@ -288,6 +291,21 @@ class ShareCoreClient {
     required ShareCorePeer peer, required ShareBatchRequest request}) =>
       _batchClient.send(request: request, local: localAddress, peer: peer.address, port: peer.port);
 
+  /// 手动授权的直连接收入口；LAN入口保持默认关闭直连，避免隐式切换网络。
+  Future<ShareCoreReceiveSession> startDirectBatchReceiver({
+    required InternetAddress localAddress,
+    required InternetAddress broadcastAddress,
+    required Directory outputDirectory,
+    String localName = ShareLocalName.defaultName,
+  }) async {
+    final capabilities = await probe();
+    if (!capabilities.directMode) {
+      throw const FormatException('Share Core direct mode unavailable');
+    }
+    return _batchClient.receive(local: localAddress, broadcast: broadcastAddress,
+      output: outputDirectory, localName: localName, directMode: true);
+  }
+
   /// 原生批次来件必须明确确认，文件与最终摘要齐全后才通知服务完成。
   Future<ShareCoreReceiveSession> startBatchReceiver({required InternetAddress localAddress,
     required InternetAddress broadcastAddress, required Directory outputDirectory,
@@ -295,6 +313,7 @@ class ShareCoreClient {
       _batchClient.receive(local: localAddress, broadcast: broadcastAddress, output: outputDirectory, localName: localName);
 
   ShareBatchClient get _batchClient => ShareBatchClient(
+    coreExecutable: _executable.path,
     probe: () async {
       if (ShareCoreContract.version != ShareBatchContract.version) throw StateError('Batch contract not active');
       await probe();
@@ -317,7 +336,7 @@ class ShareCoreClient {
       environment: const {'ANYDECK_SHARE_EXPERIMENTAL': '1'},
     );
     try {
-      final transfer = ShareCoreTransfer(process, expectedEvent);
+      final transfer = ShareCoreTransfer(process, expectedEvent, coreExecutable: _executable.path);
       process.stdin.writeln(
         jsonEncode({
           'version': ShareCoreContract.version,
@@ -331,7 +350,7 @@ class ShareCoreClient {
       await process.stdin.close();
       return transfer;
     } catch (_) {
-      process.kill();
+      await stopShareCoreProcess(process, coreExecutable: _executable.path);
       rethrow;
     }
   }

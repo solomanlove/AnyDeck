@@ -26,8 +26,11 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         var chosen = 0;
         var permission = 0;
-        Widget panel({bool busy = false, bool saving = false, String state = 'denied'}) =>
+        bool? directModeChange;
+        Widget panel({bool busy = false, bool saving = false, bool directMode = false, String state = 'denied'}) =>
             HarmonyShareSettingsPanel(
+              directMode: directMode,
+              onDirectMode: (value) => directModeChange = value,
               notifications: true,
               directory: '/synthetic/folder-with-a-long-name/接收文件目录',
               permission: state,
@@ -45,6 +48,13 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         final l10n = AppLocalizations(Locale(language));
+        final directMode = find.widgetWithText(SwitchListTile, l10n.t('harmonyShareDirectMode'));
+        expect(tester.widget<SwitchListTile>(directMode).value, isFalse);
+        await tester.tap(directMode);
+        expect(directModeChange, isTrue);
+        await tester.pumpWidget(host(panel(directMode: true), brightness, language));
+        await tester.pumpAndSettle();
+        expect(tester.widget<SwitchListTile>(directMode).value, isTrue);
         await tester.ensureVisible(
           find.text(l10n.t('harmonyShareChooseDirectory')),
         );
@@ -52,6 +62,7 @@ void main() {
         expect(chosen, 1);
         await tester.pumpWidget(host(panel(busy: true), brightness, language));
         await tester.pumpAndSettle();
+        expect(tester.widget<SwitchListTile>(directMode).onChanged, isNull);
         final choose = tester.widget<TextButton>(
           find.ancestor(
             of: find.text(l10n.t('harmonyShareChooseDirectory')),
@@ -64,8 +75,9 @@ void main() {
         );
         await tester.pump();
         expect(
-          tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
-          isNull,
+          tester.widgetList<SwitchListTile>(find.byType(SwitchListTile))
+              .every((tile) => tile.onChanged == null),
+          isTrue,
         );
         expect(permission, 0);
         expect(tester.takeException(), isNull);

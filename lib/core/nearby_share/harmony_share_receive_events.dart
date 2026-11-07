@@ -167,6 +167,9 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
         unawaited(_saveRecent());
         pendingOffer = null;
         _changed();
+      case 'network_warning':
+        error = 'receive_failed: ${event['reason']}';
+        _changed();
       case 'error':
         _clearDiscoveryStartup();
         _discoveryReady = false;

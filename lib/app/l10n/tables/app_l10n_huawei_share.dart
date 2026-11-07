@@ -1,5 +1,15 @@
 /// 鸿蒙互联文案；中英文 key 保持一一对应。
 const huaweiShareZh = {
+  'harmonyShareDirectReady': '等待手机发送文件…\n请在手机分享面板中选择本机',
+  'harmonyShareDirectModeDisabled': '手机请求了 P2P 直连。请先在互传设置中手动开启“高速传输模式”，再从手机重新分享；关闭时使用 LAN。',
+  'harmonyShareDirectPermission': '无法读取 Wi-Fi 信息或保存的密码。请允许 AnyDeck 的定位及所需 Keychain 访问，然后重新分享；当前网络未切换。',
+  'harmonyShareDirectRestoreUnavailable': '无法确保恢复当前 Wi-Fi，已取消直连。请使用系统保存密码的个人 Wi-Fi，或关闭高速传输模式使用 LAN。',
+  'harmonyShareDirectRestoreFailed': '原 Wi-Fi 尚未确认恢复，请在系统 Wi-Fi 菜单检查并重新连接。文件接收结果请以下方互传记录为准。',
+  'harmonyShareDirectNetworkBusy': '上一次直连正在连接或恢复网络，请稍后重新分享。',
+  'harmonyShareDirectBleFailed': '直连的 Bluetooth 控制通道未建立。请允许蓝牙权限，并从手机重新发起分享；也可关闭高速传输模式使用 LAN。',
+  'harmonyShareDirectJoinFailed': '未能连接手机 WLAN 或获取可用地址，已结束本次接收并尝试恢复原 Wi-Fi。请重新分享，或关闭高速传输模式使用 LAN。',
+  'harmonyShareDirectProtocolFailed': '直连协商未完成。请重新分享；持续失败时关闭高速传输模式使用 LAN，并查看技术详情。',
+
   'harmonyShareErrorDetails': '技术详情',
   'harmonyShareOperationFailed': '操作未完成，请重试；持续失败时查看技术详情。',
   'harmonyShareCoreUnavailable': '互传组件缺失或版本不匹配，请安装包含互传组件的新版 AnyDeck。',
@@ -42,6 +52,8 @@ const huaweiShareZh = {
   'harmonyShareBatchFiles': '批次 · {count} 个文件',
   'harmonyShareBatchUnknownFiles': '尚未收到完整文件清单；数量和总大小来自来件请求。',
   'harmonyShareSettings': '互传设置',
+  'harmonyShareDirectMode': '高速传输模式',
+  'harmonyShareDirectModeHint': '默认关闭，使用 LAN。开启后允许连接手机 WLAN 进行直连传输，可能暂时中断当前 Wi-Fi。',
   'harmonyShareNotifications': '系统通知',
   'harmonyShareNotificationsHint': '优先在系统通知中接收或拒绝来件，并提醒收发结果。',
   'harmonyShareNotificationOffer': '请在通知操作中选择接收或拒绝。请求发起 30 秒后超时。',
@@ -61,7 +73,7 @@ const huaweiShareZh = {
   'harmonyShareReceiveDirectoryHint': '每轮接收创建独立子目录；更改仅影响后续接收，不移动已有文件。',
   'harmonyShareChooseDirectory': '选择目录',
   'harmonyShareResetDirectory': '恢复默认',
-  'harmonyShareSettingsBusy': '传输或保存期间不能更改本机名称及接收目录。',
+  'harmonyShareSettingsBusy': '传输或保存期间不能更改传输模式、本机名称及接收目录。',
   'harmonyShareLocalName': '本机名称',
   'harmonyShareLocalNameHint': '附近设备看到的名称；最多 24 UTF-8 bytes，中文通常占 3 bytes。保存后用于新会话。',
   'harmonyShareLocalNameInvalid': '请输入 1–24 UTF-8 bytes；首尾不能有空格，不支持控制字符及特殊空白。',
@@ -193,6 +205,16 @@ const huaweiShareZh = {
 };
 
 const huaweiShareEn = {
+  'harmonyShareDirectReady': 'Waiting for files from your phone…\nSelect this computer in the phone’s share sheet',
+  'harmonyShareDirectModeDisabled': 'The phone requested P2P. Enable High-speed transfer mode in transfer settings, then share again from the phone. When off, LAN is used.',
+  'harmonyShareDirectPermission': 'Wi-Fi information or a saved password is unavailable. Allow AnyDeck Location and the required Keychain access, then share again. The network was not changed.',
+  'harmonyShareDirectRestoreUnavailable': 'The current Wi-Fi cannot be safely restored, so the direct connection was cancelled. Use a personal Wi-Fi network with a saved password, or turn off High-speed transfer mode for LAN.',
+  'harmonyShareDirectRestoreFailed': 'Restoring the original Wi-Fi has not been confirmed. Check and reconnect in the system Wi-Fi menu. Check the transfer history below for the file reception result.',
+  'harmonyShareDirectNetworkBusy': 'A previous direct connection is joining or restoring Wi-Fi. Wait, then share again.',
+  'harmonyShareDirectBleFailed': 'The Bluetooth control channel for the direct connection was not established. Allow Bluetooth access and share again, or turn off High-speed transfer mode for LAN.',
+  'harmonyShareDirectJoinFailed': 'Could not join the phone’s WLAN or obtain a usable address. Reception ended and restoration of the original Wi-Fi was requested. Share again or turn off High-speed transfer mode for LAN.',
+  'harmonyShareDirectProtocolFailed': 'Direct connection negotiation did not complete. Share again; if it keeps failing, use LAN by turning off High-speed transfer mode and check technical details.',
+
   'harmonyShareErrorDetails': 'Technical details',
   'harmonyShareOperationFailed': 'The operation did not complete. Retry, or view technical details if it keeps failing.',
   'harmonyShareCoreUnavailable': 'The transfer component is missing or incompatible. Install a newer AnyDeck package that includes it.',
@@ -235,6 +257,8 @@ const huaweiShareEn = {
   'harmonyShareBatchFiles': 'Batch · {count} files',
   'harmonyShareBatchUnknownFiles': 'No complete file list is available. Count and total size came from the incoming request.',
   'harmonyShareSettings': 'Transfer settings',
+  'harmonyShareDirectMode': 'High-speed transfer mode',
+  'harmonyShareDirectModeHint': 'Off by default to use LAN. Enable to allow a direct connection to the phone’s WLAN, which may temporarily interrupt the current Wi-Fi connection.',
   'harmonyShareNotifications': 'System notifications',
   'harmonyShareNotificationsHint': 'Accept or reject incoming files in system notifications and receive transfer results.',
   'harmonyShareNotificationOffer': 'Use the notification actions to accept or reject. Expires 30 seconds after the request arrives.',
@@ -254,7 +278,7 @@ const huaweiShareEn = {
   'harmonyShareReceiveDirectoryHint': 'Each receive session creates a separate subfolder. Changes apply to future receives; existing files stay in place.',
   'harmonyShareChooseDirectory': 'Choose folder',
   'harmonyShareResetDirectory': 'Restore default',
-  'harmonyShareSettingsBusy': 'The name and receive folder cannot be changed during transfers or settings writes.',
+  'harmonyShareSettingsBusy': 'The transfer mode, name and receive folder cannot be changed during transfers or settings writes.',
   'harmonyShareLocalName': 'Local name',
   'harmonyShareLocalNameHint': 'Visible to nearby devices. Up to 24 UTF-8 bytes; most Chinese characters use 3 bytes. Applies to new sessions after saving.',
   'harmonyShareLocalNameInvalid': 'Enter 1–24 UTF-8 bytes with no outer spaces, control characters, or special whitespace.',

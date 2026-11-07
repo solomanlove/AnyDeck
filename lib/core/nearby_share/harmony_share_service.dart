@@ -14,6 +14,7 @@ import 'harmony_share_sender.dart';
 import 'share_receive_directory.dart';
 import 'harmony_share_outbox.dart';
 import 'share_local_name.dart';
+import 'share_transfer_mode.dart';
 
 part 'harmony_share_receive_events.dart';
 part 'harmony_share_send_service.dart';
@@ -35,6 +36,7 @@ class HarmonyShareService extends ChangeNotifier {
       _detectNetwork = ShareNetwork.detect,
       _downloads = ShareReceiveDirectory.resolve,
       _resolveLocalName = ShareLocalName.resolve,
+      _resolveDirectMode = ShareTransferMode.resolve,
       _supported = Platform.isMacOS,
       _nativeBatch = true,
       history = ShareTransferHistory() {
@@ -50,10 +52,12 @@ class HarmonyShareService extends ChangeNotifier {
     this.history,
     bool nativeBatch = false,
     Future<String> Function()? resolveLocalName,
+    Future<bool> Function()? resolveDirectMode,
   }) : _client = client,
        _detectNetwork = detectNetwork,
        _downloads = downloads,
        _resolveLocalName = resolveLocalName ?? (() async => ShareLocalName.defaultName),
+       _resolveDirectMode = resolveDirectMode ?? (() async => false),
        _supported = true,
        _nativeBatch = nativeBatch {
     history?.addListener(notifyListeners);
@@ -64,6 +68,9 @@ class HarmonyShareService extends ChangeNotifier {
   final Future<ShareNetwork> Function() _detectNetwork;
   final Future<Directory?> Function() _downloads;
   final Future<String> Function() _resolveLocalName;
+  final Future<bool> Function() _resolveDirectMode;
+  bool _directModeEnabled = false;
+  bool get directModeEnabled => _directModeEnabled;
   String _localName = ShareLocalName.defaultName;
   bool _configuring = false;
   String get localName => _localName;
@@ -132,6 +139,10 @@ class HarmonyShareService extends ChangeNotifier {
   /// 主窗口预留设置写入边界，防止保存期间启动新收发会话。
   Future<void> configureLocalName(String value, Future<void> Function() save) =>
       _configureLocalName(value, save);
+
+  /// 手动切换只在空闲时生效；先停止旧发现窗口，再持久化并重开。
+  Future<void> configureDirectMode(bool value, Future<void> Function() save) =>
+      _configureDirectMode(value, save);
 
   Future<void> send(ShareCorePeer peer, File file) => sendFiles(peer, [file]);
 
@@ -241,7 +252,14 @@ class HarmonyShareService extends ChangeNotifier {
       final localName = await _resolveLocalName();
       ShareLocalName.validate(localName);
       _localName = localName;
-      network = await _detectNetwork();
+      _directModeEnabled = await _resolveDirectMode();
+      try {
+        network = await _detectNetwork();
+      } on FileSystemException catch (failure) {
+        if (!_directModeEnabled || failure.message != 'No active IPv4 network with netmask') rethrow;
+        // BLE 直连无需预先加入 LAN；真正地址由已确认的 WLAN 租约获取。
+        network = ShareNetwork(InternetAddress.anyIPv4, InternetAddress('255.255.255.255'));
+      }
       final downloads = await _downloads();
       if (downloads == null) {
         throw const FileSystemException('Downloads unavailable');
@@ -250,7 +268,8 @@ class HarmonyShareService extends ChangeNotifier {
         '${downloads.path}/AnyDeck-Share-'
         '${DateTime.now().microsecondsSinceEpoch}',
       );
-      final receiver = await (_nativeBatch ? _client.startBatchReceiver(
+      final receiver = await (_nativeBatch ? (_directModeEnabled
+          ? _client.startDirectBatchReceiver : _client.startBatchReceiver)(
         localAddress: network!.local,
         broadcastAddress: network!.broadcast,
         outputDirectory: folder,
