@@ -292,3 +292,14 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 人工验收边界：正常 AnyDeck 授权后分别从手机发起请求，检查前台/隐藏窗口时通知按钮、正文点击、通知关闭、10 秒兜底及 30 秒超时；再检查禁用通知或 Focus 模式时的兜底，以及普通 Android 消息通知点击。自动测试不代表真实系统横幅或手机传输验收，本轮不主动运行或重启 App。
 
 本次验证：107 项 Flutter/Dart 测试（46 项来件协调/弹窗/结果通知，61 项权限/设置/桥接与普通通知回归）、6 项原生动作映射场景、12 个相关 Dart 文件的 targeted analyze 均通过。原生桥接使用真实 FlutterMacOS Framework 编译并执行上述离线测试；未进行整包构建或真实 Notification Center 交互。审查修复了启动清理超时后的后续请求恢复，并检查提交不包含其他并行任务的改动。
+
+
+## 首页波纹贯通与手机版本要求（2026-11-07）
+
+- 需求：扫描水波纹延伸到顶部接收身份栏与底部连接提示栏下方，参考用户提供的效果图；补充“手机版本要求：HarmonyOS 6.0.0.112 及以上”。该版本来自用户参考图，作为连接前提说明，不是读取手机实时版本，也不新增版本检测或兼容性承诺。
+- `HarmonyShareStage` 新增可选 `header/footer`，统一承载透明上下栏与 Theme 径向渐变。扫描绘制层预留最大波纹直径 790px，中央 Stack 不裁剪，仅由舞台/主卡片统一裁剪；设备卡片换行后波纹仍以中央投递区为圆心。动画继续由独立 RepaintBoundary 和 Painter 驱动，不因帧变化重建前景，停用、无障碍及离页回收规则不变。
+- 版本文案通过 `harmonySharePhoneVersion` 提供 zh/en 两种语言，位于连接提示上方，窄窗口自然换行。无新依赖、Provider、跨窗口协议、CLI、投屏或收发逻辑改动。
+- 自动回归：页面测试覆盖 zh/en、Light/Dark 的版本展示及上下栏绘制覆盖；扫描测试比较上下栏真实像素帧变化，保留多设备换行圆心、禁用/TickerMode/无障碍/离页停止的验证；视觉 fixture 校验页面与收发面板布局。运行 `flutter test --no-pub test/features/harmony_share_dashboard_tab_test.dart test/features/harmony_share_scan_test.dart test/features/harmony_share_visual_test.dart`，并对 6 个改动 Dart 文件执行 targeted `flutter analyze --no-pub`。
+- 人工验收：后续正常构建后，在发现状态查看波纹经过上下栏且不越出主卡片，切换主题/语言并缩窄窗口；保持接收开关、连接指引和设备发送入口可用。本轮仅离线 Widget 渲染与分析，不启动或重启用户 App，不代表手机真机收发验收。
+
+本次验证：18 项页面/扫描/视觉测试全部通过，6 个相关 Dart 文件的 targeted analyze 无问题，`git diff --check` 通过；已查看 Light/Dark 离线渲染图并确认上下栏背景连续、版本提示可读。

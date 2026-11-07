@@ -148,6 +148,7 @@ const huaweiShareZh = {
   'harmonyShareEmpty': '附近暂无可用设备',
   'harmonyShareDrop': '拖入文件，发送到附近设备',
   'harmonySharePick': '选择文件',
+  'harmonySharePhoneVersion': '手机版本要求：HarmonyOS 6.0.0.112 及以上',
   'harmonyShareHint': '保持手机解锁，并开启“华为分享”所有人可见',
   'harmonyShareRecent': '最近互传',
   'harmonyShareNoRecent': '还没有传输记录',
@@ -333,6 +334,7 @@ const huaweiShareEn = {
   'harmonyShareEmpty': 'No nearby devices found',
   'harmonyShareDrop': 'Drop a file to send to a nearby device',
   'harmonySharePick': 'Choose files',
+  'harmonySharePhoneVersion': 'Phone requirement: HarmonyOS 6.0.0.112 or later',
   'harmonyShareHint':
       'Unlock your phone and make Huawei Share visible to everyone',
   'harmonyShareRecent': 'Recent transfers',

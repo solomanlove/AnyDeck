@@ -225,48 +225,54 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                     borderRadius: AppThemeSizes.radiusLarge,
                     border: Border.all(color: colors.outlineVariant),
                   ),
-                  child: Column(
-                    children: [
-                      HarmonyShareIdentity(
-                        localName: _service.localName,
-                        enabled: _service.enabled,
-                        onChanged: _service.busy || _service.configuring
-                            ? null
-                            : (enabled) =>
-                                  enabled ? _service.start() : _service.stop(),
+                  child: HarmonyShareStage(
+                    header: HarmonyShareIdentity(
+                      localName: _service.localName,
+                      enabled: _service.enabled,
+                      onChanged: _service.busy || _service.configuring
+                          ? null
+                          : (enabled) =>
+                                enabled ? _service.start() : _service.stop(),
+                    ),
+                    footer: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
                       ),
-                      HarmonyShareStage(
-                        scanning: _service.scanning,
-                        peers: peers,
-                        enabled: _service.enabled,
-                        busy: !_service.canSelectFiles,
-                        onPick: _pick,
-                        onDrop: _confirm,
-                        onInvalidDrop: _invalidDrop,
+                      child: Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 20,
+                        runSpacing: 8,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.l10n.t('harmonySharePhoneVersion'),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                context.l10n.t('harmonyShareHint'),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: _showGuide,
+                            child: Text(context.l10n.t('harmonyShareHelp')),
+                          ),
+                        ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 14,
-                        ),
-                        child: Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 20,
-                          runSpacing: 8,
-                          children: [
-                            Text(
-                              context.l10n.t('harmonyShareHint'),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            TextButton(
-                              onPressed: _showGuide,
-                              child: Text(context.l10n.t('harmonyShareHelp')),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
+                    scanning: _service.scanning,
+                    peers: peers,
+                    enabled: _service.enabled,
+                    busy: !_service.canSelectFiles,
+                    onPick: _pick,
+                    onDrop: _confirm,
+                    onInvalidDrop: _invalidDrop,
                   ),
                 ),
                 if (_service.error case final error?) ...[

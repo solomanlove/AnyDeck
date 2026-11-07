@@ -6,6 +6,7 @@ import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:any_deck/features/harmony_share/harmony_share_dashboard_tab.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_panels.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_scan_backdrop.dart';
 import 'package:any_deck/features/widgets/dashboard_header_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +57,17 @@ void main() {
           inInclusiveRange(0, 1),
         );
         expect(find.textContaining('1 GiB'), findsNothing);
+        expect(find.text(l10n.t('harmonySharePhoneVersion')), findsOneWidget);
+        expect(l10n.t('harmonySharePhoneVersion'), contains('6.0.0.112'));
+        // 背景绘制层必须覆盖上下栏，不能只在中央舞台内绘制。
+        final backdrop = tester.getRect(find.byType(HarmonyShareScanBackdrop));
+        expect(backdrop.top, lessThan(tester.getRect(identity).top));
+        expect(
+          backdrop.bottom,
+          greaterThan(
+            tester.getRect(find.text(l10n.t('harmonyShareHelp'))).bottom,
+          ),
+        );
         expect(find.byType(Switch), findsOneWidget);
         expect(find.byType(HarmonyShareStage), findsOneWidget);
         expect(tester.takeException(), isNull);

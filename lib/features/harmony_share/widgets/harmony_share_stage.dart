@@ -20,8 +20,13 @@ class HarmonyShareStage extends StatelessWidget {
     required this.onDrop,
     required this.onInvalidDrop,
     this.scanning = false,
+    this.header,
+    this.footer,
   });
 
+  /// 可选身份栏和连接提示；共用舞台背景，不遮挡向外扩散的扫描波纹。
+  final Widget? header;
+  final Widget? footer;
   final List<ShareCorePeer> peers;
   final bool enabled;
   final bool busy;
@@ -46,9 +51,10 @@ class HarmonyShareStage extends StatelessWidget {
                   colors: [colors.primaryContainer, colors.surfaceContainerLow],
                 ),
               ),
-              child: Stack(
-                alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  ?header,
                   Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
@@ -75,9 +81,20 @@ class HarmonyShareStage extends StatelessWidget {
                           width: double.infinity,
                           height: 348,
                           child: Stack(
+                            clipBehavior: Clip.none,
                             alignment: Alignment.center,
                             children: [
-                              Positioned.fill(
+                              // 扩大绘制层到完整波纹直径，由最外层统一裁剪，
+                              // 保持圆心跟随投递区，身份栏/底栏下方也能绘制。
+                              Positioned(
+                                top:
+                                    (348 - HarmonyShareScanBackdrop.diameter) /
+                                    2,
+                                bottom:
+                                    (348 - HarmonyShareScanBackdrop.diameter) /
+                                    2,
+                                left: 0,
+                                right: 0,
                                 child: IgnorePointer(
                                   child: HarmonyShareScanBackdrop(
                                     active: scanning && enabled && !busy,
@@ -159,6 +176,7 @@ class HarmonyShareStage extends StatelessWidget {
                       ],
                     ),
                   ),
+                  ?footer,
                 ],
               ),
             ),

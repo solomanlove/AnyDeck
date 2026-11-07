@@ -63,6 +63,75 @@ void main() {
         expect(tester.takeException(), isNull);
       });
     }
+    testWidgets('波纹帧变化覆盖身份栏和底部提示栏 ${brightness.name}', (tester) async {
+      tester.view.physicalSize = const Size(600, 750);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final boundary = GlobalKey();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(brightness),
+          localizationsDelegates: const [
+            AppLocalizationsDelegate(),
+            ...GlobalMaterialLocalizations.delegates,
+          ],
+          supportedLocales: const [Locale('zh'), Locale('en')],
+          home: Scaffold(
+            body: Center(
+              child: RepaintBoundary(
+                key: boundary,
+                child: HarmonyShareStage(
+                  header: const SizedBox(height: 88),
+                  footer: const SizedBox(height: 100),
+                  enabled: true,
+                  busy: false,
+                  scanning: true,
+                  peers: const [],
+                  onPick: (_) {},
+                  onDrop: (_, _) {},
+                  onInvalidDrop: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      Future<Uint8List> pixels() async => (await tester.runAsync(() async {
+        final render =
+            boundary.currentContext!.findRenderObject()!
+                as RenderRepaintBoundary;
+        final image = await render.toImage();
+        try {
+          return (await image.toByteData(
+            format: ui.ImageByteFormat.rawRgba,
+          ))!.buffer.asUint8List();
+        } finally {
+          image.dispose();
+        }
+      }))!;
+      await tester.pump(const Duration(milliseconds: 100));
+      final first = await pixels();
+      await tester.pump(const Duration(milliseconds: 900));
+      final next = await pixels();
+      const rowBytes = 600 * 4;
+      expect(
+        listEquals(
+          first.sublist(0, 88 * rowBytes),
+          next.sublist(0, 88 * rowBytes),
+        ),
+        isFalse,
+      );
+      expect(
+        listEquals(
+          first.sublist(first.length - 100 * rowBytes),
+          next.sublist(next.length - 100 * rowBytes),
+        ),
+        isFalse,
+      );
+      await tester.pumpWidget(const SizedBox());
+      expect(tester.takeException(), isNull);
+    });
     testWidgets('扫描产生真实帧变化且不重建前景，停用/无障碍/离页停止 ${brightness.name}', (
       tester,
     ) async {
