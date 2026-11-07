@@ -8,9 +8,6 @@ import 'harmony_share_scan_painter.dart';
 class HarmonyShareScanBackdrop extends StatefulWidget {
   const HarmonyShareScanBackdrop({super.key, required this.active});
 
-  /// Painter 的最大扩散直径，供外层预留完整绘制范围。
-  static const diameter = 790.0;
-
   final bool active;
 
   @override

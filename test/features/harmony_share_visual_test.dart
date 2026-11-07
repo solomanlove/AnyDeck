@@ -163,6 +163,49 @@ void main() {
       await capture('scanning');
       await tester.pump(const Duration(milliseconds: 650));
       await capture('scanning-next');
+      // 实际舞台的搜索与每批发送状态，复用同一上下栏以检查高度稳定。
+      final avatarPeer = ShareCorePeer(
+        address: InternetAddress('192.168.1.2'), port: 44800, name: 'nova 12 Ultra',
+      );
+      ShareSendBatch avatarBatch(String id, ShareSendStatus status, int bytes) =>
+          ShareSendBatch(id: id, transferredBytes: bytes, items: [
+            for (var i = 0; i < 3; i++) ShareSendItem(
+              id: '$id-$i', peer: avatarPeer, status: status,
+              file: ShareSendFile(file: File('/synthetic/$i.bin'), bytes: 100, modified: DateTime(2026)),
+            ),
+          ]);
+      for (final sample in <String, List<ShareSendBatch>>{
+        'search-default': [],
+        'avatar-ready': [],
+        'avatar-waiting': [avatarBatch('active', ShareSendStatus.preparing, 0)],
+        'avatar-sending': [avatarBatch('active', ShareSendStatus.transferring, 150)],
+        'avatar-confirming': [avatarBatch('active', ShareSendStatus.transferring, 300)],
+        'avatar-sent': [avatarBatch('active', ShareSendStatus.succeeded, 300)],
+        'avatar-failed': [avatarBatch('active', ShareSendStatus.failed, 80)],
+        'avatar-cancelled': [avatarBatch('active', ShareSendStatus.cancelled, 80)],
+        'avatar-next-batch': [
+          avatarBatch('active', ShareSendStatus.preparing, 0),
+          avatarBatch('next', ShareSendStatus.queued, 0),
+        ],
+      }.entries) {
+        await tester.pumpWidget(host(Padding(
+          padding: const EdgeInsets.all(28),
+          child: HarmonyShareStage(
+            header: HarmonyShareIdentity(enabled: true, localName: 'Macos-AnyDeck', onChanged: (_) {}),
+            footer: Builder(builder: (context) => Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(context.l10n.t('harmonySharePhoneVersion')),
+            )),
+            peers: sample.key == 'search-default' ? [] : [avatarPeer],
+            batches: sample.value, activeBatchId: 'active',
+            enabled: true, busy: false, scanning: sample.key == 'search-default',
+            onPick: (_) {}, onDrop: (_, _) {}, onInvalidDrop: () {},
+          ),
+        )));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(tester.takeException(), isNull);
+        await capture(sample.key);
+      }
       await tester.pumpWidget(
         host(
           const Center(

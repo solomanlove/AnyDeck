@@ -6,7 +6,6 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_scan_backdrop.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
-import 'package:any_deck/features/harmony_share/widgets/harmony_share_drop_target.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -16,7 +15,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 void main() {
   for (final brightness in Brightness.values) {
     for (final count in [0, 3]) {
-      testWidgets('扫描圆心在有界布局与设备换行后仍与投递区重合 $count ${brightness.name}', (
+      testWidgets('扫描圆心在有界布局与设备数量变化后保持稳定 $count ${brightness.name}', (
         tester,
       ) async {
         tester.view.physicalSize = const Size(480, 1100);
@@ -53,12 +52,11 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        final target = find.byWidgetPredicate(
-          (widget) => widget is HarmonyShareDropTarget && widget.circular,
-        );
         expect(
           tester.getCenter(find.byType(HarmonyShareScanBackdrop)),
-          tester.getCenter(target),
+          tester.getCenter(
+            find.byKey(const ValueKey('harmony-share-discovery-content')),
+          ),
         );
         expect(tester.takeException(), isNull);
       });

@@ -266,6 +266,19 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
                         ],
                       ),
                     ),
+                    // 原生批次由 outbox 提供，旧串行队列仅作为兼容快照。
+                    batches: _service.sendQueue.nativeBatch
+                        ? _service.outbox.entries
+                        : _service.sendQueue.items.isEmpty
+                        ? const []
+                        : [_service.sendQueue.batch],
+                    activeBatchId: _service.sendQueue.nativeBatch
+                        ? _service.outbox.activeId
+                        : _service.sendQueue.running
+                        ? _service.sendQueue.batch.id
+                        : null,
+                    cancelling: _service.sendQueue.cancelling,
+                    unavailable: _service.error != null,
                     scanning: _service.scanning,
                     peers: peers,
                     enabled: _service.enabled,

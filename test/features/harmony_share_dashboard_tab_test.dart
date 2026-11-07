@@ -61,10 +61,10 @@ void main() {
         expect(l10n.t('harmonySharePhoneVersion'), contains('6.0.0.112'));
         // 背景绘制层必须覆盖上下栏，不能只在中央舞台内绘制。
         final backdrop = tester.getRect(find.byType(HarmonyShareScanBackdrop));
-        expect(backdrop.top, lessThan(tester.getRect(identity).top));
+        expect(backdrop.top, lessThanOrEqualTo(tester.getRect(identity).top));
         expect(
           backdrop.bottom,
-          greaterThan(
+          greaterThanOrEqualTo(
             tester.getRect(find.text(l10n.t('harmonyShareHelp'))).bottom,
           ),
         );
@@ -85,7 +85,7 @@ void main() {
     }
   }
 
-  testWidgets('多设备点击选择准确目标，中央入口不猜测目标', (tester) async {
+  testWidgets('多设备头像选择准确目标，不再显示中央选择文件入口', (tester) async {
     final peers = [
       ShareCorePeer(
         address: InternetAddress('192.168.1.2'),
@@ -113,10 +113,7 @@ void main() {
     );
     await tester.tap(find.text('Mate'));
     expect(picked, same(peers.last));
-    expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNull,
-    );
+    expect(find.byType(FilledButton), findsNothing);
   });
 
   testWidgets('忙碌时禁用设备和选文件入口', (tester) async {
@@ -141,10 +138,7 @@ void main() {
     );
     await tester.tap(find.text('nova'));
     expect(picked, isFalse);
-    expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNull,
-    );
+    expect(find.byType(FilledButton), findsNothing);
   });
 
   testWidgets('来件只展示摘要并允许明确拒绝', (tester) async {
