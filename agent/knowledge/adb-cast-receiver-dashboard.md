@@ -20,6 +20,9 @@
 - `ReceiverServiceCard` 统一协议图标、用途说明、状态、启停 Switch、接收端名称和附加动作。
 - 服务 Card 下方展示常见视频 App 投放示例；协议标签只作为版本相关参考，并明确受平台、内容版权与会员权益影响。爱奇艺官方说明明确支持 DLNA/AirPlay；小红书当前版本实测支持 DLNA、不支持 AirPlay。
 - 服务 Card 区与下方投放示例之间保留 16 px 垂直间距；宽窗口双列和窄窗口单列均一致。
+- 服务内容区宽度达到 860 px 时，双列使用 `IntrinsicHeight` 配合 `Row` 的 `CrossAxisAlignment.stretch`，按较高卡片动态等高，统一底边。
+- 公共 `ReceiverServiceCard` 将上部协议/状态信息和下部名称区分组，使用 `MainAxisAlignment.spaceBetween` 吸收额外高度，保证名称输入框对齐；两区之间最少保留 20 px 间距，支持说明自然换行。
+- 内容区小于 860 px 时改为单列，不施加等高约束，每张卡片按内容自然增高；不设置固定高度、不截断说明。额外 intrinsic 测量仅用于双列的两张服务卡片。
 
 ### 兼容示例证据边界
 
@@ -53,12 +56,28 @@
 
 ### 自动验证
 
-`receiver_dashboard_tab_test.dart` 检查宽窄布局中服务 Card 与投放示例的实际垂直间距为 16 px。
+`receiver_dashboard_tab_test.dart` 覆盖以下布局回归：
+
+- 中英文、Light/Dark、1.0/1.3 字体倍率，以及包含双列/单列临界值的五种窗口宽度。
+- 双列卡片顶边、底边与名称输入框顶底边对齐。
+- 同宽卡片从双列切换为单列后，单列自然高度最大值与双列高度一致；单列长说明卡片比短说明卡片更高。
+- 宽窄布局中服务 Card 与投放示例实际垂直间距为 16 px；单列卡片之间也为 16 px。
+- 原有 AirPlay 镜像/视频窗口入口按状态显示的回归。
+
+本次仅调整页面与公共 Card 布局，复用现有 Theme、l10n 和状态管理，不改变投屏链路或启停/名称持久化逻辑。
 
 ```bash
 flutter analyze --no-pub
 flutter test --no-pub
 ```
+
+### 2026-11-07 布局验证记录
+
+- `flutter test --no-pub test/receiver_dashboard_tab_test.dart`：6 项测试通过，布局测试包含 40 组宽度/语言/主题/字体倍率组合。
+- `dart analyze lib/features/receivers test/receiver_dashboard_tab_test.dart`：无问题。
+- `git diff --check`：通过。
+- `flutter analyze --no-pub` 在 language-server 启动后持续无输出，已停止该次检查，改用 `dart analyze` 完成全仓扫描：发现其他文件中的 6 项 warning 和 32 项 info，本次未修改这些文件；不将全仓检查表述为通过。
+- 未启动桌面 App，真实窗口视觉验收仍需手工确认。
 
 ### 手工验证
 

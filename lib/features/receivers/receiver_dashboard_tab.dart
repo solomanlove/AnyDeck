@@ -48,13 +48,16 @@ class ReceiverDashboardTab extends StatelessWidget {
                           cards.last,
                         ],
                       )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: cards.first),
-                          const SizedBox(width: 16),
-                          Expanded(child: cards.last),
-                        ],
+                    // 仅双列按最高卡片拉伸，单列保留内容自然高度。
+                    : IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: cards.first),
+                            const SizedBox(width: 16),
+                            Expanded(child: cards.last),
+                          ],
+                        ),
                       );
                 return Column(
                   children: [
