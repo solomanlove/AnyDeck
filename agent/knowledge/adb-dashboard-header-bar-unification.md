@@ -49,3 +49,11 @@ DashboardHeaderBar(
 1. **静态代码分析**：执行 `dart analyze` 无报错，新增与重构代码完全符合 Dart 与 Flutter 规范。
 2. **单元与渲染测试**：`test/dashboard_header_bar_test.dart` 自动化验证标题、副标题、图标、操作栏与状态徽章渲染；现有模拟器与 MCP 单元测试全部通过。
 3. **视觉一致性**：四个顶级页面切换时，顶部标题栏高度、底边框对齐线、图标徽章圆角及文字垂直基线完全无抖动，桌面窗口拖拽平滑自然。
+
+## 4. 设备管理工具栏按钮一致性（2026-11-07）
+
+- **需求**：顶部“加入共享设备”入口与相邻操作统一大小、颜色和水波纹。此前该入口使用默认 `IconButton`，未设置其他操作已有的尺寸、前景色与圆角。
+- **实现**：新增 `lib/features/widgets/dashboard_header_action_button.dart` 的 `DashboardHeaderActionButton`，由 `dashboard_header_bar.dart` 导出；共享设备、TCP 连接、无线配对与刷新共同复用。统一 30px 图标、48×48 点击区域与 10px 圆角 Material 交互反馈，颜色由调用方传入工具栏当前主题前景色。目录及服务菜单原有尺寸/圆角保持一致。
+- **边界**：保留入口图标、Tooltip 本地化及所有回调；不改变设备共享协议、投屏、进程、Provider 或跨窗口通信，不增加后台工作。
+- **自动验证**：`flutter test test/dashboard_header_bar_test.dart`（4 项）；Light/Dark 分别验证共享设备与连接按钮的实际尺寸、继承图标颜色/大小、InkResponse 圆角及非 NoSplash、点击回调。相关文件 `flutter analyze --no-pub` 通过。
+- **人工回归**：在 Light/Dark/System 下对比共享设备、TCP、配对与刷新入口的默认、Hover、按下效果，并点击共享设备入口确认弹窗正常。未启动桌面 App，实际窗口视觉效果待人工验收。

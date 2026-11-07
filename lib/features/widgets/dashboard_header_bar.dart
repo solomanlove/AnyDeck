@@ -5,6 +5,7 @@ import '../../app/window/widget/desktop_workspace_surface.dart';
 import 'dashboard_header_title.dart';
 
 export 'dashboard_header_title.dart';
+export 'dashboard_header_action_button.dart';
 
 /// 仪表盘一级模块页面顶部统一标准标题栏。
 ///

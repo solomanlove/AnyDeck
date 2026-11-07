@@ -67,42 +67,29 @@ class _ContentTitleBar extends ConsumerWidget {
       title: context.l10n.t('devices'),
       subtitle: context.l10n.t('devicesSubtitle'),
       actions: [
-        IconButton(
+        DashboardHeaderActionButton(
           tooltip: context.l10n.t('deviceShareJoin'),
           icon: const Icon(Icons.devices_outlined),
+          color: iconColor,
           onPressed: () => showDialog<void>(context: context,
             builder: (_) => const DeviceShareDialog()),
         ),
         //tcp连接
-        IconButton(
+        DashboardHeaderActionButton(
           tooltip: context.l10n.t('connectTcp'),
           icon: const Icon(CupertinoIcons.link),
-          iconSize: 30,
           color: iconColor,
           onPressed: () => _showConnectDeviceDialog(context, ref),
-          style: IconButton.styleFrom(
-            fixedSize: const Size(48, 48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
         ),
         //无线连接
-        IconButton(
+        DashboardHeaderActionButton(
           tooltip: context.l10n.t('pairDeviceTitle'),
           icon: const Icon(CupertinoIcons.antenna_radiowaves_left_right),
-          iconSize: 30,
           color: iconColor,
           onPressed: () => showDialog<void>(
             context: context,
             barrierDismissible: false,
             builder: (context) => const _DeviceWirelessConnectionDialog(),
-          ),
-          style: IconButton.styleFrom(
-            fixedSize: const Size(48, 48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
           ),
         ),
         //打开文件位置
@@ -110,18 +97,11 @@ class _ContentTitleBar extends ConsumerWidget {
         //重置服务
         ServiceRestartMenuButton(iconColor: iconColor),
         //刷新
-        IconButton(
+        DashboardHeaderActionButton(
           tooltip: context.l10n.t('refreshDevices'),
           icon: const Icon(CupertinoIcons.refresh),
-          iconSize: 30,
           color: iconColor,
           onPressed: () => _refreshDevices(context, ref),
-          style: IconButton.styleFrom(
-            fixedSize: const Size(48, 48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
         ),
       ],
     );

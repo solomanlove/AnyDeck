@@ -5,6 +5,56 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  for (final brightness in Brightness.values) {
+    testWidgets('标题栏共享设备按钮与相邻操作的样式及点击反馈一致：$brightness', (tester) async {
+      var presses = 0;
+      final color = buildAppTheme(brightness).colorScheme.onSurfaceVariant;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(brightness),
+          home: Scaffold(
+            body: Row(
+              children: [
+                for (final icon in [
+                  Icons.devices_outlined,
+                  CupertinoIcons.link,
+                ])
+                  DashboardHeaderActionButton(
+                    icon: Icon(icon),
+                    tooltip: icon.toString(),
+                    color: color,
+                    onPressed: () => presses++,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      for (final icon in [Icons.devices_outlined, CupertinoIcons.link]) {
+        final finder = find.widgetWithIcon(IconButton, icon);
+        expect(tester.getSize(finder), const Size(48, 48));
+        final iconContext = tester.element(find.byIcon(icon));
+        expect(IconTheme.of(iconContext).size, 30);
+        expect(IconTheme.of(iconContext).color, color);
+        final ink = tester.widget<InkResponse>(
+          find.descendant(
+            of: finder,
+            matching: find.byWidgetPredicate((widget) => widget is InkResponse),
+          ),
+        );
+        expect(
+          ink.customBorder,
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        );
+        expect(ink.splashFactory, isNot(NoSplash.splashFactory));
+        await tester.tap(finder);
+        await tester.pumpAndSettle();
+      }
+      expect(presses, 2);
+    });
+  }
+
   testWidgets('DashboardHeaderBar 基础渲染与操作按钮测试', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
