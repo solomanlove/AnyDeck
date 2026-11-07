@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:flutter/gestures.dart';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
@@ -205,6 +206,14 @@ void main() {
         await tester.pump(const Duration(milliseconds: 600));
         expect(tester.takeException(), isNull);
         await capture(sample.key);
+        if (sample.key == 'avatar-ready') {
+          final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+          await mouse.addPointer(location: Offset.zero);
+          await mouse.moveTo(tester.getCenter(find.text(avatarPeer.name)));
+          await tester.pumpAndSettle();
+          await capture('avatar-ready-hover');
+          await mouse.removePointer();
+        }
       }
       await tester.pumpWidget(
         host(

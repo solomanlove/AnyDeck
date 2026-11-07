@@ -145,6 +145,39 @@ void main() {
     }
   }
 
+  testWidgets('设备项按内容收紧，文字下方留白不触发选择', (tester) async {
+    var picks = 0;
+    await tester.pumpWidget(host(stage(onPick: (_) => picks++)));
+    final card = find.byType(HarmonyShareDropTarget);
+    final name = find.text(peer.name);
+    final bounds = tester.getRect(card);
+    expect(bounds.height, lessThan(180));
+    expect(bounds.bottom - tester.getRect(name).bottom, closeTo(10, .1));
+    await tester.tapAt(Offset(bounds.center.dx, bounds.bottom + 24));
+    expect(picks, 0);
+    await tester.tap(name);
+    expect(picks, 1);
+    final background = tester.getRect(find.byType(HarmonyShareStage));
+    // 批次信息增加时可自然增高，但不能再次填满网格或改变整个背景高度。
+    await tester.pumpWidget(
+      host(
+        stage(
+          batches: [
+            batch(ShareSendStatus.preparing),
+            batch(ShareSendStatus.queued, id: 'next'),
+          ],
+        ),
+      ),
+    );
+    final queued = find.text('另有 1 批排队');
+    expect(
+      tester.getRect(card).bottom - tester.getRect(queued).bottom,
+      closeTo(10, .1),
+    );
+    expect(tester.getRect(find.byType(HarmonyShareStage)), background);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('状态区分搜索、关闭、服务失败和收发忙碌', (tester) async {
     for (final entry in {
       '接收已关闭': stage(peers: [], enabled: false),

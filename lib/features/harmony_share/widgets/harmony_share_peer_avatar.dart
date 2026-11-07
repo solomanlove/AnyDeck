@@ -57,6 +57,7 @@ class HarmonySharePeerAvatar extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox.square(
                     dimension: 88,

@@ -148,18 +148,22 @@ class HarmonyShareStage extends StatelessWidget {
                                       final device = devices[index];
                                       final canPick =
                                           enabled && !busy && device.available;
-                                      return HarmonySharePeerAvatar(
-                                        key: ValueKey(
-                                          HarmonySharePeerState.identity(
-                                            device.peer,
+                                      // 网格预留状态空间，头像点击/高亮区域只包裹实际内容。
+                                      return Align(
+                                        alignment: Alignment.topCenter,
+                                        child: HarmonySharePeerAvatar(
+                                          key: ValueKey(
+                                            HarmonySharePeerState.identity(
+                                              device.peer,
+                                            ),
                                           ),
+                                          state: device,
+                                          enabled: canPick,
+                                          onPick: () => onPick(device.peer),
+                                          onDrop: (files) =>
+                                              onDrop(device.peer, files),
+                                          onInvalidDrop: onInvalidDrop,
                                         ),
-                                        state: device,
-                                        enabled: canPick,
-                                        onPick: () => onPick(device.peer),
-                                        onDrop: (files) =>
-                                            onDrop(device.peer, files),
-                                        onInvalidDrop: onInvalidDrop,
                                       );
                                     },
                                   ),
