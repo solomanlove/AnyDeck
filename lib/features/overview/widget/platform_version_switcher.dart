@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/app_icon.dart';
+import '../../../app/widget/device_os_logo_widget.dart';
 import '../model/platform_distribution_type.dart';
 
 /// 平台版本切换器组件（对齐原型设计稿中的 .pswitch 控件）。
@@ -182,7 +182,7 @@ class _HoverablePlatformItemState extends State<_HoverablePlatformItem> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildPlatformIcon(widget.platform),
+              buildPlatformIcon(widget.platform),
               const SizedBox(width: 6),
               Text(
                 widget.platform.displayName,
@@ -200,33 +200,5 @@ class _HoverablePlatformItemState extends State<_HoverablePlatformItem> {
     );
   }
 
-  /// 绘制各平台图标：直接复用项目中现成的 Android、华为与 Apple Logo
-  Widget _buildPlatformIcon(PlatformDistributionType platform) {
-    final theme = Theme.of(context);
-    final color = widget.isSelected
-        ? theme.colorScheme.primary
-        : theme.colorScheme.onSurfaceVariant;
 
-    switch (platform) {
-      case PlatformDistributionType.android:
-        return Icon(
-          Icons.android_rounded,
-          size: 15,
-          color: color,
-        );
-      case PlatformDistributionType.harmony:
-        return Image.asset(
-          AppIcons.huaweiPetal,
-          width: 15,
-          height: 15,
-          fit: BoxFit.contain,
-        );
-      case PlatformDistributionType.ios:
-        return Icon(
-            Icons.apple,
-            size: 15,
-            color: color,
-        );
-    }
-  }
 }
