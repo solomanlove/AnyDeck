@@ -191,6 +191,7 @@ class ShareBatchReceiveSession extends ShareCoreReceiveSession {
           case 'error':
             _terminal = true;
             yield event;
+          case 'discovery_ready':
           case 'device':
           case 'session_started':
           case 'transfer_started':

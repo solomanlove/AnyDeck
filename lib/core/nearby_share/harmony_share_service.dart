@@ -18,6 +18,7 @@ import 'share_local_name.dart';
 part 'harmony_share_receive_events.dart';
 part 'harmony_share_send_service.dart';
 part 'harmony_share_configuration.dart';
+part 'harmony_share_discovery_state.dart';
 
 /// 展示给用户的来件摘要；协议内容不进入主仓库。
 class ShareIncomingOffer {
@@ -86,6 +87,8 @@ class HarmonyShareService extends ChangeNotifier {
   StreamSubscription<Map<String, dynamic>>? _events;
   Timer? _networkTimer;
   Timer? _windowTimer;
+  Timer? _discoveryStartTimer;
+  bool _discoveryReady = false;
   Future<void>? _startingWindow;
   Future<void>? _sending;
   int _windowRevision = 0;
@@ -151,7 +154,11 @@ class HarmonyShareService extends ChangeNotifier {
 
   bool get enabled => _enabled;
   /// 仅实际接收/发现窗口存活且空闲时显示扫描动画，发送期间不伪装仍在扫描。
-  bool get scanning => _enabled && !busy && !_configuring && _receiver != null && error == null;
+  bool get scanning => _enabled && !busy && !_configuring &&
+      _receiver != null && _discoveryReady && error == null;
+  /// 进程启动与真实发现就绪之间只显示准备状态。
+  bool get startingDiscovery => _enabled && !busy && !_configuring &&
+      error == null && !scanning;
 
   Future<void> start() async {
     if (_enabled || !_supported) return;
@@ -227,6 +234,9 @@ class HarmonyShareService extends ChangeNotifier {
   Future<void> _openWindow() async {
     if (!_enabled || busy || _configuring || _receiver != null || _closingWindows > 0) return;
     final revision = _windowRevision;
+    error = null;
+    _discoveryReady = false;
+    _changed();
     try {
       final localName = await _resolveLocalName();
       ShareLocalName.validate(localName);
@@ -252,6 +262,7 @@ class HarmonyShareService extends ChangeNotifier {
         return;
       }
       _receiver = receiver;
+      _watchDiscoveryStartup(receiver);
       _receiveDirectory = folder.path;
       _windowTimer?.cancel();
       _windowTimer = Timer(const Duration(seconds: 125), () {
@@ -259,13 +270,14 @@ class HarmonyShareService extends ChangeNotifier {
           unawaited(refresh());
         }
       });
-      error = null;
       notifyListeners();
       _events = receiver.events.listen(
         (event) => _handleReceiverEvent(event, receiver),
         onError: (Object failure) {
           // 主动停止时仍排空历史事件，但不污染下一轮操作的错误提示。
           if (_closingWindows == 0) error = '$failure';
+          _discoveryReady = false;
+          _clearDiscoveryStartup();
           history?.receiveChanged(
             _incomingHistoryId,
             status: ShareTransferStatus.failed,
@@ -276,6 +288,11 @@ class HarmonyShareService extends ChangeNotifier {
         },
         onDone: () {
           if (_receiver != receiver) return;
+          if (_discoveryStartTimer != null && _closingWindows == 0 && error == null) {
+            error = 'receive_failed: discovery_failed';
+          }
+          _clearDiscoveryStartup();
+          _discoveryReady = false;
           _windowTimer?.cancel();
           _windowTimer = null;
           _receiver = null;
@@ -297,7 +314,7 @@ class HarmonyShareService extends ChangeNotifier {
           // 自然结束后设备可见性失效；发送暂停接收时保留当前目标。
           if (rediscover) peers.clear();
           notifyListeners();
-          if (rediscover) {
+          if (rediscover && error == null) {
             Future<void>.delayed(const Duration(seconds: 1), _startWindow);
           }
         },
@@ -370,6 +387,8 @@ class HarmonyShareService extends ChangeNotifier {
   Future<void> _stopWindow() async {
     _closingWindows++;
     _windowRevision++;
+    _discoveryReady = false;
+    _clearDiscoveryStartup();
     history?.receiveChanged(
       _incomingHistoryId,
       status: ShareTransferStatus.interrupted,
@@ -400,6 +419,7 @@ class HarmonyShareService extends ChangeNotifier {
           _enabled &&
           !busy &&
           !_refreshing &&
+          error == null &&
           _sending == null &&
           _receiver == null) {
         unawaited(_startWindow());
@@ -409,6 +429,7 @@ class HarmonyShareService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _clearDiscoveryStartup();
     history?.removeListener(notifyListeners);
     outbox.removeListener(notifyListeners);
     outbox.dispose();

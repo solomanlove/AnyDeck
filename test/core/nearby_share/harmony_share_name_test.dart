@@ -9,6 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 只观察通用 IPC 边界，不启动真实 Core、蓝牙或网络。
 class _Receiver extends Fake implements ShareCoreReceiveSession {
+  _Receiver() {
+    stream.add({'event': 'discovery_ready'});
+  }
   final stream = StreamController<Map<String, dynamic>>();
   int stops = 0;
   @override
@@ -79,6 +82,7 @@ void main() {
       final writing = Completer<void>();
       try {
         await service.start();
+        await Future<void>.delayed(Duration.zero);
         expect(service.scanning, isTrue);
         expect(client.names, ['初始 Mac']);
         final operation = service.configureLocalName('新名称', () async {
@@ -111,6 +115,7 @@ void main() {
         await result;
         final expected = fail ? '初始 Mac' : '新名称';
         expect(service.configuring, isFalse);
+        await Future<void>.delayed(Duration.zero);
         expect(service.scanning, isTrue);
         expect(service.localName, expected);
         expect(client.names, ['初始 Mac', expected]);

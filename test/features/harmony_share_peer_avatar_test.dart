@@ -63,6 +63,7 @@ void main() {
     bool enabled = true,
     bool busy = false,
     bool unavailable = false,
+    bool starting = false,
     bool cancelling = false,
     void Function(ShareCorePeer)? onPick,
     void Function(ShareCorePeer, List<File>)? onDrop,
@@ -74,6 +75,7 @@ void main() {
     enabled: enabled,
     busy: busy,
     unavailable: unavailable,
+    starting: starting,
     activeBatchId: 'active',
     cancelling: cancelling,
     onPick: onPick ?? (_) {},
@@ -147,6 +149,7 @@ void main() {
     for (final entry in {
       '接收已关闭': stage(peers: [], enabled: false),
       '服务暂不可用': stage(peers: [], unavailable: true),
+      '正在准备搜索…': stage(peers: [], starting: true),
       '等待手机确认或传输完成': stage(peers: [], busy: true),
     }.entries) {
       await tester.pumpWidget(host(entry.value));

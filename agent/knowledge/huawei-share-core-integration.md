@@ -1,6 +1,6 @@
 # Huawei Share 私有核心集成边界
 
-当前基线：Core 0.3.5 / IPC 3，单文件实验上限 1 GiB；100 MiB 已完成独立 Core 真机双向与 hash 验证，正常 App 已完成 1 GiB 单文件接收（源 hash 尚未比对），GiB 双向、多文件及系统通知仍待验收，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
+当前基线：Core 0.3.6 / IPC 3（新增共享发现监听与真实就绪状态；收发真机证据来自此前 0.3.5，尚未代表新版共存验收），单文件实验上限 1 GiB；100 MiB 已完成独立 Core 真机双向与 hash 验证，正常 App 已完成 1 GiB 单文件接收（源 hash 尚未比对），GiB 双向、多文件及系统通知仍待验收，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
@@ -320,3 +320,18 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 验证：78 项相关 Flutter/Dart 测试通过（头像状态/高度/拖放、真实队列终态、页面/动画/视觉、outbox、原生批次与发送服务），11 个改动 Dart 文件 targeted analyze 无问题。已查看 Light/Dark 搜索、发送和成功渲染图；视觉 fixture 额外导出准备、确认、失败、取消及后续批次状态。`git diff --check` 通过，相关 Dart 文件均不超过500行。
 
 人工回归：后续正常构建后，开启发现并检查搜索默认状态；对同一手机选择多文件，再在待接收/发送时追加下一批，确认每批一次手机确认、状态切换不残留上一批结果；检查不同手机排队、失败/取消、头像拖放、窄窗口滚动及设备消失后的旧端口禁用。本轮未启动或重建用户 App，自动测试不代表真实手机收发已验收。
+
+
+## 发现端口共享与启动失败保真（2026-11-07）
+
+- 问题证据：荣耀互联 `HonorConnect.app` 的 `HnOfficeCenter` 曾占用发现端口，旧 Core 的发现线程绑定失败后退出，但接收主进程仍等待连接，线程结果被忽略；页面将进程存活等同于正在搜索，最终没有设备也没有明确错误。这是发现启动问题，与手机选择不支持的直连接收模式独立。
+- 私有 Core 0.3.6 尽力采用可共享的发现监听，并防止子进程继承发现句柄。对方允许共享时支持共同监听广播；对方独占端口时明确失败，不关闭第三方进程、不抢占 socket、不修改网络或权限。macOS 对同端口单播仍选择单一 socket，因此不承诺所有荣耀互联版本下都能同时发现；详细 socket/协议实现留在私有仓。
+- TCP/UDP 监听失败分别通过公开 IPC `receive_port_in_use/discovery_port_in_use` 报告；运行中发现线程失败及时结束窗口。监听、广播准备及蓝牙启动完成后才发送 `discovery_ready`。生产 send/receive 能力依然为 false，IPC 仍为3，不涉及收发协议升级。
+- 主仓 `HarmonyShareService.scanning` 必须等待真实就绪，启动时 `startingDiscovery` 显示“正在准备搜索…”。8秒无就绪报告 `discovery_start_timeout` 并有界停止进程，停止/配置/接收/离页清理对应计时器；异常结束不再每秒快速拉起。已有30秒网络健康轮询及手动重新扫描仍可恢复发现。
+- 基础接收会话发现 stdout 静默关闭且无成功/错误终态时报告 `core_stopped`，不把异常退出当作正常结束；主动停止仍排空已经发出的真实终态。批次验证器允许转发新的就绪事件，既有批次确认、文件验证、通知和历史语义保持不变。
+- 错误文案 zh/en 均明确指出发现端口/接收端口被占用、权限或广播不可用、启动超时/异常停止，并提供重新扫描建议。占用提示以荣耀互联为示例，不在未查询进程时断言占用者；技术详情保留公开错误信封。页面继续使用 Theme，发现背景高度与设备/批次展示不变，投屏和跨窗口协议不受影响。
+- 制品固定到私有 commit `82e6cbd1fdbb34c443f00394ce2442ef007ced9b`，arm64 zip SHA-256 `89281e4724029f1a451e12f0cd2893a98ef2e339dc66318be35f3367d1f9ebd6`；正常 Debug/Profile/Release 构建通过既有安装阶段读取新锁。DFile helper 复用原锁定 zip 内经 manifest 摘要校验的未改动产物；新制品5成员摘要/签名、实际 Core0.3.6 / IPC3 hello 已验证。新锁的默认自动安装已在独立临时包结构验证，安装后5成员摘要和签名一致；本地私有 commit 尚未推送，当前机器使用已验证的相邻制品；其他机器的远端获取需先推送该私有提交。
+
+验证：236项相关 Flutter/Dart 回归通过（nearby_share 全目录、页面/错误/头像/动画）；补充的准备状态与 Client 子集15项通过。16个相关 Dart 文件 targeted analyze 无问题；27项 Python 构建/安装/签名测试通过。私有原生51项库/IPC/进程回归通过，原有11项大文件/真机用例与隔离 launcher 仍为可选；`receiver_releases_children_port_and_staging_after_parent_exit` 因当前运行的旧 AnyDeck 独占发现端口，首次执行无法进入接收窗口而失败，后续定向运行明确排除，该接收父进程退出路径未完成本轮复验，未据此宣称完整原生测试全通过。
+
+人工回归：正常重建后保持荣耀互联运行，检查双方设备发现；若对方独占端口，应出现占用原因且停止搜索动画。释放占用后点重新扫描，依次进入准备/搜索/发现设备；测试发送批次、手机来件与通知确认，确认新就绪状态不影响原流程。本轮未启动、重建、重签或重启用户正在运行的 AnyDeck，未向手机发送测试文件，真实荣耀互联共存与手机收发仍待验收。

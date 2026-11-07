@@ -42,9 +42,17 @@ class ShareCoreReceiveSession {
         .transform(const LineSplitter())
         .map(decodeShareCoreEvent)
         .listen(
-          _events.add,
+          (event) {
+            if (event['event'] == 'error' || event['event'] == 'file_received' || event['event'] == 'batch_received') {
+              _terminal = true;
+            }
+            _events.add(event);
+          },
           onError: _events.addError,
           onDone: () async {
+            if (!_stopping && !_terminal) {
+              _events.addError(StateError('Share Core receive_failed: core_stopped'));
+            }
             final closed = _events.close();
             if (_listened) await closed;
             if (!_drained.isCompleted) _drained.complete();
@@ -57,6 +65,8 @@ class ShareCoreReceiveSession {
   late final StreamSubscription<List<int>> _errors;
   late final StreamSubscription<Map<String, dynamic>> _output;
   bool _listened = false;
+  bool _stopping = false;
+  bool _terminal = false;
 
   Stream<Map<String, dynamic>> get events {
     _listened = true;
@@ -75,6 +85,7 @@ class ShareCoreReceiveSession {
   }
 
   Future<void> stop() async {
+    _stopping = true;
     await stopShareCoreProcess(_process);
     // 保留已经发出的终态事件，再解除订阅，避免取消与成功同时到达时丢失真实结果。
     if (_listened) {

@@ -59,6 +59,12 @@ void main() {
         'receive_failed: dfile_terminated': 'harmonyShareOperationFailed',
         'receive_failed: invalid_batch': 'harmonyShareReceiveValidationFailed',
         'receive_failed: unsupported_network_mode': 'harmonyShareDirectModeUnsupported',
+        'receive_failed: discovery_port_in_use': 'harmonyShareDiscoveryPortInUse',
+        'receive_failed: receive_port_in_use': 'harmonyShareReceivePortInUse',
+        'receive_failed: discovery_start_timeout': 'harmonyShareDiscoveryFailed',
+        'receive_failed: core_stopped': 'harmonyShareDiscoveryFailed',
+        'receive_failed: discovery_advertising_failed': 'harmonyShareDiscoveryPermission',
+        'discovery_failed: discovery_port_in_use': 'harmonyShareDiscoveryPortInUse',
         'receive_failed: insufficient_space': 'harmonyShareInsufficientSpace',
         'receive_failed: size_mismatch': 'harmonyShareReceiveValidationFailed',
         'history_buffer_full': 'harmonyShareHistoryBufferFull',
@@ -79,6 +85,7 @@ void main() {
         'send_failed: insufficient_space',
         'receive_failed: phone_rejected',
         'send_failed: unsupported_network_mode',
+        'send_failed: discovery_port_in_use',
         'prefix receive_failed: insufficient_space',
         'receive_failed: insufficient_space trailing',
         'receive_failed: insufficient_space\nuntrusted',
@@ -130,6 +137,26 @@ void main() {
         await tester.tap(details);
         await tester.pumpAndSettle();
         expect(find.text(raw), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+      testWidgets('发现端口冲突明确提示且停止搜索，480px ${brightness.name} $language', (tester) async {
+        tester.view.physicalSize = const Size(480, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final service = HarmonyShareService.instance;
+        final oldError = service.error;
+        addTearDown(() => service.error = oldError);
+        service.error = 'receive_failed: discovery_port_in_use';
+        await tester.pumpWidget(MaterialApp(
+          theme: buildAppTheme(brightness), locale: Locale(language),
+          supportedLocales: const [Locale('zh'), Locale('en')],
+          localizationsDelegates: const [AppLocalizationsDelegate(), ...GlobalMaterialLocalizations.delegates],
+          home: const Scaffold(body: HarmonyShareDashboardTab()),
+        ));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.t('harmonyShareDiscoveryPortInUse')), findsOneWidget);
+        expect(find.text(l10n.t('harmonyShareSearching')), findsNothing);
         expect(tester.takeException(), isNull);
       });
       testWidgets('错误提示与主动诊断，480px ${brightness.name} $language', (

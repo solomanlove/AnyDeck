@@ -188,7 +188,9 @@ class ShareCoreClient {
           case 'discovery_finished':
             return;
           case 'error':
-            throw StateError('Share Core discovery failed: ${value['code']}');
+            throw StateError(
+              'Share Core ${value['code']}: ${value['reason'] ?? 'discovery_failed'}',
+            );
           default:
             throw const FormatException('Unexpected Share Core response');
         }

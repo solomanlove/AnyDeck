@@ -139,4 +139,16 @@ void main() {
     await session.stop().timeout(const Duration(seconds: 1));
     expect(process.killed, isTrue);
   });
+  test('接收进程静默退出会报告失败，不把关闭stdout当作正常发现', () async {
+    final process = _Process();
+    final session = ShareCoreReceiveSession(process);
+    final events = session.events.toList();
+    final failure = expectLater(events, throwsA(isA<StateError>().having(
+      (error) => error.message, 'reason', contains('core_stopped'))));
+    process.emit({'event': 'discovery_ready'});
+    await process.finish(1);
+    await failure;
+    await session.stop();
+  });
+
 }

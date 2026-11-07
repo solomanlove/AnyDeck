@@ -42,6 +42,14 @@ String formatShareError(String error, String Function(String) text) {
   final core = _coreError.firstMatch(message);
   final reason = core?.group(2);
   final coreKey = switch (reason) {
+    'discovery_port_in_use' when core?.group(1) != 'send_failed' =>
+      'harmonyShareDiscoveryPortInUse',
+    'receive_port_in_use' when core?.group(1) == 'receive_failed' =>
+      'harmonyShareReceivePortInUse',
+    'discovery_failed' || 'discovery_start_timeout' || 'core_stopped'
+        when core?.group(1) != 'send_failed' => 'harmonyShareDiscoveryFailed',
+    'discovery_permission_denied' || 'discovery_advertising_failed'
+        when core?.group(1) != 'send_failed' => 'harmonyShareDiscoveryPermission',
     'phone_rejected' when core?.group(1) == 'send_failed' =>
       'harmonySharePeerRejected',
     'decision_timeout' ||
@@ -68,5 +76,5 @@ final _fileError = RegExp(
 );
 // 发送包含 phase，接收记录仅包含 reason；均只接受完整、单行的错误信封。
 final _coreError = RegExp(
-  r'^(?:Share Core )?(send_failed|receive_failed): (?:[a-z_]+ )?([a-z_]+)$',
+  r'^(?:Share Core )?(send_failed|receive_failed|discovery_failed): (?:[a-z_]+ )?([a-z_]+)$',
 );

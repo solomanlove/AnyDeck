@@ -8,6 +8,12 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
   ) {
     if (_configuring) return;
     switch (event['event']) {
+      case 'discovery_ready':
+        if (!_enabled || _closingWindows > 0 || _receiver != receiver || busy) return;
+        _clearDiscoveryStartup();
+        _discoveryReady = true;
+        error = null;
+        _changed();
       case 'device':
         try {
           final peer = ShareCorePeer.parse(event);
@@ -17,6 +23,8 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
           /* 忽略不可信发现报文。 */
         }
       case 'session_started':
+        _clearDiscoveryStartup();
+        _discoveryReady = false;
         _batchOffer = null;
         _receiveProgress = null;
         _receiveAccepted = false;
@@ -160,6 +168,8 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
         pendingOffer = null;
         _changed();
       case 'error':
+        _clearDiscoveryStartup();
+        _discoveryReady = false;
         history?.receiveChanged(
           _incomingHistoryId,
           status: event['reason'] == 'decision_timeout'

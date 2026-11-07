@@ -11,6 +11,7 @@ import 'harmony_share_scan_backdrop.dart';
 
 /// 固定高度的发现舞台；空状态与设备列表共用同一背景，设备数量不改变高度。
 /// header/footer 为身份栏和连接提示，batches 只提供真实发送批次快照。
+/// starting 仅表示等待 Core 的发现就绪确认，不冒充已开始扫描。
 /// busy 只控制能否选文件，scanning 独立控制发现动画，允许发送中追加下一批。
 class HarmonyShareStage extends StatelessWidget {
   const HarmonyShareStage({
@@ -23,6 +24,7 @@ class HarmonyShareStage extends StatelessWidget {
     required this.onInvalidDrop,
     this.scanning = false,
     this.unavailable = false,
+    this.starting = false,
     this.batches = const [],
     this.activeBatchId,
     this.cancelling = false,
@@ -40,6 +42,7 @@ class HarmonyShareStage extends StatelessWidget {
   final bool busy;
   final bool scanning;
   final bool unavailable;
+  final bool starting;
   final ValueChanged<ShareCorePeer> onPick;
   final void Function(ShareCorePeer, List<File>) onDrop;
   final VoidCallback onInvalidDrop;
@@ -97,6 +100,8 @@ class HarmonyShareStage extends StatelessWidget {
                                       ? 'harmonyShareUnavailable'
                                       : busy
                                       ? 'harmonyShareWaiting'
+                                      : starting
+                                      ? 'harmonyShareStartingDiscovery'
                                       : 'harmonyShareSearching',
                                 ),
                                 textAlign: TextAlign.center,

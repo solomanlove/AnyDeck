@@ -9,6 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 排空期间可输出末尾错误；不启动 Core、网络或真实文件收发。
 class _Receiver extends Fake implements ShareCoreReceiveSession {
+  _Receiver() {
+    eventsController.add({'event': 'discovery_ready'});
+  }
   final eventsController = StreamController<Map<String, dynamic>>();
   void Function()? whileStopping;
   @override
@@ -95,6 +98,7 @@ void main() {
       expect(client.receivers, hasLength(2));
       expect(failures, isEmpty);
       expect(service.error, isNull);
+      await Future<void>.delayed(Duration.zero);
       expect(service.scanning, isTrue);
     });
     test('活动接收器的${streamError ? 'Stream' : 'IPC'}错误仍可见', () async {
@@ -137,6 +141,7 @@ void main() {
     await service.start();
     expect(client.receivers, hasLength(2));
     expect(service.peers, isEmpty);
+    await Future<void>.delayed(Duration.zero);
     expect(service.scanning, isTrue);
   });
 }
