@@ -1,6 +1,6 @@
 # Huawei Share 私有核心集成边界
 
-当前基线：Core 0.3.6 / IPC 3（新增共享发现监听与真实就绪状态；收发真机证据来自此前 0.3.5，尚未代表新版共存验收），单文件实验上限 1 GiB；100 MiB 已完成独立 Core 真机双向与 hash 验证，正常 App 已完成 1 GiB 单文件接收（源 hash 尚未比对），GiB 双向、多文件及系统通知仍待验收，生产能力仍未发布。最新证据与限制见本文末尾及 `docs/plans/harmony-share-delivery.md`；早期 1 MiB 与 IPC 1 段落保留为实施历史。
+当前基线：Core 0.3.7 / IPC 3，已移除应用层单文件1 GiB限制，1 GiB以上的手机收发由用户手动测试。历史Core0.3.5已完成100 MiB独立真机双向hash验证与正常App的1 GiB单文件接收（手机源hash未比对），不代表新版大文件容量或共存验收；生产能力仍未发布。最新证据与限制见本文末尾，早期段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
@@ -343,3 +343,16 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 - 修复：网格 item 使用顶部对齐的 Align 释放子组件的高度约束，头像 Column 使用 MainAxisSize.min，命中与高亮区域随头像、名称、状态及批次信息的实际内容收紧。网格预留空间和396px发现区域保持原机制，状态变更及手机有无不会改变整块背景高度。
 - 回归：新增空白区域点击不触发选择、名称点击仍可用、批次状态增高后仍仅保留10px底部内边距的真实命中测试；保留多语言、明暗主题、多设备、大字体与固定背景高度验证。视觉 fixture 导出 Light/Dark 的设备悬停图，确认高亮仅包裹内容。
 - 验证：20项页面/头像/视觉测试与4个相关 Dart 文件 targeted analyze 通过，git diff --check 通过。本次只改布局约束，无新文案、Theme色、Provider、网络/进程或协议变更；未启动或重建用户 App，正常后续构建生效。
+
+
+## 放开1 GiB文件限制以便手动测试（2026-11-08）
+
+- 用户要求：先从代码中移除1 GiB大小限制，由用户自行测试真实大文件传输；本轮不自动向手机发送大文件或启动测试App。
+- Flutter的选择快照、单文件/批次请求、接收声明、结果和逐文件/整批进度，与Core0.3.7及重新编译的DFile helper共同放开原1 GiB拦截。选择提示改为“一次选择1–100个普通非空文件”，不再提示每个不超过1 GiB；旧异常字符串仍可映射为当前本地化提示。
+- 公开IPC仍为3，max_file_bytes/max_batch_bytes统一使用Dart VM/SQLite有符号64位可表示字节边界，这不是承诺支持该容量。批次不再通过“单文件上限×数量”限制总量，求和前检查剩余范围，防止整数回绕；数量、普通非空文件、路径/链接、大小/hash匹配、磁盘空间、30分钟超时与原子发布继续校验。
+- 逐文件进度保持有界内存，超出可表示块序号或原有内存预算时仅停用该文件遥测，不截断计数或分配与文件大小成比例的无界内存。私有实现、固定依赖归档来源与底层固有容量边界记录在私有 docs/large-file-testing.md。
+- 新制品固定到私有commit `133b9dbaa588c6a66fc980f77374461b7b899f97`，arm64 zip SHA-256 `8777094dad1b3a2a33c2fec01cdd116f4c627b3c7fb170d9d0090cb2ddc65dc3`。5成员hash/签名和实际Core0.3.7 / IPC3 hello的新版大小契约通过。私有提交仅本地保存，正常本机构建使用相邻已校验制品，跨机器远端获取前需推送私有提交。
+
+验证：198项nearby_share回归、24项页面/错误回归、11个相关Dart文件targeted analyze通过；覆盖2 GiB稀疏文件只读取stat、5 GiB清单与进度、结果提交和总量溢出。52项原生库/IPC定向回归通过；上次已知受固定端口占用影响的接收父进程退出用例继续排除，保留原有可选真机/大文件ignored用例。DFile22项中20项通过、2项跳过（LAN真机与旧Git缓存补丁检查），包含ASan/UBSan、5 GiB元数据和小文件本地加密收发；未进行GiB真实文件数据传输。
+
+交接：后续正常构建会同时更新Flutter代码与Core制品。用户自行尝试>1 GiB、>4 GiB单文件、混合批次与双向收发，并核对接收hash；失败时保留错误详情。字节100%仍需成功终态，本轮不声称手机大文件稳定性通过，不主动重建或重启当前AnyDeck。

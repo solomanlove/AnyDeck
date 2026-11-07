@@ -8,13 +8,13 @@ import 'share_local_name.dart';
 abstract final class ShareBatchContract {
   static const version = 3;
   static const maxFiles = 100;
-  static const maxBytes = maxFiles * ShareCoreContract.maxFileBytes;
+  static const maxBytes = ShareCoreContract.maxFileBytes;
 
   static void validate(int count, int bytes) {
     if (count < 1 ||
         count > maxFiles ||
         bytes < count ||
-        bytes > count * ShareCoreContract.maxFileBytes) {
+        bytes > maxBytes) {
       throw const FormatException('Invalid batch limits');
     }
   }
@@ -59,7 +59,7 @@ class ShareBatchRequest {
   }
   final List<ShareBatchFile> files;
   final String localName;
-  int get bytes => files.fold(0, (sum, file) => sum + file.bytes);
+  int get bytes => ShareCoreContract.sumFileBytes(files.map((file) => file.bytes));
 
   Map<String, Object> request({
     required String localIp,
@@ -128,9 +128,7 @@ class ShareBatchReceived {
     ShareBatchFile(path, size).validate();
     if (File(path).parent.path != Directory(directory).path ||
         _paths.contains(path.toLowerCase()) ||
-        _files.fold<int>(0, (sum, item) => sum + (item['bytes'] as int)) +
-                size >
-            bytes) {
+        size > bytes - _files.fold<int>(0, (sum, item) => sum + (item['bytes'] as int))) {
       throw const FormatException('Batch result outside destination or total');
     }
     _paths.add(path.toLowerCase());

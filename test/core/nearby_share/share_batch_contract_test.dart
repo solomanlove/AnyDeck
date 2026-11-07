@@ -3,7 +3,7 @@ import 'package:any_deck/core/nearby_share/share_core_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('批次请求支持跨 1 GiB 总量，但保持单文件和 UTF-8 行上限', () {
+  test('批次请求支持1 GiB以上单文件，但保持数量和UTF-8行上限', () {
     final request = ShareBatchRequest([
       const ShareBatchFile('/synthetic/大文件.bin', 1073741824),
       const ShareBatchFile('/synthetic/line\nname.bin', 65536),
@@ -11,10 +11,7 @@ void main() {
     expect(request['version'], 3);
     expect((request['files'] as List).length, 2);
     expect(ShareCoreContract.version, 3);
-    expect(
-      () => ShareBatchRequest([const ShareBatchFile('/a', 1073741825)]),
-      throwsFormatException,
-    );
+    expect(ShareBatchRequest([const ShareBatchFile('/a', 1073741825)]).bytes, 1073741825);
     expect(
       () => ShareBatchRequest([
         const ShareBatchFile('/a', 1),

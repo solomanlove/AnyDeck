@@ -16,6 +16,9 @@ String formatShareError(String error, String Function(String) text) {
     'FormatException: Invalid file selection' ||
     'FormatException: Select 1 to 100 files' ||
     'FormatException: Only nonempty regular files up to 1 GiB' ||
+    'FormatException: Only nonempty regular files' ||
+    'FormatException: Select one nonempty regular file' ||
+    'FormatException: Invalid file size total' ||
     'FormatException: Select one nonempty file up to 1 GiB' =>
       'harmonyShareSelectionLimit',
     'FormatException: Invalid local name' => 'harmonyShareLocalNameInvalid',

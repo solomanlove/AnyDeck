@@ -38,10 +38,11 @@ class ShareSendSelection {
         )) {
       throw const FormatException('Invalid file selection');
     }
+    ShareCoreContract.sumFileBytes(files.map((file) => file.bytes));
   }
   static const maxFiles = 100;
   final List<ShareSendFile> files;
-  int get bytes => files.fold(0, (total, file) => total + file.bytes);
+  int get bytes => ShareCoreContract.sumFileBytes(files.map((file) => file.bytes));
 
   static Future<ShareSendSelection> inspect(List<File> files) async {
     if (files.isEmpty || files.length > maxFiles) {
@@ -58,7 +59,7 @@ class ShareSendSelection {
       if (type != FileSystemEntityType.file ||
           stat.size < 1 ||
           stat.size > ShareCoreContract.maxFileBytes) {
-        throw const FormatException('Only nonempty regular files up to 1 GiB');
+        throw const FormatException('Only nonempty regular files');
       }
       selected.add(
         ShareSendFile(

@@ -37,7 +37,7 @@ class ShareFileProgressLedger {
     _seen = List<bool>.filled(count, false);
     if (sizes != null) {
       if (sizes.length != count ||
-          sizes.fold<int>(0, (sum, value) => sum + value) != bytes ||
+          ShareCoreContract.sumFileBytes(sizes) != bytes ||
           sizes.any(
             (value) => value < 1 || value > ShareCoreContract.maxFileBytes,
           )) {
@@ -88,8 +88,8 @@ class ShareFileProgressLedger {
         (sum, value) => sum + value,
       );
       final unknown = _sizes.where((value) => value == null).length - 1;
-      if (known + total + unknown > bytes ||
-          (unknown == 0 && known + total != bytes)) {
+      if (total > bytes - known - unknown ||
+          (unknown == 0 && total != bytes - known)) {
         throw const FormatException('File progress exceeds batch declaration');
       }
       _sizes[index] = total;

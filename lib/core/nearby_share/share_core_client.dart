@@ -208,7 +208,7 @@ class ShareCoreClient {
     }
   }
 
-  /// 测试入口仅传输一个不超过 1 GiB 的普通文件；私有核心仍要求显式环境开关。
+  /// 测试入口传输一个普通非空文件；私有核心仍要求显式环境开关。
   Future<ShareCoreTransfer> sendFileForTest({
     required InternetAddress localAddress,
     required ShareCorePeer peer,
@@ -218,7 +218,7 @@ class ShareCoreClient {
     if (stat.type != FileSystemEntityType.file ||
         stat.size < 1 ||
         stat.size > ShareCoreContract.maxFileBytes) {
-      throw const FormatException('Select one nonempty file up to 1 GiB');
+      throw const FormatException('Select one nonempty regular file');
     }
     return _startTransfer({
       'command': 'send_file_experimental',

@@ -1,7 +1,20 @@
 /// 主仓与私有制品之间的通用 IPC 契约，不包含底层传输协议字段。
 abstract final class ShareCoreContract {
   static const version = 3;
-  static const maxFileBytes = 1024 * 1024 * 1024;
+  /// 仅保留 Dart VM / SQLite 有符号64位字节计数边界，不再设置1 GiB产品上限。
+  static const maxFileBytes = 0x7fffffffffffffff;
+
+  /// 在相加前检查可表示范围，避免多文件总量溢出后绕过清单验证。
+  static int sumFileBytes(Iterable<int> sizes) {
+    var total = 0;
+    for (final size in sizes) {
+      if (size < 1 || size > maxFileBytes - total) {
+        throw const FormatException('Invalid file size total');
+      }
+      total += size;
+    }
+    return total;
+  }
   static const transferTimeout = Duration(minutes: 30);
 }
 

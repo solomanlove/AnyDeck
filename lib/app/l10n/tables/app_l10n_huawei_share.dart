@@ -119,7 +119,7 @@ const huaweiShareZh = {
   'harmonyShareSelectionSummary': '{count} 个文件 · 共 {size}',
   'harmonyShareMoreFiles': '另有 {count} 个文件',
   'harmonyShareQueueConfirmHint': '文件将作为整批发送，手机一次确认整批；取消或失败将结束本批。',
-  'harmonyShareSelectionLimit': '一次选择 1–100 个普通非空文件，每个不超过 1 GiB；暂不支持文件夹与链接。',
+  'harmonyShareSelectionLimit': '一次选择 1–100 个普通非空文件；暂不支持文件夹与链接。',
 
   'harmonyShareReceivingActive': '正在接收',
   'harmonyShareDisabled': '接收已关闭',
@@ -319,7 +319,7 @@ const huaweiShareEn = {
   'harmonyShareQueueConfirmHint':
       'Files are sent as one batch with one phone confirmation. Cancellation or failure ends the batch.',
   'harmonyShareSelectionLimit':
-      'Choose 1–100 nonempty regular files, up to 1 GiB each. Folders and links are not supported.',
+      'Choose 1–100 nonempty regular files. Folders and links are not supported.',
 
   'harmonyShareReceivingActive': 'Receiving',
   'harmonyShareDisabled': 'Receiving is off',

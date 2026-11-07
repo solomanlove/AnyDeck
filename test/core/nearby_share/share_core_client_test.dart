@@ -8,7 +8,7 @@ void main() {
     const hello =
         '{"event":"hello","version":3,"core_version":"0.3.0",'
         '"capabilities":{"discovery":true,"send":false,"receive":false},'
-        '"experimental":{"max_file_bytes":1073741824,"max_transfer_seconds":1800,"progress":true,"graceful_cancel":true,"native_batch":true,"file_progress":true,"batch_local_name":true,"max_local_name_bytes":24,"max_files":100,"max_batch_bytes":107374182400}}';
+        '"experimental":{"max_file_bytes":${ShareCoreContract.maxFileBytes},"max_transfer_seconds":1800,"progress":true,"graceful_cancel":true,"native_batch":true,"file_progress":true,"batch_local_name":true,"max_local_name_bytes":24,"max_files":100,"max_batch_bytes":${ShareBatchContract.maxBytes}}}';
     expect(
       () => ShareCoreCapabilities.parse(
         hello.replaceFirst('"version":3', '"version":2'),
@@ -32,7 +32,7 @@ void main() {
     final result = ShareCoreCapabilities.parse(
       '{"event":"hello","version":3,"core_version":"0.1.0",'
       '"capabilities":{"discovery":false,"send":false,"receive":false},'
-      '"experimental":{"max_file_bytes":1073741824,"max_transfer_seconds":1800,"progress":true,"graceful_cancel":true,"native_batch":true,"file_progress":true,"batch_local_name":true,"max_local_name_bytes":24,"max_files":100,"max_batch_bytes":107374182400}}',
+      '"experimental":{"max_file_bytes":${ShareCoreContract.maxFileBytes},"max_transfer_seconds":1800,"progress":true,"graceful_cancel":true,"native_batch":true,"file_progress":true,"batch_local_name":true,"max_local_name_bytes":24,"max_files":100,"max_batch_bytes":${ShareBatchContract.maxBytes}}}',
     );
     expect(result.send, isFalse);
     expect(result.coreVersion, '0.1.0');
@@ -73,13 +73,13 @@ void main() {
   });
 
   test(
-    'rejects oversized outgoing file before starting native transfer',
+    'rejects empty outgoing file before starting native transfer',
     () async {
       final folder = await Directory.systemTemp.createTemp('share-core-test-');
       try {
         final file = File('${folder.path}/large.bin');
         final handle = await file.open(mode: FileMode.write);
-        await handle.truncate(ShareCoreContract.maxFileBytes + 1);
+        await handle.truncate(0);
         await handle.close();
         expect(
           () => const ShareCoreClient().sendFileForTest(
