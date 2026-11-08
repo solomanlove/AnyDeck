@@ -126,12 +126,23 @@ extension _SettingsTabWidgets on _SettingsTab {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          Expanded(child: textColumn),
-          const SizedBox(width: 16),
-          child,
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 窄内容区改为上下排列，接收端名称和操作按钮不挤压说明。
+          if (constraints.maxWidth < 480) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [textColumn, const SizedBox(height: 12), child],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: textColumn),
+              const SizedBox(width: 16),
+              child,
+            ],
+          );
+        },
       ),
     );
   }

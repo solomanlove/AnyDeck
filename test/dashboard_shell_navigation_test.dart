@@ -2,6 +2,7 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/router/app_router.dart';
 import 'package:any_deck/app/router/dashboard_route.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
@@ -12,6 +13,8 @@ import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
+import 'package:any_deck/features/overview/settings/settings_item.dart';
+import 'package:any_deck/features/overview/settings/settings_workspace.dart';
 import 'package:any_deck/features/webview/in_app_webview_widget.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -195,6 +198,53 @@ void main() {
     await tester.tap(find.byKey(const Key('deviceListOnlineOnly')));
     await tester.pumpAndSettle();
     expect(find.text('Market Phone'), findsWidgets);
+    // 真实设置目录接入验证：7 类内容齐全，宽窄导航复用同一套控件。
+    router.goNamed(AppRouteNames.settings);
+    tester.view.physicalSize = const Size(1600, 950);
+    await tester.pumpAndSettle();
+    final settingsBeforeNavigation = container.read(appSettingsProvider);
+    final workspace = tester.widget<SettingsWorkspace>(
+      find.byType(SettingsWorkspace),
+    );
+    expect(
+      workspace.items.map((item) => item.category).toSet(),
+      SettingsCategory.values.toSet(),
+    );
+    expect(
+      workspace.items.map((item) => item.id).toSet().length,
+      workspace.items.length,
+    );
+    for (final category in SettingsCategory.values) {
+      await tester.tap(find.byKey(ValueKey('settings-nav-${category.name}')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(ValueKey('settings-content-${category.name}')),
+        findsOneWidget,
+      );
+    }
+    final settingsSearch = find.byKey(const ValueKey('settings-search'));
+    await tester.enterText(settingsSearch, '声音');
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-result-audioForwarding')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('音频转发').hitTestable(), findsOneWidget);
+    tester.view.physicalSize = const Size(900, 900);
+    await tester.pumpAndSettle();
+    for (final category in SettingsCategory.values) {
+      await tester.tap(find.byType(DropdownButtonFormField<SettingsCategory>));
+      await tester.pumpAndSettle();
+      final label = AppLocalizations(const Locale('zh')).t(category.labelKey);
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(ValueKey('settings-content-${category.name}')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+    expect(container.read(appSettingsProvider), same(settingsBeforeNavigation));
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     container.dispose();
