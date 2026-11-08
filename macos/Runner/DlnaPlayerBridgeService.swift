@@ -429,8 +429,10 @@ final class DlnaTitlebarPinControl: NSObject {
   }
 
   func update(pinned: Bool, pinLabel: String, unpinLabel: String) {
-    let symbol = NSImage(systemSymbolName: pinned ? "pin.fill" : "pin", accessibilityDescription: nil)
-    button.image = symbol?.withSymbolConfiguration(.init(pointSize: 16, weight: .regular))
+    // 与 Flutter 投屏窗口的 CupertinoIcons.pin / pin_fill 使用同源矢量轮廓。
+    let image = NSImage(named: pinned ? "DlnaPinFilled" : "DlnaPin")
+    image?.isTemplate = true
+    button.image = image
     button.contentTintColor = pinned ? .systemOrange : .secondaryLabelColor
     let label = pinned ? unpinLabel : pinLabel
     button.toolTip = label

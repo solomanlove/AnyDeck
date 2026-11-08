@@ -96,3 +96,10 @@
 - UI 区分“启动失败”和“视频播放失败”，使用 zh/en 简短恢复提示，开关反映真实服务状态；底层诊断保留在控制台，避免直接撑高状态卡片。播放器回退代码按职责拆到 `dlna_renderer_playback.dart`，服务文件保持 500 行以内。
 - 回归覆盖：FLV 直接进入 libmpv；回退失败时服务仍监听、错误分离、SOAP 状态正确；换源后清错；就绪延迟/永久未就绪/通道挂起的时限；中英文错误提示与开关状态。未启动桌面 App，本次不能声明虎牙和央视频真机播放已修复。
 - 验证结果：`flutter test --no-pub test/core/dlna test/receiver_dashboard_tab_test.dart` 21 项通过；定向 `dart analyze` 无问题；`git diff --check` 通过。最终一次 `flutter analyze --no-pub` 长时间无输出，停止后以定向 `dart analyze` 完成静态检查。
+
+## 2026-11-08 标题栏置顶图标与投屏窗口统一
+
+- `DlnaTitlebarPinControl` 改用 `DlnaPin` / `DlnaPinFilled` 矢量 Template 资源，轮廓来自现有投屏窗口使用的 CupertinoIcons `pin` / `pin_fill`（`0xf76b` / `0xf76c`），替换原 SF Symbols。两种 DLNA 播放窗口均复用此原生控件。
+- 资源保持 16pt，沿用未置顶的系统文字色、置顶橙色及原有 Tooltip / 点击回调；PDF 保留矢量，在 Retina 下由 Asset Catalog 渲染，不在播放期间加载字体。
+- 导出脚本：`script/generate_dlna_pin_icons.swift`，参数为已安装 `cupertino_icons` 包的 `assets/CupertinoIcons.ttf` 路径和 `macos/Runner/Assets.xcassets`；无额外依赖。
+- 验证：Swift 原生 `dlna_titlebar_pin_test.swift` 编译并通过，覆盖两种矢量图标、Template 属性、状态切换、Tooltip 和点击回调；Asset Catalog 经 `actool` 编译通过；Flutter 图钉通道测试 1 项通过；`git diff --check` 通过。未运行 AnyDeck 主程序。
