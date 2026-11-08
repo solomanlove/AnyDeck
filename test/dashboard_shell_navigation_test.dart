@@ -16,6 +16,7 @@ import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:any_deck/features/overview/settings/settings_item.dart';
 import 'package:any_deck/features/overview/settings/settings_workspace.dart';
+import 'package:any_deck/features/overview/widget/keyboard_shortcut_settings.dart';
 import 'package:any_deck/features/webview/in_app_webview_widget.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_adb_service.dart';
+
+/// 两类快捷键标题必须各显示一次且位于内容控件（Card 内）之外。
+void _expectShortcutSections(WidgetTester tester, String language) {
+  final l10n = AppLocalizations(Locale(language));
+  final content = find.byKey(const ValueKey('settings-content-shortcuts'));
+  expect(
+    find.descendant(
+      of: content,
+      matching: find.text(l10n.t('keyboardShortcuts')),
+    ),
+    findsNothing,
+  );
+  expect(
+    find.descendant(
+      of: content,
+      matching: find.byType(KeyboardShortcutSettings),
+    ),
+    findsNWidgets(2),
+  );
+  for (final key in ['shortcutGeneral', 'shortcutMirroring']) {
+    final title = find.descendant(
+      of: content,
+      matching: find.text(l10n.t(key)),
+    );
+    expect(title, findsOneWidget);
+    expect(
+      find.ancestor(of: title, matching: find.byType(KeyboardShortcutSettings)),
+      findsNothing,
+    );
+  }
+}
 
 const _device = DiscoveredDevice(
   id: 'navigation-test',
@@ -238,6 +270,9 @@ void main() {
         find.byKey(ValueKey('settings-content-${category.name}')),
         findsOneWidget,
       );
+      if (category == SettingsCategory.shortcuts) {
+        _expectShortcutSections(tester, 'zh');
+      }
     }
     final settingsSearch = find.byKey(const ValueKey('settings-search'));
     await tester.enterText(settingsSearch, '声音');
@@ -442,6 +477,9 @@ void main() {
               .t(category.labelKey);
           await tester.tap(find.text(categoryLabel).last);
           await tester.pumpAndSettle();
+          if (category == SettingsCategory.shortcuts) {
+            _expectShortcutSections(tester, language);
+          }
           expect(tester.takeException(), isNull, reason: category.name);
         }
         router.goNamed(AppRouteNames.devices);

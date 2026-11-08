@@ -75,8 +75,8 @@ extension _SettingsTabCatalog on _SettingsTab {
       SettingsItem(
         id: 'keyboardShortcuts',
         category: SettingsCategory.shortcuts,
-        section: context.l10n.t('keyboardShortcuts'),
-        title: context.l10n.t('keyboardShortcuts'),
+        section: context.l10n.t('shortcutGeneral'),
+        title: context.l10n.t('shortcutGeneral'),
         keywords: context.l10n.t('settingsShortcutKeywords'),
         searchAliases: {
           if (settings.mainWindowBinding.isEnabled)
@@ -87,20 +87,36 @@ extension _SettingsTabCatalog on _SettingsTab {
             if (settings.windowShortcuts.bindingFor(action).isEnabled)
               settings.windowShortcuts.bindingFor(action).label(): context.l10n
                   .t(action.labelKey),
+        },
+        searchLabels: [
+          context.l10n.t('mainWindowShortcut'),
+          for (final action in WindowShortcut.values)
+            context.l10n.t(action.labelKey),
+        ],
+        child: const KeyboardShortcutSettings(
+          group: KeyboardShortcutGroup.general,
+        ),
+      ),
+      SettingsItem(
+        id: 'mirrorKeyboardShortcuts',
+        category: SettingsCategory.shortcuts,
+        section: context.l10n.t('shortcutMirroring'),
+        title: context.l10n.t('shortcutMirroring'),
+        keywords: context.l10n.t('settingsShortcutKeywords'),
+        description: context.l10n.t('shortcutMirrorHint'),
+        searchAliases: {
           for (final action in MirrorShortcut.values)
             if (settings.mirrorShortcuts.bindingFor(action).isEnabled)
               settings.mirrorShortcuts.bindingFor(action).label(): context.l10n
                   .t(action.labelKey),
         },
-        description: context.l10n.t('shortcutMirrorHint'),
         searchLabels: [
-          context.l10n.t('mainWindowShortcut'),
-          for (final action in WindowShortcut.values)
-            context.l10n.t(action.labelKey),
           for (final action in MirrorShortcut.values)
             context.l10n.t(action.labelKey),
         ],
-        child: const KeyboardShortcutSettings(),
+        child: const KeyboardShortcutSettings(
+          group: KeyboardShortcutGroup.mirroring,
+        ),
       ),
       SettingsItem(
         id: 'notifications',

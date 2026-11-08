@@ -9,10 +9,16 @@ import '../../../app/shortcuts/window_shortcut.dart';
 import '../../../app/widget/app_toast.dart';
 import 'keyboard_shortcut_recorder.dart';
 
+/// 快捷键内容分组，标题和 Card 由设置页统一提供。
+enum KeyboardShortcutGroup { general, mirroring }
+
 /// 设置页的通用与投屏快捷键列表，嵌入已有设置分组卡片使用。
 /// 按键录入、禁用和恢复默认均通过 AppSettingsController 持久化。
 class KeyboardShortcutSettings extends ConsumerWidget {
-  const KeyboardShortcutSettings({super.key});
+  /// [group] 指定单个分组时仅渲染内容，由外部展示分组标题；为空时保留完整列表。
+  const KeyboardShortcutSettings({super.key, this.group});
+
+  final KeyboardShortcutGroup? group;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,72 +38,79 @@ class KeyboardShortcutSettings extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            context.l10n.t('shortcutGeneral'),
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          _ShortcutRow(
-            label: context.l10n.t('mainWindowShortcut'),
-            control: OutlinedButton(
-              key: const ValueKey('shortcut-main-window'),
-              onPressed: () => _editMain(context, ref),
-              child: Text(
-                mainBinding.isEnabled
-                    ? mainBinding.label()
-                    : context.l10n.t('shortcutDisabled'),
+          if (group != KeyboardShortcutGroup.mirroring) ...[
+            if (group == null)
+              Text(
+                context.l10n.t('shortcutGeneral'),
+                style: Theme.of(context).textTheme.titleSmall,
               ),
-            ),
-          ),
-          for (final action in WindowShortcut.values)
             _ShortcutRow(
-              label: context.l10n.t(action.labelKey),
+              label: context.l10n.t('mainWindowShortcut'),
               control: OutlinedButton(
-                key: ValueKey('shortcut-window-${action.name}'),
-                onPressed: () => _editWindow(context, ref, action),
+                key: const ValueKey('shortcut-main-window'),
+                onPressed: () => _editMain(context, ref),
                 child: Text(
-                  windowShortcuts.bindingFor(action).isEnabled
-                      ? windowShortcuts.bindingFor(action).label()
+                  mainBinding.isEnabled
+                      ? mainBinding.label()
                       : context.l10n.t('shortcutDisabled'),
                 ),
               ),
             ),
-          const Divider(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.l10n.t('shortcutMirroring'),
-                  style: Theme.of(context).textTheme.titleSmall,
+            for (final action in WindowShortcut.values)
+              _ShortcutRow(
+                label: context.l10n.t(action.labelKey),
+                control: OutlinedButton(
+                  key: ValueKey('shortcut-window-${action.name}'),
+                  onPressed: () => _editWindow(context, ref, action),
+                  child: Text(
+                    windowShortcuts.bindingFor(action).isEnabled
+                        ? windowShortcuts.bindingFor(action).label()
+                        : context.l10n.t('shortcutDisabled'),
+                  ),
                 ),
               ),
-              TextButton(
-                key: const ValueKey('shortcut-reset'),
-                onPressed: () =>
-                    _save(context, ref, const MirrorShortcutSettings()),
-                child: Text(context.l10n.t('shortcutReset')),
-              ),
-            ],
-          ),
-          Text(
-            context.l10n.t('shortcutMirrorHint'),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ],
+          if (group == null) const Divider(height: 24),
+          if (group != KeyboardShortcutGroup.general) ...[
+            Row(
+              children: [
+                if (group == null)
+                  Expanded(
+                    child: Text(
+                      context.l10n.t('shortcutMirroring'),
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                if (group != null) const Spacer(),
+                TextButton(
+                  key: const ValueKey('shortcut-reset'),
+                  onPressed: () =>
+                      _save(context, ref, const MirrorShortcutSettings()),
+                  child: Text(context.l10n.t('shortcutReset')),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          for (final action in MirrorShortcut.values)
-            _ShortcutRow(
-              label: context.l10n.t(action.labelKey),
-              control: OutlinedButton(
-                key: ValueKey('shortcut-${action.name}'),
-                onPressed: () => _editMirror(context, ref, action),
-                child: Text(
-                  shortcuts.bindingFor(action).isEnabled
-                      ? shortcuts.label(action, isMacOS: isMacOS)
-                      : context.l10n.t('shortcutDisabled'),
+            Text(
+              context.l10n.t('shortcutMirrorHint'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final action in MirrorShortcut.values)
+              _ShortcutRow(
+                label: context.l10n.t(action.labelKey),
+                control: OutlinedButton(
+                  key: ValueKey('shortcut-${action.name}'),
+                  onPressed: () => _editMirror(context, ref, action),
+                  child: Text(
+                    shortcuts.bindingFor(action).isEnabled
+                        ? shortcuts.label(action, isMacOS: isMacOS)
+                        : context.l10n.t('shortcutDisabled'),
+                  ),
                 ),
               ),
-            ),
+          ],
         ],
       ),
     );
