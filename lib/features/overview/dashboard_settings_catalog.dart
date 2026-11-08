@@ -77,14 +77,21 @@ extension _SettingsTabCatalog on _SettingsTab {
         category: SettingsCategory.shortcuts,
         section: context.l10n.t('keyboardShortcuts'),
         title: context.l10n.t('keyboardShortcuts'),
-        keywords: [
-          context.l10n.t('settingsShortcutKeywords'),
-          settings.mainWindowBinding.label(),
+        keywords: context.l10n.t('settingsShortcutKeywords'),
+        searchAliases: {
+          if (settings.mainWindowBinding.isEnabled)
+            settings.mainWindowBinding.label(): context.l10n.t(
+              'mainWindowShortcut',
+            ),
           for (final action in WindowShortcut.values)
-            settings.windowShortcuts.bindingFor(action).label(),
+            if (settings.windowShortcuts.bindingFor(action).isEnabled)
+              settings.windowShortcuts.bindingFor(action).label(): context.l10n
+                  .t(action.labelKey),
           for (final action in MirrorShortcut.values)
-            settings.mirrorShortcuts.bindingFor(action).label(),
-        ].join(' '),
+            if (settings.mirrorShortcuts.bindingFor(action).isEnabled)
+              settings.mirrorShortcuts.bindingFor(action).label(): context.l10n
+                  .t(action.labelKey),
+        },
         description: context.l10n.t('shortcutMirrorHint'),
         searchLabels: [
           context.l10n.t('mainWindowShortcut'),

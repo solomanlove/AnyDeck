@@ -54,9 +54,10 @@ Widget _harness(String language, Brightness brightness) => MaterialApp(
             section: 'Actions',
             title: 'Keyboard shortcuts',
             searchLabels: ['Take screenshot'],
+            searchAliases: {'⌘⌥S': 'Take screenshot'},
             child: Column(
               children: [
-                SizedBox(height: 400),
+                SizedBox(height: 1200),
                 Text('Take screenshot'),
                 SizedBox(height: 200),
               ],
@@ -69,6 +70,34 @@ Widget _harness(String language, Brightness brightness) => MaterialApp(
 );
 
 void main() {
+  testWidgets('多空格动作搜索仍定位到快捷键具体行', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_harness('en', Brightness.light));
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-search')),
+      'Take   screenshot',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-result-shortcut-action')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Take screenshot').hitTestable(), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-search')),
+      '⌘⌥S',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Take screenshot'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('settings-result-shortcut-action')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Take screenshot').hitTestable(), findsOneWidget);
+  });
+
   test('搜索忽略大小写、支持多词与描述，新增文案中英文完整', () {
     const item = SettingsItem(
       id: 'audio',
@@ -158,6 +187,14 @@ void main() {
     await tester.drag(general, const Offset(0, -180));
     await tester.pumpAndSettle();
     final before = tester.getTopLeft(find.text('general control')).dy;
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-search')),
+      'no-match',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('general control')).dy, before);
     await tester.tap(find.byKey(const ValueKey('settings-nav-receivers')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('settings-nav-general')));

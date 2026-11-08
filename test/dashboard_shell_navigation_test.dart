@@ -245,6 +245,86 @@ void main() {
       expect(tester.takeException(), isNull);
     }
     expect(container.read(appSettingsProvider), same(settingsBeforeNavigation));
+    // 通过真实搜索入口操作设置，验证重构后的 UI 仍落盘而非仅更新展示。
+    Future<Finder> openSetting(String id) async {
+      final items = tester
+          .widget<SettingsWorkspace>(find.byType(SettingsWorkspace))
+          .items;
+      final item = items.singleWhere((item) => item.id == id);
+      await tester.enterText(settingsSearch, item.title);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ValueKey('settings-result-$id')));
+      await tester.pumpAndSettle();
+      return find
+          .ancestor(
+            of: find.text(item.title),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Padding &&
+                  widget.padding ==
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            ),
+          )
+          .first;
+    }
+
+    var row = await openSetting('mirrorAlwaysOnTop');
+    await tester.tap(
+      find.descendant(of: row, matching: find.byType(CupertinoSwitch)),
+    );
+    await tester.pumpAndSettle();
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      container.read(appSettingsProvider).scrcpyAlwaysOnTop,
+      !settingsBeforeNavigation.scrcpyAlwaysOnTop,
+    );
+    expect(
+      prefs.getBool('settings.scrcpyAlwaysOnTop'),
+      !settingsBeforeNavigation.scrcpyAlwaysOnTop,
+    );
+    row = await openSetting('forceHostRecording');
+    await tester.tap(
+      find.descendant(of: row, matching: find.byType(CupertinoSwitch)),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      prefs.getBool('settings.forceHostRecording'),
+      !settingsBeforeNavigation.forceHostRecording,
+    );
+    row = await openSetting('autoIdentifyInterval');
+    expect(
+      tester
+          .widget<PopupMenuButton<int>>(
+            find.descendant(
+              of: row,
+              matching: find.byType(PopupMenuButton<int>),
+            ),
+          )
+          .enabled,
+      isFalse,
+    );
+    row = await openSetting('autoIdentifyForegroundApp');
+    await tester.tap(
+      find.descendant(of: row, matching: find.byType(CupertinoSwitch)),
+    );
+    await tester.pumpAndSettle();
+    expect(prefs.getBool('settings.autoIdentifyForegroundApp'), isTrue);
+    row = await openSetting('autoIdentifyInterval');
+    expect(
+      tester
+          .widget<PopupMenuButton<int>>(
+            find.descendant(
+              of: row,
+              matching: find.byType(PopupMenuButton<int>),
+            ),
+          )
+          .enabled,
+      isTrue,
+    );
+    expect(
+      container.read(appSettingsProvider).mirrorAudioEnabled,
+      settingsBeforeNavigation.mirrorAudioEnabled,
+    );
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     container.dispose();
@@ -300,6 +380,24 @@ void main() {
             ),
           ),
         );
+        await tester.pumpAndSettle();
+        // 在实际分类控件中验证中英文、明暗主题的最小宽度布局。
+        tester.view.physicalSize = const Size(900, 700);
+        router.goNamed(AppRouteNames.settings);
+        await tester.pumpAndSettle();
+        for (final category in SettingsCategory.values) {
+          await tester.tap(
+            find.byType(DropdownButtonFormField<SettingsCategory>),
+          );
+          await tester.pumpAndSettle();
+          final categoryLabel = AppLocalizations(Locale(language))
+              .t(category.labelKey);
+          await tester.tap(find.text(categoryLabel).last);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: category.name);
+        }
+        router.goNamed(AppRouteNames.devices);
+        tester.view.physicalSize = const Size(1200, 900);
         await tester.pumpAndSettle();
         final label = language == 'zh' ? '帮助中心' : 'Help Center';
         final entry = find.byTooltip(label);

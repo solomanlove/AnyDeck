@@ -29,6 +29,7 @@ class SettingsItem {
     this.description = '',
     this.keywords = '',
     this.searchLabels = const [],
+    this.searchAliases = const {},
     this.standalone = false,
   });
 
@@ -39,6 +40,9 @@ class SettingsItem {
   final String description;
   final String keywords;
   final List<String> searchLabels;
+
+  /// 检索别名到实际动作文案的映射，例如当前按键组合到快捷键行名称。
+  final Map<String, String> searchAliases;
   final bool standalone;
   final Widget child;
 
@@ -46,18 +50,25 @@ class SettingsItem {
   bool matches(String query, String categoryLabel) {
     final text =
         '$title $section $description $keywords '
-                '${searchLabels.join(' ')} $categoryLabel'
+                '${searchLabels.join(' ')} ${searchAliases.keys.join(' ')} $categoryLabel'
             .toLowerCase();
-    return query
-        .trim()
-        .toLowerCase()
-        .split(RegExp(r'\s+'))
-        .every(text.contains);
+    return _matchesQuery(text, query);
   }
 
+  static bool _matchesQuery(String text, String query) => query
+      .trim()
+      .toLowerCase()
+      .split(RegExp(r'\s+'))
+      .every(text.toLowerCase().contains);
+
   /// 复合设置优先展示命中的动作名称，帮助用户确认搜索结果。
-  String resultLabel(String query) => searchLabels.firstWhere(
-    (label) => label.toLowerCase().contains(query.trim().toLowerCase()),
-    orElse: () => title,
-  );
+  String resultLabel(String query) {
+    for (final label in searchLabels) {
+      if (_matchesQuery(label, query)) return label;
+    }
+    for (final alias in searchAliases.entries) {
+      if (_matchesQuery(alias.key, query)) return alias.value;
+    }
+    return title;
+  }
 }

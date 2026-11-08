@@ -166,6 +166,22 @@ extension _SettingsTabWidgets on _SettingsTab {
       (item) => item.value == value,
       orElse: () => items.first,
     );
+    // 对齐菜单按实际语言和文字缩放计算宽度，避免英文选项挤出箭头。
+    final menuWidth = alignMenu
+        ? items.fold<double>(112, (width, item) {
+            final painter = TextPainter(
+              text: TextSpan(
+                text: item.label,
+                style: DefaultTextStyle.of(context).style.copyWith(fontSize: 13),
+              ),
+              textDirection: Directionality.of(context),
+              textScaler: MediaQuery.textScalerOf(context),
+            )..layout();
+            final measured = (painter.width + 44).clamp(112.0, 240.0);
+            painter.dispose();
+            return max(width, measured);
+          })
+        : null;
 
     return PopupMenuButton<T>(
       initialValue: alignMenu ? null : value,
@@ -174,7 +190,7 @@ extension _SettingsTabWidgets on _SettingsTab {
       position: alignMenu ? PopupMenuPosition.under : null,
       offset: alignMenu ? const Offset(0, 4) : const Offset(0, 34),
       constraints: alignMenu
-          ? const BoxConstraints.tightFor(width: 112)
+          ? BoxConstraints.tightFor(width: menuWidth)
           : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
@@ -209,7 +225,7 @@ extension _SettingsTabWidgets on _SettingsTab {
         opacity: onChanged == null ? 0.45 : 1.0,
         child: Container(
           constraints: alignMenu
-              ? const BoxConstraints.tightFor(width: 112)
+              ? BoxConstraints.tightFor(width: menuWidth)
               : null,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -227,11 +243,15 @@ extension _SettingsTabWidgets on _SettingsTab {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                currentItem.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+              Flexible(
+                child: Text(
+                  currentItem.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  ),
                 ),
               ),
               const SizedBox(width: 6),
