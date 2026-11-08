@@ -5,6 +5,8 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'dlna_window_readiness.dart';
+
 /// 在独立 Flutter 窗口中使用内置 libmpv；媒体 URL 只通过窗口通道传递。
 class DlnaFallbackPlayer {
   DlnaFallbackPlayer({
@@ -51,18 +53,9 @@ class DlnaFallbackPlayer {
         );
     try {
       if (_window == null) {
-        var ready = false;
-        for (var attempt = 0; attempt < 12; attempt++) {
-          try {
-            ready =
-                await window
-                    .invokeMethod<bool>('isFlutterReady')
-                    .timeout(const Duration(seconds: 1)) ==
-                true;
-            if (ready) break;
-          } catch (_) {}
-          await Future<void>.delayed(const Duration(milliseconds: 250));
-        }
+        final ready = await waitForDlnaWindowReady(
+          () => window.invokeMethod<bool>('isFlutterReady'),
+        );
         if (!ready) throw StateError('DLNA fallback window did not start');
         _window = window;
       }

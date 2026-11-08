@@ -1,3 +1,4 @@
+import 'package:any_deck/core/dlna/dlna_renderer_service.dart';
 import 'package:any_deck/core/airplay/airplay_server_service.dart';
 import 'package:any_deck/core/airplay/airplay_server_state.dart';
 import 'package:any_deck/app/l10n/app_localizations.dart';
@@ -15,6 +16,42 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('DLNA 播放错误与启动错误分离，不直接展示底层诊断', (tester) async {
+    for (final locale in ['zh', 'en']) {
+      for (final running in [true, false]) {
+        final service = _FailedDlnaService(running);
+        await tester.pumpWidget(ProviderScope(
+          child: MaterialApp(
+            theme: buildAppTheme(Brightness.light),
+            localizationsDelegates: const [
+              AppLocalizationsDelegate(),
+              GlobalMaterialLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: Locale(locale),
+            home: Scaffold(body: DlnaReceiverCard(
+              key: ValueKey('$locale-$running'), service: service,
+            )),
+          ),
+        ));
+        await tester.pump();
+        final l10n = AppLocalizations(Locale(locale));
+        expect(find.text(l10n.t(running
+            ? 'receiverDlnaPlaybackFailed' : 'receiverFailed')), findsOneWidget);
+        expect(find.text(l10n.t(running
+            ? 'receiverDlnaPlaybackFailedDesc' : 'receiverDlnaStartFailedDesc')),
+            findsOneWidget);
+        expect(tester.widget<Switch>(find.byType(Switch)).value, running);
+        expect(find.textContaining('AVFoundationErrorDomain'), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        service.dispose();
+      }
+    }
   });
 
   testWidgets('投屏接收页集中展示 AirPlay 与 DLNA 服务', (tester) async {
@@ -227,4 +264,16 @@ class _FakeAirPlay extends AirPlayServerNotifier {
   final AirPlaySessionData initial;
   @override
   AirPlaySessionData? build() => initial;
+}
+
+/// 注入两种错误状态，避免在 Widget 测试中打开真实网络服务。
+class _FailedDlnaService extends DlnaRendererService {
+  _FailedDlnaService(this.running) : super.forTest();
+  final bool running;
+  @override
+  bool get isRunning => running;
+  @override
+  String? get error => running ? null : 'SocketException';
+  @override
+  String? get playbackError => running ? 'AVFoundationErrorDomain/-11850' : null;
 }

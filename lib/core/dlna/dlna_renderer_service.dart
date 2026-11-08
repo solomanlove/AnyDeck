@@ -9,6 +9,7 @@ import 'dlna_discovery_address.dart';
 import 'dlna_player_bridge.dart';
 import 'dlna_fallback_player.dart';
 
+part 'dlna_renderer_playback.dart';
 part 'dlna_renderer_name.dart';
 part 'dlna_renderer_pin.dart';
 part 'dlna_renderer_control.dart';
@@ -32,7 +33,7 @@ class DlnaRendererService extends ChangeNotifier {
           },
           onFailed: (detail) {
             _transportState = 'STOPPED';
-            _error = detail;
+            _playbackError = detail;
             debugPrint('[DLNA] libmpv playback failed: $detail');
             notifyListeners();
             unawaited(_notifySubscribers());
@@ -98,6 +99,7 @@ class DlnaRendererService extends ChangeNotifier {
   String _currentMetadata = '';
   String _transportState = 'NO_MEDIA_PRESENT';
   String? _error;
+  String? _playbackError;
   final Map<String, _DlnaSubscription> _subscriptions = {};
   final Map<String, ({Future<InternetAddress?> address, DateTime expires})>
   _discoveryAddressCache = {};
@@ -107,6 +109,9 @@ class DlnaRendererService extends ChangeNotifier {
   int get httpPort => _http?.port ?? _configuredHttpPort;
   bool get isBusy => _starting;
   String? get error => _error;
+
+  /// 当前媒体的播放错误，与接收服务的启动错误分开。
+  String? get playbackError => _playbackError;
   bool get hasActiveMedia => _currentUrl != null;
   void _notifyNameChange() => notifyListeners();
   void _notifyControlChange() => notifyListeners();
@@ -122,6 +127,7 @@ class DlnaRendererService extends ChangeNotifier {
     _currentMetadata = '';
     _dashSource = false;
     _transportState = 'NO_MEDIA_PRESENT';
+    _playbackError = null;
     notifyListeners();
     unawaited(_notifySubscribers());
   }
@@ -186,6 +192,7 @@ class DlnaRendererService extends ChangeNotifier {
       );
     } catch (error) {
       _error = '$error';
+      debugPrint('[DLNA] receiver start failed: $error');
       await stop();
       rethrow;
     } finally {
@@ -212,6 +219,7 @@ class DlnaRendererService extends ChangeNotifier {
     _mediaGeneration++;
     _dashSource = false;
     _transportState = 'NO_MEDIA_PRESENT';
+    _playbackError = null;
     _subscriptions.clear();
     _discoveryAddressCache.clear();
     try {
@@ -220,12 +228,6 @@ class DlnaRendererService extends ChangeNotifier {
       debugPrint('[DLNA] stop player failed: $error');
     }
     notifyListeners();
-  }
-
-  /// AVPlayer 报错后只对当前仍在播放的媒体执行一次 libmpv 回退。
-  Future<void> _handleNativeFailure(String detail, int generation) async {
-    debugPrint('[DLNA] AVPlayer failed: $detail');
-    await _openFallback(detail, generation: generation, stopNative: true);
   }
 
   /// 切源只清空画面；真正结束投屏时才销毁窗口。
@@ -253,68 +255,6 @@ class DlnaRendererService extends ChangeNotifier {
       await operation;
     } finally {
       if (identical(_playerReset, operation)) _playerReset = null;
-    }
-  }
-
-  Future<void> _openFallback(
-    String detail, {
-    required int generation,
-    required bool stopNative,
-  }) async {
-    while (true) {
-      final pending = _fallbackOperation;
-      if (pending == null) break;
-      await pending;
-    }
-    final url = _currentUrl;
-    if (generation != _mediaGeneration ||
-        url == null ||
-        _transportState != 'PLAYING') {
-      return;
-    }
-    if (_fallback.isActive) return;
-    final operation = Completer<void>();
-    _fallbackOperation = operation.future;
-    try {
-      final volume = await DlnaPlayerBridge.readNumber(
-        'getVolume',
-        fallback: 1,
-      );
-      final muted = await _player.invokeMethod<bool>('getMute') ?? false;
-      if (stopNative) {
-        await _player.invokeMethod<void>('prepare', _loadingText);
-      }
-      debugPrint('[DLNA] starting libmpv fallback');
-      final opened = await _fallback.open(
-        url,
-        title: _serverName,
-        loadingText: _loadingText,
-        volume: volume,
-        muted: muted,
-        alwaysOnTop: _alwaysOnTop,
-      );
-      if (_mediaGeneration != generation || _transportState != 'PLAYING') {
-        await _fallback.stop();
-        return;
-      }
-      if (!opened) {
-        _transportState = 'STOPPED';
-        _error = '$detail; libmpv could not render a video frame';
-      } else {
-        await _player.invokeMethod<void>('stop');
-        _error = null;
-        debugPrint('[DLNA] libmpv fallback playing');
-      }
-    } catch (error) {
-      if (_mediaGeneration != generation) return;
-      _error = detail;
-      _transportState = 'STOPPED';
-      debugPrint('[DLNA] libmpv fallback exception: $error');
-    } finally {
-      _fallbackOperation = null;
-      operation.complete();
-      notifyListeners();
-      unawaited(_notifySubscribers());
     }
   }
 

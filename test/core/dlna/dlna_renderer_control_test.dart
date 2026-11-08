@@ -260,12 +260,44 @@ void main() {
     await send('Play', '<Speed>1</Speed>');
     expect(playedUrls.last, 'http://127.0.0.1/reconnected.mp4');
 
+    // FLV 直播直接使用 libmpv，避免已知不兼容格式先触发原生失败。
+    await send(
+      'SetAVTransportURI',
+      '<CurrentURI>http://127.0.0.1/live.FLV?token=test</CurrentURI>',
+    );
+    final beforeFlv = calls.where((call) => call == 'playUrl').length;
+    await send('Play', '<Speed>1</Speed>');
+    for (var i = 0; i < 20 && fallback.openedUrl?.contains('live.FLV') != true; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(fallback.openedUrl, 'http://127.0.0.1/live.FLV?token=test');
+    expect(calls.where((call) => call == 'playUrl').length, beforeFlv);
+
+    // 媒体失败仅停止当前播放，服务继续接收；换源清除旧错误。
+    fallback.openResult = false;
+    await send(
+      'SetAVTransportURI',
+      '<CurrentURI>http://127.0.0.1/unavailable.mpd</CurrentURI>',
+    );
+    await send('Play', '<Speed>1</Speed>');
+    for (var i = 0; i < 20 && service.playbackError == null; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(service.playbackError, isNotNull);
+    expect(service.error, isNull);
+    expect(service.isRunning, isTrue);
+    final failedState = await send('GetTransportInfo', '');
+    expect(failedState, contains('STOPPED'));
+    expect(failedState, contains('ERROR_OCCURRED'));
+    fallback.openResult = true;
+
     // 鸿蒙版 B 站只设置 URI 并轮询状态；首次轮询应触发一次播放。
     await send(
       'SetAVTransportURI',
       '<CurrentURI>http://127.0.0.1/harmony-bili.mp4</CurrentURI>',
       userAgent: 'Linux/3.0.0 UPnP/1.0 Platinum/1.0.5.13',
     );
+    expect(service.playbackError, isNull);
     final beforePoll = playedUrls.length;
     await send('GetPositionInfo', '');
     expect(playedUrls.length, beforePoll);
@@ -284,6 +316,9 @@ void main() {
     await send('Play', '<Speed>1</Speed>');
     await send('GetTransportInfo', '');
     expect(playedUrls.length, beforeExplicitPlay + 1);
+    await service.stop();
+    expect(service.playbackError, isNull);
+    expect(service.isRunning, isFalse);
   });
 }
 
@@ -293,6 +328,7 @@ class _RecordingFallbackPlayer extends DlnaFallbackPlayer {
   String? openedUrl;
   final commands = <String>[];
   bool _active = false;
+  bool openResult = true;
   Completer<void>? stopGate;
   Completer<void>? stopEntered;
 
@@ -309,8 +345,8 @@ class _RecordingFallbackPlayer extends DlnaFallbackPlayer {
     bool alwaysOnTop = false,
   }) async {
     openedUrl = url;
-    _active = true;
-    return true;
+    _active = openResult;
+    return openResult;
   }
 
   @override

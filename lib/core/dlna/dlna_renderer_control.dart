@@ -27,7 +27,7 @@ extension DlnaRendererControl on DlnaRendererService {
         _currentMetadata =
             DlnaProtocol.element(body, 'CurrentURIMetaData') ?? '';
         _transportState = 'STOPPED';
-        _error = null;
+        _playbackError = null;
         final generation = _mediaGeneration;
         debugPrint('[DLNA] source accepted generation=$generation');
         await _resetPlayers(keepWindow: true);
@@ -46,6 +46,7 @@ extension DlnaRendererControl on DlnaRendererService {
         await _playerReset;
         if (generation != _mediaGeneration) return {};
         if (_currentUrl == null) return null;
+        _playbackError = null;
         _stopWindowTimer?.cancel();
         _stopWindowTimer = null;
         if (_transportState == 'PAUSED_PLAYBACK') {
@@ -54,11 +55,13 @@ extension DlnaRendererControl on DlnaRendererService {
           } else {
             await DlnaRendererService._player.invokeMethod<void>('play');
           }
-        } else if (_dashSource) {
+        } else if (_dashSource ||
+            Uri.parse(_currentUrl!).path.toLowerCase().endsWith('.flv') ||
+            _currentMetadata.toLowerCase().contains('video/x-flv')) {
           _transportState = 'PLAYING';
           unawaited(
             _openFallback(
-              'DASH source',
+              'Media requires libmpv',
               generation: generation,
               stopNative: false,
             ),
@@ -147,7 +150,7 @@ extension DlnaRendererControl on DlnaRendererService {
         }
         return {
           'CurrentTransportState': _transportState,
-          'CurrentTransportStatus': 'OK',
+          'CurrentTransportStatus': _playbackError == null ? 'OK' : 'ERROR_OCCURRED',
           'CurrentSpeed': '1',
         };
       case 'GetPositionInfo':

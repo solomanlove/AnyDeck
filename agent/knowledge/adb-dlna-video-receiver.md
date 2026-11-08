@@ -86,3 +86,13 @@
 5. 验证 macOS Light/Dark 下图标状态与中英文文案；确认 Android scrcpy 与 iOS AirPlay 原有操作不受影响。
 6. 用可公开访问的非 DRM DASH MPD 验证 libmpv 子窗口首帧、音画同步、暂停/继续、Seek、音量/静音、关闭与重新投屏；再用此前失败的 B 站视频对照 `AVPlayer failed`、`starting libmpv fallback`、`libmpv first frame rendered` 或脱敏错误日志。验证失败/窗口关闭后没有残留子窗口或播放资源。
 7. 分别在 AVPlayer 与 libmpv 播放窗口点击图钉，切换到其他 App 确认置顶，再取消置顶确认恢复；切换视频及播放器验证状态沿用，结束投屏后重新投屏确认默认不置顶。
+
+## 2026-11-08 Android 虎牙 / 央视频失败处理优化
+
+- 用户反馈 Android 虎牙、央视频投屏失败，随后确认 Android 优酷重新投屏成功。现有本地日志 `anydeck_10982_main.log` 在 20:20—20:26 记录虎牙 CDN 媒体先触发 AVPlayer `-11850`，多次 libmpv 成功出帧，也存在回退窗口未就绪和媒体打开失败。不能据此断定所有片源失效，也未取得足以确认央视频根因的独立证据。
+- 明确 `.flv` 后缀（忽略大小写、排除 query）或 metadata 包含 `video/x-flv` 的媒体直接交给 libmpv，沿用 DASH 回退路径，省去已知格式不匹配的 AVPlayer 尝试。MP4/HLS 沿用原流程。
+- 回退窗口就绪检查由固定 12 次重试改为总计最多 10 秒，通道调用不返回时也受总时限约束；就绪后仍沿用现有首帧超时与失败清理。
+- `error` 仅保存服务错误；新增 `playbackError` 保存媒体失败诊断。媒体失败保持接收服务运行，SOAP `GetTransportInfo` 返回 `STOPPED` / `ERROR_OCCURRED`。重新 Play、切源、结束媒体会话或关闭接收服务时清除媒体错误。
+- UI 区分“启动失败”和“视频播放失败”，使用 zh/en 简短恢复提示，开关反映真实服务状态；底层诊断保留在控制台，避免直接撑高状态卡片。播放器回退代码按职责拆到 `dlna_renderer_playback.dart`，服务文件保持 500 行以内。
+- 回归覆盖：FLV 直接进入 libmpv；回退失败时服务仍监听、错误分离、SOAP 状态正确；换源后清错；就绪延迟/永久未就绪/通道挂起的时限；中英文错误提示与开关状态。未启动桌面 App，本次不能声明虎牙和央视频真机播放已修复。
+- 验证结果：`flutter test --no-pub test/core/dlna test/receiver_dashboard_tab_test.dart` 21 项通过；定向 `dart analyze` 无问题；`git diff --check` 通过。最终一次 `flutter analyze --no-pub` 长时间无输出，停止后以定向 `dart analyze` 完成静态检查。

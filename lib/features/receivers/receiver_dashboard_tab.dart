@@ -222,14 +222,17 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
 
 /// DLNA 服务状态、视频会话状态与接收端名称入口。
 class DlnaReceiverCard extends ConsumerStatefulWidget {
-  const DlnaReceiverCard({super.key});
+  const DlnaReceiverCard({super.key, this.service});
+
+  /// 默认使用全局接收服务；测试可注入不启动网络的服务。
+  final DlnaRendererService? service;
 
   @override
   ConsumerState<DlnaReceiverCard> createState() => _DlnaReceiverCardState();
 }
 
 class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
-  final _service = DlnaRendererService.instance;
+  late final _service = widget.service ?? DlnaRendererService.instance;
   String? _loadingText;
   String? _pinLabel;
   String? _unpinLabel;
@@ -308,15 +311,20 @@ class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider);
     final hasError = _service.error != null && !_service.isRunning;
-    final statusLabel = hasError
+    final playbackFailed = _service.isRunning && _service.playbackError != null;
+    final statusLabel = playbackFailed
+        ? context.l10n.t('receiverDlnaPlaybackFailed')
+        : hasError
         ? context.l10n.t('receiverFailed')
         : _service.hasActiveMedia
         ? context.l10n.t('receiverDlnaPlaying')
         : _service.isRunning
         ? context.l10n.t('receiverWaiting')
         : context.l10n.t('receiverStopped');
-    final statusDetail = hasError
-        ? _service.error!
+    final statusDetail = playbackFailed
+        ? context.l10n.t('receiverDlnaPlaybackFailedDesc')
+        : hasError
+        ? context.l10n.t('receiverDlnaStartFailedDesc')
         : _service.hasActiveMedia
         ? context.l10n.t('receiverDlnaPlayingDesc')
         : _service.isRunning
@@ -324,7 +332,7 @@ class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
               .t('receiverDlnaReadyDesc')
               .replaceAll('{name}', settings.dlnaServerName)
         : context.l10n.t('receiverDlnaStoppedDesc');
-    final statusColor = hasError
+    final statusColor = hasError || playbackFailed
         ? theme.colorScheme.error
         : _service.hasActiveMedia
         ? theme.appColors.success
