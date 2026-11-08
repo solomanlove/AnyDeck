@@ -62,6 +62,8 @@ String formatShareError(String error, String Function(String) text) {
     'dfile_timeout' => 'harmonyShareOperationTimedOut',
     'tcp_failed' => 'harmonySharePeerUnavailable',
     'direct_mode_disabled' => 'harmonyShareDirectModeDisabled',
+    'lan_fallback_failed' || 'lan_unavailable'
+        when core?.group(1) == 'receive_failed' => 'harmonyShareLanFallbackFailed',
     'direct_network_permission_required' => 'harmonyShareDirectPermission',
     'direct_network_restore_unavailable' => 'harmonyShareDirectRestoreUnavailable',
     'direct_network_restore_failed' || 'direct_network_restore_pending' =>

@@ -1,11 +1,11 @@
 {
   "repository": "git@github.com:solomanlove/AnyDeck-Share-Core.git",
-  "commit": "d0275ebfaed07e01c74e29a6145d90709584ae6d",
+  "commit": "71310e9e3d4afac684f4177836b15535cc0cc95c",
   "ipc_version": 3,
   "artifacts": {
     "arm64": {
       "path": "artifacts/anydeck-share-core-macos-arm64.zip",
-      "sha256": "a27e1fbc7e7444ba93010d1155dc0274bdfd837ae16999e54916d69c7cafff92"
+      "sha256": "ca436c7d236de8492ab5791c8c5217382a45dbe821cd472661d3e71dc603a9bf"
     }
   }
 }

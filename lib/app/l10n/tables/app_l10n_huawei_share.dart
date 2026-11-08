@@ -2,6 +2,7 @@
 const huaweiShareZh = {
   'harmonyShareDirectReady': '等待手机发送文件…\n请在手机分享面板中选择本机',
   'harmonyShareDirectModeDisabled': '手机请求了 P2P 直连。请先在互传设置中手动开启“高速传输模式”，再从手机重新分享；关闭时使用 LAN。',
+  'harmonyShareLanFallbackFailed': '已尝试使用 LAN 接收，但未能建立数据连接。请确认手机和电脑连接同一局域网，且路由器未开启设备隔离，再从手机重新分享。本次 LAN 回退未切换电脑 Wi-Fi。',
   'harmonyShareDirectPermission': '无法读取 Wi-Fi 信息或保存的密码。请允许 AnyDeck 的定位及所需 Keychain 访问，然后重新分享；当前网络未切换。',
   'harmonyShareDirectRestoreUnavailable': '无法确保恢复当前 Wi-Fi，已取消直连。请使用系统保存密码的个人 Wi-Fi，或关闭高速传输模式使用 LAN。',
   'harmonyShareDirectRestoreFailed': '原 Wi-Fi 尚未确认恢复，请在系统 Wi-Fi 菜单检查并重新连接。文件接收结果请以下方互传记录为准。',
@@ -207,6 +208,7 @@ const huaweiShareZh = {
 const huaweiShareEn = {
   'harmonyShareDirectReady': 'Waiting for files from your phone…\nSelect this computer in the phone’s share sheet',
   'harmonyShareDirectModeDisabled': 'The phone requested P2P. Enable High-speed transfer mode in transfer settings, then share again from the phone. When off, LAN is used.',
+  'harmonyShareLanFallbackFailed': 'LAN reception was attempted, but the data connection could not be established. Connect both devices to the same LAN, check router client isolation, then share again from the phone. The computer did not switch Wi-Fi during LAN fallback.',
   'harmonyShareDirectPermission': 'Wi-Fi information or a saved password is unavailable. Allow AnyDeck Location and the required Keychain access, then share again. The network was not changed.',
   'harmonyShareDirectRestoreUnavailable': 'The current Wi-Fi cannot be safely restored, so the direct connection was cancelled. Use a personal Wi-Fi network with a saved password, or turn off High-speed transfer mode for LAN.',
   'harmonyShareDirectRestoreFailed': 'Restoring the original Wi-Fi has not been confirmed. Check and reconnect in the system Wi-Fi menu. Check the transfer history below for the file reception result.',
