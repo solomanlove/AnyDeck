@@ -35,7 +35,7 @@
 | `adb-cert-management` | 证书管理机制 | active | 记录用户证书与系统证书（Root 权限，包含 Android 10+ 内存挂载与 Conscrypt APEX 挂载）的导入机制与 adb 命令设计 | `control/` (控制面板) |
 | `adb-emulator-management` | 模拟器启动诊断与配置详情 | active | 记录启动诊断、ADB 授权与离线状态、定向重连/关闭、冷启动与 SDK 环境、标题工具栏、复用系统版本平台 Tab、详情及中英文配置搜索 | `core/emulator/`, `core/providers/`, `features/devices/` |
 | `adb-desktop-platform-chrome` | 跨平台桌面窗口与工作区 UI | active | macOS 原生按钮避让、Windows 主窗口标题栏、Linux 原生装饰、子窗口标题同步、公共主题表面与宿主验证边界 | `app/window/`, `features/overview/`, `linux/runner/` |
-| `adb-desktop-window-shortcuts` | 桌面窗口与软件快捷键 | active | 主窗口、通用操作与投屏统一按键录入、自由修饰键、跨组冲突与旧键释放、持久化广播、子窗口动作转发、退出确认与 macOS 菜单边界 | `app/shortcuts/`, `app/settings/`, `app/window/`, `features/overview/` |
+| `adb-desktop-window-shortcuts` | 桌面窗口与软件快捷键 | active | 统一按键录入、自由修饰键、跨组冲突与旧键释放、持久化广播、子窗口转发、隐藏路由焦点隔离、失焦响应、退出确认与 macOS 菜单边界 | `app/shortcuts/`, `app/settings/`, `app/window/`, `app/router/`, `features/overview/` |
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、产品名称与型号独立展示、折叠机内外屏分辨率、电量/充电状态、内存占用与容量卡布局，以及控制、鸿蒙应用右键清除缓存、鸿蒙文件页单一路径导航、日志紧凑视图时间配色、终端、鸿蒙进程 CPU/内存采样及进程操作、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
 | `adb-forward-port-mapping` | Android/HarmonyOS 正向端口转发 | active | 记录网络页正向规则的用途、ADB/HDC 命令、列表过滤、端口校验及验证边界 | `core/network/`, `core/providers/`, `features/network/` |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录 USB 自动准备监听、2 秒等待与就绪检测、实时 Wi-Fi IP、列表与概览 IP 同源展示、在线 TCP 地址优先与旧缓存修复、网段提示与主机网络快照同步、TCP 优先和目标 mDNS 回退、TLS 切换恢复、双语状态及手动连接指南 | `core/adb/wireless/`, `core/providers/`, `features/devices/` |
@@ -59,7 +59,7 @@
 | `adb-macos-icon-assets` | macOS 图标资源机制 | active | 记录 Dock 图标、Flutter App logo、菜单栏 template icon 的资源边界和生成命令 | `assets/brand/`, `macos/Runner/Assets.xcassets/` |
 | `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录设备管理与模拟器列表同级入口、设备列表统计标签与自适应搜索筛选栏、设备行名称与 IP、品牌 Logo 圆角、左侧导航 App/设备身份切换、品牌优先与制造商兜底、概览缓存兼容、返回点击逻辑及 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |
 | `adb-device-context-menu` | 设备列表常用操作右键菜单 | active | 行高亮、截图保存及剪贴板、投屏与工具 Route、三平台能力区分、离线/删除与重复操作拦截及验证边界 | `features/devices/`, `features/control/`, `test/` |
-| `adb-main-window-routing` | 主窗口层级路由 | active | 记录 Splash StartupGate、设备/模拟器/设置顶层 Route、设备工具 slug、应用详情嵌套路由及 Route 与 Riverpod 的职责边界 | `app/router/`, `features/overview/`, `features/apps/`, `features/devices/` |
+| `adb-main-window-routing` | 主窗口层级路由 | active | 记录 Splash StartupGate、顶层 Route、设备工具 slug、应用详情嵌套路由、隐藏 Navigator 焦点隔离及 Route 与 Riverpod 的职责边界 | `app/router/`, `features/overview/`, `features/apps/`, `features/devices/` |
 | `adb-main-window-navigation` | 主窗口导航、帮助中心、底部控制台与系统版本 | active | AnyDeck 在线帮助入口与中英文文案、侧边栏底部控制台、可调高度日志面板、系统版本 Route、移除独立模拟器管理窗口和原生菜单入口、验证与人工边界 | `features/overview/`, `features/console/`, `app/window/`, `app/router/` |
 | `adb-device-root-status` | Dashboard 手机 Root 状态标识 | active | 记录主页 Root 标识、检测链路、未知状态与控制 Tab 按钮移除 | `features/overview/`, `features/control/`, `core/providers/` |
 | `adb-macos-signature-policy` | macOS 签名与 system policy 修复机制 | active | 记录 `FlutterMacOS.framework` 被 dyld system policy 拒绝加载时的签名、provenance/quarantine 排查与自动修复脚本 | `macos/`, `script/` |

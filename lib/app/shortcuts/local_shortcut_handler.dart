@@ -7,7 +7,7 @@ class LocalShortcutMatch {
   final VoidCallback? callback;
 }
 
-/// 在当前 Route 的焦点范围内优先处理本地快捷键，防止按键泄漏到设备。
+/// 在当前 Route 内优先处理本地快捷键，防止按键泄漏到设备。
 /// resolve 返回 null 时沿用后续输入链路，child 不需要知道具体操作配置。
 class LocalShortcutHandler extends StatefulWidget {
   const LocalShortcutHandler({
@@ -15,12 +15,17 @@ class LocalShortcutHandler extends StatefulWidget {
     required this.resolve,
     required this.child,
     this.autofocus = true,
+    this.includeScopeFocus = false,
   });
   final LocalShortcutMatch? Function(KeyEvent event) resolve;
   final Widget child;
 
   /// 外层窗口范围可关闭自动聚焦，让内层投屏范围取得初始焦点。
   final bool autofocus;
+
+  /// 窗口操作设为 true，允许祖先 FocusScope 自身持有焦点（例如输入框或 Scope unfocus）。
+  /// 其他子树的焦点不触发此范围；投屏输入和录入控件保留各自的焦点约束。
+  final bool includeScopeFocus;
 
   @override
   State<LocalShortcutHandler> createState() => _LocalShortcutHandlerState();
@@ -42,7 +47,13 @@ class _LocalShortcutHandlerState extends State<LocalShortcutHandler> {
       return KeyEventResult.handled;
     }
     if (_pressed.contains(event.logicalKey)) return KeyEventResult.handled;
-    if (!_focus.hasFocus || !(ModalRoute.of(context)?.isCurrent ?? true)) {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    final hasFocus =
+        _focus.hasFocus ||
+        (widget.includeScopeFocus &&
+            primaryFocus is FocusScopeNode &&
+            _focus.ancestors.contains(primaryFocus));
+    if (!hasFocus || !(ModalRoute.of(context)?.isCurrent ?? true)) {
       return KeyEventResult.ignored;
     }
     final match = widget.resolve(event);

@@ -37,6 +37,38 @@ void main() {
     await _unmount(tester);
   });
 
+  testWidgets('子窗口输入失焦后仍可关闭，弹窗打开时暂停且关闭后恢复', (tester) async {
+    final state = container();
+    addTearDown(state.dispose);
+    await tester.pumpWidget(
+      shortcutTestApp(
+        container: state,
+        child: const WindowCloseShortcut(child: TextField(autofocus: true)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(TextField));
+    FocusScope.of(context).unfocus();
+    await tester.pump();
+    await _primary(tester, LogicalKeyboardKey.keyW);
+    expect(platform.windowCalls, ['close']);
+    platform.windowCalls.clear();
+
+    final dialog = showDialog<void>(
+      context: context,
+      builder: (_) => const AlertDialog(content: Text('modal')),
+    );
+    await tester.pumpAndSettle();
+    await _primary(tester, LogicalKeyboardKey.keyW);
+    expect(platform.windowCalls, isEmpty);
+    Navigator.of(tester.element(find.text('modal'))).pop();
+    await dialog;
+    await tester.pumpAndSettle();
+    await _primary(tester, LogicalKeyboardKey.keyW);
+    expect(platform.windowCalls, ['close']);
+    await _unmount(tester);
+  });
+
   testWidgets('主窗口保留旧唤起键，三个默认操作调用原有入口', (tester) async {
     final state = container();
     addTearDown(state.dispose);

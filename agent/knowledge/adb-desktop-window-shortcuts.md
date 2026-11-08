@@ -71,7 +71,7 @@
 2. 投屏设置继续使用 `settings.mirrorShortcuts`，新格式为 `{"version":2,"bindings":{"action":{"keyId":123,"control":true,"alt":false,"shift":true,"meta":false}}}`；只保存覆盖项，`keyId:null` 且修饰键全 false 表示禁用。兼容旧的 `action -> 字符串` 配置，按原平台前缀迁移后保留用户按键与禁用状态；非法值或重复绑定整体回退默认值。
 3. 主窗口使用 `settings.mainWindowShortcut` 保存完整组合，缺失或损坏时沿用 `settings.showWindowShortcutKey` 的旧值；显式 disabled 不再回退旧按键。`ShortcutSettings` mixin 统一持久化和广播，投屏继续使用 `update_mirror_shortcuts`，主窗口使用 `update_main_window_shortcut`，参数均为 JSON 字符串，接收端使用 `broadcast: false` 防止循环广播。
 4. 通用三项保存于 `settings.windowShortcuts`，格式为 `action -> 完整绑定 JSON`，未覆盖项使用默认值；广播方法为 `update_window_shortcuts`。源窗口在修改状态和持久化前验证跨组冲突；接收广播使用 `broadcast: false`，允许分组广播过程中短暂的中间状态。
-5. `LocalShortcutHandler` 统一拥有 FocusNode 和 `FocusManager.addEarlyKeyEventHandler`，在普通控件 / 设备输入之前匹配完整组合。`MirrorShortcutScope` 提供当前窗口的操作查找，主窗口唤起键和录入控件也复用该公共层。仅当前 Route 且焦点位于对应范围时执行；录入弹窗不会触发原页面快捷键。
+5. `LocalShortcutHandler` 统一拥有 FocusNode 和 `FocusManager.addEarlyKeyEventHandler`，在普通控件 / 设备输入之前匹配完整组合。默认仅当前 Route 且焦点位于对应范围时执行；窗口操作启用 `includeScopeFocus`，还允许焦点退到祖先 FocusScope 后响应。其他输入子树仍保持隔离，投屏与录入控件保留原有焦点约束；录入弹窗不会触发原页面快捷键。
 6. `MirrorToolbarButton` 通过 `MirrorShortcutTarget` 注册原有点击 / 长按回调。自动隐藏仍保留注册；按钮 Loading、null 回调、平台隐藏和卸载均不能执行对应操作。快捷键 Tooltip 与设置共用完整组合，截图额外展示保存快捷键。
 7. 同一次按下只执行一次，repeat 和对应 KeyUp 被消费，修饰键先抬起、配置改变或操作打开弹窗也不会把该 KeyUp 转发给手机。公共 Handler 销毁时移除 early handler 并释放 FocusNode，投屏 Scope 销毁时清空回调表。
 8. Android、HarmonyOS、iOS 和单 App 投屏沿用原有按钮的能力门禁与控制通道。此功能不新增 ADB/HDC 命令、设备后台进程或轮询。
@@ -81,6 +81,16 @@
 
 - 自动化：完整组合编解码、v1 迁移、非法配置回退、修饰键精确匹配、跨组冲突、原组合释放、禁用、恢复默认、SharedPreferences 保存、托盘真实菜单参数、主 / 子窗口广播与动作转发、窗口重建和 Channel 任务清理；三种桌面平台的单键和任意修饰键、本地输入优先级、repeat/up、粘贴、弹窗、按钮禁用和卸载；中英文与 Light/Dark 的实际录入、仅修饰键、取消、清除、默认恢复和主窗口绑定。
 - 关联回归：主 / 子窗口关闭与主窗口显示、投屏宽高比和旋转、白板、iOS 工具栏、HarmonyOS 控制、投屏设置、剪贴板与设备快捷设置。
-- 验证命令：`flutter test --no-pub` 运行五个快捷键测试及上述关联测试；`flutter analyze --no-pub` 检查快捷键、设置、窗口入口、设置 UI 和相关测试。本次未清理范围外既有告警。
-- 本次结果：16 个相关测试文件共 100 项通过；本次静态分析无问题。macOS 菜单 XML 检查、ibtool 资源编译和 MainFlutterWindow 的 Swift 语法检查通过。
-- 本次只运行测试与静态检查，未启动桌面 App。真实系统对组合键的占用、已打开的多个原生窗口间切换，以及真机截图 / 录屏 / 设备操作仍需运行态验收。
+- 验证命令：`flutter test --no-pub` 运行快捷键、设置、投屏和导航相关测试；`flutter analyze --no-pub` 检查相关实现与测试目标。范围外既有告警不属于本次改动。
+- 统一录入实现的验证记录：16 个相关测试文件共 100 项通过；相关静态分析无问题。macOS 菜单 XML 检查、ibtool 资源编译和 MainFlutterWindow 的 Swift 语法检查通过。
+- 验证边界：测试与静态检查不等同于真实键盘验收。真实系统对组合键的占用、已打开的多个原生窗口间切换，以及真机截图 / 录屏 / 设备操作仍需运行态验收。
+
+## 5. 2026-11-08 主窗口快捷键失效修复
+
+- 问题一：主窗口 `ShellRoute` 把内层 Navigator 放在 `Offstage` 中保留返回栈，但 Offstage 不禁止焦点。内层路由的自动聚焦会把焦点从可见 Dashboard 移走，导致唤起、关闭、设置和退出四项操作全部被本地 Handler 跳过。路由入口改为 `ExcludeFocus(child: Offstage(...))`，隐藏路由仅维护历史。
+- 问题二：设置搜索定位结果时调用 `FocusScope.of(context).unfocus()`，焦点会退到 Route 或 View 的祖先 FocusScope。窗口范围启用 `includeScopeFocus`，仅在 primaryFocus 是自身祖先 FocusScope 时补充响应；不直接绕过焦点检查，避免与兄弟输入范围重复执行。主窗口与子窗口共用此规则。
+- 当前 Route 检查继续保留，打开录入弹窗时原窗口操作暂停；投屏和录入范围不启用 Scope 焦点兜底。配置格式、修饰键自由组合、跨窗口转发与二次退出确认沿用原实现。
+- `test/main_window_route_shortcuts_test.dart` 使用真实 `appRouterProvider`、Dashboard 与设置页，在 macOS / Windows / Linux 三种平台配置下检查初始可见焦点、切页、搜索失焦、四项完整组合录入、即时生效、旧组合释放和录入弹窗隔离；退出检查实际提示文案，不用设置按钮上的按键标签代替动作断言。
+- `test/window_close_shortcut_test.dart` 补充子窗口输入失焦、弹窗暂停与关闭后恢复，已有主 / 子窗口转发与投屏组合复用测试继续回归。
+- 本轮验证：19 个相关测试文件共 117 项通过；12 个目标的 `flutter analyze --no-pub` 无问题。
+- 本轮按仓库约定未启动桌面 App，窗口操作由原生 Channel mock 记录；没有把 Widget 测试结果作为 macOS 实际按键、托盘隐藏或进程退出的验收。

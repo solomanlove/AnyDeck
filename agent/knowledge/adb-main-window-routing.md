@@ -23,7 +23,7 @@
 ## 实现边界
 
 1. `lib/app/router/dashboard_route.dart` 集中维护 Route name、URI 解析和 slug/index 映射。
-2. `ShellRoute` 始终复用一份 `DashboardScreen`，其 child 仅承载 Navigator 历史；设备工具的懒加载 `IndexedStack`、应用筛选和后台会话不会因为 URL 变化整体重建。
+2. `ShellRoute` 始终复用一份 `DashboardScreen`，其 child 仅承载 Navigator 历史，并以 `ExcludeFocus` 包裹隐藏的 `Offstage`；Offstage 自身仍可获取焦点，不能单独用于隔离隐藏 Navigator，否则切页时会抢走 Dashboard 快捷键焦点。设备工具的懒加载 `IndexedStack`、应用筛选和后台会话不会因为 URL 变化整体重建。
 3. `dashboard_route_sync.dart` 负责把 URI 参数同步到迁移期仍在使用的 `selectedDeviceProvider`、`selectedToolTabProvider` 和 `selectedAppPackageProvider`。业务点击只能先更新 Route，禁止新增反向拼接路径的状态分支。
 4. Splash 是 `MaterialApp.router` 外层的 StartupGate。Router 首地址为 `/devices`，动画只覆盖并预热当前路由页面，动画结束不进入返回栈。
 5. `/emulators` 展示主窗口内嵌完整模拟器管理页，不再提供独立管理窗口。AVD、DevEco、iOS Simulator 的运行画面仍使用各自原有窗口。
@@ -40,6 +40,7 @@
 ## 验证与回归
 
 - `test/dashboard_route_test.dart` 覆盖顶层页面（含投屏接收）、含冒号设备 ID、应用包名及工具 slug/index 映射。
+- `test/main_window_route_shortcuts_test.dart` 使用真实路由，覆盖隐藏 Navigator 排除焦点、切页与搜索失焦后的窗口操作，以及快捷键录入弹窗隔离；快捷键边界详见 `adb-desktop-window-shortcuts.md`。
 - 手工回归需覆盖 Splash → 设备列表、设备 → 各工具、应用详情返回、模拟器主页面/独立窗口、设置快捷键、通知点击和 Finder APK 安装跳转。
 - 静态检查和 Widget 测试不等同于桌面窗口、真实设备或系统通知验收；按仓库规则不自动启动应用。
 

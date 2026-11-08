@@ -50,6 +50,7 @@ class WindowCloseShortcut extends ConsumerWidget {
     );
     return LocalShortcutHandler(
       autofocus: autofocus,
+      includeScopeFocus: true,
       resolve: (event) {
         final action = settings.match(event);
         return action == null
@@ -155,6 +156,7 @@ class _MainWindowCloseShortcutState
           LogicalKeyboardKey(legacyKey.codeUnitAt(0)),
         );
     return LocalShortcutHandler(
+      includeScopeFocus: true,
       resolve: (event) {
         final action = settings.match(event);
         if (action != null) return LocalShortcutMatch(() => _perform(action));

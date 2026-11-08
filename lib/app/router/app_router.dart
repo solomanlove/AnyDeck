@@ -26,7 +26,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             children: [
               DashboardScreen(route: DashboardRouteState.fromUri(state.uri)),
               // 保留 ShellRoute 的内层 Navigator 以承载详情返回栈，业务画面仍由 Dashboard 统一渲染。
-              Offstage(offstage: true, child: child),
+              // Offstage 仍能获取焦点；隐藏路由只管理返回栈，不能抢占可见页面的按键。
+              ExcludeFocus(child: Offstage(offstage: true, child: child)),
             ],
           );
         },
