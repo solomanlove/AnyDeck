@@ -14,7 +14,7 @@
 | `adb-settings-manual-removal` | 设置页说明书入口移除 | active | 记录设置页“软件说明书”入口、弹框和专用文案的移除范围及回归验证 | `features/overview/`, `features/widgets/`, `app/l10n/` |
 | `adb-svg-assets` | SVG 与位图资源加载 | active | 本地 SVG/PNG 公共组件、品牌图片接入、加载失败回退与验证边界 | `app/widget/`, `features/devices/`, `features/overview/` |
 | `adb-ui-theme-system` | UI Theme 统一机制 | active | 统一品牌色、Light/Dark 语义色、边框、圆角与顶部轻提示，记录轻提示首帧/遮挡时的 Overlay 清理与回归，并明确固定业务色和 Painter 注入边界 | `app/theme/`, `app/widget/`, `app/window/`, `features/` |
-| `adb-local-diagnostic-logs` | 控制台与本地诊断日志 | active | 运行异常采集、关键日志筛选、跨窗口汇总、滚动文件、本地日志导出与验证边界 | `core/logging/`, `app/window/console/`, `features/developer/` |
+| `adb-local-diagnostic-logs` | 控制台与本地诊断日志 | active | 运行异常采集、关键日志筛选、跨窗口汇总、滚动文件、本地日志导出、工具栏图标交互统一与搜索自适应布局及验证边界 | `core/logging/`, `app/window/console/`, `features/developer/` |
 | `adb-github-feedback` | GitHub Issues 意见反馈 | active | 设置页标题与正文编辑、环境信息快照、分类草稿保留、长正文复制兜底、网页模板及验证边界 | `features/feedback/`, `core/process/`, `.github/ISSUE_TEMPLATE/` |
 | `adb-local-apk-inspector` | macOS Android 安装包分析与安装 | active | APK/APKS/AAB/XAPK 文件关联与离线分析、Protobuf 模块/分包清单、签名信息、APK 安装队列、临时目录回收与回归边界 | `core/apk/`, `features/apk/`, `app/window/apk/`, `rust/apk_inspector/` |
 | `adb-unified-app-detail-view` | 应用详情统一展示模型与 UI | active | 记录本地 APK 与已安装应用如何转换为统一 `AppDetailViewData`，并复用同一分栏、概要与 Tabs Widget | `app/widget/`, `features/apk/`, `features/apps/` |

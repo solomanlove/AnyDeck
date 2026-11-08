@@ -6,7 +6,7 @@
 - 控制台新增“仅关键日志（警告 / 错误）”，可与关键词搜索叠加；隐藏心跳不会隐藏 W/E/F 级别的轮询失败。
 - 控制台标题、说明、搜索、筛选、导出和显示开关统一位于单行 Toolbar；窄窗口收起操作文字并保留 Tooltip。界面时间以空格分隔日期与时间，底层日志仍保留 ISO 8601 格式。
 - 控制台 Toolbar 的搜索框与全部操作统一为 36px 高、8px 圆角及主题语义边框；筛选、隐藏心跳、自动滚动使用同规格 Icon 状态按钮，启用态由主题 `primary` 色表达，导出、复制、清空保持相同的普通操作样式。
-- 控制台标题区在 compact / 常规宽度下分别固定为 320px / 360px，副标题保持单行但不再使用 `ellipsis`，确保中英文“运行日志、命令记录与异常信息”说明完整展示；宽度预算仍兼容桌面窗口 900px 最小宽度及右侧完整操作区。
+- 控制台标题区在 compact / 常规宽度下分别固定为 320px / 360px，副标题保持单行但不再使用 `ellipsis`，确保中英文“运行日志、命令记录与异常信息”说明完整展示；独立窗口搜索框使用 `Expanded` 动态占用剩余宽度，全部操作按钮以 8px 间距连续靠右排列，兼容桌面窗口 900px 最小宽度。
 - 开发者选项 → 本地日志与故障排查 → 抓取本地日志，选择位置保存 `.log` 文件。控制台复用相同按钮。
 - 无需连接手机；导出包含保留的历史会话。控制台实时列表展示当前会话，历史文件通过导出查看。
 - 此功能采集桌面 App 日志；手机日志继续使用 Logcat Tab。
@@ -91,3 +91,12 @@ flutter analyze --no-pub lib/core/logging lib/main.dart lib/app/window/console/c
 ## 2026-10-31 产品体验修复
 
 控制台支持按当前筛选或全部历史选择导出范围；ADB 错误行补命令/设备上下文。详见 [AD-008、AD-009 修复记录](adb-product-review-fixes.md)。
+
+## 2026-11-08 工具栏图标与搜索宽度统一
+
+- 需求：底部面板与独立窗口的导出 Icon 统一大小、颜色、圆角和水波纹；独立窗口工具按钮靠右、搜索框动态伸缩。
+- 原因：导出切换为 `PopupMenuButton` 后遗漏 `iconButtonStyle`，菜单触发器退回默认圆形 IconButton 样式。
+- 实现：`LocalLogCaptureButton` 将样式传给菜单触发器，继续复用 `consoleToolbarButtonStyle`；共享样式显式设置 `shrinkWrap` 和标准 `visualDensity`，使按钮实际布局与视觉均为 36px，Icon 保持 18px、8px 圆角、主题语义色，Hover / Pressed 覆盖层与普通操作一致。启用的开关仍用主题主色区分。
+- 布局：独立窗口移除导出后的 `Spacer`，改为 8px 固定间距，搜索框改用 `Expanded`，窗口扩宽时工具组保持右侧位置。
+- 验证：`console_diagnostics_test.dart` 10 项通过，覆盖两种布局与明暗主题的导出尺寸/交互样式、900→1100px 搜索伸缩及原有筛选导出菜单。`console_dock_test.dart` 6 项通过，定向 `flutter analyze --no-pub` 与 `git diff --check` 通过。
+- 人工边界：未启动桌面 App；实际窗口 DPI 下的 Hover / 点击水波纹仍需目视验收。改动仅涉及 Toolbar 展示，复用既有文案和状态，不新增后台进程、Provider 或跨 Isolate 协议，不涉及投屏数据流。

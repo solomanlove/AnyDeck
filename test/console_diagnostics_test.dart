@@ -1,6 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/app/window/console/console_window_panel.dart';
+import 'package:any_deck/app/widget/local_log_capture_button.dart';
 import 'package:any_deck/core/logging/log_service.dart';
 import 'package:any_deck/features/developer/widget/developer_local_logs_card.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,87 @@ class _FixtureLogs extends LogService {
 }
 
 void main() {
+  for (final embedded in [false, true]) {
+    for (final brightness in Brightness.values) {
+      testWidgets('控制台导出样式与自适应布局 embedded=$embedded $brightness', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(900, 700);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [logHistoryProvider.overrideWith(_FixtureLogs.new)],
+            child: MaterialApp(
+              locale: const Locale('en'),
+              localizationsDelegates: const [AppLocalizationsDelegate()],
+              theme: buildAppTheme(brightness),
+              home: Scaffold(body: ConsoleWindowPanel(isEmbedded: embedded)),
+            ),
+          ),
+        );
+        await tester.pump();
+        final exportButton = find.descendant(
+          of: find.byType(LocalLogCaptureButton),
+          matching: find.byType(IconButton),
+        );
+        final filterButton = find.descendant(
+          of: find.byKey(const Key('consoleKeyLogsFilter')),
+          matching: find.byType(IconButton),
+        );
+        expect(tester.getSize(exportButton), const Size.square(36));
+        final exportStyle = tester.widget<IconButton>(exportButton).style!;
+        final filterStyle = tester.widget<IconButton>(filterButton).style!;
+        // 普通、Hover 和按下状态保持相同的颜色、圆角及交互覆盖层。
+        for (final states in <Set<WidgetState>>[
+          {},
+          {WidgetState.hovered},
+          {WidgetState.pressed},
+        ]) {
+          expect(
+            exportStyle.foregroundColor?.resolve(states),
+            filterStyle.foregroundColor?.resolve(states),
+          );
+          expect(
+            exportStyle.backgroundColor?.resolve(states),
+            filterStyle.backgroundColor?.resolve(states),
+          );
+          expect(
+            exportStyle.shape?.resolve(states),
+            filterStyle.shape?.resolve(states),
+          );
+          expect(
+            exportStyle.overlayColor?.resolve(states),
+            filterStyle.overlayColor?.resolve(states),
+          );
+        }
+        if (!embedded) {
+          final searchWidth = tester.getSize(find.byType(TextField)).width;
+          final searchRight = tester.getTopRight(find.byType(TextField)).dx;
+          expect(tester.getTopLeft(filterButton).dx - searchRight, 8);
+          expect(
+            tester.getTopLeft(exportButton).dx -
+                tester.getTopRight(filterButton).dx,
+            8,
+          );
+          tester.view.physicalSize = const Size(1100, 700);
+          await tester.pump();
+          expect(
+            tester.getSize(find.byType(TextField)).width,
+            searchWidth + 200,
+          );
+          expect(
+            tester.getTopRight(find.byIcon(Icons.monitor_heart_outlined)).dx -
+                tester.getTopRight(exportButton).dx,
+            35,
+          );
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   test('控制台时间使用空格分隔日期与时间', () {
     expect(
       formatConsoleTimestamp('2026-10-17T08:41:02.540920'),

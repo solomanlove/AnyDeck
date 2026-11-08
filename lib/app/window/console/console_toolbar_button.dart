@@ -39,6 +39,8 @@ ButtonStyle consoleToolbarButtonStyle(
   bool selected = false,
 }) {
   return IconButton.styleFrom(
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    visualDensity: VisualDensity.standard,
     minimumSize: const Size.square(36),
     maximumSize: const Size.square(36),
     padding: EdgeInsets.zero,

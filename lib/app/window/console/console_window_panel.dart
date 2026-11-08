@@ -284,36 +284,38 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        SizedBox(
-                          width: compact ? 130 : 180,
-                          height: 36,
-                          child: TextField(
-                            controller: _searchController,
-                            style: const TextStyle(fontSize: 12),
-                            decoration: InputDecoration(
-                              hintText: context.l10n.t('searchLogsHint'),
-                              prefixIcon: const Icon(
-                                CupertinoIcons.search,
-                                size: 14,
-                              ),
-                              contentPadding: EdgeInsets.zero,
-                              border: OutlineInputBorder(
-                                borderRadius: AppThemeSizes.radiusMedium,
-                                borderSide: BorderSide(
-                                  color: theme.colorScheme.outlineVariant,
+                        // 搜索占用剩余宽度，操作按钮连续排列在右侧。
+                        Expanded(
+                          child: SizedBox(
+                            height: 36,
+                            child: TextField(
+                              controller: _searchController,
+                              style: const TextStyle(fontSize: 12),
+                              decoration: InputDecoration(
+                                hintText: context.l10n.t('searchLogsHint'),
+                                prefixIcon: const Icon(
+                                  CupertinoIcons.search,
+                                  size: 14,
                                 ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: AppThemeSizes.radiusMedium,
-                                borderSide: BorderSide(
-                                  color: theme.colorScheme.outlineVariant,
+                                contentPadding: EdgeInsets.zero,
+                                border: OutlineInputBorder(
+                                  borderRadius: AppThemeSizes.radiusMedium,
+                                  borderSide: BorderSide(
+                                    color: theme.colorScheme.outlineVariant,
+                                  ),
                                 ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: AppThemeSizes.radiusMedium,
+                                  borderSide: BorderSide(
+                                    color: theme.colorScheme.outlineVariant,
+                                  ),
+                                ),
+                                fillColor: theme.appColors.subtleSurface,
+                                filled: true,
                               ),
-                              fillColor: theme.appColors.subtleSurface,
-                              filled: true,
-                            ),
-                            onChanged: (value) => setState(
-                              () => _searchQuery = value.trim().toLowerCase(),
+                              onChanged: (value) => setState(
+                                () => _searchQuery = value.trim().toLowerCase(),
+                              ),
                             ),
                           ),
                         ),
@@ -332,7 +334,7 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                           iconOnly: true,
                           iconButtonStyle: toolbarButtonStyle,
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         ConsoleToolbarButton(
                           tooltip: context.l10n.t('hideHeartbeats'),
                           icon: Icons.monitor_heart_outlined,

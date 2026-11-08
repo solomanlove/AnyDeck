@@ -67,6 +67,8 @@ class LocalLogCaptureButton extends ConsumerWidget {
         tooltip: context.l10n.t('consoleExportLogs'),
         enabled: !busy,
         icon: icon,
+        // 菜单触发器复用所在 Toolbar 的尺寸、颜色与圆角水波纹。
+        style: iconButtonStyle,
         onSelected: (currentFilter) => capture(currentFilter: currentFilter),
         itemBuilder: (_) => [
           PopupMenuItem(value: true, child: Text(context.l10n
