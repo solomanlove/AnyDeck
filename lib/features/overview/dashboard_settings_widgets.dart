@@ -152,7 +152,7 @@ extension _SettingsTabWidgets on _SettingsTab {
   /// [value]: 当前选中的值。
   /// [items]: 下拉选项列表。
   /// [onChanged]: 选项变更回调，为 null 时表示禁用。
-  /// [alignMenu]: 让语言和外观菜单与选择器等宽并从下方展开。
+  /// [alignMenu]: 让设置菜单与选择器等宽、边缘对齐并从下方展开。
   Widget _buildDropdownSelector<T>(
     BuildContext context, {
     required T value,

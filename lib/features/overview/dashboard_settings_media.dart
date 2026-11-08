@@ -94,6 +94,7 @@ extension _SettingsTabMedia on _SettingsTab {
           subtitle: context.l10n.t('autoIdentifyIntervalDesc'),
           child: _buildDropdownSelector<int>(
             context,
+            alignMenu: true,
             value: settings.autoIdentifyInterval,
             items: [1, 2, 3, 5, 10]
                 .map(
@@ -159,6 +160,7 @@ extension _SettingsTabMedia on _SettingsTab {
           subtitle: context.l10n.t('videoBitrateDesc'),
           child: _buildDropdownSelector<int>(
             context,
+            alignMenu: true,
             value: settings.mirrorVideoBitrate,
             items: const [
               _DropdownOption(value: 2000000, label: '2 Mbps'),
@@ -183,6 +185,7 @@ extension _SettingsTabMedia on _SettingsTab {
           subtitle: context.l10n.t('maxResolutionDesc'),
           child: _buildDropdownSelector<int>(
             context,
+            alignMenu: true,
             value: settings.mirrorMaxSize,
             items: [
               _DropdownOption(

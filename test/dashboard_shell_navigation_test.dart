@@ -285,6 +285,37 @@ void main() {
           .first;
     }
 
+    // 码率、分辨率菜单与触发按钮在宽窄内容区保持左右边缘一致。
+    for (final width in [900.0, 1600.0]) {
+      tester.view.physicalSize = Size(width, 900);
+      await tester.pumpAndSettle();
+      for (final id in ['videoBitrate', 'maxResolution']) {
+        final row = await openSetting(id);
+        final selector = find.descendant(
+          of: row,
+          matching: find.byType(PopupMenuButton<int>),
+        );
+        final buttonRect = tester.getRect(selector);
+        await tester.tap(selector);
+        await tester.pumpAndSettle();
+        final menuRect = tester.getRect(find.byType(PopupMenuItem<int>).first);
+        expect(menuRect.left, closeTo(buttonRect.left, 0.01));
+        expect(menuRect.right, closeTo(buttonRect.right, 0.01));
+        expect(menuRect.top, greaterThanOrEqualTo(buttonRect.bottom));
+        await tester.tap(find.byType(PopupMenuItem<int>).last);
+        await tester.pumpAndSettle();
+      }
+    }
+    expect(
+      (await SharedPreferences.getInstance()).getInt(
+        'settings.mirrorVideoBitrate',
+      ),
+      32000000,
+    );
+    expect(
+      (await SharedPreferences.getInstance()).getInt('settings.mirrorMaxSize'),
+      1920,
+    );
     var row = await openSetting('mirrorAlwaysOnTop');
     await tester.tap(
       find.descendant(of: row, matching: find.byType(CupertinoSwitch)),
