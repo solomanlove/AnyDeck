@@ -36,7 +36,7 @@ class HarmonyShareService extends ChangeNotifier {
       _detectNetwork = ShareNetwork.detect,
       _downloads = ShareReceiveDirectory.resolve,
       _resolveLocalName = ShareLocalName.resolve,
-      _resolveDirectMode = ShareTransferMode.resolve,
+      _resolveDirectMode = ShareTransferMode.resolveForApp,
       _supported = Platform.isMacOS,
       _nativeBatch = true,
       history = ShareTransferHistory() {

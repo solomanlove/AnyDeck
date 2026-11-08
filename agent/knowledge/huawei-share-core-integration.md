@@ -446,3 +446,10 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 - 确定性回归用独立进程设置真实 `RLIMIT_FSIZE`，先重现精确1,430→1,023短写，再验证修复后文件大小40,736,003、尾部内容正确且填充未写入；ASan/UBSan同时覆盖正常块、精确尾长、非法块、越界与5 GiB以上偏移。DFile默认26项中24通过/2跳过，含10/100/512/1024 MiB本地加密收发的hash/有界RSS；Rust81 unit+10 integration、8项显式原生批次回归、Swift40项、制品脚本1项及主仓安装器26项通过。既有本机广播回环用例和缺失Git cache补丁检查未计为通过。
 - 固定源码commit `6fee53a`，制品commit `d33712f817d55ebfc21b9fd56bbc38c61930221d`，ZIP SHA-256 `c39728d623febfed3f5ec118d6c604efd02834c5464b8de711325075fcb2a9ec`。六成员摘要/arm64/严格签名、实际Core0.3.10 hello、真实0.3.9→0.3.10隔离升级与增量不改写均通过；正常Debug构建及整个App deep/strict签名通过，仅本地提交，未push。
 - 修复前相同APK多次完整接收的SHA-256均为 `caed621aefb56bccc77bec77e4fdfaee49c6a9d529e29171bd51516ba128a007`，仅为重复接收结果，未独立读取手机源文件hash。修复后真机复测暂受手机密码锁屏阻挡，已请求用户手动解锁；尚不声称该APK在新版App接收通过，也不以本地1 GiB传输代替手机大文件或P2P网络切换/恢复验收。新版App已载入，确认高速模式关闭、LAN接收开启；后续需同APK实际触发 `padded_blocks>=1` 并完成落盘/hash，再更新此边界。
+
+
+## 收起 P2P 产品入口，保留实现（2026-11-08）
+
+- 用户确认LAN传文件成功，要求移除P2P直连UI和入口、保留代码。互传设置移除高速传输开关、说明与回调连接，同时去掉其分隔线及名称编辑器前的专用16px空白；名称、通知和接收目录入口保留。
+- 主窗口正常接收服务改用 `ShareTransferMode.resolveForApp()`，固定返回false。历史已开启配置不再触发P2P接收，也不删除或改写该配置；原 `resolve()`、设置存储/窗口同步、Service配置逻辑、Core Client、原生BLE/WLAN租约和恢复实现继续保留，供后续内部实验使用。既有直连测试仍注入原配置解析器验证底层逻辑。
+- 27项设置/模式回归通过，包含zh/en、Light/Dark窄窗口中开关及说明消失、通知/目录入口可用，以及历史配置缺失/false/true时产品入口均为LAN且原配置可读。6文件targeted analyze通过。未重建或启动App，当前运行界面需下次正常构建后生效。

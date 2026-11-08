@@ -23,13 +23,8 @@ class HarmonyShareSettingsPanel extends StatelessWidget {
     this.permissionRequestFailed = false,
     this.errorKey,
     this.nameEditor,
-    this.directMode = false,
-    this.onDirectMode,
   });
 
-  /// 默认 LAN；只有用户手动开启后才允许直连手机 WLAN。
-  final bool directMode;
-  final ValueChanged<bool>? onDirectMode;
   final bool notifications;
   final String directory;
   final String? permission;
@@ -66,16 +61,7 @@ class HarmonyShareSettingsPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.t('harmonyShareDirectMode')),
-            subtitle: Text(l10n.t('harmonyShareDirectModeHint')),
-            value: directMode,
-            onChanged: saving || busy ? null : onDirectMode,
-          ),
-          const Divider(),
           if (nameEditor != null) ...[
-            const SizedBox(height: 16),
             nameEditor!,
             const Divider(),
           ],

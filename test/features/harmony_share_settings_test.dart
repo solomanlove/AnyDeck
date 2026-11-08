@@ -27,11 +27,8 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         var chosen = 0;
         var permission = 0;
-        bool? directModeChange;
-        Widget panel({bool busy = false, bool saving = false, bool directMode = false, String state = 'denied'}) =>
+        Widget panel({bool busy = false, bool saving = false, String state = 'denied'}) =>
             HarmonyShareSettingsPanel(
-              directMode: directMode,
-              onDirectMode: (value) => directModeChange = value,
               nameEditor: HarmonyShareNameEditor(
                 value: 'Macos-AnyDeck',
                 disabled: busy || saving,
@@ -54,18 +51,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         final l10n = AppLocalizations(Locale(language));
-        final directMode = find.widgetWithText(SwitchListTile, l10n.t('harmonyShareDirectMode'));
-        expect(
-          tester.getTopLeft(find.byType(TextField)).dy -
-              tester.getBottomLeft(directMode).dy,
-          greaterThanOrEqualTo(16),
-        );
-        expect(tester.widget<SwitchListTile>(directMode).value, isFalse);
-        await tester.tap(directMode);
-        expect(directModeChange, isTrue);
-        await tester.pumpWidget(host(panel(directMode: true), brightness, language));
-        await tester.pumpAndSettle();
-        expect(tester.widget<SwitchListTile>(directMode).value, isTrue);
+        expect(find.text(l10n.t('harmonyShareDirectMode')), findsNothing);
+        expect(find.text(l10n.t('harmonyShareDirectModeHint')), findsNothing);
+        expect(find.byType(SwitchListTile), findsOneWidget);
+        expect(find.byType(TextField), findsOneWidget);
         await tester.ensureVisible(
           find.text(l10n.t('harmonyShareChooseDirectory')),
         );
@@ -73,7 +62,6 @@ void main() {
         expect(chosen, 1);
         await tester.pumpWidget(host(panel(busy: true), brightness, language));
         await tester.pumpAndSettle();
-        expect(tester.widget<SwitchListTile>(directMode).onChanged, isNull);
         final choose = tester.widget<TextButton>(
           find.ancestor(
             of: find.text(l10n.t('harmonyShareChooseDirectory')),
