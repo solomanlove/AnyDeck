@@ -16,7 +16,8 @@ class HarmonyShareIncomingNotifications extends ChangeNotifier {
     required this.text,
     this.deliveryFailed,
     this.operationTimeout = const Duration(seconds: 3),
-    this.fallbackDelay = const Duration(seconds: 10),
+    // 通知未被操作时尽早提供确认，避免长时间等待使手机转入 P2P 协商。
+    this.fallbackDelay = const Duration(seconds: 2),
     this.offerTimeout = const Duration(seconds: 30),
   }) {
     unawaited(_clearOldNotifications());

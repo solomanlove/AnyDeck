@@ -274,7 +274,7 @@ flutter test --no-pub test/core/nearby_share/share_core_client_test.dart test/co
 ## 来件优先使用 macOS 通知确认（2026-11-07）
 
 - `HarmonyShareIncomingNotifications` 统一持有来件生命周期，`HarmonyShareNotifications.incoming` 由主窗口 Provider 持有。系统通知提供本地化“接收 / 拒绝”操作；按钮直接处理当前请求，不抢占窗口焦点。点击正文打开主窗口并显示原确认弹窗，主动关闭通知也转入弹窗兜底。
-- 通知设置关闭、权限未授予/未知、旧桥接不支持、API 错误或超时，均使用原 `HarmonyShareConfirmDialog`。系统提交成功不等于横幅可见，所以请求到达 10 秒仍未处理也显示弹窗；请求总期限从到达起固定为 30 秒，兜底不会重置期限。后台不主动申请通知权限。
+- 通知设置关闭、权限未授予/未知、旧桥接不支持、API 错误或超时，均使用原 `HarmonyShareConfirmDialog`。系统提交成功不等于横幅可见，所以请求到达 2 秒仍未处理也显示弹窗（2026-11-08 从 10 秒缩短，避免等待使手机转入 P2P 协商）；请求总期限从到达起固定为 30 秒，兜底不会重置期限。后台不主动申请通知权限。
 - 新增 MethodChannel `showIncomingFileOffer`，参数为 `id/title/body/acceptLabel/rejectLabel/payload`。Native 注册固定 `harmony_share_incoming` 类别并保留其他类别，接收按钮要求解锁认证。正文和 payload 不包含设备名称、文件名、目录或可执行路径；普通收发结果通知继续使用原入口。
 - payload 仅含 `type=harmony_share_offer` 与本次请求随机 128-bit `offerToken`。Native 根据系统 actionIdentifier 和实际 request.identifier 覆盖回调的 `notificationAction/notificationId`；Dart 需同时匹配当前 offer、token 和 ID 才能决定。冷启动残留、重复操作、畸形动作和旧弹窗回调均不能影响新请求。
 - 接收/拒绝/过期/替换/销毁会取消计时并撤回 pending 与 delivered 通知。迟到的投递结果仍尝试撤回；启动清理超时期间只用弹窗，保留底层清理 Future，真正完成后后续来件恢复通知，明确失败则允许下一请求重试。
@@ -289,7 +289,7 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 
 原生离线回归：将 `macos/Runner/NotificationBridgeService.swift` 与 `test/native/notification_interaction_test.swift` 一起用 `xcrun swiftc` 编译；`-F` 与 `-rpath` 指向 Flutter SDK 的 `bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework/macos-arm64_x86_64`，链接 `-framework FlutterMacOS`。测试自带 `MainFlutterWindow: NSWindow` 接口占位，验证系统动作映射、伪造字段覆盖、聚焦策略与普通通知兼容，不调用通知中心或创建 App。
 
-人工验收边界：正常 AnyDeck 授权后分别从手机发起请求，检查前台/隐藏窗口时通知按钮、正文点击、通知关闭、10 秒兜底及 30 秒超时；再检查禁用通知或 Focus 模式时的兜底，以及普通 Android 消息通知点击。自动测试不代表真实系统横幅或手机传输验收，本轮不主动运行或重启 App。
+人工验收边界：正常 AnyDeck 授权后分别从手机发起请求，检查前台/隐藏窗口时通知按钮、正文点击、通知关闭、2 秒兜底及 30 秒超时；再检查禁用通知或 Focus 模式时的兜底，以及普通 Android 消息通知点击。此阶段自动测试不代表真实系统横幅或手机传输验收，本阶段未主动运行或重启 App；后续授权真机结果见文末。
 
 本次验证：107 项 Flutter/Dart 测试（46 项来件协调/弹窗/结果通知，61 项权限/设置/桥接与普通通知回归）、6 项原生动作映射场景、12 个相关 Dart 文件的 targeted analyze 均通过。原生桥接使用真实 FlutterMacOS Framework 编译并执行上述离线测试；未进行整包构建或真实 Notification Center 交互。审查修复了启动清理超时后的后续请求恢复，并检查提交不包含其他并行任务的改动。
 
@@ -428,3 +428,11 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 - 13:18 的正式版 128 B 来件仍失败。手机 `get linkType failed` 经公开 SoftBus 实现核对属于允许缺少 `LANE_LINK_TYPE` 时的非致命 warning，函数继续返回成功；未据此加入猜测的协议字段。原版高速开关静态追踪只确认控制 LAN 扫描及本机发送时 TCP/BLE 建链策略，已识别的接收协商分支未找到向手机声明“禁止 P2P”的字段，不能把关闭开关等同于能强制手机选择 LAN。具体地址与搜索边界保存在私有 `PROTOCOL.md`。
 - 对照应用的设置菜单未能展开，当前高速 bool 也未成功读取，故仍未完成“原版关闭高速模式接收”的基线。没有改动其偏好、权限或网络；发现手机的既有证据不能升级为接收成功。
 - 结束时已恢复正式 Core0.3.9，复验六成员 hash/整个 App deep/strict 签名；恢复 LAN 接收待机并再次发现手机。临时手机亮屏 override 已还原，实验代码和二进制均未保留。
+
+### 后续确认时序修正与真实 LAN 收件成功
+
+- 后续对照已取得正式 Core0.3.9 的真实 LAN 收件证据，更新上文早期“尚未落盘”的验证状态。相同 nova 12 Ultra 和 128 B 文件，在 `AnyDeck LAN Check` 名称下立即确认成功、等待 15 秒后确认则在 Bytes 建链阶段触发 `lan_fallback_failed`；使用界面同名的 `Macos-AnyDeck`，立即确认与等待 2 秒后确认也均收到完整批次。这是确认时序相关的实测差异，不能将关闭高速模式解释为能强制手机无限等待或强制回退 LAN。
+- 应用原先在系统通知成功提交后等待 10 秒才显示确认弹窗，这段等待会消耗手机的协商窗口。现保留通知优先，将未处理时的弹窗兜底缩短为 2 秒；仍须明确接收/拒绝，总确认期限仍从来件到达起计算 30 秒，通知和弹窗共用原有一次性决定与 token 校验。通知关闭、权限不足及桥接失败的立即兜底行为不变。
+- 同步复测排除了自动化调用之间约 17 秒的额外延迟：在实际 Debug App 中，高速模式关闭、系统通知开启，从手机分享该测试文件，在正常弹窗出现后点击接收。`2026-11-08 17:00:53` 的最近互传显示“新文件 4.txt · 128 B · 已完成”，文件实际位于 Downloads 的独立 `AnyDeck-Share-*` 目录。文件 SHA-256 为 `ba416980f181abd3af37a043b5719ff2b9e347c4c3f4d8a99e73b3b14743b683`，与多次独立接收结果一致；未独立读取手机源文件 hash，不冒充发送端 hash 证明。
+- 原版对照应用仍未完成有效的人工接收基线。临时网卡绑定和提前协商实验未证明能解决长等待问题，均已撤回，未修改 native 协议或发布新 Core 版本。本轮正常界面只验证了单个 128 B 文件；大文件、长等待后强制 LAN 回退及手动 P2P 的真实网络切换/恢复不能据此宣称通过。
+- 46 项通知/弹窗回归、3 文件 analyze、Debug 构建通过。覆盖通知先显示、1999 ms 时尚未兜底、2 秒时显示、30 秒原始期限、通知动作与弹窗竞态，以及 zh/en 和 Light/Dark。正式锁定 ZIP 摘要、App 内六成员摘要、整个 App deep/strict 签名和真实落盘文件大小/hash 复核通过；电脑仍为原 LAN 地址，手机熄屏 override 已恢复。私有 DFile 测试改为等待明确 `ready` 事件，7 项通过、1 项显式 LAN 环境用例默认跳过。

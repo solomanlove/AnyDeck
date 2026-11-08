@@ -144,7 +144,7 @@ void main() {
 
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
-      testWidgets('通知优先且十秒后展示主题自适应兜底 $language $brightness', (tester) async {
+      testWidgets('通知优先且两秒后展示主题自适应兜底 $language $brightness', (tester) async {
         final root = await host(
           tester,
           language: language,
@@ -166,12 +166,12 @@ void main() {
         await tester.pumpAndSettle();
         expect(bridge.shown, hasLength(1));
         expect(find.byType(AlertDialog), findsNothing);
-        await tester.pump(const Duration(seconds: 10));
+        await tester.pump(const Duration(seconds: 2));
         await tester.pumpAndSettle();
         expect(find.text(root.l10n.t('harmonyShareIncoming')), findsOneWidget);
         expect(find.text(root.l10n.t('harmonyShareAccept')), findsOneWidget);
         expect(find.text(root.l10n.t('harmonyShareReject')), findsOneWidget);
-        await tester.pump(const Duration(seconds: 20));
+        await tester.pump(const Duration(seconds: 28));
         await tester.pumpAndSettle();
         expect(find.byType(AlertDialog), findsNothing);
         expect(service.expired, isTrue);

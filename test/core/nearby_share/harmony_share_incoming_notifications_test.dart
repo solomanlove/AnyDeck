@@ -88,15 +88,17 @@ void main() {
     });
   }
 
-  test('无响应十秒启用兜底，总期限仍从请求到达起三十秒', () {
+  test('通知优先且两秒未处理即兜底，总确认期限仍为三十秒', () {
     _run((clock, h) {
       final offer = h.offer();
       clock.flushMicrotasks();
-      clock.elapse(const Duration(seconds: 9));
+      expect(h.bridge.shown, hasLength(1));
+      clock.elapse(const Duration(milliseconds: 1999));
       expect(h.incoming.needsConfirmation, isFalse);
-      clock.elapse(const Duration(seconds: 1));
+      clock.elapse(const Duration(milliseconds: 1));
       expect(h.incoming.needsConfirmation, isTrue);
-      clock.elapse(const Duration(seconds: 19));
+      expect(h.service.decisions, isEmpty);
+      clock.elapse(const Duration(seconds: 27));
       expect(h.service.expired, isFalse);
       clock.elapse(const Duration(seconds: 1));
       expect(h.service.expiredOffers, [offer]);
@@ -112,11 +114,12 @@ void main() {
       _run((clock, h) {
         h.offer();
         clock.flushMicrotasks();
-        clock.elapse(const Duration(seconds: 4));
+        clock.elapse(const Duration(seconds: 1));
+        expect(h.incoming.needsConfirmation, isFalse);
         h.incoming.handleClick(h.bridge.action(action));
         expect(h.incoming.needsConfirmation, isTrue);
         expect(h.service.decisions, isEmpty);
-        clock.elapse(const Duration(seconds: 26));
+        clock.elapse(const Duration(seconds: 29));
         expect(h.service.expired, isTrue);
       });
     });
