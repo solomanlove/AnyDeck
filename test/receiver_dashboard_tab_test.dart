@@ -57,7 +57,7 @@ void main() {
     expect(find.text('DLNA：HarmonyOS'), findsNWidgets(2));
     expect(
       find.text('DLNA：HarmonyOS；其他平台与协议以当前 App 版本为准'),
-      findsOneWidget,
+      findsNWidgets(2),
     );
     expect(find.text('爱奇艺'), findsOneWidget);
     expect(find.text('小红书'), findsOneWidget);
@@ -103,12 +103,17 @@ void main() {
             for (final key in [
               'receiverExampleYangshipin',
               'receiverExampleMangoTv',
-              'receiverExampleTencentVideoSupport',
+              'receiverExampleIqiyi',
             ]) {
               expect(find.text(l10n.t(key)), findsOneWidget);
             }
             expect(
               find.text(l10n.t('receiverExampleHarmonyDlnaSupport')),
+              findsNWidgets(2),
+            );
+
+            expect(
+              find.text(l10n.t('receiverExampleHarmonyDlnaVersionDependentSupport')),
               findsNWidgets(2),
             );
 

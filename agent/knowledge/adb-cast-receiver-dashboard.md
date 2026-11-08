@@ -101,3 +101,9 @@ flutter test --no-pub
 - 页面测试检查三款 App 的支持说明，并在已有 40 组宽度/语言/主题/字体倍率组合中检查新增文案和布局异常。
 - 仅补充兼容示例，不新增 Provider、后台进程、依赖或跨窗口通信；投屏接收链路沿用现有实现。
 - 验证结果：`flutter test --no-pub test/receiver_dashboard_tab_test.dart` 6 项通过；`flutter analyze --no-pub` 定向检查上述三个 Dart 文件无问题；本次文件 `git diff --check` 通过。未启动桌面 App。
+
+### 2026-11-08 爱奇艺鸿蒙支持说明补充
+
+- 按用户提供的兼容信息，爱奇艺卡片明确标注 HarmonyOS 支持 DLNA，保留既有协议标签；其他平台与协议以当前 App 版本为准。与腾讯视频复用同一 zh/en 支持说明，避免重复文案。
+- 页面 Widget 测试增加爱奇艺双语展示及两张卡片支持说明的数量断言，沿用既有 40 组布局组合；本次未独立进行真机投放验证。
+- 验证结果：页面测试 6 项全部通过；三个相关 Dart 文件定向 `flutter analyze --no-pub` 无问题；本次差异检查通过。未启动桌面 App。

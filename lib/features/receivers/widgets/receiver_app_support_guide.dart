@@ -23,7 +23,7 @@ class ReceiverAppSupportGuide extends StatelessWidget {
       ),
       _SupportItem(
         name: context.l10n.t('receiverExampleTencentVideo'),
-        platforms: context.l10n.t('receiverExampleTencentVideoSupport'),
+        platforms: context.l10n.t('receiverExampleHarmonyDlnaVersionDependentSupport'),
         protocols: const ['DLNA', 'AirPlay'],
       ),
       _SupportItem(
@@ -38,7 +38,7 @@ class ReceiverAppSupportGuide extends StatelessWidget {
       ),
       _SupportItem(
         name: context.l10n.t('receiverExampleIqiyi'),
-        platforms: context.l10n.t('receiverExampleVersionDependent'),
+        platforms: context.l10n.t('receiverExampleHarmonyDlnaVersionDependentSupport'),
         protocols: const ['DLNA', 'AirPlay'],
       ),
       _SupportItem(
