@@ -29,6 +29,7 @@
 - 哔哩哔哩官方投屏帮助确认移动端投屏与 iOS/iPadOS 本地网络发现，但未提供长期稳定的逐平台协议矩阵：https://www.bilibili.com/blackboard/activity-U_aG4BWWl.html
 - 爱奇艺官方投屏助手明确列出支持 DLNA/AirPlay 的设备，同时提示部分内容受版权限制：https://www.iqiyi.com/common/pushvideo.html
 - 抖音与腾讯视频的协议标签按当前客户端示例展示，仍需在具体 App 版本、平台和内容上以投屏列表为准。
+- 2026-11-08 按用户提供的兼容信息补充 HarmonyOS 版央视频、芒果 TV、腾讯视频支持 DLNA：新增前两者的 DLNA 示例卡片，腾讯视频保留原有协议标签并明确 HarmonyOS 的 DLNA 支持；其他平台与协议仍以当前 App 版本为准。该信息由用户提供，本次未独立进行真机投放验证。文案同步维护 zh/en，复用原有卡片布局与 Theme。
 - 小红书官方公开资料未找到通用协议说明；2026-10-27 用户实测确认当前版本支持 DLNA、不支持 AirPlay，具体平台与版本未记录，后续仍以 App 内投屏列表为准。
 
 ## 3. 状态与生命周期
@@ -93,3 +94,10 @@ flutter test --no-pub
 
 - Widget 与 Route 测试只验证导航、双语 UI 和控件装配，不等同于局域网发现或真机投屏验收。
 - 按项目规则不自动启动桌面 App；AirPlay、DLNA 真机链路仍按各自 Knowledge 的验收清单执行。
+
+### 2026-11-08 鸿蒙 App 支持说明回归
+
+- 变更范围：`receiver_app_support_guide.dart`、`app_l10n_ios_tools.dart` 与页面 Widget 测试。
+- 页面测试检查三款 App 的支持说明，并在已有 40 组宽度/语言/主题/字体倍率组合中检查新增文案和布局异常。
+- 仅补充兼容示例，不新增 Provider、后台进程、依赖或跨窗口通信；投屏接收链路沿用现有实现。
+- 验证结果：`flutter test --no-pub test/receiver_dashboard_tab_test.dart` 6 项通过；`flutter analyze --no-pub` 定向检查上述三个 Dart 文件无问题；本次文件 `git diff --check` 通过。未启动桌面 App。

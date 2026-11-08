@@ -52,6 +52,13 @@ void main() {
     expect(find.text('哔哩哔哩'), findsOneWidget);
     expect(find.text('抖音'), findsOneWidget);
     expect(find.text('腾讯视频'), findsOneWidget);
+    expect(find.text('央视频'), findsOneWidget);
+    expect(find.text('芒果 TV'), findsOneWidget);
+    expect(find.text('DLNA：HarmonyOS'), findsNWidgets(2));
+    expect(
+      find.text('DLNA：HarmonyOS；其他平台与协议以当前 App 版本为准'),
+      findsOneWidget,
+    );
     expect(find.text('爱奇艺'), findsOneWidget);
     expect(find.text('小红书'), findsOneWidget);
     expect(find.text('当前版本实测支持 DLNA，不支持 AirPlay'), findsOneWidget);
@@ -90,6 +97,20 @@ void main() {
               ),
             );
             await tester.pump();
+
+            // 新增鸿蒙示例在双语、主题及字体倍率组合下均应展示。
+            final l10n = AppLocalizations(Locale(locale));
+            for (final key in [
+              'receiverExampleYangshipin',
+              'receiverExampleMangoTv',
+              'receiverExampleTencentVideoSupport',
+            ]) {
+              expect(find.text(l10n.t(key)), findsOneWidget);
+            }
+            expect(
+              find.text(l10n.t('receiverExampleHarmonyDlnaSupport')),
+              findsNWidgets(2),
+            );
 
             final cards = [AirPlayReceiverCard, DlnaReceiverCard].map((type) {
               return tester.getRect(

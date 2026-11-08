@@ -23,8 +23,18 @@ class ReceiverAppSupportGuide extends StatelessWidget {
       ),
       _SupportItem(
         name: context.l10n.t('receiverExampleTencentVideo'),
-        platforms: context.l10n.t('receiverExampleVersionDependent'),
+        platforms: context.l10n.t('receiverExampleTencentVideoSupport'),
         protocols: const ['DLNA', 'AirPlay'],
+      ),
+      _SupportItem(
+        name: context.l10n.t('receiverExampleYangshipin'),
+        platforms: context.l10n.t('receiverExampleHarmonyDlnaSupport'),
+        protocols: const ['DLNA'],
+      ),
+      _SupportItem(
+        name: context.l10n.t('receiverExampleMangoTv'),
+        platforms: context.l10n.t('receiverExampleHarmonyDlnaSupport'),
+        protocols: const ['DLNA'],
       ),
       _SupportItem(
         name: context.l10n.t('receiverExampleIqiyi'),
