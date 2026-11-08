@@ -209,20 +209,17 @@ class _RailButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     final Color color;
     if (onPressed == null) {
-      color = isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e);
+      color = theme.navigationDisabledForeground;
     } else if (selected || isHighlighted) {
       color = AppPalette.primary;
     } else {
-      color = isDark ? const Color(0xffeceff1) : const Color(0xff455a64);
+      color = theme.navigationForeground;
     }
 
-    final activeBgColor = theme.colorScheme.primary.withValues(
-      alpha: isDark ? 0.18 : 0.09,
-    );
+    final activeBgColor = theme.navigationSelectedBackground;
 
     if (isNarrow) {
       return Tooltip(
@@ -245,9 +242,9 @@ class _RailButton extends StatelessWidget {
                 backgroundColor: (selected || isHighlighted)
                     ? activeBgColor
                     : Colors.transparent,
-                disabledForegroundColor: isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e),
+                disabledForegroundColor: theme.navigationDisabledForeground,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppThemeSizes.radiusNavigation,
                 ),
               ),
             ),
@@ -262,44 +259,22 @@ class _RailButton extends StatelessWidget {
             vertical: verticalPadding ?? 4,
             horizontal: 12,
           ),
-          child: Material(
-            color: (selected || isHighlighted)
-                ? activeBgColor
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            child: InkWell(
-              onTap: onPressed,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                height: 44,
-                padding: const EdgeInsets.only(left: 10),
-                child: Row(
-                  children: [
-                    Icon(icon, size: 24, color: color),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        tooltip,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: (selected || isHighlighted)
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          color: color,
-                        ),
-                      ),
-                    ),
-                    if (statusColor != null) ...[
+          child: AppNavigationItem(
+            icon: icon,
+            label: tooltip,
+            selected: selected || isHighlighted,
+            foregroundColor: color,
+            onTap: onPressed,
+            trailing: statusColor == null
+                ? null
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       const SizedBox(width: 8),
                       _RailStatusDot(color: statusColor!),
                       const SizedBox(width: 10),
                     ],
-                  ],
-                ),
-              ),
-            ),
+                  ),
           ),
         ),
       );

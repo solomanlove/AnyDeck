@@ -96,10 +96,6 @@ class _SettingsDeveloperEntryState extends ConsumerState<SettingsDeveloperEntry>
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           onTap: _handleVersionTap,
-          leading: Icon(
-            CupertinoIcons.info_circle,
-            color: widget.brandGreen,
-          ),
           title: Text(context.l10n.t('appVersion')),
           subtitle: const Text('v1.0.0'),
           trailing: ElevatedButton(
@@ -121,18 +117,6 @@ class _SettingsDeveloperEntryState extends ConsumerState<SettingsDeveloperEntry>
           const Divider(height: 1),
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-            leading: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: widget.brandGreen.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                CupertinoIcons.chevron_left_slash_chevron_right,
-                color: widget.brandGreen,
-                size: 18,
-              ),
-            ),
             title: Text(
               context.l10n.t('developerOptions'),
               style: const TextStyle(fontWeight: FontWeight.w600),

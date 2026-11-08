@@ -238,7 +238,9 @@ class _ShortcutRow extends StatelessWidget {
       children: [
         Expanded(child: Text(label)),
         const SizedBox(width: 16),
-        Flexible(child: control),
+        Flexible(
+          child: Align(alignment: Alignment.centerRight, child: control),
+        ),
       ],
     ),
   );

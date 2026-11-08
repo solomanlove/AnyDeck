@@ -26,6 +26,7 @@ import '../app/widget/dashboard_history_text_field.dart';
 import '../app/widget/app_detail_layout.dart';
 
 import '../app/widget/app_toast.dart';
+import '../app/widget/app_navigation_item.dart';
 import '../app/settings/app_settings.dart';
 import '../app/settings/app_settings_controller.dart';
 import '../app/shortcuts/window_shortcut.dart';

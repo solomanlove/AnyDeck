@@ -2,6 +2,7 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/router/app_router.dart';
 import 'package:any_deck/app/router/dashboard_route.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/widget/app_navigation_item.dart';
 import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
@@ -203,6 +204,22 @@ void main() {
     tester.view.physicalSize = const Size(1600, 950);
     await tester.pumpAndSettle();
     final settingsBeforeNavigation = container.read(appSettingsProvider);
+    // 设置分类与主设置 Tab 必须使用相同的选中表面和圆角交互组件。
+    final categoryNav = find.byKey(const ValueKey('settings-nav-general'));
+    final mainSettingsNav = find.descendant(
+      of: find.byTooltip('设置'),
+      matching: find.byType(AppNavigationItem),
+    );
+    expect(tester.widget<AppNavigationItem>(categoryNav).selected, isTrue);
+    expect(tester.widget<AppNavigationItem>(mainSettingsNav).selected, isTrue);
+    Material surface(Finder item) => tester.widget<Material>(
+      find.descendant(of: item, matching: find.byType(Material)).first,
+    );
+    expect(surface(categoryNav).color, surface(mainSettingsNav).color);
+    expect(
+      surface(categoryNav).borderRadius,
+      surface(mainSettingsNav).borderRadius,
+    );
     final workspace = tester.widget<SettingsWorkspace>(
       find.byType(SettingsWorkspace),
     );

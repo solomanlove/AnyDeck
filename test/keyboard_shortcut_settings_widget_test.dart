@@ -37,6 +37,33 @@ void main() {
             ),
           ),
         );
+        // 所有动作的按键按钮应贴齐设置内容的右侧内边距。
+        final right =
+            tester.getTopRight(find.byType(KeyboardShortcutSettings)).dx - 16;
+        for (final action in MirrorShortcut.values) {
+          expect(
+            tester
+                .getTopRight(find.byKey(ValueKey('shortcut-${action.name}')))
+                .dx,
+            right,
+          );
+        }
+        expect(
+          tester
+              .getTopRight(find.byKey(const ValueKey('shortcut-main-window')))
+              .dx,
+          right,
+        );
+        for (final action in WindowShortcut.values) {
+          expect(
+            tester
+                .getTopRight(
+                  find.byKey(ValueKey('shortcut-window-${action.name}')),
+                )
+                .dx,
+            right,
+          );
+        }
         final selector = find.byKey(const ValueKey('shortcut-screenshot'));
         Future<void> open() async {
           await tester.ensureVisible(selector);

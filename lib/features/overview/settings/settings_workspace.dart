@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import 'settings_item.dart';
+import '../../../app/widget/app_navigation_item.dart';
 
 /// 设置分类导航与全局搜索，不修改设置值。
 ///
@@ -164,22 +165,23 @@ class _SettingsWorkspaceState extends State<SettingsWorkspace> {
                         child: ListView(
                           children: [
                             for (final category in SettingsCategory.values)
-                              ListTile(
-                                key: ValueKey('settings-nav-${category.name}'),
-                                selected:
-                                    _category == category && _query.isEmpty,
-                                selectedColor: Theme.of(
-                                  context,
-                                ).colorScheme.primary,
-                                selectedTileColor: Theme.of(
-                                  context,
-                                ).colorScheme.primaryContainer,
-                                leading: Icon(category.icon, size: 18),
-                                title: Text(l10n.t(category.labelKey)),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
                                 ),
-                                onTap: () => _selectCategory(category),
+                                child: Tooltip(
+                                  message: l10n.t(category.labelKey),
+                                  child: AppNavigationItem(
+                                    key: ValueKey(
+                                      'settings-nav-${category.name}',
+                                    ),
+                                    selected:
+                                        _category == category && _query.isEmpty,
+                                    icon: category.icon,
+                                    label: l10n.t(category.labelKey),
+                                    onTap: () => _selectCategory(category),
+                                  ),
+                                ),
                               ),
                           ],
                         ),

@@ -135,4 +135,15 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
 /// 提供与 [ThemeData.colorScheme] 一致的业务语义色访问入口。
 extension AppThemeDataColors on ThemeData {
   AppThemeColors get appColors => extension<AppThemeColors>()!;
+
+  /// 主侧栏与设置分类共用的选中背景，明暗差异统一收口。
+  Color get navigationSelectedBackground => colorScheme.primary.withValues(
+    alpha: brightness == Brightness.dark ? 0.18 : 0.09,
+  );
+
+  /// 导航普通态与禁用态沿用主侧栏配色，避免分类栏使用另一套文字色。
+  Color get navigationForeground => brightness == Brightness.dark
+      ? const Color(0xffeceff1) : const Color(0xff455a64);
+  Color get navigationDisabledForeground => brightness == Brightness.dark
+      ? const Color(0xff546e7a) : const Color(0xff8b9a9e);
 }

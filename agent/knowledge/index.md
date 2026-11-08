@@ -12,7 +12,7 @@
 | `adb-screenshot-image-editing` | 截图图片编辑 | active | 右上角编辑入口、形状/画笔/马赛克与遮盖、撤销重做、原图坐标、PNG 合成、会话互斥与资源释放 | `features/screenshot/` |
 | `adb-mirror-whiteboard` | 投屏白板本地标注 | active | 画笔入口、颜色/撤销/清空、Texture 透明画布、设备输入阻断、窗口生命周期及回归边界 | `app/window/mirror/`, `features/control/` |
 | `adb-settings-manual-removal` | 设置页说明书入口移除 | active | 记录设置页“软件说明书”入口、弹框和专用文案的移除范围及回归验证 | `features/overview/`, `features/widgets/`, `app/l10n/` |
-| `adb-settings-organization` | 设置分类导航与全局搜索 | active | 7 类设置、跨分类检索、多词/按键定位、分类滚动恢复、窄窗口导航与设置保存回归边界 | `features/overview/settings/`, `features/overview/`, `app/l10n/` |
+| `adb-settings-organization` | 设置分类导航与全局搜索 | active | 7 类设置、跨分类检索、多词/按键定位、公共导航样式、快捷键右对齐、窄窗口与设置保存回归边界 | `features/overview/settings/`, `features/overview/`, `app/l10n/` |
 | `adb-svg-assets` | SVG 与位图资源加载 | active | 本地 SVG/PNG 公共组件、品牌图片接入、加载失败回退与验证边界 | `app/widget/`, `features/devices/`, `features/overview/` |
 | `adb-ui-theme-system` | UI Theme 统一机制 | active | 统一品牌色、Light/Dark 语义色、边框、圆角与顶部轻提示，记录轻提示首帧/遮挡时的 Overlay 清理与回归，并明确固定业务色和 Painter 注入边界 | `app/theme/`, `app/widget/`, `app/window/`, `features/` |
 | `adb-local-diagnostic-logs` | 控制台与本地诊断日志 | active | 运行异常采集、关键日志筛选、跨窗口汇总、滚动文件、本地日志导出、工具栏图标交互统一与搜索自适应布局及验证边界 | `core/logging/`, `app/window/console/`, `features/developer/` |

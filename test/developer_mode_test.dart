@@ -2,7 +2,6 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/settings/app_settings.dart';
 import 'package:any_deck/features/developer/widget/settings_developer_entry.dart';
 import 'package:any_deck/features/feedback/widget/settings_feedback_entry.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,8 +42,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // 初始状态下不应显示开发者选项列表项及图标
-      expect(find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right), findsNothing);
+      // 初始状态下不应显示开发者选项列表项
+      expect(find.text('Developer Options'), findsNothing);
 
       final versionFinder = find.byType(ListTile).first;
 
@@ -53,14 +52,13 @@ void main() {
         await tester.tap(versionFinder);
         await tester.pump(const Duration(milliseconds: 100));
       }
-      expect(find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right), findsNothing);
+      expect(find.text('Developer Options'), findsNothing);
 
       // 第 5 次点击
       await tester.tap(versionFinder);
       await tester.pumpAndSettle();
 
-      // 成功激活开发者选项，应浮现入口图标与开发者选项条目
-      expect(find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right), findsOneWidget);
+      // 成功激活开发者选项，显示无前置图标的入口条目
       expect(find.text('Developer Options'), findsOneWidget);
 
       // Hover 所在的整行与上下分割线贴合，三行均延伸到相同的左右边缘。
@@ -83,14 +81,11 @@ void main() {
       expect(upperDividerRect.bottom, developerRect.top);
       expect(lowerDividerRect.top, developerRect.bottom);
       expect(lowerDividerRect.bottom, feedbackRect.top);
-      expect(
-        tester.getRect(find.byIcon(CupertinoIcons.info_circle)).left,
-        versionRect.left + 20,
-      );
-      expect(
-        tester.getRect(find.byIcon(Icons.feedback_outlined)).left,
-        feedbackRect.left + 20,
-      );
+      for (final row in tester.widgetList<ListTile>(rows)) {
+        expect(row.leading, isNull);
+      }
+      expect(tester.getTopLeft(find.text('Developer Options')).dx,
+          tester.getTopLeft(find.text('Feedback')).dx);
 
       // 推进时间以等待 Toast 提示定时器完成，避免 pending timer
       await tester.pump(const Duration(seconds: 3));
