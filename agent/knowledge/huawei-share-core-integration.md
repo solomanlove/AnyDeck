@@ -423,4 +423,6 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 - 用户明确：鸿蒙星河互联目前只确认能发现手机，未测试关闭高速传输时的接收。发现成功不等于 LAN 收件兼容。手机系统库/HAP 的 HDC 访问被系统拒绝，未绕过权限。后续仍需查明该手机系统的 LAN 模式协商兼容条件；手动高速/P2P 的真实 WLAN 关联、传输和恢复亦不能由离线回归代替。
 - 固定制品：私有源码 `067b23d`（LAN 回退主体 `164fde8`），制品 commit `71310e9e3d4afac684f4177836b15535cc0cc95c`，Core0.3.9/IPC3，zip SHA-256 `ca436c7d236de8492ab5791c8c5217382a45dbe821cd472661d3e71dc603a9bf`。六成员摘要/arm64/严格签名、实际 hello、0.3.8→0.3.9 隔离升级和增量不改写通过。生产 send/receive capability 仍为 false；仅本地提交，未 push。
 
-- 最终 Debug App 构建成功；包内六成员 hash/严格签名、实际 Core0.3.9 hello 及整个 App 的 deep/strict 签名校验通过。实验替换已被正式制品覆盖。启动最终界面复测时 Mac 已锁屏，CUA 无法继续操作；已请求用户手动解锁，未绕过锁屏。
+- 最终 Debug App 构建成功；包内六成员 hash/严格签名、实际 Core0.3.9 hello 及整个 App 的 deep/strict 签名校验通过。用户解锁 Mac 和手机后完成正式版本界面复测：高速模式实际为关闭，128 B 来件确认后进入传输，最终仍 0 B/128 B 失败；新 LAN 回退失败详情已在实际记录中验证。**LAN 收件兼容仍未通过，不能将本轮记为完整修复。**
+- 补充选路字段的单变量真机对照无效，已撤回；原版相同字段的实际赋值与公开标准枚举存在语义差异，不能直接套用标准定义作为私有协议根因。手机侧受限日志未提供具体互传协商原因；缺少来源关联的系统发现错误未归因于 AnyDeck。
+- 结束时已恢复正式 Core0.3.9，复验六成员 hash/整个 App deep/strict 签名；恢复 LAN 接收待机并再次发现手机。临时手机亮屏 override 已还原，实验代码和二进制均未保留。
