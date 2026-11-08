@@ -75,6 +75,7 @@ class HarmonyShareSettingsPanel extends StatelessWidget {
           ),
           const Divider(),
           if (nameEditor != null) ...[
+            const SizedBox(height: 16),
             nameEditor!,
             const Divider(),
           ],

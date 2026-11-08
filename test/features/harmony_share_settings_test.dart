@@ -1,5 +1,6 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_name_editor.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_settings_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -31,6 +32,11 @@ void main() {
             HarmonyShareSettingsPanel(
               directMode: directMode,
               onDirectMode: (value) => directModeChange = value,
+              nameEditor: HarmonyShareNameEditor(
+                value: 'Macos-AnyDeck',
+                disabled: busy || saving,
+                onSave: (_) {},
+              ),
               notifications: true,
               directory: '/synthetic/folder-with-a-long-name/接收文件目录',
               permission: state,
@@ -49,6 +55,11 @@ void main() {
         expect(tester.takeException(), isNull);
         final l10n = AppLocalizations(Locale(language));
         final directMode = find.widgetWithText(SwitchListTile, l10n.t('harmonyShareDirectMode'));
+        expect(
+          tester.getTopLeft(find.byType(TextField)).dy -
+              tester.getBottomLeft(directMode).dy,
+          greaterThanOrEqualTo(16),
+        );
         expect(tester.widget<SwitchListTile>(directMode).value, isFalse);
         await tester.tap(directMode);
         expect(directModeChange, isTrue);

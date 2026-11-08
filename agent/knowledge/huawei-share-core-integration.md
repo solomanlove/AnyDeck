@@ -401,3 +401,5 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 恢复helper在数据成功后异常退出或EOF，同样归一为恢复失败告警；不会把helper内部原因传入仅允许两种恢复warning的Client校验器，避免文件已落盘却在界面被误报整批失败。此分支通过真实匿名helper pipe与事件收集回归，并经独立只读审阅确认。
 
 真实进程清理夹具使用单调时钟的总启动期限并检查worker提前退出；启动失败会回收全部本轮PID、流订阅和目录。完整并行Flutter套件最终296项通过，避免重负载下过短夹具启动等待造成误报。
+
+互传设置的高速传输开关与本机名称编辑器之间增加16px留白，避免开关的悬停背景紧贴输入框浮动标签。设置回归使用真实名称编辑器，在zh/en、Light/Dark窄窗口中检查两组控件的可见间距与布局；4项设置测试与2文件analyze通过，未启动项目。
