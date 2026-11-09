@@ -41,3 +41,9 @@ git push origin v1.0.1
 [手动验证 42630601956](https://github.com/solomanlove/AnyDeck/actions/runs/42630601956) 的 arm64 与 x86_64 job 均成功，各执行 40 项打包回归。各自的 35 个 Mach-O 架构与 ad-hoc 签名检查、DMG/ZIP 校验、Core IPC、真实 APK 分析及 App 进程存活 8 秒全部通过。验证的 App commit 为 `af58879c2a0b19a938df5371f24ea5ee55cdfb6e`，对应 v1.0.1 Tag。
 
 Tag 首轮 arm64 在获取 `api.github.com/meta` 时遇到 HTTP 403，尚未进入编译；Intel 未受影响。后续 workflow 改用该 job 的短期 `github.token` 获取公开主机公钥，避免匿名 API 配额耗尽；只读私有 Deploy key 的权限与使用方式不变，未放宽 SSH 主机身份检查。
+
+## 已验证产物的发布恢复
+
+`.github/workflows/publish-macos-verified.yml` 接受目标 Tag 与完整成功的来源 run ID。仅允许同仓库 macOS Release Workflow 的 push/workflow_dispatch 事件，且来源 commit 必须与 Tag 完全一致；失败、未完成、PR 或不同 commit 均拒绝。恢复流程重新下载两个 Artifact、验证 SHA-256、解压并校验所有 Mach-O/签名/依赖，额外执行 Intel helper 与启动检查，再合并四个包发布，仍不覆盖已有 Release。来源策略有正反向单元测试。
+
+这是 Runner 排队或网络错误后的恢复入口，不改变 Tag 的代码或降低原生构建与 smoke 门禁。正常 Tag 自动发布流程保持原样。

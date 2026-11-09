@@ -1,0 +1,63 @@
+name: Publish verified macOS artifacts
+
+# 仅用于网络故障或 Runner 排队后的恢复，不重新构建或替换既有 Release。
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 已验证 commit 对应的版本 Tag
+        required: true
+        type: string
+      source_run:
+        description: 完整成功的 macOS Release Workflow run ID
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: macos-release-recovery-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      SOURCE_RUN: ${{ inputs.source_run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 校验来源与目标 Tag
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          commit=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" |
+            python3 script/validate_macos_release_source.py "$commit"
+      - name: 下载并重新验证两个架构
+        run: |
+          for arch in arm64 x86_64; do
+            gh run download "$SOURCE_RUN" --name "AnyDeck-macOS-$arch" --dir "release/$arch"
+            (cd "release/$arch" && shasum -a 256 -c SHA256SUMS)
+            ditto -x -k "release/$arch/AnyDeck-macOS-$arch.zip" "verify/$arch"
+            python3 script/verify_macos_release.py "verify/$arch/AnyDeck.app" --arch "$arch"
+          done
+          python3 script/smoke_macos_release.py verify/x86_64/AnyDeck.app x86_64 --launch-app
+      - name: 合并校验清单并发布
+        run: |
+          cd release
+          cmp arm64/INSTALL-macOS.md x86_64/INSTALL-macOS.md
+          cp arm64/INSTALL-macOS.md .
+          cp arm64/*.dmg arm64/*.zip x86_64/*.dmg x86_64/*.zip .
+          cat arm64/SHA256SUMS x86_64/SHA256SUMS | sort -u > SHA256SUMS
+          shasum -a 256 -c SHA256SUMS
+          gh release create "$RELEASE_TAG" AnyDeck-macOS-arm64.dmg AnyDeck-macOS-arm64.zip AnyDeck-macOS-x86_64.dmg AnyDeck-macOS-x86_64.zip SHA256SUMS INSTALL-macOS.md \
+            --verify-tag --title "AnyDeck $RELEASE_TAG · macOS Apple Silicon / Intel" --notes-file INSTALL-macOS.md
