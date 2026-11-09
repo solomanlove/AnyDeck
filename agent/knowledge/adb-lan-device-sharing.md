@@ -130,3 +130,37 @@ PNM AN10 共享接入后显示在线，随后概览的多条 Shell 查询超时�
 - 20 个相关测试文件共 **155 项通过**；修改的生产模块与两个测试文件定向 `flutter analyze --no-pub` 无问题；`git diff --check` 通过。
 - 真机为 PNM AN10，分享方与隔离接收端 ADB 在同一台 Mac 上运行。修复后，4 路查询（含约 1.8 MB 输出）及 732,226 字节投屏 Server 推送成功；进一步保持 H.264 视频数据链路 20 秒，同时执行 24 次查询及 6 次文件推送，接收端持续在线。
 - 测试仅使用独立临时文件、Forward 和后台 scrcpy Server，结束后回收测试进程、连接与临时文件；未启动或构建桌面项目。跨两台电脑的 Wi-Fi、音频、触控与长时共享仍按前述真机清单验收。
+
+## 8. 概览加载缓慢与信息再次消失修复（2026-11-09）
+
+### 现象与定位
+
+共享设备能显示型号、Android 版本，但电池、Android ID、内存、存储、网络与屏幕参数加载慢，曾显示的信息随后又消失。最新主窗口日志仍有分组 Shell、`dumpsys wifi/display` 和 Root 探针达到 15 秒时限的记录。定位到两个独立缺陷：
+
+1. `SharedAdbPeer.run` 在收到 `OPEN` 时等待后端 Smart Socket 完成连接。在某个服务建立缓慢时，整个 Transport 的消息读取暂停，其他 Stream 的 ACK、关闭以及后续 OPEN 均无法处理。此前的统一写队列只解决出口并发写入，未覆盖入口阻塞。
+2. `DeviceInfoService.loadOverview` 只校验 `getprop` 的退出码。其他命令超时后返回空输出，仍被解析为未知字段，并保存成新的概览覆盖原缓存，造成信息再次消失。
+
+通过可控 Socket 桩在服务回复 `OKAY` 前挂起握手，以及模拟单组 Shell/dumpsys 超时，修复前的 8 条核心用例均失败，分别复现其他流无法继续和完整缓存被残缺结果覆盖。
+
+### 修改边界
+
+- `SharedAdbPeer` 异步建立不同设备服务，读取循环继续处理其他流；所有出口仍经原有 FIFO 写队列，并保留单流 ACK 背压。
+- 建立中的 OPEN 和已建立 Stream 合计最多 64 条，同时拒绝复用建立中的远端 ID；停止共享等待迟到连接完成并销毁，Reverse 回连也遵守同一容量限制。
+- `DeviceInfoService` 校验属性、硬件分组、设置分组和两条 dumpsys 结果。查询失败时使用现有缓存，不写入残缺结果，也不刷新原采集时间；没有缓存或调用方禁用回退时，明确报告失败。
+- 序列号仍可从属性回退；旧系统不支持分组脚本最后的可选命令，但已输出末尾分组标记时，继续使用此前采集的数据，避免破坏旧 Android 兼容性。
+- 未增加自动重试或后台轮询；没有修改 UI、文案、主题、投屏解码或手机无线调试状态。
+
+### 自动验证与真机边界
+
+```bash
+flutter test --no-pub test/device_share_protocol_test.dart test/device_share_transport_test.dart test/device_share_pending_open_test.dart test/device_share_service_test.dart test/device_share_widget_test.dart test/device_share_adb_integration_test.dart test/device_overview_test.dart test/device_overview_refresh_failure_test.dart test/device_root_status_provider_test.dart test/overview_identity_test.dart test/overview_foldable_display_test.dart test/overview_layout_test.dart test/mcp_device_tools_test.dart
+```
+
+- 13 个相关测试文件共 **107 项通过**；修改的 6 个 Dart 源码/测试入口定向分析无问题，`git diff --check` 通过。
+- 新增覆盖慢 OPEN 与其他流 ACK/查询互不阻塞、64 条建立中服务上限、重复 ID 拒绝、停止时迟到连接回收；原生隔离 ADB 也验证慢服务尚未建立时其他查询能完成。
+- 概览回归逐组验证硬件、设置、Wi-Fi、显示查询超时不覆盖字段和采集时间；覆盖首次失败不保存、禁用回退时显式失败以及旧系统末尾可选命令兼容。
+- 当前在线真机为 Mi MIX 3，截图中的 PNM AN10 不在线。使用同机 USB 分享方、TLS 链路和独立接收端 ADB，直接调用生产 `DeviceInfoService.loadOverview`，禁用缓存回退，并行读取 Shell 身份，5 轮完整概览均成功，耗时 **793–871 ms**；直接 USB 基线为 822 ms。
+- Android ID、内核、内存总量、网络和屏幕等稳定字段与 USB 结果一致，电池、内存占用与存储均有结果。CPU 可用核数由 `nproc` 提供，实测会在 6 与 8 之间变化，按动态采样处理，不把它误判为共享字段丢失。
+- 真机检查只读设备信息，SharedPreferences 使用测试内存缓存；接收端 ADB 使用独立端口且禁止发现 USB，结束后已关闭共享和测试 Server，未重启用户默认 ADB Server，未启动或构建桌面项目。
+
+两端运行本次修改后的版本，分享方停止旧共享并重新生成分享码，接收方重新连接。人工回归重点是概览显示完整后反复刷新、查询超时但设备仍在线时保留原信息，以及并发投屏/文件传输时继续读取概览。PNM AN10、桌面实际页面、跨两台电脑 Wi-Fi 与长时稳定性仍需实际环境验收；同机多轮只读查询通过不代表这些场景均已通过。

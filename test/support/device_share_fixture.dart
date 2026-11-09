@@ -17,6 +17,8 @@ class ShareAdbFixture {
   final reversePorts = <String, int>{};
   Completer<void>? reverseGate;
   String features = 'shell_v2,stat_v2,sendrecv_v2,delayed_ack';
+  // 模拟设备服务尚未建立，不能阻塞其他 Stream 的 ACK 或 OPEN。
+  Future<void> Function(String)? beforeServiceReply;
   Future<void> Function(String, Socket, ShareSocketReader)? onService;
 
   Future<void> start() async {
@@ -44,6 +46,7 @@ class ShareAdbFixture {
         socket.write('OKAY');
         await socket.flush();
         final service = await _request(reader);
+        await beforeServiceReply?.call(service);
         socket.write('OKAY');
         await socket.flush();
         if (service.startsWith('reverse:forward:norebind:')) {

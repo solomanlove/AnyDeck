@@ -100,9 +100,8 @@ settings get global debug_view_attributes
         _adb.shellArgs(deviceId, ['dumpsys', 'display']),
       ]);
 
-      if (!results[0].isSuccess) {
-        throw AdbException(results[0].message);
-      }
+      // 任一查询传输失败都不能用残缺字段替换完整缓存；统一走下方缓存回退。
+      _checkQueryResults(results);
 
       final properties = _parseGetProp(results[0].stdout);
       final serialFromAdb = _clean(results[1].stdout);
@@ -254,6 +253,25 @@ settings get global debug_view_attributes
         return cached;
       }
       rethrow;
+    }
+  }
+
+  /// serial 有属性回退；旧系统不支持脚本末尾的可选命令时，保留已采集内容。
+  void _checkQueryResults(List<AdbResult> results) {
+    for (final index in [0, 2, 3, 4, 5]) {
+      final result = results[index];
+      if (result.isSuccess) continue;
+      final lastSection = switch (index) {
+        2 => '===DEVICESTATES===',
+        3 => '===VIEWATTRIBUTEINSPECTION===',
+        _ => null,
+      };
+      if (result.exitCode != 124 &&
+          lastSection != null &&
+          result.stdout.contains(lastSection)) {
+        continue;
+      }
+      throw AdbException(result.message);
     }
   }
 

@@ -18,6 +18,8 @@ class SharedAdbPeer {
   final ShareSocketReader reader;
   final SharedAdbBackend backend;
   final _streams = <int, AdbBridgeStream>{};
+  final _opening = <int>{};
+  final _openTasks = <Future<void>>{};
   late final SharedAdbReverse _reverse;
   int _nextId = 0, _payloadLimit = 4096;
   bool _closed = false;
@@ -85,7 +87,8 @@ class SharedAdbPeer {
         final packet = await AdbPacket.read(reader);
         switch (packet.command) {
           case AdbPacket.open:
-            await _open(packet);
+            // 建立服务可能等待设备数秒，不能挡住其他 Stream 的 ACK 与查询。
+            _startOpen(packet);
           case AdbPacket.okay:
             _streams[packet.arg1]?.acknowledge(packet.arg0);
           case AdbPacket.wrte:
@@ -109,60 +112,82 @@ class SharedAdbPeer {
     }
   }
 
+  void _startOpen(AdbPacket packet) {
+    late final Future<void> task;
+    task = _open(packet)
+        .catchError((Object error, StackTrace stack) {
+          unawaited(close());
+        })
+        .whenComplete(() => _openTasks.remove(task));
+    _openTasks.add(task);
+  }
+
   Future<void> _open(AdbPacket packet) async {
     Future<void> reject() => _send(AdbPacket(AdbPacket.clse, 0, packet.arg0));
-    if (_streams.length >= 64 ||
+    if (_streams.length + _opening.length >= 64 ||
         packet.arg0 == 0 ||
         packet.arg1 != 0 ||
         packet.data.isEmpty ||
         packet.data.length > 4097 ||
         packet.data.last != 0 ||
+        _opening.contains(packet.arg0) ||
         _streams.values.any((stream) => stream.remoteId == packet.arg0)) {
       await reject();
       return;
     }
     final name = utf8.decode(packet.data.sublist(0, packet.data.length - 1));
-    if (name.startsWith('reverse:') &&
-        name.length <= 128 &&
-        !name.contains('\u0000')) {
-      // Reverse 控制结果也是正常 ADB Stream，使用内存 Socket 对避免另一套流控。
-      final pair = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
-      final accept = pair.first;
-      final writer = await Socket.connect(
-        InternetAddress.loopbackIPv4,
-        pair.port,
-      );
-      final socket = await accept;
-      await pair.close();
-      final readable = SharedAdbConnection(socket, ShareSocketReader(socket));
-      _addStream(readable, packet.arg0);
-      unawaited(
-        () async {
-          try {
-            writer.add(await _reverse.handle(name));
-            await writer.flush();
-          } finally {
-            await writer.close();
-          }
-        }().catchError((_) {
-          writer.destroy();
-        }),
-      );
-      return;
-    }
-    if (!allowsService(name)) {
-      await reject();
-      return;
-    }
+    // 同时约束已建立与建立中的服务，防止并行 OPEN 绕过上限或复用 ID。
+    _opening.add(packet.arg0);
     try {
-      final connection = await backend.open(name);
-      if (_closed) {
-        connection.close();
+      if (name.startsWith('reverse:') &&
+          name.length <= 128 &&
+          !name.contains('\u0000')) {
+        // Reverse 控制结果也是正常 ADB Stream，使用内存 Socket 对避免另一套流控。
+        final pair = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+        final accept = pair.first;
+        final writer = await Socket.connect(
+          InternetAddress.loopbackIPv4,
+          pair.port,
+        );
+        final socket = await accept;
+        await pair.close();
+        final readable = SharedAdbConnection(socket, ShareSocketReader(socket));
+        if (_closed) {
+          readable.close();
+          writer.destroy();
+          return;
+        }
+        _addStream(readable, packet.arg0);
+        unawaited(
+          () async {
+            try {
+              writer.add(await _reverse.handle(name));
+              await writer.flush();
+            } finally {
+              await writer.close();
+            }
+          }().catchError((_) {
+            writer.destroy();
+          }),
+        );
         return;
       }
-      _addStream(connection, packet.arg0);
-    } catch (_) {
-      await reject();
+      if (!allowsService(name)) {
+        await reject();
+        return;
+      }
+      try {
+        final connection = await backend.open(name);
+        if (_closed) {
+          connection.close();
+          return;
+        }
+        _addStream(connection, packet.arg0);
+      } catch (_) {
+        await reject();
+      }
+    } finally {
+      _opening.remove(packet.arg0);
     }
   }
 
@@ -187,7 +212,7 @@ class SharedAdbPeer {
   }
 
   void _openReverse(String destination, Socket connection) {
-    if (_closed || _streams.length >= 64) {
+    if (_closed || _streams.length + _opening.length >= 64) {
       connection.destroy();
       return;
     }
@@ -229,6 +254,8 @@ class SharedAdbPeer {
     for (final stream in _streams.values.toList()) {
       stream.close();
     }
+    // 等待迟到的服务连接走完关闭分支，避免停止共享后遗留后端 Socket。
+    await Future.wait(_openTasks.toList());
     await _reverse.close();
   }
 }

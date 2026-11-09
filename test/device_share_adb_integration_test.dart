@@ -244,6 +244,31 @@ void main() {
     expect(joined!.closed, isFalse);
   });
 
+  test('真实 adb 的慢服务握手不阻塞其他设备信息查询', () async {
+    final gate = Completer<void>();
+    final opening = Completer<void>();
+    source.beforeServiceReply = (service) async {
+      if (!service.endsWith('slow')) return;
+      opening.complete();
+      await gate.future;
+    };
+    final slow = localAdb.shellArgs(joined!.deviceId, ['slow']);
+    try {
+      await opening.future.timeout(const Duration(seconds: 2));
+      final fast = await localAdb.shellArgs(
+        joined!.deviceId,
+        ['getprop'],
+        timeout: const Duration(seconds: 2),
+      );
+      expect(fast.exitCode, 0, reason: fast.message);
+      expect(fast.stdout, 'AnyDeck shared shell\n');
+      expect(gate.isCompleted, isFalse);
+    } finally {
+      gate.complete();
+      await slow;
+    }
+  });
+
   test('真实 adb 流式安装保留 ABB 的 NUL 参数与 APK 字节', () async {
     // 重建连接以重新协商 ABB 能力，不依赖手机或有效 APK 签名。
     await joined!.close();
