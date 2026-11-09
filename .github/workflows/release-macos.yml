@@ -1,0 +1,95 @@
+name: macOS Release
+
+# Tag 自动发布；手动运行只验证和上传构建产物，不意外发布正式版本。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: 检查架构与私有组件权限
+        env:
+          SHARE_CORE_DEPLOY_KEY: ${{ secrets.SHARE_CORE_DEPLOY_KEY }}
+        run: |
+          test "$(uname -m)" = arm64
+          if [ -z "$SHARE_CORE_DEPLOY_KEY" ]; then
+            echo '::error::请先配置 SHARE_CORE_DEPLOY_KEY，只读访问 AnyDeck-Share-Core。参见 agent/knowledge/adb-github-macos-release.md'
+            exit 1
+          fi
+      - name: 获取锁定的 Share Core 制品
+        env:
+          SHARE_CORE_DEPLOY_KEY: ${{ secrets.SHARE_CORE_DEPLOY_KEY }}
+        run: |
+          # 临时 SSH agent 持有只读 Deploy key，主仓库和日志均不保存私钥。
+          eval "$(ssh-agent -s)"
+          trap 'ssh-agent -k' EXIT
+          ssh-add - <<< "$SHARE_CORE_DEPLOY_KEY"
+          mkdir -p ~/.ssh
+          curl --fail --silent --show-error https://api.github.com/meta |
+            python3 -c 'import json,sys; print("\n".join("github.com " + key for key in json.load(sys.stdin)["ssh_keys"]))' >> ~/.ssh/known_hosts
+          python3 - <<'PY'
+          import json
+          from script.install_share_core import load_archive
+          from pathlib import Path
+          lock = json.loads(Path('script/share_core.lock.json').read_text())
+          load_archive(lock, 'arm64')
+          PY
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+      - name: 准备原生依赖
+        run: |
+          brew install pkg-config openssl@3 libplist
+          rustup target add aarch64-apple-darwin
+          flutter pub get --enforce-lockfile
+          flutter build macos --release --config-only --no-pub
+      - name: 验证打包与签名回归
+        run: python3 -m unittest discover -s test/script -v
+      - name: 构建 ad-hoc Release
+        run: ./script/build_macos.sh
+      - name: 生成安装包并校验
+        run: ./script/package_macos_release.sh Products/AnyDeck.app release
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: AnyDeck-macOS-arm64
+          path: release/
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: 下载已验证产物并发布
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_RUN: ${{ github.run_id }}
+        run: |
+          gh run download "$RELEASE_RUN" --name AnyDeck-macOS-arm64 --dir release
+          cd release
+          shasum -a 256 -c SHA256SUMS
+          # 不覆盖已有 Release，避免重复运行悄悄替换用户正在下载的版本。
+          gh release create "$RELEASE_TAG" AnyDeck-macOS-arm64.dmg AnyDeck-macOS-arm64.zip SHA256SUMS INSTALL-macOS.md \
+            --verify-tag --title "AnyDeck $RELEASE_TAG · macOS Apple Silicon" --notes-file INSTALL-macOS.md
