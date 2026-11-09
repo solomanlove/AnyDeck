@@ -52,19 +52,19 @@ AnyDeck uses a modern, lightweight, high-performance architecture:
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
-AnyDeck relies on ADB and Scrcpy. Install them via your package manager:
+Android 设备连接需要 ADB；内嵌投屏使用 AnyDeck 自带的服务端和 Rust 引擎，无需另外安装 scrcpy。仅“电脑本地录制”等外部 scrcpy 录制模式按需安装该 CLI。
 
 #### 🍏 macOS
 ```bash
-# Install ADB and Scrcpy
-brew install android-platform-tools scrcpy
+# Install ADB
+brew install android-platform-tools
 ```
 
 ####  Windows
 We recommend using `Chocolatey` or `Scoop`:
 ```bash
 # Using Chocolatey
-choco install adb ffmpeg scrcpy
+choco install adb ffmpeg
 ```
 
 ### 2. Build & Run

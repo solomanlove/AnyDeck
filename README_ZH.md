@@ -52,19 +52,19 @@ AnyDeck 采用现代化、轻量化、高内聚的分层架构：
 ## 🚀 快速开始 (Quick Start)
 
 ### 1. 运行环境准备
-AnyDeck 需要在本地系统中安装必要的工具，建议使用包管理器安装：
+Android 设备连接需要 ADB；内嵌投屏使用 AnyDeck 自带的服务端和 Rust 引擎，无需另外安装 scrcpy。仅“电脑本地录制”等外部 scrcpy 录制模式按需安装该 CLI。
 
 #### 🍏 macOS 平台
 ```bash
-# 安装 ADB 和 Scrcpy 依赖
-brew install android-platform-tools scrcpy
+# 安装 ADB
+brew install android-platform-tools
 ```
 
 ####  Windows 平台
 推荐使用 `Chocolatey` 或 `Scoop` 安装：
 ```bash
 # 使用 Chocolatey
-choco install adb ffmpeg scrcpy
+choco install adb ffmpeg
 ```
 
 ### 2. 编译与运行

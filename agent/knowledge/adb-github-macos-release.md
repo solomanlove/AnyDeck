@@ -69,6 +69,10 @@ python3 -m unittest discover -s test/script -v
 
 本通道没有 Developer ID、公证或摄像头扩展的正式 provisioning。用户首次启动可能需要在系统隐私与安全性中手动允许。虚拟摄像头不能按普通 ad-hoc 包激活；ADB/HDC/go-ios 等设备 CLI 仍按安装说明配置。
 
+内嵌投屏从 `assets/scrcpy/scrcpy-server.jar` 提取设备端服务，并使用 Rust 引擎，无需安装外部 scrcpy。安装说明中的必装命令仅包含 `android-platform-tools`；`ScrcpyService.startRecording` 仍调用外部 scrcpy，因此“电脑本地录制”保留可选依赖说明，不能宣称所有录制路径均无外部依赖。
+
+v1.0.0 首发二进制与原始校验记录保留；发布页同步更正说明，并补充 `INSTALL-macOS-corrected.md` 与 `SHA256SUMS-corrected`。后续构建会从已修正的 `agent/distribution/INSTALL-macOS.md` 自动生成包内说明。
+
 不修改 Dart UI、投屏链路、Isolate 通信、主题或国际化。脚本与包验证不证明其他 Mac 的真实启动、USB/无线设备连接和 Camera Extension 激活已验收。首发后应在另一台 Apple Silicon Mac 从浏览器下载安装，并验证主窗口、APK 分析、设备连接和投屏。
 
 回退 workflow 可 revert 对应 commit；回退公开版本应发布新版本或在 GitHub Releases 撤回问题版本，不覆盖既有二进制附件。

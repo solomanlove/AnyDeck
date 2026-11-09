@@ -92,6 +92,11 @@ class MacOSReleaseTests(unittest.TestCase):
         VERIFIER.verify(app)
         self.assertTrue((app / 'Contents/Resources/fixture-link').is_symlink())
         self.assertTrue(os.access(app / 'Contents/Helpers/anydeck-apk-inspector', os.X_OK))
+        instructions = (output / 'INSTALL-macOS.md').read_text()
+        self.assertIn('brew install android-platform-tools\n', instructions)
+        self.assertNotIn('brew install android-platform-tools scrcpy', instructions)
+        self.assertIn('无需在电脑上另外安装 scrcpy', instructions)
+        self.assertIn('电脑本地录制', instructions)
 
 
 if __name__ == '__main__':
