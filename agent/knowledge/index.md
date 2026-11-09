@@ -44,7 +44,7 @@
 | `adb-lan-device-sharing` | 局域网 Android 单设备共享 | experimental | 分享码与临时 TLS、固定 transport 的 ADB Bridge、慢 OPEN 隔离、概览缓存保护、接收方本机 ADB、Forward/Reverse、单接收者与撤销、来源标识及真机验收边界 | `core/device_share/`, `core/device_info/`, `features/devices/` |
 | `hdc-wireless-debugging` | HarmonyOS HDC 无线调试增强 | active | 记录身份绑定历史、USB/TCP 双通道、USB 回读 IP、退避重连、Remote HDC Server 与开发板 UART 边界 | `core/harmony/wireless/`, `core/providers/`, `features/devices/` |
 | `hdc-harmony-overview-hardware-network` | 鸿蒙设备概览硬件与网络信息 | active | 记录 HDC 读取当前 SSID、精确型号处理器映射和内核版本解析及回退边界 | `core/harmony/`, `core/providers/`, `features/overview/` |
-| `devices_manager` | 设备唯一标识判断机制 | active | 记录设备发现/连接命名约定、DiscoveredDevice.id 命令路由、HDC 在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
+| `devices_manager` | 设备唯一标识判断机制 | active | 记录设备发现/连接命名约定、DiscoveredDevice.id 命令路由、HDC 每 2 秒自动检测及查询互斥/销毁边界、在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
 | `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、Android USB/TCP/TLS 断线恢复与事件驱动优选、当前投屏通道标签与重连提示样式、设备信息悬浮层与计时 Tooltip、手机剪贴板入口、单 App 工具栏规则，以及 HarmonyOS HDC 控制映射 | `app/window/mirror/`, `core/scrcpy/`, `rust/device_bridge/`, `core/harmony/` |
 | `adb-fusion-app-mirroring` | Android 融合投屏 | active | Android 14+ 默认开关、App 副屏与主屏路由、标题栏 App 图标点击与加载反馈、手机操作占位与恢复、窗口与音频复用、动态尺寸及 DPI、图库缩放过渡和真机回归边界 | `features/apps/`, `app/window/mirror/`, `core/scrcpy/` |

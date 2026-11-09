@@ -66,7 +66,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('HdcService Device Serial Parsing Tests', () {
-    test('HarmonyOS 设备列表仅在显式刷新时查询', () async {
+    test('子窗口不自动检测 HarmonyOS，保留显式刷新能力', () async {
       final hdc = _CountingHdcDeviceService();
       final tracker = DeviceDiscoveryTracker(
         adbService: FakeAdbService(),

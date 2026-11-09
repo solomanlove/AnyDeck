@@ -37,7 +37,7 @@ final devicePollingControllerProvider =
 
 /// 主窗口常驻的跨平台设备发现 Provider。
 ///
-/// 聚合 ADB 事件流、iOS 轮询及 HDC 主动刷新结果，退出应用时释放资源。
+/// 聚合 ADB 事件流、HDC/iOS 自动检测及主动刷新结果，退出应用时释放资源。
 final deviceDiscoveryTrackerProvider = Provider<DeviceDiscoveryTracker>((ref) {
   final adbService = ref.watch(adbServiceProvider);
   final iosService = ref.watch(iosDeviceServiceProvider);

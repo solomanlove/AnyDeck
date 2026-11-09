@@ -9,7 +9,7 @@ import 'discovered_device.dart';
 import 'adb_service.dart';
 
 /// 主窗口常驻的设备发现聚合器，汇总 ADB、HDC 与 iOS 设备。
-/// ADB 使用 `adb track-devices -l` 监听，iOS 定时轮询，HDC 初始化或主动刷新。
+/// ADB 使用 `adb track-devices -l` 监听，HDC 与 iOS 定时检测并支持主动刷新。
 /// 隐藏窗口、最小化、切换 Tab 均保持持续监听，退出应用时释放。
 class DeviceDiscoveryTracker {
   DeviceDiscoveryTracker({
@@ -36,6 +36,8 @@ class DeviceDiscoveryTracker {
   Process? _trackProcess;
   Timer? _reconnectTimer;
   Timer? _iosPollTimer;
+  Timer? _harmonyPollTimer;
+  Future<List<DiscoveredDevice>>? _harmonyRefresh;
   bool _iosPolling = false;
   bool _isDisposed = false;
 
@@ -51,11 +53,13 @@ class DeviceDiscoveryTracker {
   Future<void> _startTracking() async {
     if (_isDisposed || isSubWindow) return;
 
+    // HDC 独立启动，避免 ADB/iOS 初始化失败或慢查询阻塞鸿蒙设备发现。
+    _startHarmonyPolling();
+
     // 先同步拉取一次初始设备列表，避免等待 track-devices 首个事件有延迟
     try {
       _androidDevices = await _adbService.listDevices();
       await _pollIosDevices();
-      await refreshHarmonyDevices(publish: false);
       _publish();
     } catch (e) {
       debugPrint('[DeviceDiscoveryTracker] initial listDevices error: $e');
@@ -192,17 +196,38 @@ class DeviceDiscoveryTracker {
     }
   }
 
-  /// HDC 不支持设备事件流，仅在初始化或显式刷新时查询一次。
+  /// HDC 无设备事件流，每 2 秒检测一次；隐藏窗口和切换 Tab 后仍持续检测。
+  void _startHarmonyPolling() {
+    if (_isDisposed || isSubWindow || _hdcService == null) return;
+    _harmonyPollTimer?.cancel();
+    unawaited(refreshHarmonyDevices());
+    _harmonyPollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      unawaited(refreshHarmonyDevices());
+    });
+  }
+
+  /// 自动检测和手动刷新共用在途请求，避免慢查询堆积及旧结果覆盖新结果。
   Future<List<DiscoveredDevice>> refreshHarmonyDevices({bool publish = true}) async {
+    if (_isDisposed) return _harmonyDevices;
+    final refresh = _harmonyRefresh ??= _pollHarmonyDevices();
+    try {
+      final devices = await refresh;
+      if (publish) _publish();
+      return devices;
+    } finally {
+      if (identical(_harmonyRefresh, refresh)) _harmonyRefresh = null;
+    }
+  }
+
+  Future<List<DiscoveredDevice>> _pollHarmonyDevices() async {
     try {
       if (_hdcService != null) {
-        _harmonyDevices = await _hdcService.listDevices();
+        final devices = await _hdcService.listDevices();
+        // 退出后迟到的结果不能再修改快照或向已关闭的 Stream 发布。
+        if (!_isDisposed) _harmonyDevices = devices;
       }
     } catch (e) {
       debugPrint('[DeviceDiscoveryTracker] HarmonyOS refresh error: $e');
-    }
-    if (publish) {
-      _publish();
     }
     return _harmonyDevices;
   }
@@ -233,6 +258,7 @@ class DeviceDiscoveryTracker {
     _isDisposed = true;
     _reconnectTimer?.cancel();
     _iosPollTimer?.cancel();
+    _harmonyPollTimer?.cancel();
     _trackProcess?.kill();
     _trackProcess = null;
     _streamController.close();

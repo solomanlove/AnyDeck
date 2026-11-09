@@ -77,7 +77,13 @@ final deviceAndroidVersionProvider = Provider.autoDispose
 
 回归：`flutter test test/harmony_device_serial_merge_test.dart` 覆盖 HDC `Unknown` 过滤和 ADB/HDC 同地址路由。手工验收可同时观察 `adb devices -l`、`hdc list targets -v` 与控制台日志：当 Android 地址仅在 HDC 中呈 `Unknown` 时，不应再出现针对该地址的 `hdc -t ... shell`。
 
-本机 HDC `3.1.0b` 仅提供一次性 `list targets [-v]`，没有与 `adb track-devices` 对等的设备事件流。主窗口只在应用初始化以及用户主动刷新、HDC 连接/断开或服务重启后调用一次 `HdcService.listDevices()`；5 秒 iOS 辅助轮询和自适应设备轮询都不再扫描 HDC，避免后台持续执行 `hdc list targets -v`。HarmonyOS 设备热插拔后如未经过连接操作，需要点击刷新按钮同步列表。
+当前 HDC 接入使用一次性 `list targets [-v]`，没有接入与 `adb track-devices` 对等的设备事件流。2026-11-09 起，主窗口 `DeviceDiscoveryTracker` 初始化后立即查询 HDC，此后每 2 秒自动调用 `HdcService.listDevices()`，使 HarmonyOS 与 Android 均能自动更新设备上下线，无需手动刷新。检测延迟为下一次检测周期加实际查询耗时；慢查询期间不叠加新请求。
+
+HDC 检测独立于 ADB/iOS 初始化，避免其他平台初始化失败或阻塞影响鸿蒙发现；隐藏、最小化及切换 Tab 后保持检测。自动检测与用户刷新、连接/断开、服务重启后的刷新共享同一个在途 Future，完成后仅在设备列表变化时发布聚合快照。抛出异常时保留旧快照，下一周期重试；底层返回空列表仍按无在线设备处理。继续复用 `HdcService` 的状态过滤、型号缓存及 CLI 超时回收，不新增命令执行封装。5 秒 iOS 辅助轮询及自适应设备轮询不重复扫描 HDC。
+
+子窗口不启动 HDC 自动检测，显式刷新能力保留。Tracker 销毁时取消 HDC Timer，忽略退出后迟到的查询结果，并阻止继续发起查询。此次不修改 UI、l10n、主题、投屏输入或跨窗口协议，也没有新增依赖和 Provider。
+
+验证：`flutter test --no-pub test/device_discovery_poll_test.dart test/harmony_device_serial_merge_test.dart` 共 20 项通过，覆盖自动插拔、无变化不重复发布、ADB 失败隔离、慢查询与手动刷新合并、异常恢复、销毁和子窗口边界，以及 HDC 状态过滤与注册表合并。相关 Dart 文件定向 `flutter analyze --no-pub` 无诊断。未启动应用或操作真机；人工验收需确认 HarmonyOS USB 插拔及无线连接/断开后列表自动更新，在隐藏窗口后重复插拔并恢复窗口检查状态，并观察 Android 同时连接时路由正确。
 
 ### 2.4 HDC 瞬态错误与设备信息缓存清洗
 
