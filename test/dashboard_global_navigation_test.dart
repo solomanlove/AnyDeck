@@ -1,6 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/router/dashboard_route.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:any_deck/core/mcp/models/mcp_server_config.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/console/controller/console_dock_controller.dart';
@@ -30,6 +31,75 @@ class _IdleMcp extends McpServerNotifier {
 }
 
 void main() {
+  for (final language in ['zh', 'en']) {
+    for (final brightness in Brightness.values) {
+      for (final width in [900.0, 1400.0]) {
+        testWidgets('$language $brightness $width App 文案与 Logo 居中，窄栏仅显示 Logo', (
+          tester,
+        ) async {
+          tester.view.physicalSize = Size(width, 950);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          final container = ProviderContainer(
+            overrides: [
+              deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
+              mcpServerProvider.overrideWith(_IdleMcp.new),
+            ],
+          );
+          addTearDown(container.dispose);
+          await tester.pumpWidget(
+            UncontrolledProviderScope(
+              container: container,
+              child: MaterialApp(
+                locale: Locale(language),
+                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: const [
+                  AppLocalizationsDelegate(),
+                  ...GlobalMaterialLocalizations.delegates,
+                ],
+                theme: buildAppTheme(brightness),
+                home: const Scaffold(
+                  body: Row(children: [PrimaryRail(selectedDevice: null)]),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final logo = find.byWidgetPredicate(
+            (widget) =>
+                widget is Image &&
+                widget.image == const AssetImage(AppIcons.appLogo),
+          );
+          final tagline = find.text(
+            language == 'zh' ? '万能控制台' : 'Universal Console',
+          );
+          expect(logo, findsOneWidget);
+          if (width >= 1000) {
+            expect(tagline, findsOneWidget);
+            final labels = find.byKey(const ValueKey('app-identity-labels'));
+            expect(
+              tester.getCenter(labels).dy,
+              closeTo(tester.getCenter(logo).dy, 0.01),
+            );
+            expect(
+              tester.getTopLeft(tagline).dx,
+              tester.getTopLeft(find.text('AnyDeck')).dx,
+            );
+            expect(
+              tester.getTopLeft(tagline).dy,
+              greaterThan(tester.getBottomLeft(find.text('AnyDeck')).dy),
+            );
+          } else {
+            expect(tagline, findsNothing);
+            expect(find.text('AnyDeck'), findsNothing);
+          }
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox.shrink());
+        });
+      }
+    }
+  }
+
   testWidgets('系统版本位于鸿蒙互联下面，控制台紧邻设置上方且不改变路由', (tester) async {
     tester.view.physicalSize = const Size(1400, 950);
     tester.view.devicePixelRatio = 1;

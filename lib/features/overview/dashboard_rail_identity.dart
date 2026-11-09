@@ -163,10 +163,31 @@ class _RailIdentity extends ConsumerWidget {
             avatar,
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                context.l10n.t('appTitle'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              // 两行文案作为整体与 Logo 居中，不增加身份区高度。
+              child: Column(
+                key: const ValueKey('app-identity-labels'),
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.t('appTitle'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.2),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    context.l10n.t('appTagline'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      height: 1.2,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

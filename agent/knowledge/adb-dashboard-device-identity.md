@@ -2,7 +2,13 @@
 
 ## 目标
 
-Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设备时展示 App logo 与应用名称；选择设备后展示对应品牌 logo、设备名称及 USB/Wi-Fi 连接方式。
+Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设备时展示 App logo、应用名称与“万能控制台”副文案；选择设备后展示对应品牌 logo、设备名称及 USB/Wi-Fi 连接方式。
+
+## App 身份副文案（2026-11-09）
+
+- 宽侧栏在 AnyDeck 下方增加“万能控制台”（English：Universal Console），通过 `appTagline` 本地化键提供文案。两行文字左对齐，作为整体与 Logo 垂直居中，保留原 38px 身份区高度。
+- 副文案使用 11px、主题 `onSurfaceVariant` 次级颜色；单行超长省略。窄侧栏继续仅显示 Logo，选中设备后的身份内容与导航行为沿用原实现。
+- `test/dashboard_global_navigation_test.dart` 覆盖中英文、Light/Dark 和宽窄侧栏，验证副文案位置及文案整体与 Logo 的中心坐标。与真实 Dashboard 导航测试一起运行，18 项通过；未启动桌面 App。
 
 ## 交互与数据边界
 
