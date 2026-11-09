@@ -109,11 +109,19 @@ class HarmonyMirrorService {
       }
     }
     final display = RegExp(
-      r'-+ Display ID: 0 -+([\s\S]*?)(?=\n-+ Display ID:|$)',
-    ).firstMatch(output)?.group(1);
+      r'-+ Display ID: 0 -+([\s\S]*?)(?=\n[ \t]*(?:-+ (?:Screen|Display) ID:|Display \d+:)|$)',
+    ).firstMatch(output)?.group(1) ??
+        // 兼容旧版简写段名，同时限定主屏范围，不能跨段补齐缺失字段。
+        RegExp(
+          r'(?:^|\n)[ \t]*Display 0:[ \t]*\r?\n([\s\S]*?)(?=\n[ \t]*(?:Display \d+:|-+ (?:Screen|Display) ID:)|$)',
+        ).firstMatch(output)?.group(1);
     if (display == null) return (null, null);
     int? read(String label) => int.tryParse(
-      RegExp('^$label:\\s*(\\d+)', multiLine: true)
+      RegExp(
+        '^[ \\t]*$label:[ \\t]*(\\d+)[ \\t]*\\r?\$',
+        multiLine: true,
+        caseSensitive: false,
+      )
           .firstMatch(display)?.group(1) ?? '',
     );
     final width = read('Width');

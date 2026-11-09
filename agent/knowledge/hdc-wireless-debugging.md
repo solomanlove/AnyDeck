@@ -31,6 +31,8 @@ UART 仅位于高级折叠区，服务于 OpenHarmony 开发板。Remote HDC Ser
 
 验证结果：上述新增测试与注册表 IP、HDC 无线模型/连接共 18 项通过；`HDC Wireless Debugging Tests` 的 8 项通过；本次涉及的 Dart 文件静态检查通过。扩展执行 `harmony_tabs_and_wifi_test.dart` 全文件时，另有未修改的 `HarmonyMirrorService.parseDisplayDimensions` 屏幕尺寸解析用例失败（期望 1260，实际 null），未纳入本次 IP 修复。
 
+后续处理（2026-11-09）：上述屏幕尺寸解析问题已单独修复，补充 Display 简写段名、字段缩进/大小写兼容与多屏边界回归，见 [投屏独立窗口行为机制](adb-mirror-window-behavior.md) 的主屏尺寸解析兼容记录。
+
 手动验收：保持 USB 连接，切换手机 Wi-Fi，列表应在下一轮刷新显示当前地址；关闭手机 Wi-Fi 后应隐藏旧 IP；拔出 USB 且无 TCP 通道后应停止查询。未重新运行桌面应用，真实 UI 刷新与换网仍需验收。
 
 ## 安全与生命周期

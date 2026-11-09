@@ -163,6 +163,15 @@ flutter test test/mirror_transport_resolver_test.dart test/android_mirror_transp
 - 活跃 Android 投屏子窗口没有主窗口 Registry SDK 缓存时，剪贴板辅助会话可以凭活跃投屏状态通过 UI 版本门槛；Rust 启动时继续回读 SDK。HarmonyOS、iOS 投屏不显示此入口。仅同步文本，系统清空手机剪贴板不一定推送事件，面板可能显示最近一次收到的内容。
 - 验证：`test/mirror_clipboard_sync_test.dart` 覆盖协议字节、首条手机文本、回环抑制、手动粘贴、关闭自动同步、子窗口 SDK 缺失及双栏渲染；定向 `flutter analyze --no-pub` 和 `git diff --check` 通过。未运行桌面 App，仍需 macOS + Android 真机检查剪贴板变化、焦点粘贴、断连及明暗主题。
 
+## HarmonyOS 主屏尺寸解析兼容（2026-11-09）
+
+- 修复 `harmony_tabs_and_wifi_test.dart` 中主屏宽高返回 null 的问题：`parseDisplayDimensions` 原先只识别带分隔线的 `Display ID: 0`，不识别 `Display 0:` 简写段名；字段行也未兼容缩进与小写 `rotation`。
+- 尺寸来源仍优先使用 `Screen ID: 0` 的当前 `Bounds<L,T,W,H>`；缺失时读取主屏 Display 段。两种 Display 段格式均限定到下一段之前，不能混用后续虚拟屏的宽高或旋转信息。
+- Display 字段支持空格/Tab 缩进、大小写及 CRLF；宽高必须为正整数。Rotation 优先于 Orientation，同时兼容 0/1/2/3 与 0/90/180/270；没有方向字段时保留宽高顺序。
+- 新增 `test/harmony_display_dimensions_test.dart`，覆盖格式兼容、旋转优先级、Bounds 优先级、多屏段落隔离及非法尺寸；回归原失败用例、鸿蒙旋转/控制以及投屏窗口比例测试。未增加 HDC 查询或修改投屏会话生命周期、UI、主题及国际化。
+- 验证结果：上述 5 个测试文件共 39 项测试通过；修改文件的 `dart analyze` 与 `git diff --check` 通过。
+- 手动验收：手机分别保持横屏和竖屏启动投屏，检查首屏比例与点击坐标；存在投屏虚拟屏时仍应选取主屏。未运行桌面应用，真机验收待完成。
+
 ## HarmonyOS 工具栏控制
 
 - HarmonyOS 投屏工具栏隐藏“前台窗口”和“手机设置”入口；平台判断使用 `controller.isHarmony`，Android 工具栏继续显示这两个入口。
