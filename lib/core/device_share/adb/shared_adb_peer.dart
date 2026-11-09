@@ -22,11 +22,20 @@ class SharedAdbPeer {
   int _nextId = 0, _payloadLimit = 4096;
   bool _closed = false;
   Future<void>? _closing;
+  Future<void> _writeTail = Future<void>.value();
 
-  Future<void> _send(AdbPacket packet) async {
-    if (_closed) return;
-    socket.add(packet.encode());
-    await socket.flush().timeout(const Duration(seconds: 15));
+  /// IOSink.flush 期间禁止并发 add/flush；所有 Stream 共用同一条有序写队列。
+  Future<void> _send(AdbPacket packet) {
+    final sent = _writeTail.then((_) async {
+      if (_closed) return;
+      socket.add(packet.encode());
+      await socket.flush().timeout(const Duration(seconds: 15));
+    });
+    _writeTail = sent.catchError((Object error, StackTrace stack) {
+      // TLS 出口失效会影响全部 Stream，立即撤销 Transport，避免保持假在线状态。
+      unawaited(close());
+    });
+    return sent;
   }
 
   /// 仅开放设备服务；尤其禁止 host:*、transport 重选与宿主全局 Server 控制。

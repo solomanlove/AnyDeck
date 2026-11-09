@@ -107,3 +107,26 @@ ADB 协议链路与桩对端通过，不等于真实 Android Studio 调试、手
 - [ADB 服务定义与 ABB 参数](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/dev/services.md)
 - [DeviceFarmer TCP-USB Bridge 参考](https://github.com/DeviceFarmer/adbkit/tree/master/src/adb/tcpusb)
 - [Apple 局域网隐私说明](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy)
+
+## 7. 并发传输超时修复（2026-11-09）
+
+### 现象与根因
+
+PNM AN10 共享接入后显示在线，随后概览的多条 Shell 查询超时，投屏在推送 `scrcpy-server.jar` 时达到 15 秒时限。使用同一台真实手机、独立接收端 ADB Server 与 TLS 共享链路复现：单条查询成功，并发查询时部分服务停止收发，共享状态仍为在线。
+
+多个 `AdbBridgeStream` 共用 `SharedAdbPeer` 的同一个 TLS Socket。Dart `IOSink.flush()` 尚未结束时，其他 Stream 再调用 `add/flush` 会抛出 `StateError: StreamSink is bound to a stream`。原有单流异常处理关闭服务时又可能碰到同一个写入竞争，无法正常发送 `CLSE`，使接收端持续等待直到命令超时。原来的串行服务测试没有覆盖这一场景。
+
+### 修复逻辑
+
+- `SharedAdbPeer._send` 使用统一的 Future 写队列，串行完成每个报文的 `add` 与 `flush`，保持跨 Stream 的报文边界与顺序。
+- 单流 ACK 背压与 64 条 Stream 上限继续约束待发送数据量。
+- TLS 出口写入失败或超时时关闭整个 Transport，使接收端结束失效连接。
+- 共享方运行修复后的代码，停止旧共享再重新创建；接收方重新连接分享码。
+
+### 验证与边界
+
+- 新增 8 条服务同时返回大结果的 Transport 回归，逐流验证完整内容与关闭。修复前能复现上述 `StateError` 和 5 秒等待超时，修复后通过。
+- 新增真实 ADB 并发集成：4 条设备信息查询与 900 KB 文件推送共用 Transport，所有命令、结果内容和文件字节校验通过。
+- 20 个相关测试文件共 **155 项通过**；修改的生产模块与两个测试文件定向 `flutter analyze --no-pub` 无问题；`git diff --check` 通过。
+- 真机为 PNM AN10，分享方与隔离接收端 ADB 在同一台 Mac 上运行。修复后，4 路查询（含约 1.8 MB 输出）及 732,226 字节投屏 Server 推送成功；进一步保持 H.264 视频数据链路 20 秒，同时执行 24 次查询及 6 次文件推送，接收端持续在线。
+- 测试仅使用独立临时文件、Forward 和后台 scrcpy Server，结束后回收测试进程、连接与临时文件；未启动或构建桌面项目。跨两台电脑的 Wi-Fi、音频、触控与长时共享仍按前述真机清单验收。

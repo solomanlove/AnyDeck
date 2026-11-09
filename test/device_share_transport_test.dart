@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
 import 'package:any_deck/core/device_share/adb/adb_packet.dart';
 import 'package:any_deck/core/device_share/hosted_device_share.dart';
 import 'package:any_deck/core/device_share/joined_device_share.dart';
@@ -129,6 +130,48 @@ void main() {
       adb.requests.where((request) => request.startsWith('host:transport-id:')),
       isEmpty,
     );
+  });
+
+  test('多个设备服务同时返回时，每条流均能完整送达并正常结束', () async {
+    final ready = Completer<void>();
+    var services = 0;
+    adb.onService = (name, socket, _) async {
+      services++;
+      await ready.future;
+      socket.add(utf8.encode('$name result\n' * 8192));
+    };
+    final client = await connect();
+    await client.auth();
+    await client.handshake(payload: AdbPacket.maxPayload);
+    for (var remoteId = 1; remoteId <= 8; remoteId++) {
+      await client.open('shell:query$remoteId', remoteId);
+      final opened = await client.packet();
+      expect(opened.command, AdbPacket.okay);
+    }
+    expect(services, 8);
+    ready.complete();
+    final received = <int, String>{};
+    final closed = <int>{};
+    while (closed.length < 8) {
+      final packet = await client.packet();
+      if (packet.command == AdbPacket.wrte) {
+        received.update(
+          packet.arg1,
+          (value) => value + utf8.decode(packet.data),
+          ifAbsent: () => utf8.decode(packet.data),
+        );
+        await client.send(AdbPacket.okay, packet.arg1, packet.arg0);
+      } else if (packet.command == AdbPacket.clse) {
+        closed.add(packet.arg1);
+      }
+    }
+    expect(received.keys.toSet(), {for (var id = 1; id <= 8; id++) id});
+    for (var id = 1; id <= 8; id++) {
+      expect(
+        sha256.convert(utf8.encode(received[id]!)),
+        sha256.convert(utf8.encode('shell:query$id result\n' * 8192)),
+      );
+    }
   });
 
   test('大流未 ACK 时暂停发送，确认后继续且保持数据顺序', () async {

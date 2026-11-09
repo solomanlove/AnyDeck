@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -197,6 +198,50 @@ void main() {
     expect(await reader.read(6), [0, 255, 10, 13, 128, 42]);
     socket.destroy();
     await reader.cancel();
+  });
+
+  test('并发设备信息查询与大文件推送共用 Transport 时保持所有服务可用', () async {
+    final ready = Completer<void>();
+    var queries = 0;
+    source.onService = (service, socket, reader) async {
+      if (service == 'sync:') {
+        await sync.handle(socket, reader);
+        return;
+      }
+      if (service.startsWith('shell,v2')) {
+        if (++queries == 4) ready.complete();
+        await ready.future;
+        socket.add(
+          _shellFrame(1, utf8.encode('AnyDeck concurrent metadata\n' * 4096)),
+        );
+        socket.add(_shellFrame(3, [0]));
+      }
+    };
+    final content = Uint8List.fromList(List.generate(900000, (i) => i % 239));
+    final input = File('${directory.path}/concurrent.bin');
+    await input.writeAsBytes(content);
+    final results = await Future.wait([
+      for (var i = 0; i < 4; i++)
+        localAdb.shellArgs(joined!.deviceId, ['getprop', 'test.$i']),
+      localAdb.run([
+        '-s',
+        joined!.deviceId,
+        'push',
+        '-Z',
+        input.path,
+        '/data/local/tmp/anydeck-concurrent.bin',
+      ]),
+    ]);
+    expect(
+      results.map((result) => result.exitCode),
+      everyElement(0),
+      reason: results.map((result) => result.message).join('\n'),
+    );
+    for (final result in results.take(4)) {
+      expect(result.stdout, 'AnyDeck concurrent metadata\n' * 4096);
+    }
+    expect(sync.files['/data/local/tmp/anydeck-concurrent.bin'], content);
+    expect(joined!.closed, isFalse);
   });
 
   test('真实 adb 流式安装保留 ABB 的 NUL 参数与 APK 字节', () async {
