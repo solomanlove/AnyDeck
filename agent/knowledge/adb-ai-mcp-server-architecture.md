@@ -175,3 +175,20 @@ ANYDECK_MCP_DEVICE_SMOKE=1 flutter test --no-pub test/mcp_device_smoke_test.dart
 ```
 
 官方依据：[Tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)、[Streamable HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)、[2026-07-28 Schema](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2026-07-28/schema.ts)。
+
+
+## 9. 生命周期与凭据迁移异常回归（2026-11-10）
+
+- 新增 socket 回归复现并修复两个竞态：连续启动生成未持有的 listener、启动尚未完成时停止却在返回后继续运行。`McpServer` 现在串行处理启停，同配置重复启动直接返回；启动失败不会阻断后续关闭或重试。
+- 凭据迁移统一放在受保护的初始化流程中。损坏 JSON、读取异常、写入返回 false 或抛错都不开放入口；不静默覆盖损坏的旧配置，不向 UI 暴露未成功保存的 Token。失败提示提供中英文翻译。
+- `test/mcp_lifecycle_test.dart` 两项、`test/mcp_config_initialization_test.dart` 三项通过；与已有 MCP/iOS 回归及官方 SDK 互操作测试合计 46 项通过。变更文件定向 `flutter analyze --no-pub` 无问题。
+- `flutter build macos --debug --no-pub` 在本机因 Xcode 仅提供 arm64e host destination 失败；改用下列 generic macOS destination 完成 arm64 Debug 构建。仅在临时目录输出，无项目架构配置变更；构建产生的 Podfile.lock checksum 改动已还原。
+
+```bash
+xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner -configuration Debug \
+  -destination 'generic/platform=macOS' -derivedDataPath /tmp/anydeck-mcp-build-20261110 \
+  ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build
+```
+
+- 对该临时产物使用项目 Debug entitlements 进行本地 ad hoc 签名并通过 deep/strict 验签，实际启动后检查 AI MCP 页面：三平台配置、34 个工具、默认收起及展开、iOS 平台筛选通过。临时实例已退出。未在页面修改端口、启停真实服务、轮换凭据或改变工具权限；8765 已由另一实例占用时显示启动失败的真实错误，未中止现有实例。
+- 用户确认暂时没有 iPhone，iOS 设备侧验收继续保留；当前结论只证明自动路由、协议互操作、UI 与编译，不代表 iPhone 上 WDA/IPA/AFC/进程/syslog 已验收。

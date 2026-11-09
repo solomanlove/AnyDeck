@@ -78,23 +78,28 @@ class McpServerNotifier extends Notifier<McpServerState> {
       iosCommands: ref.read(iosCommandServiceProvider),
     ).create();
 
-    // 2. 从本地缓存读取配置
-    var config = const McpServerConfig();
+    // 2. 完整读取并持久化凭据后才能启动；失败时保留旧配置且不开放入口。
+    late McpServerConfig config;
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedJson = prefs.getString(_prefsKey);
-      if (savedJson != null && savedJson.isNotEmpty) {
-        config = McpServerConfig.fromJson(jsonDecode(savedJson) as Map<String, dynamic>);
+      config = savedJson == null || savedJson.isEmpty
+          ? const McpServerConfig()
+          : McpServerConfig.fromJson(jsonDecode(savedJson) as Map<String, dynamic>);
+      final tokens = Map<String, String>.from(config.platformTokens);
+      for (final platform in ['android', 'harmony', 'ios']) {
+        if (tokens[platform]?.isNotEmpty != true) tokens[platform] = _newToken();
       }
-    } catch (_) {}
-
-    final tokens = Map<String, String>.from(config.platformTokens);
-    for (final platform in ['android', 'harmony', 'ios']) {
-      if (tokens[platform]?.isNotEmpty != true) tokens[platform] = _newToken();
+      config = config.copyWith(platformTokens: tokens);
+      if (!await prefs.setString(_prefsKey, jsonEncode(config.toJson()))) {
+        throw StateError('MCP preferences write failed');
+      }
+    } catch (_) {
+      if (ref.mounted) {
+        state = state.copyWith(statusText: '启动失败', lastError: 'mcpConfigStorageError');
+      }
+      return;
     }
-    config = config.copyWith(platformTokens: tokens);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKey, jsonEncode(config.toJson()));
 
     if (!ref.mounted) return;
 

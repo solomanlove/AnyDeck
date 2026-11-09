@@ -32,6 +32,7 @@ class McpServer {
 
   McpTransportInterface? _activeTransport;
   bool _isStarted = false;
+  Future<void> _lifecycle = Future<void>.value();
 
   McpServer({
     required this.registry,
@@ -46,9 +47,13 @@ class McpServer {
   String get transportName => _activeTransport?.name ?? 'None';
 
   /// 启动 MCP Server (默认启动 SSE 传输)
-  Future<void> startSse({McpServerConfig? customConfig}) async {
+  Future<void> startSse({McpServerConfig? customConfig}) =>
+      _enqueueLifecycle(() => _startSse(customConfig));
+
+  Future<void> _startSse(McpServerConfig? customConfig) async {
     if (_isStarted) {
-      await stop();
+      if (customConfig == null || identical(customConfig, config)) return;
+      await _stop();
     }
     if (customConfig != null) {
       config = customConfig;
@@ -70,7 +75,16 @@ class McpServer {
   }
 
   /// 停止 MCP Server
-  Future<void> stop() async {
+  Future<void> stop() => _enqueueLifecycle(_stop);
+
+  /// 生命周期按调用顺序执行；前一次失败不能阻塞后续重试或关闭。
+  Future<void> _enqueueLifecycle(Future<void> Function() operation) {
+    final result = _lifecycle.then((_) => operation());
+    _lifecycle = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    return result;
+  }
+
+  Future<void> _stop() async {
     await _activeTransport?.stop();
     _activeTransport = null;
     _isStarted = false;

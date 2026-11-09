@@ -83,7 +83,7 @@ class McpServerStatusCard extends ConsumerWidget {
             if (state.lastError != null) ...[
               const SizedBox(height: 6),
               Text(
-                '异常信息: ${state.lastError}',
+                '异常信息: ${context.l10n.t(state.lastError!)}',
                 style: const TextStyle(color: Colors.redAccent, fontSize: 12),
               ),
             ],
