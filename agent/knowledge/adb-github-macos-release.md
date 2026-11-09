@@ -33,6 +33,8 @@ git push origin v1.0.0
 
 Workflow 在临时 SSH agent 中加载 key，通过 GitHub HTTPS metadata 取得 SSH host keys；结束获取步骤即销毁 agent。只提取锁文件指定 commit 下的制品，校验 SHA-256 后存入构建缓存。后续编译阶段不持有私有仓库凭据。缺少 Secret 时会在下载 SDK 和编译之前明确失败。
 
+锁定的 commit 必须已推送到私有远端，不能仅存在于本地或相邻仓库缓存。首发所需的 `d33712f817d55ebfc21b9fd56bbc38c61930221d` 已通过独立分支 `codex/ci-artifact-0.3.10` 提供；保留该远端引用，确保干净 CI 能读取固定制品，无需改动私有仓库默认分支。
+
 ## 验证门禁
 
 ```bash
@@ -52,7 +54,16 @@ python3 -m unittest discover -s test/script -v
 - 完整 macOS Release 构建通过，35 个 Mach-O 文件通过签名、架构及实际依赖检查。
 - 已生成约 55 MB DMG 与 50 MB ZIP，SHA-256 清单校验通过，DMG 镜像校验通过。
 - Workflow 通过 actionlint（含 ShellCheck）验证。
-- GitHub 云端构建与实际 Release 上传尚需配置专用只读凭据后验证；不能用本地构建成功替代云端验收。
+
+## 云端首发记录（2026-11-09）
+
+- 已推送 `v1.0.0`，指向主仓库 `cb40d0c3cb837644dcfa3cbea6ba496113b9e911`。
+- [Actions 任务](https://github.com/solomanlove/AnyDeck/actions/runs/42562842273) 第一次执行因私有锁定 commit 未推送失败；补推上述独立制品分支后，重试同一任务成功。
+- 干净 macOS Runner 的 37 项脚本测试、完整 Release 构建、35 个 Mach-O 文件验证、安装包生成和独立 publish job 均通过。
+- [公开 Release](https://github.com/solomanlove/AnyDeck/releases/tag/v1.0.0) 已包含 DMG、ZIP、`SHA256SUMS` 和 `INSTALL-macOS.md`，不是 Draft 或 Prerelease。
+- 已从公开附件地址重新下载并独立验证 GitHub digest 与 `SHA256SUMS`；DMG 镜像校验有效，ZIP 解压和 DMG 只读挂载后的 App 均通过 ad-hoc 签名、arm64 与 35 个 Mach-O 文件检查，DMG 的 Applications 链接正确。
+- 下载验证产物保存在忽略目录 `build/release-verification/v1.0.0/`；未启动发布 App，其他 Mac 的首次打开与真机功能仍属于后续验收。
+- 此次未修改 AnyDeckWeb，截图替换继续等待用户通知。
 
 ## 分发边界与回归
 
