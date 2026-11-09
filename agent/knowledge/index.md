@@ -8,6 +8,7 @@
 
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
+| `adb-honor-share-poc` | 荣耀互传独立 PoC | experimental | 私有 CLI 发现与加密会话协商的真机证据、协议隔离、开发期依赖、测试及文件收发未完成边界 | 私有 `AnyDeck-Share-Core` |
 | `adb-macos-dual-architecture` | macOS 双架构构建发布 | active | 原生 arm64/x86_64 matrix、私有制品锁定、安装包与 helper 验证、发布合并与官网入口 | `.github/workflows/`, `macos/`, `script/` |
 | `adb-developer-options-layout` | 开发者页面头部布局 | active | 模式开关移入正文、设置返回按钮与空白拖拽区、宽窄布局、主题与中英文、开关保存和入口激活回归 | `features/developer/`, `app/l10n/` |
 | `adb-github-macos-release` | macOS ad-hoc 自动打包发布 | active | arm64 Actions、只读私有制品凭据、DMG/ZIP/签名与依赖验证、Tag Releases 和安装边界 | `.github/workflows/`, `script/`, `agent/distribution/` |
