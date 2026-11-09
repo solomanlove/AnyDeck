@@ -173,6 +173,9 @@ const settingsZh = {
   'developerOptionsEnabledTip': '您已处于开发者模式！',
   'developerOptionsAlreadyEnabled': '您已处于开发者模式，无需重复开启',
   'developerModeSwitch': '开发者模式',
+  'developerModeDisabledTip': '已关闭开发者模式，设置中已隐藏入口',
+  'developerPageSubtitle': '应用底层诊断、UI 组件预览、网络探测与实验性功能集合',
+  'developerLabsBadge': 'DEBUG & LABS',
   'developerModeSwitchDesc': '开启后在设置中显示开发者选项入口',
 };
 
@@ -356,5 +359,8 @@ const settingsEn = {
   'developerOptionsEnabledTip': 'You are now in developer mode!',
   'developerOptionsAlreadyEnabled': 'You are already in developer mode',
   'developerModeSwitch': 'Developer Mode',
+  'developerModeDisabledTip': 'Developer mode is off. Its entry is hidden in Settings.',
+  'developerPageSubtitle': 'App diagnostics, UI previews, network checks and experimental tools',
+  'developerLabsBadge': 'DEBUG & LABS',
   'developerModeSwitchDesc': 'Show developer options entry in Settings',
 };
