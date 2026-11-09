@@ -44,7 +44,7 @@
 | `adb-forward-port-mapping` | Android/HarmonyOS 正向端口转发 | active | 记录网络页正向规则的用途、ADB/HDC 命令、列表过滤、端口校验及验证边界 | `core/network/`, `core/providers/`, `features/network/` |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录 USB 自动准备监听、2 秒等待与就绪检测、实时 Wi-Fi IP、列表与概览 IP 同源展示、在线 TCP 地址优先与旧缓存修复、网段提示与主机网络快照同步、TCP 优先和目标 mDNS 回退、TLS 切换恢复、双语状态及手动连接指南 | `core/adb/wireless/`, `core/providers/`, `features/devices/` |
 | `adb-lan-device-sharing` | 局域网 Android 单设备共享 | experimental | 固定 transport 的 ADB Bridge、历史重连与 UDP 定位、私有规则、30 分钟/1 小时/永久、指定 Wi-Fi 自动准备、断开隐藏、慢 OPEN 隔离、概览缓存保护、Forward/Reverse 与真机边界 | `core/device_share/`, `core/device_info/`, `core/network/`, `features/devices/` |
-| `hdc-wireless-debugging` | HarmonyOS HDC 无线调试增强 | active | 记录身份绑定历史、USB/TCP 双通道、USB 回读 IP、退避重连、Remote HDC Server 与开发板 UART 边界 | `core/harmony/wireless/`, `core/providers/`, `features/devices/` |
+| `hdc-wireless-debugging` | HarmonyOS HDC 无线调试增强 | active | 记录身份绑定历史、USB/TCP 双通道、在线 WLAN IP 低频刷新与缓存回写、USB 回读 IP、退避重连、Remote HDC Server 与开发板 UART 边界 | `core/harmony/wireless/`, `core/providers/`, `features/devices/` |
 | `hdc-harmony-overview-hardware-network` | 鸿蒙设备概览硬件与网络信息 | active | 记录 HDC 读取当前 SSID、精确型号处理器映射和内核版本解析及回退边界 | `core/harmony/`, `core/providers/`, `features/overview/` |
 | `devices_manager` | 设备唯一标识判断机制 | active | 记录设备发现/连接命名约定、DiscoveredDevice.id 命令路由、共享离线通道隐藏、HDC 每 2 秒自动检测及查询互斥/销毁边界、在线状态过滤、ADB/HDC 同地址优先级、hardware serial 多连接合并，以及 iOS 列表型号/版本与离线缓存 | `dashboard/devices/` (设备控制行) |
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |

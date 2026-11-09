@@ -15,8 +15,10 @@ import 'service_providers.dart';
 import 'adb_wireless_connection_provider.dart';
 import 'device_data_cleaner.dart';
 import 'harmony_wireless_connection_provider.dart';
+import 'harmony_device_ip_provider.dart';
 
 part 'device_registry_item_actions.dart';
+part 'device_registry_ip_sync.dart';
 
 /// 全局设备注册表 Provider。
 ///
@@ -62,21 +64,6 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   final Set<String> _attemptedFetchIds = {};
   bool _isDisposed = false;
 
-  void _listenWirelessState() {
-    ref.listen(adbWirelessConnectionProvider, (previous, next) {
-      for (final entry in next.entries) {
-        if (identical(previous?[entry.key], entry.value)) continue;
-        final value = entry.value;
-        if (value.registryIp == null || value.busy) continue;
-        if (_isDisposed) return;
-        updateDeviceIp(value.deviceId, value.registryIp!, clear: value.registryIp == '-');
-        if (value.serial != null && value.serial != value.deviceId) {
-          updateDeviceIp(value.serial!, value.registryIp!, clear: value.registryIp == '-');
-        }
-      }
-    });
-  }
-
   /// Android 设备列表的统一入口，离线历史设备也经过 TCP 优先与 mDNS 回退。
   Future<AdbResult> connectPreferredAdbWireless(RegisteredDevice device) async {
     final result = await ref
@@ -95,7 +82,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     ref.onDispose(() {
       _isDisposed = true;
     });
-    _listenWirelessState();
+    _listenWirelessState(ref);
     // 主窗口设备注册表常驻期间同步保持 HDC 自动重连控制器活跃。
     ref.read(harmonyWirelessConnectionProvider);
 
@@ -125,12 +112,7 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     _remarks = data.remarks;
     _tags = data.tags;
     _serialMap = data.serialMap;
-    // 实时连接结果优先于异步加载的磁盘快照，避免 DHCP 更新被旧缓存覆盖。
-    for (final value in ref.read(adbWirelessConnectionProvider).values) {
-      if (value.registryIp == null || value.busy) continue;
-      _ipAddresses[value.deviceId] = value.registryIp!;
-      if (value.serial != null) _ipAddresses[value.serial!] = value.registryIp!;
-    }
+    _restoreLiveDeviceIps(ref);
 
     state = _mergeDevices(activeDevices);
   }

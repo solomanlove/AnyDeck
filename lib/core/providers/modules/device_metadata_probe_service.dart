@@ -227,9 +227,9 @@ class DeviceMetadataProbeService {
 
     String? ip;
     String? harmonyMac;
-    final ifconfigRes = await hdc.shell(id, 'ifconfig');
+    final ifconfigRes = await hdc.shell(id, 'ifconfig wlan0');
     if (ifconfigRes.isSuccess && ifconfigRes.stdout.isNotEmpty) {
-      final parsedIp = parseIpFromIfconfig(ifconfigRes.stdout);
+      final parsedIp = HdcService.parseIpFromIfconfig(ifconfigRes.stdout);
       if (parsedIp != null && parsedIp.isNotEmpty) {
         ip = parsedIp;
       }

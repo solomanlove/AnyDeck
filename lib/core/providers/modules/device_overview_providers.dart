@@ -267,6 +267,11 @@ final deviceOverviewProvider = StreamProvider.autoDispose
             if (reg.model != name && name != deviceId) {
               ref.read(deviceRegistryProvider.notifier).updateDeviceModel(deviceId, name);
             }
+            ref.read(deviceRegistryProvider.notifier).updateDeviceIp(
+              deviceId,
+              fresh.ipAddress,
+              clear: ipRes.isSuccess && fresh.ipAddress == '-',
+            );
           }
         });
 
