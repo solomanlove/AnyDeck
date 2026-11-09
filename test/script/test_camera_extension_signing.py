@@ -85,6 +85,15 @@ class CameraExtensionSigningTests(unittest.TestCase):
         self.assertTrue(entitlements["com.apple.security.app-sandbox"])
         self.assertNotIn("com.apple.security.application-groups", entitlements)
 
+    def test_release_targets_accept_each_explicit_architecture(self):
+        for architecture in ('arm64', 'x86_64'):
+            arguments = ['-target', 'Runner', '-target', 'AnyDeckCameraExtension',
+                         '-showBuildSettings', '-json', f'ARCHS={architecture}']
+            targets = json.loads(self.xcodebuild('Release', arguments))
+            for target in targets:
+                self.assertEqual(target['buildSettings']['ARCHS'], architecture)
+                self.assertEqual(target['buildSettings']['CODE_SIGN_IDENTITY'], '-')
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,8 +15,21 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+            rust_target: aarch64-apple-darwin
+          - arch: x86_64
+            runner: macos-15-intel
+            rust_target: x86_64-apple-darwin
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
+    env:
+      ANYDECK_TARGET_ARCH: ${{ matrix.arch }}
+      FLUTTER_XCODE_ARCHS: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -25,7 +38,7 @@ jobs:
         env:
           SHARE_CORE_DEPLOY_KEY: ${{ secrets.SHARE_CORE_DEPLOY_KEY }}
         run: |
-          test "$(uname -m)" = arm64
+          test "$(uname -m)" = "$ANYDECK_TARGET_ARCH"
           if [ -z "$SHARE_CORE_DEPLOY_KEY" ]; then
             echo '::error::请先配置 SHARE_CORE_DEPLOY_KEY，只读访问 AnyDeck-Share-Core。参见 agent/knowledge/adb-github-macos-release.md'
             exit 1
@@ -42,11 +55,11 @@ jobs:
           curl --fail --silent --show-error https://api.github.com/meta |
             python3 -c 'import json,sys; print("\n".join("github.com " + key for key in json.load(sys.stdin)["ssh_keys"]))' >> ~/.ssh/known_hosts
           python3 - <<'PY'
-          import json
+          import json, os
           from script.install_share_core import load_archive
           from pathlib import Path
           lock = json.loads(Path('script/share_core.lock.json').read_text())
-          load_archive(lock, 'arm64')
+          load_archive(lock, os.environ['ANYDECK_TARGET_ARCH'])
           PY
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
@@ -56,7 +69,8 @@ jobs:
       - name: 准备原生依赖
         run: |
           brew install pkg-config openssl@3 libplist
-          rustup target add aarch64-apple-darwin
+          rustup target add "${{ matrix.rust_target }}"
+          flutter config --no-enable-macos-arm64-only
           flutter pub get --enforce-lockfile
           flutter build macos --release --config-only --no-pub
       - name: 验证打包与签名回归
@@ -64,10 +78,12 @@ jobs:
       - name: 构建 ad-hoc Release
         run: ./script/build_macos.sh
       - name: 生成安装包并校验
-        run: ./script/package_macos_release.sh Products/AnyDeck.app release
+        run: |
+          ./script/package_macos_release.sh Products/AnyDeck.app release "$ANYDECK_TARGET_ARCH"
+          python3 script/smoke_macos_release.py Products/AnyDeck.app "$ANYDECK_TARGET_ARCH" --launch-app
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: AnyDeck-macOS-arm64
+          name: AnyDeck-macOS-${{ matrix.arch }}
           path: release/
           if-no-files-found: error
           retention-days: 14
@@ -87,9 +103,14 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
           RELEASE_RUN: ${{ github.run_id }}
         run: |
-          gh run download "$RELEASE_RUN" --name AnyDeck-macOS-arm64 --dir release
+          gh run download "$RELEASE_RUN" --name AnyDeck-macOS-arm64 --dir release/arm64
+          gh run download "$RELEASE_RUN" --name AnyDeck-macOS-x86_64 --dir release/x86_64
           cd release
+          cmp arm64/INSTALL-macOS.md x86_64/INSTALL-macOS.md
+          cp arm64/INSTALL-macOS.md .
+          cp arm64/*.dmg arm64/*.zip x86_64/*.dmg x86_64/*.zip .
+          cat arm64/SHA256SUMS x86_64/SHA256SUMS | sort -u > SHA256SUMS
           shasum -a 256 -c SHA256SUMS
           # 不覆盖已有 Release，避免重复运行悄悄替换用户正在下载的版本。
-          gh release create "$RELEASE_TAG" AnyDeck-macOS-arm64.dmg AnyDeck-macOS-arm64.zip SHA256SUMS INSTALL-macOS.md \
-            --verify-tag --title "AnyDeck $RELEASE_TAG · macOS Apple Silicon" --notes-file INSTALL-macOS.md
+          gh release create "$RELEASE_TAG" AnyDeck-macOS-arm64.dmg AnyDeck-macOS-arm64.zip AnyDeck-macOS-x86_64.dmg AnyDeck-macOS-x86_64.zip SHA256SUMS INSTALL-macOS.md \
+            --verify-tag --title "AnyDeck $RELEASE_TAG · macOS Apple Silicon / Intel" --notes-file INSTALL-macOS.md

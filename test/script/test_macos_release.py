@@ -1,8 +1,10 @@
 """用真实最小 Mach-O 包验证发布门禁与 ZIP/DMG，不启动 App。"""
 import importlib.util
+import json
 import os
 from pathlib import Path
 import plistlib
+import platform
 import shutil
 import subprocess
 import sys
@@ -26,19 +28,20 @@ class MacOSReleaseTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix='anydeck-release-test-')
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
+        self.architecture = platform.machine()
         self.app = self.root / 'AnyDeck.app'
         source = self.root / 'main.c'
         source.write_text('int main(void) { return 0; }\n')
         self.binary = self.root / 'helper'
-        self.run_command(['clang', '-arch', 'arm64', str(source), '-o', str(self.binary)])
+        self.run_command(['clang', '-arch', self.architecture, str(source), '-o', str(self.binary)])
         library = self.root / 'bridge.dylib'
-        self.run_command(['clang', '-arch', 'arm64', '-dynamiclib', str(source),
+        self.run_command(['clang', '-arch', self.architecture, '-dynamiclib', str(source),
                           '-Wl,-install_name,@rpath/libanydeck_device_bridge.dylib', '-o', str(library)])
         for name in VERIFIER.REQUIRED:
             target = self.app / name
             target.parent.mkdir(parents=True, exist_ok=True)
             if name.endswith('.json'):
-                target.write_text('{}')
+                target.write_text(json.dumps({'architecture': self.architecture}))
             else:
                 shutil.copyfile(library if name.endswith('.dylib') else self.binary, target)
                 target.chmod(0o755)
@@ -69,8 +72,19 @@ class MacOSReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '缺少分发组件'):
             VERIFIER.verify(self.app)
 
+    def test_rejects_mislabeled_architecture_before_packaging(self):
+        other = 'x86_64' if self.architecture == 'arm64' else 'arm64'
+        manifest = self.app / 'Contents/Resources/ShareCore/manifest.json'
+        with self.assertRaisesRegex(ValueError, 'manifest 与发布架构不一致'):
+            VERIFIER.verify(self.app, other)
+        # 即使 manifest 被错误标为另一架构，Mach-O 检查仍必须拒绝它。
+        manifest.write_text(json.dumps({'architecture': other}))
+        self.sign()
+        with self.assertRaises(subprocess.CalledProcessError):
+            VERIFIER.verify(self.app, other)
+
     def test_rejects_tampered_signature(self):
-        (self.app / 'Contents/Resources/ShareCore/manifest.json').write_text('{"changed": true}')
+        (self.app / 'Contents/Resources/ShareCore/manifest.json').write_text(json.dumps({'architecture': self.architecture, 'changed': True}))
         with self.assertRaises(subprocess.CalledProcessError):
             VERIFIER.verify(self.app)
 
@@ -85,9 +99,9 @@ class MacOSReleaseTests(unittest.TestCase):
         output = self.root / 'release'
         self.run_command(['bash', str(ROOT / 'script/package_macos_release.sh'), str(self.app), str(output)])
         self.run_command(['shasum', '-a', '256', '-c', 'SHA256SUMS'], cwd=output)
-        self.run_command(['hdiutil', 'verify', str(output / 'AnyDeck-macOS-arm64.dmg')])
+        self.run_command(['hdiutil', 'verify', str(output / f'AnyDeck-macOS-{self.architecture}.dmg')])
         extracted = self.root / 'extracted'
-        self.run_command(['ditto', '-x', '-k', str(output / 'AnyDeck-macOS-arm64.zip'), str(extracted)])
+        self.run_command(['ditto', '-x', '-k', str(output / f'AnyDeck-macOS-{self.architecture}.zip'), str(extracted)])
         app = extracted / 'AnyDeck.app'
         VERIFIER.verify(app)
         self.assertTrue((app / 'Contents/Resources/fixture-link').is_symlink())

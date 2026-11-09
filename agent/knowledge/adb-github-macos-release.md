@@ -2,12 +2,12 @@
 
 ## 需求与范围
 
-通过 GitHub Actions 构建当前 AnyDeck，使用免费 ad-hoc 签名，发布可下载的 DMG、ZIP、SHA-256 与安装说明。当前 Runner/Xcode 和私有 Share Core 均锁定 arm64，因此仅发布 Apple Silicon 版本。官网截图替换已按用户要求暂停，等待设备上线后另行通知。
+通过 GitHub Actions 构建当前 AnyDeck，使用免费 ad-hoc 签名，发布可下载的 DMG、ZIP、SHA-256 与安装说明。v1.0.0 首发为 arm64；v1.0.1 起采用 arm64/x86_64 独立原生构建，详见 `adb-macos-dual-architecture.md`。官网截图替换已按用户要求暂停，等待设备上线后另行通知。
 
 ## 发布入口
 
 - Workflow：`.github/workflows/release-macos.yml`。
-- 固定 Flutter 3.47.2；macOS 15 arm64 Runner 安装 OpenSSL、libplist、pkg-config 及 Rust target。
+- 固定 Flutter 3.47.2；macOS 15 arm64 与 Intel Runner 分别安装本机 OpenSSL、libplist、pkg-config 及对应 Rust target。
 - 测试前先执行 `flutter build macos --release --config-only --no-pub` 生成干净 Runner 必需的 Flutter/Xcode 配置。
 - `script/build_macos.sh` 复用 Xcode 原生构建阶段及现有 ad-hoc 签名策略。
 - `script/package_macos_release.sh` 调用验证器后生成 DMG、保留权限与符号链接的 ZIP、`SHA256SUMS` 与 `INSTALL-macOS.md`。

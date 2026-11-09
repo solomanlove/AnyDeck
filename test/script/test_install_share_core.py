@@ -43,6 +43,15 @@ class ShareCoreInstallTests(unittest.TestCase):
             "path": "artifacts/core.zip"}}}
         return data, lock
 
+    def test_installs_intel_artifact_only_for_its_matching_architecture(self):
+        self.manifest['architecture'] = 'x86_64'
+        data = self.archive()
+        lock = {'ipc_version': 1, 'artifacts': {'x86_64': {
+            'sha256': hashlib.sha256(data).hexdigest(), 'path': 'artifacts/intel.zip'}}}
+        install(data, self.app, lock, 'x86_64')
+        metadata = json.loads((self.app / MANIFEST_PATH).read_text())
+        self.assertEqual(metadata['architecture'], 'x86_64')
+
     def test_installs_exact_verified_members(self):
         data = self.archive()
         lock = {"ipc_version": 1, "artifacts": {"arm64": {

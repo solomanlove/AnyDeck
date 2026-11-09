@@ -85,7 +85,7 @@ flutter run -d windows # for Windows
 
 ### macOS 自动发布
 
-GitHub Actions 的 `macOS Release` 支持手动构建；推送与 App 版本一致的 `v*` Tag 后，自动将 Apple Silicon 的 DMG、ZIP、SHA-256 与安装说明上传到 [Releases](https://github.com/solomanlove/AnyDeck/releases)。首次使用前需配置 Share Core 的只读 Deploy key，详见 [发布配置说明](agent/knowledge/adb-github-macos-release.md)。
+GitHub Actions 的 `macOS Release` 支持手动构建；推送与 App 版本一致的 `v*` Tag 后，分别构建 Apple Silicon（arm64）和 Intel（x86_64），全部通过验证后将 DMG、ZIP、SHA-256 与安装说明上传到 [Releases](https://github.com/solomanlove/AnyDeck/releases)。首次使用前需配置 Share Core 的只读 Deploy key，详见 [发布配置说明](agent/knowledge/adb-github-macos-release.md)。
 
 此发布通道使用免费 ad-hoc 签名，未经 Apple 公证；安装方式、设备 CLI 依赖及虚拟摄像头限制见 [macOS 安装说明](agent/distribution/INSTALL-macOS.md)。
 

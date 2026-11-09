@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """分发前验证 AnyDeck 架构、嵌套签名、必需组件及开发机动态库泄漏。"""
+import argparse
+import json
 import os
 from pathlib import Path
+import platform
 import plistlib
 import subprocess
 import sys
 
 MACHO_MAGIC = {b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe', b'\xfe\xed\xfa\xcf',
-               b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca'}
+               b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca', b'\xca\xfe\xba\xbf', b'\xbf\xba\xfe\xca'}
 REQUIRED = (
     'Contents/MacOS/AnyDeck',
     'Contents/Frameworks/libanydeck_device_bridge.dylib',
@@ -19,13 +22,19 @@ REQUIRED = (
 )
 
 
-def verify(app):
+def verify(app, architecture=None):
     """失败即终止打包；只允许系统绝对链接和包内相对链接。"""
+    architecture = architecture or platform.machine()
+    if architecture not in ('arm64', 'x86_64'):
+        raise ValueError(f'不支持的发布架构: {architecture}')
     app = app.resolve(strict=True)
     for name in REQUIRED:
         if not (app / name).is_file():
             raise ValueError(f'缺少分发组件: {name}')
     metadata = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
+    manifest = json.loads((app / 'Contents/Resources/ShareCore/manifest.json').read_text())
+    if manifest.get('architecture') != architecture:
+        raise ValueError('Share Core manifest 与发布架构不一致')
     version = metadata['CFBundleShortVersionString']
     tag = os.environ.get('GITHUB_REF_NAME', '')
     if os.environ.get('GITHUB_REF_TYPE') == 'tag' and tag != 'v' + version:
@@ -46,8 +55,8 @@ def verify(app):
             if stream.read(4) not in MACHO_MAGIC:
                 continue
         binaries += 1
-        subprocess.run(['lipo', str(path), '-verify_arch', 'arm64'], check=True)
-        links = subprocess.check_output(['otool', '-L', str(path)], text=True)
+        subprocess.run(['lipo', str(path), '-verify_arch', architecture], check=True)
+        links = subprocess.check_output(['otool', '-arch', architecture, '-L', str(path)], text=True)
         for line in links.splitlines():
             if not line.startswith('\t'):
                 continue
@@ -66,11 +75,15 @@ def verify(app):
                 base = path.parent if dependency.startswith('@loader_path/') or local_helper else app / 'Contents/MacOS'
                 target = (base / dependency.split('/', 1)[1]).resolve(strict=True)
                 target.relative_to(app)
-    print(f'AnyDeck {version}: ad-hoc 签名、arm64 与 {binaries} 个 Mach-O 文件验证通过')
+    print(f'AnyDeck {version}: ad-hoc 签名、{architecture} 与 {binaries} 个 Mach-O 文件验证通过')
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('app', type=Path)
+    parser.add_argument('--arch', choices=('arm64', 'x86_64'), default=platform.machine())
+    arguments = parser.parse_args()
     try:
-        verify(Path(sys.argv[1]))
+        verify(arguments.app, arguments.arch)
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
         sys.exit(f'发布验证失败: {error}')
