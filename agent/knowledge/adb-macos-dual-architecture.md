@@ -17,7 +17,7 @@
 
 `verify_macos_release.py --arch` 检查 Share Core manifest 架构、包内全部 Mach-O 的目标 slice、ad-hoc/嵌套签名与依赖完整性。`smoke_macos_release.py` 必须在匹配的原生宿主上执行，真实启动随包 Core IPC hello 与 APK helper 分析内置测试 APK；CI 的 `--launch-app` 额外验证 App 进程启动后存活 8 秒并回收进程，不访问手机。这是启动存活检查，不证明窗口视觉或设备功能已验收。
 
-首轮 39 项本地脚本回归通过，包含错误架构标记拦截、符号链接与执行权限保留、两个 Xcode target 的两种架构设置及签名权限隔离；新增 Intel manifest 安装回归也已通过。CI 对应架构将再次执行完整测试。
+当前 40 项本地脚本回归通过，包含错误架构标记拦截、符号链接与执行权限保留、两个 Xcode target 的两种架构设置及签名权限隔离；新增 Intel manifest 安装回归也已通过。CI 对应架构将再次执行完整测试。
 
 私有 Intel 制品锁定至 `0de9b2e71479b373d0eed96c0783dd089c8a8e15`；[原生 CI](https://github.com/solomanlove/AnyDeck-Share-Core/actions/runs/42629522946) 已通过 40 项 Swift、Rust 离线与 integration 回归及两份真实 Core 双向文件互传。arm64 ZIP 内容保持原锁定制品不变。
 
@@ -35,3 +35,9 @@ git push origin v1.0.1
 ```
 
 修复必须先通过手动 Workflow 验证，再创建新版本 Tag。两个架构任意一个失败时不会执行发布 job。
+
+## 首轮双架构 CI 证据
+
+[手动验证 42630601956](https://github.com/solomanlove/AnyDeck/actions/runs/42630601956) 的 arm64 与 x86_64 job 均成功，各执行 40 项打包回归。各自的 35 个 Mach-O 架构与 ad-hoc 签名检查、DMG/ZIP 校验、Core IPC、真实 APK 分析及 App 进程存活 8 秒全部通过。验证的 App commit 为 `af58879c2a0b19a938df5371f24ea5ee55cdfb6e`，对应 v1.0.1 Tag。
+
+Tag 首轮 arm64 在获取 `api.github.com/meta` 时遇到 HTTP 403，尚未进入编译；Intel 未受影响。后续 workflow 改用该 job 的短期 `github.token` 获取公开主机公钥，避免匿名 API 配额耗尽；只读私有 Deploy key 的权限与使用方式不变，未放宽 SSH 主机身份检查。

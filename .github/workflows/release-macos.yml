@@ -46,13 +46,14 @@ jobs:
       - name: 获取锁定的 Share Core 制品
         env:
           SHARE_CORE_DEPLOY_KEY: ${{ secrets.SHARE_CORE_DEPLOY_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           # 临时 SSH agent 持有只读 Deploy key，主仓库和日志均不保存私钥。
           eval "$(ssh-agent -s)"
           trap 'ssh-agent -k' EXIT
           ssh-add - <<< "$SHARE_CORE_DEPLOY_KEY"
           mkdir -p ~/.ssh
-          curl --fail --silent --show-error https://api.github.com/meta |
+          curl --fail --silent --show-error --retry 3 --header "Authorization: Bearer $GH_TOKEN" https://api.github.com/meta |
             python3 -c 'import json,sys; print("\n".join("github.com " + key for key in json.load(sys.stdin)["ssh_keys"]))' >> ~/.ssh/known_hosts
           python3 - <<'PY'
           import json, os
