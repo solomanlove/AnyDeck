@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// JSON-RPC 2.0 响应数据模型
 class McpResponse {
   final String jsonrpc;
@@ -29,20 +31,30 @@ class McpResponse {
     required String text,
     bool isError = false,
     Map<String, dynamic>? extraData,
+    bool legacy = true,
+    bool modern = false,
+    String platform = 'all',
   }) {
+    final data = {...?extraData};
+    final base64 = data.remove('base64');
     final content = <Map<String, dynamic>>[
+      if (base64 is String) {'type': 'image', 'data': base64, 'mimeType': data['mimeType'] ?? 'image/png'},
       {
         'type': 'text',
-        'text': text,
+        'text': base64 is String ? jsonEncode(data) : text,
       }
     ];
 
     final result = <String, dynamic>{
       'content': content,
       'isError': isError,
+      if (modern) 'resultType': 'complete',
+      if (extraData != null) 'structuredContent': data,
+      if (modern) '_meta': {'io.modelcontextprotocol/serverInfo': {
+        'name': 'anydeck-$platform', 'version': '1.1.0'}},
     };
 
-    if (extraData != null) {
+    if (legacy && extraData != null) {
       result['data'] = extraData;
     }
 

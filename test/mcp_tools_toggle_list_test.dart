@@ -84,11 +84,17 @@ void main() {
           await tester.binding.setSurfaceSize(Size(width, 600));
           await tester.pumpAndSettle();
           final searchRect = tester.getRect(find.byType(TextField));
-          final categoryRect = tester.getRect(find.byType(ChoiceChip).first);
+          final categoryRect = tester.getRect(find.widgetWithText(ChoiceChip, '全部'));
           expect(searchRect.center.dy, closeTo(categoryRect.center.dy, 1));
           expect(searchRect.right, lessThanOrEqualTo(width));
           expect(tester.takeException(), isNull, reason: 'width=$width');
         }
+        await tester.tap(find.widgetWithText(ChoiceChip, 'iOS'));
+        await tester.pumpAndSettle();
+        expect(find.text('device_test'), findsNothing);
+        await tester.tap(find.widgetWithText(ChoiceChip, 'Android'));
+        await tester.pumpAndSettle();
+        expect(find.text('device_test'), findsOneWidget);
         await tester.enterText(find.byType(TextField), 'device');
         await tester.tap(find.widgetWithText(ChoiceChip, '设备状态'));
         await tester.pumpAndSettle();

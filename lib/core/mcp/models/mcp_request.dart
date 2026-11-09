@@ -14,6 +14,12 @@ class McpRequest {
 
   /// 从原始 Map 构建 JSON-RPC 请求
   factory McpRequest.fromJson(Map<String, dynamic> json) {
+    if (json['jsonrpc'] != '2.0' || json['method'] is! String ||
+        (json['method'] as String).isEmpty ||
+        (json.containsKey('id') && json['id'] is! int && json['id'] is! String) ||
+        (json.containsKey('params') && json['params'] is! Map<String, dynamic>)) {
+      throw ArgumentError('Invalid JSON-RPC request');
+    }
     return McpRequest(
       jsonrpc: json['jsonrpc'] as String? ?? '2.0',
       id: json['id'],

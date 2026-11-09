@@ -1,3 +1,4 @@
+import '../../../../app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 
 import 'package:flutter/material.dart';
@@ -149,7 +150,7 @@ class McpServerStatusCard extends ConsumerWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('高危命令防护拦截'),
+                    Text(context.l10n.t('mcpGuardLabel')),
                     const SizedBox(width: 8),
                     Switch.adaptive(
                       value: state.config.enableDangerousOperationGuard,

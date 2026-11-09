@@ -5,7 +5,9 @@ import '../models/mcp_tool_definition.dart';
 class McpAppTools {
   final AppManagementService appService;
 
-  McpAppTools({required this.appService});
+  final Future<bool> Function(String id)? isHarmonyDevice;
+
+  McpAppTools({required this.appService, this.isHarmonyDevice});
 
   /// 获取所有应用管理工具
   List<McpToolDefinition> getTools() {
@@ -23,7 +25,9 @@ class McpAppTools {
   McpToolDefinition _buildListInstalledAppsTool() {
     return McpToolDefinition(
       name: 'list_installed_apps',
+      readOnly: true,
       category: 'app',
+      platforms: const {'android', 'harmony'},
       description: '列出目标设备上安装的应用程序包名列表（支持按系统应用/第三方应用过滤）',
       inputSchema: {
         'type': 'object',
@@ -48,7 +52,8 @@ class McpAppTools {
         final filter = args['filter'] as String? ?? 'all';
         final forceRefresh = args['forceRefresh'] as bool? ?? false;
 
-        final packages = await appService.listPackages(deviceId, forceRefresh: forceRefresh);
+        final packages = await appService.listPackages(deviceId, forceRefresh: forceRefresh,
+            isHarmony: await isHarmonyDevice?.call(deviceId) == true);
         final filtered = packages.where((p) {
           if (filter == 'third_party') return !p.system;
           if (filter == 'system') return p.system;
@@ -114,6 +119,7 @@ class McpAppTools {
     return McpToolDefinition(
       name: 'uninstall_app',
       category: 'app',
+      platforms: const {'android', 'harmony'},
       isDangerous: true,
       description: '卸载指定设备上的应用程序',
       inputSchema: {
@@ -121,14 +127,15 @@ class McpAppTools {
         'required': ['deviceId', 'packageName'],
         'properties': {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
-          'packageName': {'type': 'string', 'description': '目标应用包名'},
+          'packageName': {'type': 'string', 'pattern': r'^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$', 'description': '目标应用包名'},
         },
       },
       handler: (args) async {
         final deviceId = args['deviceId'] as String;
         final packageName = args['packageName'] as String;
 
-        final result = await appService.uninstall(deviceId, packageName);
+        final result = await appService.uninstall(deviceId, packageName,
+            isHarmony: await isHarmonyDevice?.call(deviceId) == true);
 
         if (!result.isSuccess) {
           throw Exception('卸载失败: ${result.stderr.isNotEmpty ? result.stderr : result.stdout}');
@@ -149,20 +156,22 @@ class McpAppTools {
     return McpToolDefinition(
       name: 'launch_app',
       category: 'app',
+      platforms: const {'android', 'harmony'},
       description: '启动设备上的指定应用',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId', 'packageName'],
         'properties': {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
-          'packageName': {'type': 'string', 'description': '应用包名'},
+          'packageName': {'type': 'string', 'pattern': r'^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$', 'description': '应用包名或 HarmonyOS bundleName'},
         },
       },
       handler: (args) async {
         final deviceId = args['deviceId'] as String;
         final packageName = args['packageName'] as String;
 
-        final result = await appService.launch(deviceId, packageName);
+        final result = await appService.launch(deviceId, packageName,
+            isHarmony: await isHarmonyDevice?.call(deviceId) == true);
 
         if (!result.isSuccess) {
           throw Exception('启动应用失败: ${result.stderr}');
@@ -183,20 +192,22 @@ class McpAppTools {
     return McpToolDefinition(
       name: 'stop_app',
       category: 'app',
+      platforms: const {'android', 'harmony'},
       description: '强行停止(Force Stop)正在运行的应用进程',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId', 'packageName'],
         'properties': {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
-          'packageName': {'type': 'string', 'description': '应用包名'},
+          'packageName': {'type': 'string', 'pattern': r'^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$', 'description': '应用包名或 HarmonyOS bundleName'},
         },
       },
       handler: (args) async {
         final deviceId = args['deviceId'] as String;
         final packageName = args['packageName'] as String;
 
-        final result = await appService.forceStop(deviceId, packageName);
+        final result = await appService.forceStop(deviceId, packageName,
+            isHarmony: await isHarmonyDevice?.call(deviceId) == true);
         if (!result.isSuccess) {
           throw Exception('停止应用失败: ${result.stderr}');
         }
@@ -216,6 +227,7 @@ class McpAppTools {
     return McpToolDefinition(
       name: 'clear_app_data',
       category: 'app',
+      platforms: const {'android', 'harmony'},
       isDangerous: true,
       description: '清除应用程序的全部用户数据与缓存(pm clear)',
       inputSchema: {
@@ -223,14 +235,15 @@ class McpAppTools {
         'required': ['deviceId', 'packageName'],
         'properties': {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
-          'packageName': {'type': 'string', 'description': '应用包名'},
+          'packageName': {'type': 'string', 'pattern': r'^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$', 'description': '应用包名或 HarmonyOS bundleName'},
         },
       },
       handler: (args) async {
         final deviceId = args['deviceId'] as String;
         final packageName = args['packageName'] as String;
 
-        final result = await appService.clearData(deviceId, packageName);
+        final result = await appService.clearData(deviceId, packageName,
+            isHarmony: await isHarmonyDevice?.call(deviceId) == true);
         if (!result.isSuccess) {
           throw Exception('清除应用数据失败: ${result.stderr}');
         }

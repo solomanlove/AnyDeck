@@ -20,6 +20,7 @@ class McpLogTools {
   McpToolDefinition _buildQueryLogcatTool() {
     return McpToolDefinition(
       name: 'query_logcat',
+      readOnly: true,
       category: 'log',
       description: '检索设备当前的 Logcat 日志输出，支持按日志级别(V/D/I/W/E/F)、Tag 标签过滤及最大行数限制',
       inputSchema: {
@@ -82,8 +83,9 @@ class McpLogTools {
   McpToolDefinition _buildQueryAppCrashesTool() {
     return McpToolDefinition(
       name: 'query_app_crashes',
+      readOnly: true,
       category: 'log',
-      description: '检索设备上最近发生的 Android 崩溃 (Crash)、未捕获异常及 ANR 错误堆栈',
+      description: '读取当前 AndroidRuntime 错误日志片段；不代表完整崩溃历史或 ANR 报告，packageName 用于片段过滤',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId'],
@@ -108,11 +110,15 @@ class McpLogTools {
           '*:S',
         ]);
 
+        if (!result.isSuccess) throw StateError(result.message);
+        final blocks = result.stdout.split(RegExp(r'(?=FATAL EXCEPTION:)'));
+        final crashes = packageName == null ? result.stdout
+            : blocks.where((block) => block.contains(packageName)).join('\n');
         return {
           'deviceId': deviceId,
           'packageName': packageName ?? 'all',
-          'crashes': result.stdout,
-          'summary': result.stdout.trim().isEmpty
+          'crashes': crashes,
+          'summary': crashes.trim().isEmpty
               ? '最近未检测到 AndroidRuntime 致命崩溃'
               : '检测到崩溃堆栈信息，请参考详细内容',
         };

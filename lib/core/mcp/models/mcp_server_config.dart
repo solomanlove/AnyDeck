@@ -24,7 +24,17 @@ class McpServerConfig {
   /// 单独禁用的工具名称列表
   final Set<String> disabledToolNames;
 
+  /// 兼容入口可显式开启；新配置默认关闭，旧配置迁移保留。
+  final bool enableLegacy;
+
+  /// 平台入口独立禁用和凭据；空 Token 时平台入口不可调用。
+  final Set<String> disabledPlatforms;
+  final Map<String, String> platformTokens;
+
   const McpServerConfig({
+    this.enableLegacy = false,
+    this.disabledPlatforms = const {},
+    this.platformTokens = const {},
     this.enableSse = false,
     this.host = '127.0.0.1',
     this.port = 8765,
@@ -36,6 +46,9 @@ class McpServerConfig {
   });
 
   McpServerConfig copyWith({
+    bool? enableLegacy,
+    Set<String>? disabledPlatforms,
+    Map<String, String>? platformTokens,
     bool? enableSse,
     String? host,
     int? port,
@@ -46,6 +59,9 @@ class McpServerConfig {
     Set<String>? disabledToolNames,
   }) {
     return McpServerConfig(
+      enableLegacy: enableLegacy ?? this.enableLegacy,
+      disabledPlatforms: disabledPlatforms ?? this.disabledPlatforms,
+      platformTokens: platformTokens ?? this.platformTokens,
       enableSse: enableSse ?? this.enableSse,
       host: host ?? this.host,
       port: port ?? this.port,
@@ -60,6 +76,9 @@ class McpServerConfig {
 
   Map<String, dynamic> toJson() {
     return {
+      'enableLegacy': enableLegacy,
+      'disabledPlatforms': disabledPlatforms.toList(),
+      'platformTokens': platformTokens,
       'enableSse': enableSse,
       'host': host,
       'port': port,
@@ -73,6 +92,11 @@ class McpServerConfig {
 
   factory McpServerConfig.fromJson(Map<String, dynamic> json) {
     return McpServerConfig(
+      enableLegacy: json['enableLegacy'] as bool? ?? true,
+      disabledPlatforms: (json['disabledPlatforms'] as List<dynamic>?)
+          ?.cast<String>().toSet() ?? const {},
+      platformTokens: (json['platformTokens'] as Map<String, dynamic>?)
+          ?.cast<String, String>() ?? const {},
       enableSse: json['enableSse'] as bool? ?? false,
       host: json['host'] as String? ?? '127.0.0.1',
       port: json['port'] as int? ?? 8765,

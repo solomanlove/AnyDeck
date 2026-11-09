@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
@@ -40,7 +41,7 @@ class _IosCommands extends IosCommandService {
 
   @override
   Future<Uint8List> captureScreenshot(String udid) async =>
-      Uint8List.fromList([1, 2, 3]);
+      base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jL1sAAAAASUVORK5CYII=');
 
   @override
   Future<AdbResult> tap(String udid, double x, double y) async {
@@ -91,8 +92,10 @@ void main() {
         tools.singleWhere((tool) => tool.name == name).handler(args);
 
     final screenshot = await call('take_screenshot', {'deviceId': 'ios-1'});
-    expect(screenshot['coordinateSpace'], 'ios_points');
-    expect(screenshot['byteLength'], 3);
+    expect(screenshot['coordinateSpace'], 'image_pixels');
+    expect(screenshot['inputCoordinateSpace'], 'ios_points');
+    expect(screenshot['width'], 1);
+    expect(screenshot['byteLength'], greaterThan(0));
     final tree = await call('inspect_ui_layout', {'deviceId': 'ios-1'});
     expect(tree['xml'], contains('XCUIElementTypeButton'));
     await call('device_input_tap', {

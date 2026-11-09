@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,12 +8,7 @@ import '../../../core/mcp/mcp_server.dart';
 import '../../../core/mcp/models/mcp_server_config.dart';
 import '../../../core/mcp/models/mcp_tool_definition.dart';
 import '../../../core/mcp/registry/mcp_tool_registry.dart';
-import '../../../core/mcp/tools/mcp_app_tools.dart';
-import '../../../core/mcp/tools/mcp_device_tools.dart';
-import '../../../core/mcp/tools/mcp_file_tools.dart';
-import '../../../core/mcp/tools/mcp_log_tools.dart';
-import '../../../core/mcp/tools/mcp_ui_tools.dart';
-import '../../../core/mcp/tools/mcp_ios_tools.dart';
+import '../../../core/mcp/registry/mcp_registry_factory.dart';
 import '../../../core/ios/ios_mirror_service.dart';
 import '../../../core/providers/app_providers.dart';
 import 'mcp_audit_log_controller.dart';
@@ -58,10 +54,11 @@ class McpServerState {
 class McpServerNotifier extends Notifier<McpServerState> {
   static const String _prefsKey = 'anydeck_mcp_config_v1';
   McpServer? _server;
-  final McpToolRegistry _registry = McpToolRegistry();
+  late McpToolRegistry _registry;
 
   @override
   McpServerState build() {
+    ref.onDispose(() { unawaited(_server?.stop()); });
     // 异步初始化配置与工具注册
     Future.microtask(_init);
 
@@ -75,48 +72,11 @@ class McpServerNotifier extends Notifier<McpServerState> {
 
   Future<void> _init() async {
     // 1. 注册核心设备与控制 Tools
-    final adbService = ref.read(adbServiceProvider);
-    final deviceInfoService = ref.read(deviceInfoServiceProvider);
-    final actionService = ref.read(deviceActionServiceProvider);
-    final appService = ref.read(appManagementServiceProvider);
-    final layoutService = ref.read(layoutInspectorServiceProvider);
-    final fileManagerService = ref.read(fileManagerServiceProvider);
-    final iosCommands = ref.read(iosCommandServiceProvider);
-    Future<bool> isIosDevice(String deviceId) async => ref
-        .read(deviceRegistryProvider)
-        .any((device) => device.id == deviceId && device.isIos);
-    _registry.isIosDevice = isIosDevice;
-
-    final deviceTools = McpDeviceTools(
-      adbService: adbService,
-      deviceInfoService: deviceInfoService,
-      iosDeviceService: ref.read(iosDeviceServiceProvider),
-      iosCommandService: iosCommands,
-      isIosDevice: isIosDevice,
-    );
-    final uiTools = McpUiTools(
-      adbService: adbService,
-      actionService: actionService,
-      layoutService: layoutService,
-      iosService: iosCommands,
-      isIosDevice: isIosDevice,
-    );
-    final appTools = McpAppTools(appService: appService);
-    final logTools = McpLogTools(adbService: adbService);
-    final fileTools = McpFileTools(
-      adbService: adbService,
-      fileManagerService: fileManagerService,
-    );
-
-    _registry.registerAll(deviceTools.getTools());
-    _registry.registerAll(uiTools.getTools());
-    _registry.registerAll(appTools.getTools());
-    _registry.registerAll(logTools.getTools());
-    _registry.registerAll(fileTools.getTools());
-    _registry.registerAll(McpIosTools(
-      commands: iosCommands,
-      isIosDevice: isIosDevice,
-    ).getTools());
+    _registry = McpRegistryFactory(
+      adb: ref.read(adbServiceProvider), hdc: ref.read(hdcServiceProvider),
+      iosDevices: ref.read(iosDeviceServiceProvider),
+      iosCommands: ref.read(iosCommandServiceProvider),
+    ).create();
 
     // 2. 从本地缓存读取配置
     var config = const McpServerConfig();
@@ -127,6 +87,16 @@ class McpServerNotifier extends Notifier<McpServerState> {
         config = McpServerConfig.fromJson(jsonDecode(savedJson) as Map<String, dynamic>);
       }
     } catch (_) {}
+
+    final tokens = Map<String, String>.from(config.platformTokens);
+    for (final platform in ['android', 'harmony', 'ios']) {
+      if (tokens[platform]?.isNotEmpty != true) tokens[platform] = _newToken();
+    }
+    config = config.copyWith(platformTokens: tokens);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefsKey, jsonEncode(config.toJson()));
+
+    if (!ref.mounted) return;
 
     // 3. 构造 Server 实例
     _server = McpServer(
@@ -212,9 +182,13 @@ class McpServerNotifier extends Notifier<McpServerState> {
   /// 更新服务器配置并保存
   Future<void> updateConfig(McpServerConfig newConfig) async {
     final wasRunning = state.isRunning;
-    if (wasRunning) {
+    final old = state.config;
+    final restart = old.host != newConfig.host || old.port != newConfig.port ||
+        old.enableAuth != newConfig.enableAuth || old.authToken != newConfig.authToken;
+    if (wasRunning && restart) {
       await stopServer();
     }
+    _server?.config = newConfig;
 
     state = state.copyWith(config: newConfig);
 
@@ -223,10 +197,25 @@ class McpServerNotifier extends Notifier<McpServerState> {
       await prefs.setString(_prefsKey, jsonEncode(newConfig.toJson()));
     } catch (_) {}
 
-    if (wasRunning) {
+    if (wasRunning && restart) {
       await startServer();
     }
   }
+
+  /// 平台凭据仅在用户主动复制配置时输出，支持单独撤销与轮换。
+  Future<void> setPlatformEnabled(String platform, bool enabled) async {
+    final disabled = {...state.config.disabledPlatforms};
+    enabled ? disabled.remove(platform) : disabled.add(platform);
+    await updateConfig(state.config.copyWith(disabledPlatforms: disabled));
+  }
+
+  Future<void> rotatePlatformToken(String platform) async {
+    await updateConfig(state.config.copyWith(platformTokens: {
+      ...state.config.platformTokens, platform: _newToken(),
+    }));
+  }
+
+  String _newToken() => base64UrlEncode(List<int>.generate(32, (_) => Random.secure().nextInt(256)));
 
   /// 切换指定工具的启用/禁用状态
   Future<void> toggleTool(String toolName, bool enabled) async {

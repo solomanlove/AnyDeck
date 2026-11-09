@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import '../../adb/adb_service.dart';
+import '../../harmony/hdc_service.dart';
 import '../../ios/ios_command_service.dart';
 import '../../device_actions/device_action_service.dart';
 import '../../layout_inspector/layout_inspector_service.dart';
@@ -14,6 +16,8 @@ class McpUiTools {
   final LayoutInspectorService layoutService;
   final IosCommandService? iosService;
   final Future<bool> Function(String deviceId)? isIosDevice;
+  final Future<bool> Function(String deviceId)? isHarmonyDevice;
+  final HdcService? hdcService;
 
   McpUiTools({
     required this.adbService,
@@ -21,6 +25,8 @@ class McpUiTools {
     required this.layoutService,
     this.iosService,
     this.isIosDevice,
+    this.isHarmonyDevice,
+    this.hdcService,
   });
 
   Future<bool> _isIos(String deviceId) async =>
@@ -45,8 +51,10 @@ class McpUiTools {
   McpToolDefinition _buildTakeScreenshotTool() {
     return McpToolDefinition(
       name: 'take_screenshot',
+      readOnly: true,
       category: 'ui',
-      description: '截取设备当前屏幕图像，返回 Base64 格式的 PNG/JPEG 图片数据供多模态大模型进行视觉分析',
+      platforms: const {'android', 'harmony', 'ios'},
+      description: '截取当前屏幕并返回图片。图像坐标为像素；iOS 触控使用 WDA point，必须结合 ios_get_screen_geometry 换算。截图不会证明操作成功',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId'],
@@ -67,12 +75,23 @@ class McpUiTools {
         final bytes = ios
             ? await _ios.captureScreenshot(deviceId)
             : await layoutService.captureScreenshot(deviceId);
+        final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+        late final int width;
+        late final int height;
+        try {
+          final descriptor = await ui.ImageDescriptor.encoded(buffer);
+          try { width = descriptor.width; height = descriptor.height; }
+          finally { descriptor.dispose(); }
+        } finally { buffer.dispose(); }
         final base64Image = base64Encode(bytes);
 
         return {
           'deviceId': deviceId,
-          'mimeType': 'image/png',
-          'coordinateSpace': ios ? 'ios_points' : 'device_pixels',
+          'mimeType': bytes.length > 2 && bytes[0] == 0xff && bytes[1] == 0xd8 ? 'image/jpeg' : 'image/png',
+          'coordinateSpace': 'image_pixels',
+          'inputCoordinateSpace': ios ? 'ios_points' : 'device_pixels',
+          'width': width,
+          'height': height,
           'byteLength': bytes.lengthInBytes,
           'base64': base64Image,
           'summary': '截屏成功，生成 ${bytes.lengthInBytes} 字节图像数据',
@@ -94,7 +113,9 @@ class McpUiTools {
   McpToolDefinition _buildInspectUiLayoutTool() {
     return McpToolDefinition(
       name: 'inspect_ui_layout',
+      readOnly: true,
       category: 'ui',
+      platforms: const {'android', 'harmony', 'ios'},
       description: '抓取当前界面 UI 控件树 XML 层次结构，便于 AI 理解当前界面的按钮、输入框、文本节点及其屏幕坐标(bounds)',
       inputSchema: {
         'type': 'object',
@@ -144,14 +165,15 @@ class McpUiTools {
     return McpToolDefinition(
       name: 'device_input_tap',
       category: 'ui',
+      platforms: const {'android', 'harmony', 'ios'},
       description: '在设备屏幕的指定 (x, y) 坐标处模拟手指点击操作',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId', 'x', 'y'],
         'properties': {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
-          'x': {'type': 'number', 'description': 'Android 像素坐标；iOS 为 point 坐标'},
-          'y': {'type': 'number', 'description': 'Android 像素坐标；iOS 为 point 坐标'},
+          'x': {'type': 'number', 'minimum': 0, 'description': 'Android 像素坐标；iOS 为 point 坐标'},
+          'y': {'type': 'number', 'minimum': 0, 'description': 'Android 像素坐标；iOS 为 point 坐标'},
         },
       },
       handler: (args) async {
@@ -161,7 +183,9 @@ class McpUiTools {
 
         final result = await (await _isIos(deviceId)
             ? _ios.tap(deviceId, x.toDouble(), y.toDouble())
-            : actionService.tap(deviceId, x.toInt(), y.toInt()));
+            : await isHarmonyDevice?.call(deviceId) == true
+                ? hdcService!.shell(deviceId, 'uitest uiInput click ${x.toInt()} ${y.toInt()}')
+                : actionService.tap(deviceId, x.toInt(), y.toInt()));
         if (!result.isSuccess) {
           throw Exception('点击失败: ${result.stderr}');
         }
@@ -181,16 +205,17 @@ class McpUiTools {
     return McpToolDefinition(
       name: 'device_input_swipe',
       category: 'ui',
+      platforms: const {'android', 'harmony', 'ios'},
       description: '在设备屏幕上从起点坐标 (x1, y1) 滑动到终点坐标 (x2, y2)',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId', 'x1', 'y1', 'x2', 'y2'],
         'properties': {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
-          'x1': {'type': 'number', 'description': '起点 X：Android 像素，iOS point'},
-          'y1': {'type': 'number', 'description': '起点 Y：Android 像素，iOS point'},
-          'x2': {'type': 'number', 'description': '终点 X：Android 像素，iOS point'},
-          'y2': {'type': 'number', 'description': '终点 Y：Android 像素，iOS point'},
+          'x1': {'type': 'number', 'minimum': 0, 'description': '起点 X：Android 像素，iOS point'},
+          'y1': {'type': 'number', 'minimum': 0, 'description': '起点 Y：Android 像素，iOS point'},
+          'x2': {'type': 'number', 'minimum': 0, 'description': '终点 X：Android 像素，iOS point'},
+          'y2': {'type': 'number', 'minimum': 0, 'description': '终点 Y：Android 像素，iOS point'},
         },
       },
       handler: (args) async {
@@ -203,7 +228,9 @@ class McpUiTools {
         final result = await (await _isIos(deviceId)
             ? _ios.swipe(deviceId, fromX: x1.toDouble(), fromY: y1.toDouble(),
                 toX: x2.toDouble(), toY: y2.toDouble())
-            : actionService.swipe(deviceId, x1.toInt(), y1.toInt(),
+            : await isHarmonyDevice?.call(deviceId) == true
+                ? hdcService!.shell(deviceId, 'uitest uiInput swipe ${x1.toInt()} ${y1.toInt()} ${x2.toInt()} ${y2.toInt()}')
+                : actionService.swipe(deviceId, x1.toInt(), y1.toInt(),
                 x2.toInt(), y2.toInt()));
         if (!result.isSuccess) {
           throw Exception('滑动失败: ${result.stderr}');
@@ -224,6 +251,7 @@ class McpUiTools {
     return McpToolDefinition(
       name: 'device_input_text',
       category: 'ui',
+      platforms: const {'android', 'harmony', 'ios'},
       description: '向设备当前获得焦点的输入框键入文本内容（支持空格自动转义）',
       inputSchema: {
         'type': 'object',
@@ -239,7 +267,9 @@ class McpUiTools {
 
         final result = await (await _isIos(deviceId)
             ? _ios.typeText(deviceId, text)
-            : actionService.inputText(deviceId, text));
+            : await isHarmonyDevice?.call(deviceId) == true
+                ? hdcService!.inputText(deviceId, text)
+                : actionService.inputText(deviceId, text));
         if (!result.isSuccess) {
           throw Exception('输入文本失败: ${result.stderr}');
         }
@@ -257,7 +287,8 @@ class McpUiTools {
     return McpToolDefinition(
       name: 'device_press_key',
       category: 'ui',
-      description: '向设备发送 Android KeyCode 按键事件 (如 3=Home, 4=Back, 24=VolumeUp, 25=VolumeDown, 26=Power, 66=Enter)',
+      platforms: const {'android', 'harmony', 'ios'},
+      description: '使用兼容 KeyCode：3=Home、4=Back、24/25=音量、26=锁屏。HarmonyOS 由服务映射；iOS 仅支持 3/24/25/26，不支持 Back',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId', 'keyCode'],

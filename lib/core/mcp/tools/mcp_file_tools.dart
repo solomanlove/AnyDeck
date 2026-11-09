@@ -29,7 +29,9 @@ class McpFileTools {
   McpToolDefinition _buildListFilesTool() {
     return McpToolDefinition(
       name: 'list_files',
+      readOnly: true,
       category: 'file',
+      platforms: const {'android', 'harmony'},
       description: '列出目标设备指定目录下的所有文件与子文件夹元数据（权限、大小、修改时间）',
       inputSchema: {
         'type': 'object',
@@ -38,7 +40,7 @@ class McpFileTools {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
           'remotePath': {
             'type': 'string',
-            'description': '目标目录绝对路径 (默认 /sdcard/)',
+            'description': '设备端绝对路径；HarmonyOS 请显式传入可访问目录，勿使用 Android 默认 /sdcard/',
             'default': '/sdcard/',
           },
         },
@@ -47,6 +49,13 @@ class McpFileTools {
         final deviceId = args['deviceId'] as String;
         final remotePath = args['remotePath'] as String? ?? '/sdcard/';
 
+        if (fileManagerService != null) {
+          final files = await fileManagerService!.listFiles(deviceId, remotePath);
+          return {'deviceId': deviceId, 'remotePath': remotePath,
+            'items': files.take(500).map((f) => {'name': f.name, 'type': f.type.name,
+              'size': f.size, 'permissions': f.permissions, 'modified': f.modifiedDate}).toList(),
+            'itemCount': files.length, 'truncated': files.length > 500};
+        }
         final result = await adbService.shellArgs(deviceId, ['ls', '-la', remotePath]);
         if (!result.isSuccess) {
           throw Exception('列出目录失败: ${result.stderr}');
@@ -74,6 +83,7 @@ class McpFileTools {
     return McpToolDefinition(
       name: 'file_push',
       category: 'file',
+      platforms: const {'android', 'harmony'},
       description: '将本地宿主机上的文件推送到目标设备的指定目录',
       inputSchema: {
         'type': 'object',
@@ -94,7 +104,8 @@ class McpFileTools {
           throw ArgumentError('本地文件不存在: $localPath');
         }
 
-        final result = await adbService.run(['-s', deviceId, 'push', localPath, remotePath]);
+        final result = await (fileManagerService?.push(deviceId, localPath, remotePath) ??
+            adbService.run(['-s', deviceId, 'push', localPath, remotePath]));
         if (!result.isSuccess) {
           throw Exception('文件推送失败: ${result.stderr.isNotEmpty ? result.stderr : result.stdout}');
         }
@@ -115,6 +126,7 @@ class McpFileTools {
     return McpToolDefinition(
       name: 'file_pull',
       category: 'file',
+      platforms: const {'android', 'harmony'},
       description: '从目标设备拉取指定文件保存到本地宿主机路径',
       inputSchema: {
         'type': 'object',
@@ -130,7 +142,8 @@ class McpFileTools {
         final remotePath = args['remotePath'] as String;
         final localPath = args['localPath'] as String;
 
-        final result = await adbService.run(['-s', deviceId, 'pull', remotePath, localPath]);
+        final result = await (fileManagerService?.pull(deviceId, remotePath, localPath) ??
+            adbService.run(['-s', deviceId, 'pull', remotePath, localPath]));
         if (!result.isSuccess) {
           throw Exception('文件拉取失败: ${result.stderr.isNotEmpty ? result.stderr : result.stdout}');
         }
@@ -152,7 +165,7 @@ class McpFileTools {
       name: 'execute_shell',
       category: 'shell',
       isDangerous: true,
-      description: '在目标设备上执行自定义的 ADB Shell 命令行（内置安全沙箱拦截高危指令）',
+      description: '在目标设备上执行自定义的 ADB Shell 命令行（需要关闭高危操作防护；仅有命令黑名单，不构成安全沙箱）',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId', 'command'],

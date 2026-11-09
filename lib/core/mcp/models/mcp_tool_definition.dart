@@ -18,6 +18,13 @@ class McpToolDefinition {
   /// 是否为高危敏感工具 (如卸载、清除数据、执行自定义 Shell)
   final bool isDangerous;
 
+  /// 支持的平台；用于发现过滤与执行时的二次校验。
+  final Set<String> platforms;
+
+  /// 只读提示仅供客户端展示，服务端权限仍独立校验。
+  final bool readOnly;
+
+
   const McpToolDefinition({
     required this.name,
     required this.description,
@@ -25,14 +32,22 @@ class McpToolDefinition {
     required this.handler,
     this.category = 'general',
     this.isDangerous = false,
+    this.platforms = const {'android'},
+    this.readOnly = false,
   });
 
   /// 转换为 MCP 协议规范的标准 Tool 描述 JSON
   Map<String, dynamic> toMcpSchema() {
     return {
       'name': name,
-      'description': description,
-      'inputSchema': inputSchema,
+      'description': 'Platforms: ${platforms.join(', ')}. $description',
+      'inputSchema': {...inputSchema, 'additionalProperties': false},
+      'outputSchema': {'type': 'object'},
+      'annotations': {
+        'readOnlyHint': readOnly,
+        'destructiveHint': isDangerous,
+        'openWorldHint': false,
+      },
     };
   }
 

@@ -18,6 +18,7 @@ class McpToolsToggleList extends ConsumerStatefulWidget {
 class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
   String _selectedCategory = 'all';
   String _searchQuery = '';
+  String _platform = 'all';
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +36,7 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
       final matchesSearch = query.isEmpty ||
           tool.name.toLowerCase().contains(query) ||
           tool.description.toLowerCase().contains(query);
-      return matchesCategory && matchesSearch;
+      return matchesCategory && matchesSearch && (_platform == 'all' || tool.platforms.contains(_platform));
     }).toList();
 
     const categories = [
@@ -69,8 +70,14 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
             ),
           ),
           children: [
+            Wrap(spacing: 8, children: ['all', 'android', 'harmony', 'ios'].map((p) => ChoiceChip(
+              label: Text(p == 'all' ? context.l10n.t('mcpPlatformAll') : p == 'harmony' ? 'HarmonyOS' : p == 'ios' ? 'iOS' : 'Android'),
+              selected: _platform == p,
+              onSelected: (_) => setState(() => _platform = p),
+            )).toList()),
+            const SizedBox(height: 12),
             Text(
-              '外部 AI 智能体可发现并调用以下工具。直接在下方列表开启或禁用对应工具权限：',
+              context.l10n.t('mcpToolsIntro'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
               ),
@@ -212,6 +219,7 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
                                 ],
                               ),
                               const SizedBox(height: 4),
+                              Text('${context.l10n.t('mcpPlatformTools')}: ${tool.platforms.join(', ')}'),
                               Text(
                                 tool.description,
                                 style: TextStyle(

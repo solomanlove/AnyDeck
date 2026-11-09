@@ -20,6 +20,7 @@ class McpIosTools {
 
   List<McpToolDefinition> getTools() => [
     McpToolDefinition(
+      platforms: const {'ios'},
       name: 'ios_list_apps',
       category: 'app',
       description: '列出 iOS 已安装应用及 Bundle ID',
@@ -50,6 +51,7 @@ class McpIosTools {
       },
     ),
     McpToolDefinition(
+      platforms: const {'ios'},
       name: 'ios_install_ipa',
       category: 'app',
       description: '安装已正确签名的本地 IPA',
@@ -74,6 +76,7 @@ class McpIosTools {
       },
     ),
     McpToolDefinition(
+      platforms: const {'ios'},
       name: 'ios_uninstall_app',
       category: 'app',
       isDangerous: true,
@@ -99,6 +102,7 @@ class McpIosTools {
       },
     ),
     McpToolDefinition(
+      platforms: const {'ios'},
       name: 'ios_list_files',
       category: 'file',
       description: '列出允许 AFC 访问的 iOS App container 文件',
@@ -115,6 +119,7 @@ class McpIosTools {
       },
     ),
     McpToolDefinition(
+      platforms: const {'ios'},
       name: 'ios_file_push',
       category: 'file',
       description: '上传本地文件到允许 AFC 访问的 App container',
@@ -139,6 +144,7 @@ class McpIosTools {
       },
     ),
     McpToolDefinition(
+      platforms: const {'ios'},
       name: 'ios_file_pull',
       category: 'file',
       description: '从允许 AFC 访问的 App container 下载文件',

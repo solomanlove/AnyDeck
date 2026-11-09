@@ -40,6 +40,9 @@ class McpSecurityGuard {
     if (disabledTools.contains(toolName)) {
       return '工具 [$toolName] 已在 AnyDeck 设置中被禁用。';
     }
+    if (isDangerous && enableDangerousGuard) {
+      return '高危操作防护已开启，工具 [$toolName] 不允许执行。请在 AnyDeck 中调整权限。';
+    }
 
     return null;
   }

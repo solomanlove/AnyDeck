@@ -1,3 +1,5 @@
+import '../../adb/discovered_device.dart';
+import '../../harmony/hdc_service.dart';
 import '../../adb/adb_service.dart';
 import '../../device_info/device_info_service.dart';
 import '../../device_info/device_overview.dart';
@@ -14,6 +16,10 @@ class McpDeviceTools {
   final IosDeviceService? iosDeviceService;
   final IosCommandService? iosCommandService;
   final Future<bool> Function(String deviceId)? isIosDevice;
+  final Future<bool> Function(String deviceId)? isHarmonyDevice;
+  final HdcService? hdcService;
+  final Future<List<DiscoveredDevice>> Function(bool refresh)? discoverDevices;
+  final Future<Map<String, dynamic>> Function(String id)? harmonyDetail;
 
   McpDeviceTools({
     required this.adbService,
@@ -21,6 +27,10 @@ class McpDeviceTools {
     this.iosDeviceService,
     this.iosCommandService,
     this.isIosDevice,
+    this.isHarmonyDevice,
+    this.hdcService,
+    this.discoverDevices,
+    this.harmonyDetail,
   });
 
   /// 获取所有注册的设备工具
@@ -37,7 +47,9 @@ class McpDeviceTools {
     return McpToolDefinition(
       name: 'list_devices',
       category: 'device',
-      description: '获取当前连接到宿主机的 Android、iOS 等设备列表',
+      readOnly: true,
+      platforms: const {'android', 'harmony', 'ios'},
+      description: '获取当前连接到宿主机的 Android、HarmonyOS、iOS 设备列表；操作前复制返回的 id，勿猜测设备标识',
       inputSchema: {
         'type': 'object',
         'properties': {
@@ -49,10 +61,15 @@ class McpDeviceTools {
         },
       },
       handler: (args) async {
-        final devices = (await adbService.listDevices()).toList();
+        final devices = discoverDevices != null
+            ? await discoverDevices!(args['forceRefresh'] == true)
+            : (await adbService.listDevices()).toList();
         // iOS 枚举失败不应使已连接的 Android 设备消失。
         try {
-          devices.addAll(await iosDeviceService?.listDevices() ?? []);
+          if (discoverDevices == null) {
+            devices.addAll(await iosDeviceService?.listDevices() ?? []);
+            devices.addAll(await hdcService?.listDevices() ?? []);
+          }
         } catch (_) {}
         final deviceListJson = devices.map((d) {
           return {
@@ -62,6 +79,7 @@ class McpDeviceTools {
             'isOnline': d.isOnline,
             'isIos': d.isIos,
             'isHarmony': d.isHarmony,
+            'platform': d.isIos ? 'ios' : d.isHarmony ? 'harmony' : 'android',
             'displayName': d.displayName,
           };
         }).toList();
@@ -80,6 +98,8 @@ class McpDeviceTools {
     return McpToolDefinition(
       name: 'get_device_detail',
       category: 'device',
+      readOnly: true,
+      platforms: const {'android', 'harmony', 'ios'},
       description: '获取指定设备可读取的软硬件参数；iOS 部分字段不可用',
       inputSchema: {
         'type': 'object',
@@ -97,6 +117,9 @@ class McpDeviceTools {
           throw ArgumentError('必须提供 deviceId');
         }
 
+        if (await isHarmonyDevice?.call(deviceId) == true) {
+          return harmonyDetail!(deviceId);
+        }
         final ios = await isIosDevice?.call(deviceId) == true;
         try {
           final overview = ios
@@ -154,7 +177,8 @@ class McpDeviceTools {
     return McpToolDefinition(
       name: 'get_battery_info',
       category: 'device',
-      description: '查询设备的实时电量、充放电状态、电池健康度及温度',
+      readOnly: true,
+      description: '仅 Android：读取 dumpsys battery 可用字段；未知温度或健康度不作推断',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId'],
