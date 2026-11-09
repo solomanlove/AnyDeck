@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:convert';
 
-/// 临时分享凭据：包含连接地址、证书 SHA-256 和 256 bit 随机令牌。
+/// 分享凭据：包含连接地址、证书 SHA-256、随机令牌和可选的历史重连标识。
 class DeviceShareInvitation {
   const DeviceShareInvitation({
     required this.host,
@@ -10,6 +10,8 @@ class DeviceShareInvitation {
     required this.fingerprint,
     required this.token,
     required this.name,
+    this.resumable = false,
+    this.expiresAt,
   });
 
   final String host;
@@ -17,6 +19,20 @@ class DeviceShareInvitation {
   final String fingerprint;
   final String token;
   final String name;
+  final bool resumable;
+  final DateTime? expiresAt;
+
+  /// 地址可通过局域网发现更新；身份与访问凭据始终保持固定。
+  DeviceShareInvitation at(String host, int port, {DateTime? expiresAt}) =>
+      DeviceShareInvitation(
+        host: host,
+        port: port,
+        fingerprint: fingerprint,
+        token: token,
+        name: name,
+        resumable: resumable,
+        expiresAt: expiresAt ?? this.expiresAt,
+      );
 
   static String createToken() {
     final random = Random.secure();
@@ -29,7 +45,14 @@ class DeviceShareInvitation {
     scheme: 'anydeck-share',
     host: host,
     port: port,
-    queryParameters: {'v': '1', 'fp': fingerprint, 'key': token, 'name': name},
+    queryParameters: {
+      'v': '1',
+      'fp': fingerprint,
+      'key': token,
+      'name': name,
+      if (resumable) 'resume': '1',
+      if (expiresAt != null) 'exp': '${expiresAt!.millisecondsSinceEpoch}',
+    },
   ).toString();
 
   /// 仅接受数值 IPv4，防止分享码被当作 URL 请求、Shell 参数或任意协议执行。
@@ -53,6 +76,8 @@ class DeviceShareInvitation {
         !RegExp(r'^[a-f0-9]{64}$').hasMatch(args['fp'] ?? '') ||
         !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(args['key'] ?? '') ||
         (args['name']?.length ?? 0) > 120 ||
+        (args.containsKey('resume') && args['resume'] != '1') ||
+        (args.containsKey('exp') && int.tryParse(args['exp']!) == null) ||
         uri.queryParametersAll.values.any((values) => values.length != 1)) {
       throw const FormatException('Invalid share code');
     }
@@ -62,6 +87,13 @@ class DeviceShareInvitation {
       fingerprint: args['fp']!,
       token: args['key']!,
       name: args['name'] ?? 'Android',
+      resumable: args['resume'] == '1',
+      expiresAt: args['exp'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(
+              int.parse(args['exp']!),
+              isUtc: true,
+            ),
     );
   }
 }

@@ -161,8 +161,10 @@ class _Tab extends ToolTabNotifier {
 }
 
 class _HostNetwork extends HostNetworkNotifier {
+  _HostNetwork(this.info);
+  final HostNetworkInfo info;
   @override
-  Future<HostNetworkInfo> build() async => const HostNetworkInfo();
+  Future<HostNetworkInfo> build() async => info;
 }
 
 class _IosDiscovery extends IosDeviceService {
@@ -243,6 +245,7 @@ Future<void> withDeviceMenu(
   String language = 'zh',
   Brightness brightness = Brightness.light,
   DeviceShareService? sharing,
+  HostNetworkInfo network = const HostNetworkInfo(),
 }) async {
   tester.view.physicalSize = const Size(1200, 900);
   tester.view.devicePixelRatio = 1;
@@ -268,7 +271,7 @@ Future<void> withDeviceMenu(
       deviceRegistryProvider.overrideWith(() => DeviceMenuRegistry(devices)),
       selectedDeviceProvider.overrideWith(_Selection.new),
       selectedToolTabProvider.overrideWith(_Tab.new),
-      hostNetworkProvider.overrideWith(_HostNetwork.new),
+      hostNetworkProvider.overrideWith(() => _HostNetwork(network)),
       adbEnvironmentProvider.overrideWith(_ReadyAdb.new),
       airplaySessionProvider.overrideWith(() => _AirPlay(airplay)),
       emulatorListProvider.overrideWith((ref) async => []),

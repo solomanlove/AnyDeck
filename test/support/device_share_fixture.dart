@@ -15,6 +15,7 @@ class ShareAdbFixture {
   final sockets = <Socket>{};
   final requests = <String>[];
   final reversePorts = <String, int>{};
+  String transportId = '72';
   Completer<void>? reverseGate;
   String features = 'shell_v2,stat_v2,sendrecv_v2,delayed_ack';
   // 模拟设备服务尚未建立，不能阻塞其他 Stream 的 ACK 或 OPEN。
@@ -38,11 +39,11 @@ class ShareAdbFixture {
     final reader = ShareSocketReader(socket);
     try {
       final request = await _request(reader);
-      if (request == 'host-transport-id:72:features') {
+      if (request == 'host-transport-id:$transportId:features') {
         socket.write(
           'OKAY${features.length.toRadixString(16).padLeft(4, '0')}$features',
         );
-      } else if (request == 'host:transport-id:72') {
+      } else if (request == 'host:transport-id:$transportId') {
         socket.write('OKAY');
         await socket.flush();
         final service = await _request(reader);
@@ -82,7 +83,7 @@ class ShareAdbFixture {
   }
 
   SharedAdbBackend get backend => SharedAdbBackend(
-    transportId: '72',
+    transportId: transportId,
     name: 'AnyDeck test phone',
     port: server.port,
   );

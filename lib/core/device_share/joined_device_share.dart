@@ -69,7 +69,15 @@ class JoinedDeviceShare {
       }
       server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
       joined = JoinedDeviceShare._(
-        invitation,
+        DeviceShareInvitation(
+          host: invitation.host,
+          port: invitation.port,
+          fingerprint: invitation.fingerprint,
+          token: invitation.token,
+          name: invitation.name,
+          resumable: invitation.resumable,
+          expiresAt: DateTime.tryParse(response['expiresAt']?.toString() ?? ''),
+        ),
         adb,
         server,
         secure,

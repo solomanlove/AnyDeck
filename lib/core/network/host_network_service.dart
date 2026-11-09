@@ -9,12 +9,17 @@ class HostNetworkService {
   static const _channel = MethodChannel('any_deck/host_network');
   static const _timeout = Duration(seconds: 5);
 
-  Future<HostNetworkInfo> read() async {
+  Future<HostNetworkInfo> read() => _read(forSharing: false);
+
+  /// 自动规则只读取真实关联信息，不触发 Swift CLI、扫描或邻近网络猜测。
+  Future<HostNetworkInfo> readForSharing() => _read(forSharing: true);
+
+  Future<HostNetworkInfo> _read({required bool forSharing}) async {
     Map<Object?, Object?>? snapshot;
     if (Platform.isMacOS) {
       try {
         snapshot = await _channel
-            .invokeMapMethod<Object?, Object?>('read')
+            .invokeMapMethod<Object?, Object?>(forSharing ? 'readForSharing' : 'read')
             .timeout(_timeout);
       } catch (_) {
         // 原生接口失败或尚未重新编译时触发轻量命令行回退。
@@ -22,7 +27,7 @@ class HostNetworkService {
       final hasNativeSsid = (snapshot?['wifiInterfaces'] as List? ?? [])
           .whereType<Map>()
           .any((w) => (w['ssid'] as String?)?.isNotEmpty == true);
-      if (!hasNativeSsid) {
+      if (!forSharing && !hasNativeSsid) {
         final fallbackSsid = await _fallbackReadMacWifiSsid();
         if (fallbackSsid != null && fallbackSsid.isNotEmpty) {
           final wifiList = (snapshot?['wifiInterfaces'] as List? ?? []).toList();

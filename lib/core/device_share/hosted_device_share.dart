@@ -23,9 +23,11 @@ class HostedDeviceShare {
         unawaited(close());
       },
     );
-    _expiry = Timer(const Duration(minutes: 30), () {
-      unawaited(close());
-    });
+    if (invitation.expiresAt case final deadline?) {
+      _expiry = Timer(deadline.difference(DateTime.now()), () {
+        unawaited(close());
+      });
+    }
   }
 
   final String deviceId;
@@ -39,7 +41,7 @@ class HostedDeviceShare {
   bool _claimed = false;
   bool closed = false;
   Future<void>? _closing;
-  late final Timer _expiry;
+  Timer? _expiry;
   String? receiver;
   bool get connected => _claimed;
 
@@ -50,6 +52,11 @@ class HostedDeviceShare {
     required void Function() onChanged,
     ShareTlsIdentity? identity,
     InternetAddress? bindAddress,
+    Duration? lifetime = const Duration(minutes: 30),
+    DateTime? expiresAt,
+    String? token,
+    bool resumable = false,
+    int port = 0,
   }) async {
     final address = InternetAddress.tryParse(host);
     if (address == null ||
@@ -62,9 +69,14 @@ class HostedDeviceShare {
     await backend.banner();
     final tls = identity ?? await ShareTlsIdentity.generate();
     final context = tls.createContext();
+    final deadline =
+        expiresAt ?? (lifetime == null ? null : DateTime.now().add(lifetime));
+    if (deadline != null && !deadline.isAfter(DateTime.now())) {
+      throw StateError('Sharing period has expired');
+    }
     final server = await ServerSocket.bind(
       bindAddress ?? InternetAddress.anyIPv4,
-      0,
+      port,
     );
     return HostedDeviceShare._(
       deviceId,
@@ -73,8 +85,10 @@ class HostedDeviceShare {
         host: host,
         port: server.port,
         fingerprint: tls.fingerprint,
-        token: DeviceShareInvitation.createToken(),
+        token: token ?? DeviceShareInvitation.createToken(),
         name: backend.name,
+        resumable: resumable,
+        expiresAt: deadline?.toUtc(),
       ),
       server,
       context,
@@ -123,7 +137,11 @@ class HostedDeviceShare {
       _claimed = claimed = true;
       receiver = remoteAddress;
       _onChanged();
-      await writeShareMessage(secure, {'ok': true, 'name': backend.name});
+      await writeShareMessage(secure, {
+        'ok': true,
+        'name': backend.name,
+        'expiresAt': invitation.expiresAt?.toIso8601String(),
+      });
       final peer = SharedAdbPeer(secure, reader, backend);
       _peer = peer;
       await peer.run();
@@ -149,7 +167,7 @@ class HostedDeviceShare {
   Future<void> _close() async {
     closed = true;
     final peer = _peer;
-    _expiry.cancel();
+    _expiry?.cancel();
     for (final socket in _sockets.toList()) {
       socket.destroy();
     }

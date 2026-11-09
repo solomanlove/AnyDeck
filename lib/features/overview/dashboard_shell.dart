@@ -15,6 +15,8 @@ class _WechatStyleShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 主窗口常驻所有者，恢复 Wi-Fi 自动准备规则不依赖打开设备管理或共享弹窗。
+    ref.watch(deviceShareServiceProvider);
     final selectedTool = ref.watch(selectedToolTabProvider);
     final theme = Theme.of(context);
 

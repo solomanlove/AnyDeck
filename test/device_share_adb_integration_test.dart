@@ -6,6 +6,10 @@ import 'dart:typed_data';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/device_share/hosted_device_share.dart';
+import 'package:any_deck/core/device_share/device_share_discovery.dart';
+import 'package:any_deck/core/device_share/device_share_invitation.dart';
+import 'package:any_deck/core/device_share/device_share_service.dart';
+import 'package:any_deck/core/device_share/device_share_store.dart';
 import 'package:any_deck/core/device_share/joined_device_share.dart';
 import 'package:any_deck/core/device_share/share_socket_reader.dart';
 import 'package:any_deck/core/device_share/share_tls_identity.dart';
@@ -31,6 +35,19 @@ Uint8List _shellFrame(int channel, List<int> data) {
   ByteData.sublistView(bytes).setUint32(1, data.length, Endian.little);
   bytes.setRange(5, bytes.length, data);
   return bytes;
+}
+
+/// 单测提供最新地址；真实 UDP 查找、nonce 与身份绑定由 discovery 测试独立覆盖。
+class _LocatedShare extends DeviceShareDiscovery {
+  _LocatedShare(this.current);
+  final DeviceShareInvitation Function() current;
+  @override
+  Future<void> publish(List<DeviceShareInvitation> invitations) async {}
+  @override
+  Future<DeviceShareInvitation?> find(DeviceShareInvitation invitation) async =>
+      current();
+  @override
+  Future<void> close() async {}
 }
 
 void main() {
@@ -255,17 +272,83 @@ void main() {
     final slow = localAdb.shellArgs(joined!.deviceId, ['slow']);
     try {
       await opening.future.timeout(const Duration(seconds: 2));
-      final fast = await localAdb.shellArgs(
-        joined!.deviceId,
-        ['getprop'],
-        timeout: const Duration(seconds: 2),
-      );
+      final fast = await localAdb.shellArgs(joined!.deviceId, [
+        'getprop',
+      ], timeout: const Duration(seconds: 2));
       expect(fast.exitCode, 0, reason: fast.message);
       expect(fast.stdout, 'AnyDeck shared shell\n');
       expect(gate.isCompleted, isFalse);
     } finally {
       gate.complete();
       await slow;
+    }
+  });
+
+  test('真实 adb 历史在重启后恢复，分享方更换端口后可重连并再次执行 Shell', () async {
+    await joined!.close();
+    joined = null;
+    await host.close();
+    host = await HostedDeviceShare.start(
+      deviceId: 'fixture-usb',
+      backend: source.backend,
+      host: '127.0.0.1',
+      identity: identity,
+      resumable: true,
+      lifetime: null,
+      onChanged: () {},
+    );
+    final store = MemoryDeviceShareStore();
+    var receiver = DeviceShareService(
+      localAdb,
+      store: store,
+      discovery: _LocatedShare(() => host.invitation),
+    );
+    try {
+      final initial = await receiver.join(host.invitation.encode());
+      final id = receiver.history.single.id;
+      final token = host.invitation.token;
+      await initial.close();
+      expect(receiver.joins, isEmpty);
+      expect(receiver.history, hasLength(1));
+      final sameSession = await receiver.reconnect(id);
+      expect(
+        (await localAdb.shell(sameSession.deviceId, 'id')).isSuccess,
+        isTrue,
+      );
+      await sameSession.close();
+      await receiver.dispose();
+      await host.close();
+      host = await HostedDeviceShare.start(
+        deviceId: 'fixture-usb',
+        backend: source.backend,
+        host: '127.0.0.1',
+        identity: identity,
+        token: token,
+        resumable: true,
+        lifetime: null,
+        onChanged: () {},
+      );
+      receiver = DeviceShareService(
+        localAdb,
+        store: store,
+        discovery: _LocatedShare(() => host.invitation),
+      );
+      await receiver.initialize();
+      final reconnected = await receiver.reconnect(id);
+      final result = await localAdb.shell(reconnected.deviceId, 'id');
+      expect(result.isSuccess, isTrue, reason: result.message);
+      expect(result.stdout, 'AnyDeck shared shell\n');
+      expect(receiver.history, hasLength(1));
+      expect(receiver.history.single.invitation.port, host.invitation.port);
+      await receiver.forgetHistory(id);
+      expect(receiver.history, isEmpty);
+      expect(receiver.joins, isEmpty);
+      expect(
+        (await localAdb.listDevices()).where((device) => device.isShared),
+        isEmpty,
+      );
+    } finally {
+      await receiver.dispose();
     }
   });
 

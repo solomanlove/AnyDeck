@@ -2,6 +2,7 @@ import Cocoa
 import CoreLocation
 import CoreWLAN
 import FlutterMacOS
+import Network
 import SystemConfiguration
 
 /// 读取宿主机 Wi-Fi 元数据；支持解析手机热点和传统无线路由器名称。
@@ -9,6 +10,7 @@ final class HostNetworkBridgeService: NSObject, CLLocationManagerDelegate {
   static let shared = HostNetworkBridgeService()
   private let locationManager = CLLocationManager()
   private let queue = DispatchQueue(label: "any_deck.host_network", qos: .utility)
+  private var pathEvents: HostNetworkPathEvents?
 
   override init() {
     super.init()
@@ -16,19 +18,25 @@ final class HostNetworkBridgeService: NSObject, CLLocationManagerDelegate {
   }
 
   func setup(messenger: FlutterBinaryMessenger) {
+    let events = HostNetworkPathEvents()
+    FlutterEventChannel(name: "any_deck/host_network/events", binaryMessenger: messenger)
+      .setStreamHandler(events)
+    pathEvents = events
     let channel = FlutterMethodChannel(name: "any_deck/host_network", binaryMessenger: messenger)
     channel.setMethodCallHandler { [weak self] call, result in
       guard let self = self else { return }
       switch call.method {
-      case "read":
+      case "read", "readForSharing":
         let authorized = self.isLocationAuthorized
         // CoreWLAN 可能涉及系统 IPC 或扫描，避免阻塞 Flutter 的主线程。
         self.queue.async {
           let wifi = (CWWiFiClient.shared().interfaces() ?? []).map { interface -> [String: Any] in
-            let ssid = self.resolveSSID(interface: interface)
+            let directSSID = interface.ssid()
+            let ssid = call.method == "readForSharing" ? directSSID : self.resolveSSID(interface: interface)
             return [
               "name": interface.interfaceName ?? "",
               "ssid": ssid ?? "",
+              "verifiedSsid": directSSID ?? "",
               "connected": interface.powerOn() &&
                 (ssid != nil || interface.activePHYMode().rawValue != 0),
             ]
@@ -131,4 +139,42 @@ final class HostNetworkBridgeService: NSObject, CLLocationManagerDelegate {
     }
     return status == .authorizedAlways || status == .authorized
   }
+}
+
+/// 仅订阅者存在时监控网络路径，事件通过主线程通知 Dart 刷新当前 Wi-Fi。
+private final class HostNetworkPathEvents: NSObject, FlutterStreamHandler, CWEventDelegate {
+  private var monitor: NWPathMonitor?
+  private var wifi: CWWiFiClient?
+  private var sink: FlutterEventSink?
+  func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+    stop()
+    sink = events
+    let next = NWPathMonitor()
+    next.pathUpdateHandler = { [weak self] _ in self?.emit() }
+    next.start(queue: DispatchQueue(label: "any_deck.device_share.network", qos: .utility))
+    monitor = next
+    let client = CWWiFiClient()
+    client.delegate = self
+    try? client.startMonitoringEvent(with: .ssidDidChange)
+    wifi = client
+    return nil
+  }
+  func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    stop()
+    return nil
+  }
+  @objc(ssidDidChangeForWiFiInterfaceWithName:)
+  func ssidDidChangeForWiFiInterface(withName interfaceName: String) { emit() }
+  private func emit() {
+    DispatchQueue.main.async { [weak self] in self?.sink?(nil) }
+  }
+  private func stop() {
+    monitor?.cancel()
+    monitor = nil
+    try? wifi?.stopMonitoringEvent(with: .ssidDidChange)
+    wifi?.delegate = nil
+    wifi = nil
+    sink = nil
+  }
+  deinit { stop() }
 }

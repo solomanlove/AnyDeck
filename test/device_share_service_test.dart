@@ -1,5 +1,7 @@
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_share/device_share_service.dart';
+import 'package:any_deck/core/device_share/device_share_models.dart';
+import 'package:any_deck/core/device_share/device_share_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fake_adb_service.dart';
@@ -109,5 +111,52 @@ void main() {
       service.share('phone', '测试手机', '127.0.0.1'),
       throwsStateError,
     );
+  });
+
+  test('停止后保留可重启规则，删除后再创建则撤销旧身份', () async {
+    final share = await service.share(
+      'phone',
+      '测试手机',
+      '127.0.0.1',
+      lifetime: DeviceShareLifetime.hour1,
+    );
+    final id = service.profiles.single.id;
+    await service.stopShare(id);
+    expect(share.closed, isTrue);
+    expect(service.profiles.single.enabled, isFalse);
+    final resumed = await service.resumeShare(id);
+    expect(resumed.invitation.fingerprint, share.invitation.fingerprint);
+    expect(resumed.invitation.token, share.invitation.token);
+    await service.forgetShare(id);
+    expect(service.profiles, isEmpty);
+    final fresh = await service.share('phone', '测试手机', '127.0.0.1');
+    expect(fresh.invitation.fingerprint, isNot(share.invitation.fingerprint));
+    expect(fresh.invitation.token, isNot(share.invitation.token));
+  });
+
+  test('服务重启后手动规则仍可从新 transport 重新准备', () async {
+    await service.dispose();
+    final store = MemoryDeviceShareStore();
+    service = DeviceShareService(
+      adb,
+      store: store,
+      backendFactory: (_, _) => backend.backend,
+    );
+    final original = await service.share('phone', '测试手机', '127.0.0.1');
+    final id = original.invitation.fingerprint;
+    await service.dispose();
+    backend.transportId = '99';
+    adb.devices = const [
+      DiscoveredDevice(id: 'phone', status: 'device', transportId: '99'),
+    ];
+    service = DeviceShareService(
+      adb,
+      store: store,
+      backendFactory: (_, _) => backend.backend,
+    );
+    await service.initialize();
+    final current = await service.resumeShare(id);
+    expect(current.backend.transportId, '99');
+    expect(current.invitation.fingerprint, id);
   });
 }

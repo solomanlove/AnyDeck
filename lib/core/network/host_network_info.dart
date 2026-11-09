@@ -9,11 +9,12 @@ class HostNetworkAddress {
   final String ipv4;
 }
 
-/// 设备列表底部使用的宿主机网络信息，不保存网络名称或地址到磁盘。
+/// 宿主机网络快照；选定 Wi-Fi 仅在用户启用自动共享规则后由共享模块另行保存。
 class HostNetworkInfo {
   const HostNetworkInfo({
     this.wifiStatus = HostWifiStatus.unavailable,
     this.ssid,
+    this.verifiedWifiSsid,
     this.address,
     this.isWifiAddress = false,
     this.ipv4Addresses = const [],
@@ -21,6 +22,8 @@ class HostNetworkInfo {
 
   final HostWifiStatus wifiStatus;
   final String? ssid;
+  /// 仅来自系统当前关联结果；自动共享不能使用扫描缓存推测出的 SSID。
+  final String? verifiedWifiSsid;
   final HostNetworkAddress? address;
   final bool isWifiAddress;
 
@@ -82,6 +85,8 @@ class HostNetworkInfo {
     return HostNetworkInfo(
       wifiStatus: status,
       ssid: hasSsid ? ssid : null,
+      verifiedWifiSsid: (selectedWifi?['verifiedSsid'] as String?)?.isNotEmpty == true
+          ? selectedWifi!['verifiedSsid'] as String : null,
       address: address,
       isWifiAddress: isWifiAddress,
       ipv4Addresses: List.unmodifiable(usable),

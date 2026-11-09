@@ -44,6 +44,10 @@ class DeviceRegistryMerger {
       final serial = serialMap[id] ?? id;
       final cachedModel = models[id];
       final cachedProduct = products[id];
+      // 共享接收历史由共享管理维护；断开后不生成离线设备，也不移除同序列号的 USB。
+      final isShared = active?.isShared == true ||
+          (active?.product == null && cachedProduct == 'anydeck_shared_device');
+      if (isShared && active?.isOnline != true) continue;
       final ipAddress = ipAddresses[serial] ?? ipAddresses[id];
       final androidVersion = androidVersions[serial] ?? androidVersions[id];
       final sdkVersion = sdkVersions[serial] ?? sdkVersions[id];
