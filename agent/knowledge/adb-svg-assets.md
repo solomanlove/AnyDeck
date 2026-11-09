@@ -24,6 +24,12 @@ const AppAssetImage(
 
 本组件面向已打包的本地资源，不承接设备文件预览或网络图片。新增资源路径仍需纳入 pubspec.yaml 的 assets 声明。
 
+## 服务菜单的平台图标复用
+
+- `ServiceRestartMenuButton` 的 ADB、HDC、iOS 服务项统一调用 `buildPlatformIcon(PlatformDistributionType.android / harmony / ios)`，与现有平台切换器共用 Android、Huawei 花瓣和 Apple Logo，不在菜单中另配平台图标。
+- 外层保留 18px 图标列并居中放置 helper 返回的 15px Logo，文字间距和菜单动作保持原实现。
+- `test/service_restart_menu_button_test.dart` 在 Light/Dark 下打开真实菜单，检查 Huawei 位图加载、三个 Logo、五项菜单完整性与文字对齐，不执行服务重启；2 项测试通过。未启动桌面 App。
+
 ## 验证与回归
 
 - `test/app_asset_image_test.dart` 覆盖真实 SVG / 位图加载，以及两种格式缺失资源时的尺寸与错误回退。

@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/widget/device_os_logo_widget.dart';
 import '../../../app/widget/menu_corner_indicator.dart';
 import '../../devices/controller/platform_tools_controller.dart';
+import '../model/platform_distribution_type.dart';
 
 /// 跨平台调试服务重启与在线设备重启按钮组件。
 ///
@@ -109,7 +111,13 @@ class ServiceRestartMenuButton extends ConsumerWidget {
           value: 'restart_adb',
           child: Row(
             children: [
-              const Icon(Icons.android_rounded, size: 18, color: Color(0xff3ddc84)),
+              // 保留菜单图标列宽，平台 Logo 统一由公共 helper 绘制。
+              SizedBox.square(
+                dimension: 18,
+                child: Center(
+                  child: buildPlatformIcon(PlatformDistributionType.android),
+                ),
+              ),
               const SizedBox(width: 10),
               Text(context.l10n.t('restartAdb')),
             ],
@@ -121,7 +129,12 @@ class ServiceRestartMenuButton extends ConsumerWidget {
           value: 'restart_hdc',
           child: Row(
             children: [
-              const Icon(CupertinoIcons.circle_grid_hex_fill, size: 18, color: Color(0xffe53935)),
+              SizedBox.square(
+                dimension: 18,
+                child: Center(
+                  child: buildPlatformIcon(PlatformDistributionType.harmony),
+                ),
+              ),
               const SizedBox(width: 10),
               Text(context.l10n.t('restartHdc')),
             ],
@@ -133,7 +146,12 @@ class ServiceRestartMenuButton extends ConsumerWidget {
           value: 'restart_ios',
           child: Row(
             children: [
-              const Icon(Icons.apple_rounded, size: 18, color: Color(0xff007aff)),
+              SizedBox.square(
+                dimension: 18,
+                child: Center(
+                  child: buildPlatformIcon(PlatformDistributionType.ios),
+                ),
+              ),
               const SizedBox(width: 10),
               Text(context.l10n.t('restartIos')),
             ],
