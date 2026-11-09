@@ -28,6 +28,7 @@ import '../app/widget/app_detail_layout.dart';
 import '../app/widget/app_toast.dart';
 import '../app/widget/app_navigation_item.dart';
 import '../app/settings/app_settings.dart';
+import '../app/widget/device_os_logo_widget.dart';
 import '../app/settings/app_settings_controller.dart';
 import '../app/shortcuts/window_shortcut.dart';
 import '../app/window/multi_window_compat.dart';

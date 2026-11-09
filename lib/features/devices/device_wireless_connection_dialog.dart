@@ -146,12 +146,12 @@ class _DeviceWirelessConnectionDialogState extends ConsumerState<_DeviceWireless
                 ButtonSegment<int>(
                   value: 0,
                   label: Text(context.l10n.t('pairAndroid')),
-                  icon: const Icon(Icons.android, size: 18),
+                  icon: buildPlatformIcon(PlatformDistributionType.android, size: 18),
                 ),
                 ButtonSegment<int>(
                   value: 1,
                   label: Text(context.l10n.t('pairHarmony')),
-                  icon: const Icon(CupertinoIcons.device_phone_portrait, size: 18),
+                  icon: buildPlatformIcon(PlatformDistributionType.harmony, size: 18),
                 ),
               ],
               selected: {_selectedPlatform},

@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/widget/device_os_logo_widget.dart';
+import '../../overview/model/platform_distribution_type.dart';
 import '../../../core/adb/adb_environment_service.dart';
 import '../../../core/environment/connection_environment_service.dart';
 import '../../devices/widgets/adb_environment_dialog.dart';
@@ -97,7 +99,7 @@ class _DeveloperConnectionEnvironmentCardState
               _buildToolRow(
                 context,
                 title: 'Android (ADB 调试桥)',
-                icon: Icons.android_rounded,
+                platform: PlatformDistributionType.android,
                 isReady: adbEnv.isReady,
                 version: adbEnv.version.isNotEmpty ? adbEnv.version : 'ADB 未就绪',
                 path: adbEnv.adbPath.isNotEmpty ? adbEnv.adbPath : '未找到 adb 命令',
@@ -114,7 +116,7 @@ class _DeveloperConnectionEnvironmentCardState
               _buildToolRow(
                 context,
                 title: '纯血鸿蒙 (HarmonyOS NEXT HDC)',
-                icon: Icons.hub_rounded,
+                platform: PlatformDistributionType.harmony,
                 isReady: harmonyInfo?.isReady ?? false,
                 version: harmonyInfo?.version.isNotEmpty == true
                     ? harmonyInfo!.version
@@ -137,7 +139,7 @@ class _DeveloperConnectionEnvironmentCardState
               _buildToolRow(
                 context,
                 title: '苹果 iOS (go-ios 通信工具)',
-                icon: Icons.apple_rounded,
+                platform: PlatformDistributionType.ios,
                 isReady: iosInfo?.isReady ?? false,
                 version: iosInfo?.version.isNotEmpty == true
                     ? iosInfo!.version
@@ -190,7 +192,7 @@ class _DeveloperConnectionEnvironmentCardState
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       textStyle: const TextStyle(fontSize: 12),
                     ),
-                    icon: const Icon(Icons.hub_rounded, size: 15),
+                    icon: buildPlatformIcon(PlatformDistributionType.harmony),
                     label: const Text('鸿蒙 HDC 引导测试'),
                     onPressed: () async {
                       ref
@@ -210,7 +212,7 @@ class _DeveloperConnectionEnvironmentCardState
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       textStyle: const TextStyle(fontSize: 12),
                     ),
-                    icon: const Icon(Icons.apple_rounded, size: 15),
+                    icon: buildPlatformIcon(PlatformDistributionType.ios),
                     label: const Text('iOS 引导测试'),
                     onPressed: () async {
                       ref
@@ -230,7 +232,7 @@ class _DeveloperConnectionEnvironmentCardState
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       textStyle: const TextStyle(fontSize: 12),
                     ),
-                    icon: const Icon(Icons.android_rounded, size: 15),
+                    icon: buildPlatformIcon(PlatformDistributionType.android),
                     label: const Text('ADB 缺失弹窗测试'),
                     onPressed: () async {
                       ref.read(adbEnvironmentProvider.notifier).simulateMissing();
@@ -259,7 +261,7 @@ class _DeveloperConnectionEnvironmentCardState
   Widget _buildToolRow(
     BuildContext context, {
     required String title,
-    required IconData icon,
+    required PlatformDistributionType platform,
     required bool isReady,
     required String version,
     required String path,
@@ -271,7 +273,7 @@ class _DeveloperConnectionEnvironmentCardState
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: theme.colorScheme.onSurface),
+        buildPlatformIcon(platform, size: 20),
         const SizedBox(width: 10),
         Expanded(
           child: Column(

@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widget/app_toast.dart';
+import '../../../app/widget/device_os_logo_widget.dart';
+import '../../overview/model/platform_distribution_type.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/emulator/ios/ios_simulator.dart';
 import '../../../core/emulator/ios/ios_simulator_providers.dart';
@@ -98,7 +100,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.apple, size: 48, color: Colors.grey),
+                buildPlatformIcon(PlatformDistributionType.ios, size: 48),
                 const SizedBox(height: 12),
                 const Text(
                   '未发现 iOS 模拟器',

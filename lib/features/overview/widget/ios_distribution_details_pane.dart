@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app/l10n/app_localizations.dart';
-import '../../../app/theme/app_icon.dart';
+import '../../../app/widget/device_os_logo_widget.dart';
+import '../model/platform_distribution_type.dart';
 import '../model/ios_version_distribution_data.dart';
 
 /// iOS 版本特性、工具链对应矩阵与口径说明详情面板。
@@ -100,13 +101,7 @@ class IosDistributionDetailsPane extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
-            child: Image.asset(
-              AppIcons.apple,
-              width: 24,
-              height: 24,
-              fit: BoxFit.contain,
-              color: isDark ? Colors.white : const Color(0xFF1D1D1F),
-            ),
+            child: buildPlatformIcon(PlatformDistributionType.ios, size: 24),
           ),
         ),
         const SizedBox(width: 12),

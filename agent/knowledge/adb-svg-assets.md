@@ -30,6 +30,15 @@ const AppAssetImage(
 - 外层保留 18px 图标列并居中放置 helper 返回的 15px Logo，文字间距和菜单动作保持原实现。
 - `test/service_restart_menu_button_test.dart` 在 Light/Dark 下打开真实菜单，检查 Huawei 位图加载、三个 Logo、五项菜单完整性与文字对齐，不执行服务重启；2 项测试通过。未启动桌面 App。
 
+## 平台 Logo 全局复用检查（2026-11-09）
+
+- `buildPlatformIcon(platform, {size = 15})` 统一支持图标尺寸；Android 使用品牌绿色，Huawei 保留位图原色，Apple 使用当前 Theme 的 `onSurface`，避免暗色模式固定黑色不可读。
+- 补齐调用：开发者环境诊断的 3 个工具行（20px）和 3 个引导测试按钮（15px）、无线连接弹窗的 Android/HarmonyOS 平台项（18px）、iOS 模拟器空状态（48px）、iOS 版本详情页（24px）。此前已统一的服务菜单和平台版本 Tab 继续复用。
+- 模拟器平台 Tab 已经通过 `PlatformVersionSwitcher` 调用公共 helper，无需再次修改；枚举中的图标元数据不参与当前渲染。
+- APK 文件类型图标、应用图片加载失败时的占位图、设备厂商品牌图片保留原语义；它们分别表示文件、应用和厂商，不是平台选择/平台标识。天线、网络、调试虫子等功能图标也不替换。
+- `test/platform_icon_usage_test.dart` 验证共享 Logo 的 15/20/48px 尺寸、Apple 明暗对比度、诊断区六处 Logo、重新检测和对应平台引导入口；环境结果由测试桩提供，不执行 CLI 探测。
+- 本轮 7 个相关测试文件共 31 项通过，6 个实现及测试目标的定向静态分析无问题。未启动桌面 App。
+
 ## 验证与回归
 
 - `test/app_asset_image_test.dart` 覆盖真实 SVG / 位图加载，以及两种格式缺失资源时的尺寸与错误回退。
