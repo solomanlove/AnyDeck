@@ -47,3 +47,11 @@ Tag 首轮 arm64 在获取 `api.github.com/meta` 时遇到 HTTP 403，尚未进�
 `.github/workflows/publish-macos-verified.yml` 接受目标 Tag 与完整成功的来源 run ID。仅允许同仓库 macOS Release Workflow 的 push/workflow_dispatch 事件，且来源 commit 必须与 Tag 完全一致；失败、未完成、PR 或不同 commit 均拒绝。恢复流程重新下载两个 Artifact、验证 SHA-256、解压并校验所有 Mach-O/签名/依赖，额外执行 Intel helper 与启动检查，再合并四个包发布，仍不覆盖已有 Release。来源策略有正反向单元测试。
 
 这是 Runner 排队或网络错误后的恢复入口，不改变 Tag 的代码或降低原生构建与 smoke 门禁。正常 Tag 自动发布流程保持原样。
+
+## 正式交付记录（2026-11-09）
+
+v1.0.1 已公开发布，含 arm64/x86_64 的 DMG 与 ZIP、共用安装说明及 SHA256SUMS。Tag 自动构建首轮遭遇匿名 API 403；Intel 正式构建验证成功后，arm64 重试长时间等待 Runner，因此取消该重复构建。最终通过[发布恢复 42639483206](https://github.com/solomanlove/AnyDeck/actions/runs/42639483206)复用完整成功的同 commit 双架构手动构建（42630601956），两架构均重新检查 35 个 Mach-O 的架构/签名/依赖及校验和，Intel 再次通过 helper 与启动检查。
+
+[Release](https://github.com/solomanlove/AnyDeck/releases/tag/v1.0.1) 确认为非 Draft / Pre-release，共 6 项附件；公开 API digest 与实际下载的 SHA256SUMS 一致，四个包的公网 Range 下载均返回 HTTP 206。
+
+[官网部署 42639812891](https://github.com/solomanlove/AnyDeckWeb/actions/runs/42639812891) 已成功，官网提供两个 CPU 的独立入口。官网发布仅包含下载页、测试与知识库，未改截图或 CSS；另一项局域网共享提交保留在本地，未混入本次上线。设备连接、Intel 蓝牙及旧 macOS 仍不属于此次 Hosted Runner 验收范围。
