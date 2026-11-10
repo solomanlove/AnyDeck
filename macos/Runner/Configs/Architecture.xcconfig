@@ -1,0 +1,4 @@
+// 将宿主子架构归一到 Flutter 引擎与 Rust 支持的目标；命令行 ARCHS 仍可覆盖。
+ANYDECK_ARCH_arm64 = arm64
+ANYDECK_ARCH_arm64e = arm64
+ANYDECK_ARCH_x86_64 = x86_64

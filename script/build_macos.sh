@@ -58,6 +58,16 @@ echo "开始构建 macOS Release 版本..."
 echo "=========================================="
 
 # 运行 Flutter 构建命令
+# 显式锁定单一产物架构，避免 Xcode 的 arm64e 宿主子架构进入 Flutter/Rust。
+BUILD_ARCH="${ANYDECK_TARGET_ARCH:-${FLUTTER_XCODE_ARCHS:-$(uname -m)}}"
+case "$BUILD_ARCH" in
+  arm64|arm64e) BUILD_ARCH=arm64 ;;
+  x86_64) ;;
+  *) echo "错误：不支持的 macOS 构建架构：$BUILD_ARCH"; exit 1 ;;
+esac
+export ANYDECK_TARGET_ARCH="$BUILD_ARCH"
+export FLUTTER_XCODE_ARCHS="$BUILD_ARCH"
+echo "目标架构: $BUILD_ARCH"
 flutter build macos --release
 
 echo "=========================================="
