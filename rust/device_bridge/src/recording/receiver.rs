@@ -1,4 +1,4 @@
-//! 两路压缩包收取与单写线程；固定容量队列溢出即失败，禁止无界积压或静默丢包。
+//! 两路压缩包收取与单写线程；有界背压吸收传输突发，禁止无界积压或静默丢包。
 use super::{
     muxer::Muxer,
     protocol::{self, Event},
@@ -10,7 +10,7 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::Ordering,
-        mpsc::{self, SyncSender},
+        mpsc::{self, SyncSender, TrySendError},
         Arc,
     },
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -115,7 +115,7 @@ pub(super) fn receive(
     state: &Arc<Recording>,
     muxer: &mut Muxer,
 ) -> Result<(), String> {
-    // 至多 8 个 packet（每个最多 8 MiB）；磁盘慢时明确终止，不影响其它投屏会话。
+    // 队列最多 8 包，两个收包线程各暂存 1 包；持续写盘阻塞才终止此独立会话。
     let (sender, receiver) = mpsc::sync_channel(8);
     std::thread::scope(|scope| {
         for (socket, video) in [(video, true), (audio, false)] {
@@ -168,7 +168,7 @@ fn read_stream(
 ) -> Result<(), String> {
     let codec = protocol::codec(&mut socket, &state.stopped)?;
     if !video && codec == [0; 4] {
-        return send(sender, Event::AudioDisabled);
+        return send(sender, Event::AudioDisabled, &state.stopped);
     }
     if codec == [0, 0, 0, 1] {
         return Err("Recording encoder configuration failed on device".into());
@@ -183,23 +183,102 @@ fn read_stream(
         return Err("Unexpected recording codec".into());
     }
     while !state.stopped.load(Ordering::Acquire) {
-        send(sender, protocol::read(&mut socket, &state.stopped, video)?)?;
+        send(
+            sender,
+            protocol::read(&mut socket, &state.stopped, video)?,
+            &state.stopped,
+        )?;
     }
     Ok(())
 }
 
-fn send(sender: &SyncSender<Event>, event: Event) -> Result<(), String> {
-    sender
-        .try_send(event)
-        .map_err(|_| "Recording queue exceeded capacity or closed".into())
+fn send(
+    sender: &SyncSender<Event>,
+    event: Event,
+    stopped: &std::sync::atomic::AtomicBool,
+) -> Result<(), String> {
+    send_until(
+        sender,
+        event,
+        stopped,
+        Instant::now() + Duration::from_secs(2),
+    )
+}
+
+/// 无线 ADB 会批量送达压缩包；满队列时保留当前包并等待写线程，不丢帧。
+fn send_until(
+    sender: &SyncSender<Event>,
+    mut event: Event,
+    stopped: &std::sync::atomic::AtomicBool,
+    deadline: Instant,
+) -> Result<(), String> {
+    loop {
+        if stopped.load(Ordering::Acquire) {
+            return Err("Recording queue wait cancelled".into());
+        }
+        match sender.try_send(event) {
+            Ok(()) => return Ok(()),
+            Err(TrySendError::Disconnected(_)) => return Err("Recording writer closed".into()),
+            Err(TrySendError::Full(pending)) => event = pending,
+        }
+        if Instant::now() >= deadline {
+            return Err("Recording writer stalled: queue wait timed out".into());
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
 }
 
 #[cfg(test)]
 #[test]
-fn slow_writer_fails_explicitly_instead_of_dropping_compressed_packets() {
+fn stalled_writer_fails_explicitly_instead_of_dropping_compressed_packets() {
     let (sender, _receiver) = mpsc::sync_channel(8);
     for _ in 0..8 {
-        send(&sender, Event::AudioDisabled).unwrap();
+        sender.try_send(Event::AudioDisabled).ok().unwrap();
     }
-    assert!(send(&sender, Event::AudioDisabled).is_err());
+    let stopped = std::sync::atomic::AtomicBool::new(false);
+    assert!(send_until(
+        &sender,
+        Event::AudioDisabled,
+        &stopped,
+        Instant::now() + Duration::from_millis(30)
+    )
+    .unwrap_err()
+    .contains("writer stalled"));
+}
+
+#[cfg(test)]
+#[test]
+fn temporary_burst_waits_and_preserves_packet_order() {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    sender.try_send(Event::Size(10, 20)).ok().unwrap();
+    let writer = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(30));
+        assert!(matches!(receiver.recv().unwrap(), Event::Size(10, 20)));
+        assert!(matches!(receiver.recv().unwrap(), Event::Size(30, 40)));
+    });
+    let stopped = std::sync::atomic::AtomicBool::new(false);
+    send(&sender, Event::Size(30, 40), &stopped).unwrap();
+    writer.join().unwrap();
+}
+
+#[cfg(test)]
+#[test]
+fn queue_wait_can_be_cancelled_and_closed_writer_is_distinct() {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    sender.try_send(Event::AudioDisabled).ok().unwrap();
+    let stopped = std::sync::atomic::AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        scope.spawn(|| {
+            std::thread::sleep(Duration::from_millis(20));
+            stopped.store(true, Ordering::Release);
+        });
+        assert!(send(&sender, Event::AudioDisabled, &stopped)
+            .unwrap_err()
+            .contains("cancelled"));
+    });
+    drop(receiver);
+    stopped.store(false, Ordering::Release);
+    assert!(send(&sender, Event::AudioDisabled, &stopped)
+        .unwrap_err()
+        .contains("writer closed"));
 }

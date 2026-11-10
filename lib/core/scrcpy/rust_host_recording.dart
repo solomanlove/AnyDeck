@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'host_recording_backend.dart';
@@ -76,10 +77,14 @@ class RustHostRecording implements HostRecordingBackend {
         if (native.status(handle) >= 2) {
           _poll?.cancel();
           final error = native.error(handle);
+          if (error.isNotEmpty) {
+            debugPrint('[HostRecording] Recording failed: $error');
+          }
           if (!_exit.isCompleted) _exit.complete(error.isEmpty ? null : error);
         }
       });
     } catch (error) {
+      debugPrint('[HostRecording] Start failed: $error');
       cancel();
       // 不等待自己的 _starting，避免启动失败清理形成环形等待。
       await _cleanup();
@@ -106,7 +111,10 @@ class RustHostRecording implements HostRecordingBackend {
       /* 启动失败已清理。 */
     }
     final error = await _cleanup();
-    if (error != null) throw StateError(error);
+    if (error != null) {
+      debugPrint('[HostRecording] Stop failed: $error');
+      throw StateError(error);
+    }
   }
 
   Future<String?> _cleanup() async {

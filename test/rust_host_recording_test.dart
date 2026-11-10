@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:any_deck/core/scrcpy/rust_host_recording.dart';
 import 'package:any_deck/core/scrcpy/rust_recording_api.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 模拟原生状态机，验证 Dart 不会在 MP4 收尾之前报告保存成功。
@@ -102,12 +103,18 @@ void main() {
   });
 
   test('启动失败也清理原生资源并注销窗口跟踪', () async {
+    final messages = <String?>[];
+    final originalDebugPrint = debugPrint;
+    debugPrint = (String? message, {int? wrapWidth}) => messages.add(message);
+    addTearDown(() => debugPrint = originalDebugPrint);
     final native = _Native()
       ..state = 3
       ..failure = 'bad codec';
     final calls = <String>[];
     final recording = create(native, calls);
     await expectLater(recording.start(), throwsStateError);
+    expect(messages, contains(contains('[HostRecording] Start failed:')));
+    expect(messages.join('\n'), contains('bad codec'));
     expect(native.releases, 1);
     expect(calls, ['track:7', 'untrack:7']);
     await recording.stop();
