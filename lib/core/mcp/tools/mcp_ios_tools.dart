@@ -147,7 +147,7 @@ class McpIosTools {
       platforms: const {'ios'},
       name: 'ios_file_pull',
       category: 'file',
-      description: '从允许 AFC 访问的 App container 下载文件',
+      description: '从允许 AFC 访问的 App container 下载单个文件，localPath 为本机包含文件名的绝对保存路径',
       inputSchema: _fileSchema([
         'deviceId',
         'bundleId',
@@ -165,7 +165,12 @@ class McpIosTools {
           localPath: path,
         );
         if (!result.isSuccess) throw StateError(result.message);
-        return {'deviceId': udid, 'success': true};
+        return {
+          'deviceId': udid,
+          'success': true,
+          'localPath': path,
+          'byteLength': await File(path).length(),
+        };
       },
     ),
   ];

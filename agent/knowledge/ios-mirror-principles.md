@@ -143,7 +143,7 @@ iOS 在线设备开放“控制、应用、进程、文件、日志、截图”�
 截图页通过 `IosCommandService.captureScreenshot` 执行一次性截图，此前没有投屏入口中的镜像挂载恢复流程。未挂载时，go-ios 会返回 `DVTSecureSocketProxy` / `InvalidService` 或 `Developer Disk Image must be mounted`，页面直接展示失败。
 
 - `lib/core/ios/ios_screenshot_capture.dart` 独立承接截图恢复，复用 `IosCommandService.run` 的参数列表、超时和进程回收机制。
-- 先正常截图；只有明确的镜像未挂载或截图开发服务 `InvalidService` 错误才执行 `ios image auto --udid=<UDID>`，成功后重试截图一次。重试失败直接返回，不递归挂载。
+- 先正常截图；只有明确的镜像未挂载或截图开发服务 `InvalidService` 错误才执行 `ios image auto --udid=<UDID> --basedir=<绝对缓存目录>`，成功后重试截图一次。缓存路径由 `IosCommandService` 统一准备，避免 GUI 只读工作目录下创建 `./devimages` 失败。重试失败直接返回，不递归挂载；2026-11-10 iPhone 真机结果见 [MCP 架构第 10 节](adb-ai-mcp-server-architecture.md)。
 - 普通截图仍为 15 秒超时；镜像首次下载和挂载允许 5 分钟，超时由执行器终止进程。不会启动常驻 tunnel，也不会修改全局环境变量。
 - 同一个服务实例内按 UDID 共享进行中的截图 Future，避免连续截图或重复刷新并发挂载；结束或失败后移除记录，下一次可重新尝试。
 - 失败重试前删除旧输出；最终检查截图文件存在且非空，成功或异常均清理临时目录。

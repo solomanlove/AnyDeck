@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import '../adb/adb_result.dart';
 import 'ios_control_gateway.dart';
+import 'ios_developer_image_cache.dart';
 import '../process/tool_path_resolver.dart';
 import 'ios_app_info.dart';
 import 'ios_process_info.dart';
@@ -16,14 +17,19 @@ import 'ios_screenshot_fallback.dart';
 class IosCommandService {
   IosCommandService({
     String? executable,
+    Directory? developerImageCacheDirectory,
     void Function(String message, {String tag, String level})? onLog,
   }) : executable = executable ?? _resolveBinary(),
+       _developerImageCache = IosDeveloperImageCache(
+         directory: developerImageCacheDirectory,
+       ),
        _onLog = onLog;
 
   static const _defaultTimeout = Duration(seconds: 15);
   static const _transferTimeout = Duration(minutes: 5);
 
   final String executable;
+  final IosDeveloperImageCache _developerImageCache;
   final void Function(String message, {String tag, String level})? _onLog;
   late final _screenshotCapture = IosScreenshotCapture(
     run,
@@ -49,9 +55,10 @@ class IosCommandService {
     List<String> args, {
     Duration timeout = _defaultTimeout,
   }) async {
-    _onLog?.call('ios ${_displayArgs(args)}', tag: 'ios', level: 'I');
     Process? process;
     try {
+      args = await _developerImageCache.prepare(args);
+      _onLog?.call('ios ${_displayArgs(args)}', tag: 'ios', level: 'I');
       process = await Process.start(executable, args);
       final stdoutFuture = process.stdout
           .transform(const Utf8Decoder(allowMalformed: true))
@@ -95,6 +102,8 @@ class IosCommandService {
       );
     } on ProcessException catch (error) {
       return AdbResult(exitCode: 127, stdout: '', stderr: error.message);
+    } on FileSystemException catch (error) {
+      return AdbResult(exitCode: 1, stdout: '', stderr: error.toString());
     }
   }
 
@@ -157,15 +166,52 @@ class IosCommandService {
     required String bundleId,
     required String remotePath,
     required String localPath,
-  }) {
-    return run([
-      'fsync',
-      '--app=$bundleId',
-      'pull',
-      '--srcPath=$remotePath',
-      '--dstPath=$localPath',
-      '--udid=$udid',
-    ], timeout: _transferTimeout);
+  }) async {
+    Directory? temporary;
+    try {
+      final name = remotePath.split('/').last;
+      if (name.isEmpty ||
+          name == '.' ||
+          name == '..' ||
+          (Platform.isWindows && name.contains('\\')) ||
+          await Directory(localPath).exists()) {
+        return const AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: 'Expected a single file and a local file destination',
+        );
+      }
+      final destination = File(localPath).absolute;
+      await destination.parent.create(recursive: true);
+      // go-ios 的 dstPath 是目录。先下载至同一文件系统的临时目录，确认
+      // 真实文件存在后原子重命名，避免将“另存为”的完整文件名建成目录。
+      temporary = await destination.parent.createTemp('.anydeck-ios-pull-');
+      final result = await run([
+        'fsync',
+        '--app=$bundleId',
+        'pull',
+        '--srcPath=$remotePath',
+        '--dstPath=${temporary.path}',
+        '--udid=$udid',
+      ], timeout: _transferTimeout);
+      if (!result.isSuccess) return result;
+      final downloaded = File('${temporary.path}/$name');
+      if (!await downloaded.exists()) {
+        return const AdbResult(
+          exitCode: 1,
+          stdout: '',
+          stderr: 'go-ios did not produce the requested single file',
+        );
+      }
+      await downloaded.rename(destination.path);
+      return result;
+    } on FileSystemException catch (error) {
+      return AdbResult(exitCode: 1, stdout: '', stderr: error.toString());
+    } finally {
+      try {
+        await temporary?.delete(recursive: true);
+      } on FileSystemException catch (_) {}
+    }
   }
 
   Future<Process> startSyslog(String udid) {

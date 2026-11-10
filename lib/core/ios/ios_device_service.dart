@@ -7,6 +7,7 @@ import '../adb/adb_result.dart';
 import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 import 'ios_device_identity.dart';
+import 'ios_command_service.dart';
 import 'ios_connection_type.dart';
 import 'ios_usb_mirror_service.dart';
 
@@ -163,7 +164,12 @@ class IosDeviceService {
     final exe = _resolveBinary();
     _onLog?.call('正在为 iOS 设备挂载开发者镜像: $exe image auto --udid=$udid', tag: 'ios', level: 'I');
     try {
-      final result = await Process.run(exe, ['image', 'auto', '--udid=$udid']).timeout(const Duration(seconds: 45));
+      // 与截图、WDA 共用绝对缓存路径和超时进程回收，不依赖桌面启动目录。
+      final commands = IosCommandService(executable: exe, onLog: _onLog);
+      final result = await commands.run(
+        ['image', 'auto', '--udid=$udid'],
+        timeout: const Duration(minutes: 5),
+      );
       final combined = '${result.stdout}\n${result.stderr}';
       if (combined.contains('DeviceLocked') ||
           combined.contains('failed to read response for \'ReceiveBytes\'') ||
@@ -177,7 +183,7 @@ class IosDeviceService {
       }
       
       // 检查挂载结果
-      final listRes = await Process.run(exe, ['image', 'list', '--udid=$udid']);
+      final listRes = await commands.run(['image', 'list', '--udid=$udid']);
       final listOut = listRes.stdout.toString();
       if (listRes.exitCode == 0 && !listOut.contains('"none"') && !listOut.contains('[]')) {
         _onLog?.call('开发者镜像挂载成功', tag: 'ios', level: 'I');

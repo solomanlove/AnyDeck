@@ -192,3 +192,32 @@ xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner -configuration Deb
 
 - 对该临时产物使用项目 Debug entitlements 进行本地 ad hoc 签名并通过 deep/strict 验签，实际启动后检查 AI MCP 页面：三平台配置、34 个工具、默认收起及展开、iOS 平台筛选通过。临时实例已退出。未在页面修改端口、启停真实服务、轮换凭据或改变工具权限；8765 已由另一实例占用时显示启动失败的真实错误，未中止现有实例。
 - 用户确认暂时没有 iPhone，iOS 设备侧验收继续保留；当前结论只证明自动路由、协议互操作、UI 与编译，不代表 iPhone 上 WDA/IPA/AFC/进程/syslog 已验收。
+
+## 10. iPhone 真机续验与开发者镜像缓存（2026-11-10）
+
+- 用户连接“66的 iPhone”后恢复验收；目标为 iPhone X / iOS 16.7.16。存在另一台 iPhone 时，所有设备命令始终指定目标 UDID，不切换设备。
+- 已通过真实 MCP：设备详情、应用枚举（安装 WDA 前 207 个应用）、syslog 最多 10 行采样、1125 × 2436 PNG 截图、45 个进程读取。WDA 未启动时状态如实返回 `ready=false`，geometry 返回不可用错误。
+- 真机复现截图恢复失败：GUI 工作目录只读，go-ios `image auto` 默认创建 `./devimages`。新增 `IosDeveloperImageCache`，由 `IosCommandService.run` 在自动挂载前创建绝对缓存并传入 `--basedir`；截图和 WDA 无需分别拼接路径。显式传入的 `--basedir` 保持原样，普通命令不创建缓存。
+- macOS 缓存为 `~/Library/Caches/AnyDeck/ios/devimages`；Windows 使用 `LOCALAPPDATA`，Linux 使用 `XDG_CACHE_HOME` 或 `~/.cache`，缺失时回退系统临时目录。路径以单独参数传递，支持空格，不修改进程级工作目录。
+- `IosDeviceService.mountDeveloperImage` 的挂载和结果查询同时改用上述短命令执行器：下载允许五分钟，查询保留默认超时，超时会终止/必要时强杀子进程。缓存创建异常返回失败，不启动 CLI。
+- 首次镜像下载因网络超时留下不完整文件；本次重新下载完整镜像，使用 `hdiutil verify` 校验后替换本次失败的缓存。目标解锁、开启 Developer Mode 后挂载成功；锁屏返回 `PasswordProtected`，不视为挂载成功。go-ios 的零退出码不能覆盖日志中的 ERROR。
+- 自动回归：缓存、单文件下载、截图、WDA 宿主/生命周期/超时恢复、命令解析、平台工具和 iOS 路由合计 42 项通过；六个变更 Dart 文件定向 analyze 无问题。缓存回归包含真实子进程从 `/` 运行、空格路径、显式缓存参数和缓存创建失败。
+- AFC 实测发现 go-ios 的 `--dstPath` 表示目标目录，直接传入“另存为”的完整路径会生成同名目录。`pullFile` 现在在保存位置的父目录下建立临时目录，命令完成后确认真实单文件存在，再原子重命名至指定文件名；命令失败或产物缺失时保留旧文件，finally 清理临时目录。目录下载明确拒绝，空文件合法。MCP 说明明确 `localPath` 需含文件名，成功结果返回实际路径和 `byteLength`。
+
+### 设备侧验收结果与边界
+
+| 项目 | 实测证据 |
+| --- | --- |
+| WDA 部署 | 使用用户指定的 Team，通过定向设备 provisioning 构建，Runner 安装完成；首次 generic 构建的 profile 未包含目标设备，不能据此声称安装成功 |
+| WDA 状态与坐标 | 真实会话 `ready=true`，375 × 812 point、PORTRAIT；对应 1125 × 2436 截图，两个方向均为 3 倍换算 |
+| 布局与点击 | MCP 返回 Accessibility XML；点击桌面搜索后，截图和 XML 均显示搜索输入框；使用 UI Tree 中清除按钮的 point 边界执行点击 |
+| 文本输入 | 输入 `AnyDeck MCP 验收`，截图与输入框 XML `value` 均精确匹配；随后清除测试文本 |
+| 滑动与 Home | 设置页滑动前后截图确认内容位置变化；从设置页调用 Home 后，截图确认返回桌面。Spotlight 已属于 SpringBoard 时，WDA homescreen 不保证收起搜索覆盖层 |
+| IPA 安装 | 将已完成目标设备签名的 Runner 打包为 IPA，通过真实 MCP `ios_install_ipa` 重装成功；再次枚举确认目标 Bundle ID 存在 |
+| AFC | 仅访问本次安装的 Runner container。上传后设备端目录可见；修复后的下载落到指定本地文件，42 字节，两端 SHA-256 均为 `52fb77ccec25f65ddbf14c9fa346ebb5e978b5db289bca0af641d2cf3e3da578`；临时目录无残留，远端测试文件已移除 |
+
+- 交互与修复后的文件下载通过临时、鉴权、loopback 的真实 `/mcp/ios` 服务验证，复用产品 registry、CLI 与 `IosWdaHost`；仅在验收宿主中把 Flutter MethodChannel 桥接替换为直接调用宿主，不 Mock 设备响应。初次临时宿主误用了 Widget test 的 HTTP 拦截，移除该测试环境拦截后通过；这不是产品网络故障。
+- 验收结束关闭临时 MCP listener、WDA CLI 和 USB proxy，保留签名 Runner 供后续使用。未替换正在运行的 `/Applications/AnyDeck.app`；代码修复需重新构建安装后生效。
+- 本轮覆盖 iOS 16.7.16 竖屏；iOS 17+ tunnel、横竖屏切换、锁屏控制、音量及用户 App 卸载未验收。WDA 状态查询仍不会隐式启动 Runner。
+
+CLI 参数依据：[go-ios image auto](https://github.com/danielpaulus/go-ios/blob/main/main.go)。

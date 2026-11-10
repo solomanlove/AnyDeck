@@ -74,7 +74,7 @@
 启动顺序：
 
 1. 查询已安装应用；自动选择唯一名称包含 `WebDriverAgent` 且 Bundle ID 以 `.xctrunner` 结束的 Runner。找不到或不唯一均报前置条件错误，不猜测设备/Runner。底层允许显式 `bundleId`。
-2. `ios image auto --udid=<UDID>` 准备 Developer Disk Image（60 秒超时）；iOS 15 XCTest 需要它。
+2. `ios image auto --udid=<UDID> --basedir=<绝对缓存目录>` 准备 Developer Disk Image（WDA 启动链路 60 秒超时）；由 `IosCommandService` 统一准备可写缓存，iOS 15 XCTest 需要它。
 3. 分配动态本地端口，用 `iproxy --source 127.0.0.1 --local --udid <UDID> <port>:8100` 转发。源码核对发现 go-ios v1.2.0 的 `forward` 固定绑定 `0.0.0.0`，因此不用于本轮桌面转发。
 4. 先经 iproxy 短探测 `/status`（单次 500 ms、探测窗口约 2 秒），若 `value.ready=true` 则复用已运行的 WDA；否则执行 `ios runwda --bundleid=<RunnerID> --testrunnerbundleid=<RunnerID> --xctestconfig=WebDriverAgentRunner.xctest --udid=<UDID>` 启动测试 Runner。
 5. 轮询 `/status`，创建 `/session`，读取 point 窗口尺寸与方向；以上成功才标记“控制已就绪”。
