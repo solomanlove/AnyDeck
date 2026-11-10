@@ -8,6 +8,7 @@
 
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
+| `adb-macos-debug-destination` | macOS Debug arm64e 目标兼容 | active | generic destination、本机 SDK 可恢复修复、规范宿主架构与 Debug 构建验证 | `macos/`, `script/` |
 | `adb-rust-host-recording` | Rust 电脑本地音视频录制 | active | 内置 server 4.0、H.264/AAC MP4、三个录制入口、收尾/取消与有界缓存、测试和真机边界 | `rust/device_bridge/src/recording/`, `lib/core/scrcpy/`, `features/screenshot/` |
 | `adb-honor-share-poc` | 荣耀互传独立 PoC | experimental | 私有 CLI 发现/加密会话、实验收发、4秒释放窗口修正、手机落盘未确认及暂停恢复边界 | 私有 `AnyDeck-Share-Core` |
 | `adb-macos-dual-architecture` | macOS 双架构构建发布 | active | 原生 arm64/x86_64 matrix、私有制品锁定、安装包与 helper 验证、发布合并与官网入口 | `.github/workflows/`, `macos/`, `script/` |

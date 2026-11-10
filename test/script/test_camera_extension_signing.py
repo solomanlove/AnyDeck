@@ -94,6 +94,17 @@ class CameraExtensionSigningTests(unittest.TestCase):
                 self.assertEqual(target['buildSettings']['ARCHS'], architecture)
                 self.assertEqual(target['buildSettings']['CODE_SIGN_IDENTITY'], '-')
 
+    def test_host_subarchitecture_does_not_leak_into_build_architecture(self):
+        # 模拟 arm64e 宿主及 Intel，确保三个配置仍使用 Flutter/Rust 支持的架构。
+        for configuration in CONFIGURATIONS:
+            for native, architecture in (('arm64e', 'arm64'), ('x86_64', 'x86_64')):
+                with self.subTest(configuration=configuration, native=native):
+                    arguments = ['-target', 'Runner', '-showBuildSettings', '-json',
+                                 f'NATIVE_ARCH_ACTUAL={native}',
+                                 f'NATIVE_ARCH_64_BIT={architecture}']
+                    targets = json.loads(self.xcodebuild(configuration, arguments))
+                    self.assertEqual(targets[0]['buildSettings']['ARCHS'], architecture)
+
 
 if __name__ == "__main__":
     unittest.main()

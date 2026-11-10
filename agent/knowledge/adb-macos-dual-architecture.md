@@ -6,7 +6,7 @@
 
 ## 构建链路
 
-- Xcode 的三个项目配置默认使用 `$(NATIVE_ARCH_ACTUAL)`，不再固定 arm64。CocoaPods 默认跟随宿主，也接受 `ANYDECK_TARGET_ARCH`。
+- Xcode 的三个项目配置默认使用 `$(NATIVE_ARCH_64_BIT)`，不固定 arm64，并避免 arm64e 子架构进入产物配置。CocoaPods 默认跟随宿主，也接受 `ANYDECK_TARGET_ARCH`。Debug 的 SDK destination 兼容处理见 [macOS Debug 目标兼容](adb-macos-debug-destination.md)。
 - Actions matrix 在 `macos-15` 和 `macos-15-intel` 分别构建。设置 `FLUTTER_XCODE_ARCHS` 显式传递单一架构，关闭 SDK 的 arm64-only feature flag，避免 Intel Release 被覆盖成 arm64。
 - Rust bridge 与 APK helper 使用既有 aarch64/x86_64 target 路由；每个 Runner 使用本架构的 OpenSSL/libplist。
 - Share Core 私有仓库构建 Intel 制品，检查所有 helper 和 OpenSSL 的 x86_64 slice、签名，执行 IPC hello 与真实双向 loopback 互传。主仓库只读取固定 commit 下的两个 ZIP，分别校验 SHA-256。
