@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:any_deck/core/nearby_share/share_history_database.dart';
 import 'package:any_deck/core/nearby_share/share_transfer_history.dart';
+import 'package:any_deck/core/nearby_share/share_transfer_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -23,11 +24,13 @@ void main() {
       expect(history.recent.single.fileCount, 1);
       expect(history.recent.single.progressKnown, isFalse);
       expect(history.recent.single.fileIndex, isNull);
+      expect(history.recent.single.protocol, ShareTransferProtocol.huawei);
       final id = history.incoming(
         address: '1.2.3.4',
         name: 'peer',
         bytes: 7,
         fileCount: 2,
+        protocol: ShareTransferProtocol.honor,
       );
       final files = [
         for (var i = 0; i < 2; i++)
@@ -43,6 +46,8 @@ void main() {
       expect((await db.batchFiles(id)).length, 2);
       expect((await db.batchFiles(id)).map((file) => file.fileIndex), [0, 1]);
       expect((await db.batchFiles(id)).every((file) => file.progressKnown), isTrue);
+      expect((await db.batchFiles(id)).every((file) => file.protocol == ShareTransferProtocol.honor), isTrue);
+      expect((await db.query()).firstWhere((record) => record.id == id).protocol, ShareTransferProtocol.honor);
       expect((await db.query(search: 'file-0')).single.batchId, id);
       await db.remove(id);
       expect((await db.query()).single.id, 'old');

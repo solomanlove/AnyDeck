@@ -23,10 +23,14 @@ part 'harmony_share_discovery_state.dart';
 
 /// 展示给用户的来件摘要；协议内容不进入主仓库。
 class ShareIncomingOffer {
-  const ShareIncomingOffer(this.address, this.bytes, {this.fileCount = 1});
+  const ShareIncomingOffer(this.address, this.bytes, {
+    this.fileCount = 1,
+    this.protocol = ShareTransferProtocol.huawei,
+  });
   final int fileCount;
   final InternetAddress address;
   final int bytes;
+  final ShareTransferProtocol protocol;
 }
 
 /// 主窗口唯一收发服务；页面切换不停止监听。
@@ -86,6 +90,8 @@ class HarmonyShareService extends ChangeNotifier {
   final ShareTransferHistory? history;
   String? _incomingHistoryId;
   final Map<String, ShareCorePeer> peers = {};
+  ShareCorePeer? peerFor(String address, {ShareTransferProtocol protocol = ShareTransferProtocol.huawei}) =>
+      peers[protocol.peerKey(address)];
   final List<String> recent = [];
   static const _recentKey = 'harmony_share_recent_paths';
   ShareIncomingOffer? pendingOffer;

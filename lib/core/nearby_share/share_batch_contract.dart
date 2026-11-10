@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'share_core_contract.dart';
 import 'share_local_name.dart';
+import 'share_transfer_protocol.dart';
 
 /// IPC 3 批次契约；实际批次能力由已校验的原生制品和服务接线共同提供。
 abstract final class ShareBatchContract {
@@ -65,16 +66,19 @@ class ShareBatchRequest {
     required String localIp,
     required String peerIp,
     required int port,
+    ShareTransferProtocol protocol = ShareTransferProtocol.huawei,
   }) {
     if (InternetAddress.tryParse(localIp)?.type != InternetAddressType.IPv4 ||
         InternetAddress.tryParse(peerIp)?.type != InternetAddressType.IPv4 ||
         port < 1 ||
-        port > 65535) {
+        port > 65535 ||
+        (protocol == ShareTransferProtocol.honor && port != 5700)) {
       throw const FormatException('Invalid batch peer');
     }
     final value = <String, Object>{
       'version': ShareBatchContract.version,
       'command': 'send_batch_experimental',
+      'protocol': protocol.name,
       'local_name': localName,
       'local_ip': localIp,
       'peer_ip': peerIp,

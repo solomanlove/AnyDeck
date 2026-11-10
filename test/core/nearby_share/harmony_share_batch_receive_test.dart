@@ -59,6 +59,54 @@ Future<void> until(bool Function() condition) async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  test('双协议发现同IP各自保留，Honor来件按协议读取名称并保存历史', () async {
+    final root = await Directory.systemTemp.createTemp('share-honor-receive-');
+    final history = ShareTransferHistory(open: () async => ShareHistoryDatabase('${root.path}/history.sqlite'));
+    final client = _Client();
+    final service = HarmonyShareService.testing(client: client, nativeBatch: true, history: history,
+      downloads: () async => root,
+      detectNetwork: () async => ShareNetwork(InternetAddress('192.0.2.1'), InternetAddress('192.0.2.255')));
+    try {
+      await service.start();
+      client.receiver.controller.add({'event': 'device', 'ip': '192.0.2.2', 'port': 44800, 'name': 'Huawei phone'});
+      client.receiver.controller.add({'event': 'device', 'ip': '192.0.2.2', 'port': 5700, 'name': 'HONOR phone', 'protocol': 'honor'});
+      client.receiver.controller.add({'event': 'session_started', 'protocol': 'honor'});
+      client.receiver.controller.add({'event': 'incoming_batch', 'ip': '192.0.2.2', 'file_count': 1,
+        'total_bytes': 1024, 'protocol': 'honor'});
+      await until(() => service.pendingOffer != null);
+      expect(service.peers.length, 2);
+      expect(service.peerFor('192.0.2.2')!.name, 'Huawei phone');
+      expect(service.pendingOffer!.protocol, ShareTransferProtocol.honor);
+      expect(history.recent.single.deviceName, 'HONOR phone');
+      expect(history.recent.single.protocol, ShareTransferProtocol.honor);
+      service.decide(false);
+      await history.flush();
+      expect(history.recent.single.status, ShareTransferStatus.rejected);
+    } finally {
+      await service.stop(); await history.flush(); service.dispose(); history.dispose();
+      await client.receiver.controller.close(); await root.delete(recursive: true);
+    }
+  });
+  for (final protocol in [null, true, 'unknown']) {
+    test('拒绝显式非法来件协议 $protocol，不显示确认或伪造设备来源', () async {
+      final root = await Directory.systemTemp.createTemp('share-invalid-protocol-');
+      final client = _Client();
+      final service = HarmonyShareService.testing(client: client, nativeBatch: true,
+        downloads: () async => root,
+        detectNetwork: () async => ShareNetwork(InternetAddress('192.0.2.1'), InternetAddress('192.0.2.255')));
+      try {
+        await service.start();
+        client.receiver.controller.add({'event': 'incoming_batch', 'ip': '192.0.2.2',
+          'file_count': 1, 'total_bytes': 1024, 'protocol': protocol});
+        await until(() => client.receiver.decisions.isNotEmpty);
+        expect(client.receiver.decisions, [false]);
+        expect(service.pendingOffer, isNull);
+      } finally {
+        await service.stop(); service.dispose(); await client.receiver.controller.close();
+        await root.delete(recursive: true);
+      }
+    });
+  }
   for (final reason in [
     'direct_network_restore_failed',
     'direct_network_restore_pending',

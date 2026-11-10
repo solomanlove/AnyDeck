@@ -5,6 +5,7 @@ import 'share_batch_contract.dart';
 import 'share_batch_sessions.dart';
 import 'share_core_sessions.dart';
 import 'share_local_name.dart';
+import 'share_transfer_protocol.dart';
 
 /// 通用批次 IPC 调用边界；probe/launch 可注入离线进程测试，失败时回收已启动进程。
 class ShareBatchClient {
@@ -18,11 +19,13 @@ class ShareBatchClient {
     required InternetAddress local,
     required InternetAddress peer,
     required int port,
+    ShareTransferProtocol protocol = ShareTransferProtocol.huawei,
   }) async {
     final value = request.request(
       localIp: local.address,
       peerIp: peer.address,
       port: port,
+      protocol: protocol,
     );
     await probe();
     final process = await launch();

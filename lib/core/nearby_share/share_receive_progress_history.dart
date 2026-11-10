@@ -49,6 +49,7 @@ extension _ShareReceiveProgressHistory on ShareTransferHistory {
       status: summary.status,
       deviceName: summary.deviceName,
       address: summary.address,
+      protocol: summary.protocol,
       fileName: '',
       bytes: progress.totalBytes,
       transferredBytes: progress.bytes,

@@ -9,6 +9,7 @@ import 'share_batch_contract.dart';
 import 'share_history_writer.dart';
 import 'share_file_progress.dart';
 import 'share_core_contract.dart';
+import 'share_transfer_protocol.dart';
 
 part 'share_receive_progress_history.dart';
 
@@ -91,6 +92,7 @@ class ShareTransferHistory extends ChangeNotifier {
           deviceName: item.peer.name,
           address: item.peer.address.address,
           port: item.peer.port,
+          protocol: item.peer.protocol,
           fileName: item.file.name,
           path: item.file.file.path,
           bytes: item.file.bytes,
@@ -137,6 +139,7 @@ class ShareTransferHistory extends ChangeNotifier {
       deviceName: first.peer.name,
       address: first.peer.address.address,
       port: first.peer.port,
+      protocol: first.peer.protocol,
       fileName: batch.items.length == 1 ? first.file.name : '',
       path: batch.items.length == 1 ? first.file.file.path : null,
       bytes: batch.bytes,
@@ -187,6 +190,7 @@ class ShareTransferHistory extends ChangeNotifier {
           deviceName: summary.deviceName,
           address: summary.address,
           port: summary.port,
+          protocol: summary.protocol,
           fileName: item.file.name,
           path: item.file.file.path,
           bytes: item.file.bytes,
@@ -206,6 +210,7 @@ class ShareTransferHistory extends ChangeNotifier {
     required String name,
     required int bytes,
     int fileCount = 1,
+    ShareTransferProtocol protocol = ShareTransferProtocol.huawei,
   }) {
     final id =
         'receive-${DateTime.now().microsecondsSinceEpoch}-${_sequence++}';
@@ -215,6 +220,7 @@ class ShareTransferHistory extends ChangeNotifier {
       status: ShareTransferStatus.awaitingAcceptance,
       deviceName: name,
       address: address,
+      protocol: protocol,
       fileName: '',
       fileCount: fileCount,
       bytes: bytes,
@@ -279,6 +285,7 @@ class ShareTransferHistory extends ChangeNotifier {
         ShareTransferRecord(id: '${previous.id}-${index.toString().padLeft(3,'0')}',
           direction: ShareTransferDirection.receive, status: ShareTransferStatus.succeeded,
           deviceName: previous.deviceName, address: previous.address,
+          protocol: previous.protocol,
           fileName: files[index]['path'].toString().split('/').last, path: files[index]['path'] as String,
           bytes: files[index]['bytes'] as int, transferredBytes: files[index]['bytes'] as int,
           progressKnown: true, fileIndex: index,

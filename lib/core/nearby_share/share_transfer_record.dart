@@ -1,3 +1,5 @@
+import 'share_transfer_protocol.dart';
+
 /// 互传记录只保存元数据，不保存文件内容或底层协议资料。
 enum ShareTransferDirection { send, receive }
 
@@ -35,6 +37,7 @@ class ShareTransferRecord {
     this.batchId,
     this.progressKnown = false,
     this.fileIndex,
+    this.protocol = ShareTransferProtocol.huawei,
   });
   final String id;
   final ShareTransferDirection direction;
@@ -58,6 +61,8 @@ class ShareTransferRecord {
   final bool progressKnown;
   /// 未获得文件名的接收子项仍保留确认后稳定的顺序。
   final int? fileIndex;
+  /// 用于重新发现和重试路由；缺少字段的历史记录沿用Huawei。
+  final ShareTransferProtocol protocol;
   bool get terminal => switch (status) {
     ShareTransferStatus.queued ||
     ShareTransferStatus.preparing ||
@@ -101,6 +106,7 @@ class ShareTransferRecord {
     batchId: batchId,
     progressKnown: progressKnown ?? this.progressKnown,
     fileIndex: fileIndex,
+    protocol: protocol,
   );
 
   Map<String, Object?> toMap() => {
@@ -123,6 +129,7 @@ class ShareTransferRecord {
     'batch_id': batchId,
     'progress_known': progressKnown ? 1 : 0,
     'file_index': fileIndex,
+    'protocol': protocol.name,
   };
   factory ShareTransferRecord.fromMap(Map<String, Object?> value) =>
       ShareTransferRecord(
@@ -151,5 +158,6 @@ class ShareTransferRecord {
         batchId: value['batch_id'] as String?,
         progressKnown: value['progress_known'] == 1,
         fileIndex: value['file_index'] as int?,
+        protocol: ShareTransferProtocol.fromMap(value),
       );
 }

@@ -84,6 +84,19 @@ void main() {
     'total_bytes': 1073741825,
     'remote_hash_verified': false,
   };
+  test('Honor批次协议贯穿IPC，兼容Huawei默认值不覆盖显式选择', () async {
+    final process = _Process();
+    final client = ShareBatchClient(probe: () async {}, launch: () async => process);
+    final transfer = await client.send(request: request(), local: InternetAddress('192.0.2.1'),
+      peer: InternetAddress('192.0.2.2'), port: 5700, protocol: ShareTransferProtocol.honor);
+    final message = jsonDecode(utf8.decode(process.written)) as Map;
+    expect(message['protocol'], 'honor');
+    expect(message['port'], 5700);
+    expect(message['command'], 'send_batch_experimental');
+    process.emit(sent());
+    await process.finish();
+    expect((await transfer.result)['file_count'], 2);
+  });
   test('跨 1 GiB 进度不代替终态，完整成功优先于迟到取消', () async {
     final process = _Process();
     final transfer = ShareBatchTransfer(process, request());

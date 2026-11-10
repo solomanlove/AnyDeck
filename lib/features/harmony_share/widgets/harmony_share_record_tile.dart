@@ -126,6 +126,7 @@ class HarmonyShareRecordDetailsDialog extends StatelessWidget {
         [
           formatShareRecordName(record, context.l10n.t),
           '${record.deviceName} · ${record.address}',
+          context.l10n.t('harmonyShareProtocol_${record.protocol.name}'),
           context.l10n.t('harmonyShareDirection_${record.direction.name}'),
           record.batchId != null && !record.progressKnown && record.status != ShareTransferStatus.succeeded
               ? '${formatShareBytes(record.bytes)} · ${context.l10n.t('harmonyShareFileProgressUnknown')}'

@@ -7,6 +7,7 @@ import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:any_deck/core/nearby_share/share_send_selection.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_queue_panel.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
+import 'package:any_deck/features/harmony_share/widgets/harmony_share_peer_avatar.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_drop_target.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
@@ -68,9 +69,9 @@ void main() {
     ]);
   });
 
-  testWidgets('多设备中央拖放不猜测目标', (tester) async {
+  testWidgets('双协议多设备拖放仅发送到明确的目标头像', (tester) async {
     var invalid = false;
-    var sent = false;
+    ShareCorePeer? sent;
     await tester.pumpWidget(
       host(
         SingleChildScrollView(
@@ -79,24 +80,26 @@ void main() {
               peer,
               ShareCorePeer(
                 address: InternetAddress('192.168.1.4'),
-                port: 44800,
+                port: 5700,
                 name: 'other',
+                protocol: ShareTransferProtocol.honor,
               ),
             ],
             enabled: true,
             busy: false,
             onPick: (_) {},
-            onDrop: (_, _) => sent = true,
+            onDrop: (target, _) => sent = target,
             onInvalidDrop: () => invalid = true,
           ),
         ),
       ),
     );
-    tester.widgetList<DropTarget>(find.byType(DropTarget)).last.onDragDone!(
-      drop,
-    );
-    expect(sent, isFalse);
-    expect(invalid, isTrue);
+    final target = find.byWidgetPredicate((widget) => widget is HarmonySharePeerAvatar &&
+      widget.state.peer.protocol == ShareTransferProtocol.honor);
+    tester.widget<DropTarget>(find.descendant(of: target, matching: find.byType(DropTarget))).onDragDone!(drop);
+    expect(sent?.protocol, ShareTransferProtocol.honor);
+    expect(sent?.address.address, '192.168.1.4');
+    expect(invalid, isFalse);
   });
 
   testWidgets('拖入高亮仅更新当前区域，禁用后不接受拖放', (tester) async {

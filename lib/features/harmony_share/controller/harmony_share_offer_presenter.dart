@@ -42,7 +42,7 @@ class HarmonyShareOfferPresenter {
         builder: (_) => HarmonyShareConfirmDialog(
           receiving: true,
           device:
-              service.peers[offer.address.address]?.name ??
+              service.peerFor(offer.address.address, protocol: offer.protocol)?.name ??
               offer.address.address,
           summary: root.l10n.t('harmonyShareSelectionSummary').replaceAll('{count}', '${offer.fileCount}').replaceAll('{size}', formatShareBytes(offer.bytes)),
         ),

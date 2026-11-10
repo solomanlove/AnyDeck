@@ -13,6 +13,9 @@ class ShareOfferTestService extends ChangeNotifier
   ShareIncomingOffer? pendingOffer;
   @override
   final Map<String, ShareCorePeer> peers = {};
+  @override
+  ShareCorePeer? peerFor(String address, {ShareTransferProtocol protocol = ShareTransferProtocol.huawei}) =>
+      peers[protocol.peerKey(address)];
   final decisions = <bool>[];
   final expiredOffers = <ShareIncomingOffer>[];
   bool get expired => expiredOffers.isNotEmpty;

@@ -145,7 +145,7 @@ class _HarmonyShareDashboardTabState extends State<HarmonyShareDashboardTab> {
   }
 
   Future<void> _retryRecord(ShareTransferRecord record) async {
-    final peer = _service.peers[record.address];
+    final peer = _service.peerFor(record.address, protocol: record.protocol);
     if (!_service.canSelectFiles ||
         peer == null ||
         peer.name != record.deviceName ||

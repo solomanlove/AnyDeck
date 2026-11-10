@@ -51,6 +51,13 @@ void main() {
             'harmonySharePeerRejected',
         StateError('Share Core send_failed: transfer dfile_timeout'):
             'harmonyShareOperationTimedOut',
+        StateError('Share Core send_failed: honor honor_transfer_failed'):
+            'harmonyShareHonorFailed',
+        'receive_failed: honor honor_transfer_failed': 'harmonyShareHonorFailed',
+        'send_failed: honor user_rejected': 'harmonySharePeerRejected',
+        'receive_failed: user_rejected': 'harmonyShareStatus_rejected',
+        'receive_failed: peer_cancelled': 'harmonyShareStatus_cancelled',
+        'send_failed: honor cancelled': 'harmonyShareStatus_cancelled',
         StateError('Share Core send_failed: prepare invalid_files'):
             'harmonyShareFileUnavailable',
         'receive_failed: decision_timeout': 'harmonyShareOperationTimedOut',

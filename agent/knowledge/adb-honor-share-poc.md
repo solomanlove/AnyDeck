@@ -1,6 +1,22 @@
-# AnyDeck 荣耀互传 PoC
+# AnyDeck 荣耀文件互传
 
-## 当前结果（2026-11-10）
+## Rust Core 与统一 UI（2026-11-10）
+
+本轮需求为把荣耀分享接入私有 Rust Core，复用 AnyDeck 现有互传 UI，与华为/鸿蒙分享使用同一入口。Core 升级为 0.4.0 / IPC 3；页面和侧栏统一显示“文件互传”，同时发现、发送和接收两种协议。协议实现只在私有仓库，本仓库仅保存通用 IPC、UI 与记录模型。
+
+- `ShareTransferProtocol` 白名单为 `huawei` / `honor`；旧事件和旧记录缺字段时默认 Huawei，显式未知值拒绝。设备 key、来件、队列、重试及历史均保留协议，同一 IP 不会覆盖另一种协议的设备。荣耀发送在启动前检查 Core 的 `experimental.honor` 能力。
+- SQLite 原地补充 `protocol` 列，旧记录迁移为 Huawei；批次摘要和子记录沿用同一协议。发送继续使用既有选择/拖放、队列、真实进度、取消和历史，接收继续通过现有确认弹窗/系统通知；不增加独立品牌页面或第二套服务。
+- 设备头像显示协议标签，帮助、通知及错误覆盖华为、荣耀和 AnyDeck 电脑；中英文和 Light/Dark 复用现有 l10n 与 Theme。沿用既有类名、Route、MethodChannel 和设置键，不作无关命名迁移。
+- 统一接收器只向首个实际连接的协议移交唯一 stdin 确认器。高速模式继续沿用 Huawei BLE/P2P，荣耀保持 LAN，不自动切 Wi-Fi；BLE 启动失败仍遵循既有失败语义。发现端口被原荣耀互联占用时给出明确提示。
+- Rust 运行不再依赖 Python、原荣耀互联 App 或本机安装制品。双架构制品继续使用原六成员 manifest、签名和 zip SHA-256 校验；IPC 版本仍为 3，生产 send/receive 能力仍为 false，荣耀通过实验能力单独声明。
+
+本轮 Rust Core 对荣耀 Magic V6（Android 17/API 37）完成发送、手机实际目录独立读回及系统荣耀分享回传，1025 B 文本三份 SHA-256 一致。ADB 只用于设备定位、UI 操作和独立读回，不承载互传数据。该结果与下方历史 Python CLI PoC 分开计数。
+
+自动回归覆盖协议白名单/旧制品门控、同 IP 双协议、历史迁移/重试、来件及明暗/双语 Widget；私有原生回归覆盖多文件 Unicode/长 emoji 文件名、拒绝、取消 ACK、KeepAlive、独立传输期限、无半批发布和子进程回收。各架构使用实际 Rust 与 native DFile 互操作，Huawei 桌面对传链路单独回归。命令与最终结果见 [集成边界](huawei-share-core-integration.md)。
+
+Debug App 构建、整包签名/嵌入 Core 校验及实际统一入口、旧历史读取、双协议接收待机验证通过；接收开关已恢复开启。构建后的 UI 未另跑一轮手机收发，协议路由与确认由自动回归覆盖。当前真机验收限定这台 Magic V6 的 Rust Core 单文件；多文件和异常路径为自动互操作测试，Intel 在 Rosetta 执行，不等于所有荣耀机型/版本或实体 Intel Mac 均通过。荣耀账号绑定、可信设备、P2P 切网及大文件真机矩阵仍待扩充。私有实现与测试详见 `docs/honor-core-integration.md`。
+
+## 历史 CLI PoC 结果（2026-11-10）
 
 用户继续验证后，**单个1KiB文本的荣耀分享双向PoC已通过真机验收**，目标为荣耀Magic V6（Android17/API37）。协议实现仍只在私有Core仓库，尚未接入AnyDeck产品UI或发布新Core制品。
 

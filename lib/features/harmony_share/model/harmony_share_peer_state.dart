@@ -37,7 +37,7 @@ class HarmonySharePeerState {
 
   // 名称一起参与匹配，避免同 IP 被另一台手机占用时继承旧发送状态。
   static String identity(ShareCorePeer peer) =>
-      '${peer.address.address}\n${peer.name}';
+      '${peer.protocol.name}\n${peer.address.address}\n${peer.name}';
 
   /// 当前活动批次优先，其次待发，最后才是该设备最近一次批次结果。
   /// 重新发现的端口优先用于操作；保留离线任务头像，但禁止用旧端口发起新发送。

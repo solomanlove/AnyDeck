@@ -23,6 +23,10 @@ String formatShareError(String error, String Function(String) text) {
       'harmonyShareSelectionLimit',
     'FormatException: Share Core direct mode unavailable' =>
       'harmonyShareCoreUnavailable',
+    'FormatException: Invalid Share Core protocol' ||
+    'FormatException: Share Core Honor unavailable' ||
+    'FormatException: Share Core native batch required' =>
+      'harmonyShareCoreUnavailable',
     'FormatException: Invalid local name' => 'harmonyShareLocalNameInvalid',
     'FormatException: Invalid receive directory' =>
       'harmonyShareDirectoryError',
@@ -47,6 +51,11 @@ String formatShareError(String error, String Function(String) text) {
   final core = _coreError.firstMatch(message);
   final reason = core?.group(2);
   final coreKey = switch (reason) {
+    'honor_transfer_failed' => 'harmonyShareHonorFailed',
+    'cancelled' || 'peer_cancelled' => 'harmonyShareStatus_cancelled',
+    'user_rejected' => core?.group(1) == 'send_failed'
+        ? 'harmonySharePeerRejected'
+        : 'harmonyShareStatus_rejected',
     'discovery_port_in_use' when core?.group(1) != 'send_failed' =>
       'harmonyShareDiscoveryPortInUse',
     'receive_port_in_use' when core?.group(1) == 'receive_failed' =>

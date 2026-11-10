@@ -1,6 +1,6 @@
-# Huawei Share 私有核心集成边界
+# AnyDeck 文件互传私有核心集成边界
 
-当前核心：Core 0.3.8 / IPC 3，新增默认 LAN、手动授权的 P2P 直连接收与网络恢复保护，最终制品版本以 `script/share_core.lock.json` 和包内 manifest 为准。Core 0.3.7 已移除应用层单文件1 GiB限制，1 GiB以上的手机收发由用户手动测试。历史Core0.3.5已完成100 MiB独立真机双向hash验证与正常App的1 GiB单文件接收（手机源hash未比对），不代表新版大文件容量、P2P 或共存验收；生产能力仍未发布。最新证据与限制见本文末尾，早期段落保留为实施历史。
+当前核心：Core 0.4.0 / IPC 3，荣耀分享与华为/鸿蒙分享通过“文件互传”统一入口；默认 LAN，Huawei 手动授权的 P2P 与网络恢复保护保持。最终制品版本以 `script/share_core.lock.json` 和包内 manifest 为准。Core 0.3.7 已移除应用层单文件1 GiB限制，1 GiB以上的手机收发由用户手动测试。历史Core0.3.5已完成100 MiB独立真机双向hash验证与正常App的1 GiB单文件接收（手机源hash未比对），不代表新版大文件容量、P2P 或共存验收；生产能力仍未发布。最新证据与限制见本文末尾，早期段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
@@ -463,3 +463,38 @@ flutter test --no-pub test/mac_notification_bridge_test.dart test/core/nearby_sh
 - Rust默认81 unit+10 integration、另行新增的能力协商用例1项通过（合计82 unit），9项显式原生批次回归通过，覆盖手机两种metadata发起顺序、实际IPC、拒收、取消、3/100文件及原子发布。既有UDP广播回环环境用例仍排除，不计为通过。两份正式签名Core/DFile实例的独立回归通过：A→B单文件、B→A三文件，包含14,056,251 B合成文件，校验真实进度、完整大小和SHA-256；拒收反馈发送失败且不发布目录。只有BLE广播helper使用无副作用stub，未启用test-only metadata主动发起开关。该验证是同机loopback双进程，不等同两台实体Mac跨LAN实测，手机本轮也未进行实体收发。
 - 制品commit `31a613fe0d6ac033aa2d7a1e4ffa3c5d8f7be44d`，Core0.3.11/IPC3，arm64 ZIP SHA-256 `556957c3fbd013c863210a8b4ca689cb86a18545f3fbe7c4227cedfeb79e365e`。六成员摘要、严格签名、arm64、实际hello、0.3.10→0.3.11隔离升级和增量不改写通过；除Core本体外其余五成员摘要均与上版一致。制品脚本1项与主仓安装器26项通过，生产send/receive capability仍保持实验状态。两个仓库仅本地提交，未push；正常构建可用相邻已校验制品。
 - 本轮未启动或重建用户AnyDeck App。后续两台电脑都安装新包、连接同一可达LAN并开启接收，互点对方设备选择文件，在另一端明确确认；交换方向后再次核对接收文件hash，并回归原鸿蒙手机双向收发。
+
+
+## 荣耀接入 Rust Core 与文件互传统一入口（2026-11-10）
+
+用户要求荣耀分享接入现有 Rust Core 和互传 UI，验证后提交。Core 0.4.0 保持 IPC 3 和原六成员制品，通过实验能力 `honor` 与通用 `protocol` 字段接线；具体协议和算法只留私有仓库。主仓共用同一服务、选择/拖放、批次队列、接收确认、通知、进度、记录和目录设置；SQLite 旧记录迁移为 Huawei，同 IP 双协议分别发现和重试。新增需求及实现交接详见 [荣耀文件互传](adb-honor-share-poc.md)。
+
+直接影响为文件互传页面、侧栏文案、通用 IPC、历史迁移和安装锁。未新增 Provider、子窗口或跨 Isolate 方法；继续由主窗口独占服务/配置。投屏和 ADB/HDC 文件管理不改。UI 使用已有 Theme/l10n；发现有界、进度沿用既有节流和真实字节，协议不由名称或端口猜测。核心取消回收自己的 socket/helper，接收只在完整终态及文件验证后发布整批。
+
+回归命令：
+
+```sh
+flutter test --no-pub test/core/nearby_share test/features/harmony_share* \
+  test/harmony_share_settings_test.dart test/harmony_share_name_settings_test.dart \
+  test/harmony_share_direct_mode_settings_test.dart
+
+dart analyze lib/core/nearby_share lib/features/harmony_share \
+  lib/app/l10n/tables/app_l10n_huawei_share.dart test/core/nearby_share \
+  test/features/harmony_share_protocol_test.dart test/features/harmony_share_error_test.dart \
+  test/features/harmony_share_queue_test.dart test/support/harmony_share_notification_fakes.dart
+
+python3 -m unittest discover -s test/script -p test_install_share_core.py -v
+flutter build macos --debug --no-pub
+```
+
+手动回归路径：打开“文件互传”并开启接收；荣耀/华为设备标签和两种协议分别发现；点击设备或拖文件，检查一次批次确认、手机接收、真实进度及历史；手机回传后检查电脑确认、接收目录与独立 hash。异常检查拒绝/取消不发布半批、旧记录仍可读、重试保持原协议、端口占用提示、页面切换继续接收。高速偏好只改变 Huawei 路径，荣耀保持 LAN；真实 BLE/P2P 与多版本手机需专项验证。
+
+本轮 focused Flutter 408 项、targeted analyze 通过。Rust 常规串行回归 97 unit + 10 integration 通过；13 个隔离/大容量入口按既有规则 ignored，1 个本机 UDP 广播自回环环境用例单独排除。Python 协议 132 项、DFile batch 9 项、荣耀 helper 9 项、legacy helper 7 项通过（另 1 项可选 LAN 跳过）。荣耀多文件及异常自动互操作和 Huawei 桌面对传均使用实际 Rust/native DFile，BLE 广告使用 stub。
+
+真实 Magic V6（Android 17/API 37）完成 Rust Core 单个 1025 B 文本双向收发；源、手机实际接收目录独立读回和回传文件 SHA-256 一致。该验收不覆盖荣耀大文件/多文件真机矩阵、账号绑定或 P2P；Intel 的本机 Rosetta 验证不等于实体 Intel Mac/跨 LAN 验收。原始日志和手机信息只在私有忽略目录。
+
+
+私有实现/双架构制品固定 commit `b6ccfbd244eec0a908c80a91c228995b15581b10`，arm64 zip SHA-256 `ae17beff416ddd5197bacb1a4b555cc8a40fbcc8ca08777a91f123c14090ea23`，x86_64 zip SHA-256 `9cf3d94d9cbac900bef3f88e87acd5a62fbd5c7c274c9c9d2e0cd1eb7865251d`。每架构正式签名成员的荣耀 7 项互操作及 Huawei 桌面对传 1 项（含双向单/多文件、拒绝三个子场景）均通过；架构、六成员 hash、严格签名及实际 hello 通过。新版锁的安装脚本 27 项回归通过。私有 commit 与主仓 commit 仅本地提交，不自动 push。
+
+
+最终 `flutter build macos --debug --no-pub` 通过；构建包 `build/macos/Build/Products/Debug/AnyDeck.app` 的 deep/strict 签名、嵌入六成员 hash 和实际 Core 0.4.0 Honor hello 通过。已通过 CUA 重启该构建包，实际侧栏/页面显示“文件互传”，原有成功记录可打开并显示迁移后的“华为分享 / AnyDeck”，接收开关为 on；新服务同时监听两协议端口。本轮构建后的 UI 未再次完成一轮手机传输，手机双向 hash 验收来自前述 Rust Core 真机流程，UI 协议路由/确认/队列通过自动回归。没有向真实历史库注入模拟来件或重置用户配置。接收已恢复开启，测试 CLI/helper 均结束；运行中的接收服务属于正常 App。

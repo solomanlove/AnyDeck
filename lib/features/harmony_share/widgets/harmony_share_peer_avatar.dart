@@ -39,6 +39,7 @@ class HarmonySharePeerAvatar extends StatelessWidget {
     final label = state.peer.name.isEmpty
         ? state.peer.address.address
         : state.peer.name;
+    final protocol = context.l10n.t('harmonyShareProtocol_${state.peer.protocol.name}');
     final status = phase == HarmonySharePeerPhase.ready
         ? ''
         : context.l10n.t('harmonySharePeer_${phase.name}');
@@ -48,7 +49,7 @@ class HarmonySharePeerAvatar extends StatelessWidget {
       child: Semantics(
         button: true,
         enabled: enabled,
-        label: '$label $status',
+        label: '$label $protocol $status',
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -100,6 +101,29 @@ class HarmonySharePeerAvatar extends StatelessWidget {
                               backgroundColor: colors.outlineVariant,
                             ),
                           ),
+                        Positioned(
+                          bottom: 0,
+                          left: 2,
+                          right: 2,
+                          child: Tooltip(
+                            message: protocol,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: colors.surface,
+                                borderRadius: AppThemeSizes.radiusSmall,
+                                border: Border.all(color: colors.outlineVariant),
+                              ),
+                              child: Text(
+                                protocol,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),

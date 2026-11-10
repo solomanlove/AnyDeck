@@ -17,7 +17,7 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
       case 'device':
         try {
           final peer = ShareCorePeer.parse(event);
-          peers[peer.address.address] = peer;
+          peers[peer.key] = peer;
           _changed();
         } catch (_) {
           /* 忽略不可信发现报文。 */
@@ -61,6 +61,13 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
         }
       case 'incoming_batch':
       case 'incoming_offer':
+        final ShareTransferProtocol protocol;
+        try {
+          protocol = ShareTransferProtocol.fromMap(event);
+        } on FormatException {
+          receiver.decide(false);
+          return;
+        }
         final address = InternetAddress.tryParse('${event['ip']}');
         final bytes = event['event'] == 'incoming_batch'
             ? event['total_bytes']
@@ -69,6 +76,7 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
             ? event['file_count']
             : 1;
         if (address != null &&
+            address.type == InternetAddressType.IPv4 &&
             bytes is int &&
             bytes > 0 &&
             count is int &&
@@ -80,11 +88,12 @@ extension _HarmonyShareReceiveEvents on HarmonyShareService {
             // 先预留记录清单容量，存储积压时在用户接受之前拒绝新来件。
             _incomingHistoryId = history?.incoming(
               address: address.address,
-              name: peers[address.address]?.name ?? address.address,
+              name: peerFor(address.address, protocol: protocol)?.name ?? address.address,
+              protocol: protocol,
               bytes: bytes,
               fileCount: count,
             );
-            pendingOffer = ShareIncomingOffer(address, bytes, fileCount: count);
+            pendingOffer = ShareIncomingOffer(address, bytes, fileCount: count, protocol: protocol);
             _batchOffer = pendingOffer;
             _receiveProgress = ShareFileProgressLedger(count: count, bytes: bytes, direction: 'receive');
             _receiveAccepted = false;

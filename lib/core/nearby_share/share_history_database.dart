@@ -38,6 +38,7 @@ class ShareHistoryDatabase {
         if (!columns.contains('batch_id')) db.execute('ALTER TABLE transfers ADD COLUMN batch_id TEXT');
         if (!columns.contains('progress_known')) db.execute('ALTER TABLE transfers ADD COLUMN progress_known INTEGER NOT NULL DEFAULT 0');
         if (!columns.contains('file_index')) db.execute('ALTER TABLE transfers ADD COLUMN file_index INTEGER');
+        if (!columns.contains('protocol')) db.execute("ALTER TABLE transfers ADD COLUMN protocol TEXT NOT NULL DEFAULT 'huawei'");
         db.execute('CREATE INDEX IF NOT EXISTS idx_transfer_batch ON transfers(batch_id)');
         db.execute(
           'CREATE INDEX IF NOT EXISTS idx_transfer_time ON transfers(created_at DESC, id DESC)',

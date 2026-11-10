@@ -8,12 +8,14 @@ import 'share_batch_client.dart';
 import 'share_batch_sessions.dart';
 import 'share_core_sessions.dart';
 import 'share_local_name.dart';
+import 'share_transfer_protocol.dart';
 
 export 'share_core_contract.dart';
 export 'share_file_progress.dart';
 export 'share_core_sessions.dart';
 export 'share_batch_contract.dart';
 export 'share_batch_sessions.dart';
+export 'share_transfer_protocol.dart';
 
 /// 私有 Share Core 的公开 IPC 契约；不包含任何 Huawei Share 协议字段。
 class ShareCoreCapabilities {
@@ -24,6 +26,7 @@ class ShareCoreCapabilities {
     required this.coreVersion,
     required this.maxFileBytes,
     this.directMode = false,
+    this.honor = false,
   });
 
   final bool discovery;
@@ -32,6 +35,8 @@ class ShareCoreCapabilities {
   final String coreVersion;
   final int maxFileBytes;
   final bool directMode;
+  /// 独立实验能力；不提升生产send/receive声明。
+  final bool honor;
 
   /// 仅接受与当前主仓库兼容的握手版本与明确声明的布尔能力。
   static ShareCoreCapabilities parse(String line) {
@@ -61,7 +66,8 @@ class ShareCoreCapabilities {
         experimental['batch_local_name'] != true ||
         experimental['max_local_name_bytes'] != ShareLocalName.maxBytes ||
         experimental['max_files'] != ShareBatchContract.maxFiles ||
-        experimental['max_batch_bytes'] != ShareBatchContract.maxBytes) {
+        experimental['max_batch_bytes'] != ShareBatchContract.maxBytes ||
+        (experimental.containsKey('honor') && experimental['honor'] is! bool)) {
       throw const FormatException(
         'Incompatible experimental transfer contract',
       );
@@ -73,6 +79,7 @@ class ShareCoreCapabilities {
       coreVersion: value['core_version'] as String,
       maxFileBytes: experimental['max_file_bytes'] as int,
       directMode: experimental['direct_mode'] == true,
+      honor: experimental['honor'] == true,
     );
   }
 }
@@ -83,28 +90,33 @@ class ShareCorePeer {
     required this.address,
     required this.port,
     required this.name,
+    this.protocol = ShareTransferProtocol.huawei,
   });
 
   final InternetAddress address;
   final int port;
   final String name;
+  final ShareTransferProtocol protocol;
+  String get key => protocol.peerKey(address.address);
 
   /// 拒绝格式错误或超出端口范围的核心进程输出。
   static ShareCorePeer parse(Map<String, dynamic> value) {
     final address = InternetAddress.tryParse(value['ip']?.toString() ?? '');
     final port = value['port'];
     final name = value['name'];
+    final protocol = ShareTransferProtocol.fromMap(value);
     if (value['event'] != 'device' ||
         address == null ||
         address.type != InternetAddressType.IPv4 ||
         port is! int ||
         port < 1 ||
         port > 65535 ||
+        (protocol == ShareTransferProtocol.honor && port != 5700) ||
         name is! String ||
         name.length > 256) {
       throw const FormatException('Invalid Share Core peer');
     }
-    return ShareCorePeer(address: address, port: port, name: name);
+    return ShareCorePeer(address: address, port: port, name: name, protocol: protocol);
   }
 }
 
@@ -217,6 +229,9 @@ class ShareCoreClient {
     required ShareCorePeer peer,
     required File file,
   }) async {
+    if (peer.protocol != ShareTransferProtocol.huawei) {
+      throw const FormatException('Share Core native batch required');
+    }
     final stat = await file.stat();
     if (stat.type != FileSystemEntityType.file ||
         stat.size < 1 ||
@@ -289,7 +304,8 @@ class ShareCoreClient {
   /// 原生批次发送入口；声明大小已由 UI 确认，核心启动网络前再逐项核对。
   Future<ShareBatchTransfer> sendBatchForTest({required InternetAddress localAddress,
     required ShareCorePeer peer, required ShareBatchRequest request}) =>
-      _batchClient.send(request: request, local: localAddress, peer: peer.address, port: peer.port);
+      _batchClient(protocol: peer.protocol).send(request: request, local: localAddress, peer: peer.address, port: peer.port,
+        protocol: peer.protocol);
 
   /// 手动授权的直连接收入口；LAN入口保持默认关闭直连，避免隐式切换网络。
   Future<ShareCoreReceiveSession> startDirectBatchReceiver({
@@ -302,7 +318,7 @@ class ShareCoreClient {
     if (!capabilities.directMode) {
       throw const FormatException('Share Core direct mode unavailable');
     }
-    return _batchClient.receive(local: localAddress, broadcast: broadcastAddress,
+    return _batchClient().receive(local: localAddress, broadcast: broadcastAddress,
       output: outputDirectory, localName: localName, directMode: true);
   }
 
@@ -310,13 +326,16 @@ class ShareCoreClient {
   Future<ShareCoreReceiveSession> startBatchReceiver({required InternetAddress localAddress,
     required InternetAddress broadcastAddress, required Directory outputDirectory,
     String localName = ShareLocalName.defaultName}) =>
-      _batchClient.receive(local: localAddress, broadcast: broadcastAddress, output: outputDirectory, localName: localName);
+      _batchClient().receive(local: localAddress, broadcast: broadcastAddress, output: outputDirectory, localName: localName);
 
-  ShareBatchClient get _batchClient => ShareBatchClient(
+  ShareBatchClient _batchClient({ShareTransferProtocol protocol = ShareTransferProtocol.huawei}) => ShareBatchClient(
     coreExecutable: _executable.path,
     probe: () async {
       if (ShareCoreContract.version != ShareBatchContract.version) throw StateError('Batch contract not active');
-      await probe();
+      final capabilities = await probe();
+      if (protocol == ShareTransferProtocol.honor && !capabilities.honor) {
+        throw const FormatException('Share Core Honor unavailable');
+      }
     },
     launch: () => Process.start(_executable.path, const [],
       environment: const {'ANYDECK_SHARE_EXPERIMENTAL': '1'}),
