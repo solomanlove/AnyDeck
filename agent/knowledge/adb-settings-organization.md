@@ -89,3 +89,16 @@ git diff --check
 `KeyboardShortcutSettings.group` 仅选择渲染哪组内容；单组模式不再渲染内部标题，录入、冲突校验、禁用、恢复默认及保存流程均复用原逻辑。未指定 group 时保留组件原有完整列表行为。设置目录分别维护两组动作与按键别名，搜索仍可定位具体动作；按钮继续靠右。
 
 16 项相关测试通过，覆盖实际 Dashboard 的两组标题各显示一次且位于内容组件外、不再显示总标题，以及中英文/明暗主题、宽窄布局、搜索、录入/冲突/取消/清除/恢复默认回归。定向静态分析与 diff check 通过；未启动桌面 App。
+
+## 2026-11-10 下拉选择器水波纹圆角
+
+- 问题：语言选择器的外框为 8px 圆角，但 `PopupMenuButton.shape` 仅作用于弹出菜单，按钮内部 `InkWell` 未设置圆角，Hover / 水波纹会露出矩形角；实色 `Container` 同时遮住背景上的墨水反馈。
+- 修复：公共 `_buildDropdownSelector` 的 `borderRadius` 与按钮背景统一复用 `AppThemeSizes.radiusMedium`；背景改由 `Ink` 绘制，确保点击反馈可见并遵循相同圆角。语言、外观及其他共用设置选择器一并生效，弹出菜单的圆角、宽度、位置、选项和保存回调保持原逻辑。
+- 回归：`test/support/settings_selector_expectations.dart` 在实际 Dashboard 的语言、外观入口检查 `InkWell` 与背景圆角一致，并操作鼠标 Hover、展开/取消菜单，验证菜单与按钮边缘对齐；通过原 Shell 测试覆盖 zh/en、Light/Dark、900px / 1600px。不触发语言和主题变更。
+- 验证：以下四个文件共 23 项测试通过；3 个修改及测试 Dart 文件定向 analyze 无问题，`git diff --check` 通过。未启动桌面 App，真实窗口中的水波纹视觉仍待人工验收。
+
+```bash
+flutter test --no-pub test/dashboard_shell_navigation_test.dart test/settings_review_test.dart test/settings_workspace_test.dart test/app_settings_test.dart
+flutter analyze --no-pub lib/features/overview/dashboard_settings_widgets.dart test/dashboard_shell_navigation_test.dart test/support/settings_selector_expectations.dart
+git diff --check
+```

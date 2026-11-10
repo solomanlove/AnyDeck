@@ -183,9 +183,12 @@ extension _SettingsTabWidgets on _SettingsTab {
           })
         : null;
 
+    const selectorRadius = AppThemeSizes.radiusMedium;
     return PopupMenuButton<T>(
       initialValue: alignMenu ? null : value,
       tooltip: '',
+      // shape 只影响弹出菜单；触发按钮的水波纹必须单独匹配外框圆角。
+      borderRadius: selectorRadius,
       enabled: onChanged != null,
       position: alignMenu ? PopupMenuPosition.under : null,
       offset: alignMenu ? const Offset(0, 4) : const Offset(0, 34),
@@ -223,16 +226,15 @@ extension _SettingsTabWidgets on _SettingsTab {
           .toList(),
       child: Opacity(
         opacity: onChanged == null ? 0.45 : 1.0,
-        child: Container(
-          constraints: alignMenu
-              ? BoxConstraints.tightFor(width: menuWidth)
-              : null,
+        // 背景绘制到 Material 墨水层，避免实色 Container 遮住点击反馈。
+        child: Ink(
+          width: menuWidth,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: isDark
                 ? Colors.white.withValues(alpha: 0.04)
                 : Colors.white,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: selectorRadius,
             border: Border.all(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.12)

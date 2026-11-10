@@ -27,6 +27,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_adb_service.dart';
+import 'support/settings_selector_expectations.dart';
 
 /// 两类快捷键标题必须各显示一次且位于内容控件（Card 内）之外。
 void _expectShortcutSections(WidgetTester tester, String language) {
@@ -467,6 +468,12 @@ void main() {
         // 在实际分类控件中验证中英文、明暗主题的最小宽度布局。
         tester.view.physicalSize = const Size(900, 700);
         router.goNamed(AppRouteNames.settings);
+        await tester.pumpAndSettle();
+        await expectSettingsSelectorInk(tester);
+        tester.view.physicalSize = const Size(1600, 900);
+        await tester.pumpAndSettle();
+        await expectSettingsSelectorInk(tester);
+        tester.view.physicalSize = const Size(900, 700);
         await tester.pumpAndSettle();
         for (final category in SettingsCategory.values) {
           await tester.tap(
