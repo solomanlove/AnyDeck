@@ -712,6 +712,9 @@ class _BatchRecordDialog extends ConsumerStatefulWidget {
 
 class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
   final Map<String, Process> _processes = {};
+  final Map<String, HostRecordingBackend> _hostRecordings = {};
+  final Set<String> _failedHostRecordings = {};
+  Future<void>? _starting;
   bool _recording = false;
   int _duration = 0;
   Timer? _timer;
@@ -723,27 +726,28 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
   @override
   void initState() {
     super.initState();
-    _startAll();
+    _starting = _startAll();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    for (final entry in _hostRecordings.entries) {
+      entry.value.cancel();
+      unawaited(entry.value.stop().then((_) async {
+        final path = _localRecordPaths[entry.key];
+        if (path != null && File(path).existsSync()) await File(path).delete();
+      }).catchError((Object _) {}));
+    }
     if (_recording) {
       // Emergency clean up of remaining recording processes
       for (final device in widget.devices) {
-        if (_isHostRecordingMap[device.id] != true) {
+        if (_processes.containsKey(device.id) && _isHostRecordingMap[device.id] != true) {
           ref.read(adbServiceProvider).stopScreenRecord(device.id);
         }
       }
       for (final p in _processes.values) {
         p.kill();
-      }
-      // Cleanup any host temp files
-      for (final path in _localRecordPaths.values) {
-        try {
-          File(path).deleteSync();
-        } catch (_) {}
       }
     }
     super.dispose();
@@ -758,12 +762,14 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
     final settings = ref.read(appSettingsProvider);
 
     for (final device in widget.devices) {
+      if (!mounted || _stopping) break;
       try {
         // Check if device supports screenrecord
         final isSupported = await ref
             .read(adbServiceProvider)
             .isScreenRecordSupported(device.id);
         
+        if (!mounted || _stopping) break;
         final useHostRecord = settings.forceHostRecording || !isSupported;
         _isHostRecordingMap[device.id] = useHostRecord;
 
@@ -777,12 +783,19 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
 
           final file = File(tempPath);
           await file.parent.create(recursive: true);
+          if (!mounted || _stopping) return;
 
-          final process = await ref.read(scrcpyServiceProvider).startRecording(
-            deviceId: device.id,
-            localSavePath: tempPath,
-          );
-          _processes[device.id] = process;
+          final host = _hostRecordings[device.id] = ref.read(hostRecordingFactoryProvider)(device.id, tempPath);
+          await host.start();
+          if (!mounted) { await host.stop(); return; }
+          host.exited.then((error) {
+            if (!mounted || _stopping || error == null) return;
+            setState(() {
+              _failedHostRecordings.add(device.id);
+              _statuses[device.id] = context.l10n.t('recordFailed').replaceAll('{error}', error);
+            });
+            unawaited(host.stop().catchError((Object _) {}));
+          });
         } else {
           // Pre-clean up any leftover temporary recording file
           try {
@@ -798,15 +811,17 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
         }
         _statuses[device.id] = '正在录制...';
       } catch (e) {
+        _failedHostRecordings.add(device.id);
         _statuses[device.id] = '录制启动失败: $e';
       }
     }
 
+    if (!mounted || _stopping) return;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _duration++;
       });
-      if (_duration >= 180) {
+      if (_processes.isNotEmpty && _duration >= 180) {
         // 3-minute limit
         _stopAll();
       }
@@ -819,6 +834,21 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
     setState(() {
       _stopping = true;
     });
+
+    for (final host in _hostRecordings.values) { host.cancel(); }
+    await _starting;
+    // 各设备独立收尾，避免单个失败设备将批量等待时间放大。
+    await Future.wait(_hostRecordings.entries.map((entry) async {
+      try {
+        await entry.value.stop();
+      } catch (error) {
+        _failedHostRecordings.add(entry.key);
+        if (mounted) {
+          _statuses[entry.key] = context.l10n.t('recordFailed').replaceAll('{error}', '$error');
+        }
+      }
+    }));
+    if (!mounted) return;
 
     // 1. Send SIGINT (kill -2) to all devices to properly finish recording (if not host-recording)
     for (final device in widget.devices) {
@@ -854,7 +884,10 @@ class _BatchRecordDialogState extends ConsumerState<_BatchRecordDialog> {
     final directoryPath = await getDirectoryPath();
     if (directoryPath != null) {
       for (final device in widget.devices) {
-        if (!_processes.containsKey(device.id)) continue;
+        if ((!_processes.containsKey(device.id) && !_hostRecordings.containsKey(device.id)) ||
+            _failedHostRecordings.contains(device.id)) {
+          continue;
+        }
 
         setState(() {
           _statuses[device.id] = '正在保存视频文件...';

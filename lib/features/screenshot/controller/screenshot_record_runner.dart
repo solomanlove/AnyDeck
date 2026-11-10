@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/settings/app_settings_controller.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/scrcpy/host_recording_backend.dart';
 import '../model/screenshot_state.dart';
 
 /// 录屏执行器，专职负责录屏进程启动、时长计时、停止信号与文件拉取等五阶段生命周期管理。
@@ -26,6 +27,10 @@ class ScreenshotRecordRunner {
   final ValueChanged<int> onDurationChanged;
 
   Process? _recordProcess;
+  HostRecordingBackend? _hostRecording;
+  bool _disposed = false;
+  bool _starting = false;
+  bool _stopping = false;
   Timer? _recordTimer;
   int _duration = 0;
   bool _isHostRecording = false;
@@ -44,7 +49,12 @@ class ScreenshotRecordRunner {
 
   /// 释放录屏资源，安全清理僵尸进程与计时器
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     _recordTimer?.cancel();
+    final host = _hostRecording;
+    host?.cancel();
+    if (host != null) unawaited(host.stop().catchError((Object _) {}));
     if (_isHarmonyRecording) {
       unawaited(ref.read(hdcServiceProvider).stopScreenRecord(deviceId));
     } else if (_recordProcess != null) {
@@ -57,6 +67,8 @@ class ScreenshotRecordRunner {
 
   /// 启动录屏进程 (starting -> recording)
   Future<void> startRecording({required BuildContext context}) async {
+    if (_disposed || _starting || _stopping || _hostRecording != null || _recordProcess != null) return;
+    _starting = true;
     onPhaseChanged(ScreenRecordPhase.starting);
     _duration = 0;
     onDurationChanged(0);
@@ -86,6 +98,7 @@ class ScreenshotRecordRunner {
       } else {
         final isSupported =
             await ref.read(adbServiceProvider).isScreenRecordSupported(deviceId);
+        if (_disposed) return;
         _isHostRecording = settings.forceHostRecording || !isSupported;
 
         if (_isHostRecording) {
@@ -95,10 +108,25 @@ class ScreenshotRecordRunner {
             deviceId,
           );
           await File(_localRecordPath!).parent.create(recursive: true);
-          _recordProcess = await ref.read(scrcpyServiceProvider).startRecording(
-                deviceId: deviceId,
-                localSavePath: _localRecordPath!,
-              );
+          if (_disposed) return;
+          final host = _hostRecording = ref.read(hostRecordingFactoryProvider)(
+            deviceId, _localRecordPath!,
+          );
+          await host.start();
+          if (_disposed) { await host.stop(); return; }
+          host.exited.then((error) {
+            if (_disposed || _hostRecording != host || _stopping) return;
+            _recordTimer?.cancel();
+            _hostRecording = null;
+            unawaited(host.stop().catchError((Object _) {}));
+            onPhaseChanged(ScreenRecordPhase.idle);
+            onDurationChanged(0);
+            if (error != null && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(context.l10n.t('recordFailed').replaceAll('{error}', error)),
+              ));
+            }
+          });
         } else {
           try {
             await ref
@@ -132,17 +160,22 @@ class ScreenshotRecordRunner {
         }
       }
 
+      if (_disposed) return;
       onPhaseChanged(ScreenRecordPhase.recording);
 
       _recordTimer?.cancel();
       _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
         _duration++;
         onDurationChanged(_duration);
-        if (_duration >= 180) {
+        if (!_isHostRecording && _duration >= 180) {
           stopRecording(context: context);
         }
       });
     } catch (e) {
+      final host = _hostRecording;
+      _hostRecording = null;
+      if (host != null) { try { await host.stop(); } catch (_) {} }
+      if (_disposed) return;
       _recordProcess?.kill();
       _recordProcess = null;
       _isHarmonyRecording = false;
@@ -156,11 +189,15 @@ class ScreenshotRecordRunner {
           ),
         );
       }
+    } finally {
+      _starting = false;
     }
   }
 
   /// 停止录屏并转储保存 (stopping -> saving -> idle)
   Future<void> stopRecording({required BuildContext context}) async {
+    if (_disposed || _starting || _stopping) return;
+    _stopping = true;
     onPhaseChanged(ScreenRecordPhase.stopping);
     _recordTimer?.cancel();
     _recordTimer = null;
@@ -193,12 +230,11 @@ class ScreenshotRecordRunner {
           );
         }
       } else if (_isHostRecording) {
-        if (_recordProcess != null) {
-          _recordProcess?.kill();
-          await _recordProcess!.exitCode;
-        }
-        _recordProcess = null;
-        if (context.mounted) {
+        final host = _hostRecording;
+        if (host == null) throw StateError('Recording session missing');
+        onPhaseChanged(ScreenRecordPhase.saving);
+        await host.stop();
+        if (!_disposed && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -278,9 +314,13 @@ class ScreenshotRecordRunner {
         );
       }
     } finally {
+      _hostRecording = null;
+      _stopping = false;
       _isHarmonyRecording = false;
-      onPhaseChanged(ScreenRecordPhase.idle);
-      onDurationChanged(0);
+      if (!_disposed) {
+        onPhaseChanged(ScreenRecordPhase.idle);
+        onDurationChanged(0);
+      }
     }
   }
 }

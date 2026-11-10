@@ -78,6 +78,7 @@ import '../core/adb/adb_environment_service.dart';
 import '../core/scrcpy/scrcpy_session.dart';
 import '../core/scrcpy/embedded_scrcpy_service.dart';
 import '../core/scrcpy/screen_record_provider.dart';
+import '../core/scrcpy/host_recording_backend.dart';
 import '../core/ios/ios_mirror_service.dart';
 import '../core/ios/ios_overview_details.dart';
 import '../core/device_actions/device_action_service.dart';

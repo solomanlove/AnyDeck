@@ -7,6 +7,15 @@ import '../../l10n/app_localizations.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../widget/app_toast.dart';
 
+/// 构建期间订阅后台录制错误，断线/写盘失败沿用现有本地化提示。
+void listenScreenRecordingErrors(BuildContext context, WidgetRef ref, String deviceId) {
+  ref.listen(screenRecordProvider(deviceId).select((state) => state.error), (_, error) {
+    if (error != null && context.mounted) {
+      AppToast.show(context, context.l10n.t('recordFailed').replaceAll('{error}', error), isError: true);
+    }
+  });
+}
+
 /// 保留 Android/HarmonyOS 原有录屏启停、导出和清理流程；iOS 工具栏不调用。
 Future<void> toggleMirrorScreenRecording(
   BuildContext context,
@@ -15,6 +24,7 @@ Future<void> toggleMirrorScreenRecording(
   {int? displayId}
 ) async {
   final recordState = ref.read(screenRecordProvider(deviceId));
+  if (recordState.isStarting || recordState.isStopping) return;
   final recordNotifier = ref.read(screenRecordProvider(deviceId).notifier);
 
   if (recordState.isRecording) {

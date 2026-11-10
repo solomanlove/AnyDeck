@@ -53,26 +53,6 @@ class ScrcpyService {
   /// 查询特定 session id 的进程是否仍在运行。
   bool isRunning(String sessionId) => _processes.containsKey(sessionId);
 
-  /// 启动 scrcpy 的电脑本地录制进程（无窗口，直接录制到本地文件）。
-  Future<Process> startRecording({
-    required String deviceId,
-    required String localSavePath,
-  }) async {
-    final process = await Process.start(
-      executable,
-      [
-        '-s',
-        deviceId,
-        '--no-window',
-        '--record',
-        localSavePath,
-        // 使用 AAC 音频编码，确保录制出的 MP4 文件在 macOS QuickTime Player 等播放器中能正常播放音频
-        '--audio-codec=aac',
-      ],
-    );
-    return process;
-  }
-
   /// 按 session id 停止单个已跟踪的 scrcpy 进程。
   Future<void> stop(String sessionId) async {
     _processes.remove(sessionId)?.kill();

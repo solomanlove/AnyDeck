@@ -113,6 +113,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     final actions = ref.read(deviceActionServiceProvider);
     final isScreenOff = ref.watch(screenPowerOffProvider(widget.deviceId));
     final recordState = ref.watch(screenRecordProvider(widget.deviceId));
+    listenScreenRecordingErrors(context, ref, widget.deviceId);
 
     return _buildExpandedToolbar(
       context,
@@ -319,7 +320,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   ? context.l10n.t('stopRecord')
                   : context.l10n.t('startRecord'),
               shortcut: MirrorShortcut.recording,
-              isLoading: recordState.isStopping,
+              isLoading: recordState.isStopping || recordState.isStarting,
               badge: recordState.isRecording
                   ? const MirrorPulsingRecordBadge()
                   : null,

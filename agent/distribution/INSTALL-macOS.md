@@ -17,7 +17,7 @@ App 已包含投屏服务端、Rust 引擎、APK 分析器及 Share Core。设�
 brew install android-platform-tools
 ```
 
-内嵌投屏使用 App 自带的投屏服务端和 Rust 引擎，无需在电脑上另外安装 scrcpy。仅在使用“电脑本地录制”等外部 scrcpy 录制模式时，才需要按需安装该 CLI。
+内嵌投屏与电脑本地录制均使用 App 自带的服务端和 Rust 引擎，无需在电脑上另外安装 scrcpy。音频录制取决于 Android 版本及设备、应用的采集支持。
 
 HarmonyOS 设备需要 HDC（可在 AnyDeck 设置中指定路径）；iOS 设备需要 go-ios。手机端需按帮助中心开启对应调试权限。
 

@@ -52,7 +52,7 @@ AnyDeck uses a modern, lightweight, high-performance architecture:
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
-Android 设备连接需要 ADB；内嵌投屏使用 AnyDeck 自带的服务端和 Rust 引擎，无需另外安装 scrcpy。仅“电脑本地录制”等外部 scrcpy 录制模式按需安装该 CLI。
+Android 设备连接需要 ADB；内嵌投屏和电脑本地录制均使用 AnyDeck 自带的服务端与 Rust 引擎，无需另外安装 scrcpy。电脑本地录制支持 MP4 视频与可用的设备音频。
 
 #### 🍏 macOS
 ```bash

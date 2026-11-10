@@ -14,6 +14,7 @@ mod stream;
 mod video;
 mod video_ffi;
 mod worker;
+mod recording;
 
 use std::collections::HashMap;
 use std::ffi::{c_char, c_void, CStr};
@@ -215,6 +216,7 @@ pub unsafe extern "C" fn anydeck_send_control(
 /// 状态：0 启动中、1 运行、2 已停止、3 失败。查询不阻塞 UI。
 #[no_mangle]
 pub extern "C" fn anydeck_status(id: u64) -> u8 {
+    if let Some(status) = recording::status(id) { return status; }
     session(id)
         .map(|s| s.status.load(Ordering::Acquire))
         .unwrap_or(2)
@@ -295,6 +297,7 @@ pub extern "C" fn anydeck_has_surface(id: u64) -> bool {
 /// 停止只发信号和关闭 socket；状态变为 2 时 ADB 与原生资源已清理完成。
 #[no_mangle]
 pub extern "C" fn anydeck_stop(id: u64) {
+    recording::stop(id);
     if let Some(s) = session(id) {
         s.stopped.store(true, Ordering::Release);
         if let Ok(socket) = s.socket.lock() {
@@ -314,6 +317,7 @@ pub extern "C" fn anydeck_stop(id: u64) {
 #[no_mangle]
 pub extern "C" fn anydeck_release(id: u64) {
     anydeck_stop(id);
+    recording::release(id);
     if let Ok(mut registry) = sessions().lock() {
         registry.remove(&id);
     }

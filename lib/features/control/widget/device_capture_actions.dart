@@ -73,6 +73,7 @@ class _DeviceScreenRecordButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(screenRecordProvider(deviceId));
+    listenScreenRecordingErrors(context, ref, deviceId);
     final minutes = (state.durationSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (state.durationSeconds % 60).toString().padLeft(2, '0');
     final label = state.isRecording
@@ -94,9 +95,11 @@ class _DeviceScreenRecordButton extends ConsumerWidget {
       );
     }
     return OutlinedButton.icon(
-      icon: const Icon(CupertinoIcons.recordingtape, size: 18),
+      icon: state.isStarting
+          ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(CupertinoIcons.recordingtape, size: 18),
       label: Text(label),
-      onPressed: () => toggleMirrorScreenRecording(context, ref, deviceId),
+      onPressed: state.isStarting ? null : () => toggleMirrorScreenRecording(context, ref, deviceId),
     );
   }
 }

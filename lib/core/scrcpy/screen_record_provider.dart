@@ -4,17 +4,22 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_providers.dart';
 import '../../app/settings/app_settings_controller.dart';
+import 'host_recording_backend.dart';
 
 class ScreenRecordState {
   const ScreenRecordState({
     required this.isRecording,
     required this.durationSeconds,
     this.isStopping = false,
+    this.isStarting = false,
+    this.error,
   });
 
   final bool isRecording;
   final int durationSeconds;
   final bool isStopping;
+  final bool isStarting;
+  final String? error;
 
   ScreenRecordState copyWith({
     bool? isRecording,
@@ -25,6 +30,8 @@ class ScreenRecordState {
       isRecording: isRecording ?? this.isRecording,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       isStopping: isStopping ?? this.isStopping,
+      isStarting: isStarting,
+      error: error,
     );
   }
 }
@@ -35,6 +42,7 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
   final String deviceId;
   Timer? _timer;
   Process? _process;
+  HostRecordingBackend? _hostRecording;
   bool _isHostRecording = false;
   bool _isHarmonyRecording = false;
   String? _localRecordPath;
@@ -44,6 +52,9 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
   ScreenRecordState build() {
     ref.onDispose(() {
       _timer?.cancel();
+      final host = _hostRecording;
+      host?.cancel();
+      if (host != null) unawaited(host.stop().catchError((Object _) {}));
       if (_isHarmonyRecording) {
         unawaited(ref.read(hdcServiceProvider).stopScreenRecord(deviceId));
       } else if (_process != null) {
@@ -57,7 +68,8 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
   }
 
   Future<void> start({int? displayId}) async {
-    if (state.isRecording) return;
+    if (state.isRecording || state.isStarting || state.isStopping) return;
+    state = const ScreenRecordState(isRecording: false, durationSeconds: 0, isStarting: true);
 
     try {
       final settings = ref.read(appSettingsProvider);
@@ -89,6 +101,7 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
         final isSupported = await ref
             .read(adbServiceProvider)
             .isScreenRecordSupported(deviceId);
+        if (!ref.mounted) return;
         _isHostRecording = settings.forceHostRecording || !isSupported;
       }
 
@@ -100,11 +113,20 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
         );
         final file = File(_localRecordPath!);
         await file.parent.create(recursive: true);
+        if (!ref.mounted) return;
 
-        _process = await ref.read(scrcpyServiceProvider).startRecording(
-          deviceId: deviceId,
-          localSavePath: _localRecordPath!,
+        final host = _hostRecording = ref.read(hostRecordingFactoryProvider)(
+          deviceId, _localRecordPath!,
         );
+        await host.start();
+        if (!ref.mounted) { await host.stop(); return; }
+        host.exited.then((error) {
+          if (!ref.mounted || _hostRecording != host || state.isStopping) return;
+          _timer?.cancel();
+          _hostRecording = null;
+          unawaited(host.stop().catchError((Object _) {}));
+          state = ScreenRecordState(isRecording: false, durationSeconds: 0, error: error);
+        });
       } else if (!isHarmony) {
         // 1. Delete old recording file on device if it exists
         try {
@@ -164,15 +186,19 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
       _timer?.cancel();
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         state = state.copyWith(durationSeconds: state.durationSeconds + 1);
-        if (state.durationSeconds >= 180) {
+        if (!_isHostRecording && state.durationSeconds >= 180) {
           // 3 min limit
           stop(); // Force stop
         }
       });
     } catch (e) {
+      final host = _hostRecording;
+      _hostRecording = null;
+      if (host != null) { try { await host.stop(); } catch (_) {} }
       _process?.kill();
       _process = null;
       _isHarmonyRecording = false;
+      if (!ref.mounted) rethrow;
       state = const ScreenRecordState(isRecording: false, durationSeconds: 0);
       rethrow;
     }
@@ -200,11 +226,9 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
         );
         return 'local:$_localRecordPath';
       } else if (_isHostRecording) {
-        if (_process != null) {
-          _process?.kill();
-          await _process!.exitCode;
-        }
-        _process = null;
+        final host = _hostRecording;
+        if (host == null) throw StateError('Recording session missing');
+        await host.stop();
         return 'local:$_localRecordPath';
       } else {
         // 1. Send stop command (SIGINT)
@@ -228,12 +252,15 @@ class ScreenRecordNotifier extends Notifier<ScreenRecordState> {
       _process = null;
       rethrow;
     } finally {
+      _hostRecording = null;
       _isHarmonyRecording = false;
-      state = const ScreenRecordState(
-        isRecording: false,
-        durationSeconds: 0,
-        isStopping: false,
-      );
+      if (ref.mounted) {
+        state = const ScreenRecordState(
+          isRecording: false,
+          durationSeconds: 0,
+          isStopping: false,
+        );
+      }
     }
   }
 }

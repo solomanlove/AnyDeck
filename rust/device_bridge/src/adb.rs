@@ -175,6 +175,14 @@ impl Transport {
                     "camera_facing=back"
                 },
             ]);
+        } else if kind == 5 {
+            // 独立录制只接收压缩包；锁定初始方向，不创建控制或播放窗口。
+            args.extend([
+                "video=true", "audio=true", "control=false",
+                "video_codec=h264", "audio_codec=aac", "audio_bit_rate=128000",
+                "video_bit_rate=8000000",
+                "capture_orientation=@", "clipboard_autosync=false",
+            ]);
         } else if kind == 1 || kind == 4 {
             args.extend([
                 "video=false",

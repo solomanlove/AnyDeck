@@ -75,13 +75,13 @@ Android PCM 播放器固定 8 个 16KiB buffer，通常每包 20ms，预填 3 �
 
 ## 构建与依赖
 
-独立 Rust crate 无第三方依赖。macOS 的 `Embed Native Dylibs` 阶段自动调用：
+电脑本地录制新增纯 Rust `mp4 0.14.0` 封装依赖，不引入 FFmpeg 动态库或 CLI；详细设计和验证见 [Rust 电脑本地录制](adb-rust-host-recording.md)。macOS 的 `Embed Native Dylibs` 阶段自动调用：
 
 ```bash
 bash script/build_device_bridge.sh
 ```
 
-生成 `libanydeck_device_bridge.dylib` 并随 App 签名打包，不提交机器生成的二进制。脚本支持 ARCHS 指定 arm64/x86_64，非当前架构需预先安装相应 Rust target；当前项目 Xcode 配置为 arm64。本轮实际只验证当前 arm64 构建。
+生成 `libanydeck_device_bridge.dylib` 并随 App 签名打包，不提交机器生成的二进制。脚本支持 ARCHS 指定 arm64/x86_64，非当前架构需预先安装相应 Rust target；当前项目默认跟随宿主架构，Actions 分别在 arm64/x86_64 原生 Runner 构建。本轮实际只验证当前 arm64 构建。
 
 Flutter 测试替换 backend，无需动态库。独立 FFI 测试可以显式使用 `ANYDECK_DEVICE_BRIDGE` 指向生成库；正式 App 从 Contents/Frameworks 加载。
 
