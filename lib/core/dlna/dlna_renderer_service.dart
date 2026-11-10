@@ -267,15 +267,11 @@ class DlnaRendererService extends ChangeNotifier {
         '[DLNA] HTTP ${request.method} $path from=${request.connectionInfo?.remoteAddress.address}',
       );
       if (request.method == 'GET' && path == '/device.xml') {
-        response.headers.contentType = ContentType(
-          'text',
-          'xml',
-          charset: 'utf-8',
-        );
         final host =
             request.headers.value(HttpHeaders.hostHeader) ??
             '127.0.0.1:${_http!.port}';
-        response.write(
+        _writeXml(
+          response,
           DlnaProtocol.deviceDescription('http://$host', name: _serverName),
         );
       } else if (request.method == 'GET' &&
@@ -284,12 +280,8 @@ class DlnaRendererService extends ChangeNotifier {
             '/rendering.xml',
             '/connection.xml',
           ].contains(path)) {
-        response.headers.contentType = ContentType(
-          'text',
-          'xml',
-          charset: 'utf-8',
-        );
-        response.write(
+        _writeXml(
+          response,
           DlnaProtocol.serviceDescription(path.substring(1, path.length - 4)),
         );
       } else if (request.method == 'POST' && path.endsWith('/control')) {
@@ -364,6 +356,7 @@ class DlnaRendererService extends ChangeNotifier {
       'Pause',
       'Stop',
       'Seek',
+      'GetProtocolInfo',
     ].contains(action)) {
       debugPrint('[DLNA] SOAP $service/$action');
     }
@@ -376,15 +369,19 @@ class DlnaRendererService extends ChangeNotifier {
       body,
       userAgent: request.headers.value(HttpHeaders.userAgentHeader),
     );
-    response.headers.contentType = ContentType('text', 'xml', charset: 'utf-8');
     final payload = values == null
         ? DlnaProtocol.soapFault
         : DlnaProtocol.soapResponse(type, action, values);
     if (values == null) {
       response.statusCode = HttpStatus.internalServerError;
     }
-    // SOAP 响应写入明确长度，兼容不解析 chunked 响应的 DLNA 控制端。
-    final bytes = utf8.encode(payload);
+    _writeXml(response, payload);
+  }
+
+  /// 描述与 SOAP 统一使用 UTF-8 字节长度，兼容不解析 chunked 的控制端。
+  void _writeXml(HttpResponse response, String xml) {
+    final bytes = utf8.encode(xml);
+    response.headers.contentType = ContentType('text', 'xml', charset: 'utf-8');
     response.contentLength = bytes.length;
     response.add(bytes);
   }
@@ -422,7 +419,10 @@ class DlnaRendererService extends ChangeNotifier {
             'xml',
             charset: 'utf-8',
           );
-          request.write(body);
+          // 事件通知同样避免 chunked，确保订阅握手与控制响应行为一致。
+          final bytes = utf8.encode(body);
+          request.contentLength = bytes.length;
+          request.add(bytes);
           await request.close().timeout(const Duration(seconds: 3));
         } catch (error) {
           debugPrint('[DLNA] event delivery failed: $error');

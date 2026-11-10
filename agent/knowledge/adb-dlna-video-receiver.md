@@ -103,3 +103,12 @@
 - 资源保持 16pt，沿用未置顶的系统文字色、置顶橙色及原有 Tooltip / 点击回调；PDF 保留矢量，在 Retina 下由 Asset Catalog 渲染，不在播放期间加载字体。
 - 导出脚本：`script/generate_dlna_pin_icons.swift`，参数为已安装 `cupertino_icons` 包的 `assets/CupertinoIcons.ttf` 路径和 `macos/Runner/Assets.xcassets`；无额外依赖。
 - 验证：Swift 原生 `dlna_titlebar_pin_test.swift` 编译并通过，覆盖两种矢量图标、Template 属性、状态切换、Tooltip 和点击回调；Asset Catalog 经 `actool` 编译通过；Flutter 图钉通道测试 1 项通过；`git diff --check` 通过。未运行 AnyDeck 主程序。
+
+## 2026-11-10 央视频握手失败排查与 XML 长度兼容
+
+- 需求：央视频此前可投屏，当前“央视一套”显示“投放出错”，用户已清除 App 缓存。手机为在线 `ABMK026211003334`，Wi-Fi 地址 `192.168.1.69`；安装包 `com.cctv.yangshipin.app.androidp`，版本 `3.5.7.26115`。不清除用户数据或重新安装 App。
+- 证据：运行中 `anydeck_64968_main.log` 的 15:17—15:27 收到该手机的 SSDP、设备/服务描述 GET、ConnectionManager POST 和事件 SUBSCRIBE，未见 `SetAVTransportURI` / `Play`。路由公布电脑 Wi-Fi 地址 `192.168.1.64`。因此本轮失败尚未进入播放器，不能归因为 HLS/FLV 解码、签名过期或 DRM；也不能仅据缺少播放命令确定手机端根因。
+- 本机 HTTP 读取确认设备和服务描述返回 200，但使用 `Transfer-Encoding: chunked`。现有 SOAP 已用明确长度兼容部分控制端，描述和 NOTIFY 尚未同步。统一设备描述、三个 SCPD、SOAP 使用 `_writeXml`，按 UTF-8 字节写入 `Content-Length`；NOTIFY 同样使用明确字节长度。此为握手兼容性修补，尚未证明央视频依赖此行为。
+- 诊断仅增加 `GetProtocolInfo` 动作名日志，便于区分能力查询与媒体下发，不记录媒体 URL、签名或请求正文。无新依赖、Provider、窗口通道、播放器策略或设备 Shell 执行逻辑。
+- 自动回归：新增 `dlna_http_framing_test.dart`，真实 HTTP 连接覆盖四个描述接口、中文名称的 UTF-8 字节长度、无 chunked、订阅后的初始 NOTIFY 与事件正文；修改前两项失败（Content-Length 为 -1），修改后通过。DLNA Core、窗口通道及投屏接收 Dashboard 共 24 项测试通过；定向 `flutter analyze --no-pub lib/core/dlna test/core/dlna/dlna_http_framing_test.dart` 无问题，`git diff --check` 通过。
+- 交付验收：现有 AnyDeck 进程仍是修改前的代码，本次未启动、重启或 Hot Reload 主程序。加载新代码后，手机退出当前投屏会话、重选 AnyDeck，再分别验证央视直播与普通点播的媒体下发、首帧和声音；同步对照 `GetProtocolInfo`、`SetAVTransportURI`、`Play`。若仍只读取描述/订阅，继续定位手机会话和内容地址获取，不能宣称问题已修复。其他 DLNA App 需回归发现、播放和结束；scrcpy / AirPlay 路径未修改。
