@@ -1,5 +1,6 @@
 /// settings 模块文案表。新增 key 时必须同时补齐 zh/en。
 const settingsZh = {
+  'navigationServiceRunning': '服务运行中',
   'settingsFileKeywords': '截图 录屏 保存 路径 文件夹',
   'settingsGeneral': '常规',
   'settingsNotifications': '通知',
@@ -196,6 +197,7 @@ const settingsZh = {
 };
 
 const settingsEn = {
+  'navigationServiceRunning': 'Service running',
   'settingsFileKeywords': 'screenshot recording save path folder',
   'settingsGeneral': 'General',
   'settingsNotifications': 'Notifications',

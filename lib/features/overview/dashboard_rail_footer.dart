@@ -31,7 +31,7 @@ class _DashboardRailFooter extends ConsumerWidget {
           tooltip: context.l10n.t('aiMcp'),
           isNarrow: isNarrow,
           selected: selectedTool == 14,
-          isHighlighted: mcpRunning,
+          statusColor: mcpRunning ? Theme.of(context).appColors.success : null,
           onPressed: () => context.goNamed(AppRouteNames.mcp),
         ),
         _RailButton(

@@ -100,7 +100,7 @@ void main() {
     }
   }
 
-  testWidgets('系统版本位于鸿蒙互联下面，控制台紧邻设置上方且不改变路由', (tester) async {
+  testWidgets('系统版本位于文件互传下面，控制台紧邻设置上方且不改变路由', (tester) async {
     tester.view.physicalSize = const Size(1400, 950);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -163,7 +163,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     final versions = find.byTooltip('系统版本');
-    final share = find.byTooltip('鸿蒙互联');
+    final share = find.byTooltip('文件互传');
     final console = find.byTooltip('控制台');
     final settings = find.byTooltip('设置');
     expect(

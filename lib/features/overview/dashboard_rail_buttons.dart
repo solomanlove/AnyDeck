@@ -191,7 +191,6 @@ class _RailButton extends StatelessWidget {
     required this.tooltip,
     required this.isNarrow,
     this.selected = false,
-    this.isHighlighted = false,
     this.statusColor,
     this.verticalPadding,
     this.onPressed,
@@ -201,7 +200,6 @@ class _RailButton extends StatelessWidget {
   final String tooltip;
   final bool isNarrow;
   final bool selected;
-  final bool isHighlighted;
   final Color? statusColor;
   final double? verticalPadding;
   final VoidCallback? onPressed;
@@ -213,7 +211,7 @@ class _RailButton extends StatelessWidget {
     final Color color;
     if (onPressed == null) {
       color = theme.navigationDisabledForeground;
-    } else if (selected || isHighlighted) {
+    } else if (selected) {
       color = AppPalette.primary;
     } else {
       color = theme.navigationForeground;
@@ -228,18 +226,24 @@ class _RailButton extends StatelessWidget {
           padding: EdgeInsets.symmetric(vertical: verticalPadding ?? 6),
           child: Center(
             child: IconButton(
-              icon: Badge(
-                isLabelVisible: statusColor != null,
-                backgroundColor: statusColor ?? Colors.transparent,
-                smallSize: 8,
-                child: Icon(icon, color: color),
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(icon, color: color),
+                  if (statusColor != null)
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: _RailStatusDot(color: statusColor!),
+                    ),
+                ],
               ),
               iconSize: 28,
               onPressed: onPressed,
               style: IconButton.styleFrom(
                 fixedSize: const Size(48, 48),
                 foregroundColor: color,
-                backgroundColor: (selected || isHighlighted)
+                backgroundColor: selected
                     ? activeBgColor
                     : Colors.transparent,
                 disabledForegroundColor: theme.navigationDisabledForeground,
@@ -262,7 +266,7 @@ class _RailButton extends StatelessWidget {
           child: AppNavigationItem(
             icon: icon,
             label: tooltip,
-            selected: selected || isHighlighted,
+            selected: selected,
             foregroundColor: color,
             onTap: onPressed,
             trailing: statusColor == null
@@ -282,6 +286,7 @@ class _RailButton extends StatelessWidget {
   }
 }
 
+/// 宽窄侧栏共用的服务运行标记；不参与页面选中态。
 class _RailStatusDot extends StatelessWidget {
   const _RailStatusDot({required this.color});
 
@@ -289,10 +294,13 @@ class _RailStatusDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    return Tooltip(
+      message: context.l10n.t('navigationServiceRunning'),
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
     );
   }
 }

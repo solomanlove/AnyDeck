@@ -6,6 +6,11 @@ import '../../../core/nearby_share/harmony_share_notifications.dart';
 import '../../../core/nearby_share/harmony_share_service.dart';
 import '../../../core/notifications/notification_providers.dart';
 
+/// 复用主窗口常驻收发服务，侧栏仅监听状态，不负责启停或销毁。
+final harmonyShareServiceProvider = Provider<HarmonyShareService>(
+  (ref) => HarmonyShareService.instance,
+);
+
 /// 仅主窗口启用；持有全局通知桥接引用，不创建或销毁桥接实例。
 final harmonyShareNotificationsProvider = Provider<HarmonyShareNotifications>((
   ref,

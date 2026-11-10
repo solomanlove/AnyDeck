@@ -35,6 +35,23 @@
 - 验证结果：导航 Shell、全局导航和 Route 共 15 项定向测试通过；本次修改的 Dart 文件定向 analyze 通过；公网帮助页 HTTP 200，页面标题为「帮助中心｜AnyDeck」。
 - 人工回归：打开侧栏帮助中心，检查帮助文章和搜索；再切换其他 Tab 后返回；断网时检查既有错误提示与重试入口。不启动桌面 App，原生 WebView 网络加载留待人工验收。
 
+## 侧栏页面选中与服务状态（2026-11-10）
+
+- 需求：投屏接收、文件互传和 AI MCP 的后台运行状态只用绿色点表达，避免设备管理页显示时多个入口同时呈现选中背景。
+- 页面选中仅由当前 `selectedToolTabProvider` 决定：保留当前页面的背景、绿色图标与加粗文字；服务运行不再影响这些样式。控制台仍按面板展开状态独立高亮。
+- 投屏接收沿用 AirPlay 或 DLNA 任一服务运行即显示绿点的判断；AI MCP 使用 `mcpServerProvider.isRunning`；文件互传通过 `harmonyShareServiceProvider` 复用常驻服务，启用且无错误、发现就绪或正在收发时显示绿点。仅开启开关、启动准备中或启动失败不显示绿点。
+- 宽侧栏在右侧显示状态点，窄侧栏在图标右上方显示同一状态组件；悬停状态点显示「服务运行中 / Service running」。颜色复用 Theme 的 `appColors.success`，文案来自 l10n。
+- 实现集中在 `dashboard_rail.dart`、`dashboard_rail_buttons.dart`、`dashboard_rail_footer.dart`；不改变 Route、服务启停、文件传输、投屏输入或跨 Isolate 协议，不增加后台任务。文件互传监听仅重建对应入口。
+- 自动回归：`test/dashboard_service_navigation_test.dart` 覆盖中英文、Light/Dark、宽窄侧栏、三个服务同时运行、切页迁移高亮、停服保留页面选中、准备/失败无绿点及收发中状态。`test/dashboard_global_navigation_test.dart` 将互传入口断言更新为现有「文件互传」文案。
+- 验证结果：以下四个测试文件共 33 项测试通过，7 个修改及测试 Dart 文件定向 analyze 无问题，`git diff --check` 通过。
+- 人工回归：启动桌面 App 后分别启停三个服务，切换页面并悬停绿点；缩窄窗口检查右上角状态点与提示。自动测试使用替代服务，不启动桌面 App 或真实服务。
+
+```bash
+flutter test --no-pub test/dashboard_service_navigation_test.dart test/dashboard_global_navigation_test.dart test/dashboard_shell_navigation_test.dart test/receiver_dashboard_tab_test.dart
+flutter analyze --no-pub lib/features/overview/dashboard_rail.dart lib/features/overview/dashboard_rail_buttons.dart lib/features/overview/dashboard_rail_footer.dart lib/features/harmony_share/controller/harmony_share_providers.dart lib/app/l10n/tables/app_l10n_settings.dart test/dashboard_service_navigation_test.dart test/dashboard_global_navigation_test.dart
+git diff --check
+```
+
 ## 控制台布局与生命周期
 
 - 默认关闭，初始高度 260px。8px 分隔条使用 `resizeUpDown` 光标；拖动时限制实际高度，至少保留 180px 工作区。

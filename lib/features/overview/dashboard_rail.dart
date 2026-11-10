@@ -427,7 +427,27 @@ class PrimaryRail extends ConsumerWidget {
                         return _RailButton(
                           icon: tool.icon,
                           selected: selectedTool == tool.tabIndex,
-                          isHighlighted: isRunning,
+                          statusColor:
+                              isRunning ? theme.appColors.success : null,
+                          tooltip: tool.label,
+                          isNarrow: renderNarrow,
+                          verticalPadding: renderNarrow ? 3.0 : 2.0,
+                          onPressed: () => handleTap(tool.tabIndex),
+                        );
+                      },
+                    )
+                  else if (tool.tabIndex == -4)
+                    ListenableBuilder(
+                      listenable: ref.watch(harmonyShareServiceProvider),
+                      builder: (context, _) {
+                        final service = ref.read(harmonyShareServiceProvider);
+                        // 发现就绪或正在收发时标记运行，不把启用意愿当作启动成功。
+                        final isRunning = service.enabled &&
+                            service.error == null &&
+                            (service.scanning || service.busy);
+                        return _RailButton(
+                          icon: tool.icon,
+                          selected: selectedTool == tool.tabIndex,
                           statusColor:
                               isRunning ? theme.appColors.success : null,
                           tooltip: tool.label,
