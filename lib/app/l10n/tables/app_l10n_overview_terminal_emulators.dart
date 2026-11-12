@@ -204,7 +204,7 @@ const overviewTerminalEmulatorsEn = {
   'customOsUnknown': 'Stock Android',
   'deviceCodename': 'Device Codename',
   'androidApiMapping': 'Android Version to API Mapping',
-  'systemVersions': 'System Versions',
+  'systemVersions': 'Versions',
   'androidApiDistribution': 'Android Platform/API Version Distribution',
   'harmonyApiDistribution': 'HarmonyOS Version & API Level Distribution',
   'iosApiDistribution': 'iOS Version Adoption & Toolchain Distribution',
