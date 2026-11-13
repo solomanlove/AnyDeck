@@ -14,6 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/search_field_expectations.dart';
+
 class _Packages extends PackagesNotifier {
   _Packages() : super('phone');
   @override
@@ -80,6 +82,7 @@ void main() {
         ),
       );
       await tester.pump();
+      expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
       expect(queries, 1);
       final interval = Duration(seconds: webpage ? 5 : 3);
       await tester.pump(interval);

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/permission_adb_fake.dart';
+import 'support/search_field_expectations.dart';
 
 /// 用 Widget 测试验证窄弹窗、主题、分类及批量操作实际范围。
 void main() {
@@ -48,6 +49,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      expectSearchFieldRadius(tester, find.byType(TextFormField));
       // 虚拟列表只构建可见行，数量以分类统计为准。
       expect(find.text(locale == 'zh' ? '动态权限 (3)' : 'Runtime (3)'), findsOneWidget);
       expect(find.byType(Switch), findsWidgets);

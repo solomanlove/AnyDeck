@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../app/theme/app_theme_sizes.dart';
 import '../../core/adb/discovered_device.dart';
 import '../../core/web_debug/webpage_target.dart';
 import '../../core/providers/app_providers.dart';
@@ -289,13 +290,13 @@ class _WebpagesTabState extends ConsumerState<WebpagesTab> {
                         vertical: 8,
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: AppThemeSizes.radiusNavigation,
                         borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.outlineVariant,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: AppThemeSizes.radiusNavigation,
                         borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.outlineVariant
                               .withValues(alpha: 0.5),

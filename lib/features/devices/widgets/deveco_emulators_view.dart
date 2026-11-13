@@ -70,8 +70,8 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                     )
                   : null,
               hintText: '搜索 DevEco 模拟器...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+              border: const OutlineInputBorder(
+                borderRadius: AppThemeSizes.radiusNavigation,
               ),
             ),
           ),

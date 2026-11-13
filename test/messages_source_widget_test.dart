@@ -21,6 +21,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/search_field_expectations.dart';
+
 const _a = DiscoveredDevice(id: 'phone_a', status: 'device');
 const _b = DiscoveredDevice(id: 'phone_b', status: 'device');
 
@@ -185,6 +187,7 @@ void main() {
       }
 
       await show(_a);
+      expectSearchFieldRadius(tester, find.byType(TextFormField));
       expect(find.text('a-message-1'), findsOneWidget);
       await show(_b);
       expect(find.text('b-message-2'), findsOneWidget);

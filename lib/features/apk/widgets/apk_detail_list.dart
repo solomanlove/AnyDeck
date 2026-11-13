@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_theme_sizes.dart';
 
 /// 可搜索、复制的只读元数据列表。
 ///
@@ -56,6 +57,9 @@ class _ApkDetailListState extends State<ApkDetailList> {
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search),
               hintText: context.l10n.t('apkSearch'),
+              border: const OutlineInputBorder(
+                borderRadius: AppThemeSizes.radiusNavigation,
+              ),
             ),
           ),
         ),

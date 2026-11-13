@@ -16,7 +16,9 @@ class _SearchField extends StatelessWidget {
           prefixIcon: const Icon(CupertinoIcons.search, size: 14),
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          border: const OutlineInputBorder(
+            borderRadius: AppThemeSizes.radiusNavigation,
+          ),
         ),
         style: const TextStyle(fontSize: 12),
         onChanged: onChanged,

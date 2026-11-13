@@ -10,6 +10,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/search_field_expectations.dart';
+
 /// 使用真实 Theme 验证布局和交互；可选导出 Widget 图，不启动桌面 App。
 void main() {
   for (final locale in ['zh', 'en']) {
@@ -52,6 +54,7 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
+          expectSearchFieldRadius(tester, find.byType(TextField));
           for (final key in [
             'deviceListCounts',
             'deviceListSearch',
@@ -112,8 +115,10 @@ void main() {
     );
     expect(find.byTooltip('清空'), findsNothing);
     final search = find.byKey(const Key('deviceListSearch'));
+    expectSearchFieldRadius(tester, search, focused: false);
     await tester.enterText(search, 'Xiaomi');
     await tester.pumpAndSettle();
+    expectSearchFieldRadius(tester, search, focused: true);
     expect(queries, ['Xiaomi']);
     expect(find.byTooltip('清空'), findsOneWidget);
     await tester.tap(find.byKey(const Key('deviceListOnlineOnly')));

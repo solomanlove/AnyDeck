@@ -299,13 +299,13 @@ class _ConsoleWindowPanelState extends ConsumerState<ConsoleWindowPanel> {
                                 ),
                                 contentPadding: EdgeInsets.zero,
                                 border: OutlineInputBorder(
-                                  borderRadius: AppThemeSizes.radiusMedium,
+                                  borderRadius: AppThemeSizes.radiusNavigation,
                                   borderSide: BorderSide(
                                     color: theme.colorScheme.outlineVariant,
                                   ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
-                                  borderRadius: AppThemeSizes.radiusMedium,
+                                  borderRadius: AppThemeSizes.radiusNavigation,
                                   borderSide: BorderSide(
                                     color: theme.colorScheme.outlineVariant,
                                   ),

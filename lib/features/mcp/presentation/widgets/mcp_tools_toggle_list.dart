@@ -123,8 +123,8 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
                       hintText: '搜索工具名或描述...',
                       prefixIcon: const Icon(CupertinoIcons.search, size: 16),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      border: const OutlineInputBorder(
+                        borderRadius: AppThemeSizes.radiusNavigation,
                       ),
                     ),
                     onChanged: (val) {

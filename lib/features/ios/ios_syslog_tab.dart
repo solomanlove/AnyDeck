@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../app/theme/app_theme_sizes.dart';
 import '../../core/adb/discovered_device.dart';
 import '../../core/ios/ios_mirror_service.dart';
 import '../../core/logcat/bounded_log_buffer.dart';
@@ -305,7 +306,9 @@ class _IosSyslogTabState extends ConsumerState<IosSyslogTab> {
                     ),
                     prefixIcon: const Icon(Icons.search, size: 16),
                     hintText: context.l10n.t('searchLogsHint'),
-                    border: const OutlineInputBorder(),
+                    border: const OutlineInputBorder(
+                      borderRadius: AppThemeSizes.radiusNavigation,
+                    ),
                   ),
                   onChanged: (val) => setState(() => _filterKeyword = val),
                 ),

@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/controlled_process.dart';
+import 'support/search_field_expectations.dart';
 
 class _Commands extends IosCommandService {
   final processes = <ControlledProcess>[];
@@ -81,6 +82,7 @@ void main() {
         ),
       ),
     );
+    expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
     await tester.tap(find.byIcon(Icons.play_arrow));
     await tester.pump();
     expect(commands.processes.length, 1);

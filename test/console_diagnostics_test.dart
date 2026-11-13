@@ -10,6 +10,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/search_field_expectations.dart';
+
 /// 隔离原生窗口通道，验证故障日志不会被 UI 默认筛选误隐藏。
 class _FixtureLogs extends LogService {
   @override
@@ -46,6 +48,11 @@ void main() {
           ),
         );
         await tester.pump();
+        final search = find.byType(TextField);
+        expectSearchFieldRadius(tester, search, focused: false);
+        await tester.tap(search);
+        await tester.pumpAndSettle();
+        expectSearchFieldRadius(tester, search, focused: true);
         final exportButton = find.descendant(
           of: find.byType(LocalLogCaptureButton),
           matching: find.byType(IconButton),

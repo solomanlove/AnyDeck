@@ -8,7 +8,46 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/search_field_expectations.dart';
+
 void main() {
+  for (final brightness in Brightness.values) {
+    testWidgets('历史筛选框聚焦前后使用 Tab 圆角 $brightness', (tester) async {
+      final controller = TextEditingController();
+      final focus = FocusNode();
+      addTearDown(controller.dispose);
+      addTearDown(focus.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(brightness),
+          home: Scaffold(
+            body: SizedBox(
+              width: 280,
+              child: DashboardHistoryTextField(
+                controller: controller,
+                focusNode: focus,
+                hintText: '筛选',
+                history: const [],
+                onChanged: (_) {},
+                onSubmitted: (_) {},
+                onSelected: (_) {},
+                onHistoryRemoved: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      final search = find.byType(TextField);
+      expectSearchFieldRadius(tester, search, focused: false);
+      await tester.enterText(search, 'AnyDeck');
+      await tester.pumpAndSettle();
+      expectSearchFieldRadius(tester, search, focused: true);
+      focus.unfocus();
+      await tester.pumpAndSettle();
+      expectSearchFieldRadius(tester, search, focused: false);
+    });
+  }
+
   test('应用历史沿用旧 key，进程与文件历史独立持久化并去重', () async {
     SharedPreferences.setMockInitialValues({
       'apps_search_history': ['旧记录'],
@@ -79,6 +118,7 @@ void main() {
       ),
     );
 
+    expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
     await tester.tap(find.byType(TextField));
     await tester.pumpAndSettle();
     expect(find.text('筛选 DEBUG 应用'), findsOneWidget);
@@ -126,8 +166,10 @@ void main() {
       ),
     );
 
+    expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
     await tester.tap(find.byType(TextField));
     await tester.pumpAndSettle();
+    expectSearchFieldRadius(tester, find.byType(TextField), focused: true);
     expect(find.text('com.example.long.package.name'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

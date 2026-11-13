@@ -11,6 +11,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/search_field_expectations.dart';
+
 /// 固定失败状态避免测试触发真实 emulator 或 ADB 进程。
 class _FailedLaunch extends EmulatorLaunchNotifier {
   @override
@@ -73,6 +75,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
       expect(find.text('运行内存（MiB）'), findsOneWidget);
       expect(find.text('hw.ramSize'), findsOneWidget);
       expect(find.text('强制从指定快照启动'), findsOneWidget);
@@ -80,6 +83,7 @@ void main() {
       expect(find.text('其他配置项'), findsOneWidget);
       await tester.enterText(find.byType(TextField), '运行内存');
       await tester.pumpAndSettle();
+      expectSearchFieldRadius(tester, find.byType(TextField), focused: true);
       expect(find.text('hw.ramSize'), findsOneWidget);
       expect(find.text('vendor.unknown'), findsNothing);
       await tester.enterText(find.byType(TextField), '1024');
@@ -106,6 +110,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
     expect(find.text('RAM (MiB)'), findsOneWidget);
     expect(find.text('hw.ramSize'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -175,6 +180,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
       expect(find.byIcon(Icons.error_outline), findsNothing);
       expect(find.byIcon(Icons.link_off), findsOneWidget);
       expect(find.textContaining('ADB 未授权'), findsOneWidget);
@@ -198,6 +204,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'no matches');
       await tester.pumpAndSettle();
+      expectSearchFieldRadius(tester, find.byType(TextField), focused: true);
       expect(find.text('Small Phone'), findsNothing);
       expect(tester.takeException(), isNull);
     },

@@ -9,6 +9,8 @@ import 'package:any_deck/core/apk/local_apk_info.dart';
 import 'package:any_deck/features/apk/apk_details_page.dart';
 import 'package:any_deck/features/apk/widgets/apk_detail_list.dart';
 
+import 'support/search_field_expectations.dart';
+
 void main() {
   for (final dark in [false, true]) {
     testWidgets('离线详情可用，安装禁用，SDK 标签准确；dark=$dark', (tester) async {
@@ -118,6 +120,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
     // 验证真实标题作为主标题展示
     expect(find.text('主菜单'), findsOneWidget);
     // 验证类名作为副标题展示
@@ -131,5 +134,14 @@ void main() {
     expect(find.text('de.syss.MifareClassicTool.Activities.DumpEditor'), findsOneWidget);
     // 验证图标正常渲染（自定义图片与占位图标）
     expect(find.byType(Image), findsOneWidget);
+    // 搜索过滤后仍保持与 Tab 一致的聚焦圆角。
+    await tester.enterText(find.byType(TextField), 'DumpEditor');
+    await tester.pumpAndSettle();
+    expectSearchFieldRadius(tester, find.byType(TextField), focused: true);
+    expect(find.text('主菜单'), findsNothing);
+    expect(
+      find.text('de.syss.MifareClassicTool.Activities.DumpEditor'),
+      findsOneWidget,
+    );
   });
 }

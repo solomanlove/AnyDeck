@@ -74,8 +74,8 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                     )
                   : null,
               hintText: '搜索 iOS 模拟器...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+              border: const OutlineInputBorder(
+                borderRadius: AppThemeSizes.radiusNavigation,
               ),
             ),
           ),

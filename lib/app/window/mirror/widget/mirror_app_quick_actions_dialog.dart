@@ -254,7 +254,7 @@ class _MirrorAppQuickActionsDialogState
                     ? Colors.white.withValues(alpha: 0.06)
                     : Colors.black.withValues(alpha: 0.04),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppThemeSizes.radiusNavigation,
                   borderSide: BorderSide.none,
                 ),
               ),

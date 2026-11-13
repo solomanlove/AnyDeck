@@ -130,7 +130,7 @@ class DeviceListFilters extends StatelessWidget {
   Widget _buildSearch(BuildContext context) {
     final theme = Theme.of(context);
     final border = OutlineInputBorder(
-      borderRadius: AppThemeSizes.radiusLarge,
+      borderRadius: AppThemeSizes.radiusNavigation,
       borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
     );
     return Tooltip(

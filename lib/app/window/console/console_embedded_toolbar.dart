@@ -76,7 +76,7 @@ class ConsoleEmbeddedToolbar extends StatelessWidget {
                         prefixIcon: const Icon(CupertinoIcons.search, size: 16),
                         contentPadding: EdgeInsets.zero,
                         border: const OutlineInputBorder(
-                          borderRadius: AppThemeSizes.radiusMedium,
+                          borderRadius: AppThemeSizes.radiusNavigation,
                         ),
                       ),
                     ),

@@ -89,8 +89,8 @@ class EmulatorFullConfigDialogState extends State<EmulatorFullConfigDialog> {
                   prefixIcon: const Icon(CupertinoIcons.search),
                   hintText: context.l10n.t('searchConfig'),
                   contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  border: const OutlineInputBorder(
+                    borderRadius: AppThemeSizes.radiusNavigation,
                   ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(

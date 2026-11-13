@@ -49,8 +49,8 @@ class _EmulatorPageLayoutState extends State<_EmulatorPageLayout> {
                     )
                   : null,
               hintText: context.l10n.t('emulatorSearch'),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+              border: const OutlineInputBorder(
+                borderRadius: AppThemeSizes.radiusNavigation,
               ),
             ),
           ),

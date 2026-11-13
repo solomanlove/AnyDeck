@@ -9,6 +9,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/search_field_expectations.dart';
+
 /// 隔离真实 MCP 服务，记录 UI 是否意外修改工具权限。
 class _TestMcpServer extends McpServerNotifier {
   int configUpdates = 0;
@@ -84,6 +86,7 @@ void main() {
           await tester.binding.setSurfaceSize(Size(width, 600));
           await tester.pumpAndSettle();
           final searchRect = tester.getRect(find.byType(TextField));
+          expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
           final categoryRect = tester.getRect(find.widgetWithText(ChoiceChip, '全部'));
           expect(searchRect.center.dy, closeTo(categoryRect.center.dy, 1));
           expect(searchRect.right, lessThanOrEqualTo(width));
@@ -96,6 +99,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('device_test'), findsOneWidget);
         await tester.enterText(find.byType(TextField), 'device');
+        await tester.pumpAndSettle();
+        expectSearchFieldRadius(tester, find.byType(TextField), focused: true);
         await tester.tap(find.widgetWithText(ChoiceChip, '设备状态'));
         await tester.pumpAndSettle();
         expect(find.text('app_test'), findsNothing);

@@ -165,7 +165,7 @@ class _WifiPasswordsDialogState extends ConsumerState<_WifiPasswordsDialog> {
               prefixIcon: const Icon(CupertinoIcons.search),
               isDense: true,
               border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderRadius: AppThemeSizes.radiusNavigation,
               ),
             ),
             onChanged: _filterSSID,

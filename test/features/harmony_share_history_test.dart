@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/search_field_expectations.dart';
+
 class _History extends ShareTransferHistory {
   final rows = <ShareTransferRecord>[
     ShareTransferRecord(
@@ -108,6 +110,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         expect(find.text('synthetic.bin'), findsOneWidget);
+        expectSearchFieldRadius(tester, find.byType(TextField), focused: false);
         await tester.tap(find.text(language == 'zh' ? '我接收的' : 'Received'));
         await tester.pumpAndSettle();
         expect(history.direction, ShareTransferDirection.receive);
@@ -115,6 +118,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 350));
         await tester.pumpAndSettle();
         expect(history.search, 'nova');
+        expectSearchFieldRadius(tester, find.byType(TextField), focused: true);
         history.dispose();
       });
     }

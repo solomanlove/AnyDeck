@@ -181,8 +181,8 @@ class MessagesHeaderBar extends ConsumerWidget {
                         horizontal: 10,
                         vertical: 8,
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      border: const OutlineInputBorder(
+                        borderRadius: AppThemeSizes.radiusNavigation,
                       ),
                     ),
                     onChanged: (val) {

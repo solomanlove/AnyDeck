@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_theme_sizes.dart';
 import '../../../core/nearby_share/share_transfer_history.dart';
 import '../../../core/nearby_share/share_transfer_record.dart';
 import 'harmony_share_record_tile.dart';
@@ -182,6 +183,9 @@ class _HarmonyShareHistoryDialogState extends State<HarmonyShareHistoryDialog> {
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search_rounded),
               hintText: context.l10n.t('harmonyShareHistorySearch'),
+              border: const OutlineInputBorder(
+                borderRadius: AppThemeSizes.radiusNavigation,
+              ),
             ),
             onChanged: (_) {
               _debounce?.cancel();

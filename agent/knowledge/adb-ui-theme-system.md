@@ -83,3 +83,33 @@ Painter 或 Controller 不应反向依赖 Widget Theme；需要动态主题时�
 flutter test test/app_toast_test.dart test/mirror_clipboard_sync_test.dart
 flutter analyze --no-pub lib/app/widget/app_toast.dart test/app_toast_test.dart
 ```
+
+## 8. 搜索框与 Tab 圆角统一（2026-11-13）
+
+需求：设置页完成圆角调整后，将其他页面的搜索、文本筛选入口一并对齐 Tab。统一使用既有 `AppThemeSizes.radiusNavigation`（10px），避免各页面保留 4px、8px、12px 或 20px 圆角。
+
+| 入口 | 实现与覆盖范围 |
+| --- | --- |
+| 共用历史筛选 | `DashboardHistoryTextField` 的 `border`、`enabledBorder` 同时复用导航圆角，覆盖 Android/HarmonyOS 应用、进程、文件，iOS 应用/进程和 Logcat 包名、Tag、正文筛选 |
+| 设备与模拟器 | 设备列表、Android 模拟器及配置搜索、DevEco 模拟器、iOS 模拟器 |
+| 独立页面与弹窗 | 应用详情、权限、APK 元数据、消息及屏蔽应用、网页、MCP 工具、iOS Syslog、Wi-Fi 密码、文件互传历史、投屏应用快捷操作 |
+| 控制台与日志浮层 | 底部和独立控制台的搜索框；Logcat 行内输入本身无边框，实际圆角位于浮动搜索面板外框 |
+
+只替换搜索边框或搜索面板圆角来源，沿用颜色、边框宽度、布局与回调。普通表单输入、地址栏和下拉筛选器继续使用原样式；全局 `InputDecorationTheme` 不变。不新增 Provider、设备命令、订阅或跨窗口广播。
+
+`test/support/search_field_expectations.dart` 检查实际 `InputDecorator` 的普通、enabled、focused 及其他非空状态边框；已有交互测试复用该断言，覆盖明暗主题、中英文、宽窄布局、聚焦与失焦、搜索过滤、清除和历史下拉。DevEco/iOS 模拟器的新测试固定 Provider 空列表，避免真实扫描。
+
+74 项定向测试通过。定向 analyze 仅报告投屏快捷操作弹窗原有的 1 项 `unnecessary_non_null_assertion` warning 和 2 项 `unnecessary_underscores` info，对照 HEAD 确认相关代码未改；关闭既有 warning/info 的 fatal 选项后检查通过。新文件格式检查和本次改动的 `git diff --check` 通过。未启动桌面 App，真实窗口视觉仍待人工验收。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/dashboard_search_history_test.dart test/console_diagnostics_test.dart \
+  test/device_list_filters_test.dart test/emulator_panel_test.dart test/emulator_search_fields_test.dart \
+  test/app_permissions_panel_test.dart test/apk_details_page_test.dart test/messages_source_widget_test.dart \
+  test/mcp_tools_toggle_list_test.dart test/features/harmony_share_history_test.dart \
+  test/ios_tab_lifecycle_test.dart test/tab_refresh_lifecycle_test.dart \
+  test/processes_tab_filter_test.dart test/apps_tab_filter_test.dart \
+  test/ios_apps_tab_test.dart test/ios_processes_tab_test.dart test/logcat_lifecycle_test.dart
+dart format --output=none --set-exit-if-changed test/support/search_field_expectations.dart test/emulator_search_fields_test.dart
+git diff --check
+```

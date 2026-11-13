@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_theme_sizes.dart';
 import '../../../core/apps/adb_app_permission.dart';
 import '../../../core/apps/app_permission_controller.dart';
 
@@ -41,7 +42,9 @@ class AppPermissionsPanel extends ConsumerWidget {
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search),
             hintText: l10n.t('searchPermission'),
-            border: const OutlineInputBorder(),
+            border: const OutlineInputBorder(
+              borderRadius: AppThemeSizes.radiusNavigation,
+            ),
           ),
         ),
         const SizedBox(height: 8),

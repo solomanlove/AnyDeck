@@ -9,7 +9,7 @@ abstract final class AppThemeSizes {
   static const BorderRadius radiusMedium = BorderRadius.all(Radius.circular(8));
   static const BorderRadius radiusLarge = BorderRadius.all(Radius.circular(12));
 
-  /// 主侧栏与设置分类共用的导航圆角。
+  /// 主侧栏、设置分类与搜索框共用的圆角。
   static const BorderRadius radiusNavigation = BorderRadius.all(
     Radius.circular(10),
   );

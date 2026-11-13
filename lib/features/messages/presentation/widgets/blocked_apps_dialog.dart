@@ -81,8 +81,8 @@ class _BlockedAppsDialogState extends ConsumerState<BlockedAppsDialog> {
                 hintText: context.l10n.t('searchMessagesPlaceholder'),
                 prefixIcon: const Icon(CupertinoIcons.search, size: 18),
                 isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                border: const OutlineInputBorder(
+                  borderRadius: AppThemeSizes.radiusNavigation,
                 ),
               ),
               onChanged: (val) => setState(() => _filter = val),

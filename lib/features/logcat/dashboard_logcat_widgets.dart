@@ -369,7 +369,7 @@ class _LogcatSearchPanelState extends State<_LogcatSearchPanel> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: colorScheme.surface.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppThemeSizes.radiusNavigation,
         border: Border.all(
           color: colorScheme.outlineVariant.withValues(alpha: 0.8),
         ),

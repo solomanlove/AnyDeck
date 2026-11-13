@@ -333,13 +333,13 @@ class _DashboardHistoryTextFieldState extends State<DashboardHistoryTextField> {
                 vertical: 8,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: AppThemeSizes.radiusNavigation,
                 borderSide: BorderSide(
                   color: Theme.of(context).colorScheme.outlineVariant,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: AppThemeSizes.radiusNavigation,
                 borderSide: BorderSide(
                   color: Theme.of(
                     context,
