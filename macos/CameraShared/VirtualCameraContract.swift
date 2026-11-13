@@ -3,7 +3,13 @@ import CoreMediaIO
 
 /// 主应用与系统扩展共用的设备标识及格式；升级时保持 UUID 不变。
 enum AnyDeckCameraContract {
-  static let extensionID = "com.github.anydeck.camera-extension"
+  // 构建时可为团队选择可注册的扩展 ID；激活请求必须与嵌入产物一致。
+  static let extensionID = resolveExtensionID(infoDictionary: Bundle.main.infoDictionary)
+  static func resolveExtensionID(infoDictionary: [String: Any]?) -> String {
+    guard let configured = infoDictionary?["AnyDeckCameraExtensionBundleIdentifier"] as? String,
+          !configured.isEmpty else { return "com.github.anydeck.camera-extension" }
+    return configured
+  }
   static let hostSigningID = "com.github.anydeck"
   static let deviceUID = "D45CF524-EBB8-42C3-92A4-DA065F0DCE71"
   static let sourceUID = "D45CF524-EBB8-42C3-92A4-DA065F0DCE72"

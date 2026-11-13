@@ -2,7 +2,7 @@
 
 ## 实现状态与范围
 
-2026-11-07 新增实验性系统摄像头链路。功能代码、Extension Target、Flutter 入口及自动测试已接入；**尚未进行已签名扩展激活、手机真实采集或会议应用画面验收**。能够构建、系统中出现摄像头名字、显示占位画面，都不能代替真实视频验收。
+2026-11-07 新增实验性系统摄像头链路。2026-11-14 已完成开发团队签名、嵌套验签、安装及系统扩展激活；**Zoom / FaceTime 连续可辨识画面仍未通过验收**。能够构建、系统中出现摄像头名字、显示占位画面，都不能代替真实视频验收。
 
 - 宿主门槛：macOS 13+；设备门槛：Android 12 / API 31+，沿用已授权的 ADB 连接。
 - 输出名称：`AnyDeck Camera`。首版格式固定为 1280×720、BGRA、30 fps。
@@ -56,7 +56,7 @@ Android scrcpy-server 4.0 摄像头 H.264
 
 ## 安装、签名与打包
 
-Extension bundle ID 为 `com.github.anydeck.camera-extension`，随 Runner 嵌入：
+Extension 默认 bundle ID 为 `com.github.anydeck.camera-extension`，随 Runner 嵌入：
 
 ```text
 AnyDeck.app/Contents/Library/SystemExtensions/
@@ -66,9 +66,38 @@ AnyDeck.app/Contents/Library/SystemExtensions/
 - 签名构建使用 `CameraDebugProfile.entitlements` / `CameraRelease.entitlements`，包含 `com.apple.developer.system-extension.install` 与 `com.apple.security.application-groups`；不改变主应用现有非 sandbox 配置。
 - 主应用与 Extension 共用 `ANYDECK_CAMERA_ENTITLEMENTS_PREFIX`，默认均为空：主应用使用原有 entitlements，Extension 使用仅含 App Sandbox 的 `Extension.entitlements`，两者保留 ad-hoc 签名。设置 `ANYDECK_CAMERA_ENTITLEMENTS_PREFIX=Camera` 时，主应用使用 `CameraDebugProfile.entitlements` / `CameraRelease.entitlements`，Extension 使用原有 `CameraExtension.entitlements`；由用户提供 `DEVELOPMENT_TEAM`、`CODE_SIGN_IDENTITY` 与对应 provisioning，不自动选择本机其它组织证书。
 - Extension 使用 App Sandbox，App Group 为 `group.com.github.anydeck.camera`，Mach service 为 `group.com.github.anydeck.camera.service`。
-- 正式使用必须配置有效开发团队、主应用及 Extension 的签名与所需 provisioning。当前仓库没有配置可用团队签名。
+- 正式使用必须配置有效开发团队、主应用及 Extension 的签名与所需 provisioning。仓库不固定团队，签名构建通过参数传入；普通开发包仍使用默认 ad-hoc 配置。
 - 用户从 `/Applications/AnyDeck.app` 发起激活请求，按系统要求由管理员批准。系统返回需要重启时，UI 保留该状态，不把旧版本可见设备当成新版本激活成功。
 - `CODE_SIGNING_ALLOWED=NO` 仅用于构建验证，生成的包不表示能被系统批准或发布；签名和公证应在交付流程中另行验证。
+
+### 签名团队与扩展标识（2026-11-14）
+
+实际签名构建确认，免费 Personal Team 会被 Xcode 拒绝：`Personal development teams ... do not support the System Extension capability`。必须使用支持该能力的 Apple Developer 团队。证书显示名称括号中的标识不一定是 Team ID，应该核对证书 subject 的 `OU` 或 Xcode 的团队信息；不能只凭已有 Apple Development 证书判断能否激活。
+
+若默认扩展 ID 无法注册，可以在构建时指定 `ANYDECK_CAMERA_EXTENSION_BUNDLE_ID`。该参数同步控制扩展的 Bundle ID、`.systemextension` 文件名、嵌入路径和主应用 Info.plist 中的 `AnyDeckCameraExtensionBundleIdentifier`；激活与停用请求读取同一配置。默认 ID、摄像头设备 UUID、stream 名称、主应用签名 ID 及 App Group 不变。已安装扩展后应固定使用选定 ID，后续升级不能随意切换；不同 ID 不属于同一扩展的版本替换。
+
+本地开发签名示例（替换团队和可注册的扩展 ID）：
+
+```bash
+xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
+  -configuration Debug -derivedDataPath /tmp/anydeck-camera-signed \
+  -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
+  ANYDECK_CAMERA_ENTITLEMENTS_PREFIX=Camera \
+  ANYDECK_CAMERA_EXTENSION_BUNDLE_ID=com.example.anydeck.camera-extension \
+  DEVELOPMENT_TEAM=YOUR_TEAM_ID CODE_SIGN_IDENTITY='Apple Development' build
+```
+
+`-allowProvisioningDeviceRegistration` 会把当前 Mac 登记到所选团队用于开发 profile。签名包不要再经过 `fix_macos_app_policy.sh` 的 ad-hoc 重签流程，否则会丢失团队签名。完成构建后仍须核对嵌套签名、profile、安装权限、实际系统激活版本以及会议应用的连续真实画面。
+
+依据：[Apple Camera Extension 配置与激活](https://developer.apple.com/documentation/coremediaio/creating-a-camera-extension-with-core-media-i-o)、[System Extension 安装要求](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers)。
+
+本轮验收记录：
+
+- 使用独立扩展 ID `com.github.anydeck.camera-extension.dev` 的完整 Debug 签名构建通过，主应用与扩展均嵌入 macOS profile；`codesign --verify --deep --strict` 通过。
+- 从 `/Applications/AnyDeck.app` 发起激活并完成本机管理员认证后，`systemextensionsctl list` 确认扩展版本 `1.0/1` 为 `activated enabled`，扩展进程已运行。
+- 原生生命周期、像素和激活契约测试通过；8 项签名回归通过，包含真实构建后的默认/自定义扩展文件名、宿主 Bundle 配置读取。另解析 Xcode build manifest 核对 Embed Copy 的输入与输出，避免仅修改产品名称而仍引用旧包名。
+- Android 本地前后镜头可进入预览；前置原始像素探针收到约 30 fps、1280×960 BGRA / IOSurface 帧，但亮度接近黑色。仅有帧数与噪声变化不足以证明可辨识真实画面；仍需手机解锁并置于明亮场景后完成会议应用验证。
+- Zoom 官方客户端已安装。系统扩展成功激活后桌面锁屏，尚未完成 Zoom / FaceTime 的取流及画面验收；不据此标为完整可用。
 
 ### 普通构建签名失败修复（2026-11-07）
 

@@ -50,7 +50,7 @@
 		ACCA00000000000000000209 /* CameraDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000109 /* CameraDevice.swift */; };
 		ACCA0000000000000000020A /* CameraStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA0000000000000000010A /* CameraStream.swift */; };
 		ACCA0000000000000000020B /* VirtualCameraContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA0000000000000000010B /* VirtualCameraContract.swift */; };
-		ACCA00000000000000000004 /* AnyDeck Camera.systemextension in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000001; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		ACCA00000000000000000004 /* AnyDeck Camera.systemextension in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000431; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		ACCA00000000000000000005 /* VirtualCameraContract.swift in Extension Sources */ = {isa = PBXBuildFile; fileRef = ACCA0000000000000000010B; };
 		ACCA00000000000000000220 /* CameraFrameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000120; };
 		ACCA00000000000000000320 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = ACCA00000000000000000310; };
@@ -145,7 +145,9 @@
 		ACCA00000000000000000109 /* CameraDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraDevice.swift; sourceTree = "<group>"; };
 		ACCA0000000000000000010A /* CameraStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraStream.swift; sourceTree = "<group>"; };
 		ACCA0000000000000000010B /* VirtualCameraContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraContract.swift; sourceTree = "<group>"; };
-		ACCA00000000000000000001 /* AnyDeck Camera.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; path = "com.github.anydeck.camera-extension.systemextension"; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACCA00000000000000000001 /* AnyDeck Camera.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; path = "$(ANYDECK_CAMERA_EXTENSION_BUNDLE_ID).systemextension"; sourceTree = BUILT_PRODUCTS_DIR; };
+		/* 独立文件引用按宿主构建参数展开，避免产品引用缓存默认扩展名称。 */
+		ACCA00000000000000000431 /* Configured Camera Extension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; path = "$(ANYDECK_CAMERA_EXTENSION_BUNDLE_ID).systemextension"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACCA00000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		ACCA00000000000000000003 /* CameraExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CameraExtension.entitlements; sourceTree = "<group>"; };
 		ACCA00000000000000000120 /* CameraFrameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraFrameStore.swift; sourceTree = "<group>"; };
@@ -746,6 +748,7 @@
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ANYDECK_CAMERA_EXTENSION_BUNDLE_ID = "com.github.anydeck.camera-extension";
 				ARCHS = "$(ANYDECK_ARCH_$(NATIVE_ARCH_64_BIT))";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -824,6 +827,7 @@
 			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ANYDECK_CAMERA_EXTENSION_BUNDLE_ID = "com.github.anydeck.camera-extension";
 				ARCHS = "$(ANYDECK_ARCH_$(NATIVE_ARCH_64_BIT))";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -881,6 +885,7 @@
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ANYDECK_CAMERA_EXTENSION_BUNDLE_ID = "com.github.anydeck.camera-extension";
 				ARCHS = "$(ANYDECK_ARCH_$(NATIVE_ARCH_64_BIT))";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -1001,8 +1006,8 @@
 				OTHER_SWIFT_FLAGS = "";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.github.anydeck.camera-extension";
-				PRODUCT_NAME = "com.github.anydeck.camera-extension";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(ANYDECK_CAMERA_EXTENSION_BUNDLE_ID)";
+				PRODUCT_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -1026,8 +1031,8 @@
 				OTHER_SWIFT_FLAGS = "";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.github.anydeck.camera-extension";
-				PRODUCT_NAME = "com.github.anydeck.camera-extension";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(ANYDECK_CAMERA_EXTENSION_BUNDLE_ID)";
+				PRODUCT_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -1051,8 +1056,8 @@
 				OTHER_SWIFT_FLAGS = "";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.github.anydeck.camera-extension";
-				PRODUCT_NAME = "com.github.anydeck.camera-extension";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(ANYDECK_CAMERA_EXTENSION_BUNDLE_ID)";
+				PRODUCT_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 			};
