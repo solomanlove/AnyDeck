@@ -16,18 +16,11 @@ extension _SettingsTabAutoStartActions on _SettingsTab {
       return const SizedBox.shrink();
     }
 
-    final settings = ref.watch(appSettingsProvider);
-    final controller = ref.read(appSettingsProvider.notifier);
-
     return _buildSettingRow(
       context,
       label: context.l10n.t('launchAtStartup'),
       subtitle: context.l10n.t('launchAtStartupDesc'),
-      child: CupertinoSwitch(
-        activeTrackColor: const Color(0xFF34C759),
-        value: settings.launchAtStartup,
-        onChanged: (val) => controller.setLaunchAtStartup(val),
-      ),
+      child: const AutoStartSettingControl(),
     );
   }
 }

@@ -26,6 +26,14 @@ class AutoStartBridgeService: NSObject {
       switch call.method {
       case "isEnabled":
         result(self.isAutoStartEnabled())
+      case "status":
+        result(self.authorizationStatus())
+      case "openSettings":
+        guard let url = Self.settingsURL, NSWorkspace.shared.open(url) else {
+          result(FlutterError(code: "settings_open_failed", message: nil, details: nil))
+          return
+        }
+        result(nil)
       case "setEnabled":
         guard let enabled = call.arguments as? Bool else {
           result(FlutterError(code: "invalid_argument", message: "Boolean argument required", details: nil))
@@ -38,13 +46,10 @@ class AutoStartBridgeService: NSObject {
     }
   }
 
-  /// 检查当前是否开启了自启（优先检查 SMAppService，未开启时检查 LaunchAgents）。
+  /// 新系统只信任实际启用状态；旧系统保留原 LaunchAgent 配置查询。
   func isAutoStartEnabled() -> Bool {
     if #available(macOS 13.0, *) {
-      let status = SMAppService.mainApp.status
-      if status == .enabled {
-        return true
-      }
+      return SMAppService.mainApp.status == .enabled
     }
     if let fileUrl = launchAgentFile {
       return FileManager.default.fileExists(atPath: fileUrl.path)
@@ -52,36 +57,59 @@ class AutoStartBridgeService: NSObject {
     return false
   }
 
-  /// 设置自启动状态。优先采用 macOS 13+ 官方推荐的 SMAppService，失败时自动降级使用 LaunchAgent plist。
+  /// 只读查询不注册登录项；旧系统配置存在不等于系统已允许运行。
+  func authorizationStatus() -> String {
+    if #available(macOS 13.0, *) {
+      return Self.statusName(SMAppService.mainApp.status, legacyConfigured: legacyConfigurationExists)
+    }
+    return isAutoStartEnabled() ? "manual" : "disabled"
+  }
+
+  @available(macOS 13.0, *)
+  static func statusName(_ status: SMAppService.Status, legacyConfigured: Bool = false) -> String {
+    switch status {
+    case .enabled: return "enabled"
+    case .notRegistered: return legacyConfigured ? "manual" : "disabled"
+    case .requiresApproval: return "requiresApproval"
+    case .notFound: return "unavailable"
+    @unknown default: return "unknown"
+    }
+  }
+
+  private var legacyConfigurationExists: Bool {
+    guard let fileUrl = launchAgentFile else { return false }
+    return FileManager.default.fileExists(atPath: fileUrl.path)
+  }
+
+  static var settingsURL: URL? {
+    if #available(macOS 13.0, *) {
+      return URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")
+    }
+    return URL(string: "x-apple.systempreferences:com.apple.preference.users")
+  }
+
+  /// 注册成功仍可能待批准；新系统失败时不写 LaunchAgent 绕过系统状态。
   func setAutoStartEnabled(_ enabled: Bool) -> Bool {
-    var smSuccess = false
     if #available(macOS 13.0, *) {
       do {
         if enabled {
-          if SMAppService.mainApp.status != .enabled {
+          if SMAppService.mainApp.status != .enabled && SMAppService.mainApp.status != .requiresApproval {
             try SMAppService.mainApp.register()
           }
         } else {
-          if SMAppService.mainApp.status == .enabled {
+          if SMAppService.mainApp.status != .notRegistered {
             try SMAppService.mainApp.unregister()
           }
         }
-        smSuccess = true
+        if let fileUrl = launchAgentFile, FileManager.default.fileExists(atPath: fileUrl.path) {
+          try FileManager.default.removeItem(at: fileUrl)
+        }
+        return true
       } catch {
-        NSLog("[AutoStartBridgeService] SMAppService call failed: \(error)")
-        smSuccess = false
+        NSLog("[AutoStartBridgeService] Failed to update login item")
+        return false
       }
     }
-
-    if smSuccess {
-      // 若使用 SMAppService 成功，且为禁用操作，清理可能遗留的历史 LaunchAgent 文件
-      if !enabled, let fileUrl = launchAgentFile, FileManager.default.fileExists(atPath: fileUrl.path) {
-        try? FileManager.default.removeItem(at: fileUrl)
-      }
-      return true
-    }
-
-    // 降级方案：管理 ~/Library/LaunchAgents/com.github.anydeck.plist
     return setLaunchAgentEnabled(enabled)
   }
 

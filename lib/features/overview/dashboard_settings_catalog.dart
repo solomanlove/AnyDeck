@@ -143,24 +143,6 @@ extension _SettingsTabCatalog on _SettingsTab {
         standalone: true,
         child: _buildNotificationSectionCard(context, ref, AppPalette.primary),
       ),
-      if (defaultTargetPlatform == TargetPlatform.macOS)
-        SettingsItem(
-          id: 'macosPermissions',
-          category: SettingsCategory.permissions,
-          section: context.l10n.t('macPermissionsTitle'),
-          title: context.l10n.t('macPermissionsTitle'),
-          description: context.l10n.t('macPermissionsDescription'),
-          searchLabels: [
-            for (final permission in MacPermission.values)
-              context.l10n.t(permission.titleKey),
-          ],
-          searchAliases: {
-            for (final permission in MacPermission.values)
-              context.l10n.t(permission.descriptionKey):
-                  context.l10n.t(permission.titleKey),
-          },
-          child: const MacPermissionsPanel(),
-        ),
       SettingsItem(
         id: 'saveDirectory',
         category: SettingsCategory.storage,

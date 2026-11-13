@@ -161,7 +161,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       await setNotificationBodyPreview(value, broadcast: false);
     } else if (call.method == 'update_launch_at_startup') {
       final value = call.arguments as bool;
-      await setLaunchAtStartup(value, broadcast: false);
+      await setLaunchAtStartup(value, broadcast: false, applySystem: false);
     } else if (call.method == 'update_developer_mode') {
       final value = call.arguments as bool;
       await setDeveloperModeEnabled(value, broadcast: false);
@@ -362,15 +362,16 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
     }
   }
 
-  /// 更新开机自启状态，并持久化和广播。
-  Future<void> setLaunchAtStartup(bool value, {bool broadcast = true}) async {
-    state = state.copyWith(launchAtStartup: value);
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(_launchAtStartupKey, value);
-
-    if (Platform.isMacOS) {
-      await DesktopAutoStartService.setEnabled(value);
+  /// 用户切换更新系统；接收广播只保存状态，避免子窗口重复注册登录项。
+  Future<void> setLaunchAtStartup(bool value, {bool broadcast = true, bool applySystem = true}) async {
+    if (applySystem && Platform.isMacOS && !await DesktopAutoStartService.setEnabled(value, registerCancellation: ref.onDispose)) {
+      throw PlatformException(code: 'autostart_update_failed');
     }
+    final preferences = await SharedPreferences.getInstance();
+    if (!ref.mounted) return;
+    await preferences.setBool(_launchAtStartupKey, value);
+    if (!ref.mounted) return;
+    state = state.copyWith(launchAtStartup: value);
 
     if (broadcast) {
       try {

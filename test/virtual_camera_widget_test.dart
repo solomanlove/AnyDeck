@@ -54,6 +54,66 @@ void main() {
 
   for (final locale in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
+      testWidgets('扩展安装待批准在功能入口打开设置并等待真实状态 $locale $brightness', (
+        tester,
+      ) async {
+        var activation = 'notInstalled';
+        final calls = <String>[];
+        messenger.setMockMethodCallHandler(channel, (call) async {
+          calls.add(call.method);
+          if (call.method == 'activate') activation = 'needsApproval';
+          if (call.method == 'openSettings') return null;
+          return {
+            'supported': true,
+            'installed': activation == 'ready',
+            'activation': activation,
+          };
+        });
+        await tester.pumpWidget(
+          app(
+            const SizedBox(
+              width: 340,
+              height: 280,
+              child: SingleChildScrollView(
+                child: VirtualCameraControls(deviceId: 'phone'),
+              ),
+            ),
+            locale: locale,
+            brightness: brightness,
+          ),
+        );
+        await tester.pumpAndSettle();
+        final text = AppLocalizations(Locale(locale));
+        await tester.tap(find.text(text.t('virtualCameraInstall')));
+        await tester.pumpAndSettle();
+        expect(find.text(text.t('virtualCameraInstall')), findsNothing);
+        expect(find.text(text.t('virtualCameraNeedsApproval')), findsOneWidget);
+        final open = find.byKey(const ValueKey('virtual-camera-open-settings'));
+        await tester.ensureVisible(open);
+        await tester.tap(open);
+        await tester.pumpAndSettle();
+        expect(calls.where((method) => method != 'status'), [
+          'activate',
+          'openSettings',
+        ]);
+        expect(
+          calls.where((method) => method == 'status').length,
+          greaterThanOrEqualTo(2),
+        );
+        expect(
+          tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
+          isNull,
+        );
+        activation = 'ready';
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pumpAndSettle();
+        expect(find.text(text.t('virtualCameraReady')), findsOneWidget);
+        expect(open, findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      });
+
       testWidgets('小窗口显示扩展状态并允许停止共享 $locale $brightness', (tester) async {
         var enabled = true;
         final calls = <String>[];
@@ -126,6 +186,40 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('旧摄像头设备仍可见时新扩展待批准入口不会消失', (tester) async {
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'openSettings') return null;
+      return {
+        'supported': true,
+        'installed': true,
+        'activation': 'needsApproval',
+      };
+    });
+    await tester.pumpWidget(
+      app(const VirtualCameraControls(deviceId: 'phone')),
+    );
+    await tester.pumpAndSettle();
+    final open = find.byKey(const ValueKey('virtual-camera-open-settings'));
+    expect(open, findsOneWidget);
+    expect(
+      find.text(virtualCameraZh['virtualCameraNeedsApproval']!),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
+      isNull,
+    );
+    await tester.tap(open);
+    await tester.pumpAndSettle();
+    expect(open, findsOneWidget);
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
+      isNull,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('共享手机镜头时禁用本地预览，关闭预览UI不会停止共享', (tester) async {
     final calls = <String>[];
     messenger.setMockMethodCallHandler(channel, (call) async {
@@ -155,5 +249,35 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
     expect(calls, ['status']);
+  });
+
+  testWidgets('缺少扩展签名仍展示真实安装错误且不会提供批准跳转', (tester) async {
+    messenger.setMockMethodCallHandler(
+      channel,
+      (call) async => {
+        'supported': true,
+        'installed': false,
+        'activation': 'error',
+        'error': 'virtualCameraSigningRequired',
+      },
+    );
+    await tester.pumpWidget(
+      app(const VirtualCameraControls(deviceId: 'phone')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text(virtualCameraZh['virtualCameraSigningRequired']!),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('virtual-camera-open-settings')),
+      findsNothing,
+    );
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
+      isNull,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
   });
 }

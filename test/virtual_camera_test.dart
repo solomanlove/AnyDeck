@@ -153,4 +153,84 @@ void main() {
       'virtualCameraFailed',
     );
   });
+
+  test('设置跳转接受 void 返回，重复点击合并且不能当成扩展已获批', () async {
+    final opened = Completer<void>();
+    final calls = <String>[];
+    var native = <String, Object?>{
+      'supported': true,
+      'activation': 'needsApproval',
+    };
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call.method);
+      if (call.method == 'openSettings') {
+        await opened.future;
+        return null;
+      }
+      return native;
+    });
+    final value = container();
+    addTearDown(value.dispose);
+    await Future<void>.delayed(Duration.zero);
+    final controller = value.read(virtualCameraProvider.notifier);
+    final opening = controller.openSettings();
+    await controller.openSettings();
+    expect(value.read(virtualCameraProvider).busy, true);
+    opened.complete();
+    await opening;
+    expect(calls, ['status', 'openSettings', 'status']);
+    expect(value.read(virtualCameraProvider).ready, false);
+    expect(value.read(virtualCameraProvider).activation, 'needsApproval');
+    native = _ready;
+    await controller.refresh();
+    expect(value.read(virtualCameraProvider).ready, true);
+  });
+
+  test('系统设置打开失败保留待批准状态并可重试', () async {
+    var failOpen = true;
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      if (call.method == 'openSettings') {
+        if (failOpen) throw PlatformException(code: 'settings_open_failed');
+        return null;
+      }
+      return {'supported': true, 'activation': 'needsApproval'};
+    });
+    final value = container();
+    addTearDown(value.dispose);
+    await Future<void>.delayed(Duration.zero);
+    final controller = value.read(virtualCameraProvider.notifier);
+    await controller.openSettings();
+    expect(value.read(virtualCameraProvider).ready, false);
+    expect(value.read(virtualCameraProvider).activation, 'needsApproval');
+    expect(value.read(virtualCameraProvider).busy, false);
+    expect(
+      value.read(virtualCameraProvider).messageKey,
+      'virtualCameraOpenSettingsFailed',
+    );
+    failOpen = false;
+    await controller.openSettings();
+    expect(value.read(virtualCameraProvider).error, isNull);
+    expect(value.read(virtualCameraProvider).activation, 'needsApproval');
+  });
+
+  test('设置跳转期间销毁页面会结束等待且不发布迟到结果', () async {
+    final opened = Completer<void>();
+    final calls = <String>[];
+    messenger.setMockMethodCallHandler(_channel, (call) async {
+      calls.add(call.method);
+      if (call.method == 'openSettings') {
+        await opened.future;
+        return null;
+      }
+      return {'supported': true, 'activation': 'needsApproval'};
+    });
+    final value = container();
+    await Future<void>.delayed(Duration.zero);
+    final opening = value.read(virtualCameraProvider.notifier).openSettings();
+    value.dispose();
+    await expectLater(opening, completes);
+    opened.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(calls, ['status', 'openSettings']);
+  });
 }

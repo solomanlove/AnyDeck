@@ -62,7 +62,13 @@ class _VirtualCameraControlsState extends ConsumerState<VirtualCameraControls> {
           spacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            if (!state.installed)
+            if (state.activation == 'needsApproval')
+              OutlinedButton(
+                key: const ValueKey('virtual-camera-open-settings'),
+                onPressed: state.busy ? null : controller.openSettings,
+                child: Text(l10n.t('virtualCameraOpenSettings')),
+              ),
+            if (!state.installed && state.activation != 'needsApproval')
               OutlinedButton(
                 onPressed: state.supported && !state.busy
                     ? controller.activate

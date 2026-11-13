@@ -7,6 +7,13 @@ final class VirtualCameraActivation: NSObject, OSSystemExtensionRequestDelegate 
   private(set) var state = "notInstalled"
   private(set) var error: String?
   private var pending = false
+
+  /// 升级时旧 CMIO 设备仍可能可见，不能覆盖新扩展的待批准/待重启状态。
+  static func resolvedState(_ activation: String, installed: Bool) -> String {
+    if activation == "needsApproval" || activation == "needsReboot" { return activation }
+    return installed ? "ready" : activation
+  }
+
   func request(activate: Bool) {
     guard !pending else { return }
     guard Bundle.main.bundleURL.deletingLastPathComponent().path == "/Applications" else {
@@ -22,7 +29,7 @@ final class VirtualCameraActivation: NSObject, OSSystemExtensionRequestDelegate 
     request.delegate = self
     OSSystemExtensionManager.shared.submitRequest(request)
   }
-  static func hasInstallEntitlement() -> Bool {
+  private static func hasInstallEntitlement() -> Bool {
     var running: SecCode?
     var code: SecStaticCode?
     var info: CFDictionary?

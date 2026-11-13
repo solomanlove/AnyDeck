@@ -43,29 +43,14 @@ final class VirtualCameraPlugin: NSObject, FlutterPlugin {
     menu.update(enabled: status["enabled"] as? Bool ?? false,
                 front: status["front"] as? Bool ?? false, labels: labels)
   }
-  /// 权限中心只枚举 CMIO 设备，不激活扩展、不打开 stream，也不启动手机采集。
-  static func readPermissionStatus(_ completion: @escaping (String) -> Void) {
-    guard #available(macOS 13.0, *) else { completion("unsupported"); return }
-    let entitlement = VirtualCameraActivation.hasInstallEntitlement()
-    guard entitlement else { completion("unsupported"); return }
-    let coordinator = VirtualCameraCoordinator.shared
-    coordinator.workQueue.async {
-      let installed = coordinator.snapshot(probe: true)["installed"] as? Bool == true
-      DispatchQueue.main.async {
-        completion(MacosPermissionStatus.cameraExtension(supported: true, installEntitlement: entitlement,
-          installed: installed, activation: activation.state))
-      }
-    }
-  }
   private func respond(_ result: @escaping FlutterResult) {
     coordinator.workQueue.async {
       let snapshot = self.coordinator.snapshot(probe: true)
       DispatchQueue.main.async {
         var status = snapshot
         status["supported"] = true
-        let ready = snapshot["installed"] as? Bool == true
-        status["activation"] = Self.activation.state == "needsReboot" ? "needsReboot" :
-          (ready ? "ready" : Self.activation.state)
+        let installed = snapshot["installed"] as? Bool == true
+        status["activation"] = VirtualCameraActivation.resolvedState(Self.activation.state, installed: installed)
         if let error = Self.activation.error { status["error"] = error }
         Self.updateMenu(status)
         result(status)
@@ -107,6 +92,14 @@ final class VirtualCameraPlugin: NSObject, FlutterPlugin {
     }
     switch call.method {
     case "status": respond(result)
+    case "openSettings":
+      let pane: String
+      if #available(macOS 15.0, *) { pane = "com.apple.LoginItems-Settings.extension" }
+      else { pane = "com.apple.preference.security" }
+      guard let url = URL(string: "x-apple.systempreferences:\(pane)"), NSWorkspace.shared.open(url) else {
+        result(FlutterError(code: "settings_open_failed", message: nil, details: nil)); return
+      }
+      result(nil)
     case "activate": Self.activation.request(activate: true); respond(result)
     case "deactivate":
       coordinator.workQueue.async { self.coordinator.configure(nil, enabled: false) }

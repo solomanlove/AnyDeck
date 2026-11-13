@@ -138,7 +138,7 @@ void main() {
     )) {
       expect(settingsEn[key], isNotNull, reason: key);
     }
-    expect(SettingsCategory.values, hasLength(8));
+    expect(SettingsCategory.values, hasLength(7));
   });
 
   for (final language in ['zh', 'en']) {

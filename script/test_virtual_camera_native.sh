@@ -20,3 +20,9 @@ xcrun swiftc -target "${arch}-apple-macosx13.0" \
   test/native/virtual_camera_extension_test.swift \
   -o "$work_dir/extension-tests"
 "$work_dir/extension-tests"
+xcrun swiftc -target "${arch}-apple-macosx13.0" \
+  macos/CameraShared/VirtualCameraContract.swift \
+  macos/Runner/VirtualCamera/VirtualCameraActivation.swift \
+  test/native/virtual_camera_activation_test.swift \
+  -o "$work_dir/activation-tests"
+"$work_dir/activation-tests"

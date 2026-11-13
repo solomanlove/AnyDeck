@@ -1,118 +1,109 @@
-import 'dart:io';
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// 桌面端开机自启服务，负责与原生登录项/LaunchAgents 交互。
+/// 登录项状态区分已注册、待批准与实际可运行，不将注册完成视为已启用。
+enum DesktopAutoStartStatus {
+  enabled,
+  disabled,
+  requiresApproval,
+  manual,
+  unavailable,
+  unknown;
+
+  static DesktopAutoStartStatus parse(Object? value) => values.firstWhere(
+    (status) => status.name == value,
+    orElse: () => unknown,
+  );
+}
+
+/// 桌面端开机自启服务，所有注册与旧系统 LaunchAgent 操作均由原生端负责。
+///
+/// registerCancellation 由调用方绑定取消回调，并返回解除绑定的函数；
+/// 例如传入 ref.onDispose，确保等待随所属 Provider 结束且不积累回调。
 class DesktopAutoStartService {
   DesktopAutoStartService._();
 
   static const _channel = MethodChannel('any_deck/autostart');
-  static const _plistLabel = 'com.github.anydeck';
+  static bool get _supported =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
-  /// 检查当前系统是否已开启开机自启。
   static Future<bool> isEnabled() async {
-    if (kIsWeb || !Platform.isMacOS) {
-      return false;
-    }
-
+    if (!_supported) return false;
     try {
-      final result = await _channel.invokeMethod<bool>('isEnabled');
-      if (result != null) return result;
-    } on MissingPluginException {
-      debugPrint('[DesktopAutoStartService] Native channel not registered, using fallback.');
-    } catch (e) {
-      debugPrint('[DesktopAutoStartService] isEnabled failed: $e');
-    }
-
-    // 兜底检测 LaunchAgent 配置文件
-    return _checkLaunchAgentExists();
-  }
-
-  /// 开启或关闭开机自启。
-  static Future<bool> setEnabled(bool enabled) async {
-    if (kIsWeb || !Platform.isMacOS) {
-      return false;
-    }
-
-    try {
-      final result = await _channel.invokeMethod<bool>('setEnabled', enabled);
-      if (result != null) return result;
-    } on MissingPluginException {
-      debugPrint('[DesktopAutoStartService] Native channel not registered, using fallback.');
-    } catch (e) {
-      debugPrint('[DesktopAutoStartService] setEnabled failed: $e');
-    }
-
-    // 兜底通过 Dart 直接写入或删除 ~/Library/LaunchAgents/com.github.anydeck.plist
-    return _setLaunchAgentFallback(enabled);
-  }
-
-  /// 获取用户 LaunchAgent 配置文件路径。
-  static File? get _launchAgentFile {
-    final home = Platform.environment['HOME'] ?? '';
-    if (home.isEmpty) return null;
-    return File('$home/Library/LaunchAgents/$_plistLabel.plist');
-  }
-
-  /// 兜底检测 LaunchAgent 是否存在。
-  static bool _checkLaunchAgentExists() {
-    try {
-      final file = _launchAgentFile;
-      return file != null && file.existsSync();
-    } catch (e) {
-      debugPrint('[DesktopAutoStartService] _checkLaunchAgentExists error: $e');
+      return await _channel.invokeMethod<bool>('isEnabled') ?? false;
+    } catch (error) {
+      debugPrint('[DesktopAutoStartService] isEnabled failed: $error');
       return false;
     }
   }
 
-  /// 兜底创建或删除 LaunchAgent 配置文件。
-  static bool _setLaunchAgentFallback(bool enabled) {
-    try {
-      final file = _launchAgentFile;
-      if (file == null) return false;
+  /// true 表示注册/移除完成，是否需要批准仍以 status 查询为准。
+  static Future<bool> setEnabled(
+    bool enabled, {
+    VoidCallback Function(VoidCallback)? registerCancellation,
+  }) async {
+    if (!_supported) return false;
+    return await _call<bool>(
+          'setEnabled',
+          arguments: enabled,
+          registerCancellation: registerCancellation,
+        ) ??
+        false;
+  }
 
-      if (enabled) {
-        if (!file.parent.existsSync()) {
-          file.parent.createSync(recursive: true);
-        }
+  static Future<DesktopAutoStartStatus> status({
+    VoidCallback Function(VoidCallback)? registerCancellation,
+  }) async {
+    if (!_supported) return DesktopAutoStartStatus.unavailable;
+    final result = await _call<Object?>(
+      'status',
+      registerCancellation: registerCancellation,
+    );
+    return DesktopAutoStartStatus.parse(result);
+  }
 
-        // 解析当前可执行文件或 .app 包路径
-        final exePath = Platform.resolvedExecutable;
-        String appPath = exePath;
-        if (exePath.contains('.app/Contents/MacOS/')) {
-          appPath = exePath.substring(0, exePath.indexOf('.app') + 4);
-        }
+  /// 系统设置打开成功不表示用户已批准；功能入口返回前台后重新查询。
+  static Future<void> openSettings({
+    VoidCallback Function(VoidCallback)? registerCancellation,
+  }) async {
+    if (!_supported) throw PlatformException(code: 'unsupported_platform');
+    await _call<void>(
+      'openSettings',
+      registerCancellation: registerCancellation,
+    );
+  }
 
-        final plistContent = '''<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>$_plistLabel</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/usr/bin/open</string>
-        <string>-a</string>
-        <string>$appPath</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>ProcessType</key>
-    <string>Interactive</string>
-</dict>
-</plist>
-''';
-        file.writeAsStringSync(plistContent, flush: true);
-        return true;
-      } else {
-        if (file.existsSync()) {
-          file.deleteSync();
-        }
-        return true;
+  /// 原生调用无法取消；所属 Provider 销毁时结束等待并取消 Timer，忽略迟到回调。
+  static Future<T?> _call<T>(
+    String method, {
+    Object? arguments,
+    VoidCallback Function(VoidCallback)? registerCancellation,
+  }) {
+    final result = Completer<T?>();
+    final timer = Timer(const Duration(seconds: 10), () {
+      if (!result.isCompleted) result.completeError(TimeoutException(method));
+    });
+    final removeCancellation = registerCancellation?.call(() {
+      timer.cancel();
+      if (!result.isCompleted) {
+        result.completeError(StateError('Autostart owner disposed'));
       }
-    } catch (e) {
-      debugPrint('[DesktopAutoStartService] _setLaunchAgentFallback error: $e');
-      return false;
-    }
+    });
+    _channel
+        .invokeMethod<T>(method, arguments)
+        .then(
+          (value) {
+            if (!result.isCompleted) result.complete(value);
+          },
+          onError: (Object error, StackTrace stack) {
+            if (!result.isCompleted) result.completeError(error, stack);
+          },
+        );
+    return result.future.whenComplete(() {
+      timer.cancel();
+      removeCancellation?.call();
+    });
   }
 }

@@ -76,6 +76,7 @@ class VirtualCameraState {
         'cameraDisconnected' => 'virtualCameraDisconnected',
         'unsupported' => 'virtualCameraUnsupported',
         'virtualCameraPreviewBlocked' => 'virtualCameraPreviewBlocked',
+        'settings_open_failed' => 'virtualCameraOpenSettingsFailed',
         _ => 'virtualCameraFailed',
       };
     }

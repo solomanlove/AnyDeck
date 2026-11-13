@@ -11,6 +11,8 @@ const virtualCameraZh = {
   'virtualCameraUnsupported': '系统摄像头需要 macOS 13 或以上。',
   'virtualCameraNotInstalled': '请先安装摄像头扩展，并按系统提示批准。',
   'virtualCameraNeedsApproval': '请在系统设置中批准 AnyDeck 摄像头扩展。',
+  'virtualCameraOpenSettings': '打开系统设置',
+  'virtualCameraOpenSettingsFailed': '无法打开系统设置，请从 Apple 菜单手动进入后批准摄像头扩展。',
   'virtualCameraNeedsReboot': '系统要求重启 Mac 后启用摄像头扩展。',
   'virtualCameraReady': '摄像头扩展已就绪。',
   'virtualCameraWaiting': '已启用，等待视频应用选择 AnyDeck Camera。',
@@ -40,6 +42,9 @@ const virtualCameraEn = {
       'Install the camera extension, then approve it in System Settings.',
   'virtualCameraNeedsApproval':
       'Approve the AnyDeck camera extension in System Settings.',
+  'virtualCameraOpenSettings': 'Open System Settings',
+  'virtualCameraOpenSettingsFailed':
+      'Could not open System Settings. Open it from the Apple menu to approve the camera extension.',
   'virtualCameraNeedsReboot':
       'macOS requires a restart to enable the camera extension.',
   'virtualCameraReady': 'Camera extension is ready.',

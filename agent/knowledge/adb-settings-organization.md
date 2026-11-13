@@ -117,8 +117,8 @@ dart format --output=none --set-exit-if-changed lib/features/overview/settings/s
 git diff --check
 ```
 
-## 2026-11-13 macOS 权限分类
+## 2026-11-13 macOS 授权入口收口
 
-macOS 设置新增第 8 类「macOS 权限」，按权限名称和用途参与全局搜索；Windows / Linux 保留原 7 类。Workspace 的侧栏和窄窗口下拉框只枚举当前目录实际存在的分类，不展示空的平台专属分类。原设置值及跨窗口保存逻辑保持原机制。
+移除独立「macOS 权限」分类及搜索目录，各平台统一保留 7 类设置。摄像头扩展在「用作 Mac 摄像头」处理安装与批准；登录项在常规设置的「开机自启」行处理注册、批准和状态回读。Workspace 的侧栏和窄窗口下拉框继续只枚举当前目录实际存在的分类。
 
-权限状态、显式申请与系统设置入口的实现和验证边界见 [macOS 权限管理](adb-macos-permissions.md)。
+功能入口的授权状态与系统设置跳转见 [macOS 功能入口授权](adb-macos-feature-authorization.md)。

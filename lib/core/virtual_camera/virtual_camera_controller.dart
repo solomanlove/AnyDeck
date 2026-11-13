@@ -56,11 +56,9 @@ class VirtualCameraController extends Notifier<VirtualCameraState> {
     return const VirtualCameraState();
   }
 
-  Future<VirtualCameraState> _call(
-    String method, [
-    Map<String, Object?>? arguments,
-  ]) {
-    final result = Completer<VirtualCameraState>();
+  /// 统一管理状态查询和 void 设置跳转，销毁时结束等待并隔离迟到结果。
+  Future<T> _awaitCall<T>(String method, Future<T> pending) {
+    final result = Completer<T>();
     final timeout = Timer(const Duration(seconds: 5), () {
       if (!result.isCompleted) result.completeError(TimeoutException(method));
     });
@@ -72,23 +70,33 @@ class VirtualCameraController extends Notifier<VirtualCameraState> {
     }
 
     _cancelCalls.add(cancel);
-    ref
-        .read(virtualCameraChannelProvider)
-        .invokeMapMethod<Object?, Object?>(method, arguments)
-        .then(
-          (value) {
-            if (!result.isCompleted) {
-              result.complete(VirtualCameraState.fromMap(value ?? const {}));
-            }
-          },
-          onError: (Object error, StackTrace trace) {
-            if (!result.isCompleted) result.completeError(error, trace);
-          },
-        );
+    pending.then(
+      (value) {
+        if (!result.isCompleted) {
+          result.complete(value);
+        }
+      },
+      onError: (Object error, StackTrace trace) {
+        if (!result.isCompleted) result.completeError(error, trace);
+      },
+    );
     return result.future.whenComplete(() {
       timeout.cancel();
       _cancelCalls.remove(cancel);
     });
+  }
+
+  Future<VirtualCameraState> _call(
+    String method, [
+    Map<String, Object?>? arguments,
+  ]) async {
+    final value = await _awaitCall(
+      method,
+      ref
+          .read(virtualCameraChannelProvider)
+          .invokeMapMethod<Object?, Object?>(method, arguments),
+    );
+    return VirtualCameraState.fromMap(value ?? const {});
   }
 
   Future<void> refresh() async {
@@ -120,6 +128,16 @@ class VirtualCameraController extends Notifier<VirtualCameraState> {
   Future<void> deactivate() => _operation(() => _call('deactivate'));
   Future<void> disable() =>
       _operation(() => _call('configure', {'enabled': false}));
+
+  /// 系统批准在功能入口完成；打开设置本身不代表扩展已就绪。
+  Future<void> openSettings() => _operation(() async {
+    await _awaitCall(
+      'openSettings',
+      ref.read(virtualCameraChannelProvider).invokeMethod<void>('openSettings'),
+    );
+    if (!ref.mounted) throw StateError('View disposed');
+    return _call('status');
+  });
 
   /// 先释放本地预览，再交接镜头给原生全局会话；不允许两路抢占同一镜头。
   Future<void> enable({

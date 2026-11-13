@@ -4,11 +4,11 @@ import 'package:any_deck/app/router/dashboard_route.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/app/widget/app_navigation_item.dart';
 import 'package:any_deck/app/settings/app_settings_controller.dart';
+import 'package:any_deck/app/settings/desktop_autostart_service.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
-import 'package:any_deck/core/permissions/mac_permission.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';
 import 'package:any_deck/core/ios/ios_mirror_service.dart';
@@ -17,12 +17,12 @@ import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:any_deck/features/overview/settings/settings_item.dart';
 import 'package:any_deck/features/overview/settings/settings_workspace.dart';
+import 'package:any_deck/features/overview/settings/autostart_setting_control.dart';
 import 'package:any_deck/features/overview/widget/keyboard_shortcut_settings.dart';
 import 'package:any_deck/features/webview/in_app_webview_widget.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -161,6 +161,9 @@ void main() {
             DeviceOverview.fromJson({'name': 'Market Phone'})),
         selectedDeviceProvider.overrideWith(_SelectedDevice.new),
         selectedToolTabProvider.overrideWith(_Tab.new),
+        autoStartStatusProvider.overrideWith(
+          (ref) async => DesktopAutoStartStatus.disabled,
+        ),
         packagesProvider(_device.id).overrideWith(_Packages.new),
         hostNetworkProvider.overrideWith(_HostNetwork.new),
         adbEnvironmentProvider.overrideWith(_ReadyAdb.new),
@@ -261,9 +264,7 @@ void main() {
     );
     expect(
       workspace.items.map((item) => item.category).toSet(),
-      SettingsCategory.values
-          .where((category) => category != SettingsCategory.permissions)
-          .toSet(),
+      SettingsCategory.values.toSet(),
     );
     expect(
       workspace.items.map((item) => item.id).toSet().length,
@@ -415,49 +416,28 @@ void main() {
       container.read(appSettingsProvider).mirrorAudioEnabled,
       settingsBeforeNavigation.mirrorAudioEnabled,
     );
-    // 平台切到 macOS 后，真实设置目录可检索权限，但进入页面只读取状态。
-    const permissionsChannel = MethodChannel('anydeck/macos_permissions');
-    final permissionCalls = <String>[];
-    final messenger = tester.binding.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(permissionsChannel, (call) async {
-      permissionCalls.add(call.method);
-      return {
-        for (final permission in MacPermission.values)
-          permission.name: 'manual',
-      };
-    });
+    // macOS 同样保留七类设置，独立权限管理不再进入目录或搜索结果。
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-    addTearDown(() {
-      debugDefaultTargetPlatformOverride = null;
-      messenger.setMockMethodCallHandler(permissionsChannel, null);
-    });
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     router.goNamed(AppRouteNames.devices);
     await tester.pumpAndSettle();
     router.goNamed(AppRouteNames.settings);
     tester.view.physicalSize = const Size(1600, 950);
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('settings-nav-permissions')), findsOneWidget);
-    expect(permissionCalls, isEmpty);
-    await tester.enterText(settingsSearch, 'USB');
-    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('settings-nav-permissions')), findsNothing);
     expect(
-      find.byKey(const ValueKey('settings-result-macosPermissions')),
-      findsNothing,
+      tester.widget<SettingsWorkspace>(find.byType(SettingsWorkspace))
+          .items.map((item) => item.category).toSet(),
+      SettingsCategory.values.toSet(),
     );
-    await tester.enterText(settingsSearch, '摄像头扩展');
+    await tester.enterText(settingsSearch, 'macOS 权限');
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('settings-result-macosPermissions')));
-    await tester.pumpAndSettle();
-    expect(find.text('摄像头扩展').hitTestable(), findsOneWidget);
-    expect(find.text('登录项'), findsOneWidget);
-    expect(find.text('相机'), findsNothing);
-    expect(permissionCalls, ['readAll']);
+    expect(find.byKey(const ValueKey('settings-result-macosPermissions')), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     container.dispose();
     disposed = true;
     debugDefaultTargetPlatformOverride = null;
-    messenger.setMockMethodCallHandler(permissionsChannel, null);
     await tester.pumpAndSettle();
   });
 
