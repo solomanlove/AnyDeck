@@ -113,3 +113,17 @@ flutter --no-version-check test --no-pub \
 dart format --output=none --set-exit-if-changed test/support/search_field_expectations.dart test/emulator_search_fields_test.dart
 git diff --check
 ```
+
+### 投屏快捷操作弹窗静态提示清理（2026-11-13）
+
+- 移除本地图标分支中 `File(iconPath!)` 的冗余 `!`；`hasLocalIcon` 已包含非空判断，Dart 在该分支保留类型提升。
+- 图片解码失败回调的未使用参数统一写为 `(_, _, _)`，清除 `unnecessary_non_null_assertion` 和两项 `unnecessary_underscores`，保留原有图标读取与 fallback 行为。
+- `mirror_app_quick_actions_dialog_test.dart` 通过公开弹窗入口验证无本地图标、有效 PNG 和图片解码失败的展示；固定融合投屏 Provider，避免设备命令。配合已有前台应用按钮回归，检查快捷操作入口。
+- 验证：新图标回归 4 项和既有前台应用按钮回归 12 项全部通过；生产文件与新测试的严格 analyze 无问题（未关闭 warning/info 的 fatal 选项），新测试格式检查及 `git diff --check` 通过。未启动桌面 App。
+
+```bash
+flutter --no-version-check test --no-pub test/mirror_app_quick_actions_dialog_test.dart test/mirror_foreground_app_button_test.dart
+flutter --no-version-check analyze --no-pub lib/app/window/mirror/widget/mirror_app_quick_actions_dialog.dart test/mirror_app_quick_actions_dialog_test.dart
+dart format --output=none --set-exit-if-changed test/mirror_app_quick_actions_dialog_test.dart
+git diff --check
+```

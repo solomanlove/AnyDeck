@@ -21,7 +21,7 @@
 | `adb-settings-organization` | 设置分类导航与全局搜索 | active | 设置分类、跨分类检索、多词/按键定位、公共导航样式与搜索框圆角、快捷键外置分组标题与右对齐、下拉菜单边缘对齐与按钮水波纹圆角、窄窗口与设置保存回归边界 | `features/overview/settings/`, `features/overview/`, `app/l10n/` |
 | `adb-macos-permissions` | macOS 权限管理 | active | 6 项权限用途与授权状态、显式申请及系统设置跳转、局域网与文件夹自动触发项隐藏、回焦刷新、平台隔离与原生验证边界 | `core/permissions/`, `features/overview/settings/`, `macos/Runner/` |
 | `adb-svg-assets` | SVG 与位图资源加载 | active | 本地 SVG/PNG 公共组件、平台 Logo 的尺寸/明暗适配、服务菜单/诊断/无线连接/版本详情复用、品牌图片与错误回退 | `app/widget/`, `features/developer/`, `features/devices/`, `features/overview/` |
-| `adb-ui-theme-system` | UI Theme 统一机制 | active | 统一品牌色、Light/Dark 语义色、边框、搜索框与 Tab 共用圆角及顶部轻提示，记录轻提示首帧/遮挡时的 Overlay 清理与回归，并明确固定业务色和 Painter 注入边界 | `app/theme/`, `app/widget/`, `app/window/`, `features/` |
+| `adb-ui-theme-system` | UI Theme 统一机制 | active | 统一品牌色、Light/Dark 语义色、边框、搜索框与 Tab 共用圆角及顶部轻提示，记录投屏快捷操作图标回退及静态提示清理、轻提示 Overlay 清理与回归，并明确固定业务色和 Painter 注入边界 | `app/theme/`, `app/widget/`, `app/window/`, `features/` |
 | `adb-local-diagnostic-logs` | 控制台与本地诊断日志 | active | 运行异常采集、关键日志筛选、跨窗口汇总、滚动文件、本地日志导出、工具栏图标交互统一与搜索自适应布局及验证边界 | `core/logging/`, `app/window/console/`, `features/developer/` |
 | `adb-github-feedback` | GitHub Issues 意见反馈 | active | 设置页标题与正文编辑、环境信息快照、分类草稿保留、长正文复制兜底、网页模板及验证边界 | `features/feedback/`, `core/process/`, `.github/ISSUE_TEMPLATE/` |
 | `adb-local-apk-inspector` | macOS Android 安装包分析与安装 | active | APK/APKS/AAB/XAPK 文件关联与离线分析、Protobuf 模块/分包清单、签名信息、APK 安装队列、临时目录回收与回归边界 | `core/apk/`, `features/apk/`, `app/window/apk/`, `rust/apk_inspector/` |

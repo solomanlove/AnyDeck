@@ -146,9 +146,9 @@ class _MirrorAppQuickActionsDialogState
               borderRadius: BorderRadius.circular(6),
               child: hasLocalIcon
                   ? Image.file(
-                      File(iconPath!),
+                      File(iconPath),
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         CupertinoIcons.app_badge,
                         size: 24,
                       ),
