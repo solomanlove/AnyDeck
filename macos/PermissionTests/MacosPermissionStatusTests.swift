@@ -45,13 +45,14 @@ struct MacosPermissionStatusTests {
     for permission in MacosPermissionStatus.permissions {
       precondition(MacosPermissionStatus.settingsURL(for: permission)?.scheme == "x-apple.systempreferences")
     }
-    for invalid in ["", "files?Privacy_AllFiles", "camera\n", "https://example.com", "../camera"] {
+    for invalid in ["", "localNetwork", "files", "files?Privacy_AllFiles", "camera\n", "https://example.com", "../camera"] {
       precondition(MacosPermissionStatus.settingsURL(for: invalid) == nil)
       precondition(!MacosPermissionStatus.requestable.contains(invalid))
     }
     precondition(MacosPermissionStatus.requestable == ["camera", "bluetooth", "location", "notifications"])
     precondition(!MacosPermissionStatus.requestable.contains("cameraExtension"))
-    precondition(!MacosPermissionStatus.requestable.contains("localNetwork"))
+    precondition(Set(MacosPermissionStatus.permissions) ==
+      ["camera", "bluetooth", "location", "notifications", "cameraExtension", "loginItems"])
     let extensionURL = MacosPermissionStatus.settingsURL(for: "cameraExtension")?.absoluteString
     if #available(macOS 15.0, *) {
       precondition(extensionURL == "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")

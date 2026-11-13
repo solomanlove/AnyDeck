@@ -78,7 +78,7 @@ void main() {
     final pending = controller.request(MacPermission.camera);
     expect(container.read(macPermissionsProvider).busy, MacPermission.camera);
     await controller.request(MacPermission.camera);
-    await controller.openSettings(MacPermission.files);
+    await controller.openSettings(MacPermission.loginItems);
     expect(service.calls, ['read', 'request:camera']);
     service.statuses = {MacPermission.camera: MacPermissionStatus.denied};
     gate.complete();
@@ -89,7 +89,7 @@ void main() {
     expect(state.errorKey, isNull);
     expect(service.calls, ['read', 'request:camera', 'read']);
     await controller.request(MacPermission.camera);
-    await controller.request(MacPermission.files);
+    await controller.request(MacPermission.loginItems);
     expect(service.calls, ['read', 'request:camera', 'read']);
   });
 
@@ -125,20 +125,20 @@ void main() {
 
   test('设置跳转不能当成授权成功，打开失败显示可重试错误', () async {
     final service = _PermissionService()
-      ..statuses = {MacPermission.localNetwork: MacPermissionStatus.manual};
+      ..statuses = {MacPermission.loginItems: MacPermissionStatus.manual};
     final container = _container(service);
     addTearDown(container.dispose);
     final controller = container.read(macPermissionsProvider.notifier);
     await controller.refresh();
-    await controller.openSettings(MacPermission.localNetwork);
+    await controller.openSettings(MacPermission.loginItems);
     expect(
       container
           .read(macPermissionsProvider)
-          .statusFor(MacPermission.localNetwork),
+          .statusFor(MacPermission.loginItems),
       MacPermissionStatus.manual,
     );
     service.onOpen = () async => throw StateError('settings unavailable');
-    await controller.openSettings(MacPermission.localNetwork);
+    await controller.openSettings(MacPermission.loginItems);
     expect(
       container.read(macPermissionsProvider).errorKey,
       'macPermissionOpenFailed',

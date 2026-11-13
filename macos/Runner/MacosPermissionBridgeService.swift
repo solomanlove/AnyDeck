@@ -46,10 +46,6 @@ final class MacosPermissionBridgeService: NSObject, CLLocationManagerDelegate, C
     values["bluetooth"] = MacosPermissionStatus.bluetooth(CBManager.authorization)
     values["location"] = MacosPermissionStatus.location(locationManager.authorizationStatus,
       servicesEnabled: CLLocationManager.locationServicesEnabled())
-    // 没有公开的无副作用 Local Network 授权查询；不能用 socket/发现探测替代。
-    if #available(macOS 15.0, *) { values["localNetwork"] = "manual" }
-    else { values["localNetwork"] = "notRequired" }
-    values["files"] = "manual"
     if #available(macOS 13.0, *) {
       values["loginItems"] = MacosPermissionStatus.loginItems(SMAppService.mainApp.status)
     } else { values["loginItems"] = "manual" }

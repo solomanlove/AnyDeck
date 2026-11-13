@@ -2,7 +2,7 @@
 const macosPermissionsZh = {
   'macPermissionsTitle': 'macOS 权限',
   'macPermissionsDescription':
-      '按功能需要授权。局域网与文件夹权限请在系统设置中查看；返回 AnyDeck 后会刷新可读取的状态。',
+      '按功能需要授权，返回 AnyDeck 后自动刷新授权状态。',
   'macPermissionsRefresh': '刷新状态',
   'macPermissionsRequest': '申请授权',
   'macPermissionsOpenSettings': '打开系统设置',
@@ -10,8 +10,6 @@ const macosPermissionsZh = {
   'macPermissionReadFailed': '权限状态读取失败，请刷新重试。',
   'macPermissionRequestFailed': '授权申请未完成，请重试或在系统设置中查看。',
   'macPermissionOpenFailed': '无法打开系统设置，请从 Apple 菜单手动进入。',
-  'macPermissionLocalNetwork': '局域网',
-  'macPermissionLocalNetworkDesc': '用于无线连接设备、局域网设备共享、文件互传和 AirPlay / DLNA 接收。',
   'macPermissionBluetooth': '蓝牙',
   'macPermissionBluetoothDesc': '用于附近分享设备的发现与连接。',
   'macPermissionLocation': '定位服务',
@@ -21,8 +19,6 @@ const macosPermissionsZh = {
       '用于 iPhone USB 投屏。macOS 将这条屏幕采集链路归入相机权限，不会启用 Mac 摄像头。',
   'macPermissionNotifications': '通知',
   'macPermissionNotificationsDesc': '用于设备连接提醒、手机消息转发和文件接收提醒。',
-  'macPermissionFiles': '文件和文件夹',
-  'macPermissionFilesDesc': '用于将截图、录屏和接收的文件保存到 Downloads、桌面或你选择的目录。',
   'macPermissionCameraExtension': '摄像头扩展',
   'macPermissionCameraExtensionDesc':
       '用于将 Android 手机摄像头提供给 Mac 视频应用。当前版本不可用时，请继续使用手机摄像头预览。',
@@ -42,7 +38,7 @@ const macosPermissionsZh = {
 const macosPermissionsEn = {
   'macPermissionsTitle': 'macOS Permissions',
   'macPermissionsDescription':
-      'Grant access as needed. Check Local Network and folder access in System Settings. Available statuses refresh when you return to AnyDeck.',
+      'Grant access as needed. Permission statuses refresh when you return to AnyDeck.',
   'macPermissionsRefresh': 'Refresh status',
   'macPermissionsRequest': 'Request access',
   'macPermissionsOpenSettings': 'Open System Settings',
@@ -53,9 +49,6 @@ const macosPermissionsEn = {
       'The access request could not be completed. Retry or check System Settings.',
   'macPermissionOpenFailed':
       'Could not open System Settings. Open it manually from the Apple menu.',
-  'macPermissionLocalNetwork': 'Local Network',
-  'macPermissionLocalNetworkDesc':
-      'Connect to wireless devices, share devices and files over LAN, and receive AirPlay / DLNA streams.',
   'macPermissionBluetooth': 'Bluetooth',
   'macPermissionBluetoothDesc':
       'Discover and connect to nearby sharing devices.',
@@ -68,9 +61,6 @@ const macosPermissionsEn = {
   'macPermissionNotifications': 'Notifications',
   'macPermissionNotificationsDesc':
       'Show device connection alerts, forwarded phone notifications, and incoming file alerts.',
-  'macPermissionFiles': 'Files and Folders',
-  'macPermissionFilesDesc':
-      'Save screenshots, recordings, and received files to Downloads, Desktop, or your selected folder.',
   'macPermissionCameraExtension': 'Camera Extension',
   'macPermissionCameraExtensionDesc':
       'Make an Android phone camera available to Mac video apps. If unavailable in this version, use the phone camera preview.',

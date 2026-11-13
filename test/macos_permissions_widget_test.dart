@@ -26,12 +26,10 @@ class _Permissions extends MacPermissionsService {
   final statuses = {
     for (final permission in MacPermission.values)
       permission: MacPermissionStatus.authorized,
-    MacPermission.localNetwork: MacPermissionStatus.manual,
-    MacPermission.files: MacPermissionStatus.manual,
     MacPermission.camera: MacPermissionStatus.notDetermined,
     MacPermission.notifications: MacPermissionStatus.denied,
     MacPermission.cameraExtension: MacPermissionStatus.unsupported,
-    MacPermission.loginItems: MacPermissionStatus.notRequired,
+    MacPermission.loginItems: MacPermissionStatus.manual,
   };
 
   @override
@@ -109,6 +107,13 @@ Widget _app(
 void main() {
   test('所有权限和状态文案均有中英文且没有依赖回退', () {
     expect(macosPermissionsZh.keys.toSet(), macosPermissionsEn.keys.toSet());
+    expect(MacPermission.values, hasLength(6));
+    final zhDescription = macosPermissionsZh['macPermissionsDescription']!;
+    final enDescription = macosPermissionsEn['macPermissionsDescription']!;
+    expect(zhDescription, isNot(contains('局域网')));
+    expect(zhDescription, isNot(contains('文件夹')));
+    expect(enDescription.toLowerCase(), isNot(contains('local network')));
+    expect(enDescription.toLowerCase(), isNot(contains('folder')));
     for (final key in [
       for (final permission in MacPermission.values) ...[
         permission.titleKey,
@@ -141,6 +146,22 @@ void main() {
               findsOneWidget,
             );
           }
+          expect(
+            find.text(language == 'zh' ? '局域网' : 'Local Network'),
+            findsNothing,
+          );
+          expect(
+            find.text(language == 'zh' ? '文件和文件夹' : 'Files and Folders'),
+            findsNothing,
+          );
+          expect(
+            find.byKey(const ValueKey('mac-permission-localNetwork')),
+            findsNothing,
+          );
+          expect(
+            find.byKey(const ValueKey('mac-permission-files')),
+            findsNothing,
+          );
           expect(service.reads, 1);
           expect(service.requests, isEmpty);
           expect(service.settings, isEmpty);
@@ -180,7 +201,7 @@ void main() {
     expect(cameraStatus.data, '已授权');
     for (final permission in [
       MacPermission.notifications,
-      MacPermission.files,
+      MacPermission.loginItems,
     ]) {
       final action = find.byKey(
         ValueKey('mac-permission-action-${permission.name}'),
@@ -191,7 +212,7 @@ void main() {
     }
     expect(service.settings, [
       MacPermission.notifications,
-      MacPermission.files,
+      MacPermission.loginItems,
     ]);
     expect(service.requests, [MacPermission.camera]);
     expect(tester.takeException(), isNull);
@@ -248,35 +269,58 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('权限分类搜索可定位具体权限，未装配的分类不展示', (tester) async {
-    tester.view.physicalSize = const Size(1200, 900);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    final service = _Permissions();
-    await tester.pumpWidget(_app(service, workspace: true));
-    await tester.pumpAndSettle();
-    expect(service.reads, 0);
-    await tester.enterText(find.byKey(const ValueKey('settings-search')), '相机');
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('settings-result-macosPermissions')),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('settings-content-permissions')),
-      findsOneWidget,
-    );
-    expect(find.text('相机').hitTestable(), findsOneWidget);
-    expect(service.reads, 1);
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pumpWidget(
-      _app(service, workspace: true, includePermissions: false),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('settings-nav-permissions')),
-      findsNothing,
-    );
-    expect(service.reads, 1);
-  });
+  for (final language in ['zh', 'en']) {
+    testWidgets('$language 权限搜索移除系统自动申请项并定位保留权限', (tester) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final service = _Permissions();
+      await tester.pumpWidget(
+        _app(service, language: language, workspace: true),
+      );
+      await tester.pumpAndSettle();
+      expect(service.reads, 0);
+      final search = find.byKey(const ValueKey('settings-search'));
+      for (final query
+          in language == 'zh'
+              ? ['局域网', '文件夹']
+              : ['Local Network', 'Files and Folders']) {
+        await tester.enterText(search, query);
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('settings-result-macosPermissions')),
+          findsNothing,
+        );
+        expect(service.reads, 0);
+      }
+      final camera = language == 'zh' ? '相机' : 'Camera';
+      await tester.enterText(search, camera);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('settings-result-macosPermissions')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('settings-content-permissions')),
+        findsOneWidget,
+      );
+      expect(find.text(camera).hitTestable(), findsOneWidget);
+      expect(service.reads, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(
+        _app(
+          service,
+          language: language,
+          workspace: true,
+          includePermissions: false,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('settings-nav-permissions')),
+        findsNothing,
+      );
+      expect(service.reads, 1);
+    });
+  }
 }

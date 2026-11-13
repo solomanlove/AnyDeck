@@ -8,7 +8,7 @@ import UserNotifications
 /// 系统权限状态与设置入口的纯映射；不会请求权限、读取文件或启动硬件。
 enum MacosPermissionStatus {
   static let permissions = ["camera", "bluetooth", "location", "notifications",
-                            "localNetwork", "files", "cameraExtension", "loginItems"]
+                            "cameraExtension", "loginItems"]
   static let requestable: Set<String> = ["camera", "bluetooth", "location", "notifications"]
 
   static func camera(_ status: AVAuthorizationStatus) -> String {
@@ -79,8 +79,6 @@ enum MacosPermissionStatus {
     case "bluetooth": suffix = "com.apple.preference.security?Privacy_Bluetooth"
     case "location": suffix = "com.apple.preference.security?Privacy_LocationServices"
     case "notifications": suffix = "com.apple.preference.notifications"
-    case "localNetwork": suffix = "com.apple.preference.security?Privacy_LocalNetwork"
-    case "files": suffix = "com.apple.preference.security?Privacy_FilesAndFolders"
     case "cameraExtension":
       // macOS 15 起扩展迁移到登录项与扩展，旧版仍在隐私与安全性批准。
       if #available(macOS 15.0, *) { suffix = "com.apple.LoginItems-Settings.extension" }

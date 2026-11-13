@@ -32,6 +32,7 @@ void main() {
       'localNetwork': 'manual',
       'files': 'future_permission_status',
       'cameraExtension': 42,
+      'loginItems': 'future_permission_status',
     };
     messenger.setMockMethodCallHandler(channel, (call) async {
       calls.add(call);
@@ -42,14 +43,31 @@ void main() {
     expect(statuses[MacPermission.bluetooth], MacPermissionStatus.restricted);
     expect(statuses[MacPermission.location], MacPermissionStatus.disabled);
     expect(statuses[MacPermission.notifications], MacPermissionStatus.denied);
-    expect(statuses[MacPermission.localNetwork], MacPermissionStatus.manual);
+    expect(statuses, hasLength(6));
+    expect(statuses.keys.map((permission) => permission.name).toSet(), {
+      'camera',
+      'bluetooth',
+      'location',
+      'notifications',
+      'cameraExtension',
+      'loginItems',
+    });
     for (final permission in [
-      MacPermission.files,
       MacPermission.cameraExtension,
       MacPermission.loginItems,
     ]) {
       expect(statuses[permission], MacPermissionStatus.unknown);
     }
+    reply.remove('loginItems');
+    expect(
+      (await service.readAll())[MacPermission.loginItems],
+      MacPermissionStatus.unknown,
+    );
+    reply['loginItems'] = 'manual';
+    expect(
+      (await service.readAll())[MacPermission.loginItems],
+      MacPermissionStatus.manual,
+    );
     for (final raw in ['notDetermined', 'unsupported', 'notRequired']) {
       reply['camera'] = raw;
       expect((await service.readAll())[MacPermission.camera]!.name, raw);
@@ -111,7 +129,7 @@ void main() {
       throwsA(isA<PlatformException>()),
     );
     await expectLater(
-      service.openSettings(MacPermission.files),
+      service.openSettings(MacPermission.loginItems),
       throwsA(isA<PlatformException>()),
     );
     expect(calls, isEmpty);
@@ -136,8 +154,6 @@ void main() {
       expect(calls.last.arguments, {'permission': permission.name});
     }
     for (final permission in [
-      MacPermission.localNetwork,
-      MacPermission.files,
       MacPermission.cameraExtension,
       MacPermission.loginItems,
     ]) {
@@ -145,7 +161,7 @@ void main() {
     }
     expect(calls, hasLength(4));
     await expectLater(
-      service.openSettings(MacPermission.files),
+      service.openSettings(MacPermission.loginItems),
       throwsA(
         isA<PlatformException>().having(
           (error) => error.code,
@@ -154,6 +170,6 @@ void main() {
         ),
       ),
     );
-    expect(calls.last.arguments, {'permission': 'files'});
+    expect(calls.last.arguments, {'permission': 'loginItems'});
   });
 }

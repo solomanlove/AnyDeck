@@ -1,6 +1,5 @@
 /// AnyDeck 使用的 macOS 权限；系统标识与展示文案分离。
 enum MacPermission {
-  localNetwork('macPermissionLocalNetwork', 'macPermissionLocalNetworkDesc'),
   bluetooth('macPermissionBluetooth', 'macPermissionBluetoothDesc', true),
   location('macPermissionLocation', 'macPermissionLocationDesc', true),
   camera('macPermissionCamera', 'macPermissionCameraDesc', true),
@@ -9,7 +8,6 @@ enum MacPermission {
     'macPermissionNotificationsDesc',
     true,
   ),
-  files('macPermissionFiles', 'macPermissionFilesDesc'),
   cameraExtension(
     'macPermissionCameraExtension',
     'macPermissionCameraExtensionDesc',
