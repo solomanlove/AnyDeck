@@ -43,6 +43,20 @@ final class VirtualCameraPlugin: NSObject, FlutterPlugin {
     menu.update(enabled: status["enabled"] as? Bool ?? false,
                 front: status["front"] as? Bool ?? false, labels: labels)
   }
+  /// 权限中心只枚举 CMIO 设备，不激活扩展、不打开 stream，也不启动手机采集。
+  static func readPermissionStatus(_ completion: @escaping (String) -> Void) {
+    guard #available(macOS 13.0, *) else { completion("unsupported"); return }
+    let entitlement = VirtualCameraActivation.hasInstallEntitlement()
+    guard entitlement else { completion("unsupported"); return }
+    let coordinator = VirtualCameraCoordinator.shared
+    coordinator.workQueue.async {
+      let installed = coordinator.snapshot(probe: true)["installed"] as? Bool == true
+      DispatchQueue.main.async {
+        completion(MacosPermissionStatus.cameraExtension(supported: true, installEntitlement: entitlement,
+          installed: installed, activation: activation.state))
+      }
+    }
+  }
   private func respond(_ result: @escaping FlutterResult) {
     coordinator.workQueue.async {
       let snapshot = self.coordinator.snapshot(probe: true)

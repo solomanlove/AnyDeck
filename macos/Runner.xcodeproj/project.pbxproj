@@ -21,6 +21,8 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		F1D0B1000000000000000001 /* MacosPermissionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D0B1000000000000000002 /* MacosPermissionStatus.swift */; };
+		F2D0B1000000000000000001 /* MacosPermissionBridgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D0B1000000000000000002 /* MacosPermissionBridgeService.swift */; };
 		E2D0B1000000000000000001 /* IosUsbDeviceSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2D0B1000000000000000002 /* IosUsbDeviceSelection.swift */; };
 		E1D0B1000000000000000001 /* IosUsbCapturePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1D0B1000000000000000002 /* IosUsbCapturePlugin.swift */; };
 		E0D0B1000000000000000001 /* IosUsbCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0D0B1000000000000000002 /* IosUsbCapture.swift */; };
@@ -98,6 +100,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F1D0B1000000000000000002 /* MacosPermissionStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacosPermissionStatus.swift; sourceTree = "<group>"; };
+		F2D0B1000000000000000002 /* MacosPermissionBridgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacosPermissionBridgeService.swift; sourceTree = "<group>"; };
 		E2D0B1000000000000000002 /* IosUsbDeviceSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosUsbDeviceSelection.swift; sourceTree = "<group>"; };
 		E1D0B1000000000000000002 /* IosUsbCapturePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosUsbCapturePlugin.swift; sourceTree = "<group>"; };
 		E0D0B1000000000000000002 /* IosUsbCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosUsbCapture.swift; sourceTree = "<group>"; };
@@ -261,6 +265,8 @@
 				B1D0B1000000000000000002 /* NotificationBridgeService.swift */,
 				C1D0B1000000000000000002 /* AutoStartBridgeService.swift */,
 				D1D0B1000000000000000002 /* HostNetworkBridgeService.swift */,
+				F1D0B1000000000000000002 /* MacosPermissionStatus.swift */,
+				F2D0B1000000000000000002 /* MacosPermissionBridgeService.swift */,
 				D2D0B1000000000000000002 /* DlnaPlayerBridgeService.swift */,
 				ACCA00000000000000000500 /* CameraDebugProfile.entitlements */,
 				ACCA00000000000000000501 /* CameraRelease.entitlements */,
@@ -646,6 +652,8 @@
 				B1D0B1000000000000000001 /* NotificationBridgeService.swift in Sources */,
 				C1D0B1000000000000000001 /* AutoStartBridgeService.swift in Sources */,
 				D1D0B1000000000000000001 /* HostNetworkBridgeService.swift in Sources */,
+				F1D0B1000000000000000001 /* MacosPermissionStatus.swift in Sources */,
+				F2D0B1000000000000000001 /* MacosPermissionBridgeService.swift in Sources */,
 				D2D0B1000000000000000001 /* DlnaPlayerBridgeService.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,

@@ -105,6 +105,10 @@ class _SettingsWorkspaceState extends State<SettingsWorkspace> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    // 平台专属分类只在存在内容时出现，避免非 macOS 展示空的权限页。
+    final categories = SettingsCategory.values.where(
+      (category) => widget.items.any((item) => item.category == category),
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final narrow = constraints.maxWidth < 900;
@@ -145,7 +149,7 @@ class _SettingsWorkspaceState extends State<SettingsWorkspace> {
                     border: const OutlineInputBorder(),
                   ),
                   items: [
-                    for (final category in SettingsCategory.values)
+                    for (final category in categories)
                       DropdownMenuItem(
                         value: category,
                         child: Text(l10n.t(category.labelKey)),
@@ -167,7 +171,7 @@ class _SettingsWorkspaceState extends State<SettingsWorkspace> {
                         width: 160,
                         child: ListView(
                           children: [
-                            for (final category in SettingsCategory.values)
+                            for (final category in categories)
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 4,

@@ -138,12 +138,12 @@ void main() {
     )) {
       expect(settingsEn[key], isNotNull, reason: key);
     }
-    expect(SettingsCategory.values, hasLength(7));
+    expect(SettingsCategory.values, hasLength(8));
   });
 
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
-      testWidgets('七类导航、搜索定位、清除与空结果 $language $brightness', (tester) async {
+      testWidgets('分类导航、搜索定位、清除与空结果 $language $brightness', (tester) async {
         tester.view.physicalSize = const Size(1200, 800);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);

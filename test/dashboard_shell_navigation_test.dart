@@ -8,6 +8,7 @@ import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
+import 'package:any_deck/core/permissions/mac_permission.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';
 import 'package:any_deck/core/ios/ios_mirror_service.dart';
@@ -20,6 +21,8 @@ import 'package:any_deck/features/overview/widget/keyboard_shortcut_settings.dar
 import 'package:any_deck/features/webview/in_app_webview_widget.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -232,7 +235,7 @@ void main() {
     await tester.tap(find.byKey(const Key('deviceListOnlineOnly')));
     await tester.pumpAndSettle();
     expect(find.text('Market Phone'), findsWidgets);
-    // 真实设置目录接入验证：7 类内容齐全，宽窄导航复用同一套控件。
+    // 真实设置目录接入验证：平台可用分类内容齐全，宽窄导航复用同一套控件。
     router.goNamed(AppRouteNames.settings);
     tester.view.physicalSize = const Size(1600, 950);
     await tester.pumpAndSettle();
@@ -258,13 +261,16 @@ void main() {
     );
     expect(
       workspace.items.map((item) => item.category).toSet(),
-      SettingsCategory.values.toSet(),
+      SettingsCategory.values
+          .where((category) => category != SettingsCategory.permissions)
+          .toSet(),
     );
     expect(
       workspace.items.map((item) => item.id).toSet().length,
       workspace.items.length,
     );
-    for (final category in SettingsCategory.values) {
+    expect(find.byKey(const ValueKey('settings-nav-permissions')), findsNothing);
+    for (final category in workspace.items.map((item) => item.category).toSet()) {
       await tester.tap(find.byKey(ValueKey('settings-nav-${category.name}')));
       await tester.pumpAndSettle();
       expect(
@@ -285,7 +291,7 @@ void main() {
     expect(find.text('音频转发').hitTestable(), findsOneWidget);
     tester.view.physicalSize = const Size(900, 900);
     await tester.pumpAndSettle();
-    for (final category in SettingsCategory.values) {
+    for (final category in workspace.items.map((item) => item.category).toSet()) {
       await tester.tap(find.byType(DropdownButtonFormField<SettingsCategory>));
       await tester.pumpAndSettle();
       final label = AppLocalizations(const Locale('zh')).t(category.labelKey);
@@ -409,10 +415,41 @@ void main() {
       container.read(appSettingsProvider).mirrorAudioEnabled,
       settingsBeforeNavigation.mirrorAudioEnabled,
     );
+    // 平台切到 macOS 后，真实设置目录可检索权限，但进入页面只读取状态。
+    const permissionsChannel = MethodChannel('anydeck/macos_permissions');
+    final permissionCalls = <String>[];
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(permissionsChannel, (call) async {
+      permissionCalls.add(call.method);
+      return {
+        for (final permission in MacPermission.values)
+          permission.name: 'notDetermined',
+      };
+    });
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+      messenger.setMockMethodCallHandler(permissionsChannel, null);
+    });
+    router.goNamed(AppRouteNames.devices);
+    await tester.pumpAndSettle();
+    router.goNamed(AppRouteNames.settings);
+    tester.view.physicalSize = const Size(1600, 950);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('settings-nav-permissions')), findsOneWidget);
+    expect(permissionCalls, isEmpty);
+    await tester.enterText(settingsSearch, 'USB');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('settings-result-macosPermissions')));
+    await tester.pumpAndSettle();
+    expect(find.text('相机').hitTestable(), findsOneWidget);
+    expect(permissionCalls, ['readAll']);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     container.dispose();
     disposed = true;
+    debugDefaultTargetPlatformOverride = null;
+    messenger.setMockMethodCallHandler(permissionsChannel, null);
     await tester.pumpAndSettle();
   });
 
@@ -475,7 +512,12 @@ void main() {
         await expectSettingsSelectorInk(tester);
         tester.view.physicalSize = const Size(900, 700);
         await tester.pumpAndSettle();
-        for (final category in SettingsCategory.values) {
+        final categories = tester
+            .widget<SettingsWorkspace>(find.byType(SettingsWorkspace))
+            .items
+            .map((item) => item.category)
+            .toSet();
+        for (final category in categories) {
           await tester.tap(
             find.byType(DropdownButtonFormField<SettingsCategory>),
           );

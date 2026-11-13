@@ -22,7 +22,7 @@ final class VirtualCameraActivation: NSObject, OSSystemExtensionRequestDelegate 
     request.delegate = self
     OSSystemExtensionManager.shared.submitRequest(request)
   }
-  private static func hasInstallEntitlement() -> Bool {
+  static func hasInstallEntitlement() -> Bool {
     var running: SecCode?
     var code: SecStaticCode?
     var info: CFDictionary?

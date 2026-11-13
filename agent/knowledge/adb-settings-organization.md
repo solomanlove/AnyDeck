@@ -116,3 +116,9 @@ flutter --no-version-check analyze --no-pub lib/features/overview/settings/setti
 dart format --output=none --set-exit-if-changed lib/features/overview/settings/settings_workspace.dart test/settings_workspace_test.dart
 git diff --check
 ```
+
+## 2026-11-13 macOS 权限分类
+
+macOS 设置新增第 8 类「macOS 权限」，按权限名称和用途参与全局搜索；Windows / Linux 保留原 7 类。Workspace 的侧栏和窄窗口下拉框只枚举当前目录实际存在的分类，不展示空的平台专属分类。原设置值及跨窗口保存逻辑保持原机制。
+
+权限状态、显式申请与系统设置入口的实现和验证边界见 [macOS 权限管理](adb-macos-permissions.md)。

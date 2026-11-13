@@ -7,6 +7,7 @@ enum SettingsCategory {
   receivers('settingsReceiving', Icons.cast),
   shortcuts('keyboardShortcuts', Icons.keyboard_outlined),
   notifications('settingsNotifications', Icons.notifications_outlined),
+  permissions('macPermissionsTitle', Icons.privacy_tip_outlined),
   storage('settingsStorageCache', Icons.folder_outlined),
   about('aboutAndSupport', Icons.info_outline);
 
