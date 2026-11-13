@@ -16,7 +16,7 @@ import '../airplay/airplay_mirror_target.dart';
 import '../overview/widget/receiver_name_setting_field.dart';
 import '../widgets/dashboard_header_bar.dart';
 import 'widgets/receiver_app_support_guide.dart';
-import 'widgets/receiver_local_names.dart';
+import 'widgets/receiver_name_section.dart';
 import 'widgets/receiver_service_card.dart';
 
 /// 主窗口统一投屏接收管理页，集中管理 AirPlay 屏幕镜像与 DLNA 视频接收。
@@ -61,8 +61,6 @@ class ReceiverDashboardTab extends StatelessWidget {
                       );
                 return Column(
                   children: [
-                    const ReceiverLocalNames(),
-                    const SizedBox(height: 16),
                     serviceCards,
                     const SizedBox(height: 16),
                     const ReceiverAppSupportGuide(),
@@ -149,7 +147,11 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
     final isVideoPlaying = session?.isVideoPlaying ?? false;
     final isRunning =
         session != null &&
-        (session.hasAnyBroadcasting || session.hasAnyMirroring);
+        (session.allSessions.any(
+              (slot) => slot.status != AirPlayServerStatus.stopped,
+            ) || isVideoPlaying);
+    final isNamePending =
+        session != null && !session.isPublished && isRunning;
     final activeCount = session?.mirroringSessions.length ?? 0;
 
     final activeLabels = [
@@ -160,12 +162,14 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
     final statusLabel = activeLabels.isNotEmpty
         ? activeLabels.join(' · ')
         : isRunning
-        ? context.l10n.t('receiverWaiting')
+        ? context.l10n.t(isNamePending ? 'receiverNamePending' : 'receiverWaiting')
         : context.l10n.t('receiverStopped');
     final statusDetail = isMirroring || isVideoPlaying
         ? context.l10n.t('receiverAirplayActiveDesc')
         : isRunning
-        ? context.l10n
+        ? isNamePending
+          ? context.l10n.t('receiverAirplayNamePendingDesc')
+          : context.l10n
               .t('receiverAirplayReadyDesc')
               .replaceAll('{name}', session.serverName)
         : context.l10n.t('receiverAirplayStoppedDesc');
@@ -204,8 +208,12 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
               ],
             )
           : null,
-      content: _ReceiverNameField(
-        label: context.l10n.t('receiverName'),
+      content: ReceiverNameSection(
+        configuredName: settings.airplayServerName,
+        broadcastName: isRunning || isVideoPlaying ? session?.serverName : null,
+        broadcastNameKey: const Key('airplayBroadcastName'),
+        isNamePending: isNamePending,
+        pendingNameKey: const Key('airplayNamePending'),
         field: ReceiverNameSettingField(
           value: settings.airplayServerName,
           defaultName: settings.defaultAirplayReceiverName,
@@ -355,8 +363,10 @@ class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
       isBusy: _service.isBusy || _isProcessing,
       switchKey: const Key('dlnaReceiverSwitch'),
       onChanged: _toggle,
-      content: _ReceiverNameField(
-        label: context.l10n.t('receiverName'),
+      content: ReceiverNameSection(
+        configuredName: settings.dlnaServerName,
+        broadcastName: _service.isRunning ? _service.serverName : null,
+        broadcastNameKey: const Key('dlnaBroadcastName'),
         field: ReceiverNameSettingField(
           value: settings.dlnaServerName,
           defaultName: settings.defaultDlnaReceiverName,
@@ -365,30 +375,6 @@ class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
               ref.read(appSettingsProvider.notifier).setDlnaServerName(value),
         ),
       ),
-    );
-  }
-}
-
-class _ReceiverNameField extends StatelessWidget {
-  const _ReceiverNameField({required this.label, required this.field});
-
-  final String label;
-  final Widget field;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        field,
-      ],
     );
   }
 }

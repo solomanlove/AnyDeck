@@ -39,6 +39,7 @@ class AirPlaySessionData {
     this.clientModel,
     this.additionalSessions = const [],
     this.isVideoPlaying = false,
+    this.isPublished = true,
   });
 
   /// 会话唯一标识句柄
@@ -46,6 +47,9 @@ class AirPlaySessionData {
 
   /// 在 iPhone 屏幕镜像列表中展示的广播名称
   final String serverName;
+
+  /// Bonjour 已确认发布；等待重名处理时不把请求名称当作手机可见名称。
+  final bool isPublished;
 
   /// RTSP 信令端口
   final int rtspPort;
@@ -94,9 +98,11 @@ class AirPlaySessionData {
 
   /// 是否存在任一处于待机广播中的会话
   bool get hasAnyBroadcasting =>
-      allSessions.any((s) => s.status == AirPlayServerStatus.idle);
+      allSessions.any((s) => s.isPublished && s.status == AirPlayServerStatus.idle);
 
   AirPlaySessionData copyWith({
+    String? serverName,
+    bool? isPublished,
     AirPlayServerStatus? status,
     int? width,
     int? height,
@@ -111,7 +117,8 @@ class AirPlaySessionData {
     return AirPlaySessionData(
       id: id,
       isVideoPlaying: isVideoPlaying ?? this.isVideoPlaying,
-      serverName: serverName,
+      serverName: serverName ?? this.serverName,
+      isPublished: isPublished ?? this.isPublished,
       rtspPort: rtspPort,
       videoPort: videoPort,
       status: status ?? this.status,

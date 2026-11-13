@@ -126,18 +126,25 @@ typedef struct dnssd_private_s {
 
     TXTRecordRef raop_record;
     TXTRecordRef airplay_record;
+    int raop_record_created;
+    int airplay_record_created;
 
     DNSServiceRef raop_service;
     DNSServiceRef airplay_service;
 
 } dnssd_private_t;
 
-/* --- Dummy Callback to prevent Avahi/DBus from leaking OutgoingBytes --- */
+/* AnyDeck 将异步结果交给发布状态机，禁止忽略重名或系统改名。 */
 static void DNSSD_STDCALL 
 dnssd_register_dummy_callback(DNSServiceRef sdRef, DNSServiceFlags flags, DNSServiceErrorType errorCode,
                               const char *name, const char *regtype, const char *domain, void *context) 
 {
-    (void)sdRef; (void)flags; (void)errorCode; (void)name; (void)regtype; (void)domain; (void)context;
+    (void)sdRef; (void)flags; (void)domain;
+    dnssd_t *dnssd = context;
+    if (dnssd && dnssd->registration_callback) {
+        dnssd->registration_callback(dnssd->registration_context,
+            errorCode, name, regtype);
+    }
 }
 
 void *
@@ -221,6 +228,9 @@ dnssd_private_destroy(void *private)
 {
     if (private) {
         dnssd_private_t *dnssd = (dnssd_private_t *) private;
+        /* /info 借用 TXT buffer；仅在全部媒体线程退出后释放，重注册不重建。 */
+        if (dnssd->raop_record_created) dnssd->TXTRecordDeallocate(&dnssd->raop_record);
+        if (dnssd->airplay_record_created) dnssd->TXTRecordDeallocate(&dnssd->airplay_record);
 #ifdef WIN32
         FreeLibrary(dnssd->module);
 #elif USE_LIBDL
@@ -240,7 +250,7 @@ dnssd_register_raop(dnssd_t *dnssd_public, unsigned short port)
     assert(dnssd_public);
     assert(dnssd_public->dnssd_private);
     dnssd_private_t *dnssd = (dnssd_private_t *) dnssd_public->dnssd_private;
-    DNSServiceFlags flags = 0;
+    DNSServiceFlags flags = kDNSServiceFlagsNoAutoRename;
     uint32_t interface_index = dnssd_public->interface_index;
 
 #if defined(__APPLE__) && defined(UXPLAY_HAVE_APPLE_P2P)
@@ -248,14 +258,16 @@ dnssd_register_raop(dnssd_t *dnssd_public, unsigned short port)
      * Keep the normal registrations and opt into both Apple P2P families.
      * Using awdl0 directly can miss other active peer interfaces. */
     if (dnssd_public->peer_to_peer) {
-        flags = kDNSServiceFlagsIncludeP2P | kDNSServiceFlagsIncludeAWDL;
+        flags |= kDNSServiceFlagsIncludeP2P | kDNSServiceFlagsIncludeAWDL;
         interface_index = kDNSServiceInterfaceIndexAny;
     }
 #endif
 
     snprintf(features, sizeof(features), "0x%X,0x%X", dnssd_public->features1, dnssd_public->features2);
 
+    if (!dnssd->raop_record_created) {
     dnssd->TXTRecordCreate(&dnssd->raop_record, 0, NULL);
+    dnssd->raop_record_created = 1;
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "ch", strlen(RAOP_CH), RAOP_CH);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "cn", strlen(RAOP_CN), RAOP_CN);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "da", strlen(RAOP_DA), RAOP_DA);
@@ -290,6 +302,7 @@ dnssd_register_raop(dnssd_t *dnssd_public, unsigned short port)
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "vs", strlen(RAOP_VS), RAOP_VS);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "vn", strlen(RAOP_VN), RAOP_VN);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "pk", strlen(dnssd_public->pk), dnssd_public->pk);
+    }
 
     /* Convert hardware address to string */
     if (utils_hwaddr_raop(servname, sizeof(servname), dnssd_public->hw_addr, dnssd_public->hw_addr_len) < 0) {
@@ -298,13 +311,15 @@ dnssd_register_raop(dnssd_t *dnssd_public, unsigned short port)
     }
 
     /* Check that we have bytes for 'hw@name' format */
-    if (sizeof(servname) < strlen(servname) + 1 + dnssd_public->name_len + 1) {
+    int name_len = 0;
+    const char *name = dnssd_get_name(dnssd_public, &name_len);
+    if (sizeof(servname) < strlen(servname) + 1 + name_len + 1) {
         /* FIXME: handle better */
         return -2;
     }
 
     strncat(servname, "@", sizeof(servname)-strlen(servname)-1);
-    strncat(servname, dnssd_public->name, sizeof(servname)-strlen(servname)-1);
+    strncat(servname, name, sizeof(servname)-strlen(servname)-1);
 
     /* Register the service */
     DNSServiceErrorType retval = dnssd->DNSServiceRegister(&dnssd->raop_service, flags, interface_index,
@@ -314,7 +329,7 @@ dnssd_register_raop(dnssd_t *dnssd_public, unsigned short port)
                                                           dnssd->TXTRecordGetLength(&dnssd->raop_record),
                                                           dnssd->TXTRecordGetBytesPtr(&dnssd->raop_record),
                                                           dnssd_register_dummy_callback,
-                                                          NULL);
+                                                          dnssd_public);
 
     return (int) retval;   /* error codes are listed in Apple's dns_sd.h */
 }
@@ -328,7 +343,7 @@ dnssd_register_airplay(dnssd_t *dnssd_public, unsigned short port)
     assert(dnssd_public);
     assert(dnssd_public->dnssd_private);
     dnssd_private_t *dnssd = (dnssd_private_t *) dnssd_public->dnssd_private;    
-    DNSServiceFlags flags = 0;
+    DNSServiceFlags flags = kDNSServiceFlagsNoAutoRename;
     uint32_t interface_index = dnssd_public->interface_index;
 
 #if defined(__APPLE__) && defined(UXPLAY_HAVE_APPLE_P2P)
@@ -336,7 +351,7 @@ dnssd_register_airplay(dnssd_t *dnssd_public, unsigned short port)
      * Keep the normal registrations and opt into both Apple P2P families.
      * Using awdl0 directly can miss other active peer interfaces. */
     if (dnssd_public->peer_to_peer) {
-        flags = kDNSServiceFlagsIncludeP2P | kDNSServiceFlagsIncludeAWDL;
+        flags |= kDNSServiceFlagsIncludeP2P | kDNSServiceFlagsIncludeAWDL;
         interface_index = kDNSServiceInterfaceIndexAny;
     }
 #endif
@@ -350,7 +365,9 @@ dnssd_register_airplay(dnssd_t *dnssd_public, unsigned short port)
     }
 
     // flags is a string representing a 20-bit flag (up to 3 hex digits)
+    if (!dnssd->airplay_record_created) {
     dnssd->TXTRecordCreate(&dnssd->airplay_record, 0, NULL);
+    dnssd->airplay_record_created = 1;
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "deviceid", strlen(device_id), device_id);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "features", strlen(features), features);
     switch (dnssd_public->pin_pw) {
@@ -373,16 +390,19 @@ dnssd_register_airplay(dnssd_t *dnssd_public, unsigned short port)
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "pi", strlen(AIRPLAY_PI), AIRPLAY_PI);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "srcvers", strlen(AIRPLAY_SRCVERS), AIRPLAY_SRCVERS);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "vv", strlen(AIRPLAY_VV), AIRPLAY_VV);
+    }
 
     /* Register the service */
+    int name_len = 0;
+    const char *name = dnssd_get_name(dnssd_public, &name_len);
     DNSServiceErrorType retval = dnssd->DNSServiceRegister(&dnssd->airplay_service, flags, interface_index,
-                                                           dnssd_public->name, "_airplay._tcp",
+                                                           name, "_airplay._tcp",
                                                            NULL, NULL,
                                                            htons(port),
                                                            dnssd->TXTRecordGetLength(&dnssd->airplay_record),
                                                            dnssd->TXTRecordGetBytesPtr(&dnssd->airplay_record),
                                                            dnssd_register_dummy_callback,
-                                                           NULL);
+                                                           dnssd_public);
 
     return (int) retval;   /* error codes are listed in Apple's dns_sd.h */
 }
@@ -418,12 +438,7 @@ dnssd_unregister_raop(dnssd_t *dnssd_public)
     assert(dnssd_public->dnssd_private);
     dnssd_private_t *dnssd = (dnssd_private_t *) dnssd_public->dnssd_private;    
 
-    if (!dnssd->raop_service) {
-        return;
-    }
-
-    /* Deallocate TXT record */
-    dnssd->TXTRecordDeallocate(&dnssd->raop_record);
+    if (!dnssd->raop_service) return;
 
     dnssd->DNSServiceRefDeallocate(dnssd->raop_service);
     dnssd->raop_service = NULL;
@@ -436,12 +451,7 @@ dnssd_unregister_airplay(dnssd_t *dnssd_public)
     assert(dnssd_public->dnssd_private);
     dnssd_private_t *dnssd = (dnssd_private_t *) dnssd_public->dnssd_private;    
 
-    if (!dnssd->airplay_service) {
-        return;
-    }
-
-    /* Deallocate TXT record */
-    dnssd->TXTRecordDeallocate(&dnssd->airplay_record);
+    if (!dnssd->airplay_service) return;
 
     dnssd->DNSServiceRefDeallocate(dnssd->airplay_service);
     dnssd->airplay_service = NULL;

@@ -101,6 +101,7 @@ dnssd_init(const char* name, int name_len, const char* hw_addr, int hw_addr_len,
         return NULL;
     }
     memcpy(dnssd->name, name, name_len);
+    atomic_init(&dnssd->using_fallback_name, 0);
 
     dnssd->hw_addr_len = hw_addr_len;
     dnssd->hw_addr = calloc(1, dnssd->hw_addr_len);
@@ -135,6 +136,9 @@ dnssd_destroy(dnssd_t *dnssd)
         if (dnssd->name) {
             free(dnssd->name);
         }
+        for (int i = 0; i < dnssd->fallback_name_count; i++) {
+            free(dnssd->fallback_names[i]);
+        }
         if (dnssd->dnssd_private) {
             dnssd_private_destroy(dnssd->dnssd_private);
         }
@@ -146,8 +150,42 @@ dnssd_destroy(dnssd_t *dnssd)
 const char *
 dnssd_get_name(dnssd_t *dnssd, int *length)
 {
-    *length = dnssd->name_len;
-    return dnssd->name;
+    int index = atomic_load(&dnssd->using_fallback_name);
+    const char *name = index ? dnssd->fallback_names[index - 1] : dnssd->name;
+    *length = (int)strlen(name);
+    return name;
+}
+
+/* 仅在开放协议监听前设置；之后名称字符串一直保留到全部线程退出。 */
+int dnssd_set_fallback_names(dnssd_t *dnssd, const char *short_name,
+    const char *long_name, const char *full_name) {
+    if (!dnssd || dnssd->fallback_name_count) return -1;
+    const char *names[] = { short_name, long_name, full_name };
+    const char *previous = dnssd->name;
+    for (int i = 0; i < 3; i++) {
+        if (!names[i] || !*names[i] || !strcmp(previous, names[i])) continue;
+        char *copy = strdup(names[i]);
+        if (!copy) return -1;
+        dnssd->fallback_names[dnssd->fallback_name_count++] = copy;
+        previous = names[i];
+    }
+    return 0;
+}
+
+int dnssd_use_fallback_name(dnssd_t *dnssd) {
+    if (!dnssd_can_retry_name(dnssd)) return -1;
+    atomic_fetch_add(&dnssd->using_fallback_name, 1);
+    return 0;
+}
+
+int dnssd_can_retry_name(dnssd_t *dnssd) {
+    return dnssd && atomic_load(&dnssd->using_fallback_name) < dnssd->fallback_name_count;
+}
+
+void dnssd_set_registration_callback(dnssd_t *dnssd,
+    void (*callback)(void *, int, const char *, const char *), void *context) {
+    dnssd->registration_callback = callback;
+    dnssd->registration_context = context;
 }
 
 const char *

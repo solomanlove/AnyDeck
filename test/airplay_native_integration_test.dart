@@ -44,4 +44,48 @@ void main() {
       expect(service.getStatus(session.id), AirPlayServerStatus.stopped);
     }
   }, skip: !Platform.isMacOS || library == null || library.isEmpty);
+
+  test('simultaneous Bonjour registrations confirm distinct stable names', () async {
+    const channel = MethodChannel('anydeck/rust_texture');
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async => null);
+    final service = AirPlayServerService.instance;
+    final sessions = <AirPlaySessionData>[];
+    addTearDown(() async {
+      for (final session in sessions) {
+        await service.stop(session);
+      }
+      messenger.setMockMethodCallHandler(channel, null);
+    });
+    final requested = 'AnyDeck-FFI-Concurrent-$pid';
+    final names = await Future.wait([
+      for (final code in ['AA0011', 'BB0022'])
+        service.start(
+          name: requested,
+          fallbackNames: ['$requested-$code', '$requested-${code}112233', '$requested-${code}11223344556677889900'],
+          rtspPort: 0,
+        ).then((session) {
+          sessions.add(session);
+          return session;
+        }),
+    ]);
+    expect(names.map((session) => session.serverName).toSet(), hasLength(2));
+    for (final session in names) {
+      expect(session.isPublished, isTrue);
+      expect(session.serverName, isNot(contains('(2)')));
+      expect(service.getPublishedName(session.id), session.serverName);
+      expect(service.getPublicationStatus(session.id), 1);
+    }
+    final loser = names.firstWhere((session) => session.serverName != requested);
+    final stableName = loser.serverName;
+    await service.stop(loser);
+    sessions.remove(loser);
+    final restarted = await service.start(
+      name: requested,
+      fallbackNames: [stableName, '$stableName-112233', '$stableName-445566'],
+      rtspPort: 0,
+    );
+    sessions.add(restarted);
+    expect(restarted.serverName, stableName);
+  }, skip: !Platform.isMacOS || library == null || library.isEmpty);
 }

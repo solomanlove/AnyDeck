@@ -55,7 +55,12 @@ extension DlnaRendererDiscovery on DlnaRendererService {
 
   void _handleSearch(Datagram packet) {
     final text = ascii.decode(packet.data, allowInvalid: true);
-    if (!text.toUpperCase().startsWith('M-SEARCH * HTTP/1.1')) return;
+    if (!text.toUpperCase().startsWith('M-SEARCH * HTTP/1.1')) {
+      _nameMonitor?.observe(ReceiverSsdpReply(
+        message: text, sender: packet.address,
+      ));
+      return;
+    }
     final st = RegExp(
       r'^ST:\s*(.+)$',
       multiLine: true,

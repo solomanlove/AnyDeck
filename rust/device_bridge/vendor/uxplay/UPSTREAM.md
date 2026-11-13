@@ -11,6 +11,7 @@
 - `lib/raop.c`：`raop_stop_httpd` 判断 httpd 是否为空，允许 init2 失败路径安全析构。
 - `lib/dnssd.*`、`lib/dns_sd/dns_sd.c`：允许接入层指定 Bonjour interface，避免服务同时发布到 USB link-local 链路。
 - `native/uxplay_bridge.c` 位于 vendor 目录外，是 AnyDeck 生命周期、能力声明和媒体回调适配层。
+- 2026-11-13 `lib/dnssd.*` / `lib/dns_sd/dns_sd.c`：注册禁止自动改名，异步回调交给 native 发布状态机；稳定后备名称采用不可变字符串与原子索引，TXT buffer 在重注册时复用，协议线程退出后统一释放，避免活跃 `/info` 请求读取已释放数据。
 
 - 2026-10-27 `http_handlers.h` / `raop.c`：HTTP 视频结束和错误回调使用正确的连接/全局上下文；直连 HTTP(S) 媒体不依赖 FCUP UUID 缓存，补充 plist、Session ID/UUID、查询参数校验与 URL 日志脱敏。
 - 2026-10-27 `raop_handlers.h`：开始镜像视频时停止当前 HTTP 媒体；不销毁独立 DLNA 播放器。Video/HLS 能力和媒体回调在 vendor 外的 native bridge 中同时开启。

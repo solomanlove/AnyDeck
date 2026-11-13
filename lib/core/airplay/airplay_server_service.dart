@@ -13,6 +13,7 @@ import '../scrcpy/rust_device_bridge.dart';
 import 'airplay_server_state.dart';
 import 'airplay_video_bridge.dart';
 import 'airplay_video_player.dart';
+import 'airplay_publication.dart';
 import '../../app/l10n/app_localizations.dart';
 import '../../app/settings/app_settings_controller.dart';
 
@@ -20,6 +21,12 @@ part 'airplay_server_notifier.dart';
 
 typedef _AirplayStartNative = Uint64 Function(Pointer<Uint8>, Uint16, Uint16);
 typedef _AirplayStartDart = int Function(Pointer<Uint8>, int, int);
+typedef _AirplayNamedStartNative = Uint64 Function(
+  Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Uint16, Uint16,
+);
+typedef _AirplayNamedStartDart = int Function(
+  Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, int, int,
+);
 
 typedef _AirplayStopNative = Void Function(Uint64);
 typedef _AirplayStopDart = void Function(int);
@@ -55,6 +62,8 @@ class AirPlayServerService {
   _AirplayErrorDart? _errorFunc;
   _AirplayErrorDart? _clientInfoFunc;
   _AirplaySetAudioEnabledDart? _setAudioEnabledFunc;
+  _AirplayStatusDart? _publicationStatusFunc;
+  _AirplayErrorDart? _publishedNameFunc;
   bool _audioEnabled = true;
 
   bool _initialized = false;
@@ -76,6 +85,17 @@ class AirPlayServerService {
         _AirplayDimensionsNative,
         _AirplayDimensionsDart
       >('anydeck_airplay_get_dimensions');
+      try {
+        _lib!.lookupFunction<_AirplayNamedStartNative, _AirplayNamedStartDart>(
+          'anydeck_airplay_start_with_fallbacks',
+        );
+        _publicationStatusFunc = _lib!.lookupFunction<_AirplayStatusNative, _AirplayStatusDart>(
+          'anydeck_airplay_publication_status',
+        );
+        _publishedNameFunc = _lib!.lookupFunction<_AirplayErrorNative, _AirplayErrorDart>(
+          'anydeck_airplay_copy_published_name',
+        );
+      } catch (_) {}
       // 兼容尚未重新构建、没有诊断符号的旧动态库。
       try {
         _errorFunc = _lib!.lookupFunction<_AirplayErrorNative, _AirplayErrorDart>(
@@ -114,20 +134,34 @@ class AirPlayServerService {
   /// - [videoPort]: 视频数据流接收端口，默认 7100
   Future<AirPlaySessionData> start({
     String name = 'AnyDeck-AirPlay',
+    List<String> fallbackNames = const [],
     int rtspPort = 7000,
     int videoPort = 7100,
   }) async {
     if (!isSupported) {
       throw UnsupportedError('AirPlay Server 仅支持 macOS 平台且需动态库支持');
     }
+    if (_publicationStatusFunc == null || _publishedNameFunc == null) {
+      throw UnsupportedError('AirPlay 接收端名称确认需要更新 AnyDeck Rust 动态库');
+    }
     _setAudioEnabledFunc?.call(_audioEnabled ? 1 : 0);
 
     // native 启动包含密钥文件、Bonjour 和监听初始化，放到后台 Isolate。
-    final handle = await Isolate.run(
-      () => _startNativeAirPlay(name, rtspPort, videoPort),
-    );
+    final handle = await _startNativeAirPlayAsync(name, fallbackNames, rtspPort, videoPort);
     if (handle == 0) {
       throw StateError('启动 AirPlay Server 失败');
+    }
+    String publishedName = name;
+    if (videoPort != 0) {
+      try {
+        publishedName = await waitForAirplayPublication(
+          readStatus: () => getPublicationStatus(handle),
+          readName: () => getPublishedName(handle),
+        );
+      } catch (_) {
+        await _stopNativeAirPlayAsync(handle);
+        rethrow;
+      }
     }
 
     // 注册至 macOS Texture Registry 获取纹理 ID
@@ -141,12 +175,30 @@ class AirPlayServerService {
 
     return AirPlaySessionData(
       id: handle,
-      serverName: name,
+      serverName: publishedName,
+      isPublished: videoPort != 0,
       rtspPort: rtspPort,
       videoPort: videoPort,
       status: AirPlayServerStatus.idle,
       textureId: textureId,
     );
+  }
+
+  /// 注册状态独立于媒体状态；冲突重新广播不打断正在镜像的客户端。
+  int getPublicationStatus(int handle) => _publicationStatusFunc?.call(handle) ?? 2;
+
+  String? getPublishedName(int handle) {
+    final read = _publishedNameFunc;
+    if (read == null) return null;
+    final buffer = calloc<Uint8>(256);
+    try {
+      final length = read(handle, buffer, 256);
+      return length > 0 && length <= 256
+          ? utf8.decode(buffer.asTypedList(length), allowMalformed: true)
+          : null;
+    } finally {
+      calloc.free(buffer);
+    }
   }
 
   /// 获取当前投屏分辨率
@@ -290,16 +342,32 @@ Future<bool> openAirPlayMirrorWindow(
 }
 
 /// 后台 Isolate 独立加载同一路径的动态库，复用进程内 Rust 会话表。
-int _startNativeAirPlay(String name, int rtspPort, int videoPort) {
+/// 独立闭包作用域防止与名称轮询闭包一起捕获不可跨 Isolate 的 DynamicLibrary。
+Future<int> _startNativeAirPlayAsync(String name, List<String> fallbackNames, int rtspPort, int videoPort) =>
+    Isolate.run(() => _startNativeAirPlay(name, fallbackNames, rtspPort, videoPort));
+
+Future<void> _stopNativeAirPlayAsync(int handle) =>
+    Isolate.run(() => _stopNativeAirPlay(handle));
+
+int _startNativeAirPlay(String name, List<String> fallbackNames, int rtspPort, int videoPort) {
   final start = RustDeviceBridge.instance.library
-      .lookupFunction<_AirplayStartNative, _AirplayStartDart>('anydeck_airplay_start');
+      .lookupFunction<_AirplayNamedStartNative, _AirplayNamedStartDart>('anydeck_airplay_start_with_fallbacks');
   final cName = utf8.encode('$name\x00');
+  final fallbacks = List.generate(3, (index) =>
+      utf8.encode('${index < fallbackNames.length ? fallbackNames[index] : name}\x00'));
   final namePtr = calloc<Uint8>(cName.length);
+  final fallbackPointers = fallbacks.map((value) => calloc<Uint8>(value.length)).toList();
   try {
     namePtr.asTypedList(cName.length).setAll(0, cName);
-    return start(namePtr, rtspPort, videoPort);
+    for (var i = 0; i < fallbacks.length; i++) {
+      fallbackPointers[i].asTypedList(fallbacks[i].length).setAll(0, fallbacks[i]);
+    }
+    return start(namePtr, fallbackPointers[0], fallbackPointers[1], fallbackPointers[2], rtspPort, videoPort);
   } finally {
     calloc.free(namePtr);
+    for (final pointer in fallbackPointers) {
+      calloc.free(pointer);
+    }
   }
 }
 

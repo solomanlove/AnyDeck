@@ -69,6 +69,46 @@ pub unsafe extern "C" fn anydeck_airplay_start(
     }
 }
 
+/// 新 ABI 同时提供稳定后备名；旧入口保留，供旧调用方兼容。
+/// # Safety
+/// 请求名和三个后备名均须指向有效 NUL 结尾 UTF-8 字符串。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_airplay_start_with_fallbacks(
+    name: *const c_char, fallback: *const c_char, fallback_long: *const c_char,
+    fallback_full: *const c_char, rtsp_port: u16, video_port: u16,
+) -> u64 {
+    if name.is_null() || fallback.is_null() || fallback_long.is_null() || fallback_full.is_null() { return 0; }
+    let (Ok(name), Ok(fallback)) = (CStr::from_ptr(name).to_str(), CStr::from_ptr(fallback).to_str()) else { return 0; };
+    let (Ok(fallback_long), Ok(fallback_full)) = (CStr::from_ptr(fallback_long).to_str(), CStr::from_ptr(fallback_full).to_str()) else { return 0; };
+    if name.is_empty() || fallback.is_empty() { return 0; }
+    let id = NEXT_AIRPLAY_ID.fetch_add(1, Ordering::Relaxed);
+    let port = if rtsp_port == 0 { 7000 } else { rtsp_port };
+    match AirPlayServer::start_with_fallback(id, name, Some([fallback, fallback_long, fallback_full]), port, video_port) {
+        Ok(server) => {
+            if let Ok(mut map) = servers().lock() { map.insert(id, server); id } else { 0 }
+        }
+        Err(error) => { eprintln!("anydeck_airplay_start_with_fallbacks error: {error}"); 0 }
+    }
+}
+
+/// 0 等待确认，1 广播已确认，2 发布失败；不影响活跃媒体连接。
+#[no_mangle]
+pub extern "C" fn anydeck_airplay_publication_status(id: u64) -> u8 {
+    get_server(id).map(|server| server.publication_status()).unwrap_or(2)
+}
+
+/// 复制系统确认的实际发布名；等待或失败时返回 0。
+/// # Safety
+/// out 须指向至少 capacity 字节的可写缓冲区。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_airplay_copy_published_name(id: u64, out: *mut u8, capacity: usize) -> usize {
+    if out.is_null() || capacity == 0 { return 0; }
+    let Some(name) = get_server(id).and_then(|server| server.published_name()) else { return 0; };
+    if name.len() > capacity { return 0; }
+    ptr::copy_nonoverlapping(name.as_ptr(), out, name.len());
+    name.len()
+}
+
 /// 停止并销毁指定的 AirPlay 投屏服务
 #[no_mangle]
 pub extern "C" fn anydeck_airplay_stop(id: u64) {

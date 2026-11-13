@@ -136,6 +136,18 @@ class DlnaFallbackPlayer {
     }
   }
 
+  /// 标题属于发现名称同步，更新失败不能触发媒体停止或销毁播放器。
+  Future<void> setTitle(String title) async {
+    final window = _window;
+    if (window == null) return;
+    try {
+      await window.invokeMethod<void>('dlnaSetTitle', title)
+          .timeout(const Duration(seconds: 3));
+    } catch (error) {
+      debugPrint('[DLNA] fallback title update failed: $error');
+    }
+  }
+
   /// 切片源时保留窗口，只释放当前媒体并显示加载状态。
   Future<void> prepare() async {
     final window = _window;

@@ -7,6 +7,8 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
   final Map<int, String> _lastErrors = {};
   bool _spawningStandby = false;
   bool _disposed = false;
+  String? _requestedReceiverName;
+  String? _recordedPublishedName;
   static const int _initialClientSlots = 3;
   static const int _maxConcurrentSessions = 4;
 
@@ -44,13 +46,22 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
       alreadyRunning: state?.hasAnyBroadcasting == true &&
           state?.serverName == ref.read(appSettingsProvider).airplayServerName,
     );
+    final configuredName = name ?? ref.read(appSettingsProvider).airplayServerName;
+    final fallbackNames = await Future.wait([
+      for (final length in [6, 12, 32])
+        settings.receiverNameFallbackForStart('AirPlay', name: resolvedName, codeLength: length),
+    ]);
     await stopServer();
     final service = AirPlayServerService.instance;
     final primary = await service.start(
       name: resolvedName,
+      fallbackNames: fallbackNames,
       rtspPort: rtspPort,
       videoPort: videoPort,
     );
+    _requestedReceiverName = configuredName;
+    _recordedPublishedName = configuredName;
+    _recordPublishedName(primary.serverName);
     final standbySlots = <AirPlaySessionData>[];
     for (int i = 1; i < _initialClientSlots; i++) {
       try {
@@ -75,7 +86,7 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
           if (!_disposed && state != null) state = state!.copyWith(isVideoPlaying: active);
         },
       );
-      await _videoPlayer!.start(primary.id, resolvedName);
+      await _videoPlayer!.start(primary.id, primary.serverName);
       await _updateVideoLabels();
     } catch (error) {
       debugPrint('[AirPlay Video] unavailable (${error.runtimeType}); rebuild native library');
@@ -104,6 +115,9 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
         debugPrint('[AirPlay] ERROR (${session.id}): $error');
       }
       final status = service.getStatus(session.id);
+      final publication = session.videoPort == 0 ? 0 : service.getPublicationStatus(session.id);
+      final publishedName = publication == 1 ? service.getPublishedName(session.id) : null;
+      final isPublished = publication == 1 && publishedName != null;
       final size = service.getDimensions(session.id);
       final client = service.getClientInfo(session.id);
       final isMirroring = status.isMirrorSession;
@@ -121,6 +135,8 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
           : client?.name;
 
       if (status != session.status ||
+          isPublished != session.isPublished ||
+          (publishedName != null && publishedName != session.serverName) ||
           nextW != session.width ||
           nextH != session.height ||
           nextDevId != session.clientDeviceId ||
@@ -132,6 +148,8 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
         changed = true;
         updatedList.add(
           session.copyWith(
+            serverName: publishedName,
+            isPublished: isPublished,
             status: status,
             width: nextW,
             height: nextH,
@@ -148,9 +166,12 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
     }
 
     if (changed && updatedList.isNotEmpty) {
+      final nameChanged = updatedList.first.serverName != current.serverName;
       state = updatedList.first.copyWith(
         additionalSessions: updatedList.sublist(1),
       );
+      if (state!.isPublished) _recordPublishedName(state!.serverName);
+      if (nameChanged) unawaited(_updateVideoLabels());
     }
 
     // 多台设备并发投屏支持：当所有已分配槽位均处于投屏状态时，自动补充一个无广播待机槽位
@@ -163,6 +184,18 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
       final slot = latest.allSessions.length + 1;
       unawaited(_spawnStandbySession(slot));
     }
+  }
+
+  /// 保留用户原始设置，仅记录 native 最终选择的稳定后备名及升级长度。
+  void _recordPublishedName(String name) {
+    final original = _requestedReceiverName;
+    if (original == null || name == _recordedPublishedName) return;
+    _recordedPublishedName = name;
+    unawaited(ref.read(appSettingsProvider.notifier).recordReceiverNameConflict(
+      'AirPlay', original, publishedName: name,
+    ).catchError((Object error) {
+      debugPrint('[AirPlay] published name persistence failed: $error');
+    }));
   }
 
   Future<void> _spawnStandbySession(int slot) async {

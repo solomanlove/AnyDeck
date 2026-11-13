@@ -3,8 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../receiver/receiver_identity.dart';
+import '../receiver/receiver_name_probe.dart';
+import '../receiver/receiver_names.dart';
+import 'dlna_name_conflict_monitor.dart';
 import 'dlna_protocol.dart';
 import 'dlna_discovery_address.dart';
 import 'dlna_player_bridge.dart';
@@ -15,6 +19,7 @@ part 'dlna_renderer_name.dart';
 part 'dlna_renderer_pin.dart';
 part 'dlna_renderer_control.dart';
 part 'dlna_renderer_discovery.dart';
+part 'dlna_renderer_conflicts.dart';
 
 /// macOS DLNA MediaRenderer：SSDP 发现、UPnP 控制与原生播放器生命周期。
 class DlnaRendererService extends ChangeNotifier {
@@ -92,6 +97,14 @@ class DlnaRendererService extends ChangeNotifier {
   StreamSubscription<RawSocketEvent>? _ssdpSubscription;
   Timer? _advertiseTimer;
   Timer? _stopWindowTimer;
+  Timer? _nameSearchTimer;
+  final Set<Timer> _nameSearchRetries = {};
+  DlnaNameConflictMonitor? _nameMonitor;
+  Future<void> Function(String, String)? _onNameConflict;
+  Future<void>? _nameChange;
+  int _discoveryGeneration = 0;
+  int _nameGeneration = 0;
+  String _baseServerName = DlnaProtocol.serverName;
   bool _starting = false;
   Future<void>? _fallbackOperation;
   Future<void>? _playerReset;
@@ -166,6 +179,7 @@ class DlnaRendererService extends ChangeNotifier {
       );
       _http = server;
       server.listen(_serve, onError: (Object error) => _error = '$error');
+      _startNameMonitor();
       if (!_discoveryEnabled) return;
       final socket = await RawDatagramSocket.bind(
         InternetAddress.anyIPv4,
@@ -195,6 +209,7 @@ class DlnaRendererService extends ChangeNotifier {
         }
       });
       await _advertise(alive: true);
+      _startNameSearches();
       _advertiseTimer = Timer.periodic(
         const Duration(minutes: 4),
         (_) => unawaited(_advertise(alive: true)),
@@ -211,6 +226,7 @@ class DlnaRendererService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    _stopNameMonitoring();
     _stopWindowTimer?.cancel();
     _stopWindowTimer = null;
     _advertiseTimer?.cancel();

@@ -35,6 +35,17 @@ mixin ReceiverNameSettings on Notifier<AppSettings>, SettingsBroadcast {
     }
     final identity = await ref.read(receiverIdentityProvider.future);
     if (!ref.mounted) return;
+    DlnaRendererService.instance.setNameConflictHandler((
+      original,
+      published,
+    ) async {
+      if (!ref.mounted) return;
+      await recordReceiverNameConflict(
+        'DLNA',
+        original,
+        publishedName: published,
+      );
+    });
     await _reloadReceiverNames(identity);
   }
 
@@ -74,6 +85,97 @@ mixin ReceiverNameSettings on Notifier<AppSettings>, SettingsBroadcast {
 
   Future<void> setDlnaServerName(String value, {bool broadcast = true}) =>
       _setReceiverName('DLNA', value, broadcast: broadcast);
+
+  /// 为协议注册回调准备稳定后备名；不改写原始自定义配置。
+  Future<String> receiverNameFallbackForStart(
+    String protocol, {
+    String? name,
+    int codeLength = 6,
+  }) async {
+    await ensureReceiverNames();
+    final identity = await ref.read(receiverIdentityProvider.future);
+    final original =
+        name ??
+        (protocol == 'AirPlay'
+            ? state.airplayServerName
+            : state.dlnaServerName);
+    return ReceiverNames.stableFallback(
+      original,
+      protocol,
+      identity.uuid,
+      codeLength: codeLength,
+    );
+  }
+
+  /// 注册确认或运行时发现冲突后持久记录，升级后的短码不随重启降级。
+  Future<void> recordReceiverNameConflict(
+    String protocol,
+    String originalName, {
+    String? publishedName,
+  }) async {
+    await ensureReceiverNames();
+    final identity = await ref.read(receiverIdentityProvider.future);
+    final prefs = await SharedPreferences.getInstance();
+    final autoRoot = ReceiverNames.defaultName(identity, protocol);
+    final savedAuto = prefs.getString(ReceiverNames.autoKey(protocol));
+    final configured = prefs.getString(ReceiverNames.nameKey(protocol));
+    final automatic =
+        configured == savedAuto &&
+        (originalName == autoRoot ||
+            [6, 12, 32].any(
+              (length) =>
+                  ReceiverNames.stableFallback(
+                    autoRoot,
+                    protocol,
+                    identity.uuid,
+                    codeLength: length,
+                  ) ==
+                  originalName,
+            ));
+    final fallback =
+        publishedName ??
+        ReceiverNames.stableFallback(originalName, protocol, identity.uuid);
+    await ReceiverNames.recordPublishedConflict(
+      prefs,
+      originalName,
+      protocol,
+      identity.uuid,
+      fallback,
+    );
+    // 启动前探测可能已加过短码；升级记录仍须绑定用户保存的原始名称。
+    if (configured != null &&
+        configured != originalName &&
+        [6, 12, 32].any(
+          (length) =>
+              ReceiverNames.stableFallback(
+                configured,
+                protocol,
+                identity.uuid,
+                codeLength: length,
+              ) ==
+              originalName,
+        )) {
+      await ReceiverNames.recordPublishedConflict(
+        prefs,
+        configured,
+        protocol,
+        identity.uuid,
+        fallback,
+      );
+    }
+    if (automatic) {
+      await ReceiverNames.recordPublishedConflict(
+        prefs,
+        autoRoot,
+        protocol,
+        identity.uuid,
+        fallback,
+      );
+    }
+    if (!ref.mounted) return;
+    await _reloadReceiverNames(identity);
+    await _broadcastReceiverNames();
+  }
 
   Future<void> _setReceiverName(
     String protocol,
@@ -136,8 +238,7 @@ mixin ReceiverNameSettings on Notifier<AppSettings>, SettingsBroadcast {
     final name = protocol == 'AirPlay'
         ? state.airplayServerName
         : state.dlnaServerName;
-    if (ReceiverNames.disambiguate(name, protocol, identity.shortCode) ==
-        name) {
+    if (ReceiverNames.stableFallback(name, protocol, identity.uuid) == name) {
       return name;
     }
     var conflict = ReceiverNames.hasConflict(prefs, name, protocol);
@@ -159,7 +260,12 @@ mixin ReceiverNameSettings on Notifier<AppSettings>, SettingsBroadcast {
     if (!conflict) return name;
     await _reloadReceiverNames(identity);
     await _broadcastReceiverNames();
-    return ReceiverNames.disambiguate(name, protocol, identity.shortCode);
+    return ReceiverNames.stableFallback(
+      name,
+      protocol,
+      identity.uuid,
+      codeLength: ReceiverNames.conflictCodeLength(prefs, name, protocol),
+    );
   }
 
   Future<void> _broadcastReceiverNames() async {

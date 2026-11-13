@@ -143,6 +143,13 @@ impl AirPlayServer {
         rtsp_port: u16,
         #[allow(unused_variables)] video_port: u16,
     ) -> Result<Arc<Self>, String> {
+        Self::start_with_fallback(id, name, None, rtsp_port, video_port)
+    }
+
+    /// 稳定后备名称由设置层提供，Bonjour 冲突时只重注册发现记录。
+    pub fn start_with_fallback(
+        id: u64, name: &str, fallback: Option<[&str; 3]>, rtsp_port: u16, video_port: u16,
+    ) -> Result<Arc<Self>, String> {
         #[cfg(feature = "airplay-uxplay")]
         {
             let frame = Arc::new(Frame::default());
@@ -162,7 +169,7 @@ impl AirPlayServer {
             });
 
             if video_port != 0 {
-                let receiver = uxplay::Receiver::start(&server, name, rtsp_port)?;
+                let receiver = uxplay::Receiver::start(&server, name, fallback, rtsp_port)?;
                 eprintln!("[AirPlay UxPlay] Listening on port {}", receiver.port);
                 *server.native.lock().map_err(|_| "AirPlay native lock poisoned")? = Some(receiver);
             }
@@ -170,7 +177,26 @@ impl AirPlayServer {
         }
 
         #[cfg(not(feature = "airplay-uxplay"))]
-        Self::start_legacy(id, name, rtsp_port, video_port)
+        {
+            if fallback.is_some() { return Err("Confirmed Bonjour publication requires UxPlay".into()); }
+            Self::start_legacy(id, name, rtsp_port, video_port)
+        }
+    }
+
+    pub fn publication_status(&self) -> u8 {
+        #[cfg(feature = "airplay-uxplay")]
+        if let Ok(native) = self.native.lock() {
+            return native.as_ref().map(|receiver| receiver.publication_status()).unwrap_or(2);
+        }
+        2
+    }
+
+    pub fn published_name(&self) -> Option<String> {
+        #[cfg(feature = "airplay-uxplay")]
+        if let Ok(native) = self.native.lock() {
+            return native.as_ref().and_then(|receiver| receiver.published_name());
+        }
+        None
     }
 
     /// 旧 Rust 后端仅用于协议回归，不作为 native 启动失败的降级路径。

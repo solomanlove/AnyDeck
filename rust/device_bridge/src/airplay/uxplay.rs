@@ -13,6 +13,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 extern "C" {
     fn anydeck_uxplay_start(
         name: *const c_char,
+        fallback_name: *const c_char,
+        fallback_long_name: *const c_char,
+        fallback_full_name: *const c_char,
         mac: *const c_char,
         keyfile: *const c_char,
         port: u16,
@@ -30,6 +33,8 @@ extern "C" {
     ) -> *mut c_void;
     fn anydeck_uxplay_stop(handle: *mut c_void);
     fn anydeck_uxplay_port(handle: *mut c_void) -> u16;
+    fn anydeck_uxplay_publication_status(handle: *mut c_void) -> u8;
+    fn anydeck_uxplay_copy_published_name(handle: *mut c_void, out: *mut u8, capacity: usize) -> usize;
     fn anydeck_uxplay_disconnect_slot(handle: *mut c_void, slot_context: *mut c_void);
 }
 
@@ -60,20 +65,32 @@ pub(super) struct Receiver {
 unsafe impl Send for Receiver {}
 
 impl Receiver {
-    pub fn start(server: &Arc<AirPlayServer>, name: &str, port: u16) -> Result<Self, String> {
+    pub fn start(server: &Arc<AirPlayServer>, name: &str, fallback: Option<[&str; 3]>, port: u16) -> Result<Self, String> {
         let base = std::env::var_os("HOME").ok_or("HOME unavailable for AirPlay identity")?;
         let directory = std::path::PathBuf::from(base).join("Library/Application Support/com.github.anydeck/airplay");
         std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
         std::fs::set_permissions(&directory, std::fs::Permissions::from_mode(0o700)).map_err(|e| e.to_string())?;
         let keyfile = directory.join("receiver.pem");
-        let receiver = Self::start_with_identity(server, name, port, &keyfile, true)?;
+        let receiver = Self::start_with_names(server, name, fallback, port, &keyfile, true)?;
         std::fs::set_permissions(&keyfile, std::fs::Permissions::from_mode(0o600)).map_err(|e| e.to_string())?;
         Ok(receiver)
     }
 
+    #[cfg(test)]
     fn start_with_identity(
         server: &Arc<AirPlayServer>,
         name: &str,
+        port: u16,
+        keyfile: &std::path::Path,
+        publish: bool,
+    ) -> Result<Self, String> {
+        Self::start_with_names(server, name, None, port, keyfile, publish)
+    }
+
+    fn start_with_names(
+        server: &Arc<AirPlayServer>,
+        name: &str,
+        fallback: Option<[&str; 3]>,
         port: u16,
         keyfile: &std::path::Path,
         publish: bool,
@@ -89,6 +106,8 @@ impl Receiver {
         });
 
         let name_c = CString::new(name).map_err(|e| e.to_string())?;
+        let fallback_c = fallback.map(|names| names.into_iter().map(CString::new)
+            .collect::<Result<Vec<_>, _>>()).transpose().map_err(|e| e.to_string())?;
         let base_mac = AirPlayServer::get_local_mac();
         // 多台设备并发投屏时，备用广播实例通过调整 MAC 末字节避免 Bonjour _raop._tcp 冲突
         let mac = Self::derive_instance_mac(&base_mac, name);
@@ -100,6 +119,9 @@ impl Receiver {
         let handle = unsafe {
             anydeck_uxplay_start(
                 name_c.as_ptr(),
+                fallback_c.as_ref().map_or(std::ptr::null(), |names| names[0].as_ptr()),
+                fallback_c.as_ref().map_or(std::ptr::null(), |names| names[1].as_ptr()),
+                fallback_c.as_ref().map_or(std::ptr::null(), |names| names[2].as_ptr()),
                 mac_c.as_ptr(),
                 keyfile_c.as_ptr(),
                 port,
@@ -128,6 +150,17 @@ impl Receiver {
             _context: context,
             port: actual_port,
         })
+    }
+
+    /// 仅返回系统已确认的名称；异步重名重试期间不能冒充广播已成功。
+    pub fn publication_status(&self) -> u8 {
+        unsafe { anydeck_uxplay_publication_status(self.native) }
+    }
+
+    pub fn published_name(&self) -> Option<String> {
+        let mut bytes = [0u8; 256];
+        let length = unsafe { anydeck_uxplay_copy_published_name(self.native, bytes.as_mut_ptr(), bytes.len()) };
+        (length > 0 && length <= bytes.len()).then(|| String::from_utf8_lossy(&bytes[..length]).into_owned())
     }
 
     // 只由 type 110 镜像启动回调调用，音频/HTTP 视频不能触发手机窗口。

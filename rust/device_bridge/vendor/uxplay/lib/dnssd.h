@@ -15,6 +15,7 @@
 #ifndef DNSSD_H
 #define DNSSD_H
 #include <stdint.h>
+#include <stdatomic.h>
 
 #ifndef DNSSD_API
 # define DNSSD_API
@@ -36,6 +37,13 @@ typedef struct dnssd_s {
 
     char *name;
     int name_len;
+
+    /* 名称初始化后不可变，原子切换避免 /info 线程读取已释放内存。 */
+    char *fallback_names[3];
+    int fallback_name_count;
+    atomic_int using_fallback_name;
+    void (*registration_callback)(void *, int, const char *, const char *);
+    void *registration_context;
 
     char *hw_addr;
     int hw_addr_len;
@@ -70,6 +78,12 @@ DNSSD_API void dnssd_unregister_airplay(dnssd_t *dnssd);
 DNSSD_API const char *dnssd_get_raop_txt(dnssd_t *dnssd, int *length);
 DNSSD_API const char *dnssd_get_airplay_txt(dnssd_t *dnssd, int *length);
 DNSSD_API const char *dnssd_get_name(dnssd_t *dnssd, int *length);
+DNSSD_API int dnssd_set_fallback_names(dnssd_t *dnssd, const char *short_name,
+    const char *long_name, const char *full_name);
+DNSSD_API int dnssd_use_fallback_name(dnssd_t *dnssd);
+DNSSD_API int dnssd_can_retry_name(dnssd_t *dnssd);
+DNSSD_API void dnssd_set_registration_callback(dnssd_t *dnssd,
+    void (*callback)(void *, int, const char *, const char *), void *context);
 DNSSD_API const char *dnssd_get_hw_addr(dnssd_t *dnssd, int *length);
 DNSSD_API void dnssd_set_airplay_features(dnssd_t *dnssd, int bit, int val);
 DNSSD_API uint64_t dnssd_get_airplay_features(dnssd_t *dnssd);

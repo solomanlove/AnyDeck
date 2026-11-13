@@ -126,6 +126,70 @@ void main() {
     expect(prefs.getString(ReceiverNames.nameKey('AirPlay')), '会议室');
   });
 
+  test('异步注册回调升级稳定码后，默认名重启不降级且自定义名不被覆盖', () async {
+    final first = container();
+    final settings = first.read(appSettingsProvider.notifier);
+    await settings.ensureReceiverNames();
+    final original = first.read(appSettingsProvider).airplayServerName;
+    final short = await settings.receiverNameFallbackForStart('AirPlay');
+    await settings.recordReceiverNameConflict(
+      'AirPlay',
+      original,
+      publishedName: short,
+    );
+    final longer = await settings.receiverNameFallbackForStart(
+      'AirPlay',
+      codeLength: 12,
+    );
+    await settings.recordReceiverNameConflict(
+      'AirPlay',
+      short,
+      publishedName: longer,
+    );
+    expect(first.read(appSettingsProvider).airplayServerName, longer);
+    final restarted = container();
+    final next = restarted.read(appSettingsProvider.notifier);
+    expect(await next.receiverNameForStart('AirPlay'), longer);
+    expect(await next.receiverNameFallbackForStart('AirPlay'), longer);
+    final full = await next.receiverNameFallbackForStart(
+      'AirPlay',
+      codeLength: 32,
+    );
+    await next.recordReceiverNameConflict(
+      'AirPlay',
+      short,
+      publishedName: full,
+    );
+    final third = container();
+    expect(
+      await third
+          .read(appSettingsProvider.notifier)
+          .receiverNameForStart('AirPlay'),
+      full,
+    );
+
+    await settings.setAirplayServerName('自定义会议室');
+    final customFallback = await settings.receiverNameFallbackForStart(
+      'AirPlay',
+      codeLength: 12,
+    );
+    final customShort = await settings.receiverNameFallbackForStart('AirPlay');
+    await settings.recordReceiverNameConflict(
+      'AirPlay',
+      customShort,
+      publishedName: customFallback,
+    );
+    expect(first.read(appSettingsProvider).airplayServerName, '自定义会议室');
+    expect(await settings.receiverNameForStart('AirPlay'), customFallback);
+    final customRestart = container();
+    expect(
+      await customRestart
+          .read(appSettingsProvider.notifier)
+          .receiverNameForStart('AirPlay'),
+      customFallback,
+    );
+  });
+
   test('启动前重新读取最终设置，探测过程中改名不启动过期名称', () async {
     final waiting = Completer<List<String>>();
     final scope = container(

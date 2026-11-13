@@ -6,19 +6,47 @@ extension DlnaRendererName on DlnaRendererService {
 
   Future<void> setServerName(String value) async {
     final name = value.trim().isEmpty ? DlnaProtocol.serverName : value.trim();
-    if (_serverName == name) return;
-    if (isRunning) await _advertise(alive: false);
-    _serverName = name;
-    try {
-      await DlnaRendererService._player.invokeMethod<void>('setTitle', name);
-    } catch (error) {
-      debugPrint('[DLNA] player title update failed: $error');
+    if (_baseServerName != name) {
+      _baseServerName = name;
+      _nameGeneration++;
+      _nameMonitor?.updateName(name);
     }
-    if (_fallback.hasWindow) {
-      await _fallback.invoke<bool>('dlnaSetTitle', name);
-    }
-    if (isRunning) await _advertise(alive: true);
-    _notifyNameChange();
+    await _changePublishedName(name, _nameGeneration);
+  }
+
+  /// 广播改名串行执行；播放器标题更新失败也必须公布新名并通知 UI。
+  Future<void> _changePublishedName(String name, int generation) {
+    final previous = _nameChange;
+    final changing = () async {
+      if (previous != null) {
+        try {
+          await previous;
+        } catch (_) {}
+      }
+      if (generation != _nameGeneration || _serverName == name) return;
+      if (isRunning) await _advertise(alive: false);
+      if (generation != _nameGeneration) return;
+      _serverName = name;
+      try {
+        await DlnaRendererService._player.invokeMethod<void>('setTitle', name);
+      } catch (error) {
+        debugPrint('[DLNA] player title update failed: $error');
+      }
+      if (_fallback.hasWindow) {
+        try {
+          await _fallback.setTitle(name);
+        } catch (error) {
+          debugPrint('[DLNA] fallback title update failed: $error');
+        }
+      }
+      if (generation != _nameGeneration) return;
+      if (isRunning) await _advertise(alive: true);
+      _notifyNameChange();
+    }();
+    _nameChange = changing;
+    return changing.whenComplete(() {
+      if (identical(_nameChange, changing)) _nameChange = null;
+    });
   }
 }
 

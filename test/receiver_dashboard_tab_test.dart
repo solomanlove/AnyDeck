@@ -11,7 +11,6 @@ import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/features/receivers/receiver_dashboard_tab.dart';
 import 'package:any_deck/features/receivers/widgets/receiver_service_card.dart';
-import 'package:any_deck/features/receivers/widgets/receiver_local_names.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -107,10 +106,10 @@ void main() {
     expect(find.byKey(const Key('airplayReceiverSwitch')), findsOneWidget);
     expect(find.byKey(const Key('dlnaReceiverSwitch')), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(2));
-    expect(find.byKey(const Key('receiverLocalNames')), findsOneWidget);
-    expect(find.text('本机投屏名称'), findsOneWidget);
-    expect(find.byKey(const Key('receiverLocalAirplayName')), findsOneWidget);
-    expect(find.byKey(const Key('receiverLocalDlnaName')), findsOneWidget);
+    expect(find.byKey(const Key('receiverLocalNames')), findsNothing);
+    expect(find.text('本机投屏名称'), findsNothing);
+    expect(find.byKey(const Key('airplayBroadcastName')), findsNothing);
+    expect(find.byKey(const Key('dlnaBroadcastName')), findsNothing);
     expect(find.byKey(const Key('receiverAppSupportGuide')), findsOneWidget);
     expect(find.text('常见视频 App 投放示例'), findsOneWidget);
     expect(find.text('哔哩哔哩'), findsOneWidget);
@@ -128,7 +127,7 @@ void main() {
     expect(find.text('当前版本实测支持 DLNA，不支持 AirPlay'), findsOneWidget);
     expect(find.text('待确认'), findsNothing);
   });
-  testWidgets('本机名称优先展示实际广播，停止后显示自定义名，长名称双语明暗可读', (tester) async {
+  testWidgets('名称仅在协议卡片展示，实际广播名与配置分离并支持双语明暗窄屏', (tester) async {
     addTearDown(() => tester.view.resetPhysicalSize());
     addTearDown(() => tester.view.resetDevicePixelRatio());
     tester.view.devicePixelRatio = 1;
@@ -149,7 +148,7 @@ void main() {
                 AirPlaySessionData(
                   id: 1, serverName: actualAirplay, rtspPort: 7000,
                   videoPort: 7100, status: running
-                      ? AirPlayServerStatus.mirroring
+                      ? AirPlayServerStatus.idle
                       : AirPlayServerStatus.stopped,
                 ),
               )),
@@ -163,19 +162,28 @@ void main() {
               supportedLocales: AppLocalizations.supportedLocales,
               locale: Locale(locale),
               home: Scaffold(body: SingleChildScrollView(
-                child: ReceiverLocalNames(service: service),
+                child: Column(children: [
+                  const AirPlayReceiverCard(),
+                  DlnaReceiverCard(service: service),
+                ]),
               )),
             ),
           ));
           await tester.pump();
-          expect(tester.widget<SelectableText>(find.byKey(
-              const Key('receiverLocalAirplayName'))).data,
-              running ? actualAirplay : custom);
-          expect(tester.widget<SelectableText>(find.byKey(
-              const Key('receiverLocalDlnaName'))).data,
-              running ? actualDlna : custom);
+          expect(find.byKey(const Key('receiverLocalNames')), findsNothing);
+          expect(find.text('本机投屏名称'), findsNothing);
+          final fields = tester.widgetList<TextField>(find.byType(TextField));
+          expect(fields.map((field) => field.controller!.text), [custom, custom]);
+          for (final nameKey in ['airplayBroadcastName', 'dlnaBroadcastName']) {
+            final actual = find.byKey(Key(nameKey));
+            expect(actual, running ? findsOneWidget : findsNothing);
+            if (running) {
+              expect(tester.widget<SelectableText>(actual).data,
+                  nameKey == 'airplayBroadcastName' ? actualAirplay : actualDlna);
+            }
+          }
           expect(find.text(AppLocalizations(Locale(locale))
-              .t('receiverLocalNames')), findsOneWidget);
+              .t('receiverBroadcastName')), running ? findsNWidgets(2) : findsNothing);
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox.shrink());
           service.dispose();

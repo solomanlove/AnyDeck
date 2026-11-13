@@ -18,6 +18,7 @@
 #include "dnssd.h"
 #include "stream.h"
 #include "logger.h"
+#include "uxplay_publication.h"
 
 typedef struct {
     raop_t *raop;
@@ -37,6 +38,7 @@ typedef struct {
     pthread_t dnssd_thread;
     atomic_bool running;
     bool worker_started;
+    anydeck_publication_t publication;
 } anydeck_uxplay_handle_t;
 
 typedef struct {
@@ -301,7 +303,8 @@ static void *dnssd_worker(void *arg) {
         for (int i = 0; i < 2; i++) {
             int fd = dnssd_get_service_fd(h->dnssd, i);
             if (fd >= FD_SETSIZE) {
-                on_raop_log(h, LOGGER_ERR, "Bonjour descriptor exceeds FD_SETSIZE");
+                anydeck_publication_fail(&h->publication, "Bonjour descriptor exceeds FD_SETSIZE");
+                anydeck_publication_process(&h->publication);
                 return NULL;
             }
             if (fd >= 0) {
@@ -315,7 +318,8 @@ static void *dnssd_worker(void *arg) {
             tv.tv_usec = 200000; // 200ms
             int ret = select(max_fd + 1, &read_fds, NULL, NULL, &tv);
             if (ret < 0 && errno != EINTR) {
-                on_raop_log(h, LOGGER_ERR, "Bonjour socket select failed");
+                anydeck_publication_fail(&h->publication, "Bonjour socket select failed");
+                anydeck_publication_process(&h->publication);
                 return NULL;
             }
             if (ret > 0) {
@@ -323,7 +327,8 @@ static void *dnssd_worker(void *arg) {
                     int fd = dnssd_get_service_fd(h->dnssd, i);
                     if (fd >= 0 && FD_ISSET(fd, &read_fds)) {
                         if (dnssd_process_service(h->dnssd, i) != 0) {
-                            on_raop_log(h, LOGGER_ERR, "Bonjour service processing failed");
+                            anydeck_publication_fail(&h->publication, "Bonjour service processing failed");
+                            anydeck_publication_process(&h->publication);
                             return NULL;
                         }
                     }
@@ -332,14 +337,22 @@ static void *dnssd_worker(void *arg) {
         } else {
             usleep(200000);
         }
+        anydeck_publication_process(&h->publication);
     }
     return NULL;
 }
 
 void anydeck_uxplay_stop(void *handle);
 
+static void on_publication_error(void *context, const char *message) {
+    on_raop_log(context, LOGGER_ERR, message);
+}
+
 void *anydeck_uxplay_start(
     const char *name,
+    const char *fallback_name,
+    const char *fallback_long_name,
+    const char *fallback_full_name,
     const char *mac,
     const char *keyfile,
     unsigned short port,
@@ -369,6 +382,7 @@ void *anydeck_uxplay_start(
     h->media_info = media_info;
     h->mirror_started = mirror_started;
     atomic_init(&h->running, true);
+    anydeck_publication_init(&h->publication);
 
     raop_callbacks_t cbs;
     memset(&cbs, 0, sizeof(cbs));
@@ -410,6 +424,7 @@ void *anydeck_uxplay_start(
 
     h->raop = raop_init(&cbs);
     if (!h->raop) {
+        pthread_mutex_destroy(&h->publication.lock);
         free(h);
         return NULL;
     }
@@ -436,6 +451,13 @@ void *anydeck_uxplay_start(
     if (parse_mac_bytes(mac, mac_bytes) != 0) goto fail;
     h->dnssd = dnssd_init(name, (int)strlen(name), (const char *)mac_bytes, 6, 0, &dnssd_err);
     if (!h->dnssd || dnssd_err) goto fail;
+    if (dnssd_set_fallback_names(h->dnssd, fallback_name,
+        fallback_long_name, fallback_full_name) != 0) goto fail;
+    h->publication.dnssd = h->dnssd;
+    h->publication.error = on_publication_error;
+    h->publication.context = h;
+    dnssd_set_registration_callback(h->dnssd, anydeck_publication_registered,
+        &h->publication);
     if (publish) {
         uint32_t interface_index = find_lan_interface_index();
         if (!interface_index) {
@@ -458,8 +480,10 @@ void *anydeck_uxplay_start(
     raop_set_port(h->raop, chosen_port);
     h->port = chosen_port;
     if (publish) {
-        if (dnssd_register_raop(h->dnssd, chosen_port) != 0 ||
-            dnssd_register_airplay(h->dnssd, chosen_port) != 0) goto fail;
+        h->publication.port = chosen_port;
+        anydeck_publication_register(&h->publication);
+        anydeck_publication_process(&h->publication);
+        if (atomic_load(&h->publication.status) == 2) goto fail;
         if (pthread_create(&h->dnssd_thread, NULL, dnssd_worker, h) != 0) goto fail;
         h->worker_started = true;
     }
@@ -485,6 +509,8 @@ void anydeck_uxplay_stop(void *handle) {
         dnssd_destroy(h->dnssd);
     }
 
+    pthread_mutex_destroy(&h->publication.lock);
+
     free(h);
 }
 
@@ -492,6 +518,17 @@ unsigned short anydeck_uxplay_port(void *handle) {
     if (!handle) return 0;
     anydeck_uxplay_handle_t *h = (anydeck_uxplay_handle_t *)handle;
     return h->port;
+}
+
+unsigned char anydeck_uxplay_publication_status(void *handle) {
+    anydeck_uxplay_handle_t *h = handle;
+    return h ? atomic_load(&h->publication.status) : 2;
+}
+
+size_t anydeck_uxplay_copy_published_name(void *handle,
+    unsigned char *out, size_t capacity) {
+    anydeck_uxplay_handle_t *h = handle;
+    return h ? anydeck_publication_copy_name(&h->publication, out, capacity) : 0;
 }
 
 static int match_slot_context(void *conn_cls, void *target_slot_ctx) {

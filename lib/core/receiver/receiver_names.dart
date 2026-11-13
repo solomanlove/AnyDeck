@@ -15,6 +15,7 @@ class ReceiverNames {
   });
 
   static const conflictKey = 'settings.receiverNameConflicts';
+  static const _codeLengthsKey = 'settings.receiverNameCodeLengths';
   static String nameKey(String protocol) => protocol == 'AirPlay'
       ? 'settings.airplayServerName'
       : 'settings.dlnaServerName';
@@ -58,6 +59,84 @@ class ReceiverNames {
     return '${truncate(base, 50 - suffix.length - shortCode.length - 1)}-$shortCode$suffix';
   }
 
+  /// 从原名派生稳定后备；已有本机短码只升级长度，不反复拼接或降级。
+  static String stableFallback(
+    String name,
+    String protocol,
+    String uuid, {
+    int codeLength = 6,
+  }) {
+    final hex = uuid.replaceAll('-', '').toUpperCase();
+    if (![6, 12, 32].contains(codeLength) || hex.length != 32) {
+      throw ArgumentError('Invalid AnyDeck receiver fallback identity');
+    }
+    final suffix = name.endsWith('-$protocol') ? '-$protocol' : '';
+    var base = suffix.isEmpty
+        ? name
+        : name.substring(0, name.length - suffix.length);
+    var length = codeLength;
+    for (final candidate in [32, 12, 6]) {
+      if (base.endsWith('-${hex.substring(0, candidate)}')) {
+        base = base.substring(0, base.length - candidate - 1);
+        if (candidate > length) length = candidate;
+        break;
+      }
+    }
+    final prefix = truncate(
+      base,
+      50 - suffix.length - length - 1,
+    ).replaceFirst(RegExp(r'-+$'), '');
+    return '$prefix-${hex.substring(0, length)}$suffix';
+  }
+
+  static int conflictCodeLength(
+    SharedPreferences prefs,
+    String name,
+    String protocol,
+  ) {
+    try {
+      final lengths =
+          jsonDecode(prefs.getString(_codeLengthsKey) ?? '{}') as Map;
+      final length = lengths['$protocol:$name'];
+      return [6, 12, 32].contains(length) ? length as int : 6;
+    } catch (_) {
+      return 6;
+    }
+  }
+
+  /// 根据已发布后备名记住升级档位，重启后不退回曾冲突的较短名称。
+  static Future<void> recordPublishedConflict(
+    SharedPreferences prefs,
+    String name,
+    String protocol,
+    String uuid,
+    String publishedName,
+  ) async {
+    var length = 6;
+    for (final candidate in [6, 12, 32]) {
+      if (stableFallback(name, protocol, uuid, codeLength: candidate) ==
+          publishedName) {
+        length = candidate;
+        break;
+      }
+    }
+    await recordConflict(prefs, name, protocol);
+    final previous = conflictCodeLength(prefs, name, protocol);
+    if (previous >= length) return;
+    Map<String, dynamic> lengths;
+    try {
+      lengths = Map<String, dynamic>.from(
+        jsonDecode(prefs.getString(_codeLengthsKey) ?? '{}') as Map,
+      );
+    } catch (_) {
+      lengths = {};
+    }
+    lengths['$protocol:$name'] = length;
+    if (!await prefs.setString(_codeLengthsKey, jsonEncode(lengths))) {
+      throw StateError('Cannot persist AnyDeck receiver fallback length');
+    }
+  }
+
   static bool hasConflict(
     SharedPreferences prefs,
     String name,
@@ -82,7 +161,12 @@ class ReceiverNames {
     Future<({String value, String fallback})> resolve(String protocol) async {
       final base = defaultName(identity, protocol);
       final fallback = hasConflict(prefs, base, protocol)
-          ? disambiguate(base, protocol, identity.shortCode)
+          ? stableFallback(
+              base,
+              protocol,
+              identity.uuid,
+              codeLength: conflictCodeLength(prefs, base, protocol),
+            )
           : base;
       final raw = prefs.getString(nameKey(protocol))?.trim() ?? '';
       final previous = prefs.getString(autoKey(protocol));
