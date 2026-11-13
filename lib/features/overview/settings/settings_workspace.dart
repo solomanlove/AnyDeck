@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_theme_sizes.dart';
 import 'settings_item.dart';
 import '../../../app/widget/app_navigation_item.dart';
 
@@ -128,7 +129,9 @@ class _SettingsWorkspaceState extends State<SettingsWorkspace> {
                             _setQuery('');
                           },
                         ),
-                  border: const OutlineInputBorder(),
+                  border: const OutlineInputBorder(
+                    borderRadius: AppThemeSizes.radiusNavigation,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),

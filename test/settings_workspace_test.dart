@@ -69,6 +69,28 @@ Widget _harness(String language, Brightness brightness) => MaterialApp(
   ),
 );
 
+/// 检查实际输入装饰在聚焦前后均沿用 Tab 的导航圆角。
+void _expectSearchRadius(WidgetTester tester, {required bool focused}) {
+  final search = find.byKey(const ValueKey('settings-search'));
+  final decorator = tester.widget<InputDecorator>(
+    find.descendant(of: search, matching: find.byType(InputDecorator)),
+  );
+  final navigation = tester.widget<Material>(
+    find
+        .descendant(
+          of: find.byKey(const ValueKey('settings-nav-general')),
+          matching: find.byType(Material),
+        )
+        .first,
+  );
+  final decoration = decorator.decoration;
+  final border =
+      (focused ? decoration.focusedBorder : decoration.enabledBorder) ??
+      decoration.border;
+  expect(decorator.isFocused, focused);
+  expect((border! as OutlineInputBorder).borderRadius, navigation.borderRadius);
+}
+
 void main() {
   testWidgets('多空格动作搜索仍定位到快捷键具体行', (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
@@ -134,8 +156,10 @@ void main() {
           expect(find.text('${category.name} control'), findsOneWidget);
         }
         final search = find.byKey(const ValueKey('settings-search'));
+        _expectSearchRadius(tester, focused: false);
         await tester.enterText(search, '声音');
         await tester.pumpAndSettle();
+        _expectSearchRadius(tester, focused: true);
         expect(
           find.byKey(const ValueKey('settings-result-sound')),
           findsOneWidget,
@@ -143,6 +167,7 @@ void main() {
         expect(find.text('about control'), findsNothing);
         await tester.tap(find.byKey(const ValueKey('settings-result-sound')));
         await tester.pumpAndSettle();
+        _expectSearchRadius(tester, focused: false);
         expect(
           find.text('Audio forwarding control').hitTestable(),
           findsOneWidget,

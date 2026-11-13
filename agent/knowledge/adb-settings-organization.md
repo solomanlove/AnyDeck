@@ -102,3 +102,17 @@ flutter test --no-pub test/dashboard_shell_navigation_test.dart test/settings_re
 flutter analyze --no-pub lib/features/overview/dashboard_settings_widgets.dart test/dashboard_shell_navigation_test.dart test/support/settings_selector_expectations.dart
 git diff --check
 ```
+
+## 2026-11-13 搜索框圆角与 Tab 对齐
+
+- 需求：设置页全局搜索框的边角过直，需与主侧栏及设置分类 Tab 的圆角一致。
+- 原因与实现：搜索框显式使用默认 `OutlineInputBorder()`，其 4px 圆角覆盖了输入框 Theme。仅为该搜索框指定 `AppThemeSizes.radiusNavigation`（10px），直接复用 Tab 的尺寸规范；普通与聚焦边框沿用同一形状，颜色仍由 Theme 决定。
+- 回归：在既有中英文 × Light/Dark 测试中，将实际 `InputDecorator` 的圆角与分类导航 `Material` 比较，覆盖未聚焦、输入后聚焦、点击搜索结果后失焦。新增断言先复现 4px / 10px 不一致；修复后 Workspace 与实际 Dashboard 的 12 项测试通过，包含原有搜索定位、分类切换及设置保存回归。
+- 验证：定向 analyze、格式检查及 `git diff --check` 通过。未启动桌面 App，真实窗口视觉仍待人工验收。
+
+```bash
+flutter --no-version-check test --no-pub test/settings_workspace_test.dart test/dashboard_shell_navigation_test.dart
+flutter --no-version-check analyze --no-pub lib/features/overview/settings/settings_workspace.dart test/settings_workspace_test.dart
+dart format --output=none --set-exit-if-changed lib/features/overview/settings/settings_workspace.dart test/settings_workspace_test.dart
+git diff --check
+```
