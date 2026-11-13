@@ -9,7 +9,7 @@ import 'macos_permission_row.dart';
 
 /// macOS 权限管理内容，嵌入 SettingsWorkspace 的滚动区域。
 ///
-/// 挂载时仅读取状态；用户点击单项操作后才请求授权。返回前台时刷新，
+/// 挂载时仅读取状态；用户点击单项操作后打开系统设置批准。返回前台时刷新，
 /// 无后台轮询或设置持久化，关闭分类后会释放窗口及应用生命周期监听。
 class MacPermissionsPanel extends ConsumerStatefulWidget {
   const MacPermissionsPanel({super.key});
@@ -102,16 +102,9 @@ class _MacPermissionsPanelState extends ConsumerState<MacPermissionsPanel>
               status: state.statusFor(permission),
               loading: state.loading && state.statuses.isEmpty,
               busy: busy,
-              onAction: () {
-                final notifier = ref.read(macPermissionsProvider.notifier);
-                if (permission.supportsRequest &&
-                    state.statusFor(permission) ==
-                        MacPermissionStatus.notDetermined) {
-                  notifier.request(permission);
-                } else {
-                  notifier.openSettings(permission);
-                }
-              },
+              onAction: () => ref
+                  .read(macPermissionsProvider.notifier)
+                  .openSettings(permission),
             ),
           ],
         ],

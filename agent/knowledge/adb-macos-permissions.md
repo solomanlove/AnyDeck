@@ -2,18 +2,14 @@
 
 ## 需求与入口
 
-2026-11-13：设置新增「macOS 权限」分类，集中展示 6 项权限的用途、系统授权状态，并为尚未授权的能力提供申请或系统设置入口。此分类只在 macOS 展示，参与既有设置搜索与宽窄分类导航。
+2026-11-13：设置新增「macOS 权限」分类，最终保留摄像头扩展、登录项 2 项可能需要手动批准的能力，展示用途、系统状态和系统设置入口。此分类只在 macOS 展示，参与既有设置搜索与宽窄分类导航。
 
-权限申请由用户逐项触发；进入页面、搜索或刷新状态均不申请授权，不启动摄像头、设备发现、广播、文件夹扫描或文件传输。
+本页仅查询状态和打开系统设置；进入页面、搜索或刷新状态均不申请授权，不启动摄像头、设备发现、广播、文件夹扫描或文件传输。
 
 ## 权限与状态边界
 
 | 权限 | 用途 | 查询和操作 |
 | --- | --- | --- |
-| Bluetooth | 附近设备发现与互传 | 只读 `CBManager.authorization`；首次申请才创建 manager，不扫描或广播 |
-| 定位服务 | 读取 Wi-Fi 名称、指定 Wi-Fi 自动共享 | 查询服务开关和 authorizationStatus；首次申请使用 When In Use，不读取坐标 |
-| 相机 | 通过 AVFoundation 采集 iPhone USB 屏幕 | 只读 video authorization；首次申请不启动采集 |
-| 通知 | 连接提醒、消息转发与来件提醒 | 查询 UNUserNotificationCenter；首次申请 alert / sound / badge，不发送测试通知 |
 | 摄像头扩展 | 将 Android 摄像头提供给 Mac 视频应用 | 复用既有摄像头扩展状态，不自动安装或启用；默认构建不具备安装能力时显示当前不可用 |
 | 登录项 | 登录 macOS 后自动启动 AnyDeck | 只读 SMAppService 状态；跳转系统登录项设置，不改变原自启动开关 |
 
@@ -24,24 +20,24 @@
 ## 架构与生命周期
 
 - `lib/core/permissions/mac_permission.dart`：稳定权限 ID、授权状态和短期页面状态。
-- `mac_permissions_service.dart`：`anydeck/macos_permissions` MethodChannel；`readAll` 返回权限 ID 到状态字符串的 Map，`request` / `openSettings` 使用 `{permission: ID}` 白名单参数。
+- `mac_permissions_service.dart`：`anydeck/macos_permissions` MethodChannel；`readAll` 返回权限 ID 到状态字符串的 Map，`openSettings` 使用 `{permission: ID}` 白名单参数。管理页不再提供重复申请接口。
 - `mac_permissions_controller.dart`：autoDispose Notifier，串行用户动作、版本号隔离迟到刷新、保留错误和未知状态；不新增 Preferences。
 - `lib/features/overview/settings/macos_permissions_page.dart` 与 `macos_permission_row.dart`：页面生命周期、主题和自适应布局；不在 Widget 内实现权限业务逻辑。
-- `macos/Runner/MacosPermissionBridgeService.swift` 与 `MacosPermissionStatus.swift`：公开 macOS API 的状态读取、显式授权和系统设置跳转；只注册到设置所在的主 Engine。
+- `macos/Runner/MacosPermissionBridgeService.swift` 与 `MacosPermissionStatus.swift`：公开 macOS API 的状态读取和系统设置跳转；只注册到设置所在的主 Engine。
 - `app_l10n_macos_permissions.dart`：独立中英文文案表，与既有 locale/theme Provider 共享；不新增语言或跨 Engine 同步协议。
 
-页面初次挂载、App 恢复或窗口重新聚焦、手动刷新和动作完成后读取状态，不常驻轮询。授权动作有防重复与超时，页面销毁后不写已释放 Provider；迟到读取不会覆盖更新的系统状态。
+页面初次挂载、App 恢复或窗口重新聚焦、手动刷新和动作完成后读取状态，不常驻轮询。设置跳转有防重复与超时，页面销毁后不写已释放 Provider；迟到读取不会覆盖更新的系统状态。
 
 ## 验证与交接
 
-自动检查覆盖 service 通信与异常、controller 并发和销毁、Widget 的按钮分流/回焦刷新/中英文/明暗/窄窗口，以及既有设置分类与搜索回归。原生使用 SDK typecheck 和无权限副作用的状态映射测试验证，不启动 AnyDeck，不弹系统授权窗。
+自动检查覆盖 service 通信与异常、controller 并发和销毁、Widget 的设置跳转/回焦刷新/中英文/明暗/窄窗口，以及既有设置分类与搜索回归。原生使用 SDK typecheck 和无权限副作用的状态映射测试验证，不启动 AnyDeck，不弹系统授权窗。
 
 手工验收使用实际签名的 AnyDeck：
 
-1. 进入设置，确认读取状态不弹授权框；首次点击相机、Bluetooth、定位或通知的「申请授权」，确认只请求对应权限。
-2. 拒绝后刷新，确认显示拒绝并提供系统设置；系统限制/关闭定位服务时不反复申请。
+1. 进入设置，确认只列出摄像头扩展、登录项；读取状态不弹授权框，按钮只打开对应系统设置。
+2. 系统需要手动批准时，确认显示未授权并可打开系统设置；扩展不可用时不尝试激活。
 3. 在系统设置撤销或开启权限后切回 AnyDeck，确认页面刷新；重复点击和未完成系统弹窗期间不重复发起请求。
-4. 检查页面及设置搜索不显示局域网、文件和文件夹项；真实局域网访问或受保护目录访问仍由系统按需请求同意。
+4. 检查页面及设置搜索不显示局域网、文件夹、Bluetooth、定位、相机或通知项；相关功能区原有按需申请仍有效。
 5. 在支持的 macOS 版本检查系统设置跳转；Camera Extension 不可用时不触发安装，自启动设置入口不自动注册登录项。
 6. Windows / Linux 不显示 macOS 分类，其余设置分类、搜索、保存、主题和语言切换正常。
 
@@ -78,3 +74,22 @@ git diff --check
 - [Apple WWDC23 隐私说明](https://developer.apple.com/videos/play/wwdc2023/10053/?time=1521)：目录访问由系统管理，Open/Save panel 的用户选择可提供对应资源的访问同意；不能将某个目录可访问解释为所有文件夹已授权。
 
 本次调整验证：24 项权限 service / controller / Widget 测试及 19 项 Dashboard / 设置回归共 43 项通过；新增中英文页面和搜索不显示移除项的断言，并验证桥接忽略旧占位字段。定向 Dart analyze、macOS 12 target 的原生 SDK typecheck、4 组原生状态映射测试与 `git diff --check` 均通过。未启动 AnyDeck 或触发真实权限请求。
+
+## 2026-11-13 仅保留需要手动批准的能力
+
+继续按用户要求收口：从管理页和搜索移除 Bluetooth、相机、通知、定位；页面最终只显示摄像头扩展和登录项。前 3 项在功能使用时触发申请，定位在 Wi-Fi 信息区已有「读取名称」申请及拒绝后的设置跳转入口，不重复设置。
+
+| 已移除项 | 实际功能入口 |
+| --- | --- |
+| Bluetooth | 附近分享 helper 创建 CoreBluetooth manager 后由系统申请 |
+| 相机 | iPhone USB 投屏 `IosUsbCapturePlugin.start` 检查状态并 requestAccess |
+| 通知 | 设备连接提醒及开启手机消息转发时 requestAuthorization |
+| 定位 | Wi-Fi 信息区域「读取名称」→ requestWifiAccess → When In Use；拒绝时打开系统定位设置 |
+
+保留的能力仍有单独的人工批准阶段：摄像头扩展在安装请求后可进入 `needsApproval`；登录项在启用自启动、完成注册后仍可能是 `requiresApproval`，需要在系统设置操作。开启自启和安装扩展均沿用原功能入口，权限页不代为启用。
+
+同步删除权限管理专用的 Dart/native `request` 方法、4 类普通权限的重复状态映射和 manager 初始化，只保留 `readAll` / `openSettings`。原功能区、系统用途声明、投屏、分享和通知服务没有改动；页面不发起权限申请。
+
+官方参考：[Camera Extension 批准回调](https://developer.apple.com/documentation/systemextensions/ossystemextensionrequestdelegate)、[SMAppService 审批状态](https://developer.apple.com/documentation/servicemanagement/smappservice/status-swift.enum/enabled)。
+
+本轮验证：9 项 service / controller 测试和 33 项 Widget / Dashboard / 设置回归共 42 项通过；断言只保留 2 项、所有旧字段被忽略、自动申请项无法从权限目录检索，以及设置跳转的错误、防重复、状态刷新与销毁边界。定向 Dart analyze、4 组原生测试、arm64 / x86_64 macOS 12.0 target 的 Swift SDK typecheck 和 `git diff --check` 均通过。未启动 AnyDeck，未请求真实系统授权。

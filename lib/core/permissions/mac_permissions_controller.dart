@@ -12,7 +12,7 @@ final macPermissionsProvider =
       MacPermissionsController.new,
     );
 
-/// 串行用户动作与有版本号的刷新，避免旧查询覆盖申请完成后的状态。
+/// 串行设置跳转与有版本号的刷新，避免旧查询覆盖返回设置后的状态。
 class MacPermissionsController extends Notifier<MacPermissionsState> {
   int _revision = 0;
 
@@ -41,25 +41,8 @@ class MacPermissionsController extends Notifier<MacPermissionsState> {
     }
   }
 
-  Future<void> request(MacPermission permission) async {
-    if (state.loading ||
-        state.busy != null ||
-        !permission.supportsRequest ||
-        state.statusFor(permission) != MacPermissionStatus.notDetermined) {
-      return;
-    }
-    await _perform(permission, request: true);
-  }
-
   Future<void> openSettings(MacPermission permission) async {
     if (state.loading || state.busy != null) return;
-    await _perform(permission, request: false);
-  }
-
-  Future<void> _perform(
-    MacPermission permission, {
-    required bool request,
-  }) async {
     ++_revision;
     state = MacPermissionsState(
       statuses: state.statuses,
@@ -69,15 +52,9 @@ class MacPermissionsController extends Notifier<MacPermissionsState> {
     String? errorKey;
     try {
       final service = ref.read(macPermissionsServiceProvider);
-      if (request) {
-        await service.request(permission);
-      } else {
-        await service.openSettings(permission);
-      }
+      await service.openSettings(permission);
     } catch (_) {
-      errorKey = request
-          ? 'macPermissionRequestFailed'
-          : 'macPermissionOpenFailed';
+      errorKey = 'macPermissionOpenFailed';
     }
     if (!ref.mounted) return;
     // 设置窗口已打开并不表示权限已改变，仍以重新读取的系统结果为准。

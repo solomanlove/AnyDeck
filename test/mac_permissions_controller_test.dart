@@ -11,19 +11,12 @@ class _PermissionService extends MacPermissionsService {
   final calls = <String>[];
   Map<MacPermission, MacPermissionStatus> statuses = {};
   Future<Map<MacPermission, MacPermissionStatus>> Function()? onRead;
-  Future<void> Function()? onRequest;
   Future<void> Function()? onOpen;
 
   @override
   Future<Map<MacPermission, MacPermissionStatus>> readAll() async {
     calls.add('read');
     return onRead == null ? {...statuses} : onRead!();
-  }
-
-  @override
-  Future<void> request(MacPermission permission) async {
-    calls.add('request:${permission.name}');
-    await onRequest?.call();
   }
 
   @override
@@ -46,7 +39,9 @@ void main() {
 
   test('进入页面仅查询权限，读取失败清除过期授权结论', () async {
     final service = _PermissionService()
-      ..statuses = {MacPermission.camera: MacPermissionStatus.authorized};
+      ..statuses = {
+        MacPermission.cameraExtension: MacPermissionStatus.authorized,
+      };
     final container = _container(service);
     addTearDown(container.dispose);
     final controller = container.read(macPermissionsProvider.notifier);
@@ -54,97 +49,94 @@ void main() {
     expect(container.read(macPermissionsProvider).loading, isTrue);
     await controller.refresh();
     expect(
-      container.read(macPermissionsProvider).statusFor(MacPermission.camera),
+      container
+          .read(macPermissionsProvider)
+          .statusFor(MacPermission.cameraExtension),
       MacPermissionStatus.authorized,
     );
     service.onRead = () async => throw StateError('system unavailable');
     await controller.refresh();
     final failed = container.read(macPermissionsProvider);
-    expect(failed.statusFor(MacPermission.camera), MacPermissionStatus.unknown);
+    expect(
+      failed.statusFor(MacPermission.cameraExtension),
+      MacPermissionStatus.unknown,
+    );
     expect(failed.errorKey, 'macPermissionReadFailed');
     expect(failed.loading, isFalse);
     expect(service.calls, ['read', 'read']);
   });
 
-  test('未申请权限只申请一次，完成后按系统结果显示拒绝', () async {
+  test('读取完成前及设置打开期间不能重复操作，跳转不代表授权成功', () async {
     final gate = Completer<void>();
     final service = _PermissionService()
-      ..statuses = {MacPermission.camera: MacPermissionStatus.notDetermined}
-      ..onRequest = () => gate.future;
+      ..statuses = {MacPermission.loginItems: MacPermissionStatus.denied}
+      ..onOpen = () => gate.future;
     final container = _container(service);
     addTearDown(container.dispose);
     final controller = container.read(macPermissionsProvider.notifier);
-    await controller.refresh();
-    final pending = controller.request(MacPermission.camera);
-    expect(container.read(macPermissionsProvider).busy, MacPermission.camera);
-    await controller.request(MacPermission.camera);
     await controller.openSettings(MacPermission.loginItems);
-    expect(service.calls, ['read', 'request:camera']);
-    service.statuses = {MacPermission.camera: MacPermissionStatus.denied};
+    expect(service.calls, isEmpty);
+    await controller.refresh();
+    final pending = controller.openSettings(MacPermission.loginItems);
+    expect(
+      container.read(macPermissionsProvider).busy,
+      MacPermission.loginItems,
+    );
+    await controller.openSettings(MacPermission.loginItems);
+    await controller.openSettings(MacPermission.cameraExtension);
+    expect(service.calls, ['read', 'open:loginItems']);
     gate.complete();
     await pending;
     final state = container.read(macPermissionsProvider);
-    expect(state.statusFor(MacPermission.camera), MacPermissionStatus.denied);
+    expect(
+      state.statusFor(MacPermission.loginItems),
+      MacPermissionStatus.denied,
+    );
     expect(state.busy, isNull);
     expect(state.errorKey, isNull);
-    expect(service.calls, ['read', 'request:camera', 'read']);
-    await controller.request(MacPermission.camera);
-    await controller.request(MacPermission.loginItems);
-    expect(service.calls, ['read', 'request:camera', 'read']);
+    expect(service.calls, ['read', 'open:loginItems', 'read']);
   });
 
-  test('申请失败不推断授权成功，保留错误并允许后续重试', () async {
+  test('打开失败保留错误并允许重试，状态仅采信重新读取的系统结果', () async {
     final service = _PermissionService()
-      ..statuses = {MacPermission.location: MacPermissionStatus.notDetermined}
-      ..onRequest = () async => throw StateError('request failed');
-    final container = _container(service);
-    addTearDown(container.dispose);
-    final controller = container.read(macPermissionsProvider.notifier);
-    await controller.refresh();
-    await controller.request(MacPermission.location);
-    expect(
-      container.read(macPermissionsProvider).errorKey,
-      'macPermissionRequestFailed',
-    );
-    expect(
-      container.read(macPermissionsProvider).statusFor(MacPermission.location),
-      MacPermissionStatus.notDetermined,
-    );
-    service.onRequest = () async {
-      service.statuses = {
-        MacPermission.location: MacPermissionStatus.authorized,
-      };
-    };
-    await controller.request(MacPermission.location);
-    expect(
-      container.read(macPermissionsProvider).statusFor(MacPermission.location),
-      MacPermissionStatus.authorized,
-    );
-    expect(container.read(macPermissionsProvider).errorKey, isNull);
-  });
-
-  test('设置跳转不能当成授权成功，打开失败显示可重试错误', () async {
-    final service = _PermissionService()
-      ..statuses = {MacPermission.loginItems: MacPermissionStatus.manual};
+      ..statuses = {MacPermission.loginItems: MacPermissionStatus.manual}
+      ..onOpen = () async => throw StateError('settings unavailable');
     final container = _container(service);
     addTearDown(container.dispose);
     final controller = container.read(macPermissionsProvider.notifier);
     await controller.refresh();
     await controller.openSettings(MacPermission.loginItems);
+    expect(
+      container.read(macPermissionsProvider).errorKey,
+      'macPermissionOpenFailed',
+    );
     expect(
       container
           .read(macPermissionsProvider)
           .statusFor(MacPermission.loginItems),
       MacPermissionStatus.manual,
     );
-    service.onOpen = () async => throw StateError('settings unavailable');
+    expect(container.read(macPermissionsProvider).busy, isNull);
+    service.onOpen = () async {
+      service.statuses = {
+        MacPermission.loginItems: MacPermissionStatus.authorized,
+      };
+    };
     await controller.openSettings(MacPermission.loginItems);
     expect(
-      container.read(macPermissionsProvider).errorKey,
-      'macPermissionOpenFailed',
+      container
+          .read(macPermissionsProvider)
+          .statusFor(MacPermission.loginItems),
+      MacPermissionStatus.authorized,
     );
-    expect(container.read(macPermissionsProvider).busy, isNull);
-    expect(service.calls.where((call) => call.startsWith('request')), isEmpty);
+    expect(container.read(macPermissionsProvider).errorKey, isNull);
+    expect(service.calls, [
+      'read',
+      'open:loginItems',
+      'read',
+      'open:loginItems',
+      'read',
+    ]);
   });
 
   test('较早发起的授权快照不能覆盖最新刷新结果', () async {
@@ -158,17 +150,19 @@ void main() {
     final controller = container.read(macPermissionsProvider.notifier);
     final earlier = controller.refresh();
     final latest = controller.refresh();
-    second.complete({MacPermission.camera: MacPermissionStatus.denied});
+    second.complete({MacPermission.loginItems: MacPermissionStatus.denied});
     await latest;
-    first.complete({MacPermission.camera: MacPermissionStatus.authorized});
+    first.complete({MacPermission.loginItems: MacPermissionStatus.authorized});
     await earlier;
     expect(
-      container.read(macPermissionsProvider).statusFor(MacPermission.camera),
+      container
+          .read(macPermissionsProvider)
+          .statusFor(MacPermission.loginItems),
       MacPermissionStatus.denied,
     );
   });
 
-  test('页面销毁后迟到的查询和授权回调不再写入状态', () async {
+  test('页面销毁后迟到的查询和设置回调不再写入状态', () async {
     final read = Completer<Map<MacPermission, MacPermissionStatus>>();
     final readingService = _PermissionService()..onRead = () => read.future;
     final readingContainer = _container(readingService);
@@ -176,20 +170,22 @@ void main() {
         .read(macPermissionsProvider.notifier)
         .refresh();
     readingContainer.dispose();
-    read.complete({MacPermission.camera: MacPermissionStatus.authorized});
+    read.complete({
+      MacPermission.cameraExtension: MacPermissionStatus.authorized,
+    });
     await expectLater(reading, completes);
 
-    final request = Completer<void>();
+    final open = Completer<void>();
     final service = _PermissionService()
-      ..statuses = {MacPermission.camera: MacPermissionStatus.notDetermined}
-      ..onRequest = () => request.future;
+      ..statuses = {MacPermission.loginItems: MacPermissionStatus.denied}
+      ..onOpen = () => open.future;
     final container = _container(service);
     final controller = container.read(macPermissionsProvider.notifier);
     await controller.refresh();
-    final requesting = controller.request(MacPermission.camera);
+    final opening = controller.openSettings(MacPermission.loginItems);
     container.dispose();
-    request.complete();
-    await expectLater(requesting, completes);
-    expect(service.calls, ['read', 'request:camera']);
+    open.complete();
+    await expectLater(opening, completes);
+    expect(service.calls, ['read', 'open:loginItems']);
   });
 }

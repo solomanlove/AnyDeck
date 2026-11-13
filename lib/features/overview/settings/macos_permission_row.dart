@@ -6,7 +6,7 @@ import '../../../core/permissions/mac_permission.dart';
 /// 权限用途、实时状态和单项操作行，供 macOS 权限设置复用。
 ///
 /// permission 决定用途文案，status 必须来自系统读取结果；loading 仅用于
-/// 首次读取，busy 禁止重复操作，onAction 由页面选择申请授权或打开系统设置。
+/// 首次读取，busy 禁止重复操作，onAction 由页面打开对应系统设置。
 /// 在设置页的 Column 中使用，不创建独立滚动区域。
 class MacPermissionRow extends StatelessWidget {
   const MacPermissionRow({
@@ -30,9 +30,6 @@ class MacPermissionRow extends StatelessWidget {
     final unavailable =
         status == MacPermissionStatus.unsupported ||
         status == MacPermissionStatus.notRequired;
-    final request =
-        permission.supportsRequest &&
-        status == MacPermissionStatus.notDetermined;
     final details = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -63,11 +60,7 @@ class MacPermissionRow extends StatelessWidget {
     final action = OutlinedButton(
       key: ValueKey('mac-permission-action-${permission.name}'),
       onPressed: busy || unavailable ? null : onAction,
-      child: Text(
-        context.l10n.t(
-          request ? 'macPermissionsRequest' : 'macPermissionsOpenSettings',
-        ),
-      ),
+      child: Text(context.l10n.t('macPermissionsOpenSettings')),
     );
     return Padding(
       key: ValueKey('mac-permission-${permission.name}'),

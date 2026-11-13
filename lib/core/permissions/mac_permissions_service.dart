@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'mac_permission.dart';
 
-/// 只读查询不会触发权限弹窗；申请和设置跳转必须来自显式用户操作。
+/// 只读查询不发起授权；用户需要手动批准时提供系统设置跳转。
 class MacPermissionsService {
   MacPermissionsService({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('anydeck/macos_permissions');
@@ -30,17 +30,6 @@ class MacPermissionsService {
       for (final permission in MacPermission.values)
         permission: MacPermissionStatus.parse(response[permission.name]),
     });
-  }
-
-  Future<void> request(MacPermission permission) async {
-    _requireMacOS();
-    if (!permission.supportsRequest) {
-      throw ArgumentError.value(permission, 'permission');
-    }
-    // 原生请求最多等待 60 秒；系统弹窗超时后仍可通过刷新读取最终结果。
-    await _channel
-        .invokeMethod<void>('request', {'permission': permission.name})
-        .timeout(const Duration(seconds: 75));
   }
 
   Future<void> openSettings(MacPermission permission) async {

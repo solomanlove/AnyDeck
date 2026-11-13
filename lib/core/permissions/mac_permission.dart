@@ -1,31 +1,18 @@
-/// AnyDeck 使用的 macOS 权限；系统标识与展示文案分离。
+/// 需要在系统设置手动批准的 macOS 能力；系统标识与展示文案分离。
 enum MacPermission {
-  bluetooth('macPermissionBluetooth', 'macPermissionBluetoothDesc', true),
-  location('macPermissionLocation', 'macPermissionLocationDesc', true),
-  camera('macPermissionCamera', 'macPermissionCameraDesc', true),
-  notifications(
-    'macPermissionNotifications',
-    'macPermissionNotificationsDesc',
-    true,
-  ),
   cameraExtension(
     'macPermissionCameraExtension',
     'macPermissionCameraExtensionDesc',
   ),
   loginItems('macPermissionLoginItems', 'macPermissionLoginItemsDesc');
 
-  const MacPermission(
-    this.titleKey,
-    this.descriptionKey, [
-    this.supportsRequest = false,
-  ]);
+  const MacPermission(this.titleKey, this.descriptionKey);
 
   final String titleKey;
   final String descriptionKey;
-  final bool supportsRequest;
 }
 
-/// manual 表示系统未提供可靠查询接口，不等同于未授权。
+/// manual 表示需要在系统设置确认或处理，不等同于已拒绝。
 enum MacPermissionStatus {
   authorized('macPermissionStatusAuthorized'),
   notDetermined('macPermissionStatusNotDetermined'),

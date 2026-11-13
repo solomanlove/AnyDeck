@@ -1,55 +1,9 @@
-import AVFoundation
-import CoreBluetooth
-import CoreLocation
 import Foundation
 import ServiceManagement
-import UserNotifications
 
 /// 系统权限状态与设置入口的纯映射；不会请求权限、读取文件或启动硬件。
 enum MacosPermissionStatus {
-  static let permissions = ["camera", "bluetooth", "location", "notifications",
-                            "cameraExtension", "loginItems"]
-  static let requestable: Set<String> = ["camera", "bluetooth", "location", "notifications"]
-
-  static func camera(_ status: AVAuthorizationStatus) -> String {
-    switch status {
-    case .authorized: return "authorized"
-    case .notDetermined: return "notDetermined"
-    case .denied: return "denied"
-    case .restricted: return "restricted"
-    @unknown default: return "unknown"
-    }
-  }
-
-  static func bluetooth(_ status: CBManagerAuthorization) -> String {
-    switch status {
-    case .allowedAlways: return "authorized"
-    case .notDetermined: return "notDetermined"
-    case .denied: return "denied"
-    case .restricted: return "restricted"
-    @unknown default: return "unknown"
-    }
-  }
-
-  static func location(_ status: CLAuthorizationStatus, servicesEnabled: Bool) -> String {
-    guard servicesEnabled else { return "disabled" }
-    switch status {
-    case .authorizedAlways: return "authorized"
-    case .notDetermined: return "notDetermined"
-    case .denied: return "denied"
-    case .restricted: return "restricted"
-    @unknown default: return "unknown"
-    }
-  }
-
-  static func notifications(_ status: UNAuthorizationStatus) -> String {
-    switch status {
-    case .authorized, .provisional: return "authorized"
-    case .notDetermined: return "notDetermined"
-    case .denied: return "denied"
-    @unknown default: return "unknown"
-    }
-  }
+  static let permissions = ["cameraExtension", "loginItems"]
 
   @available(macOS 13.0, *)
   static func loginItems(_ status: SMAppService.Status) -> String {
@@ -75,10 +29,6 @@ enum MacosPermissionStatus {
   static func settingsURL(for permission: String) -> URL? {
     let suffix: String
     switch permission {
-    case "camera": suffix = "com.apple.preference.security?Privacy_Camera"
-    case "bluetooth": suffix = "com.apple.preference.security?Privacy_Bluetooth"
-    case "location": suffix = "com.apple.preference.security?Privacy_LocationServices"
-    case "notifications": suffix = "com.apple.preference.notifications"
     case "cameraExtension":
       // macOS 15 起扩展迁移到登录项与扩展，旧版仍在隐私与安全性批准。
       if #available(macOS 15.0, *) { suffix = "com.apple.LoginItems-Settings.extension" }

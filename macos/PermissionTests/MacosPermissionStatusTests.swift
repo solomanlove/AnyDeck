@@ -1,9 +1,5 @@
-import AVFoundation
-import CoreBluetooth
-import CoreLocation
 import Foundation
 import ServiceManagement
-import UserNotifications
 
 /// 离线测试纯状态映射及异步完成边界，不查询 TCC、不启动 App 或显示授权弹窗。
 @main
@@ -17,22 +13,6 @@ struct MacosPermissionStatusTests {
   }
 
   private static func checkAuthorizationMappings() {
-    precondition(MacosPermissionStatus.camera(.authorized) == "authorized")
-    precondition(MacosPermissionStatus.camera(.notDetermined) == "notDetermined")
-    precondition(MacosPermissionStatus.camera(.denied) == "denied")
-    precondition(MacosPermissionStatus.camera(.restricted) == "restricted")
-    precondition(MacosPermissionStatus.bluetooth(.allowedAlways) == "authorized")
-    precondition(MacosPermissionStatus.bluetooth(.notDetermined) == "notDetermined")
-    precondition(MacosPermissionStatus.bluetooth(.denied) == "denied")
-    precondition(MacosPermissionStatus.bluetooth(.restricted) == "restricted")
-    precondition(MacosPermissionStatus.location(.authorizedAlways, servicesEnabled: false) == "disabled")
-    precondition(MacosPermissionStatus.location(.authorizedAlways, servicesEnabled: true) == "authorized")
-    precondition(MacosPermissionStatus.location(.notDetermined, servicesEnabled: true) == "notDetermined")
-    precondition(MacosPermissionStatus.location(.denied, servicesEnabled: true) == "denied")
-    precondition(MacosPermissionStatus.location(.restricted, servicesEnabled: true) == "restricted")
-    precondition(MacosPermissionStatus.notifications(.provisional) == "authorized")
-    precondition(MacosPermissionStatus.notifications(.notDetermined) == "notDetermined")
-    precondition(MacosPermissionStatus.notifications(.denied) == "denied")
     if #available(macOS 13.0, *) {
       precondition(MacosPermissionStatus.loginItems(.enabled) == "authorized")
       precondition(MacosPermissionStatus.loginItems(.notRegistered) == "disabled")
@@ -45,14 +25,12 @@ struct MacosPermissionStatusTests {
     for permission in MacosPermissionStatus.permissions {
       precondition(MacosPermissionStatus.settingsURL(for: permission)?.scheme == "x-apple.systempreferences")
     }
-    for invalid in ["", "localNetwork", "files", "files?Privacy_AllFiles", "camera\n", "https://example.com", "../camera"] {
+    for invalid in ["", "camera", "bluetooth", "location", "notifications", "localNetwork", "files",
+                    "files?Privacy_AllFiles", "camera\n", "https://example.com", "../camera"] {
       precondition(MacosPermissionStatus.settingsURL(for: invalid) == nil)
-      precondition(!MacosPermissionStatus.requestable.contains(invalid))
+      precondition(!MacosPermissionStatus.permissions.contains(invalid))
     }
-    precondition(MacosPermissionStatus.requestable == ["camera", "bluetooth", "location", "notifications"])
-    precondition(!MacosPermissionStatus.requestable.contains("cameraExtension"))
-    precondition(Set(MacosPermissionStatus.permissions) ==
-      ["camera", "bluetooth", "location", "notifications", "cameraExtension", "loginItems"])
+    precondition(Set(MacosPermissionStatus.permissions) == ["cameraExtension", "loginItems"])
     let extensionURL = MacosPermissionStatus.settingsURL(for: "cameraExtension")?.absoluteString
     if #available(macOS 15.0, *) {
       precondition(extensionURL == "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")
@@ -84,21 +62,21 @@ struct MacosPermissionStatusTests {
 
   private static func checkSnapshotCompletion() {
     var results: [[String: String]] = []
-    let snapshot = MacosPermissionSnapshot(values: ["camera": "authorized", "notifications": "unknown"],
-      pending: ["notifications", "cameraExtension"]) { results.append($0) }
-    snapshot.update("notifications", status: "denied")
-    snapshot.update("notifications", status: "authorized")
-    precondition(results.isEmpty, "重复回调不得提前完成另一项查询")
+    let snapshot = MacosPermissionSnapshot(values: ["loginItems": "authorized", "cameraExtension": "unknown"],
+      pending: ["cameraExtension"]) { results.append($0) }
+    snapshot.update("camera", status: "authorized")
+    precondition(results.isEmpty, "非待查询项不得改变权限快照")
     snapshot.finish()
     snapshot.update("cameraExtension", status: "authorized")
     snapshot.finish()
-    precondition(results == [["camera": "authorized", "notifications": "denied"]],
+    precondition(results == [["loginItems": "authorized", "cameraExtension": "unknown"]],
       "超时后迟到回调不得二次返回或覆盖快照")
-    let complete = MacosPermissionSnapshot(values: ["notifications": "unknown"], pending: ["notifications"]) {
+    let complete = MacosPermissionSnapshot(values: ["cameraExtension": "unknown"], pending: ["cameraExtension"]) {
       results.append($0)
     }
-    complete.update("notifications", status: "authorized")
+    complete.update("cameraExtension", status: "denied")
+    complete.update("cameraExtension", status: "authorized")
     complete.finish()
-    precondition(results.count == 2 && results.last?["notifications"] == "authorized")
+    precondition(results.count == 2 && results.last?["cameraExtension"] == "denied", "完成后重复回调不得改变结果")
   }
 }

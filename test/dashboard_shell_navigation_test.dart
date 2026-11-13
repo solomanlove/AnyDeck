@@ -423,7 +423,7 @@ void main() {
       permissionCalls.add(call.method);
       return {
         for (final permission in MacPermission.values)
-          permission.name: 'notDetermined',
+          permission.name: 'manual',
       };
     });
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
@@ -440,9 +440,17 @@ void main() {
     expect(permissionCalls, isEmpty);
     await tester.enterText(settingsSearch, 'USB');
     await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('settings-result-macosPermissions')),
+      findsNothing,
+    );
+    await tester.enterText(settingsSearch, '摄像头扩展');
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('settings-result-macosPermissions')));
     await tester.pumpAndSettle();
-    expect(find.text('相机').hitTestable(), findsOneWidget);
+    expect(find.text('摄像头扩展').hitTestable(), findsOneWidget);
+    expect(find.text('登录项'), findsOneWidget);
+    expect(find.text('相机'), findsNothing);
     expect(permissionCalls, ['readAll']);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

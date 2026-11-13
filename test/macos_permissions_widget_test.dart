@@ -20,14 +20,11 @@ class _Permissions extends MacPermissionsService {
   int reads = 0;
   bool failRead = false;
   bool failAction = false;
-  Completer<void>? requestGate;
-  final requests = <MacPermission>[];
+  Completer<void>? openGate;
   final settings = <MacPermission>[];
   final statuses = {
     for (final permission in MacPermission.values)
       permission: MacPermissionStatus.authorized,
-    MacPermission.camera: MacPermissionStatus.notDetermined,
-    MacPermission.notifications: MacPermissionStatus.denied,
     MacPermission.cameraExtension: MacPermissionStatus.unsupported,
     MacPermission.loginItems: MacPermissionStatus.manual,
   };
@@ -40,17 +37,10 @@ class _Permissions extends MacPermissionsService {
   }
 
   @override
-  Future<void> request(MacPermission permission) async {
-    requests.add(permission);
-    if (failAction) throw StateError('request failed');
-    await requestGate?.future;
-    statuses[permission] = MacPermissionStatus.authorized;
-  }
-
-  @override
   Future<void> openSettings(MacPermission permission) async {
     settings.add(permission);
     if (failAction) throw StateError('open failed');
+    await openGate?.future;
   }
 }
 
@@ -107,7 +97,7 @@ Widget _app(
 void main() {
   test('所有权限和状态文案均有中英文且没有依赖回退', () {
     expect(macosPermissionsZh.keys.toSet(), macosPermissionsEn.keys.toSet());
-    expect(MacPermission.values, hasLength(6));
+    expect(MacPermission.values, hasLength(2));
     final zhDescription = macosPermissionsZh['macPermissionsDescription']!;
     final enDescription = macosPermissionsEn['macPermissionsDescription']!;
     expect(zhDescription, isNot(contains('局域网')));
@@ -154,16 +144,29 @@ void main() {
             find.text(language == 'zh' ? '文件和文件夹' : 'Files and Folders'),
             findsNothing,
           );
-          expect(
-            find.byKey(const ValueKey('mac-permission-localNetwork')),
-            findsNothing,
-          );
-          expect(
-            find.byKey(const ValueKey('mac-permission-files')),
-            findsNothing,
-          );
+          for (final id in [
+            'localNetwork',
+            'files',
+            'camera',
+            'bluetooth',
+            'location',
+            'notifications',
+          ]) {
+            expect(find.byKey(ValueKey('mac-permission-$id')), findsNothing);
+          }
+          for (final label
+              in language == 'zh'
+                  ? ['相机', '蓝牙', '定位服务', '通知', '申请授权']
+                  : [
+                      'Camera',
+                      'Bluetooth',
+                      'Location Services',
+                      'Notifications',
+                      'Request access',
+                    ]) {
+            expect(find.text(label), findsNothing);
+          }
           expect(service.reads, 1);
-          expect(service.requests, isEmpty);
           expect(service.settings, isEmpty);
           expect(
             tester
@@ -182,39 +185,58 @@ void main() {
     }
   }
 
-  testWidgets('未申请的相机点击才申请，拒绝和手动查看项跳转设置', (tester) async {
-    final service = _Permissions();
+  testWidgets('未批准和手动查看项仅跳转设置，等待期间禁止重复操作', (tester) async {
+    final service = _Permissions()
+      ..statuses[MacPermission.cameraExtension] = MacPermissionStatus.denied;
     await tester.pumpWidget(_app(service));
     await tester.pumpAndSettle();
-    final camera = find.byKey(const ValueKey('mac-permission-action-camera'));
-    await tester.ensureVisible(camera);
-    service.requestGate = Completer<void>();
-    await tester.tap(camera);
-    await tester.pump();
-    expect(service.requests, [MacPermission.camera]);
-    expect(tester.widget<OutlinedButton>(camera).onPressed, isNull);
-    service.requestGate!.complete();
-    await tester.pumpAndSettle();
-    final cameraStatus = tester.widget<Text>(
-      find.byKey(const ValueKey('mac-permission-status-camera')),
+    final extension = find.byKey(
+      const ValueKey('mac-permission-action-cameraExtension'),
     );
-    expect(cameraStatus.data, '已授权');
-    for (final permission in [
-      MacPermission.notifications,
-      MacPermission.loginItems,
-    ]) {
-      final action = find.byKey(
-        ValueKey('mac-permission-action-${permission.name}'),
+    service.openGate = Completer<void>();
+    await tester.tap(extension);
+    await tester.pump();
+    expect(service.settings, [MacPermission.cameraExtension]);
+    for (final permission in MacPermission.values) {
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.byKey(ValueKey('mac-permission-action-${permission.name}')),
+            )
+            .onPressed,
+        isNull,
       );
-      await tester.ensureVisible(action);
-      await tester.tap(action);
-      await tester.pumpAndSettle();
     }
+    expect(
+      tester
+          .widget<TextButton>(
+            find.byKey(const ValueKey('mac-permissions-refresh')),
+          )
+          .onPressed,
+      isNull,
+    );
+    service.openGate!.complete();
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const ValueKey('mac-permission-status-cameraExtension')),
+          )
+          .data,
+      '未授权',
+    );
+    final loginItems = find.byKey(
+      const ValueKey('mac-permission-action-loginItems'),
+    );
+    await tester.ensureVisible(loginItems);
+    await tester.tap(loginItems);
+    await tester.pumpAndSettle();
     expect(service.settings, [
-      MacPermission.notifications,
+      MacPermission.cameraExtension,
       MacPermission.loginItems,
     ]);
-    expect(service.requests, [MacPermission.camera]);
+    expect(service.reads, 3);
+    expect(find.text('已授权'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -230,11 +252,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('mac-permissions-error')), findsNothing);
     service.failAction = true;
-    final camera = find.byKey(const ValueKey('mac-permission-action-camera'));
-    await tester.ensureVisible(camera);
-    await tester.tap(camera);
+    final loginItems = find.byKey(
+      const ValueKey('mac-permission-action-loginItems'),
+    );
+    await tester.ensureVisible(loginItems);
+    await tester.tap(loginItems);
     await tester.pumpAndSettle();
-    expect(find.text('授权申请未完成，请重试或在系统设置中查看。'), findsOneWidget);
+    expect(find.text('无法打开系统设置，请从 Apple 菜单手动进入。'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -243,7 +267,7 @@ void main() {
     final listenerCount = windowManager.listeners.length;
     await tester.pumpWidget(_app(service));
     await tester.pumpAndSettle();
-    service.statuses[MacPermission.camera] = MacPermissionStatus.denied;
+    service.statuses[MacPermission.loginItems] = MacPermissionStatus.denied;
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
@@ -251,7 +275,7 @@ void main() {
     expect(
       tester
           .widget<Text>(
-            find.byKey(const ValueKey('mac-permission-status-camera')),
+            find.byKey(const ValueKey('mac-permission-status-loginItems')),
           )
           .data,
       '未授权',
@@ -283,8 +307,15 @@ void main() {
       final search = find.byKey(const ValueKey('settings-search'));
       for (final query
           in language == 'zh'
-              ? ['局域网', '文件夹']
-              : ['Local Network', 'Files and Folders']) {
+              ? ['局域网', '文件夹', '相机', '蓝牙', '定位服务', '通知', 'USB']
+              : [
+                  'Local Network',
+                  'Files and Folders',
+                  'Bluetooth',
+                  'Location Services',
+                  'Notifications',
+                  'USB',
+                ]) {
         await tester.enterText(search, query);
         await tester.pumpAndSettle();
         expect(
@@ -293,8 +324,8 @@ void main() {
         );
         expect(service.reads, 0);
       }
-      final camera = language == 'zh' ? '相机' : 'Camera';
-      await tester.enterText(search, camera);
+      final extension = language == 'zh' ? '摄像头扩展' : 'Camera Extension';
+      await tester.enterText(search, extension);
       await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const ValueKey('settings-result-macosPermissions')),
@@ -304,7 +335,7 @@ void main() {
         find.byKey(const ValueKey('settings-content-permissions')),
         findsOneWidget,
       );
-      expect(find.text(camera).hitTestable(), findsOneWidget);
+      expect(find.text(extension).hitTestable(), findsOneWidget);
       expect(service.reads, 1);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpWidget(
