@@ -21,12 +21,29 @@ class DlnaProtocol {
     connectionType,
   ];
 
+  /// 每台接收端使用自己的 UDN，避免控制端把不同电脑合并为同一设备。
+  static List<String> searchTargetsFor(String deviceUuid) => [
+    'upnp:rootdevice',
+    'uuid:$deviceUuid',
+    deviceType,
+    transportType,
+    renderingType,
+    connectionType,
+  ];
+
+  /// SSDP 的设备描述、发现响应和存活通知共享同一个稳定身份。
+  static String usnFor(String target, {String deviceUuid = uuid}) =>
+      target.startsWith('uuid:') ? target : 'uuid:$deviceUuid::$target';
+
   static String escape(String value) =>
       const HtmlEscape(HtmlEscapeMode.element).convert(value);
 
-  static String deviceDescription(String baseUrl, {String name = serverName}) =>
-      '''<?xml version="1.0" encoding="utf-8"?>
-<root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>$baseUrl/</URLBase><device><deviceType>$deviceType</deviceType><friendlyName>${escape(name)}</friendlyName><manufacturer>AnyDeck</manufacturer><modelName>AnyDeck-DLNA Renderer</modelName><UDN>uuid:$uuid</UDN><serviceList>${_service(transportType, 'AVTransport', '/avtransport')}${_service(renderingType, 'RenderingControl', '/rendering')}${_service(connectionType, 'ConnectionManager', '/connection')}</serviceList></device></root>''';
+  static String deviceDescription(
+    String baseUrl, {
+    String name = serverName,
+    String deviceUuid = uuid,
+  }) => '''<?xml version="1.0" encoding="utf-8"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>$baseUrl/</URLBase><device><deviceType>$deviceType</deviceType><friendlyName>${escape(name)}</friendlyName><manufacturer>AnyDeck</manufacturer><modelName>AnyDeck-DLNA Renderer</modelName><UDN>uuid:${escape(deviceUuid)}</UDN><serviceList>${_service(transportType, 'AVTransport', '/avtransport')}${_service(renderingType, 'RenderingControl', '/rendering')}${_service(connectionType, 'ConnectionManager', '/connection')}</serviceList></device></root>''';
 
   static String _service(String type, String id, String path) =>
       '<service><serviceType>$type</serviceType><serviceId>urn:upnp-org:serviceId:$id</serviceId><SCPDURL>$path.xml</SCPDURL><controlURL>$path/control</controlURL><eventSubURL>$path/event</eventSubURL></service>';

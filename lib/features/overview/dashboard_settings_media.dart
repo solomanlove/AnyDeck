@@ -231,7 +231,7 @@ extension _SettingsTabMedia on _SettingsTab {
           subtitle: context.l10n.t('iosAirplayNameDesc'),
           child: ReceiverNameSettingField(
             value: settings.airplayServerName,
-            defaultName: AppSettings.defaultAirplayServerName,
+            defaultName: settings.defaultAirplayReceiverName,
             resetTooltip: context.l10n.t('iosAirplayNameReset'),
             onChanged: (val) => controller.setAirplayServerName(val),
             onApplied: restartAirplayBroadcastIfIdle,
@@ -251,7 +251,7 @@ extension _SettingsTabMedia on _SettingsTab {
           subtitle: context.l10n.t('androidDlnaNameDesc'),
           child: ReceiverNameSettingField(
             value: settings.dlnaServerName,
-            defaultName: AppSettings.defaultDlnaServerName,
+            defaultName: settings.defaultDlnaReceiverName,
             resetTooltip: context.l10n.t('androidDlnaNameReset'),
             onChanged: (val) => controller.setDlnaServerName(val),
           ),

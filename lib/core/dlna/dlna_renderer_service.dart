@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../receiver/receiver_identity.dart';
 import 'dlna_protocol.dart';
 import 'dlna_discovery_address.dart';
 import 'dlna_player_bridge.dart';
@@ -20,10 +21,12 @@ class DlnaRendererService extends ChangeNotifier {
   DlnaRendererService._({
     int httpPort = _defaultHttpPort,
     bool discovery = true,
+    String? uuid,
     DlnaFallbackPlayer? fallback,
     Duration stopWindowDelay = const Duration(seconds: 5),
   }) : _configuredHttpPort = httpPort,
        _discoveryEnabled = discovery,
+       _configuredUuid = uuid,
        _stopWindowDelay = stopWindowDelay {
     _fallback =
         fallback ??
@@ -64,9 +67,11 @@ class DlnaRendererService extends ChangeNotifier {
   DlnaRendererService.forTest({
     DlnaFallbackPlayer? fallback,
     Duration stopWindowDelay = const Duration(seconds: 5),
+    String uuid = DlnaProtocol.uuid,
   }) : this._(
          httpPort: 0,
          discovery: false,
+         uuid: uuid,
          fallback: fallback,
          stopWindowDelay: stopWindowDelay,
        );
@@ -77,6 +82,7 @@ class DlnaRendererService extends ChangeNotifier {
   static const _defaultHttpPort = 18583;
   final int _configuredHttpPort;
   final bool _discoveryEnabled;
+  final String? _configuredUuid;
   final Duration _stopWindowDelay;
 
   late final DlnaFallbackPlayer _fallback;
@@ -94,6 +100,7 @@ class DlnaRendererService extends ChangeNotifier {
   int _mediaGeneration = 0;
   int? _pendingPlatinumPlayGeneration;
   String _serverName = DlnaProtocol.serverName;
+  String _uuid = DlnaProtocol.uuid;
   String _loadingText = '';
   String? _currentUrl;
   String _currentMetadata = '';
@@ -151,6 +158,8 @@ class DlnaRendererService extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
+      // 正式广播前加载本机持久身份，重启和改名都不改变 UDN。
+      _uuid = _configuredUuid ?? (await ReceiverIdentity.load()).uuid;
       final server = await HttpServer.bind(
         InternetAddress.anyIPv4,
         _configuredHttpPort,
@@ -272,7 +281,11 @@ class DlnaRendererService extends ChangeNotifier {
             '127.0.0.1:${_http!.port}';
         _writeXml(
           response,
-          DlnaProtocol.deviceDescription('http://$host', name: _serverName),
+          DlnaProtocol.deviceDescription(
+            'http://$host',
+            name: _serverName,
+            deviceUuid: _uuid,
+          ),
         );
       } else if (request.method == 'GET' &&
           [
@@ -305,7 +318,7 @@ class DlnaRendererService extends ChangeNotifier {
               callback.host != remote) {
             response.statusCode = HttpStatus.preconditionFailed;
           } else {
-            final sid = 'uuid:${DlnaProtocol.uuid}-${++_nextSubscription}';
+            final sid = 'uuid:$_uuid-${++_nextSubscription}';
             _subscriptions[sid] = _DlnaSubscription(callback, path);
             response.headers.set('SID', sid);
             response.headers.set('TIMEOUT', 'Second-300');

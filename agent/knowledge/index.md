@@ -58,6 +58,7 @@
 | `ios-airplay-video-playback` | AirPlay 视频媒体播放窗口 | experimental | 镜像/视频按类型开窗、首帧前镜像状态与失败重试、独立视频播放器；iPhone 6s 镜像实测通过，B 站视频无线投放待验收 | `core/airplay/`, `macos/Runner/`, `rust/device_bridge/` |
 | `adb-dlna-video-receiver` | 视频 App 通过 DLNA 投到 macOS | experimental | SSDP 多网卡路由地址选择、UPnP 控制与 XML 报文长度兼容、AVPlayer 与 libmpv DASH 回退、播放窗口置顶、接收端名称热更新及真机验收边界 | `core/dlna/`, `features/dlna/`, `app/window/dlna/`, `macos/Runner/` |
 | `adb-cast-receiver-dashboard` | AirPlay 与 DLNA 投屏接收统一入口 | active | 记录左侧投屏接收一级 Route、协议 Card 双列等高与名称区对齐、单列自然高度、启停与名称管理、状态复用及回归边界 | `app/router/`, `features/receivers/`, `features/overview/` |
+| `adb-cast-receiver-naming` | 局域网投屏接收端电脑名称 | active | 系统电脑名默认值、自定义名保留与迁移、稳定短码重名兜底、主子窗口同步、本机名称展示、DLNA 独立 UDN 与探测验收边界 | `core/receiver/`, `app/settings/`, `features/receivers/`, `core/dlna/` |
 | `ios-process-management` | iOS 进程表格与生命周期管理 | active | 全进程查询、应用归属筛选、图标缓存、3 秒轮询、未知性能指标、PID 身份回读及取消隔离 | `core/ios/`, `features/ios/` |
 | `ios-apps-management` | iOS 应用筛选、收藏与图标管理 | active | Android 风格工具栏与表格、分类/拼音筛选、持久化收藏、字母索引、设备隔离、图标 helper 取消与验证边界 | `core/ios/`, `features/ios/`, `assets/ios/` |
 | `ios-feature-parity` | iOS 布局、网页调试、录屏与 MCP 对齐 | active | WDA point 与截图像素换算、Safari Develop 入口、USB 原生录屏、MCP 平台路由和无真机回归边界 | `core/ios/`, `core/mcp/`, `features/screenshot/`, `features/ios/`, `macos/Runner/` |

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/l10n/app_localizations.dart';
-import '../../app/settings/app_settings.dart';
 import '../../app/settings/app_settings_controller.dart';
 import '../../app/theme/app_theme.dart';
 import '../../app/widget/app_toast.dart';
@@ -17,6 +16,7 @@ import '../airplay/airplay_mirror_target.dart';
 import '../overview/widget/receiver_name_setting_field.dart';
 import '../widgets/dashboard_header_bar.dart';
 import 'widgets/receiver_app_support_guide.dart';
+import 'widgets/receiver_local_names.dart';
 import 'widgets/receiver_service_card.dart';
 
 /// 主窗口统一投屏接收管理页，集中管理 AirPlay 屏幕镜像与 DLNA 视频接收。
@@ -61,6 +61,8 @@ class ReceiverDashboardTab extends StatelessWidget {
                       );
                 return Column(
                   children: [
+                    const ReceiverLocalNames(),
+                    const SizedBox(height: 16),
                     serviceCards,
                     const SizedBox(height: 16),
                     const ReceiverAppSupportGuide(),
@@ -98,9 +100,7 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
     try {
       final notifier = ref.read(airplaySessionProvider.notifier);
       if (enabled) {
-        await notifier.startServer(
-          name: ref.read(appSettingsProvider).airplayServerName,
-        );
+        await notifier.startServer();
       } else {
         await notifier.stopServer();
       }
@@ -167,7 +167,7 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
         : isRunning
         ? context.l10n
               .t('receiverAirplayReadyDesc')
-              .replaceAll('{name}', settings.airplayServerName)
+              .replaceAll('{name}', session.serverName)
         : context.l10n.t('receiverAirplayStoppedDesc');
     final statusColor = isMirroring || isVideoPlaying
         ? theme.appColors.success
@@ -208,7 +208,7 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
         label: context.l10n.t('receiverName'),
         field: ReceiverNameSettingField(
           value: settings.airplayServerName,
-          defaultName: AppSettings.defaultAirplayServerName,
+          defaultName: settings.defaultAirplayReceiverName,
           resetTooltip: context.l10n.t('iosAirplayNameReset'),
           onChanged: (value) => ref
               .read(appSettingsProvider.notifier)
@@ -233,6 +233,7 @@ class DlnaReceiverCard extends ConsumerStatefulWidget {
 
 class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
   late final _service = widget.service ?? DlnaRendererService.instance;
+  bool _isProcessing = false;
   String? _loadingText;
   String? _pinLabel;
   String? _unpinLabel;
@@ -272,17 +273,18 @@ class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
   }
 
   Future<void> _toggle(bool enabled) async {
-    if (_service.isBusy) return;
+    if (_service.isBusy || _isProcessing) return;
     if (!Platform.isMacOS) {
       AppToast.show(context, context.l10n.t('receiverMacOnly'), isError: true);
       return;
     }
 
+    setState(() => _isProcessing = true);
     try {
       if (enabled) {
-        await _service.setServerName(
-          ref.read(appSettingsProvider).dlnaServerName,
-        );
+        final name = await ref.read(appSettingsProvider.notifier)
+            .receiverNameForStart('DLNA');
+        await _service.setServerName(name);
         await _service.start();
       } else {
         await _service.stop();
@@ -303,6 +305,8 @@ class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
           isError: true,
         );
       }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -330,7 +334,7 @@ class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
         : _service.isRunning
         ? context.l10n
               .t('receiverDlnaReadyDesc')
-              .replaceAll('{name}', settings.dlnaServerName)
+              .replaceAll('{name}', _service.serverName)
         : context.l10n.t('receiverDlnaStoppedDesc');
     final statusColor = hasError || playbackFailed
         ? theme.colorScheme.error
@@ -348,14 +352,14 @@ class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
       statusDetail: statusDetail,
       statusColor: statusColor,
       value: _service.isRunning,
-      isBusy: _service.isBusy,
+      isBusy: _service.isBusy || _isProcessing,
       switchKey: const Key('dlnaReceiverSwitch'),
       onChanged: _toggle,
       content: _ReceiverNameField(
         label: context.l10n.t('receiverName'),
         field: ReceiverNameSettingField(
           value: settings.dlnaServerName,
-          defaultName: AppSettings.defaultDlnaServerName,
+          defaultName: settings.defaultDlnaReceiverName,
           resetTooltip: context.l10n.t('androidDlnaNameReset'),
           onChanged: (value) =>
               ref.read(appSettingsProvider.notifier).setDlnaServerName(value),

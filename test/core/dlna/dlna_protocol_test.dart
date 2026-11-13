@@ -24,6 +24,33 @@ void main() {
     expect(xml, contains('<modelName>AnyDeck-DLNA Renderer</modelName>'));
   });
 
+  test('设备描述与 SSDP 发现记录使用同一个独立身份', () {
+    const uuid = '6b1c354a-f3e0-4ed4-a917-d55300000001';
+    const otherUuid = '6b1c354a-f3e0-4ed4-a917-d55300000002';
+    final xml = DlnaProtocol.deviceDescription(
+      'http://192.168.1.2:18583',
+      deviceUuid: uuid,
+    );
+    expect(xml, contains('<UDN>uuid:$uuid</UDN>'));
+    expect(xml, isNot(contains(DlnaProtocol.uuid)));
+    final targets = DlnaProtocol.searchTargetsFor(uuid);
+    expect(targets, contains('uuid:$uuid'));
+    expect(targets, isNot(contains('uuid:$otherUuid')));
+    for (final target in targets) {
+      expect(
+        DlnaProtocol.usnFor(target, deviceUuid: uuid),
+        startsWith('uuid:$uuid'),
+      );
+      if (!target.startsWith('uuid:')) {
+        expect(
+          DlnaProtocol.usnFor(target, deviceUuid: uuid),
+          isNot(DlnaProtocol.usnFor(target, deviceUuid: otherUuid)),
+          reason: target,
+        );
+      }
+    }
+  });
+
   test('AVTransport 描述包含输入参数和状态变量', () {
     final xml = DlnaProtocol.serviceDescription('avtransport');
     expect(xml, contains('<name>SetAVTransportURI</name>'));

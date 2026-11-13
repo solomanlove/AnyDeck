@@ -19,6 +19,9 @@ import 'desktop_autostart_service.dart';
 import '../../core/airplay/airplay_server_service.dart';
 import '../../core/dlna/dlna_renderer_service.dart';
 import '../../core/dlna/dlna_player_bridge.dart';
+import '../../core/receiver/receiver_identity.dart';
+import '../../core/receiver/receiver_name_probe.dart';
+import '../../core/receiver/receiver_names.dart';
 import '../../core/ios/ios_usb_mirror_service.dart';
 import '../window/desktop_window_title_service.dart';
 import '../window/desktop_window_manager_service.dart';
@@ -30,6 +33,7 @@ part 'app_settings_notifications.dart';
 part 'app_settings_harmony_name.dart';
 part 'app_settings_harmony_transfer.dart';
 part 'app_settings_shortcuts.dart';
+part 'app_settings_receiver_names.dart';
 
 /// 全局唯一的窗口 ID Provider，主窗口默认为空字符串。
 final windowIdProvider = Provider<String>((ref) => '');
@@ -41,7 +45,7 @@ final appSettingsProvider =
     );
 
 /// 负责加载和保存设置，并通过乐观更新保持 UI 响应。
-class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, HarmonyTransferSettings, MirrorPresetSettings, ShortcutSettings {
+class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, HarmonyTransferSettings, MirrorPresetSettings, ShortcutSettings, ReceiverNameSettings {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
@@ -71,7 +75,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
   @override
   AppSettings build() {
     // 先返回默认设置，SharedPreferences 读取完成后再覆盖真实值。
-    _load();
+    _settingsLoaded = _load();
     _setupMethodHandler();
     return const AppSettings();
   }
@@ -88,6 +92,19 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
 
   Future<dynamic> _handleSettingsCall(MethodCall call) async {
     stdout.writeln('[SettingsController] _handleSettingsCall: method=${call.method}, args=${call.arguments}, currentWindowId=${ref.read(windowIdProvider)}');
+    if (call.method == 'resolve_receiver_names') {
+      await ensureReceiverNames();
+      return _receiverNamesSnapshot();
+    }
+    if (call.method == 'change_receiver_name') {
+      final args = call.arguments as Map;
+      await _setReceiverName(args['protocol'] as String, args['value'] as String);
+      return _receiverNamesSnapshot();
+    }
+    if (call.method == 'update_receiver_names') {
+      _applyReceiverNamesSnapshot(call.arguments as Map);
+      return null;
+    }
     if (call.method == MirrorShortcutSettings.channelMethod) return _receiveMirrorShortcuts(call.arguments);
     if (call.method == mainWindowShortcutChannelMethod) return _receiveMainWindowShortcut(call.arguments);
     if (call.method == WindowShortcutSettings.channelMethod) return _receiveWindowShortcuts(call.arguments);
@@ -272,23 +289,6 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
     unawaited(IosUsbMirrorService.setGlobalAudioEnabled(value));
     await (await SharedPreferences.getInstance()).setBool(_iosMirrorAudioEnabledKey, value);
     if (broadcast) try { await _broadcastSettingChange('update_ios_audio_enabled', value); } catch (_) {}
-  }
-
-  /// 更新 iOS AirPlay 投屏广播名称（默认 AnyDeck-AirPlay），并持久化与跨窗口同步。
-  Future<void> setAirplayServerName(String value, {bool broadcast = true}) async {
-    final clean = value.trim().isEmpty ? AppSettings.defaultAirplayServerName : value.trim();
-    state = state.copyWith(airplayServerName: clean);
-    await (await SharedPreferences.getInstance()).setString(_airplayServerNameKey, clean);
-    if (broadcast) try { await _broadcastSettingChange('update_airplay_server_name', clean); } catch (_) {}
-  }
-
-  /// 更新 DLNA 发现名称，不中断当前视频播放。
-  Future<void> setDlnaServerName(String value, {bool broadcast = true}) async {
-    final clean = AppSettings.normalizeDlnaServerName(value);
-    state = state.copyWith(dlnaServerName: clean);
-    await (await SharedPreferences.getInstance()).setString(_dlnaServerNameKey, clean);
-    if (ref.read(windowIdProvider).isEmpty) await DlnaRendererService.instance.setServerName(clean);
-    if (broadcast) try { await _broadcastSettingChange('update_dlna_server_name', clean); } catch (_) {}
   }
 
   /// 更新截图/录屏保存路径，并持久化和广播。
@@ -480,6 +480,9 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       unawaited(DesktopWindowTitleService.setMenuLanguage(language.code));
       unawaited(DesktopWindowManagerService.updateTrayMenu(language.code));
     }
+    unawaited(ensureReceiverNames().catchError((Object error) {
+      debugPrint('[Receiver] name initialization failed: $error');
+    }));
   }
 
   /// 将本地存储的枚举名称映射回 Flutter 的 ThemeMode。

@@ -48,6 +48,8 @@ class AppSettings {
     this.iosMirrorAudioEnabled = true,
     this.airplayServerName = defaultAirplayServerName,
     this.dlnaServerName = defaultDlnaServerName,
+    this.defaultAirplayReceiverName = defaultAirplayServerName,
+    this.defaultDlnaReceiverName = defaultDlnaServerName,
     this.screenshotSavePath = '',
     this.autoIdentifyForegroundApp = false,
     this.autoIdentifyInterval = 3,
@@ -77,6 +79,9 @@ class AppSettings {
   final bool iosMirrorAudioEnabled;
   final String airplayServerName;
   final String dlnaServerName;
+  /// 本机自动生成的名称，供清空和恢复默认使用，不覆盖用户自定义名称。
+  final String defaultAirplayReceiverName;
+  final String defaultDlnaReceiverName;
   final String screenshotSavePath;
   final bool autoIdentifyForegroundApp;
   final int autoIdentifyInterval;
@@ -150,6 +155,8 @@ class AppSettings {
     bool? iosMirrorAudioEnabled,
     String? airplayServerName,
     String? dlnaServerName,
+    String? defaultAirplayReceiverName,
+    String? defaultDlnaReceiverName,
     String? screenshotSavePath,
     bool? autoIdentifyForegroundApp,
     int? autoIdentifyInterval,
@@ -181,6 +188,8 @@ class AppSettings {
           iosMirrorAudioEnabled ?? this.iosMirrorAudioEnabled,
       airplayServerName: airplayServerName ?? this.airplayServerName,
       dlnaServerName: dlnaServerName ?? this.dlnaServerName,
+      defaultAirplayReceiverName: defaultAirplayReceiverName ?? this.defaultAirplayReceiverName,
+      defaultDlnaReceiverName: defaultDlnaReceiverName ?? this.defaultDlnaReceiverName,
       screenshotSavePath: screenshotSavePath ?? this.screenshotSavePath,
       autoIdentifyForegroundApp: autoIdentifyForegroundApp ?? this.autoIdentifyForegroundApp,
       autoIdentifyInterval: autoIdentifyInterval ?? this.autoIdentifyInterval,

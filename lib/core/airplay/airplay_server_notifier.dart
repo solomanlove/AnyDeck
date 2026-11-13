@@ -33,14 +33,21 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
 
   /// 开启投屏服务（仅主槽位发布单个 Bonjour 广播，附加槽位用于多设备并发解码渲染）
   Future<void> startServer({
-    String name = 'AnyDeck-AirPlay',
+    String? name,
     int rtspPort = 7000,
     int videoPort = 7100,
   }) async {
+    final settings = ref.read(appSettingsProvider.notifier);
+    await settings.ensureReceiverNames();
+    final resolvedName = name ?? await settings.receiverNameForStart(
+      'AirPlay',
+      alreadyRunning: state?.hasAnyBroadcasting == true &&
+          state?.serverName == ref.read(appSettingsProvider).airplayServerName,
+    );
     await stopServer();
     final service = AirPlayServerService.instance;
     final primary = await service.start(
-      name: name,
+      name: resolvedName,
       rtspPort: rtspPort,
       videoPort: videoPort,
     );
@@ -48,7 +55,7 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
     for (int i = 1; i < _initialClientSlots; i++) {
       try {
         final slot = await service.start(
-          name: name,
+          name: resolvedName,
           rtspPort: 0,
           videoPort: 0,
         );
@@ -68,7 +75,7 @@ class AirPlayServerNotifier extends Notifier<AirPlaySessionData?> {
           if (!_disposed && state != null) state = state!.copyWith(isVideoPlaying: active);
         },
       );
-      await _videoPlayer!.start(primary.id, name);
+      await _videoPlayer!.start(primary.id, resolvedName);
       await _updateVideoLabels();
     } catch (error) {
       debugPrint('[AirPlay Video] unavailable (${error.runtimeType}); rebuild native library');

@@ -1,21 +1,43 @@
+import 'dart:async';
+
 import 'package:any_deck/core/dlna/dlna_renderer_service.dart';
+import 'package:any_deck/core/dlna/dlna_player_bridge.dart';
 import 'package:any_deck/core/airplay/airplay_server_service.dart';
 import 'package:any_deck/core/airplay/airplay_server_state.dart';
+import 'package:any_deck/core/receiver/receiver_identity.dart';
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/settings/app_settings.dart';
+import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/features/receivers/receiver_dashboard_tab.dart';
 import 'package:any_deck/features/receivers/widgets/receiver_service_card.dart';
+import 'package:any_deck/features/receivers/widgets/receiver_local_names.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+final _identityOverride = receiverIdentityProvider.overrideWith((ref) async =>
+    const ReceiverIdentity(
+      uuid: 'aaaaaa00-0000-4000-8000-000000000001',
+      computerName: '办公室Mac',
+    ));
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(DlnaPlayerBridge.channel, (_) async => null);
+    SharedPreferences.setMockInitialValues({
+      'settings.airplayServerName': 'AnyDeck-测试电脑-AirPlay',
+      'settings.dlnaServerName': 'AnyDeck-测试电脑-DLNA',
+    });
+  });
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(DlnaPlayerBridge.channel, null);
   });
 
   testWidgets('DLNA 播放错误与启动错误分离，不直接展示底层诊断', (tester) async {
@@ -23,6 +45,7 @@ void main() {
       for (final running in [true, false]) {
         final service = _FailedDlnaService(running);
         await tester.pumpWidget(ProviderScope(
+          overrides: [_identityOverride],
           child: MaterialApp(
             theme: buildAppTheme(Brightness.light),
             localizationsDelegates: const [
@@ -57,6 +80,7 @@ void main() {
   testWidgets('投屏接收页集中展示 AirPlay 与 DLNA 服务', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [_identityOverride],
         child: MaterialApp(
           theme: buildAppTheme(Brightness.light),
           localizationsDelegates: const [
@@ -83,7 +107,10 @@ void main() {
     expect(find.byKey(const Key('airplayReceiverSwitch')), findsOneWidget);
     expect(find.byKey(const Key('dlnaReceiverSwitch')), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(2));
-    expect(find.text('AnyDeck-DLNA'), findsNWidgets(2));
+    expect(find.byKey(const Key('receiverLocalNames')), findsOneWidget);
+    expect(find.text('本机投屏名称'), findsOneWidget);
+    expect(find.byKey(const Key('receiverLocalAirplayName')), findsOneWidget);
+    expect(find.byKey(const Key('receiverLocalDlnaName')), findsOneWidget);
     expect(find.byKey(const Key('receiverAppSupportGuide')), findsOneWidget);
     expect(find.text('常见视频 App 投放示例'), findsOneWidget);
     expect(find.text('哔哩哔哩'), findsOneWidget);
@@ -101,6 +128,95 @@ void main() {
     expect(find.text('当前版本实测支持 DLNA，不支持 AirPlay'), findsOneWidget);
     expect(find.text('待确认'), findsNothing);
   });
+  testWidgets('本机名称优先展示实际广播，停止后显示自定义名，长名称双语明暗可读', (tester) async {
+    addTearDown(() => tester.view.resetPhysicalSize());
+    addTearDown(() => tester.view.resetDevicePixelRatio());
+    tester.view.devicePixelRatio = 1;
+    const custom = 'AnyDeck-办公室会议演示用的超长电脑名称-自定义';
+    const actualAirplay = '$custom-A7K2-AirPlay';
+    const actualDlna = '$custom-A7K2-DLNA';
+    for (final brightness in Brightness.values) {
+      for (final locale in ['zh', 'en']) {
+        for (final running in [true, false]) {
+          final service = _NamedDlnaService(running);
+          await tester.runAsync(() => service.setServerName(actualDlna));
+          tester.view.physicalSize = const Size(360, 800);
+          await tester.pumpWidget(ProviderScope(
+            key: ValueKey('$brightness-$locale-$running'),
+            overrides: [
+              appSettingsProvider.overrideWith(() => _NamedSettings(custom)),
+              airplaySessionProvider.overrideWith(() => _FakeAirPlay(
+                AirPlaySessionData(
+                  id: 1, serverName: actualAirplay, rtspPort: 7000,
+                  videoPort: 7100, status: running
+                      ? AirPlayServerStatus.mirroring
+                      : AirPlayServerStatus.stopped,
+                ),
+              )),
+            ],
+            child: MaterialApp(
+              theme: buildAppTheme(brightness),
+              localizationsDelegates: const [AppLocalizationsDelegate(),
+                GlobalMaterialLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate],
+              supportedLocales: AppLocalizations.supportedLocales,
+              locale: Locale(locale),
+              home: Scaffold(body: SingleChildScrollView(
+                child: ReceiverLocalNames(service: service),
+              )),
+            ),
+          ));
+          await tester.pump();
+          expect(tester.widget<SelectableText>(find.byKey(
+              const Key('receiverLocalAirplayName'))).data,
+              running ? actualAirplay : custom);
+          expect(tester.widget<SelectableText>(find.byKey(
+              const Key('receiverLocalDlnaName'))).data,
+              running ? actualDlna : custom);
+          expect(find.text(AppLocalizations(Locale(locale))
+              .t('receiverLocalNames')), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox.shrink());
+          service.dispose();
+        }
+      }
+    }
+  });
+  testWidgets('DLNA 名称探测期间进入忙碌状态并拦截重复启动', (tester) async {
+    final name = Completer<String>();
+    final settings = _ProbingSettings(name.future);
+    final service = _StartingDlnaService();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [appSettingsProvider.overrideWith(() => settings)],
+      child: MaterialApp(
+        theme: buildAppTheme(Brightness.light),
+        localizationsDelegates: const [AppLocalizationsDelegate(),
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate],
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('zh'),
+        home: Scaffold(body: DlnaReceiverCard(service: service)),
+      ),
+    ));
+    await tester.pump();
+    final toggle = tester.widget<Switch>(
+        find.byKey(const Key('dlnaReceiverSwitch'))).onChanged!;
+    toggle(true);
+    toggle(true);
+    await tester.pump();
+    expect(settings.probes, 1);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    name.complete('AnyDeck-办公室Mac-A7K2-DLNA');
+    await tester.pumpAndSettle();
+    expect(service.starts, 1);
+    expect(service.serverName, 'AnyDeck-办公室Mac-A7K2-DLNA');
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpWidget(const SizedBox.shrink());
+    service.dispose();
+  });
   testWidgets('服务卡片宽屏等高且名称对齐，窄屏自然高度并保持示例间距', (tester) async {
     addTearDown(() => tester.view.resetPhysicalSize());
     addTearDown(() => tester.view.resetDevicePixelRatio());
@@ -114,6 +230,7 @@ void main() {
             tester.view.physicalSize = Size(width, 1200);
             await tester.pumpWidget(
               ProviderScope(
+                overrides: [_identityOverride],
                 child: MaterialApp(
                   theme: buildAppTheme(brightness),
                   builder: (context, child) => MediaQuery(
@@ -236,7 +353,8 @@ void main() {
         isVideoPlaying: type != 'mirror',
       );
       await tester.pumpWidget(ProviderScope(
-        overrides: [airplaySessionProvider.overrideWith(() => _FakeAirPlay(state))],
+        overrides: [_identityOverride,
+          airplaySessionProvider.overrideWith(() => _FakeAirPlay(state))],
         child: MaterialApp(
           theme: buildAppTheme(Brightness.light),
           localizationsDelegates: const [AppLocalizationsDelegate(),
@@ -276,4 +394,45 @@ class _FailedDlnaService extends DlnaRendererService {
   String? get error => running ? null : 'SocketException';
   @override
   String? get playbackError => running ? 'AVFoundationErrorDomain/-11850' : null;
+}
+
+/// 固定名称状态，避免 Widget 测试执行设置初始化和电脑名称查询。
+class _NamedSettings extends AppSettingsController {
+  _NamedSettings(this.name);
+  final String name;
+  @override
+  AppSettings build() => AppSettings(
+      airplayServerName: name, dlnaServerName: name);
+}
+
+/// 模拟广播名称与已保存的自定义名称不同的接收服务。
+class _NamedDlnaService extends DlnaRendererService {
+  _NamedDlnaService(this.running) : super.forTest();
+  final bool running;
+  @override
+  bool get isRunning => running;
+}
+
+/// 用可控 Future 模拟名称探测，不扫描局域网。
+class _ProbingSettings extends AppSettingsController {
+  _ProbingSettings(this.name);
+  final Future<String> name;
+  int probes = 0;
+  @override
+  AppSettings build() => const AppSettings();
+  @override
+  Future<String> receiverNameForStart(String protocol, {bool alreadyRunning = false}) {
+    probes++;
+    return name;
+  }
+}
+
+/// 统计服务启动，不创建 SSDP 或 HTTP socket。
+class _StartingDlnaService extends DlnaRendererService {
+  _StartingDlnaService() : super.forTest();
+  int starts = 0;
+  @override
+  bool get isRunning => starts > 0;
+  @override
+  Future<void> start() async => starts++;
 }

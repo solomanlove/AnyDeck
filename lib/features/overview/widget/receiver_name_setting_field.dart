@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../app/l10n/app_localizations.dart';
+import '../../../app/widget/app_toast.dart';
 import '../../../core/airplay/airplay_server_service.dart';
 
 /// 投屏接收端名称编辑组件，供设置页及接收管理页的 AirPlay 与 DLNA 共用。
@@ -20,7 +22,7 @@ import '../../../core/airplay/airplay_server_service.dart';
 /// ```dart
 /// ReceiverNameSettingField(
 ///   value: settings.airplayServerName,
-///   defaultName: AppSettings.defaultAirplayServerName,
+///   defaultName: settings.defaultAirplayReceiverName,
 ///   resetTooltip: '恢复默认',
 ///   onChanged: controller.setAirplayServerName,
 /// )
@@ -42,13 +44,13 @@ class ReceiverNameSettingField extends ConsumerStatefulWidget {
   final String defaultName;
 
   /// 提交新名称时的回调
-  final ValueChanged<String> onChanged;
+  final FutureOr<void> Function(String name) onChanged;
 
   /// 恢复默认按钮提示文案
   final String resetTooltip;
 
   /// 提交后的协议专属处理
-  final void Function(WidgetRef ref, String name)? onApplied;
+  final FutureOr<void> Function(WidgetRef ref, String name)? onApplied;
 
   @override
   ConsumerState<ReceiverNameSettingField> createState() =>
@@ -59,6 +61,8 @@ class _ReceiverNameSettingFieldState
     extends ConsumerState<ReceiverNameSettingField> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
+  bool _isSaving = false;
+  String? _lastCommittedName;
 
   @override
   void initState() {
@@ -70,6 +74,7 @@ class _ReceiverNameSettingFieldState
   @override
   void didUpdateWidget(covariant ReceiverNameSettingField oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value) _lastCommittedName = null;
     if (widget.value != oldWidget.value && !_focusNode.hasFocus) {
       _controller.text = widget.value;
     }
@@ -89,15 +94,29 @@ class _ReceiverNameSettingFieldState
     }
   }
 
-  void _commit(String raw) {
+  Future<void> _commit(String raw) async {
+    if (_isSaving) return;
     final trimmed = raw.trim();
     final resolved = trimmed.isEmpty ? widget.defaultName : trimmed;
     if (_controller.text != resolved) {
       _controller.text = resolved;
     }
-    if (resolved == widget.value) return;
-    widget.onChanged(resolved);
-    widget.onApplied?.call(ref, resolved);
+    if (resolved == widget.value || resolved == _lastCommittedName) return;
+    setState(() => _isSaving = true);
+    try {
+      await widget.onChanged(resolved);
+      _lastCommittedName = resolved;
+      if (mounted) await widget.onApplied?.call(ref, resolved);
+    } catch (_) {
+      _lastCommittedName = null;
+      if (mounted) {
+        _controller.text = widget.value;
+        AppToast.show(context, context.l10n.t('receiverNameSaveFailed'),
+            isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -113,7 +132,7 @@ class _ReceiverNameSettingFieldState
             message: widget.resetTooltip,
             child: InkWell(
               borderRadius: BorderRadius.circular(6),
-              onTap: () => _commit(widget.defaultName),
+              onTap: _isSaving ? null : () => _commit(widget.defaultName),
               child: Padding(
                 padding: const EdgeInsets.all(6),
                 child: Icon(
@@ -130,6 +149,7 @@ class _ReceiverNameSettingFieldState
           width: 200,
           height: 32,
           child: TextField(
+            enabled: !_isSaving,
             controller: _controller,
             focusNode: _focusNode,
             onSubmitted: _commit,
@@ -175,14 +195,13 @@ class _ReceiverNameSettingFieldState
   }
 }
 
-/// AirPlay 空闲广播时以新名称重新发布，不影响正在镜像的 iPhone。
-void restartAirplayBroadcastIfIdle(WidgetRef ref, String name) {
+/// AirPlay 空闲广播时以新名称重新发布，不影响正在镜像或播放视频的 iPhone。
+Future<void> restartAirplayBroadcastIfIdle(WidgetRef ref, String name) async {
   final session = ref.read(airplaySessionProvider);
   if (session != null &&
       !session.hasAnyMirroring &&
+      !session.isVideoPlaying &&
       session.hasAnyBroadcasting) {
-    unawaited(
-      ref.read(airplaySessionProvider.notifier).startServer(name: name),
-    );
+    await ref.read(airplaySessionProvider.notifier).startServer();
   }
 }

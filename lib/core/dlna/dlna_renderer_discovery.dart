@@ -2,6 +2,8 @@ part of 'dlna_renderer_service.dart';
 
 /// SSDP 发现只公布系统路由选中的网卡地址。
 extension DlnaRendererDiscovery on DlnaRendererService {
+  List<String> get _searchTargets => DlnaProtocol.searchTargetsFor(_uuid);
+
   Future<InternetAddress?> _addressFor(InternetAddress destination) {
     final now = DateTime.now();
     _discoveryAddressCache.removeWhere(
@@ -59,8 +61,7 @@ extension DlnaRendererDiscovery on DlnaRendererService {
       multiLine: true,
       caseSensitive: false,
     ).firstMatch(text)?.group(1)?.trim();
-    if (st == null ||
-        !['ssdp:all', ...DlnaProtocol.searchTargets].contains(st)) {
+    if (st == null || !['ssdp:all', ..._searchTargets].contains(st)) {
       return;
     }
     debugPrint('[DLNA] discovery from=${packet.address.address} st=$st');
@@ -77,10 +78,8 @@ extension DlnaRendererDiscovery on DlnaRendererService {
     if (socket == null || server == null) return;
     final address = await _addressFor(destination);
     if (address == null) return;
-    for (final target in st == 'ssdp:all' ? DlnaProtocol.searchTargets : [st]) {
-      final usn = target.startsWith('uuid:')
-          ? target
-          : 'uuid:${DlnaProtocol.uuid}::$target';
+    for (final target in st == 'ssdp:all' ? _searchTargets : [st]) {
+      final usn = DlnaProtocol.usnFor(target, deviceUuid: _uuid);
       final message =
           'HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=300\r\nEXT:\r\nLOCATION: http://${address.address}:${server.port}/device.xml\r\nSERVER: macOS/1.0 UPnP/1.0 AnyDeck/1.0\r\nST: $target\r\nUSN: $usn\r\n\r\n';
       socket.send(ascii.encode(message), destination, port);
@@ -93,10 +92,8 @@ extension DlnaRendererDiscovery on DlnaRendererService {
     if (socket == null || server == null) return;
     final address = await _addressFor(DlnaRendererService._multicast);
     if (address == null) return;
-    for (final target in DlnaProtocol.searchTargets) {
-      final usn = target.startsWith('uuid:')
-          ? target
-          : 'uuid:${DlnaProtocol.uuid}::$target';
+    for (final target in _searchTargets) {
+      final usn = DlnaProtocol.usnFor(target, deviceUuid: _uuid);
       final message =
           'NOTIFY * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nCACHE-CONTROL: max-age=300\r\nLOCATION: http://${address.address}:${server.port}/device.xml\r\nNT: $target\r\nNTS: ssdp:${alive ? 'alive' : 'byebye'}\r\nSERVER: macOS/1.0 UPnP/1.0 AnyDeck/1.0\r\nUSN: $usn\r\n\r\n';
       socket.send(ascii.encode(message), DlnaRendererService._multicast, 1900);
