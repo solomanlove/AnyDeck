@@ -2,6 +2,7 @@
 """修复 AnyDeck 的本机 Flutter IDE 配置，保留其他模块与用户设置。"""
 
 import argparse
+from copy import deepcopy
 from pathlib import Path
 import re
 import shlex
@@ -37,6 +38,8 @@ RUN_CONFIG = '''<component name="ProjectRunConfigurationManager">
   </configuration>
 </component>
 '''
+NO_SHARE_NAME = 'AnyDeck（不含 Share Core）'
+SHARE_DEFINE = 'ANYDECK_ENABLE_SHARE_CORE'
 
 
 def repair_module(text):
@@ -106,6 +109,87 @@ def repair_run_config(text):
     return ET.tostring(root, encoding='unicode') + '\n'
 
 
+def no_share_arguments(current):
+    """保留调试参数，同时移除冲突的构建模式和同名 Dart define。"""
+    tokens = shlex.split(current)
+    arguments = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        index += 1
+        if token.split('=', 1)[0] in ('--release', '--profile', '--debug'):
+            continue
+        if token in ('--dart-define', '-D') and index < len(tokens):
+            if tokens[index].startswith(f'{SHARE_DEFINE}='):
+                index += 1
+                continue
+        if token.startswith((f'--dart-define={SHARE_DEFINE}=', f'-D{SHARE_DEFINE}=')):
+            continue
+        arguments.append(token)
+    if '--no-pub' not in arguments:
+        arguments.append('--no-pub')
+    arguments.extend(('--debug', f'--dart-define={SHARE_DEFINE}=false'))
+    return current if arguments == tokens else shlex.join(arguments)
+
+
+def run_environment(configuration):
+    """读取 Flutter 98 的 envs entry 格式，拒绝重复或不明确的环境变量。"""
+    options = configuration.findall("option[@name='envs']")
+    if len(options) > 1:
+        raise ValueError('运行配置存在重复 envs，未写入配置。')
+    if not options:
+        return None, {}
+    option = options[0]
+    entries = {}
+    for entry in option:
+        if entry.tag is ET.Comment:
+            continue
+        if entry.tag != 'entry' or not entry.get('key') or entry.get('key') in entries:
+            raise ValueError('运行配置 envs 格式不明确，未写入配置。')
+        entries[entry.get('key')] = entry
+    return option, entries
+
+
+def repair_no_share_run_config(text, base_text):
+    """生成独立 Debug 入口，继承工具链环境并隔离 Share Core 开关。"""
+    repaired = repair_run_config(text if text is not None else base_text)
+    parser = lambda: ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+    root = ET.fromstring(repaired, parser=parser())
+    configuration = root.find('configuration')
+    base = ET.fromstring(base_text, parser=parser()).find('configuration')
+    changed = False
+    for key, value in (('name', NO_SHARE_NAME), ('default', 'false')):
+        if configuration.get(key) != value:
+            configuration.set(key, value)
+            changed = True
+    option = configuration.find("option[@name='additionalArgs']")
+    current = option.get('value', '')
+    arguments = no_share_arguments(current)
+    if arguments != current:
+        option.set('value', arguments)
+        changed = True
+    environment, entries = run_environment(configuration)
+    _, inherited = run_environment(base)
+    if environment is None:
+        environment = ET.SubElement(configuration, 'option', {'name': 'envs'})
+        changed = True
+    for key, entry in inherited.items():
+        if key not in entries:
+            entries[key] = deepcopy(entry)
+            environment.append(entries[key])
+            changed = True
+    skip = entries.get('ANYDECK_SKIP_SHARE_CORE')
+    if skip is None:
+        skip = ET.SubElement(environment, 'entry', {'key': 'ANYDECK_SKIP_SHARE_CORE'})
+    if skip.get('value') != '1':
+        skip.set('value', '1')
+        changed = True
+    if not changed:
+        return repaired
+    ET.indent(root, space='  ')
+    return ET.tostring(root, encoding='unicode') + '\n'
+
+
 def configure(project, sdk):
     """先验证全部输入，再备份并写入本机 .idea；重复执行不产生改动。"""
     project, sdk = Path(project).resolve(), Path(sdk).resolve()
@@ -152,11 +236,15 @@ def configure(project, sdk):
             raise ValueError('Dart_SDK.xml 不是唯一的 Dart SDK library，未写入配置。')
     run_file = idea / 'runConfigurations/AnyDeck.xml'
     run_text = repair_run_config(run_file.read_text() if run_file.exists() else RUN_CONFIG)
+    no_share_file = idea / 'runConfigurations/AnyDeck_No_Share_Core.xml'
+    no_share_text = repair_no_share_run_config(
+        no_share_file.read_text() if no_share_file.exists() else None, run_text)
     planned = {
         module: module_text,
         modules: modules_text,
         library_file: library,
         run_file: run_text,
+        no_share_file: no_share_text,
     }
     # 在首次写入前解析全部 XML，避免无效输入留下半套配置。
     for text in planned.values():

@@ -1,5 +1,6 @@
 """验证 AnyDeck IDE 修复覆盖模块宏、SDK 绑定与已有配置保留。"""
 from pathlib import Path
+import shlex
 import sys
 import tempfile
 import unittest
@@ -60,6 +61,17 @@ class FlutterIdeConfigTests(unittest.TestCase):
                          '$PROJECT_DIR$/lib/main.dart')
         self.assertEqual(flutter.find("./option[@name='additionalArgs']").get('value'),
                          '--no-pub')
+        no_share = ET.parse(idea / 'runConfigurations/AnyDeck_No_Share_Core.xml').find(
+            './configuration')
+        self.assertEqual(no_share.get('name'), 'AnyDeck（不含 Share Core）')
+        self.assertEqual(no_share.find("./option[@name='filePath']").get('value'),
+                         '$PROJECT_DIR$/lib/main.dart')
+        arguments = shlex.split(no_share.find("./option[@name='additionalArgs']").get('value'))
+        self.assertIn('--no-pub', arguments)
+        self.assertIn('--debug', arguments)
+        self.assertIn('--dart-define=ANYDECK_ENABLE_SHARE_CORE=false', arguments)
+        self.assertEqual(no_share.find(
+            "./option[@name='envs']/entry[@key='ANYDECK_SKIP_SHARE_CORE']").get('value'), '1')
 
     def test_standard_module_keeps_custom_settings_and_child_modules(self):
         idea = self.project / '.idea'
@@ -163,6 +175,78 @@ class FlutterIdeConfigTests(unittest.TestCase):
         self.assertEqual(config.configure(self.project, self.sdk), [])
         self.assertEqual(path.read_bytes(), repaired)
 
+    def test_no_share_entry_inherits_toolchain_without_changing_full_entry(self):
+        path = self.project / '.idea/runConfigurations/AnyDeck.xml'
+        original = '''<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="AnyDeck" type="FlutterRunConfigurationType" factoryName="Flutter">
+    <option name="filePath" value="$PROJECT_DIR$/lib/main.dart" />
+    <option name="additionalArgs" value="--no-pub --profile --dart-define=TEST='two words' --dart-define=ANYDECK_ENABLE_SHARE_CORE=true" />
+    <option name="envs"><entry key="CARGO" value="/tool chain/cargo &amp; tools" /><entry key="OTHER" value="keep" /></option>
+    <option name="buildFlavor" value="custom" />
+    <method v="2"><option name="CustomBeforeRun" enabled="true" /></method>
+  </configuration>
+</component>
+'''
+        self.write(path, original)
+        config.configure(self.project, self.sdk)
+        self.assertEqual(path.read_text(), original)
+        no_share = ET.parse(path.with_name('AnyDeck_No_Share_Core.xml')).find('./configuration')
+        arguments = shlex.split(no_share.find("./option[@name='additionalArgs']").get('value'))
+        self.assertIn('--dart-define=TEST=two words', arguments)
+        self.assertIn('--debug', arguments)
+        self.assertNotIn('--profile', arguments)
+        self.assertNotIn('--dart-define=ANYDECK_ENABLE_SHARE_CORE=true', arguments)
+        self.assertEqual(arguments.count('--dart-define=ANYDECK_ENABLE_SHARE_CORE=false'), 1)
+        environment = {entry.get('key'): entry.get('value')
+                       for entry in no_share.findall("./option[@name='envs']/entry")}
+        self.assertEqual(environment, {
+            'CARGO': '/tool chain/cargo & tools', 'OTHER': 'keep',
+            'ANYDECK_SKIP_SHARE_CORE': '1',
+        })
+        self.assertEqual(no_share.find("./option[@name='buildFlavor']").get('value'), 'custom')
+        self.assertIsNotNone(no_share.find("./method/option[@name='CustomBeforeRun']"))
+
+    def test_existing_no_share_entry_keeps_custom_options_and_first_backup(self):
+        directory = self.project / '.idea/runConfigurations'
+        full = config.RUN_CONFIG.replace(
+            '    <method v="2" />',
+            '    <option name="envs"><entry key="CARGO" value="base cargo" />'
+            '<entry key="BASE_ONLY" value="inherited" /></option>\n    <method v="2" />')
+        self.write(directory / 'AnyDeck.xml', full)
+        path = directory / 'AnyDeck_No_Share_Core.xml'
+        original = '''<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="AnyDeck local" type="FlutterRunConfigurationType" factoryName="Flutter">
+    <option name="filePath" value="old.dart" />
+    <option name="additionalArgs" value="--release -D ANYDECK_ENABLE_SHARE_CORE=true --dart-define=LOCAL=value" />
+    <option name="envs"><entry key="CARGO" value="custom cargo" /><entry key="LOCAL" value="keep" /><entry key="ANYDECK_SKIP_SHARE_CORE" value="0" /></option>
+    <method v="2" />
+  </configuration>
+</component>
+'''
+        self.write(path, original)
+        config.configure(self.project, self.sdk)
+        no_share = ET.parse(path).find('./configuration')
+        self.assertEqual(no_share.get('name'), 'AnyDeck（不含 Share Core）')
+        arguments = shlex.split(no_share.find("./option[@name='additionalArgs']").get('value'))
+        self.assertNotIn('--release', arguments)
+        self.assertNotIn('ANYDECK_ENABLE_SHARE_CORE=true', arguments)
+        self.assertIn('--dart-define=LOCAL=value', arguments)
+        self.assertIn('--debug', arguments)
+        self.assertIn('--no-pub', arguments)
+        self.assertEqual(arguments.count('--dart-define=ANYDECK_ENABLE_SHARE_CORE=false'), 1)
+        environment = {entry.get('key'): entry.get('value')
+                       for entry in no_share.findall("./option[@name='envs']/entry")}
+        self.assertEqual(environment, {
+            'CARGO': 'custom cargo', 'LOCAL': 'keep', 'BASE_ONLY': 'inherited',
+            'ANYDECK_SKIP_SHARE_CORE': '1',
+        })
+        backup = self.project / '.idea/.anydeck-backup/runConfigurations/AnyDeck_No_Share_Core.xml'
+        self.assertEqual(backup.read_text(), original)
+        before = self.snapshot(self.project / '.idea')
+        self.assertEqual(config.configure(self.project, self.sdk), [])
+        self.assertEqual(self.snapshot(self.project / '.idea'), before)
+        self.assertEqual((directory / 'AnyDeck.xml').read_text(), full)
+
     def test_adds_main_module_without_losing_other_modules(self):
         path = self.project / '.idea/modules.xml'
         self.write(path, '''<project version="4">
@@ -252,6 +336,8 @@ class FlutterIdeConfigTests(unittest.TestCase):
             ('modules.xml', '<project><component name="Unknown"><modules /></component></project>'),
             ('runConfigurations/AnyDeck.xml', '<component><broken>'),
             ('runConfigurations/AnyDeck.xml', '<component name="Unknown"><configuration name="AnyDeck" /></component>'),
+            ('runConfigurations/AnyDeck_No_Share_Core.xml', '<component><broken>'),
+            ('runConfigurations/AnyDeck_No_Share_Core.xml', '<component name="Unknown"><configuration name="AnyDeck" /></component>'),
             ('libraries/Dart_SDK.xml', '<component><broken>'),
             ('libraries/Dart_SDK.xml', '<component name="libraryTable"><library name="Unknown SDK" /></component>'),
         )

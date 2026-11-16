@@ -17,6 +17,7 @@ import 'package:sqlite3/sqlite3.dart' hide Row;
 import 'package:path_provider/path_provider.dart';
 
 import '../app/l10n/app_localizations.dart';
+import '../app/config/build_features.dart';
 import '../app/router/dashboard_route.dart';
 import '../app/theme/app_icon.dart';
 import '../app/theme/app_navigation_icons.dart';
@@ -171,6 +172,7 @@ import 'feedback/widget/settings_feedback_entry.dart';
 
 part 'overview/dashboard_shell.dart';
 part 'overview/dashboard_content.dart';
+part 'overview/dashboard_share_core.dart';
 part 'overview/dashboard_quit_shortcut.dart';
 part 'overview/dashboard_rail.dart';
 part 'overview/dashboard_rail_buttons.dart';
@@ -306,7 +308,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   bool _routeSyncScheduled = false;
   String? _resolvedRouteDeviceId;
   StreamSubscription<Map<String, dynamic>>? _notificationClickSub;
-  late final HarmonyShareOfferPresenter _shareOfferPresenter;
+  HarmonyShareOfferPresenter? _shareOfferPresenter;
 
   @override
   void initState() {
@@ -317,11 +319,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         .read(macNotificationBridgeProvider)
         .clickStream
         .listen(_handleNotificationClick);
-    _shareOfferPresenter = HarmonyShareOfferPresenter(
-      incoming: ref.read(harmonyShareNotificationsProvider).incoming,
-      context: () => context,
-    );
-    unawaited(HarmonyShareService.instance.start());
+    _initializeShareCore();
     _scheduleDashboardRouteSync();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initialClicks =
@@ -345,8 +343,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   void dispose() {
-    _shareOfferPresenter.dispose();
-    unawaited(HarmonyShareService.instance.stop());
+    _disposeShareCore();
     _notificationClickSub?.cancel();
     _windowChannel.setMethodCallHandler(null);
     windowManager.removeListener(this);
@@ -358,14 +355,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Future<void> _handleNotificationClick(Map<String, dynamic> payload) async {
     if (!mounted) return;
     final revision = ++_notificationClickRevision;
-    if (ref.read(harmonyShareNotificationsProvider).incoming.handleClick(payload)) {
-      return;
-    }
-    if (routeHarmonyShareNotification(payload, () {
-      if (mounted) context.goNamed(AppRouteNames.harmonyShare);
-    })) {
-      return;
-    }
+    if (_handleShareCoreNotification(payload)) return;
     final type = payload['type'] as String?;
     final deviceId = payload['deviceId'] as String?;
     final deviceSerial = payload['deviceSerial'] as String?;

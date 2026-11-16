@@ -53,17 +53,38 @@ class EmbedShareCoreTests(unittest.TestCase):
         self.assertFalse(self.app.exists())
         self.assertFalse(self.calls.exists())
 
-    def test_explicit_debug_skip_does_not_modify_existing_app(self):
+    def test_explicit_debug_skip_removes_only_target_app_share_core(self):
         component = self.app / "Contents/MacOS/ShareCore/helper"
         component.parent.mkdir(parents=True)
         component.write_bytes(b"existing-artifact")
-        before = (component.read_bytes(), component.stat().st_mtime_ns,
-                  component.stat().st_mode)
-        result = self.run_script(ANYDECK_SKIP_SHARE_CORE="1", CONFIGURATION="Debug")
+        metadata = self.app / "Contents/Resources/ShareCore/manifest.json"
+        metadata.parent.mkdir(parents=True)
+        metadata.write_text('{"old": true}')
+        runner = self.app / "Contents/MacOS/AnyDeck"
+        runner.write_bytes(b"keep-runner")
+        other = self.directory / "Other.app/Contents/MacOS/ShareCore/helper"
+        other.parent.mkdir(parents=True)
+        other.write_bytes(b"keep-other-app")
+        result = self.run_script(
+            ANYDECK_SKIP_SHARE_CORE="1", CONFIGURATION="Debug",
+            ANYDECK_SHARE_CORE_ARCHIVE="/missing/private-artifact.zip",
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((component.read_bytes(), component.stat().st_mtime_ns,
-                          component.stat().st_mode), before)
-        self.assertEqual(list(component.parent.iterdir()), [component])
+        self.assertFalse(component.parent.exists())
+        self.assertFalse(metadata.parent.exists())
+        self.assertEqual(runner.read_bytes(), b"keep-runner")
+        self.assertEqual(other.read_bytes(), b"keep-other-app")
+        self.assertFalse(self.calls.exists())
+
+    def test_debug_skip_without_share_core_directories_is_idempotent(self):
+        runner = self.app / "Contents/MacOS/AnyDeck"
+        runner.parent.mkdir(parents=True)
+        runner.write_bytes(b"keep-runner")
+        for _ in range(2):
+            result = self.run_script(ANYDECK_SKIP_SHARE_CORE="1", CONFIGURATION="Debug")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(runner.read_bytes(), b"keep-runner")
+        self.assertFalse((self.app / "Contents/Resources").exists())
         self.assertFalse(self.calls.exists())
 
     def test_skip_rejects_release_profile_missing_and_unknown_configuration(self):
@@ -78,11 +99,70 @@ class EmbedShareCoreTests(unittest.TestCase):
                 self.assertFalse(self.app.exists())
                 self.assertFalse(self.calls.exists())
 
-    def test_debug_skip_does_not_require_xcode_app_path(self):
-        self.environment.pop("TARGET_BUILD_DIR")
-        self.environment.pop("WRAPPER_NAME")
+    def test_debug_skip_rejects_missing_or_unsafe_xcode_app_path(self):
+        for values in (
+            {"TARGET_BUILD_DIR": ""}, {"TARGET_BUILD_DIR": "/"},
+            {"TARGET_BUILD_DIR": "////"}, {"TARGET_BUILD_DIR": "relative/build"},
+            {"TARGET_BUILD_DIR": str(self.directory / "..")},
+            {"WRAPPER_NAME": ""}, {"WRAPPER_NAME": "../Other.app"},
+            {"WRAPPER_NAME": "/Other.app"}, {"WRAPPER_NAME": ".app"},
+            {"WRAPPER_NAME": "AnyDeck"},
+        ):
+            with self.subTest(values=values):
+                result = self.run_script(
+                    ANYDECK_SKIP_SHARE_CORE="1", CONFIGURATION="Debug", **values)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Share Core cleanup requires", result.stderr)
+                self.assertFalse(self.app.exists())
+        self.assertFalse(self.calls.exists())
+
+    def test_debug_skip_accepts_missing_build_directory_without_creating_it(self):
+        missing = self.directory / "missing/build"
+        result = self.run_script(
+            ANYDECK_SKIP_SHARE_CORE="1", CONFIGURATION="Debug",
+            TARGET_BUILD_DIR=str(missing),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(missing.exists())
+        self.assertFalse(self.calls.exists())
+
+    def test_debug_skip_rejects_symlinked_parent_without_deleting_any_component(self):
+        for relative in ("", "Contents", "Contents/MacOS", "Contents/Resources"):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory(
+                dir=self.directory, prefix="parents-") as temporary:
+                build = Path(temporary)
+                app = build / "AnyDeck.app"
+                link = app / relative if relative else app
+                link.parent.mkdir(parents=True, exist_ok=True)
+                outside = build / "outside"
+                outside.mkdir()
+                marker = outside / "keep.txt"
+                marker.write_bytes(b"keep-outside")
+                link.symlink_to(outside, target_is_directory=True)
+                result = self.run_script(
+                    ANYDECK_SKIP_SHARE_CORE="1", CONFIGURATION="Debug",
+                    TARGET_BUILD_DIR=str(build),
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("regular app parent directories", result.stderr)
+                self.assertEqual(marker.read_bytes(), b"keep-outside")
+                self.assertTrue(link.is_symlink())
+        self.assertFalse(self.calls.exists())
+
+    def test_debug_skip_unlinks_component_symlink_without_following_it(self):
+        outside = self.directory / "outside"
+        outside.mkdir()
+        marker = outside / "helper"
+        marker.write_bytes(b"keep-outside")
+        links = [self.app / "Contents" / name / "ShareCore"
+                 for name in ("MacOS", "Resources")]
+        for link in links:
+            link.parent.mkdir(parents=True)
+            link.symlink_to(outside, target_is_directory=True)
         result = self.run_script(ANYDECK_SKIP_SHARE_CORE="1", CONFIGURATION="Debug")
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(marker.read_bytes(), b"keep-outside")
+        self.assertTrue(all(not link.exists() and not link.is_symlink() for link in links))
         self.assertFalse(self.calls.exists())
 
     def test_default_configurations_keep_locked_installer_and_propagate_failure(self):

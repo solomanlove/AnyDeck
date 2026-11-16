@@ -160,7 +160,7 @@ extension _DashboardContent on _DashboardScreenState {
                   const ReceiverDashboardTab()
                 else
                   const SizedBox.shrink(),
-                if (selectedTool == -4)
+                if (AnyDeckBuildFeatures.shareCore && selectedTool == -4)
                   const HarmonyShareDashboardTab()
                 else
                   const SizedBox.shrink(),

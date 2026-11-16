@@ -123,11 +123,12 @@ class PrimaryRail extends ConsumerWidget {
           icon: Icons.cast_connected_rounded,
           label: context.l10n.t('receiverCenter'),
         ),
-        _RailToolItem(
-          tabIndex: -4,
-          icon: Icons.share_rounded,
-          label: context.l10n.t('harmonyShareTitle'),
-        ),
+        if (AnyDeckBuildFeatures.shareCore)
+          _RailToolItem(
+            tabIndex: -4,
+            icon: Icons.share_rounded,
+            label: context.l10n.t('harmonyShareTitle'),
+          ),
         _RailToolItem(
           tabIndex: -5,
           icon: Icons.layers_outlined,
@@ -436,7 +437,7 @@ class PrimaryRail extends ConsumerWidget {
                         );
                       },
                     )
-                  else if (tool.tabIndex == -4)
+                  else if (AnyDeckBuildFeatures.shareCore && tool.tabIndex == -4)
                     ListenableBuilder(
                       listenable: ref.watch(harmonyShareServiceProvider),
                       builder: (context, _) {

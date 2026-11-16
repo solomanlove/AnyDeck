@@ -65,7 +65,7 @@
 | `ios-apps-management` | iOS 应用筛选、收藏与图标管理 | active | Android 风格工具栏与表格、分类/拼音筛选、持久化收藏、字母索引、设备隔离、图标 helper 取消与验证边界 | `core/ios/`, `features/ios/`, `assets/ios/` |
 | `ios-feature-parity` | iOS 布局、网页调试、录屏与 MCP 对齐 | active | WDA point 与截图像素换算、Safari Develop 入口、USB 原生录屏、MCP 平台路由和无真机回归边界 | `core/ios/`, `core/mcp/`, `features/screenshot/`, `features/ios/`, `macos/Runner/` |
 | `adb-app-window-run-config-script` | App 子窗口 Run Configuration 生成脚本 | active | 记录 `script/generate_app_window_run_configs.sh` 如何生成模拟器管理窗口和控制台窗口的 IDE Flutter 运行入口 | `script/`, `.idea/runConfigurations/`, `app/window/` |
-| `adb-flutter-ide-configuration` | Flutter IDE 配置修复 | active | Dart SDK library、主模块宏、主窗口运行入口、依赖复用、项目模型缓存与配置恢复回归 | `script/configure_flutter_ide.py`, `.idea/`, `test/script/` |
+| `adb-flutter-ide-configuration` | Flutter IDE 配置修复 | active | Dart SDK library、主模块宏、主窗口与不含 Share Core 的 Debug 入口、依赖复用、私有组件清理、项目模型缓存与配置恢复回归 | `script/configure_flutter_ide.py`, `.idea/`, `test/script/` |
 | `adb-macos-icon-assets` | macOS 图标资源机制 | active | 记录 Dock 图标、Flutter App logo、菜单栏 template icon 的资源边界和生成命令 | `assets/brand/`, `macos/Runner/Assets.xcassets/` |
 | `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录 App 万能控制台副文案与 Logo 居中、设备管理与模拟器列表同级入口、设备列表统计标签与自适应搜索筛选栏、操作列按钮圆角矩形水波纹及图标内边距、设备行名称与 IP、品牌 Logo 圆角、左侧导航 App/设备身份切换、品牌优先与制造商兜底、概览缓存兼容、返回点击逻辑及 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |
 | `adb-device-context-menu` | 设备列表常用操作右键菜单 | active | 行高亮、截图保存及剪贴板、投屏与工具 Route、三平台能力区分、离线/删除与重复操作拦截及验证边界 | `features/devices/`, `features/control/`, `test/` |

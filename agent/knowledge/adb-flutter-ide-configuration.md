@@ -22,6 +22,7 @@ python3 script/configure_flutter_ide.py --sdk /Users/mac/code_sdk/flutter
 | `.idea/modules.xml` | 注册主模块，保留 Android Helper 等其他模块 |
 | `.idea/libraries/Dart_SDK.xml` | 绑定 `<Flutter SDK>/bin/cache/dart-sdk` |
 | `.idea/runConfigurations/AnyDeck.xml` | 从 `lib/main.dart` 启动主窗口，保留自定义参数和环境变量 |
+| `.idea/runConfigurations/AnyDeck_No_Share_Core.xml` | 独立 Debug 入口，关闭文件互传服务与私有组件打包 |
 
 `.idea` 继续保持 Git 忽略；提交恢复脚本和测试，不提交个人 SDK 路径、workspace 状态或缓存。脚本使用 Python 标准库，不安装插件、不启动 App，也不修改 Flutter SDK。
 
@@ -68,3 +69,36 @@ flutter analyze --no-pub
 本次脚本回归 11 项通过。全项目静态分析无 error，仍有既有 5 项 warning、721 项 info，未修改无关业务代码消除这些提示。
 
 本机 IDE 已能识别 `main.dart` 所属 AnyDeck 模块，并从 Run 进入 Dart、Swift 与 Rust 原生构建。完整包仍要求 `script/share_core.lock.json` 对应的私有制品；仅有 SDK 和运行配置不代表该制品已齐备。当前固定 commit `b6ccfbd244eec0a908c80a91c228995b15581b10` 未发布到远端，本机未命中校验缓存时会因私有制品获取失败而终止，不能将此归因于 Dart 路径，也不能用旧版本 zip 替代。
+
+## 不含 Share Core 的独立 Debug 入口
+
+为缺少私有制品的开发环境新增 **AnyDeck（不含 Share Core）**。执行上面的配置恢复命令后，Android Studio 选择该入口与 **macOS (desktop)**；本机已生成并选中该配置。完整入口 **AnyDeck** 继续保留私有制品校验，两者不互相修改开关。
+
+| 层次 | 开关与行为 |
+| --- | --- |
+| Flutter | `--debug --no-pub --dart-define=ANYDECK_ENABLE_SHARE_CORE=false`；隐藏文件互传侧栏/页面，不创建服务和互传通知监听，旧互传链接重定向到设备列表 |
+| Xcode 构建 | `ANYDECK_SKIP_SHARE_CORE=1`；Debug 跳过 Share Core 安装器，不访问私有源码仓库或制品，不读取失效的 archive 路径 |
+| 增量包清理 | 仅移除当前目标 `.app/Contents/MacOS/ShareCore` 和 `Contents/Resources/ShareCore`，包含旧程序和 manifest，随后仍由 Xcode 签名 |
+
+不含 Share Core 指不获取、编译或打包私有原生组件；主仓公开的 IPC 适配与完整入口继续保留。编译期开关由同一快照供所有窗口使用，不通过设置或跨窗口广播动态切换。该入口仅用于 Debug，Release/Profile 仍禁止跳过私有组件。
+
+CLI 使用同一组开关，构建后还会检查最终包内无上述目录：
+
+```bash
+./script/build_macos_without_share_core.sh
+```
+
+Flutter 不在 PATH 时可设置 `FLUTTER_BIN=/Users/mac/code_sdk/flutter/bin/flutter`。本机 CLI 验证还复用了既有 `.idea/anydeck-cargo.sh` 与离线缓存；IDE 独立入口自动继承完整入口的 `CARGO` 等工具链环境，并保留自己的自定义参数。首次生成时克隆完整配置，后续只补缺失环境并校正 Debug/Share Core 开关；两份入口均先验证 XML，再备份写入。
+
+### 影响与验证
+
+直接影响配置生成、Share Core 打包及文件互传导航；不修改 ADB/HDC、投屏、设备管理和主题/语言实现。相关测试覆盖中英文、明暗主题、默认服务入口保留、禁用时不读取服务 Provider、深链接回退、两类残留目录、错误路径与符号链接、失败退出码和原配置保留。新 Dart 文件与调整后的主文件均小于 500 行。
+
+```bash
+python3 -m unittest test/script/test_build_without_share_core.py test/script/test_embed_share_core.py test/script/test_flutter_ide_config.py -v
+flutter test --no-pub test/no_share_core_build_test.dart test/dashboard_service_navigation_test.dart test/dashboard_route_test.dart
+flutter test --no-pub --dart-define=ANYDECK_ENABLE_SHARE_CORE=false test/no_share_core_build_test.dart
+flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings
+```
+
+本轮 27 项脚本、默认配置 18 项 Flutter 与禁用配置 5 项 Flutter 测试通过。全项目分析 0 error、5 warning、723 info；定向分析无 error/warning，仅 5 项 Flutter SDK 弃用提示。CLI 实际构建 `build/macos/Build/Products/Debug/AnyDeck.app` 成功，包内两个 Share Core 目录均不存在，`codesign --verify --deep --strict` 通过。IDE 已识别并选中新入口；本轮未启动 App、未操作手机，不将构建验证描述为真机功能验收。开始时已有的 7 个依赖锁/插件生成文件修改保持逐字不变，不纳入本次提交。

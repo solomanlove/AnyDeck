@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers/app_providers.dart';
 import '../../features/dashboard_screen.dart';
+import '../config/build_features.dart';
 import 'dashboard_route.dart';
 
 import '../../features/developer/developer_options_screen.dart';
@@ -50,6 +51,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/harmony-share',
             name: AppRouteNames.harmonyShare,
+            redirect: (context, state) =>
+                AnyDeckBuildFeatures.shareCore ? null : '/devices',
             builder: (context, state) => const SizedBox.shrink(),
           ),
           GoRoute(
@@ -105,7 +108,9 @@ String _initialLocation(Ref ref) {
   final tabIndex = ref.read(selectedToolTabProvider);
   if (tabIndex == -2) return '/emulators';
   if (tabIndex == -3) return '/receivers';
-  if (tabIndex == -4) return '/harmony-share';
+  if (tabIndex == -4) {
+    return AnyDeckBuildFeatures.shareCore ? '/harmony-share' : '/devices';
+  }
   if (tabIndex == -5) return '/system-versions';
   if (tabIndex == 12) return '/settings';
   if (tabIndex == 13) return '/wan-android';
