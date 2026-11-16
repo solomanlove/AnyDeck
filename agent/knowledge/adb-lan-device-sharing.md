@@ -217,3 +217,93 @@ flutter test --no-pub test/device_share_*.dart
 - 未启动或构建桌面应用，也未切换用户当前 Wi-Fi；真实双电脑、系统定位授权、Wi-Fi 切换/休眠恢复与长时运行仍需人工验收。
 
 人工重点：分享方选择期限与自动规则，接收方首次连接后断开，确认设备列表移除且历史可重连；重启双方应用或改变分享方地址后重连；离开/返回指定 Wi-Fi、手机拔插及期限到期；手动暂停后确认不自动重开，删除规则后确认旧历史认证失败。永久模式应在托盘运行期间保持等待，退出应用后会话应结束。
+
+## 10. 投屏拥塞恢复被窗口取消（2026-11-16）
+
+### 现象与定位
+
+接收方的三星 SM-F9710 经局域网共享后保持 ADB 在线，投屏多次成功生成 1920×1448 解码帧，但随后结束并清理 server/forward；其中两次在首帧后约 2.7 秒停止。投屏使用 16 Mbps，旧日志只保留清理命令，未记录触发恢复的健康快照，因此不能追溯每次停止的具体触发项。
+
+真实 `MirrorWindowApp` 的回归测试确认以下生命周期冲突：
+
+1. 共享回环 Transport 按 TCP 投屏通道处理。连续三次每秒采样发现视频积压至少 350 ms 时，`MirrorRecoveryPolicy` 请求降档重建。
+2. `ActiveEmbeddedMirrorNotifier` 停止旧会话时清空 Texture。子窗口 `deviceOnlineProvider` 以活跃投屏 Session 判断在线，随之返回 false。
+3. 窗口原有在线监听再次调用 `forceStopMirroring()`，增加 generation 并重置降档策略。等待旧资源释放的自动恢复请求因 generation 变化被取消。
+4. 用户手动重连仍按原画质启动，遇到持续积压后可再次触发相同冲突。旧测试的立即返回 stop 会合并空状态与新 Texture，必须用受控异步释放才能复现。
+
+### 修复与资源归属
+
+- Android 窗口不再根据投屏 Session 的空状态反向停止会话；实际 ADB 设备变化由 `AndroidMirrorTransportHost` 处理，异常 server 退出由投屏 Notifier 处理。iOS/HarmonyOS 保留原在线监听。
+- 降档继续复用原有旧资源清理、generation 校验和 20 秒冷却。用户主动停止或恢复期间关窗仍取消迟到的启动；未增加自动共享重连或修改全局画质设置。
+- `embedded_scrcpy_recovery.dart` 将 `stream_recovery_requested` 和 `stream_recovery_failed` 写入 `AppLogRecorder`，记录现有 Texture、视频积压、音频状态及目标画质，不写入设备标识或分享凭据。后续可从本地日志区分主动降档与共享设备断线。
+
+### 验证与边界
+
+- 新增真实窗口组件测试，覆盖共享手机降档后重建、恢复日志、正常关窗释放，以及清理期间关窗后不再启动。旧版在受控异步清理下只启动一次，修复后成功启动第二次并使用 1280/4 Mbps。
+- 窗口恢复、健康策略、Android 换线、连接解析、设备事件、错误状态、剪贴板、画面几何、窗口尺寸、画质设置、iOS/HarmonyOS 回归及共享 Transport/慢 OPEN/到期关闭等 16 个文件共 **100 项通过**；4 个生产入口及新增测试定向 `flutter analyze --no-pub` 无问题，`git diff --check` 通过。
+- 本机三星通过另一台 AnyDeck 的真实共享通道，使用当前 App 同一 Rust dylib、独立 scid/forward 做 CLI 解码：26 秒收到 113 帧，1920×1448、16 Mbps，期间原生会话持续运行；另一次 31 秒同时读取 `getprop`、约 3 MB 的 `dumpsys wifi` 和 `dumpsys display`，三条查询均成功且视频会话未退出。第二轮画面基本静止，只收到 22 帧，不能作为动态画面长时稳定性验收。
+- 临时 server jar、scid、forward 和原生会话均已清理。未启动、重启或构建桌面应用；上述真机测试验证底层共享和解码，窗口修复由自动化测试验证。更新后的真实窗口动态画面、触控、音频与长时 Wi-Fi 波动仍需人工验收。
+
+## 11. Android Studio 大包安装超时与共享流阻塞（2026-11-16）
+
+### 现场证据
+
+- Android Studio 的 “Launching on devices” 包含部署安装阶段。现场日志在 16:50:22 成功创建 PackageManager Session，随后通过 `abb` 流式传输 272,527,484 字节（约 260 MiB）APK；16:55:22 正好 5 分钟后放弃 Session 并报 `SHELL_UNRESPONSIVE`。未进入 Activity 启动或 JDWP attach，不能把该现象归为 App 启动失败。
+- 同时运行的另一个 IDE 在安装期间读取共享设备属性超时。此前 12 KB 的 `abb_exec` 安装桩测试不能代表大包 `abb` / Shell v2 的完整路径。
+- 真实共享三星的 4 MiB 无压缩上传耗时 8.354 秒（0.479 MiB/s），回读耗时 6.253 秒且 SHA-256 一致。另以独立临时安装 Session 验证 `abb` 输入流：8 MiB 用时 23.911 秒后返回响应，随后弃置 Session，没有 commit、安装或启动用户 App。按该吞吐传输完整 APK 会超过 IDE 的 5 分钟时限。
+- 分享方地址的 4 次 ICMP 往返为 7.961～234.196 ms，平均 105.214 ms；该短测只说明现场延迟波动，不能据此判断具体路由器、频段或源端 USB 的故障。
+
+### 入站写入与流隔离
+
+- 原 `SharedAdbPeer.run()` 在收到 `WRTE` 后等待单条后端服务 `flush()`，最长 15 秒；此时同一 Transport 上其他流的 ACK、关闭和 OPEN 均不能处理。用可控 `flush` gate 确认：仅一条服务停止消费输入，即可让另一条 8192 字节视频流在首块确认后停止发送第二块。
+- `AdbBridgeStream` 现在独立处理写入，Transport 循环继续分派其他流事件。Legacy ADB 每流最多接纳一块未确认输入，违规重复写入只关闭该服务，不建立无界 Future 队列。
+- 本流输入额度持续占用到 `OKAY` 真正进入 TLS 写入前，再由统一 FIFO 的 `beforeWrite` 释放；既避免 ACK 排队期间输入无界积压，也避免已收到 ACK 的快速回包被误拒绝。对端关闭会销毁后端 Socket，清理未完成写入。
+
+### 大包流控依据
+
+[AOSP Transport 协议](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/dev/protocol.md) 允许接收 `WRTE` 后立即发送 `READY`，也允许本地服务写入后才确认；服务层字节可以在不改变顺序的前提下重新分包。小块数据逐次等待跨局域网 ACK 时，吞吐受包大小与往返延迟限制。
+
+`delayed_ack` 需要双方协商，当前共享未宣告该能力；AOSP Host 还通过 `ADB_BURST_MODE` 控制它。不能为单设备共享重启用户的全局 ADB Server 或静默修改其环境，参见 [AOSP Delayed ACK](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/dev/delayed_ack.md)。
+
+### 接收端有界上传聚合
+
+- `adb/shared_adb_bulk_relay.dart` 接管最多四条由本机发起的 `sync:`、`abb:`、`abb_exec:` 上传流。向本机 ADB 提前发布有界 `OKAY`，把等待远端 ACK 期间积压的服务字节合并为不超过协商 maxPayload 的一个 `WRTE`；对分享方仍严格每流只发送一块未确认数据，兼容原 Legacy ADB Bridge。
+- 每流窗口随协商 payload 大小变化，最多 1 MiB；计入在途和缓存字节，窗口满后暂停本地 ACK，最多再保留一块已在途的本机输入。没有整包缓存或无界 Future 队列。ACK 真正进入 Socket 前才释放下一块本机输入额度，零字节包不加入数据队列。
+- 远端数据 ACK 被代理消费，不能再次传给已获提前确认的本机 ADB；初始 OPEN 的 ACK 独立处理。Stream ID pair 校验、失败 OPEN 和远端关闭负责释放对应状态；远端先关闭时取消尚未写出的缓存与提前 ACK。
+- 本机 CLSE 等待已接纳的字节按序排空后才送往分享方。普通 Shell、视频流、第五条批量流以及源端发起的 Reverse 维持透明转发；本改动不承诺 pull 提速。两个 Socket 出口各自用 FIFO 串行写入。
+- `JoinedDeviceShare` 在完成原有证书指纹和 token 认证后使用聚合 Relay。终止时通过可注入诊断回调记录 `relay_input_closed direction=local|remote error_type=...`，由主窗口落入 `device_share` 本地日志；不记录原始异常文本、设备 ID、分享码或 payload。主动停止先取消 Relay，不误报为网络异常。
+
+### 验证边界与使用要求
+
+- 原生隔离 ADB 集成新增与现场相同大小的 **272,527,484 字节** `abb` / Shell v2 输入，逐 64 KiB 发送、解析与 SHA-256 校验，验证 NUL 参数、stdin/EOF、完整响应和退出码，以及安装输入未完成时独立 Shell 查询仍成功。不连接真实手机，也不生成、安装或启动 App。
+- 慢写入测试覆盖独立流 ACK、关闭回收、重复 WRTE 有界、ACK 排队与快速回包；聚合测试覆盖窗口背压、减少远端确认次数后的内容 hash、延迟 CLSE、远端关闭取消、错误 ID、四流上限及非批量/Reverse 透传。
+- 共享、概览和投屏恢复等 **19 个文件共 134 项测试通过**，包含完整 260 MiB ABB 数据回归；10 个修改/新增 Dart 入口定向 analyze 无诊断，新增文件格式和 `git diff --check` 通过。
+- 17:13:16 真实共享连接再次整体关闭，当时进行的额外传输验证失败；缺少旧版本终止方向日志，不能确认这次关闭的原因。随后用保存的身份和独立接收端 ADB 重新连接，回读型号确认仍是同一台三星：更新后 8 MiB 上传耗时 8.959 秒，SHA-256 一致、4 次并发查询全部成功，会话持续在线。
+- 真实手机的更新后 `abb` 8 MiB 输入耗时 11.547 秒，返回 `Success`，临时安装 Session 已成功弃置；先前样本为 23.911 秒。两轮采样时间不同，不能把差异全部归因于代码；尚未验证 260 MiB 用户 APK 在真实 IDE 中完整安装、启动和 Debug attach，也不承诺长时 Wi-Fi 稳定性。临时远端数据、Session、Socket 和隔离 ADB Server 已清理。
+- 更新接收方后可使用上传聚合与终止方向日志；分享方也需更新并重建共享，才能应用后端慢写流隔离。重连后 Android Studio 应选中当前在线的共享设备，再验证同一 APK 的完整安装、启动与 Debug attach。未主动启动或重启桌面 App、IDE、用户 ADB Server 或用户手机 App。
+
+## 12. 手动共享自行断开与源端原因记录（2026-11-16）
+
+用户确认 17:13:16 接收端设备消失时，分享方为 macOS，手机和 AnyDeck 均在线，且没有启用指定 Wi-Fi 自动准备。因此不能将此次关闭归因于自动准备的 SSID 检查。旧版接收端日志缺少分享方退出原因，暂时无法取得源端历史日志，不能确认这次断开属于网络、ADB transport 或到期关闭。
+
+### 已复现的设备快照缺陷
+
+- `DeviceDiscoveryTracker._sameDeviceList` 原先只比较设备 ID、状态、型号和产品标记，遗漏 `transportId`。同一手机快速重连时，如果两轮均显示在线、只有 transport 改变，新的设备快照不会发布，`currentDevices` 仍保留旧 transport。现将 transport 纳入变化判断；重复相同 transport 继续去重。
+- 分享操作会回读实时 ADB 列表，而网络和串号更新可能复用 Provider 缓存的旧设备列表。原来每次 `updateEnvironment` 都用该列表调用 `validateHosts`，可能撤销刚绑定新 transport 的共享。现在 Provider 只在真实设备列表事件中传入 `sourceDevicesUpdated: true`；元数据和网络通知仍更新自动准备环境，但不把缓存列表当作新的拔线证据。
+- 新测试分别验证真实 `track-devices` 格式帧发布 transport 变化，以及“缓存 71、实时绑定 72、串号/网络更新仍带 71”时新共享保持在线。真实设备事件缺失源设备或改变 transport 时仍按原规则撤销，不允许把已建立流改绑到其他设备。以上为确认的代码缺陷，不代表已证明 17:13 现场由它触发。
+
+### 分享方关闭分类
+
+- `host_stopped reason=...` 表示监听整体结束，区分 `expired`、`sourceUnavailable`、`sourceTransportChanged`、`reconfigured`、`ruleRemoved`、`setupFailed`、`appExit`、`listenerError` 与调用方 `requested`。并发关闭只保留第一个原因。
+- `host_peer_ended listener_open=true` 表示本次接收连接结束，分享监听仍可用。接收方正常退出或 Socket 异常均可能走此路径，不能仅凭这个事件判定手机或分享 App 离线。同一分享码可重新认证由真实 TLS 测试覆盖。
+- `peer_transport_failed` 区分握手、设备能力读取、接收、发送和异常 OPEN 阶段。能力读取失败记为 `backend_banner / local_adb`；出口故障记为 `write / to_receiver`。主动关闭及其后续 EOF 不重复报错。
+- `stream_failed` 区分设备读写、传输写入、OPEN ACK、数据 ACK 和 ACK 发送；ACK 超时归于接收方向，不能误报成设备读取故障。日志仅包含受控事件、阶段、方向、临时 Stream ID 和异常类型，不记录原始异常、设备数据或分享凭据。
+- 所有回调均通过无 Flutter 依赖的 `reportDeviceShareDiagnostic` 安全调用，观察者异常不能阻止 Socket 清理。现有主窗口 `onDiagnostic` 将源端事件写入本地 `device_share` 日志；未新增高频轮询、自动重连或 MethodChannel。
+
+### 验证结果
+
+- 共享、设备发现、概览及投屏恢复共 **23 个文件、160 项测试顺序执行通过**，包含 260 MiB ABB 完整字节回归。11 个修改/新增入口定向 analyze 无诊断，新增文件格式与 `git diff --check` 通过。
+- 首次并发回归中，已有 UDP 端口立即重绑定用例曾遇到一次 `Address already in use`；该用例独立复测与完整顺序回归均通过。本轮未修改 UDP 发现实现，不能据此归因于此次共享自动断开。
+- 新覆盖 transport 发布/去重、旧元数据快照不误停新共享、源设备撤销原因、同码再次认证、到期/主动/退出分类、诊断观察者异常清理，以及各接收/发送阶段的脱敏错误记录。ACK 超时采用虚拟时间验证，不增加真实等待。
+
+后续现场应同时保留分享方与接收方的新版本日志，先区分 Host 停止还是 Peer 结束，再核对同一时刻的传输阶段。此次未启动或重启用户 App/IDE，未验证真实网络断开后的长期稳定性。

@@ -17,6 +17,7 @@ import 'package:any_deck/core/process/tool_path_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/device_share_fixture.dart';
+import 'support/shared_abb_fixture.dart';
 import 'support/shared_sync_fixture.dart';
 
 /// 独立端口且 --one-device 指向不存在的 serial，不接管用户的 ADB Server 或 USB。
@@ -59,6 +60,7 @@ void main() {
   JoinedDeviceShare? joined;
   late Directory directory;
   final sync = SharedSyncFixture();
+  final diagnostics = <String>[];
   final binary = resolveToolPath('adb');
   if (!File(binary).existsSync()) {
     test('真实 ADB 集成需要本机 platform-tools', () {}, skip: 'ADB binary unavailable');
@@ -113,6 +115,7 @@ void main() {
   });
 
   setUp(() async {
+    diagnostics.clear();
     source = ShareAdbFixture()..features = 'shell_v2';
     source.onService = (service, socket, reader) async {
       if (service == 'sync:') {
@@ -133,7 +136,12 @@ void main() {
       onChanged: () {},
       bindAddress: InternetAddress.loopbackIPv4,
     );
-    joined = await JoinedDeviceShare.connect(host.invitation, localAdb, () {});
+    joined = await JoinedDeviceShare.connect(
+      host.invitation,
+      localAdb,
+      () {},
+      onDiagnostic: diagnostics.add,
+    );
   });
 
   tearDown(() async {
@@ -385,6 +393,44 @@ void main() {
     expect(received, content);
   });
 
+  test('真实 adb ABB Shell v2 流式传输 260 MiB 安装输入且不阻塞查询', () async {
+    await joined!.close();
+    source.features = 'shell_v2,cmd,abb';
+    final abb = SharedAbbFixture(272527484);
+    source.onService = abb.handle;
+    joined = await JoinedDeviceShare.connect(host.invitation, localAdb, () {});
+    final result = await abb
+        .upload(
+          localAdb.port,
+          joined!.deviceId,
+          duringUpload: () async {
+            expect(abb.receivedBytes, inExclusiveRange(0, abb.size));
+            expect(abb.receivedHash, isNull);
+            final query = await localAdb.shellArgs(joined!.deviceId, [
+              'getprop',
+            ], timeout: const Duration(seconds: 5));
+            expect(query.exitCode, 0, reason: query.message);
+            expect(query.stdout, 'AnyDeck concurrent shell\n');
+          },
+        )
+        .timeout(const Duration(seconds: 90));
+    expect(abb.request?.split('\u0000'), [
+      'abb:package',
+      'install-write',
+      '-S',
+      '272527484',
+      'test-session',
+      'base.apk',
+      '-',
+      '',
+    ]);
+    expect(abb.receivedBytes, abb.size);
+    expect(abb.receivedHash, result.sentHash);
+    expect(result.stdout, 'Success\n');
+    expect(result.exitCode, 0);
+    expect(joined!.closed, isFalse);
+  }, timeout: const Timeout(Duration(seconds: 100)));
+
   test('真实 adb reverse 回连接收端，list 和 remove 不泄露宿主其他规则', () async {
     final listener = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(listener.close);
@@ -436,6 +482,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
     expect(joined!.closed, isTrue);
+    expect(diagnostics, contains(contains('direction=remote')));
     await joined!.close();
     final devices = await localAdb.listDevices();
     expect(devices.where((device) => device.id == joined!.deviceId), isEmpty);

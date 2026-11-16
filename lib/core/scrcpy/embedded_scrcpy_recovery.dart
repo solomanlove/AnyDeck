@@ -28,10 +28,12 @@ extension _EmbeddedMirrorRecovery on ActiveEmbeddedMirrorNotifier {
         elapsed: _healthClock.elapsed,
       );
       if (quality == null) return;
-      stdout.writeln(
-        '[MirrorRecovery] $deviceId lag=${health.videoLagMs}ms '
-        'audioFailed=${health.audioFailed} maxSize=${quality.maxSize} '
-        'bitrate=${quality.bitrate}',
+      AppLogRecorder.instance.record(
+        'stream_recovery_requested texture=$textureId '
+        'video_lag_ms=${health.videoLagMs} audio_failed=${health.audioFailed} '
+        'max_size=${quality.maxSize} bitrate=${quality.bitrate}',
+        tag: 'mirror',
+        level: 'W',
       );
       unawaited(_recoverStream(service, quality, newDisplay, startApp));
     });
@@ -53,7 +55,11 @@ extension _EmbeddedMirrorRecovery on ActiveEmbeddedMirrorNotifier {
       await _start(newDisplay, startApp, service.isMuted(deviceId), quality);
     } catch (error) {
       // _startOnce 已发出断线事件，由窗口沿用同机选路/重连机制。
-      stderr.writeln('[MirrorRecovery] $deviceId failed: $error');
+      AppLogRecorder.instance.record(
+        'stream_recovery_failed: $error',
+        tag: 'mirror',
+        level: 'E',
+      );
     } finally {
       _recovering = false;
     }

@@ -1,7 +1,9 @@
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_share/device_share_service.dart';
+import 'package:any_deck/core/device_share/device_share_auto_prepare.dart';
 import 'package:any_deck/core/device_share/device_share_models.dart';
 import 'package:any_deck/core/device_share/device_share_store.dart';
+import 'package:any_deck/core/network/host_network_info.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fake_adb_service.dart';
@@ -19,13 +21,16 @@ void main() {
   late ShareAdbFixture backend;
   late _Devices adb;
   late DeviceShareService service;
+  final diagnostics = <String>[];
   setUp(() async {
+    diagnostics.clear();
     backend = ShareAdbFixture();
     await backend.start();
     adb = _Devices();
     service = DeviceShareService(
       adb,
       backendFactory: (_, _) => backend.backend,
+      onDiagnostic: diagnostics.add,
     );
   });
   tearDown(() async {
@@ -43,7 +48,7 @@ void main() {
     );
   });
 
-  test('设备拔线或 transport 变化立即撤销已有共享，不自动替换设备', () async {
+  test('源设备 transport 变化立即撤销已有共享，不自动替换设备', () async {
     final share = await service.share('phone', '测试手机', '127.0.0.1');
     service.validateHosts(const [
       DiscoveredDevice(id: 'phone', status: 'device', transportId: '99'),
@@ -51,6 +56,31 @@ void main() {
     await share.close();
     expect(share.closed, isTrue);
     expect(service.hosts, isEmpty);
+    expect(diagnostics, contains(contains('reason=sourceTransportChanged')));
+  });
+
+  test('源设备缺失时撤销共享并记录 sourceUnavailable', () async {
+    final share = await service.share('phone', '测试手机', '127.0.0.1');
+    service.validateHosts(const []);
+    await share.close();
+    expect(share.closed, isTrue);
+    expect(diagnostics, contains(contains('reason=sourceUnavailable')));
+  });
+
+  test('网络或串号更新复用旧设备快照时，不撤销刚从实时 ADB 创建的共享', () async {
+    const stale = DeviceShareEnvironment(
+      network: HostNetworkInfo(),
+      devices: [
+        DiscoveredDevice(id: 'phone', status: 'device', transportId: '71'),
+      ],
+    );
+    await service.updateEnvironment(stale);
+    // share() 回读实时列表，实际绑定 72；元数据通知仍可能携带缓存的 71。
+    final share = await service.share('phone', '测试手机', '127.0.0.1');
+    expect(share.backend.transportId, '72');
+    await service.updateEnvironment(stale, sourceDevicesUpdated: false);
+    expect(share.closed, isFalse);
+    expect(diagnostics, isNot(contains(startsWith('host_stopped'))));
   });
 
   test('设备原 transport 保持在线时不打断共享，状态变化发出不同 revision', () async {
@@ -107,6 +137,7 @@ void main() {
     final share = await service.share('phone', '测试手机', '127.0.0.1');
     await service.dispose();
     expect(share.closed, isTrue);
+    expect(diagnostics, contains(contains('reason=appExit')));
     await expectLater(
       service.share('phone', '测试手机', '127.0.0.1'),
       throwsStateError,

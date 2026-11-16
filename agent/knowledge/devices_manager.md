@@ -181,3 +181,9 @@ HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The
 局域网共享的重连记录统一保存在共享管理，不再用回环 `127.0.0.1:动态端口` 离线设备行充当历史入口。`DeviceRegistryMerger.mergeDevices` 在物理序列号归并前，依据当前发现或缓存的 `anydeck_shared_device` 产品标记排除已断开的共享通道；在线共享照常展示，端口后来被明确的其他在线设备使用时不沿用旧标记。
 
 过滤只作用于共享通道，不删除同序列号的 USB、普通无线 ADB、本地备注或标签。`device_share_registry_visibility_test.dart` 覆盖缺失/离线共享隐藏、在线共享显示、本地 USB 保留及回环端口复用；历史重连、私有凭据和指定 Wi-Fi 自动准备见 `adb-lan-device-sharing.md` 第 9 节。
+
+## 5. ADB transport 变化发布（2026-11-16）
+
+同一设备快速重连时可能始终显示 `device`，但 `transport_id` 已变化。`DeviceDiscoveryTracker` 的列表去重必须比较 `transportId`，及时发布新快照并更新 `currentDevices`；不能仅以 ID、在线状态、型号和产品标记判断未变化。共享会话绑定具体 transport，旧快照可能误停刚创建的共享，相关事件归属与诊断见 `adb-lan-device-sharing.md` 第 12 节。
+
+`device_discovery_transport_test.dart` 使用真实格式的 `track-devices` 帧验证只变 transport 也发布，完全相同的快照不重复发布；不启动外部 ADB 或桌面应用。

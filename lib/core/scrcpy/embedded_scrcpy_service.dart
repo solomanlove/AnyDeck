@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../adb/adb_service.dart';
+import '../logging/app_log_recorder.dart';
 import '../providers/app_providers.dart';
 import 'app_virtual_display_launcher.dart';
 import 'fusion_display_density.dart';
