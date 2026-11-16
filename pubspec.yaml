@@ -94,6 +94,7 @@ flutter:
 
   assets:
     - assets/android/package_icon_helper.dex
+    - assets/android/foldable-screen-helper.jar
     - assets/android/usage_companion.apk
     - assets/brand/
     - assets/scrcpy/

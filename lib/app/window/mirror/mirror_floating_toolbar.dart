@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/scrcpy/embedded_scrcpy_service.dart';
+import '../../../core/foldable/foldable_screen_controller.dart';
 import '../../../core/device_actions/device_action_service.dart';
 import '../../../core/harmony/harmony_foreground_window.dart';
 import '../../../core/ios/ios_mirror_service.dart';
@@ -27,6 +28,7 @@ import 'mirror_screen_recording_action.dart';
 import 'mirror_clipboard_input_button.dart';
 import 'mirror_clipboard_button.dart';
 import 'mirror_whiteboard_controls.dart';
+import 'widget/mirror_foldable_screen_button.dart';
 import '../../../features/control/whiteboard/mirror_whiteboard_controller.dart';
 
 export 'mirror_toolbar_button.dart';
@@ -113,6 +115,10 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     final actions = ref.read(deviceActionServiceProvider);
     final isScreenOff = ref.watch(screenPowerOffProvider(widget.deviceId));
     final recordState = ref.watch(screenRecordProvider(widget.deviceId));
+    // 切屏期间互斥录屏与物理息屏，其他平台和 App 副屏不建立折叠状态订阅。
+    final foldableBusy = !widget.controller.isHarmony &&
+        !widget.controller.isAppMirror &&
+        ref.watch(foldableScreenProvider(widget.deviceId).select((state) => state.isBusy));
     listenScreenRecordingErrors(context, ref, widget.deviceId);
 
     return _buildExpandedToolbar(
@@ -121,6 +127,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
       isDark,
       isScreenOff,
       recordState,
+      foldableBusy,
     );
   }
 
@@ -130,6 +137,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
     bool isDark,
     bool isScreenOff,
     ScreenRecordState recordState,
+    bool foldableBusy,
   ) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -171,12 +179,17 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 ),
                 tooltip: context.l10n.t('screenPowerToggle'),
                 shortcut: MirrorShortcut.screenPower,
+                isLoading: foldableBusy,
                 onPressed: () {
                   ref
                       .read(screenPowerOffProvider(widget.deviceId).notifier)
                       .toggleScreenPower(!isScreenOff);
                 },
               ),
+            if (!widget.controller.isIos &&
+                !widget.controller.isHarmony &&
+                !widget.controller.isAppMirror)
+              MirrorFoldableScreenButton(deviceId: widget.deviceId),
             const MirrorToolbarDivider(),
 
             // Group 2: 音量+, 音量-
@@ -320,7 +333,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                   ? context.l10n.t('stopRecord')
                   : context.l10n.t('startRecord'),
               shortcut: MirrorShortcut.recording,
-              isLoading: recordState.isStopping || recordState.isStarting,
+              isLoading: recordState.isStopping || recordState.isStarting || foldableBusy,
               badge: recordState.isRecording
                   ? const MirrorPulsingRecordBadge()
                   : null,
