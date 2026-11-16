@@ -70,3 +70,10 @@
 - 边界：保留搜索框宽度、圆角、颜色、搜索与清除回调；不固定整体高度，放大字体时自然增高。不新增文案、Provider、后台命令或跨窗口协议，不修改模拟器启动、投屏或另外两平台的搜索框。
 - 自动验证：`flutter --no-version-check test --no-pub test/emulator_search_fields_test.dart test/emulator_panel_test.dart test/device_list_filters_test.dart`，19 项全部通过。新增用例直接比较两处实际 Widget 高度，覆盖中英文、Light/Dark、1200/620px 窗口、1.6 倍文字，以及空输入、聚焦输入和清除后高度；标准文字下验证高度为 40px，并保留圆角检查。
 - 静态验证：4 个修改 Dart 文件定向 `flutter analyze --no-pub --no-fatal-infos` 无 error / warning，仅有当前 SDK 的 5 项 Flutter UI / 本地化 API 弃用 info；`git diff --check` 通过。未启动桌面 App 或真实模拟器，实际窗口视觉待运行包验收。
+
+## 三平台模拟器搜索框等高（2026-11-16）
+
+- HarmonyOS DevEco 与 iOS 搜索框接入相同的 `AppThemeSizes.searchFieldContentPadding`、`searchFieldIconConstraints` 和 `bodyMedium` 字体，清除按钮统一使用 `VisualDensity.compact`。三平台在标准文字下均为 40px，放大字体时自然增高。
+- 保留各平台搜索、清除、输入宽度、圆角及模拟器操作，不新增文案、后台命令或 Provider。此次仅扩展搜索框尺寸配置。
+- `emulator_search_fields_test.dart` 将原有等高用例参数化为 Android / HarmonyOS / iOS，与实际设备搜索框比较高度；覆盖中英文环境、Light/Dark、1200/620px 窗口、1.6 倍文字，以及输入前、输入后和清除后的状态。DevEco / iOS 原有搜索结果与清除交互用例继续保留。
+- 验证：`flutter --no-version-check test --no-pub test/emulator_search_fields_test.dart test/emulator_panel_test.dart test/device_list_filters_test.dart` 共 27 项通过；3 个修改 Dart 文件定向 `flutter analyze --no-pub --no-fatal-infos` 无 error / warning，仅有 7 项 SDK 弃用 info；`git diff --check` 通过。未启动桌面 App 或真实模拟器。

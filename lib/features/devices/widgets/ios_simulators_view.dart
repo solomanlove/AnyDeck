@@ -60,13 +60,18 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
           width: compact ? 180 : 220,
           child: TextField(
             controller: _searchController,
+            style: theme.textTheme.bodyMedium,
             onChanged: (val) => setState(() => _filter = val.trim()),
             decoration: InputDecoration(
               isDense: true,
+              contentPadding: AppThemeSizes.searchFieldContentPadding,
+              prefixIconConstraints: AppThemeSizes.searchFieldIconConstraints,
+              suffixIconConstraints: AppThemeSizes.searchFieldIconConstraints,
               prefixIcon: const Icon(CupertinoIcons.search, size: 18),
               suffixIcon: _filter.isNotEmpty
                   ? IconButton(
                       icon: const Icon(CupertinoIcons.clear_circled, size: 16),
+                      visualDensity: VisualDensity.compact,
                       onPressed: () {
                         _searchController.clear();
                         setState(() => _filter = '');

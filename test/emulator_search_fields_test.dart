@@ -19,86 +19,93 @@ import 'support/search_field_expectations.dart';
 void main() {
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
-      testWidgets('Android 模拟器搜索框与设备搜索框等高 $language $brightness', (
-        tester,
-      ) async {
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.reset);
-        final controller = TextEditingController();
-        addTearDown(controller.dispose);
-        for (final layout in [
-          (width: 1200.0, scale: 1.0),
-          (width: 620.0, scale: 1.0),
-          (width: 1200.0, scale: 1.6),
-        ]) {
-          tester.view.physicalSize = Size(layout.width, 900);
-          await tester.pumpWidget(
-            ProviderScope(
-              key: UniqueKey(),
-              overrides: [
-                emulatorListProvider.overrideWith((ref) async => []),
-                emulatorConnectionsProvider.overrideWith((ref) async => {}),
-              ],
-              child: MaterialApp(
-                locale: Locale(language),
-                supportedLocales: AppLocalizations.supportedLocales,
-                localizationsDelegates: const [
-                  AppLocalizationsDelegate(),
-                  ...GlobalMaterialLocalizations.delegates,
+      for (final platform in ['Android', 'HarmonyOS', 'iOS']) {
+        testWidgets('$platform 模拟器搜索框与设备搜索框等高 $language $brightness', (
+          tester,
+        ) async {
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          final controller = TextEditingController();
+          addTearDown(controller.dispose);
+          for (final layout in [
+            (width: 1200.0, scale: 1.0),
+            (width: 620.0, scale: 1.0),
+            (width: 1200.0, scale: 1.6),
+          ]) {
+            tester.view.physicalSize = Size(layout.width, 900);
+            await tester.pumpWidget(
+              ProviderScope(
+                key: UniqueKey(),
+                overrides: [
+                  emulatorListProvider.overrideWith((ref) async => []),
+                  emulatorConnectionsProvider.overrideWith((ref) async => {}),
+                  devecoEmulatorsProvider.overrideWith((ref) async => []),
+                  iosSimulatorsProvider.overrideWith((ref) async => []),
                 ],
-                theme: buildAppTheme(brightness),
-                builder: (context, child) => MediaQuery(
-                  data: MediaQuery.of(
-                    context,
-                  ).copyWith(textScaler: TextScaler.linear(layout.scale)),
-                  child: child!,
-                ),
-                home: Scaffold(
-                  body: Column(
-                    children: [
-                      DeviceListFilters(
-                        controller: controller,
-                        onlineCount: 0,
-                        totalCount: 0,
-                        onlineOnly: false,
-                        onOnlineOnlyChanged: (_) {},
-                        onSearchChanged: (_) {},
-                      ),
-                      const Expanded(
-                        child: EmulatorListPanel(isFullPage: true),
-                      ),
-                    ],
+                child: MaterialApp(
+                  locale: Locale(language),
+                  supportedLocales: AppLocalizations.supportedLocales,
+                  localizationsDelegates: const [
+                    AppLocalizationsDelegate(),
+                    ...GlobalMaterialLocalizations.delegates,
+                  ],
+                  theme: buildAppTheme(brightness),
+                  builder: (context, child) => MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaler: TextScaler.linear(layout.scale)),
+                    child: child!,
+                  ),
+                  home: Scaffold(
+                    body: Column(
+                      children: [
+                        DeviceListFilters(
+                          controller: controller,
+                          onlineCount: 0,
+                          totalCount: 0,
+                          onlineOnly: false,
+                          onOnlineOnlyChanged: (_) {},
+                          onSearchChanged: (_) {},
+                        ),
+                        Expanded(
+                          child: switch (platform) {
+                            'Android' => const EmulatorListPanel(
+                              isFullPage: true,
+                            ),
+                            'HarmonyOS' => const DevecoEmulatorsView(),
+                            _ => const IosSimulatorsView(),
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-          await tester.pumpAndSettle();
-          final reference = find.byKey(const Key('deviceListSearch'));
-          final search = find.descendant(
-            of: find.byType(EmulatorListPanel),
-            matching: find.byType(TextField),
-          );
-          final referenceHeight = tester.getSize(reference).height;
-          if (layout.scale == 1) expect(referenceHeight, 40);
-          expect(tester.getSize(search).height, referenceHeight);
-          expectSearchFieldRadius(tester, search, focused: false);
-          await tester.enterText(search, 'no matches');
-          await tester.pumpAndSettle();
-          expect(tester.getSize(search).height, referenceHeight);
-          expectSearchFieldRadius(tester, search, focused: true);
-          await tester.tap(
-            find.descendant(
-              of: search,
-              matching: find.byIcon(CupertinoIcons.clear_circled),
-            ),
-          );
-          await tester.pumpAndSettle();
-          expect(tester.widget<TextField>(search).controller!.text, isEmpty);
-          expect(tester.getSize(search).height, referenceHeight);
-          expect(tester.takeException(), isNull);
-        }
-      });
+            );
+            await tester.pumpAndSettle();
+            final reference = find.byKey(const Key('deviceListSearch'));
+            final search = find.byType(TextField).last;
+            final referenceHeight = tester.getSize(reference).height;
+            if (layout.scale == 1) expect(referenceHeight, 40);
+            expect(tester.getSize(search).height, referenceHeight);
+            expectSearchFieldRadius(tester, search, focused: false);
+            await tester.enterText(search, 'no matches');
+            await tester.pumpAndSettle();
+            expect(tester.getSize(search).height, referenceHeight);
+            expectSearchFieldRadius(tester, search, focused: true);
+            await tester.tap(
+              find.descendant(
+                of: search,
+                matching: find.byIcon(CupertinoIcons.clear_circled),
+              ),
+            );
+            await tester.pumpAndSettle();
+            expect(tester.widget<TextField>(search).controller!.text, isEmpty);
+            expect(tester.getSize(search).height, referenceHeight);
+            expect(tester.takeException(), isNull);
+          }
+        });
+      }
     }
   }
 
