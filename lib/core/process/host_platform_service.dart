@@ -2,8 +2,51 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
+import 'tool_terminal_launcher.dart';
+
+/// 系统启动器注入点；测试无需打开真实文件管理器或终端。
+typedef HostProcessStarter =
+    Future<Process> Function(
+      String executable,
+      List<String> arguments, {
+      String? workingDirectory,
+    });
+
 /// 宿主机系统平台服务，负责处理所有与宿主机 OS 交互的操作。
 class HostPlatformService {
+  HostPlatformService({
+    HostProcessStarter? processStarter,
+    TargetPlatform? platform,
+    Duration launchTimeout = const Duration(seconds: 15),
+    Duration terminateTimeout = const Duration(seconds: 2),
+    Duration startupGrace = const Duration(milliseconds: 300),
+  }) : _startProcess = processStarter ?? _startHostProcess,
+       _platform = platform ?? _hostPlatform,
+       _launchTimeout = launchTimeout,
+       _terminateTimeout = terminateTimeout,
+       _startupGrace = startupGrace;
+
+  final HostProcessStarter _startProcess;
+  final TargetPlatform? _platform;
+  final Duration _launchTimeout;
+  final Duration _terminateTimeout;
+  final Duration _startupGrace;
+
+  static TargetPlatform? get _hostPlatform => Platform.isMacOS
+      ? TargetPlatform.macOS
+      : Platform.isWindows
+      ? TargetPlatform.windows
+      : Platform.isLinux
+      ? TargetPlatform.linux
+      : null;
+
+  static Future<Process> _startHostProcess(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+  }) =>
+      Process.start(executable, arguments, workingDirectory: workingDirectory);
+
   /// 用默认浏览器打开 HTTP(S) 链接；独立传参，避免查询参数被 Shell 解释。
   Future<bool> openWebUri(Uri uri) async {
     if (!['https', 'http'].contains(uri.scheme) || uri.host.isEmpty) {
@@ -50,6 +93,19 @@ class HostPlatformService {
     }
   }
 
+  /// 为选定工具创建独立终端，短命令和工作目录都使用同一个可执行文件。
+  Future<bool> openToolTerminal(String executable, String toolName) =>
+      ToolTerminalLauncher(
+        platform: _platform,
+        launch: (command, arguments, {workingDirectory}) =>
+            _launchHostApplication(
+              command,
+              arguments,
+              workingDirectory: workingDirectory,
+              acceptRunning: _platform == TargetPlatform.linux,
+            ),
+      ).open(executable, toolName);
+
   /// 将 PNG 图片字节复制到宿主机系统剪贴板。
   Future<bool> copyImageToClipboard(Uint8List bytes) async {
     try {
@@ -93,21 +149,16 @@ class HostPlatformService {
     if (!directory.existsSync()) {
       return false;
     }
-    try {
-      if (Platform.isMacOS) {
-        await Process.start('open', [directory.path]);
-      } else if (Platform.isWindows) {
-        await Process.start('explorer', [directory.path]);
-      } else if (Platform.isLinux) {
-        await Process.start('xdg-open', [directory.path]);
-      } else {
-        return false;
-      }
-      return true;
-    } catch (e) {
-      debugPrint('Failed to open directory $dirPath: $e');
-      return false;
-    }
+    final executable = switch (_platform) {
+      TargetPlatform.macOS => 'open',
+      TargetPlatform.windows => 'explorer',
+      TargetPlatform.linux => 'xdg-open',
+      _ => null,
+    };
+    if (executable == null) return false;
+    return _launchHostApplication(executable, [
+      directory.path,
+    ], acceptRunning: _platform != TargetPlatform.macOS);
   }
 
   /// 使用宿主机默认程序打开指定文件。
@@ -137,24 +188,76 @@ class HostPlatformService {
 
   /// 在指定目录下打开宿主机系统的命令行终端。
   Future<bool> openTerminal(String dirPath) async {
+    if (!Directory(dirPath).existsSync()) return false;
+    return switch (_platform) {
+      TargetPlatform.macOS => _launchHostApplication('open', [
+        '-a',
+        'Terminal',
+        dirPath,
+      ]),
+      TargetPlatform.windows => _launchHostApplication('cmd.exe', [
+        '/c',
+        'start',
+        'cmd.exe',
+      ], workingDirectory: dirPath),
+      TargetPlatform.linux => _launchHostApplication(
+        'x-terminal-emulator',
+        [],
+        workingDirectory: dirPath,
+        acceptRunning: true,
+      ),
+      _ => false,
+    };
+  }
+
+  /// 检查启动器退出结果；长驻系统应用只确认启动，避免关闭用户的终端或文件管理器。
+  Future<bool> _launchHostApplication(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    bool acceptRunning = false,
+  }) async {
+    Process? process;
+    StreamSubscription<List<int>>? output;
+    StreamSubscription<List<int>>? errors;
+    var applicationRunning = false;
     try {
-      if (Platform.isMacOS) {
-        await Process.run('open', ['-a', 'Terminal', dirPath]);
-      } else if (Platform.isWindows) {
-        await Process.run('cmd.exe', [
-          '/c',
-          'start',
-          'cmd.exe',
-        ], workingDirectory: dirPath);
-      } else if (Platform.isLinux) {
-        await Process.run('x-terminal-emulator', [], workingDirectory: dirPath);
-      } else {
-        return false;
-      }
-      return true;
-    } catch (e) {
-      debugPrint('Failed to open terminal in directory $dirPath: $e');
+      process = await _startProcess(
+        executable,
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+      output = process.stdout.listen((_) {}, onError: (Object _) {});
+      errors = process.stderr.listen((_) {}, onError: (Object _) {});
+      final code = await process.exitCode.timeout(
+        acceptRunning ? _startupGrace : _launchTimeout,
+        onTimeout: acceptRunning
+            ? () {
+                applicationRunning = true;
+                return 0;
+              }
+            : null,
+      );
+      return code == 0;
+    } on TimeoutException {
+      process?.kill();
+      await process?.exitCode.timeout(
+        _terminateTimeout,
+        onTimeout: () {
+          process?.kill(ProcessSignal.sigkill);
+          return -1;
+        },
+      );
       return false;
+    } catch (error) {
+      debugPrint('Failed to launch $executable: $error');
+      return false;
+    } finally {
+      // 长驻系统应用交接后继续排空双流，直到其自然退出，避免管道阻塞或 SIGPIPE。
+      if (!applicationRunning) {
+        await output?.cancel();
+        await errors?.cancel();
+      }
     }
   }
 

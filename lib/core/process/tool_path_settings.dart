@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'posix_executable_access.dart';
 import 'tool_path_resolver.dart';
 
 /// 设置页允许替换的核心 CLI；go-ios 与 ios 共用同一个配置项。
@@ -30,6 +31,8 @@ Future<Map<String, String>> loadToolPathSettings({
   SharedPreferences? preferences,
 }) async {
   final store = preferences ?? await SharedPreferences.getInstance();
+  // 首次读取后到设置通道就绪前，其他 Engine 可能已修改持久化路径。
+  await store.reload();
   final paths = <String, String>{};
   for (final tool in configurableToolNames) {
     final value = store.getString(toolPathPreferenceKey(tool))?.trim() ?? '';
@@ -55,7 +58,7 @@ Future<String> validateToolPath(String toolName, String value) async {
   }
   final executable = Platform.isWindows
       ? RegExp(r'\.(exe|com|bat|cmd)$', caseSensitive: false).hasMatch(path)
-      : stat.mode & 0x49 != 0;
+      : canExecutePosixFile(path);
   if (!executable) {
     throw const ToolPathValidationException('toolPathNotExecutable');
   }

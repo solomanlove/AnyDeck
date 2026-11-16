@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'posix_executable_access.dart';
+
 /// 自定义工具绝对路径覆盖字典（如应用内一键下载的 platform-tools 路径）
 final Map<String, String> customToolPaths = {};
 
@@ -132,7 +134,7 @@ String? resolveToolFromPath(String toolName, {String? searchPath}) {
       );
       final stat = file.statSync();
       if (stat.type == FileSystemEntityType.file &&
-          (Platform.isWindows || stat.mode & 0x49 != 0)) {
+          (Platform.isWindows || canExecutePosixFile(file.path))) {
         return file.absolute.path;
       }
     }

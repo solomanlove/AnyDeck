@@ -22,38 +22,20 @@ enum PlatformServiceType {
 class PlatformToolsController {
   const PlatformToolsController._();
 
+  /// 与真实命令服务共用可执行文件解析，包含 go-ios 的兼容名称回退。
+  static String resolveToolExecutable(WidgetRef ref, String toolKey) =>
+      switch (toolKey) {
+        'adb' => ref.read(adbServiceProvider).executable,
+        'hdc' => ref.read(hdcServiceProvider).executable,
+        'ios' => ref.read(iosCommandServiceProvider).executable,
+        _ => resolveToolPath(toolKey),
+      };
+
   /// 解析目标工具所在目录路径。
   static String? resolveToolDirectory(WidgetRef ref, String toolKey) {
-    String? rawPath;
-    if (toolKey == 'adb') {
-      final adbExe = ref.read(adbServiceProvider).executable;
-      if (adbExe.isNotEmpty && adbExe != 'adb') {
-        rawPath = adbExe;
-      }
-    } else if (toolKey == 'hdc') {
-      final hdcExe = ref.read(hdcServiceProvider).executable;
-      if (hdcExe.isNotEmpty && hdcExe != 'hdc') {
-        rawPath = hdcExe;
-      }
-    }
-
-    if (rawPath == null || rawPath.isEmpty) {
-      final resolved = resolveToolPath(toolKey);
-      if (resolved != toolKey) {
-        rawPath = resolved;
-      }
-    }
-
-    if (rawPath != null && rawPath.isNotEmpty) {
-      final file = File(rawPath);
-      if (file.existsSync()) {
-        return file.parent.path;
-      }
-      final dir = Directory(rawPath);
-      if (dir.existsSync()) {
-        return dir.path;
-      }
-    }
+    final rawPath = resolveToolExecutable(ref, toolKey);
+    final file = File(rawPath);
+    if (file.existsSync()) return file.absolute.parent.path;
     return null;
   }
 
@@ -87,7 +69,9 @@ class PlatformToolsController {
       final hostService = ref.read(hostPlatformServiceProvider);
       final bool success;
       if (terminal) {
-        success = await hostService.openTerminal(dirPath);
+        success = await hostService.openToolTerminal(
+          resolveToolExecutable(ref, toolKey), toolKey,
+        );
       } else {
         success = await hostService.openDirectory(dirPath);
       }

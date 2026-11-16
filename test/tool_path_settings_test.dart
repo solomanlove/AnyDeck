@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:any_deck/app/settings/app_settings.dart';
@@ -14,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 /// 隔离播放器等原生初始化，保留真实路径保存和窗口广播逻辑。
 class _Settings extends AppSettingsController {
@@ -241,23 +243,188 @@ void main() {
       first.path,
     );
     expect(broadcasts.where((call) => call.method == 'invokeMethod'), isEmpty);
+    final snapshot = await messenger.handlePlatformMessage(
+      channels.name,
+      channels.codec.encodeMethodCall(
+        MethodCall('methodCall', {
+          'channel': 'any_deck/settings_main',
+          'method': 'resolve_tool_paths',
+        }),
+      ),
+      null,
+    );
+    expect(channels.codec.decodeEnvelope(snapshot!), {
+      'adb': first.path,
+      'ios': second.path,
+    });
   });
 
-  test('PATH 定位跳过目录与不可执行文件并返回绝对文件路径', () async {
+  test('PATH 定位跳过目录和当前用户不可执行文件并返回绝对文件路径', () async {
     final invalid = Directory('${temporary.path}/invalid')..createSync();
+    final denied = Directory('${temporary.path}/denied')..createSync();
     final valid = Directory('${temporary.path}/valid')..createSync();
     final tool = Platform.isWindows ? 'probe.exe' : 'probe';
     await Directory('${invalid.path}/$tool').create();
     final file = await File('${valid.path}/$tool').writeAsString('probe');
     if (!Platform.isWindows) await Process.run('chmod', ['700', file.path]);
+    if (!Platform.isWindows) {
+      final inaccessible = await File(
+        '${denied.path}/$tool',
+      ).writeAsString('probe');
+      final user = await Process.run('id', ['-u']);
+      final mode = user.stdout.toString().trim() == '0' ? '000' : '001';
+      await Process.run('chmod', [mode, inaccessible.path]);
+    }
     final separator = Platform.isWindows ? ';' : ':';
     expect(
       resolveToolFromPath(
         'probe',
-        searchPath: '${invalid.path}$separator${valid.path}',
+        searchPath: [
+          invalid.path,
+          if (!Platform.isWindows) denied.path,
+          valid.path,
+        ].join(separator),
       ),
       file.path,
     );
     expect(resolveToolFromPath('missing', searchPath: valid.path), isNull);
   });
+
+  test('启动加载刷新其他 Engine 已经更新的 Preference 缓存', () async {
+    final first = await executable('old-ios');
+    final second = await executable('new-ios');
+    final key = toolPathPreferenceKey('ios');
+    SharedPreferences.setMockInitialValues({key: first.path});
+    final preferences = await SharedPreferences.getInstance();
+    expect(await loadToolPathSettings(preferences: preferences), {
+      'ios': first.path,
+    });
+    // 模拟主窗口在子 Engine 首次读取后、设置通道就绪前保存了新路径。
+    await SharedPreferencesStorePlatform.instance.setValue(
+      'String',
+      'flutter.$key',
+      second.path,
+    );
+    expect(preferences.getString(key), first.path);
+    expect(await loadToolPathSettings(preferences: preferences), {
+      'ios': second.path,
+    });
+    expect(resolveToolPath('ios'), second.path);
+  });
+
+  test('广播遇到未就绪窗口仍同步后续活动窗口', () async {
+    messenger.setMockMethodCallHandler(windows, (call) async {
+      if (call.method != 'getAllWindows') return null;
+      return [
+        {'windowId': 'unready', 'windowArgument': '{"type":"mirror"}'},
+        {'windowId': 'live', 'windowArgument': '{"type":"mirror"}'},
+      ];
+    });
+    messenger.setMockMethodCallHandler(channels, (call) async {
+      broadcasts.add(call);
+      if ((call.arguments as Map)['channel'] ==
+          'mixin.one/window_controller/unready') {
+        throw PlatformException(code: 'CHANNEL_NOT_FOUND');
+      }
+      return null;
+    });
+    final scope = container();
+    await scope.read(appSettingsProvider.notifier).setToolPath('ios', '');
+    expect(
+      broadcasts.any(
+        (call) =>
+            (call.arguments as Map)['channel'] ==
+            'mixin.one/window_controller/live',
+      ),
+      isTrue,
+    );
+  });
+
+  test('子窗口上送失败仍向其他活动窗口同步', () async {
+    messenger.setMockMethodCallHandler(channels, (call) async {
+      broadcasts.add(call);
+      if ((call.arguments as Map)['channel'] == 'any_deck/settings_main') {
+        throw PlatformException(code: 'CHANNEL_UNREGISTERED');
+      }
+      return null;
+    });
+    final scope = container(windowId: 'child-test');
+    await scope.read(appSettingsProvider.notifier).setToolPath('ios', '');
+    expect(
+      broadcasts.any(
+        (call) =>
+            (call.arguments as Map)['channel'] ==
+            'mixin.one/window_controller/mirror-test',
+      ),
+      isTrue,
+    );
+  });
+
+  for (final mainWindow in [true, false]) {
+    testWidgets('无响应${mainWindow ? '主' : '子'}窗口超过同步时限后继续广播并释放调用', (
+      tester,
+    ) async {
+      final unresponsive = Completer<Object?>();
+      addTearDown(() => unresponsive.complete(null));
+      messenger.setMockMethodCallHandler(windows, (call) async {
+        if (call.method != 'getAllWindows') return null;
+        return [
+          if (!mainWindow)
+            {'windowId': 'unresponsive', 'windowArgument': '{"type":"mirror"}'},
+          {'windowId': 'live', 'windowArgument': '{"type":"mirror"}'},
+        ];
+      });
+      messenger.setMockMethodCallHandler(channels, (call) async {
+        broadcasts.add(call);
+        if ((call.arguments as Map)['channel'] ==
+            (mainWindow
+                ? 'any_deck/settings_main'
+                : 'mixin.one/window_controller/unresponsive')) {
+          return unresponsive.future;
+        }
+        return null;
+      });
+      final scope = container(windowId: mainWindow ? 'child-test' : '');
+      final sending = scope
+          .read(appSettingsProvider.notifier)
+          .setToolPath('ios', '');
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 16));
+      await sending;
+      expect(
+        broadcasts.any(
+          (call) =>
+              (call.arguments as Map)['channel'] ==
+              'mixin.one/window_controller/live',
+        ),
+        isTrue,
+      );
+    });
+  }
+
+  test('其他用户有执行位但当前用户无权限时不覆盖原路径', () async {
+    final user = await Process.run('id', ['-u']);
+    if (user.stdout.toString().trim() == '0') {
+      markTestSkipped('root 会绕过普通用户的文件权限检查');
+      return;
+    }
+    final original = await executable('working-adb');
+    final denied = await executable('other-user-adb');
+    await Process.run('chmod', ['001', denied.path]);
+    final scope = container();
+    final controller = scope.read(appSettingsProvider.notifier);
+    await controller.setToolPath('adb', original.path, broadcast: false);
+    await expectLater(
+      controller.setToolPath('adb', denied.path, broadcast: false),
+      throwsA(
+        isA<ToolPathValidationException>().having(
+          (error) => error.code,
+          'code',
+          'toolPathNotExecutable',
+        ),
+      ),
+    );
+    expect(scope.read(appSettingsProvider).toolPaths['adb'], original.path);
+    expect(resolveToolPath('adb'), original.path);
+  }, skip: Platform.isWindows);
 }

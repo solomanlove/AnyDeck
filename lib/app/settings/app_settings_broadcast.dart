@@ -15,30 +15,48 @@ mixin SettingsBroadcast on Notifier<AppSettings> {
   Future<void> _broadcastSettingChange(String method, Object value) async {
     final currentId = ref.read(windowIdProvider);
     if (currentId.isNotEmpty) {
-      await AppSettingsController._mainSettingsChannel.invokeMethod(
-        method,
-        value,
-      );
+      try {
+        await AppSettingsController._mainSettingsChannel
+            .invokeMethod(method, value)
+            .timeout(const Duration(seconds: 15));
+      } catch (error) {
+        // 主窗口正在初始化或退出时，仍需尝试同步其余活动窗口。
+        debugPrint('Failed to send setting change to main window: $error');
+      }
     }
 
-    final windows = await WindowController.getAll();
+    final windows = await WindowController.getAll().timeout(
+      const Duration(seconds: 15),
+    );
     for (final window in windows) {
       if (window.windowId == currentId || window.arguments.isEmpty) {
         continue;
       }
-      await window.invokeMethod(method, value);
+      try {
+        await window
+            .invokeMethod(method, value)
+            .timeout(const Duration(seconds: 15));
+      } catch (error) {
+        // 单个窗口关闭、通道未注册或无响应时，不阻断后续窗口的同步。
+        debugPrint(
+          'Failed to sync setting to window ${window.windowId}: $error',
+        );
+      }
     }
   }
 }
 
 /// 注册设置通道，供主窗口和各子窗口共用。
-void _setupSettingsMethodHandler(
+Future<void> _setupSettingsMethodHandler(
   String currentId,
   Future<dynamic> Function(MethodCall) handler,
-) {
+) async {
   if (currentId.isEmpty) {
-    unawaited(AppSettingsController._mainSettingsChannel.setMethodCallHandler(handler));
+    await AppSettingsController._mainSettingsChannel.setMethodCallHandler(
+      handler,
+    );
     return;
   }
   SubWindowMethodDispatcher.registerHandler(handler);
+  await SubWindowMethodDispatcher.ready;
 }

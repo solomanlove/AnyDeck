@@ -71,6 +71,7 @@ import '../core/logcat/logcat_controller.dart';
 import '../core/logcat/logcat_entry.dart';
 import '../core/logcat/logcat_state.dart';
 import '../core/providers/app_providers.dart';
+import '../core/process/tool_path_resolver.dart';
 import '../core/providers/network_providers.dart';
 import '../core/providers/transfer_provider.dart';
 import 'widgets/drag_drop_target_overlay.dart';

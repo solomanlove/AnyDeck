@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/settings/app_settings_controller.dart';
-import '../../../core/process/tool_path_resolver.dart';
 import '../../devices/controller/platform_tools_controller.dart';
 import '../widget/tool_path_setting_field.dart';
 import 'settings_item.dart';
@@ -45,7 +44,7 @@ class _ToolPathSetting extends ConsumerWidget {
       key: ValueKey('tool-setting-$toolName'),
       toolName: toolName,
       value: path,
-      resolvedPath: resolveToolPath(toolName),
+      resolvedPath: PlatformToolsController.resolveToolExecutable(ref, toolName),
       onChanged: (value) =>
           ref.read(appSettingsProvider.notifier).setToolPath(toolName, value),
       onOpen: (terminal) => PlatformToolsController.openToolDirectory(

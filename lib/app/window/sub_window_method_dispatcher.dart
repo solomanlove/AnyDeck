@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +9,10 @@ import 'package:flutter/services.dart';
 /// 解决多个 Provider/Service 独立调用 `WindowController.setWindowMethodHandler` 时的覆盖冲突问题。
 class SubWindowMethodDispatcher {
   static final List<Future<dynamic> Function(MethodCall)> _handlers = [];
-  static bool _initialized = false;
+  static Future<void>? _initialization;
+
+  /// 等待当前 Engine 的原生通道注册完成，供依赖接收广播的启动握手使用。
+  static Future<void> get ready => _initialization ??= _initialize();
 
   /// 注册一个方法调用处理器
   static void registerHandler(Future<dynamic> Function(MethodCall) handler) {
@@ -24,11 +29,17 @@ class SubWindowMethodDispatcher {
 
   /// 确保已初始化 WindowController 的全局 methodHandler 监听
   static void _ensureInitialized() {
-    if (_initialized) return;
-    _initialized = true;
-    
-    WindowController.fromCurrentEngine().then((controller) {
-      controller.setWindowMethodHandler((call) async {
+    unawaited(
+      ready.catchError((Object error) {
+        debugPrint('Failed to initialize SubWindowMethodDispatcher: $error');
+      }),
+    );
+  }
+
+  static Future<void> _initialize() async {
+    try {
+      final controller = await WindowController.fromCurrentEngine();
+      await controller.setWindowMethodHandler((call) async {
         // 主窗口用此握手判断子窗口的 Dart/Flutter 首帧链路是否仍然存活。
         if (call.method == 'isFlutterReady') return true;
         dynamic lastResult;
@@ -45,8 +56,9 @@ class SubWindowMethodDispatcher {
         }
         return lastResult;
       });
-    }).catchError((e) {
-      debugPrint('Failed to initialize SubWindowMethodDispatcher: $e');
-    });
+    } catch (_) {
+      _initialization = null;
+      rethrow;
+    }
   }
 }

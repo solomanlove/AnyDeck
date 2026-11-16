@@ -25,7 +25,8 @@ class ScrcpyService {
     final process = await Process.start(
       executable,
       options.toArgs(deviceId),
-      environment: adbPath != null ? {'ADB': adbPath} : null,
+      // 外部 scrcpy 会自行查找 ADB，必须显式传递当前配置，避免回到 PATH 旧版本。
+      environment: {'ADB': adbPath ?? resolveToolPath('adb')},
     );
 
     // 转发标准输出与标准错误输出，便于调试定位运行问题

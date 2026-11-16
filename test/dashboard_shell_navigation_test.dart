@@ -23,6 +23,7 @@ import 'package:any_deck/features/webview/in_app_webview_widget.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -142,9 +143,22 @@ class _TestWebView extends PlatformInAppWebViewWidget {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() {
     InAppWebViewPlatform.instance = _TestWebViewPlatform();
   });
+
+  // 本测试没有真实子窗口，设置广播直接返回空列表，避免原生调用遗留超时 Timer。
+  const windows = MethodChannel('mixin.one/desktop_multi_window');
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  setUp(() {
+    messenger.setMockMethodCallHandler(
+      windows,
+      (call) async => call.method == 'getAllWindows' ? <Object>[] : null,
+    );
+  });
+  tearDown(() => messenger.setMockMethodCallHandler(windows, null));
 
   testWidgets('底部控制台不改变设备上下文，系统版本导航与设备选择同步', (tester) async {
     tester.view.physicalSize = const Size(1200, 900);

@@ -80,7 +80,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
   AppSettings build() {
     // 先返回默认设置，SharedPreferences 读取完成后再覆盖真实值。
     _settingsLoaded = _load();
-    _setupSettingsMethodHandler(ref.read(windowIdProvider), _handleSettingsCall);
+    unawaited(_initializeSettingsSynchronization(_handleSettingsCall));
     return const AppSettings();
   }
 
@@ -99,6 +99,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       _applyReceiverNamesSnapshot(call.arguments as Map);
       return null;
     }
+    if (call.method == resolveToolPathsChannelMethod) return _toolPathsSnapshot();
     if (call.method == toolPathChannelMethod) return _receiveToolPath(call.arguments);
     if (call.method == MirrorShortcutSettings.channelMethod) return _receiveMirrorShortcuts(call.arguments);
     if (call.method == mainWindowShortcutChannelMethod) return _receiveMainWindowShortcut(call.arguments);

@@ -455,9 +455,10 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
             }
           }
 
-          // 若为 Android 设备且 Rust DAL 桥接可用，优先走 Direct Socket DAL 驱动
+          // 显式配置 ADB 时必须经当前 CLI；默认环境保留 Direct Socket 优化。
           if (!device.isIos &&
               !device.isHarmony &&
+              !hasUserToolPath('adb') &&
               RustDalBridge.instance.isAvailable) {
             try {
               final out = await RustDalBridge.instance.executeShell(
