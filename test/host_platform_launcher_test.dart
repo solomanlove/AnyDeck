@@ -62,6 +62,74 @@ void main() {
     }
   }
 
+  for (final tool in ['adb', 'hdc', 'ios']) {
+    test('macOS 的 $tool 目录终端直接打开当前工具目录并跟随路径替换', () async {
+      final original = Directory("${temporary.path}/原工具 '空格/$tool")
+        ..createSync(recursive: true);
+      final replacement = Directory("${temporary.path}/替换工具 '空格/$tool")
+        ..createSync(recursive: true);
+      final executables = [
+        File('${original.path}/$tool')..createSync(),
+        File('${replacement.path}/custom $tool')..createSync(),
+      ];
+      final calls = <(String, List<String>)>[];
+      final host = HostPlatformService(
+        platform: TargetPlatform.macOS,
+        processStarter: (executable, arguments, {workingDirectory}) async {
+          calls.add((executable, arguments));
+          return ControlledProcess()..finish();
+        },
+      );
+
+      for (final executable in executables) {
+        expect(await host.openToolTerminal(executable.path, tool), isTrue);
+      }
+
+      // Terminal 接收实际目录，不能退回打开临时 .command 文稿。
+      expect(calls, hasLength(2));
+      for (var i = 0; i < executables.length; i++) {
+        expect(calls[i].$1, 'open');
+        expect(calls[i].$2, ['-a', 'Terminal', executables[i].parent.path]);
+      }
+    });
+  }
+
+  test('macOS 工具目录终端启动器退出非零时返回失败', () async {
+    final executable = File('${temporary.path}/adb')..createSync();
+    final host = HostPlatformService(
+      platform: TargetPlatform.macOS,
+      processStarter: (command, arguments, {workingDirectory}) async {
+        expect(command, 'open');
+        expect(arguments, ['-a', 'Terminal', executable.parent.path]);
+        return ControlledProcess()..finish(27);
+      },
+    );
+
+    expect(await host.openToolTerminal(executable.path, 'adb'), isFalse);
+  });
+
+  test('macOS 工具文件缺失或为相对路径时不启动目录终端', () async {
+    var launches = 0;
+    final host = HostPlatformService(
+      platform: TargetPlatform.macOS,
+      processStarter: (_, _, {workingDirectory}) async {
+        launches++;
+        return ControlledProcess()..finish();
+      },
+    );
+
+    for (final tool in ['adb', 'hdc', 'ios']) {
+      expect(
+        await host.openToolTerminal('${temporary.path}/missing/$tool', tool),
+        isFalse,
+      );
+      expect(await host.openToolTerminal('relative/$tool', tool), isFalse);
+    }
+    // 已存在的相对文件同样不能传给 Terminal。
+    expect(await host.openToolTerminal('pubspec.yaml', 'adb'), isFalse);
+    expect(launches, 0);
+  });
+
   test('路径缺失或平台不支持时不启动任何系统进程', () async {
     var launches = 0;
     final host = HostPlatformService(

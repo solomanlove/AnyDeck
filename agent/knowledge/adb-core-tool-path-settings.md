@@ -77,13 +77,13 @@ git diff --check
 | Android 批量脚本直接走 Rust Direct Socket，绕过新 ADB | 自定义 ADB 时走 `AdbService.shell`；成功返回的 DAL stub 验证原生调用次数为 0，并检查真实临时 CLI 参数 |
 | 外部 scrcpy 会自行查找旧 ADB | 每次启动默认传入当前解析的 `ADB` 环境变量，保留显式参数优先级；同一服务连续替换两次的 fake CLI 均读取新值 |
 | iOS 目录只解析 ios，可能与 go-ios 回退不一致 | 设置显示、目录和终端统一使用实际命令服务的 `executable` |
-| 只切换终端目录仍会运行 PATH 或 alias 中的旧工具 | 新增 `ToolTerminalLauncher`，初始化工作目录、PATH 和准确文件别名；`ios` / `go-ios` 同时绑定，支持改名文件及含空格、引号的路径 |
+| 只切换终端目录仍会运行 PATH 或 alias 中的旧工具 | Linux / Windows 使用 `ToolTerminalLauncher` 初始化工作目录、PATH 和准确文件别名；`ios` / `go-ios` 同时绑定。macOS 按下节修复恢复原生目录入口 |
 | 系统启动器非零退出仍提示成功 | 目录和终端检查启动器退出码，短命启动器超时 TERM / KILL 回收；Linux / Explorer 长驻进程交接后继续排空双流，不误关用户窗口 |
 | 一个子窗口不可用会阻断后续窗口广播 | 主窗口上送、逐窗口调用独立捕获异常，均有 15 秒上限，失败后继续同步其他窗口 |
 | 新子 Engine 建立 Preference 缓存后漏收初始化广播 | 加载时 `reload()`；设置通道就绪后从主窗口拉取 `resolve_tool_paths` 完整快照，并以每工具 revision 保留请求期间收到的实时更新 |
 | 任意执行位不等于当前用户能执行 | POSIX 校验和 PATH 查找复用 `access(X_OK)`；`chmod 001` 不再覆盖旧可用路径 |
 
-工具终端仅初始化 Shell，不自动执行所选 CLI。macOS 使用临时 `.command` 文稿通过既有 `open -a Terminal` 打开，随后进入 bash；Linux 使用 `x-terminal-emulator -e /bin/bash`；Windows 通过编码的 PowerShell 启动 cmd，设置 UTF-8 代码页，并以终端独立环境变量间接绑定 doskey，避免中文乱码或 `$1` / `$T` / `%` 路径片段进入宏语法。临时配置由新 Shell 读取后自行清理，启动失败则立即删除，不修改用户的 Shell 配置文件。
+工具终端不自动执行所选 CLI。macOS 直接使用 `open -a Terminal <工具父目录>`，保留用户默认 Shell（原临时 `.command` 方案已由下节修复替换）；Linux 使用 `x-terminal-emulator -e /bin/bash`；Windows 通过编码的 PowerShell 启动 cmd，设置 UTF-8 代码页，并以终端独立环境变量间接绑定 doskey，避免中文乱码或 `$1` / `$T` / `%` 路径片段进入宏语法。Linux / Windows 的临时配置由新 Shell 读取后自行清理，启动失败则立即删除，不修改用户的 Shell 配置文件。
 
 验证使用临时 CLI、真实隔离 bash、可注入宿主启动器与独立 DAL stub，不启动桌面 App，不连接真机。Windows 启动参数和脚本转义由计划测试覆盖，真实 Windows Terminal / cmd 行为仍需 Windows 环境验收；运行中的设备会话仍按原有约定重新连接后使用新路径。
 
@@ -102,3 +102,13 @@ ANYDECK_TOOL_PATH_DAL_STUB=1 \
 flutter --no-version-check test --no-pub \
   test/batch_script_tool_path_test.dart test/scrcpy_tool_path_test.dart
 ```
+
+## 2026-11-16 macOS 目录终端入口回归修复
+
+用户反馈「打开 ADB 目录终端」路径不正确，要求参考原有逻辑。此前实际打开对象是临时 `AnyDeck.command`，与原来的目录入口不同；`bash --rcfile` 虽含 `cd`，但跳过系统 Bash 初始化，缺少 `/etc/bashrc_Apple_Terminal` 的工作目录上报。原测试又从工具目录启动 Bash，无法覆盖真实 Terminal 的目录入口和元数据差异。
+
+`HostPlatformService.openToolTerminal` 在 macOS 校验当前可执行文件为存在的绝对路径后，复用既有 `openTerminal(file.parent.path)`，直接执行 `open -a Terminal <工具父目录>`。ADB、HDC、iOS 均使用命令服务当前解析路径，替换文件后下一次打开即使用新目录。保留默认 Shell 的初始化与目录展示，不再创建 macOS 临时文稿，也不注入 PATH 或 alias；在终端运行 `./adb` 等相对命令即使用该目录下的工具，裸命令仍遵循用户原有 Shell 配置。应用内部命令执行路径与设置同步机制不受影响。
+
+回归测试在宿主启动器层分别检查 ADB、HDC、iOS 连续两套含中文、空格、单引号的路径，断言 Terminal 打开的目标始终是工具父目录，覆盖非零退出、文件缺失与相对路径拦截。Linux 的真实 Bash 测试从隔离 HOME 启动，检查初始化脚本实际切换目录；Windows 脚本参数测试保留。桌面 App 与系统 Terminal 界面未启动验证，实际目录入口通过注入系统启动器进行测试。
+
+本次 5 个相关测试文件共 **47 项通过**；4 个改动 Dart 文件定向 `flutter analyze --no-pub --no-fatal-infos` 无诊断，格式和 `git diff --check` 通过。

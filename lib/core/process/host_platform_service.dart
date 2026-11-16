@@ -93,18 +93,24 @@ class HostPlatformService {
     }
   }
 
-  /// 为选定工具创建独立终端，短命令和工作目录都使用同一个可执行文件。
-  Future<bool> openToolTerminal(String executable, String toolName) =>
-      ToolTerminalLauncher(
-        platform: _platform,
-        launch: (command, arguments, {workingDirectory}) =>
-            _launchHostApplication(
-              command,
-              arguments,
-              workingDirectory: workingDirectory,
-              acceptRunning: _platform == TargetPlatform.linux,
-            ),
-      ).open(executable, toolName);
+  /// 在选定工具所在目录打开终端；macOS 保留原有系统默认 Shell 与目录入口。
+  Future<bool> openToolTerminal(String executable, String toolName) async {
+    if (_platform == TargetPlatform.macOS) {
+      final file = File(executable);
+      if (!file.isAbsolute || !await file.exists()) return false;
+      return openTerminal(file.parent.path);
+    }
+    return ToolTerminalLauncher(
+      platform: _platform,
+      launch: (command, arguments, {workingDirectory}) =>
+          _launchHostApplication(
+            command,
+            arguments,
+            workingDirectory: workingDirectory,
+            acceptRunning: _platform == TargetPlatform.linux,
+          ),
+    ).open(executable, toolName);
+  }
 
   /// 将 PNG 图片字节复制到宿主机系统剪贴板。
   Future<bool> copyImageToClipboard(Uint8List bytes) async {

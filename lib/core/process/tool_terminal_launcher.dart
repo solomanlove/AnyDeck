@@ -11,7 +11,7 @@ typedef ToolTerminalLaunch =
       String? workingDirectory,
     });
 
-/// 打开选定 CLI 的终端，将短命令绑定到准确文件，而非依赖原来的 PATH。
+/// 为 Linux / Windows 打开选定 CLI 的终端，将短命令绑定到准确文件。
 ///
 /// [launch] 负责系统启动器的退出码与超时回收；[platform] 可替换宿主平台。
 /// 临时初始化文件只包含路径、别名和环境配置，不会自动运行用户选中的程序。
@@ -26,11 +26,7 @@ class ToolTerminalLauncher {
     final file = File(executable);
     if (!file.isAbsolute || !await file.exists()) return false;
     final target = platform ?? defaultTargetPlatform;
-    if (![
-      TargetPlatform.macOS,
-      TargetPlatform.linux,
-      TargetPlatform.windows,
-    ].contains(target)) {
+    if (![TargetPlatform.linux, TargetPlatform.windows].contains(target)) {
       return false;
     }
     final directory = await Directory.systemTemp.createTemp(
@@ -52,18 +48,6 @@ class ToolTerminalLauncher {
       );
       final cwd = file.parent.path;
       switch (target) {
-        case TargetPlatform.macOS:
-          // 使用 Terminal 可执行文稿，保持原 open 入口，无需 Apple Events 授权。
-          final command = File('${directory.path}/AnyDeck.command');
-          await command.writeAsString(
-            '#!/bin/bash\nexec /bin/bash --rcfile ${_shellQuote(setup.path)} -i\n',
-          );
-          if (!await launch('/bin/chmod', ['700', command.path])) return false;
-          accepted = await launch('open', [
-            '-a',
-            'Terminal',
-            command.path,
-          ], workingDirectory: cwd);
         case TargetPlatform.linux:
           accepted = await launch('x-terminal-emulator', [
             '-e',
