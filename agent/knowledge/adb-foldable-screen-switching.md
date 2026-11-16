@@ -103,7 +103,35 @@ python3 tool/foldable_screen_helper/test_device.py --device DEVICE_ID --state ST
   两例均回到 committed=base OPENED，且没有 override 残留。
 - 空请求握手、设备锁竞争、协议错误和 host 所有权解析均通过。
 
-未启动或构建 AnyDeck 桌面 App；真实工具栏鼠标点击、原生窗口动画、视频连续性和触控
-仍需桌面端人工验收。其他品牌目前没有真机验收结论，不将运行时字段识别等同于全品牌认证。
+同日构建 macOS Debug，并在独立三星投屏窗口完成真实 GUI 验收：
+
+- 普通点击完成自动内屏 → 手动外屏 → 手动内屏；两种轮廓图标与实际屏幕一致。
+- Tooltip 正确显示自动/手动、当前内屏/外屏、下一次切换目标及长按说明。
+- 长按出现“已恢复自动切屏”，恢复 `A` 角标与自动 Tooltip；回读 committed=base OPENED，
+  `mOverrideState=Optional.empty`、`Override Request active: false`。
+- 内屏编码 `1080×814`、外屏编码 `682×1080`；窗口随画面比例适配。
+  同一轮截图中的内屏窗口为 `1604×1222`、外屏为 `1038×1600`（包含工具栏，Retina 像素）；
+  切换过渡短暂保留旧布局，稳定后无持续大黑边或拉伸。
+- 验收修复 `MirrorWindowFrameAdapter` 将位置误当作正尺寸的问题：目标位置为零或负数时，
+  仍完成比例计算，再使用既有原点边界收敛；保留非有限坐标拒绝与尺寸校验。
+- 所有切换沿用同一 scrcpy PID、会话与 Texture，日志只有一次 Texture 注册，尺寸在
+  `1080×814 ↔ 682×1080` 间更新；画面动画和滚动持续刷新，未发生整会话重启。
+  静止画面的 `FPS=0` 属于可变帧率表现，不能单独判定断流。
+- 内屏桌面点击、设置双栏导航和列表拖动，以及外屏上滑、设置单栏点击和滚轮滚动均通过；
+  外屏点击“日期和时间”准确打开目标页，未修改手机设置项。
+- 本轮 7 个 Flutter 测试文件共 86 项通过，installer/embed 构建脚本 33 项通过；
+  frame adapter 定向分析无 error/warning，仅有当前 Flutter SDK 的弃用 info。
+
+私有 Share Core 锁定版本远程不可取回，本轮按授权显式跳过，未改版本锁或使用其他版本替代。
+仅 Debug 验收构建支持以下开关；默认流程仍安装并校验锁定制品，Release/Profile 拒绝跳过：
+
+```bash
+ANYDECK_SKIP_SHARE_CORE=1 flutter build macos --debug --no-pub
+```
+
+当前 Flutter 3.50 / macOS 27 在 CUA 查询 Dashboard 的 TextField Accessibility 时触发
+`-[AXPlatformNodeCocoa startEditing]: unrecognized selector`，本轮使用独立投屏入口完成验收，
+未将 Dashboard 启动路径判为通过，也未扩大修改 Flutter 引擎。
+其他品牌目前没有真机验收结论，不将运行时字段识别等同于全品牌认证。
 宿主 Flutter 3.50 / Dart 3.14；定向分析无新增 error/warning，全量分析存在仓库原有
 5 条 warning 和 SDK 引入的 API 弃用 info，未进行无关修复或依赖升级。

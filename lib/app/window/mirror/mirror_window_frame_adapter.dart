@@ -110,7 +110,8 @@ class MirrorWindowFrameAdapter {
 
     if (newWindowW < 200 || newWindowH < 200) return null;
     if (!_isValid(newWindowW) || !_isValid(newWindowH)) return null;
-    if (!_isValid(newLeft) || !_isValid(newTop)) return null;
+    // 屏幕坐标可为零或负数，先校验有限值，再执行既有边界收敛。
+    if (!newLeft.isFinite || !newTop.isFinite) return null;
 
     if (newLeft < 0) newLeft = 0;
     if (newTop < 0) newTop = 0;
