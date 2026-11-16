@@ -41,6 +41,23 @@ Widget _harness({
 
 Finder _key(String action) => find.byKey(ValueKey('tool-$action-adb'));
 
+/// 等待真实文件检查完成，避免在恢复按钮前点击异步检测中的操作。
+Future<void> _waitForOpenActions(WidgetTester tester, bool enabled) async {
+  await tester.runAsync(() async {
+    for (var attempt = 0; attempt < 200; attempt++) {
+      final directory = tester.widget<TextButton>(_key('open-directory'));
+      final terminal = tester.widget<TextButton>(_key('open-terminal'));
+      if ((directory.onPressed != null) == enabled &&
+          (terminal.onPressed != null) == enabled) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+      await tester.pump();
+    }
+    fail('目录操作未在预期时间内变为 ${enabled ? '可用' : '禁用'}');
+  });
+}
+
 void main() {
   testWidgets('真实设置目录通过搜索配置 iOS，保存、非法输入与恢复默认保持一致', (tester) async {
     tester.view.physicalSize = const Size(1200, 900);
@@ -162,6 +179,18 @@ void main() {
         tester.view.physicalSize = const Size(360, 850);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
+        late Directory temporary;
+        late String executable;
+        await tester.runAsync(() async {
+          temporary = await Directory.systemTemp.createTemp('anydeck tool UI ');
+          executable =
+              '${temporary.path}/中文 adb${Platform.isWindows ? '.exe' : ''}';
+          await File(executable).writeAsString('AnyDeck test executable');
+          if (!Platform.isWindows) {
+            await Process.run('chmod', ['700', executable]);
+          }
+        });
+        addTearDown(() => temporary.delete(recursive: true));
         var current = '';
         final opened = <bool>[];
         await tester.pumpWidget(
@@ -172,7 +201,9 @@ void main() {
               builder: (context, update) => ToolPathSettingField(
                 toolName: 'adb',
                 value: current,
-                resolvedPath: current.isEmpty ? '/default/adb' : current,
+                resolvedPath: current.isEmpty
+                    ? '${temporary.path}/missing-adb'
+                    : current,
                 onChanged: (path) async => update(() => current = path),
                 onOpen: (terminal) async => opened.add(terminal),
               ),
@@ -180,19 +211,30 @@ void main() {
           ),
         );
         expect(tester.takeException(), isNull);
-        await tester.enterText(_key('path'), '  /my tools/adb  ');
+        expect(
+          tester.widget<TextButton>(_key('open-directory')).onPressed,
+          isNull,
+        );
+        expect(
+          tester.widget<TextButton>(_key('open-terminal')).onPressed,
+          isNull,
+        );
+        await tester.enterText(_key('path'), '  $executable  ');
         await tester.tap(_key('save'));
         await tester.pump();
-        expect(current, '/my tools/adb');
+        expect(current, executable);
         final display = tester.widget<SelectableText>(_key('current'));
-        expect(display.data, contains('/my tools/adb'));
+        expect(display.data, contains(executable));
+        await _waitForOpenActions(tester, true);
         await tester.tap(_key('open-directory'));
         await tester.pump();
+        await _waitForOpenActions(tester, true);
         await tester.tap(_key('open-terminal'));
         await tester.pump();
         expect(opened, [false, true]);
         await tester.tap(_key('reset'));
         await tester.pump();
+        await _waitForOpenActions(tester, false);
         expect(current, isEmpty);
         expect(
           tester.widget<TextField>(_key('path')).controller!.text,

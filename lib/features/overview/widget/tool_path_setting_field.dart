@@ -96,7 +96,15 @@ class _ToolPathSettingFieldState extends State<ToolPathSettingField> {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ToolPathAvailabilityBadge(
+    toolName: widget.toolName,
+    resolvedPath: widget.resolvedPath,
+    revision: _availabilityRevision,
+    builder: _buildEditor,
+  );
+
+  /// 徽标和目录操作共用检测结果；仅已确认可用的当前路径允许打开。
+  Widget _buildEditor(BuildContext context, bool? available, Widget badge) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     return Padding(
@@ -117,11 +125,7 @@ class _ToolPathSettingFieldState extends State<ToolPathSettingField> {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              ToolPathAvailabilityBadge(
-                toolName: widget.toolName,
-                resolvedPath: widget.resolvedPath,
-                revision: _availabilityRevision,
-              ),
+              badge,
             ],
           ),
           const SizedBox(height: 6),
@@ -178,7 +182,7 @@ class _ToolPathSettingFieldState extends State<ToolPathSettingField> {
             children: [
               TextButton.icon(
                 key: ValueKey('tool-open-directory-${widget.toolName}'),
-                onPressed: _busy
+                onPressed: _busy || available != true
                     ? null
                     : () => _perform(() => widget.onOpen(false)),
                 icon: const Icon(Icons.folder_outlined, size: 18),
@@ -186,7 +190,7 @@ class _ToolPathSettingFieldState extends State<ToolPathSettingField> {
               ),
               TextButton.icon(
                 key: ValueKey('tool-open-terminal-${widget.toolName}'),
-                onPressed: _busy
+                onPressed: _busy || available != true
                     ? null
                     : () => _perform(() => widget.onOpen(true)),
                 icon: const Icon(Icons.terminal_outlined, size: 18),
