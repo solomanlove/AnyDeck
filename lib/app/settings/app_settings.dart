@@ -67,6 +67,7 @@ class AppSettings {
     this.windowShortcuts = const WindowShortcutSettings(),
     this.mirrorShortcuts = const MirrorShortcutSettings(),
     this.developerModeEnabled = false,
+    this.toolPaths = const {},
   });
 
   final AppLanguage language;
@@ -117,6 +118,8 @@ class AppSettings {
   final MirrorShortcutSettings mirrorShortcuts;
   /// 是否已开启开发者选项
   final bool developerModeEnabled;
+  /// 核心 CLI 的用户覆盖路径，缺失项继续使用自动解析。
+  final Map<String, String> toolPaths;
 
   /// 按实际作用范围检查组合冲突：通用操作同时覆盖主窗口和投屏窗口。
   String? shortcutConflict(
@@ -174,6 +177,7 @@ class AppSettings {
     WindowShortcutSettings? windowShortcuts,
     MirrorShortcutSettings? mirrorShortcuts,
     bool? developerModeEnabled,
+    Map<String, String>? toolPaths,
   }) {
     return AppSettings(
       language: language ?? this.language,
@@ -207,6 +211,7 @@ class AppSettings {
       windowShortcuts: windowShortcuts ?? this.windowShortcuts,
       mirrorShortcuts: mirrorShortcuts ?? this.mirrorShortcuts,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
+      toolPaths: toolPaths ?? this.toolPaths,
     );
   }
 }

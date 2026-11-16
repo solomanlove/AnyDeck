@@ -94,8 +94,6 @@ class _ContentTitleBar extends ConsumerWidget {
             builder: (context) => const _DeviceWirelessConnectionDialog(),
           ),
         ),
-        //打开文件位置
-        ToolDirectoryMenuButton(iconColor: iconColor),
         //重置服务
         ServiceRestartMenuButton(iconColor: iconColor),
         //刷新

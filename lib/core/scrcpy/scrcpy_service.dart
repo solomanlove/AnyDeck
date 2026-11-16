@@ -8,9 +8,11 @@ import 'scrcpy_session.dart';
 /// 启停 scrcpy 进程，并通过生成的 session id 跟踪。
 class ScrcpyService {
   ScrcpyService({String? executable})
-    : executable = executable ?? resolveToolPath('scrcpy');
+    : _executable = executable;
 
-  final String executable;
+  final String? _executable;
+  /// 路径设置只影响后续启动的命令，不中断已有进程或会话。
+  String get executable => _executable ?? resolveToolPath('scrcpy');
   final Map<String, Process> _processes = {};
 
   /// 为设备启动 scrcpy，并记录进程用于后续清理。

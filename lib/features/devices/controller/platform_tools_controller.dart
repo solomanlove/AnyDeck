@@ -105,13 +105,19 @@ class PlatformToolsController {
       } else {
         DashboardSnack.show(
           context,
-          '打开 $displayName ${terminal ? "终端" : "目录"}失败',
+          context.l10n
+              .t(terminal ? 'toolTerminalOpenFailed' : 'toolDirOpenFailed')
+              .replaceAll('{tool}', displayName),
           isError: true,
         );
       }
     } catch (e) {
       if (context.mounted) {
-        DashboardSnack.show(context, '操作异常: $e', isError: true);
+        DashboardSnack.show(
+          context,
+          context.l10n.t('toolOpenError').replaceAll('{error}', '$e'),
+          isError: true,
+        );
       }
     }
   }

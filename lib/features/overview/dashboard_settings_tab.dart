@@ -18,6 +18,7 @@ class _SettingsTab extends ConsumerWidget {
             items: [
               ..._catalogItems(context, ref),
               ..._mediaItems(context, ref),
+              ...buildToolPathSettingsItems(context),
             ],
             cardBuilder: (title, children) =>
                 _buildSectionCard(context, title: title, children: children),

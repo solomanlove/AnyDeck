@@ -121,6 +121,9 @@ const deviceConnectionsZh = {
   'recheckAll': '重新检测全部',
   // 工具目录与调试服务重启
   'openToolDir': '打开工具目录',
+  'toolDirOpenFailed': '打开 {tool} 目录失败',
+  'toolTerminalOpenFailed': '打开 {tool} 终端失败',
+  'toolOpenError': '打开工具时发生错误：{error}',
   'openAdbDir': '打开 ADB 目录',
   'openAdbTerminal': '打开 ADB 目录终端',
   'openHdcDir': '打开 HDC 目录',
@@ -270,6 +273,9 @@ const deviceConnectionsEn = {
   'recheckAll': 'Re-check All',
   // Tool directory and debug services restart
   'openToolDir': 'Open Tool Directory',
+  'toolDirOpenFailed': 'Failed to open {tool} directory',
+  'toolTerminalOpenFailed': 'Failed to open {tool} terminal',
+  'toolOpenError': 'Failed to open tool: {error}',
   'openAdbDir': 'Open ADB Directory',
   'openAdbTerminal': 'Open Terminal in ADB Dir',
   'openHdcDir': 'Open HDC Directory',

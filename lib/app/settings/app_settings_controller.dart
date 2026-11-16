@@ -8,6 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings.dart';
+import '../../core/process/tool_path_settings.dart';
+import '../../core/process/tool_path_resolver.dart';
+export '../../core/process/tool_path_settings.dart';
 import '../shortcuts/mirror_shortcut.dart';
 import '../shortcuts/window_shortcut.dart';
 import 'mirror_quality_preset.dart';
@@ -28,6 +31,7 @@ import '../window/desktop_window_manager_service.dart';
 import '../window/sub_window_method_dispatcher.dart';
 
 part 'app_settings_broadcast.dart';
+part 'app_settings_tool_paths.dart';
 part 'app_settings_mirror_presets.dart';
 part 'app_settings_notifications.dart';
 part 'app_settings_harmony_name.dart';
@@ -45,7 +49,7 @@ final appSettingsProvider =
     );
 
 /// 负责加载和保存设置，并通过乐观更新保持 UI 响应。
-class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, HarmonyTransferSettings, MirrorPresetSettings, ShortcutSettings, ReceiverNameSettings {
+class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, HarmonyTransferSettings, MirrorPresetSettings, ShortcutSettings, ReceiverNameSettings, ToolPathSettings {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
@@ -76,18 +80,8 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
   AppSettings build() {
     // 先返回默认设置，SharedPreferences 读取完成后再覆盖真实值。
     _settingsLoaded = _load();
-    _setupMethodHandler();
+    _setupSettingsMethodHandler(ref.read(windowIdProvider), _handleSettingsCall);
     return const AppSettings();
-  }
-
-  void _setupMethodHandler() {
-    final currentId = ref.read(windowIdProvider);
-    if (currentId.isEmpty) {
-      unawaited(_mainSettingsChannel.setMethodCallHandler(_handleSettingsCall));
-      return;
-    }
-
-    SubWindowMethodDispatcher.registerHandler(_handleSettingsCall);
   }
 
   Future<dynamic> _handleSettingsCall(MethodCall call) async {
@@ -105,6 +99,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       _applyReceiverNamesSnapshot(call.arguments as Map);
       return null;
     }
+    if (call.method == toolPathChannelMethod) return _receiveToolPath(call.arguments);
     if (call.method == MirrorShortcutSettings.channelMethod) return _receiveMirrorShortcuts(call.arguments);
     if (call.method == mainWindowShortcutChannelMethod) return _receiveMainWindowShortcut(call.arguments);
     if (call.method == WindowShortcutSettings.channelMethod) return _receiveWindowShortcuts(call.arguments);
@@ -399,6 +394,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
   /// 从本地读取设置，缺失字段使用安全默认值。
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
+    final toolPaths = await loadToolPathSettings(preferences: preferences);
     final language = AppLanguage.fromCode(preferences.getString(_languageKey));
     final themeMode = _themeModeFromName(preferences.getString(_themeModeKey));
     final scrcpyAlwaysOnTop =
@@ -445,6 +441,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
         preferences.getBool(_developerModeEnabledKey) ?? false;
     state = AppSettings(
       language: language,
+      toolPaths: toolPaths,
       themeMode: themeMode,
       scrcpyAlwaysOnTop: scrcpyAlwaysOnTop,
       mirrorControlsAlwaysVisible: mirrorControlsAlwaysVisible,

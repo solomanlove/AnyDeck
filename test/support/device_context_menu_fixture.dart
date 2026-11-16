@@ -245,6 +245,7 @@ Future<void> withDeviceMenu(
   String language = 'zh',
   Brightness brightness = Brightness.light,
   DeviceShareService? sharing,
+  DeviceMenuHdc? hdcService,
   HostNetworkInfo network = const HostNetworkInfo(),
 }) async {
   tester.view.physicalSize = const Size(1200, 900);
@@ -253,7 +254,7 @@ Future<void> withDeviceMenu(
   SharedPreferences.setMockInitialValues({});
   final directory = Directory.systemTemp.createTempSync('anydeck-device-menu-');
   final adb = DeviceMenuAdb();
-  final hdc = DeviceMenuHdc();
+  final hdc = hdcService ?? DeviceMenuHdc();
   final ios = DeviceMenuIosCommands();
   final host = DeviceMenuHost(directory);
   final container = ProviderContainer(

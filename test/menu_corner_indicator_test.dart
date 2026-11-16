@@ -1,7 +1,6 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/widget/menu_corner_indicator.dart';
 import 'package:any_deck/features/overview/widget/service_restart_menu_button.dart';
-import 'package:any_deck/features/overview/widget/tool_directory_menu_button.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,26 +111,5 @@ void main() {
       expect(find.byIcon(CupertinoIcons.restart), findsOneWidget);
     });
 
-    testWidgets('ToolDirectoryMenuButton renders with MenuCornerIndicator', (tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            localizationsDelegates: [AppLocalizationsDelegate()],
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              body: Center(
-                child: ToolDirectoryMenuButton(
-                  iconColor: Colors.grey,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.byType(ToolDirectoryMenuButton), findsOneWidget);
-      expect(find.byType(MenuCornerIndicator), findsOneWidget);
-      expect(find.byIcon(CupertinoIcons.folder), findsOneWidget);
-    });
   });
 }

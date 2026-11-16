@@ -19,7 +19,7 @@ class IosCommandService {
     String? executable,
     Directory? developerImageCacheDirectory,
     void Function(String message, {String tag, String level})? onLog,
-  }) : executable = executable ?? _resolveBinary(),
+  }) : _executable = executable,
        _developerImageCache = IosDeveloperImageCache(
          directory: developerImageCacheDirectory,
        ),
@@ -28,7 +28,9 @@ class IosCommandService {
   static const _defaultTimeout = Duration(seconds: 15);
   static const _transferTimeout = Duration(minutes: 5);
 
-  final String executable;
+  final String? _executable;
+  /// 保留测试注入，默认在后续命令开始前读取最新路径。
+  String get executable => _executable ?? _resolveBinary();
   final IosDeveloperImageCache _developerImageCache;
   final void Function(String message, {String tag, String level})? _onLog;
   late final _screenshotCapture = IosScreenshotCapture(
@@ -44,6 +46,7 @@ class IosCommandService {
 
   static String _resolveBinary() {
     final ios = resolveToolPath('ios');
+    if (hasUserToolPath('ios')) return ios;
     if (ios != 'ios' && File(ios).existsSync()) return ios;
     final goIos = resolveToolPath('go-ios');
     if (goIos != 'go-ios' && File(goIos).existsSync()) return goIos;

@@ -3,6 +3,22 @@ import 'dart:io';
 /// 自定义工具绝对路径覆盖字典（如应用内一键下载的 platform-tools 路径）
 final Map<String, String> customToolPaths = {};
 
+/// 用户显式选择优先于应用自动下载的路径；恢复默认不会丢弃下载记录。
+final Map<String, String> _userToolPaths = {};
+
+String _toolKey(String toolName) => toolName == 'go-ios' ? 'ios' : toolName;
+
+/// 应用持久化设置或跨窗口快照，既有服务随后解析到同一份路径。
+void replaceUserToolPaths(Map<String, String> paths) {
+  _userToolPaths
+    ..clear()
+    ..addAll(paths);
+}
+
+/// 原生 DAL 使用固定环境时，让自定义 CLI 配置优先。
+bool hasUserToolPath(String toolName) =>
+    _userToolPaths.containsKey(_toolKey(toolName));
+
 /// 注册自定义工具绝对路径
 void registerCustomToolPath(String toolName, String path) {
   customToolPaths[toolName] = path;
@@ -10,6 +26,9 @@ void registerCustomToolPath(String toolName, String path) {
 
 /// 优先解析常见 Android 工具路径，找不到时回退到 PATH。
 String resolveToolPath(String toolName) {
+  final userPath = _userToolPaths[_toolKey(toolName)];
+  if (userPath != null) return userPath;
+
   if (customToolPaths.containsKey(toolName)) {
     final custom = customToolPaths[toolName]!;
     if (File(custom).existsSync()) return custom;
@@ -88,5 +107,35 @@ String resolveToolPath(String toolName) {
       return path;
     }
   }
-  return toolName;
+  // PATH 中的绝对路径同时供命令执行、目录与终端入口使用。
+  return resolveToolFromPath(toolName) ?? toolName;
+}
+
+/// 不启动 shell，按宿主 PATH / PATHEXT 定位可执行文件。
+String? resolveToolFromPath(String toolName, {String? searchPath}) {
+  final extensions = Platform.isWindows
+      ? [
+          '',
+          ...(Platform.environment['PATHEXT'] ?? '.EXE;.COM;.BAT;.CMD').split(
+            ';',
+          ),
+        ]
+      : [''];
+  for (final entry in (searchPath ?? Platform.environment['PATH'] ?? '').split(
+    Platform.isWindows ? ';' : ':',
+  )) {
+    if (entry.isEmpty) continue;
+    final directory = entry.replaceAll(RegExp(r'^"|"$'), '');
+    for (final extension in extensions) {
+      final file = File(
+        '$directory${Platform.pathSeparator}$toolName$extension',
+      );
+      final stat = file.statSync();
+      if (stat.type == FileSystemEntityType.file &&
+          (Platform.isWindows || stat.mode & 0x49 != 0)) {
+        return file.absolute.path;
+      }
+    }
+  }
+  return null;
 }

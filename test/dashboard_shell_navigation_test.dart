@@ -224,6 +224,9 @@ void main() {
     router.goNamed(AppRouteNames.devices);
     await tester.pumpAndSettle();
     expect(find.text('Market Phone'), findsWidgets);
+    // 工具目录与终端操作统一移入设置，设备工具栏只保留设备操作。
+    expect(find.byTooltip('打开工具目录'), findsNothing);
+    expect(find.byTooltip('重启调试服务'), findsOneWidget);
     expect(find.textContaining('1 在线'), findsOneWidget);
     expect(find.text('备注/用途'), findsNothing);
     expect(find.text('QA phone'), findsNothing);
@@ -416,7 +419,7 @@ void main() {
       container.read(appSettingsProvider).mirrorAudioEnabled,
       settingsBeforeNavigation.mirrorAudioEnabled,
     );
-    // macOS 同样保留七类设置，独立权限管理不再进入目录或搜索结果。
+    // macOS 同样保留八类设置，独立权限管理不再进入目录或搜索结果。
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     router.goNamed(AppRouteNames.devices);

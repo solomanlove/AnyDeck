@@ -30,3 +30,15 @@ mixin SettingsBroadcast on Notifier<AppSettings> {
     }
   }
 }
+
+/// 注册设置通道，供主窗口和各子窗口共用。
+void _setupSettingsMethodHandler(
+  String currentId,
+  Future<dynamic> Function(MethodCall) handler,
+) {
+  if (currentId.isEmpty) {
+    unawaited(AppSettingsController._mainSettingsChannel.setMethodCallHandler(handler));
+    return;
+  }
+  SubWindowMethodDispatcher.registerHandler(handler);
+}

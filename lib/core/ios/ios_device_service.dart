@@ -24,6 +24,7 @@ class IosDeviceService {
   /// 检索可用 go-ios 二进制路径。
   String _resolveBinary() {
     final pathIos = resolveToolPath('ios');
+    if (hasUserToolPath('ios')) return pathIos;
     if (pathIos != 'ios' && File(pathIos).existsSync()) {
       return pathIos;
     }
@@ -36,7 +37,7 @@ class IosDeviceService {
 
   /// 获取已连接的 iOS 设备列表。
   Future<List<DiscoveredDevice>> listDevices() async {
-    if (_useNativeDiscovery && RustDalBridge.instance.isAvailable) {
+    if (!hasUserToolPath('ios') && _useNativeDiscovery && RustDalBridge.instance.isAvailable) {
       final nativeList = await RustDalBridge.instance.listIosDevices();
       if (nativeList.isNotEmpty) {
         if (nativeList.every((item) => item.containsKey('connection_type'))) {

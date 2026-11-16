@@ -38,6 +38,8 @@ void main(List<String> args) {
 
 Future<void> _startApplication(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 主窗口及子 Engine 都在创建 CLI 服务前恢复路径覆盖。
+  await loadToolPathSettings();
   installAppLogCapture();
   final logWindowId = args.firstOrNull == 'multi_window' && args.length > 1
       ? args[1]

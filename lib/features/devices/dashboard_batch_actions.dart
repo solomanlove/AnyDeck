@@ -439,20 +439,8 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
         title: '批量执行脚本',
         devices: devices,
         action: (device) async {
-          // 若为鸿蒙设备且 Rust DAL 桥接可用，优先走 HDC DAL 驱动
+          // 统一经 HDC 服务选择原生或自定义 CLI，避免绕过设置中的工具路径。
           if (device.isHarmony) {
-            if (RustDalBridge.instance.isAvailable) {
-              try {
-                final out = await RustDalBridge.instance.executeShell(
-                  device.id,
-                  script,
-                  platform: DevicePlatform.harmony,
-                );
-                return out.isEmpty ? '执行完成 (无输出)' : out.trim();
-              } catch (_) {
-                // 原生调用异常时降级走下方 HDC CLI 通道
-              }
-            }
             final res = await ref
                 .read(hdcServiceProvider)
                 .shell(device.id, script);

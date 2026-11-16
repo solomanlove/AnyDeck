@@ -55,7 +55,8 @@ final hdcServiceProvider = Provider<HdcService>((ref) {
 
 /// 高级设置中的 Remote HDC Server，默认不启动并在应用退出时强制回收。
 final hdcRemoteServerProvider = Provider<HdcRemoteServer>((ref) {
-  final server = HdcRemoteServer(ref.watch(hdcServiceProvider).executable);
+  final hdc = ref.watch(hdcServiceProvider);
+  final server = HdcRemoteServer(hdc.executable, executableResolver: () => hdc.executable);
   ref.onDispose(server.stop);
   return server;
 });

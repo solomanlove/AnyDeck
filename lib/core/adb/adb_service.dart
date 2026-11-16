@@ -13,14 +13,16 @@ class AdbService {
   AdbService({
     String? executable,
     void Function(String message, {String tag, String level})? onLog,
-  })  : executable = executable ?? resolveToolPath('adb'),
+  })  : _executable = executable,
         _onLog = onLog;
 
   static final RegExp _deviceLinePattern = RegExp(
     r'^(.*?)\s+(device|offline|unauthorized|recovery|sideload|bootloader|host|no permissions)(?:\s+(.*))?$',
   );
 
-  final String executable;
+  final String? _executable;
+  /// 路径设置只影响后续启动的命令，不中断已有进程或会话。
+  String get executable => _executable ?? resolveToolPath('adb');
   final void Function(String message, {String tag, String level})? _onLog;
 
   /// 启动需要由上层持有并主动取消的 adb 进程。

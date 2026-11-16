@@ -14,9 +14,12 @@ class IosWdaHost {
     String? forwardExecutable,
     this.requestTimeout = const Duration(seconds: 8),
   }) : commands = commands ?? IosCommandService(),
-       forwardExecutable = forwardExecutable ?? resolveToolPath('iproxy');
+       _forwardExecutable = forwardExecutable;
   final IosCommandService commands;
-  final String forwardExecutable;
+  final String? _forwardExecutable;
+  /// 既有转发继续运行，新建连接使用最新的 iproxy 路径。
+  String get forwardExecutable =>
+      _forwardExecutable ?? resolveToolPath('iproxy');
   final Duration requestTimeout;
   final Map<String, _WdaConnection> _connections = {};
   final Set<String> _busy = {};

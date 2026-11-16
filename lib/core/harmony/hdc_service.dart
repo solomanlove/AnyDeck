@@ -19,10 +19,12 @@ class HdcService {
   HdcService({
     String? executable,
     void Function(String message, {String tag, String level})? onLog,
-  })  : executable = executable ?? resolveToolPath('hdc'),
+  })  : _executable = executable,
         _onLog = onLog;
 
-  final String executable;
+  final String? _executable;
+  /// 路径设置只影响后续启动的命令，不中断已有进程或会话。
+  String get executable => _executable ?? resolveToolPath('hdc');
   final void Function(String message, {String tag, String level})? _onLog;
 
   final Map<String, String> _deviceModelCache = {};
@@ -40,7 +42,7 @@ class HdcService {
   /// 获取已连接的鸿蒙设备列表。
   Future<List<DiscoveredDevice>> listDevices() async {
     List<String> rawTargets = [];
-    if (RustDalBridge.instance.isAvailable) {
+    if (!hasUserToolPath('hdc') && RustDalBridge.instance.isAvailable) {
       try {
         final targets = await RustDalBridge.instance.listHarmonyDevices();
         rawTargets = connectedTargetIds(targets);
@@ -167,7 +169,7 @@ class HdcService {
     String command, {
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    if (RustDalBridge.instance.isAvailable) {
+    if (!hasUserToolPath('hdc') && RustDalBridge.instance.isAvailable) {
       try {
         final out = await RustDalBridge.instance.executeShell(
           deviceId,

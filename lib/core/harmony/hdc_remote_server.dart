@@ -4,9 +4,14 @@ import 'dart:io';
 
 /// 显式管理可被远程客户端访问的 HDC Server；默认不启动且仅允许合法 IPv4:Port。
 class HdcRemoteServer {
-  HdcRemoteServer(this.executable);
+  HdcRemoteServer(String executable, {String Function()? executableResolver})
+    : _executable = executable,
+      _executableResolver = executableResolver;
 
-  final String executable;
+  final String _executable;
+  final String Function()? _executableResolver;
+  /// 正在运行的 Server 保留原进程，下次启动才读取新的 HDC 配置。
+  String get executable => _executableResolver?.call() ?? _executable;
   Process? _process;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;

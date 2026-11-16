@@ -5,6 +5,7 @@ enum SettingsCategory {
   general('settingsGeneral', Icons.tune),
   mirroring('settingsMirroringRecording', Icons.screen_share_outlined),
   receivers('settingsReceiving', Icons.cast),
+  dependencies('settingsCoreDependencies', Icons.build_outlined),
   shortcuts('keyboardShortcuts', Icons.keyboard_outlined),
   notifications('settingsNotifications', Icons.notifications_outlined),
   storage('settingsStorageCache', Icons.folder_outlined),

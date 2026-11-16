@@ -15,15 +15,18 @@ class EmulatorService {
     String? avdHome,
     HostPlatformService? hostPlatformService,
     AdbService? adbService,
-  }) : executable = executable ?? resolveToolPath('emulator'),
-       avdManagerExecutable =
-           avdManagerExecutable ?? resolveToolPath('avdmanager'),
+  }) : _executable = executable,
+       _avdManagerExecutable = avdManagerExecutable,
        avdHome = avdHome ?? _defaultAvdHome(),
        _hostPlatformService = hostPlatformService ?? HostPlatformService(),
        _adbService = adbService ?? AdbService();
 
-  final String executable;
-  final String avdManagerExecutable;
+  final String? _executable;
+  final String? _avdManagerExecutable;
+  /// 每次启动模拟器工具时使用当前配置，保留显式注入。
+  String get executable => _executable ?? resolveToolPath('emulator');
+  String get avdManagerExecutable =>
+      _avdManagerExecutable ?? resolveToolPath('avdmanager');
   final String? avdHome;
   final HostPlatformService _hostPlatformService;
   final AdbService _adbService;
