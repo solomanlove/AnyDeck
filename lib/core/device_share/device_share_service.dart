@@ -6,6 +6,7 @@ import '../adb/discovered_device.dart';
 import 'adb/shared_adb_backend.dart';
 import 'device_share_auto_prepare.dart';
 import 'device_share_discovery.dart';
+import 'device_share_diagnostics.dart';
 import 'device_share_invitation.dart';
 import 'device_share_models.dart';
 import 'device_share_store.dart';
@@ -186,7 +187,7 @@ class DeviceShareService {
         existing?.wifiSsid == wifiSsid) {
       return active;
     }
-    await active?.close();
+    await active?.close(reason: HostedShareStopReason.reconfigured);
     await _save(
       profiles: [...profiles.where((p) => p.id != profile.id), profile],
     );
@@ -262,9 +263,10 @@ class DeviceShareService {
       lifetime: profile.lifetime.duration,
       expiresAt: expiresAt,
       onChanged: _notify,
+      onDiagnostic: onDiagnostic,
     );
     if (_disposed) {
-      await share.close();
+      await share.close(reason: HostedShareStopReason.appExit);
       throw StateError('Sharing stopped');
     }
     try {
@@ -281,7 +283,7 @@ class DeviceShareService {
       _notify();
       return share;
     } catch (_) {
-      await share.close();
+      await share.close(reason: HostedShareStopReason.setupFailed);
       rethrow;
     }
   }
@@ -299,7 +301,7 @@ class DeviceShareService {
         final existing = hosts
             .where((h) => h.invitation.fingerprint == id)
             .firstOrNull;
-        await existing?.close();
+        await existing?.close(reason: HostedShareStopReason.reconfigured);
         _automatic.reset(id);
         final share = await _startProfile(
           updated,
@@ -329,7 +331,7 @@ class DeviceShareService {
     final active = hosts
         .where((h) => h.invitation.fingerprint == id)
         .firstOrNull;
-    await active?.close();
+    await active?.close(reason: HostedShareStopReason.ruleRemoved);
     await _save(profiles: profiles.where((p) => p.id != id).toList());
     _automatic.reset(id);
   });
@@ -383,9 +385,15 @@ class DeviceShareService {
     await _save(history: history.where((h) => h.id != id).toList());
   });
 
-  Future<void> updateEnvironment(DeviceShareEnvironment environment) {
+  /// 网络或串号更新可能复用旧设备快照，只有新的设备事件才能据此撤销源通道。
+  Future<void> updateEnvironment(
+    DeviceShareEnvironment environment, {
+    bool sourceDevicesUpdated = true,
+  }) {
     _environment = environment;
-    validateHosts(environment.devices);
+    if (sourceDevicesUpdated) {
+      validateHosts(environment.devices);
+    }
     return _automatic.update(environment);
   }
 
@@ -398,7 +406,14 @@ class DeviceShareService {
             d.id == host.deviceId &&
             d.transportId == host.backend.transportId,
       )) {
-        unawaited(host.close());
+        final source = devices.where((d) => d.id == host.deviceId).firstOrNull;
+        unawaited(
+          host.close(
+            reason: source?.isOnline == true
+                ? HostedShareStopReason.sourceTransportChanged
+                : HostedShareStopReason.sourceUnavailable,
+          ),
+        );
       }
     }
   }
@@ -410,7 +425,7 @@ class DeviceShareService {
     await _automatic.dispose();
     await _operation;
     await Future.wait([
-      ...hosts.map((h) => h.close()),
+      ...hosts.map((h) => h.close(reason: HostedShareStopReason.appExit)),
       ...joins.map((j) => j.close()),
     ]);
     await discovery?.close();

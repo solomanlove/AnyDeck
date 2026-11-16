@@ -281,3 +281,29 @@ flutter test --no-pub test/device_share_*.dart
 - 17:13:16 真实共享连接再次整体关闭，当时进行的额外传输验证失败；缺少旧版本终止方向日志，不能确认这次关闭的原因。随后用保存的身份和独立接收端 ADB 重新连接，回读型号确认仍是同一台三星：更新后 8 MiB 上传耗时 8.959 秒，SHA-256 一致、4 次并发查询全部成功，会话持续在线。
 - 真实手机的更新后 `abb` 8 MiB 输入耗时 11.547 秒，返回 `Success`，临时安装 Session 已成功弃置；先前样本为 23.911 秒。两轮采样时间不同，不能把差异全部归因于代码；尚未验证 260 MiB 用户 APK 在真实 IDE 中完整安装、启动和 Debug attach，也不承诺长时 Wi-Fi 稳定性。临时远端数据、Session、Socket 和隔离 ADB Server 已清理。
 - 更新接收方后可使用上传聚合与终止方向日志；分享方也需更新并重建共享，才能应用后端慢写流隔离。重连后 Android Studio 应选中当前在线的共享设备，再验证同一 APK 的完整安装、启动与 Debug attach。未主动启动或重启桌面 App、IDE、用户 ADB Server 或用户手机 App。
+
+## 12. 手动共享自行断开与源端原因记录（2026-11-16）
+
+用户确认 17:13:16 接收端设备消失时，分享方为 macOS，手机和 AnyDeck 均在线，且没有启用指定 Wi-Fi 自动准备。因此不能将此次关闭归因于自动准备的 SSID 检查。旧版接收端日志缺少分享方退出原因，暂时无法取得源端历史日志，不能确认这次断开属于网络、ADB transport 或到期关闭。
+
+### 已复现的设备快照缺陷
+
+- `DeviceDiscoveryTracker._sameDeviceList` 原先只比较设备 ID、状态、型号和产品标记，遗漏 `transportId`。同一手机快速重连时，如果两轮均显示在线、只有 transport 改变，新的设备快照不会发布，`currentDevices` 仍保留旧 transport。现将 transport 纳入变化判断；重复相同 transport 继续去重。
+- 分享操作会回读实时 ADB 列表，而网络和串号更新可能复用 Provider 缓存的旧设备列表。原来每次 `updateEnvironment` 都用该列表调用 `validateHosts`，可能撤销刚绑定新 transport 的共享。现在 Provider 只在真实设备列表事件中传入 `sourceDevicesUpdated: true`；元数据和网络通知仍更新自动准备环境，但不把缓存列表当作新的拔线证据。
+- 新测试分别验证真实 `track-devices` 格式帧发布 transport 变化，以及“缓存 71、实时绑定 72、串号/网络更新仍带 71”时新共享保持在线。真实设备事件缺失源设备或改变 transport 时仍按原规则撤销，不允许把已建立流改绑到其他设备。以上为确认的代码缺陷，不代表已证明 17:13 现场由它触发。
+
+### 分享方关闭分类
+
+- `host_stopped reason=...` 表示监听整体结束，区分 `expired`、`sourceUnavailable`、`sourceTransportChanged`、`reconfigured`、`ruleRemoved`、`setupFailed`、`appExit`、`listenerError` 与调用方 `requested`。并发关闭只保留第一个原因。
+- `host_peer_ended listener_open=true` 表示本次接收连接结束，分享监听仍可用。接收方正常退出或 Socket 异常均可能走此路径，不能仅凭这个事件判定手机或分享 App 离线。同一分享码可重新认证由真实 TLS 测试覆盖。
+- `peer_transport_failed` 区分握手、设备能力读取、接收、发送和异常 OPEN 阶段。能力读取失败记为 `backend_banner / local_adb`；出口故障记为 `write / to_receiver`。主动关闭及其后续 EOF 不重复报错。
+- `stream_failed` 区分设备读写、传输写入、OPEN ACK、数据 ACK 和 ACK 发送；ACK 超时归于接收方向，不能误报成设备读取故障。日志仅包含受控事件、阶段、方向、临时 Stream ID 和异常类型，不记录原始异常、设备数据或分享凭据。
+- 所有回调均通过无 Flutter 依赖的 `reportDeviceShareDiagnostic` 安全调用，观察者异常不能阻止 Socket 清理。现有主窗口 `onDiagnostic` 将源端事件写入本地 `device_share` 日志；未新增高频轮询、自动重连或 MethodChannel。
+
+### 验证结果
+
+- 共享、设备发现、概览及投屏恢复共 **23 个文件、160 项测试顺序执行通过**，包含 260 MiB ABB 完整字节回归。11 个修改/新增入口定向 analyze 无诊断，新增文件格式与 `git diff --check` 通过。
+- 首次并发回归中，已有 UDP 端口立即重绑定用例曾遇到一次 `Address already in use`；该用例独立复测与完整顺序回归均通过。本轮未修改 UDP 发现实现，不能据此归因于此次共享自动断开。
+- 新覆盖 transport 发布/去重、旧元数据快照不误停新共享、源设备撤销原因、同码再次认证、到期/主动/退出分类、诊断观察者异常清理，以及各接收/发送阶段的脱敏错误记录。ACK 超时采用虚拟时间验证，不增加真实等待。
+
+后续现场应同时保留分享方与接收方的新版本日志，先区分 Host 停止还是 Peer 结束，再核对同一时刻的传输阶段。此次未启动或重启用户 App/IDE，未验证真实网络断开后的长期稳定性。

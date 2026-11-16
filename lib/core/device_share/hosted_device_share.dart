@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'adb/shared_adb_backend.dart';
 import 'adb/shared_adb_peer.dart';
+import 'device_share_diagnostics.dart';
 import 'device_share_invitation.dart';
 import 'share_socket_reader.dart';
 import 'share_tls_identity.dart';
@@ -16,16 +17,17 @@ class HostedDeviceShare {
     this._server,
     this._context,
     this._onChanged,
+    this._onDiagnostic,
   ) {
     _server.listen(
       _accept,
       onError: (_) {
-        unawaited(close());
+        unawaited(close(reason: HostedShareStopReason.listenerError));
       },
     );
     if (invitation.expiresAt case final deadline?) {
       _expiry = Timer(deadline.difference(DateTime.now()), () {
-        unawaited(close());
+        unawaited(close(reason: HostedShareStopReason.expired));
       });
     }
   }
@@ -36,6 +38,7 @@ class HostedDeviceShare {
   final ServerSocket _server;
   final SecurityContext _context;
   final void Function() _onChanged;
+  final void Function(String)? _onDiagnostic;
   final _sockets = <Socket>{};
   SharedAdbPeer? _peer;
   bool _claimed = false;
@@ -50,6 +53,7 @@ class HostedDeviceShare {
     required SharedAdbBackend backend,
     required String host,
     required void Function() onChanged,
+    void Function(String)? onDiagnostic,
     ShareTlsIdentity? identity,
     InternetAddress? bindAddress,
     Duration? lifetime = const Duration(minutes: 30),
@@ -93,6 +97,7 @@ class HostedDeviceShare {
       server,
       context,
       onChanged,
+      onDiagnostic,
     );
   }
 
@@ -117,6 +122,7 @@ class HostedDeviceShare {
     SecureSocket? secure;
     ShareSocketReader? reader;
     var claimed = false;
+    var peerStarted = false;
     try {
       secure = await SecureSocket.secureServer(
         raw,
@@ -142,11 +148,23 @@ class HostedDeviceShare {
         'name': backend.name,
         'expiresAt': invitation.expiresAt?.toIso8601String(),
       });
-      final peer = SharedAdbPeer(secure, reader, backend);
+      final peer = SharedAdbPeer(
+        secure,
+        reader,
+        backend,
+        onDiagnostic: _onDiagnostic,
+      );
       _peer = peer;
+      peerStarted = true;
       await peer.run();
-    } catch (_) {
+    } catch (error) {
       // 对端错误不得泄露分享令牌；连接状态由 finally 统一回收。
+      if (!peerStarted && !closed) {
+        reportDeviceShareDiagnostic(
+          _onDiagnostic,
+          'host_accept_failed phase=handshake error_type=${error.runtimeType}',
+        );
+      }
     } finally {
       raw.destroy();
       secure?.destroy();
@@ -154,6 +172,12 @@ class HostedDeviceShare {
       _sockets.remove(raw);
       _sockets.remove(secure);
       if (claimed) {
+        if (!closed) {
+          reportDeviceShareDiagnostic(
+            _onDiagnostic,
+            'host_peer_ended listener_open=true',
+          );
+        }
         _peer = null;
         _claimed = false;
         receiver = null;
@@ -162,10 +186,16 @@ class HostedDeviceShare {
     }
   }
 
-  Future<void> close() => _closing ??= _close();
+  Future<void> close({
+    HostedShareStopReason reason = HostedShareStopReason.requested,
+  }) => _closing ??= _close(reason);
 
-  Future<void> _close() async {
+  Future<void> _close(HostedShareStopReason reason) async {
     closed = true;
+    reportDeviceShareDiagnostic(
+      _onDiagnostic,
+      'host_stopped reason=${reason.name} receiver_connected=$_claimed',
+    );
     final peer = _peer;
     _expiry?.cancel();
     for (final socket in _sockets.toList()) {

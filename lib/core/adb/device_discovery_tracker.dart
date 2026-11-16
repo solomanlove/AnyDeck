@@ -244,9 +244,11 @@ class DeviceDiscoveryTracker {
   bool _sameDeviceList(List<DiscoveredDevice> a, List<DiscoveredDevice> b) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
+      // 快速重连可能始终显示在线，仍须发布新 transport，避免共享绑定读取旧快照。
       if (a[i].id != b[i].id ||
           a[i].status != b[i].status ||
           a[i].model != b[i].model ||
+          a[i].transportId != b[i].transportId ||
           a[i].product != b[i].product) {
         return false;
       }

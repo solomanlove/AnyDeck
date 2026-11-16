@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../share_socket_reader.dart';
+import '../device_share_diagnostics.dart';
 import 'adb_bridge_stream.dart';
 import 'adb_packet.dart';
 import 'shared_adb_backend.dart';
@@ -11,12 +12,13 @@ import 'shared_adb_reverse.dart';
 
 /// 已经通过 TLS/分享码认证的单设备 ADB Transport，不暴露宿主 Smart Socket。
 class SharedAdbPeer {
-  SharedAdbPeer(this.socket, this.reader, this.backend) {
+  SharedAdbPeer(this.socket, this.reader, this.backend, {this.onDiagnostic}) {
     _reverse = SharedAdbReverse(backend, _openReverse);
   }
   final Socket socket;
   final ShareSocketReader reader;
   final SharedAdbBackend backend;
+  final void Function(String message)? onDiagnostic;
   final _streams = <int, AdbBridgeStream>{};
   final _opening = <int>{};
   final _openTasks = <Future<void>>{};
@@ -36,6 +38,13 @@ class SharedAdbPeer {
     });
     _writeTail = sent.catchError((Object error, StackTrace stack) {
       // TLS 出口失效会影响全部 Stream，立即撤销 Transport，避免保持假在线状态。
+      if (!_closed) {
+        reportDeviceShareDiagnostic(
+          onDiagnostic,
+          'peer_transport_failed phase=write direction=to_receiver '
+          'error_type=${error.runtimeType}',
+        );
+      }
       unawaited(close());
     });
     return sent;
@@ -65,6 +74,8 @@ class SharedAdbPeer {
   }
 
   Future<void> run() async {
+    var phase = 'handshake';
+    var direction = 'from_receiver';
     try {
       final first = await AdbPacket.read(
         reader,
@@ -75,7 +86,11 @@ class SharedAdbPeer {
         throw const FormatException('Invalid ADB handshake');
       }
       _payloadLimit = first.arg1.clamp(4096, AdbPacket.maxPayload);
+      phase = 'backend_banner';
+      direction = 'local_adb';
       final banner = await backend.banner();
+      phase = 'handshake';
+      direction = 'to_receiver';
       await _send(
         AdbPacket(
           AdbPacket.cnxn,
@@ -84,6 +99,8 @@ class SharedAdbPeer {
           Uint8List.fromList(utf8.encode(banner)),
         ),
       );
+      phase = 'read';
+      direction = 'from_receiver';
       while (!_closed) {
         final packet = await AdbPacket.read(reader);
         switch (packet.command) {
@@ -102,6 +119,15 @@ class SharedAdbPeer {
             throw const FormatException('Unexpected ADB packet');
         }
       }
+    } catch (error) {
+      if (!_closed) {
+        reportDeviceShareDiagnostic(
+          onDiagnostic,
+          'peer_transport_failed phase=$phase direction=$direction '
+          'error_type=${error.runtimeType}',
+        );
+      }
+      rethrow;
     } finally {
       await close();
     }
@@ -111,6 +137,13 @@ class SharedAdbPeer {
     late final Future<void> task;
     task = _open(packet)
         .catchError((Object error, StackTrace stack) {
+          if (!_closed) {
+            reportDeviceShareDiagnostic(
+              onDiagnostic,
+              'peer_transport_failed phase=open direction=from_receiver '
+              'error_type=${error.runtimeType}',
+            );
+          }
           unawaited(close());
         })
         .whenComplete(() => _openTasks.remove(task));
@@ -195,6 +228,7 @@ class SharedAdbPeer {
       payloadLimit: _payloadLimit,
       send: _send,
       onClose: () => _streams.remove(id),
+      onDiagnostic: onDiagnostic,
     );
     _streams[id] = stream;
     unawaited(
@@ -222,6 +256,7 @@ class SharedAdbPeer {
       payloadLimit: _payloadLimit,
       send: _send,
       onClose: () => _streams.remove(id),
+      onDiagnostic: onDiagnostic,
     );
     _streams[id] = stream;
     // pump 先安装初始 ACK 等待者，再发送 OPEN，避免快速回包丢失。

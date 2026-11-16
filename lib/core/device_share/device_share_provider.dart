@@ -40,7 +40,7 @@ final deviceShareServiceProvider = Provider<DeviceShareService>((ref) {
   Map<String, String> serials = {};
   StreamSubscription<HostNetworkInfo>? networkSubscription;
   bool disposed = false;
-  void observe() {
+  void observe({bool sourceDevicesUpdated = false}) {
     if (!disposed) {
       service.updateEnvironment(
         DeviceShareEnvironment(
@@ -48,6 +48,7 @@ final deviceShareServiceProvider = Provider<DeviceShareService>((ref) {
           devices: devices,
           serials: serials,
         ),
+        sourceDevicesUpdated: sourceDevicesUpdated,
       );
     }
   }
@@ -78,7 +79,7 @@ final deviceShareServiceProvider = Provider<DeviceShareService>((ref) {
   ref.listen(discoveredDevicesProvider, (_, next) {
     if (next case AsyncData(:final value)) {
       devices = value;
-      observe();
+      observe(sourceDevicesUpdated: true);
     }
   });
   ref.listen(deviceRegistryProvider, (_, next) {
