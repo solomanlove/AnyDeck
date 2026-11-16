@@ -150,10 +150,7 @@ class DeviceListFilters extends StatelessWidget {
             hintStyle: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
+            contentPadding: AppThemeSizes.searchFieldContentPadding,
             border: border,
             enabledBorder: border,
             focusedBorder: border.copyWith(
@@ -164,14 +161,8 @@ class DeviceListFilters extends StatelessWidget {
             ),
             prefixIcon: const Icon(Icons.search_rounded, size: 20),
             prefixIconColor: theme.colorScheme.onSurfaceVariant,
-            prefixIconConstraints: const BoxConstraints(
-              minWidth: 40,
-              minHeight: 40,
-            ),
-            suffixIconConstraints: const BoxConstraints(
-              minWidth: 40,
-              minHeight: 40,
-            ),
+            prefixIconConstraints: AppThemeSizes.searchFieldIconConstraints,
+            suffixIconConstraints: AppThemeSizes.searchFieldIconConstraints,
             suffixIcon: value.text.isEmpty
                 ? null
                 : IconButton(

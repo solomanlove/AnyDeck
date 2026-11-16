@@ -31,16 +31,21 @@ class _EmulatorPageLayoutState extends State<_EmulatorPageLayout> {
           width: compact ? 180 : 220,
           child: TextField(
             controller: widget.filterController,
+            style: Theme.of(context).textTheme.bodyMedium,
             onChanged: (val) {
               widget.onFilterChanged(val);
               setState(() {});
             },
             decoration: InputDecoration(
               isDense: true,
+              contentPadding: AppThemeSizes.searchFieldContentPadding,
+              prefixIconConstraints: AppThemeSizes.searchFieldIconConstraints,
+              suffixIconConstraints: AppThemeSizes.searchFieldIconConstraints,
               prefixIcon: const Icon(CupertinoIcons.search, size: 18),
               suffixIcon: widget.filterController.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(CupertinoIcons.clear_circled, size: 16),
+                      visualDensity: VisualDensity.compact,
                       onPressed: () {
                         widget.filterController.clear();
                         widget.onFilterChanged('');

@@ -62,3 +62,11 @@
 - `emulator_platform_tabs_test.dart` 在 Light/Dark 下分别从三种初始平台开始验证，覆盖共享控件装配、三平台回调与父级状态更新，并在 650 px 标题栏中检查布局异常；回归 `platform_version_distribution_test.dart` 与 `emulator_panel_test.dart`。
 - 验证结果：`flutter test --no-pub test/emulator_platform_tabs_test.dart test/platform_version_distribution_test.dart test/emulator_panel_test.dart` 共 20 项通过；`dart analyze lib/features/devices/widgets/emulator_platform_tabs.dart test/emulator_platform_tabs_test.dart` 无问题；`git diff --check` 通过。
 - 不启动桌面 App 或真实模拟器；真实窗口中的视觉与 hover 体验仍需手工验收。
+
+## Android 模拟器搜索框高度对齐（2026-11-16）
+
+- 需求：Android 模拟器管理的搜索框与设备管理搜索框等高。原搜索框使用默认 48px 图标约束，比设备搜索框的 40px 更高。
+- 实现：`AppThemeSizes.searchFieldContentPadding` 统一水平 12px、垂直 10px 内边距，`searchFieldIconConstraints` 统一 40×40 最小图标区域；设备搜索框原有尺寸值迁入这两个常量，视觉不变。`dashboard_emulator_layout.dart` 复用相同尺寸与 `bodyMedium` 字体，清除按钮使用 `VisualDensity.compact`，避免输入后重新撑高。
+- 边界：保留搜索框宽度、圆角、颜色、搜索与清除回调；不固定整体高度，放大字体时自然增高。不新增文案、Provider、后台命令或跨窗口协议，不修改模拟器启动、投屏或另外两平台的搜索框。
+- 自动验证：`flutter --no-version-check test --no-pub test/emulator_search_fields_test.dart test/emulator_panel_test.dart test/device_list_filters_test.dart`，19 项全部通过。新增用例直接比较两处实际 Widget 高度，覆盖中英文、Light/Dark、1200/620px 窗口、1.6 倍文字，以及空输入、聚焦输入和清除后高度；标准文字下验证高度为 40px，并保留圆角检查。
+- 静态验证：4 个修改 Dart 文件定向 `flutter analyze --no-pub --no-fatal-infos` 无 error / warning，仅有当前 SDK 的 5 项 Flutter UI / 本地化 API 弃用 info；`git diff --check` 通过。未启动桌面 App 或真实模拟器，实际窗口视觉待运行包验收。
