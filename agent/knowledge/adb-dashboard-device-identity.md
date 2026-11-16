@@ -89,3 +89,12 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 
 - “仅在线”使用简洁的三横线筛选图标，并关闭 `FilterChip` 自动绘制的选中勾号，避免勾号与自定义图标叠加。选中态图标跟随文字使用 `onPrimaryContainer`，未选中态使用 `onSurfaceVariant`。
 - 筛选回调、文案、布局和搜索状态保持原有逻辑；`device_list_filters_test.dart` 5 项通过，选中态检查不再叠加勾号。定向 `flutter analyze --no-pub` 无诊断，并检查了 Light 模式的选中与未选中 Widget 渲染图。
+
+## 设备操作列水波纹圆角（2026-11-16）
+
+- 需求：设备行的共享、投屏、无线连接 / 断开和编辑按钮使用圆角矩形交互反馈，替换默认圆形水波纹。
+- 实现：`dashboard_devices_rows.dart` 的 `_buildActionsCell` 使用局部 `IconButtonTheme`，复制继承的 `ButtonStyle` 并仅覆盖 `shape` 为 `RoundedRectangleBorder(borderRadius: AppThemeSizes.radiusSmall)`，统一为 4 logical pixels 圆角。嵌套的 `DeviceShareControls` 与 `AdbWirelessControls` 一并继承，避免分散配置；AirPlay 按钮沿用自身已有的圆角 `InkWell`。
+- 边界：仅调整操作列交互形状，保留图标、颜色、尺寸、Tooltip、禁用状态和回调；不新增文案、依赖、Provider、后台命令或跨窗口协议，不涉及投屏数据流。
+- 自动回归：`flutter --no-version-check test --no-pub test/device_list_action_buttons_test.dart test/device_list_context_menu_test.dart test/adb_wireless_controls_test.dart test/dashboard_header_bar_test.dart`，25 项通过。新增用例覆盖 Light/Dark、中英文、三平台、在线 / 离线与模拟器，检查实际 `InkResponse` 的圆角边界、水波纹启用、离线共享禁用及编辑弹窗。点击测试需等待设备行双击手势仲裁窗口结束。
+- 静态检查：两个修改 / 新增 Dart 文件的定向 `dart analyze` 无 error / warning，仅有当前 SDK 对测试中 Flutter UI import 的两项弃用 info；全仓 `flutter analyze --no-pub` 仍有 5 项未改动文件的 warning 与 716 项 info，无 error。`git diff --check` 通过。
+- 人工回归：在 Light/Dark/System 下悬停并点击设备行各操作，确认反馈限定在圆角矩形内，点击行为正常。按约定未启动桌面 App，真实窗口视觉待运行包验收。

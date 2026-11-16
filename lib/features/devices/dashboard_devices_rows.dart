@@ -283,7 +283,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     final canMirror = device.isOnline &&
         (!device.isIos || device.hasUsbConnection);
 
-    return Expanded(
+    final actions = Expanded(
       flex: 2,
       child: Wrap(
         spacing: 8,
@@ -378,6 +378,18 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             ),
         ],
       ),
+    );
+
+    // 操作列统一使用圆角矩形水波纹，嵌套的共享与无线按钮共同继承。
+    return IconButtonTheme(
+      data: IconButtonThemeData(
+        style: (IconButtonTheme.of(context).style ?? const ButtonStyle()).copyWith(
+          shape: const WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: AppThemeSizes.radiusSmall),
+          ),
+        ),
+      ),
+      child: actions,
     );
   }
 }
