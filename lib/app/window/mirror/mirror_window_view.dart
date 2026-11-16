@@ -49,12 +49,15 @@ extension _MirrorWindowView on _MirrorWindowContentState {
         !_controller.isAudioMuted &&
         settings.mirrorAudioEnabled;
 
-    // 监听设备在线状态，若设备断开则强制停止投屏
-    ref.listen<bool>(deviceOnlineProvider(widget.deviceId), (previous, next) {
-      if (!next) {
-        _controller.forceStopMirroring();
-      }
-    });
+    // Android 子窗口在线态来自投屏 Session；降档暂停不能反向取消恢复。
+    // 真实 ADB 断线由 AndroidMirrorTransportHost 和投屏 Notifier 统一回收。
+    if (widget.isIos || widget.isHarmony) {
+      ref.listen<bool>(deviceOnlineProvider(widget.deviceId), (previous, next) {
+        if (!next) {
+          _controller.forceStopMirroring();
+        }
+      });
+    }
 
     // 监听包列表加载状态，以同步最新的前台应用信息
     ref.listen<AsyncValue<List<AdbPackage>>>(

@@ -217,3 +217,29 @@ flutter test --no-pub test/device_share_*.dart
 - 未启动或构建桌面应用，也未切换用户当前 Wi-Fi；真实双电脑、系统定位授权、Wi-Fi 切换/休眠恢复与长时运行仍需人工验收。
 
 人工重点：分享方选择期限与自动规则，接收方首次连接后断开，确认设备列表移除且历史可重连；重启双方应用或改变分享方地址后重连；离开/返回指定 Wi-Fi、手机拔插及期限到期；手动暂停后确认不自动重开，删除规则后确认旧历史认证失败。永久模式应在托盘运行期间保持等待，退出应用后会话应结束。
+
+## 10. 投屏拥塞恢复被窗口取消（2026-11-16）
+
+### 现象与定位
+
+接收方的三星 SM-F9710 经局域网共享后保持 ADB 在线，投屏多次成功生成 1920×1448 解码帧，但随后结束并清理 server/forward；其中两次在首帧后约 2.7 秒停止。投屏使用 16 Mbps，旧日志只保留清理命令，未记录触发恢复的健康快照，因此不能追溯每次停止的具体触发项。
+
+真实 `MirrorWindowApp` 的回归测试确认以下生命周期冲突：
+
+1. 共享回环 Transport 按 TCP 投屏通道处理。连续三次每秒采样发现视频积压至少 350 ms 时，`MirrorRecoveryPolicy` 请求降档重建。
+2. `ActiveEmbeddedMirrorNotifier` 停止旧会话时清空 Texture。子窗口 `deviceOnlineProvider` 以活跃投屏 Session 判断在线，随之返回 false。
+3. 窗口原有在线监听再次调用 `forceStopMirroring()`，增加 generation 并重置降档策略。等待旧资源释放的自动恢复请求因 generation 变化被取消。
+4. 用户手动重连仍按原画质启动，遇到持续积压后可再次触发相同冲突。旧测试的立即返回 stop 会合并空状态与新 Texture，必须用受控异步释放才能复现。
+
+### 修复与资源归属
+
+- Android 窗口不再根据投屏 Session 的空状态反向停止会话；实际 ADB 设备变化由 `AndroidMirrorTransportHost` 处理，异常 server 退出由投屏 Notifier 处理。iOS/HarmonyOS 保留原在线监听。
+- 降档继续复用原有旧资源清理、generation 校验和 20 秒冷却。用户主动停止或恢复期间关窗仍取消迟到的启动；未增加自动共享重连或修改全局画质设置。
+- `embedded_scrcpy_recovery.dart` 将 `stream_recovery_requested` 和 `stream_recovery_failed` 写入 `AppLogRecorder`，记录现有 Texture、视频积压、音频状态及目标画质，不写入设备标识或分享凭据。后续可从本地日志区分主动降档与共享设备断线。
+
+### 验证与边界
+
+- 新增真实窗口组件测试，覆盖共享手机降档后重建、恢复日志、正常关窗释放，以及清理期间关窗后不再启动。旧版在受控异步清理下只启动一次，修复后成功启动第二次并使用 1280/4 Mbps。
+- 窗口恢复、健康策略、Android 换线、连接解析、设备事件、错误状态、剪贴板、画面几何、窗口尺寸、画质设置、iOS/HarmonyOS 回归及共享 Transport/慢 OPEN/到期关闭等 16 个文件共 **100 项通过**；4 个生产入口及新增测试定向 `flutter analyze --no-pub` 无问题，`git diff --check` 通过。
+- 本机三星通过另一台 AnyDeck 的真实共享通道，使用当前 App 同一 Rust dylib、独立 scid/forward 做 CLI 解码：26 秒收到 113 帧，1920×1448、16 Mbps，期间原生会话持续运行；另一次 31 秒同时读取 `getprop`、约 3 MB 的 `dumpsys wifi` 和 `dumpsys display`，三条查询均成功且视频会话未退出。第二轮画面基本静止，只收到 22 帧，不能作为动态画面长时稳定性验收。
+- 临时 server jar、scid、forward 和原生会话均已清理。未启动、重启或构建桌面应用；上述真机测试验证底层共享和解码，窗口修复由自动化测试验证。更新后的真实窗口动态画面、触控、音频与长时 Wi-Fi 波动仍需人工验收。
