@@ -82,7 +82,7 @@
 | `hdc-harmony-feature-parity` | HarmonyOS 功能对齐与真机边界 | experimental | 性能 Tab、控制快捷操作的 HDC 实测，以及音频、摄像头、麦克风与跨应用消息的设备侧权限和工具链边界 | `core/harmony/`, `features/control/`, `features/performance/` |
 | `huawei-share-core-integration` | Huawei Share 私有核心接入 | experimental | Debug/Release 自动打包与六成员严格制品校验、原子增量安装、发现端口共享与启动失败提示、真实就绪状态、私有制品固定版本与 SHA-256、默认 LAN 协商/有界回退、P2P入口收起与底层实现保留、2 秒来件确认兜底与真实 LAN 收件、DFile末块填充与短写边界修复、两台AnyDeck电脑LAN互传协商与双向回归、设置持久化/跨窗及 busy 门控、BLE 认证后切手机 WLAN/TCP 数据通道、匿名 stdin 凭据、Wi-Fi 恢复/定位与 Keychain 边界、恢复期 flock 互斥与精确 sibling helper 保留、1 GiB限制放开与数值溢出保护、固定高度发现舞台/紧凑头像/批次状态与扫描波纹、手机版本要求、连续批次队列与真实进度、记录/通知/目录设置及离线与真机验收边界 | `lib/core/nearby_share/`, `script/`, `macos/Runner.xcodeproj/` |
 | `adb-workspace-prototype` | 小米 17 工作台交互原型 | experimental | 14 张本地原生截图、12 个工作台入口、应用详情十类标签、原型结构、模拟边界与验证记录 | `prototype/interactive/` |
-| `adb-core-tool-path-settings` | 核心依赖路径与目录操作设置 | active | ADB/HDC/go-ios 等 CLI 路径持久化、实际执行、macOS 原生目录终端与其他平台终端绑定、启动快照与跨窗口同步、权限校验及回归边界 | `core/process/`, `app/settings/`, `features/overview/settings/` |
+| `adb-core-tool-path-settings` | 核心依赖路径与目录操作设置 | active | ADB/HDC/go-ios 等 CLI 路径持久化、实际执行、macOS 原生目录终端与其他平台终端绑定、启动快照与跨窗口同步、权限校验、环境缺失黄色标识及回归边界 | `core/process/`, `app/settings/`, `features/overview/settings/` |
 
 ## 新增知识库规则
 

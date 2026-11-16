@@ -112,3 +112,15 @@ flutter --no-version-check test --no-pub \
 回归测试在宿主启动器层分别检查 ADB、HDC、iOS 连续两套含中文、空格、单引号的路径，断言 Terminal 打开的目标始终是工具父目录，覆盖非零退出、文件缺失与相对路径拦截。Linux 的真实 Bash 测试从隔离 HOME 启动，检查初始化脚本实际切换目录；Windows 脚本参数测试保留。桌面 App 与系统 Terminal 界面未启动验证，实际目录入口通过注入系统启动器进行测试。
 
 本次 5 个相关测试文件共 **47 项通过**；4 个改动 Dart 文件定向 `flutter analyze --no-pub --no-fatal-infos` 无诊断，格式和 `git diff --check` 通过。
+
+## 核心依赖环境缺失黄色标识
+
+「设置 → 核心依赖」中，ADB、HDC、iOS、scrcpy、Emulator、avdmanager、iproxy 的当前路径不可用时，在路径模式说明旁显示黄色警告图标与「未检测到工具」徽标，Tooltip 提示安装工具或配置可执行文件路径。颜色收口在 Theme 的 `environmentWarningForeground` / `environmentWarningBackground`，适配明暗主题；文案同步中英文，窄窗口使用 Wrap 自动换行。
+
+`isToolPathAvailable` 复用保存路径时的绝对路径、普通文件和可执行权限校验，不运行 CLI 或启动后台轮询。空路径、未解析的工具名称、缺失文件、目录、无执行权限均显示环境缺失；可用工具不显示警告。该状态表示可执行文件存在且权限满足，未执行版本或设备连接探测。
+
+`ToolPathAvailabilityBadge` 独立处理异步检测和生命周期，检测期间不沿用旧状态。路径替换、完成路径操作或应用恢复前台时重新校验当前路径；未保存的输入框草稿不参与检测。提示不会阻止用户选择、保存路径或恢复默认，也不改变原有目录和终端路由。
+
+测试分别覆盖全部工具的真实临时文件与权限校验、探测不执行 CLI、文件删除、中文空格路径、缺失/可用切换、草稿与保存状态隔离、前台恢复、明暗主题黄色对比度及中英文窄窗口布局。Windows 专属扩展名用例在对应平台执行。
+
+本次 9 个相关测试文件共 **81 项通过，1 项 Windows 专属测试在 macOS 跳过**；改动 Dart 文件定向 analyze 无 error / warning，仅保留 SDK Material 弃用 info，新增及相关 Dart 文件格式检查和 `git diff --check` 通过。未启动桌面 App。

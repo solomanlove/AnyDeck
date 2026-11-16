@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../core/process/tool_path_settings.dart';
+import 'tool_path_availability_badge.dart';
 
 /// 核心 CLI 路径编辑器，负责输入和文件选择，不承担持久化与命令执行。
 ///
@@ -34,6 +35,7 @@ class ToolPathSettingField extends StatefulWidget {
 class _ToolPathSettingFieldState extends State<ToolPathSettingField> {
   late final TextEditingController _controller;
   bool _busy = false;
+  int _availabilityRevision = 0;
   String? _errorKey;
 
   @override
@@ -71,7 +73,12 @@ class _ToolPathSettingFieldState extends State<ToolPathSettingField> {
     } catch (_) {
       if (mounted) setState(() => _errorKey = 'toolPathSaveFailed');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _availabilityRevision++;
+        });
+      }
     }
   }
 
@@ -97,13 +104,25 @@ class _ToolPathSettingFieldState extends State<ToolPathSettingField> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.t(
-              widget.value.isEmpty ? 'toolPathAutomatic' : 'toolPathCustom',
-            ),
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                l10n.t(
+                  widget.value.isEmpty ? 'toolPathAutomatic' : 'toolPathCustom',
+                ),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              ToolPathAvailabilityBadge(
+                toolName: widget.toolName,
+                resolvedPath: widget.resolvedPath,
+                revision: _availabilityRevision,
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           SelectableText(

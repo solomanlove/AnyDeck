@@ -136,6 +136,15 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
 extension AppThemeDataColors on ThemeData {
   AppThemeColors get appColors => extension<AppThemeColors>()!;
 
+  /// 工具环境缺失提示使用黄色标识，分别保证明暗背景上的文字对比度。
+  Color get environmentWarningForeground => brightness == Brightness.dark
+      ? const Color(0xffffdf80)
+      : const Color(0xff705500);
+
+  Color get environmentWarningBackground => brightness == Brightness.dark
+      ? const Color(0xff40350e)
+      : const Color(0xfffff2bf);
+
   /// 主侧栏与设置分类共用的选中背景，明暗差异统一收口。
   Color get navigationSelectedBackground => colorScheme.primary.withValues(
     alpha: brightness == Brightness.dark ? 0.18 : 0.09,

@@ -64,3 +64,18 @@ Future<String> validateToolPath(String toolName, String value) async {
   }
   return path;
 }
+
+/// 检查当前解析路径是否指向可执行文件，供设置页提示环境缺失。
+///
+/// 空值和未解析的工具名不表示可用环境；复用保存校验且不启动 CLI 探测。
+Future<bool> isToolPathAvailable(String toolName, String resolvedPath) async {
+  if (resolvedPath.trim().isEmpty) return false;
+  try {
+    await validateToolPath(toolName, resolvedPath);
+    return true;
+  } on ToolPathValidationException {
+    return false;
+  } on FileSystemException {
+    return false;
+  }
+}
