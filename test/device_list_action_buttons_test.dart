@@ -60,7 +60,7 @@ void main() {
   };
 
   for (final brightness in Brightness.values) {
-    testWidgets('设备操作按钮的水波纹为圆角矩形，编辑回调正常：$brightness', (tester) async {
+    testWidgets('设备操作按钮的圆角水波纹保留内边距，编辑回调正常：$brightness', (tester) async {
       await withDeviceMenu(
         tester,
         (fixture) async {
@@ -75,14 +75,14 @@ void main() {
               expect(button, findsOneWidget);
             }
             for (final element in buttons.evaluate()) {
-              final ink = tester.widget<InkResponse>(
-                find.descendant(
-                  of: find.byWidget(element.widget),
-                  matching: find.byWidgetPredicate(
-                    (widget) => widget is InkResponse,
-                  ),
+              final button = find.byWidget(element.widget);
+              final inkFinder = find.descendant(
+                of: button,
+                matching: find.byWidgetPredicate(
+                  (widget) => widget is InkResponse,
                 ),
               );
+              final ink = tester.widget<InkResponse>(inkFinder);
               expect(
                 ink.customBorder,
                 const RoundedRectangleBorder(
@@ -91,6 +91,19 @@ void main() {
               );
               expect(ink.containedInkWell, isTrue);
               expect(ink.splashFactory, isNot(NoSplash.splashFactory));
+              // 检查真实水波纹边界，避免只扩大外围点击区域而没有图标留白。
+              final inkRect = tester.getRect(inkFinder);
+              final iconRect = tester.getRect(
+                find.descendant(of: button, matching: find.byType(Icon)),
+              );
+              for (final padding in [
+                iconRect.left - inkRect.left,
+                inkRect.right - iconRect.right,
+                iconRect.top - inkRect.top,
+                inkRect.bottom - iconRect.bottom,
+              ]) {
+                expect(padding, greaterThanOrEqualTo(8));
+              }
             }
           }
 
@@ -99,7 +112,16 @@ void main() {
             _rowButtons(deviceMenuOffline).at(0),
           );
           expect(offlineShare.onPressed, isNull);
-          await tester.tap(_rowButtons(emulator));
+          // 点击图标左侧新增的内边距，仍应触发编辑操作。
+          final editInk = tester.getRect(
+            find.descendant(
+              of: _rowButtons(emulator),
+              matching: find.byWidgetPredicate(
+                (widget) => widget is InkResponse,
+              ),
+            ),
+          );
+          await tester.tapAt(Offset(editInk.left + 4, editInk.center.dy));
           // 设备行同时支持双击，等待其手势仲裁窗口结束。
           await tester.pump(const Duration(milliseconds: 350));
           await tester.pumpAndSettle();

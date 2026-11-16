@@ -98,3 +98,11 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 - 自动回归：`flutter --no-version-check test --no-pub test/device_list_action_buttons_test.dart test/device_list_context_menu_test.dart test/adb_wireless_controls_test.dart test/dashboard_header_bar_test.dart`，25 项通过。新增用例覆盖 Light/Dark、中英文、三平台、在线 / 离线与模拟器，检查实际 `InkResponse` 的圆角边界、水波纹启用、离线共享禁用及编辑弹窗。点击测试需等待设备行双击手势仲裁窗口结束。
 - 静态检查：两个修改 / 新增 Dart 文件的定向 `dart analyze` 无 error / warning，仅有当前 SDK 对测试中 Flutter UI import 的两项弃用 info；全仓 `flutter analyze --no-pub` 仍有 5 项未改动文件的 warning 与 716 项 info，无 error。`git diff --check` 通过。
 - 人工回归：在 Light/Dark/System 下悬停并点击设备行各操作，确认反馈限定在圆角矩形内，点击行为正常。按约定未启动桌面 App，真实窗口视觉待运行包验收。
+
+## 设备操作按钮水波纹内边距（2026-11-16）
+
+- 需求：圆角矩形水波纹与图标之间保留适量留白，避免反馈边界紧贴图标。
+- 原因与实现：投屏、编辑和各平台连接 / 断开按钮原有 `padding: EdgeInsets.zero` 及空 `BoxConstraints`，导致水波纹仅包裹图标。移除这些局部配置，统一复用 `IconButton` 默认的 8px 内边距和最小尺寸，与共享按钮一致；原局部 `IconButtonTheme` 的 4px 圆角继续生效。
+- 边界：图标尺寸、颜色、回调及禁用状态沿用原配置；不新增公共样式、文案、Provider、进程或跨窗口协议，AirPlay 自有按钮保持原有内边距。
+- 验证：`flutter --no-version-check test --no-pub test/device_list_action_buttons_test.dart test/adb_wireless_controls_test.dart test/device_list_context_menu_test.dart test/device_share_widget_test.dart test/dashboard_header_bar_test.dart`，29 项通过。Light/Dark 用例比较实际 `InkResponse` 与 `Icon` 的四边距离，确保至少 8px，并点击图标左侧内边距确认编辑弹窗正常打开且不触发行跳转。
+- 3 个修改 Dart 文件定向 `flutter analyze --no-pub --no-fatal-infos` 无 error / warning，仅有 4 项 SDK 弃用 info；`git diff --check` 通过。未启动桌面 App，真实鼠标 Hover 与水波纹动画待运行包验收。

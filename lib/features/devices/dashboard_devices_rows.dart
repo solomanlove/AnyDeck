@@ -311,8 +311,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 color: Color(0xFF26A69A),
               ),
               tooltip: context.l10n.t('screenMirror'),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
               onPressed: () => openStandaloneMirrorWindow(
                 context,
                 ref,
@@ -330,8 +328,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 color: Colors.red,
               ),
               tooltip: context.l10n.t('disconnect'),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
               onPressed: () => _runAdbAction(
                 context,
                 ref,
@@ -349,8 +345,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 color: Colors.green,
               ),
               tooltip: context.l10n.t('connect'),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
               onPressed: () => _runAdbAction(
                 context,
                 ref,
@@ -372,15 +366,13 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 color: Color(0xFF1976D2),
               ),
               tooltip: context.l10n.t('editDeviceInfo'),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
               onPressed: () => _showEditDeviceInfoDialog(context, device),
             ),
         ],
       ),
     );
 
-    // 操作列统一使用圆角矩形水波纹，嵌套的共享与无线按钮共同继承。
+    // 操作列复用 IconButton 默认内边距，嵌套的共享与无线按钮共同继承圆角。
     return IconButtonTheme(
       data: IconButtonThemeData(
         style: (IconButtonTheme.of(context).style ?? const ButtonStyle()).copyWith(

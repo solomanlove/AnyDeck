@@ -37,8 +37,6 @@ class AdbWirelessControls extends ConsumerWidget {
         if (!device.isOnline || !device.hasTcpConnection || busy)
           IconButton(
             tooltip: context.l10n.t('wirelessConnect'),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
             icon: busy
                 ? SizedBox(
                     width: 20,
@@ -64,8 +62,6 @@ class AdbWirelessControls extends ConsumerWidget {
         if (networkIds.isNotEmpty) ...[
           IconButton(
             tooltip: context.l10n.t('disconnect'),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
             icon: Icon(CupertinoIcons.bolt_slash, color: colors.error),
             onPressed: busy
                 ? null
