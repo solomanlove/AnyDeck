@@ -20,6 +20,7 @@ class DeviceShareService {
     this.backendFactory,
     DeviceShareStore? store,
     this.discovery,
+    this.onDiagnostic,
     DateTime Function()? now,
   }) : _store = store ?? MemoryDeviceShareStore(),
        now = now ?? DateTime.now {
@@ -39,6 +40,8 @@ class DeviceShareService {
   backendFactory;
   final DeviceShareStore _store;
   final DeviceShareDiscovery? discovery;
+  /// 仅转发共享终止方向和错误类型，不包含分享凭据或设备数据。
+  final void Function(String)? onDiagnostic;
   final DateTime Function() now;
   final _hosts = <HostedDeviceShare>[];
   final _joins = <JoinedDeviceShare>[];
@@ -348,7 +351,12 @@ class DeviceShareService {
         joins.any((j) => j.invitation.fingerprint == invitation.fingerprint)) {
       throw StateError('Shared device is already connected');
     }
-    final joined = await JoinedDeviceShare.connect(invitation, adb, _notify);
+    final joined = await JoinedDeviceShare.connect(
+      invitation,
+      adb,
+      _notify,
+      onDiagnostic: onDiagnostic,
+    );
     try {
       if (_disposed || joined.closed) throw StateError('Sharing stopped');
       await _save(

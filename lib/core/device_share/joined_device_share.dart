@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 
 import '../adb/adb_service.dart';
+import 'adb/shared_adb_bulk_relay.dart';
 import 'device_share_invitation.dart';
 import 'share_socket_reader.dart';
 
@@ -16,6 +17,7 @@ class JoinedDeviceShare {
     this._secure,
     this._reader,
     this._onClosed,
+    this._onDiagnostic,
   ) : _port = _server.port {
     _server.listen(
       _accept,
@@ -31,6 +33,8 @@ class JoinedDeviceShare {
   final SecureSocket _secure;
   final ShareSocketReader _reader;
   final void Function() _onClosed;
+  final void Function(String message)? _onDiagnostic;
+  SharedAdbBulkRelay? _relay;
   Socket? _local;
   bool closed = false;
   Future<void>? _closing;
@@ -39,8 +43,9 @@ class JoinedDeviceShare {
   static Future<JoinedDeviceShare> connect(
     DeviceShareInvitation invitation,
     AdbService adb,
-    void Function() onClosed,
-  ) async {
+    void Function() onClosed, {
+    void Function(String message)? onDiagnostic,
+  }) async {
     final secure = await SecureSocket.connect(
       invitation.host,
       invitation.port,
@@ -83,6 +88,7 @@ class JoinedDeviceShare {
         secure,
         reader,
         onClosed,
+        onDiagnostic,
       );
       final connected = await adb.run(['connect', joined.deviceId]);
       if (!connected.isSuccess || joined.closed) {
@@ -115,17 +121,15 @@ class JoinedDeviceShare {
     _local = local;
     local.setOption(SocketOption.tcpNoDelay, true);
     final input = ShareSocketReader(local);
-    Future<void> relay(ShareSocketReader source, Socket target) async {
-      while (!closed) {
-        final chunk = await source.readChunk();
-        if (chunk == null) break;
-        target.add(chunk);
-        await target.flush().timeout(const Duration(seconds: 15));
-      }
-    }
-
     try {
-      await Future.any([relay(input, _secure), relay(_reader, local)]);
+      final relay = _relay = SharedAdbBulkRelay(
+        localSocket: local,
+        localReader: input,
+        remoteSocket: _secure,
+        remoteReader: _reader,
+        onDiagnostic: _onDiagnostic,
+      );
+      await relay.run();
     } catch (_) {
       // 任意方向断开都使本次共享失效，禁止静默重连已经撤销的会话。
     } finally {
@@ -139,6 +143,7 @@ class JoinedDeviceShare {
   Future<void> _close() async {
     closed = true;
     final id = deviceId;
+    _relay?.close();
     _secure.destroy();
     _local?.destroy();
     unawaited(_reader.cancel());

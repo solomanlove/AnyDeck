@@ -243,3 +243,41 @@ flutter test --no-pub test/device_share_*.dart
 - 窗口恢复、健康策略、Android 换线、连接解析、设备事件、错误状态、剪贴板、画面几何、窗口尺寸、画质设置、iOS/HarmonyOS 回归及共享 Transport/慢 OPEN/到期关闭等 16 个文件共 **100 项通过**；4 个生产入口及新增测试定向 `flutter analyze --no-pub` 无问题，`git diff --check` 通过。
 - 本机三星通过另一台 AnyDeck 的真实共享通道，使用当前 App 同一 Rust dylib、独立 scid/forward 做 CLI 解码：26 秒收到 113 帧，1920×1448、16 Mbps，期间原生会话持续运行；另一次 31 秒同时读取 `getprop`、约 3 MB 的 `dumpsys wifi` 和 `dumpsys display`，三条查询均成功且视频会话未退出。第二轮画面基本静止，只收到 22 帧，不能作为动态画面长时稳定性验收。
 - 临时 server jar、scid、forward 和原生会话均已清理。未启动、重启或构建桌面应用；上述真机测试验证底层共享和解码，窗口修复由自动化测试验证。更新后的真实窗口动态画面、触控、音频与长时 Wi-Fi 波动仍需人工验收。
+
+## 11. Android Studio 大包安装超时与共享流阻塞（2026-11-16）
+
+### 现场证据
+
+- Android Studio 的 “Launching on devices” 包含部署安装阶段。现场日志在 16:50:22 成功创建 PackageManager Session，随后通过 `abb` 流式传输 272,527,484 字节（约 260 MiB）APK；16:55:22 正好 5 分钟后放弃 Session 并报 `SHELL_UNRESPONSIVE`。未进入 Activity 启动或 JDWP attach，不能把该现象归为 App 启动失败。
+- 同时运行的另一个 IDE 在安装期间读取共享设备属性超时。此前 12 KB 的 `abb_exec` 安装桩测试不能代表大包 `abb` / Shell v2 的完整路径。
+- 真实共享三星的 4 MiB 无压缩上传耗时 8.354 秒（0.479 MiB/s），回读耗时 6.253 秒且 SHA-256 一致。另以独立临时安装 Session 验证 `abb` 输入流：8 MiB 用时 23.911 秒后返回响应，随后弃置 Session，没有 commit、安装或启动用户 App。按该吞吐传输完整 APK 会超过 IDE 的 5 分钟时限。
+- 分享方地址的 4 次 ICMP 往返为 7.961～234.196 ms，平均 105.214 ms；该短测只说明现场延迟波动，不能据此判断具体路由器、频段或源端 USB 的故障。
+
+### 入站写入与流隔离
+
+- 原 `SharedAdbPeer.run()` 在收到 `WRTE` 后等待单条后端服务 `flush()`，最长 15 秒；此时同一 Transport 上其他流的 ACK、关闭和 OPEN 均不能处理。用可控 `flush` gate 确认：仅一条服务停止消费输入，即可让另一条 8192 字节视频流在首块确认后停止发送第二块。
+- `AdbBridgeStream` 现在独立处理写入，Transport 循环继续分派其他流事件。Legacy ADB 每流最多接纳一块未确认输入，违规重复写入只关闭该服务，不建立无界 Future 队列。
+- 本流输入额度持续占用到 `OKAY` 真正进入 TLS 写入前，再由统一 FIFO 的 `beforeWrite` 释放；既避免 ACK 排队期间输入无界积压，也避免已收到 ACK 的快速回包被误拒绝。对端关闭会销毁后端 Socket，清理未完成写入。
+
+### 大包流控依据
+
+[AOSP Transport 协议](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/dev/protocol.md) 允许接收 `WRTE` 后立即发送 `READY`，也允许本地服务写入后才确认；服务层字节可以在不改变顺序的前提下重新分包。小块数据逐次等待跨局域网 ACK 时，吞吐受包大小与往返延迟限制。
+
+`delayed_ack` 需要双方协商，当前共享未宣告该能力；AOSP Host 还通过 `ADB_BURST_MODE` 控制它。不能为单设备共享重启用户的全局 ADB Server 或静默修改其环境，参见 [AOSP Delayed ACK](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/dev/delayed_ack.md)。
+
+### 接收端有界上传聚合
+
+- `adb/shared_adb_bulk_relay.dart` 接管最多四条由本机发起的 `sync:`、`abb:`、`abb_exec:` 上传流。向本机 ADB 提前发布有界 `OKAY`，把等待远端 ACK 期间积压的服务字节合并为不超过协商 maxPayload 的一个 `WRTE`；对分享方仍严格每流只发送一块未确认数据，兼容原 Legacy ADB Bridge。
+- 每流窗口随协商 payload 大小变化，最多 1 MiB；计入在途和缓存字节，窗口满后暂停本地 ACK，最多再保留一块已在途的本机输入。没有整包缓存或无界 Future 队列。ACK 真正进入 Socket 前才释放下一块本机输入额度，零字节包不加入数据队列。
+- 远端数据 ACK 被代理消费，不能再次传给已获提前确认的本机 ADB；初始 OPEN 的 ACK 独立处理。Stream ID pair 校验、失败 OPEN 和远端关闭负责释放对应状态；远端先关闭时取消尚未写出的缓存与提前 ACK。
+- 本机 CLSE 等待已接纳的字节按序排空后才送往分享方。普通 Shell、视频流、第五条批量流以及源端发起的 Reverse 维持透明转发；本改动不承诺 pull 提速。两个 Socket 出口各自用 FIFO 串行写入。
+- `JoinedDeviceShare` 在完成原有证书指纹和 token 认证后使用聚合 Relay。终止时通过可注入诊断回调记录 `relay_input_closed direction=local|remote error_type=...`，由主窗口落入 `device_share` 本地日志；不记录原始异常文本、设备 ID、分享码或 payload。主动停止先取消 Relay，不误报为网络异常。
+
+### 验证边界与使用要求
+
+- 原生隔离 ADB 集成新增与现场相同大小的 **272,527,484 字节** `abb` / Shell v2 输入，逐 64 KiB 发送、解析与 SHA-256 校验，验证 NUL 参数、stdin/EOF、完整响应和退出码，以及安装输入未完成时独立 Shell 查询仍成功。不连接真实手机，也不生成、安装或启动 App。
+- 慢写入测试覆盖独立流 ACK、关闭回收、重复 WRTE 有界、ACK 排队与快速回包；聚合测试覆盖窗口背压、减少远端确认次数后的内容 hash、延迟 CLSE、远端关闭取消、错误 ID、四流上限及非批量/Reverse 透传。
+- 共享、概览和投屏恢复等 **19 个文件共 134 项测试通过**，包含完整 260 MiB ABB 数据回归；10 个修改/新增 Dart 入口定向 analyze 无诊断，新增文件格式和 `git diff --check` 通过。
+- 17:13:16 真实共享连接再次整体关闭，当时进行的额外传输验证失败；缺少旧版本终止方向日志，不能确认这次关闭的原因。随后用保存的身份和独立接收端 ADB 重新连接，回读型号确认仍是同一台三星：更新后 8 MiB 上传耗时 8.959 秒，SHA-256 一致、4 次并发查询全部成功，会话持续在线。
+- 真实手机的更新后 `abb` 8 MiB 输入耗时 11.547 秒，返回 `Success`，临时安装 Session 已成功弃置；先前样本为 23.911 秒。两轮采样时间不同，不能把差异全部归因于代码；尚未验证 260 MiB 用户 APK 在真实 IDE 中完整安装、启动和 Debug attach，也不承诺长时 Wi-Fi 稳定性。临时远端数据、Session、Socket 和隔离 ADB Server 已清理。
+- 更新接收方后可使用上传聚合与终止方向日志；分享方也需更新并重建共享，才能应用后端慢写流隔离。重连后 Android Studio 应选中当前在线的共享设备，再验证同一 APK 的完整安装、启动与 Debug attach。未主动启动或重启桌面 App、IDE、用户 ADB Server 或用户手机 App。

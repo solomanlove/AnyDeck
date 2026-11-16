@@ -27,9 +27,10 @@ class SharedAdbPeer {
   Future<void> _writeTail = Future<void>.value();
 
   /// IOSink.flush 期间禁止并发 add/flush；所有 Stream 共用同一条有序写队列。
-  Future<void> _send(AdbPacket packet) {
+  Future<void> _send(AdbPacket packet, {void Function()? beforeWrite}) {
     final sent = _writeTail.then((_) async {
       if (_closed) return;
+      beforeWrite?.call();
       socket.add(packet.encode());
       await socket.flush().timeout(const Duration(seconds: 15));
     });
@@ -92,14 +93,8 @@ class SharedAdbPeer {
           case AdbPacket.okay:
             _streams[packet.arg1]?.acknowledge(packet.arg0);
           case AdbPacket.wrte:
-            final stream = _streams[packet.arg1];
-            if (stream != null) {
-              try {
-                await stream.write(packet);
-              } catch (_) {
-                stream.close();
-              }
-            }
+            // 单条服务消费输入缓慢时，仍须继续接收其他流的 ACK 与关闭请求。
+            _streams[packet.arg1]?.write(packet);
           case AdbPacket.clse:
             final stream = _streams[packet.arg1];
             if (stream?.remoteId == packet.arg0) stream?.close();

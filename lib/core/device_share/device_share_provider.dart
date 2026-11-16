@@ -10,6 +10,7 @@ import '../providers/app_providers.dart';
 import '../providers/host_network_provider.dart';
 import '../network/host_network_info.dart';
 import '../adb/discovered_device.dart';
+import '../logging/app_log_recorder.dart';
 import 'device_share_auto_prepare.dart';
 import 'device_share_discovery.dart';
 import 'device_share_network_watch.dart';
@@ -23,6 +24,11 @@ final deviceShareServiceProvider = Provider<DeviceShareService>((ref) {
     ref.watch(adbServiceProvider),
     store: isSub ? MemoryDeviceShareStore() : FileDeviceShareStore(),
     discovery: isSub ? null : UdpDeviceShareDiscovery(),
+    onDiagnostic: (event) => AppLogRecorder.instance.record(
+      event,
+      tag: 'device_share',
+      level: 'W',
+    ),
   );
   if (isSub) {
     ref.onDispose(() => unawaited(service.dispose()));
