@@ -12,6 +12,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
   final _searchController = TextEditingController();
   String _query = '';
   DeviceStatusFilter _filter = DeviceStatusFilter.all;
+  String? _groupId;
   DeviceViewMode _viewMode = DeviceViewMode.wall;
   bool _batchMode = false;
   String _sortColumn = 'id';
@@ -30,16 +31,26 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
   void _changeQuery(String value) => setState(() => _query = value);
   void _changeFilter(DeviceStatusFilter value) =>
       setState(() => _filter = value);
+  void _changeGroup(String? value) => setState(() => _groupId = value);
   void _changeViewMode(DeviceViewMode value) =>
       setState(() => _viewMode = value);
 
-  /// 空结果只清除搜索与状态筛选，保留当前布局和批量选择。
+  /// 空结果清除搜索、状态与分组筛选，保留当前布局和批量选择。
   void _resetDeviceFilters() {
     _searchController.clear();
     setState(() {
       _query = '';
       _filter = DeviceStatusFilter.all;
+      _groupId = null;
     });
+  }
+
+  /// 仅补全已保存成员的物理身份；后台失败保留旧数据，后续刷新可重试。
+  void _synchronizeDeviceGroups(List<RegisteredDevice> devices) {
+    unawaited(
+      ref.read(deviceGroupsProvider.notifier)
+          .synchronizeDevices(devices).catchError((Object _) {}),
+    );
   }
 
   /// 退出批量管理时清除注册表勾选，切换视图和筛选则保留选择。

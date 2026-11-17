@@ -9,6 +9,7 @@ import '../model/device_workspace_view_state.dart';
 ///
 /// [controller] 由父级释放；数量为筛选前的总数。所有回调仅通知父级，
 /// 不扫描设备或修改选择。外层水平留白由工作区统一提供。
+/// [groupFilter] 可选，展示在搜索右侧；工具栏负责宽度约束与窄屏换行。
 class DeviceListFilters extends StatelessWidget {
   const DeviceListFilters({
     super.key,
@@ -22,6 +23,7 @@ class DeviceListFilters extends StatelessWidget {
     required this.batchMode,
     required this.onBatchModeChanged,
     required this.onSearchChanged,
+    this.groupFilter,
   });
 
   final TextEditingController controller;
@@ -34,6 +36,7 @@ class DeviceListFilters extends StatelessWidget {
   final bool batchMode;
   final ValueChanged<bool> onBatchModeChanged;
   final ValueChanged<String> onSearchChanged;
+  final Widget? groupFilter;
 
   TextStyle _labelStyle(BuildContext context) =>
       Theme.of(context).textTheme.bodySmall!.copyWith(fontSize: 12);
@@ -94,13 +97,27 @@ class DeviceListFilters extends StatelessWidget {
         const iconViewsWidth = 70.0;
         final minSearch = 160 * MediaQuery.textScalerOf(context).scale(1);
         final available = constraints.maxWidth;
+        final groupWidth = groupFilter == null
+            ? 0.0
+            : 144 * MediaQuery.textScalerOf(context).scale(1);
+        final groupSpace = groupFilter == null ? 0.0 : groupWidth + 8;
         final showLabels =
             available >=
-            filterWidth + labeledViewsWidth + manageWidth + minSearch + 30;
+            filterWidth +
+                labeledViewsWidth +
+                manageWidth +
+                minSearch +
+                groupSpace +
+                30;
         final viewsWidth = showLabels ? labeledViewsWidth : iconViewsWidth;
         final singleRow =
             available >=
-            filterWidth + viewsWidth + manageWidth + minSearch + 30;
+            filterWidth +
+                viewsWidth +
+                manageWidth +
+                minSearch +
+                groupSpace +
+                30;
         final filters = _buildFilters(context);
         final controls = _buildControls(context, showLabels);
         final search = _buildSearch(context);
@@ -112,6 +129,10 @@ class DeviceListFilters extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(child: search),
               const SizedBox(width: 8),
+              if (groupFilter != null) ...[
+                SizedBox(width: groupWidth, child: groupFilter),
+                const SizedBox(width: 8),
+              ],
               controls,
             ],
           );
@@ -127,7 +148,21 @@ class DeviceListFilters extends StatelessWidget {
               Align(alignment: Alignment.centerRight, child: controls),
             ],
             const SizedBox(height: 6),
-            search,
+            if (groupFilter == null)
+              search
+            else if (available >= minSearch + groupSpace)
+              Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: 8),
+                  SizedBox(width: groupWidth, child: groupFilter),
+                ],
+              )
+            else ...[
+              search,
+              const SizedBox(height: 6),
+              groupFilter!,
+            ],
           ],
         );
       },

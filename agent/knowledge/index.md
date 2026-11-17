@@ -8,6 +8,7 @@
 
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
+| `adb-device-groups` | 设备平台与自定义分组 | active | 默认 Android/Harmony/iOS 自动归类、自定义多成员分组、物理身份升级、串行本地持久化、组合筛选、读写失败重试与窄屏回归 | `core/device_groups/`, `features/devices/` |
 | `adb-device-workspace-diagnostics` | 设备墙与全局服务诊断 | active | 紧凑手机墙/列表、完整版本与横排多通道状态、恢复原侧栏与主题隔离、图标连接菜单、原品牌Logo与设备标签、可见设备自动截图与有界并发、显式批量选择、本机IP状态栏、十二项真实服务检查、开发者入口复用与验证边界 | `features/devices/`, `features/diagnostics/`, `core/diagnostics/` |
 | `adb-macos-debug-destination` | macOS arm64e 构建兼容 | active | Debug generic destination、SDK 可恢复修复、Release 架构归一与打包脚本传参 | `macos/`, `script/` |
 | `adb-rust-host-recording` | Rust 电脑本地音视频录制 | active | 内置 server 4.0、H.264/AAC MP4、三个录制入口、收尾/取消、有界背压与无线突发修复、真机验证边界 | `rust/device_bridge/src/recording/`, `lib/core/scrcpy/`, `features/screenshot/` |

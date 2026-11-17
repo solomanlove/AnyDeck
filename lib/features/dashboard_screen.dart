@@ -109,6 +109,8 @@ import 'devices/widgets/tcpip_connection_dialog.dart';
 import 'devices/widgets/device_share_dialog.dart';
 import '../core/device_share/device_share_provider.dart';
 import 'devices/widgets/device_list_filters.dart';
+import 'devices/widgets/device_group_filter.dart';
+import '../core/device_groups/device_groups_controller.dart';
 import 'overview/widget/mirror_quality_presets.dart';
 import 'overview/widget/keyboard_shortcut_settings.dart';
 import 'overview/settings/settings_workspace.dart';

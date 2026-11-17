@@ -5,8 +5,23 @@ extension _DeviceListPanelView on _DeviceListPanelState {
   Widget _buildDeviceListPanel(BuildContext context) {
     final activeDevicesAsync = ref.watch(discoveredDevicesProvider);
     final items = ref.watch(deviceRegistryProvider);
+    final groups = ref.watch(deviceGroupsProvider).value ?? DeviceGroupsState();
+    ref.listen(deviceRegistryProvider, (_, devices) {
+      if (ref.read(deviceGroupsProvider).hasValue) {
+        _synchronizeDeviceGroups(devices);
+      }
+    });
+    ref.listen(deviceGroupsProvider, (previous, next) {
+      if (previous?.hasValue != true && next.hasValue) {
+        _synchronizeDeviceGroups(ref.read(deviceRegistryProvider));
+      }
+    });
     final airplayRoot = ref.watch(airplaySessionProvider);
     final mergedAirPlay = mergeAirPlayDevicesIntoList(items, airplayRoot);
+    final selectedGroupId = groups.groups.any((group) => group.id == _groupId)
+        ? _groupId : null;
+    final groupedDevices = mergedAirPlay.devices
+        .where((device) => groups.matches(selectedGroupId, device)).toList();
     final names = {
       for (final device in mergedAirPlay.devices)
         device.id: DeviceListPresentation.name(
@@ -20,7 +35,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     };
     final sortedItems =
         _sortedDevices(
-              mergedAirPlay.devices,
+              groupedDevices,
               mergedAirPlay.sessionByDeviceId,
               names,
             )
@@ -68,10 +83,15 @@ extension _DeviceListPanelView on _DeviceListPanelState {
             children: [
               DeviceListFilters(
                 controller: _searchController,
-                onlineCount: mergedAirPlay.devices
-                    .where((d) => d.isOnline)
-                    .length,
-                totalCount: mergedAirPlay.devices.length,
+                onlineCount: groupedDevices.where((d) => d.isOnline).length,
+                totalCount: groupedDevices.length,
+                groupFilter: DeviceGroupFilter(
+                  selectedGroupId: selectedGroupId,
+                  onChanged: _changeGroup,
+                  // 临时 AirPlay 会话没有稳定物理身份，自定义成员只选注册设备。
+                  devices: items,
+                  names: names,
+                ),
                 filter: _filter,
                 onFilterChanged: _changeFilter,
                 viewMode: _viewMode,
@@ -147,7 +167,8 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       );
     }
     if (sortedItems.isEmpty) {
-      final filtered = _query.isNotEmpty || _filter != DeviceStatusFilter.all;
+      final filtered = _query.isNotEmpty ||
+          _filter != DeviceStatusFilter.all || _groupId != null;
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
