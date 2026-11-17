@@ -1,10 +1,9 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_theme.dart';
+import 'device_workspace_popup_menu.dart';
 
 /// 设备管理的连接入口，按原型展示三个带图标的选项和独立 USB 提示。
 ///
@@ -25,33 +24,12 @@ class DeviceConnectionMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final textScale = MediaQuery.textScalerOf(context).scale(13) / 13;
-    final menuWidth = (240 * textScale.clamp(1.0, 1.4))
-        .clamp(0.0, math.max(0.0, MediaQuery.sizeOf(context).width - 16))
-        .toDouble();
     return Material(
       color: Colors.transparent,
       borderRadius: AppThemeSizes.radiusMedium,
-      child: PopupMenuButton<String>(
-        key: const Key('deviceConnectionButton'),
+      child: DeviceWorkspacePopupMenu<String>(
+        buttonKey: const Key('deviceConnectionButton'),
         tooltip: context.l10n.t('deviceWorkspaceConnect'),
-        borderRadius: AppThemeSizes.radiusMedium,
-        position: PopupMenuPosition.under,
-        offset: const Offset(0, 6),
-        constraints: BoxConstraints.tightFor(width: menuWidth),
-        menuPadding: const EdgeInsets.all(6),
-        color: theme.appColors.panelSurface,
-        surfaceTintColor: Colors.transparent,
-        shadowColor: scheme.shadow.withValues(alpha: .18),
-        elevation: 4,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppThemeSizes.radiusLarge,
-          side: BorderSide(
-            color: scheme.outlineVariant,
-            width: AppThemeSizes.borderWidth,
-          ),
-        ),
         onSelected: onSelected,
         itemBuilder: (context) => [
           _item(context, 'pair', LucideIcons.wifi, 'deviceWorkspacePair'),
