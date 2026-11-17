@@ -120,6 +120,7 @@ import 'devices/model/device_list_presentation.dart';
 import 'devices/model/device_workspace_view_state.dart';
 import 'devices/widgets/device_wall_card.dart';
 import 'devices/controller/device_screen_preview_controller.dart';
+import 'devices/widgets/device_screen_preview.dart';
 import 'devices/model/device_context_action.dart';
 import 'devices/widgets/host_network_footer.dart';
 import 'devices/widgets/device_subnet_warning.dart';

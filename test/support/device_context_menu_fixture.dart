@@ -24,6 +24,7 @@ import 'package:any_deck/core/process/host_platform_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
+import 'package:any_deck/features/devices/controller/device_screen_preview_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -198,6 +199,15 @@ class _Settings extends AppSettingsController {
   AppSettings build() => AppSettings(screenshotSavePath: path);
 }
 
+/// 菜单测试只记录显式截图；设备墙自动采集由工作区集成测试单独覆盖。
+/// 保留真实 capture 实现，只有卡片可见性不触发自动请求。
+class _ManualPreviewController extends DeviceScreenPreviewController {
+  _ManualPreviewController(super.deviceId);
+
+  @override
+  void setVisible(bool visible) {}
+}
+
 /// 装配真实设备列表，用简化的目标 Route 验证跳转参数，避免启动终端等后台任务。
 class DeviceMenuFixture {
   DeviceMenuFixture(
@@ -248,6 +258,7 @@ Future<void> withDeviceMenu(
   DeviceShareService? sharing,
   DeviceMenuAdb? adbService,
   DeviceMenuHdc? hdcService,
+  bool enableAutomaticPreviews = false,
   HostNetworkInfo network = const HostNetworkInfo(),
 }) async {
   tester.view.physicalSize = const Size(1200, 900);
@@ -279,6 +290,11 @@ Future<void> withDeviceMenu(
       airplaySessionProvider.overrideWith(() => _AirPlay(airplay)),
       emulatorListProvider.overrideWith((ref) async => []),
       emulatorConnectionsProvider.overrideWith((ref) async => {}),
+      if (!enableAutomaticPreviews)
+        for (final device in devices)
+          deviceScreenPreviewProvider(device.id).overrideWith(
+            () => _ManualPreviewController(device.id),
+          ),
     ],
   );
   final router = GoRouter(

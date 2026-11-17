@@ -75,32 +75,32 @@ class DeviceListFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 17),
+    padding: const EdgeInsets.only(bottom: 10),
     child: LayoutBuilder(
       builder: (context, constraints) {
         final filterWidth = DeviceStatusFilter.values.fold<double>(
-          6,
+          4,
           (width, value) =>
               width +
-              31 +
+              22 +
               _textWidth(context, _filterLabel(context, value)) +
               _textWidth(context, '${_count(value)}', size: 11),
         );
-        final manageWidth = _textWidth(context, _manageLabel(context)) + 24;
+        final manageWidth = _textWidth(context, _manageLabel(context)) + 18;
         final labeledViewsWidth =
-            82 +
+            70 +
             _textWidth(context, context.l10n.t('deviceWorkspaceWall')) +
             _textWidth(context, context.l10n.t('deviceWorkspaceList'));
-        const iconViewsWidth = 82.0;
+        const iconViewsWidth = 70.0;
         final minSearch = 160 * MediaQuery.textScalerOf(context).scale(1);
         final available = constraints.maxWidth;
         final showLabels =
             available >=
-            filterWidth + labeledViewsWidth + manageWidth + minSearch + 40;
+            filterWidth + labeledViewsWidth + manageWidth + minSearch + 30;
         final viewsWidth = showLabels ? labeledViewsWidth : iconViewsWidth;
         final singleRow =
             available >=
-            filterWidth + viewsWidth + manageWidth + minSearch + 40;
+            filterWidth + viewsWidth + manageWidth + minSearch + 30;
         final filters = _buildFilters(context);
         final controls = _buildControls(context, showLabels);
         final search = _buildSearch(context);
@@ -109,9 +109,9 @@ class DeviceListFilters extends StatelessWidget {
             key: const Key('deviceToolbarSingleRow'),
             children: [
               filters,
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(child: search),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               controls,
             ],
           );
@@ -119,14 +119,14 @@ class DeviceListFilters extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (available >= filterWidth + viewsWidth + manageWidth + 20)
+            if (available >= filterWidth + viewsWidth + manageWidth + 16)
               Row(children: [filters, const Spacer(), controls])
             else ...[
               filters,
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Align(alignment: Alignment.centerRight, child: controls),
             ],
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             search,
           ],
         );
@@ -140,7 +140,7 @@ class DeviceListFilters extends StatelessWidget {
       label: context.l10n.t('deviceWorkspaceFilter'),
       child: Wrap(
         key: const Key('deviceListCounts'),
-        spacing: 3,
+        spacing: 2,
         runSpacing: 3,
         children: [
           for (final value in DeviceStatusFilter.values)
@@ -150,10 +150,10 @@ class DeviceListFilters extends StatelessWidget {
                 key: Key('deviceFilter-${value.name}'),
                 onPressed: () => onFilterChanged(value),
                 style: TextButton.styleFrom(
-                  minimumSize: const Size(0, 35),
+                  minimumSize: const Size(0, 36),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 8,
+                    horizontal: 8,
+                    vertical: 6,
                   ),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   foregroundColor: filter == value
@@ -175,7 +175,7 @@ class DeviceListFilters extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(_filterLabel(context, value)),
-                    const SizedBox(width: 9),
+                    const SizedBox(width: 6),
                     Text(
                       '${_count(value)}',
                       style: const TextStyle(fontSize: 11),
@@ -190,8 +190,8 @@ class DeviceListFilters extends StatelessWidget {
   }
 
   Widget _buildControls(BuildContext context, bool showLabels) => Wrap(
-    spacing: 10,
-    runSpacing: 8,
+    spacing: 6,
+    runSpacing: 6,
     crossAxisAlignment: WrapCrossAlignment.center,
     alignment: WrapAlignment.end,
     children: [
@@ -202,8 +202,8 @@ class DeviceListFilters extends StatelessWidget {
           key: const Key('deviceBatchManage'),
           onPressed: () => onBatchModeChanged(!batchMode),
           style: OutlinedButton.styleFrom(
-            minimumSize: const Size(0, 35),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             textStyle: _labelStyle(context),
             foregroundColor: batchMode
@@ -232,7 +232,7 @@ class DeviceListFilters extends StatelessWidget {
     return Semantics(
       label: context.l10n.t('deviceWorkspaceView'),
       child: Container(
-        padding: const EdgeInsets.all(3),
+        padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: theme.appColors.panelSurface,
           border: Border.all(color: theme.colorScheme.outlineVariant),
@@ -254,10 +254,10 @@ class DeviceListFilters extends StatelessWidget {
                     key: Key('deviceView-${mode.name}'),
                     onPressed: () => onViewModeChanged(mode),
                     style: TextButton.styleFrom(
-                      minimumSize: const Size(36, 28),
+                      minimumSize: const Size(32, 30),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 6,
+                        horizontal: 7,
+                        vertical: 4,
                       ),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       textStyle: _labelStyle(context).copyWith(
@@ -285,7 +285,7 @@ class DeviceListFilters extends StatelessWidget {
                           size: 14,
                         ),
                         if (showLabels) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Text(
                             context.l10n.t(
                               mode == DeviceViewMode.wall
@@ -329,8 +329,8 @@ class DeviceListFilters extends StatelessWidget {
               context,
             ).copyWith(color: theme.colorScheme.onSurfaceVariant),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 8,
+              horizontal: 8,
+              vertical: 6,
             ),
             border: border,
             enabledBorder: border,
@@ -343,7 +343,7 @@ class DeviceListFilters extends StatelessWidget {
             prefixIcon: const Icon(LucideIcons.search, size: 17),
             prefixIconColor: theme.colorScheme.onSurfaceVariant,
             prefixIconConstraints: const BoxConstraints(
-              minWidth: 36,
+              minWidth: 32,
               minHeight: 36,
             ),
             suffixIconConstraints: const BoxConstraints(

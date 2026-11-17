@@ -39,7 +39,7 @@ void main() {
   testWidgets('右键显示常用功能和封面、共享、无线入口，不进入详情或改变批量勾选', (tester) async {
     await withDeviceMenu(tester, (fixture) async {
       await _rightClick(tester, deviceMenuTarget.displayName);
-      for (final label in ['截图', '获取屏幕预览', '投屏', '设备信息', '应用', '文件', '终端调试', '编辑设备信息']) {
+      for (final label in ['截图', '刷新屏幕预览', '投屏', '设备信息', '应用', '文件', '终端调试', '编辑设备信息']) {
         expect(
           find.widgetWithText(PopupMenuItem<DeviceContextAction>, label),
           findsOneWidget,

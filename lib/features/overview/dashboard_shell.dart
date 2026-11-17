@@ -85,6 +85,7 @@ class _ContentTitleBar extends ConsumerWidget {
         !compact || MediaQuery.textScalerOf(context).scale(13) <= 16;
     return DragToMoveArea(
       child: Container(
+        key: const Key('deviceManagementHeader'),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           border: Border(
@@ -92,10 +93,10 @@ class _ContentTitleBar extends ConsumerWidget {
           ),
         ),
         padding: EdgeInsets.fromLTRB(
-          compact ? 15 : 26,
-          compact ? 34 : 30,
-          compact ? 15 : 26,
-          compact ? 20 : 21,
+          compact ? 10 : 16,
+          compact ? 32 : 16,
+          compact ? 10 : 16,
+          12,
         ),
         child: Row(
           children: [
@@ -107,13 +108,13 @@ class _ContentTitleBar extends ConsumerWidget {
                   Text(
                     context.l10n.t('devices'),
                     style: TextStyle(
-                      fontSize: compact ? 20 : 22,
+                      fontSize: compact ? 18 : 20,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -0.4,
                     ),
                   ),
                   if (!compact) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       context.l10n.t('deviceWorkspaceSubtitle'),
                       style: TextStyle(
@@ -128,9 +129,12 @@ class _ContentTitleBar extends ConsumerWidget {
             IconButton(
               tooltip: context.l10n.t('refreshDevices'),
               icon: const Icon(LucideIcons.refreshCw, size: 17),
-              onPressed: () => _refreshDevices(context, ref),
+              onPressed: () async {
+                await _refreshDevices(context, ref);
+                if (context.mounted) refreshVisibleDeviceScreenPreviews(ref);
+              },
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             PopupMenuButton<String>(
               tooltip: context.l10n.t('deviceWorkspaceConnect'),
               onSelected: (action) {

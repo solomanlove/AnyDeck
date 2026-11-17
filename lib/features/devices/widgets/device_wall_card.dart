@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_icon.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../app/widget/app_asset_image.dart';
+import '../../../core/device_info/brand_logo_helper.dart';
 import 'device_wall_phone.dart';
 
 /// 设备墙中的手机卡片，只负责展示，设备命令与选择状态由宿主持有。
@@ -12,7 +15,8 @@ import 'device_wall_phone.dart';
 /// [name]、[systemVersion]、[statusLabel] 和 [ipAddress] 来自实际设备资料；
 /// [brand]、[coverTitle]、[coverHint] 是没有可用截图时的封面信息，
 /// [screenshot] 仅接受真实截图，不会生成模拟的手机内容。
-/// [phoneWidth] 决定手机尺寸，默认保持原型 132px 和 9:18.5 的比例。
+/// [phoneWidth] 决定手机尺寸，默认 120px 并保持 9:18.5 的比例。
+/// 品牌 Logo 复用项目资源，封面和名称旁均展示，真实截图不会遮蔽品牌身份。
 /// [batchMode] 为 true 时显示勾选框并隐藏操作栏；[selected]、[selectable]
 /// 和 [onSelected] 由父级管理，点击卡片任意非交互空白或手机均可选择。
 /// 普通模式下 [onOpen] 打开投屏或重连，[onInfo] 进入设备工作台，
@@ -35,7 +39,7 @@ class DeviceWallCard extends StatelessWidget {
     this.selected = false,
     this.selectable = true,
     this.busy = false,
-    this.phoneWidth = 132,
+    this.phoneWidth = 120,
     this.actionIcon = LucideIcons.monitorPlay,
     this.onOpen,
     this.onInfo,
@@ -75,6 +79,10 @@ class DeviceWallCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     final compact = MediaQuery.sizeOf(context).width <= 490;
     final checked = batchMode && selected;
+    final logoAsset = brand.toLowerCase().contains('harmony')
+        ? AppIcons.huawei
+        : BrandLogoHelper.getBrandLogoAsset(brand, manufacturer: name) ??
+              AppIcons.androidDefaultAppIcon;
     return Semantics(
       container: true,
       label: '$name，$statusLabel',
@@ -94,15 +102,16 @@ class DeviceWallCard extends StatelessWidget {
           borderRadius: AppThemeSizes.radiusLarge,
           child: Padding(
             padding: compact
-                ? const EdgeInsets.fromLTRB(8, 9, 8, 11)
-                : const EdgeInsets.fromLTRB(10, 10, 10, 12),
+                ? const EdgeInsets.all(6)
+                : const EdgeInsets.all(8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildStatus(context),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 DeviceWallPhone(
                   width: phoneWidth,
+                  logoAsset: logoAsset,
                   online: online,
                   screenshot: screenshot,
                   brand: brand,
@@ -117,11 +126,11 @@ class DeviceWallCard extends StatelessWidget {
                       ? null
                       : onOpen,
                 ),
-                const SizedBox(height: 14),
-                _buildCaption(context),
-                const SizedBox(height: 11),
+                const SizedBox(height: 8),
+                _buildCaption(context, logoAsset),
+                const SizedBox(height: 6),
                 if (batchMode)
-                  const SizedBox(height: 31)
+                  const SizedBox(height: 40)
                 else
                   _buildActions(context),
               ],
@@ -174,42 +183,54 @@ class DeviceWallCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCaption(BuildContext context) {
+  Widget _buildCaption(BuildContext context, String logoAsset) {
     final theme = Theme.of(context);
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final metaStyle = TextStyle(
       fontSize: 11,
-      height: 17 / 11,
+      height: 15 / 11,
       color: theme.colorScheme.onSurfaceVariant,
     );
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         ConstrainedBox(
-          constraints: BoxConstraints(minHeight: 36 * textScale),
+          constraints: BoxConstraints(minHeight: 18 * textScale),
           child: InkWell(
             onTap: batchMode ? _select : onInfo,
             borderRadius: AppThemeSizes.radiusSmall,
             child: SizedBox(
               width: double.infinity,
-              child: Text(
-                name,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: MediaQuery.sizeOf(context).width <= 490 ? 12 : 13,
-                  height: MediaQuery.sizeOf(context).width <= 490
-                      ? 1.5
-                      : 18 / 13,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: AppThemeSizes.radiusSmall,
+                    child: AppAssetImage(logoAsset, width: 18, height: 18),
+                  ),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: MediaQuery.sizeOf(context).width <= 490
+                            ? 12
+                            : 13,
+                        height: 18 / 13,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(systemVersion, textAlign: TextAlign.center, style: metaStyle),
         Text(ipAddress ?? '', textAlign: TextAlign.center, style: metaStyle),
       ],
@@ -228,7 +249,8 @@ class DeviceWallCard extends StatelessWidget {
             child: OutlinedButton(
               onPressed: busy ? null : onOpen,
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, 31),
+                // 收紧按钮视觉高度，同时保留约 40px 的桌面点击区。
+                minimumSize: const Size(0, 38),
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 backgroundColor: online
                     ? scheme.primaryContainer
@@ -242,7 +264,8 @@ class DeviceWallCard extends StatelessWidget {
                 shape: const RoundedRectangleBorder(
                   borderRadius: AppThemeSizes.radiusMedium,
                 ),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.padded,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -272,8 +295,8 @@ class DeviceWallCard extends StatelessWidget {
         IconButton(
           tooltip: '${context.l10n.t('deviceActions')} · $name',
           onPressed: onMore,
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 31, height: 31),
+          visualDensity: VisualDensity.standard,
+          constraints: const BoxConstraints.tightFor(width: 40, height: 40),
           padding: const EdgeInsets.all(6),
           style: IconButton.styleFrom(
             shape: const RoundedRectangleBorder(

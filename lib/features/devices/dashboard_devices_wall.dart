@@ -1,6 +1,6 @@
 part of '../dashboard_screen.dart';
 
-/// 设备墙只创建可见卡片，静态封面按需取图，不给所有手机开启投屏流。
+/// 设备墙仅为可见在线卡片排队截图，不给所有手机开启投屏流。
 extension _DeviceWallPanel on _DeviceListPanelState {
   Widget _buildDeviceWall(
     List<RegisteredDevice> devices,
@@ -10,29 +10,27 @@ extension _DeviceWallPanel on _DeviceListPanelState {
   }) => LayoutBuilder(
     builder: (context, constraints) {
       final windowWidth = MediaQuery.sizeOf(context).width;
-      final gap = windowWidth <= 490
-          ? 4.0
-          : windowWidth <= 650
-          ? 8.0
-          : 14.0;
+      final gap = windowWidth <= 490 ? 4.0 : 12.0;
+      final horizontalPadding = windowWidth <= 490 ? 0.0 : 4.0;
+      final availableWidth = constraints.maxWidth - horizontalPadding * 2;
       final columns = windowWidth <= 490
           ? 2
-          : max(1, ((constraints.maxWidth + gap) / (166 + gap)).floor());
-      final width = (constraints.maxWidth - (columns - 1) * gap) / columns;
+          : max(1, ((availableWidth + gap) / (148 + gap)).floor());
+      final width = (availableWidth - (columns - 1) * gap) / columns;
       final rows = (devices.length / columns).ceil();
       return ListView.separated(
         key: const Key('deviceWall'),
-        padding: const EdgeInsets.only(top: 4, bottom: 20),
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          12,
+          horizontalPadding,
+          16,
+        ),
+        scrollCacheExtent: const ScrollCacheExtent.pixels(0),
         shrinkWrap: !hasBoundedHeight,
         physics: hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
         itemCount: rows,
-        separatorBuilder: (_, _) => SizedBox(
-          height: windowWidth <= 490
-              ? 15
-              : windowWidth <= 650
-              ? 14
-              : 17,
-        ),
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, row) => Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -61,70 +59,85 @@ extension _DeviceWallPanel on _DeviceListPanelState {
     RegisteredDevice device,
     String name,
     AirPlaySessionData? session,
-  ) => Consumer(
-    builder: (context, ref, _) {
-      final overview = ref.watch(cachedDeviceOverviewProvider(device.id)).value;
-      final preview = ref.watch(deviceScreenPreviewProvider(device.id));
-      final brand = overview?.brand;
-      return Builder(
-        builder: (cardContext) => DeviceWallCard(
-          key: ValueKey('device-wall-${device.id}'),
-          name: name,
-          systemVersion: device.androidVersion ?? '-',
-          statusLabel: _workspaceStatus(context, device, session),
-          brand: brand != null && brand.isNotEmpty && brand != '-'
-              ? brand
-              : device.isIos
-              ? 'Apple'
-              : device.isHarmony
-              ? 'HarmonyOS'
-              : 'Android',
-          coverTitle: context.l10n.t(
-            device.isOnline
-                ? 'deviceWorkspaceReady'
-                : 'deviceWorkspaceDisconnected',
-          ),
-          coverHint: context.l10n.t(
-            device.isOnline
-                ? 'deviceWorkspacePreviewHint'
-                : 'deviceWorkspaceConnectHint',
-          ),
-          actionLabel: context.l10n.t(
-            device.isOnline
-                ? 'screenMirror'
+  ) => DeviceScreenPreview(
+    key: ValueKey('device-screen-preview-${device.id}'),
+    deviceId: device.id,
+    online: device.isOnline,
+    builder: (context, preview) => Consumer(
+      builder: (context, ref, _) {
+        final overview = ref
+            .watch(cachedDeviceOverviewProvider(device.id))
+            .value;
+        final brand = overview?.brand;
+        return Builder(
+          builder: (cardContext) => DeviceWallCard(
+            key: ValueKey('device-wall-${device.id}'),
+            name: name,
+            systemVersion: device.androidVersion ?? '-',
+            statusLabel: _workspaceStatus(context, device, session),
+            brand: brand != null && brand.isNotEmpty && brand != '-'
+                ? brand
+                : device.isIos
+                ? 'Apple'
+                : device.isHarmony
+                ? 'HarmonyOS'
+                : 'Android',
+            coverTitle: context.l10n.t(
+              !device.isOnline
+                  ? 'deviceWorkspaceDisconnected'
+                  : preview.isLoading
+                  ? 'deviceWorkspacePreviewLoading'
+                  : preview.hasError
+                  ? 'deviceWorkspacePreviewFailed'
+                  : 'deviceWorkspaceReady',
+            ),
+            coverHint: context.l10n.t(
+              !device.isOnline
+                  ? 'deviceWorkspaceConnectHint'
+                  : preview.hasError
+                  ? 'deviceWorkspacePreviewRetryHint'
+                  : 'deviceWorkspacePreviewHint',
+            ),
+            actionLabel: context.l10n.t(
+              device.isOnline
+                  ? 'screenMirror'
+                  : device.id.startsWith('emulator-')
+                  ? 'deviceWorkspaceStartEmulator'
+                  : 'deviceWorkspaceReconnect',
+            ),
+            actionIcon: device.isOnline
+                ? Icons.ondemand_video_outlined
                 : device.id.startsWith('emulator-')
-                ? 'deviceWorkspaceStartEmulator'
-                : 'deviceWorkspaceReconnect',
+                ? Icons.play_arrow
+                : Icons.link,
+            online: device.isOnline,
+            ipAddress: _workspaceDeviceIp(device, overview),
+            screenshot: device.isOnline && !preview.hasError
+                ? preview.value ??
+                      ref
+                          .read(deviceScreenPreviewProvider(device.id).notifier)
+                          .cachedBytes
+                : null,
+            busy: _deviceQuickActionRunning && _contextDeviceId == device.id,
+            batchMode: _batchMode,
+            selected: device.isChecked,
+            selectable: !device.id.startsWith('airplay-'),
+            onOpen: () => _openWorkspaceDevice(context, device, session),
+            onInfo: () => _openDeviceInfo(context, device, session),
+            onMore: () => _openWorkspaceMenu(cardContext, device, session),
+            onSelected: (_) => _toggleDeviceSelection(device),
+            onSecondaryTapDown: _batchMode
+                ? null
+                : (details) => _showDeviceContextMenu(
+                    context,
+                    device,
+                    details.globalPosition,
+                    airplaySession: session,
+                  ),
           ),
-          actionIcon: device.isOnline
-              ? Icons.ondemand_video_outlined
-              : device.id.startsWith('emulator-')
-              ? Icons.play_arrow
-              : Icons.link,
-          online: device.isOnline,
-          ipAddress: _workspaceDeviceIp(device, overview),
-          screenshot: device.isOnline ? preview.value : null,
-          busy:
-              preview.isLoading ||
-              (_deviceQuickActionRunning && _contextDeviceId == device.id),
-          batchMode: _batchMode,
-          selected: device.isChecked,
-          selectable: !device.id.startsWith('airplay-'),
-          onOpen: () => _openWorkspaceDevice(context, device, session),
-          onInfo: () => _openDeviceInfo(context, device, session),
-          onMore: () => _openWorkspaceMenu(cardContext, device, session),
-          onSelected: (_) => _toggleDeviceSelection(device),
-          onSecondaryTapDown: _batchMode
-              ? null
-              : (details) => _showDeviceContextMenu(
-                  context,
-                  device,
-                  details.globalPosition,
-                  airplaySession: session,
-                ),
-        ),
-      );
-    },
+        );
+      },
+    ),
   );
 
   /// 两种视图使用同一份缓存地址，不因切换布局改变设备身份信息。

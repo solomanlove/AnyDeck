@@ -1,16 +1,18 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../app/theme/app_icon.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../app/widget/app_asset_image.dart';
 
 /// 按原型比例绘制手机外框，展示真实截图或设备品牌封面。
 ///
 /// [width] 是外框宽度，高度由 9:18.5 比例计算；[online] 决定边框状态。
-/// [screenshot] 只在在线时显示，缺失或解码失败时显示 [brand]、[title]、
+/// [screenshot] 只在在线时显示，缺失或解码失败时显示品牌封面、[title]、
 /// [hint]，避免将模拟内容误当成真实设备屏幕。[semanticLabel] 为手机点击
 /// 区提供本地化说明，[onTap] 由宿主实现投屏、重连或批量选择。
+/// [logoAsset] 使用项目既有品牌图片路径，由宿主按设备品牌及型号解析。
 class DeviceWallPhone extends StatelessWidget {
   const DeviceWallPhone({
     super.key,
@@ -20,6 +22,7 @@ class DeviceWallPhone extends StatelessWidget {
     required this.title,
     required this.hint,
     required this.semanticLabel,
+    this.logoAsset = AppIcons.androidDefaultAppIcon,
     this.screenshot,
     this.onTap,
   });
@@ -30,6 +33,7 @@ class DeviceWallPhone extends StatelessWidget {
   final String title;
   final String hint;
   final String semanticLabel;
+  final String logoAsset;
   final Uint8List? screenshot;
   final VoidCallback? onTap;
 
@@ -171,20 +175,19 @@ class DeviceWallPhone extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(LucideIcons.smartphone, size: 25, color: foreground),
-                    const SizedBox(height: 9),
-                    Text(
-                      brand,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: foreground,
+                    Opacity(
+                      opacity: online ? 1 : .55,
+                      child: ClipRRect(
+                        borderRadius: AppThemeSizes.radiusSmall,
+                        child: AppAssetImage(
+                          logoAsset,
+                          width: 44,
+                          height: 44,
+                          semanticsLabel: brand,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 9),
+                    const SizedBox(height: 8),
                     Text(
                       title,
                       textAlign: TextAlign.center,

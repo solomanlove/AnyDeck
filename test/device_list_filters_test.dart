@@ -85,6 +85,12 @@ void main() {
           if (size.width >= 920) {
             expect(search.center.dy, closeTo(manage.center.dy, 2));
             expect(search.width, greaterThan(240));
+            expect(tester.getSize(find.byType(DeviceListFilters)).height, 46);
+            expect(manage.height, 36);
+            expect(
+              tester.getSize(find.byKey(const Key('deviceFilter-all'))).height,
+              36,
+            );
           } else if (size.width == 360) {
             expect(search.top, greaterThan(manage.bottom));
             expect(search.width, size.width);
@@ -197,6 +203,38 @@ void main() {
       previousWidth = currentWidth;
       expect(tester.takeException(), isNull);
     }
+  });
+
+  testWidgets('收紧留白后760px英文工具栏仍优先单行并保留搜索空间', (tester) async {
+    tester.view.physicalSize = const Size(760, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      _host(
+        locale: 'en',
+        child: DeviceListFilters(
+          controller: controller,
+          onlineCount: 2,
+          totalCount: 6,
+          filter: DeviceStatusFilter.all,
+          onFilterChanged: (_) {},
+          viewMode: DeviceViewMode.wall,
+          onViewModeChanged: (_) {},
+          batchMode: false,
+          onBatchModeChanged: (_) {},
+          onSearchChanged: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('deviceToolbarSingleRow')), findsOneWidget);
+    final search = tester.getRect(find.byKey(const Key('deviceListSearch')));
+    final manage = tester.getRect(find.byKey(const Key('deviceBatchManage')));
+    expect(search.width, greaterThanOrEqualTo(160));
+    expect(search.center.dy, manage.center.dy);
+    expect(tester.takeException(), isNull);
   });
 }
 

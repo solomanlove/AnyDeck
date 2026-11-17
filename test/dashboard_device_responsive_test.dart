@@ -45,11 +45,16 @@ void main() {
       expect(tester.takeException(), isNull);
       final wall = tester.getRect(find.byKey(const Key('deviceWall')));
       final header = tester.getRect(find.byType(DesktopWorkspaceSurface));
+      if (width == 1200) {
+        // 桌面头部保持紧凑，避免装饰留白挤占设备展示区域。
+        expect(tester.getSize(find.byKey(const Key('deviceManagementHeader'))).height,
+            lessThanOrEqualTo(84));
+      }
       final padding = width <= 490
-          ? 10
+          ? 8
           : width <= 650
-          ? 16
-          : 25;
+          ? 12
+          : 16;
       expect(wall.left - header.left, closeTo(padding, 0.1));
       final alpha = tester.getRect(
         find.byKey(const ValueKey('device-wall-responsive-alpha')),
@@ -98,12 +103,13 @@ void main() {
         final status = tester.getSize(
           find.byKey(const ValueKey('device-status-column-responsive-alpha')),
         );
-        expect(status.width, width <= 730 ? 95 : 114);
+        expect(status.width, 80);
       }
       expect(find.text('192.168.1.219'), findsOneWidget);
       final row = tester.getRect(
         find.byKey(const ValueKey('device-row-responsive-alpha')),
       );
+      if (width > 730) expect(row.height, lessThanOrEqualTo(64));
       expect(row.left, greaterThanOrEqualTo(0));
       expect(row.right, lessThanOrEqualTo(width));
       expect(tester.takeException(), isNull);

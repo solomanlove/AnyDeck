@@ -243,6 +243,11 @@ class IosCommandService {
     return _screenshotCapture.capture(udid);
   }
 
+  /// 设备墙只读预览不自动下载或挂载开发者镜像，与手动截图共用设备互斥。
+  Future<Uint8List> capturePreviewScreenshot(String udid) {
+    return _screenshotCapture.capture(udid, allowDeveloperImageMount: false);
+  }
+
   /// 控制统一路由到主引擎，禁止隐式回退到另一个设备或控制后端。
   Future<AdbResult> _control(String udid, String action, [Map<String, dynamic> args = const {}]) async {
     try {

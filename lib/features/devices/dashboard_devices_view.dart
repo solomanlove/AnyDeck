@@ -56,10 +56,10 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         );
         return Padding(
           padding: windowWidth <= 490
-              ? const EdgeInsets.fromLTRB(10, 16, 10, 0)
+              ? const EdgeInsets.fromLTRB(8, 10, 8, 0)
               : windowWidth <= 650
-              ? const EdgeInsets.fromLTRB(16, 18, 16, 0)
-              : const EdgeInsets.fromLTRB(25, 20, 25, 0),
+              ? const EdgeInsets.fromLTRB(12, 10, 12, 0)
+              : const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: constraints.hasBoundedHeight
@@ -183,7 +183,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       );
     }
     return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 20),
+      padding: const EdgeInsets.only(top: 6, bottom: 12),
       child: ClipRRect(
         borderRadius: AppThemeSizes.radiusLarge,
         child: ColoredBox(
@@ -259,8 +259,8 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         );
         return Container(
           key: const Key('deviceTableHeader'),
-          constraints: const BoxConstraints(minHeight: 44),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 13),
+          constraints: const BoxConstraints(minHeight: 36),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         color: theme.appColors.sunkenSurface,
           child: Row(
             children: [

@@ -106,6 +106,31 @@ void main() {
     expect(await File(runner.outputPath!).parent.exists(), isFalse);
   });
 
+  test('自动屏幕预览缺少镜像只报告错误，不下载挂载或重试', () async {
+    final runner = _ScreenshotRunner()..results.add(_missingImage);
+    await expectLater(
+      IosScreenshotCapture(runner.run).capture(
+        'device-a', allowDeveloperImageMount: false,
+      ),
+      throwsA(predicate((error) => '$error'.contains('Developer Disk Image'))),
+    );
+    expect(runner.calls.map((args) => args.first), ['screenshot']);
+    expect(runner.timeouts, [const Duration(seconds: 15)]);
+    expect(await File(runner.outputPath!).parent.exists(), isFalse);
+  });
+
+  test('自动预览与已有截图共享同设备请求，不额外启动 CLI', () async {
+    final gate = Completer<void>();
+    final runner = _ScreenshotRunner()..gate = gate;
+    final capture = IosScreenshotCapture(runner.run);
+    final first = capture.capture('device-a', allowDeveloperImageMount: false);
+    final second = capture.capture('device-a');
+    expect(identical(first, second), isTrue);
+    gate.complete();
+    await Future.wait([first, second]);
+    expect(runner.calls, hasLength(1));
+  });
+
   test('挂载失败保留 stderr 中的真实错误并停止重试', () async {
     final runner = _ScreenshotRunner()
       ..results.addAll([

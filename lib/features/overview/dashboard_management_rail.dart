@@ -68,8 +68,8 @@ class _ManagementRail extends ConsumerWidget {
           DragToMoveArea(
             child: Padding(
               padding: EdgeInsets.only(
-                top: DesktopChromePolicy.current.sidebarTopInset + 20,
-                bottom: 27,
+                top: DesktopChromePolicy.current.sidebarTopInset + 14,
+                bottom: 18,
               ),
               child: GestureDetector(
                 onTap: () => onSelected(-1),
@@ -127,7 +127,7 @@ class _ManagementRail extends ConsumerWidget {
                 children: [
                   for (final tool in tools)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: tool.tabIndex == -3
                           ? ListenableBuilder(
                               listenable: DlnaRendererService.instance,
@@ -235,7 +235,7 @@ class _ManagementRailButton extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: compact ? 0 : 10,
-                vertical: 12,
+                vertical: 8,
               ),
               child: Row(
                 mainAxisAlignment: compact

@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/router/app_router.dart';
 import 'package:any_deck/app/router/dashboard_route.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/widget/app_toast.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
+import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';
@@ -13,6 +17,7 @@ import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/features/devices/widgets/device_wall_card.dart';
 import 'package:any_deck/features/devices/widgets/host_network_footer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,6 +59,26 @@ class _Registry extends DeviceRegistryNotifier {
           device,
     ];
   }
+
+  @override
+  Future<AdbResult> refreshDevices() async =>
+      const AdbResult(exitCode: 0, stdout: '', stderr: '');
+}
+
+/// 只记录截图边界，真实设备墙仍通过 Controller 和共享队列采集。
+class _WallCaptureAdb extends FakeAdbService {
+  final captures = <String>[];
+  Future<Uint8List>? pending;
+  bool fail = false;
+
+  @override
+  Future<Uint8List> captureScreenshot(String deviceId, {
+    Duration timeout = const Duration(seconds: 15),
+  }) {
+    captures.add(deviceId);
+    if (fail) return Future.error(StateError('capture failed'));
+    return pending ?? super.captureScreenshot(deviceId, timeout: timeout);
+  }
 }
 
 class _HostNetwork extends HostNetworkNotifier {
@@ -84,11 +109,12 @@ Future<ProviderContainer> _pumpDashboard(
   WidgetTester tester, {
   String language = 'zh',
   Brightness brightness = Brightness.light,
+  FakeAdbService? adb,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final container = ProviderContainer(
     overrides: [
-      adbServiceProvider.overrideWithValue(FakeAdbService()),
+      adbServiceProvider.overrideWithValue(adb ?? FakeAdbService()),
       iosDeviceServiceProvider.overrideWithValue(_Ios()),
       discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
       deviceRegistryProvider.overrideWith(_Registry.new),
@@ -129,6 +155,13 @@ Future<ProviderContainer> _pumpDashboard(
   return container;
 }
 
+/// 标题栏 DragToMoveArea 的双击识别会推迟按钮点击，需等待手势期限再断言副作用。
+Future<void> _tapWorkspaceRefresh(WidgetTester tester, {bool settle = true}) async {
+  await tester.tap(find.byTooltip('刷新设备'));
+  await tester.pump(kDoubleTapTimeout);
+  if (settle) await tester.pumpAndSettle();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
@@ -141,6 +174,58 @@ void main() {
     ),
   );
   tearDown(() => messenger.setMockMethodCallHandler(windows, null));
+
+  testWidgets('可见设备墙自动截图，回墙与刷新更新，列表和隐藏路由停止新增采集', (tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final adb = _WallCaptureAdb();
+    final container = await _pumpDashboard(tester, adb: adb);
+    addTearDown(AppToast.dismiss);
+    final alpha = find.byKey(const ValueKey('device-wall-workspace-alpha'));
+    expect(adb.captures, ['workspace-alpha']);
+    expect(tester.widget<DeviceWallCard>(alpha).screenshot, isNotNull);
+
+    await tester.tap(find.byKey(const Key('deviceView-list')));
+    await tester.pumpAndSettle();
+    await _tapWorkspaceRefresh(tester);
+    expect(adb.captures, ['workspace-alpha']);
+    await tester.tap(find.byKey(const Key('deviceView-wall')));
+    await tester.pumpAndSettle();
+    expect(adb.captures, ['workspace-alpha', 'workspace-alpha']);
+    await _tapWorkspaceRefresh(tester);
+    expect(adb.captures, hasLength(3));
+
+    final pending = Completer<Uint8List>();
+    adb.pending = pending.future;
+    await _tapWorkspaceRefresh(tester, settle: false);
+    expect(adb.captures, hasLength(4));
+    expect(tester.widget<DeviceWallCard>(alpha).busy, isFalse);
+    pending.complete(tester.widget<DeviceWallCard>(alpha).screenshot!);
+    await tester.pumpAndSettle();
+    adb.pending = null;
+
+    container.read(appRouterProvider).goNamed(AppRouteNames.emulators);
+    await tester.pumpAndSettle();
+    final registry = container.read(deviceRegistryProvider.notifier);
+    registry.state = [for (final d in registry.state) d.copyWith(isOnline: false)];
+    await tester.pumpAndSettle();
+    registry.state = [for (final d in registry.state)
+      d.copyWith(isOnline: d.id == 'workspace-alpha')];
+    await tester.pumpAndSettle();
+    expect(adb.captures, hasLength(4));
+    container.read(appRouterProvider).goNamed(AppRouteNames.devices);
+    await tester.pumpAndSettle();
+    expect(adb.captures, hasLength(5));
+    expect(tester.widget<DeviceWallCard>(alpha).screenshot, isNotNull);
+    adb.fail = true;
+    await _tapWorkspaceRefresh(tester);
+    expect(tester.widget<DeviceWallCard>(alpha).screenshot, isNull);
+    expect(tester.widget<DeviceWallCard>(alpha).coverTitle, '屏幕预览暂不可用');
+    expect(tester.widget<DeviceWallCard>(alpha).coverHint, '在更多操作中刷新屏幕预览');
+    expect(tester.widget<DeviceWallCard>(alpha).busy, isFalse);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('默认手机墙和列表无多选，视图切换保留搜索和离线筛选', (tester) async {
     tester.view.physicalSize = const Size(1200, 900);

@@ -8,7 +8,7 @@ import '../adb/adb_result.dart';
 typedef IosScreenshotCommand =
     Future<AdbResult> Function(List<String> args, {Duration timeout});
 
-/// 单次截图在缺少开发者镜像时自动挂载并重试，按设备合并并发请求。
+/// 按设备合并截图请求；手动截图可恢复镜像，自动预览可禁用下载和挂载。
 class IosScreenshotCapture {
   IosScreenshotCapture(this._run, {this.fallback});
 
@@ -16,23 +16,23 @@ class IosScreenshotCapture {
   final Future<Uint8List> Function(String udid)? fallback;
   final _pending = <String, Future<Uint8List>>{};
 
-  Future<Uint8List> capture(String udid) {
+  Future<Uint8List> capture(String udid, {bool allowDeveloperImageMount = true}) {
     return _pending.putIfAbsent(udid, () async {
       try {
-        return await _capture(udid);
+        return await _capture(udid, allowDeveloperImageMount);
       } finally {
         _pending.remove(udid);
       }
     });
   }
 
-  Future<Uint8List> _capture(String udid) async {
+  Future<Uint8List> _capture(String udid, bool allowDeveloperImageMount) async {
     final directory = await Directory.systemTemp.createTemp('anydeck_ios_');
     final file = File('${directory.path}/screenshot.png');
     final args = ['screenshot', '--output=${file.path}', '--udid=$udid'];
     try {
       var result = await _run(args);
-      if (!result.isSuccess && _needsDeveloperImage(result)) {
+      if (!result.isSuccess && allowDeveloperImageMount && _needsDeveloperImage(result)) {
         // 首次下载镜像可能较慢；复用 run 的超时终止机制，不启动常驻进程。
         final mounted = await _run([
           'image',

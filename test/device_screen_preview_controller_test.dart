@@ -7,11 +7,58 @@ import 'package:any_deck/core/ios/ios_command_service.dart';
 import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/devices/controller/device_screen_preview_controller.dart';
+import 'package:any_deck/features/devices/widgets/device_screen_preview.dart';
+import 'package:fake_async/fake_async.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 只替换平台截图边界，验证真实 Controller 的主动采集与异步生命周期。
+/// 只替换平台截图边界，验证真实 Controller 的队列与异步生命周期。
 void main() {
+  testWidgets('虚拟墙仅为当前挂载卡片截图，滚动后更新新出现设备且不定时轮询', (tester) async {
+    final fixture = _PreviewFixture([
+      for (var i = 0; i < 30; i++) _device('device-$i'),
+    ]);
+    addTearDown(fixture.dispose);
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: fixture.container,
+        child: MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 320,
+              height: 240,
+              child: ListView.builder(
+                controller: scroll,
+                scrollCacheExtent: const ScrollCacheExtent.pixels(0),
+                itemExtent: 150,
+                itemCount: 30,
+                itemBuilder: (_, index) => DeviceScreenPreview(
+                  key: ValueKey(index),
+                  deviceId: 'device-$index',
+                  online: true,
+                  builder: (_, preview) =>
+                      Text('${preview.value?.length ?? 0}'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(fixture.adb.ids, ['device-0', 'device-1']);
+    scroll.jumpTo(600);
+    await tester.pumpAndSettle();
+    expect(fixture.adb.ids, ['device-0', 'device-1', 'device-4', 'device-5']);
+    await tester.pump(const Duration(minutes: 2));
+    expect(fixture.adb.ids, hasLength(4));
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(tester.takeException(), isNull);
+  });
+
   test('初始化与订阅不触发截图，未注册或离线设备拒绝采集', () async {
     final fixture = _PreviewFixture([
       _device('online'),
@@ -78,7 +125,7 @@ void main() {
     final controller = fixture.container.read(first.notifier);
     final capture = controller.capture();
     expect(fixture.container.read(first).isLoading, isTrue);
-    await controller.capture();
+    expect(identical(controller.capture(), capture), isTrue);
     expect(fixture.adb.ids, ['first']);
 
     final second = deviceScreenPreviewProvider('second');
@@ -122,6 +169,180 @@ void main() {
     expect(fixture.container.read(provider).value, isNull);
   });
 
+  test('自动墙预览路由三平台，iOS 使用禁止镜像挂载的专用入口', () async {
+    final fixture = _PreviewFixture([
+      _device('android'),
+      _device('harmony', harmony: true),
+      _device('ios', ios: true),
+    ]);
+    addTearDown(fixture.dispose);
+    for (final id in ['android', 'harmony', 'ios']) {
+      fixture.container.listen(deviceScreenPreviewProvider(id), (_, _) {});
+      fixture.container
+          .read(deviceScreenPreviewProvider(id).notifier)
+          .setVisible(true);
+    }
+    await Future<void>.delayed(Duration.zero);
+    expect(fixture.adb.ids, ['android']);
+    expect(fixture.hdc.ids, ['harmony']);
+    expect(fixture.ios.ids, ['ios']);
+    expect(fixture.ios.previewIds, ['ios']);
+  });
+
+  test('整墙最多两个截图，未开始的隐藏或离线卡片不启动命令', () async {
+    final fixture = _PreviewFixture([
+      for (final id in ['first', 'second', 'hidden', 'offline', 'last'])
+        _device(id),
+    ]);
+    addTearDown(fixture.dispose);
+    final gates = <String, Completer<Uint8List>>{};
+    fixture.adb.response = (id) => (gates[id] = Completer()).future;
+    for (final device in fixture.container.read(deviceRegistryProvider)) {
+      fixture.container.listen(
+        deviceScreenPreviewProvider(device.id),
+        (_, _) {},
+      );
+      fixture.container
+          .read(deviceScreenPreviewProvider(device.id).notifier)
+          .setVisible(true);
+    }
+    expect(fixture.adb.ids, ['first', 'second']);
+    fixture.container
+        .read(deviceScreenPreviewProvider('hidden').notifier)
+        .setVisible(false);
+    fixture.container.read(deviceRegistryProvider.notifier).state = [
+      for (final device in fixture.container.read(deviceRegistryProvider))
+        if (device.id == 'offline')
+          device.copyWith(isOnline: false)
+        else
+          device,
+    ];
+    gates['first']!.complete(Uint8List.fromList([1]));
+    await Future<void>.delayed(Duration.zero);
+    expect(fixture.adb.ids, ['first', 'second', 'last']);
+    gates['second']!.complete(Uint8List.fromList([2]));
+    gates['last']!.complete(Uint8List.fromList([3]));
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      fixture.container.read(deviceScreenPreviewProvider('hidden')).value,
+      isNull,
+    );
+    expect(
+      fixture.container.read(deviceScreenPreviewProvider('offline')).value,
+      isNull,
+    );
+  });
+
+  test('离墙丢弃旧结果，返回及连续刷新只在进行中的截图后补一轮', () async {
+    final fixture = _PreviewFixture([_device('android')]);
+    addTearDown(fixture.dispose);
+    final gates = <Completer<Uint8List>>[];
+    fixture.adb.response = (_) {
+      final gate = Completer<Uint8List>();
+      gates.add(gate);
+      return gate.future;
+    };
+    final provider = deviceScreenPreviewProvider('android');
+    fixture.container.listen(provider, (_, _) {});
+    final controller = fixture.container.read(provider.notifier);
+    controller.setVisible(true);
+    controller.setVisible(false);
+    controller.refreshIfVisible();
+    expect(fixture.adb.ids, ['android']);
+    controller.setVisible(true);
+    controller.refreshIfVisible();
+    controller.refreshIfVisible();
+    gates.first.complete(Uint8List.fromList([1]));
+    await Future<void>.delayed(Duration.zero);
+    expect(fixture.adb.ids, ['android', 'android']);
+    expect(fixture.container.read(provider).value, isNull);
+    gates.last.complete(Uint8List.fromList([2]));
+    await Future<void>.delayed(Duration.zero);
+    expect(fixture.container.read(provider).requireValue, [2]);
+  });
+
+  test('UI 超时保留真实截图槽，平台结束前不叠加第三个 CLI', () {
+    fakeAsync((async) {
+      final fixture = _PreviewFixture([
+        _device('first'),
+        _device('second'),
+        _device('third'),
+      ], timeout: const Duration(seconds: 1));
+      final gates = <String, Completer<Uint8List>>{};
+      fixture.adb.response = (id) => (gates[id] = Completer()).future;
+      for (final id in ['first', 'second', 'third']) {
+        fixture.container.listen(deviceScreenPreviewProvider(id), (_, _) {});
+        fixture.container
+            .read(deviceScreenPreviewProvider(id).notifier)
+            .setVisible(true);
+      }
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+      expect(
+        fixture.container.read(deviceScreenPreviewProvider('first')).error,
+        isA<TimeoutException>(),
+      );
+      expect(fixture.adb.ids, ['first', 'second']);
+      gates['first']!.complete(Uint8List.fromList([1]));
+      async.flushMicrotasks();
+      expect(fixture.adb.ids, ['first', 'second', 'third']);
+      expect(
+        fixture.container.read(deviceScreenPreviewProvider('first')).hasError,
+        isTrue,
+      );
+      gates['second']!.complete(Uint8List.fromList([2]));
+      gates['third']!.complete(Uint8List.fromList([3]));
+      async.flushMicrotasks();
+      async.elapse(const Duration(minutes: 2));
+      expect(fixture.adb.ids, ['first', 'second', 'third']);
+      fixture.dispose();
+    });
+  });
+
+  test('销毁立即清除 UI 超时计时器，不等待真实命令完成', () {
+    fakeAsync((async) {
+      final fixture = _PreviewFixture([_device('android')]);
+      final command = Completer<Uint8List>();
+      fixture.adb.response = (_) => command.future;
+      final provider = deviceScreenPreviewProvider('android');
+      fixture.container.listen(provider, (_, _) {});
+      final capture = fixture.container.read(provider.notifier).capture();
+      expect(async.nonPeriodicTimerCount, greaterThan(0));
+      fixture.dispose();
+      async.flushMicrotasks();
+      expect(async.nonPeriodicTimerCount, 0);
+      command.complete(Uint8List.fromList([1]));
+      async.flushMicrotasks();
+      var completed = false;
+      capture.then((_) => completed = true);
+      async.flushMicrotasks();
+      expect(completed, isTrue);
+    });
+  });
+
+  test('采集期间离线不发布旧截图，重新上线可以恢复', () async {
+    final fixture = _PreviewFixture([_device('android')]);
+    addTearDown(fixture.dispose);
+    final pending = Completer<Uint8List>();
+    fixture.adb.response = (_) => pending.future;
+    final provider = deviceScreenPreviewProvider('android');
+    fixture.container.listen(provider, (_, _) {});
+    final controller = fixture.container.read(provider.notifier);
+    final capture = controller.capture();
+    fixture.container.read(deviceRegistryProvider.notifier).state = [
+      _device('android', online: false),
+    ];
+    pending.complete(Uint8List.fromList([1]));
+    await capture;
+    expect(fixture.container.read(provider).value, isNull);
+    fixture.container.read(deviceRegistryProvider.notifier).state = [
+      _device('android'),
+    ];
+    fixture.adb.response = (_) async => Uint8List.fromList([2]);
+    await controller.capture();
+    expect(fixture.container.read(provider).requireValue, [2]);
+  });
+
   for (final completeWithError in [false, true]) {
     test('销毁后${completeWithError ? '失败' : '成功'}的异步截图不再发布状态', () async {
       final fixture = _PreviewFixture([_device('android')]);
@@ -160,13 +381,15 @@ RegisteredDevice _device(
 );
 
 class _PreviewFixture {
-  _PreviewFixture(List<RegisteredDevice> devices) {
+  _PreviewFixture(List<RegisteredDevice> devices, {Duration? timeout}) {
     container = ProviderContainer(
       overrides: [
         deviceRegistryProvider.overrideWith(() => _MemoryRegistry(devices)),
         adbServiceProvider.overrideWithValue(_PreviewAdb(adb)),
         hdcServiceProvider.overrideWithValue(_PreviewHdc(hdc)),
         iosCommandServiceProvider.overrideWithValue(_PreviewIos(ios)),
+        if (timeout != null)
+          deviceScreenPreviewTimeoutProvider.overrideWithValue(timeout),
       ],
     );
   }
@@ -196,6 +419,7 @@ class _CaptureProbe {
   _CaptureProbe(this.value);
   final int value;
   final ids = <String>[];
+  final previewIds = <String>[];
   Future<Uint8List> Function(String)? response;
 
   Future<Uint8List> capture(String id) {
@@ -229,4 +453,9 @@ class _PreviewIos extends IosCommandService {
   final _CaptureProbe probe;
   @override
   Future<Uint8List> captureScreenshot(String udid) => probe.capture(udid);
+  @override
+  Future<Uint8List> capturePreviewScreenshot(String udid) {
+    probe.previewIds.add(udid);
+    return probe.capture(udid);
+  }
 }

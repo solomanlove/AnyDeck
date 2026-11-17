@@ -2,7 +2,7 @@
 
 ## 业务目标与交互
 
-- 设备管理采用手机样式设备墙，132px 手机宽度、9:18.5 比例；列表保留一键切换。
+- 设备管理采用手机样式设备墙，120px 手机宽度、9:18.5 比例；列表保留一键切换。
 - 工具栏依次为全部/在线/离线、自适应搜索、视图切换、批量管理。默认不显示多选。
 - 搜索和状态筛选与视图独立；进入批量管理才显示勾选，切视图/筛选保留选择，退出清空。
 - 全选只作用于当前可见且可选的设备；工具栏说明筛选隐藏的已选数量。
@@ -20,7 +20,8 @@
 | 工具栏 | `features/devices/widgets/device_list_filters.dart` | 宽度自适应、筛选和切换回调 |
 | 手机展示 | `device_wall_card.dart` / `device_wall_phone.dart` | 纯展示，真实截图或品牌封面，不创建模拟屏幕 |
 | 表格/设备墙 | `dashboard_devices_rows.dart` / `dashboard_devices_wall.dart` | 共用身份、IP、主操作、菜单及注册表勾选 |
-| 静态封面 | `controller/device_screen_preview_controller.dart` | 用户主动采集，按 Android/HarmonyOS/iOS 路由 |
+| 静态封面 | `controller/device_screen_preview_controller.dart` | 可见墙自动采集与手动刷新，按 Android/HarmonyOS/iOS 路由 |
+| 自动预览 | `widgets/device_screen_preview.dart` / `controller/device_screen_preview_queue.dart` | 可见卡片生命周期、最多两路截图并发及隐藏任务撤回 |
 | 全局底栏 | `widgets/host_network_footer.dart` / `overview/dashboard_shell.dart` | 复用主机网络 Provider，位于 ConsoleDock 外侧 |
 | 诊断快照 | `features/diagnostics/controller/service_diagnostics_controller.dart` | 单轮检查、防重复、失败隔离及检查时间 |
 | 诊断探针 | `service_diagnostic_checks.dart` / `service_session_checks.dart` | 复用服务和原生状态，不成为采集或重连拥有者 |
@@ -30,9 +31,23 @@
 所有路径相对 `lib/`。无新增 package、无新窗口、无跨 Isolate 设置广播。
 
 设备卡片仅读取缓存概览，不为整墙重复拉取完整硬件信息。墙和列表均使用 builder 按需创建。
-封面仅从“获取屏幕预览”主动请求，不启动实时投屏或自动截图。采集期间临时 keepAlive；
-完成后保留一分钟以支持快速切视图，无订阅且过期后释放截图；销毁取消定时器。
+在线手机进入可见设备墙、重新上线、返回设备墙或主动刷新时自动获取当前真实屏幕截图。
+截图为单次快照，不启动实时投屏或周期轮询；列表及隐藏 Route 不新增截图请求。
+全窗口最多两个截图任务，排队任务随卡片离开而撤回，已开始任务直到平台命令实际结束才释放槽。
+采集结束一分钟后释放 keepAlive；无订阅时自动清理，隐藏页面仍被订阅时不强制清缓存。
+返回墙会更新，采集中重复刷新最多补一轮，不无限堆积。
+自动 iOS 预览复用既有截图底座但禁用开发者镜像自动下载/挂载；手动截图保持原恢复逻辑。
+HDC 截图收发按请求使用独立临时目录与远端文件名，finally 清理，避免并发串图和删除竞争。
+截图失败在卡片内提示重试，自动取图不禁用投屏按钮，不弹出逐台错误通知。
 原有批量动作按进度、录屏、计划模型和计划对话框拆分，保留命令实现，文件不超过 500 行。
+
+## 紧凑布局与品牌资源
+
+- 桌面页头约 76px，内容左右留白 16px（中窄窗口 12px，手机窗口 8px），顶部留白 10–12px。
+- 列表行默认 60px、上下内边距 7px；连接方式列统一 80px，显示图标与 USB / Wi-Fi 等短文案，Tooltip 和读屏保留完整状态。
+- 列表恢复原 `DeviceStatusAvatar`；`cacheOnly: true` 仅读取缓存品牌，避免为整个设备列表触发完整硬件探测，其他调用方默认行为不变。
+- 手机墙复用 `BrandLogoHelper` 与原品牌资源；截图成功后名称旁仍保留品牌 Logo，未取到画面时用原 Logo 封面。
+- 手机外框宽 120px，单卡基础宽 148px，卡片内间距收紧；操作点击区保留 40px，窄窗口与放大字体仍按内容适配。
 
 ## 服务检查与真实边界
 
@@ -67,7 +82,10 @@ CLI 版本探测使用参数列表而非 Shell 字符串。输出每个管道最
 - `dashboard_device_responsive_test.dart`：730/650/490 断点、窄屏双列、表格降级、批量禁右键与清筛选。
 - `dashboard_device_reconnect_test.dart`：设备墙/列表的离线 HDC 与 iOS 入口，禁止误用 ADB 连接。
 - `device_wall_card_test.dart`：手机比例、真实图像、离线封面、点击/选择隔离。
-- `device_screen_preview_controller_test.dart`：三平台路由、无自动采集、防重复、异常重试和销毁隔离。
+- `device_screen_preview_controller_test.dart`：三平台路由、可见生命周期、防重复、有界并发、异常重试和销毁隔离。
+- `dashboard_device_list_density_test.dart`：原品牌资源、紧凑连接方式及列表行、缓存读取边界。
+- `hdc_screenshot_concurrency_test.dart`：并行截图隔离、接收失败清理及 snapshot_display 回退。
+- `ios_screenshot_capture_test.dart`：手动镜像恢复、自动预览不挂载及同设备并发合并。
 - `device_context_action_test.dart` / `device_list_context_menu_test.dart`：能力限制、菜单打开后断线/删除、真实操作路由。
 - `device_subnet_warning_test.dart`：地址复制、网络详情、显式权限/刷新、不自动轮询及大字号。
 - `service_diagnostics_test.dart` / `service_diagnostic_probes_test.dart`：防重复、超时回收、状态分类、真实适配器、可选构建和中英明暗布局。
@@ -78,12 +96,23 @@ CLI 版本探测使用参数列表而非 Shell 字符串。输出每个管道最
 `emulator_service.dart`、`file_preview_controller.dart`、`dashboard_overview_components.dart` 和
 `dashboard_common.dart`，本次不改动这些不相关逻辑。变更文件要求无编译错误或新增 warning。
 
-2026-11-17 最终相关回归：18 份测试文件、143 项全部通过；全库 analyze 无 error，保留上述既有 warning。
+2026-11-17 首轮落地回归：18 份测试文件、143 项全部通过；全库 analyze 无 error，保留上述既有 warning。
 另外扩展执行 `device_theme_color_test.dart` 时，139 项通过、2 项失败：该文件仍要求电量与 Root
 使用绿色，而 HEAD 的 `11682cbe` 与主题知识库第 9 节已明确改为中性灰。
 本次未改动这些生产或旧测试文件；现有 `overview_status_chips_test.dart` 的 8 项灰色规范回归通过。
 实际 Widget 的手机墙、列表和右下角诊断面板已经截图核对；没有通过截图伪造真实设备服务状态。
 
-人工/硬件边界：未为本任务运行完整 App，未自动开启用户电脑服务或连接真实手机。
+首轮人工/硬件边界：未运行完整 App，未自动开启用户电脑服务或连接真实手机。
 最终设备端触控、USB 权限、AirPlay/DLNA 实际播放和跨窗口活动会话须在对应设备条件下验证，
 诊断面板不会以组件就绪替代这些功能验收。
+
+后续紧凑布局迭代已使用现有 `AdbService.captureScreenshot` 从当前已连接的 Mi MIX 3 与荣耀手机
+获取可解码 PNG（包含折叠屏当前显示屏选择）；通过 Widget 截图核对真实手机画面在设备墙中的展示。
+未启动完整 App，HDC/iOS 自动预览在本轮仅做自动化边界验证。
+
+紧凑布局迭代最终回归：16 份相关测试文件、138 项全部通过，覆盖三平台截图、队列与
+可见生命周期、截图保存、菜单、列表密度、视图切换、批量、导航及网络底栏。
+全库 `flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings` 无 error，保留上述五项既有 warning。
+另外用临时验证测试确认两台已连接 Android 手机的截图可解码，并生成实际 Widget 预览；
+临时测试和真实手机图片不进入 Git。手工验收时可依次检查：进入墙、刷新当前画面、切列表后停止取图、
+断线后恢复品牌封面、失败时显示重试提示，以及放大字体后连接列与主操作不溢出。

@@ -34,11 +34,8 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                   airplaySession: airplaySession,
                 ),
           child: Container(
-            constraints: const BoxConstraints(minHeight: 72),
-            padding: EdgeInsets.symmetric(
-              horizontal: layout.phone ? 8 : 11,
-              vertical: layout.phone ? 15 : 18,
-            ),
+            constraints: const BoxConstraints(minHeight: 60),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
             decoration: BoxDecoration(
               color: selected || isSelected
                   ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
@@ -62,26 +59,12 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 Expanded(
                   child: Row(
                     children: [
-                      Container(
-                        width: 32,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: device.isOnline
-                              ? theme.colorScheme.primaryContainer.withValues(
-                                  alpha: 0.5,
-                                )
-                              : theme.appColors.subtleSurface,
-                          borderRadius: AppThemeSizes.radiusMedium,
-                        ),
-                        child: Icon(
-                          Icons.smartphone_outlined,
-                          size: 20,
-                          color: device.isOnline
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
+                      DeviceStatusAvatar(
+                        device: device,
+                        size: 36,
+                        cacheOnly: true,
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,28 +144,54 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     RegisteredDevice device,
     AirPlaySessionData? session, {
     Key? key,
-  }) => Row(
-    key: key,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      if (device.isOnline) ...[
-        Icon(Icons.circle, size: 5, color: Theme.of(context).appColors.success),
-        const SizedBox(width: 4),
-      ],
-      Flexible(
-        child: Text(
-          _workspaceStatus(context, device, session),
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 11,
-            color: device.isOnline
-                ? Theme.of(context).appColors.success
-                : Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+  }) {
+    final fullStatus = _workspaceStatus(context, device, session);
+    final color = device.isOnline
+        ? Theme.of(context).appColors.success
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final label = session != null
+        ? context.l10n.t('deviceWorkspaceAirplayConnection')
+        : !device.isOnline
+        ? fullStatus
+        : context.l10n.t(
+            device.hasUsbConnection
+                ? 'deviceWorkspaceUsb'
+                : 'deviceWorkspaceWifi',
+          );
+    // 列内只显示通道短名称，完整连接状态由 Tooltip 与读屏语义保留。
+    return Tooltip(
+      message: fullStatus,
+      child: Semantics(
+        label: fullStatus,
+        excludeSemantics: true,
+        child: Row(
+          key: key,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              session != null
+                  ? Icons.cast
+                  : !device.isOnline
+                  ? Icons.link_off_rounded
+                  : device.hasUsbConnection
+                  ? Icons.usb_rounded
+                  : Icons.wifi_rounded,
+              size: 14,
+              color: color,
+            ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11, color: color),
+              ),
+            ),
+          ],
         ),
       ),
-    ],
-  );
+    );
+  }
 
   /// 读取与设备墙同源的 WLAN IP，不额外发起全量概览探测。
   Widget _buildIdentifierSubtitle(
@@ -252,39 +261,61 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     ],
   );
 
-  /// 窄屏与原型一致隐藏主操作图标，标签可换行以适应英文及放大字号。
+  /// 桌面操作保持单行，空间不足时先隐藏图标；窄屏仍允许标签自然换行。
   Widget _workspaceActionLabel(
     BuildContext context,
     RegisteredDevice device,
     bool compact,
-  ) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      if (!compact) ...[
-        Icon(
-          device.isOnline
-              ? Icons.ondemand_video_outlined
-              : device.id.startsWith('emulator-')
-              ? Icons.play_arrow
-              : Icons.link,
-          size: 16,
-        ),
-        const SizedBox(width: 5),
-      ],
-      Flexible(
-        child: Text(
-          context.l10n.t(
-            device.isOnline
-                ? 'screenMirror'
-                : device.id.startsWith('emulator-')
-                ? 'deviceWorkspaceStartEmulator'
-                : 'deviceWorkspaceReconnect',
-          ),
-          textAlign: TextAlign.center,
-        ),
+  ) {
+    final label = context.l10n.t(
+      device.isOnline
+          ? 'screenMirror'
+          : device.id.startsWith('emulator-')
+          ? 'deviceWorkspaceStartEmulator'
+          : 'deviceWorkspaceReconnect',
+    );
+    return Tooltip(
+      message: label,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final painter = TextPainter(
+            text: TextSpan(text: label, style: DefaultTextStyle.of(context).style),
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+            maxLines: 1,
+          )..layout();
+          final showIcon = !compact && constraints.maxWidth >= painter.width + 21;
+          painter.dispose();
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (showIcon) ...[
+                Icon(
+                  device.isOnline
+                      ? Icons.ondemand_video_outlined
+                      : device.id.startsWith('emulator-')
+                      ? Icons.play_arrow
+                      : Icons.link,
+                  size: 16,
+                ),
+                const SizedBox(width: 5),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: compact ? null : 1,
+                  softWrap: compact,
+                  overflow: compact ? TextOverflow.clip : TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          );
+        },
       ),
-    ],
-  );
+    );
+  }
 
   ButtonStyle _workspaceActionStyle(BuildContext context, bool online) =>
       FilledButton.styleFrom(
@@ -334,8 +365,8 @@ class _DeviceTableLayout {
   ) {
     final windowWidth = MediaQuery.sizeOf(context).width;
     final phone = windowWidth <= 490;
-    final inner = available - (phone ? 16 : 22) - (batchMode ? 36 : 0);
-    final statusWidth = windowWidth <= 730 ? 95.0 : 114.0;
+    final inner = available - 16 - (batchMode ? 36 : 0);
+    const statusWidth = 80.0;
     var actionsWidth = batchMode
         ? 0.0
         : windowWidth <= 730
