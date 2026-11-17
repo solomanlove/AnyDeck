@@ -173,7 +173,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('MCP 启动与工具开关实时换色，运行状态保持成功语义 $brightness', (tester) async {
+    testWidgets('MCP 启动、工具开关与运行状态实时跟随主题 $brightness', (tester) async {
       await tester.binding.setSurfaceSize(const Size(1100, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final color = ValueNotifier(AppThemeColor.blue);
@@ -230,9 +230,8 @@ void main() {
       final theme = Theme.of(tester.element(find.byType(McpServerStatusCard)));
       expect(
         (statusDot.decoration! as BoxDecoration).color,
-        theme.appColors.success,
+        theme.colorScheme.primary,
       );
-      expect(theme.appColors.success, isNot(AppThemeColor.purple.color));
       expect(tester.takeException(), isNull);
     });
 

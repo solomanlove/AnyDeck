@@ -50,7 +50,7 @@ git diff --check
 
 | 范围 | 跟随主题的内容 |
 | --- | --- |
-| MCP、消息 | 服务启动按钮、开关、目标消息边框和背景、屏蔽列表图标 |
+| MCP、消息 | 服务启动按钮、开关、服务运行圆点和头部徽章、目标消息边框和背景、屏蔽列表图标 |
 | 开发者、更新与接收名称 | 工具图标、操作按钮、更新进度、接收名称输入焦点边框 |
 | 设备、模拟器、AirPlay | 连接/投屏/启动入口、模拟器选择背景、打开投屏按钮 |
 | 概览 | 卡片图标、API badge、容量卡背景/边框及进度条 |
@@ -59,7 +59,7 @@ git diff --check
 
 - 业务 UI 从 `Theme.of(context).colorScheme.primary/onPrimary` 读取交互主色；`SettingsDeveloperEntry.brandGreen` 仅作为可选覆盖，默认随当前 Theme 更新。
 - 两个布局预览 Painter 由 Widget 注入 `selectionColor`，`shouldRepaint` 比较颜色，确保切换主题后已有选区重新绘制；固定全量边界、Hover、标尺及用户画笔不受影响。
-- 概览成功状态与主题装饰分离；在线、Root、充电、运行/成功/环境就绪等继续使用固定状态色。Android Logo、ANSI/Logcat 语法、图表数据序列、布尔属性及调色板中的绿色保留业务含义。网络页面剩余绿色用于成功 SnackBar，交互已使用 Theme。
+- 概览成功状态与主题装饰分离；设备在线、Root、充电、执行成功/环境就绪等继续使用固定状态色。侧栏服务运行圆点与 MCP 运行徽章跟随主题色。Android Logo、ANSI/Logcat 语法、图表数据序列、布尔属性及调色板中的绿色保留业务含义。网络页面剩余绿色用于成功 SnackBar，交互已使用 Theme。
 - 公共 `appColors` helper 在标准 `ThemeData` 未安装扩展时回退到对应明暗语义色，支持公共组件单独复用，避免新接入成功语义色后出现空值异常。
 - 新增 `control_theme_color_test.dart`、`device_theme_color_test.dart`、`theme_feature_controls_test.dart`、`screenshot_layout_theme_test.dart`、`logcat_webview_theme_test.dart`，验证非绿色主题、同一组件实时换色、输入及选择保留、回调仍可用，并对实际 Painter 选区像素取样。
 - 旧回归 fixture 补齐原生窗口广播隔离；截图布局回归使用固定 PNG，并隔离侧栏设置/MCP/Share/概览依赖，避免测试等待引擎图像编码或启动真实服务。WebView 测试恢复有效的平台占位实现，避免插件不允许设置空实例的断言。
@@ -82,7 +82,7 @@ flutter --no-version-check test --no-pub \
 - `McpConfigSnippetCard` 的三平台接入与兼容入口开关显式使用 `ColorScheme.primary` 作为选中轨道、`onPrimary` 作为滑块，保留原生自适应外观。仅依赖默认 `Switch.adaptive` 时，macOS/iOS 仍会使用系统绿色；搜索硬编码绿色不能发现这类遗漏。
 - `buildAppTheme` 通过 `cupertinoOverrideTheme.primaryColor` 和 `applyThemeToAll: true` 统一自适应开关的默认选中轨道，覆盖接收服务、开发者模式、鸿蒙连接/共享和虚拟摄像头等 7 处默认开关。显式配置的轨道优先，现有 `CupertinoSwitch` 配色保持原有绑定。
 - `McpToolsToggleList` 的平台与分类筛选统一使用 `primaryContainer/onPrimaryContainer` 作为选中背景、文字和勾选配对色，随主题主色生成并兼顾明暗可读性，避免主色文字叠加半透明同色背景时对比不足。
-- 不改变平台启停、兼容入口或工具权限逻辑；切换主题时保留开关值、搜索和筛选状态。运行状态继续使用成功语义色。
+- 不改变平台启停、兼容入口或工具权限逻辑；切换主题时保留开关值、搜索和筛选状态。服务运行圆点与徽章跟随主题色，审计日志执行成功仍使用成功语义色。
 - `mcp_access_theme_test.dart` 覆盖 macOS/iOS/Android × 明暗主题的默认自适应开关实际绘制、蓝色切换紫色，以及 MCP 平台/兼容开关和平台筛选交互。
 
 ```bash
@@ -129,3 +129,22 @@ flutter --no-version-check test --no-pub \
 ```
 
 本轮 11 个相关测试文件共 65 项全部通过；3 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（5 项 SDK 弃用 info）。新测试兼容 Material/Ink 背景实现，并按 Canvas 实际描边的 ARGB 色值检查勾选，避免浮点记录精度造成误判。新文件格式与 `git diff --check` 通过，未启动桌面 App。
+
+## 2026-11-17 侧栏与 MCP 服务运行标记
+
+- 投屏接收、文件互传和 AI MCP 的侧栏运行圆点统一读取 `ColorScheme.primary`，宽窄侧栏复用同一状态组件；服务运行条件、停止后隐藏以及页面选中判断不变。
+- MCP 页头运行徽章的文字、边框、背景、圆点和阴影，以及服务卡片的圆点和阴影均跟随主题主色。停止时保留原有灰色与中性背景，不显示发光阴影；停止服务按钮仍为红色。
+- `dashboard_service_navigation_test.dart` 覆盖中英文 × 明暗 × 宽窄侧栏，验证三个服务运行中蓝色切换粉色、页面选中与 Provider 实例保持。新增 `mcp_status_theme_test.dart` 挂载实际 MCP 页面，验证中英文 × 明暗的完整徽章配色、运行状态保留和停服回退。
+- 全局成功语义色不变；设备在线、Root、充电、AirPlay LIVE、实际媒体播放及执行审计成功继续使用原有业务色。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/dashboard_service_navigation_test.dart test/dashboard_global_navigation_test.dart \
+  test/dashboard_shell_navigation_test.dart test/theme_feature_controls_test.dart \
+  test/receiver_theme_color_test.dart
+flutter --no-version-check test --no-pub \
+  test/mcp_status_theme_test.dart test/app_theme_test.dart \
+  test/mcp_access_theme_test.dart test/device_theme_color_test.dart
+```
+
+上述 9 个相关测试文件共 74 项全部通过；7 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（9 项 SDK 弃用 info 和 1 项既有冗余导入 info）。测试格式与 `git diff --check` 通过，未启动桌面 App 或真实服务。

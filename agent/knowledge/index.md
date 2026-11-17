@@ -22,7 +22,7 @@
 | `adb-macos-feature-authorization` | macOS 功能入口授权 | active | 摄像头扩展在摄像头入口安装与批准、登录项在开机自启行处理、回焦状态刷新、独立权限页移除及验证边界 | `core/virtual_camera/`, `app/settings/`, `features/overview/settings/`, `macos/Runner/` |
 | `adb-svg-assets` | SVG 与位图资源加载 | active | 本地 SVG/PNG 公共组件、平台 Logo 的尺寸/明暗适配、服务菜单/诊断/无线连接/版本详情复用、品牌图片与错误回退 | `app/widget/`, `features/developer/`, `features/devices/`, `features/overview/` |
 | `adb-ui-theme-system` | UI Theme 统一机制 | active | 统一品牌色、Light/Dark 语义色、边框、搜索框与 Tab 共用圆角及顶部轻提示，记录投屏快捷操作图标回退及静态提示清理、轻提示 Overlay 清理与回归，并明确固定业务色和 Painter 注入边界 | `app/theme/`, `app/widget/`, `app/window/`, `features/` |
-| `adb-theme-color-settings` | 全局主题色设置与交互高亮 | active | 六种主色选择、默认绿色兼容、持久化、跨窗口同步、各页面按钮/开关/选中态、画质预设与 Chip 配色、MCP 平台接入与筛选、投屏接收开关、Painter 选区注入、语义色回退、中英文搜索与动态换色回归边界 | `app/theme/`, `app/settings/`, `app/window/`, `features/` |
+| `adb-theme-color-settings` | 全局主题色设置与交互高亮 | active | 六种主色选择、默认绿色兼容、持久化、跨窗口同步、各页面按钮/开关/选中态、画质预设与 Chip 配色、MCP 平台接入与筛选、投屏接收开关、侧栏服务圆点与 MCP 运行徽章、Painter 选区注入、语义色回退、中英文搜索与动态换色回归边界 | `app/theme/`, `app/settings/`, `app/window/`, `features/` |
 | `adb-local-diagnostic-logs` | 控制台与本地诊断日志 | active | 运行异常采集、关键日志筛选、跨窗口汇总、滚动文件、本地日志导出、工具栏图标交互统一与搜索自适应布局及验证边界 | `core/logging/`, `app/window/console/`, `features/developer/` |
 | `adb-github-feedback` | GitHub Issues 意见反馈 | active | 设置页标题与正文编辑、环境信息快照、分类草稿保留、长正文复制兜底、网页模板及验证边界 | `features/feedback/`, `core/process/`, `.github/ISSUE_TEMPLATE/` |
 | `adb-local-apk-inspector` | macOS Android 安装包分析与安装 | active | APK/APKS/AAB/XAPK 文件关联与离线分析、Protobuf 模块/分包清单、签名信息、APK 安装队列、临时目录回收与回归边界 | `core/apk/`, `features/apk/`, `app/window/apk/`, `rust/apk_inspector/` |
@@ -71,7 +71,7 @@
 | `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录 App 万能控制台副文案与 Logo 居中、设备管理与模拟器列表同级入口、设备列表统计标签与自适应搜索筛选栏、操作列按钮圆角矩形水波纹、图标内边距及编辑图标主题色、设备行名称与 IP、品牌 Logo 圆角、左侧导航 App/设备身份切换、品牌优先与制造商兜底、概览缓存兼容、返回点击逻辑及 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |
 | `adb-device-context-menu` | 设备列表常用操作右键菜单 | active | 行高亮、截图保存及剪贴板、投屏与工具 Route、三平台能力区分、离线/删除与重复操作拦截及验证边界 | `features/devices/`, `features/control/`, `test/` |
 | `adb-main-window-routing` | 主窗口层级路由 | active | 记录 Splash StartupGate、顶层 Route、设备工具 slug、应用详情嵌套路由、隐藏 Navigator 焦点隔离及 Route 与 Riverpod 的职责边界 | `app/router/`, `features/overview/`, `features/apps/`, `features/devices/` |
-| `adb-main-window-navigation` | 主窗口导航、帮助中心、底部控制台与系统版本 | active | AnyDeck 在线帮助入口与中英文文案、侧栏页面选中与服务绿点分离、侧边栏底部控制台、可调高度日志面板、系统版本 Route、移除独立模拟器管理窗口和原生菜单入口、验证与人工边界 | `features/overview/`, `features/console/`, `app/window/`, `app/router/` |
+| `adb-main-window-navigation` | 主窗口导航、帮助中心、底部控制台与系统版本 | active | AnyDeck 在线帮助入口与中英文文案、侧栏页面选中与服务运行标记分离、主题色状态圆点、侧边栏底部控制台、可调高度日志面板、系统版本 Route、移除独立模拟器管理窗口和原生菜单入口、验证与人工边界 | `features/overview/`, `features/console/`, `app/window/`, `app/router/` |
 | `adb-device-root-status` | Dashboard 手机 Root 状态标识 | active | 记录主页 Root 标识、检测链路、未知状态与控制 Tab 按钮移除 | `features/overview/`, `features/control/`, `core/providers/` |
 | `adb-macos-signature-policy` | macOS 签名与 system policy 修复机制 | active | 记录 `FlutterMacOS.framework` 被 dyld system policy 拒绝加载时的签名、provenance/quarantine 排查与自动修复脚本 | `macos/`, `script/` |
 | `adb-ai-mcp-server-architecture` | AI MCP 服务架构与集成机制 | active | 记录三平台 MCP 入口、Streamable HTTP 与兼容 SSE、独立 Token、平台及设备双重校验、HDC/iOS 工具、图像与结构化结果、高危防护、启停串行、凭据迁移异常、iPhone 真机验收及开发者镜像绝对缓存 | `core/mcp/`, `core/ios/`, `features/mcp/` |

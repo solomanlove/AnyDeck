@@ -429,7 +429,7 @@ class PrimaryRail extends ConsumerWidget {
                           icon: tool.icon,
                           selected: selectedTool == tool.tabIndex,
                           statusColor:
-                              isRunning ? theme.appColors.success : null,
+                              isRunning ? theme.colorScheme.primary : null,
                           tooltip: tool.label,
                           isNarrow: renderNarrow,
                           verticalPadding: renderNarrow ? 3.0 : 2.0,
@@ -450,7 +450,7 @@ class PrimaryRail extends ConsumerWidget {
                           icon: tool.icon,
                           selected: selectedTool == tool.tabIndex,
                           statusColor:
-                              isRunning ? theme.appColors.success : null,
+                              isRunning ? theme.colorScheme.primary : null,
                           tooltip: tool.label,
                           isNarrow: renderNarrow,
                           verticalPadding: renderNarrow ? 3.0 : 2.0,

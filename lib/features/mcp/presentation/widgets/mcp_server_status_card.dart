@@ -1,5 +1,4 @@
 import '../../../../app/l10n/app_localizations.dart';
-import 'package:any_deck/app/theme/app_theme.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +16,7 @@ class McpServerStatusCard extends ConsumerWidget {
     final state = ref.watch(mcpServerProvider);
     final controller = ref.read(mcpServerProvider.notifier);
 
-    final statusColor = state.isRunning ? theme.appColors.success : Colors.grey;
+    final statusColor = state.isRunning ? theme.colorScheme.primary : Colors.grey;
 
     return Card(
       child: Padding(

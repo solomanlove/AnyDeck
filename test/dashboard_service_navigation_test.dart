@@ -78,10 +78,7 @@ void main() {
           addTearDown(container.dispose);
           addTearDown(share.dispose);
           final l10n = AppLocalizations(Locale(language));
-          final theme = buildAppTheme(
-            brightness,
-            themeColor: AppThemeColor.blue,
-          );
+          var theme = buildAppTheme(brightness, themeColor: AppThemeColor.blue);
           final runningHint = l10n.t('navigationServiceRunning');
 
           Future<void> pumpRail({bool receiverRunning = false}) async {
@@ -167,7 +164,7 @@ void main() {
               );
               expect(
                 (dot.decoration as BoxDecoration).color,
-                theme.appColors.success,
+                theme.colorScheme.primary,
               );
             }
           }
@@ -187,7 +184,7 @@ void main() {
             expectEntry(key, selected: false, running: true);
           }
 
-          // 页面切换只移动高亮，三个后台服务的绿点继续显示。
+          // 页面切换只移动高亮，三个后台服务的运行圆点继续显示。
           for (final page in {
             -3: 'receiverCenter',
             -4: 'harmonyShareTitle',
@@ -205,7 +202,24 @@ void main() {
             }
           }
 
-          // 选中页停服仍高亮；其他已停服务不残留绿点。
+          // 服务运行中只更新 Theme，保留原侧栏 Element、Provider 与当前页面。
+          final railElement = tester.element(find.byType(PrimaryRail));
+          final selectedBeforeTheme = container.read(selectedToolTabProvider);
+          final mcpBeforeTheme = container.read(mcpServerProvider);
+          theme = buildAppTheme(brightness, themeColor: AppThemeColor.pink);
+          await pumpRail(receiverRunning: true);
+          expect(tester.element(find.byType(PrimaryRail)), same(railElement));
+          expect(container.read(selectedToolTabProvider), selectedBeforeTheme);
+          expect(container.read(mcpServerProvider.notifier), same(mcp));
+          expect(container.read(mcpServerProvider), same(mcpBeforeTheme));
+          expect(share.enabled, isTrue);
+          expect(share.scanning, isTrue);
+          expectEntry('devices', selected: false);
+          expectEntry('aiMcp', selected: true, running: true);
+          expectEntry('receiverCenter', selected: false, running: true);
+          expectEntry('harmonyShareTitle', selected: false, running: true);
+
+          // 选中页停服仍高亮；其他已停服务不残留运行圆点。
           mcp.setRunning(false);
           share.update(enabled: false);
           await pumpRail();

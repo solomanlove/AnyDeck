@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:any_deck/app/l10n/app_localizations.dart';
-import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../widgets/dashboard_header_bar.dart';
@@ -58,7 +57,7 @@ class _McpDashboardHeader extends StatelessWidget {
   }
 }
 
-/// 标题栏右侧的 MCP 服务运行状态徽章
+/// 标题栏右侧的 MCP 服务运行状态徽章，运行配色跟随当前主题主色。
 class _McpServerStatusHeaderBadge extends ConsumerWidget {
   const _McpServerStatusHeaderBadge();
 
@@ -70,10 +69,10 @@ class _McpServerStatusHeaderBadge extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final badgeColor = isRunning
-        ? theme.appColors.success
+        ? theme.colorScheme.primary
         : (isDark ? Colors.grey.shade600 : Colors.grey.shade500);
     final badgeBg = isRunning
-        ? theme.appColors.success.withValues(alpha: 0.12)
+        ? theme.colorScheme.primary.withValues(alpha: 0.12)
         : (isDark
             ? Colors.white.withValues(alpha: 0.06)
             : Colors.black.withValues(alpha: 0.04));
