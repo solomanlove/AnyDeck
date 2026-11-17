@@ -89,6 +89,12 @@ ThemeData buildAppTheme(
       ),
       isDense: true,
     ),
+    // ChoiceChip 单独读取 secondary 配置，统一预设与筛选的选中配色。
+    chipTheme: ChipThemeData(
+      secondarySelectedColor: colorScheme.primaryContainer,
+      secondaryLabelStyle: TextStyle(color: colorScheme.onPrimaryContainer),
+      checkmarkColor: colorScheme.onPrimaryContainer,
+    ),
     checkboxTheme: CheckboxThemeData(
       shape: RoundedRectangleBorder(borderRadius: AppThemeSizes.radiusSmall),
       checkColor: WidgetStateProperty.all(Colors.white),

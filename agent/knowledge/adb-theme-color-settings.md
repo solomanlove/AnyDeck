@@ -110,3 +110,22 @@ flutter --no-version-check test --no-pub \
 ```
 
 本轮 5 个相关测试文件共 39 项全部通过；2 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（4 项 SDK 弃用 info）。新增测试格式与 `git diff --check` 通过，未启动桌面 App。
+
+## 2026-11-17 画质预设与同类 Chip 选中配色
+
+- `buildAppTheme.chipTheme` 统一配置 `secondarySelectedColor`、`secondaryLabelStyle` 和 `checkmarkColor`。`ChoiceChip` 的选中默认值单独读取 secondary 配置，因此这里显式使用 `primaryContainer/onPrimaryContainer`，与 MCP 平台筛选保持一致并保证明暗可读性。
+- 覆盖投屏画质预设、应用权限筛选、反馈类型、互传记录方向和投屏快捷操作类别。截图间隔继续优先使用原有主色背景与文字，勾选使用统一主题色；MCP 与设备筛选等显式配色继续优先。
+- 未选中选项和普通 `Chip` 的样式保持原样；禁用选项仍禁用交互并使用 SDK 的淡化绘制。预设保存、码率/尺寸及当前选择逻辑不变。
+- `mirror_quality_theme_test.dart` 覆盖中英文 × 明暗的均衡/流畅/清晰选择、实时换色和参数保持；`choice_chip_theme_test.dart` 遍历六种颜色 × 明暗，检查真实背景、文字和勾选绘制，以及未选中/普通 Chip 基线、显式覆盖和禁用交互。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/mirror_quality_theme_test.dart test/choice_chip_theme_test.dart \
+  test/settings_review_test.dart test/app_theme_test.dart \
+  test/github_feedback_test.dart test/app_permissions_panel_test.dart \
+  test/mirror_app_quick_actions_dialog_test.dart test/screenshot_auto_save_test.dart \
+  test/features/harmony_share_history_test.dart test/device_list_filters_test.dart \
+  test/mcp_access_theme_test.dart
+```
+
+本轮 11 个相关测试文件共 65 项全部通过；3 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（5 项 SDK 弃用 info）。新测试兼容 Material/Ink 背景实现，并按 Canvas 实际描边的 ARGB 色值检查勾选，避免浮点记录精度造成误判。新文件格式与 `git diff --check` 通过，未启动桌面 App。
