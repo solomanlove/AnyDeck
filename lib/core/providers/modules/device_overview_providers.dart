@@ -14,6 +14,7 @@ import 'device_tracking_providers.dart';
 import 'registered_device_model.dart';
 import 'service_providers.dart';
 import 'adb_wireless_connection_provider.dart';
+import 'android_overview_connection_provider.dart';
 
 /// 将概览探针取得的 Wi-Fi IP 同步到设备列表与无线连接状态。
 void _syncDiscoveredIp(Ref ref, String deviceId, String ip) {
@@ -329,8 +330,8 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         yield displayCached;
       }
 
-      // 检查设备是否在线（使用 ref.watch，以支持响应式状态变化）
-      final isOnline = ref.watch(deviceOnlineProvider(deviceId));
+      // 真实 ADB 断线才重新采集，投屏内部重建不触发整组概览查询。
+      final isOnline = ref.watch(androidOverviewOnlineProvider(deviceId));
       if (!isOnline) {
         if (cached == null) {
           yield DeviceOverview.fromJson({});
