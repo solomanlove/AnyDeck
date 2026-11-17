@@ -170,6 +170,19 @@ class AndroidVersionHelper {
       return displayId;
     }
 
+    final oneUiVersion = _firstNonEmpty(properties, ['ro.build.version.oneui']);
+    final encodedOneUi = int.tryParse(oneUiVersion ?? '', radix: 10);
+    if (encodedOneUi != null && encodedOneUi >= 10000) {
+      // 三星将 One UI 编码为 major * 10000 + minor * 100 + patch。
+      // 保留主次版本，仅在补丁号非零时展示第三段；不根据品牌或 Android 版本推测。
+      final major = encodedOneUi ~/ 10000;
+      final minor = (encodedOneUi ~/ 100) % 100;
+      final patch = encodedOneUi % 100;
+      return patch == 0
+          ? 'One UI $major.$minor'
+          : 'One UI $major.$minor.$patch';
+    }
+
     return null;
   }
 

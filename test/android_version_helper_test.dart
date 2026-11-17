@@ -22,6 +22,74 @@ void main() {
   });
 
   group('AndroidVersionHelper.getCustomOsVersion', () {
+    // One UI 属性采用 major * 10000 + minor * 100 + patch 编码。
+    for (final entry in {
+      '90000': 'One UI 9.0',
+      '80500': 'One UI 8.5',
+      '60100': 'One UI 6.1',
+      '60101': 'One UI 6.1.1',
+      '100000': 'One UI 10.0',
+      ' 50100 ': 'One UI 5.1',
+    }.entries) {
+      test('识别 One UI 编码 ${entry.key}', () {
+        final properties = AndroidVersionHelper.parseGetProp(
+          '[ro.product.brand]: [samsung]\n'
+          '[ro.build.version.oneui]: [${entry.key}]\n',
+        );
+
+        expect(
+          AndroidVersionHelper.getCustomOsVersion(properties),
+          entry.value,
+        );
+      });
+    }
+
+    for (final value in [
+      '',
+      'unknown',
+      '0',
+      '-1',
+      '9999',
+      'invalid',
+      '0x90000',
+      '6.1',
+    ]) {
+      test('One UI 属性无效时不根据品牌或 API 推测版本：$value', () {
+        expect(
+          AndroidVersionHelper.getCustomOsVersion({
+            'ro.product.brand': 'samsung',
+            'ro.product.manufacturer': 'samsung',
+            'ro.build.version.release': '17',
+            'ro.build.version.sdk': '37',
+            'ro.build.version.oneui': value,
+          }),
+          isNull,
+        );
+      });
+    }
+
+    test('三星品牌缺少 One UI 属性时不推测系统', () {
+      expect(
+        AndroidVersionHelper.getCustomOsVersion({
+          'ro.product.brand': 'samsung',
+          'ro.product.manufacturer': 'samsung',
+          'ro.build.version.release': '17',
+          'ro.build.version.sdk': '37',
+        }),
+        isNull,
+      );
+    });
+
+    test('其他已识别 ROM 优先于残留 One UI 属性', () {
+      expect(
+        AndroidVersionHelper.getCustomOsVersion({
+          'ro.build.version.oneui': '90000',
+          'ro.build.version.emui': 'EmotionUI_14.2.0',
+        }),
+        'EMUI 14.2.0',
+      );
+    });
+
     test('识别 HyperOS 并保留版本', () {
       final properties = AndroidVersionHelper.parseGetProp(
         '[ro.mi.os.version.name]: [OS2.0.1.0]\n'
