@@ -1,4 +1,4 @@
-import 'package:any_deck/app/theme/app_theme_sizes.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/devices/widgets/device_info_edit_dialog.dart';
 import 'package:flutter/cupertino.dart';
@@ -60,6 +60,43 @@ void main() {
   };
 
   for (final brightness in Brightness.values) {
+    for (final themeColor in AppThemeColor.values) {
+      testWidgets('设备编辑图标与投屏、连接图标同色：$brightness / $themeColor', (tester) async {
+        await withDeviceMenu(
+          tester,
+          (fixture) async {
+            // 三平台及离线设备共用主题主色，避免编辑图标保留固定蓝色。
+            for (final device in expectedIcons.keys) {
+              final buttons = _rowButtons(device);
+              final edit = find.descendant(
+                of: buttons,
+                matching: find.byIcon(CupertinoIcons.pencil),
+              );
+              final primary = Theme.of(
+                tester.element(edit),
+              ).colorScheme.primary;
+              final editColor = tester.widget<Icon>(edit).color;
+              expect(editColor, primary);
+              expect(primary, themeColor.color);
+              for (final icon in [CupertinoIcons.tv, CupertinoIcons.link]) {
+                final adjacent = find.descendant(
+                  of: buttons,
+                  matching: find.byIcon(icon),
+                );
+                if (adjacent.evaluate().isNotEmpty) {
+                  expect(tester.widget<Icon>(adjacent).color, editColor);
+                }
+              }
+            }
+            expect(tester.takeException(), isNull);
+          },
+          devices: expectedIcons.keys.toList(),
+          brightness: brightness,
+          themeColor: themeColor,
+        );
+      });
+    }
+
     testWidgets('设备操作按钮的圆角水波纹保留内边距，编辑回调正常：$brightness', (tester) async {
       await withDeviceMenu(
         tester,

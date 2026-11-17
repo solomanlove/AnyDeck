@@ -244,6 +244,7 @@ Future<void> withDeviceMenu(
   AirPlaySessionData? airplay,
   String language = 'zh',
   Brightness brightness = Brightness.light,
+  AppThemeColor themeColor = AppThemeColor.green,
   DeviceShareService? sharing,
   DeviceMenuAdb? adbService,
   DeviceMenuHdc? hdcService,
@@ -309,7 +310,7 @@ Future<void> withDeviceMenu(
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          theme: buildAppTheme(brightness),
+          theme: buildAppTheme(brightness, themeColor: themeColor),
         ),
       ),
     );

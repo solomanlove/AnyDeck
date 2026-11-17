@@ -361,9 +361,9 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           // 4. 编辑设备信息按钮（修改设备名称、标签标识、备注，并在弹窗内展示详情及提供删除功能）
           if (!device.id.startsWith('airplay-'))
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 CupertinoIcons.pencil,
-                color: Color(0xFF1976D2),
+                color: Theme.of(context).colorScheme.primary,
               ),
               tooltip: context.l10n.t('editDeviceInfo'),
               onPressed: () => _showEditDeviceInfoDialog(context, device),
