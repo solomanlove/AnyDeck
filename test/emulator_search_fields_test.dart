@@ -6,6 +6,7 @@ import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:any_deck/features/devices/widgets/deveco_emulators_view.dart';
 import 'package:any_deck/features/devices/widgets/device_list_filters.dart';
+import 'package:any_deck/features/devices/model/device_workspace_view_state.dart';
 import 'package:any_deck/features/devices/widgets/ios_simulators_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -17,10 +18,11 @@ import 'support/search_field_expectations.dart';
 
 /// 固定空列表，验证搜索框样式与清除交互，不启动平台扫描或模拟器。
 void main() {
+  final emulatorHeights = <String, double>{};
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
       for (final platform in ['Android', 'HarmonyOS', 'iOS']) {
-        testWidgets('$platform 模拟器搜索框与设备搜索框等高 $language $brightness', (
+        testWidgets('$platform 模拟器保留统一高度，设备页采用紧凑搜索 $language $brightness', (
           tester,
         ) async {
           tester.view.devicePixelRatio = 1;
@@ -63,8 +65,12 @@ void main() {
                           controller: controller,
                           onlineCount: 0,
                           totalCount: 0,
-                          onlineOnly: false,
-                          onOnlineOnlyChanged: (_) {},
+                          filter: DeviceStatusFilter.all,
+                          onFilterChanged: (_) {},
+                          viewMode: DeviceViewMode.wall,
+                          onViewModeChanged: (_) {},
+                          batchMode: false,
+                          onBatchModeChanged: (_) {},
                           onSearchChanged: (_) {},
                         ),
                         Expanded(
@@ -85,13 +91,24 @@ void main() {
             await tester.pumpAndSettle();
             final reference = find.byKey(const Key('deviceListSearch'));
             final search = find.byType(TextField).last;
+            // 设备页按手机墙原型采用 36px / 8px 圆角；模拟器仍使用既有 40px / Tab 圆角。
             final referenceHeight = tester.getSize(reference).height;
-            if (layout.scale == 1) expect(referenceHeight, 40);
-            expect(tester.getSize(search).height, referenceHeight);
+            final searchHeight = tester.getSize(search).height;
+            if (layout.scale == 1) {
+              expect(referenceHeight, 36);
+              expect(searchHeight, 40);
+            } else {
+              expect(referenceHeight, greaterThan(36));
+              expect(searchHeight, greaterThan(40));
+            }
+            expectSearchFieldRadius(tester, reference,
+              radius: AppThemeSizes.radiusMedium);
+            final layoutKey = '$language-$brightness-${layout.width}-${layout.scale}';
+            expect(searchHeight, emulatorHeights.putIfAbsent(layoutKey, () => searchHeight));
             expectSearchFieldRadius(tester, search, focused: false);
             await tester.enterText(search, 'no matches');
             await tester.pumpAndSettle();
-            expect(tester.getSize(search).height, referenceHeight);
+            expect(tester.getSize(search).height, searchHeight);
             expectSearchFieldRadius(tester, search, focused: true);
             await tester.tap(
               find.descendant(
@@ -101,7 +118,7 @@ void main() {
             );
             await tester.pumpAndSettle();
             expect(tester.widget<TextField>(search).controller!.text, isEmpty);
-            expect(tester.getSize(search).height, referenceHeight);
+            expect(tester.getSize(search).height, searchHeight);
             expect(tester.takeException(), isNull);
           }
         });

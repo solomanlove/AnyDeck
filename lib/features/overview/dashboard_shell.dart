@@ -18,6 +18,16 @@ class _WechatStyleShell extends ConsumerWidget {
     // 主窗口常驻所有者，恢复 Wi-Fi 自动准备规则不依赖打开设备管理或共享弹窗。
     ref.watch(deviceShareServiceProvider);
     final selectedTool = ref.watch(selectedToolTabProvider);
+    final baseTheme = Theme.of(context);
+    return Theme(
+      data: selectedTool == -1 ? buildDeviceWorkspaceTheme(baseTheme) : baseTheme,
+      child: Builder(
+        builder: (context) => _buildWorkspace(context, selectedTool),
+      ),
+    );
+  }
+
+  Widget _buildWorkspace(BuildContext context, int selectedTool) {
     final theme = Theme.of(context);
 
     return Row(
@@ -31,21 +41,28 @@ class _WechatStyleShell extends ConsumerWidget {
             border: Border(
               left: BorderSide(color: theme.colorScheme.outlineVariant),
             ),
-            child: ConsoleDock(
-              child: Column(
-                children: [
-                  if ((selectedDevice == null || selectedTool == -1) &&
-                      selectedTool != -2 &&
-                      selectedTool != -3 &&
-                      selectedTool != -4 &&
-                      selectedTool != -5 &&
-                      selectedTool != 12 &&
-                      selectedTool != 13 &&
-                      selectedTool != 14)
-                    _ContentTitleBar(title: title),
-                  Expanded(child: child),
-                ],
-              ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: ConsoleDock(
+                    child: Column(
+                      children: [
+                        if ((selectedDevice == null || selectedTool == -1) &&
+                            selectedTool != -2 &&
+                            selectedTool != -3 &&
+                            selectedTool != -4 &&
+                            selectedTool != -5 &&
+                            selectedTool != 12 &&
+                            selectedTool != 13 &&
+                            selectedTool != 14)
+                          _ContentTitleBar(title: title),
+                        Expanded(child: child),
+                      ],
+                    ),
+                  ),
+                ),
+                const HostNetworkFooter(),
+              ],
             ),
           ),
         ),
@@ -61,49 +78,131 @@ class _ContentTitleBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final iconColor = isDark ? const Color(0xffb0bec5) : const Color(0xff5f6b6e);
-
-    return DashboardHeaderBar(
-      title: context.l10n.t('devices'),
-      subtitle: context.l10n.t('devicesSubtitle'),
-      actions: [
-        DashboardHeaderActionButton(
-          tooltip: context.l10n.t('deviceShareJoin'),
-          icon: const Icon(Icons.devices_outlined),
-          color: iconColor,
-          onPressed: () => showDialog<void>(context: context,
-            builder: (_) => const DeviceShareDialog()),
-        ),
-        //tcp连接
-        DashboardHeaderActionButton(
-          tooltip: context.l10n.t('connectTcp'),
-          icon: const Icon(CupertinoIcons.link),
-          color: iconColor,
-          onPressed: () => _showConnectDeviceDialog(context, ref),
-        ),
-        //无线连接
-        DashboardHeaderActionButton(
-          tooltip: context.l10n.t('pairDeviceTitle'),
-          icon: const Icon(CupertinoIcons.antenna_radiowaves_left_right),
-          color: iconColor,
-          onPressed: () => showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const _DeviceWirelessConnectionDialog(),
+    final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width <= 490;
+    // 窄窗口放大字体时保留完整标题，连接入口以图标和 Tooltip 提供。
+    final showConnectionLabel =
+        !compact || MediaQuery.textScalerOf(context).scale(13) <= 16;
+    return DragToMoveArea(
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          border: Border(
+            bottom: BorderSide(color: theme.colorScheme.outlineVariant),
           ),
         ),
-        //重置服务
-        ServiceRestartMenuButton(iconColor: iconColor),
-        //刷新
-        DashboardHeaderActionButton(
-          tooltip: context.l10n.t('refreshDevices'),
-          icon: const Icon(CupertinoIcons.refresh),
-          color: iconColor,
-          onPressed: () => _refreshDevices(context, ref),
+        padding: EdgeInsets.fromLTRB(
+          compact ? 15 : 26,
+          compact ? 34 : 30,
+          compact ? 15 : 26,
+          compact ? 20 : 21,
         ),
-      ],
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    context.l10n.t('devices'),
+                    style: TextStyle(
+                      fontSize: compact ? 20 : 22,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  if (!compact) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      context.l10n.t('deviceWorkspaceSubtitle'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: context.l10n.t('refreshDevices'),
+              icon: const Icon(LucideIcons.refreshCw, size: 17),
+              onPressed: () => _refreshDevices(context, ref),
+            ),
+            const SizedBox(width: 8),
+            PopupMenuButton<String>(
+              tooltip: context.l10n.t('deviceWorkspaceConnect'),
+              onSelected: (action) {
+                switch (action) {
+                  case 'tcp':
+                    _showConnectDeviceDialog(context, ref);
+                  case 'pair':
+                    showDialog<void>(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const _DeviceWirelessConnectionDialog(),
+                    );
+                  case 'share':
+                    showDialog<void>(
+                      context: context,
+                      builder: (_) => const DeviceShareDialog(),
+                    );
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'pair',
+                  child: Text(context.l10n.t('deviceWorkspacePair')),
+                ),
+                PopupMenuItem(
+                  value: 'tcp',
+                  child: Text(context.l10n.t('deviceWorkspaceConnectIp')),
+                ),
+                PopupMenuItem(
+                  value: 'share',
+                  child: Text(context.l10n.t('deviceShareJoin')),
+                ),
+                PopupMenuItem(enabled: false,
+                  child: Text(context.l10n.t('deviceWorkspaceUsbHint'),
+                    style: const TextStyle(fontSize: 11))),
+              ],
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: AppThemeSizes.radiusMedium,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.plus,
+                        size: 17,
+                        color: theme.colorScheme.onPrimary,
+                      ),
+                      if (showConnectionLabel) ...[
+                        const SizedBox(width: 7),
+                        Text(
+                          context.l10n.t('deviceWorkspaceConnect'),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -113,6 +212,7 @@ class _DashboardHomeContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _DeviceListPanel();
+    return ColoredBox(color: Theme.of(context).appColors.sunkenSurface,
+      child: const _DeviceListPanel());
   }
 }

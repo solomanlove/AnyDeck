@@ -1,136 +1,314 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_theme.dart';
+import '../model/device_workspace_view_state.dart';
 
-/// 设备列表筛选栏：左侧展示数量，右侧搜索与筛选，窄窗口分行显示。
+/// 设备墙与列表共用的工具栏：状态筛选、自适应搜索、视图切换和批量管理。
 ///
-/// [controller] 由宿主持有和释放；[onlineCount]、[totalCount] 是筛选前的数量。
-/// [onlineOnly] 与两个回调复用设备列表状态，不触发设备扫描或持久化。
+/// [controller] 由父级释放；数量为筛选前的总数。所有回调仅通知父级，
+/// 不扫描设备或修改选择。外层水平留白由工作区统一提供。
 class DeviceListFilters extends StatelessWidget {
   const DeviceListFilters({
     super.key,
     required this.controller,
     required this.onlineCount,
     required this.totalCount,
-    required this.onlineOnly,
-    required this.onOnlineOnlyChanged,
+    required this.filter,
+    required this.onFilterChanged,
+    required this.viewMode,
+    required this.onViewModeChanged,
+    required this.batchMode,
+    required this.onBatchModeChanged,
     required this.onSearchChanged,
   });
 
   final TextEditingController controller;
   final int onlineCount;
   final int totalCount;
-  final bool onlineOnly;
-  final ValueChanged<bool> onOnlineOnlyChanged;
+  final DeviceStatusFilter filter;
+  final ValueChanged<DeviceStatusFilter> onFilterChanged;
+  final DeviceViewMode viewMode;
+  final ValueChanged<DeviceViewMode> onViewModeChanged;
+  final bool batchMode;
+  final ValueChanged<bool> onBatchModeChanged;
   final ValueChanged<String> onSearchChanged;
+
+  TextStyle _labelStyle(BuildContext context) =>
+      Theme.of(context).textTheme.bodySmall!.copyWith(fontSize: 12);
+
+  String _filterLabel(BuildContext context, DeviceStatusFilter value) =>
+      context.l10n.t(switch (value) {
+        DeviceStatusFilter.all => 'deviceWorkspaceAll',
+        DeviceStatusFilter.online => 'deviceWorkspaceOnline',
+        DeviceStatusFilter.offline => 'deviceWorkspaceOffline',
+      });
+
+  int _count(DeviceStatusFilter value) => switch (value) {
+    DeviceStatusFilter.all => totalCount,
+    DeviceStatusFilter.online => onlineCount,
+    DeviceStatusFilter.offline => totalCount - onlineCount,
+  };
+
+  String _manageLabel(BuildContext context) => context.l10n.t(
+    batchMode ? 'deviceWorkspaceBatchExit' : 'deviceWorkspaceBatchManage',
+  );
+
+  // 按当前语言与字号测量必需空间，搜索使用剩余宽度而非固定宽度。
+  double _textWidth(BuildContext context, String text, {double? size}) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: _labelStyle(
+          context,
+        ).copyWith(fontSize: size, fontWeight: FontWeight.w600),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
+  }
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+    padding: const EdgeInsets.only(bottom: 17),
     child: LayoutBuilder(
       builder: (context, constraints) {
-        // 放大文字时提前分行，避免英文状态与搜索框争抢横向空间。
-        final textScale = MediaQuery.textScalerOf(context).scale(1);
-        final summary = _buildSummary(context);
-        final controls = _buildControls(context, textScale);
-        if (constraints.maxWidth < 820 * textScale) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [summary, const SizedBox(height: 12), controls],
+        final filterWidth = DeviceStatusFilter.values.fold<double>(
+          6,
+          (width, value) =>
+              width +
+              31 +
+              _textWidth(context, _filterLabel(context, value)) +
+              _textWidth(context, '${_count(value)}', size: 11),
+        );
+        final manageWidth = _textWidth(context, _manageLabel(context)) + 24;
+        final labeledViewsWidth =
+            82 +
+            _textWidth(context, context.l10n.t('deviceWorkspaceWall')) +
+            _textWidth(context, context.l10n.t('deviceWorkspaceList'));
+        const iconViewsWidth = 82.0;
+        final minSearch = 160 * MediaQuery.textScalerOf(context).scale(1);
+        final available = constraints.maxWidth;
+        final showLabels =
+            available >=
+            filterWidth + labeledViewsWidth + manageWidth + minSearch + 40;
+        final viewsWidth = showLabels ? labeledViewsWidth : iconViewsWidth;
+        final singleRow =
+            available >=
+            filterWidth + viewsWidth + manageWidth + minSearch + 40;
+        final filters = _buildFilters(context);
+        final controls = _buildControls(context, showLabels);
+        final search = _buildSearch(context);
+        if (singleRow) {
+          return Row(
+            key: const Key('deviceToolbarSingleRow'),
+            children: [
+              filters,
+              const SizedBox(width: 10),
+              Expanded(child: search),
+              const SizedBox(width: 10),
+              controls,
+            ],
           );
         }
-        return Row(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: summary),
-            const SizedBox(width: 24),
-            SizedBox(width: 480 * textScale, child: controls),
+            if (available >= filterWidth + viewsWidth + manageWidth + 20)
+              Row(children: [filters, const Spacer(), controls])
+            else ...[
+              filters,
+              const SizedBox(height: 10),
+              Align(alignment: Alignment.centerRight, child: controls),
+            ],
+            const SizedBox(height: 10),
+            search,
           ],
         );
       },
     ),
   );
 
-  Widget _buildSummary(BuildContext context) {
+  Widget _buildFilters(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = context.l10n;
-    final offlineCount = totalCount - onlineCount;
     return Semantics(
-      label: l10n
-          .t('deviceListSummary')
-          .replaceAll('{online}', '$onlineCount')
-          .replaceAll('{offline}', '$offlineCount')
-          .replaceAll('{total}', '$totalCount'),
-      excludeSemantics: true,
+      label: context.l10n.t('deviceWorkspaceFilter'),
       child: Wrap(
         key: const Key('deviceListCounts'),
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 3,
+        runSpacing: 3,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: Text(
-              l10n
-                  .t('deviceListTotalCount')
-                  .replaceAll('{count}', '$totalCount'),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+          for (final value in DeviceStatusFilter.values)
+            Semantics(
+              selected: filter == value,
+              child: TextButton(
+                key: Key('deviceFilter-${value.name}'),
+                onPressed: () => onFilterChanged(value),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 35),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 8,
+                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor: filter == value
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  backgroundColor: filter == value
+                      ? theme.colorScheme.primaryContainer
+                      : Colors.transparent,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppThemeSizes.radiusMedium,
+                  ),
+                  textStyle: _labelStyle(context).copyWith(
+                    fontWeight: filter == value
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_filterLabel(context, value)),
+                    const SizedBox(width: 9),
+                    Text(
+                      '${_count(value)}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          _DeviceStatusBadge(
-            label: l10n
-                .t('deviceListOnlineCount')
-                .replaceAll('{count}', '$onlineCount'),
-            foreground: theme.colorScheme.onPrimaryContainer,
-            background: theme.colorScheme.primaryContainer,
-            dotColor: theme.appColors.success,
-          ),
-          _DeviceStatusBadge(
-            label: l10n
-                .t('deviceListOfflineCount')
-                .replaceAll('{count}', '$offlineCount'),
-            foreground: theme.colorScheme.onSurfaceVariant,
-            background: theme.appColors.subtleSurface,
-            dotColor: theme.appColors.faintForeground,
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildControls(BuildContext context, double textScale) =>
-      LayoutBuilder(
-        builder: (context, constraints) {
-          final search = _buildSearch(context);
-          final filter = _buildOnlineFilter(context);
-          if (constraints.maxWidth < 360 * textScale) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                search,
-                const SizedBox(height: 8),
-                Align(alignment: Alignment.centerLeft, child: filter),
-              ],
-            );
-          }
-          return Row(
-            children: [
-              Expanded(child: search),
-              const SizedBox(width: 12),
-              filter,
-            ],
-          );
-        },
-      );
+  Widget _buildControls(BuildContext context, bool showLabels) => Wrap(
+    spacing: 10,
+    runSpacing: 8,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    alignment: WrapAlignment.end,
+    children: [
+      _buildViewSwitch(context, showLabels),
+      Semantics(
+        selected: batchMode,
+        child: OutlinedButton(
+          key: const Key('deviceBatchManage'),
+          onPressed: () => onBatchModeChanged(!batchMode),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, 35),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: _labelStyle(context),
+            foregroundColor: batchMode
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurface,
+            backgroundColor: batchMode
+                ? Theme.of(context).colorScheme.primaryContainer
+                : Theme.of(context).appColors.panelSurface,
+            side: BorderSide(
+              color: batchMode
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.outlineVariant,
+            ),
+            shape: const RoundedRectangleBorder(
+              borderRadius: AppThemeSizes.radiusMedium,
+            ),
+          ),
+          child: Text(_manageLabel(context)),
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildViewSwitch(BuildContext context, bool showLabels) {
+    final theme = Theme.of(context);
+    return Semantics(
+      label: context.l10n.t('deviceWorkspaceView'),
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: theme.appColors.panelSurface,
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+          borderRadius: AppThemeSizes.radiusMedium,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final mode in DeviceViewMode.values)
+              Tooltip(
+                message: context.l10n.t(
+                  mode == DeviceViewMode.wall
+                      ? 'deviceWorkspaceWallView'
+                      : 'deviceWorkspaceListView',
+                ),
+                child: Semantics(
+                  selected: viewMode == mode,
+                  child: TextButton(
+                    key: Key('deviceView-${mode.name}'),
+                    onPressed: () => onViewModeChanged(mode),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(36, 28),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 6,
+                      ),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: _labelStyle(context).copyWith(
+                        fontWeight: viewMode == mode
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
+                      foregroundColor: viewMode == mode
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                      backgroundColor: viewMode == mode
+                          ? theme.colorScheme.primaryContainer
+                          : Colors.transparent,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AppThemeSizes.radiusSmall,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          mode == DeviceViewMode.wall
+                              ? LucideIcons.layoutGrid
+                              : LucideIcons.list,
+                          size: 14,
+                        ),
+                        if (showLabels) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            context.l10n.t(
+                              mode == DeviceViewMode.wall
+                                  ? 'deviceWorkspaceWall'
+                                  : 'deviceWorkspaceList',
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildSearch(BuildContext context) {
     final theme = Theme.of(context);
     final border = OutlineInputBorder(
-      borderRadius: AppThemeSizes.radiusNavigation,
+      borderRadius: AppThemeSizes.radiusMedium,
       borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
     );
     return Tooltip(
@@ -141,16 +319,19 @@ class DeviceListFilters extends StatelessWidget {
           key: const Key('deviceListSearch'),
           controller: controller,
           onChanged: onSearchChanged,
-          style: theme.textTheme.bodyMedium,
+          style: _labelStyle(context),
           decoration: InputDecoration(
             isDense: true,
             filled: true,
             fillColor: theme.appColors.panelSurface,
-            hintText: context.l10n.t('deviceListSearchLabel'),
-            hintStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            hintText: context.l10n.t('deviceWorkspaceSearchHint'),
+            hintStyle: _labelStyle(
+              context,
+            ).copyWith(color: theme.colorScheme.onSurfaceVariant),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 8,
             ),
-            contentPadding: AppThemeSizes.searchFieldContentPadding,
             border: border,
             enabledBorder: border,
             focusedBorder: border.copyWith(
@@ -159,94 +340,33 @@ class DeviceListFilters extends StatelessWidget {
                 width: AppThemeSizes.strongBorderWidth,
               ),
             ),
-            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            prefixIcon: const Icon(LucideIcons.search, size: 17),
             prefixIconColor: theme.colorScheme.onSurfaceVariant,
-            prefixIconConstraints: AppThemeSizes.searchFieldIconConstraints,
-            suffixIconConstraints: AppThemeSizes.searchFieldIconConstraints,
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 36,
+              minHeight: 36,
+            ),
+            suffixIconConstraints: const BoxConstraints(
+              minWidth: 36,
+              minHeight: 36,
+            ),
             suffixIcon: value.text.isEmpty
                 ? null
-                : IconButton(
-                    tooltip: context.l10n.t('clear'),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      controller.clear();
-                      onSearchChanged('');
-                    },
-                    icon: const Icon(Icons.close_rounded, size: 18),
+                : SizedBox.square(
+                    dimension: 36,
+                    child: IconButton(
+                      tooltip: context.l10n.t('clear'),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        controller.clear();
+                        onSearchChanged('');
+                      },
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                    ),
                   ),
           ),
         ),
       ),
     );
   }
-
-  Widget _buildOnlineFilter(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return FilterChip(
-      key: const Key('deviceListOnlineOnly'),
-      label: Text(context.l10n.t('deviceListOnlineOnly')),
-      avatar: Icon(
-        Icons.filter_list_rounded,
-        size: 18,
-        color: onlineOnly ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
-      ),
-      selected: onlineOnly,
-      showCheckmark: false,
-      onSelected: onOnlineOnlyChanged,
-      labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-        color: onlineOnly ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
-      ),
-      backgroundColor: Theme.of(context).appColors.panelSurface,
-      selectedColor: scheme.primaryContainer,
-      checkmarkColor: scheme.onPrimaryContainer,
-      side: BorderSide(
-        color: onlineOnly ? scheme.primary : scheme.outlineVariant,
-      ),
-      shape: const RoundedRectangleBorder(
-        borderRadius: AppThemeSizes.radiusLarge,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-}
-
-/// 数量状态标签统一圆点、留白与文字样式；使用文字而非仅靠颜色表达状态。
-class _DeviceStatusBadge extends StatelessWidget {
-  const _DeviceStatusBadge({
-    required this.label,
-    required this.foreground,
-    required this.background,
-    required this.dotColor,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-  final Color dotColor;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    decoration: BoxDecoration(
-      color: background,
-      borderRadius: AppThemeSizes.radiusMedium,
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.circle, size: 6, color: dotColor),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
 }

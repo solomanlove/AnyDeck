@@ -9,97 +9,84 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     final mergedAirPlay = mergeAirPlayDevicesIntoList(items, airplayRoot);
     final names = {
       for (final device in mergedAirPlay.devices)
-        device.id: DeviceListPresentation.name(device, ref.watch(
-          cachedDeviceOverviewProvider(device.id).select((value) => value.value?.name),
-        )),
+        device.id: DeviceListPresentation.name(
+          device,
+          ref.watch(
+            cachedDeviceOverviewProvider(
+              device.id,
+            ).select((value) => value.value?.name),
+          ),
+        ),
     };
-    final sortedItems = _sortedDevices(
-      mergedAirPlay.devices,
-      mergedAirPlay.sessionByDeviceId,
-      names,
-    ).where((device) => DeviceListPresentation.matches(
-        device, names[device.id]!, _query, _onlineOnly)).toList();
-    final selectable = sortedItems.where((device) => !device.id.startsWith('airplay-')).toList();
-    final visibleChecked = selectable.where((device) => device.isChecked).length;
-    final selectedCount = items.where((device) => device.isChecked).length;
-    final allChecked = selectable.isNotEmpty && visibleChecked == selectable.length;
-    final hasChecked = selectedCount > 0;
+    final sortedItems =
+        _sortedDevices(
+              mergedAirPlay.devices,
+              mergedAirPlay.sessionByDeviceId,
+              names,
+            )
+            .where(
+              (device) =>
+                  (_filter == DeviceStatusFilter.all ||
+                      device.isOnline ==
+                          (_filter == DeviceStatusFilter.online)) &&
+                  DeviceListPresentation.matches(
+                    device,
+                    names[device.id]!,
+                    _query,
+                    false,
+                  ),
+            )
+            .toList();
+    final selectable = sortedItems
+        .where((device) => !device.id.startsWith('airplay-'))
+        .toList();
+    final checked = items.where((device) => device.isChecked).toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < 600;
-        final hasBoundedHeight = constraints.hasBoundedHeight;
-        final contentWidget = _buildDeviceListContent(
+        final windowWidth = MediaQuery.sizeOf(context).width;
+        final content = _buildDeviceListContent(
           context: context,
           activeDevicesAsync: activeDevicesAsync,
           sortedItems: sortedItems,
           names: names,
           sessionByDeviceId: mergedAirPlay.sessionByDeviceId,
-          isCompact: isCompact,
-          hasBoundedHeight: hasBoundedHeight,
+          isCompact: windowWidth <= 730,
+          hasBoundedHeight: constraints.hasBoundedHeight,
         );
-
-        final theme = Theme.of(context);
-        final isDark = theme.brightness == Brightness.dark;
-
-        Widget panelCard = ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.white.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.04),
-                  width: 1.5,
-                ),
+        return Padding(
+          padding: windowWidth <= 490
+              ? const EdgeInsets.fromLTRB(10, 16, 10, 0)
+              : windowWidth <= 650
+              ? const EdgeInsets.fromLTRB(16, 18, 16, 0)
+              : const EdgeInsets.fromLTRB(25, 20, 25, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: constraints.hasBoundedHeight
+                ? MainAxisSize.max
+                : MainAxisSize.min,
+            children: [
+              DeviceListFilters(
+                controller: _searchController,
+                onlineCount: mergedAirPlay.devices
+                    .where((d) => d.isOnline)
+                    .length,
+                totalCount: mergedAirPlay.devices.length,
+                filter: _filter,
+                onFilterChanged: _changeFilter,
+                viewMode: _viewMode,
+                onViewModeChanged: _changeViewMode,
+                batchMode: _batchMode,
+                onBatchModeChanged: _changeBatchMode,
+                onSearchChanged: _changeQuery,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (sortedItems.isNotEmpty) ...[
-                    _buildTableHeader(context, isCompact, allChecked, visibleChecked > 0, selectable),
-                    const SizedBox(height: 4),
-                  ],
-                  if (hasBoundedHeight)
-                    Expanded(child: contentWidget)
-                  else
-                    contentWidget,
-                  const HostNetworkFooter(),
-                ],
-              ),
-            ),
-          ),
-        );
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DeviceListFilters(
-              controller: _searchController,
-              onlineCount: mergedAirPlay.devices.where((d) => d.isOnline).length,
-              totalCount: mergedAirPlay.devices.length,
-              onlineOnly: _onlineOnly,
-              onOnlineOnlyChanged: _changeOnlineOnly,
-              onSearchChanged: _changeQuery,
-            ),
-            if (hasChecked) ...[
-              _buildBatchActionsToolbar(
-                context,
-                items.where((d) => d.isChecked).toList(),
-              ),
-              const SizedBox(height: 16),
+              if (_batchMode) _buildSelectionBar(context, selectable, checked),
+              if (constraints.hasBoundedHeight)
+                Expanded(child: content)
+              else
+                content,
             ],
-            if (hasBoundedHeight)
-              Expanded(child: panelCard)
-            else
-              panelCard,
-          ],
+          ),
         );
       },
     );
@@ -160,115 +147,160 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       );
     }
     if (sortedItems.isEmpty) {
+      final filtered = _query.isNotEmpty || _filter != DeviceStatusFilter.all;
       return Center(
-        child: _PanelMessage(
-          icon: CupertinoIcons.slash_circle,
-          title: context.l10n.t(_query.isNotEmpty || _onlineOnly ? 'deviceListNoMatches' : 'noDevices'),
-          subtitle: context.l10n.t(_query.isNotEmpty || _onlineOnly ? 'deviceListResetHint' : 'connectUsbOrTcp'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _PanelMessage(
+              icon: CupertinoIcons.slash_circle,
+              title: context.l10n.t(
+                filtered ? 'deviceListNoMatches' : 'noDevices',
+              ),
+              subtitle: context.l10n.t(
+                filtered ? 'deviceListResetHint' : 'connectUsbOrTcp',
+              ),
+            ),
+            if (filtered) ...[
+              const SizedBox(height: 12),
+              OutlinedButton(
+                key: const Key('deviceResetFilters'),
+                onPressed: _resetDeviceFilters,
+                child: Text(context.l10n.t('deviceWorkspaceResetFilters')),
+              ),
+            ],
+          ],
         ),
       );
     }
 
-    return ListView.builder(
-      shrinkWrap: !hasBoundedHeight,
-      physics: hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
-      itemCount: sortedItems.length,
-      itemBuilder: (context, index) {
-        final device = sortedItems[index];
-        final isSelected = _contextDeviceId == device.id ||
-            ref.watch(selectedDeviceProvider)?.id == device.id;
-        return _buildDeviceRow(
-          context,
-          device,
-          isSelected,
-          isCompact,
-          index,
-          airplaySession: sessionByDeviceId[device.id],
-          displayName: names[device.id]!,
-        );
-      },
-    );
-  }
-
-  Widget _buildTableHeader(
-    BuildContext context,
-    bool isCompact,
-    bool allChecked,
-    bool hasChecked,
-    List<RegisteredDevice> selectable,
-  ) {
-    final titleStyle = Theme.of(
-      context,
-    ).textTheme.titleSmall?.copyWith(
-      fontWeight: FontWeight.bold,
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-    );
-
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-            width: 1,
+    if (_viewMode == DeviceViewMode.wall) {
+      return _buildDeviceWall(
+        sortedItems,
+        names,
+        sessionByDeviceId,
+        hasBoundedHeight: hasBoundedHeight,
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 20),
+      child: ClipRRect(
+        borderRadius: AppThemeSizes.radiusLarge,
+        child: ColoredBox(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: hasBoundedHeight
+                ? MainAxisSize.max
+                : MainAxisSize.min,
+            children: [
+              if (MediaQuery.sizeOf(context).width > 490)
+                _buildTableHeader(context, isCompact),
+              if (hasBoundedHeight)
+                Expanded(
+                  child: _buildRows(
+                    sortedItems,
+                    names,
+                    sessionByDeviceId,
+                    isCompact,
+                    true,
+                  ),
+                )
+              else
+                _buildRows(
+                  sortedItems,
+                  names,
+                  sessionByDeviceId,
+                  isCompact,
+                  false,
+                ),
+            ],
           ),
         ),
       ),
-      child: Row(
-        children: [
-          if (!isCompact) ...[
-            SizedBox(
-              width: 45,
-              child: Checkbox(
-                tristate: true,
-                value: hasChecked && !allChecked ? null : allChecked,
-                onChanged: (_) {
-                  final registry = ref.read(deviceRegistryProvider.notifier);
-                  for (final device in selectable) {
-                    if (device.isChecked == allChecked) registry.toggleCheck(device.id);
-                  }
-                },
+    );
+  }
+
+  Widget _buildRows(
+    List<RegisteredDevice> devices,
+    Map<String, String> names,
+    Map<String, AirPlaySessionData> sessions,
+    bool compact,
+    bool bounded,
+  ) => ListView.builder(
+    shrinkWrap: !bounded,
+    physics: bounded ? null : const NeverScrollableScrollPhysics(),
+    itemCount: devices.length,
+    itemBuilder: (context, index) {
+      final device = devices[index];
+      return _buildDeviceRow(
+        context,
+        device,
+        _contextDeviceId == device.id,
+        compact,
+        index,
+        airplaySession: sessions[device.id],
+        displayName: names[device.id]!,
+      );
+    },
+  );
+
+  Widget _buildTableHeader(BuildContext context, bool compact) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodySmall?.copyWith(
+      fontSize: 12,
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layout = _DeviceTableLayout.resolve(
+          context,
+          constraints.maxWidth,
+          _batchMode,
+        );
+        return Container(
+          key: const Key('deviceTableHeader'),
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 13),
+        color: theme.appColors.sunkenSurface,
+          child: Row(
+            children: [
+              if (_batchMode) const SizedBox(width: 36),
+              _SortableHeaderCell(
+                flex: 1,
+                label: context.l10n.t('deviceNameCol'),
+                style: style,
+                sortIcon: _getSortIcon('name'),
+                onTap: () => _toggleSort('name'),
               ),
-            ),
-            const SizedBox(width: 10),
-          ],
-          _SortableHeaderCell(
-            flex: 4,
-            label: context.l10n.t('deviceNameCol'),
-            style: titleStyle,
-            sortIcon: _getSortIcon('name'),
-            onTap: () => _toggleSort('name'),
+              if (!layout.statusInline)
+                SizedBox(
+                  width: layout.statusWidth,
+                  child: Text(
+                    context.l10n.t('deviceWorkspaceConnectionStatus'),
+                    style: style,
+                  ),
+                ),
+              if (!layout.systemInline)
+                SizedBox(
+                  width: 108,
+                  child: Text(
+                    context.l10n.t('deviceAndroidVersionCol'),
+                    style: style,
+                  ),
+                ),
+              if (!_batchMode)
+                SizedBox(
+                  width: layout.actionsWidth,
+                  child: Text(
+                    context.l10n.t('deviceActionsCol'),
+                    style: style,
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Text(
-              context.l10n.t('deviceAndroidVersionCol'),
-              style: titleStyle,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Text(context.l10n.t('deviceActionsCol'), style: titleStyle),
-          ),
-          if (!isCompact) ...[
-            const SizedBox(width: 10),
-            const SizedBox(
-              width: 40,
-              child: Icon(
-                CupertinoIcons.settings,
-                size: 16,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -319,10 +351,16 @@ class _SortableHeaderCell extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: EdgeInsets.zero,
           child: Row(
             children: [
-              Text(label, style: style),
+              Flexible(
+                child: Text(
+                  label,
+                  style: style,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               sortIcon,
             ],
           ),

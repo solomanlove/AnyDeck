@@ -36,10 +36,10 @@ Future<void> _choose(
 }
 
 void main() {
-  testWidgets('右键选中当前设备并显示七项常用功能，不进入详情或改变批量勾选', (tester) async {
+  testWidgets('右键显示常用功能和封面、共享、无线入口，不进入详情或改变批量勾选', (tester) async {
     await withDeviceMenu(tester, (fixture) async {
       await _rightClick(tester, deviceMenuTarget.displayName);
-      for (final label in ['截图', '投屏', '设备信息', '应用', '文件', '终端调试', '编辑设备信息']) {
+      for (final label in ['截图', '获取屏幕预览', '投屏', '设备信息', '应用', '文件', '终端调试', '编辑设备信息']) {
         expect(
           find.widgetWithText(PopupMenuItem<DeviceContextAction>, label),
           findsOneWidget,
@@ -108,7 +108,8 @@ void main() {
       );
       expect(
         entries.where((entry) => entry.enabled).map((entry) => entry.value),
-        [DeviceContextAction.overview, DeviceContextAction.edit],
+        [DeviceContextAction.overview, DeviceContextAction.edit,
+          DeviceContextAction.wireless],
       );
       await _choose(tester, '截图', settle: false);
       expect(fixture.adb.captures, isEmpty);
@@ -165,7 +166,7 @@ void main() {
       expect(fixture.host.savedFor, isEmpty);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       await _rightClick(tester, deviceMenuAndroid.displayName);
-      expect(find.byType(PopupMenuItem<DeviceContextAction>), findsNWidgets(7));
+      expect(find.byType(PopupMenuItem<DeviceContextAction>), findsNWidgets(10));
     });
   });
 

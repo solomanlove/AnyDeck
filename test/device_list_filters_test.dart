@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/features/devices/model/device_workspace_view_state.dart';
 import 'package:any_deck/features/devices/widgets/device_list_filters.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -12,25 +13,26 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/search_field_expectations.dart';
 
-/// 使用真实 Theme 验证布局和交互；可选导出 Widget 图，不启动桌面 App。
+/// 工具栏验证使用真实主题和文本布局，不启动设备发现或桌面 App。
 void main() {
   for (final locale in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
-      testWidgets('筛选栏 $locale ${brightness.name} 适应窗口宽度和文字缩放', (tester) async {
+      testWidgets('工具栏 $locale ${brightness.name} 单行和窄屏均无溢出', (tester) async {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
         final controller = TextEditingController();
         addTearDown(controller.dispose);
         final boundary = GlobalKey();
         await _loadCaptureFonts(tester);
-
         for (final size in [
+          (width: 1200.0, scale: 1.0),
           (width: 920.0, scale: 1.0),
           (width: 720.0, scale: 1.0),
           (width: 360.0, scale: 1.0),
+          (width: 320.0, scale: 1.6),
           (width: 560.0, scale: 1.6),
         ]) {
-          tester.view.physicalSize = Size(size.width, 480);
+          tester.view.physicalSize = Size(size.width, 700);
           await tester.pumpWidget(
             _host(
               locale: locale,
@@ -38,27 +40,36 @@ void main() {
               textScale: size.scale,
               child: RepaintBoundary(
                 key: boundary,
-                child: ColoredBox(
-                  color: buildAppTheme(brightness).scaffoldBackgroundColor,
-                  child: DeviceListFilters(
-                    controller: controller,
-                    onlineCount: 1,
-                    totalCount: 13,
-                    onlineOnly: false,
-                    onOnlineOnlyChanged: (_) {},
-                    onSearchChanged: (_) {},
-                  ),
+                child: DeviceListFilters(
+                  controller: controller,
+                  onlineCount: 2,
+                  totalCount: 6,
+                  filter: DeviceStatusFilter.all,
+                  onFilterChanged: (_) {},
+                  viewMode: DeviceViewMode.wall,
+                  onViewModeChanged: (_) {},
+                  batchMode: true,
+                  onBatchModeChanged: (_) {},
+                  onSearchChanged: (_) {},
                 ),
               ),
             ),
           );
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
-          expectSearchFieldRadius(tester, find.byType(TextField));
+          expectSearchFieldRadius(
+            tester,
+            find.byType(TextField),
+            radius: AppThemeSizes.radiusMedium,
+          );
           for (final key in [
-            'deviceListCounts',
+            'deviceFilter-all',
+            'deviceFilter-online',
+            'deviceFilter-offline',
             'deviceListSearch',
-            'deviceListOnlineOnly',
+            'deviceView-wall',
+            'deviceView-list',
+            'deviceBatchManage',
           ]) {
             final rect = tester.getRect(find.byKey(Key(key)));
             expect(rect.left, greaterThanOrEqualTo(0));
@@ -67,14 +78,16 @@ void main() {
           final search = tester.getRect(
             find.byKey(const Key('deviceListSearch')),
           );
-          final filter = tester.getRect(
-            find.byKey(const Key('deviceListOnlineOnly')),
+          expect(search.height, size.scale == 1 ? 36 : greaterThan(36));
+          final manage = tester.getRect(
+            find.byKey(const Key('deviceBatchManage')),
           );
-          if (size.width == 920) {
-            expect(search.center.dy, closeTo(filter.center.dy, 1));
+          if (size.width >= 920) {
+            expect(search.center.dy, closeTo(manage.center.dy, 2));
             expect(search.width, greaterThan(240));
           } else if (size.width == 360) {
-            expect(filter.top, greaterThan(search.bottom));
+            expect(search.top, greaterThan(manage.bottom));
+            expect(search.width, size.width);
           }
           await _capture(
             tester,
@@ -86,61 +99,104 @@ void main() {
     }
   }
 
-  testWidgets('搜索清除按钮按内容出现，切换在线筛选与缩放保留输入', (tester) async {
-    tester.view.physicalSize = const Size(920, 480);
+  testWidgets('视图、筛选和批量切换各自生效并保留搜索内容', (tester) async {
+    tester.view.physicalSize = const Size(1200, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final controller = TextEditingController();
     addTearDown(controller.dispose);
     final queries = <String>[];
-    var onlineOnly = false;
-    final boundary = GlobalKey();
-    await _loadCaptureFonts(tester);
+    var filter = DeviceStatusFilter.all;
+    var view = DeviceViewMode.wall;
+    var batchMode = false;
     await tester.pumpWidget(
       _host(
-        child: RepaintBoundary(
-          key: boundary,
-          child: StatefulBuilder(
-            builder: (context, setState) => DeviceListFilters(
-              controller: controller,
-              onlineCount: 1,
-              totalCount: 13,
-              onlineOnly: onlineOnly,
-              onOnlineOnlyChanged: (value) => setState(() => onlineOnly = value),
-              onSearchChanged: queries.add,
-            ),
+        child: StatefulBuilder(
+          builder: (context, setState) => DeviceListFilters(
+            controller: controller,
+            onlineCount: 2,
+            totalCount: 6,
+            filter: filter,
+            onFilterChanged: (value) => setState(() => filter = value),
+            viewMode: view,
+            onViewModeChanged: (value) => setState(() => view = value),
+            batchMode: batchMode,
+            onBatchModeChanged: (value) => setState(() => batchMode = value),
+            onSearchChanged: queries.add,
           ),
         ),
       ),
     );
-    expect(find.byTooltip('清空'), findsNothing);
     final search = find.byKey(const Key('deviceListSearch'));
-    expectSearchFieldRadius(tester, search, focused: false);
+    expect(find.byType(Checkbox), findsNothing);
     await tester.enterText(search, 'Xiaomi');
     await tester.pumpAndSettle();
-    expectSearchFieldRadius(tester, search, focused: true);
+    expectSearchFieldRadius(
+      tester,
+      search,
+      focused: true,
+      radius: AppThemeSizes.radiusMedium,
+    );
     expect(queries, ['Xiaomi']);
-    expect(find.byTooltip('清空'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('deviceListOnlineOnly')));
+    expect(tester.getSize(search).height, 36);
+    final initialWidth = tester.getSize(search).width;
+    await tester.tap(find.byKey(const Key('deviceView-list')));
+    await tester.tap(find.byKey(const Key('deviceFilter-offline')));
+    await tester.tap(find.byKey(const Key('deviceBatchManage')));
     await tester.pumpAndSettle();
-    expect(onlineOnly, isTrue);
-    final filterChip = tester.widget<FilterChip>(find.byType(FilterChip));
-    expect(filterChip.selected, isTrue);
-    expect(filterChip.showCheckmark, isFalse);
-    expect(find.byIcon(Icons.filter_list_rounded), findsOneWidget);
-    await _capture(tester, boundary, 'zh-light-selected');
-    tester.view.physicalSize = const Size(360, 480);
-    await tester.pumpAndSettle();
+    expect(view, DeviceViewMode.list);
+    expect(filter, DeviceStatusFilter.offline);
+    expect(batchMode, isTrue);
     expect(controller.text, 'Xiaomi');
-    expect(find.text('1 在线'), findsOneWidget);
-    expect(find.text('12 离线/不可用'), findsOneWidget);
+    expect(find.text('退出批量管理'), findsOneWidget);
+    expect(tester.getSize(search).width, lessThan(initialWidth));
+    await tester.tap(find.byKey(const Key('deviceBatchManage')));
+    await tester.pumpAndSettle();
+    expect(batchMode, isFalse);
+    expect(tester.getSize(search).width, closeTo(initialWidth, 0.1));
     await tester.tap(find.byTooltip('清空'));
     await tester.pumpAndSettle();
     expect(queries, ['Xiaomi', '']);
     expect(controller.text, isEmpty);
-    expect(find.byTooltip('清空'), findsNothing);
-    expect(onlineOnly, isTrue);
+    expect(filter, DeviceStatusFilter.offline);
+    expect(view, DeviceViewMode.list);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('搜索框随窗口伸缩而占据中间剩余空间', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    var previousWidth = 0.0;
+    for (final width in [1000.0, 1200.0]) {
+      tester.view.physicalSize = Size(width, 700);
+      await tester.pumpWidget(
+        _host(
+          child: DeviceListFilters(
+            controller: controller,
+            onlineCount: 2,
+            totalCount: 6,
+            filter: DeviceStatusFilter.all,
+            onFilterChanged: (_) {},
+            viewMode: DeviceViewMode.wall,
+            onViewModeChanged: (_) {},
+            batchMode: false,
+            onBatchModeChanged: (_) {},
+            onSearchChanged: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final currentWidth = tester
+          .getSize(find.byKey(const Key('deviceListSearch')))
+          .width;
+      if (previousWidth > 0) {
+        expect(currentWidth - previousWidth, closeTo(200, 0.1));
+      }
+      previousWidth = currentWidth;
+      expect(tester.takeException(), isNull);
+    }
   });
 }
 

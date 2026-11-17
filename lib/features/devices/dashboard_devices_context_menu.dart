@@ -86,11 +86,15 @@ extension _DeviceListContextMenu on _DeviceListPanelState {
   IconData _deviceContextActionIcon(DeviceContextAction action) =>
       switch (action) {
         DeviceContextAction.screenshot => CupertinoIcons.camera,
+        DeviceContextAction.preview => CupertinoIcons.photo,
         DeviceContextAction.mirror => CupertinoIcons.tv,
         DeviceContextAction.overview => CupertinoIcons.info,
         DeviceContextAction.apps => AppNavigationIcons.apps,
         DeviceContextAction.files => AppNavigationIcons.files,
         DeviceContextAction.terminal => AppNavigationIcons.terminal,
         DeviceContextAction.edit => CupertinoIcons.pencil,
+        DeviceContextAction.share => Icons.share_outlined,
+        DeviceContextAction.wireless => CupertinoIcons.link,
+        DeviceContextAction.disconnect => CupertinoIcons.bolt_slash,
       };
 }

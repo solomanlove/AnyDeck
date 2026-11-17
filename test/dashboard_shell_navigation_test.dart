@@ -29,6 +29,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'fake_adb_service.dart';
 import 'support/settings_selector_expectations.dart';
@@ -240,19 +241,20 @@ void main() {
     expect(find.text('Market Phone'), findsWidgets);
     // 工具目录与终端操作统一移入设置，设备工具栏只保留设备操作。
     expect(find.byTooltip('打开工具目录'), findsNothing);
-    expect(find.byTooltip('重启调试服务'), findsOneWidget);
-    expect(find.textContaining('1 在线'), findsOneWidget);
+    expect(find.byTooltip('重启调试服务'), findsNothing);
+    expect(find.text('连接设备'), findsOneWidget);
+    expect(find.byKey(const Key('deviceFilter-online')), findsOneWidget);
     expect(find.text('备注/用途'), findsNothing);
     expect(find.text('QA phone'), findsNothing);
     await tester.enterText(find.byKey(const Key('deviceListSearch')), 'qa phone');
     await tester.pumpAndSettle();
     expect(find.text('Market Phone'), findsWidgets);
-    expect(find.byTooltip('编辑设备信息'), findsOneWidget);
+    expect(find.byTooltip('设备操作 · Market Phone'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('deviceListSearch')), 'no-match');
     await tester.pumpAndSettle();
     expect(find.text('没有匹配的设备'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('deviceListSearch')), 'market');
-    await tester.tap(find.byKey(const Key('deviceListOnlineOnly')));
+    await tester.tap(find.byKey(const Key('deviceFilter-online')));
     await tester.pumpAndSettle();
     expect(find.text('Market Phone'), findsWidgets);
     // 真实设置目录接入验证：平台可用分类内容齐全，宽窄导航复用同一套控件。
@@ -260,21 +262,16 @@ void main() {
     tester.view.physicalSize = const Size(1600, 950);
     await tester.pumpAndSettle();
     final settingsBeforeNavigation = container.read(appSettingsProvider);
-    // 设置分类与主设置 Tab 必须使用相同的选中表面和圆角交互组件。
+    // 原型的一级管理侧栏独立展示；设置页仍须同时标记当前分类和入口。
     final categoryNav = find.byKey(const ValueKey('settings-nav-general'));
-    final mainSettingsNav = find.descendant(
-      of: find.byTooltip('设置'),
-      matching: find.byType(AppNavigationItem),
-    );
     expect(tester.widget<AppNavigationItem>(categoryNav).selected, isTrue);
-    expect(tester.widget<AppNavigationItem>(mainSettingsNav).selected, isTrue);
-    Material surface(Finder item) => tester.widget<Material>(
-      find.descendant(of: item, matching: find.byType(Material)).first,
-    );
-    expect(surface(categoryNav).color, surface(mainSettingsNav).color);
     expect(
-      surface(categoryNav).borderRadius,
-      surface(mainSettingsNav).borderRadius,
+      find.descendant(
+        of: find.byTooltip('设置'),
+        matching: find.byWidgetPredicate((widget) => widget is Semantics &&
+            widget.properties.label == '设置' && widget.properties.selected == true),
+      ),
+      findsOneWidget,
     );
     final workspace = tester.widget<SettingsWorkspace>(
       find.byType(SettingsWorkspace),
@@ -547,7 +544,7 @@ void main() {
         expect(
           find.descendant(
             of: entry,
-            matching: find.byIcon(CupertinoIcons.question_circle),
+            matching: find.byIcon(LucideIcons.circleHelp),
           ),
           findsOneWidget,
         );

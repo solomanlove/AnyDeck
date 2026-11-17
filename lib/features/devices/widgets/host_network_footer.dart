@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_theme.dart';
+import '../../../app/widget/app_toast.dart';
 import '../../../core/network/host_network_info.dart';
 import '../../../core/providers/host_network_provider.dart';
+import '../../console/controller/console_dock_controller.dart';
+import '../../diagnostics/widgets/services_diagnostics_button.dart';
 
-/// 设备列表固定底栏：展示当前电脑主机的 Wi-Fi/热点名称和本机 IP 地址。
+/// 全局底部状态栏：左侧本机 IP 与网络详情，右侧统一服务诊断入口。
 ///
-/// 位于设备管理列表最下方，窄窗口自动换行，支持手动刷新网络信息。
+/// 只订阅已有网络快照；刷新和权限读取均由用户在详情内主动触发。
+/// 放在 ConsoleDock 外侧，设备视图切换及控制台展开时位置保持不变。
 class HostNetworkFooter extends ConsumerWidget {
   const HostNetworkFooter({super.key});
 
@@ -15,92 +21,264 @@ class HostNetworkFooter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final network = ref.watch(hostNetworkProvider);
     final info = network.asData?.value;
-    final l10n = context.l10n;
     final theme = Theme.of(context);
-    final placeholder = l10n.t(
-      network.isLoading ? 'hostNetworkLoading' : 'hostNetworkUnavailable',
+    final address = info?.address?.ipv4;
+    final placeholder = context.l10n.t(
+      network.isLoading ? 'hostNetworkLoading' : 'deviceWorkspaceMissingIp',
     );
-    final wifi = info?.ssid ??
-        (info == null
-            ? placeholder
-            : l10n.t(switch (info.wifiStatus) {
-                HostWifiStatus.disconnected => 'hostWifiDisconnected',
-                HostWifiStatus.permissionRequired => 'hostWifiPermissionRequired',
-                _ => 'hostNetworkUnavailable',
-              }));
-    final address = info?.address;
-    final iconColor = theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8);
-
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      key: const Key('hostNetworkFooter'),
+      constraints: const BoxConstraints(minHeight: 34),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: theme.dividerColor)),
+        color: theme.colorScheme.surface,
+        border: Border(
+          top: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
       ),
       child: DefaultTextStyle(
         style: theme.textTheme.bodySmall!.copyWith(
+          fontSize: 11,
           color: theme.colorScheme.onSurfaceVariant,
         ),
-        child: Wrap(
-          spacing: 16,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            // 当前电脑主机标识
-            Row(
-              mainAxisSize: MainAxisSize.min,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final host = Wrap(
+              spacing: 5,
+              runSpacing: 2,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Icon(Icons.laptop_mac_outlined, size: 14, color: iconColor),
-                const SizedBox(width: 4),
-                Text(l10n.t('hostNetworkComputer')),
-              ],
-            ),
-            // Wi-Fi / 热点名称
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.wifi, size: 14, color: iconColor),
-                const SizedBox(width: 4),
-                Text('${l10n.t('hostNetworkWifi')}: $wifi'),
-              ],
-            ),
-            // 本机 IPv4 地址
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.lan_outlined, size: 14, color: iconColor),
-                const SizedBox(width: 4),
+                const Icon(Icons.laptop_mac_outlined, size: 14),
+                if (constraints.maxWidth > 420)
+                  Text('${context.l10n.t('deviceWorkspaceHostIp')}：'),
                 SelectableText(
-                  '${l10n.t(info?.isWifiAddress == true ? 'hostNetworkWifiIp' : 'hostNetworkIp')}: '
-                  '${address?.ipv4 ?? placeholder}'
-                  '${address == null ? '' : ' (${address.interfaceName})'}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  address ?? placeholder,
+                  key: const Key('hostNetworkAddress'),
+                  style: const TextStyle(fontSize: 11),
+                ),
+                IconButton(
+                  key: const Key('copyHostIp'),
+                  tooltip: context.l10n.t('deviceWorkspaceCopyIp'),
+                  onPressed: address == null
+                      ? null
+                      : () async {
+                          try {
+                            await Clipboard.setData(
+                              ClipboardData(text: address),
+                            );
+                            if (context.mounted) {
+                              AppToast.show(
+                                context,
+                                context.l10n.t('copySuccess'),
+                              );
+                            }
+                          } catch (error) {
+                            if (context.mounted) {
+                              AppToast.show(
+                                context,
+                                '${context.l10n.t('error')}: $error',
+                                isError: true,
+                              );
+                            }
+                          }
+                        },
+                  style: _statusIconStyle(),
+                  icon: const Icon(Icons.copy_outlined, size: 13),
+                ),
+                MenuAnchor(
+                  style: MenuStyle(
+                    padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+                    backgroundColor: WidgetStatePropertyAll(
+                      theme.colorScheme.surface,
+                    ),
+                    shape: const WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: AppThemeSizes.radiusLarge,
+                      ),
+                    ),
+                  ),
+                  menuChildren: [
+                    SizedBox(
+                      width: constraints.maxWidth.clamp(180, 300),
+                      child: const _HostNetworkDetails(),
+                    ),
+                  ],
+                  builder: (context, controller, _) => TextButton(
+                    key: const Key('hostNetworkDetails'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.onSurfaceVariant,
+                      minimumSize: const Size(0, 28),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      textStyle: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () => controller.isOpen
+                        ? controller.close()
+                        : controller.open(),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            context.l10n.t('deviceWorkspaceNetworkDetails'),
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        const Icon(Icons.keyboard_arrow_up, size: 14),
+                      ],
+                    ),
                   ),
                 ),
               ],
-            ),
-            // 需要权限时提示授权按钮
-            if (info?.wifiStatus == HostWifiStatus.permissionRequired)
-              TextButton(
-                onPressed: network.isLoading
-                    ? null
-                    : () => ref.read(hostNetworkProvider.notifier).refresh(
-                        requestWifiAccess: true,
+            );
+            const diagnostics = ServicesDiagnosticsButton();
+            if (constraints.maxWidth <
+                440 * MediaQuery.textScalerOf(context).scale(1)) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  host,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        tooltip: context.l10n.t('console'),
+                        style: _statusIconStyle(),
+                        onPressed: ref
+                            .read(consoleDockProvider.notifier)
+                            .toggle,
+                        icon: const Icon(Icons.article_outlined, size: 14),
                       ),
-                child: Text(l10n.t('hostWifiReadName')),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: diagnostics,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: host),
+                const SizedBox(width: 8),
+                diagnostics,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  ButtonStyle _statusIconStyle() => IconButton.styleFrom(
+    minimumSize: const Size(24, 28),
+    maximumSize: const Size(28, 28),
+    padding: EdgeInsets.zero,
+    iconSize: 14,
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+  );
+}
+
+/// 详情弹层使用同一个网络 Provider，保留权限状态、实际网卡与手动刷新。
+class _HostNetworkDetails extends ConsumerWidget {
+  const _HostNetworkDetails();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final network = ref.watch(hostNetworkProvider);
+    final info = network.value;
+    final l10n = context.l10n;
+    final placeholder = l10n.t(
+      network.isLoading ? 'hostNetworkLoading' : 'hostNetworkUnavailable',
+    );
+    final wifi =
+        info?.ssid ??
+        l10n.t(switch (info?.wifiStatus) {
+          HostWifiStatus.disconnected => 'hostWifiDisconnected',
+          HostWifiStatus.permissionRequired => 'hostWifiPermissionRequired',
+          _ => 'hostNetworkUnavailable',
+        });
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.t('hostNetworkComputer'),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 14),
+          for (final item in [
+            (
+              l10n.t('deviceWorkspaceHostIp'),
+              info?.address?.ipv4 ?? placeholder,
+            ),
+            ('Wi-Fi', wifi),
+            (
+              l10n.t('deviceWorkspaceInterface'),
+              info?.address?.interfaceName ?? placeholder,
+            ),
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(item.$1, style: const TextStyle(fontSize: 12)),
+                  ),
+                  Flexible(
+                    child: SelectableText(
+                      item.$2,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
               ),
-            // 刷新按钮
-            IconButton(
-              tooltip: l10n.t('hostNetworkRefresh'),
-              visualDensity: VisualDensity.compact,
+            ),
+          if (network.hasError)
+            Text(
+              '${l10n.t('error')}: ${network.error}',
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          if (info?.wifiStatus == HostWifiStatus.permissionRequired)
+            TextButton(
+              onPressed: network.isLoading
+                  ? null
+                  : () => ref
+                        .read(hostNetworkProvider.notifier)
+                        .refresh(requestWifiAccess: true),
+              child: Text(l10n.t('hostWifiReadName')),
+            ),
+          const Divider(),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
               onPressed: network.isLoading
                   ? null
                   : () => ref.read(hostNetworkProvider.notifier).refresh(),
-              icon: const Icon(Icons.refresh, size: 16),
+              icon: network.isLoading
+                  ? const SizedBox.square(
+                      dimension: 12,
+                      child: CircularProgressIndicator(strokeWidth: 1.5),
+                    )
+                  : const Icon(Icons.refresh, size: 14),
+              label: Text(
+                l10n.t('hostNetworkRefresh'),
+                style: const TextStyle(fontSize: 11),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

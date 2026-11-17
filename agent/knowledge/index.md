@@ -8,6 +8,7 @@
 
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
+| `adb-device-workspace-diagnostics` | 设备墙与全局服务诊断 | active | 手机墙/列表切换、显式批量选择、自适应工具栏、本机IP全局状态栏、十二项真实服务检查、开发者入口复用、进程回收与验证边界 | `features/devices/`, `features/diagnostics/`, `core/diagnostics/` |
 | `adb-macos-debug-destination` | macOS arm64e 构建兼容 | active | Debug generic destination、SDK 可恢复修复、Release 架构归一与打包脚本传参 | `macos/`, `script/` |
 | `adb-rust-host-recording` | Rust 电脑本地音视频录制 | active | 内置 server 4.0、H.264/AAC MP4、三个录制入口、收尾/取消、有界背压与无线突发修复、真机验证边界 | `rust/device_bridge/src/recording/`, `lib/core/scrcpy/`, `features/screenshot/` |
 | `adb-honor-share-poc` | 荣耀文件互传与统一入口 | experimental | Rust Core双协议、文件互传UI、协议隔离/历史迁移、Magic V6双向落盘hash与双架构回归边界 | `nearby_share/`, `harmony_share/`, 私有 `AnyDeck-Share-Core` |

@@ -11,7 +11,9 @@ class _DeviceListPanel extends ConsumerStatefulWidget {
 class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
   final _searchController = TextEditingController();
   String _query = '';
-  bool _onlineOnly = false;
+  DeviceStatusFilter _filter = DeviceStatusFilter.all;
+  DeviceViewMode _viewMode = DeviceViewMode.wall;
+  bool _batchMode = false;
   String _sortColumn = 'id';
   bool _sortAscending = true;
   String? _contextDeviceId;
@@ -26,7 +28,30 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
       setState(() => _deviceQuickActionRunning = running);
 
   void _changeQuery(String value) => setState(() => _query = value);
-  void _changeOnlineOnly(bool value) => setState(() => _onlineOnly = value);
+  void _changeFilter(DeviceStatusFilter value) =>
+      setState(() => _filter = value);
+  void _changeViewMode(DeviceViewMode value) =>
+      setState(() => _viewMode = value);
+
+  /// 空结果只清除搜索与状态筛选，保留当前布局和批量选择。
+  void _resetDeviceFilters() {
+    _searchController.clear();
+    setState(() {
+      _query = '';
+      _filter = DeviceStatusFilter.all;
+    });
+  }
+
+  /// 退出批量管理时清除注册表勾选，切换视图和筛选则保留选择。
+  void _changeBatchMode(bool value) {
+    if (!value) {
+      final registry = ref.read(deviceRegistryProvider.notifier);
+      for (final device in ref.read(deviceRegistryProvider)) {
+        if (device.isChecked) registry.toggleCheck(device.id);
+      }
+    }
+    setState(() => _batchMode = value);
+  }
 
   @override
   void dispose() {

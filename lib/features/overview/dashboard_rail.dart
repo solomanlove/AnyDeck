@@ -337,6 +337,11 @@ class PrimaryRail extends ConsumerWidget {
       }
     }
 
+    if (!hasSelectedDevice) {
+      return _ManagementRail(tools: tools, selectedTool: selectedTool,
+        onSelected: handleTap, receiverRunning: isAirplayReceiverRunning);
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 

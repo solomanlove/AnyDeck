@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../adb/adb_environment_service.dart';
 import '../process/tool_path_resolver.dart';
+import '../process/bounded_process.dart';
 
 /// 目标连接平台分类枚举。
 enum TargetPlatformType {
@@ -157,11 +158,10 @@ class ConnectionEnvironmentService {
 
     try {
       // 运行 hdc -v 探测版本
-      final result = await Process.run(
+      final result = await runBoundedProcess(
         hdcPath,
         ['-v'],
-        runInShell: false,
-      ).timeout(const Duration(seconds: 4));
+      );
 
       if (result.exitCode == 0) {
         final out = (result.stdout as String).trim();
@@ -175,11 +175,11 @@ class ConnectionEnvironmentService {
         );
       } else {
         // 尝试 hdc version
-        final fallback = await Process.run(
+        final fallback = await runBoundedProcess(
           hdcPath,
           ['version'],
-          runInShell: false,
-        ).timeout(const Duration(seconds: 3));
+          timeout: const Duration(seconds: 3),
+        );
 
         if (fallback.exitCode == 0) {
           final out = (fallback.stdout as String).trim();
@@ -224,11 +224,10 @@ class ConnectionEnvironmentService {
 
     try {
       // 运行 ios version 获取版本（返回 JSON 如 {"version":"1.2.0"}）
-      final result = await Process.run(
+      final result = await runBoundedProcess(
         iosPath,
         ['version'],
-        runInShell: false,
-      ).timeout(const Duration(seconds: 4));
+      );
 
       final stdoutStr = (result.stdout as String).trim();
       if (result.exitCode == 0 || stdoutStr.contains('"version"')) {

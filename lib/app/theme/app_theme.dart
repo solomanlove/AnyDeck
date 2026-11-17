@@ -9,6 +9,7 @@ export 'app_palette.dart';
 export 'app_theme_color.dart';
 export 'app_theme_colors.dart';
 export 'app_theme_sizes.dart';
+export 'device_workspace_theme.dart';
 
 /// 根据用户选择的主色构建 Material 3 的浅色和深色主题。
 ThemeData buildAppTheme(
