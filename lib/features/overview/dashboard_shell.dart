@@ -135,8 +135,8 @@ class _ContentTitleBar extends ConsumerWidget {
               },
             ),
             const SizedBox(width: 4),
-            PopupMenuButton<String>(
-              tooltip: context.l10n.t('deviceWorkspaceConnect'),
+            DeviceConnectionMenu(
+              showLabel: showConnectionLabel,
               onSelected: (action) {
                 switch (action) {
                   case 'tcp':
@@ -154,55 +154,6 @@ class _ContentTitleBar extends ConsumerWidget {
                     );
                 }
               },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'pair',
-                  child: Text(context.l10n.t('deviceWorkspacePair')),
-                ),
-                PopupMenuItem(
-                  value: 'tcp',
-                  child: Text(context.l10n.t('deviceWorkspaceConnectIp')),
-                ),
-                PopupMenuItem(
-                  value: 'share',
-                  child: Text(context.l10n.t('deviceShareJoin')),
-                ),
-                PopupMenuItem(enabled: false,
-                  child: Text(context.l10n.t('deviceWorkspaceUsbHint'),
-                    style: const TextStyle(fontSize: 11))),
-              ],
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: AppThemeSizes.radiusMedium,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        LucideIcons.plus,
-                        size: 17,
-                        color: theme.colorScheme.onPrimary,
-                      ),
-                      if (showConnectionLabel) ...[
-                        const SizedBox(width: 7),
-                        Text(
-                          context.l10n.t('deviceWorkspaceConnect'),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: theme.colorScheme.onPrimary,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
             ),
           ],
         ),
