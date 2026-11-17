@@ -2,6 +2,7 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/ios/ios_connection_type.dart';
 import 'package:any_deck/core/providers/modules/registered_device_model.dart';
+import 'package:any_deck/features/devices/model/device_list_presentation.dart';
 import 'package:any_deck/features/devices/widgets/device_connection_indicators.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +10,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _columnKey = Key('connection-status-column');
+const _statusRegionKey = Key('connection-status-region');
 const _android = RegisteredDevice(
   id: 'phone-usb-serial',
   status: 'device',
@@ -24,13 +25,13 @@ const _androidFullKeys = [
   'deviceWorkspaceAirplay',
 ];
 
-/// 在实际80px连接列内检查完整通道、可访问语义及父级批量选择手势。
+/// 检查横向连接状态的自然宽度、窄区域滚动及父级批量选择手势。
 void main() {
   // testWidgets 默认管理 SemanticsHandle，避免额外句柄晚于框架检查才释放。
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
       for (final scale in [1.0, 1.6]) {
-        testWidgets('$language ${brightness.name} $scale 倍字号80px列完整展示全部连接', (
+        testWidgets('$language ${brightness.name} $scale 倍字号全部连接横向单行展示', (
           tester,
         ) async {
           var selected = 0;
@@ -46,19 +47,22 @@ void main() {
           final copy = AppLocalizations(Locale(language));
           final fullLabels = _androidFullKeys.map(copy.t).toList();
           expect(find.bySemanticsLabel(fullLabels.join(', ')), findsOneWidget);
-          final column = tester.getRect(find.byKey(_columnKey));
-          expect(column.width, 80);
-          double? previousBottom;
+          final region = tester.getRect(find.byKey(_statusRegionKey));
+          expect(region.width, greaterThanOrEqualTo(320));
+          Rect? previousLabel;
+          final centerY = tester.getCenter(find.text('USB')).dy;
           for (var i = 0; i < _androidLabels.length; i++) {
             final label = find.text(_androidLabels[i]);
             expect(label, findsOneWidget);
             expect(find.byTooltip(fullLabels[i]), findsOneWidget);
-            _expectCompleteLabel(tester, label, column);
+            _expectCompleteLabel(tester, label, region);
             final rect = tester.getRect(label);
-            if (previousBottom != null) {
-              expect(rect.top, greaterThanOrEqualTo(previousBottom));
+            expect(rect.center.dy, closeTo(centerY, .1));
+            if (previousLabel != null) {
+              expect(rect.left, greaterThan(previousLabel.right));
             }
-            previousBottom = rect.bottom;
+            previousLabel = rect;
+            expect(tester.widget<Text>(label).maxLines, 1);
             final text = tester.widget<Text>(label);
             expect(
               text.style?.color,
@@ -69,10 +73,102 @@ void main() {
             await tester.pump();
             expect(selected, i + 1);
           }
+          final content = find.descendant(
+            of: find.byType(DeviceConnectionIndicators),
+            matching: find.byWidgetPredicate(
+              (widget) => widget is Icon || widget is Text,
+            ),
+          );
+          final tallest = content.evaluate().fold<double>(0, (height, element) {
+            final size = tester.getSize(find.byWidget(element.widget));
+            return size.height > height ? size.height : height;
+          });
+          expect(region.height, closeTo(tallest, .1));
           expect(tester.takeException(), isNull);
         });
       }
     }
+  }
+
+  testWidgets('三通道自然宽度随内容计算且不增加单行高度', (tester) async {
+    await _pumpStatus(tester, device: _android.copyWith(connections: ['usb']));
+    final singleHeight = tester
+        .getSize(find.byType(DeviceConnectionIndicators))
+        .height;
+    final singleWidth = _naturalWidth(
+      tester,
+      _android.copyWith(connections: ['usb']),
+    );
+    await _pumpStatus(tester, device: _android);
+    final fullWidth = _naturalWidth(tester, _android);
+    final labels = [
+      for (final key in _androidFullKeys.take(3))
+        tester.getRect(
+          find.byTooltip(AppLocalizations(const Locale('zh')).t(key)),
+        ),
+    ];
+    expect(fullWidth, greaterThan(singleWidth));
+    final drawnWidth = labels.last.right - labels.first.left;
+    // 测量结果可包含逐标签向上取整和尾部安全像素，不能预留空通道宽度。
+    expect(fullWidth - drawnWidth, inInclusiveRange(0, labels.length + 2));
+    for (var index = 1; index < labels.length; index++) {
+      expect(labels[index].left - labels[index - 1].right, closeTo(6, .1));
+      expect(labels[index].center.dy, closeTo(labels.first.center.dy, .1));
+    }
+    final fullHeight = tester
+        .getSize(find.byType(DeviceConnectionIndicators))
+        .height;
+    expect(fullHeight, singleHeight);
+    expect(fullHeight, lessThan(20));
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final airplay in [false, true]) {
+    testWidgets('80px区域横向滚动到${airplay ? 'AirPlay' : 'Wi-Fi'}后仍可选择设备', (
+      tester,
+    ) async {
+      var selections = 0;
+      await _pumpStatus(
+        tester,
+        device: _android,
+        width: 80,
+        isAirplayMirroring: airplay,
+        onTap: () => selections++,
+      );
+      final region = tester.getRect(find.byKey(_statusRegionKey));
+      final last = find.text(airplay ? 'AirPlay' : 'Wi-Fi');
+      final first = find.text('USB');
+      expect(tester.getRect(last).left, greaterThan(region.right));
+      final centerY = tester.getCenter(first).dy;
+      expect(tester.getCenter(last).dy, closeTo(centerY, .1));
+      await tester.tap(first);
+      await tester.pump();
+      expect(selections, 1);
+      final scrollable = find.descendant(
+        of: find.byType(DeviceConnectionIndicators),
+        matching: find.byType(Scrollable),
+      );
+      expect(scrollable, findsOneWidget);
+      expect(
+        tester.state<ScrollableState>(scrollable).position.axis,
+        Axis.horizontal,
+      );
+      await tester.drag(scrollable, const Offset(-700, 0));
+      await tester.pumpAndSettle();
+      expect(selections, 1);
+      _expectCompleteLabel(tester, last, region);
+      expect(tester.getCenter(last).dy, closeTo(centerY, .1));
+      await tester.tap(last);
+      await tester.pump();
+      expect(selections, 2);
+      final copy = AppLocalizations(const Locale('zh'));
+      final fullKeys = airplay ? _androidFullKeys : _androidFullKeys.take(3);
+      expect(
+        find.bySemanticsLabel(fullKeys.map(copy.t).join(', ')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets('连接更新移除TCP后保留USB和Wi-Fi且清理旧Tooltip与语义', (tester) async {
@@ -148,6 +244,7 @@ void main() {
           tester,
           device: device,
           language: language,
+          width: 80,
           textScale: 1.6,
           onTap: () => selections++,
         );
@@ -157,7 +254,7 @@ void main() {
         _expectCompleteLabel(
           tester,
           label,
-          tester.getRect(find.byKey(_columnKey)),
+          tester.getRect(find.byKey(_statusRegionKey)),
         );
         for (final channel in _androidLabels) {
           expect(find.text(channel), findsNothing);
@@ -239,16 +336,22 @@ void main() {
 }
 
 /// 检查文字实际排版边界，避免只验证Widget存在而漏掉省略或横向裁剪。
-void _expectCompleteLabel(WidgetTester tester, Finder label, Rect column) {
+void _expectCompleteLabel(WidgetTester tester, Finder label, Rect region) {
   final paragraph = tester.renderObject<RenderParagraph>(label);
   final text = tester.widget<Text>(label);
   final rect = tester.getRect(label);
   expect(paragraph.didExceedMaxLines, isFalse);
   expect(text.overflow, isNot(TextOverflow.ellipsis));
-  expect(rect.left, greaterThanOrEqualTo(column.left));
-  expect(rect.right, lessThanOrEqualTo(column.right));
-  expect(rect.bottom, lessThanOrEqualTo(column.bottom));
+  expect(rect.left, greaterThanOrEqualTo(region.left - .1));
+  expect(rect.right, lessThanOrEqualTo(region.right + .1));
+  expect(rect.bottom, lessThanOrEqualTo(region.bottom + .1));
 }
+
+double _naturalWidth(WidgetTester tester, RegisteredDevice device) =>
+    DeviceConnectionIndicators.labelsWidth(
+      tester.element(find.byType(DeviceConnectionIndicators)),
+      DeviceListPresentation.connections(device),
+    );
 
 Future<void> _pumpStatus(
   WidgetTester tester, {
@@ -256,6 +359,7 @@ Future<void> _pumpStatus(
   String language = 'zh',
   Brightness brightness = Brightness.light,
   double textScale = 1,
+  double? width,
   bool isAirplayMirroring = false,
   bool showLabels = true,
   VoidCallback? onTap,
@@ -276,21 +380,34 @@ Future<void> _pumpStatus(
         child: child!,
       ),
       home: Scaffold(
-        body: Align(
-          alignment: Alignment.topLeft,
-          child: SizedBox(
-            key: _columnKey,
-            width: 80,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onTap,
-              child: DeviceConnectionIndicators(
-                device: device,
-                isAirplayMirroring: isAirplayMirroring,
-                showLabels: showLabels,
+        body: Builder(
+          builder: (context) {
+            final channels = DeviceListPresentation.connections(
+              device,
+              isAirplayMirroring: isAirplayMirroring,
+            );
+            final naturalWidth = showLabels && channels.isNotEmpty
+                ? DeviceConnectionIndicators.labelsWidth(context, channels)
+                : 80.0;
+            final regionWidth =
+                width ?? (naturalWidth > 320 ? naturalWidth : 320.0);
+            return Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                key: _statusRegionKey,
+                width: regionWidth,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onTap,
+                  child: DeviceConnectionIndicators(
+                    device: device,
+                    isAirplayMirroring: isAirplayMirroring,
+                    showLabels: showLabels,
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     ),

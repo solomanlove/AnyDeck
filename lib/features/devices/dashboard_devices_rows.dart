@@ -10,6 +10,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     int index, {
     AirPlaySessionData? airplaySession,
     required String displayName,
+    required double connectionWidth,
   }) {
     final theme = Theme.of(context);
     final selected = _batchMode && device.isChecked;
@@ -19,6 +20,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           context,
           constraints.maxWidth,
           _batchMode,
+          connectionWidth,
         );
         return InkWell(
           key: ValueKey('device-row-${device.id}'),
@@ -44,105 +46,116 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 bottom: BorderSide(color: theme.colorScheme.outlineVariant),
               ),
             ),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_batchMode)
-                  SizedBox(
-                    width: 36,
-                    child: Checkbox(
-                      value: device.isChecked,
-                      onChanged: device.id.startsWith('airplay-')
-                          ? null
-                          : (_) => _toggleDeviceSelection(device),
-                    ),
-                  ),
-                Expanded(
-                  child: Row(
-                    children: [
-                      DeviceStatusAvatar(
-                        device: device,
-                        size: 36,
-                        cacheOnly: true,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 3,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Text(
-                                  displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                for (final tag in device.tags)
-                                  if (tag.trim().isNotEmpty)
-                                    DeviceTagBadge(tag: tag),
-                              ],
-                            ),
-                            _buildIdentifierSubtitle(device, airplaySession),
-                            if (layout.systemInline)
-                              Text(
-                                device.androidVersion ?? '-',
-                                key: ValueKey(
-                                  'device-system-inline-${device.id}',
-                                ),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontSize: 11,
-                                ),
-                                softWrap: true,
-                              ),
-                            if (layout.statusInline)
-                              _deviceStatus(
-                                context,
-                                device,
-                                airplaySession,
-                                key: ValueKey(
-                                  'device-status-inline-${device.id}',
-                                ),
-                              ),
-                          ],
+                Row(
+                  children: [
+                    if (_batchMode)
+                      SizedBox(
+                        width: 36,
+                        child: Checkbox(
+                          value: device.isChecked,
+                          onChanged: device.id.startsWith('airplay-')
+                              ? null
+                              : (_) => _toggleDeviceSelection(device),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                if (!layout.statusInline)
-                  SizedBox(
-                    width: layout.statusWidth,
-                    key: ValueKey('device-status-column-${device.id}'),
-                    child: _deviceStatus(context, device, airplaySession),
-                  ),
-                if (!layout.systemInline)
-                  SizedBox(
-                    width: _DeviceTableLayout.systemWidth,
-                    key: ValueKey('device-system-column-${device.id}'),
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: Text(
-                        device.androidVersion ?? '-',
-                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-                        softWrap: true,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          DeviceStatusAvatar(
+                            device: device,
+                            size: 36,
+                            cacheOnly: true,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 3,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      displayName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    for (final tag in device.tags)
+                                      if (tag.trim().isNotEmpty)
+                                        DeviceTagBadge(tag: tag),
+                                  ],
+                                ),
+                                _buildIdentifierSubtitle(device, airplaySession),
+                                if (layout.systemInline)
+                                  Text(
+                                    device.androidVersion ?? '-',
+                                    key: ValueKey(
+                                      'device-system-inline-${device.id}',
+                                    ),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                    ),
+                                    softWrap: true,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                if (!_batchMode)
-                  SizedBox(
-                    width: layout.actionsWidth,
-                    child: _buildWorkspaceActions(
+                    if (!layout.statusInline)
+                      SizedBox(
+                        width: layout.statusWidth,
+                        key: ValueKey('device-status-column-${device.id}'),
+                        child: _deviceStatus(context, device, airplaySession),
+                      ),
+                    if (!layout.systemInline)
+                      SizedBox(
+                        width: _DeviceTableLayout.systemWidth,
+                        key: ValueKey('device-system-column-${device.id}'),
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Text(
+                            device.androidVersion ?? '-',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                            ),
+                            softWrap: true,
+                          ),
+                        ),
+                      ),
+                    if (!_batchMode)
+                      SizedBox(
+                        width: layout.actionsWidth,
+                        child: _buildWorkspaceActions(
+                          context,
+                          device,
+                          airplaySession,
+                          compact: layout.phone,
+                        ),
+                      ),
+                  ],
+                ),
+                // 窄屏状态独占内容宽度，多个通道仍横排，避免挤进设备名称的小列。
+                if (layout.statusInline)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: _deviceStatus(
                       context,
                       device,
                       airplaySession,
-                      compact: layout.phone,
+                      key: ValueKey('device-status-inline-${device.id}'),
                     ),
                   ),
               ],
@@ -337,11 +350,12 @@ class _DeviceTableLayout {
     BuildContext context,
     double available,
     bool batchMode,
+    double connectionWidth,
   ) {
     final windowWidth = MediaQuery.sizeOf(context).width;
     final phone = windowWidth <= 490;
     final inner = available - 16 - (batchMode ? 36 : 0);
-    const statusWidth = 80.0;
+    final statusWidth = connectionWidth;
     var actionsWidth = batchMode
         ? 0.0
         : windowWidth <= 730

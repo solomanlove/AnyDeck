@@ -44,7 +44,7 @@ HDC 截图收发按请求使用独立临时目录与远端文件名，finally �
 ## 紧凑布局与品牌资源
 
 - 页头复用一级页面公共标题栏：默认字号最小高度 72px、左右留白 28px；内容仍保留紧凑布局，左右留白 16px（中窄窗口 12px，手机窗口 8px），顶部留白 10–12px。
-- 列表行最小 60px、上下内边距 7px；连接方式列保持 80px，纵向显示所有在线 USB / TCP/IP / Wi-Fi 通道，Tooltip 和读屏保留完整状态。系统版本独立列为 160px，长版本与窄屏行内版本均完整换行，不省略 API 信息。
+- 列表行最小 60px、上下内边距 7px；连接方式横向单行显示所有在线 USB / TCP/IP / Wi-Fi 通道，按可见设备的实际通道组合统一列宽（最小 80px），Tooltip 和读屏保留完整状态。系统版本独立列为 160px，长版本与窄屏行内版本均完整换行，不省略 API 信息。
 - 列表恢复原 `DeviceStatusAvatar`；`cacheOnly: true` 仅读取缓存品牌，避免为整个设备列表触发完整硬件探测，其他调用方默认行为不变。
 - 手机墙复用 `BrandLogoHelper` 与原品牌资源；截图成功后名称旁仍保留品牌 Logo，未取到画面时用原 Logo 封面。
 - 手机外框宽 120px，单卡基础宽 148px，卡片内间距收紧；操作点击区保留 40px，窄窗口与放大字体仍按内容适配。
@@ -192,7 +192,7 @@ Shell 为 `PrimaryRail` 单独提供原应用 Theme，设备页中性主题仍�
 较长厂商版本允许换行并自然增高设备行，不靠挤宽连接列解决内容截断。
 
 `DeviceListPresentation.connections` 返回全部在线 `DeviceConnectionKind`，列表与设备墙共享通道集合。
-`DeviceConnectionIndicators(showLabels: true)` 在原 80px 连接列纵向排列图标与 USB / TCP/IP / Wi-Fi 短名称，
+最初的 `DeviceConnectionIndicators(showLabels: true)` 在原 80px 连接列纵向排列图标与 USB / TCP/IP / Wi-Fi 短名称（已由下述横排方案替代），
 逐项 Tooltip 使用完整本地化说明，聚合 Semantics 包含所有通道；此模式继承父行点击以支持批量选择。
 默认小图标模式继续用于原调用方；展示逻辑不改变注册表合并、连接优先级或实际命令使用的 transport。
 
@@ -214,3 +214,21 @@ AirPlay 按设备墙/列表切换验证状态、当前主色与可用投屏菜�
 另导出 Widget 预览 1 项通过。定向 `flutter analyze --no-pub --no-fatal-infos` 无 error / warning，
 保留当前 Flutter SDK 对既有 Material / Cupertino / 本地化入口的弃用 info，不扩大为全库迁移。
 所有新增或调整的 Dart 文件均低于 500 行；未运行完整 App，也未为演示主动建立设备连接。
+
+## 连接状态横向单行（2026-11-17）
+
+USB / TCP/IP / Wi-Fi 等真实通道改为一行并排，组间 6px，复用原 14px 图标、4px 图文间距及 11px 文案。
+`DeviceConnectionIndicators.labelsWidth` 使用当前语言、Theme 字体、TextScaler 与 TextDirection 测量宽度，
+TextPainter 及时 dispose；测量与绘制共用样式，不使用 IntrinsicWidth 或缩小字号。
+设备列表只测量不同通道组合，取可见设备所需最大宽度加 12px 列间隔，最低 80px，表头与行共享预算。
+因此单通道不预留三通道空间，多个在线通道也不会增加正常列表的行高。
+
+窄窗口将状态放到设备信息下方、使用设备行的整个内容宽度；极窄或放大文字时只让状态区域横向滚动，
+仍保留所有通道、原字号与单行排列。离线/未知状态可自然换行，默认图标模式维持原 Tooltip 和点击隔离。
+横排模式继续保留每项完整 Tooltip、全部通道的聚合读屏语义及父行批量点击，不改变真实连接状态与投屏命令。
+
+验证覆盖中英明暗、1.0 / 1.6 倍字号下的水平几何、三通道与单通道同高、动态列宽的紧凑边距、
+80px 区域横向滚动与前后点击、长版本完整显示及 320px 窄屏；未启动完整 App。
+
+本次横排验证：6 份相关 Widget 测试共 73 项通过，预览导出 1 项通过；定向静态检查无 error / warning，
+仅保留 Flutter SDK 既有弃用 info。调整的 Dart 文件均低于 500 行，未建立新设备连接。

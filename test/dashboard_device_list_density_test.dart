@@ -207,7 +207,7 @@ void main() {
                   find.byKey(ValueKey('device-status-column-${device.id}')),
                 )
                 .width,
-            80,
+            inInclusiveRange(80, 120),
           );
         }
         final usb = find.byKey(
@@ -259,11 +259,16 @@ void main() {
             brightness: brightness,
             textScale: width == 320 ? 1.6 : 1,
           );
-          (container.read(deviceRegistryProvider.notifier) as _Registry)
-              .setDetails();
+          final registry =
+              container.read(deviceRegistryProvider.notifier) as _Registry;
+          registry.setDetails(multiple: false);
           await tester.tap(find.byKey(const Key('deviceView-list')));
           await tester.pumpAndSettle();
           final row = find.byKey(const ValueKey('device-row-logo-xiaomi'));
+          final singleChannelHeight = tester.getSize(row).height;
+          registry.setDetails();
+          await tester.pumpAndSettle();
+          expect(tester.getSize(row).height, singleChannelHeight);
           final version = find.descendant(
             of: row,
             matching: find.text(_fullVersion),
@@ -279,28 +284,28 @@ void main() {
             tester.getRect(version).bottom,
             lessThanOrEqualTo(tester.getRect(row).bottom),
           );
+          final channelRects = <Rect>[];
           for (final label in ['USB', 'TCP/IP', 'Wi-Fi']) {
             final channel = find.descendant(
               of: row,
               matching: find.text(label),
             );
             expect(channel, findsOneWidget);
+            channelRects.add(tester.getRect(channel));
             expect(
               tester.getRect(channel).bottom,
               lessThanOrEqualTo(tester.getRect(row).bottom),
             );
           }
+          for (final rect in channelRects) {
+            expect(rect.center.dy, closeTo(channelRects.first.center.dy, 0.1));
+          }
           if (width == 1200) {
-            expect(
-              tester
-                  .getSize(
-                    find.byKey(
-                      const ValueKey('device-status-column-logo-xiaomi'),
-                    ),
-                  )
-                  .width,
-              80,
+            final column = tester.getRect(
+              find.byKey(const ValueKey('device-status-column-logo-xiaomi')),
             );
+            expect(channelRects.last.right, lessThanOrEqualTo(column.right));
+            expect(column.right - channelRects.last.right, lessThanOrEqualTo(18));
           }
           expect(tester.takeException(), isNull);
         }
@@ -369,11 +374,13 @@ const _fullVersion = 'OpenHarmony 6.1.0.115 (API 23)';
 
 class _Registry extends DeviceRegistryNotifier {
   // 发布三条实际在线通道和长系统版本，验证 UI 不再只展示 USB。
-  void setDetails() {
+  void setDetails({bool multiple = true}) {
     state = [
       state.first.copyWith(
         androidVersion: _fullVersion,
-        connections: ['logo-xiaomi', '192.168.1.10:5555', '192.168.1.10:37123'],
+        connections: multiple
+            ? ['logo-xiaomi', '192.168.1.10:5555', '192.168.1.10:37123']
+            : ['logo-xiaomi'],
       ),
       ...state.skip(1),
     ];

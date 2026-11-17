@@ -10,7 +10,7 @@ import '../model/device_list_presentation.dart';
 ///
 /// [device] 为合并后的设备，[isAirplayMirroring] 表示独立的投屏会话。
 /// 默认并排显示小图标并消费点击，避免触发外层设备行的概览导航；
-/// [showLabels] 为 true 时纵向展示图标和短名称，保留父级行的点击与批量选择。
+/// [showLabels] 为 true 时横向单行展示图标和短名称，保留父级行的点击与批量选择。
 class DeviceConnectionIndicators extends StatelessWidget {
   const DeviceConnectionIndicators({
     super.key,
@@ -25,8 +25,47 @@ class DeviceConnectionIndicators extends StatelessWidget {
   /// AirPlay 会话不依赖 USB、TCP 或 iOS 调试连接是否在线。
   final bool isAirplayMirroring;
 
-  /// 列表连接列使用的紧凑纵向文案模式；默认维持原图标展示。
+  /// 列表连接列使用的紧凑横向文案模式；默认维持原图标展示。
   final bool showLabels;
+
+  static const double _labelIconSize = 14;
+  static const double _iconLabelGap = 4;
+  static const double _connectionGap = 6;
+
+  /// 按当前语言、主题字体与文字缩放测量真实通道的单行宽度。
+  ///
+  /// 表格可取可见设备的最大值统一列宽，避免固定预留不存在的连接通道；
+  /// 无通道返回 0，由调用方为离线或未知状态保留最小宽度。
+  static double labelsWidth(
+    BuildContext context,
+    List<DeviceConnectionKind> connections,
+  ) {
+    if (connections.isEmpty) return 0;
+    var width = _connectionGap * (connections.length - 1) + 2;
+    final style = _labelStyle(context);
+    for (final connection in connections) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: context.l10n.t(connection.shortLabelKey),
+          style: style,
+        ),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        locale: Localizations.localeOf(context),
+        maxLines: 1,
+      )..layout();
+      width += _labelIconSize + _iconLabelGap + painter.width.ceilToDouble();
+      painter.dispose();
+    }
+    return width;
+  }
+
+  /// 测量与绘制共用字号和字体属性，颜色不影响布局宽度。
+  static TextStyle _labelStyle(BuildContext context) =>
+      (Theme.of(context).textTheme.bodySmall ?? const TextStyle()).copyWith(
+        fontSize: 11,
+        height: 1.15,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -84,21 +123,35 @@ class DeviceConnectionIndicators extends StatelessWidget {
           .map((connection) => context.l10n.t(connection.fullLabelKey))
           .join(', '),
       excludeSemantics: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var index = 0; index < connections.length; index++) ...[
-            if (index > 0) const SizedBox(height: 2),
-            _label(
-              context,
-              label: context.l10n.t(connections[index].shortLabelKey),
-              fullLabel: context.l10n.t(connections[index].fullLabelKey),
-              icon: _icon(connections[index]),
-              color: theme.appColors.success,
-            ),
-          ],
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final labels = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var index = 0; index < connections.length; index++) ...[
+                if (index > 0) const SizedBox(width: _connectionGap),
+                _label(
+                  context,
+                  label: context.l10n.t(connections[index].shortLabelKey),
+                  fullLabel: context.l10n.t(connections[index].fullLabelKey),
+                  icon: _icon(connections[index]),
+                  color: theme.appColors.success,
+                  singleLine: true,
+                ),
+              ],
+            ],
+          );
+          // 极窄窗口或大字号只滚动状态区域，保留字号与所有通道的单行排列。
+          if (constraints.hasBoundedWidth &&
+              labelsWidth(context, connections) > constraints.maxWidth) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              primary: false,
+              child: labels,
+            );
+          }
+          return labels;
+        },
       ),
     );
   }
@@ -109,28 +162,27 @@ class DeviceConnectionIndicators extends StatelessWidget {
     required String fullLabel,
     required IconData icon,
     required Color color,
-  }) => Tooltip(
-    message: fullLabel,
-    excludeFromSemantics: true,
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            label,
-            softWrap: true,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontSize: 11,
-              height: 1.15,
-              color: color,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
+    bool singleLine = false,
+  }) {
+    final text = Text(
+      label,
+      maxLines: singleLine ? 1 : null,
+      softWrap: !singleLine,
+      style: _labelStyle(context).copyWith(color: color),
+    );
+    return Tooltip(
+      message: fullLabel,
+      excludeFromSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: _labelIconSize, color: color),
+          const SizedBox(width: _iconLabelGap),
+          if (singleLine) text else Flexible(child: text),
+        ],
+      ),
+    );
+  }
 
   Widget _indicator(BuildContext context, DeviceConnectionKind connection) {
     final color = switch (connection) {

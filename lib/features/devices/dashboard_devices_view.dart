@@ -182,6 +182,11 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         hasBoundedHeight: hasBoundedHeight,
       );
     }
+    final connectionWidth = _connectionColumnWidth(
+      context,
+      sortedItems,
+      sessionByDeviceId,
+    );
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 12),
       child: ClipRRect(
@@ -194,7 +199,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                 : MainAxisSize.min,
             children: [
               if (MediaQuery.sizeOf(context).width > 490)
-                _buildTableHeader(context, isCompact),
+                _buildTableHeader(context, isCompact, connectionWidth),
               if (hasBoundedHeight)
                 Expanded(
                   child: _buildRows(
@@ -203,6 +208,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                     sessionByDeviceId,
                     isCompact,
                     true,
+                    connectionWidth,
                   ),
                 )
               else
@@ -212,6 +218,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                   sessionByDeviceId,
                   isCompact,
                   false,
+                  connectionWidth,
                 ),
             ],
           ),
@@ -226,6 +233,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     Map<String, AirPlaySessionData> sessions,
     bool compact,
     bool bounded,
+    double connectionWidth,
   ) => ListView.builder(
     shrinkWrap: !bounded,
     physics: bounded ? null : const NeverScrollableScrollPhysics(),
@@ -240,11 +248,40 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         index,
         airplaySession: sessions[device.id],
         displayName: names[device.id]!,
+        connectionWidth: connectionWidth,
       );
     },
   );
 
-  Widget _buildTableHeader(BuildContext context, bool compact) {
+  /// 只测量不同的通道组合，按可见设备的实际内容统一表头与行宽。
+  double _connectionColumnWidth(
+    BuildContext context,
+    List<RegisteredDevice> devices,
+    Map<String, AirPlaySessionData> sessions,
+  ) {
+    var width = 80.0;
+    final measured = <String>{};
+    for (final device in devices) {
+      final channels = DeviceListPresentation.connections(
+        device,
+        isAirplayMirroring: sessions.containsKey(device.id),
+      );
+      if (!measured.add(channels.map((channel) => channel.index).join(','))) {
+        continue;
+      }
+      width = max(
+        width,
+        DeviceConnectionIndicators.labelsWidth(context, channels) + 12,
+      );
+    }
+    return width;
+  }
+
+  Widget _buildTableHeader(
+    BuildContext context,
+    bool compact,
+    double connectionWidth,
+  ) {
     final theme = Theme.of(context);
     final style = theme.textTheme.bodySmall?.copyWith(
       fontSize: 12,
@@ -256,6 +293,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           context,
           constraints.maxWidth,
           _batchMode,
+          connectionWidth,
         );
         return Container(
           key: const Key('deviceTableHeader'),
