@@ -4,11 +4,14 @@ import 'package:any_deck/core/ios/ios_connection_type.dart';
 import 'package:any_deck/core/providers/modules/registered_device_model.dart';
 import 'package:any_deck/features/devices/model/device_list_presentation.dart';
 import 'package:any_deck/features/devices/widgets/device_connection_indicators.dart';
+import 'package:any_deck/features/devices/widgets/device_wall_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/device_context_menu_fixture.dart';
 
 const _statusRegionKey = Key('connection-status-region');
 const _android = RegisteredDevice(
@@ -27,6 +30,78 @@ const _androidFullKeys = [
 
 /// 检查横向连接状态的自然宽度、窄区域滚动及父级批量选择手势。
 void main() {
+  for (final language in ['zh', 'en']) {
+    for (final brightness in Brightness.values) {
+      testWidgets('设备墙 $language ${brightness.name} 使用短连接文案并保留完整说明', (
+        tester,
+      ) async {
+        final devices = [
+          _android.copyWith(model: 'Android test'),
+          deviceMenuHarmony.copyWith(
+            connections: ['harmony-device', '192.168.1.21:5555'],
+          ),
+          deviceMenuIos.copyWith(
+            iosConnectionTypes: {
+              IosConnectionType.usb,
+              IosConnectionType.network,
+            },
+          ),
+          deviceMenuOffline,
+        ];
+        await withDeviceMenu(
+          tester,
+          (fixture) async {
+            final copy = AppLocalizations(Locale(language));
+            for (final device in devices) {
+              final card = find.byKey(ValueKey('device-wall-${device.id}'));
+              expect(card, findsOneWidget);
+              final channels = DeviceListPresentation.connections(device);
+              if (channels.isEmpty) {
+                expect(
+                  tester.widget<DeviceWallCard>(card).statusLabel,
+                  copy.t('deviceOffline'),
+                );
+                continue;
+              }
+              final short = channels
+                  .map((channel) => copy.t(channel.shortLabelKey))
+                  .join(' · ');
+              final full = channels
+                  .map((channel) => copy.t(channel.fullLabelKey))
+                  .join(' · ');
+              expect(tester.widget<DeviceWallCard>(card).statusLabel, short);
+              expect(
+                find.descendant(of: card, matching: find.text(short)),
+                findsOneWidget,
+              );
+              expect(
+                find.descendant(of: card, matching: find.text(full)),
+                findsNothing,
+              );
+              expect(
+                find.descendant(of: card, matching: find.byTooltip(full)),
+                findsOneWidget,
+              );
+              expect(
+                tester.getSemantics(card).getSemanticsData().label,
+                startsWith('${device.displayName}，$full'),
+              );
+            }
+            expect(
+              find.text(copy.t('deviceWorkspaceUsbConnected')),
+              findsNothing,
+            );
+            expect(fixture.adb.captures, isEmpty);
+            expect(tester.takeException(), isNull);
+          },
+          devices: devices,
+          language: language,
+          brightness: brightness,
+        );
+      });
+    }
+  }
+
   // testWidgets 默认管理 SemanticsHandle，避免额外句柄晚于框架检查才释放。
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {

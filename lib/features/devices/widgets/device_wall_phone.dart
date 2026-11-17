@@ -9,8 +9,8 @@ import '../../../app/widget/app_asset_image.dart';
 /// 按原型比例绘制手机外框，展示真实截图或设备品牌封面。
 ///
 /// [width] 是外框宽度，高度由 9:18.5 比例计算；[online] 决定边框状态。
-/// [screenshot] 只在在线时显示，缺失或解码失败时显示品牌封面、[title]、
-/// [hint]，避免将模拟内容误当成真实设备屏幕。[semanticLabel] 为手机点击
+/// [screenshot] 只在在线时显示，缺失或解码失败时显示品牌封面和 [title]。
+/// [hint] 仅用于在线封面，离线时移除底部提示区。[semanticLabel] 为手机点击
 /// 区提供本地化说明，[onTap] 由宿主实现投屏、重连或批量选择。
 /// [logoAsset] 使用项目既有品牌图片路径，由宿主按设备品牌及型号解析。
 class DeviceWallPhone extends StatelessWidget {
@@ -201,18 +201,19 @@ class DeviceWallPhone extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(
-          bottom: 21,
-          left: 5,
-          right: 5,
-          child: Text(
-            hint,
-            textAlign: TextAlign.center,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, color: foreground),
+        if (online && hint.isNotEmpty)
+          Positioned(
+            bottom: 21,
+            left: 5,
+            right: 5,
+            child: Text(
+              hint,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: foreground),
+            ),
           ),
-        ),
         Positioned(
           bottom: 6,
           left: 0,

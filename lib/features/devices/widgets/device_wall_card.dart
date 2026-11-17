@@ -14,6 +14,7 @@ import 'device_wall_phone.dart';
 /// 设备墙中的手机卡片，只负责展示，设备命令与选择状态由宿主持有。
 ///
 /// [name]、[systemVersion]、[statusLabel] 和 [ipAddress] 来自实际设备资料；
+/// [statusDescription] 为 Tooltip 和读屏保留完整连接说明，省略时使用短状态。
 /// [brand]、[coverTitle]、[coverHint] 是没有可用截图时的封面信息，
 /// [screenshot] 仅接受真实截图，不会生成模拟的手机内容。
 /// [phoneWidth] 决定手机尺寸，默认 120px 并保持 9:18.5 的比例。
@@ -35,6 +36,7 @@ class DeviceWallCard extends StatelessWidget {
     required this.coverHint,
     required this.actionLabel,
     required this.online,
+    this.statusDescription,
     this.tags = const [],
     this.ipAddress,
     this.screenshot,
@@ -54,6 +56,7 @@ class DeviceWallCard extends StatelessWidget {
   final String name;
   final String systemVersion;
   final String statusLabel;
+  final String? statusDescription;
   final String brand;
   final String coverTitle;
   final String coverHint;
@@ -89,7 +92,7 @@ class DeviceWallCard extends StatelessWidget {
               AppIcons.androidDefaultAppIcon;
     return Semantics(
       container: true,
-      label: '$name，$statusLabel',
+      label: '$name，${statusDescription ?? statusLabel}',
       selected: batchMode ? selected : null,
       child: Material(
         color: checked ? scheme.primaryContainer : Colors.transparent,
@@ -176,10 +179,14 @@ class DeviceWallCard extends StatelessWidget {
             const SizedBox(width: 4),
           ],
           Flexible(
-            child: Text(
-              statusLabel,
-              textAlign: TextAlign.right,
-              style: TextStyle(fontSize: 11, color: foreground),
+            child: Tooltip(
+              message: statusDescription ?? statusLabel,
+              excludeFromSemantics: true,
+              child: Text(
+                statusLabel,
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 11, color: foreground),
+              ),
             ),
           ),
         ],

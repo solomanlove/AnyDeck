@@ -49,6 +49,15 @@ HDC 截图收发按请求使用独立临时目录与远端文件名，finally �
 - 手机墙复用 `BrandLogoHelper` 与原品牌资源；截图成功后名称旁仍保留品牌 Logo，未取到画面时用原 Logo 封面。
 - 手机外框宽 120px，单卡基础宽 148px，卡片内间距收紧；操作点击区保留 40px，窄窗口与放大字体仍按内容适配。
 
+### 设备墙状态文案精简
+
+- 顶部连接方式复用 `DeviceConnectionKind.shortLabelKey`，与列表一致显示 `USB`、`TCP/IP`、`Wi-Fi`、`AirPlay`，多个通道以 ` · ` 连接。离线及未知状态继续使用原状态文案。
+- `DeviceWallCard.statusDescription` 保存 `fullLabelKey` 生成的完整说明，仅用于 Tooltip 和读屏；可见状态不再附带“已连接”“连接”等重复描述。
+- 离线手机封面不再显示“通过 USB 或无线连接”，`DeviceWallPhone` 不构建底部提示的 `Positioned` 区域；保留品牌、设备未连接状态、底部手势条及重连操作。在线截图等待或失败时的封面提示继续保留。
+- 仅调整展示层，无新增设备探测、CLI、依赖、Provider 或窗口同步。中英文、主题色、截图与设备操作继续复用现有实现。
+- `device_connection_status_labels_test.dart` 通过真实 Dashboard 验证 Android 三通道、Harmony USB/TCP、iOS USB/网络和离线状态的可见短名、Tooltip 与读屏；`device_wall_card_test.dart` 验证离线提示区整体移除及手机外观保留。
+- 本次 7 份相关测试共 88 项通过；全仓静态分析无 error，保留 5 项既有 warning。未启动 App 或验证真机。
+
 ## 服务检查与真实边界
 
 | 服务 | 检查证据 |

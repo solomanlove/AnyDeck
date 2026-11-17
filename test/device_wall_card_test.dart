@@ -47,6 +47,7 @@ void main() {
     expect(find.byType(Checkbox), findsNothing);
     expect(find.byType(Image), findsNothing);
     expect(find.text('设备已就绪'), findsOneWidget);
+    expect(find.text('点击打开投屏'), findsOneWidget);
 
     await tester.tap(phone);
     expect(opens, 1);
@@ -128,6 +129,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(Image), findsNothing);
     expect(find.text('设备未连接'), findsOneWidget);
+    expect(find.text('通过 USB 或无线连接'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(DeviceWallPhone),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is Positioned && widget.bottom == 21,
+        ),
+      ),
+      findsNothing,
+      reason: '离线封面应移除整个底部提示区域',
+    );
+    expect(
+      find.descendant(
+        of: find.byType(DeviceWallPhone),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is Positioned && widget.bottom == 6,
+        ),
+      ),
+      findsOneWidget,
+      reason: '保留手机外观的底部手势条',
+    );
     expect(tester.takeException(), isNull);
   });
 

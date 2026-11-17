@@ -76,6 +76,12 @@ extension _DeviceWallPanel on _DeviceListPanelState {
             tags: device.tags,
             systemVersion: device.androidVersion ?? '-',
             statusLabel: _workspaceStatus(context, device, session),
+            statusDescription: _workspaceStatus(
+              context,
+              device,
+              session,
+              detailed: true,
+            ),
             brand: brand != null && brand.isNotEmpty && brand != '-'
                 ? brand
                 : device.isIos
@@ -92,13 +98,13 @@ extension _DeviceWallPanel on _DeviceListPanelState {
                   ? 'deviceWorkspacePreviewFailed'
                   : 'deviceWorkspaceReady',
             ),
-            coverHint: context.l10n.t(
-              !device.isOnline
-                  ? 'deviceWorkspaceConnectHint'
-                  : preview.hasError
-                  ? 'deviceWorkspacePreviewRetryHint'
-                  : 'deviceWorkspacePreviewHint',
-            ),
+            coverHint: !device.isOnline
+                ? ''
+                : context.l10n.t(
+                    preview.hasError
+                        ? 'deviceWorkspacePreviewRetryHint'
+                        : 'deviceWorkspacePreviewHint',
+                  ),
             actionLabel: context.l10n.t(
               device.isOnline
                   ? 'screenMirror'
@@ -152,12 +158,13 @@ extension _DeviceWallPanel on _DeviceListPanelState {
         : device.wifiIp;
   }
 
-  /// 列表、设备墙与读屏使用同一组在线通道，避免 USB 优先掩盖网络连接。
+  /// 与列表共用通道短名称；Tooltip 和读屏通过 detailed 保留完整说明。
   String _workspaceStatus(
     BuildContext context,
     RegisteredDevice device,
-    AirPlaySessionData? session,
-  ) {
+    AirPlaySessionData? session, {
+    bool detailed = false,
+  }) {
     final channels = DeviceListPresentation.connections(
       device,
       isAirplayMirroring: session != null,
@@ -170,7 +177,11 @@ extension _DeviceWallPanel on _DeviceListPanelState {
       );
     }
     return channels
-        .map((channel) => context.l10n.t(channel.fullLabelKey))
+        .map(
+          (channel) => context.l10n.t(
+            detailed ? channel.fullLabelKey : channel.shortLabelKey,
+          ),
+        )
         .join(' · ');
   }
 
