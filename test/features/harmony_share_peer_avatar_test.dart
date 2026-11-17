@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/widget/app_asset_image.dart';
 import 'package:any_deck/core/nearby_share/harmony_share_send_queue.dart';
 import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:any_deck/core/nearby_share/share_send_selection.dart';
@@ -213,6 +214,14 @@ void main() {
       await tester.pumpWidget(host(stage(batches: [entry.value])));
       expect(find.text(entry.key), findsOneWidget);
       expect(find.text('本批 3 个文件'), findsOneWidget);
+      expect(
+        find.byType(AppAssetImage),
+        entry.key == '待接收' ? findsNothing : findsOneWidget,
+      );
+      expect(
+        find.byIcon(Icons.circle),
+        entry.key == '待接收' ? findsNWidgets(2) : findsNothing,
+      );
       final ring = find.byType(CircularProgressIndicator);
       if (entry.key == '发送中' || entry.key == '确认中') {
         expect(

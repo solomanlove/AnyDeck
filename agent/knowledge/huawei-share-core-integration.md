@@ -498,3 +498,30 @@ flutter build macos --debug --no-pub
 
 
 最终 `flutter build macos --debug --no-pub` 通过；构建包 `build/macos/Build/Products/Debug/AnyDeck.app` 的 deep/strict 签名、嵌入六成员 hash 和实际 Core 0.4.0 Honor hello 通过。已通过 CUA 重启该构建包，实际侧栏/页面显示“文件互传”，原有成功记录可打开并显示迁移后的“华为分享 / AnyDeck”，接收开关为 on；新服务同时监听两协议端口。本轮构建后的 UI 未再次完成一轮手机传输，手机双向 hash 验收来自前述 Rust Core 真机流程，UI 协议路由/确认/队列通过自动回归。没有向真实历史库注入模拟来件或重置用户配置。接收已恢复开启，测试 CLI/helper 均结束；运行中的接收服务属于正常 App。
+
+
+## 附近设备厂商 Logo（2026-11-17）
+
+- 需求：文件互传附近设备的通用手机图标改为对应厂商 Logo。
+- 实现：`HarmonySharePeerAvatar` 依据 `ShareCorePeer.protocol`，分别使用现有 `AppIcons.huawei`、`AppIcons.honor` 资源，通过公共 `AppAssetImage` 加载并以 `ClipOval` 裁剪。保留原始品牌颜色及素材白底，确保 Light/Dark 下可读，不新增资源或依赖。
+- 数据边界：当前发现摘要没有独立的厂商或设备类型字段，Logo 按 Huawei/Honor 协议展示，不从可自定义的设备名称、IP 或端口猜测品牌；Huawei 协议下的 AnyDeck 电脑也沿用该图标，不宣称已识别其硬件厂商。
+- 状态与交互：待接收仍显示双点；其余状态展示 Logo，发送/确认时叠加真实进度环。原有头像尺寸、协议标签、名称、点击、整组拖放、离线禁用及批次状态保持原逻辑；不涉及 ADB、投屏、后台进程、网络或多窗口同步。
+- 自动回归：协议、头像、头像状态与公共图片组件共 36 项测试通过；视觉 fixture 增加荣耀设备，并在截图前等待品牌位图解码，Light/Dark 两项视觉测试通过。测试覆盖同名设备按协议选择不同 Logo、原色与圆形裁剪、中英文、批次状态/进度、拖放及窄窗口。4 个改动 Dart 文件的定向静态检查无诊断，`git diff --check` 通过；已检查 Light/Dark 真实 Widget 渲染图。
+- 验证命令：
+
+```sh
+flutter --no-version-check test --no-pub \
+  test/features/harmony_share_protocol_test.dart \
+  test/features/harmony_share_peer_avatar_test.dart \
+  test/features/harmony_share_peer_state_test.dart \
+  test/app_asset_image_test.dart \
+  test/features/harmony_share_visual_test.dart
+
+flutter --no-version-check analyze --no-pub --no-fatal-infos \
+  lib/features/harmony_share/widgets/harmony_share_peer_avatar.dart \
+  test/features/harmony_share_protocol_test.dart \
+  test/features/harmony_share_peer_avatar_test.dart \
+  test/features/harmony_share_visual_test.dart
+```
+
+- 人工回归：后续正常构建后，打开文件互传，对比华为和荣耀设备的 Logo；切换 Light/Dark，检查等待双点、发送进度环及点击/拖放。按约定未启动或构建桌面 App，Widget 渲染验证不代表真实窗口及手机传输验收。

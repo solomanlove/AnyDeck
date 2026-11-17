@@ -3,11 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_icon.dart';
 import '../../../app/theme/app_theme_sizes.dart';
+import '../../../app/widget/app_asset_image.dart';
+import '../../../core/nearby_share/share_transfer_protocol.dart';
 import '../model/harmony_share_peer_state.dart';
 import 'harmony_share_drop_target.dart';
 
-/// 圆形手机头像；state 提供真实批次状态，enabled 控制选文件与整组拖放。
+/// 圆形厂商 Logo 头像；state 提供真实批次状态，enabled 控制选文件与整组拖放。
 /// onPick 与 onDrop 都交回页面确认，不在头像内启动传输或生成模拟进度。
 class HarmonySharePeerAvatar extends StatelessWidget {
   const HarmonySharePeerAvatar({
@@ -36,6 +39,11 @@ class HarmonySharePeerAvatar extends StatelessWidget {
     final sending =
         phase == HarmonySharePeerPhase.sending ||
         phase == HarmonySharePeerPhase.confirming;
+    // 发现摘要仅提供协议，按协议选择品牌资源，不从用户自定义名称猜测厂商。
+    final logoAsset = switch (state.peer.protocol) {
+      ShareTransferProtocol.huawei => AppIcons.huawei,
+      ShareTransferProtocol.honor => AppIcons.honor,
+    };
     final label = state.peer.name.isEmpty
         ? state.peer.address.address
         : state.peer.name;
@@ -86,10 +94,8 @@ class HarmonySharePeerAvatar extends StatelessWidget {
                                     ),
                                   ],
                                 )
-                              : Icon(
-                                  Icons.phone_android_rounded,
-                                  size: 38,
-                                  color: colors.onSurface,
+                              : ClipOval(
+                                  child: AppAssetImage(logoAsset),
                                 ),
                         ),
                         if (sending)
