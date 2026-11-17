@@ -1,6 +1,6 @@
 part of '../dashboard_screen.dart';
 
-// 在线、Root 授权与充电状态使用固定成功色，与主题装饰色分开。
+// 在线状态使用固定成功色，与主题装饰色分开。
 const _overviewSuccess = AppPalette.primary;
 
 /// 按窗口宽度组织设备摘要、重点指标和详细参数。
@@ -263,7 +263,7 @@ class _OverviewStatusChip extends StatelessWidget {
   }
 }
 
-/// 展示当前 Android 设备的 su 授权检测结果，不把查询失败当作未 Root。
+/// 以中性灰展示 Android 设备的 su 授权检测结果，不把查询失败当作未 Root。
 class _OverviewRootChip extends StatelessWidget {
   const _OverviewRootChip({required this.status});
 
@@ -272,9 +272,7 @@ class _OverviewRootChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRooted = status?.value;
-    final color = isRooted == true
-        ? _overviewSuccess
-        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
     final label = status?.isLoading == true
         ? context.l10n.t('checkingRoot')
         : isRooted == null

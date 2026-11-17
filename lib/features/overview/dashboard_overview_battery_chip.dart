@@ -1,6 +1,6 @@
 part of '../dashboard_screen.dart';
 
-/// 概览身份卡展示电量和充电状态；未知数据使用中性占位，避免显示旧在线标记。
+/// 概览身份卡以中性灰展示电量；满电时省略状态文字，未知数据使用占位。
 class _OverviewBatteryChip extends StatelessWidget {
   const _OverviewBatteryChip({required this.battery});
 
@@ -10,18 +10,11 @@ class _OverviewBatteryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final level = battery?.level;
     final state = battery?.chargingState ?? DeviceChargingState.unknown;
-    final colorScheme = Theme.of(context).colorScheme;
-    final color =
-        state == DeviceChargingState.charging ||
-            state == DeviceChargingState.full
-        ? _overviewSuccess
-        : level != null && level <= 20
-        ? colorScheme.error
-        : colorScheme.onSurfaceVariant;
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
     final stateKey = switch (state) {
       DeviceChargingState.charging => 'batteryCharging',
       DeviceChargingState.notCharging => 'batteryNotCharging',
-      DeviceChargingState.full => 'batteryFull',
+      DeviceChargingState.full => null,
       DeviceChargingState.unknown =>
         level == null ? 'batteryUnknown' : 'chargeStatusUnknown',
     };
@@ -52,14 +45,16 @@ class _OverviewBatteryChip extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: 6),
-            Text(
-              context.l10n.t(stateKey),
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
+            if (stateKey != null) ...[
+              const SizedBox(width: 6),
+              Text(
+                context.l10n.t(stateKey),
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
