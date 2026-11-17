@@ -5,7 +5,7 @@ const deviceWorkspaceZh = {
   'deviceWorkspaceConnectIp': '通过 IP 连接',
   'deviceWorkspaceJoinShare': '加入共享设备',
   'deviceWorkspaceUsbHint': 'USB 设备连接并授权后自动出现',
-  'deviceWorkspaceSubtitle': '你的设备，一目了然',
+  'deviceWorkspaceSubtitle': '统一管理Android、Harmony、iOS设备',
   'deviceWorkspaceConnect': '连接设备',
   'deviceWorkspaceReconnect': '重新连接',
   'deviceWorkspaceDisconnected': '设备未连接',

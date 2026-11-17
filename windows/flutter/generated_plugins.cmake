@@ -7,9 +7,9 @@ list(APPEND FLUTTER_PLUGIN_LIST
   desktop_multi_window
   file_selector_windows
   flutter_inappwebview_windows
-  media_kit_video
   screen_retriever_windows
   tray_manager
+  media_kit_video
   window_manager
 )
 

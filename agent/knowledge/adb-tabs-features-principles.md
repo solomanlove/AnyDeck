@@ -56,7 +56,7 @@
 
 - 原因：厂商系统 helper 缺少三星分支，`customOs` 返回 `-`；旧 l10n 将这个未知状态显示为“原生 Android / Stock Android”。品牌 Logo 与 ROM 识别走不同链路，因此出现三星 Logo 正确、系统却误报的情况。
 - 实现：复用整包属性中的 `ro.build.version.oneui`，以十进制读取 `major * 10000 + minor * 100 + patch`，例如 `90000 → One UI 9.0`、`60101 → One UI 6.1.1`；补丁位为零时省略。编码方式交叉核对 [Fastfetch 源码](https://github.com/fastfetch-cli/fastfetch/blob/dev/src/detection/displayserver/displayserver_android.c)，属性读取也见 [Material Components 源码](https://github.com/material-components/material-components-android/blob/master/lib/java/com/google/android/material/color/DynamicColors.java)。
-- 边界：属性缺失、空值、`unknown`、零、负数、主版本为零或非十进制整数均返回未知；不根据 Samsung 品牌、型号、Android release 或 API Level 推测 One UI。已有其他 ROM 检查保留优先级。`customOsUnknown` 同步改为中英文未知文案；旧缓存仍兼容 `-`，在线刷新后写入正确版本，离线继续使用缓存。
+- 边界：属性缺失、空值、`unknown`、零、负数、主版本为零或非十进制整数均返回未知；不根据 Samsung 品牌、型号、Android release 或 API Level 推测 One UI。旧缓存仍兼容 `-`，在线刷新后写入正确版本，离线继续使用缓存。后续按用户要求将未知系统文案恢复为“原生 Android / Stock Android”，见 [多品牌系统识别巡检](adb-custom-os-detection.md)。
 - 真机证据：只读查询已连接的 `SM-F9710`，返回 `oneui=90000`、`release=17`、`sdk=37`；将本次真机属性传入修复后的 Dart helper，得到 `One UI 9.0`。未启动桌面 App，最终运行包画面待验收。
 - 影响范围：仅调整共享解析 helper 和 l10n，不增加依赖、Provider、缓存字段、ADB 请求或轮询；沿用原有主题与多窗口语言机制，不涉及投屏、设备写操作或 UI 布局。
 - 自动回归：`android_version_helper_test.dart` 覆盖主/次/补丁与双位主版本、空白清理及非法属性；`device_overview_test.dart` 覆盖旧缓存刷新、Android/One UI 版本分离及离线回退；`overview_custom_os_test.dart` 覆盖中英文、Light/Dark、未知状态及 HarmonyOS/iOS 不展示 Android 厂商字段。同时回归原有概览布局、身份、iOS 与查询失败保护。
@@ -69,7 +69,7 @@
    - 随后异步发起 ADB 查询，并在获取到最新数据后静默刷新 UI，同步更新缓存。
    - 连接列表由 `deviceRegistryProvider` 维护轻量缓存，在线设备被发现后会立即异步读取 `getprop ro.build.version.release` 与 `getprop ro.build.version.sdk`，并持久化 `androidVersion`（格式 `Android <release> (API <sdk>)`）和 `sdkVersion`。后续再补齐 `serial`、`model`、`product` 和 Wi-Fi IP，且 USB/Wi-Fi 合并后会保留同一份版本缓存。
    - 概览页的 Android 版本展示优先复用 `deviceRegistryProvider` 的全局版本值，不再依赖概览页首次查询版本；其他业务逻辑应通过 `deviceAndroidVersionProvider(deviceId)` 或 `deviceSdkVersionProvider(deviceId)` 读取版本，避免重复执行版本查询命令。
-   - 概览页“厂商系统”由 `DeviceInfoService` 已执行的整包 `getprop` 结果解析，不新增 ADB 子进程。`AndroidVersionHelper.getCustomOsVersion` 统一识别 HarmonyOS、MagicOS、EMUI、HyperOS、MIUI、ColorOS、OxygenOS、realme UI、OriginOS/Funtouch OS、Flyme 和 One UI；识别结果通过 `DeviceOverview.customOs` 缓存并展示，未命中时由 l10n 显示“未识别 / Not detected”，不将缺失识别结果当作原生 Android。
+   - 概览页“厂商系统”由 `DeviceInfoService` 已执行的整包 `getprop` 结果解析，不新增 ADB 子进程。`AndroidVersionHelper.getCustomOsVersion` 统一处理品牌 ROM 与显式刷机系统属性，具体属性、优先级和验证边界见 [Android 厂商系统版本识别](adb-custom-os-detection.md)；识别结果通过 `DeviceOverview.customOs` 缓存并展示，未命中时按用户要求由 l10n 显示“原生 Android / Stock Android”。
    - `androidVersion` 仅保留 Android release 与 API Level，厂商系统独立展示，避免同一信息在两个概览卡片重复出现。旧版 Overview 缓存没有 `customOs` 时按 `-` 兼容读取，设备在线刷新后自动补齐。
    - Overview UI 以 `DiscoveredDevice.isHarmony` 为纯血鸿蒙设备的 source-of-truth。HarmonyOS NEXT 将 HDC 已写入 `DeviceOverview.androidVersion` 的系统版本显示为“鸿蒙系统版本”，标题后的 info icon 直接以 HarmonyOS 为初始平台打开版本与 API 分布窗口，不展示 Android API mapping tooltip；同时不构建“厂商系统”字段，避免出现“原生 Android（或未检测到）”误导提示。Android 与 iOS 的现有版本展示不受影响。
 2. **核心属性查询命令**：

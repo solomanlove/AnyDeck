@@ -78,3 +78,5 @@ app.*.map.json
 
 # go-ios 自动下载的 iOS 开发者镜像缓存
 /devimages/
+# Widget Preview related
+.widget_preview/

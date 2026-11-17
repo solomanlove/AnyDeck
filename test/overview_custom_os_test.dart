@@ -9,7 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 验证厂商系统版本和未识别兜底，隔离真实设备查询与桌面插件。
+/// 验证厂商系统版本和原生 Android 兜底，隔离真实设备查询与桌面插件。
 void main() {
   for (final language in ['zh', 'en']) {
     for (final brightness in [Brightness.light, Brightness.dark]) {
@@ -34,7 +34,7 @@ void main() {
       });
 
       for (final customOs in ['-', '']) {
-        testWidgets('缺失厂商系统不误报原生 Android $customOs $language $brightness', (
+        testWidgets('缺失厂商系统显示原生 Android $customOs $language $brightness', (
           tester,
         ) async {
           await _pumpOverview(
@@ -45,11 +45,11 @@ void main() {
           );
 
           expect(
-            find.text(language == 'zh' ? '未识别' : 'Not detected'),
+            find.text(language == 'zh' ? '原生 Android' : 'Stock Android'),
             findsOneWidget,
           );
-          expect(find.text('原生 Android'), findsNothing);
-          expect(find.text('Stock Android'), findsNothing);
+          expect(find.text('未识别'), findsNothing);
+          expect(find.text('Not detected'), findsNothing);
           expect(find.text('One UI 9.0'), findsNothing);
           expect(tester.takeException(), isNull);
         });
@@ -73,7 +73,7 @@ void main() {
             findsNothing,
           );
           expect(
-            find.text(language == 'zh' ? '未识别' : 'Not detected'),
+            find.text(language == 'zh' ? '原生 Android' : 'Stock Android'),
             findsNothing,
           );
           expect(tester.takeException(), isNull);
