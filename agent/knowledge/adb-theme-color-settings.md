@@ -95,3 +95,18 @@ flutter --no-version-check test --no-pub \
 ```
 
 本轮 9 个相关测试文件共 56 项全部通过；4 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（8 项 SDK 弃用 info）。新增测试格式与 `git diff --check` 通过，未启动桌面 App。
+
+## 2026-11-17 投屏接收页开关显式配色
+
+- AirPlay 与 DLNA 共用 `ReceiverServiceCard`，启停开关在公共组件中显式绑定 `ColorScheme.primary/onPrimary`，使轨道与滑块在组件独立复用或局部 Theme 覆盖时也保持主题色。
+- 保留自适应外观、启停回调、忙碌时的 Loading 和服务状态语义色；主题切换不重置接收名称或运行状态。
+- `receiver_theme_color_test.dart` 直接挂载两种实际协议卡片，在 macOS/iOS × Light/Dark 下禁用全局 Cupertino 主题兜底，检查蓝色切换紫色后的 Canvas 轨道绘制，以及名称草稿、卡片状态和关闭状态。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/receiver_theme_color_test.dart test/receiver_dashboard_tab_test.dart \
+  test/receiver_name_setting_field_test.dart test/mcp_access_theme_test.dart \
+  test/app_theme_test.dart
+```
+
+本轮 5 个相关测试文件共 39 项全部通过；2 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（4 项 SDK 弃用 info）。新增测试格式与 `git diff --check` 通过，未启动桌面 App。
