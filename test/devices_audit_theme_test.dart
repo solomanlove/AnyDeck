@@ -10,10 +10,12 @@ import 'package:any_deck/core/emulator/ios/ios_simulator.dart';
 import 'package:any_deck/core/emulator/ios/ios_simulator_providers.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
+import 'package:any_deck/features/devices/model/device_context_action.dart';
 import 'package:any_deck/features/devices/widgets/deveco_emulators_view.dart';
 import 'package:any_deck/features/devices/widgets/device_connection_indicators.dart';
 import 'package:any_deck/features/devices/widgets/ios_simulators_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -200,6 +202,26 @@ void main() {
       await withDeviceMenu(
         tester,
         (fixture) async {
+          // 进入批量模式保留预选快照，只有退出时才清空；菜单不再默认展示。
+          expect(find.byType(Checkbox), findsNothing);
+          await tester.tap(find.byKey(const Key('deviceBatchManage')));
+          await tester.pumpAndSettle();
+          final device = find.byKey(const ValueKey('device-wall-device-a'));
+          expect(
+            tester
+                .widget<Checkbox>(
+                  find.descendant(of: device, matching: find.byType(Checkbox)),
+                )
+                .value,
+            isTrue,
+          );
+          final actions = find.byKey(const Key('deviceBatchActions'));
+          expect(
+            tester.widget<PopupMenuButton<String>>(actions).enabled,
+            isTrue,
+          );
+          await tester.tap(actions);
+          await tester.pumpAndSettle();
           await tester.tap(find.text('计划任务'));
           await tester.pumpAndSettle();
           final label = find.text('创建新任务');
@@ -212,6 +234,16 @@ void main() {
           await tester.tap(find.text('任务管理列表'));
           await tester.pumpAndSettle();
           expect(find.text('暂无计划任务'), findsOneWidget);
+          expect(
+            DefaultTextStyle.of(
+              tester.element(find.text('任务管理列表')),
+            ).style.color,
+            theme.colorScheme.primary,
+          );
+          expect(
+            fixture.router.routeInformationProvider.value.uri.path,
+            '/devices',
+          );
           expect(tester.takeException(), isNull);
         },
         devices: [deviceMenuAndroid.copyWith(isChecked: true)],
@@ -220,40 +252,73 @@ void main() {
       );
     });
 
-    testWidgets('设备列表 AirPlay 活跃行和分辨率跟随主题 $brightness', (tester) async {
+    testWidgets('AirPlay 在设备墙与列表保留状态、主题与可用投屏入口 $brightness', (tester) async {
       for (final selected in [AppThemeColor.blue, AppThemeColor.pink]) {
         await withDeviceMenu(
           tester,
           (fixture) async {
-            final resolution = find.text('720 × 1280');
-            expect(resolution, findsOneWidget);
-            expect(
-              tester.widget<Text>(resolution).style!.color,
-              selected.color,
-            );
-            final rowFill = selected.color.withValues(
-              alpha: brightness == Brightness.dark ? 0.10 : 0.06,
-            );
-            expect(
-              tester
-                  .widgetList<Container>(
-                    find.ancestor(
-                      of: resolution,
-                      matching: find.byType(Container),
-                    ),
-                  )
-                  .where(
-                    (widget) =>
-                        widget.decoration is BoxDecoration &&
-                        (widget.decoration! as BoxDecoration).color == rowFill,
+            final l10n = AppLocalizations(const Locale('zh'));
+            for (final view in ['wall', 'list', 'wall']) {
+              final switcher = find.byKey(Key('deviceView-$view'));
+              await tester.tap(switcher);
+              await tester.pumpAndSettle();
+              expect(
+                tester
+                    .widget<TextButton>(switcher)
+                    .style
+                    ?.foregroundColor
+                    ?.resolve({}),
+                selected.color,
+              );
+              final device = find.byKey(
+                ValueKey('device-${view == 'wall' ? 'wall' : 'row'}-airplay-1'),
+              );
+              final status = find.descendant(
+                of: device,
+                matching: find.text(
+                  l10n.t(
+                    view == 'wall'
+                        ? 'deviceWorkspaceAirplay'
+                        : 'deviceWorkspaceAirplayConnection',
                   ),
-              hasLength(1),
-            );
-            expect(find.text('AirPlay LIVE'), findsOneWidget);
-            expect(
-              fixture.router.routeInformationProvider.value.uri.path,
-              '/devices',
-            );
+                ),
+              );
+              expect(status, findsOneWidget);
+              final theme = Theme.of(tester.element(status));
+              expect(theme.colorScheme.primary, selected.color);
+              expect(
+                tester.widget<Text>(status).style?.color,
+                theme.appColors.success,
+              );
+
+              // 更多入口确实提供可用投屏操作，查看与关闭菜单不切走当前设备页。
+              await tester.tap(
+                find.descendant(of: device, matching: find.byType(IconButton)),
+              );
+              await tester.pumpAndSettle();
+              final entries = tester
+                  .widgetList<PopupMenuItem<DeviceContextAction>>(
+                    find.byType(PopupMenuItem<DeviceContextAction>),
+                  );
+              expect(entries.map((entry) => entry.value), [
+                DeviceContextAction.mirror,
+              ]);
+              expect(entries.single.enabled, isTrue);
+              expect(
+                fixture.router.routeInformationProvider.value.uri.path,
+                '/devices',
+              );
+              await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+              await tester.pumpAndSettle();
+              expect(
+                find.byType(PopupMenuItem<DeviceContextAction>),
+                findsNothing,
+              );
+              expect(
+                fixture.router.routeInformationProvider.value.uri.path,
+                '/devices',
+              );
+            }
             expect(tester.takeException(), isNull);
           },
           devices: const [],

@@ -44,7 +44,7 @@ HDC 截图收发按请求使用独立临时目录与远端文件名，finally �
 ## 紧凑布局与品牌资源
 
 - 页头复用一级页面公共标题栏：默认字号最小高度 72px、左右留白 28px；内容仍保留紧凑布局，左右留白 16px（中窄窗口 12px，手机窗口 8px），顶部留白 10–12px。
-- 列表行默认 60px、上下内边距 7px；连接方式列统一 80px，显示图标与 USB / Wi-Fi 等短文案，Tooltip 和读屏保留完整状态。
+- 列表行最小 60px、上下内边距 7px；连接方式列保持 80px，纵向显示所有在线 USB / TCP/IP / Wi-Fi 通道，Tooltip 和读屏保留完整状态。系统版本独立列为 160px，长版本与窄屏行内版本均完整换行，不省略 API 信息。
 - 列表恢复原 `DeviceStatusAvatar`；`cacheOnly: true` 仅读取缓存品牌，避免为整个设备列表触发完整硬件探测，其他调用方默认行为不变。
 - 手机墙复用 `BrandLogoHelper` 与原品牌资源；截图成功后名称旁仍保留品牌 Logo，未取到画面时用原 Logo 封面。
 - 手机外框宽 120px，单卡基础宽 148px，卡片内间距收紧；操作点击区保留 40px，窄窗口与放大字体仍按内容适配。
@@ -183,3 +183,34 @@ Shell 为 `PrimaryRail` 单独提供原应用 Theme，设备页中性主题仍�
 新增 `dashboard_restored_rail_test.dart` 的 26 项侧栏回归，连同设备响应式、工作区、全局导航、
 服务导航、Shell 导航及桌面窗口共 7 份测试、85 项全部通过；定向静态分析无 error/warning，仅有现有 SDK 弃用 info。
 实际 Widget 已导出原侧栏的列表和设备墙预览；未启动完整 App 或执行真机连接。
+
+
+## 完整系统版本与并存连接通道（2026-11-17）
+
+系统版本两处 Text 移除 ellipsis，不设置最大行数，窄屏移到名称下方时仍保留完整原文。
+桌面独立列和表头共同使用 `_DeviceTableLayout.systemWidth = 160`，常规 Android 版本及 API 有足够空间，
+较长厂商版本允许换行并自然增高设备行，不靠挤宽连接列解决内容截断。
+
+`DeviceListPresentation.connections` 返回全部在线 `DeviceConnectionKind`，列表与设备墙共享通道集合。
+`DeviceConnectionIndicators(showLabels: true)` 在原 80px 连接列纵向排列图标与 USB / TCP/IP / Wi-Fi 短名称，
+逐项 Tooltip 使用完整本地化说明，聚合 Semantics 包含所有通道；此模式继承父行点击以支持批量选择。
+默认小图标模式继续用于原调用方；展示逻辑不改变注册表合并、连接优先级或实际命令使用的 transport。
+
+在线设备的 connections 由原 merger 只保留在线候选，离线和未授权的历史地址不显示成活跃通道；
+同类多个端点只生成一个标记。iOS 只依据 USB / Network 发现类型，未知类型显示未知连接；
+Harmony 的 HDC 网络端口只计入 TCP，不重复当成 Android TLS 无线调试；共享设备只展示 TCP Bridge；
+AirPlay 会话独立保留，不因有投屏会话而重新显示离线的 USB / 网络历史记录。
+
+验证包括 USB+TCP+TLS、逐条断开、去重、离线历史门禁、三平台/共享/AirPlay 边界，
+以及完整 Dashboard 中英明暗、80px 列宽、长版本和 320px / 1.6 倍字号的实际布局。
+默认图标模式保留原 USB / AirPlay Tooltip；新增文案模式使用完整连接状态，避免影响其他既有入口。
+导出的 Widget 预览使用测试设备快照演示多通道显示，不代表新建了这些连接；未启动完整 App。
+
+本轮同步维护主题审计用例的改版入口：计划任务先进入显式批量管理，再打开批量操作菜单；
+AirPlay 按设备墙/列表切换验证状态、当前主色与可用投屏菜单，移除改版前分辨率和旧徽章断言。
+共享 fixture 与生产交互未因测试调整。
+
+验证结果：8 份连接/列表/设备墙/工作区回归共 77 项、主题审计 12 项，合计 89 项通过；
+另导出 Widget 预览 1 项通过。定向 `flutter analyze --no-pub --no-fatal-infos` 无 error / warning，
+保留当前 Flutter SDK 对既有 Material / Cupertino / 本地化入口的弃用 info，不扩大为全库迁移。
+所有新增或调整的 Dart 文件均低于 500 行；未运行完整 App，也未为演示主动建立设备连接。

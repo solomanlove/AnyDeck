@@ -282,7 +282,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                 ),
               if (!layout.systemInline)
                 SizedBox(
-                  width: 108,
+                  width: _DeviceTableLayout.systemWidth,
                   child: Text(
                     context.l10n.t('deviceAndroidVersionCol'),
                     style: style,

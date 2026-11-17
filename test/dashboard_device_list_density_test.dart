@@ -16,6 +16,7 @@ import 'package:any_deck/core/receiver/receiver_identity.dart';
 import 'package:any_deck/features/devices/widgets/device_status_avatar.dart';
 import 'package:any_deck/features/devices/widgets/device_tag_badge.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,7 +32,7 @@ const _devices = [
     status: 'device',
     isOnline: true,
     ipAddress: '192.168.1.10',
-    androidVersion: 'Android 15',
+    androidVersion: 'Android 15 (API 35)',
     tags: ['主力机'],
   ),
   RegisteredDevice(
@@ -39,7 +40,7 @@ const _devices = [
     model: 'HONOR Magic V6',
     status: 'device',
     isOnline: true,
-    androidVersion: 'Android 15',
+    androidVersion: 'Android 17 (API 37)',
     tags: ['', '  '],
   ),
   RegisteredDevice(
@@ -212,7 +213,7 @@ void main() {
         final usb = find.byKey(
           const ValueKey('device-status-column-logo-xiaomi'),
         );
-        final wifi = find.byKey(
+        final tcp = find.byKey(
           const ValueKey('device-status-column-192.168.1.11:5555'),
         );
         expect(
@@ -220,15 +221,15 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.descendant(of: wifi, matching: find.text('Wi-Fi')),
+          find.descendant(of: tcp, matching: find.text('TCP/IP')),
           findsOneWidget,
         );
         expect(
-          find.descendant(of: usb, matching: find.byIcon(Icons.usb_rounded)),
+          find.descendant(of: usb, matching: find.byType(Icon)),
           findsOneWidget,
         );
         expect(
-          find.descendant(of: wifi, matching: find.byIcon(Icons.wifi_rounded)),
+          find.descendant(of: tcp, matching: find.byType(Icon)),
           findsOneWidget,
         );
         expect(
@@ -236,12 +237,73 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.byTooltip(language == 'zh' ? 'Wi-Fi 已连接' : 'Wi-Fi connected'),
+          find.byTooltip(language == 'zh' ? 'TCP/IP 连接' : 'TCP/IP Connection'),
           findsOneWidget,
         );
         expect(fullOverviewReads, 0, reason: '恢复品牌Logo不应启动每台设备的完整硬件探测');
         expect(find.byType(Checkbox), findsNothing);
         expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('完整版本与三种在线通道在宽窄列表同时展示 $language ${brightness.name}', (
+        tester,
+      ) async {
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        for (final width in [1200.0, 320.0]) {
+          tester.view.physicalSize = Size(width, 1100);
+          // 大字号覆盖窄屏设备区域，避免扩大到原侧栏固定身份栏的布局职责。
+          final container = await _pumpDashboard(
+            tester,
+            language: language,
+            brightness: brightness,
+            textScale: width == 320 ? 1.6 : 1,
+          );
+          (container.read(deviceRegistryProvider.notifier) as _Registry)
+              .setDetails();
+          await tester.tap(find.byKey(const Key('deviceView-list')));
+          await tester.pumpAndSettle();
+          final row = find.byKey(const ValueKey('device-row-logo-xiaomi'));
+          final version = find.descendant(
+            of: row,
+            matching: find.text(_fullVersion),
+          );
+          final text = tester.widget<Text>(version);
+          expect(text.maxLines, isNull);
+          expect(text.overflow, isNot(TextOverflow.ellipsis));
+          expect(
+            tester.renderObject<RenderParagraph>(version).didExceedMaxLines,
+            isFalse,
+          );
+          expect(
+            tester.getRect(version).bottom,
+            lessThanOrEqualTo(tester.getRect(row).bottom),
+          );
+          for (final label in ['USB', 'TCP/IP', 'Wi-Fi']) {
+            final channel = find.descendant(
+              of: row,
+              matching: find.text(label),
+            );
+            expect(channel, findsOneWidget);
+            expect(
+              tester.getRect(channel).bottom,
+              lessThanOrEqualTo(tester.getRect(row).bottom),
+            );
+          }
+          if (width == 1200) {
+            expect(
+              tester
+                  .getSize(
+                    find.byKey(
+                      const ValueKey('device-status-column-logo-xiaomi'),
+                    ),
+                  )
+                  .width,
+              80,
+            );
+          }
+          expect(tester.takeException(), isNull);
+        }
       });
 
       testWidgets('320px多标签及长标签在列表和设备墙无溢出 $language ${brightness.name}', (
@@ -303,7 +365,20 @@ void main() {
   }
 }
 
+const _fullVersion = 'OpenHarmony 6.1.0.115 (API 23)';
+
 class _Registry extends DeviceRegistryNotifier {
+  // 发布三条实际在线通道和长系统版本，验证 UI 不再只展示 USB。
+  void setDetails() {
+    state = [
+      state.first.copyWith(
+        androidVersion: _fullVersion,
+        connections: ['logo-xiaomi', '192.168.1.10:5555', '192.168.1.10:37123'],
+      ),
+      ...state.skip(1),
+    ];
+  }
+
   @override
   List<RegisteredDevice> build() => _devices;
 

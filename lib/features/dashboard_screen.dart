@@ -122,6 +122,7 @@ import 'devices/widgets/device_wall_card.dart';
 import 'devices/controller/device_screen_preview_controller.dart';
 import 'devices/widgets/device_screen_preview.dart';
 import 'devices/widgets/device_connection_menu.dart';
+import 'devices/widgets/device_connection_indicators.dart';
 import 'devices/widgets/device_tag_badge.dart';
 import 'devices/model/device_context_action.dart';
 import 'devices/widgets/host_network_footer.dart';

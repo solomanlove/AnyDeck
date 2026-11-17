@@ -152,19 +152,27 @@ extension _DeviceWallPanel on _DeviceListPanelState {
         : device.wifiIp;
   }
 
+  /// 列表、设备墙与读屏使用同一组在线通道，避免 USB 优先掩盖网络连接。
   String _workspaceStatus(
     BuildContext context,
     RegisteredDevice device,
     AirPlaySessionData? session,
-  ) => context.l10n.t(
-    session != null
-        ? 'deviceWorkspaceAirplay'
-        : !device.isOnline
-        ? DeviceListPresentation.statusKey(device)
-        : device.hasUsbConnection
-        ? 'deviceWorkspaceUsbConnected'
-        : 'deviceWorkspaceWifiConnected',
-  );
+  ) {
+    final channels = DeviceListPresentation.connections(
+      device,
+      isAirplayMirroring: session != null,
+    );
+    if (channels.isEmpty) {
+      return context.l10n.t(
+        device.isOnline
+            ? 'connectionUnknown'
+            : DeviceListPresentation.statusKey(device),
+      );
+    }
+    return channels
+        .map((channel) => context.l10n.t(channel.fullLabelKey))
+        .join(' · ');
+  }
 
   void _toggleDeviceSelection(RegisteredDevice device) {
     if (!device.id.startsWith('airplay-')) {

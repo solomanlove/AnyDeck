@@ -99,7 +99,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontSize: 11,
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                                softWrap: true,
                               ),
                             if (layout.statusInline)
                               _deviceStatus(
@@ -124,12 +124,15 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                   ),
                 if (!layout.systemInline)
                   SizedBox(
-                    width: 108,
+                    width: _DeviceTableLayout.systemWidth,
                     key: ValueKey('device-system-column-${device.id}'),
-                    child: Text(
-                      device.androidVersion ?? '-',
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Text(
+                        device.androidVersion ?? '-',
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+                        softWrap: true,
+                      ),
                     ),
                   ),
                 if (!_batchMode)
@@ -155,54 +158,12 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     RegisteredDevice device,
     AirPlaySessionData? session, {
     Key? key,
-  }) {
-    final fullStatus = _workspaceStatus(context, device, session);
-    final color = device.isOnline
-        ? Theme.of(context).appColors.success
-        : Theme.of(context).colorScheme.onSurfaceVariant;
-    final label = session != null
-        ? context.l10n.t('deviceWorkspaceAirplayConnection')
-        : !device.isOnline
-        ? fullStatus
-        : context.l10n.t(
-            device.hasUsbConnection
-                ? 'deviceWorkspaceUsb'
-                : 'deviceWorkspaceWifi',
-          );
-    // 列内只显示通道短名称，完整连接状态由 Tooltip 与读屏语义保留。
-    return Tooltip(
-      message: fullStatus,
-      child: Semantics(
-        label: fullStatus,
-        excludeSemantics: true,
-        child: Row(
-          key: key,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              session != null
-                  ? Icons.cast
-                  : !device.isOnline
-                  ? Icons.link_off_rounded
-                  : device.hasUsbConnection
-                  ? Icons.usb_rounded
-                  : Icons.wifi_rounded,
-              size: 14,
-              color: color,
-            ),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, color: color),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  }) => DeviceConnectionIndicators(
+    key: key,
+    device: device,
+    isAirplayMirroring: session != null,
+    showLabels: true,
+  );
 
   /// 读取与设备墙同源的 WLAN IP，不额外发起全量概览探测。
   Widget _buildIdentifierSubtitle(
@@ -363,6 +324,9 @@ class _DeviceTableLayout {
     required this.actionsWidth,
   });
 
+  /// 版本独立列留出完整常规版本与 API 空间，长版本仍允许自然换行。
+  static const systemWidth = 160.0;
+
   final bool phone;
   final bool systemInline;
   final bool statusInline;
@@ -385,7 +349,7 @@ class _DeviceTableLayout {
         : 155.0;
     var systemInline = windowWidth <= 730;
     var statusInline = phone;
-    if (!systemInline && inner - actionsWidth - statusWidth - 108 < 84) {
+    if (!systemInline && inner - actionsWidth - statusWidth - systemWidth < 84) {
       systemInline = true;
     }
     if (!statusInline && inner - actionsWidth - statusWidth < 84) {
