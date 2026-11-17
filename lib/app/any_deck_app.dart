@@ -38,8 +38,8 @@ class AnyDeckApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
-      theme: buildAppTheme(Brightness.light),// 光明主题
-      darkTheme: buildAppTheme(Brightness.dark),// 暗黑主题
+      theme: buildAppTheme(Brightness.light, themeColor: settings.themeColor),// 光明主题
+      darkTheme: buildAppTheme(Brightness.dark, themeColor: settings.themeColor),// 暗黑主题
       themeMode: settings.themeMode,// 主题模式
       routerConfig: router,
       builder: (context, child) => DesktopWindowFrame(

@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 
-import 'app_palette.dart';
+import 'app_theme_color.dart';
 import 'app_theme_colors.dart';
 import 'app_theme_sizes.dart';
 
 export 'app_palette.dart';
+export 'app_theme_color.dart';
 export 'app_theme_colors.dart';
 export 'app_theme_sizes.dart';
 
-/// 基于同一个种子色构建 Material 3 的浅色和深色主题。
-ThemeData buildAppTheme(Brightness brightness) {
-  const seed = AppPalette.primary;
+/// 根据用户选择的主色构建 Material 3 的浅色和深色主题。
+ThemeData buildAppTheme(
+  Brightness brightness, {
+  AppThemeColor themeColor = AppThemeColor.green,
+}) {
+  final seed = themeColor.color;
   final isDark = brightness == Brightness.dark;
   final appColors = isDark ? AppThemeColors.dark : AppThemeColors.light;
   final colorScheme =

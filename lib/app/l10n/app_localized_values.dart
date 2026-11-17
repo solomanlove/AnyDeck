@@ -18,6 +18,7 @@ import 'tables/app_l10n_huawei_share.dart';
 import 'tables/app_l10n_device_share.dart';
 import 'tables/app_l10n_virtual_camera.dart';
 import 'tables/app_l10n_autostart.dart';
+import 'tables/app_l10n_theme.dart';
 
 /// 全部 UI 文案字符串表。Widget 直接按 key 访问，key 应保持稳定。
 ///
@@ -51,6 +52,7 @@ const localizedValues = {
     ...deviceShareZh,
     ...virtualCameraZh,
     ...autoStartZh,
+    ...themeZh,
   },
   'en': {
     ...settingsEn,
@@ -73,5 +75,6 @@ const localizedValues = {
     ...deviceShareEn,
     ...virtualCameraEn,
     ...autoStartEn,
+    ...themeEn,
   },
 };

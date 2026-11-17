@@ -31,6 +31,7 @@ import '../window/desktop_window_manager_service.dart';
 import '../window/sub_window_method_dispatcher.dart';
 
 part 'app_settings_broadcast.dart';
+part 'app_settings_appearance.dart';
 part 'app_settings_tool_paths.dart';
 part 'app_settings_mirror_presets.dart';
 part 'app_settings_notifications.dart';
@@ -49,9 +50,10 @@ final appSettingsProvider =
     );
 
 /// 负责加载和保存设置，并通过乐观更新保持 UI 响应。
-class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, HarmonyTransferSettings, MirrorPresetSettings, ShortcutSettings, ReceiverNameSettings, ToolPathSettings {
+class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast, NotificationSettings, HarmonyNameSettings, HarmonyTransferSettings, MirrorPresetSettings, ShortcutSettings, ReceiverNameSettings, ToolPathSettings, AppearanceSettings {
   static const _languageKey = 'settings.language';
   static const _themeModeKey = 'settings.themeMode';
+  static const _themeColorKey = 'settings.themeColor';
   static const _scrcpyAlwaysOnTopKey = 'settings.scrcpyAlwaysOnTop';
   static const _mirrorControlsAlwaysVisibleKey =
       'settings.mirrorControlsAlwaysVisible';
@@ -86,6 +88,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
 
   Future<dynamic> _handleSettingsCall(MethodCall call) async {
     stdout.writeln('[SettingsController] _handleSettingsCall: method=${call.method}, args=${call.arguments}, currentWindowId=${ref.read(windowIdProvider)}');
+    if (call.method == 'update_theme_color') return _receiveThemeColor(call.arguments);
     if (call.method == 'resolve_receiver_names') {
       await ensureReceiverNames();
       return _receiverNamesSnapshot();
@@ -183,21 +186,6 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
         await _broadcastSettingChange('update_language', language.code);
       } catch (e) {
         debugPrint('Failed to broadcast language change: $e');
-      }
-    }
-  }
-
-  /// 更新当前主题模式，并持久化到下次启动。
-  Future<void> setThemeMode(ThemeMode themeMode, {bool broadcast = true}) async {
-    state = state.copyWith(themeMode: themeMode);
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_themeModeKey, themeMode.name);
-    await _syncVideoWindowAppearance(themeMode);
-    if (broadcast) {
-      try {
-        await _broadcastSettingChange('update_themeMode', themeMode.name);
-      } catch (e) {
-        debugPrint('Failed to broadcast theme mode change: $e');
       }
     }
   }
@@ -444,6 +432,7 @@ class AppSettingsController extends Notifier<AppSettings> with SettingsBroadcast
       language: language,
       toolPaths: toolPaths,
       themeMode: themeMode,
+      themeColor: AppThemeColor.fromName(preferences.getString(_themeColorKey)),
       scrcpyAlwaysOnTop: scrcpyAlwaysOnTop,
       mirrorControlsAlwaysVisible: mirrorControlsAlwaysVisible,
       mirrorVideoBitrate: mirrorVideoBitrate,

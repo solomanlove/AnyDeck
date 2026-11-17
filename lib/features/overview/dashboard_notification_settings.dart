@@ -22,7 +22,7 @@ extension _SettingsTabNotificationSection on _SettingsTab {
           label: context.l10n.t('deviceConnectNotification'),
           subtitle: context.l10n.t('deviceConnectNotificationDesc'),
           child: CupertinoSwitch(
-            activeTrackColor: const Color(0xFF34C759),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: settings.deviceConnectNotification,
             onChanged: (val) async {
               if (val && Platform.isMacOS) {
@@ -47,7 +47,7 @@ extension _SettingsTabNotificationSection on _SettingsTab {
           label: context.l10n.t('notificationBodyPreview'),
           subtitle: context.l10n.t('notificationBodyPreviewDesc'),
           child: CupertinoSwitch(
-            activeTrackColor: const Color(0xFF34C759),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: settings.notificationBodyPreview,
             onChanged: (val) => controller.setNotificationBodyPreview(val),
           ),
@@ -130,7 +130,7 @@ extension _SettingsTabNotificationSection on _SettingsTab {
         content: Text(context.l10n.t('notificationPermissionDenied')),
         action: SnackBarAction(
           label: context.l10n.t('openSystemSettings'),
-          textColor: AppPalette.primary,
+          textColor: Theme.of(context).colorScheme.primary,
           onPressed: () => bridge.openNotificationSettings(),
         ),
         duration: const Duration(seconds: 5),

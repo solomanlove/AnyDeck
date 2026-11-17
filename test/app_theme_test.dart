@@ -26,4 +26,37 @@ void main() {
       ),
     );
   });
+
+  for (final brightness in Brightness.values) {
+    for (final color in AppThemeColor.values) {
+      test('${brightness.name} 下 ${color.name} 主题色用于组件并保留语义状态色', () {
+        final theme = buildAppTheme(brightness, themeColor: color);
+        final generated = ColorScheme.fromSeed(
+          seedColor: color.color,
+          brightness: brightness,
+        );
+        const selected = {WidgetState.selected};
+
+        expect(theme.colorScheme.primary, color.color);
+        expect(theme.colorScheme.primaryContainer, generated.primaryContainer);
+        expect(theme.colorScheme.secondary, generated.secondary);
+        expect(
+          theme.filledButtonTheme.style!.backgroundColor!.resolve({}),
+          color.color,
+        );
+        expect(
+          theme.outlinedButtonTheme.style!.foregroundColor!.resolve({}),
+          color.color,
+        );
+        expect(
+          theme.textButtonTheme.style!.foregroundColor!.resolve({}),
+          color.color,
+        );
+        expect(theme.checkboxTheme.fillColor!.resolve(selected), color.color);
+        expect(theme.radioTheme.fillColor!.resolve(selected), color.color);
+        expect(theme.appColors.success, AppPalette.primary);
+        expect(theme.appColors.warning, Colors.orange);
+      });
+    }
+  }
 }

@@ -89,8 +89,8 @@ class MirrorWindowApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
-      theme: buildAppTheme(Brightness.light),
-      darkTheme: buildAppTheme(Brightness.dark),
+      theme: buildAppTheme(Brightness.light, themeColor: settings.themeColor),
+      darkTheme: buildAppTheme(Brightness.dark, themeColor: settings.themeColor),
       themeMode: settings.themeMode,
       home: WindowCloseShortcut(
         autofocus: false,

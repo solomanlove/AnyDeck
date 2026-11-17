@@ -78,7 +78,10 @@ void main() {
           addTearDown(container.dispose);
           addTearDown(share.dispose);
           final l10n = AppLocalizations(Locale(language));
-          final theme = buildAppTheme(brightness);
+          final theme = buildAppTheme(
+            brightness,
+            themeColor: AppThemeColor.blue,
+          );
           final runningHint = l10n.t('navigationServiceRunning');
 
           Future<void> pumpRail({bool receiverRunning = false}) async {
@@ -118,7 +121,7 @@ void main() {
             final entry = find.byTooltip(l10n.t(labelKey));
             expect(entry, findsOneWidget);
             final expectedColor = selected
-                ? AppPalette.primary
+                ? theme.colorScheme.primary
                 : theme.navigationForeground;
             final icon = find
                 .descendant(of: entry, matching: find.byType(Icon))
@@ -153,10 +156,20 @@ void main() {
                     : Colors.transparent,
               );
             }
-            expect(
-              find.descendant(of: entry, matching: find.byTooltip(runningHint)),
-              running ? findsOneWidget : findsNothing,
+            final status = find.descendant(
+              of: entry,
+              matching: find.byTooltip(runningHint),
             );
+            expect(status, running ? findsOneWidget : findsNothing);
+            if (running) {
+              final dot = tester.widget<Container>(
+                find.descendant(of: status, matching: find.byType(Container)),
+              );
+              expect(
+                (dot.decoration as BoxDecoration).color,
+                theme.appColors.success,
+              );
+            }
           }
 
           await pumpRail();
