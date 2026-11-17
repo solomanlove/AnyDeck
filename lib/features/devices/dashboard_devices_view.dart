@@ -129,6 +129,14 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       if (aMirroring && !bMirroring) return -1;
       if (!aMirroring && bMirroring) return 1;
 
+      // 版本按数字分段比较；缺失版本始终位于当前在线/投屏优先级末尾。
+      if (_sortColumn == 'systemVersion') {
+        final cmp = DeviceSystemVersionSort.compare(
+          a, b, ascending: _sortAscending,
+        );
+        return cmp != 0 ? cmp : a.id.compareTo(b.id);
+      }
+
       final cmp = switch (_sortColumn) {
         'name' => (names[a.id] ?? a.displayName).compareTo(names[b.id] ?? b.displayName),
         'status' => a.status.compareTo(b.status),
@@ -340,12 +348,14 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                   ),
                 ),
               if (!layout.systemInline)
-                SizedBox(
+                _SortableHeaderCell(
+                  key: const Key('deviceSystemVersionSort'),
+                  flex: 1,
                   width: _DeviceTableLayout.systemWidth,
-                  child: Text(
-                    context.l10n.t('deviceAndroidVersionCol'),
-                    style: style,
-                  ),
+                  label: context.l10n.t('deviceAndroidVersionCol'),
+                  style: style,
+                  sortIcon: _getSortIcon('systemVersion'),
+                  onTap: () => _toggleSort('systemVersion'),
                 ),
               if (!_batchMode)
                 SizedBox(
@@ -388,9 +398,12 @@ extension _DeviceListPanelView on _DeviceListPanelState {
 }
 
 /// 设备表头中带排序能力的单元格。
+/// [width] 指定固定列宽；为空时按 [flex] 分配剩余空间。
 class _SortableHeaderCell extends StatelessWidget {
   const _SortableHeaderCell({
+    super.key,
     required this.flex,
+    this.width,
     required this.label,
     required this.style,
     required this.sortIcon,
@@ -398,6 +411,7 @@ class _SortableHeaderCell extends StatelessWidget {
   });
 
   final int flex;
+  final double? width;
   final String label;
   final TextStyle? style;
   final Widget sortIcon;
@@ -405,26 +419,26 @@ class _SortableHeaderCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      flex: flex,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.zero,
-          child: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  style: style,
-                  overflow: TextOverflow.ellipsis,
-                ),
+    final content = InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.zero,
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: style,
+                overflow: TextOverflow.ellipsis,
               ),
-              sortIcon,
-            ],
-          ),
+            ),
+            sortIcon,
+          ],
         ),
       ),
     );
+    return width == null
+        ? Expanded(flex: flex, child: content)
+        : SizedBox(width: width, child: content);
   }
 }

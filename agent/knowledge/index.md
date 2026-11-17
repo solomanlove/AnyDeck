@@ -8,6 +8,7 @@
 
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
+| `adb-device-system-version-sort` | 设备系统版本排序 | active | 系统版本表头升降序、数字分段与 API 比较、未知值置底、在线/投屏优先及视图筛选回归 | `features/devices/` |
 | `adb-device-groups` | 设备平台与自定义分组 | active | 默认 Android/Harmony/iOS 自动归类、自定义多成员分组、物理身份升级、串行本地持久化、组合筛选、读写失败重试与窄屏回归 | `core/device_groups/`, `features/devices/` |
 | `adb-device-workspace-diagnostics` | 设备墙与全局服务诊断 | active | 紧凑手机墙/列表、完整版本与横排多通道状态、恢复原侧栏与主题隔离、图标连接菜单、原品牌Logo与设备标签、可见设备自动截图与有界并发、显式批量选择、本机IP状态栏、十二项真实服务检查、开发者入口复用与验证边界 | `features/devices/`, `features/diagnostics/`, `core/diagnostics/` |
 | `adb-macos-debug-destination` | macOS arm64e 构建兼容 | active | Debug generic destination、SDK 可恢复修复、Release 架构归一与打包脚本传参 | `macos/`, `script/` |
