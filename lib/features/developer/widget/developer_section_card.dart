@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:any_deck/app/theme/app_theme.dart';
 
 /// 开发者选项页面统一的卡片容器组件。
 ///
@@ -41,7 +40,7 @@ class DeveloperSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    const brandGreen = AppPalette.primary;
+    final primary = theme.colorScheme.primary;
 
     final cardBgColor = isDark
         ? const Color(0xff1e293b).withValues(alpha: 0.7)
@@ -75,10 +74,10 @@ class DeveloperSectionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: brandGreen.withValues(alpha: 0.12),
+                  color: primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: brandGreen, size: 20),
+                child: Icon(icon, color: primary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(

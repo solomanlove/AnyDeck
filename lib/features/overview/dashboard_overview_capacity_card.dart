@@ -72,7 +72,7 @@ class _OverviewCapacityCard extends ConsumerWidget {
                   child: LinearProgressIndicator(
                     minHeight: 8,
                     value: usage.ratio,
-                    color: _overviewAccent,
+                    color: Theme.of(context).colorScheme.primary,
                     backgroundColor: Theme.of(
                       context,
                     ).colorScheme.surfaceContainerHighest,

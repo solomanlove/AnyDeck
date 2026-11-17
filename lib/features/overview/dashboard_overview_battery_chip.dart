@@ -14,7 +14,7 @@ class _OverviewBatteryChip extends StatelessWidget {
     final color =
         state == DeviceChargingState.charging ||
             state == DeviceChargingState.full
-        ? _overviewAccent
+        ? _overviewSuccess
         : level != null && level <= 20
         ? colorScheme.error
         : colorScheme.onSurfaceVariant;

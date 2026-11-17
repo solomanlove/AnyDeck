@@ -49,7 +49,7 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
 
   @override
   Widget build(BuildContext context) {
-    const brandGreen = AppPalette.primary;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,7 +93,7 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
           subtitle: 'Custom Debug Entrypoints & Experimental Features',
           icon: CupertinoIcons.plus_app_fill,
           children: [
-            _buildExtensionPlaceholder(context, brandGreen),
+            _buildExtensionPlaceholder(context, primary),
           ],
         ),
       ],
@@ -118,7 +118,7 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
             _buildDebugChip(
               context,
               label: '成功提示 (Success)',
-              color: AppPalette.primary,
+              color: Theme.of(context).appColors.success,
               onTap: () => AppToast.show(context, '操作成功：数据已保存！', type: AppToastType.success),
             ),
             _buildDebugChip(
@@ -153,8 +153,8 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
       children: [
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppPalette.primary,
-            foregroundColor: Colors.white,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             elevation: 0,
           ),
@@ -214,29 +214,29 @@ class _DeveloperToolsSectionState extends ConsumerState<DeveloperToolsSection> {
   }
 
   /// 扩展插槽说明组件
-  Widget _buildExtensionPlaceholder(BuildContext context, Color brandGreen) {
+  Widget _buildExtensionPlaceholder(BuildContext context, Color primary) {
     final theme = Theme.of(context);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: brandGreen.withValues(alpha: 0.06),
+        color: primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: brandGreen.withValues(alpha: 0.2)),
+        border: Border.all(color: primary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(CupertinoIcons.hammer, color: brandGreen, size: 18),
+              Icon(CupertinoIcons.hammer, color: primary, size: 18),
               const SizedBox(width: 8),
               Text(
                 '调试入口与测试功能扩展说明',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: brandGreen,
+                  color: primary,
                   fontSize: 13,
                 ),
               ),

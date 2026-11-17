@@ -163,7 +163,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                   child: Text(
                     context.l10n.t(DeviceListPresentation.statusKey(device)),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: device.isOnline ? Theme.of(context).colorScheme.primary
+                      color: device.isOnline ? Theme.of(context).appColors.success
                           : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -306,9 +306,9 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
           // 1. 若设备在线且非 AirPlay 投屏状态，显示常规独立投屏按钮
           else if (canMirror) ...[
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 CupertinoIcons.tv,
-                color: Color(0xFF26A69A),
+                color: Theme.of(context).colorScheme.primary,
               ),
               tooltip: context.l10n.t('screenMirror'),
               onPressed: () => openStandaloneMirrorWindow(
@@ -337,12 +337,12 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
               ),
             ),
           ]
-          // 3. 若当前无激活无线连接但有已知的 Wi-Fi IP，则显示绿色“连接”按钮
+          // 3. 若当前无激活无线连接但有已知的 Wi-Fi IP，则显示主题色“连接”按钮
           else if (wifiIp != null && wifiIp.isNotEmpty) ...[
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 CupertinoIcons.link,
-                color: Colors.green,
+                color: Theme.of(context).colorScheme.primary,
               ),
               tooltip: context.l10n.t('connect'),
               onPressed: () => _runAdbAction(

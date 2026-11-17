@@ -244,8 +244,8 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
                         const SizedBox(width: 12),
                         Switch.adaptive(
                           value: isEnabled,
-                          activeThumbColor: AppPalette.primary,
-                          activeTrackColor: AppPalette.primary.withValues(alpha: 0.5),
+                          activeThumbColor: theme.colorScheme.primary,
+                          activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.5),
                           onChanged: (val) {
                             controller.toggleTool(tool.name, val);
                           },

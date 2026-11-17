@@ -71,6 +71,7 @@ class _FusionModeSettingRowState extends ConsumerState<FusionModeSettingRow> {
           ),
           CupertinoSwitch(
             key: const Key('fusionModeSwitch'),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: enabled,
             onChanged: available
                 ? (value) => _save(mode!.physicalDeviceKey!, value)

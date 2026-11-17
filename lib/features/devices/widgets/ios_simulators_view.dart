@@ -164,7 +164,8 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
               ? () => _bootSimulator(selected)
               : null,
           style: FilledButton.styleFrom(
-            backgroundColor: AppPalette.primary,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           ),
         ),
@@ -244,7 +245,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: item.isBooted
-                        ? AppPalette.primary
+                        ? Theme.of(context).appColors.success
                         : Colors.grey.shade400,
                   ),
                 ),
@@ -278,7 +279,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                     style: TextStyle(
                       fontSize: 12,
                       color: item.isBooted
-                          ? AppPalette.primary
+                          ? Theme.of(context).appColors.success
                           : Colors.grey,
                       fontWeight: FontWeight.w500,
                     ),
@@ -326,8 +327,8 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                   children: [
                     if (!item.isBooted)
                       IconButton(
-                        icon: const Icon(CupertinoIcons.play_circle,
-                            color: AppPalette.primary, size: 20),
+                        icon: Icon(CupertinoIcons.play_circle,
+                            color: Theme.of(context).colorScheme.primary, size: 20),
                         tooltip: '启动',
                         onPressed: () => _bootSimulator(item),
                       )

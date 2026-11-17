@@ -1,5 +1,3 @@
-import 'package:any_deck/app/theme/app_theme.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../../app/l10n/app_localizations.dart';
@@ -396,7 +394,7 @@ class _TreeNodeWidgetState extends State<_TreeNodeWidget> {
               padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppPalette.primary.withValues(alpha: 0.18)
+                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.18)
                     : isHovered
                     ? Colors.grey.withValues(alpha: 0.08)
                     : Colors.transparent,

@@ -95,7 +95,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    const brandGreen = AppPalette.primary;
+    final primary = theme.colorScheme.primary;
 
     return Dialog(
       backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
@@ -107,13 +107,13 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildHeaderIcon(brandGreen),
+              _buildHeaderIcon(primary),
               const SizedBox(height: 24),
               _buildTitle(theme, isDark),
               const SizedBox(height: 16),
-              _buildContent(theme, isDark, brandGreen),
+              _buildContent(theme, isDark, primary),
               const SizedBox(height: 28),
-              _buildActions(context, theme, isDark, brandGreen),
+              _buildActions(context, theme, isDark, primary),
             ],
           ),
         ),
@@ -122,7 +122,11 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
   }
 
   /// 头部图标构建器，支持旋转及不同状态的过渡
-  Widget _buildHeaderIcon(Color brandGreen) {
+  Widget _buildHeaderIcon(Color primary) {
+    final statusColor = _status == _UpdateStatus.success ||
+            _status == _UpdateStatus.noUpdate
+        ? Theme.of(context).appColors.success
+        : primary;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: _status == _UpdateStatus.checking ||
@@ -134,12 +138,12 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: brandGreen.withValues(alpha: 0.1),
+                  color: primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   CupertinoIcons.arrow_2_circlepath,
-                  color: brandGreen,
+                  color: primary,
                   size: 32,
                 ),
               ),
@@ -151,8 +155,8 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
               decoration: BoxDecoration(
                 color: _status == _UpdateStatus.success ||
                         _status == _UpdateStatus.noUpdate
-                    ? brandGreen.withValues(alpha: 0.1)
-                    : brandGreen.withValues(alpha: 0.15),
+                    ? statusColor.withValues(alpha: 0.1)
+                    : statusColor.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -160,7 +164,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
                         _status == _UpdateStatus.noUpdate
                     ? CupertinoIcons.checkmark_seal_fill
                     : CupertinoIcons.arrow_down_circle_fill,
-                color: brandGreen,
+                color: statusColor,
                 size: 36,
               ),
             ),
@@ -207,7 +211,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
   }
 
   /// 内容区域构建，包括更新日志、下载进度条、安装进度
-  Widget _buildContent(ThemeData theme, bool isDark, Color brandGreen) {
+  Widget _buildContent(ThemeData theme, bool isDark, Color primary) {
     if (_status == _UpdateStatus.checking) {
       return Text(
         context.l10n.t('checkingUpdate'),
@@ -246,7 +250,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
           children: [
             Row(
               children: [
-                Icon(CupertinoIcons.doc_text, size: 16, color: brandGreen),
+                Icon(CupertinoIcons.doc_text, size: 16, color: primary),
                 const SizedBox(width: 8),
                 Text(
                   context.l10n.t('updateLog'),
@@ -277,7 +281,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
             child: LinearProgressIndicator(
               value: _progress,
               backgroundColor: theme.appColors.subtleBorder,
-              valueColor: AlwaysStoppedAnimation<Color>(brandGreen),
+              valueColor: AlwaysStoppedAnimation<Color>(primary),
               minHeight: 8,
             ),
           ),
@@ -296,7 +300,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
                     ? context.l10n.t('downloadComplete')
                     : '1.8 MB/s',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: brandGreen,
+                  color: primary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -334,7 +338,7 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
     BuildContext context,
     ThemeData theme,
     bool isDark,
-    Color brandGreen,
+    Color primary,
   ) {
     if (_status == _UpdateStatus.checking ||
         _status == _UpdateStatus.downloading ||
@@ -348,8 +352,8 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
         height: 44,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: brandGreen,
-            foregroundColor: Colors.white,
+            backgroundColor: primary,
+            foregroundColor: theme.colorScheme.onPrimary,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -385,8 +389,8 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
               height: 44,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: brandGreen,
-                  foregroundColor: Colors.white,
+                  backgroundColor: primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -405,8 +409,8 @@ class _UpdateCheckDialogState extends State<_UpdateCheckDialog>
         height: 44,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: brandGreen,
-            foregroundColor: Colors.white,
+            backgroundColor: primary,
+            foregroundColor: theme.colorScheme.onPrimary,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),

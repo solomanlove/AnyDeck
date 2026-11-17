@@ -134,7 +134,10 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
 
 /// 提供与 [ThemeData.colorScheme] 一致的业务语义色访问入口。
 extension AppThemeDataColors on ThemeData {
-  AppThemeColors get appColors => extension<AppThemeColors>()!;
+  /// 公共组件独立放入标准 MaterialApp 时也提供安全的明暗语义色。
+  AppThemeColors get appColors =>
+      extension<AppThemeColors>() ??
+      (brightness == Brightness.dark ? AppThemeColors.dark : AppThemeColors.light);
 
   /// 工具环境缺失提示使用黄色标识，分别保证明暗背景上的文字对比度。
   Color get environmentWarningForeground => brightness == Brightness.dark

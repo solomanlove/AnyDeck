@@ -87,17 +87,17 @@ class DeviceAirPlayActionButtons extends ConsumerWidget {
               height: 24,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: const Color(0xFF34C759).withValues(alpha: 0.16),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: const Color(0xFF34C759).withValues(alpha: 0.45),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.45),
                   width: 0.8,
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.airplay_rounded,
                 size: 14,
-                color: Color(0xFF34C759),
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),

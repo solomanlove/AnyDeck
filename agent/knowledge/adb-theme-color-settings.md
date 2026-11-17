@@ -43,3 +43,36 @@ git diff --check
 - 未启动桌面 App。真实多 Engine 广播、实际 DPI 与原生窗口视觉仍属于桌面人工验收范围。
 
 人工回归：打开设置和任一子窗口，依次选择六种颜色，确认按钮、选中导航和设置开关同步；切换浅色/深色/跟随系统后颜色保持；重启确认恢复选择，设备在线绿点与成功提示继续使用业务状态色。
+
+## 2026-11-17 全页面交互颜色补齐
+
+对 `lib/` 中 `AppPalette.primary`、命名绿色、绿色十六进制值及 `brandGreen`、`_overviewAccent` 等别名逐处检查，修正原设置页之外遗留的绿色交互。改动只涉及配色和相关回归，不改变设备命令与 Provider 生命周期。
+
+| 范围 | 跟随主题的内容 |
+| --- | --- |
+| MCP、消息 | 服务启动按钮、开关、目标消息边框和背景、屏蔽列表图标 |
+| 开发者、更新与接收名称 | 工具图标、操作按钮、更新进度、接收名称输入焦点边框 |
+| 设备、模拟器、AirPlay | 连接/投屏/启动入口、模拟器选择背景、打开投屏按钮 |
+| 概览 | 卡片图标、API badge、容量卡背景/边框及进度条 |
+| 应用与投屏 | 启动/权限/开启 Wi-Fi 快捷操作、融合投屏开关、鼠标轨迹回放按钮及进度 |
+| 截图、布局、日志、网页 | 连续保存选中按钮、布局树选中背景、画布选区、日志恢复按钮、地址栏图标 |
+
+- 业务 UI 从 `Theme.of(context).colorScheme.primary/onPrimary` 读取交互主色；`SettingsDeveloperEntry.brandGreen` 仅作为可选覆盖，默认随当前 Theme 更新。
+- 两个布局预览 Painter 由 Widget 注入 `selectionColor`，`shouldRepaint` 比较颜色，确保切换主题后已有选区重新绘制；固定全量边界、Hover、标尺及用户画笔不受影响。
+- 概览成功状态与主题装饰分离；在线、Root、充电、运行/成功/环境就绪等继续使用固定状态色。Android Logo、ANSI/Logcat 语法、图表数据序列、布尔属性及调色板中的绿色保留业务含义。网络页面剩余绿色用于成功 SnackBar，交互已使用 Theme。
+- 公共 `appColors` helper 在标准 `ThemeData` 未安装扩展时回退到对应明暗语义色，支持公共组件单独复用，避免新接入成功语义色后出现空值异常。
+- 新增 `control_theme_color_test.dart`、`device_theme_color_test.dart`、`theme_feature_controls_test.dart`、`screenshot_layout_theme_test.dart`、`logcat_webview_theme_test.dart`，验证非绿色主题、同一组件实时换色、输入及选择保留、回调仍可用，并对实际 Painter 选区像素取样。
+- 旧回归 fixture 补齐原生窗口广播隔离；截图布局回归使用固定 PNG，并隔离侧栏设置/MCP/Share/概览依赖，避免测试等待引擎图像编码或启动真实服务。WebView 测试恢复有效的平台占位实现，避免插件不允许设置空实例的断言。
+
+新增回归与关键旧回归入口：
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/control_theme_color_test.dart test/device_theme_color_test.dart \
+  test/theme_feature_controls_test.dart test/screenshot_layout_theme_test.dart \
+  test/logcat_webview_theme_test.dart test/app_theme_test.dart \
+  test/messages_source_widget_test.dart test/developer_mode_test.dart \
+  test/screenshot_layout_merge_test.dart
+```
+
+本轮共验证 31 个相关测试文件、177 项测试全部通过，包含主题设置与多窗口、MCP、消息、开发者、模拟器、概览、接收端、截图/编辑/布局、Logcat/WebView、应用视图与投屏快捷操作。定向 analyze 无 error；保留 HEAD 已有的 `_OverviewHeroCard.tooltip` 未使用参数 warning、两项既有 info 及 SDK 弃用 info，使用 `--no-fatal-infos --no-fatal-warnings` 验证通过。新文件格式与 `git diff --check` 通过，未启动桌面 App。

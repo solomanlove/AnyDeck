@@ -170,7 +170,8 @@ class _EmulatorToolbar extends StatelessWidget {
           icon: const Icon(CupertinoIcons.play_arrow, size: 16),
           label: Text(context.l10n.t('launch')),
           style: FilledButton.styleFrom(
-            backgroundColor: AppPalette.primary,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           ),
         ),

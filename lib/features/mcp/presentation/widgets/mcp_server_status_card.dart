@@ -17,7 +17,7 @@ class McpServerStatusCard extends ConsumerWidget {
     final state = ref.watch(mcpServerProvider);
     final controller = ref.read(mcpServerProvider.notifier);
 
-    final statusColor = state.isRunning ? AppPalette.primary : Colors.grey;
+    final statusColor = state.isRunning ? theme.appColors.success : Colors.grey;
 
     return Card(
       child: Padding(
@@ -68,7 +68,10 @@ class McpServerStatusCard extends ConsumerWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: state.isRunning
                         ? Colors.red.shade600
-                        : AppPalette.primary,
+                        : theme.colorScheme.primary,
+                    foregroundColor: state.isRunning
+                        ? Colors.white
+                        : theme.colorScheme.onPrimary,
                   ),
                 ),
               ],
@@ -154,8 +157,8 @@ class McpServerStatusCard extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Switch.adaptive(
                       value: state.config.enableDangerousOperationGuard,
-                      activeThumbColor: AppPalette.primary,
-                      activeTrackColor: AppPalette.primary.withValues(alpha: 0.5),
+                      activeThumbColor: theme.colorScheme.primary,
+                      activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.5),
                       onChanged: (val) {
                         final newConfig = state.config.copyWith(
                           enableDangerousOperationGuard: val,

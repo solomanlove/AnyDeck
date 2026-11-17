@@ -3,6 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('标准 ThemeData 未安装扩展时公共组件仍可读取明暗语义色', () {
+    expect(ThemeData.light().appColors, AppThemeColors.light);
+    expect(ThemeData.dark().appColors, AppThemeColors.dark);
+    final custom = AppThemeColors.light.copyWith(success: Colors.blue);
+    expect(ThemeData(extensions: [custom]).appColors, same(custom));
+  });
+
   test('Light 和 Dark Theme 暴露统一语义色与尺寸规范', () {
     final light = buildAppTheme(Brightness.light);
     final dark = buildAppTheme(Brightness.dark);

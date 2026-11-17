@@ -170,7 +170,7 @@ class _LogcatLeftToolbar extends StatelessWidget {
                 icon: state.isPaused
                     ? CupertinoIcons.play
                     : CupertinoIcons.pause,
-                iconColor: state.isPaused ? const Color(0xFF4CAF50) : null,
+                iconColor: state.isPaused ? colorScheme.primary : null,
                 selected: state.isPaused,
                 onPressed: onPause,
               ),

@@ -105,10 +105,10 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             MirrorToolbarButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.play_arrow_rounded,
                 size: 22,
-                color: Colors.greenAccent,
+                color: Theme.of(context).colorScheme.primary,
               ),
               tooltip: '${context.l10n.t('playMouseTrack')} ($tooltip)',
               shortcut: MirrorShortcut.mouseRecording,
@@ -154,8 +154,8 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Text(
                   '${(state.playProgress * 100).toInt()}%',
-                  style: const TextStyle(
-                    color: Colors.greenAccent,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     fontFeatures: [FontFeature.tabularFigures()],

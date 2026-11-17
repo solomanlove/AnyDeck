@@ -286,9 +286,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                 icon: CupertinoIcons.play,
                                                 title: "启动应用",
                                                 description: "运行并启动此应用的主界面",
-                                                iconColor: const Color(
-                                                  0xFF2EC46B,
-                                                ),
+                                                iconColor: theme.colorScheme.primary,
                                                 onPressed: isOnline
                                                     ? () => _runAdbAction(
                                                         context,
@@ -528,9 +526,7 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                 icon: CupertinoIcons.shield,
                                                 title: "权限管理",
                                                 description: "查看并更改应用被授予的权限",
-                                                iconColor: const Color(
-                                                  0xFF43A047,
-                                                ),
+                                                iconColor: theme.colorScheme.primary,
                                                 onPressed: isOnline
                                                     ? () {
                                                         DefaultTabController.of(

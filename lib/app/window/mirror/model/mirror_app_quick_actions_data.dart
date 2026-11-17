@@ -52,7 +52,7 @@ List<MirrorActionSectionData> buildMirrorAppQuickActionSections({
       items: [
         MirrorActionItemData(
           icon: CupertinoIcons.play_circle,
-          iconColor: const Color(0xFF2EC46B),
+          iconColor: Theme.of(context).colorScheme.primary,
           title: '启动应用',
           subtitle: '运行并启动此应用的主界面',
           onTap: () {
@@ -179,7 +179,7 @@ List<MirrorActionSectionData> buildMirrorAppQuickActionSections({
       items: [
         MirrorActionItemData(
           icon: CupertinoIcons.checkmark_shield,
-          iconColor: const Color(0xFF43A047),
+          iconColor: Theme.of(context).colorScheme.primary,
           title: '授予全部权限',
           subtitle: '一键授予应用声明的所有运行时权限',
           onTap: () {
@@ -287,7 +287,7 @@ List<MirrorActionSectionData> buildMirrorAppQuickActionSections({
       items: [
         MirrorActionItemData(
           icon: CupertinoIcons.wifi,
-          iconColor: const Color(0xFF00897B),
+          iconColor: Theme.of(context).colorScheme.primary,
           title: '开启 Wi-Fi',
           subtitle: '通过 ADB 指令开启设备无线局域网',
           onTap: () {

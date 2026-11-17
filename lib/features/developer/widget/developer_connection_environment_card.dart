@@ -173,8 +173,8 @@ class _DeveloperConnectionEnvironmentCardState
                 children: [
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppPalette.primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                     ),
@@ -268,7 +268,7 @@ class _DeveloperConnectionEnvironmentCardState
     required VoidCallback onGuide,
   }) {
     final theme = Theme.of(context);
-    final statusColor = isReady ? AppPalette.primary : Colors.orange;
+    final statusColor = isReady ? theme.appColors.success : Colors.orange;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -121,7 +121,8 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                     label: const Text('打开 DevEco Studio'),
                     onPressed: _openDevEcoStudio,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppPalette.primary,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                 ],
@@ -172,7 +173,8 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                 }
               : null,
           style: FilledButton.styleFrom(
-            backgroundColor: AppPalette.primary,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           ),
         ),
@@ -253,7 +255,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: item.isRunning
-                        ? AppPalette.primary
+                        ? Theme.of(context).appColors.success
                         : Colors.grey.shade400,
                   ),
                 ),
@@ -290,7 +292,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                     style: TextStyle(
                       fontSize: 12,
                       color: item.isRunning
-                          ? AppPalette.primary
+                          ? Theme.of(context).appColors.success
                           : Colors.grey,
                       fontWeight: FontWeight.w500,
                     ),

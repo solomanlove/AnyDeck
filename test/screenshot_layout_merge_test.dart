@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -26,6 +25,7 @@ import 'package:any_deck/features/screenshot/widgets/screenshot_canvas.dart';
 import 'package:any_deck/features/screenshot/widgets/screenshot_toolbar.dart';
 
 import 'fake_adb_service.dart';
+import 'support/screenshot_layout_fixture.dart';
 
 const _mockAndroidDevice = DiscoveredDevice(
   id: 'android_device_001', status: 'device', model: 'Pixel 7', product: 'panther', transportId: '1',
@@ -36,21 +36,6 @@ const _mockIosDevice = DiscoveredDevice(
 const _mockHarmonyDevice = DiscoveredDevice(
   id: 'harmony_device_001', status: 'device', model: 'Mate 60', product: 'ALN-AL00', transportId: '4', isHarmony: true,
 );
-
-Future<Uint8List> _createTestPng([int width = 100, int height = 100]) async {
-  final pictureRecorder = ui.PictureRecorder();
-  final canvas = Canvas(pictureRecorder);
-  canvas.drawRect(
-    Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
-    Paint()..color = Colors.blue,
-  );
-  final picture = pictureRecorder.endRecording();
-  final image = await picture.toImage(width, height);
-  final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-  image.dispose();
-  picture.dispose();
-  return byteData!.buffer.asUint8List();
-}
 
 const _mockXml = '''<?xml version="1.0" encoding="UTF-8"?>
 <hierarchy rotation="0">
@@ -156,9 +141,9 @@ void main() {
     late _TestHdcService fakeHdc;
     late MockLayoutInspectorService mockInspector;
 
-    setUp(() async {
+    setUp(() {
       SharedPreferences.setMockInitialValues({});
-      final cachedPng = await _createTestPng();
+      final cachedPng = screenshotLayoutPng();
       fakeAdb = _TestAdbService(cachedPng);
       fakeIos = _TestIosCommandService(cachedPng);
       fakeHdc = _TestHdcService(cachedPng);
@@ -179,6 +164,7 @@ void main() {
         _wrapTestWidget(
           PrimaryRail(selectedDevice: _mockAndroidDevice),
           overrides: [
+            ...screenshotRailServiceOverrides(_mockAndroidDevice.id),
             adbServiceProvider.overrideWithValue(fakeAdb),
             layoutInspectorServiceProvider.overrideWithValue(mockInspector),
             discoveredDevicesProvider.overrideWith((ref) => Stream.value([_mockAndroidDevice])),

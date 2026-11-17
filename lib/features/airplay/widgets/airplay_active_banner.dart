@@ -114,8 +114,8 @@ class AirPlayActiveBanner extends ConsumerWidget {
           // 操作按钮 1：重新打开投屏窗口
           FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF34C759),
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               minimumSize: const Size(0, 32),
               shape: RoundedRectangleBorder(

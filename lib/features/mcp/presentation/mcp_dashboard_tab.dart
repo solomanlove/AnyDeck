@@ -70,10 +70,10 @@ class _McpServerStatusHeaderBadge extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final badgeColor = isRunning
-        ? AppPalette.primary
+        ? theme.appColors.success
         : (isDark ? Colors.grey.shade600 : Colors.grey.shade500);
     final badgeBg = isRunning
-        ? AppPalette.primary.withValues(alpha: 0.12)
+        ? theme.appColors.success.withValues(alpha: 0.12)
         : (isDark
             ? Colors.white.withValues(alpha: 0.06)
             : Colors.black.withValues(alpha: 0.04));

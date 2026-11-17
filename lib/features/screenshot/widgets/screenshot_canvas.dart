@@ -319,6 +319,7 @@ class ScreenshotCanvasState extends State<ScreenshotCanvas> {
                           CustomPaint(
                             painter: ScreenPreviewPainter(
                               image: image,
+                              selectionColor: Theme.of(context).colorScheme.primary,
                               rootNode: widget.isLayoutAnalysis ? widget.rootNode : null,
                               selectedNode: widget.isLayoutAnalysis
                                   ? widget.selectedNode

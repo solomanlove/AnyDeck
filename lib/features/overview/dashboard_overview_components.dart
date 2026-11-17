@@ -146,7 +146,7 @@ class _OverviewDetailCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: _overviewAccent, size: 22),
+              Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
               const SizedBox(width: 10),
               Text(
                 title,
@@ -243,14 +243,14 @@ class _OverviewSurface extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: accent
-                ? _overviewAccent.withValues(alpha: isDark ? 0.08 : 0.045)
+                ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.08 : 0.045)
                 : theme.colorScheme.surface.withValues(
                     alpha: isDark ? 0.3 : 0.55,
                   ),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: accent
-                  ? _overviewAccent.withValues(alpha: isDark ? 0.35 : 0.25)
+                  ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.35 : 0.25)
                   : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
@@ -272,11 +272,11 @@ class _OverviewIconBadge extends StatelessWidget {
       width: 42,
       height: 42,
       decoration: BoxDecoration(
-        color: _overviewAccent.withValues(alpha: 0.12),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
-      child: Icon(icon, color: _overviewAccent, size: 22),
+      child: Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
     );
   }
 }
@@ -290,7 +290,7 @@ class _OverviewBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: _overviewAccent.withValues(alpha: 0.12),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Padding(
@@ -298,7 +298,7 @@ class _OverviewBadge extends StatelessWidget {
         child: Text(
           text,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: _overviewAccent,
+            color: Theme.of(context).colorScheme.primary,
             fontWeight: FontWeight.w700,
           ),
         ),

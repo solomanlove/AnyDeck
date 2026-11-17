@@ -59,7 +59,7 @@ class _BlockedAppsDialogState extends ConsumerState<BlockedAppsDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          const Icon(CupertinoIcons.shield_fill, color: AppPalette.primary),
+          Icon(CupertinoIcons.shield_fill, color: theme.colorScheme.primary),
           const SizedBox(width: 8),
           Text(context.l10n.t('blockedAppsTitle')),
         ],
