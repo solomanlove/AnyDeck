@@ -200,6 +200,7 @@ flutter test --no-pub test/device_share_protocol_test.dart test/device_share_tra
 
 - macOS 通过 `NWPathMonitor` 和 CoreWLAN SSID 变更事件触发读取，150 ms 合并事件；5 秒低频校验覆盖系统事件缺失。仅存在已启用自动规则时订阅，全部暂停/删除后取消 Timer、原生网络和 Wi-Fi 监听。
 - 自动读取使用 `readForSharing`，只信任系统当前关联的 `verifiedWifiSsid`，不触发 Swift CLI、Wi-Fi 扫描或用邻近网络猜测名称。现有底栏展示回退继续独立工作。其他平台缺少可信当前 SSID 时不启用自动规则，历史重连和手动期限不依赖该能力。
+- 共享弹窗的权限按钮文案为“授权读取 Wi‑Fi SSID”（英文 `Allow Wi-Fi SSID access`），说明其用途是请求权限并刷新当前 SSID，避免与底栏已有网络信息混淆。
 - 自动规则匹配分享方电脑的 Wi-Fi，不是要求手机切换 Wi-Fi。共享监听绑定选定的本机 IPv4；离开指定网络时关闭自动会话。手机仍需作为在线 ADB 设备连接到分享方。
 - 每次进入指定 Wi-Fi 维护一个授权窗口。USB 重插、transport 变化和同一 Wi-Fi 的 IP 更新可在原窗口内重新准备，不自动续期；窗口到期后等待用户重新开始或下一次重新进入网络。应用重启重新评估规则并开始新的准备窗口。
 - 网络/设备变化与握手并发时，迟到会话会再次检查当前网络、设备 transport 和规则启用状态并回收。用户在自动握手中点击停止会排队执行，不因短暂 busy 丢弃。
