@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- |
 | `adb-macos-debug-destination` | macOS arm64e 构建兼容 | active | Debug generic destination、SDK 可恢复修复、Release 架构归一与打包脚本传参 | `macos/`, `script/` |
 | `adb-rust-host-recording` | Rust 电脑本地音视频录制 | active | 内置 server 4.0、H.264/AAC MP4、三个录制入口、收尾/取消、有界背压与无线突发修复、真机验证边界 | `rust/device_bridge/src/recording/`, `lib/core/scrcpy/`, `features/screenshot/` |
-| `adb-honor-share-poc` | 荣耀文件互传与统一入口 | experimental | Rust Core双协议、文件互传UI、协议隔离/历史迁移、Magic V6双向落盘hash与双架构回归边界 | `nearby_share/`, `harmony_share/`, 私有 `AnyDeck-Share-Core` |
+| `adb-honor-share-poc` | 荣耀文件互传与统一入口 | experimental | Rust Core双协议、统一UI、发送开始事件兼容、手机确认后视频发送实测、历史迁移与真机/双架构边界 | `nearby_share/`, `harmony_share/`, 私有 `AnyDeck-Share-Core` |
 | `adb-macos-dual-architecture` | macOS 双架构构建发布 | active | 原生 arm64/x86_64 matrix、私有制品锁定、安装包与 helper 验证、发布合并与官网入口 | `.github/workflows/`, `macos/`, `script/` |
 | `adb-developer-options-layout` | 开发者页面头部布局 | active | 模式开关移入正文、设置返回按钮与空白拖拽区、宽窄布局、主题与中英文、开关保存和入口激活回归 | `features/developer/`, `app/l10n/` |
 | `adb-github-macos-release` | macOS ad-hoc 自动打包发布 | active | arm64 Actions、只读私有制品凭据、DMG/ZIP/签名与依赖验证、Tag Releases 和安装边界 | `.github/workflows/`, `script/`, `agent/distribution/` |

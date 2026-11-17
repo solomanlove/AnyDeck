@@ -1,5 +1,15 @@
 # AnyDeck 荣耀文件互传
 
+## 手机确认后发送立即失败修复（2026-11-17）
+
+用户报告手机能看到接收弹窗，但点击接收后立即失败。实际发送记录保存 `FormatException: Unexpected batch event`；荣耀 Core 在用户确认后输出 `transfer_started(direction=send,total_bytes=声明大小)`，Flutter 的 `ShareBatchTransfer` 未识别该事件并停止 Core，数据尚未传出。
+
+- 修复只在通用发送 Session 接受并校验该阶段事件的方向、整数类型和声明总量；不把它转换为字节进度或成功，仍以完整 `batch_sent` 终态完成。非法开始事件及未知事件继续拒绝并回收进程，旧 Huawei 不发送该事件时保持兼容。
+- 新增独立 Session 用例，先在原代码重现同一异常，再验证开始→真实进度→终态、仅开始缺少终态、错误方向/大小/类型/缺字段和未知事件。49 项 Session、256 项 nearby_share 回归及 targeted analyze 通过；Debug 构建、整包严格签名和包内六成员 hash 通过。
+- 用户在修复后的实际 App 重试同一个 1,421,800 B 视频，队列、实际字节和历史均成功，并确认手机目录可见且可播放。此为真实 UI 发送验收，不等同手机源 hash 已核验；随后回传失败在独立诊断中定位为 `honor_preview_type`，视频预览格式的接收兼容性继续单独处理。
+
+本次发送修复不更换 Core 0.4.0 / IPC 3 制品，不新增协议源码、依赖、Provider、UI、l10n 或跨窗口方法。复验命令：`flutter test --no-pub test/core/nearby_share`；聚焦用例在 `share_transfer_started_session_cases.dart`。测试样本与本地诊断不进入 Git。
+
 ## Rust Core 与统一 UI（2026-11-10）
 
 本轮需求为把荣耀分享接入私有 Rust Core，复用 AnyDeck 现有互传 UI，与华为/鸿蒙分享使用同一入口。Core 升级为 0.4.0 / IPC 3；页面和侧栏统一显示“文件互传”，同时发现、发送和接收两种协议。协议实现只在私有仓库，本仓库仅保存通用 IPC、UI 与记录模型。

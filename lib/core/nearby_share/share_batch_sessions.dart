@@ -52,7 +52,14 @@ class ShareBatchTransfer {
         if (terminal != null) {
           throw const FormatException('Data after batch terminal');
         }
-        if (event['event'] == 'progress') {
+        if (event['event'] == 'transfer_started') {
+          // 手机确认后的阶段通知不包含IO字节；仍等待完整batch_sent终态。
+          if (event['direction'] != 'send' ||
+              event['total_bytes'] is! int ||
+              event['total_bytes'] != request.bytes) {
+            throw const FormatException('Invalid batch transfer start');
+          }
+        } else if (event['event'] == 'progress') {
           final progress = ShareCoreProgress.parse(
             event,
             maxTotalBytes: ShareBatchContract.maxBytes,
