@@ -1,6 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/router/app_router.dart';
 import 'package:any_deck/app/settings/app_settings_controller.dart';
+import 'package:any_deck/app/settings/desktop_autostart_service.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
@@ -12,8 +13,11 @@ import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/core/receiver/receiver_identity.dart';
 import 'package:any_deck/features/devices/widgets/device_wall_card.dart';
+import 'package:any_deck/features/widgets/dashboard_header_bar.dart';
+import 'package:any_deck/features/overview/settings/autostart_setting_control.dart';
 import 'package:any_deck/app/window/widget/desktop_workspace_surface.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,11 +48,14 @@ void main() {
       await _pumpDashboard(tester);
       expect(tester.takeException(), isNull);
       final wall = tester.getRect(find.byKey(const Key('deviceWall')));
-      final header = tester.getRect(find.byType(DesktopWorkspaceSurface));
+      final header = tester.getRect(find.byType(DesktopWorkspaceSurface).first);
       if (width == 1200) {
-        // 桌面头部保持紧凑，避免装饰留白挤占设备展示区域。
-        expect(tester.getSize(find.byKey(const Key('deviceManagementHeader'))).height,
-            lessThanOrEqualTo(84));
+        // 设备管理复用一级页面标题栏，避免单独调整后间距再次偏离。
+        final bar = tester.widget<DashboardHeaderBar>(
+          find.byKey(const Key('deviceManagementHeader')),
+        );
+        expect(bar.padding, const EdgeInsets.symmetric(horizontal: 28));
+        expect(tester.getSize(find.byWidget(bar)).height, 72);
       }
       final padding = width <= 490
           ? 8
@@ -116,27 +123,107 @@ void main() {
     });
   }
 
-  for (final brightness in Brightness.values) {
-    testWidgets('320px 英文放大字体列表在${brightness.name}主题保持可用', (tester) async {
-      tester.view.physicalSize = const Size(320, 1200);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      await _pumpDashboard(
+  for (final language in ['zh', 'en']) {
+    for (final brightness in Brightness.values) {
+      testWidgets('$language ${brightness.name} 设备与设置标题栏切换时对齐一致', (
         tester,
-        language: 'en',
-        brightness: brightness,
-        textScale: 1.6,
-      );
-      await tester.tap(find.byKey(const Key('deviceView-list')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('deviceTableHeader')), findsNothing);
-      expect(
-        find.byKey(const ValueKey('device-status-inline-responsive-alpha')),
-        findsOneWidget,
-      );
-      expect(find.text('Reconnect'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
+      ) async {
+        tester.view.physicalSize = const Size(1200, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final container = await _pumpDashboard(
+          tester,
+          language: language,
+          brightness: brightness,
+        );
+        final bar = find.byType(DashboardHeaderBar);
+        final title = find.descendant(
+          of: find.byType(DashboardHeaderTitle),
+          matching: find.byType(Text),
+        );
+        final deviceBar = tester.getRect(bar);
+        final deviceTitle = tester.getRect(title.first);
+        final deviceSubtitle = tester.getRect(title.last);
+        final refresh = tester.getRect(
+          find.ancestor(
+            of: find.byTooltip(
+              AppLocalizations(Locale(language)).t('refreshDevices'),
+            ),
+            matching: find.byType(IconButton),
+          ),
+        );
+        final connect = tester.getRect(
+          find.byKey(const Key('deviceConnectionButton')),
+        );
+        expect(deviceTitle.left - deviceBar.left, 28);
+        expect(deviceBar.right - connect.right, 28);
+        expect(connect.left - refresh.right, 8);
+        expect(connect.center.dy, closeTo(deviceBar.center.dy, .5));
+        expect(refresh.center.dy, connect.center.dy);
+
+        container.read(appRouterProvider).go('/settings');
+        await tester.pumpAndSettle();
+        expect(tester.getRect(bar), deviceBar);
+        expect(tester.getTopLeft(title.first), deviceTitle.topLeft);
+        expect(tester.getTopLeft(title.last), deviceSubtitle.topLeft);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
+  for (final language in ['zh', 'en']) {
+    for (final brightness in Brightness.values) {
+      testWidgets('320px $language 放大字体列表在${brightness.name}主题保持可用', (tester) async {
+        tester.view.physicalSize = const Size(320, 1200);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await _pumpDashboard(
+          tester,
+          language: language,
+          brightness: brightness,
+          textScale: 1.6,
+        );
+        await tester.tap(find.byKey(const Key('deviceView-list')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('deviceTableHeader')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('device-status-inline-responsive-alpha')),
+          findsOneWidget,
+        );
+        expect(
+          find.text(AppLocalizations(Locale(language)).t('deviceWorkspaceReconnect')),
+          findsOneWidget,
+        );
+        // 大字号下标题允许省略，但刷新与连接入口仍须有界且可打开菜单。
+        final bar = tester.getRect(find.byType(DashboardHeaderBar));
+        final connect = tester.getRect(
+          find.byKey(const Key('deviceConnectionButton')),
+        );
+        final title = tester.getRect(find.byType(DashboardHeaderTitle));
+        final refresh = tester.getRect(
+          find.ancestor(
+            of: find.byTooltip(
+              AppLocalizations(Locale(language)).t('refreshDevices'),
+            ),
+            matching: find.byType(IconButton),
+          ),
+        );
+        expect(title.top, greaterThanOrEqualTo(bar.top + 32));
+        expect(refresh.top, greaterThanOrEqualTo(bar.top + 32));
+        expect(connect.top, greaterThanOrEqualTo(bar.top + 32));
+        expect(title.right, lessThanOrEqualTo(refresh.left));
+        expect(refresh.right, lessThanOrEqualTo(connect.left));
+        expect(connect.right, lessThanOrEqualTo(bar.right));
+        expect(connect.bottom, lessThanOrEqualTo(bar.bottom));
+        await tester.tap(find.byKey(const Key('deviceConnectionButton')));
+        await tester.pump(kDoubleTapTimeout);
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('deviceConnection-pair')), findsOneWidget);
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
 
   for (final listMode in [false, true]) {
@@ -324,6 +411,9 @@ Future<ProviderContainer> _pumpDashboard(
         ),
       hostNetworkProvider.overrideWith(_HostNetwork.new),
       adbEnvironmentProvider.overrideWith(_ReadyAdb.new),
+      autoStartStatusProvider.overrideWith(
+        (ref) async => DesktopAutoStartStatus.disabled,
+      ),
       emulatorListProvider.overrideWith((ref) async => []),
       emulatorConnectionsProvider.overrideWith((ref) async => {}),
     ],

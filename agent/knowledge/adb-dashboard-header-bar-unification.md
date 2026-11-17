@@ -31,14 +31,14 @@ DashboardHeaderBar(
 - **统一内边距**：水平内边距规范为 `EdgeInsets.symmetric(horizontal: 28)`。
 - **桌面背景与通透材质**：集成 `DesktopWorkspaceSurface`，并在底部渲染 `theme.colorScheme.outlineVariant` 细分割线，完美衔接左侧导航栏。
 - **原生窗口拖拽**：外层包裹 `DragToMoveArea`，macOS / Windows / Linux 桌面端拖拽标题栏空白处可直接平移窗口。
-- **标准标题与徽章**：内置 `DashboardHeaderTitle`，统一 48px 直径的主题色圆形图标徽章、20px 粗体主标题与 13px 柔和副标题。
+- **标准纯文本标题**：内置 `DashboardHeaderTitle`，统一 20px 粗体主标题、13px 柔和副标题与 3px 行间隔；不渲染图标徽章，相关参数只作兼容保留。
 - **灵活右侧区域**：支持 `trailing`（单个组件如平台切换 Tabs 或状态徽标）及 `actions`（动作按钮组），并在动作按钮间自动维护 8px 间隔。
 
 ### 2.2 四大模块适配方案
 
 | 页面模块 | 标题文案与图标 | 右侧组件 (trailing / actions) | 页面内容区结构与内边距 |
 | :--- | :--- | :--- | :--- |
-| **设备管理** | `devices` / `Icons.devices_rounded` | TCP连接、无线配对、控制台、目录、重启、刷新等设备管理操作 | 下方铺满 `_DeviceListPanel` 设备表格 |
+| **设备管理** | `devices` / `deviceWorkspaceSubtitle` | 刷新与连接菜单（无线配对、IP 连接、加入共享设备） | 下方 `_DeviceListPanel` 支持设备墙与列表，保留紧凑内容间距 |
 | **模拟器管理** | `emulators` / `CupertinoIcons.device_desktop` | `EmulatorPlatformTabs` 平台切换标签（Android / DevEco / iOS） | 搜索栏与工具栏内边距统一为 `fromLTRB(28, 12, 28, 12)`，与标题栏垂直对齐 |
 | **投屏接收** | `receiverCenter` / `Icons.cast_connected_rounded` | 页面内 AirPlay 与 DLNA Card 分别管理服务，不在标题栏直接启停 | 内容区宽屏双列、窄屏单列，统一 28px 外边距 |
 | **AI MCP** | `aiMcp` / `CupertinoIcons.sparkles` | `_McpServerStatusHeaderBadge` 实时服务运行与端口状态徽章 | 移除 Body 内嵌标题，`SingleChildScrollView(padding: (28, 20))`，卡片间距 16px |
@@ -57,3 +57,17 @@ DashboardHeaderBar(
 - **边界**：保留入口图标、Tooltip 本地化及所有回调；不改变设备共享协议、投屏、进程、Provider 或跨窗口通信，不增加后台工作。
 - **自动验证**：`flutter test test/dashboard_header_bar_test.dart`（4 项）；Light/Dark 分别验证共享设备与连接按钮的实际尺寸、继承图标颜色/大小、InkResponse 圆角及非 NoSplash、点击回调。相关文件 `flutter analyze --no-pub` 通过。
 - **人工回归**：在 Light/Dark/System 下对比共享设备、TCP、配对与刷新入口的默认、Hover、按下效果，并点击共享设备入口确认弹窗正常。未启动桌面 App，实际窗口视觉效果待人工验收。
+
+
+## 5. 恢复设备管理共用标题栏（2026-11-17）
+
+紧凑设备工作区曾自行绘制页头，导致左右 16px 留白、标题字重及副标题间距与其他一级页面不同。
+`_ContentTitleBar` 现直接复用 `DashboardHeaderBar`，恢复桌面 72px 最小高度、左右 28px 留白及公共文字样式，
+刷新与连接沿用 actions 的 8px 间隔，回调、菜单锚点和窗口拖拽保留。
+窄窗口（宽度不超过 490px）保留额外顶部 32px 原生按钮避让和左右 10px 留白；允许大字号自然增高，
+单行标题与副标题超长省略，连接按钮按原规则收起文字。此适配不改变其他一级页或下方设备内容密度。
+
+`dashboard_device_responsive_test.dart` 验证 1200px 中英明暗环境中设备页与设置页标题栏边界、
+主副标题起点完全一致，并覆盖 320px / 1.6 倍字号的顶部避让、操作有界和菜单交互。
+连同公共标题栏、连接菜单、工作区及导航共 41 项通过；定向静态分析无 error/warning，只有 SDK 既有弃用 info。
+已导出实际 Widget 预览；未启动完整桌面 App，原生窗口实际拖拽仍由既有组件提供。

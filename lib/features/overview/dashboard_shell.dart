@@ -78,86 +78,48 @@ class _ContentTitleBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final compact = MediaQuery.sizeOf(context).width <= 490;
-    // 窄窗口放大字体时保留完整标题，连接入口以图标和 Tooltip 提供。
+    // 窄窗口放大字体时，连接入口以图标和 Tooltip 提供。
     final showConnectionLabel =
         !compact || MediaQuery.textScalerOf(context).scale(13) <= 16;
-    return DragToMoveArea(
-      child: Container(
-        key: const Key('deviceManagementHeader'),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(
-            bottom: BorderSide(color: theme.colorScheme.outlineVariant),
-          ),
+    // 复用一级页面标题规范；窄窗口额外避让原生窗口按钮。
+    return DashboardHeaderBar(
+      key: const Key('deviceManagementHeader'),
+      title: context.l10n.t('devices'),
+      subtitle: context.l10n.t('deviceWorkspaceSubtitle'),
+      padding: compact
+          ? const EdgeInsets.fromLTRB(10, 32, 10, 12)
+          : const EdgeInsets.symmetric(horizontal: 28),
+      actions: [
+        IconButton(
+          tooltip: context.l10n.t('refreshDevices'),
+          icon: const Icon(LucideIcons.refreshCw, size: 17),
+          onPressed: () async {
+            await _refreshDevices(context, ref);
+            if (context.mounted) refreshVisibleDeviceScreenPreviews(ref);
+          },
         ),
-        padding: EdgeInsets.fromLTRB(
-          compact ? 10 : 16,
-          compact ? 32 : 16,
-          compact ? 10 : 16,
-          12,
+        DeviceConnectionMenu(
+          showLabel: showConnectionLabel,
+          onSelected: (action) {
+            switch (action) {
+              case 'tcp':
+                _showConnectDeviceDialog(context, ref);
+              case 'pair':
+                showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => const _DeviceWirelessConnectionDialog(),
+                );
+              case 'share':
+                showDialog<void>(
+                  context: context,
+                  builder: (_) => const DeviceShareDialog(),
+                );
+            }
+          },
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    context.l10n.t('devices'),
-                    style: TextStyle(
-                      fontSize: compact ? 18 : 20,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                  if (!compact) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      context.l10n.t('deviceWorkspaceSubtitle'),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            IconButton(
-              tooltip: context.l10n.t('refreshDevices'),
-              icon: const Icon(LucideIcons.refreshCw, size: 17),
-              onPressed: () async {
-                await _refreshDevices(context, ref);
-                if (context.mounted) refreshVisibleDeviceScreenPreviews(ref);
-              },
-            ),
-            const SizedBox(width: 4),
-            DeviceConnectionMenu(
-              showLabel: showConnectionLabel,
-              onSelected: (action) {
-                switch (action) {
-                  case 'tcp':
-                    _showConnectDeviceDialog(context, ref);
-                  case 'pair':
-                    showDialog<void>(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => const _DeviceWirelessConnectionDialog(),
-                    );
-                  case 'share':
-                    showDialog<void>(
-                      context: context,
-                      builder: (_) => const DeviceShareDialog(),
-                    );
-                }
-              },
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
