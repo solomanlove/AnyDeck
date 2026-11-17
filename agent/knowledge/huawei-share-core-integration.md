@@ -1,6 +1,6 @@
 # AnyDeck 文件互传私有核心集成边界
 
-当前核心：Core 0.4.0 / IPC 3，荣耀分享与华为/鸿蒙分享通过“文件互传”统一入口；默认 LAN，Huawei 手动授权的 P2P 与网络恢复保护保持。最终制品版本以 `script/share_core.lock.json` 和包内 manifest 为准。Core 0.3.7 已移除应用层单文件1 GiB限制，1 GiB以上的手机收发由用户手动测试。历史Core0.3.5已完成100 MiB独立真机双向hash验证与正常App的1 GiB单文件接收（手机源hash未比对），不代表新版大文件容量、P2P 或共存验收；生产能力仍未发布。最新证据与限制见本文末尾，早期段落保留为实施历史。
+当前核心：Core 0.4.2 / IPC 3，荣耀分享与华为/鸿蒙分享通过“文件互传”统一入口；默认 LAN，Huawei 手动授权的 P2P 与网络恢复保护保持。最终制品版本以 `script/share_core.lock.json` 和包内 manifest 为准。Core 0.3.7 已移除应用层单文件1 GiB限制，1 GiB以上的手机收发由用户手动测试。历史Core0.3.5已完成100 MiB独立真机双向hash验证与正常App的1 GiB单文件接收（手机源hash未比对），不代表新版大文件容量、P2P 或共存验收；生产能力仍未发布。最新证据与限制见本文末尾，早期段落保留为实施历史。
 
 AnyDeck 主仓库仅保存 Flutter IPC 契约、制品锁定清单和安装脚本。协议解析、认证、Swift 广播、DFile 适配、协议测试及原生制品均归独立私有仓库 `solomanlove/AnyDeck-Share-Core`。主仓库当前 `main` 与 `origin/main` 不可达原 PoC 对象；推送前继续用 `git rev-list --objects origin/main..HEAD` 核验历史中没有 `tool/huawei_share_poc`。本机 Codex checkpoint 仍保留旧树，仅属于本地内部引用，不随 `main` 推送。
 
@@ -534,3 +534,19 @@ flutter --no-version-check analyze --no-pub --no-fatal-infos \
 - 名称：统一使用最大 120 logical pixels 的居中区域，启用自动换行并最多展示三行；仅超过三行时尾部省略。原始设备名称及现有省略字符不做改写，不从名称猜测型号或恢复发现数据未提供的字符。此节替代上节保留头像协议标签的说明。
 - 验证：头像与协议测试共 23 项通过，覆盖标签和 Tooltip 消失、品牌 Logo、Light/Dark、中英文、荣耀名称实际多行布局、1.5 倍字体、名称点击、拖放、真实进度与窄窗口；两项视觉测试通过，视觉 fixture 使用合成长名称。4 个改动 Dart 文件定向静态检查无诊断。
 - 回归命令复用上节；人工检查附近设备仅显示 Logo、名称和真实批次状态，荣耀名称按可用宽度换行，鼠标 Hover 不再出现分享标签。按约定未启动或构建桌面 App，真实手机发现与收发未在本轮重新验收。
+
+
+## 荣耀视频预览与间歇回传修复（Core 0.4.2，2026-11-17）
+
+用户先遇到手机确认后立即失败，随后视频预览不兼容，再遇到手机自行中断且重试成功。Flutter 开始事件、媒体预览和 UDP 数据恢复分别修复，不能把前一项修复或单次成功替代后续验收。需求、错误依据、分层验证及兼容边界见 [荣耀互传记录](adb-honor-share-poc.md)。协议源码、原始手机证据和底层字段仍只在私有仓库。
+
+当前固定私有 commit `bd22db6737359b3fff6b86635e955c66340f55f1`，Core 0.4.2 / IPC 3。arm64 zip SHA-256 `2e82331c24cf824831eeb63e44d3bbbf770d7785dd1a0f9c7e884eb53c172168`，x86_64 zip SHA-256 `e1661eb8ea94c3052d1ec4aafab24ffdc9ceee6cf7bc04166a94b09e9078ad71`。原六成员安装、默认LAN/高速偏好及生产能力声明不变。
+
+- 私有底座补齐荣耀路径的数据恢复和唯一块计数，避免丢包后停流、重复块使文件尾部未落盘却报完成；接收继续等待实际文件、hash、native和业务完整终态才发布。
+- Flutter 批次发送及通用接收排空 stderr，只保留固定失败类别供定位；256 B 单行缓存，原始内容、路径和其他文字不落日志，不改变UI成功门槛。
+- 每架构正式签名成员各7项有损/重复/乱序/慢传回归、8项荣耀实际Rust/native互操作、1项Huawei桌面对传（三子场景）通过。Rust105 unit +10 integration、本地native48项通过/1项可选LAN跳过、另5项补丁测试通过；沿用既有13项Rust ignored和1项广播环境过滤。Intel在Rosetta执行。
+- 主仓 nearby_share 258项、targeted analyze、安装脚本27项通过；Debug构建、deep/strict签名、包内六成员hash和实际0.4.2 hello通过。此类本地自动回归不等同所有荣耀机型、无线网络、账号绑定、P2P或大文件真机矩阵均已通过。
+
+复验先运行 `flutter test --no-pub test/core/nearby_share` 和 `python3 -m unittest discover -s test/script -p test_install_share_core.py -v`。人工验收在同一新版App保持接收开启，将已验证视频连续回传，及时接受来件；分别核对每轮独立实际文件和源SHA-256，并保留失败类别、时间窗和App PID，不使用旧历史或仅监听就绪宣称成功。
+
+最终0.4.2 Debug App有一次新的1,421,800 B视频接收完整成功，实际文件hash与源/记录一致；随后一轮电脑确认超时、0 B传输，不能计入数据链路验收。用户停止代理真机复测并接手自测，接收保持开启。当前运行包与`/Applications`旧包的区别、自测矩阵和故障留证步骤见[用户自测清单](adb-honor-share-poc.md#用户自测清单2026-11-17)。本轮未承诺连续多轮真机或所有无线环境均稳定。
