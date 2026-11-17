@@ -143,7 +143,7 @@ void main() {
                     ShareCorePeer(
                       address: InternetAddress('192.0.2.3'),
                       port: 5700,
-                      name: 'HONOR 示例手机',
+                      name: '荣耀示例账号的Magic V6',
                       protocol: ShareTransferProtocol.honor,
                     ),
                   ],

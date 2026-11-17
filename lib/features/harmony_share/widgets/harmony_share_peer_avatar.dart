@@ -47,7 +47,6 @@ class HarmonySharePeerAvatar extends StatelessWidget {
     final label = state.peer.name.isEmpty
         ? state.peer.address.address
         : state.peer.name;
-    final protocol = context.l10n.t('harmonyShareProtocol_${state.peer.protocol.name}');
     final status = phase == HarmonySharePeerPhase.ready
         ? ''
         : context.l10n.t('harmonySharePeer_${phase.name}');
@@ -57,7 +56,7 @@ class HarmonySharePeerAvatar extends StatelessWidget {
       child: Semantics(
         button: true,
         enabled: enabled,
-        label: '$label $protocol $status',
+        label: '$label $status',
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -107,39 +106,21 @@ class HarmonySharePeerAvatar extends StatelessWidget {
                               backgroundColor: colors.outlineVariant,
                             ),
                           ),
-                        Positioned(
-                          bottom: 0,
-                          left: 2,
-                          right: 2,
-                          child: Tooltip(
-                            message: protocol,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: colors.surface,
-                                borderRadius: AppThemeSizes.radiusSmall,
-                                border: Border.all(color: colors.outlineVariant),
-                              ),
-                              child: Text(
-                                protocol,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.labelSmall,
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleSmall,
+                  // 收窄名称区域，使含型号的长名称自然换行，避免挤成一行。
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 120),
+                    child: Text(
+                      label,
+                      maxLines: 3,
+                      softWrap: true,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                   ),
                   if (status.isNotEmpty) ...[
                     const SizedBox(height: 3),

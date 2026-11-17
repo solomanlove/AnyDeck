@@ -49,7 +49,7 @@ void main() {
 
   for (final brightness in Brightness.values) {
     for (final language in ['zh', 'en']) {
-      testWidgets('同一列表展示对应厂商Logo与协议 ${brightness.name} $language', (
+      testWidgets('同一列表展示厂商Logo且不显示分享标签 ${brightness.name} $language', (
         tester,
       ) async {
         final values = language == 'zh' ? huaweiShareZh : huaweiShareEn;
@@ -94,12 +94,13 @@ void main() {
         await tester.pump();
         expect(
           find.text(values['harmonyShareProtocol_honor']!),
-          findsOneWidget,
+          findsNothing,
         );
         expect(
           find.text(values['harmonyShareProtocol_huawei']!),
-          findsOneWidget,
+          findsNothing,
         );
+        expect(find.byType(Tooltip), findsNothing);
         for (final entry in {
           ShareTransferProtocol.huawei: AppIcons.huawei,
           ShareTransferProtocol.honor: AppIcons.honor,
