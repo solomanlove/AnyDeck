@@ -199,12 +199,12 @@ void main() {
         await tester.pumpAndSettle();
         final start = tester.widget<FilledButton>(find.byType(FilledButton));
         expect(start.style!.backgroundColor!.resolve({}), selected.color);
+        final scheme = Theme.of(
+          tester.element(find.byType(McpServerStatusCard)),
+        ).colorScheme;
         for (final control in tester.widgetList<Switch>(find.byType(Switch))) {
-          expect(control.activeThumbColor, selected.color);
-          expect(
-            control.activeTrackColor,
-            selected.color.withValues(alpha: 0.5),
-          );
+          expect(control.activeThumbColor, scheme.onPrimary);
+          expect(control.activeTrackColor, scheme.primary);
         }
         expect(tester.state(find.byType(McpToolsToggleList)), same(toolsState));
         expect(find.text('theme_test'), findsOneWidget);

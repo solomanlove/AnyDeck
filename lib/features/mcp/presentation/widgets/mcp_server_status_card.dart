@@ -156,8 +156,8 @@ class McpServerStatusCard extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Switch.adaptive(
                       value: state.config.enableDangerousOperationGuard,
-                      activeThumbColor: theme.colorScheme.primary,
-                      activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.5),
+                      activeThumbColor: theme.colorScheme.onPrimary,
+                      activeTrackColor: theme.colorScheme.primary,
                       onChanged: (val) {
                         final newConfig = state.config.copyWith(
                           enableDangerousOperationGuard: val,

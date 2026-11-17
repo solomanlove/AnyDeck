@@ -189,3 +189,22 @@ flutter --no-version-check test --no-pub \
 ```
 
 上述 34 个测试文件共 226 项回归全部通过；49 个本轮变更 Dart 文件定向 analyze 使用 `--no-fatal-infos` 验证通过，无 error/warning（75 项 SDK 弃用或既有冗余导入 info）。12 个变更测试文件格式检查与本轮差异检查通过，5 个新增测试文件均小于 500 行；未启动桌面 App 或真实服务。
+
+## 2026-11-17 MCP 安全与 Tools 开关样式统一
+
+- `McpServerStatusCard` 的高危操作防护开关、`McpToolsToggleList` 的每个工具开关，统一采用平台接入与兼容入口已有的选中样式：轨道读取 `ColorScheme.primary`，滑块读取 `onPrimary`。原先主题色滑块与半透明轨道的组合造成同页开关外观不同。
+- 保留四类开关的 `Switch.adaptive` / `SwitchListTile.adaptive`、默认尺寸、点击区域、动画和未选中样式；macOS/iOS 沿用 Cupertino 外观，Android 沿用 Material 外观，换色继续读取同一 Theme。
+- 改动仅涉及选中配色，不改变危险操作防护、工具启用判断、配置更新、服务运行状态或凭据。工具展开/搜索/筛选与 Provider 生命周期保持原有行为，不新增依赖、后台进程、设备命令或跨窗口广播。
+
+- `mcp_switch_style_test.dart` 挂载真实的服务状态、平台接入与 Tools 卡片，覆盖 macOS/iOS/Android × Light/Dark 六种组合；关闭全局 Cupertino 主色兜底后，检查各开关实际 Canvas 的轨道和滑块配色，并通过真实点击验证安全/工具开关关闭、蓝色切紫色状态保留以及重新开启。配置更新使用内存 fixture，不启动真实服务或执行设备操作。
+- 人工回归路径：进入 AI MCP，比较安全开关、平台接入及兼容入口；展开 Tools，对比任意工具开关。切换设置主题色后，打开/关闭的外观和原有权限应保持一致。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/mcp_switch_style_test.dart test/theme_feature_controls_test.dart \
+  test/mcp_access_theme_test.dart test/mcp_tools_toggle_list_test.dart \
+  test/mcp_platform_config_test.dart test/mcp_status_theme_test.dart \
+  test/app_theme_test.dart
+```
+
+上述 7 个测试文件共 48 项全部通过；4 个变更 Dart 文件定向 analyze 使用 `--no-fatal-infos` 验证通过，无 error/warning（8 项 SDK 弃用或既有冗余导入 info）。新增测试小于 500 行，测试格式和本轮差异检查通过；未启动桌面 App 或真实服务。
