@@ -83,7 +83,7 @@ class AndroidDeveloperImpactCard extends StatelessWidget {
                 icon: Icon(
                   Icons.copy_rounded,
                   size: 14,
-                  color: headerColor,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 tooltip: '复制适配要求',
                 padding: EdgeInsets.zero,

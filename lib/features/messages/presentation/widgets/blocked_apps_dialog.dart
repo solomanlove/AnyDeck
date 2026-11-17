@@ -113,7 +113,8 @@ class _BlockedAppsDialogState extends ConsumerState<BlockedAppsDialog> {
                           ),
                           trailing: Switch(
                             value: isBlocked,
-                            activeThumbColor: Colors.red,
+                            activeThumbColor: theme.colorScheme.primary,
+                            activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.5),
                             onChanged: (block) async {
                               await forwardingService.toggleBlockApp(
                                 widget.serial,

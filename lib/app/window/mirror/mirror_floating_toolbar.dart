@@ -174,7 +174,7 @@ class _MirrorFloatingToolbarState extends ConsumerState<MirrorFloatingToolbar> {
                 icon: Icon(
                   isScreenOff ? Icons.mobile_off : Icons.smartphone,
                   color: isScreenOff
-                      ? Colors.orange
+                      ? Theme.of(context).colorScheme.primary
                       : (Theme.of(context).appColors.toolbarForeground),
                 ),
                 tooltip: context.l10n.t('screenPowerToggle'),

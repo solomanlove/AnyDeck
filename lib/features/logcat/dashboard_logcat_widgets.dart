@@ -283,7 +283,8 @@ class _HighlightedText extends StatelessWidget {
     final spans = <TextSpan>[];
     var start = 0;
 
-    final activeBg = Colors.orange.withValues(alpha: 0.4);
+    final colors = Theme.of(context).colorScheme;
+    final activeBg = colors.primaryContainer;
     final inactiveBg = Colors.yellow.withValues(alpha: 0.4);
 
     while (true) {
@@ -303,6 +304,7 @@ class _HighlightedText extends StatelessWidget {
           text: matchText,
           style: TextStyle(
             backgroundColor: isActiveMatch ? activeBg : inactiveBg,
+            color: isActiveMatch ? colors.onPrimaryContainer : null,
             fontWeight: isActiveMatch ? FontWeight.bold : null,
           ),
         ),

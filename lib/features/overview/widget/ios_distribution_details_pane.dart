@@ -271,10 +271,10 @@ class IosDistributionDetailsPane extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.copy_rounded,
                   size: 14,
-                  color: Color(0xFF0969DA),
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 tooltip: '复制编译与适配要求',
                 padding: EdgeInsets.zero,
@@ -438,9 +438,9 @@ class IosDistributionDetailsPane extends StatelessWidget {
             onTap: () => onOpenUrl(item.link),
             child: Text(
               item.link,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
-                color: Color(0xFF0969DA),
+                color: Theme.of(context).colorScheme.primary,
                 decoration: TextDecoration.underline,
               ),
             ),
@@ -448,10 +448,10 @@ class IosDistributionDetailsPane extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.copy_rounded,
             size: 13,
-            color: Color(0xFF0969DA),
+            color: Theme.of(context).colorScheme.primary,
           ),
           tooltip: context.l10n.t('copyUrl'),
           padding: EdgeInsets.zero,

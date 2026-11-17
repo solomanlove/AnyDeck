@@ -261,7 +261,26 @@ void main() {
           for (final card in tester.widgetList<ReceiverServiceCard>(
             find.byType(ReceiverServiceCard),
           )) {
-            expect(card.statusColor, AppPalette.primary);
+            expect(card.statusColor, value.color);
+            final scope = find.byWidget(card);
+            final dot = tester
+                .widgetList<Container>(
+                  find.descendant(of: scope, matching: find.byType(Container)),
+                )
+                .singleWhere((widget) => widget.constraints?.maxWidth == 9);
+            expect((dot.decoration! as BoxDecoration).color, value.color);
+            expect(
+              tester
+                  .widget<Text>(
+                    find.descendant(
+                      of: scope,
+                      matching: find.text(card.statusLabel),
+                    ),
+                  )
+                  .style
+                  ?.color,
+              value.color,
+            );
           }
         }
 
@@ -270,6 +289,12 @@ void main() {
         await tester.pumpAndSettle();
         _expectSwitch(tester, 'airplay', AppThemeColor.purple, enabled: false);
         _expectSwitch(tester, 'dlna', AppThemeColor.purple, enabled: false);
+        for (final card in tester.widgetList<ReceiverServiceCard>(
+          find.byType(ReceiverServiceCard),
+        )) {
+          final theme = Theme.of(tester.element(find.byWidget(card)));
+          expect(card.statusColor, theme.appColors.faintForeground);
+        }
         expect(input.text, '尚未提交的 AnyDeck 名称');
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());

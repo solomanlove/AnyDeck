@@ -195,8 +195,8 @@ extension _SettingsTabCatalog on _SettingsTab {
             children: [
               if (settings.screenshotSavePath.isNotEmpty) ...[
                 _buildTextActionButton(
+                  context: context,
                   text: isZh ? '打开' : 'Open',
-                  color: const Color(0xFF2563EB),
                   onTap: () {
                     ref
                         .read(hostPlatformServiceProvider)
@@ -206,8 +206,8 @@ extension _SettingsTabCatalog on _SettingsTab {
                 const SizedBox(width: 16),
               ],
               _buildTextActionButton(
+                context: context,
                 text: isZh ? '更改' : 'Change',
-                color: const Color(0xFF2563EB),
                 onTap: () async {
                   final path = await getDirectoryPath();
                   if (path != null) {

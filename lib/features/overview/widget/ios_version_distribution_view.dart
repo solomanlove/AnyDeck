@@ -128,16 +128,16 @@ class _IosVersionDistributionViewState
                         ? Icons.keyboard_arrow_down_rounded
                         : Icons.keyboard_arrow_right_rounded,
                     size: 18,
-                    color: const Color(0xFF0969DA),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 6),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '历史版本（iOS 1.0 起 · 已 EOL，Apple 未公布各版本占比）',
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF0969DA),
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ),

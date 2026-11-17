@@ -72,7 +72,7 @@ class _McpServerStatusHeaderBadge extends ConsumerWidget {
         ? theme.colorScheme.primary
         : (isDark ? Colors.grey.shade600 : Colors.grey.shade500);
     final badgeBg = isRunning
-        ? theme.colorScheme.primary.withValues(alpha: 0.12)
+        ? theme.colorScheme.primaryContainer
         : (isDark
             ? Colors.white.withValues(alpha: 0.06)
             : Colors.black.withValues(alpha: 0.04));
@@ -119,7 +119,7 @@ class _McpServerStatusHeaderBadge extends ConsumerWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: badgeColor,
+              color: isRunning ? theme.colorScheme.onPrimaryContainer : badgeColor,
             ),
           ),
         ],

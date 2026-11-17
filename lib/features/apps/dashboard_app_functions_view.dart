@@ -286,7 +286,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                 icon: CupertinoIcons.play,
                                                 title: "启动应用",
                                                 description: "运行并启动此应用的主界面",
-                                                iconColor: theme.colorScheme.primary,
                                                 onPressed: isOnline
                                                     ? () => _runAdbAction(
                                                         context,
@@ -364,9 +363,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                 description: package.enabled
                                                     ? "禁用并隐藏此应用"
                                                     : "恢复并启用此应用",
-                                                iconColor: const Color(
-                                                  0xFF0288D1,
-                                                ),
                                                 onPressed: isOnline
                                                     ? () async {
                                                         final confirmMsg =
@@ -463,9 +459,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                       : 'primaryAppTooltip',
                                                 ),
                                                 description: context.l10n.t('fusionMirrorActionHint'),
-                                                iconColor: const Color(
-                                                  0xFF8E24AA,
-                                                ),
                                                 onPressed: isOnline
                                                     ? () async {
                                                         try {
@@ -526,7 +519,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                 icon: CupertinoIcons.shield,
                                                 title: "权限管理",
                                                 description: "查看并更改应用被授予的权限",
-                                                iconColor: theme.colorScheme.primary,
                                                 onPressed: isOnline
                                                     ? () {
                                                         DefaultTabController.of(
@@ -622,9 +614,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                 title: "系统设置",
                                                 description:
                                                     "在设备中打开此应用系统设置详情页",
-                                                iconColor: const Color(
-                                                  0xFF546E7A,
-                                                ),
                                                 onPressed: isOnline
                                                     ? () => _runAdbAction(
                                                         context,
@@ -643,9 +632,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                 title: "导出 APK",
                                                 description:
                                                     "提取并保存 APK 安装包到本地电脑",
-                                                iconColor: const Color(
-                                                  0xFF3949AB,
-                                                ),
                                                 onPressed: isOnline
                                                     ? () async {
                                                         final directory =
@@ -779,9 +765,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                     CupertinoIcons.archivebox,
                                                 title: "备份数据",
                                                 description: "备份此应用的数据到本地电脑",
-                                                iconColor: const Color(
-                                                  0xFF5E35B1,
-                                                ),
                                                 onPressed: isOnline
                                                     ? () => _backupAppData(
                                                         context,
@@ -795,9 +778,6 @@ class _AppFunctionsViewState extends ConsumerState<_AppFunctionsView> {
                                                 icon: Icons.restore,
                                                 title: "恢复数据",
                                                 description: "从备份文件中恢复应用的数据",
-                                                iconColor: const Color(
-                                                  0xFF039BE5,
-                                                ),
                                                 onPressed: isOnline
                                                     ? () => _restoreAppData(
                                                         context,
@@ -1236,19 +1216,21 @@ class _AppActionButtonCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
-    required this.iconColor,
+    this.iconColor,
     this.onPressed,
   });
 
   final IconData icon;
   final String title;
   final String description;
-  final Color iconColor;
+  /// 普通操作跟随主题；破坏性操作可覆盖为对应的语义色。
+  final Color? iconColor;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final actionColor = iconColor ?? theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
 
     final Color cardBg = isDark
@@ -1278,10 +1260,10 @@ class _AppActionButtonCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.1),
+                  color: actionColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: iconColor, size: 16),
+                child: Icon(icon, color: actionColor, size: 16),
               ),
               const SizedBox(width: 12),
               Expanded(

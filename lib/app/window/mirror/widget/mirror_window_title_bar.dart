@@ -49,6 +49,7 @@ class MirrorWindowTitleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foreground = Theme.of(context).appColors.toolbarForeground;
+    final primary = Theme.of(context).colorScheme.primary;
     return Container(
       height: 30,
       padding: EdgeInsets.only(left: Platform.isMacOS ? 80 : 16, right: 4),
@@ -99,8 +100,8 @@ class MirrorWindowTitleBar extends StatelessWidget {
                                         child: Container(
                                           width: 6,
                                           height: 6,
-                                          decoration: const BoxDecoration(
-                                            color: Colors.red,
+                                          decoration: BoxDecoration(
+                                            color: primary,
                                             shape: BoxShape.circle,
                                           ),
                                         ),
@@ -132,7 +133,7 @@ class MirrorWindowTitleBar extends StatelessWidget {
               MirrorToolbarButton(
                 icon: Icon(
                   isAlwaysOnTop ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
-                  color: isAlwaysOnTop ? Colors.orange : foreground,
+                  color: isAlwaysOnTop ? primary : foreground,
                 ),
                 tooltip: context.l10n.t(
                   isAlwaysOnTop ? 'unpinAlwaysOnTop' : 'pinAlwaysOnTop',

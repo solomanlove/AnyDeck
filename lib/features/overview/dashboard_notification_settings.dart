@@ -97,10 +97,10 @@ extension _SettingsTabNotificationSection on _SettingsTab {
                   ),
                   const SizedBox(width: 8),
                   _buildTextActionButton(
+                    context: context,
                     text: isDenied
                         ? context.l10n.t('openSystemSettings')
                         : context.l10n.t('requestPermission'),
-                    color: const Color(0xFF2563EB),
                     onTap: () async {
                       if (isDenied) {
                         await bridge.openNotificationSettings();

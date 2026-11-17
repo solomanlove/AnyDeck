@@ -16,7 +16,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
     final Color? rowColor = isSelected
         ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4)
         : airplaySession != null
-        ? const Color(0xFF34C759).withValues(alpha: isDark ? 0.10 : 0.06)
+        ? Theme.of(context).colorScheme.primary.withValues(alpha: isDark ? 0.10 : 0.06)
         : index % 2 == 0
         ? null
         : Theme.of(
@@ -230,7 +230,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                   style: TextStyle(
                     fontSize: 11,
                     color: airplaySession != null && !hasIp
-                        ? const Color(0xFF34C759)
+                        ? Theme.of(context).colorScheme.primary
                         : Colors.grey,
                   ),
                   overflow: TextOverflow.ellipsis,

@@ -1178,7 +1178,6 @@ class _BatchScheduleDialogState extends ConsumerState<_BatchScheduleDialog> {
           child: Column(
             children: [
               const TabBar(
-                labelColor: Colors.blue,
                 unselectedLabelColor: Colors.grey,
                 tabs: [
                   Tab(text: '创建新任务'),

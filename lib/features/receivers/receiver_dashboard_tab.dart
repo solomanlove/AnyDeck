@@ -174,7 +174,7 @@ class _AirPlayReceiverCardState extends ConsumerState<AirPlayReceiverCard> {
               .replaceAll('{name}', session.serverName)
         : context.l10n.t('receiverAirplayStoppedDesc');
     final statusColor = isMirroring || isVideoPlaying
-        ? theme.appColors.success
+        ? theme.colorScheme.primary
         : isRunning
         ? theme.colorScheme.primary
         : theme.appColors.faintForeground;
@@ -347,7 +347,7 @@ class _DlnaReceiverCardState extends ConsumerState<DlnaReceiverCard> {
     final statusColor = hasError || playbackFailed
         ? theme.colorScheme.error
         : _service.hasActiveMedia
-        ? theme.appColors.success
+        ? theme.colorScheme.primary
         : _service.isRunning
         ? theme.colorScheme.primary
         : theme.appColors.faintForeground;

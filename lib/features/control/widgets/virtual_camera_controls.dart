@@ -106,6 +106,8 @@ class _VirtualCameraControlsState extends ConsumerState<VirtualCameraControls> {
         ),
         SwitchListTile.adaptive(
           key: const ValueKey('virtual-camera-enable'),
+          activeTrackColor: Theme.of(context).colorScheme.primary,
+          activeThumbColor: Theme.of(context).colorScheme.onPrimary,
           contentPadding: EdgeInsets.zero,
           title: Text(l10n.t('virtualCameraEnable')),
           subtitle: Text(l10n.t('virtualCameraLifetime')),

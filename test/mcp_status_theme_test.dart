@@ -108,22 +108,29 @@ void main() {
           ),
         );
         final beforeTheme = controller.state;
-        for (final selected in [AppThemeColor.blue, AppThemeColor.pink]) {
+        for (final selected in AppThemeColor.values) {
           color.value = selected;
           await tester.pumpAndSettle();
           expect(controller.state, same(beforeTheme));
           final badge =
               tester.widget<Container>(badgeFinder).decoration!
                   as BoxDecoration;
-          expect(badge.color, selected.color.withValues(alpha: 0.12));
+          final scheme = Theme.of(tester.element(header)).colorScheme;
+          expect(badge.color, scheme.primaryContainer);
           expect(
             (badge.border! as Border).top.color,
             selected.color.withValues(alpha: 0.3),
           );
           expect(
             tester.widget<Text>(find.text(runningLabel)).style!.color,
-            selected.color,
+            scheme.onPrimaryContainer,
           );
+          final foreground = scheme.onPrimaryContainer.computeLuminance();
+          final background = scheme.primaryContainer.computeLuminance();
+          final contrast = foreground > background
+              ? (foreground + 0.05) / (background + 0.05)
+              : (background + 0.05) / (foreground + 0.05);
+          expect(contrast, greaterThanOrEqualTo(4.5));
           for (final dot in [_dot(tester, header, 8), _dot(tester, card, 12)]) {
             expect(dot.color, selected.color);
             expect(
@@ -170,7 +177,7 @@ void main() {
         );
         expect(
           start.style!.backgroundColor!.resolve({}),
-          AppThemeColor.pink.color,
+          AppThemeColor.values.last.color,
         );
         expect(tester.takeException(), isNull);
       });

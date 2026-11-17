@@ -172,7 +172,7 @@ void main() {
       });
     }
 
-    testWidgets('AirPlay 打开入口在 $brightness 跟随主色，LIVE 状态保持绿色', (tester) async {
+    testWidgets('AirPlay 打开入口与活跃状态在 $brightness 动态跟随主色', (tester) async {
       final color = await _pumpPage(
         tester,
         container: ProviderContainer(
@@ -195,6 +195,8 @@ void main() {
           ],
         ),
       );
+      final banner = find.byType(AirPlayActiveBanner);
+      final bannerElement = tester.element(banner);
       for (final value in [AppThemeColor.blue, AppThemeColor.pink]) {
         color.value = value;
         await tester.pumpAndSettle();
@@ -205,10 +207,63 @@ void main() {
           matching: find.byIcon(Icons.airplay_rounded),
         );
         expect(tester.widget<Icon>(action).color, value.color);
+        final scheme = Theme.of(tester.element(banner)).colorScheme;
         expect(
           tester.widget<Text>(find.text('AirPlay LIVE')).style?.color,
-          const Color(0xff34c759),
+          scheme.onPrimaryContainer,
         );
+        expect(tester.element(banner), same(bannerElement));
+        final decoration =
+            tester
+                    .widget<Container>(
+                      find
+                          .descendant(
+                            of: banner,
+                            matching: find.byType(Container),
+                          )
+                          .first,
+                    )
+                    .decoration!
+                as BoxDecoration;
+        expect(
+          decoration.color,
+          scheme.primaryContainer.withValues(
+            alpha: brightness == Brightness.dark ? 0.6 : 0.8,
+          ),
+        );
+        expect(
+          (decoration.border! as Border).top.color,
+          value.color.withValues(
+            alpha: brightness == Brightness.dark ? 0.35 : 0.25,
+          ),
+        );
+        final bannerIcon = find.descendant(
+          of: banner,
+          matching: find.byIcon(Icons.airplay_rounded),
+        );
+        expect(tester.widget<Icon>(bannerIcon).color, value.color);
+        expect(
+          tester.widget<Text>(find.text('LIVE')).style?.color,
+          scheme.onPrimaryContainer,
+        );
+        for (final label in ['LIVE', 'AirPlay LIVE']) {
+          expect(
+            tester
+                .widgetList<Container>(
+                  find.ancestor(
+                    of: find.text(label),
+                    matching: find.byType(Container),
+                  ),
+                )
+                .where(
+                  (widget) =>
+                      widget.decoration is BoxDecoration &&
+                      (widget.decoration! as BoxDecoration).color ==
+                          scheme.primaryContainer,
+                ),
+            hasLength(1),
+          );
+        }
       }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());

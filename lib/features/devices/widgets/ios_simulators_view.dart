@@ -245,7 +245,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: item.isBooted
-                        ? Theme.of(context).appColors.success
+                        ? Theme.of(context).colorScheme.primary
                         : Colors.grey.shade400,
                   ),
                 ),
@@ -279,7 +279,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                     style: TextStyle(
                       fontSize: 12,
                       color: item.isBooted
-                          ? Theme.of(context).appColors.success
+                          ? Theme.of(context).colorScheme.primary
                           : Colors.grey,
                       fontWeight: FontWeight.w500,
                     ),

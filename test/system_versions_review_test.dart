@@ -58,7 +58,12 @@ void main() {
         for (final platform in ['Android', 'HarmonyOS', 'iOS']) {
           await tester.tap(find.text(platform));
           await tester.pumpAndSettle();
-          await tester.tap(find.text(locale == 'zh' ? '查看详情' : 'View details'));
+          await tester.tap(
+            find.widgetWithText(
+              TextButton,
+              locale == 'zh' ? '查看详情' : 'View details',
+            ),
+          );
           await tester.pumpAndSettle();
           final scroll = tester.widget<SingleChildScrollView>(
             find.byKey(const Key('systemVersionsHorizontalScroll')),
@@ -76,7 +81,12 @@ void main() {
             true,
           );
           expect(tester.takeException(), null);
-          await tester.tap(find.text(locale == 'zh' ? '版本列表' : 'Versions'));
+          await tester.tap(
+            find.widgetWithText(
+              TextButton,
+              locale == 'zh' ? '版本列表' : 'Versions',
+            ),
+          );
           await tester.pumpAndSettle();
           expect(scroll.controller!.offset, 0);
         }

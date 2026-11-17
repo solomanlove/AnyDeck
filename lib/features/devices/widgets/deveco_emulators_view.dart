@@ -255,7 +255,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: item.isRunning
-                        ? Theme.of(context).appColors.success
+                        ? Theme.of(context).colorScheme.primary
                         : Colors.grey.shade400,
                   ),
                 ),
@@ -292,7 +292,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                     style: TextStyle(
                       fontSize: 12,
                       color: item.isRunning
-                          ? Theme.of(context).appColors.success
+                          ? Theme.of(context).colorScheme.primary
                           : Colors.grey,
                       fontWeight: FontWeight.w500,
                     ),

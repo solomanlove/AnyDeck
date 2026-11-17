@@ -37,7 +37,7 @@ class DeviceConnectionIndicators extends StatelessWidget {
             if (device.hasIosNetworkConnection)
               _indicator(context, 'connectionIosNetwork', CupertinoIcons.wifi, Theme.of(context).colorScheme.primary),
             if (isAirplayMirroring)
-              _indicator(context, 'airplayServer', Icons.airplay_rounded, const Color(0xFF34C759)),
+              _indicator(context, 'airplayServer', Icons.airplay_rounded, Theme.of(context).colorScheme.primary),
             if (device.hasTcpConnection)
               _indicator(context, 'connectionTcp', CupertinoIcons.link, const Color(0xFF00ACC1)),
             if (device.hasWifiDebuggingConnection)

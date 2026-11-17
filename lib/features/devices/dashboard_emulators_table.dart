@@ -434,7 +434,7 @@ class _EmulatorStatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
-      'running' => (const Color(0xFF2E7D32), context.l10n.t('emulatorRunning')),
+      'running' => (Theme.of(context).colorScheme.primary, context.l10n.t('emulatorRunning')),
       'starting' => (
         const Color(0xFFE65100),
         context.l10n.t('emulatorStarting'),

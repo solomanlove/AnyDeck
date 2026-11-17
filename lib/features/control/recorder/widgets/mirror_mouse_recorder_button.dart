@@ -131,10 +131,10 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             MirrorToolbarButton(
-              icon: const Icon(
+              icon: Icon(
                 CupertinoIcons.pause_fill,
                 size: 16,
-                color: Colors.orangeAccent,
+                color: Theme.of(context).colorScheme.primary,
               ),
               tooltip: context.l10n.t('pauseMouseTrack'),
               shortcut: MirrorShortcut.mouseRecording,
@@ -170,10 +170,10 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             MirrorToolbarButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.play_arrow_rounded,
                 size: 22,
-                color: Colors.orangeAccent,
+                color: Theme.of(context).colorScheme.primary,
               ),
               tooltip: context.l10n.t('resumeMouseTrack'),
               shortcut: MirrorShortcut.mouseRecording,
@@ -192,8 +192,8 @@ class MirrorMouseRecorderButton extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
                 '${(state.playProgress * 100).toInt()}% (暂停)',
-                style: const TextStyle(
-                  color: Colors.orangeAccent,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   fontFeatures: [FontFeature.tabularFigures()],

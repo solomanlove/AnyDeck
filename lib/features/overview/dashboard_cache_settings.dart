@@ -63,8 +63,8 @@ extension _SettingsTabCacheActions on _SettingsTab {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildTextActionButton(
+            context: context,
             text: context.l10n.t('openCacheFolder'),
-            color: const Color(0xFF2563EB),
             onTap: isClearing ? null : () => _openCacheFolder(context, ref),
           ),
           const SizedBox(width: 16),
@@ -79,6 +79,7 @@ extension _SettingsTabCacheActions on _SettingsTab {
             )
           else
             _buildTextActionButton(
+              context: context,
               text: context.l10n.t('clearCache'),
               color: const Color(0xFFDC2626),
               onTap: () => _confirmAndClearCache(context, ref),

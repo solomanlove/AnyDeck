@@ -27,7 +27,7 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
     final langCode = Localizations.localeOf(context).languageCode;
     final sections = item.featureSections;
 
-    final linkColor = isDark ? const Color(0xFF4DA3FF) : const Color(0xFF0969DA);
+    final linkColor = Theme.of(context).colorScheme.primary;
 
     // 区分“开发影响与适配要求”和其他常规特性分类
     final impactSection = sections.cast<AndroidFeatureSection?>().firstWhere(

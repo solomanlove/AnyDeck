@@ -135,7 +135,7 @@ flutter --no-version-check test --no-pub \
 - 投屏接收、文件互传和 AI MCP 的侧栏运行圆点统一读取 `ColorScheme.primary`，宽窄侧栏复用同一状态组件；服务运行条件、停止后隐藏以及页面选中判断不变。
 - MCP 页头运行徽章的文字、边框、背景、圆点和阴影，以及服务卡片的圆点和阴影均跟随主题主色。停止时保留原有灰色与中性背景，不显示发光阴影；停止服务按钮仍为红色。
 - `dashboard_service_navigation_test.dart` 覆盖中英文 × 明暗 × 宽窄侧栏，验证三个服务运行中蓝色切换粉色、页面选中与 Provider 实例保持。新增 `mcp_status_theme_test.dart` 挂载实际 MCP 页面，验证中英文 × 明暗的完整徽章配色、运行状态保留和停服回退。
-- 全局成功语义色不变；设备在线、Root、充电、AirPlay LIVE、实际媒体播放及执行审计成功继续使用原有业务色。
+- 全局成功语义色不变；设备在线、Root、充电及执行审计成功继续使用原有业务色。AirPlay LIVE 与实际媒体播放的运行标记在下述全页面复查中补齐主题配色。
 
 ```bash
 flutter --no-version-check test --no-pub \
@@ -148,3 +148,44 @@ flutter --no-version-check test --no-pub \
 ```
 
 上述 9 个相关测试文件共 74 项全部通过；7 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（9 项 SDK 弃用 info 和 1 项既有冗余导入 info）。测试格式与 `git diff --check` 通过，未启动桌面 App 或真实服务。
+
+## 2026-11-17 全页面配色复查
+
+复查范围包含主窗口所有 Feature、公共 Widget 与 Flutter 子窗口；同时检索固定颜色、主色别名、成功色误用、局部 Theme、默认自适应开关及各类选中样式，不限于搜索绿色字面量。
+
+| 模块 | 本轮补齐 |
+| --- | --- |
+| 应用与开发者 | 普通应用操作卡默认从公共组件读取主色，列表收藏星标选中态及三平台引导测试按钮跟随主题；危险操作保留语义色 |
+| 设置与版本 | 目录、缓存和通知权限按钮通过共享 helper 默认读取主色；平台切换、版本选中、历史展开、复制、链接和关闭按钮跟随主题 |
+| 接收与设备 | AirPlay 横幅、LIVE、活跃设备行和连接标记、两协议媒体运行状态，以及 Android/iOS/DevEco 模拟器运行点和运行文字使用主色 |
+| 投屏与控制 | 置顶、息屏选中态、音频运行点、鼠标轨迹回放的暂停/继续按钮与进度、普通前台应用快捷操作和虚拟摄像头开关跟随主题 |
+| 消息与截图 | 应用屏蔽开关的选中状态、自动保存刷新间隔 Chip 的背景、文字及勾选跟随主题 |
+| 日志与批量任务 | 当前搜索结果使用主题容器与前景配对色；批量计划任务标签取消固定蓝色，继承 TabBar 默认主题 |
+
+- 小字运行徽章和选中 Chip 使用 `primaryContainer/onPrimaryContainer` 配对，避免纯主色文字叠加同色淡底时明暗对比不足；边框、圆点及运行阴影仍读取 `primary`。MCP 徽章回归遍历六种颜色 × 明暗，并检查文字对比度；HarmonyOS 选中行的 API、占比和累计文字使用同一配对前景，实际文字对比回归不低于 4.5:1，品牌版本块与未选中配色保持原样。
+- 文件页、网页调试、终端、消息列表、网络与其他控制的普通交互已使用 Theme；剩余固定色逐处核对为品牌/通道类型、文件类型、图表数据、日志等级、用户绘图调色板、环境或权限就绪、设备在线/Root/充电、完成结果、错误及警告等业务语义。
+- 不改变 Route、设备操作、服务启停判断、Provider 生命周期、持久化或跨窗口广播，不新增后台任务。换色回归验证同一页面/控制器持续挂载、搜索/筛选/收藏/版本选择/运行状态保留以及操作回调。
+- 测试 fixture 使用内存服务与原生平台替代，不启动真实 App、设备命令、接收或摄像头服务；版本列表按实际 Scrollable 定位懒加载条目，平台切换等待页头双击手势判定，英文版本导航限定按钮角色以避免与页头标题同名。截图测试宿主持有 Provider 监听，模拟工作台在弹窗期间持续保留 Controller，避免复用已 autoDispose 的 Notifier。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/business_actions_theme_test.dart test/devices_audit_theme_test.dart \
+  test/mirror_window_controls_theme_test.dart test/overview_service_theme_test.dart \
+  test/dialog_selection_theme_test.dart test/control_theme_color_test.dart \
+  test/device_theme_color_test.dart test/logcat_webview_theme_test.dart \
+  test/mcp_status_theme_test.dart test/receiver_theme_color_test.dart \
+  test/settings_theme_color_test.dart test/system_versions_review_test.dart \
+  test/app_theme_test.dart test/app_theme_color_settings_test.dart \
+  test/theme_window_wiring_test.dart test/dashboard_service_navigation_test.dart \
+  test/mcp_access_theme_test.dart test/choice_chip_theme_test.dart \
+  test/mirror_quality_theme_test.dart test/platform_version_distribution_test.dart \
+  test/platform_version_distribution_launcher_test.dart test/emulator_platform_tabs_test.dart \
+  test/settings_review_test.dart test/settings_workspace_test.dart \
+  test/receiver_dashboard_tab_test.dart test/platform_icon_usage_test.dart \
+  test/apps_tab_context_menu_test.dart test/apps_tab_filter_test.dart \
+  test/mirror_foreground_app_button_test.dart test/virtual_camera_widget_test.dart \
+  test/mirror_app_quick_actions_dialog_test.dart test/mirror_whiteboard_test.dart \
+  test/screenshot_auto_save_test.dart test/messages_source_widget_test.dart
+```
+
+上述 34 个测试文件共 226 项回归全部通过；49 个本轮变更 Dart 文件定向 analyze 使用 `--no-fatal-infos` 验证通过，无 error/warning（75 项 SDK 弃用或既有冗余导入 info）。12 个变更测试文件格式检查与本轮差异检查通过，5 个新增测试文件均小于 500 行；未启动桌面 App 或真实服务。

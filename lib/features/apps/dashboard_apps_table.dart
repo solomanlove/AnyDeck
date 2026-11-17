@@ -426,7 +426,7 @@ class _AppNameCell extends ConsumerWidget {
                           child: Icon(
                             isFav ? CupertinoIcons.star_fill : CupertinoIcons.star,
                             size: 14,
-                            color: isFav ? const Color(0xfff5a623) : colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+                            color: isFav ? colorScheme.primary : colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
                           ),
                         ),
                       );

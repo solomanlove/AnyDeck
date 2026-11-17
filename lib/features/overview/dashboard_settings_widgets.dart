@@ -288,12 +288,15 @@ extension _SettingsTabWidgets on _SettingsTab {
   ///
   /// [text]: 按钮文案。
   /// [onTap]: 点击回调，为 null 时禁用。
-  /// [color]: 文本颜色，默认系统蓝，危险操作传红色。
+  /// [context]: 用于读取当前主题主色。
+  /// [color]: 可选文本颜色，默认主题主色，危险操作传红色。
   Widget _buildTextActionButton({
+    required BuildContext context,
     required String text,
     required VoidCallback? onTap,
-    Color color = const Color(0xFF2563EB),
+    Color? color,
   }) {
+    final foreground = color ?? Theme.of(context).colorScheme.primary;
     return MouseRegion(
       cursor: onTap != null
           ? SystemMouseCursors.click
@@ -308,7 +311,9 @@ extension _SettingsTabWidgets on _SettingsTab {
             style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w500,
-              color: onTap != null ? color : color.withValues(alpha: 0.4),
+              color: onTap != null
+                  ? foreground
+                  : foreground.withValues(alpha: 0.4),
             ),
           ),
         ),
