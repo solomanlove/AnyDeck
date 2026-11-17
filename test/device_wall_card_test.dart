@@ -5,6 +5,7 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/app/widget/app_asset_image.dart';
+import 'package:any_deck/features/devices/widgets/device_tag_badge.dart';
 import 'package:any_deck/features/devices/widgets/device_wall_card.dart';
 import 'package:any_deck/features/devices/widgets/device_wall_phone.dart';
 import 'package:flutter/material.dart';
@@ -155,6 +156,93 @@ void main() {
     }
   });
 
+  testWidgets('标签在名称下方居中展示，无标签和空白标签不预留空间', (tester) async {
+    var opens = 0;
+    var infos = 0;
+    var selections = 0;
+    await tester.pumpWidget(_host(_card()));
+    final baseHeight = tester.getSize(find.byType(DeviceWallCard)).height;
+    final phone = tester.getRect(find.byType(DeviceWallPhone));
+    expect(find.byType(DeviceTagBadge), findsNothing);
+
+    await tester.pumpWidget(_host(_card(tags: const ['', '  '])));
+    expect(find.byType(DeviceTagBadge), findsNothing);
+    expect(tester.getSize(find.byType(DeviceWallCard)).height, baseHeight);
+
+    await tester.pumpWidget(
+      _host(
+        _card(
+          tags: const ['主力机', 'Work'],
+          onOpen: () => opens++,
+          onInfo: () => infos++,
+          onSelected: (_) => selections++,
+        ),
+      ),
+    );
+    expect(find.byType(DeviceTagBadge), findsNWidgets(2));
+    final tags = find.ancestor(
+      of: find.byType(DeviceTagBadge).first,
+      matching: find.byType(Wrap),
+    );
+    expect(tester.widget<Wrap>(tags).alignment, WrapAlignment.center);
+    expect(
+      tester.getTopLeft(tags).dy,
+      greaterThan(tester.getBottomLeft(find.text('Mi MIX 3')).dy),
+    );
+    expect(
+      tester.getBottomLeft(tags).dy,
+      lessThan(tester.getTopLeft(find.text('Android 15')).dy),
+    );
+    expect(tester.getRect(find.byType(DeviceWallPhone)), phone);
+    await tester.tap(find.text('主力机'));
+    expect([opens, infos, selections], [0, 0, 0]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('批量模式点击标签只切换选择，禁选标签不触发任何设备动作', (tester) async {
+    var selected = false;
+    var opens = 0;
+    var infos = 0;
+    var menus = 0;
+    await tester.pumpWidget(
+      _host(
+        StatefulBuilder(
+          builder: (context, setState) => _card(
+            tags: const ['主力机'],
+            batchMode: true,
+            selected: selected,
+            onSelected: (value) => setState(() => selected = value),
+            onOpen: () => opens++,
+            onInfo: () => infos++,
+            onMore: () => menus++,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('主力机'));
+    await tester.pump();
+    expect(selected, isTrue);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+    expect([opens, infos, menus], [0, 0, 0]);
+
+    await tester.pumpWidget(
+      _host(
+        _card(
+          tags: const ['主力机'],
+          batchMode: true,
+          selectable: false,
+          onSelected: (_) => fail('禁选标签不得改变选择'),
+          onOpen: () => opens++,
+          onInfo: () => infos++,
+          onMore: () => menus++,
+        ),
+      ),
+    );
+    await tester.tap(find.text('主力机'));
+    expect([opens, infos, menus], [0, 0, 0]);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final brightness in Brightness.values) {
     testWidgets('${brightness.name} 中英长名称在320px大字号设备墙中不溢出', (tester) async {
       tester.view.physicalSize = const Size(320, 1100);
@@ -170,6 +258,13 @@ void main() {
                     : 'sdk_gphone16k_arm64 Android Emulator',
                 statusLabel: language == 'zh' ? 'USB 已连接' : 'USB connected',
                 actionLabel: language == 'zh' ? '重新连接' : 'Reconnect',
+                tags: language == 'zh'
+                    ? const ['主力机超长标签用于完整提示与省略验证', '测试机', '工作设备']
+                    : const [
+                        'Primary-device-for-long-label-tooltip',
+                        'Testing',
+                        'Work',
+                      ],
                 batchMode: batch,
               ),
               width: 146,
@@ -185,6 +280,43 @@ void main() {
           expect(phone.left, greaterThanOrEqualTo(card.left));
           expect(phone.right, lessThanOrEqualTo(card.right));
           expect(find.byType(Checkbox), batch ? findsOneWidget : findsNothing);
+          final badges = find.byType(DeviceTagBadge);
+          expect(badges, findsNWidgets(3));
+          final theme = Theme.of(tester.element(badges.first));
+          final badgeContainer = tester.widget<Container>(
+            find.descendant(of: badges.first, matching: find.byType(Container)),
+          );
+          final decoration = badgeContainer.decoration! as BoxDecoration;
+          expect(
+            decoration.color,
+            theme.colorScheme.primaryContainer.withValues(alpha: .5),
+          );
+          expect(
+            (decoration.border! as Border).top.color,
+            theme.colorScheme.primary.withValues(alpha: .2),
+          );
+          final longTag = tester.widget<DeviceTagBadge>(badges.first).tag;
+          expect(
+            find.descendant(
+              of: badges.first,
+              matching: find.byTooltip(longTag),
+            ),
+            findsOneWidget,
+          );
+          final label = tester.widget<Text>(
+            find.descendant(of: badges.first, matching: find.byType(Text)),
+          );
+          expect(label.maxLines, 1);
+          expect(label.overflow, TextOverflow.ellipsis);
+          for (final badge in badges.evaluate()) {
+            final rect = tester.getRect(find.byWidget(badge.widget));
+            expect(rect.left, greaterThanOrEqualTo(card.left));
+            expect(rect.right, lessThanOrEqualTo(card.right));
+          }
+          expect(
+            tester.getTopLeft(badges.last).dy,
+            greaterThan(tester.getTopLeft(badges.first).dy),
+          );
           if (!batch) {
             expect(
               tester.getSize(find.byType(OutlinedButton)).height,
@@ -201,6 +333,7 @@ void main() {
 DeviceWallCard _card({
   String name = 'Mi MIX 3',
   String brand = 'Xiaomi',
+  List<String> tags = const [],
   String statusLabel = 'USB 已连接',
   String actionLabel = '投屏',
   bool online = true,
@@ -217,6 +350,7 @@ DeviceWallCard _card({
   systemVersion: 'Android 15',
   statusLabel: statusLabel,
   brand: brand,
+  tags: tags,
   coverTitle: online ? '设备已就绪' : '设备未连接',
   coverHint: online ? '点击打开投屏' : '通过 USB 或无线连接',
   actionLabel: actionLabel,

@@ -70,13 +70,24 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              displayName,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 3,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                for (final tag in device.tags)
+                                  if (tag.trim().isNotEmpty)
+                                    DeviceTagBadge(tag: tag),
+                              ],
                             ),
                             _buildIdentifierSubtitle(device, airplaySession),
                             if (layout.systemInline)

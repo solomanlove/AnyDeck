@@ -73,6 +73,7 @@ extension _DeviceWallPanel on _DeviceListPanelState {
           builder: (cardContext) => DeviceWallCard(
             key: ValueKey('device-wall-${device.id}'),
             name: name,
+            tags: device.tags,
             systemVersion: device.androidVersion ?? '-',
             statusLabel: _workspaceStatus(context, device, session),
             brand: brand != null && brand.isNotEmpty && brand != '-'

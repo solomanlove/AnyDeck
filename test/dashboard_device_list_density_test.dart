@@ -14,6 +14,7 @@ import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/core/receiver/receiver_identity.dart';
 import 'package:any_deck/features/devices/widgets/device_status_avatar.dart';
+import 'package:any_deck/features/devices/widgets/device_tag_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -31,6 +32,7 @@ const _devices = [
     isOnline: true,
     ipAddress: '192.168.1.10',
     androidVersion: 'Android 15',
+    tags: ['主力机'],
   ),
   RegisteredDevice(
     id: '192.168.1.11:5555',
@@ -38,6 +40,7 @@ const _devices = [
     status: 'device',
     isOnline: true,
     androidVersion: 'Android 15',
+    tags: ['', '  '],
   ),
   RegisteredDevice(
     id: 'logo-ios',
@@ -123,56 +126,12 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
         var fullOverviewReads = 0;
-        final container = ProviderContainer(
-          overrides: [
-            receiverIdentityProvider.overrideWith(
-              (ref) async => const ReceiverIdentity(
-                uuid: '00000000-0000-4000-8000-000000000000',
-                computerName: 'AnyDeck QA',
-              ),
-            ),
-            adbServiceProvider.overrideWithValue(FakeAdbService()),
-            iosDeviceServiceProvider.overrideWithValue(_Ios()),
-            discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
-            deviceRegistryProvider.overrideWith(_Registry.new),
-            hostNetworkProvider.overrideWith(_HostNetwork.new),
-            adbEnvironmentProvider.overrideWith(_ReadyAdb.new),
-            emulatorListProvider.overrideWith((ref) async => []),
-            emulatorConnectionsProvider.overrideWith((ref) async => {}),
-            for (final device in _devices) ...[
-              cachedDeviceOverviewProvider(device.id).overrideWith(
-                (ref) async => device.id == 'logo-xiaomi'
-                    ? DeviceOverview.fromJson({'brand': 'Xiaomi'})
-                    : null,
-              ),
-              deviceOverviewProvider(device.id).overrideWith((ref) {
-                fullOverviewReads++;
-                return Stream.value(DeviceOverview.fromJson({}));
-              }),
-            ],
-          ],
+        await _pumpDashboard(
+          tester,
+          language: language,
+          brightness: brightness,
+          onFullOverviewRead: () => fullOverviewReads++,
         );
-        addTearDown(() async {
-          await tester.pumpWidget(const SizedBox.shrink());
-          container.dispose();
-          await tester.pumpAndSettle();
-        });
-        await tester.pumpWidget(
-          UncontrolledProviderScope(
-            container: container,
-            child: MaterialApp.router(
-              routerConfig: container.read(appRouterProvider),
-              locale: Locale(language),
-              supportedLocales: AppLocalizations.supportedLocales,
-              localizationsDelegates: const [
-                AppLocalizationsDelegate(),
-                ...GlobalMaterialLocalizations.delegates,
-              ],
-              theme: buildAppTheme(brightness),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('deviceView-list')));
         await tester.pumpAndSettle();
         const assets = [
@@ -185,6 +144,22 @@ void main() {
           final device = _devices[index];
           final row = find.byKey(ValueKey('device-row-${device.id}'));
           expect(tester.getSize(row).height, 60);
+          final badges = find.descendant(
+            of: row,
+            matching: find.byType(DeviceTagBadge),
+          );
+          expect(
+            tester.widgetList<DeviceTagBadge>(badges).map((badge) => badge.tag),
+            device.tags.where((tag) => tag.trim().isNotEmpty),
+          );
+          if (index == 0) {
+            final name = tester.getRect(
+              find.descendant(of: row, matching: find.text(device.displayName)),
+            );
+            final badge = tester.getRect(badges);
+            expect(badge.center.dy, closeTo(name.center.dy, 1));
+            expect(badge.left, greaterThan(name.right));
+          }
           final actionLabel = device.isOnline
               ? language == 'zh'
                     ? '投屏'
@@ -268,6 +243,62 @@ void main() {
         expect(find.byType(Checkbox), findsNothing);
         expect(tester.takeException(), isNull);
       });
+
+      testWidgets('320px多标签及长标签在列表和设备墙无溢出 $language ${brightness.name}', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 1100);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final container = await _pumpDashboard(
+          tester,
+          language: language,
+          brightness: brightness,
+          textScale: 1.6,
+        );
+        const tags = [
+          '主力机',
+          'QA',
+          '这是一段需要保留完整提示的长设备标签',
+          'This is a long user supplied device classification label',
+        ];
+        await container.read(deviceRegistryProvider.notifier).updateTags(
+          _devices.first.id,
+          [...tags, '', '  '],
+        );
+        await tester.pumpAndSettle();
+        for (final view in ['list', 'wall']) {
+          await tester.tap(find.byKey(Key('deviceView-$view')));
+          await tester.pumpAndSettle();
+          final item = find.byKey(
+            ValueKey(
+              'device-${view == 'list' ? 'row' : 'wall'}-${_devices.first.id}',
+            ),
+          );
+          final bounds = tester.getRect(item);
+          final badges = find.descendant(
+            of: item,
+            matching: find.byType(DeviceTagBadge),
+          );
+          expect(
+            tester.widgetList<DeviceTagBadge>(badges).map((badge) => badge.tag),
+            tags,
+          );
+          for (final element in badges.evaluate()) {
+            final badge = tester.getRect(find.byWidget(element.widget));
+            expect(badge.left, greaterThanOrEqualTo(bounds.left));
+            expect(badge.right, lessThanOrEqualTo(bounds.right));
+            expect(badge.bottom, lessThanOrEqualTo(bounds.bottom));
+          }
+          for (final tag in tags) {
+            expect(
+              find.descendant(of: item, matching: find.byTooltip(tag)),
+              findsOneWidget,
+            );
+          }
+          expect(tester.takeException(), isNull);
+        }
+      });
     }
   }
 }
@@ -275,6 +306,81 @@ void main() {
 class _Registry extends DeviceRegistryNotifier {
   @override
   List<RegisteredDevice> build() => _devices;
+
+  // 只验证注册表发布后的 UI 响应，持久化和发现合并不属于此布局桩。
+  @override
+  Future<void> updateTags(String id, List<String> tags) async {
+    state = [
+      for (final device in state)
+        device.id == id ? device.copyWith(tags: tags) : device,
+    ];
+  }
+}
+
+Future<ProviderContainer> _pumpDashboard(
+  WidgetTester tester, {
+  required String language,
+  required Brightness brightness,
+  double textScale = 1,
+  VoidCallback? onFullOverviewRead,
+}) async {
+  final container = ProviderContainer(
+    overrides: [
+      receiverIdentityProvider.overrideWith(
+        (ref) async => const ReceiverIdentity(
+          uuid: '00000000-0000-4000-8000-000000000000',
+          computerName: 'AnyDeck QA',
+        ),
+      ),
+      adbServiceProvider.overrideWithValue(FakeAdbService()),
+      iosDeviceServiceProvider.overrideWithValue(_Ios()),
+      discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
+      deviceRegistryProvider.overrideWith(_Registry.new),
+      hostNetworkProvider.overrideWith(_HostNetwork.new),
+      adbEnvironmentProvider.overrideWith(_ReadyAdb.new),
+      emulatorListProvider.overrideWith((ref) async => []),
+      emulatorConnectionsProvider.overrideWith((ref) async => {}),
+      for (final device in _devices) ...[
+        cachedDeviceOverviewProvider(device.id).overrideWith(
+          (ref) async => device.id == 'logo-xiaomi'
+              ? DeviceOverview.fromJson({'brand': 'Xiaomi'})
+              : null,
+        ),
+        deviceOverviewProvider(device.id).overrideWith((ref) {
+          onFullOverviewRead?.call();
+          return Stream.value(DeviceOverview.fromJson({}));
+        }),
+      ],
+    ],
+  );
+  addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    container.dispose();
+    await tester.pumpAndSettle();
+  });
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(
+        routerConfig: container.read(appRouterProvider),
+        locale: Locale(language),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizationsDelegate(),
+          ...GlobalMaterialLocalizations.delegates,
+        ],
+        theme: buildAppTheme(brightness),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return container;
 }
 
 class _HostNetwork extends HostNetworkNotifier {

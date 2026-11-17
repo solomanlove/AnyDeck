@@ -15,6 +15,7 @@ import 'package:any_deck/core/network/host_network_info.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/features/devices/widgets/device_wall_card.dart';
+import 'package:any_deck/features/devices/widgets/device_tag_badge.dart';
 import 'package:any_deck/features/devices/widgets/host_network_footer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -57,6 +58,15 @@ class _Registry extends DeviceRegistryNotifier {
           device.copyWith(isChecked: !device.isChecked)
         else
           device,
+    ];
+  }
+
+  // 仅模拟标签数据发布，避免 UI 桩重跑空发现集合而丢失现有设备。
+  @override
+  Future<void> updateTags(String id, List<String> tags) async {
+    state = [
+      for (final device in state)
+        device.id == id ? device.copyWith(tags: tags) : device,
     ];
   }
 
@@ -282,6 +292,57 @@ void main() {
     );
     expect(tester.widget<TextField>(search).controller!.text, 'beta');
     expect(find.byType(DeviceWallCard), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('注册表标签更新立即反映到设备墙与列表，切换及清空均保留同源数据', (tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final container = await _pumpDashboard(tester);
+    final registry = container.read(deviceRegistryProvider.notifier);
+    final wall = find.byKey(const ValueKey('device-wall-workspace-alpha'));
+    final row = find.byKey(const ValueKey('device-row-workspace-alpha'));
+    expect(find.byType(DeviceTagBadge), findsNothing);
+    await registry.updateTags('workspace-alpha', ['主力机']);
+    await tester.pumpAndSettle();
+    expect(tester.widget<DeviceWallCard>(wall).tags, ['主力机']);
+    expect(
+      find.descendant(of: wall, matching: find.byTooltip('主力机')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('deviceView-list')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: row, matching: find.byTooltip('主力机')),
+      findsOneWidget,
+    );
+    const updated = ['备用机', '', '  '];
+    await registry.updateTags('workspace-alpha', updated);
+    await tester.pumpAndSettle();
+    expect(find.text('主力机'), findsNothing);
+    expect(
+      find.descendant(of: row, matching: find.byTooltip('备用机')),
+      findsOneWidget,
+    );
+    expect(find.byType(DeviceTagBadge), findsOneWidget);
+    expect(
+      container.read(deviceRegistryProvider).first.tags,
+      updated,
+    );
+    await tester.tap(find.byKey(const Key('deviceView-wall')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<DeviceWallCard>(wall).tags, updated);
+    expect(find.byType(DeviceTagBadge), findsOneWidget);
+    await registry.updateTags('workspace-alpha', []);
+    await tester.pumpAndSettle();
+    expect(tester.widget<DeviceWallCard>(wall).tags, isEmpty);
+    expect(find.byType(DeviceTagBadge), findsNothing);
+    await tester.tap(find.byKey(const Key('deviceView-list')));
+    await tester.pumpAndSettle();
+    expect(row, findsOneWidget);
+    expect(find.byType(DeviceTagBadge), findsNothing);
+    expect(container.read(deviceRegistryProvider), hasLength(2));
     expect(tester.takeException(), isNull);
   });
 

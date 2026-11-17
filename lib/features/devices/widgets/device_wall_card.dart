@@ -8,6 +8,7 @@ import '../../../app/theme/app_icon.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../app/widget/app_asset_image.dart';
 import '../../../core/device_info/brand_logo_helper.dart';
+import 'device_tag_badge.dart';
 import 'device_wall_phone.dart';
 
 /// 设备墙中的手机卡片，只负责展示，设备命令与选择状态由宿主持有。
@@ -17,6 +18,7 @@ import 'device_wall_phone.dart';
 /// [screenshot] 仅接受真实截图，不会生成模拟的手机内容。
 /// [phoneWidth] 决定手机尺寸，默认 120px 并保持 9:18.5 的比例。
 /// 品牌 Logo 复用项目资源，封面和名称旁均展示，真实截图不会遮蔽品牌身份。
+/// [tags] 为用户维护的设备标识，非空标签在名称下居中换行，只负责展示。
 /// [batchMode] 为 true 时显示勾选框并隐藏操作栏；[selected]、[selectable]
 /// 和 [onSelected] 由父级管理，点击卡片任意非交互空白或手机均可选择。
 /// 普通模式下 [onOpen] 打开投屏或重连，[onInfo] 进入设备工作台，
@@ -33,6 +35,7 @@ class DeviceWallCard extends StatelessWidget {
     required this.coverHint,
     required this.actionLabel,
     required this.online,
+    this.tags = const [],
     this.ipAddress,
     this.screenshot,
     this.batchMode = false,
@@ -56,6 +59,7 @@ class DeviceWallCard extends StatelessWidget {
   final String coverHint;
   final String actionLabel;
   final bool online;
+  final List<String> tags;
   final String? ipAddress;
   final Uint8List? screenshot;
   final bool batchMode;
@@ -185,6 +189,7 @@ class DeviceWallCard extends StatelessWidget {
 
   Widget _buildCaption(BuildContext context, String logoAsset) {
     final theme = Theme.of(context);
+    final visibleTags = tags.where((tag) => tag.trim().isNotEmpty).toList();
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final metaStyle = TextStyle(
       fontSize: 11,
@@ -230,6 +235,15 @@ class DeviceWallCard extends StatelessWidget {
             ),
           ),
         ),
+        if (visibleTags.isNotEmpty) ...[
+          const SizedBox(height: 3),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 4,
+            runSpacing: 3,
+            children: [for (final tag in visibleTags) DeviceTagBadge(tag: tag)],
+          ),
+        ],
         const SizedBox(height: 2),
         Text(systemVersion, textAlign: TextAlign.center, style: metaStyle),
         Text(ipAddress ?? '', textAlign: TextAlign.center, style: metaStyle),
