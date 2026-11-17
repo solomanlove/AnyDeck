@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'app_theme_color.dart';
@@ -32,6 +33,11 @@ ThemeData buildAppTheme(
   return ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
+    // Apple 自适应开关默认沿用系统绿色，统一应用用户选择的主色。
+    cupertinoOverrideTheme: CupertinoThemeData(
+      primaryColor: colorScheme.primary,
+      applyThemeToAll: true,
+    ),
     extensions: <ThemeExtension<dynamic>>[appColors],
     scaffoldBackgroundColor: isDark
         ? const Color(0xff0f172a)

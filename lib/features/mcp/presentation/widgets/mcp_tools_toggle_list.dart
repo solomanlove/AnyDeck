@@ -73,6 +73,11 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
             Wrap(spacing: 8, children: ['all', 'android', 'harmony', 'ios'].map((p) => ChoiceChip(
               label: Text(p == 'all' ? context.l10n.t('mcpPlatformAll') : p == 'harmony' ? 'HarmonyOS' : p == 'ios' ? 'iOS' : 'Android'),
               selected: _platform == p,
+              selectedColor: theme.colorScheme.primaryContainer,
+              checkmarkColor: theme.colorScheme.onPrimaryContainer,
+              labelStyle: TextStyle(
+                color: _platform == p ? theme.colorScheme.onPrimaryContainer : null,
+              ),
               onSelected: (_) => setState(() => _platform = p),
             )).toList()),
             const SizedBox(height: 12),
@@ -96,11 +101,12 @@ class _McpToolsToggleListState extends ConsumerState<McpToolsToggleList> {
                         return ChoiceChip(
                           label: Text(cat['label']!),
                           selected: isSelected,
-                          selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                          selectedColor: theme.colorScheme.primaryContainer,
+                          checkmarkColor: theme.colorScheme.onPrimaryContainer,
                           labelStyle: TextStyle(
                             fontSize: 12,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected ? theme.colorScheme.primary : null,
+                            color: isSelected ? theme.colorScheme.onPrimaryContainer : null,
                           ),
                           onSelected: (selected) {
                             if (selected) {

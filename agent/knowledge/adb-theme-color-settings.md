@@ -76,3 +76,22 @@ flutter --no-version-check test --no-pub \
 ```
 
 本轮共验证 31 个相关测试文件、177 项测试全部通过，包含主题设置与多窗口、MCP、消息、开发者、模拟器、概览、接收端、截图/编辑/布局、Logcat/WebView、应用视图与投屏快捷操作。定向 analyze 无 error；保留 HEAD 已有的 `_OverviewHeroCard.tooltip` 未使用参数 warning、两项既有 info 及 SDK 弃用 info，使用 `--no-fatal-infos --no-fatal-warnings` 验证通过。新文件格式与 `git diff --check` 通过，未启动桌面 App。
+
+## 2026-11-17 MCP 接入开关与平台筛选补齐
+
+- `McpConfigSnippetCard` 的三平台接入与兼容入口开关显式使用 `ColorScheme.primary` 作为选中轨道、`onPrimary` 作为滑块，保留原生自适应外观。仅依赖默认 `Switch.adaptive` 时，macOS/iOS 仍会使用系统绿色；搜索硬编码绿色不能发现这类遗漏。
+- `buildAppTheme` 通过 `cupertinoOverrideTheme.primaryColor` 和 `applyThemeToAll: true` 统一自适应开关的默认选中轨道，覆盖接收服务、开发者模式、鸿蒙连接/共享和虚拟摄像头等 7 处默认开关。显式配置的轨道优先，现有 `CupertinoSwitch` 配色保持原有绑定。
+- `McpToolsToggleList` 的平台与分类筛选统一使用 `primaryContainer/onPrimaryContainer` 作为选中背景、文字和勾选配对色，随主题主色生成并兼顾明暗可读性，避免主色文字叠加半透明同色背景时对比不足。
+- 不改变平台启停、兼容入口或工具权限逻辑；切换主题时保留开关值、搜索和筛选状态。运行状态继续使用成功语义色。
+- `mcp_access_theme_test.dart` 覆盖 macOS/iOS/Android × 明暗主题的默认自适应开关实际绘制、蓝色切换紫色，以及 MCP 平台/兼容开关和平台筛选交互。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/mcp_access_theme_test.dart test/mcp_platform_config_test.dart \
+  test/theme_feature_controls_test.dart test/mcp_tools_toggle_list_test.dart \
+  test/app_theme_test.dart test/settings_theme_color_test.dart \
+  test/theme_window_wiring_test.dart test/receiver_dashboard_tab_test.dart \
+  test/developer_mode_test.dart
+```
+
+本轮 9 个相关测试文件共 56 项全部通过；4 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（8 项 SDK 弃用 info）。新增测试格式与 `git diff --check` 通过，未启动桌面 App。

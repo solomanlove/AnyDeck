@@ -7,12 +7,13 @@ import '../../../../app/widget/app_toast.dart';
 import '../../controller/mcp_server_controller.dart';
 
 /// 三个平台独立接入配置。复制按钮包含凭据，页面不展示凭据明文。
-/// 从 [mcpServerProvider] 获取配置和回调，支持明暗主题与语言切换。
+/// 从 [mcpServerProvider] 获取配置和回调；自适应开关显式跟随主题主色。
 class McpConfigSnippetCard extends ConsumerWidget {
   const McpConfigSnippetCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = Theme.of(context).colorScheme;
     final state = ref.watch(mcpServerProvider);
     final controller = ref.read(mcpServerProvider.notifier);
     final base = 'http://${state.config.host}:${state.config.port}';
@@ -69,6 +70,8 @@ class McpConfigSnippetCard extends ConsumerWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Switch.adaptive(
+                          activeThumbColor: colors.onPrimary,
+                          activeTrackColor: colors.primary,
                           value: !state.config.disabledPlatforms.contains(
                             entry.key,
                           ),
@@ -108,6 +111,8 @@ class McpConfigSnippetCard extends ConsumerWidget {
             const Divider(height: 24),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
+              activeThumbColor: colors.onPrimary,
+              activeTrackColor: colors.primary,
               title: Text(context.l10n.t('mcpLegacyEnabled')),
               value: state.config.enableLegacy,
               onChanged: (v) => controller.updateConfig(
