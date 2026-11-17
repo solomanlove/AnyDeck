@@ -49,6 +49,15 @@ HDC 截图收发按请求使用独立临时目录与远端文件名，finally �
 - 手机墙复用 `BrandLogoHelper` 与原品牌资源；截图成功后名称旁仍保留品牌 Logo，未取到画面时用原 Logo 封面。
 - 手机外框宽 120px，单卡基础宽 148px，卡片内间距收紧；操作点击区保留 40px，窄窗口与放大字体仍按内容适配。
 
+### 截图居中铺满与品牌封面白底（2026-11-17）
+
+- `DeviceWallPhone` 的真实截图统一使用 `BoxFit.cover` 与 `Alignment.center`，等比缩放后居中裁剪超出的部分，消除截图比例与手机屏幕不一致时的留白；保留圆角裁剪、`cacheWidth` 和 `gaplessPlayback`。
+- Samsung、小米、Huawei/HONOR、Apple 及默认品牌封面共用 `AppPalette.deviceBrandCoverBackground` 白底，与 Logo 自带白底一致；等待截图、无截图、离线和解码失败均复用同一封面。
+- 封面文字与手势条使用 `AppPalette.deviceBrandCoverForeground` 深灰色，保证 Light/Dark 下的白底文字可读；手机外框和卡片其他区域继续使用 Theme。
+- 修改仅涉及公共展示组件与品牌配色，不新增文案、Provider、设备命令或窗口通信；离线时仍不展示历史截图。
+- 回归入口为 `test/device_wall_phone_test.dart`，配合既有卡片、响应式、工作区和连接文案测试；人工检查不同比例截图居中裁剪，以及切换主题后 Samsung 等白底 Logo 与封面是否融合。按项目约定不启动完整 App。
+- 验证结果：5 份相关测试共 63 项全部通过，包含新增 7 项实际绘制回归；定向 analyze 无 error / warning，仅保留当前 SDK 的 3 项 Material 导入弃用 info。Dart 格式检查与 `git diff --check` 通过。
+
 ### 设备墙状态文案精简
 
 - 顶部连接方式复用 `DeviceConnectionKind.shortLabelKey`，与列表一致显示 `USB`、`TCP/IP`、`Wi-Fi`、`AirPlay`，多个通道以 ` · ` 连接。离线及未知状态继续使用原状态文案。

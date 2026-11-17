@@ -9,7 +9,7 @@ import '../../../app/widget/app_asset_image.dart';
 /// 按原型比例绘制手机外框，展示真实截图或设备品牌封面。
 ///
 /// [width] 是外框宽度，高度由 9:18.5 比例计算；[online] 决定边框状态。
-/// [screenshot] 只在在线时显示，缺失或解码失败时显示品牌封面和 [title]。
+/// [screenshot] 只在在线时居中裁剪铺满屏幕，缺失或解码失败时显示白底品牌封面和 [title]。
 /// [hint] 仅用于在线封面，离线时移除底部提示区。[semanticLabel] 为手机点击
 /// 区提供本地化说明，[onTap] 由宿主实现投屏、重连或批量选择。
 /// [logoAsset] 使用项目既有品牌图片路径，由宿主按设备品牌及型号解析。
@@ -114,11 +114,13 @@ class DeviceWallPhone extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: screenRadius,
                           child: ColoredBox(
-                            color: theme.appColors.subtleSurface,
+                            color: AppPalette.deviceBrandCoverBackground,
                             child: online && screenshot != null
                                 ? Image.memory(
                                     screenshot!,
-                                    fit: BoxFit.contain,
+                                    // 比例不一致时居中裁剪，避免屏幕内出现留白。
+                                    fit: BoxFit.cover,
+                                    alignment: Alignment.center,
                                     gaplessPlayback: true,
                                     cacheWidth:
                                         (width *
@@ -126,9 +128,9 @@ class DeviceWallPhone extends StatelessWidget {
                                                   context,
                                                 ))
                                             .ceil(),
-                                    errorBuilder: (_, _, _) => _cover(context),
+                                    errorBuilder: (_, _, _) => _cover(),
                                   )
-                                : _cover(context),
+                                : _cover(),
                           ),
                         ),
                       ),
@@ -159,8 +161,8 @@ class DeviceWallPhone extends StatelessWidget {
     );
   }
 
-  Widget _cover(BuildContext context) {
-    final foreground = Theme.of(context).colorScheme.onSurfaceVariant;
+  Widget _cover() {
+    const foreground = AppPalette.deviceBrandCoverForeground;
     return Stack(
       fit: StackFit.expand,
       children: [
