@@ -29,7 +29,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'fake_adb_service.dart';
 import 'support/settings_selector_expectations.dart';
@@ -262,17 +261,14 @@ void main() {
     tester.view.physicalSize = const Size(1600, 950);
     await tester.pumpAndSettle();
     final settingsBeforeNavigation = container.read(appSettingsProvider);
-    // 原型的一级管理侧栏独立展示；设置页仍须同时标记当前分类和入口。
+    // 恢复原侧栏后，设置分类与一级入口仍须同时保持选中。
     final categoryNav = find.byKey(const ValueKey('settings-nav-general'));
     expect(tester.widget<AppNavigationItem>(categoryNav).selected, isTrue);
-    expect(
-      find.descendant(
-        of: find.byTooltip('设置'),
-        matching: find.byWidgetPredicate((widget) => widget is Semantics &&
-            widget.properties.label == '设置' && widget.properties.selected == true),
-      ),
-      findsOneWidget,
+    final settingsNav = find.descendant(
+      of: find.byTooltip('设置'),
+      matching: find.byType(AppNavigationItem),
     );
+    expect(tester.widget<AppNavigationItem>(settingsNav).selected, isTrue);
     final workspace = tester.widget<SettingsWorkspace>(
       find.byType(SettingsWorkspace),
     );
@@ -544,7 +540,7 @@ void main() {
         expect(
           find.descendant(
             of: entry,
-            matching: find.byIcon(LucideIcons.circleHelp),
+            matching: find.byIcon(CupertinoIcons.question_circle),
           ),
           findsOneWidget,
         );

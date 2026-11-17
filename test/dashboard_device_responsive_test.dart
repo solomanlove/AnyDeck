@@ -14,6 +14,7 @@ import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/core/receiver/receiver_identity.dart';
 import 'package:any_deck/features/devices/widgets/device_wall_card.dart';
 import 'package:any_deck/features/widgets/dashboard_header_bar.dart';
+import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:any_deck/features/overview/settings/autostart_setting_control.dart';
 import 'package:any_deck/app/window/widget/desktop_workspace_surface.dart';
 import 'package:flutter/material.dart';
@@ -135,6 +136,11 @@ void main() {
           tester,
           language: language,
           brightness: brightness,
+        );
+        // 侧栏保持原应用主题，设备页局部中性主题只作用于右侧。
+        expect(
+          Theme.of(tester.element(find.byType(PrimaryRail))).colorScheme,
+          buildAppTheme(brightness).colorScheme,
         );
         final bar = find.byType(DashboardHeaderBar);
         final title = find.descendant(

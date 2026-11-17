@@ -4,7 +4,7 @@ import 'app_theme_colors.dart';
 
 /// 设备管理页使用原型中的中性底色，保留用户的主色、字体和其他主题扩展。
 ///
-/// 仅在设备管理 Shell 内应用；切换到其他工具页后继续使用原应用主题。
+/// 仅在设备管理右侧工作区应用；侧栏与其他工具页继续使用原应用主题。
 ThemeData buildDeviceWorkspaceTheme(ThemeData base) {
   final dark = base.brightness == Brightness.dark;
   final surface = dark ? const Color(0xff17181d) : Colors.white;

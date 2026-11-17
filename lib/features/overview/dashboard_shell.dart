@@ -22,19 +22,27 @@ class _WechatStyleShell extends ConsumerWidget {
     return Theme(
       data: selectedTool == -1 ? buildDeviceWorkspaceTheme(baseTheme) : baseTheme,
       child: Builder(
-        builder: (context) => _buildWorkspace(context, selectedTool),
+        builder: (context) => _buildWorkspace(context, selectedTool, baseTheme),
       ),
     );
   }
 
-  Widget _buildWorkspace(BuildContext context, int selectedTool) {
+  Widget _buildWorkspace(
+    BuildContext context,
+    int selectedTool,
+    ThemeData navigationTheme,
+  ) {
     final theme = Theme.of(context);
 
     return Row(
       children: [
-        _PrimaryRail(
-          selectedDevice: selectedDevice,
-          isAirplayReceiverRunning: isAirplayReceiverRunning,
+        // 侧栏沿用原应用主题，设备页中性底色只用于右侧工作区。
+        Theme(
+          data: navigationTheme,
+          child: _PrimaryRail(
+            selectedDevice: selectedDevice,
+            isAirplayReceiverRunning: isAirplayReceiverRunning,
+          ),
         ),
         Expanded(
           child: DesktopWorkspaceSurface(

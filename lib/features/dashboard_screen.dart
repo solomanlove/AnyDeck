@@ -179,7 +179,6 @@ part 'overview/dashboard_content.dart';
 part 'overview/dashboard_share_core.dart';
 part 'overview/dashboard_quit_shortcut.dart';
 part 'overview/dashboard_rail.dart';
-part 'overview/dashboard_management_rail.dart';
 part 'overview/dashboard_rail_buttons.dart';
 part 'overview/dashboard_rail_footer.dart';
 part 'overview/dashboard_rail_identity.dart';
