@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import '../adb/adb_service.dart';
 import '../harmony/hdc_service.dart';
@@ -93,7 +94,42 @@ class McpServer {
   /// 核心 JSON-RPC 2.0 请求路由分发器
   Future<McpResponse?> handleRequest(McpRequest request,
       {String platform = 'all', String version = '2024-11-05'}) async {
-    final startTime = DateTime.now();
+    final stopwatch = Stopwatch()..start();
+    McpResponse? response;
+    try {
+      response = await _handleRequest(request, platform, version);
+      return response;
+    } finally {
+      // 在协议分发边界统一记一次；通知和心跳不占用有限的审计历史。
+      if (!request.isNotification && request.method != 'ping') {
+        final params = request.params;
+        final name = params?['name'];
+        final args = params?['arguments'];
+        final success = response != null &&
+            response.error == null &&
+            !(response.result is Map && response.result['isError'] == true);
+        try {
+          onAuditLog?.call(
+            method: request.method,
+            toolName: request.method == 'tools/call' && name is String
+                ? name : null,
+            arguments: _auditArguments(
+              args is Map<String, dynamic> ? args : null, platform),
+            isSuccess: success,
+            errorMessage: success ? null : 'MCP request failed',
+            durationMs: stopwatch.elapsedMilliseconds,
+          );
+        } catch (error) {
+          // 审计观察者故障不能修改已经完成的工具结果，也不能重复执行工具。
+          developer.log('MCP audit callback failed: ${error.runtimeType}',
+            name: 'mcp');
+        }
+      }
+    }
+  }
+
+  Future<McpResponse?> _handleRequest(
+      McpRequest request, String platform, String version) async {
     String? toolName;
     Map<String, dynamic>? arguments;
 
@@ -155,16 +191,6 @@ class McpServer {
             executionResult['count'] = devices.length;
             executionResult['summary'] = '$platform: ${devices.length} devices';
           }
-          final duration = DateTime.now().difference(startTime).inMilliseconds;
-          onAuditLog?.call(
-            method: request.method,
-            toolName: toolName,
-            arguments: _auditArguments(arguments, platform),
-            isSuccess: executionResult['isSuccess'] != false && executionResult['success'] != false,
-            errorMessage: null,
-            durationMs: duration,
-          );
-
           return McpResponse.toolResult(
             id: request.id,
             text: jsonEncode({...executionResult}..remove('base64')),
@@ -194,16 +220,6 @@ class McpServer {
           );
       }
     } catch (e) {
-      final duration = DateTime.now().difference(startTime).inMilliseconds;
-      onAuditLog?.call(
-        method: request.method,
-        toolName: toolName,
-        arguments: _auditArguments(arguments, platform),
-        isSuccess: false,
-        errorMessage: '${e.runtimeType}: MCP tool failed',
-        durationMs: duration,
-      );
-
       if (request.isNotification) {
         return null;
       }

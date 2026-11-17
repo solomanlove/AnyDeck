@@ -103,6 +103,9 @@ class McpServerNotifier extends Notifier<McpServerState> {
 
     if (!ref.mounted) return;
 
+    await ref.read(mcpAuditLogProvider.notifier).ready;
+    if (!ref.mounted) return;
+
     // 3. 构造 Server 实例
     _server = McpServer(
       registry: _registry,
@@ -169,6 +172,7 @@ class McpServerNotifier extends Notifier<McpServerState> {
     if (_server == null) return;
     try {
       await _server!.stop();
+      await ref.read(mcpAuditLogProvider.notifier).flush();
       final newConfig = state.config.copyWith(enableSse: false);
       state = state.copyWith(
         isRunning: false,
