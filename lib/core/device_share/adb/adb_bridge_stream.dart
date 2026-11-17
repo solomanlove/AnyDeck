@@ -2,9 +2,10 @@ import 'dart:async';
 
 import '../device_share_diagnostics.dart';
 import 'adb_packet.dart';
+import 'adb_stream_read_buffer.dart';
 import 'shared_adb_backend.dart';
 
-/// 一条 ADB Stream 最多保留一个待确认 payload，避免慢 Wi-Fi 导致无限积压。
+/// 一条 ADB Stream 保留一块待确认数据和一块有界预读，避免慢 Wi-Fi 无限积压。
 class AdbBridgeStream {
   AdbBridgeStream({
     required this.id,
@@ -23,6 +24,7 @@ class AdbBridgeStream {
   final void Function() onClose;
   final void Function(String message)? onDiagnostic;
   Completer<void>? _ack;
+  AdbStreamReadBuffer? _readBuffer;
   bool _closed = false, _writing = false;
 
   void acknowledge(int peerId) {
@@ -40,10 +42,15 @@ class AdbBridgeStream {
         _ack = Completer<void>();
         await _ack!.future.timeout(const Duration(seconds: 15));
       }
+      if (_closed) return;
+      final input = _readBuffer = AdbStreamReadBuffer(
+        connection.reader,
+        payloadLimit,
+      );
       while (!_closed) {
         phase = 'device_read';
         direction = 'from_device';
-        final data = await connection.reader.readChunk(payloadLimit);
+        final data = await input.take();
         if (data == null || _closed) break;
         _ack = Completer<void>();
         phase = 'transport_write';
@@ -107,6 +114,7 @@ class AdbBridgeStream {
   void close() {
     if (_closed) return;
     _closed = true;
+    _readBuffer?.close();
     connection.close();
     if (_ack case final ack? when !ack.isCompleted) ack.complete();
     unawaited(send(AdbPacket(AdbPacket.clse, id, remoteId)).catchError((_) {}));
