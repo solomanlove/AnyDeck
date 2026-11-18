@@ -68,7 +68,7 @@ esac
 export ANYDECK_TARGET_ARCH="$BUILD_ARCH"
 export FLUTTER_XCODE_ARCHS="$BUILD_ARCH"
 echo "目标架构: $BUILD_ARCH"
-flutter build macos --release
+"${FLUTTER_BIN:-$SCRIPT_DIR/flutter.sh}" build macos --release --no-pub
 
 echo "=========================================="
 echo "构建成功！正在定位生成的 .app 包..."

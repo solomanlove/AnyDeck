@@ -1,7 +1,7 @@
 # AnyDeck 🚀
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Flutter](https://img.shields.io/badge/Flutter-%5E3.41.6-blue.svg?logo=flutter)](https://flutter.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-3.50.0-blue.svg?logo=flutter)](https://flutter.dev)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](#)
 
 [English Version](README.md) | **简体中文**
@@ -68,20 +68,7 @@ choco install adb ffmpeg
 ```
 
 ### 2. 编译与运行
-确保本地已经配置好 Flutter SDK（版本推荐 `^3.11.4`）。
-
-```bash
-# 1. 获取依赖包
-flutter pub get
-
-# 2. 运行开发版
-flutter run -d macos  # macOS 平台
-# 或者
-flutter run -d windows # Windows 平台
-
-# 3. 编译 Release 版本
-./script/build_macos.sh # 使用辅助脚本构建并自动拷贝到 Products 目录下
-```
+固定 Flutter、Rust、CocoaPods 的初始化、IDE 配置、构建与验证命令见 [开发环境说明](DEVELOPMENT.md)。
 
 ---
 

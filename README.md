@@ -1,7 +1,7 @@
 # AnyDeck 🚀
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Flutter](https://img.shields.io/badge/Flutter-%5E3.11.4-blue.svg?logo=flutter)](https://flutter.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-3.50.0-blue.svg?logo=flutter)](https://flutter.dev)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](#)
 
 **English** | [简体中文](README_ZH.md)
@@ -68,20 +68,7 @@ choco install adb ffmpeg
 ```
 
 ### 2. Build & Run
-Ensure Flutter SDK (`^3.11.4`) is configured locally.
-
-```bash
-# 1. Fetch dependencies
-flutter pub get
-
-# 2. Run in development mode
-flutter run -d macos  # for macOS
-# or
-flutter run -d windows # for Windows
-
-# 3. Build Release version
-./script/build_macos.sh # builds and copies the .app to the Products/ folder
-```
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the pinned Flutter, Rust and CocoaPods environment, setup, IDE configuration and build commands.
 
 ### macOS permission prompts
 

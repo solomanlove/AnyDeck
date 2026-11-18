@@ -33,6 +33,10 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+.fvm/
+.bundle/
+/vendor/bundle/
+/vendor/cache/
 
 # Symbolication related
 app.*.symbols

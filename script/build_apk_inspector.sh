@@ -3,9 +3,8 @@ set -euo pipefail
 
 # 构建独立 APK 检查器，嵌入应用后无需用户安装 Rust/SDK/Java。
 APK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APK_CARGO="${CARGO:-$(command -v cargo || true)}"
-if [ -z "$APK_CARGO" ] && [ -x "$HOME/.cargo/bin/cargo" ]; then APK_CARGO="$HOME/.cargo/bin/cargo"; fi
-if [ -z "$APK_CARGO" ] && [ -x /opt/homebrew/bin/cargo ]; then APK_CARGO=/opt/homebrew/bin/cargo; fi
+APK_CARGO="${CARGO:-$(python3 "$APK_ROOT/script/dev_environment.py" cargo-path)}"
+if [ -z "${CARGO:-}" ]; then export RUSTC="$(dirname "$APK_CARGO")/rustc"; fi
 if [ -z "$APK_CARGO" ]; then echo "cargo is required to build the APK inspector" >&2; exit 1; fi
 APK_TARGET_DIR="$APK_ROOT/build/apk_inspector"
 APK_ARCHS="${ARCHS:-$(uname -m)}"

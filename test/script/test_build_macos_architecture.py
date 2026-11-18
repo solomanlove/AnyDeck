@@ -35,6 +35,7 @@ mkdir -p build/macos/Build/Products/Release/AnyDeck.app
         for name in ('ANYDECK_TARGET_ARCH', 'FLUTTER_XCODE_ARCHS'):
             env.pop(name, None)
         env.update(variables or {})
+        env['FLUTTER_BIN'] = str(root / 'bin/flutter')
         env['PATH'] = f"{root / 'bin'}:{env['PATH']}"
         destination = root / 'output with spaces'
         result = subprocess.run(['/bin/bash', str(scripts / 'build_macos.sh'), str(destination)],
@@ -47,7 +48,7 @@ mkdir -p build/macos/Build/Products/Release/AnyDeck.app
                 result, root, destination = self.run_build(host)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual((root / 'flutter-call.txt').read_text().splitlines(),
-                                 [expected, expected, 'build macos --release'])
+                                 [expected, expected, 'build macos --release --no-pub'])
                 self.assertTrue((destination / 'Products/AnyDeck.app').is_dir())
 
     def test_explicit_target_wins_and_flutter_override_remains_supported(self):

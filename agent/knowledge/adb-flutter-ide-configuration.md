@@ -1,5 +1,7 @@
 # Flutter IDE 配置修复
 
+> 2026-11-18：当前工具链已统一为 Flutter 3.50.0 / Rust 1.95.0 / CocoaPods 1.16.2。新电脑使用 `./script/setup_dev.sh --ide`，详见 [多机工具链](adb-development-toolchain.md) 与 [开发环境](../../DEVELOPMENT.md)。下文的个人 Cargo wrapper、旧 SDK 路径和离线设置属于历史排查记录，新入口会替换对应环境。
+
 ## 问题与范围
 
 Android Studio 安装 Flutter/Dart 插件后，仍需把 Flutter 自带 Dart SDK 绑定到 AnyDeck 主模块。CLI 可直接读取 `pubspec.yaml`，因此 CLI 能构建不代表 IDE 已配置好。

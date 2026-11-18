@@ -10,7 +10,7 @@ fi
 BUILD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$BUILD_ROOT"
 export ANYDECK_SKIP_SHARE_CORE=1
-"${FLUTTER_BIN:-flutter}" build macos --debug --no-pub \
+"${FLUTTER_BIN:-$BUILD_ROOT/script/flutter.sh}" build macos --debug --no-pub \
   --dart-define=ANYDECK_ENABLE_SHARE_CORE=false
 
 # 对最终包再次检查，避免增量构建残留旧的私有组件。

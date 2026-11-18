@@ -1,5 +1,7 @@
 # macOS Debug 的 arm64e 目标兼容
 
+> 2026-11-18：项目当前使用原始 Flutter stable 3.50.0，不自动继承本页针对 3.47.2 的 SDK 补丁。新基线与验证边界见 [多机开发工具链](adb-development-toolchain.md)。
+
 ## 问题与原因
 
 2026-11-10，本机 Xcode 26.3（17C529）只向 Runner 暴露 `arch:arm64e` 的 My Mac destination。Flutter SDK `d3b14c87690` 的 Debug 构建却按宿主通用架构选择 `platform=macOS,arch=arm64`，在编译前即报目标不存在。单独修改项目 `ARCHS` 无法改变这个 destination 列表。

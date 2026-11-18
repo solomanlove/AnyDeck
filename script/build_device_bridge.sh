@@ -3,12 +3,8 @@ set -euo pipefail
 
 # 设备桥接库构建脚本（Rust + UxPlay 协议核心 / VideoToolbox / ADB）
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CARGO_BIN="${CARGO:-$(command -v cargo || true)}"
-if [ -z "$CARGO_BIN" ]; then
-  for BRIDGE_CARGO in "$HOME/.cargo/bin/cargo" /opt/homebrew/bin/cargo /usr/local/bin/cargo; do
-    if [ -x "$BRIDGE_CARGO" ]; then CARGO_BIN="$BRIDGE_CARGO"; break; fi
-  done
-fi
+CARGO_BIN="${CARGO:-$(python3 "$PROJECT_ROOT/script/dev_environment.py" cargo-path)}"
+if [ -z "${CARGO:-}" ]; then export RUSTC="$(dirname "$CARGO_BIN")/rustc"; fi
 if [ -z "$CARGO_BIN" ]; then echo "Rust cargo is required to build the device bridge" >&2; exit 1; fi
 BRIDGE_MANIFEST="$PROJECT_ROOT/rust/device_bridge/Cargo.toml"
 BRIDGE_OUTPUT="$PROJECT_ROOT/macos/Libs/libanydeck_device_bridge.dylib"
@@ -22,7 +18,7 @@ for BRIDGE_ARCH in $BRIDGE_ARCHS; do
     x86_64) BRIDGE_TARGET=x86_64-apple-darwin ;;
     *) echo "Unsupported Rust bridge architecture: $BRIDGE_ARCH" >&2; exit 1 ;;
   esac
-  "$CARGO_BIN" build --release --manifest-path "$BRIDGE_MANIFEST" \
+  "$CARGO_BIN" build --locked --release --manifest-path "$BRIDGE_MANIFEST" \
     --target "$BRIDGE_TARGET" --target-dir "$BRIDGE_TARGET_DIR"
   BRIDGE_LIBRARIES+=("$BRIDGE_TARGET_DIR/$BRIDGE_TARGET/release/libanydeck_device_bridge.dylib")
 done

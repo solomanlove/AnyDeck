@@ -64,16 +64,28 @@ jobs:
           PY
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          flutter-version: '3.47.2'
+          flutter-version-file: .fvmrc
           channel: stable
           cache: true
       - name: 准备原生依赖
         run: |
-          brew install pkg-config openssl@3 libplist
-          rustup target add "${{ matrix.rust_target }}"
-          flutter config --no-enable-macos-arm64-only
-          flutter pub get --enforce-lockfile
-          flutter build macos --release --config-only --no-pub
+          brew bundle --file Brewfile
+          brew install ruby
+          export PATH="$(brew --prefix ruby)/bin:$PATH"
+          # Rust 直接读取 rust-toolchain.toml，不跟随 Runner 默认版本。
+          rust_version=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)
+          rustup toolchain install "$rust_version" --profile minimal --component rustfmt,clippy
+          rustup target add "${{ matrix.rust_target }}" --toolchain "$rust_version"
+          mkdir -p .fvm
+          ln -s "$FLUTTER_ROOT" .fvm/flutter_sdk
+          bundler_version=$(awk '/BUNDLED WITH/{getline; print $1}' Gemfile.lock)
+          gem install bundler -v "$bundler_version" --no-document
+          bundle "_${bundler_version}_" config set --local path vendor/bundle
+          BUNDLE_FROZEN=true bundle "_${bundler_version}_" install
+          ./script/flutter.sh config --no-enable-macos-arm64-only
+          ./script/flutter.sh pub get --enforce-lockfile
+          ./script/check_env.sh
+          ./script/flutter.sh build macos --release --config-only --no-pub
       - name: 验证打包与签名回归
         run: python3 -m unittest discover -s test/script -v
       - name: 构建 ad-hoc Release

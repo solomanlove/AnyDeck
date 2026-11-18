@@ -4,7 +4,7 @@ alwaysApply: true
 ---
 
 # 项目技术基线
-- **开发语言与 SDK**：Dart SDK `^3.11.4` + Flutter SDK。
+- **开发语言与 SDK**：Flutter stable 3.50.0 / Dart SDK `^3.14.0`；版本以 `.fvmrc` 为准，开发命令使用 `script/flutter.sh`，初始化与检查见 `DEVELOPMENT.md`。
 - **状态管理**：`flutter_riverpod: ^3.3.1` (Notifier/NotifierProvider/FutureProvider)。
 - **路由管理**：`go_router: ^17.2.3`。
 - **窗口与系统栏**：

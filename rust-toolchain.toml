@@ -1,0 +1,5 @@
+# AnyDeck 的 Rust 编译器与 Cargo 使用同一固定 toolchain。
+[toolchain]
+channel = "1.95.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

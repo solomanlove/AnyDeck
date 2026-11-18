@@ -9,6 +9,6 @@ APP_PATH="$PROJECT_ROOT/build/macos/Build/Products/Debug/AnyDeck.app"
 
 cd "$PROJECT_ROOT"
 
-flutter build macos --debug
+"${FLUTTER_BIN:-$SCRIPT_DIR/flutter.sh}" build macos --debug --no-pub
 "$SCRIPT_DIR/fix_macos_app_policy.sh" "$APP_PATH"
-flutter run -d macos --debug --no-build
+"${FLUTTER_BIN:-$SCRIPT_DIR/flutter.sh}" run -d macos --debug --no-build --no-pub
