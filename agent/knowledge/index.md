@@ -53,7 +53,7 @@
 | `adb-mirror-window-launcher-script` | 投屏子窗口启动文件生成脚本 | active | 记录 `script/generate_mirror_window_launcher.sh` 如何复用 `multi_window <windowId> <json>` 参数生成可执行启动文件 | `script/`, `app/window/mirror/` |
 | `adb-mirror-window-behavior` | 投屏独立窗口行为机制 | active | 记录投屏窗口设备名称优先级、比例适配、横竖屏无断流渲染、Android USB/TCP/TLS 断线恢复与事件驱动优选、当前投屏通道标签与重连提示样式、设备信息悬浮层与计时 Tooltip、手机剪贴板入口、单 App 工具栏规则，以及 HarmonyOS 主屏尺寸解析兼容与 HDC 控制映射 | `app/window/mirror/`, `core/scrcpy/`, `rust/device_bridge/`, `core/harmony/` |
 | `adb-foldable-screen-switching` | 折叠屏内外屏切换 | active | 运行时双向布局与权限探测、自动/手动图标和提示、设备侧请求所有权及心跳清理、录屏/息屏互斥、三星双向切屏与异常清理验证及兼容边界 | `core/foldable/`, `app/window/mirror/`, `tool/foldable_screen_helper/` |
-| `adb-fusion-app-mirroring` | Android 融合投屏 | active | Android 14+ 默认开关、App 副屏与主屏路由、标题栏 App 图标点击与加载反馈、手机操作占位与恢复、窗口与音频复用、动态尺寸及 DPI、图库缩放过渡和真机回归边界 | `features/apps/`, `app/window/mirror/`, `core/scrcpy/` |
+| `adb-fusion-app-mirroring` | Android 融合投屏 | active | Android 14+ 默认开关、App 副屏与主屏路由、标题栏 App 图标点击与加载反馈、手机操作占位与恢复、窗口与音频复用、动态尺寸及 DPI、荣耀内外屏 DPI 隔离与关闭还原、图库缩放过渡和真机回归边界 | `features/apps/`, `app/window/mirror/`, `core/scrcpy/` |
 | `ios投屏控制` | iOS 投屏控制方案与 PoC | active | macOS/iPhone 6s 原生 USB Texture + WDA、USB/AirPlay 共用投屏窗口与来源标识、窗口比例贴合、部署探针及真机验收边界 | `core/ios/`, `core/airplay/`, `app/window/mirror/`, `macos/Runner/`, `script/` |
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、USB/Network 连接类型与旧 Rust 库兼容、概览读取与型号规格边界、USB 投屏、截图镜像恢复、进程应用关联、扩展宿主 Bundle ID、多窗口及验证边界 | `core/ios/`, `features/ios/`, `features/overview/`, `app/window/mirror/` |
 | `ios-airplay-server-architecture` | iOS AirPlay 实验性接收端与连接故障 | experimental | UxPlay/FairPlay 实验接入、VideoToolbox 首帧与重连、AudioQueue 持续静音恢复、后台启停和原子打包；真机音频已完成定向验收 | `core/airplay/`, `rust/device_bridge/src/airplay/` |

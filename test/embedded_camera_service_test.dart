@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
 import 'package:any_deck/core/scrcpy/embedded_scrcpy_service.dart';
+import 'package:any_deck/core/scrcpy/fusion_display_resize.dart';
 import 'package:any_deck/core/scrcpy/rust_device_bridge.dart';
 import 'package:any_deck/core/scrcpy/scrcpy_camera_options.dart';
 import 'package:any_deck/core/scrcpy/mirror_stream_health.dart';
@@ -29,6 +30,26 @@ class CameraServerProcess extends Fake implements Process {
     if (!done.isCompleted) done.complete(0);
     return true;
   }
+}
+
+/// 会话测试只校验端口参数，不绑定真实网络端口。
+class _ReservedPort extends Fake implements ServerSocket {
+  @override
+  int get port => 34567;
+
+  @override
+  Future<ServerSocket> close() async => this;
+}
+
+final class _SessionIoOverrides extends IOOverrides {
+  @override
+  Future<ServerSocket> serverSocketBind(
+    dynamic address,
+    int port, {
+    int backlog = 0,
+    bool v6Only = false,
+    bool shared = false,
+  }) async => _ReservedPort();
 }
 
 class CameraAdbFake extends AdbService {
@@ -128,13 +149,49 @@ class AppMirrorAdbFake extends CameraAdbFake {
   }
 }
 
+/// 阻塞一次副屏 DPI 写入，用于验证停止顺序与资源回收。
+class DensityAppMirrorAdbFake extends AppMirrorAdbFake {
+  final densityStarted = Completer<void>();
+  final densityResult = Completer<AdbResult>();
+
+  @override
+  Future<AdbResult> run(
+    List<String> args, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    String? output;
+    if (args.contains('ro.product.manufacturer')) {
+      output = 'HONOR';
+    } else if (args.contains('wm')) {
+      commands.add(args);
+      if (args.contains('help')) {
+        output = '  density [reset|DENSITY] [-d DISPLAY_ID] [-r]';
+      } else if (args.contains('size')) {
+        output = 'Physical size: 1600x924';
+      } else if (!args.contains('reset')) {
+        densityStarted.complete();
+        return densityResult.future;
+      } else {
+        output = '';
+      }
+    }
+    if (output != null) {
+      return AdbResult(exitCode: 0, stdout: output, stderr: '');
+    }
+    return super.run(args, timeout: timeout);
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   const channel = MethodChannel('anydeck/rust_texture');
   late List<MethodCall> native;
+  IOOverrides? originalIoOverrides;
   setUp(() {
+    originalIoOverrides = IOOverrides.current;
+    IOOverrides.global = _SessionIoOverrides();
     SharedPreferences.setMockInitialValues({
       'settings.mirrorAudioEnabled': true,
     });
@@ -151,6 +208,7 @@ void main() {
     });
   });
   tearDown(() {
+    IOOverrides.global = originalIoOverrides;
     messenger.setMockMessageHandler('flutter/assets', null);
     messenger.setMockMethodCallHandler(channel, null);
   });
@@ -262,6 +320,36 @@ void main() {
       ),
       false,
     );
+  });
+
+  test('关闭融合会话等待 DPI 写入并还原副屏后再释放 Rust 资源', () async {
+    final adb = DensityAppMirrorAdbFake();
+    final bridge = BridgeFake(isReady: () => adb.appPlaced);
+    final service = EmbeddedScrcpyService(adb, bridge);
+    addTearDown(() => service.stop('phone'));
+    await service.start(
+      deviceId: 'phone',
+      newDisplay: '1600x924/114',
+      startApp: 'com.example.app',
+    );
+    final update = service.setFusionDisplayDensity(
+      'phone', const FusionDisplayGeometry(1600, 924, 114),
+    );
+    await adb.densityStarted.future;
+
+    final closing = service.stop('phone');
+    expect(bridge.stops, isEmpty);
+    adb.densityResult.complete(const AdbResult(exitCode: 0, stdout: '', stderr: ''));
+
+    expect(await update, isTrue);
+    await closing;
+    final writes = adb.commands.where((args) => args.contains('density')).toList();
+    expect(writes, [
+      ['-s', 'phone', 'shell', 'wm', 'density', '114', '-d', '48', '-r'],
+      ['-s', 'phone', 'shell', 'wm', 'density', 'reset', '-d', '48'],
+    ]);
+    expect(bridge.stops, [1]);
+    expect(bridge.releases, [1]);
   });
 
   test('弱网参数传入 server，不覆盖用户偏好或提高已有分辨率', () async {

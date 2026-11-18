@@ -57,11 +57,30 @@ API 34、35 的上述真机验收尚未完成；API 36 目前仅完成荣耀 Mag
 
 - 参考软件 AndroMeld 在荣耀 Magic V6 的同一图库 Task 上保持独立虚拟屏：窄窗口约 `1384×1600 / 197 dpi`，宽窗口约 `1600×924 / 114 dpi`。两者逻辑高度都约为 1300 dp；图库从三列切为五列，过程中可见模糊旧画面和居中网格图标。设备侧 Helper 调用 `VirtualDisplay.resize(width, height, dpi)`；仓库内 scrcpy 4.0 Server 的 resize 控制报文仅携带宽高，故 AnyDeck 需另外调整副屏 DPI。
 - `FusionDisplayGeometry` 以 Viewer viewport 为输入，最长边限制为 1600 像素，按约 1300 dp 逻辑高度计算 DPI。创建副屏时就传同一规则的初始尺寸；窗口改变后发送 scrcpy 控制报文类型 21。`FusionResizeTransition` 在等待新视频帧时模糊旧画面、显示网格图标，并阻止误触；新帧和 DPI 到位后撤掉过渡层，最长等待 5 秒。
-- 连续 resize 使用 `FusionDisplayUpdateQueue` 串行处理尺寸和 DPI。scrcpy 的 `sendControl` 只确认写入 socket，不代表 Android 已完成 `VirtualDisplay.resize`；先前立即调用 `wm density` 会被稍后的 resize 覆盖。现在轮询 `wm size -d <displayId>`，确认目标物理尺寸后才设置 `wm density <dpi> -d <displayId>`；会话停止时执行 `wm density reset -d <displayId>`。同一会话中的 ADB 命令有超时和设备身份检查。
+- 连续 resize 使用 `FusionDisplayUpdateQueue` 串行处理尺寸和 DPI。scrcpy 的 `sendControl` 只确认写入 socket，不代表 Android 已完成 `VirtualDisplay.resize`；先前立即调用 `wm density` 会被稍后的 resize 覆盖。现在轮询 `wm size -d <displayId>`，确认目标物理尺寸后才通过当前 ROM 支持的独立 DPI 接口更新；会话停止时执行 `wm density reset -d <displayId>`。具体能力选择和荣耀内外屏隔离见下文 2026-11-17 修复记录。同一会话中的 ADB 命令有超时和设备身份检查。
 - 没有现存 Task 时，先以 `cmd package resolve-activity` 查找 `MAIN/LAUNCHER` Component，再显式 `am start -n`。找不到入口时在创建融合窗口前返回错误；已有 Task 可直接迁移，无需 LAUNCHER Activity。该处理覆盖用户反馈的 `unable to resolve Intent` 和无启动 Activity 的空白投屏窗口，但不使原本不能独立启动的系统组件变为可启动 App。
 - 真机窗口：荣耀 Magic V6，Android 16，USB，`com.hihonor.photos`。AnyDeck 首帧真实可见，图库 Task `#704` 在虚拟屏 `displayId=123` 的 `RESUMED` 状态；首次窄窗口 `714×1600 / 197 dpi` 为三列，宽窗口 `1600×1106 / 136 dpi` 为五列，缩回 `1410×1600 / 197 dpi` 为三列。宽窄两向均观察到模糊与居中网格过渡；点击缩略图进入照片并通过返回键回到图库。调节的是窗口宽高比，实际副屏像素值随窗口尺寸而变。
 - 首次复测发现从宽缩窄后副屏为 `1410×1600`，DPI 却仍为 `136`；排查确认 `wm density 197 -d 122` 可手动生效。加入等待物理尺寸的时序修复后，同样的宽窄往返在 `displayId=123` 实测恢复到 `197 dpi`。21:00–21:22 CST 的 `AndroidRuntime:E` 定向日志中未检出图库或 shell 的 `FATAL EXCEPTION`；图库进程 PID 6878 仍在运行。
 - 四个定向测试文件共 17 项通过；改动 Dart 文件 `dart analyze` 无诊断，`flutter build macos --debug --no-pub` 通过，`git diff --check` 通过。此次真机验收覆盖上述荣耀图库路径；Android 14/15、其他 ROM、受保护画面和像素级动画一致性仍须分别验证。图库私有缩略图未保存到仓库。
+
+## 荣耀折叠机缩放后手机文字变小（2026-11-17）
+
+- 复现路径：打开环球 App 的融合窗口，来回缩放后关闭。连接设备主屏 `wm density` 显示默认 `480`、覆盖 `197`，`font_scale=1.0`，主屏分辨率未覆盖；副屏初始 DPI 同样为 `197`。
+- 从设备当前系统制品核对 `WindowManagerService.setForcedDisplayDensityForUser()`：设置指定 display 后，折叠机分支还会无条件对 display 1 调用 `setForcedDensity()`。因此普通 `wm density <dpi> -d <虚拟屏>` 不能保证物理内屏隔离；折叠切换后异常配置还可能体现在逻辑主屏。单独重置虚拟屏也不能修复已经改动的物理屏。
+- `FusionDisplayDensity` 改为每个副屏会话独立持有的管理者，缓存 `wm help` 和厂商探测结果。支持 density `[-r]` 的系统使用 `wm density <dpi> -d <id> -r`，经 `setForcedDisplayDensityRatio()` 只更新目标 DisplayContent。缺少此能力的荣耀/华为保留副屏初始 DPI，返回未应用，不回退普通接口；其他已确认厂商沿用指定副屏的普通接口。未知厂商也不执行普通写入。
+- 会话关闭时先阻止迟到更新，再等待在途命令完成并重置原副屏；写入超时也保留还原责任。`embedded_scrcpy_fusion.dart` 收口融合入口，主会话服务保持 500 行以内。未新增设置、可见文案、Theme、Channel、依赖或视频/触控协议。
+- 真机已执行主屏 `wm density reset -d 0`，回读内外屏均为 `480`。随后用独立比例接口将现有副屏从 `197` 调到 `136`，回读内外屏仍为 `480`、副屏覆盖为 `136`；重置副屏后回到 `197`，物理内外屏仍为 `480`。仅验证设备端配置隔离，未启动或构建桌面 AnyDeck，也未对新版完整环球 App 窗口路径作 UI 验收。
+- `flutter test --no-pub --experimental-faster-testing` 定向执行 `fusion_display_density_test.dart`、`embedded_camera_service_test.dart`、`fusion_mirroring_test.dart`、`fusion_resize_transition_test.dart`，32 项通过。修改的 5 个 Dart 文件通过 `flutter analyze --no-pub`，无诊断；`git diff --check` 通过。会话单元测试使用假端口预留，不依赖真实网络端口。
+
+### 回归范围
+
+| 用例 | 预期结果 |
+| --- | --- |
+| 支持比例接口的荣耀副屏连续宽窄缩放 | 目标副屏 DPI 随尺寸更新，内外屏 DPI 保持原值；能力只探测一次 |
+| 旧版荣耀/华为不支持比例接口 | 保留初始副屏 DPI，不发送会联动物理屏的普通写入 |
+| 普通 Android 不支持比例接口 | 保持指定副屏的兼容命令，不写 display 0 |
+| 查询时失效、关闭时存在在途或排队更新 | 停止迟到写入，等待已发写入后只重置所属副屏一次，再释放 Rust 资源 |
+| 写入超时或返回 Error | 返回失败；超时后仍尝试还原，禁止普通接口回退 |
 
 ## 应用转到手机主屏时的占位页（2026-11-06）
 

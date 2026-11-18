@@ -19,6 +19,7 @@ import 'mirror_transport_type.dart';
 
 part 'embedded_scrcpy_providers.dart';
 part 'embedded_scrcpy_recovery.dart';
+part 'embedded_scrcpy_fusion.dart';
 
 class EmbeddedScrcpySession {
   EmbeddedScrcpySession({
@@ -29,6 +30,7 @@ class EmbeddedScrcpySession {
     required this.rustHandle,
     required this.startedAt,
     this.virtualDisplayId,
+    this.displayDensity,
     this.escapeGuardian,
     this.camera,
     this.scid,
@@ -43,13 +45,12 @@ class EmbeddedScrcpySession {
   final int rustHandle;
   final DateTime startedAt;
   final int? virtualDisplayId;
+  final FusionDisplayDensity? displayDensity;
   final Timer? escapeGuardian;
   final ScrcpyCameraOptions? camera;
   final String? scid;
   final MirrorVideoQuality quality;
   bool muted;
-  bool densityOverridden = false;
-  Future<void> densityUpdate = Future<void>.value();
 }
 
 class EmbeddedScrcpyService {
@@ -69,11 +70,6 @@ class EmbeddedScrcpyService {
   int? getVirtualDisplayId(String deviceId) =>
       _sessions[deviceId]?.virtualDisplayId;
   Process? getServerProcess(String deviceId) => _sessions[deviceId]?.serverProcess;
-
-  /// 首帧已确认后结束启动期 Task 回迁守护，让手机上的主动操作生效。
-  void finishAppLaunchGuard(String deviceId) {
-    _sessions[deviceId]?.escapeGuardian?.cancel();
-  }
 
   /// 只读本机 Rust 内存，不发送额外 ADB 网络探测。
   MirrorStreamHealth? getStreamHealth(String deviceId) {
@@ -113,32 +109,6 @@ class EmbeddedScrcpyService {
       session.rustHandle,
       controlMessage,
     );
-  }
-
-  /// 对当前融合副屏设置临时 density；停止会话前恢复，避免 display ID 复用时遗留覆盖值。
-  Future<bool> setFusionDisplayDensity(
-    String deviceId,
-    FusionDisplayGeometry geometry,
-  ) {
-    final session = _sessions[deviceId];
-    if (session?.virtualDisplayId == null) return Future<bool>.value(false);
-    final update = session!.densityUpdate.then((_) async {
-      if (_sessions[deviceId] != session) return false;
-      final applied = await FusionDisplayDensity.applyWhenResized(
-        adbService: _adbService,
-        deviceId: deviceId,
-        displayId: session.virtualDisplayId!,
-        geometry: geometry,
-        isCurrent: () => _sessions[deviceId] == session,
-      );
-      if (applied) {
-        session.densityOverridden = true;
-        return true;
-      }
-      return false;
-    });
-    session.densityUpdate = update.then<void>((_) {}, onError: (_) {});
-    return update;
   }
 
   /// 提取匹配版本的内置 server，供投屏与独立音频/剪贴板会话复用。
@@ -426,6 +396,11 @@ class EmbeddedScrcpyService {
         rustHandle: rustHandle,
         startedAt: DateTime.now(),
         virtualDisplayId: virtualDisplayId,
+        displayDensity: virtualDisplayId == null ? null : FusionDisplayDensity(
+          adbService: _adbService,
+          deviceId: deviceId,
+          displayId: virtualDisplayId,
+        ),
         escapeGuardian: escapeGuardian,
         camera: camera,
         scid: scid,
@@ -486,12 +461,7 @@ class EmbeddedScrcpyService {
     if (session == null) return;
     session.escapeGuardian?.cancel();
 
-    await session.densityUpdate;
-    if (session.densityOverridden && session.virtualDisplayId != null) {
-      await _adbService.shellArgs(deviceId, [
-        'wm', 'density', 'reset', '-d', '${session.virtualDisplayId}',
-      ], timeout: const Duration(seconds: 4));
-    }
+    await session.displayDensity?.restore();
 
     try {
       await _textures.invokeMethod<void>('untrack', {'handle': session.rustHandle});
