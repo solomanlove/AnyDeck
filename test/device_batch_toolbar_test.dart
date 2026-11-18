@@ -1,4 +1,5 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,6 +30,106 @@ Future<void> _enterBatch(WidgetTester tester, {bool list = false}) async {
 }
 
 void main() {
+  for (final brightness in Brightness.values) {
+    for (final themeColor in [AppThemeColor.green, AppThemeColor.blue]) {
+      for (final list in [false, true]) {
+        testWidgets(
+          '批量栏满宽居左并使用中性色 $brightness $themeColor ${list ? '列表' : '设备墙'}',
+          (tester) async {
+            await withDeviceMenu(
+              tester,
+              (fixture) async {
+                await _enterBatch(tester, list: list);
+                final toolbar = find.byKey(const Key('deviceBatchActions'));
+                final bar = tester.getRect(toolbar);
+                final content = tester.getRect(
+                  list
+                      ? find.byKey(const ValueKey('device-row-device-a'))
+                      : find.byKey(const Key('deviceWall')),
+                );
+                expect(bar.left, closeTo(content.left, .1));
+                expect(bar.right, closeTo(content.right, .1));
+                expect(
+                  tester.widget<Container>(toolbar).alignment,
+                  Alignment.centerLeft,
+                );
+                final all = find.byKey(const Key('deviceSelectAll'));
+                final selection = find.text('全选(1)');
+                expect(tester.getRect(all).left - bar.left, closeTo(8, .1));
+                expect(
+                  tester.getRect(selection).left - tester.getRect(all).right,
+                  closeTo(6, .1),
+                );
+                expect(
+                  tester.getRect(_action('mirror')).left -
+                      tester.getRect(selection).right,
+                  closeTo(12, .1),
+                );
+                expect(
+                  tester.getRect(_action('mirror')).left,
+                  lessThan(bar.center.dx),
+                );
+
+                final theme = Theme.of(tester.element(toolbar));
+                final scheme = theme.colorScheme;
+                final background =
+                    tester.widget<Container>(toolbar).decoration!
+                        as BoxDecoration;
+                expect(background.color, theme.appColors.subtleSurface);
+                expect(background.color, isNot(scheme.primaryContainer));
+                for (final action in _actions) {
+                  final button = tester.widget<TextButton>(_action(action));
+                  final foreground = action == 'delete'
+                      ? scheme.error
+                      : scheme.onSurface;
+                  expect(button.onPressed, isNotNull);
+                  expect(
+                    button.style!.foregroundColor!.resolve({}),
+                    foreground,
+                  );
+                  // 按实际绘制的 8-bit 色值比较，避免透明度浮点表示差异。
+                  expect(
+                    button.style!.overlayColor!.resolve({
+                      WidgetState.hovered,
+                    })!.toARGB32(),
+                    foreground.withValues(alpha: .08).toARGB32(),
+                  );
+                  expect(
+                    button.style!.overlayColor!.resolve({
+                      WidgetState.pressed,
+                    })!.toARGB32(),
+                    foreground.withValues(alpha: .1).toARGB32(),
+                  );
+                }
+                final checkbox = tester.widget<Checkbox>(all);
+                expect(checkbox.value, isTrue);
+                expect(checkbox.activeColor, scheme.onSurface);
+                expect(checkbox.checkColor, scheme.surface);
+                for (final state in [
+                  WidgetState.hovered,
+                  WidgetState.pressed,
+                ]) {
+                  expect(
+                    checkbox.overlayColor!.resolve({
+                      state,
+                      WidgetState.selected,
+                    }),
+                    theme.appColors.hoverSurface,
+                  );
+                }
+                expect(tester.takeException(), isNull);
+              },
+              devices: [deviceMenuAndroid.copyWith(isChecked: true)],
+              brightness: brightness,
+              themeColor: themeColor,
+              windowSize: const Size(1600, 900),
+            );
+          },
+        );
+      }
+    }
+  }
+
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
       for (final width in [1200.0, 490.0, 320.0]) {

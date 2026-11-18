@@ -1,6 +1,6 @@
 part of '../dashboard_screen.dart';
 
-/// 批量管理单行工具栏；筛选保留隐藏勾选，数量说明收入口 Tooltip。
+/// 满宽居左的中性色批量工具栏；筛选保留隐藏勾选，数量说明收入口 Tooltip。
 extension _DeviceSelectionBar on _DeviceListPanelState {
   Widget _buildSelectionBar(
     BuildContext context,
@@ -26,10 +26,12 @@ extension _DeviceSelectionBar on _DeviceListPanelState {
     ].join('\n');
     return Container(
       key: const Key('deviceBatchActions'),
+      width: double.infinity,
+      alignment: Alignment.centerLeft,
       constraints: const BoxConstraints(minHeight: 36),
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: scheme.primaryContainer.withValues(alpha: 0.5),
+        color: theme.appColors.subtleSurface,
         borderRadius: AppThemeSizes.radiusLarge,
       ),
       // 窄窗口横向滚动，始终按固定顺序展示同一行操作。
@@ -46,6 +48,11 @@ extension _DeviceSelectionBar on _DeviceListPanelState {
                     dimension: 24,
                     child: Checkbox(
                       key: const Key('deviceSelectAll'),
+                      activeColor: scheme.onSurface,
+                      checkColor: scheme.surface,
+                      overlayColor: WidgetStatePropertyAll(
+                        theme.appColors.hoverSurface,
+                      ),
                       tristate: true,
                       value: count > 0 && !all ? null : all,
                       onChanged: visible.isEmpty
@@ -99,7 +106,9 @@ extension _DeviceSelectionBar on _DeviceListPanelState {
                       )
                     : null,
                 style: TextButton.styleFrom(
-                  foregroundColor: item.$1 == 'delete' ? scheme.error : null,
+                  foregroundColor: item.$1 == 'delete'
+                      ? scheme.error
+                      : scheme.onSurface,
                   minimumSize: const Size(0, 36),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding: const EdgeInsets.symmetric(horizontal: 8),

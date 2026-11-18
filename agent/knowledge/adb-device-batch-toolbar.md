@@ -10,6 +10,7 @@
 - 选择范围、已选总数与筛选隐藏的已选数量通过全选区域的 Tooltip 说明。
 - 列表模式在原表头位置显示工具栏，隐藏设备名称、连接状态、系统版本与操作表头；退出管理恢复表头并清空选择。
 - 设备墙和空筛选结果继续提供工具栏；窄窗口横向滚动，保持按钮顺序和单行布局。
+- 工具栏占满内容区域宽度，全部操作从左侧 8px 内边距起排列，不因按钮总宽度较小而居中。
 
 ## 实现与执行边界
 
@@ -23,7 +24,7 @@
 按钮沿用 `_executeWorkspaceBatch` 与既有批量处理器，不新增 CLI 或依赖：
 镜像面向在线设备；截屏、录屏、安装、推送和定时任务面向在线 Android；脚本支持在线 Android/HarmonyOS，仍由 ADB/HDC 执行；删除允许离线设备，保留原确认流程。
 执行期间禁用批量动作，并在 `finally` 中检查 `mounted` 后复位，阻止直接按钮重复提交。
-颜色继续取自 Theme / ColorScheme，删除使用 error 语义色；无新增 Provider 或跨 Isolate 通信。
+背景使用工作区中性色 `appColors.subtleSurface`，普通操作文字及交互反馈使用 `ColorScheme.onSurface`，全选 Checkbox 同样采用中性色；删除保留 error 语义色。配色随 Light/Dark 自动适配，不受用户主题主色影响；无新增 Provider 或跨 Isolate 通信。
 
 ## 测试与验证
 
@@ -32,7 +33,10 @@
 - `test/batch_script_tool_path_test.dart`：直接入口仍使用用户配置的 ADB/HDC 路径，iOS 脚本禁用。
 - `test/devices_audit_theme_test.dart`：直接定时任务入口与主题色。
 - 回归设备响应式、列表排序、分组、右键菜单及共享 fixture 的既有测试。
+- 满宽与中性配色回归覆盖 Light/Dark、绿色/蓝色主题、列表/设备墙，检查边界、居左起点、文字与 Hover/按压反馈，以及全选 Checkbox 的配色。
 
 验证使用 `script/flutter.sh test --no-pub` 和 `script/flutter.sh analyze --no-pub --no-fatal-infos --no-fatal-warnings`；不启动完整 App，不操作真实设备。
 
-本轮 14 份相关测试共 142 项全部通过，其中新增工具栏回归 22 项；全仓 analyze 无 error，保留 5 项既有 warning 和 SDK 弃用等 info，本次未新增 warning。修改的 Dart 文件均少于 500 行，`git diff --check` 通过。
+首轮 14 份相关测试共 142 项全部通过，其中新增工具栏回归 22 项；全仓 analyze 无 error，保留 5 项既有 warning 和 SDK 弃用等 info，未新增 warning。
+
+满宽与中性配色调整追加 8 项回归，5 份相关测试合计 69 项全部通过；全仓 analyze 无 error，仍仅保留上述既有 warning 和 info。修改的 Dart 文件均少于 500 行，格式检查及 `git diff --check` 通过；未启动完整 App。
