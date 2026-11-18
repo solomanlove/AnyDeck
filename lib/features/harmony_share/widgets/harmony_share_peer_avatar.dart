@@ -3,11 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../app/l10n/app_localizations.dart';
+import '../../../app/theme/app_icon.dart';
 import '../../../app/theme/app_theme_sizes.dart';
+import '../../../app/widget/app_asset_image.dart';
+import '../../../core/nearby_share/share_transfer_protocol.dart';
 import '../model/harmony_share_peer_state.dart';
 import 'harmony_share_drop_target.dart';
 
-/// 圆形手机头像；state 提供真实批次状态，enabled 控制选文件与整组拖放。
+/// 圆形厂商 Logo 头像；state 提供真实批次状态，enabled 控制选文件与整组拖放。
 /// onPick 与 onDrop 都交回页面确认，不在头像内启动传输或生成模拟进度。
 class HarmonySharePeerAvatar extends StatelessWidget {
   const HarmonySharePeerAvatar({
@@ -36,10 +39,14 @@ class HarmonySharePeerAvatar extends StatelessWidget {
     final sending =
         phase == HarmonySharePeerPhase.sending ||
         phase == HarmonySharePeerPhase.confirming;
+    // 发现摘要仅提供协议，按协议选择品牌资源，不从用户自定义名称猜测厂商。
+    final logoAsset = switch (state.peer.protocol) {
+      ShareTransferProtocol.huawei => AppIcons.huawei,
+      ShareTransferProtocol.honor => AppIcons.honor,
+    };
     final label = state.peer.name.isEmpty
         ? state.peer.address.address
         : state.peer.name;
-    final protocol = context.l10n.t('harmonyShareProtocol_${state.peer.protocol.name}');
     final status = phase == HarmonySharePeerPhase.ready
         ? ''
         : context.l10n.t('harmonySharePeer_${phase.name}');
@@ -49,7 +56,7 @@ class HarmonySharePeerAvatar extends StatelessWidget {
       child: Semantics(
         button: true,
         enabled: enabled,
-        label: '$label $protocol $status',
+        label: '$label $status',
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -86,10 +93,8 @@ class HarmonySharePeerAvatar extends StatelessWidget {
                                     ),
                                   ],
                                 )
-                              : Icon(
-                                  Icons.phone_android_rounded,
-                                  size: 38,
-                                  color: colors.onSurface,
+                              : ClipOval(
+                                  child: AppAssetImage(logoAsset),
                                 ),
                         ),
                         if (sending)
@@ -101,39 +106,21 @@ class HarmonySharePeerAvatar extends StatelessWidget {
                               backgroundColor: colors.outlineVariant,
                             ),
                           ),
-                        Positioned(
-                          bottom: 0,
-                          left: 2,
-                          right: 2,
-                          child: Tooltip(
-                            message: protocol,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: colors.surface,
-                                borderRadius: AppThemeSizes.radiusSmall,
-                                border: Border.all(color: colors.outlineVariant),
-                              ),
-                              child: Text(
-                                protocol,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.labelSmall,
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleSmall,
+                  // 收窄名称区域，使含型号的长名称自然换行，避免挤成一行。
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 120),
+                    child: Text(
+                      label,
+                      maxLines: 3,
+                      softWrap: true,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                   ),
                   if (status.isNotEmpty) ...[
                     const SizedBox(height: 3),

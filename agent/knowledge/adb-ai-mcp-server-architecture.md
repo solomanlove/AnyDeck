@@ -97,7 +97,7 @@ AnyDeck MCP 服务基于分层架构实现：
 
 1. **高危指令拦截**：`execute_shell` 自动检测并阻止 `rm -rf /`、`wipe_data`、`fastboot flash`、`mkfs`、`format` 等破坏性指令。
 2. **工具级别细粒度开关**：用户可在 AnyDeck 桌面端设置页实时禁用任意单一工具。
-3. **调用审计与监控**：所有经过 MCP 的请求方法、参数、耗时与错误信息均在 `McpAuditLogsViewer` 实时展示与追溯。
+3. **调用审计与监控**：通过协议校验的普通请求与工具调用在 `McpAuditLogsViewer` 展示方法、脱敏参数、耗时与成功/失败状态；通知与心跳不占用历史。最近 200 条摘要持久化，重启后恢复；参数详情仅保留在当前进程内存中。
 
 ## 6. SSE 服务停止与连接回收
 
@@ -221,3 +221,19 @@ xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner -configuration Deb
 - 本轮覆盖 iOS 16.7.16 竖屏；iOS 17+ tunnel、横竖屏切换、锁屏控制、音量及用户 App 卸载未验收。WDA 状态查询仍不会隐式启动 Runner。
 
 CLI 参数依据：[go-ios image auto](https://github.com/danielpaulus/go-ios/blob/main/main.go)。
+
+## 11. 调用审计漏记与重启历史修复（2026-11-17）
+
+- **需求**：AI 客户端已调用工具，AI MCP 页面却显示“暂无调用记录”。已有实现仅在工具调用分支和异常分支记录日志，`initialize`、`server/discover`、`tools/list` 等正常请求直接返回而漏记；日志只在 `McpAuditLogNotifier` 内存中，重新运行应用后全部丢失。
+- **验证所得**：真实 HTTP 回归确认，未订阅审计页面时，原有工具调用回调可更新 Provider；不能将现象直接归因于页面漏刷新。历史未曾落盘的旧调用无法补回；独立进程的调用仍由实际监听端口的实例负责记录。
+- **统一边界**：`McpServer.handleRequest` 依据最终 JSON-RPC/tool 响应在 `finally` 中记录一次，包含成功、业务失败和未知方法。`Stopwatch` 统计耗时，通知与 `ping` 不进入审计；审计回调异常不能替换响应或重复执行工具。HTTP 鉴权/协议检查拒绝的请求不进入此业务审计。
+- **历史归属**：`features/mcp/data/mcp_audit_log_store.dart` 使用现有 SharedPreferences 保存 `mcp.auditLog.v1`，按新到旧保留最近 200 条。Server 初始化先恢复历史再开放 listener；调用与历史恢复并发时合并快照，恢复未完成时清空不会让旧记录复活。写入串行并合并等待快照，停止服务时等待写入；清空操作同时更新持久化历史。
+- **隐私和故障**：磁盘仅保存时间、方法、工具名、平台、耗时和成功/失败状态，不保存参数详情、设备 ID、错误正文、输入文本、Shell、文件路径或凭据。存储失败保留内存日志，记录异常类型，后续调用可重新保存；强制终止进程前尚未完成的异步写入仍可能丢失。
+- **改动边界**：不新增设备轮询、CLI 执行、依赖、窗口广播或投屏会话；复用现有审计页面、Theme 和文案。
+- **回归**：新增三个审计测试文件，覆盖四个 HTTP 入口在页面未订阅时的成功调用、失败仅记一次、协议请求、回调异常隔离、重建恢复、200 条上限、恢复/清空/写入并发、存储失败后恢复与损坏历史。相关 MCP 协议、平台路由、启停、凭据和 SSE 测试合计 45 项通过，8 个变更 Dart 文件定向 `flutter analyze --no-pub` 无问题。未构建或运行修复后的桌面应用，真实窗口验收待重新构建后进行。
+
+```bash
+flutter test --no-pub test/mcp_audit_dispatch_test.dart test/mcp_audit_history_test.dart test/mcp_audit_pipeline_test.dart test/mcp_server_test.dart test/mcp_config_initialization_test.dart test/mcp_platform_endpoints_test.dart test/mcp_platform_tools_test.dart test/mcp_lifecycle_test.dart test/mcp_sse_transport_test.dart
+```
+
+人工回归：客户端执行 `tools/list` 和一次工具调用 → 打开 AI MCP 核对记录及状态 → 正常停止并重新打开 AnyDeck 核对历史 → 清空日志后再次重开，确认旧记录不再出现。多实例运行时先确认客户端端口由当前窗口对应的进程持有。

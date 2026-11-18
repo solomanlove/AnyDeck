@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:any_deck/core/nearby_share/harmony_share_send_queue.dart';
@@ -139,6 +140,12 @@ void main() {
                       port: 1234,
                       name: 'nova 12 Ultra',
                     ),
+                    ShareCorePeer(
+                      address: InternetAddress('192.0.2.3'),
+                      port: 5700,
+                      name: '荣耀示例账号的Magic V6',
+                      protocol: ShareTransferProtocol.honor,
+                    ),
                   ],
                   enabled: true,
                   busy: false,
@@ -152,6 +159,13 @@ void main() {
           ),
         ),
       );
+      // 首次截图前等待品牌位图解码，避免测试异步 I/O 尚未结束时截到空头像。
+      await tester.runAsync(() async {
+        final context = tester.element(find.byType(HarmonyShareStage));
+        for (final asset in [AppIcons.huawei, AppIcons.honor]) {
+          await precacheImage(AssetImage(asset), context);
+        }
+      });
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capture('nearby');

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'share_core_contract.dart';
+import 'share_core_diagnostics.dart';
 
 /// 优先让核心展开栈清理 staging；超时后保留可信网络 helper 的还原机会。
 Future<void> stopShareCoreProcess(
@@ -99,7 +100,7 @@ Future<String?> _regularExecutable(String path) async {
 class ShareCoreReceiveSession {
   ShareCoreReceiveSession(this._process, {String? coreExecutable})
       : _coreExecutable = coreExecutable {
-    _errors = _process.stderr.listen((_) {});
+    _errors = drainShareCoreErrors(_process.stderr);
     _output = _process.stdout
         .transform(utf8.decoder)
         .transform(const LineSplitter())

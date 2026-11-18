@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/widget/app_asset_image.dart';
 import 'package:any_deck/core/nearby_share/harmony_share_send_queue.dart';
 import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:any_deck/core/nearby_share/share_send_selection.dart';
@@ -9,6 +10,7 @@ import 'package:any_deck/features/harmony_share/widgets/harmony_share_peer_avata
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_stage.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_drop_target.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -213,6 +215,14 @@ void main() {
       await tester.pumpWidget(host(stage(batches: [entry.value])));
       expect(find.text(entry.key), findsOneWidget);
       expect(find.text('本批 3 个文件'), findsOneWidget);
+      expect(
+        find.byType(AppAssetImage),
+        entry.key == '待接收' ? findsNothing : findsOneWidget,
+      );
+      expect(
+        find.byIcon(Icons.circle),
+        entry.key == '待接收' ? findsNWidgets(2) : findsNothing,
+      );
       final ring = find.byType(CircularProgressIndicator);
       if (entry.key == '发送中' || entry.key == '确认中') {
         expect(
@@ -271,6 +281,37 @@ void main() {
     );
     expect(tester.widget<InkWell>(ink).onTap, isNull);
   });
+
+  for (final brightness in Brightness.values) {
+    for (final scale in [1.0, 1.5]) {
+      testWidgets('荣耀设备名称实际换行且可选择 ${brightness.name} $scale', (tester) async {
+        final honor = ShareCorePeer(
+          address: InternetAddress('192.0.2.3'),
+          port: 5700,
+          name: '荣耀示例Magic V6',
+          protocol: ShareTransferProtocol.honor,
+        );
+        ShareCorePeer? picked;
+        await tester.pumpWidget(
+          host(
+            stage(peers: [honor], onPick: (peer) => picked = peer),
+            brightness: brightness,
+            scale: scale,
+          ),
+        );
+        final name = find.text(honor.name);
+        final paragraph = tester.renderObject<RenderParagraph>(name);
+        final lines = paragraph.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: honor.name.length),
+        );
+        expect(lines.map((box) => box.top).toSet().length, greaterThan(1));
+        expect(paragraph.didExceedMaxLines, isFalse);
+        await tester.tap(name);
+        expect(picked, same(honor));
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
 
   testWidgets('窄窗口大字体与长名称可读，设备在区域内滚动', (tester) async {
     tester.view.physicalSize = const Size(360, 900);

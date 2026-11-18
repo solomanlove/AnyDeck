@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'share_batch_contract.dart';
 import 'share_core_contract.dart';
+import 'share_core_diagnostics.dart';
 import 'share_core_sessions.dart';
 import 'share_file_progress.dart';
 
@@ -35,7 +36,7 @@ class ShareBatchTransfer {
     var previous = 0;
     final files = ShareFileProgressLedger(count: request.files.length,
       bytes: request.bytes, direction: 'send', sizes: request.files.map((file) => file.bytes).toList());
-    final errors = _process.stderr.listen((_) {});
+    final errors = drainShareCoreErrors(_process.stderr);
     final timer = Timer(
       ShareCoreContract.transferTimeout + const Duration(seconds: 10),
       () {
@@ -52,7 +53,14 @@ class ShareBatchTransfer {
         if (terminal != null) {
           throw const FormatException('Data after batch terminal');
         }
-        if (event['event'] == 'progress') {
+        if (event['event'] == 'transfer_started') {
+          // 手机确认后的阶段通知不包含IO字节；仍等待完整batch_sent终态。
+          if (event['direction'] != 'send' ||
+              event['total_bytes'] is! int ||
+              event['total_bytes'] != request.bytes) {
+            throw const FormatException('Invalid batch transfer start');
+          }
+        } else if (event['event'] == 'progress') {
           final progress = ShareCoreProgress.parse(
             event,
             maxTotalBytes: ShareBatchContract.maxBytes,

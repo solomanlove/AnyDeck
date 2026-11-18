@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/l10n/tables/app_l10n_huawei_share.dart';
+import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/widget/app_asset_image.dart';
 import 'package:any_deck/core/nearby_share/share_core_client.dart';
 import 'package:any_deck/features/harmony_share/model/harmony_share_peer_state.dart';
 import 'package:any_deck/features/harmony_share/widgets/harmony_share_peer_avatar.dart';
@@ -47,7 +49,9 @@ void main() {
 
   for (final brightness in Brightness.values) {
     for (final language in ['zh', 'en']) {
-      testWidgets('同一列表明确展示两种协议 ${brightness.name} $language', (tester) async {
+      testWidgets('同一列表展示厂商Logo且不显示分享标签 ${brightness.name} $language', (
+        tester,
+      ) async {
         final values = language == 'zh' ? huaweiShareZh : huaweiShareEn;
         await tester.pumpWidget(
           MaterialApp(
@@ -90,12 +94,39 @@ void main() {
         await tester.pump();
         expect(
           find.text(values['harmonyShareProtocol_honor']!),
-          findsOneWidget,
+          findsNothing,
         );
         expect(
           find.text(values['harmonyShareProtocol_huawei']!),
-          findsOneWidget,
+          findsNothing,
         );
+        expect(find.byType(Tooltip), findsNothing);
+        for (final entry in {
+          ShareTransferProtocol.huawei: AppIcons.huawei,
+          ShareTransferProtocol.honor: AppIcons.honor,
+        }.entries) {
+          final avatar = find.byWidgetPredicate(
+            (widget) =>
+                widget is HarmonySharePeerAvatar &&
+                widget.state.peer.protocol == entry.key,
+          );
+          final logo = find.descendant(
+            of: avatar,
+            matching: find.byType(AppAssetImage),
+          );
+          expect(logo, findsOneWidget);
+          expect(
+            find.ancestor(of: logo, matching: find.byType(ClipOval)),
+            findsOneWidget,
+          );
+          final image = tester.widget<Image>(
+            find.descendant(of: logo, matching: find.byType(Image)),
+          );
+          expect((image.image as AssetImage).assetName, entry.value);
+          expect(image.color, isNull);
+          expect(image.fit, BoxFit.contain);
+        }
+        expect(find.byIcon(Icons.phone_android_rounded), findsNothing);
         expect(tester.takeException(), isNull);
       });
     }
