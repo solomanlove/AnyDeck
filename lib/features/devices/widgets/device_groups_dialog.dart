@@ -169,7 +169,15 @@ class _DeviceGroupsDialogState extends ConsumerState<DeviceGroupsDialog> {
         child: CustomScrollView(
           slivers: [
             // 操作区与成员共用滚动，避免窄屏及大字号下固定头部挤出列表。
-            SliverToBoxAdapter(child: _buildHeader(context, groups, group)),
+            SliverPadding(
+              // OutlineInputBorder 浮动标签向上绘制，预留随字号缩放的空间。
+              padding: EdgeInsets.only(
+                top: MediaQuery.textScalerOf(context).scale(12),
+              ),
+              sliver: SliverToBoxAdapter(
+                child: _buildHeader(context, groups, group),
+              ),
+            ),
             if (widget.devices.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,

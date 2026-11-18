@@ -50,6 +50,15 @@
 
 ## 验证与交接
 
+### 管理弹窗浮动标签裁切（2026-11-18）
+
+- 分组下拉框是 `CustomScrollView` 的首个 Sliver，`OutlineInputBorder` 的浮动标签会绘制到控件上边界之外，原先没有预留空间，因此标签上半部分被 Viewport 裁切。
+- 首个 Sliver 增加随 `TextScaler` 缩放的 12px 顶部留白，为标签预留绘制空间；继续使用 Viewport 的默认裁切，防止滚动内容覆盖弹窗标题和底部按钮。
+- 回归检查实际标签绘制矩形经过 Paint Transform 后是否完整落在 Viewport 内，覆盖中英文、Light/Dark、窄宽窗口、放大字号、切换分组和滚回顶部。
+- 仅调整弹窗布局，不改变分组保存、成员归属、默认组只读规则或设备命令。
+- 修复前新回归测得标签顶部为 Viewport 内的 `-5.5px`，可稳定复现裁切；修复后新增 8 项矩阵回归及 6 份相关测试共 56 项全部通过。成员操作测试在滚动后等待布局完成，再点击目标成员。
+- 全仓 analyze 无 error，保留 5 项既有 warning 和 SDK 弃用等 info；格式检查与 `git diff --check` 通过。未启动完整 App。
+
 ```bash
 flutter test --no-pub \
   test/device_group_filter_test.dart \

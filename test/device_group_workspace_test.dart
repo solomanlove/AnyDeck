@@ -136,6 +136,7 @@ void main() {
                   )
                   .first,
             );
+            await tester.pumpAndSettle();
             await tester.tap(member);
             await tester.pumpAndSettle();
             expect(tester.widget<CheckboxListTile>(member).value, isTrue);

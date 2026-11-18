@@ -6,6 +6,7 @@ import 'package:any_deck/core/providers/modules/registered_device_model.dart';
 import 'package:any_deck/features/devices/widgets/device_group_filter.dart';
 import 'package:any_deck/features/devices/widgets/device_groups_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +57,65 @@ class _DialogStore extends DeviceGroupsStore {
 }
 
 void main() {
+  for (final language in ['zh', 'en']) {
+    for (final brightness in Brightness.values) {
+      for (final scale in [1.0, 1.6]) {
+        testWidgets('分组浮动标签完整显示 $language ${brightness.name} $scale', (
+          tester,
+        ) async {
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          for (final width in [320.0, 900.0]) {
+            tester.view.physicalSize = Size(width, 900);
+            await tester.pumpWidget(const SizedBox.shrink());
+            await tester.pumpWidget(
+              _host(
+                store: _DialogStore(),
+                language: language,
+                brightness: brightness,
+                scale: scale,
+                devices: [
+                  for (var i = 0; i < 20; i++) _phone.copyWith(id: 'phone-$i'),
+                ],
+              ),
+            );
+            await tester.pumpAndSettle();
+            await _openManager(tester);
+            _expectGroupLabelVisible(tester, language);
+            await tester.tap(
+              find.byKey(const ValueKey('deviceGroupEditor-qa')),
+            );
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Android').last);
+            await tester.pumpAndSettle();
+            _expectGroupLabelVisible(tester, language);
+            await tester.tap(
+              find.byKey(const ValueKey('deviceGroupEditor-android')),
+            );
+            await tester.pumpAndSettle();
+            await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+            await tester.pumpAndSettle();
+            _expectGroupLabelVisible(tester, language);
+            final scroll = tester.state<ScrollableState>(
+              find
+                  .descendant(
+                    of: find.byType(DeviceGroupsDialog),
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
+            );
+            scroll.position.jumpTo(scroll.position.maxScrollExtent);
+            await tester.pumpAndSettle();
+            scroll.position.jumpTo(scroll.position.minScrollExtent);
+            await tester.pumpAndSettle();
+            _expectGroupLabelVisible(tester, language);
+            expect(tester.takeException(), isNull);
+          }
+        });
+      }
+    }
+  }
+
   testWidgets('加载失败保留默认平台筛选，重试恢复旧组且不写盘', (tester) async {
     final store = _DialogStore()..loadFailures = 1;
     final selected = <String?>[];
@@ -187,6 +247,28 @@ void main() {
       });
     }
   }
+}
+
+/// 使用实际 Paint Transform 检查浮动标签，避免“存在 Text”掩盖裁切。
+void _expectGroupLabelVisible(WidgetTester tester, String language) {
+  final dialog = find.byType(DeviceGroupsDialog);
+  final label = tester.renderObject<RenderBox>(
+    find.descendant(
+      of: dialog,
+      matching: find.text(
+        AppLocalizations(Locale(language)).t('deviceGroupFilter'),
+      ),
+    ),
+  );
+  final viewport = tester.renderObject<RenderBox>(
+    find.descendant(of: dialog, matching: find.byType(Viewport)),
+  );
+  final painted = MatrixUtils.transformRect(
+    label.getTransformTo(viewport),
+    Offset.zero & label.size,
+  );
+  expect(painted.top, greaterThanOrEqualTo(0), reason: '浮动标签不应被滚动区域顶部裁切');
+  expect(painted.bottom, lessThanOrEqualTo(viewport.size.height));
 }
 
 /// 成员由 SliverList 惰性创建；先滚动生成，再执行真实点击。
