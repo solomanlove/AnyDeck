@@ -7,7 +7,7 @@ void main() {
   test('Meitu uses Xiaomi manufacturer without a global Meitu alias', () {
     expect(
       BrandLogoHelper.getBrandLogoAsset('Meitu', manufacturer: 'Xiaomi'),
-      AppIcons.xiaomi,
+      AppIcons.xiaomiSvg,
     );
     expect(
       BrandLogoHelper.getBrandLogoAsset('Meitu', manufacturer: 'Meitu'),
@@ -20,7 +20,7 @@ void main() {
       BrandLogoHelper.getBrandLogoAsset('Google', manufacturer: 'Samsung'),
       AppIcons.google,
     );
-    expect(BrandLogoHelper.getBrandLogoAsset('Redmi'), AppIcons.xiaomi);
+    expect(BrandLogoHelper.getBrandLogoAsset('Redmi'), AppIcons.xiaomiSvg);
     expect(BrandLogoHelper.getBrandLogoAsset('Apple'), AppIcons.apple);
     expect(BrandLogoHelper.getBrandLogoAsset('HUAWEI'), AppIcons.huawei);
   });
@@ -29,7 +29,7 @@ void main() {
     for (final brand in ['', '-', 'unknown', 'Meitu']) {
       expect(
         BrandLogoHelper.getBrandLogoAsset(brand, manufacturer: '  XIAOMI  '),
-        AppIcons.xiaomi,
+        AppIcons.xiaomiSvg,
       );
     }
   });

@@ -255,7 +255,9 @@ void main() {
 
   test('Android 11 拒绝摄像头并回收转发，不启动服务', () async {
     final adb = CameraAdbFake()..sdk = 30;
-    final service = EmbeddedScrcpyService(adb);
+    // 版本校验发生在创建原生会话前，不依赖开发机已构建的 Rust 动态库。
+    final bridge = BridgeFake();
+    final service = EmbeddedScrcpyService(adb, bridge);
     await expectLater(
       service.start(
         deviceId: 'phone',
@@ -265,6 +267,7 @@ void main() {
     );
     expect(adb.launches, isEmpty);
     expect(adb.commands.last, contains('--remove'));
+    expect(bridge.starts, isEmpty);
   });
 
   test('单 App 投屏迁移已有 Task 再等待首帧，并保留可切换音频通道', () async {
@@ -393,10 +396,12 @@ void main() {
     expect(a.sessionId, isNot(b.sessionId));
     expect(b.serverArguments, contains('camera_facing=back'));
     final adb = CameraAdbFake();
+    final bridge = BridgeFake();
     await expectLater(
-      EmbeddedScrcpyService(adb).start(deviceId: 'phone', camera: a),
+      EmbeddedScrcpyService(adb, bridge).start(deviceId: 'phone', camera: a),
       throwsA(isA<CameraPreviewException>()),
     );
     expect(adb.commands, isEmpty);
+    expect(bridge.starts, isEmpty);
   });
 }

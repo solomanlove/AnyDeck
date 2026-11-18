@@ -277,13 +277,14 @@ void main() {
                 of: device,
                 matching: find.text(
                   l10n.t(
-                    view == 'wall'
-                        ? 'deviceWorkspaceAirplay'
-                        : 'deviceWorkspaceAirplayConnection',
+                    'deviceWorkspaceAirplayConnection',
                   ),
                 ),
               );
               expect(status, findsOneWidget);
+              expect(find.descendant(of: device, matching: find.byWidgetPredicate(
+                (widget) => widget is Tooltip && widget.message == l10n.t('deviceWorkspaceAirplay'),
+              )), findsOneWidget);
               final theme = Theme.of(tester.element(status));
               expect(theme.colorScheme.primary, selected.color);
               expect(

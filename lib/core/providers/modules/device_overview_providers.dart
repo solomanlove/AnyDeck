@@ -302,6 +302,8 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       final registryAndroidVersion = ref.watch(
         deviceAndroidVersionProvider(deviceId),
       );
+      // 首次 await/yield 前注册在线依赖，防止缓存首帧期间 Tracker 自动释放丢失快照。
+      final isOnline = ref.watch(androidOverviewOnlineProvider(deviceId));
 
       // 1. 优先尝试从本地持久化缓存加载，以实现零延迟即时展示
       final cached = await service.loadFromCache(deviceId);
@@ -331,7 +333,6 @@ final deviceOverviewProvider = StreamProvider.autoDispose
       }
 
       // 真实 ADB 断线才重新采集，投屏内部重建不触发整组概览查询。
-      final isOnline = ref.watch(androidOverviewOnlineProvider(deviceId));
       if (!isOnline) {
         if (cached == null) {
           yield DeviceOverview.fromJson({});

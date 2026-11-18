@@ -269,7 +269,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
-    testWidgets('概览装饰在 $brightness 跟随主色，充电与 Root 保持成功色', (tester) async {
+    testWidgets('概览容量与网络在 $brightness 跟随主色，电量与 Root 保持中性色', (tester) async {
       final color = await _pumpPage(
         tester,
         container: ProviderContainer(
@@ -311,11 +311,11 @@ void main() {
         );
         expect(
           tester.widget<Text>(find.text('80%')).style?.color,
-          AppPalette.primary,
+          Theme.of(tester.element(find.text('80%'))).colorScheme.onSurfaceVariant,
         );
         expect(
           tester.widget<Icon>(find.byIcon(CupertinoIcons.lock_open_fill)).color,
-          AppPalette.primary,
+          Theme.of(tester.element(find.byIcon(CupertinoIcons.lock_open_fill))).colorScheme.onSurfaceVariant,
         );
       }
       expect(tester.takeException(), isNull);

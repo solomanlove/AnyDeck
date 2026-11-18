@@ -5,7 +5,6 @@ import 'package:any_deck/core/device_share/device_share_store.dart';
 import 'package:any_deck/core/device_share/hosted_device_share.dart';
 import 'package:any_deck/core/device_share/joined_device_share.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
-import 'package:any_deck/features/devices/widgets/device_share_controls.dart';
 import 'package:any_deck/features/devices/widgets/device_share_dialog.dart';
 import 'package:any_deck/features/devices/widgets/device_share_saved_cards.dart';
 import 'package:flutter/material.dart';
@@ -50,7 +49,7 @@ const _network = HostNetworkInfo(
 
 Future<void> _open(WidgetTester tester, {bool local = false}) async {
   showDialog<void>(
-    context: tester.element(find.byType(DeviceShareControls).first),
+    context: tester.element(find.byKey(const ValueKey('device-wall-device-a'))),
     builder: (_) => DeviceShareDialog(device: local ? deviceMenuAndroid : null),
   );
   await tester.pumpAndSettle();
@@ -84,7 +83,10 @@ void main() {
           expect(find.byType(DeviceShareHistoryCard), findsOneWidget);
           expect(find.text('历史测试手机'), findsOneWidget);
           expect(find.textContaining(invitation.token), findsNothing);
-          await tester.tap(find.text(language == 'zh' ? '重连' : 'Reconnect'));
+          await tester.tap(find.descendant(
+            of: find.byType(DeviceShareHistoryCard),
+            matching: find.text(language == 'zh' ? '重连' : 'Reconnect'),
+          ));
           await tester.pumpAndSettle();
           expect(actions.reconnected, invitation.fingerprint);
           expect(find.byType(LinearProgressIndicator), findsNothing);

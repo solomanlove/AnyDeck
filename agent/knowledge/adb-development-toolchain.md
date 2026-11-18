@@ -40,8 +40,26 @@ Homebrew 库与 Xcode 尚未严格锁版本，检查输出实际版本。Intel �
 | Flutter 聚焦测试 | no-share 开关、主窗口路由和 outbox 服务 17 项通过；禁用 Share Core 的编译开关模式另 5 项通过 |
 | macOS 实际编译 | 不含 Share Core 的 Debug 构建通过，arm64 和整包签名校验通过；未启动 App |
 
-全量 Flutter 测试未全绿：2522 项通过、9 项跳过、60 项失败；另有 `tab_order_consistency_test.dart` 挂起，在新旧 SDK 均复现后主动中止。失败中 59 项在保留升级前工作区的 Flutter 3.47.2 对照目录中复现；剩余 outbox `continue` 用例单独重跑通过。既有失败包含已失效的设备行双击 finder、旧页面文案/颜色断言、SharedPreferences mock 缺失和 UDP 端口释放问题；本次未修改这些业务或测试。不能将该结果描述为全仓测试通过。
+首次工具链提交 `cf077ad` 时，全量 Flutter 测试未全绿：2522 项通过、9 项跳过、60 项失败；另有 `tab_order_consistency_test.dart` 挂起，在新旧 SDK 均复现后主动中止。失败中 59 项在保留升级前工作区的 Flutter 3.47.2 对照目录中复现；剩余 outbox `continue` 用例单独重跑通过。既有失败包含已失效的设备行双击 finder、旧页面文案/颜色断言、SharedPreferences mock 缺失和 UDP 端口释放问题；该提交仅处理环境，后续修复见 [Flutter 测试隔离与异步回归](adb-flutter-test-isolation.md)。
 
-Pub 依赖在 HEAD 锁文件上使用新 SDK `--enforce-lockfile` 验证通过，无需升级其他业务包。当前工作区仅将 Flutter test SDK 要求的 `test_api` 对齐为 0.7.14；原有 hosted URL、cupertino_ui 和 material_ui 修改保留且不纳入提交。Podfile.lock 的 CocoaPods 版本标记对齐 1.16.2 属于此次环境锁定，其余内容保留。
+首次工具链提交的 Pub 依赖在仓库锁文件上使用新 SDK `--enforce-lockfile` 验证通过，无需升级其他业务包；仅将 Flutter test SDK 要求的 `test_api` 对齐为 0.7.14。原有 hosted URL、cupertino_ui 和 material_ui 工作区修改保留且不纳入提交。Podfile.lock 的 CocoaPods 版本标记对齐 1.16.2 属于环境锁定，其余内容保留。
 
 Intel/Windows/Linux、完整 Share Core Release、手机功能和远端 CI 未在本机重新执行。原 arm64e destination 问题在本机新 SDK 构建中未出现，旧补丁不应用于新 SDK。
+
+## 后续测试修复验证
+
+2026-11-18，按用户要求继续修复失败及挂起测试，具体原因和维护约定见 [测试修复记录](adb-flutter-test-isolation.md)。未新增 skip，也未提高生产环境超时。
+
+| 项目 | 结果 |
+| --- | --- |
+| 工作区全量 Flutter 测试 | 2588 项通过、9 项按既有条件跳过；0 失败、0 挂起，正常退出 |
+| 工作区静态分析 | 0 error、5 项既有 warning、875 info；按项目门禁命令通过 |
+| 独立提交快照全量测试 | 使用仓库 Pub 锁文件并从源码编译 Rust 库后，2588 项通过、9 项既有条件跳过；0 失败、0 挂起，约 223s 正常退出 |
+| 独立提交快照静态分析 | 0 error、5 项既有 warning、874 info；按项目门禁命令通过 |
+| 平台与异步专项 | WDA 恢复 5 项、UDP 关闭/重新发布 8 项均通过；完整回归包含这些用例 |
+| 摄像头隔离 | 7 项通过，版本拒绝与取消用例显式注入 mock bridge，并验证不会启动原生会话 |
+| 脚本与工具链 | 101 项脚本回归、`check_env.sh` 与 workflow YAML 解析通过 |
+
+独立提交快照最初暴露了本机 Rust 构建缓存掩盖的问题：两个摄像头用例未注入 mock；另两个 DAL 可用性断言确实需要原生库。已修复前者，并为全量回归补齐 `build_device_bridge.sh` 前置步骤；后者保留真实原生集成断言。快照使用仓库原有 Pub 锁文件，Rust 库由快照源码和锁定 Cargo 编译，不复制工作区预编译产物。
+
+原有跳过项依赖真机、原生动态库、官方 MCP SDK 或 Windows 平台。远端 CI 已增加 Flutter 静态分析与全量测试门禁，尚未触发 workflow；本地测试通过不替代设备与发布验收。

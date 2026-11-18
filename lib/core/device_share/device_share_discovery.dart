@@ -20,6 +20,7 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
   final _advertisements = <String, DeviceShareInvitation>{};
   final _searches = <RawDatagramSocket>{};
   RawDatagramSocket? _listener;
+  Future<void>? _listenerDone;
   Future<void>? _starting;
   bool _closed = false;
   int _replies = 0;
@@ -36,8 +37,12 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
             .map((entry) => MapEntry(entry.fingerprint, entry)),
       );
     if (_advertisements.isEmpty) {
+      final closing = _listenerDone;
       _listener?.close();
       _listener = null;
+      await _starting;
+      // 只等待本次关闭的监听；后续 publish 可能已创建新的活动监听。
+      await closing;
       return;
     }
     if (_listener == null) {
@@ -46,6 +51,7 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
   }
 
   Future<void> _start() async {
+    await _listenerDone;
     final socket = await RawDatagramSocket.bind(
       InternetAddress.anyIPv4,
       port,
@@ -53,10 +59,15 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
     );
     socket.writeEventsEnabled = false;
     if (_closed || _advertisements.isEmpty) {
+      // RawDatagramSocket 的接口 close() 不可等待，done 才表示端口已释放。
+      final closed = socket.drain<void>();
       socket.close();
+      await closed;
       return;
     }
     _listener = socket;
+    final closed = Completer<void>();
+    _listenerDone = closed.future;
     // 分别加入可用网卡，VPN 或不支持 multicast 的网卡失败不影响单播/广播。
     List<NetworkInterface> interfaces;
     try {
@@ -109,7 +120,7 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
       } catch (_) {
         /* 无效或未知 UDP 数据不影响共享会话。 */
       }
-    }, onError: (_) {});
+    }, onError: (_) {}, onDone: closed.complete);
   }
 
   @override
@@ -195,5 +206,6 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
       socket.close();
     }
     await _starting;
+    await _listenerDone;
   }
 }

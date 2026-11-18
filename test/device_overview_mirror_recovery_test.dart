@@ -35,9 +35,13 @@ class _CountingInfo extends DeviceInfoService {
   int loads = 0;
   bool failNext = false;
   DeviceOverview? cached;
+  Completer<void>? cacheGate;
 
   @override
-  Future<DeviceOverview?> loadFromCache(String deviceId) async => cached;
+  Future<DeviceOverview?> loadFromCache(String deviceId) async {
+    await cacheGate?.future;
+    return cached;
+  }
 
   @override
   Future<DeviceOverview> loadOverview(
@@ -156,6 +160,26 @@ void main() {
     await container
         .read(activeEmbeddedMirrorProvider(_shared).notifier)
         .forceStop();
+  });
+
+  testWidgets('缓存读取期间到达的在线快照不会因尚未订阅 Tracker 而丢失', (tester) async {
+    info.cacheGate = Completer<void>();
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: Consumer(builder: (context, ref, child) {
+        ref.watch(deviceOverviewProvider(_shared));
+        return const SizedBox.shrink();
+      }),
+    ));
+    transportEvents.add([_online]);
+    await tester.pump();
+    expect(info.loads, 0);
+    info.cacheGate!.complete();
+    await tester.pump();
+    await tester.pump();
+    await container.read(deviceOverviewProvider(_shared).future);
+    expect(info.loads, 1);
+    expect(container.read(deviceOverviewProvider(_shared)).value?.name, 'snapshot-1');
   });
 
   testWidgets('真实概览 Provider 不因健康降档替换 Texture 重复查询硬件', (tester) async {

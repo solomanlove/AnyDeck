@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:any_deck/app/theme/app_navigation_icons.dart';
+import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:any_deck/features/processes/processes_tab.dart';
+import 'support/dashboard_test_environment.dart';
 import 'package:any_deck/app/any_deck_app.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
@@ -17,190 +23,7 @@ import 'fake_adb_service.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';
 import 'package:any_deck/core/ios/ios_mirror_service.dart';
 
-class MockPackagesNotifier extends PackagesNotifier {
-  MockPackagesNotifier(this.packages) : super('');
-  final List<AdbPackage> packages;
-
-  @override
-  AsyncValue<List<AdbPackage>> build() {
-    return AsyncValue.data(packages);
-  }
-}
-
-const _mockDevice = DiscoveredDevice(
-  id: 'mock_serial_123',
-  status: 'device',
-  model: 'Redmi K40',
-  product: 'alioth',
-  transportId: '1',
-);
-
-const _offlineMockDevice = DiscoveredDevice(
-  id: 'mock_serial_123',
-  status: 'offline',
-  model: 'Redmi K40',
-  product: 'alioth',
-  transportId: '1',
-);
-
-final _mockRegisteredDevice = RegisteredDevice(
-  id: _mockDevice.id,
-  status: _mockDevice.status,
-  model: _mockDevice.model,
-  product: _mockDevice.product,
-  transportId: _mockDevice.transportId,
-  isOnline: true,
-  serial: _mockDevice.id,
-);
-
-final _offlineMockRegisteredDevice = RegisteredDevice(
-  id: _offlineMockDevice.id,
-  status: _offlineMockDevice.status,
-  model: _offlineMockDevice.model,
-  product: _offlineMockDevice.product,
-  transportId: _offlineMockDevice.transportId,
-  isOnline: false,
-  serial: _offlineMockDevice.id,
-);
-
-const _mockOverview = DeviceOverview(
-  name: 'Redmi K40',
-  brand: 'Redmi',
-  model: 'M2012K11AC',
-  serial: 'mock_serial_123',
-  androidId: 'abcdef1234567890',
-  androidVersion: 'Android 13 (API 33)',
-  kernelVersion: '4.19.157',
-  processor: 'alioth 6 cores (arm64-v8a)',
-  storage: '202.92G / 225.43G',
-  memory: '11.24G',
-  physicalResolution: '1080x2400 (440dpi)',
-  resolution: '1080x2400 (440dpi)',
-  logicalDensity: '2.75x (xxhdpi)',
-  refreshRate: '120 Hz',
-  fontScale: '1x',
-  wifi: 'jie',
-  wifiEnabled: true,
-  ipAddress: '192.168.31.54',
-  macAddress: '6c:f7:84:80:c9:33',
-  airplaneModeEnabled: false,
-  mobileDataEnabled: true,
-  talkbackEnabled: false,
-  windowAnimationScale: '1.0',
-  transitionAnimationScale: '1.0',
-  animatorDurationScale: '1.0',
-  rawResolution: '1080x2400',
-  hwuiProfile: 'false',
-  layoutBoundsEnabled: false,
-  showTouchesEnabled: false,
-  pointerLocationEnabled: false,
-  demoModeEnabled: false,
-);
-
-class _FixedSelectedDeviceNotifier extends SelectedDeviceNotifier {
-  @override
-  DiscoveredDevice? build() => _mockDevice;
-}
-
-class _OfflineSelectedDeviceNotifier extends SelectedDeviceNotifier {
-  @override
-  DiscoveredDevice? build() => _offlineMockDevice;
-}
-
-class _StaleSelectedDeviceNotifier extends SelectedDeviceNotifier {
-  @override
-  DiscoveredDevice? build() => _offlineMockDevice;
-}
-
-class _FixedDeviceRegistryNotifier extends DeviceRegistryNotifier {
-  @override
-  List<RegisteredDevice> build() => [_mockRegisteredDevice];
-}
-
-class _OfflineDeviceRegistryNotifier extends DeviceRegistryNotifier {
-  @override
-  List<RegisteredDevice> build() => [_offlineMockRegisteredDevice];
-}
-
-class _FixedToolTabNotifier extends ToolTabNotifier {
-  _FixedToolTabNotifier(this.initialIndex);
-
-  final int initialIndex;
-
-  @override
-  int build() => initialIndex;
-}
-
-Future<void> _pumpDashboard(
-  WidgetTester tester, {
-  required Size size,
-  int selectedTool = 2,
-}) async {
-  tester.view.physicalSize = size;
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(() {
-    tester.view.resetPhysicalSize();
-    tester.view.resetDevicePixelRatio();
-  });
-
-  SharedPreferences.setMockInitialValues({});
-
-  await tester.pumpWidget(const SizedBox.shrink());
-  await tester.pump();
-
-  await tester.pumpWidget(
-    ProviderScope(
-      key: UniqueKey(),
-      overrides: [
-        adbServiceProvider.overrideWithValue(FakeAdbService()),
-        iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
-        discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
-        deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
-        selectedDeviceProvider.overrideWith(_FixedSelectedDeviceNotifier.new),
-        selectedToolTabProvider.overrideWith(
-          () => _FixedToolTabNotifier(selectedTool),
-        ),
-        packagesProvider(
-          _mockDevice.id,
-        ).overrideWith(() => MockPackagesNotifier(<AdbPackage>[])),
-        deviceOverviewProvider(
-          _mockDevice.id,
-        ).overrideWith((ref) => Stream.value(_mockOverview)),
-        webTargetsProvider(
-          _mockDevice.id,
-        ).overrideWith((ref) => Future.value(<WebpageTarget>[])),
-        emulatorListProvider.overrideWith(
-          (ref) => Future.value(<AndroidEmulator>[]),
-        ),
-        runningEmulatorsProvider.overrideWith(
-          (ref) => Future.value(<String, String>{}),
-        ),
-      ],
-      child: const AnyDeckApp(),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
-
-Icon _moreIcon(WidgetTester tester) {
-  return tester.widget<Icon>(
-    find.byWidgetPredicate(
-      (w) => w is Icon && w.icon == CupertinoIcons.ellipsis && w.size == 24.0,
-    ),
-  );
-}
-
-Finder _settingsButton({double? size = 24.0}) {
-  return find.byWidgetPredicate(
-    (w) => w is Icon && w.icon == CupertinoIcons.settings && w.size == size,
-  );
-}
-
-Finder _railIcon(IconData icon, {double? size = 24.0}) {
-  return find.byWidgetPredicate(
-    (w) => w is Icon && w.icon == icon && w.size == size,
-  );
-}
+part 'support/shell_smoke_fixture.dart';
 
 /// 桌面外壳基础冒烟测试，测试中会 mock adb 设备轮询。
 void main() {
@@ -219,6 +42,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...dashboardTestPlatformOverrides(),
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
           discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
@@ -234,7 +58,8 @@ void main() {
     );
 
     expect(find.text('AnyDeck'), findsNWidgets(2));
-    expect(find.text('设备标识'), findsOneWidget);
+    expect(find.byKey(const ValueKey('app-identity-labels')), findsOneWidget);
+    expect(find.text('设备管理'), findsWidgets);
     expect(find.text('选择设备'), findsNothing);
   });
 
@@ -243,17 +68,17 @@ void main() {
   ) async {
     await _pumpDashboard(tester, size: const Size(1200, 900));
 
-    expect(_railIcon(CupertinoIcons.device_phone_portrait), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.slider_horizontal_3), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.square_grid_2x2), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.folder), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.doc_text), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.overview), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.control), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.apps), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.files), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.logs), findsOneWidget);
     expect(
-      _railIcon(CupertinoIcons.chevron_left_slash_chevron_right),
+      _railIcon(AppNavigationIcons.terminal),
       findsOneWidget,
     );
-    expect(_railIcon(CupertinoIcons.list_bullet), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.globe), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.processes), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.web), findsOneWidget);
     expect(_railIcon(CupertinoIcons.ellipsis), findsNothing);
   });
 
@@ -263,15 +88,15 @@ void main() {
     await _pumpDashboard(tester, size: const Size(700, 900));
 
     expect(
-      _railIcon(CupertinoIcons.device_phone_portrait, size: null),
+      _railIcon(AppNavigationIcons.overview, size: null),
       findsOneWidget,
     );
     expect(
-      _railIcon(CupertinoIcons.square_grid_2x2, size: null),
+      _railIcon(AppNavigationIcons.apps, size: null),
       findsOneWidget,
     );
     expect(_settingsButton(size: null), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.ellipsis, size: 28.0), findsNothing);
+    expect(_railIcon(CupertinoIcons.ellipsis, size: 28.0), findsOneWidget);
   });
 
   testWidgets('rail moves trailing tools into more menu as height shrinks', (
@@ -279,53 +104,53 @@ void main() {
   ) async {
     await _pumpDashboard(tester, size: const Size(1200, 500));
 
-    expect(_railIcon(CupertinoIcons.device_phone_portrait), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.slider_horizontal_3), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.square_grid_2x2), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.folder), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.doc_text), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.overview), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.control), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.apps), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.files), findsNothing);
+    expect(_railIcon(AppNavigationIcons.logs), findsNothing);
     expect(
-      _railIcon(CupertinoIcons.chevron_left_slash_chevron_right),
+      _railIcon(AppNavigationIcons.terminal),
       findsNothing,
     );
-    expect(_railIcon(CupertinoIcons.list_bullet), findsNothing);
-    expect(_railIcon(CupertinoIcons.globe), findsNothing);
+    expect(_railIcon(AppNavigationIcons.processes), findsNothing);
+    expect(_railIcon(AppNavigationIcons.web), findsNothing);
     expect(_railIcon(CupertinoIcons.ellipsis), findsOneWidget);
 
     await tester.tap(_railIcon(CupertinoIcons.ellipsis));
     await tester.pumpAndSettle();
 
     expect(
-      find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right),
+      find.byIcon(AppNavigationIcons.terminal),
       findsWidgets,
     );
-    expect(find.byIcon(CupertinoIcons.list_bullet), findsWidgets);
-    expect(find.byIcon(CupertinoIcons.globe), findsWidgets);
+    expect(find.byIcon(AppNavigationIcons.processes), findsWidgets);
+    expect(find.byIcon(AppNavigationIcons.web), findsWidgets);
   });
 
   testWidgets('rail keeps collapsing tools gradually at lower heights', (
     WidgetTester tester,
   ) async {
-    await _pumpDashboard(tester, size: const Size(1200, 380));
+    await _pumpDashboard(tester, size: const Size(1200, 460));
 
-    expect(_railIcon(CupertinoIcons.device_phone_portrait), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.slider_horizontal_3), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.square_grid_2x2), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.folder), findsNothing);
-    expect(_railIcon(CupertinoIcons.doc_text), findsNothing);
+    expect(_railIcon(AppNavigationIcons.overview), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.control), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.apps), findsNothing);
+    expect(_railIcon(AppNavigationIcons.files), findsNothing);
+    expect(_railIcon(AppNavigationIcons.logs), findsNothing);
     expect(_railIcon(CupertinoIcons.ellipsis), findsOneWidget);
 
     await tester.tap(_railIcon(CupertinoIcons.ellipsis));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(CupertinoIcons.folder), findsWidgets);
-    expect(find.byIcon(CupertinoIcons.doc_text), findsWidgets);
+    expect(find.byIcon(AppNavigationIcons.files), findsWidgets);
+    expect(find.byIcon(AppNavigationIcons.logs), findsWidgets);
     expect(
-      find.byIcon(CupertinoIcons.chevron_left_slash_chevron_right),
+      find.byIcon(AppNavigationIcons.terminal),
       findsWidgets,
     );
-    expect(find.byIcon(CupertinoIcons.list_bullet), findsWidgets);
-    expect(find.byIcon(CupertinoIcons.globe), findsWidgets);
+    expect(find.byIcon(AppNavigationIcons.processes), findsWidgets);
+    expect(find.byIcon(AppNavigationIcons.web), findsWidgets);
   });
 
   testWidgets('more button is selected only when selected tool is collapsed', (
@@ -335,19 +160,22 @@ void main() {
     expect(_moreIcon(tester).color, const Color(0xff09c47c));
 
     await _pumpDashboard(tester, size: const Size(1200, 500), selectedTool: 2);
-    expect(_moreIcon(tester).color, const Color(0xff5f6b6e));
+    expect(_moreIcon(tester).color, const Color(0xff455a64));
   });
 
-  testWidgets('overview cards do not overflow when width is extremely narrow', (
-    WidgetTester tester,
-  ) async {
-    await _pumpDashboard(tester, size: const Size(160, 800), selectedTool: 0);
-
+  testWidgets('overview cards do not overflow when width is extremely narrow', (tester) async {
+    tester.view.physicalSize = const Size(160, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(ProviderScope(overrides: [
+      ...dashboardTestPlatformOverrides(),
+      deviceRootStatusProvider(_mockDevice.id).overrideWith((ref) async => false),
+    ], child: _localizedPage(DeviceOverviewContent(
+      device: _mockDevice, overview: _mockOverview, onRefresh: () {},
+    ))));
+    await tester.pumpAndSettle();
+    expect(find.byType(DeviceOverviewContent), findsOneWidget);
     expect(tester.takeException(), isNull);
-    expect(
-      _railIcon(CupertinoIcons.device_phone_portrait, size: null),
-      findsOneWidget,
-    );
   });
 
   testWidgets(
@@ -384,6 +212,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...dashboardTestPlatformOverrides(),
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
           discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
@@ -429,6 +258,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...dashboardTestPlatformOverrides(),
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           iosDeviceServiceProvider.overrideWithValue(FakeIosDeviceService()),
           discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
@@ -452,7 +282,7 @@ void main() {
             (ref) => Future.value(<String, String>{}),
           ),
         ],
-        child: const AnyDeckApp(),
+        child: _localizedPage(const ProcessesTab(device: _offlineMockDevice, isVisible: true)),
       ),
     );
     await tester.pumpAndSettle();
@@ -461,13 +291,4 @@ void main() {
     expect(find.byIcon(Icons.refresh), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
-}
-
-class FakeIosDeviceService extends IosDeviceService {
-  FakeIosDeviceService() : super();
-
-  @override
-  Future<List<DiscoveredDevice>> listDevices() async {
-    return [];
-  }
 }

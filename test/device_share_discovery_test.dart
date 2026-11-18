@@ -16,7 +16,9 @@ void main() {
       0,
     );
     port = reservation.port;
+    final closed = reservation.drain<void>();
     reservation.close();
+    await closed;
     publisher = UdpDeviceShareDiscovery(port: port);
     receiver = UdpDeviceShareDiscovery(port: port);
     invitation = DeviceShareInvitation(
@@ -109,5 +111,38 @@ void main() {
       reuseAddress: false,
     );
     replacement.close();
+  });
+
+  test('活动监听关闭完成后立即允许独占绑定原 UDP 端口', () async {
+    await publisher.publish([invitation]);
+    await publisher.close();
+    final replacement = await RawDatagramSocket.bind(
+      InternetAddress.anyIPv4, port, reuseAddress: false,
+    );
+    final closed = replacement.drain<void>();
+    replacement.close();
+    await closed;
+  });
+
+  test('停止发布等待端口释放，随后可以重新发布', () async {
+    await publisher.publish([invitation]);
+    await publisher.publish([]);
+    final replacement = await RawDatagramSocket.bind(
+      InternetAddress.anyIPv4, port, reuseAddress: false,
+    );
+    final closed = replacement.drain<void>();
+    replacement.close();
+    await closed;
+    await publisher.publish([invitation]);
+    expect((await receiver.find(invitation))?.port, invitation.port);
+  });
+
+  test('停止发布与重新发布并发时不会等待新监听关闭', () async {
+    await publisher.publish([invitation]);
+    await Future.wait([
+      publisher.publish([]),
+      publisher.publish([invitation]),
+    ]).timeout(const Duration(seconds: 5));
+    expect((await receiver.find(invitation))?.port, invitation.port);
   });
 }

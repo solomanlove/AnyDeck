@@ -53,6 +53,20 @@ class _BatchAdb extends DeviceMenuAdb {
 }
 
 void main() {
+  testWidgets('仅选择 iOS 时批量脚本禁用，不将设备交给 ADB 或 HDC', (tester) async {
+    await withDeviceMenu(tester, (fixture) async {
+      await tester.tap(find.byKey(const Key('deviceBatchManage')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('deviceBatchActions')));
+      await tester.pumpAndSettle();
+      final script = find.byWidgetPredicate(
+        (widget) => widget is PopupMenuItem<String> && widget.value == 'script',
+      );
+      expect(script, findsOneWidget);
+      expect(tester.widget<PopupMenuItem<String>>(script).enabled, isFalse);
+    }, devices: [deviceMenuIos.copyWith(isChecked: true)]);
+  });
+
   testWidgets('Android 批量脚本通过新 ADB 文件执行并保留完整参数', (tester) async {
     final temporary = Directory.systemTemp.createTempSync('anydeck batch adb ');
     final calls = File('${temporary.path}/calls');
@@ -72,6 +86,10 @@ void main() {
       tester,
       (fixture) async {
         expect(resolveToolPath('adb'), executable.path);
+        await tester.tap(find.byKey(const Key('deviceBatchManage')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('deviceBatchActions')));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('执行脚本'));
         await tester.pumpAndSettle();
         await tester.enterText(
@@ -117,6 +135,10 @@ void main() {
     await withDeviceMenu(
       tester,
       (fixture) async {
+        await tester.tap(find.byKey(const Key('deviceBatchManage')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('deviceBatchActions')));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('执行脚本'));
         await tester.pumpAndSettle();
         final dialog = find.byType(AlertDialog);

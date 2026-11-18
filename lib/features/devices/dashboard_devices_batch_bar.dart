@@ -91,7 +91,7 @@ extension _DeviceSelectionBar on _DeviceListPanelState {
                 ('record', 'batchRecord', android.isNotEmpty),
                 ('install', 'batchInstall', android.isNotEmpty),
                 ('push', 'batchPush', android.isNotEmpty),
-                ('script', 'batchScript', android.isNotEmpty),
+                ('script', 'batchScript', online.any((device) => !device.isIos)),
                 ('schedule', 'batchSchedule', android.isNotEmpty),
                 ('delete', 'deleteSelectedDevices', true),
               ])
@@ -144,7 +144,11 @@ extension _DeviceSelectionBar on _DeviceListPanelState {
       case 'push':
         await _handleBatchPush(context, android);
       case 'script':
-        await _handleBatchScript(context, android);
+        // Android/HarmonyOS 分别由原有脚本执行器路由到 ADB/HDC。
+        await _handleBatchScript(
+          context,
+          online.where((device) => !device.isIos).toList(),
+        );
       case 'schedule':
         await _handleBatchSchedule(context, android);
       case 'delete':

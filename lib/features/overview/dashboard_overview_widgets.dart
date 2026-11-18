@@ -285,8 +285,10 @@ class _OverviewRootChip extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 4,
           children: [
             Icon(
               isRooted == true
@@ -295,7 +297,6 @@ class _OverviewRootChip extends StatelessWidget {
               size: 14,
               color: color,
             ),
-            const SizedBox(width: 8),
             Text(
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(

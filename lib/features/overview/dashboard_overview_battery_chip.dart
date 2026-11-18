@@ -33,11 +33,13 @@ class _OverviewBatteryChip extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        // 极窄内容区允许状态换行，保留电量与状态而不溢出卡片。
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 6,
+          runSpacing: 4,
           children: [
             Icon(icon, size: 19, color: color),
-            const SizedBox(width: 6),
             Text(
               level == null ? '--%' : '$level%',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -46,7 +48,6 @@ class _OverviewBatteryChip extends StatelessWidget {
               ),
             ),
             if (stateKey != null) ...[
-              const SizedBox(width: 6),
               Text(
                 context.l10n.t(stateKey),
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(

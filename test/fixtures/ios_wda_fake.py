@@ -50,7 +50,7 @@ else:
             fault = json.loads(fault_file.read_text()) if fault_file.exists() else {}
             applies = fault.get('path') in ('*', self.path)
             if applies and fault.get('kind') == 'timeout':
-                time.sleep(0.8)
+                time.sleep(fault.get('delaySeconds', 0.8))
             if applies and fault.get('kind') == 'invalidSession':
                 value = {'error': 'invalid session id', 'message': 'Session expired'}
             elif self.path == '/session':

@@ -9,6 +9,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fake_adb_service.dart';
 
+/// 应用刷新测试不读取真实注册表、Preference 或设备历史。
+class _Registry extends DeviceRegistryNotifier {
+  @override
+  List<RegisteredDevice> build() => const [];
+}
+
 /// 使用可控 Future 验证 Provider 的阶段顺序、重入和释放边界。
 class _RefreshService extends AppManagementService {
   _RefreshService() : super(FakeAdbService());
@@ -96,7 +102,10 @@ void main() {
   setUp(() async {
     service = _RefreshService();
     container = ProviderContainer(
-      overrides: [appManagementServiceProvider.overrideWithValue(service)],
+      overrides: [
+        appManagementServiceProvider.overrideWithValue(service),
+        deviceRegistryProvider.overrideWith(_Registry.new),
+      ],
     );
     notifier = container.read(packagesProvider('device').notifier);
     await Future<void>.delayed(Duration.zero);

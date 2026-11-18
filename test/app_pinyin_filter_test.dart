@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:any_deck/app/theme/app_navigation_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +10,7 @@ import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/emulator/android_emulator.dart';
 import 'fake_adb_service.dart';
+import 'support/dashboard_test_environment.dart';
 
 class MockPackagesNotifier extends PackagesNotifier {
   MockPackagesNotifier(this.packages) : super('');
@@ -66,6 +67,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...dashboardTestPlatformOverrides(),
           adbServiceProvider.overrideWithValue(FakeAdbService()),
           discoveredDevicesProvider.overrideWith(
             (ref) => Stream.value(<DiscoveredDevice>[mockDevice]),
@@ -124,6 +126,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // 1. 选择设备
+    // 启动层在入场动画结束后还有 150ms hold，不会主动安排下一帧。
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle();
     final deviceTextFinder = find.text('Redmi K40');
     expect(deviceTextFinder, findsWidgets);
     await tester.tap(deviceTextFinder.first);
@@ -131,7 +136,7 @@ void main() {
 
     // 2. 切换到 "应用" tab (index 2)
     final appsTabFinder = find.byWidgetPredicate(
-      (w) => w is Icon && w.icon == CupertinoIcons.square_grid_2x2 && w.size == 24.0,
+      (w) => w is Icon && w.icon == AppNavigationIcons.apps && w.size == 24.0,
     );
     expect(appsTabFinder, findsOneWidget);
     await tester.tap(appsTabFinder);
@@ -144,7 +149,7 @@ void main() {
 
     // 3. 搜索 "bj" (北京首字母)
     final searchFieldFinder = find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.decoration?.labelText == '筛选包名',
+      (widget) => widget is TextField && widget.decoration?.hintText == '筛选',
     );
     expect(searchFieldFinder, findsOneWidget);
 

@@ -20,7 +20,8 @@ void main() {
     host = IosWdaHost(
       commands: IosCommandService(executable: cli.path),
       forwardExecutable: cli.path,
-      requestTimeout: const Duration(milliseconds: 250),
+      // 真实 HTTP/子进程在全量并行测试时也需要调度预算；故障由假服务持续阻塞响应注入。
+      requestTimeout: const Duration(seconds: 2),
     );
     await host.execute('phone', 'start', {});
   });
@@ -56,7 +57,7 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 550));
         }
         await fault.writeAsString(
-          jsonEncode({'kind': 'timeout', 'path': path}),
+          jsonEncode({'kind': 'timeout', 'path': path, 'delaySeconds': 10}),
         );
         await expectLater(
           host.execute('phone', action, {'x': 1, 'y': 2}),
@@ -80,7 +81,9 @@ void main() {
 
   for (final kind in ['timeout', 'invalidSession']) {
     test('$kind with unusable session clears ready', () async {
-      await fault.writeAsString(jsonEncode({'kind': kind, 'path': '*'}));
+      await fault.writeAsString(
+        jsonEncode({'kind': kind, 'path': '*', 'delaySeconds': 10}),
+      );
       await expectLater(
         host.execute('phone', 'tap', {'x': 1, 'y': 2}),
         throwsA(predicate((e) => '$e'.contains('iosWdaConnectionLost'))),

@@ -14,7 +14,7 @@ class BrandLogoHelper {
     }
 
     // 根据品牌名称匹配并返回对应的图标资源路径
-    if (name.contains('xiaomi') || name.contains('redmi') || name.contains('mi')|| name.contains('meitu')) {
+    if (name.contains('xiaomi') || name.contains('redmi') || name.contains('mi')) {
       return AppIcons.xiaomiSvg;
     }
     if (name.contains('huawei')) {

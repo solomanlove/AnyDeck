@@ -1,9 +1,8 @@
-import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/device_share/device_share_service.dart';
+import 'package:any_deck/core/device_share/device_share_store.dart';
 import 'package:any_deck/core/device_share/joined_device_share.dart';
 import 'package:any_deck/features/devices/widgets/device_share_dialog.dart';
-import 'package:any_deck/features/devices/widgets/device_share_controls.dart';
-import 'package:any_deck/features/devices/widgets/adb_wireless_controls.dart';
+import 'package:any_deck/features/devices/model/device_context_action.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,7 +11,7 @@ import 'fake_adb_service.dart';
 import 'support/device_context_menu_fixture.dart';
 
 class _Sharing extends DeviceShareService {
-  _Sharing() : super(FakeAdbService());
+  _Sharing() : super(FakeAdbService(), store: MemoryDeviceShareStore());
   String? attemptedCode;
   @override
   Future<JoinedDeviceShare> join(String code) async {
@@ -24,31 +23,24 @@ class _Sharing extends DeviceShareService {
 void main() {
   testWidgets('Android 行提供共享入口，iOS 和 HarmonyOS 不出现入口', (tester) async {
     await withDeviceMenu(tester, (fixture) async {
-      final android = find.byWidgetPredicate(
-        (widget) =>
-            widget is DeviceShareControls &&
-            widget.device.id == deviceMenuAndroid.id,
-      );
-      final action = find.descendant(
-        of: android,
-        matching: find.byType(IconButton),
-      );
+      await fixture.openMenu(tester, deviceMenuAndroid);
+      final action = deviceMenuAction(DeviceContextAction.share);
       expect(action, findsOneWidget);
-      expect(tester.widget<IconButton>(action).onPressed, isNotNull);
+      expect(
+        tester.widget<PopupMenuItem<DeviceContextAction>>(action).enabled,
+        isTrue,
+      );
+      await fixture.closeMenu(tester);
       for (final device in [deviceMenuIos, deviceMenuHarmony]) {
-        final controls = find.byWidgetPredicate(
-          (widget) =>
-              widget is DeviceShareControls && widget.device.id == device.id,
-        );
-        expect(
-          find.descendant(of: controls, matching: find.byType(IconButton)),
-          findsNothing,
-        );
+        await fixture.openMenu(tester, device);
+        expect(deviceMenuAction(DeviceContextAction.share), findsNothing);
+        await fixture.closeMenu(tester);
       }
+      await fixture.openMenu(tester, deviceMenuAndroid);
       await tester.tap(action);
-      // 外层设备行同时支持 DoubleTap，等待 Gesture Arena 完成单击判定。
-      await tester.pump(const Duration(milliseconds: 350));
-      await tester.pumpAndSettle();
+      // 模态框打开期间底层设备保持 busy 动画，只推进转场，不等待动画清零。
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
       expect(
         fixture.router.routeInformationProvider.value.uri.path,
         '/devices',
@@ -77,44 +69,53 @@ void main() {
   ]) {
     testWidgets('共享弹窗支持 $language、主题和错误恢复', (tester) async {
       final service = _Sharing();
-      await withDeviceMenu(
-        tester,
-        (fixture) async {
-          final context = tester.element(
-            find.byType(DeviceShareControls).first,
-          );
-          // 使用真实本地化上下文打开接收入口，不启动网络或原生平台服务。
-          showDialog<void>(
-            context: context,
-            builder: (_) => const DeviceShareDialog(),
-          );
-          await tester.pumpAndSettle();
-          await tester.enterText(
-            find.byType(TextField).last,
-            'expired-share-code',
-          );
-          await tester.tap(
-            find.widgetWithText(
-              FilledButton,
-              language == 'zh' ? '连接共享设备' : 'Connect shared device',
-            ),
-          );
-          await tester.pumpAndSettle();
-          expect(service.attemptedCode, 'expired-share-code');
-          expect(
-            find.textContaining(language == 'zh' ? '共享操作失败' : 'Sharing failed'),
-            findsOneWidget,
-          );
-          expect(find.byType(LinearProgressIndicator), findsNothing);
-          expect(tester.takeException(), isNull);
-          await tester.tap(find.text(language == 'zh' ? '关闭' : 'Close').last);
-          await tester.pumpAndSettle();
-          await service.dispose();
-        },
-        language: language,
-        brightness: brightness,
-        sharing: service,
-      );
+      // 先由 fixture 释放 Riverpod 流订阅，再关闭 service 的广播控制器。
+      try {
+        await withDeviceMenu(
+          tester,
+          (fixture) async {
+            final context = tester.element(
+              find.byKey(const ValueKey('device-wall-device-a')),
+            );
+            // 使用真实本地化上下文打开接收入口，不启动网络或原生平台服务。
+            showDialog<void>(
+              context: context,
+              builder: (_) => const DeviceShareDialog(),
+            );
+            await tester.pumpAndSettle();
+            await tester.enterText(
+              find.byType(TextField).last,
+              'expired-share-code',
+            );
+            await tester.tap(
+              find.widgetWithText(
+                FilledButton,
+                language == 'zh' ? '连接共享设备' : 'Connect shared device',
+              ),
+            );
+            await tester.pumpAndSettle();
+            expect(service.attemptedCode, 'expired-share-code');
+            expect(
+              find.textContaining(
+                language == 'zh' ? '共享操作失败' : 'Sharing failed',
+              ),
+              findsOneWidget,
+            );
+            expect(find.byType(LinearProgressIndicator), findsNothing);
+            expect(tester.takeException(), isNull);
+            await tester.tap(find.text(language == 'zh' ? '关闭' : 'Close').last);
+            await tester.pumpAndSettle();
+          },
+          language: language,
+          brightness: brightness,
+          sharing: service,
+        );
+      } finally {
+        final closing = service.dispose();
+        // close 的微任务属于 Widget test 的 FakeAsync，先推进后再等待完成。
+        await tester.pump();
+        await closing;
+      }
     });
   }
 
@@ -128,15 +129,11 @@ void main() {
     );
     await withDeviceMenu(tester, (fixture) async {
       expect(shared.hasWifiDebuggingConnection, isFalse);
-      final controls = find.byType(AdbWirelessControls);
-      expect(
-        find.descendant(of: controls, matching: find.byType(IconButton)),
-        findsNothing,
-      );
-      final l10n = AppLocalizations.of(
-        tester.element(find.byType(DeviceShareControls).first),
-      );
-      expect(find.text(l10n.t('deviceShareSource')), findsOneWidget);
+      await fixture.openMenu(tester, shared);
+      expect(deviceMenuAction(DeviceContextAction.wireless), findsNothing);
+      expect(deviceMenuAction(DeviceContextAction.share), findsNothing);
+      await fixture.closeMenu(tester);
+      expect(find.text(shared.displayName), findsOneWidget);
     }, devices: [shared]);
   });
 }

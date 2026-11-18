@@ -148,11 +148,13 @@ class _OverviewDetailCard extends StatelessWidget {
             children: [
               Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
               const SizedBox(width: 10),
-              Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
               ),
             ],
           ),

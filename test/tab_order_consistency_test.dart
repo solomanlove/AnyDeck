@@ -7,10 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
+import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 
 import 'fake_adb_service.dart';
+import 'support/dashboard_test_environment.dart';
 
 const _mockAndroidDevice = DiscoveredDevice(
   id: 'android_001',
@@ -53,7 +55,15 @@ class _FixedToolTabNotifier extends ToolTabNotifier {
 Widget _wrapTestWidget(Widget child, {List<Override> overrides = const []}) {
   return ProviderScope(
     key: UniqueKey(),
-    overrides: overrides,
+    overrides: [
+      ...overrides,
+      ...dashboardTestPlatformOverrides(),
+      // 侧栏头像会读取概览；固定快照避免在 FakeAsync 内等待真实缓存 IO。
+      for (final device in [_mockAndroidDevice, _mockHarmonyDevice])
+        deviceOverviewProvider(device.id).overrideWith(
+          (ref) => Stream.value(DeviceOverview.fromJson({'name': device.model})),
+        ),
+    ],
     child: MaterialApp(
       locale: const Locale('zh', 'CN'),
       supportedLocales: AppLocalizations.supportedLocales,
@@ -117,7 +127,11 @@ void main() {
           ],
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pumpAndSettle(
+        const Duration(milliseconds: 100),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 3),
+      );
 
       final androidTooltips = tester
           .widgetList<Tooltip>(find.byType(Tooltip))
@@ -169,7 +183,11 @@ void main() {
           ],
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pumpAndSettle(
+        const Duration(milliseconds: 100),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 3),
+      );
 
       final harmonyTooltips = tester
           .widgetList<Tooltip>(find.byType(Tooltip))

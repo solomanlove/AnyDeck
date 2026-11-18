@@ -40,6 +40,15 @@ class _Transfer extends Fake implements ShareBatchTransfer {
 class _Client extends Fake implements ShareCoreClient {
   final receivers = <_Receiver>[];
   final transfers = <_Transfer>[];
+  final _transferWaiters = <int, Completer<void>>{};
+
+  /// 等待 mock IPC 的实际调用，避免并行编译负载下轮询消耗事件循环。
+  Future<void> waitForTransfers(int count) {
+    if (transfers.length >= count) return Future.value();
+    return (_transferWaiters[count] ??= Completer<void>()).future.timeout(
+      const Duration(seconds: 10),
+    );
+  }
   @override
   Future<ShareCoreReceiveSession> startBatchReceiver({
     required InternetAddress localAddress,
@@ -60,17 +69,12 @@ class _Client extends Fake implements ShareCoreClient {
   }) async {
     final item = _Transfer();
     transfers.add(item);
-    return item;
-  }
-}
-
-Future<void> until(bool Function() condition) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 5));
-  while (!condition()) {
-    if (DateTime.now().isAfter(deadline)) {
-      throw TimeoutException('state missing');
+    for (final entry in _transferWaiters.entries) {
+      if (transfers.length >= entry.key && !entry.value.isCompleted) {
+        entry.value.complete();
+      }
     }
-    await Future<void>.delayed(Duration.zero);
+    return item;
   }
 }
 
@@ -169,7 +173,7 @@ void main() {
           peer,
           await ShareSendSelection.inspect([files.first]),
         );
-        await until(() => client.transfers.length == 1);
+        await client.waitForTransfers(1);
         expect(service.canAppend, isTrue);
         await service.appendSelection(
           peer,
@@ -206,7 +210,7 @@ void main() {
           } else {
             client.transfers.first.done.complete({'event': 'batch_sent'});
           }
-          await until(() => client.transfers.length == 2);
+          await client.waitForTransfers(2);
           expect(client.receivers.length, 1);
           client.transfers.last.done.complete({'event': 'batch_sent'});
         } else if (mode != 'cancelAll') {

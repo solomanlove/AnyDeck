@@ -11,6 +11,7 @@ import 'package:any_deck/app/widget/app_toast.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_share/device_share_service.dart';
+import 'package:any_deck/core/device_share/device_share_store.dart';
 import 'package:any_deck/core/device_share/device_share_provider.dart';
 import 'package:any_deck/core/airplay/airplay_server_service.dart';
 import 'package:any_deck/core/airplay/airplay_server_state.dart';
@@ -25,6 +26,7 @@ import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:any_deck/features/devices/controller/device_screen_preview_controller.dart';
+import 'package:any_deck/features/devices/model/device_context_action.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,6 +70,11 @@ const deviceMenuIos = RegisteredDevice(
   iosConnectionTypes: {IosConnectionType.usb},
 );
 final deviceMenuImage = Uint8List.fromList([137, 80, 78, 71, 13, 10, 26, 10]);
+
+/// 通过动作值定位菜单，不依赖图标布局或中英文显示文案。
+Finder deviceMenuAction(DeviceContextAction action) => find.byWidgetPredicate(
+  (widget) => widget is PopupMenuItem<DeviceContextAction> && widget.value == action,
+);
 
 /// 截图后端均为测试桩，避免 Widget test 调用真实设备或系统剪贴板。
 class DeviceMenuAdb extends FakeAdbService {
@@ -228,6 +235,20 @@ class DeviceMenuFixture {
   DeviceMenuRegistry get registry =>
       container.read(deviceRegistryProvider.notifier) as DeviceMenuRegistry;
 
+  /// 设备墙和列表使用相同更多菜单；只操作当前已挂载的设备条目。
+  Future<void> openMenu(WidgetTester tester, RegisteredDevice device) async {
+    final row = find.byKey(ValueKey('device-row-${device.id}'));
+    final target = row.evaluate().isNotEmpty
+        ? row : find.byKey(ValueKey('device-wall-${device.id}'));
+    await tester.tap(find.descendant(of: target, matching: find.byType(IconButton)));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> closeMenu(WidgetTester tester) async {
+    Navigator.of(tester.element(find.byType(PopupMenuItem<DeviceContextAction>).first)).pop();
+    await tester.pumpAndSettle();
+  }
+
   Future<void> waitForSavedScreenshot(WidgetTester tester) async {
     // 交替推进真实文件 IO 和 Widget 微任务，避免在 FakeAsync 中等待自身。
     for (var i = 0; i < 100 && !host.copied.isCompleted; i++) {
@@ -270,9 +291,10 @@ Future<void> withDeviceMenu(
   final hdc = hdcService ?? DeviceMenuHdc();
   final ios = DeviceMenuIosCommands();
   final host = DeviceMenuHost(directory);
+  final shareService = sharing ?? DeviceShareService(adb, store: MemoryDeviceShareStore());
   final container = ProviderContainer(
     overrides: [
-      if (sharing != null) deviceShareServiceProvider.overrideWithValue(sharing),
+      deviceShareServiceProvider.overrideWithValue(shareService),
       adbServiceProvider.overrideWithValue(adb),
       hdcServiceProvider.overrideWithValue(hdc),
       iosCommandServiceProvider.overrideWithValue(ios),
@@ -336,6 +358,7 @@ Future<void> withDeviceMenu(
     AppToast.dismiss();
     await tester.pumpWidget(const SizedBox.shrink());
     container.dispose();
+    if (sharing == null) await shareService.dispose();
     router.dispose();
     await tester.pumpAndSettle();
     directory.deleteSync(recursive: true);

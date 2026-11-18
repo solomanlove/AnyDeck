@@ -1,11 +1,12 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
-import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/apps/adb_package_detail.dart';
 import 'package:any_deck/core/apps/app_management_service.dart';
-import 'package:any_deck/core/environment/connection_environment_service.dart';
+import 'package:any_deck/features/diagnostics/controller/service_diagnostics_controller.dart';
+import 'package:any_deck/core/diagnostics/service_diagnostic.dart';
+import 'support/diagnostics_test_checks.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/scrcpy/fusion_mode_preference.dart';
 import 'package:any_deck/features/apps/controller/app_favorites_controller.dart';
@@ -22,29 +23,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'fake_adb_service.dart';
 
 const _device = DiscoveredDevice(id: 'business-theme', status: 'device');
-
-/// 环境检测只记录调用，禁止主题测试访问 CLI。
-class _Environment extends ConnectionEnvironmentNotifier {
-  int checks = 0;
-
-  @override
-  Future<Map<TargetPlatformType, PlatformEnvironmentInfo>> checkAll() async {
-    checks++;
-    return state;
-  }
-}
-
-class _Adb extends AdbEnvironmentNotifier {
-  @override
-  AdbEnvironmentInfo build() => const AdbEnvironmentInfo(
-    status: AdbEnvironmentStatus.ready,
-    version: 'test',
-    adbPath: '/test/adb',
-  );
-
-  @override
-  Future<AdbEnvironmentInfo> check() async => state;
-}
 
 /// 固定应用与组件快照，换主题时不重新查询设备。
 class _Apps extends AppManagementService {
@@ -113,21 +91,11 @@ Widget _app(
   ),
 );
 
-/// 检查真实按钮的文字与 Material 边框，避免只验证样式参数。
-void _expectGuideButtons(WidgetTester tester, Color primary) {
-  for (final label in ['鸿蒙 HDC 引导测试', 'iOS 引导测试', 'ADB 缺失弹窗测试']) {
-    final text = find.text(label);
-    final button = find.ancestor(
-      of: text,
-      matching: find.byType(OutlinedButton),
-    );
-    expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
-    expect(DefaultTextStyle.of(tester.element(text)).style.color, primary);
-    final material = tester.widget<Material>(
-      find.descendant(of: button, matching: find.byType(Material)),
-    );
-    expect((material.shape! as OutlinedBorder).side.color, primary);
-  }
+/// 检查全局诊断的实际 Material 填充色与按钮交互，不调用外部探针。
+void _expectDiagnosticsRun(WidgetTester tester, Color primary) {
+  final button = find.byKey(const ValueKey('services-diagnostics-run'));
+  expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
+  expect(tester.widget<Material>(find.descendant(of: button, matching: find.byType(Material))).color, primary);
 }
 
 /// 普通操作的图标及淡背景统一跟随主题，危险操作继续使用语义色。
@@ -220,42 +188,38 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
-    testWidgets('开发者三平台操作实时跟随主题且保留检测功能 $brightness', (tester) async {
+    testWidgets('开发者诊断实时跟随主题且保留检查结果 $brightness', (tester) async {
       tester.view.physicalSize = const Size(1440, 1100);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       final color = ValueNotifier(AppThemeColor.blue);
-      final container = ProviderContainer(
-        overrides: [
-          connectionEnvironmentProvider.overrideWith(_Environment.new),
-          adbEnvironmentProvider.overrideWith(_Adb.new),
-        ],
-      );
+      final probes = DiagnosticsTestChecks();
+      final container = ProviderContainer(overrides: [
+        serviceDiagnosticChecksProvider.overrideWithValue(probes.checks),
+      ]);
       addTearDown(color.dispose);
       addTearDown(container.dispose);
-      await tester.pumpWidget(
-        _app(
-          container,
-          brightness,
-          color,
-          const SingleChildScrollView(
-            child: DeveloperConnectionEnvironmentCard(),
-          ),
-        ),
-      );
+      await tester.pumpWidget(_app(container, brightness, color,
+        const SingleChildScrollView(child: DeveloperConnectionEnvironmentCard())));
       await tester.pumpAndSettle();
-      final environment =
-          container.read(connectionEnvironmentProvider.notifier)
-              as _Environment;
-      expect(environment.checks, 1);
-      _expectGuideButtons(tester, AppThemeColor.blue.color);
+      expect(probes.calls, 0);
+      await tester.tap(find.byKey(const ValueKey('services-diagnostics-button')));
+      await tester.pumpAndSettle();
+      _expectDiagnosticsRun(tester, AppThemeColor.blue.color);
+      await tester.tap(find.byKey(const ValueKey('services-diagnostics-run')));
+      await tester.pumpAndSettle();
+      expect(probes.calls, DiagnosticService.values.length);
+      final checkedAt = container.read(serviceDiagnosticsProvider).checkedAt;
       color.value = AppThemeColor.purple;
       await tester.pumpAndSettle();
-      _expectGuideButtons(tester, AppThemeColor.purple.color);
-      expect(environment.checks, 1);
-      await tester.tap(find.text('重新检测全部'));
+      _expectDiagnosticsRun(tester, AppThemeColor.purple.color);
+      expect(container.read(serviceDiagnosticsProvider).checkedAt, checkedAt);
+      expect(probes.calls, DiagnosticService.values.length);
+      await tester.tap(find.byKey(const ValueKey('services-diagnostics-run')));
       await tester.pumpAndSettle();
-      expect(environment.checks, 2);
+      expect(probes.calls, DiagnosticService.values.length * 2);
+      await tester.tap(find.byKey(const ValueKey('services-diagnostics-close')));
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     });

@@ -86,6 +86,12 @@ jobs:
           ./script/flutter.sh pub get --enforce-lockfile
           ./script/check_env.sh
           ./script/flutter.sh build macos --release --config-only --no-pub
+      - name: 验证 Flutter 静态分析与全量回归
+        run: |
+          # DAL/定时任务集成用例需要原生库；不依赖 Runner 的历史构建缓存。
+          ARCHS="$ANYDECK_TARGET_ARCH" ./script/build_device_bridge.sh
+          ./script/flutter.sh analyze --no-pub --no-fatal-infos --no-fatal-warnings
+          ./script/flutter.sh test --no-pub
       - name: 验证打包与签名回归
         run: python3 -m unittest discover -s test/script -v
       - name: 构建 ad-hoc Release

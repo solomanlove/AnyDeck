@@ -38,7 +38,6 @@
 ```bash
 ./script/flutter.sh --version
 ./script/flutter.sh analyze --no-pub --no-fatal-infos --no-fatal-warnings
-./script/flutter.sh test --no-pub
 ./script/dev_exec.sh cargo check --locked --manifest-path rust/device_bridge/Cargo.toml
 
 # 完整 Release，需要 Share Core 私有制品
@@ -64,15 +63,17 @@ IDE 的 Flutter SDK 使用 `.fvm/flutter_sdk`，Dart SDK 使用其 `bin/cache/da
 
 ## CI 与升级验证
 
-macOS Release workflow 读取同一 `.fvmrc`、`rust-toolchain.toml` 和 `Gemfile.lock`，保留原有 arm64 / Intel matrix、私有制品与发布门禁。
+macOS Release workflow 读取同一 `.fvmrc`、`rust-toolchain.toml` 和 `Gemfile.lock`，保留原有 arm64 / Intel matrix、私有制品与发布门禁。两个架构在构建前均执行 Flutter 静态分析、全量测试和脚本回归。
 
 ```bash
 python3 -m unittest discover -s test/script -v
 ./script/check_env.sh
+# 全量测试含 DAL/定时任务原生集成，先编译 Rust 动态库，不启动 App
+./script/build_device_bridge.sh
 ./script/flutter.sh analyze --no-pub --no-fatal-infos --no-fatal-warnings
 ./script/flutter.sh test --no-pub
 ```
 
 升级时修改权威版本配置，单独解析并审核必要的锁文件差异。普通初始化只消费已有锁文件。`.fvm/`、`.bundle/`、`vendor/bundle/` 与 IDE 配置不提交。
 
-静态分析命令保留 warning/info 输出，仅以 error 判定失败；本次迁移存在的既有 lint 和全量测试失败、旧 SDK 对照结果见 [知识库验证记录](agent/knowledge/adb-development-toolchain.md)。
+静态分析命令保留 warning/info 输出，仅以 error 判定失败；迁移及后续测试修复结果见 [知识库验证记录](agent/knowledge/adb-development-toolchain.md)。Widget test 的平台隔离与异步等待约定见 [测试修复记录](agent/knowledge/adb-flutter-test-isolation.md)。
