@@ -8,6 +8,10 @@
 
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
+| `adb-device-system-version-sort` | 设备系统版本排序 | active | 系统版本表头升降序、数字分段与 API 比较、未知值置底、在线/投屏优先及视图筛选回归 | `features/devices/` |
+| `adb-device-groups` | 设备平台与自定义分组 | active | 默认 Android/Harmony/iOS 自动归类、自定义多成员分组、物理身份升级、串行本地持久化、组合筛选、读写失败重试、统一菜单背景与平台 Logo、窄屏回归 | `core/device_groups/`, `features/devices/` |
+| `adb-device-workspace-diagnostics` | 设备墙与全局服务诊断 | active | 紧凑手机墙/列表、完整版本与横排多通道状态、设备墙连接短名与离线提示精简、截图居中铺满与品牌封面白底、恢复原侧栏与主题隔离、图标连接菜单、原品牌Logo与设备标签、可见设备自动截图与有界并发、显式批量选择、本机IP状态栏、十二项真实服务检查、开发者入口复用与验证边界 | `features/devices/`, `features/diagnostics/`, `core/diagnostics/` |
+| `adb-custom-os-detection` | Android 厂商系统版本识别 | active | 多品牌 getprop 属性巡检、Oplus/OnePlus 与 OriginOS 兼容字段分流、显式 ROM 名称、刷机优先级、原生 Android 兜底及测试/真机验证边界 | `core/device_info/`, `app/l10n/`, `features/overview/` |
 | `adb-macos-debug-destination` | macOS arm64e 构建兼容 | active | Debug generic destination、SDK 可恢复修复、Release 架构归一与打包脚本传参 | `macos/`, `script/` |
 | `adb-rust-host-recording` | Rust 电脑本地音视频录制 | active | 内置 server 4.0、H.264/AAC MP4、三个录制入口、收尾/取消、有界背压与无线突发修复、真机验证边界 | `rust/device_bridge/src/recording/`, `lib/core/scrcpy/`, `features/screenshot/` |
 | `adb-honor-share-poc` | 荣耀文件互传与统一入口 | experimental | Rust双协议/媒体预览、发送开始事件兼容、间歇回传诊断与有损/重复包完整性回归、实际UI视频与双架构边界 | `nearby_share/`, `harmony_share/`, 私有 `AnyDeck-Share-Core` |
@@ -21,7 +25,8 @@
 | `adb-settings-organization` | 设置分类导航与全局搜索 | active | 设置分类、跨分类检索、多词/按键定位、公共导航样式与搜索框圆角、快捷键外置分组标题与右对齐、下拉菜单边缘对齐与按钮水波纹圆角、窄窗口与设置保存回归边界 | `features/overview/settings/`, `features/overview/`, `app/l10n/` |
 | `adb-macos-feature-authorization` | macOS 功能入口授权 | active | 摄像头扩展在摄像头入口安装与批准、登录项在开机自启行处理、回焦状态刷新、独立权限页移除及验证边界 | `core/virtual_camera/`, `app/settings/`, `features/overview/settings/`, `macos/Runner/` |
 | `adb-svg-assets` | SVG 与位图资源加载 | active | 本地 SVG/PNG 公共组件、平台 Logo 的尺寸/明暗适配、服务菜单/诊断/无线连接/版本详情复用、品牌图片与错误回退 | `app/widget/`, `features/developer/`, `features/devices/`, `features/overview/` |
-| `adb-ui-theme-system` | UI Theme 统一机制 | active | 统一品牌色、Light/Dark 语义色、边框、搜索框与 Tab 共用圆角及顶部轻提示，记录投屏快捷操作图标回退及静态提示清理、轻提示 Overlay 清理与回归，并明确固定业务色和 Painter 注入边界 | `app/theme/`, `app/widget/`, `app/window/`, `features/` |
+| `adb-ui-theme-system` | UI Theme 统一机制 | active | 统一品牌色、Light/Dark 语义色、边框、搜索框与 Tab 共用圆角及顶部轻提示，记录概览电量与 Root 灰色标记、投屏快捷操作图标回退及静态提示清理、轻提示 Overlay 清理与回归，并明确固定业务色和 Painter 注入边界 | `app/theme/`, `app/widget/`, `app/window/`, `features/` |
+| `adb-theme-color-settings` | 全局主题色设置与交互高亮 | active | 六种主色选择、默认绿色兼容、持久化、跨窗口同步、各页面按钮/开关/选中态、画质预设与 Chip 配色、MCP 平台接入/安全/Tools 开关样式统一与筛选、投屏接收开关、侧栏服务圆点与 MCP 运行徽章、全页面操作/收藏/版本选中/投屏控制配色巡检、运行徽章对比度、Painter 选区注入、语义色回退、中英文搜索与动态换色回归边界 | `app/theme/`, `app/settings/`, `app/window/`, `features/` |
 | `adb-local-diagnostic-logs` | 控制台与本地诊断日志 | active | 运行异常采集、关键日志筛选、跨窗口汇总、滚动文件、本地日志导出、工具栏图标交互统一与搜索自适应布局及验证边界 | `core/logging/`, `app/window/console/`, `features/developer/` |
 | `adb-github-feedback` | GitHub Issues 意见反馈 | active | 设置页标题与正文编辑、环境信息快照、分类草稿保留、长正文复制兜底、网页模板及验证边界 | `features/feedback/`, `core/process/`, `.github/ISSUE_TEMPLATE/` |
 | `adb-local-apk-inspector` | macOS Android 安装包分析与安装 | active | APK/APKS/AAB/XAPK 文件关联与离线分析、Protobuf 模块/分包清单、签名信息、APK 安装队列、临时目录回收与回归边界 | `core/apk/`, `features/apk/`, `app/window/apk/`, `rust/apk_inspector/` |
@@ -43,7 +48,7 @@
 | `adb-emulator-management` | 模拟器启动诊断与配置详情 | active | 记录启动诊断、ADB 授权与离线状态、定向重连/关闭、冷启动与 SDK 环境、标题工具栏、复用系统版本平台 Tab、三平台搜索框与设备搜索框等高、详情及中英文配置搜索 | `core/emulator/`, `core/providers/`, `features/devices/` |
 | `adb-desktop-platform-chrome` | 跨平台桌面窗口与工作区 UI | active | macOS 原生按钮避让、Windows 主窗口标题栏、Linux 原生装饰、子窗口标题同步、公共主题表面与宿主验证边界 | `app/window/`, `features/overview/`, `linux/runner/` |
 | `adb-desktop-window-shortcuts` | 桌面窗口与软件快捷键 | active | 统一按键录入、自由修饰键、跨组冲突与旧键释放、持久化广播、子窗口转发、隐藏路由焦点隔离、失焦响应、退出确认与 macOS 菜单边界 | `app/shortcuts/`, `app/settings/`, `app/window/`, `app/router/`, `features/overview/` |
-| `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、产品名称与型号独立展示、折叠机内外屏分辨率、电量/充电状态、内存占用与容量卡布局，以及控制、鸿蒙应用右键清除缓存、鸿蒙文件页单一路径导航、日志紧凑视图时间配色、终端、鸿蒙进程 CPU/内存采样及进程操作、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
+| `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、Samsung One UI 属性解析与未知系统兜底、产品名称与型号独立展示、折叠机内外屏分辨率、电量/充电状态、内存占用与容量卡布局，以及控制、鸿蒙应用右键清除缓存、鸿蒙文件页单一路径导航、日志紧凑视图时间配色、终端、鸿蒙进程 CPU/内存采样及进程操作、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
 | `adb-forward-port-mapping` | Android/HarmonyOS 正向端口转发 | active | 记录网络页正向规则的用途、ADB/HDC 命令、列表过滤、端口校验及验证边界 | `core/network/`, `core/providers/`, `features/network/` |
 | `adb-wifi-connection-principles` | ADB 无线调试连接与断开原理 | active | 记录 USB 自动准备监听、2 秒等待与就绪检测、实时 Wi-Fi IP、列表与概览 IP 同源展示、在线 TCP 地址优先与旧缓存修复、网段提示与主机网络快照同步、TCP 优先和目标 mDNS 回退、TLS 切换恢复、双语状态及手动连接指南 | `core/adb/wireless/`, `core/providers/`, `features/devices/` |
 | `adb-lan-device-sharing` | 局域网 Android 单设备共享 | experimental | 固定 transport 的 ADB Bridge、历史重连与 UDP 定位、私有规则、30 分钟/1 小时/永久、指定 Wi-Fi 自动准备、断开隐藏、慢 OPEN/WRTE 隔离、概览去重复采集、视频输出预读聚合、投屏恢复、ABB 上传聚合、源端关闭分类与旧快照保护、Forward/Reverse 与真机边界 | `core/device_share/`, `core/device_info/`, `core/providers/`, `core/network/`, `core/scrcpy/`, `features/devices/` |
@@ -67,10 +72,10 @@
 | `adb-app-window-run-config-script` | App 子窗口 Run Configuration 生成脚本 | active | 记录 `script/generate_app_window_run_configs.sh` 如何生成模拟器管理窗口和控制台窗口的 IDE Flutter 运行入口 | `script/`, `.idea/runConfigurations/`, `app/window/` |
 | `adb-flutter-ide-configuration` | Flutter IDE 配置修复 | active | Dart SDK library、主模块宏、主窗口与不含 Share Core 的 Debug 入口、依赖复用、私有组件清理、项目模型缓存与配置恢复回归 | `script/configure_flutter_ide.py`, `.idea/`, `test/script/` |
 | `adb-macos-icon-assets` | macOS 图标资源机制 | active | 记录 Dock 图标、Flutter App logo、菜单栏 template icon 的资源边界和生成命令 | `assets/brand/`, `macos/Runner/Assets.xcassets/` |
-| `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录 App 万能控制台副文案与 Logo 居中、设备管理与模拟器列表同级入口、设备列表统计标签与自适应搜索筛选栏、操作列按钮圆角矩形水波纹及图标内边距、设备行名称与 IP、品牌 Logo 圆角、左侧导航 App/设备身份切换、品牌优先与制造商兜底、概览缓存兼容、返回点击逻辑及 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |
+| `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录 App 万能控制台副文案与 Logo 居中、设备管理与模拟器列表同级入口、设备列表统计标签与自适应搜索筛选栏、操作列按钮圆角矩形水波纹、图标内边距及编辑图标主题色、设备行名称与 IP、品牌 Logo 圆角、左侧导航 App/设备身份切换、品牌优先与制造商兜底、概览缓存兼容、返回点击逻辑及 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |
 | `adb-device-context-menu` | 设备列表常用操作右键菜单 | active | 行高亮、截图保存及剪贴板、投屏与工具 Route、三平台能力区分、离线/删除与重复操作拦截及验证边界 | `features/devices/`, `features/control/`, `test/` |
 | `adb-main-window-routing` | 主窗口层级路由 | active | 记录 Splash StartupGate、顶层 Route、设备工具 slug、应用详情嵌套路由、隐藏 Navigator 焦点隔离及 Route 与 Riverpod 的职责边界 | `app/router/`, `features/overview/`, `features/apps/`, `features/devices/` |
-| `adb-main-window-navigation` | 主窗口导航、帮助中心、底部控制台与系统版本 | active | AnyDeck 在线帮助入口与中英文文案、侧栏页面选中与服务绿点分离、侧边栏底部控制台、可调高度日志面板、系统版本 Route、移除独立模拟器管理窗口和原生菜单入口、验证与人工边界 | `features/overview/`, `features/console/`, `app/window/`, `app/router/` |
+| `adb-main-window-navigation` | 主窗口导航、帮助中心、底部控制台与系统版本 | active | AnyDeck 在线帮助入口与中英文文案、侧栏页面选中与服务运行标记分离、主题色状态圆点、侧边栏底部控制台、可调高度日志面板、系统版本 Route、移除独立模拟器管理窗口和原生菜单入口、验证与人工边界 | `features/overview/`, `features/console/`, `app/window/`, `app/router/` |
 | `adb-device-root-status` | Dashboard 手机 Root 状态标识 | active | 记录主页 Root 标识、检测链路、未知状态与控制 Tab 按钮移除 | `features/overview/`, `features/control/`, `core/providers/` |
 | `adb-macos-signature-policy` | macOS 签名与 system policy 修复机制 | active | 记录 `FlutterMacOS.framework` 被 dyld system policy 拒绝加载时的签名、provenance/quarantine 排查与自动修复脚本 | `macos/`, `script/` |
 | `adb-ai-mcp-server-architecture` | AI MCP 服务架构与集成机制 | active | 记录三平台 MCP 入口、Streamable HTTP 与兼容 SSE、独立 Token、平台及设备双重校验、HDC/iOS 工具、图像与结构化结果、高危防护、启停串行、凭据迁移异常、统一请求审计及最近200条脱敏历史恢复、iPhone 真机验收及开发者镜像绝对缓存 | `core/mcp/`, `core/ios/`, `features/mcp/` |
@@ -78,7 +83,7 @@
 | `adb-connection-notifications-message-forwarding` | Android 连接通知与手机消息转发 | active | 记录 macOS UNUserNotificationCenter 原生通知与手机 App 图标附件、窗口聚焦、首次授权、DeviceDiscoveryTracker 单例守护、Android Companion NotificationListenerService 过滤与有界队列、ADB ContentProvider 轮询、SQLite 来源映射和增量刷新、多设备来源标签与名称快照、原始来源点击定位及切换隔离、Tab 15 消息列表 | `core/notifications/`, `features/messages/`, `tool/usage_companion/` |
 | `adb-cross-channel-package-cache` | Wi-Fi 与 USB 双通道应用缓存共享机制 | active | 记录 Canonical Serial 规范序列号统一寻址、内存缓存同步直出、多通道 fallback 回退、本地图标目录复用以及 USB 刚插入时的通道就绪防抖与数据保护机制 | `core/apps/`, `core/providers/` |
 | `adb-apps-batch-management` | 应用多选与批量管理机制 | active | 记录应用列表/网格多选状态维持、全选/反选/部分选联动、批量导出包、批量卸载、批量清除数据、批量冻结/解冻的工具栏交互、底层 ADB/HDC 命令机制与进度弹窗设计 | `features/apps/`, `core/apps/` |
-| `adb-dashboard-header-bar-unification` | 仪表盘一级模块标题与页面样式统一机制 | active | 记录设备管理、模拟器管理、AI MCP、设置的顶部标题栏组件统一收口（DashboardHeaderBar）、72px 高度与 28px 内边距对齐、窗口拖拽、徽章规范及页面滚动布局一致性设计 | `features/widgets/`, `features/overview/`, `features/devices/`, `features/mcp/` |
+| `adb-dashboard-header-bar-unification` | 仪表盘一级模块标题与页面样式统一机制 | active | 记录设备管理、模拟器管理、AI MCP、设置的顶部标题栏组件统一收口（DashboardHeaderBar）、72px 最小高度与 28px 内边距对齐、设备页恢复公共标题栏、窄屏避让与跨页几何回归、窗口拖拽及页面滚动布局一致性设计 | `features/widgets/`, `features/overview/`, `features/devices/`, `features/mcp/` |
 | `hdc-harmony-feature-parity` | HarmonyOS 功能对齐与真机边界 | experimental | 性能 Tab、控制快捷操作的 HDC 实测，以及音频、摄像头、麦克风与跨应用消息的设备侧权限和工具链边界 | `core/harmony/`, `features/control/`, `features/performance/` |
 | `huawei-share-core-integration` | Huawei Share 私有核心接入 | experimental | Debug/Release 自动打包与六成员严格制品校验、原子增量安装、发现端口共享与启动失败提示、真实就绪状态、私有制品固定版本与 SHA-256、默认 LAN 协商/有界回退、P2P入口收起与底层实现保留、2 秒来件确认兜底与真实 LAN 收件、DFile末块填充与短写边界修复、两台AnyDeck电脑LAN互传协商与双向回归、设置持久化/跨窗及 busy 门控、BLE 认证后切手机 WLAN/TCP 数据通道、匿名 stdin 凭据、Wi-Fi 恢复/定位与 Keychain 边界、恢复期 flock 互斥与精确 sibling helper 保留、1 GiB限制放开与数值溢出保护、固定高度发现舞台/紧凑头像/华为荣耀厂商Logo/无协议标签与名称换行/批次状态与扫描波纹、手机版本要求、连续批次队列与真实进度、记录/通知/目录设置及离线与真机验收边界 | `lib/core/nearby_share/`, `script/`, `macos/Runner.xcodeproj/` |
 | `adb-workspace-prototype` | 小米 17 工作台交互原型 | experimental | 14 张本地原生截图、12 个工作台入口、应用详情十类标签、原型结构、模拟边界与验证记录 | `prototype/interactive/` |

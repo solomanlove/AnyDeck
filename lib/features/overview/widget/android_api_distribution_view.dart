@@ -256,9 +256,7 @@ class _AndroidApiDistributionViewState
                               color: item.barColor,
                               border: isSelected
                                   ? Border.all(
-                                      color: isDark
-                                          ? Colors.white
-                                          : const Color(0xFF0969DA),
+                                      color: Theme.of(context).colorScheme.primary,
                                       width: isDark ? 2 : 2.5,
                                     )
                                   : null,
@@ -369,11 +367,9 @@ class _AndroidApiDistributionViewState
         ? Colors.white.withValues(alpha: 0.45)
         : const Color(0xFF6E7781);
 
-    final btnBg = isDark ? const Color(0xFF383B40) : const Color(0xFFE6E8EB);
-    final btnFg = isDark ? Colors.white : const Color(0xFF1F2328);
-    final btnBorder = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : const Color(0xFFD0D7DE);
+    final btnBg = Theme.of(context).colorScheme.primary;
+    final btnFg = Theme.of(context).colorScheme.onPrimary;
+    final btnBorder = Theme.of(context).colorScheme.primary;
 
     final dateText =
         '${context.l10n.t('lastUpdatedPrefix')}${AndroidVersionDistributionData.localizedLastUpdatedDate(langCode)}';

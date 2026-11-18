@@ -10,7 +10,7 @@ import '../../../core/providers/modules/registered_device_model.dart';
 /// 设备列表行内的 AirPlay LIVE 状态胶囊徽章。
 ///
 /// 用途：
-/// 在设备名称右侧展示紧凑的绿色 `AirPlay LIVE` 标识，替代原顶部独立横幅中的状态提示。
+/// 在设备名称右侧展示跟随主题色的 `AirPlay LIVE` 标识，替代原顶部独立横幅中的状态提示。
 ///
 /// 用法：
 /// ```dart
@@ -25,19 +25,19 @@ class DeviceAirPlayLiveBadge extends StatelessWidget {
       margin: const EdgeInsets.only(right: 4),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
       decoration: BoxDecoration(
-        color: const Color(0xFF34C759).withValues(alpha: 0.16),
+        color: Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: const Color(0xFF34C759).withValues(alpha: 0.35),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35),
           width: 0.8,
         ),
       ),
-      child: const Text(
+      child: Text(
         'AirPlay LIVE',
         style: TextStyle(
           fontSize: 9.5,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF34C759),
+          color: Theme.of(context).colorScheme.onPrimaryContainer,
           letterSpacing: 0.3,
         ),
       ),
@@ -87,17 +87,17 @@ class DeviceAirPlayActionButtons extends ConsumerWidget {
               height: 24,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: const Color(0xFF34C759).withValues(alpha: 0.16),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: const Color(0xFF34C759).withValues(alpha: 0.45),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.45),
                   width: 0.8,
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.airplay_rounded,
                 size: 14,
-                color: Color(0xFF34C759),
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),

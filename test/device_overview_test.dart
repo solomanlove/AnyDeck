@@ -263,6 +263,35 @@ void main() {
       expect(overview.battery?.chargingState.name, 'charging');
     });
 
+    // 使用三星真机属性验证旧缓存刷新、版本分离和离线回退链路。
+    test('三星概览读取 One UI 版本并更新旧缓存', () async {
+      final service = DeviceInfoService(
+        StubAdbService(
+          getpropOutput:
+              '[ro.product.brand]: [samsung]\n'
+              '[ro.product.manufacturer]: [samsung]\n'
+              '[ro.product.model]: [SM-F9710]\n'
+              '[ro.build.version.release]: [17]\n'
+              '[ro.build.version.sdk]: [37]\n'
+              '[ro.build.version.oneui]: [90000]\n',
+        ),
+      );
+      await service.saveToCache(
+        'samsung_device',
+        DeviceOverview.fromJson({'brand': 'samsung'}),
+      );
+      expect((await service.loadFromCache('samsung_device'))?.customOs, '-');
+
+      final overview = await service.loadOverview('samsung_device');
+      expect(overview.customOs, 'One UI 9.0');
+      expect(overview.androidVersion, 'Android 17 (API 37)');
+
+      final offlineService = DeviceInfoService(StubAdbService(shouldFail: true));
+      final cached = await offlineService.loadOverview('samsung_device');
+      expect(cached.customOs, 'One UI 9.0');
+      expect(cached.androidVersion, 'Android 17 (API 37)');
+    });
+
     // 模拟美图版真机：旧缓存在线补齐制造商，离线恢复时保留原始品牌。
     test('refreshes legacy Meitu cache with independent manufacturer', () async {
       final service = DeviceInfoService(

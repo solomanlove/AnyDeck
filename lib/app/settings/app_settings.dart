@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import '../../core/nearby_share/share_local_name.dart';
 import '../shortcuts/mirror_shortcut.dart';
 import '../shortcuts/window_shortcut.dart';
+import '../theme/app_theme_color.dart';
+
+export '../theme/app_theme_color.dart';
 
 /// 本地字符串表支持的用户可选语言。
 enum AppLanguage {
@@ -40,6 +43,7 @@ class AppSettings {
   const AppSettings({
     this.language = AppLanguage.zh,
     this.themeMode = ThemeMode.system,
+    this.themeColor = AppThemeColor.green,
     this.scrcpyAlwaysOnTop = true,
     this.mirrorControlsAlwaysVisible = false,
     this.mirrorVideoBitrate = 8000000,
@@ -72,6 +76,8 @@ class AppSettings {
 
   final AppLanguage language;
   final ThemeMode themeMode;
+  /// 界面强调色，与明暗模式及成功、警告等状态色独立。
+  final AppThemeColor themeColor;
   final bool scrcpyAlwaysOnTop;
   final bool mirrorControlsAlwaysVisible;
   final int mirrorVideoBitrate;
@@ -150,6 +156,7 @@ class AppSettings {
   AppSettings copyWith({
     AppLanguage? language,
     ThemeMode? themeMode,
+    AppThemeColor? themeColor,
     bool? scrcpyAlwaysOnTop,
     bool? mirrorControlsAlwaysVisible,
     int? mirrorVideoBitrate,
@@ -182,6 +189,7 @@ class AppSettings {
     return AppSettings(
       language: language ?? this.language,
       themeMode: themeMode ?? this.themeMode,
+      themeColor: themeColor ?? this.themeColor,
       scrcpyAlwaysOnTop: scrcpyAlwaysOnTop ?? this.scrcpyAlwaysOnTop,
       mirrorControlsAlwaysVisible:
           mirrorControlsAlwaysVisible ?? this.mirrorControlsAlwaysVisible,

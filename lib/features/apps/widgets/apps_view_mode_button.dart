@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// 应用页列表/网格视图切换按钮。
 ///
-/// [selected] 表示当前视图，选中时使用主题绿色 Icon 和浅绿色背景；
+/// [selected] 表示当前视图，选中时使用主题主色 Icon 和淡色背景；
 /// [icon] 与左侧导航使用同一套线框 Icon，切换状态时不改变图标造型。
 class AppsViewModeButton extends StatelessWidget {
   const AppsViewModeButton({

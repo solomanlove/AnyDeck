@@ -94,6 +94,15 @@ class AndroidVersionHelper {
 
   /// 根据 getprop 属性检测厂商系统及其版本，未命中时交由 UI 展示统一兜底文案。
   static String? getCustomOsVersion(Map<String, String> properties) {
+    // 刷机后的系统身份优先于可能残留在 vendor 分区中的原厂属性。
+    final lineageVersion = _firstNonEmpty(properties, [
+      'ro.lineage.build.version',
+      'ro.lineage.version',
+    ]);
+    if (lineageVersion != null) {
+      return _withName('LineageOS', lineageVersion);
+    }
+
     final harmonyVersion = _firstNonEmpty(properties, [
       'ro.huawei.build.version.harmony',
       'hw_sc.build.platform.version',
@@ -101,13 +110,17 @@ class AndroidVersionHelper {
     if (harmonyVersion != null) {
       return _withName('HarmonyOS', harmonyVersion);
     }
+    if (_firstNonEmpty(properties, ['ro.build.ohos.devicetype']) != null) {
+      return 'HarmonyOS';
+    }
 
     final magicVersion = _firstNonEmpty(properties, [
       'ro.honor.build.version.magic',
       'ro.build.version.magic',
     ]);
     if (magicVersion != null) {
-      return _withName('MagicOS', magicVersion);
+      return _namedOsVersion(magicVersion, ['MagicUI', 'MagicOS']) ??
+          _withName('MagicOS', magicVersion);
     }
 
     final emuiVersion = _firstNonEmpty(properties, ['ro.build.version.emui']);
@@ -121,11 +134,28 @@ class AndroidVersionHelper {
       );
     }
 
-    final hyperOsVersion = _firstNonEmpty(properties, [
-      'ro.mi.os.version.name',
+    final hyperOsBuild = _firstNonEmpty(properties, [
+      'ro.mi.os.version.incremental',
     ]);
+    final hyperOsVersion =
+        hyperOsBuild != null &&
+            RegExp(r'^OS\d', caseSensitive: false).hasMatch(hyperOsBuild)
+        ? hyperOsBuild
+        : _firstNonEmpty(properties, ['ro.mi.os.version.name']);
     if (hyperOsVersion != null) {
       return _withName('HyperOS', hyperOsVersion);
+    }
+
+    // JOYUI 同时携带 MIUI 兼容属性，仅以增量版本的明确后缀区分。
+    final incremental = _firstNonEmpty(properties, [
+      'ro.build.version.incremental',
+    ]);
+    final joyUiVersion = RegExp(
+      r'^V?(\d+(?:\.\d+)*)\.JOYUI$',
+      caseSensitive: false,
+    ).firstMatch(incremental ?? '');
+    if (joyUiVersion != null) {
+      return _withName('JOYUI', joyUiVersion.group(1)!);
     }
     final miuiVersion = _firstNonEmpty(properties, ['ro.miui.ui.version.name']);
     if (miuiVersion != null) {
@@ -139,6 +169,16 @@ class AndroidVersionHelper {
     if (oxygenOsVersion != null) {
       return _withName('OxygenOS', oxygenOsVersion);
     }
+    final onePlusRom = _firstNonEmpty(properties, ['ro.rom.version']);
+    final namedOnePlusRom = _namedOsVersion(
+      onePlusRom?.replaceFirst(
+        RegExp(r'^Oxygen\s+OS', caseSensitive: false),
+        'OxygenOS',
+      ),
+      ['OxygenOS', 'HydrogenOS', 'H2OS'],
+    );
+    if (namedOnePlusRom != null) return namedOnePlusRom;
+
     final realmeUiVersion = _firstNonEmpty(properties, [
       'ro.build.version.realmeui',
     ]);
@@ -146,14 +186,49 @@ class AndroidVersionHelper {
       return _withName('realme UI', realmeUiVersion);
     }
     final colorOsVersion = _firstNonEmpty(properties, [
+      'ro.build.version.oplusrom.display',
+      'ro.build.version.oplusrom',
       'ro.build.version.opporom',
       'ro.build.version.coloros',
       'ro.rom.different.version',
     ]);
     if (colorOsVersion != null) {
-      return _withName('ColorOS', colorOsVersion);
+      final namedOplusRom = _namedOsVersion(colorOsVersion, [
+        'OxygenOS',
+        'ColorOS',
+        'realme UI',
+      ]);
+      if (namedOplusRom != null) return namedOplusRom;
+      final stockType = _firstNonEmpty(properties, [
+        'ro.oplus.image.my_stock.type',
+      ])?.toLowerCase();
+      // Oplus 为多个系统共用；只对有明确国际版身份的 OnePlus 使用 OxygenOS。
+      if (stockType == 'export_oneplus' || stockType == 'gdpr_oneplus') {
+        return _withName('OxygenOS', colorOsVersion);
+      }
+      final brands = [
+        'ro.product.brand',
+        'ro.product.vendor.brand',
+        'ro.product.manufacturer',
+        'ro.product.vendor.manufacturer',
+      ].map((key) => properties[key]?.trim().toLowerCase());
+      final legacyColorOs = _firstNonEmpty(properties, [
+        'ro.build.version.opporom',
+        'ro.build.version.coloros',
+      ]);
+      // 保留旧的明确 ColorOS 属性回退；新共享属性不足以确定一加/realme 身份。
+      if (legacyColorOs != null ||
+          !brands.any((brand) => brand == 'oneplus' || brand == 'realme')) {
+        return _withName('ColorOS', colorOsVersion);
+      }
     }
 
+    // 展示属性包含真实系统名称，旧 name/version 可能仍返回 Funtouch 兼容值。
+    final vivoDisplay = _namedOsVersion(
+      _firstNonEmpty(properties, ['ro.vivo.os.build.display.id']),
+      ['OriginOS', 'Funtouch OS', 'Funtouch'],
+    );
+    if (vivoDisplay != null) return vivoDisplay;
     final vivoOsName = _firstNonEmpty(properties, ['ro.vivo.os.name']);
     final vivoOsVersion = _firstNonEmpty(properties, ['ro.vivo.os.version']);
     if (vivoOsName != null) {
@@ -166,10 +241,92 @@ class AndroidVersionHelper {
     }
 
     final displayId = _firstNonEmpty(properties, ['ro.build.display.id']);
-    if (displayId != null && displayId.toLowerCase().contains('flyme')) {
-      return displayId;
+    final flymeDisplay = _namedOsVersion(displayId, ['Flyme OS', 'Flyme']);
+    if (flymeDisplay != null) return flymeDisplay;
+    final flymeVersion = _namedOsVersion(
+      _firstNonEmpty(properties, ['ro.flyme.version.id']),
+      ['Flyme OS', 'Flyme'],
+    );
+    if (flymeVersion != null) return flymeVersion;
+
+    final oneUiVersion = _firstNonEmpty(properties, ['ro.build.version.oneui']);
+    final encodedOneUi = int.tryParse(oneUiVersion ?? '', radix: 10);
+    if (encodedOneUi != null && encodedOneUi >= 10000) {
+      // 三星将 One UI 编码为 major * 10000 + minor * 100 + patch。
+      // 保留主次版本，仅在补丁号非零时展示第三段；不根据品牌或 Android 版本推测。
+      final major = encodedOneUi ~/ 10000;
+      final minor = (encodedOneUi ~/ 100) % 100;
+      final patch = encodedOneUi % 100;
+      return patch == 0
+          ? 'One UI $major.$minor'
+          : 'One UI $major.$minor.$patch';
     }
 
+    // 新系统沿用旧兼容属性时，优先读取 display.id 中明确的名称与版本。
+    final namedDisplay = _namedOsVersion(displayId, [
+      'MyOS',
+      'RedMagicOS',
+      'NebulaAIOS',
+    ]);
+    if (namedDisplay != null) return namedDisplay;
+    final zuiDisplay = RegExp(
+      r'(?:^|_)(ZUXOS|ZUI)_([0-9]+(?:\.[0-9A-Za-z]+)*)(?:_|$)',
+      caseSensitive: false,
+    ).firstMatch(displayId ?? '');
+    if (zuiDisplay != null) {
+      return _withName(
+        zuiDisplay.group(1)!.toUpperCase(),
+        zuiDisplay.group(2)!,
+      );
+    }
+    final zuiVersion = _firstNonEmpty(properties, ['ro.com.zui.version']);
+    if (zuiVersion != null) return _withName('ZUI', zuiVersion);
+
+    final nubiaName = _firstNonEmpty(properties, ['ro.build.nubia.rom.name']);
+    final nubiaVersion = _firstNonEmpty(properties, [
+      'ro.build.nubia.rom.code',
+    ]);
+    if (nubiaName != null) {
+      return nubiaVersion == null
+          ? nubiaName
+          : _withName(nubiaName, nubiaVersion);
+    }
+    final miFavorVersion = _firstNonEmpty(properties, [
+      'ro.build.MiFavor_version',
+    ]);
+    if (miFavorVersion != null) return _withName('MiFavor', miFavorVersion);
+
+    final transsionVersion = _namedOsVersion(
+      _firstNonEmpty(properties, ['ro.tranos.version']),
+      ['HiOS', 'XOS'],
+    );
+    if (transsionVersion != null) return transsionVersion;
+
+    final smartisanVersion = _firstNonEmpty(properties, [
+      'ro.smartisan.version',
+    ]);
+    if (smartisanVersion != null) {
+      return _withName(
+        'SmartisanOS',
+        smartisanVersion.split(RegExp(r'[-_]')).first,
+      );
+    }
+
+    return null;
+  }
+
+  /// 仅解析明确系统名前缀后的版本，不把通用 Android Build ID 当作 ROM。
+  static String? _namedOsVersion(String? value, List<String> names) {
+    if (value == null) return null;
+    for (final name in names) {
+      if (value.toLowerCase() == name.toLowerCase()) return name;
+      final match = RegExp(
+        '^${RegExp.escape(name)}[ _]*([vV]?[0-9][0-9A-Za-z.]*)'
+        r'(?=$|[ _(-])',
+        caseSensitive: false,
+      ).firstMatch(value);
+      if (match != null) return _withName(name, match.group(1)!);
+    }
     return null;
   }
 

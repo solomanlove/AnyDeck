@@ -66,7 +66,7 @@ class McpAuditLogsViewer extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final item = logs[index];
                   final statusColor = item.isSuccess
-                      ? AppPalette.primary
+                      ? theme.appColors.success
                       : Colors.redAccent;
 
                   return ListTile(

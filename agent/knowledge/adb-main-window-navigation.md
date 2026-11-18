@@ -37,14 +37,14 @@
 
 ## 侧栏页面选中与服务状态（2026-11-10）
 
-- 需求：投屏接收、文件互传和 AI MCP 的后台运行状态只用绿色点表达，避免设备管理页显示时多个入口同时呈现选中背景。
-- 页面选中仅由当前 `selectedToolTabProvider` 决定：保留当前页面的背景、绿色图标与加粗文字；服务运行不再影响这些样式。控制台仍按面板展开状态独立高亮。
-- 投屏接收沿用 AirPlay 或 DLNA 任一服务运行即显示绿点的判断；AI MCP 使用 `mcpServerProvider.isRunning`；文件互传通过 `harmonyShareServiceProvider` 复用常驻服务，启用且无错误、发现就绪或正在收发时显示绿点。仅开启开关、启动准备中或启动失败不显示绿点。
-- 宽侧栏在右侧显示状态点，窄侧栏在图标右上方显示同一状态组件；悬停状态点显示「服务运行中 / Service running」。颜色复用 Theme 的 `appColors.success`，文案来自 l10n。
+- 需求：投屏接收、文件互传和 AI MCP 的后台运行状态用独立圆点表达，避免设备管理页显示时多个入口同时呈现选中背景。2026-11-17 补充：运行圆点颜色跟随用户选择的主题色。
+- 页面选中仅由当前 `selectedToolTabProvider` 决定：保留当前页面的背景、主题色图标与加粗文字；服务运行不再影响这些样式。控制台仍按面板展开状态独立高亮。
+- 投屏接收沿用 AirPlay 或 DLNA 任一服务运行即显示圆点的判断；AI MCP 使用 `mcpServerProvider.isRunning`；文件互传通过 `harmonyShareServiceProvider` 复用常驻服务，启用且无错误、发现就绪或正在收发时显示圆点。仅开启开关、启动准备中或启动失败不显示圆点。
+- 宽侧栏在右侧显示状态点，窄侧栏在图标右上方显示同一状态组件；悬停状态点显示「服务运行中 / Service running」。颜色复用 Theme 的 `colorScheme.primary`，文案来自 l10n。
 - 实现集中在 `dashboard_rail.dart`、`dashboard_rail_buttons.dart`、`dashboard_rail_footer.dart`；不改变 Route、服务启停、文件传输、投屏输入或跨 Isolate 协议，不增加后台任务。文件互传监听仅重建对应入口。
-- 自动回归：`test/dashboard_service_navigation_test.dart` 覆盖中英文、Light/Dark、宽窄侧栏、三个服务同时运行、切页迁移高亮、停服保留页面选中、准备/失败无绿点及收发中状态。`test/dashboard_global_navigation_test.dart` 将互传入口断言更新为现有「文件互传」文案。
+- 自动回归：`test/dashboard_service_navigation_test.dart` 覆盖中英文、Light/Dark、宽窄侧栏、三个服务同时运行、切页迁移高亮、运行中蓝色切换粉色、停服保留页面选中、准备/失败无圆点及收发中状态。`test/dashboard_global_navigation_test.dart` 将互传入口断言更新为现有「文件互传」文案。
 - 验证结果：以下四个测试文件共 33 项测试通过，7 个修改及测试 Dart 文件定向 analyze 无问题，`git diff --check` 通过。
-- 人工回归：启动桌面 App 后分别启停三个服务，切换页面并悬停绿点；缩窄窗口检查右上角状态点与提示。自动测试使用替代服务，不启动桌面 App 或真实服务。
+- 人工回归：启动桌面 App 后分别启停三个服务，切换页面并悬停运行圆点；切换主题色、缩窄窗口检查右上角状态点与提示。自动测试使用替代服务，不启动桌面 App 或真实服务。
 
 ```bash
 flutter test --no-pub test/dashboard_service_navigation_test.dart test/dashboard_global_navigation_test.dart test/dashboard_shell_navigation_test.dart test/receiver_dashboard_tab_test.dart

@@ -304,8 +304,14 @@ class _DlnaPlayerWindowAppState extends ConsumerState<DlnaPlayerWindowApp>
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    theme: buildAppTheme(Brightness.light),
-    darkTheme: buildAppTheme(Brightness.dark),
+    theme: buildAppTheme(
+      Brightness.light,
+      themeColor: ref.watch(appSettingsProvider.select((settings) => settings.themeColor)),
+    ),
+    darkTheme: buildAppTheme(
+      Brightness.dark,
+      themeColor: ref.watch(appSettingsProvider.select((settings) => settings.themeColor)),
+    ),
     themeMode: ref.watch(appSettingsProvider.select((settings) => settings.themeMode)),
     home: WindowCloseShortcut(
       child: Scaffold(

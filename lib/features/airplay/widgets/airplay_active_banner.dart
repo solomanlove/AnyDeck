@@ -25,7 +25,9 @@ class AirPlayActiveBanner extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final deviceName = session.clientName ?? 'iPhone';
     final resolutionStr = (session.width > 0 && session.height > 0)
         ? '${session.width} × ${session.height}'
@@ -35,28 +37,26 @@ class AirPlayActiveBanner extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1E3A2B).withValues(alpha: 0.6)
-            : const Color(0xFFE8F5E9).withValues(alpha: 0.8),
+        color: colors.primaryContainer.withValues(alpha: isDark ? 0.6 : 0.8),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF34C759).withValues(alpha: isDark ? 0.35 : 0.25),
+          color: colors.primary.withValues(alpha: isDark ? 0.35 : 0.25),
           width: 1,
         ),
       ),
       child: Row(
         children: [
-          // 活跃呼吸绿点与 AirPlay 图标
+          // 活跃标记与 AirPlay 图标统一使用当前主题主色。
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF34C759).withValues(alpha: 0.2),
+              color: colors.primary.withValues(alpha: 0.2),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.airplay_rounded,
               size: 16,
-              color: Color(0xFF34C759),
+              color: colors.primary,
             ),
           ),
           const SizedBox(width: 10),
@@ -81,15 +81,15 @@ class AirPlayActiveBanner extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF34C759).withValues(alpha: 0.15),
+                        color: colors.primaryContainer,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
+                      child: Text(
                         'LIVE',
                         style: TextStyle(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF34C759),
+                          color: colors.onPrimaryContainer,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -114,8 +114,8 @@ class AirPlayActiveBanner extends ConsumerWidget {
           // 操作按钮 1：重新打开投屏窗口
           FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF34C759),
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               minimumSize: const Size(0, 32),
               shape: RoundedRectangleBorder(

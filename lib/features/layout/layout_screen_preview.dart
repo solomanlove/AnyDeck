@@ -235,6 +235,7 @@ class _LayoutScreenPreviewState extends State<LayoutScreenPreview> {
                     child: CustomPaint(
                       painter: _ScreenPreviewPainter(
                         image: widget.decodedImage,
+                        selectionColor: Theme.of(context).colorScheme.primary,
                         rootNode: widget.rootNode,
                         selectedNode: widget.selectedNode,
                         hoveredNode: widget.hoveredNode,
@@ -265,6 +266,9 @@ class _ScreenPreviewPainter extends CustomPainter {
   final bool useDp;
   final double deviceScale;
 
+  /// 由 Widget 注入主题主色，切换主题时仅重绘选区。
+  final Color selectionColor;
+
   _ScreenPreviewPainter({
     required this.image,
     required this.rootNode,
@@ -274,6 +278,7 @@ class _ScreenPreviewPainter extends CustomPainter {
     required this.rotationAngle,
     required this.useDp,
     required this.deviceScale,
+    this.selectionColor = AppPalette.primary,
   });
 
   @override
@@ -344,13 +349,13 @@ class _ScreenPreviewPainter extends CustomPainter {
         canvas.drawRect(
           rect,
           Paint()
-            ..color = AppPalette.primary
+            ..color = selectionColor
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3.0,
         );
         canvas.drawRect(
           rect,
-          Paint()..color = AppPalette.primary.withValues(alpha: 0.20),
+          Paint()..color = selectionColor.withValues(alpha: 0.20),
         );
       }
     }
@@ -662,6 +667,7 @@ class _ScreenPreviewPainter extends CustomPainter {
         oldDelegate.showBorders != showBorders ||
         oldDelegate.rotationAngle != rotationAngle ||
         oldDelegate.useDp != useDp ||
-        oldDelegate.deviceScale != deviceScale;
+        oldDelegate.deviceScale != deviceScale ||
+        oldDelegate.selectionColor != selectionColor;
   }
 }

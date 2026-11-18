@@ -21,12 +21,14 @@ import '../../../core/providers/modules/registered_device_model.dart';
 /// - [device]：要渲染的设备注册模型，包含在线状态、系统类型、型号等；
 /// - [size]：头像尺寸正方形宽高，默认 38.0。
 /// - [showTooltip]：是否显示设备状态提示；外层已有 Tooltip 时可关闭。
+/// - [cacheOnly]：仅使用缓存概览解析品牌，适用于多设备列表，避免触发全量探测。
 class DeviceStatusAvatar extends ConsumerWidget {
   const DeviceStatusAvatar({
     super.key,
     required this.device,
     this.size = 38.0,
     this.showTooltip = true,
+    this.cacheOnly = false,
   });
 
   /// 设备数据模型
@@ -37,6 +39,9 @@ class DeviceStatusAvatar extends ConsumerWidget {
 
   /// 是否显示设备名称与状态 Tooltip
   final bool showTooltip;
+
+  /// 为 true 时仅订阅缓存概览，未命中时继续按设备名称与型号回退。
+  final bool cacheOnly;
 
   /// 标准 ITU-R BT.709 灰阶加权滤镜矩阵，用于将彩色图片转换为纯灰度图像
   static const ColorFilter _greyscaleFilter = ColorFilter.matrix(<double>[
@@ -148,9 +153,11 @@ class DeviceStatusAvatar extends ConsumerWidget {
     }
 
     // 次优：从设备概览信息中获取精准识别的品牌厂商
-    final overviewAsync = ref.watch(deviceOverviewProvider(device.id));
-    if (overviewAsync.hasValue) {
-      final overview = overviewAsync.value!;
+    final overviewAsync = cacheOnly
+        ? ref.watch(cachedDeviceOverviewProvider(device.id))
+        : ref.watch(deviceOverviewProvider(device.id));
+    final overview = overviewAsync.hasValue ? overviewAsync.value : null;
+    if (overview != null) {
       final asset = BrandLogoHelper.getBrandLogoAsset(
         overview.brand,
         manufacturer: overview.manufacturer,

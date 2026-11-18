@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../process/tool_path_resolver.dart';
+import '../process/bounded_process.dart';
 import '../providers/app_providers.dart';
 import '../../features/devices/widgets/adb_environment_dialog.dart';
 
@@ -93,11 +94,10 @@ class AdbEnvironmentService {
   Future<AdbEnvironmentInfo> checkEnvironment() async {
     try {
       final adbPath = resolveToolPath('adb');
-      final result = await Process.run(
+      final result = await runBoundedProcess(
         adbPath,
         ['--version'],
-        runInShell: false,
-      ).timeout(const Duration(seconds: 4));
+      );
 
       if (result.exitCode == 0) {
         final output = (result.stdout as String).trim();

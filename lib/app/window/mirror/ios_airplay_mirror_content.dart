@@ -359,7 +359,7 @@ class _IosAirPlayMirrorContentState extends State<IosAirPlayMirrorContent>
           widget.isAlwaysOnTop ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
           'airplayAlwaysOnTop',
           widget.onToggleAlwaysOnTop,
-          widget.isAlwaysOnTop ? Colors.orange : toolbarFg,
+          widget.isAlwaysOnTop ? colors.primary : toolbarFg,
           MirrorShortcut.alwaysOnTop,
         ),
         (

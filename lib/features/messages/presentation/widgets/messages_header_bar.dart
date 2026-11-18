@@ -93,7 +93,7 @@ class MessagesHeaderBar extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Switch(
                     value: forwardingEnabled && isOnline,
-                    activeThumbColor: AppPalette.primary,
+                    activeThumbColor: theme.colorScheme.primary,
                     onChanged: isOnline
                         ? (enabled) async {
                             await forwardingService.setForwardingEnabled(
@@ -248,7 +248,7 @@ class MessagesHeaderBar extends ConsumerWidget {
     final currentStatus = status;
     final isReady = currentStatus?.isReady ?? false;
 
-    Color badgeColor = isReady ? AppPalette.primary : Colors.amber;
+    Color badgeColor = isReady ? Theme.of(context).appColors.success : Colors.amber;
     String text = isReady
         ? context.l10n.t('companionInstalled')
         : (currentStatus?.rawStatus == 'permission_required'

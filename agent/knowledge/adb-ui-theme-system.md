@@ -127,3 +127,17 @@ flutter --no-version-check analyze --no-pub lib/app/window/mirror/widget/mirror_
 dart format --output=none --set-exit-if-changed test/mirror_app_quick_actions_dialog_test.dart
 git diff --check
 ```
+
+## 9. 概览电量与 Root 标记（2026-11-17）
+
+- 手机信息概览的电量与 Root 控件统一使用 `ColorScheme.onSurfaceVariant` 作为图标、文字前景色，背景沿用同色 0.1 透明度，随 Light/Dark 主题适配为灰色；充电、满电和已 Root 不再使用绿色，低电量也使用相同灰色。
+- 满电状态只显示电池图标与百分比，移除“已充满”及对应间距；其他充电状态、未知电量占位和 Root 检测文案保持原有逻辑。iOS 在线标记继续使用既有成功色。
+- 实现在 `dashboard_overview_battery_chip.dart` 与 `dashboard_overview_widgets.dart`，不新增依赖、Provider、设备命令或跨窗口通信。既有 `batteryFull` 翻译键保留，避免改动其他尚未提交的本地化文件。
+- 回归入口为 `test/overview_status_chips_test.dart`，覆盖中英文、明暗主题、满电文案移除、充电及低电量配色、Root 状态、离线/未知占位；结合概览布局、身份信息和 Root Provider 测试验证展示与状态逻辑。按项目约定不启动桌面 App，真实窗口视觉由后续人工验收。
+- 验证结果：新增 8 项 Widget 测试与既有 23 项相关回归全部通过；本次生产代码定向 analyze 无诊断，包含新测试时仅有当前 SDK 对既有 Flutter 导入及本地化 delegate 的 4 项弃用 info，使用 `--no-fatal-infos` 后通过。全量 analyze 无 error，仍有其他未修改代码的 5 项 warning 及既有 info；未进行范围外迁移。格式检查与 `git diff --check` 通过。
+
+```bash
+flutter --no-version-check test --no-pub test/overview_status_chips_test.dart test/overview_layout_test.dart test/overview_identity_test.dart test/device_root_status_provider_test.dart
+flutter --no-version-check analyze --no-pub --no-fatal-infos lib/features/overview/dashboard_overview_battery_chip.dart lib/features/overview/dashboard_overview_widgets.dart test/overview_status_chips_test.dart
+git diff --check
+```

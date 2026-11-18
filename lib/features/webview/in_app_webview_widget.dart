@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'package:any_deck/app/theme/app_theme.dart';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -371,10 +369,10 @@ class _InAppWebViewWidgetState extends State<InAppWebViewWidget> {
                 ),
                 filled: true,
                 fillColor: theme.colorScheme.surface,
-                prefixIcon: const Icon(
+                prefixIcon: Icon(
                   CupertinoIcons.lock_shield_fill,
                   size: 14,
-                  color: AppPalette.primary,
+                  color: theme.colorScheme.primary,
                 ),
                 prefixIconConstraints: const BoxConstraints(
                   minWidth: 32,

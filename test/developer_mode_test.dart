@@ -3,15 +3,26 @@ import 'package:any_deck/app/settings/app_settings.dart';
 import 'package:any_deck/features/developer/widget/settings_developer_entry.dart';
 import 'package:any_deck/features/feedback/widget/settings_feedback_entry.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  const windows = MethodChannel('mixin.one/desktop_multi_window');
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    // 彩蛋只验证当前窗口；返回空窗口列表，避免原生广播留下 15 秒 Timeout。
+    messenger.setMockMethodCallHandler(
+      windows,
+      (call) async => call.method == 'getAllWindows' ? <Object>[] : null,
+    );
   });
+  tearDown(() => messenger.setMockMethodCallHandler(windows, null));
 
   group('Developer Mode & Easter Egg Tests', () {
     test('AppSettings 初始状态下 developerModeEnabled 默认为 false', () {

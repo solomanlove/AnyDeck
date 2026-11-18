@@ -9,6 +9,7 @@ Future<void> expectSettingsSelectorInk(WidgetTester tester) async {
   final selectors = [
     find.byType(PopupMenuButton<AppLanguage>),
     find.byType(PopupMenuButton<ThemeMode>),
+    find.byType(PopupMenuButton<AppThemeColor>),
   ];
   for (final selector in selectors) {
     expect(selector, findsOneWidget);

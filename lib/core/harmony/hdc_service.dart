@@ -10,6 +10,7 @@ import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
 
 import 'hdc_service_device_info.dart';
+import 'hdc_screenshot_capture.dart';
 export 'hdc_service_device_info.dart';
 export 'hdc_service_fport.dart';
 export 'hdc_service_settings.dart';
@@ -237,38 +238,7 @@ class HdcService {
   Future<Uint8List> captureScreenshot(
     String deviceId, {
     Duration timeout = const Duration(seconds: 15),
-  }) async {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final remotePath = '/data/local/tmp/anydeck_screenshot_$timestamp.png';
-    var snapRes = await shell(deviceId, 'uitest screenCap -p $remotePath', timeout: timeout);
-    if (!snapRes.isSuccess) {
-      snapRes = await shell(deviceId, 'snapshot_display -f $remotePath', timeout: timeout);
-    }
-    if (!snapRes.isSuccess) {
-      throw Exception('HarmonyOS screenshot failed: ${snapRes.message}');
-    }
-
-    final tempDir = Directory.systemTemp;
-    final localPath = '${tempDir.path}/anydeck_screenshot_$timestamp.png';
-
-    final recvRes = await run(
-      ['-t', deviceId, 'file', 'recv', remotePath, localPath],
-      timeout: timeout,
-    );
-    final localFile = File(localPath);
-
-    if (!recvRes.isSuccess || !await localFile.exists()) {
-      unawaited(shell(deviceId, 'rm $remotePath'));
-      throw Exception('HarmonyOS hdc file recv failed: ${recvRes.stderr}');
-    }
-
-    try {
-      return await localFile.readAsBytes();
-    } finally {
-      unawaited(localFile.delete());
-      unawaited(shell(deviceId, 'rm $remotePath'));
-    }
-  }
+  }) => captureHdcScreenshot(deviceId, run: run, shell: shell, timeout: timeout);
 
   /// 启动 HarmonyOS 系统录屏服务。
   Future<AdbResult> startScreenRecord(String deviceId, String fileName) {

@@ -1,5 +1,3 @@
-import 'package:any_deck/app/theme/app_theme.dart';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,18 +17,18 @@ class SettingsDeveloperEntry extends ConsumerStatefulWidget {
   /// 创建设置页版本号与开发者选项入口
   ///
   /// [onCheckUpdate] 点击“检查更新”按钮的回调
-  /// [brandGreen] 主题高亮绿色，默认 0xff09c47c
+  /// [brandGreen] 可选主色覆盖；省略时跟随当前 Theme 的 primary，支持实时换色。
   const SettingsDeveloperEntry({
     super.key,
     required this.onCheckUpdate,
-    this.brandGreen = AppPalette.primary,
+    this.brandGreen,
   });
 
   /// 检查更新回调
   final VoidCallback onCheckUpdate;
 
-  /// 主题品牌绿色
-  final Color brandGreen;
+  /// 可选主色覆盖；默认从当前 Theme 读取。
+  final Color? brandGreen;
 
   @override
   ConsumerState<SettingsDeveloperEntry> createState() => _SettingsDeveloperEntryState();
@@ -100,8 +98,8 @@ class _SettingsDeveloperEntryState extends ConsumerState<SettingsDeveloperEntry>
           subtitle: const Text('v1.0.0'),
           trailing: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: widget.brandGreen,
-              foregroundColor: Colors.white,
+              backgroundColor: widget.brandGreen ?? theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),

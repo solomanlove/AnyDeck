@@ -297,13 +297,14 @@ class _ScreenshotAutoSaveDialogState
                         });
                       }
                     },
-                    selectedColor: primaryColor.withValues(alpha: 0.18),
+                    selectedColor: theme.colorScheme.primaryContainer,
+                    checkmarkColor: theme.colorScheme.onPrimaryContainer,
                     labelStyle: TextStyle(
                       fontSize: 12,
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.normal,
                       color: isSelected
-                          ? primaryColor
+                          ? theme.colorScheme.onPrimaryContainer
                           : (isDark ? Colors.grey[300] : Colors.grey[800]),
                     ),
                     shape: RoundedRectangleBorder(

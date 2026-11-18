@@ -177,7 +177,8 @@ extension _SettingsTabWidgets on _SettingsTab {
               textDirection: Directionality.of(context),
               textScaler: MediaQuery.textScalerOf(context),
             )..layout();
-            final measured = (painter.width + 44).clamp(112.0, 240.0);
+            final colorWidth = item.color == null ? 0 : 22;
+            final measured = (painter.width + 44 + colorWidth).clamp(112.0, 240.0);
             painter.dispose();
             return max(width, measured);
           })
@@ -209,17 +210,27 @@ extension _SettingsTabWidgets on _SettingsTab {
             (item) => PopupMenuItem<T>(
               value: item.value,
               height: 34,
-              child: Text(
-                item.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: item.value == value
-                      ? FontWeight.w600
-                      : FontWeight.normal,
-                  color: item.value == value
-                      ? AppPalette.primary
-                      : (isDark ? Colors.white : const Color(0xFF1E293B)),
-                ),
+              child: Row(
+                children: [
+                  if (item.color != null) ...[
+                    Icon(Icons.circle, size: 14, color: item.color),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: Text(
+                      item.label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: item.value == value
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: item.value == value
+                            ? theme.colorScheme.primary
+                            : (isDark ? Colors.white : const Color(0xFF1E293B)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           )
@@ -245,6 +256,10 @@ extension _SettingsTabWidgets on _SettingsTab {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (currentItem.color != null) ...[
+                Icon(Icons.circle, size: 14, color: currentItem.color),
+                const SizedBox(width: 8),
+              ],
               Flexible(
                 child: Text(
                   currentItem.label,
@@ -273,12 +288,15 @@ extension _SettingsTabWidgets on _SettingsTab {
   ///
   /// [text]: 按钮文案。
   /// [onTap]: 点击回调，为 null 时禁用。
-  /// [color]: 文本颜色，默认系统蓝，危险操作传红色。
+  /// [context]: 用于读取当前主题主色。
+  /// [color]: 可选文本颜色，默认主题主色，危险操作传红色。
   Widget _buildTextActionButton({
+    required BuildContext context,
     required String text,
     required VoidCallback? onTap,
-    Color color = const Color(0xFF2563EB),
+    Color? color,
   }) {
+    final foreground = color ?? Theme.of(context).colorScheme.primary;
     return MouseRegion(
       cursor: onTap != null
           ? SystemMouseCursors.click
@@ -293,7 +311,9 @@ extension _SettingsTabWidgets on _SettingsTab {
             style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w500,
-              color: onTap != null ? color : color.withValues(alpha: 0.4),
+              color: onTap != null
+                  ? foreground
+                  : foreground.withValues(alpha: 0.4),
             ),
           ),
         ),
@@ -302,10 +322,11 @@ extension _SettingsTabWidgets on _SettingsTab {
   }
 }
 
-/// 下拉菜单选项数据模型。
+/// 下拉菜单选项数据模型；[color] 可在主题色选项前显示颜色预览。
 class _DropdownOption<T> {
-  const _DropdownOption({required this.value, required this.label});
+  const _DropdownOption({required this.value, required this.label, this.color});
 
   final T value;
   final String label;
+  final Color? color;
 }

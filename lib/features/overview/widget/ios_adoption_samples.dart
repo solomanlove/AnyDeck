@@ -52,7 +52,8 @@ class IosAdoptionSamples extends StatelessWidget {
                     ListTile(
                       dense: true,
                       selected: selectedVersion == item.version,
-                      selectedTileColor: theme.colorScheme.secondaryContainer,
+                      selectedTileColor: theme.colorScheme.primaryContainer,
+                      selectedColor: theme.colorScheme.onPrimaryContainer,
                       title: Text('iOS ${item.version}'),
                       subtitle: Text(item.minor),
                       trailing: Text(

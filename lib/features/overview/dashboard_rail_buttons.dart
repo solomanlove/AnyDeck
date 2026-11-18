@@ -48,7 +48,7 @@ class _RailMoreButton extends StatelessWidget {
     final disabledColor = isDark ? const Color(0xff546e7a) : const Color(0xff8b9a9e);
     final color = !anyEnabled
         ? disabledColor
-        : (selected ? AppPalette.primary : defaultColor);
+        : (selected ? theme.colorScheme.primary : defaultColor);
 
     final activeBgColor = theme.colorScheme.primary.withValues(
       alpha: isDark ? 0.18 : 0.09,
@@ -85,7 +85,7 @@ class _RailMoreButton extends StatelessWidget {
                       tool.icon,
                       size: 26,
                       color: tool.tabIndex == selectedTool
-                          ? AppPalette.primary
+                          ? theme.colorScheme.primary
                           : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
                     ),
                   ),
@@ -136,7 +136,7 @@ class _RailMoreButton extends StatelessWidget {
                       tool.icon,
                       size: 20,
                       color: tool.tabIndex == selectedTool
-                          ? AppPalette.primary
+                          ? theme.colorScheme.primary
                           : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
                     ),
                     const SizedBox(width: 10),
@@ -146,7 +146,7 @@ class _RailMoreButton extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           color: tool.tabIndex == selectedTool
-                              ? AppPalette.primary
+                              ? theme.colorScheme.primary
                               : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
                         ),
                       ),
@@ -212,7 +212,7 @@ class _RailButton extends StatelessWidget {
     if (onPressed == null) {
       color = theme.navigationDisabledForeground;
     } else if (selected) {
-      color = AppPalette.primary;
+      color = theme.colorScheme.primary;
     } else {
       color = theme.navigationForeground;
     }

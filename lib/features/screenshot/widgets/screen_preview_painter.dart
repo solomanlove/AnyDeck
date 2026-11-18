@@ -8,7 +8,7 @@ import '../../../core/layout_inspector/layout_node.dart';
 
 /// 屏幕截图与布局分析共享绘制器。
 /// 在普通截图模式下仅绘制带旋转和缩放的截图底图；
-/// 在布局分析模式下额外绘制全量绿色组件边框、Hover 橙色高亮、选中绿色高亮及两两之间的测量标尺线。
+/// 在布局分析模式下额外绘制全量绿色组件边框、Hover 橙色高亮、主题色选区及两两之间的测量标尺线。
 class ScreenPreviewPainter extends CustomPainter {
   final ui.Image image;
   final LayoutNode? rootNode;
@@ -19,6 +19,9 @@ class ScreenPreviewPainter extends CustomPainter {
   final bool useDp;
   final double deviceScale;
 
+  /// 当前主题的选区高亮色；独立使用绘制器时默认沿用绿色。
+  final Color selectionColor;
+
   ScreenPreviewPainter({
     required this.image,
     this.rootNode,
@@ -28,6 +31,7 @@ class ScreenPreviewPainter extends CustomPainter {
     required this.rotationAngle,
     this.useDp = true,
     this.deviceScale = 1.0,
+    this.selectionColor = AppPalette.primary,
   });
 
   @override
@@ -98,13 +102,13 @@ class ScreenPreviewPainter extends CustomPainter {
         canvas.drawRect(
           rect,
           Paint()
-            ..color = AppPalette.primary
+            ..color = selectionColor
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3.0,
         );
         canvas.drawRect(
           rect,
-          Paint()..color = AppPalette.primary.withValues(alpha: 0.20),
+          Paint()..color = selectionColor.withValues(alpha: 0.20),
         );
       }
     }
@@ -406,6 +410,7 @@ class ScreenPreviewPainter extends CustomPainter {
         oldDelegate.showBorders != showBorders ||
         oldDelegate.rotationAngle != rotationAngle ||
         oldDelegate.useDp != useDp ||
-        oldDelegate.deviceScale != deviceScale;
+        oldDelegate.deviceScale != deviceScale ||
+        oldDelegate.selectionColor != selectionColor;
   }
 }

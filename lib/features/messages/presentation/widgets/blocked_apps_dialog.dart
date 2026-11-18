@@ -59,7 +59,7 @@ class _BlockedAppsDialogState extends ConsumerState<BlockedAppsDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          const Icon(CupertinoIcons.shield_fill, color: AppPalette.primary),
+          Icon(CupertinoIcons.shield_fill, color: theme.colorScheme.primary),
           const SizedBox(width: 8),
           Text(context.l10n.t('blockedAppsTitle')),
         ],
@@ -113,7 +113,8 @@ class _BlockedAppsDialogState extends ConsumerState<BlockedAppsDialog> {
                           ),
                           trailing: Switch(
                             value: isBlocked,
-                            activeThumbColor: Colors.red,
+                            activeThumbColor: theme.colorScheme.primary,
+                            activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.5),
                             onChanged: (block) async {
                               await forwardingService.toggleBlockApp(
                                 widget.serial,

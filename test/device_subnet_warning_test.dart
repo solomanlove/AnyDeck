@@ -7,6 +7,7 @@ import 'package:any_deck/features/devices/widgets/device_subnet_warning.dart';
 import 'package:any_deck/features/devices/widgets/host_network_footer.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +17,12 @@ class _HostNetworkService extends HostNetworkService {
   HostNetworkInfo info = _network('192.168.31.105');
   bool fail = false;
   int reads = 0;
+  int permissionRequests = 0;
+
+  @override
+  Future<void> requestWifiAccess() async {
+    permissionRequests++;
+  }
 
   @override
   Future<HostNetworkInfo> read() async {
@@ -126,12 +133,19 @@ void main() {
         expect(find.byTooltip(l10n.t('deviceSubnetWarning')), findsOneWidget);
         expect(service.reads, 1);
 
+        // 底栏只保留地址，Wi-Fi、网卡和手动刷新统一放在详情。
+        expect(find.text('test-wifi'), findsNothing);
+        await tester.tap(find.byKey(const Key('hostNetworkDetails')));
+        await tester.pumpAndSettle();
+        expect(find.text('test-wifi'), findsOneWidget);
+        expect(find.text('en0'), findsOneWidget);
+
         // 相同手机 IP、同一个页面，手动刷新必须丢弃原先的不匹配结果。
         service.info = _network('192.168.0.105');
-        await tester.tap(find.byTooltip(l10n.t('hostNetworkRefresh')));
+        await tester.tap(find.text(l10n.t('hostNetworkRefresh')));
         await tester.pumpAndSettle();
         expect(warning, findsNothing);
-        expect(find.text('IP: 192.168.0.105 (en0)'), findsOneWidget);
+        expect(find.text('192.168.0.105'), findsNWidgets(2));
         expect(service.reads, 2);
 
         // 不再自动轮询：等待 10 秒后不应触发自动刷新。
@@ -142,24 +156,136 @@ void main() {
         expect(service.reads, 2);
 
         // 手动刷新后更新提示与信息。
-        await tester.tap(find.byTooltip(l10n.t('hostNetworkRefresh')));
+        await tester.tap(find.text(l10n.t('hostNetworkRefresh')));
         await tester.pumpAndSettle();
         expect(warning, findsOneWidget);
         expect(service.reads, 3);
 
         service.fail = true;
-        await tester.tap(find.byTooltip(l10n.t('hostNetworkRefresh')));
+        await tester.tap(find.text(l10n.t('hostNetworkRefresh')));
         await tester.pumpAndSettle();
         expect(warning, findsNothing);
 
         service.fail = false;
         service.info = const HostNetworkInfo();
-        await tester.tap(find.byTooltip(l10n.t('hostNetworkRefresh')));
+        await tester.tap(find.text(l10n.t('hostNetworkRefresh')));
         await tester.pumpAndSettle();
         expect(warning, findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
+      });
+    }
+  }
+
+  testWidgets('底栏复制实际主机地址，权限读取只在详情显式请求', (tester) async {
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final service = _HostNetworkService();
+    service.info = const HostNetworkInfo(
+      wifiStatus: HostWifiStatus.permissionRequired,
+      address: HostNetworkAddress('en0', '192.168.31.105'),
+    );
+    final clipboardWrites = <String>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboardWrites.add((call.arguments as Map)['text'] as String);
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [hostNetworkServiceProvider.overrideWithValue(service)],
+        child: MaterialApp(
+          locale: const Locale('zh'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizationsDelegate(),
+            ...GlobalMaterialLocalizations.delegates,
+          ],
+          home: const Scaffold(
+            body: Column(children: [Spacer(), HostNetworkFooter()]),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('192.168.31.105'), findsOneWidget);
+    expect(service.permissionRequests, 0);
+    await tester.tap(find.byKey(const Key('copyHostIp')));
+    await tester.pumpAndSettle();
+    expect(clipboardWrites, ['192.168.31.105']);
+    expect(service.permissionRequests, 0);
+    expect(find.text('点击授权读取名称'), findsNothing);
+    await tester.tap(find.byKey(const Key('hostNetworkDetails')));
+    await tester.pumpAndSettle();
+    expect(find.text('未授权(需定位权限)'), findsOneWidget);
+    await tester.tap(find.text('点击授权读取名称'));
+    await tester.pumpAndSettle();
+    expect(service.permissionRequests, 1);
+    expect(service.reads, 2);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
+  for (final locale in ['zh', 'en']) {
+    for (final brightness in Brightness.values) {
+      testWidgets('全局底栏在窄屏和大字号下地址完整可见 $locale $brightness', (tester) async {
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        for (final width in [320.0, 500.0, 1200.0]) {
+          tester.view.physicalSize = Size(width, 400);
+          await tester.pumpWidget(
+            ProviderScope(
+              key: ValueKey(width),
+              overrides: [
+                hostNetworkServiceProvider.overrideWithValue(
+                  _HostNetworkService(),
+                ),
+              ],
+              child: MaterialApp(
+                locale: Locale(locale),
+                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: const [
+                  AppLocalizationsDelegate(),
+                  ...GlobalMaterialLocalizations.delegates,
+                ],
+                theme: ThemeData(brightness: brightness),
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: const TextScaler.linear(1.6)),
+                  child: child!,
+                ),
+                home: const Scaffold(
+                  body: Column(children: [Spacer(), HostNetworkFooter()]),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final address = find.byKey(const Key('hostNetworkAddress'));
+          expect(tester.widget<SelectableText>(address).data, '192.168.31.105');
+          expect(address.hitTestable(), findsOneWidget);
+          for (final key in [
+            const Key('hostNetworkAddress'),
+            const Key('copyHostIp'),
+            const Key('hostNetworkDetails'),
+            const ValueKey('services-diagnostics-button'),
+          ]) {
+            final rect = tester.getRect(find.byKey(key));
+            expect(rect.left, greaterThanOrEqualTo(0));
+            expect(rect.right, lessThanOrEqualTo(width));
+          }
+          expect(tester.takeException(), isNull);
+        }
       });
     }
   }

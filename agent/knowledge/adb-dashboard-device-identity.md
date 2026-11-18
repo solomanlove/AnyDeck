@@ -106,3 +106,11 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 - 边界：图标尺寸、颜色、回调及禁用状态沿用原配置；不新增公共样式、文案、Provider、进程或跨窗口协议，AirPlay 自有按钮保持原有内边距。
 - 验证：`flutter --no-version-check test --no-pub test/device_list_action_buttons_test.dart test/adb_wireless_controls_test.dart test/device_list_context_menu_test.dart test/device_share_widget_test.dart test/dashboard_header_bar_test.dart`，29 项通过。Light/Dark 用例比较实际 `InkResponse` 与 `Icon` 的四边距离，确保至少 8px，并点击图标左侧内边距确认编辑弹窗正常打开且不触发行跳转。
 - 3 个修改 Dart 文件定向 `flutter analyze --no-pub --no-fatal-infos` 无 error / warning，仅有 4 项 SDK 弃用 info；`git diff --check` 通过。未启动桌面 App，真实鼠标 Hover 与水波纹动画待运行包验收。
+
+## 设备编辑图标跟随主题色（2026-11-17）
+
+- 原因：设备操作列的 `CupertinoIcons.pencil` 单独使用固定蓝色，与投屏、连接按钮的主题主色不一致。
+- 实现：`dashboard_devices_rows.dart` 的编辑图标统一读取 `Theme.of(context).colorScheme.primary`，覆盖 Android、HarmonyOS、iOS 及离线设备和模拟器；主题切换沿用现有 Widget 重建机制。
+- 边界：只调整编辑图标颜色，沿用布局、Tooltip、弹窗回调和显隐条件；断开、禁用、在线状态继续保持各自语义色，不新增文案、Provider、设备命令或跨窗口协议。
+- 回归：`device_list_action_buttons_test.dart` 新增六种主题色 × Light/Dark 的真实设备行断言，比较编辑图标与当前主色及相邻投屏、连接图标；复用已有圆角、内边距与编辑回调测试。测试 fixture 仅新增默认绿色的可选 `themeColor` 参数。
+- 验证：上述测试连同 `device_list_context_menu_test.dart`、`adb_wireless_controls_test.dart`、`device_share_widget_test.dart`、`device_theme_color_test.dart` 共 47 项通过。3 个修改 Dart 文件的定向 analyze 无 error / warning，仅保留 5 项 SDK 弃用 info；新测试格式与 `git diff --check` 通过。未启动桌面 App。

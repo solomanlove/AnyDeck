@@ -1,16 +1,22 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import 'app_palette.dart';
+import 'app_theme_color.dart';
 import 'app_theme_colors.dart';
 import 'app_theme_sizes.dart';
 
 export 'app_palette.dart';
+export 'app_theme_color.dart';
 export 'app_theme_colors.dart';
 export 'app_theme_sizes.dart';
+export 'device_workspace_theme.dart';
 
-/// 基于同一个种子色构建 Material 3 的浅色和深色主题。
-ThemeData buildAppTheme(Brightness brightness) {
-  const seed = AppPalette.primary;
+/// 根据用户选择的主色构建 Material 3 的浅色和深色主题。
+ThemeData buildAppTheme(
+  Brightness brightness, {
+  AppThemeColor themeColor = AppThemeColor.green,
+}) {
+  final seed = themeColor.color;
   final isDark = brightness == Brightness.dark;
   final appColors = isDark ? AppThemeColors.dark : AppThemeColors.light;
   final colorScheme =
@@ -28,6 +34,11 @@ ThemeData buildAppTheme(Brightness brightness) {
   return ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
+    // Apple 自适应开关默认沿用系统绿色，统一应用用户选择的主色。
+    cupertinoOverrideTheme: CupertinoThemeData(
+      primaryColor: colorScheme.primary,
+      applyThemeToAll: true,
+    ),
     extensions: <ThemeExtension<dynamic>>[appColors],
     scaffoldBackgroundColor: isDark
         ? const Color(0xff0f172a)
@@ -78,6 +89,12 @@ ThemeData buildAppTheme(Brightness brightness) {
         borderRadius: AppThemeSizes.radiusMedium,
       ),
       isDense: true,
+    ),
+    // ChoiceChip 单独读取 secondary 配置，统一预设与筛选的选中配色。
+    chipTheme: ChipThemeData(
+      secondarySelectedColor: colorScheme.primaryContainer,
+      secondaryLabelStyle: TextStyle(color: colorScheme.onPrimaryContainer),
+      checkmarkColor: colorScheme.onPrimaryContainer,
     ),
     checkboxTheme: CheckboxThemeData(
       shape: RoundedRectangleBorder(borderRadius: AppThemeSizes.radiusSmall),

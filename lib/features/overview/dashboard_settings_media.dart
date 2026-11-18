@@ -25,7 +25,7 @@ extension _SettingsTabMedia on _SettingsTab {
           label: context.l10n.t('mirrorAlwaysOnTop'),
           subtitle: context.l10n.t('mirrorAlwaysOnTopDesc'),
           child: CupertinoSwitch(
-            activeTrackColor: const Color(0xFF34C759),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: settings.scrcpyAlwaysOnTop,
             onChanged: (val) => controller.setScrcpyAlwaysOnTop(val),
           ),
@@ -42,7 +42,7 @@ extension _SettingsTabMedia on _SettingsTab {
           label: context.l10n.t('mirrorControlsAlwaysVisible'),
           subtitle: context.l10n.t('mirrorControlsAlwaysVisibleDesc'),
           child: CupertinoSwitch(
-            activeTrackColor: const Color(0xFF34C759),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: settings.mirrorControlsAlwaysVisible,
             onChanged: (val) => controller.setMirrorControlsAlwaysVisible(val),
           ),
@@ -59,7 +59,7 @@ extension _SettingsTabMedia on _SettingsTab {
           label: context.l10n.t('autoPowerOffScreen'),
           subtitle: context.l10n.t('autoPowerOffScreenDesc'),
           child: CupertinoSwitch(
-            activeTrackColor: const Color(0xFF34C759),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: settings.autoPowerOffScreen,
             onChanged: (val) => controller.setAutoPowerOffScreen(val),
           ),
@@ -76,7 +76,7 @@ extension _SettingsTabMedia on _SettingsTab {
           label: context.l10n.t('autoIdentifyForegroundApp'),
           subtitle: context.l10n.t('autoIdentifyForegroundAppDesc'),
           child: CupertinoSwitch(
-            activeTrackColor: const Color(0xFF34C759),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: settings.autoIdentifyForegroundApp,
             onChanged: (val) => controller.setAutoIdentifyForegroundApp(val),
           ),
@@ -124,7 +124,7 @@ extension _SettingsTabMedia on _SettingsTab {
           label: context.l10n.t('audioForwarding'),
           subtitle: context.l10n.t('audioForwardingDesc'),
           child: CupertinoSwitch(
-            activeTrackColor: const Color(0xFF34C759),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: settings.mirrorAudioEnabled,
             onChanged: (val) => controller.setMirrorAudioEnabled(val),
           ),
@@ -142,7 +142,7 @@ extension _SettingsTabMedia on _SettingsTab {
           label: context.l10n.t('iosAudioForwarding'),
           subtitle: context.l10n.t('iosAudioForwardingDesc'),
           child: CupertinoSwitch(
-            activeTrackColor: const Color(0xFF34C759),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: settings.iosMirrorAudioEnabled,
             onChanged: (val) => controller.setIosMirrorAudioEnabled(val),
           ),
@@ -212,7 +212,7 @@ extension _SettingsTabMedia on _SettingsTab {
           label: context.l10n.t('settingsForceHostRecording'),
           subtitle: context.l10n.t('settingsForceHostRecordingDesc'),
           child: CupertinoSwitch(
-            activeTrackColor: const Color(0xFF34C759),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
             value: settings.forceHostRecording,
             onChanged: (val) => controller.setForceHostRecording(val),
           ),

@@ -185,11 +185,9 @@ class _PlatformVersionDistributionShellViewState
         ? Colors.white.withValues(alpha: 0.45)
         : const Color(0xFF6E7781);
 
-    final btnBg = isDark ? const Color(0xFF383B40) : const Color(0xFFE6E8EB);
-    final btnFg = isDark ? Colors.white : const Color(0xFF1F2328);
-    final btnBorder = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : const Color(0xFFD0D7DE);
+    final btnBg = Theme.of(context).colorScheme.primary;
+    final btnFg = Theme.of(context).colorScheme.onPrimary;
+    final btnBorder = Theme.of(context).colorScheme.primary;
 
     final updatePrefix = context.l10n.t('lastUpdatedPrefix');
     final dateText = '$updatePrefix${_currentPlatform.lastUpdatedDate}';

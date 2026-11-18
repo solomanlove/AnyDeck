@@ -5,101 +5,108 @@ extension _DeviceListPanelView on _DeviceListPanelState {
   Widget _buildDeviceListPanel(BuildContext context) {
     final activeDevicesAsync = ref.watch(discoveredDevicesProvider);
     final items = ref.watch(deviceRegistryProvider);
+    final groups = ref.watch(deviceGroupsProvider).value ?? DeviceGroupsState();
+    ref.listen(deviceRegistryProvider, (_, devices) {
+      if (ref.read(deviceGroupsProvider).hasValue) {
+        _synchronizeDeviceGroups(devices);
+      }
+    });
+    ref.listen(deviceGroupsProvider, (previous, next) {
+      if (previous?.hasValue != true && next.hasValue) {
+        _synchronizeDeviceGroups(ref.read(deviceRegistryProvider));
+      }
+    });
     final airplayRoot = ref.watch(airplaySessionProvider);
     final mergedAirPlay = mergeAirPlayDevicesIntoList(items, airplayRoot);
+    final selectedGroupId = groups.groups.any((group) => group.id == _groupId)
+        ? _groupId : null;
+    final groupedDevices = mergedAirPlay.devices
+        .where((device) => groups.matches(selectedGroupId, device)).toList();
     final names = {
       for (final device in mergedAirPlay.devices)
-        device.id: DeviceListPresentation.name(device, ref.watch(
-          cachedDeviceOverviewProvider(device.id).select((value) => value.value?.name),
-        )),
+        device.id: DeviceListPresentation.name(
+          device,
+          ref.watch(
+            cachedDeviceOverviewProvider(
+              device.id,
+            ).select((value) => value.value?.name),
+          ),
+        ),
     };
-    final sortedItems = _sortedDevices(
-      mergedAirPlay.devices,
-      mergedAirPlay.sessionByDeviceId,
-      names,
-    ).where((device) => DeviceListPresentation.matches(
-        device, names[device.id]!, _query, _onlineOnly)).toList();
-    final selectable = sortedItems.where((device) => !device.id.startsWith('airplay-')).toList();
-    final visibleChecked = selectable.where((device) => device.isChecked).length;
-    final selectedCount = items.where((device) => device.isChecked).length;
-    final allChecked = selectable.isNotEmpty && visibleChecked == selectable.length;
-    final hasChecked = selectedCount > 0;
+    final sortedItems =
+        _sortedDevices(
+              groupedDevices,
+              mergedAirPlay.sessionByDeviceId,
+              names,
+            )
+            .where(
+              (device) =>
+                  (_filter == DeviceStatusFilter.all ||
+                      device.isOnline ==
+                          (_filter == DeviceStatusFilter.online)) &&
+                  DeviceListPresentation.matches(
+                    device,
+                    names[device.id]!,
+                    _query,
+                    false,
+                  ),
+            )
+            .toList();
+    final selectable = sortedItems
+        .where((device) => !device.id.startsWith('airplay-'))
+        .toList();
+    final checked = items.where((device) => device.isChecked).toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < 600;
-        final hasBoundedHeight = constraints.hasBoundedHeight;
-        final contentWidget = _buildDeviceListContent(
+        final windowWidth = MediaQuery.sizeOf(context).width;
+        final content = _buildDeviceListContent(
           context: context,
           activeDevicesAsync: activeDevicesAsync,
           sortedItems: sortedItems,
           names: names,
           sessionByDeviceId: mergedAirPlay.sessionByDeviceId,
-          isCompact: isCompact,
-          hasBoundedHeight: hasBoundedHeight,
+          isCompact: windowWidth <= 730,
+          hasBoundedHeight: constraints.hasBoundedHeight,
         );
-
-        final theme = Theme.of(context);
-        final isDark = theme.brightness == Brightness.dark;
-
-        Widget panelCard = ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.white.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.04),
-                  width: 1.5,
+        return Padding(
+          padding: windowWidth <= 490
+              ? const EdgeInsets.fromLTRB(8, 10, 8, 0)
+              : windowWidth <= 650
+              ? const EdgeInsets.fromLTRB(12, 10, 12, 0)
+              : const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: constraints.hasBoundedHeight
+                ? MainAxisSize.max
+                : MainAxisSize.min,
+            children: [
+              DeviceListFilters(
+                controller: _searchController,
+                onlineCount: groupedDevices.where((d) => d.isOnline).length,
+                totalCount: groupedDevices.length,
+                groupFilter: DeviceGroupFilter(
+                  selectedGroupId: selectedGroupId,
+                  onChanged: _changeGroup,
+                  // 临时 AirPlay 会话没有稳定物理身份，自定义成员只选注册设备。
+                  devices: items,
+                  names: names,
                 ),
+                filter: _filter,
+                onFilterChanged: _changeFilter,
+                viewMode: _viewMode,
+                onViewModeChanged: _changeViewMode,
+                batchMode: _batchMode,
+                onBatchModeChanged: _changeBatchMode,
+                onSearchChanged: _changeQuery,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (sortedItems.isNotEmpty) ...[
-                    _buildTableHeader(context, isCompact, allChecked, visibleChecked > 0, selectable),
-                    const SizedBox(height: 4),
-                  ],
-                  if (hasBoundedHeight)
-                    Expanded(child: contentWidget)
-                  else
-                    contentWidget,
-                  const HostNetworkFooter(),
-                ],
-              ),
-            ),
-          ),
-        );
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DeviceListFilters(
-              controller: _searchController,
-              onlineCount: mergedAirPlay.devices.where((d) => d.isOnline).length,
-              totalCount: mergedAirPlay.devices.length,
-              onlineOnly: _onlineOnly,
-              onOnlineOnlyChanged: _changeOnlineOnly,
-              onSearchChanged: _changeQuery,
-            ),
-            if (hasChecked) ...[
-              _buildBatchActionsToolbar(
-                context,
-                items.where((d) => d.isChecked).toList(),
-              ),
-              const SizedBox(height: 16),
+              if (_batchMode) _buildSelectionBar(context, selectable, checked),
+              if (constraints.hasBoundedHeight)
+                Expanded(child: content)
+              else
+                content,
             ],
-            if (hasBoundedHeight)
-              Expanded(child: panelCard)
-            else
-              panelCard,
-          ],
+          ),
         );
       },
     );
@@ -121,6 +128,14 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       final bMirroring = sessionByDeviceId.containsKey(b.id);
       if (aMirroring && !bMirroring) return -1;
       if (!aMirroring && bMirroring) return 1;
+
+      // 版本按数字分段比较；缺失版本始终位于当前在线/投屏优先级末尾。
+      if (_sortColumn == 'systemVersion') {
+        final cmp = DeviceSystemVersionSort.compare(
+          a, b, ascending: _sortAscending,
+        );
+        return cmp != 0 ? cmp : a.id.compareTo(b.id);
+      }
 
       final cmp = switch (_sortColumn) {
         'name' => (names[a.id] ?? a.displayName).compareTo(names[b.id] ?? b.displayName),
@@ -160,115 +175,201 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       );
     }
     if (sortedItems.isEmpty) {
+      final filtered = _query.isNotEmpty ||
+          _filter != DeviceStatusFilter.all || _groupId != null;
       return Center(
-        child: _PanelMessage(
-          icon: CupertinoIcons.slash_circle,
-          title: context.l10n.t(_query.isNotEmpty || _onlineOnly ? 'deviceListNoMatches' : 'noDevices'),
-          subtitle: context.l10n.t(_query.isNotEmpty || _onlineOnly ? 'deviceListResetHint' : 'connectUsbOrTcp'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _PanelMessage(
+              icon: CupertinoIcons.slash_circle,
+              title: context.l10n.t(
+                filtered ? 'deviceListNoMatches' : 'noDevices',
+              ),
+              subtitle: context.l10n.t(
+                filtered ? 'deviceListResetHint' : 'connectUsbOrTcp',
+              ),
+            ),
+            if (filtered) ...[
+              const SizedBox(height: 12),
+              OutlinedButton(
+                key: const Key('deviceResetFilters'),
+                onPressed: _resetDeviceFilters,
+                child: Text(context.l10n.t('deviceWorkspaceResetFilters')),
+              ),
+            ],
+          ],
         ),
       );
     }
 
-    return ListView.builder(
-      shrinkWrap: !hasBoundedHeight,
-      physics: hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
-      itemCount: sortedItems.length,
-      itemBuilder: (context, index) {
-        final device = sortedItems[index];
-        final isSelected = _contextDeviceId == device.id ||
-            ref.watch(selectedDeviceProvider)?.id == device.id;
-        return _buildDeviceRow(
-          context,
-          device,
-          isSelected,
-          isCompact,
-          index,
-          airplaySession: sessionByDeviceId[device.id],
-          displayName: names[device.id]!,
-        );
-      },
+    if (_viewMode == DeviceViewMode.wall) {
+      return _buildDeviceWall(
+        sortedItems,
+        names,
+        sessionByDeviceId,
+        hasBoundedHeight: hasBoundedHeight,
+      );
+    }
+    final connectionWidth = _connectionColumnWidth(
+      context,
+      sortedItems,
+      sessionByDeviceId,
     );
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 12),
+      child: ClipRRect(
+        borderRadius: AppThemeSizes.radiusLarge,
+        child: ColoredBox(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: hasBoundedHeight
+                ? MainAxisSize.max
+                : MainAxisSize.min,
+            children: [
+              if (MediaQuery.sizeOf(context).width > 490)
+                _buildTableHeader(context, isCompact, connectionWidth),
+              if (hasBoundedHeight)
+                Expanded(
+                  child: _buildRows(
+                    sortedItems,
+                    names,
+                    sessionByDeviceId,
+                    isCompact,
+                    true,
+                    connectionWidth,
+                  ),
+                )
+              else
+                _buildRows(
+                  sortedItems,
+                  names,
+                  sessionByDeviceId,
+                  isCompact,
+                  false,
+                  connectionWidth,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRows(
+    List<RegisteredDevice> devices,
+    Map<String, String> names,
+    Map<String, AirPlaySessionData> sessions,
+    bool compact,
+    bool bounded,
+    double connectionWidth,
+  ) => ListView.builder(
+    shrinkWrap: !bounded,
+    physics: bounded ? null : const NeverScrollableScrollPhysics(),
+    itemCount: devices.length,
+    itemBuilder: (context, index) {
+      final device = devices[index];
+      return _buildDeviceRow(
+        context,
+        device,
+        _contextDeviceId == device.id,
+        compact,
+        index,
+        airplaySession: sessions[device.id],
+        displayName: names[device.id]!,
+        connectionWidth: connectionWidth,
+      );
+    },
+  );
+
+  /// 只测量不同的通道组合，按可见设备的实际内容统一表头与行宽。
+  double _connectionColumnWidth(
+    BuildContext context,
+    List<RegisteredDevice> devices,
+    Map<String, AirPlaySessionData> sessions,
+  ) {
+    var width = 80.0;
+    final measured = <String>{};
+    for (final device in devices) {
+      final channels = DeviceListPresentation.connections(
+        device,
+        isAirplayMirroring: sessions.containsKey(device.id),
+      );
+      if (!measured.add(channels.map((channel) => channel.index).join(','))) {
+        continue;
+      }
+      width = max(
+        width,
+        DeviceConnectionIndicators.labelsWidth(context, channels) + 12,
+      );
+    }
+    return width;
   }
 
   Widget _buildTableHeader(
     BuildContext context,
-    bool isCompact,
-    bool allChecked,
-    bool hasChecked,
-    List<RegisteredDevice> selectable,
+    bool compact,
+    double connectionWidth,
   ) {
-    final titleStyle = Theme.of(
-      context,
-    ).textTheme.titleSmall?.copyWith(
-      fontWeight: FontWeight.bold,
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodySmall?.copyWith(
+      fontSize: 12,
+      color: theme.colorScheme.onSurfaceVariant,
     );
-
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layout = _DeviceTableLayout.resolve(
           context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          if (!isCompact) ...[
-            SizedBox(
-              width: 45,
-              child: Checkbox(
-                tristate: true,
-                value: hasChecked && !allChecked ? null : allChecked,
-                onChanged: (_) {
-                  final registry = ref.read(deviceRegistryProvider.notifier);
-                  for (final device in selectable) {
-                    if (device.isChecked == allChecked) registry.toggleCheck(device.id);
-                  }
-                },
+          constraints.maxWidth,
+          _batchMode,
+          connectionWidth,
+        );
+        return Container(
+          key: const Key('deviceTableHeader'),
+          constraints: const BoxConstraints(minHeight: 36),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        color: theme.appColors.sunkenSurface,
+          child: Row(
+            children: [
+              if (_batchMode) const SizedBox(width: 36),
+              _SortableHeaderCell(
+                flex: 1,
+                label: context.l10n.t('deviceNameCol'),
+                style: style,
+                sortIcon: _getSortIcon('name'),
+                onTap: () => _toggleSort('name'),
               ),
-            ),
-            const SizedBox(width: 10),
-          ],
-          _SortableHeaderCell(
-            flex: 4,
-            label: context.l10n.t('deviceNameCol'),
-            style: titleStyle,
-            sortIcon: _getSortIcon('name'),
-            onTap: () => _toggleSort('name'),
+              if (!layout.statusInline)
+                SizedBox(
+                  width: layout.statusWidth,
+                  child: Text(
+                    context.l10n.t('deviceWorkspaceConnectionStatus'),
+                    style: style,
+                  ),
+                ),
+              if (!layout.systemInline)
+                _SortableHeaderCell(
+                  key: const Key('deviceSystemVersionSort'),
+                  flex: 1,
+                  width: _DeviceTableLayout.systemWidth,
+                  label: context.l10n.t('deviceAndroidVersionCol'),
+                  style: style,
+                  sortIcon: _getSortIcon('systemVersion'),
+                  onTap: () => _toggleSort('systemVersion'),
+                ),
+              if (!_batchMode)
+                SizedBox(
+                  width: layout.actionsWidth,
+                  child: Text(
+                    context.l10n.t('deviceActionsCol'),
+                    style: style,
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Text(
-              context.l10n.t('deviceAndroidVersionCol'),
-              style: titleStyle,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Text(context.l10n.t('deviceActionsCol'), style: titleStyle),
-          ),
-          if (!isCompact) ...[
-            const SizedBox(width: 10),
-            const SizedBox(
-              width: 40,
-              child: Icon(
-                CupertinoIcons.settings,
-                size: 16,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -297,9 +398,12 @@ extension _DeviceListPanelView on _DeviceListPanelState {
 }
 
 /// 设备表头中带排序能力的单元格。
+/// [width] 指定固定列宽；为空时按 [flex] 分配剩余空间。
 class _SortableHeaderCell extends StatelessWidget {
   const _SortableHeaderCell({
+    super.key,
     required this.flex,
+    this.width,
     required this.label,
     required this.style,
     required this.sortIcon,
@@ -307,6 +411,7 @@ class _SortableHeaderCell extends StatelessWidget {
   });
 
   final int flex;
+  final double? width;
   final String label;
   final TextStyle? style;
   final Widget sortIcon;
@@ -314,20 +419,26 @@ class _SortableHeaderCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      flex: flex,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            children: [
-              Text(label, style: style),
-              sortIcon,
-            ],
-          ),
+    final content = InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.zero,
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: style,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            sortIcon,
+          ],
         ),
       ),
     );
+    return width == null
+        ? Expanded(flex: flex, child: content)
+        : SizedBox(width: width, child: content);
   }
 }

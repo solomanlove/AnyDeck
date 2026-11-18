@@ -174,6 +174,7 @@ class _HarmonyApiDistributionViewState
     bool isDark,
   ) {
     final isEol = item.muteFlag == 'EOL';
+    final selectedForeground = Theme.of(context).colorScheme.onPrimaryContainer;
     final blkBg = isEol
         ? (isDark ? const Color(0xFF383B40) : const Color(0xFFE2E4E8))
         : const Color(0xFFE84335);
@@ -182,9 +183,7 @@ class _HarmonyApiDistributionViewState
         : Colors.white;
 
     final rowBg = isSelected
-        ? (isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : const Color(0xFFE84335).withValues(alpha: 0.08))
+        ? Theme.of(context).colorScheme.primaryContainer
         : Colors.transparent;
 
     return InkWell(
@@ -199,7 +198,7 @@ class _HarmonyApiDistributionViewState
           borderRadius: BorderRadius.circular(6),
           border: isSelected
               ? Border.all(
-                  color: const Color(0xFFE84335),
+                  color: Theme.of(context).colorScheme.primary,
                   width: 1.5,
                 )
               : null,
@@ -277,7 +276,9 @@ class _HarmonyApiDistributionViewState
                   Text(
                     '${item.apiNum}',
                     style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF24292F),
+                      color: isSelected
+                          ? selectedForeground
+                          : (isDark ? Colors.white : const Color(0xFF24292F)),
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                     ),
@@ -285,7 +286,9 @@ class _HarmonyApiDistributionViewState
                   Text(
                     'API 版本',
                     style: TextStyle(
-                      color: isDark ? Colors.white38 : const Color(0xFF6E7781),
+                      color: isSelected
+                          ? selectedForeground
+                          : (isDark ? Colors.white38 : const Color(0xFF6E7781)),
                       fontSize: 9,
                     ),
                   ),
@@ -300,8 +303,10 @@ class _HarmonyApiDistributionViewState
                 children: [
                   Text(
                     item.share,
-                    style: const TextStyle(
-                      color: Color(0xFFE84335),
+                    style: TextStyle(
+                      color: isSelected
+                          ? selectedForeground
+                          : const Color(0xFFE84335),
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'monospace',
@@ -310,7 +315,9 @@ class _HarmonyApiDistributionViewState
                   Text(
                     '累计 ${item.cover}',
                     style: TextStyle(
-                      color: isDark ? Colors.white60 : const Color(0xFF57606A),
+                      color: isSelected
+                          ? selectedForeground
+                          : (isDark ? Colors.white60 : const Color(0xFF57606A)),
                       fontSize: 10,
                     ),
                   ),
@@ -348,16 +355,16 @@ class _HarmonyApiDistributionViewState
                         ? Icons.keyboard_arrow_down_rounded
                         : Icons.keyboard_arrow_right_rounded,
                     size: 18,
-                    color: const Color(0xFFE84335),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 6),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '历史版本（HarmonyOS 1.0 起 · 5.0 起为纯自研原生鸿蒙，与 1.0–4.x 非同一技术栈）',
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFFE84335),
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ),

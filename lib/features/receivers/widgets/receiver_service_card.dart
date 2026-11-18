@@ -6,6 +6,7 @@ import '../../../app/theme/app_theme.dart';
 ///
 /// [title] 与 [description] 说明协议用途，[statusLabel] 与 [statusDetail]
 /// 展示当前服务状态，[value] 和 [onChanged] 控制服务启停，[content] 承载名称设置等协议配置。
+/// 启停开关显式跟随当前主色，独立复用时也不依赖系统默认开关配色。
 class ReceiverServiceCard extends StatelessWidget {
   const ReceiverServiceCard({
     super.key,
@@ -104,6 +105,8 @@ class ReceiverServiceCard extends StatelessWidget {
                     else
                       Switch.adaptive(
                         key: switchKey,
+                        activeThumbColor: theme.colorScheme.onPrimary,
+                        activeTrackColor: theme.colorScheme.primary,
                         value: value,
                         onChanged: onChanged,
                       ),

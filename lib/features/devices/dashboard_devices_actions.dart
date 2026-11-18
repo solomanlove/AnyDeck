@@ -10,6 +10,27 @@ extension _DeviceListPanelActions on _DeviceListPanelState {
     AirPlaySessionData? airplaySession,
   ) async {
     switch (action) {
+      case DeviceContextAction.preview:
+        await ref.read(deviceScreenPreviewProvider(device.id).notifier).capture();
+        if (!context.mounted) return;
+        final preview = ref.read(deviceScreenPreviewProvider(device.id));
+        if (preview.hasError) {
+          _showSnack(context,
+            '${context.l10n.t('error')}: ${preview.error}', isError: true);
+        }
+      case DeviceContextAction.share:
+        await showDialog<void>(context: context,
+          builder: (_) => DeviceShareDialog(device: device));
+      case DeviceContextAction.wireless:
+        await _runAdbAction(context, ref, ref.read(deviceRegistryProvider.notifier)
+            .connectPreferredAdbWireless(device));
+      case DeviceContextAction.disconnect:
+        for (final id in device.connections.where((id) =>
+            id.contains(':') || id.contains('.'))) {
+          await _runAdbAction(context, ref,
+            ref.read(deviceRegistryProvider.notifier).disconnectNetworkDevice(id));
+          if (!context.mounted) return;
+        }
       case DeviceContextAction.screenshot:
         await _captureAndSaveDeviceScreenshot(
           context,

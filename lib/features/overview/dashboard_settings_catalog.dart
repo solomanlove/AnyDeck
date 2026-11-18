@@ -6,6 +6,7 @@ extension _SettingsTabCatalog on _SettingsTab {
     final settings = ref.watch(appSettingsProvider);
     final controller = ref.read(appSettingsProvider.notifier);
     final isZh = context.l10n.locale.languageCode == 'zh';
+    final primary = Theme.of(context).colorScheme.primary;
     return [
       SettingsItem(
         id: 'language',
@@ -63,6 +64,37 @@ extension _SettingsTabCatalog on _SettingsTab {
           ),
         ),
       ),
+      SettingsItem(
+        id: 'themeColor',
+        category: SettingsCategory.general,
+        section: context.l10n.t('generalSettings'),
+        title: context.l10n.t('themeColor'),
+        description: context.l10n.t('themeColorDesc'),
+        keywords: [
+          context.l10n.t('themeColorKeywords'),
+          for (final color in AppThemeColor.values)
+            context.l10n.t(color.labelKey),
+        ].join(' '),
+        child: _buildSettingRow(
+          context,
+          label: context.l10n.t('themeColor'),
+          subtitle: context.l10n.t('themeColorDesc'),
+          child: _buildDropdownSelector<AppThemeColor>(
+            context,
+            alignMenu: true,
+            value: settings.themeColor,
+            items: [
+              for (final color in AppThemeColor.values)
+                _DropdownOption(
+                  value: color,
+                  label: context.l10n.t(color.labelKey),
+                  color: color.color,
+                ),
+            ],
+            onChanged: (color) => controller.setThemeColor(color),
+          ),
+        ),
+      ),
       if (Platform.isMacOS)
         SettingsItem(
           id: 'launchAtStartup',
@@ -70,7 +102,7 @@ extension _SettingsTabCatalog on _SettingsTab {
           section: context.l10n.t('settingsStartup'),
           title: context.l10n.t('launchAtStartup'),
           description: context.l10n.t('launchAtStartupDesc'),
-          child: _buildAutoStartSettingRow(context, ref, AppPalette.primary),
+          child: _buildAutoStartSettingRow(context, ref, primary),
         ),
       SettingsItem(
         id: 'keyboardShortcuts',
@@ -141,7 +173,7 @@ extension _SettingsTabCatalog on _SettingsTab {
             context.l10n.t(key),
         ],
         standalone: true,
-        child: _buildNotificationSectionCard(context, ref, AppPalette.primary),
+        child: _buildNotificationSectionCard(context, ref, primary),
       ),
       SettingsItem(
         id: 'saveDirectory',
@@ -163,8 +195,8 @@ extension _SettingsTabCatalog on _SettingsTab {
             children: [
               if (settings.screenshotSavePath.isNotEmpty) ...[
                 _buildTextActionButton(
+                  context: context,
                   text: isZh ? '打开' : 'Open',
-                  color: const Color(0xFF2563EB),
                   onTap: () {
                     ref
                         .read(hostPlatformServiceProvider)
@@ -174,8 +206,8 @@ extension _SettingsTabCatalog on _SettingsTab {
                 const SizedBox(width: 16),
               ],
               _buildTextActionButton(
+                context: context,
                 text: isZh ? '更改' : 'Change',
-                color: const Color(0xFF2563EB),
                 onTap: () async {
                   final path = await getDirectoryPath();
                   if (path != null) {
@@ -194,7 +226,7 @@ extension _SettingsTabCatalog on _SettingsTab {
         title: context.l10n.t('cacheFolders'),
         description: context.l10n.t('cacheFoldersDesc'),
         keywords: context.l10n.t('settingsStorageKeywords'),
-        child: _buildCacheSettingRow(context, ref, AppPalette.primary),
+        child: _buildCacheSettingRow(context, ref, primary),
       ),
       SettingsItem(
         id: 'appVersion',
@@ -206,7 +238,7 @@ extension _SettingsTabCatalog on _SettingsTab {
           if (settings.developerModeEnabled) context.l10n.t('developerOptions'),
         ],
         child: SettingsDeveloperEntry(
-          brandGreen: AppPalette.primary,
+          brandGreen: primary,
           onCheckUpdate: () => showDialog<void>(
             context: context,
             builder: (_) => const _UpdateCheckDialog(),

@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/app_theme.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/widget/app_toast.dart';
 import '../../../core/airplay/airplay_server_service.dart';
@@ -121,7 +120,8 @@ class _ReceiverNameSettingFieldState
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isCustom = widget.value != widget.defaultName;
 
     return Row(
@@ -182,8 +182,8 @@ class _ReceiverNameSettingFieldState
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(
-                  color: AppPalette.primary,
+                borderSide: BorderSide(
+                  color: theme.colorScheme.primary,
                   width: 1.2,
                 ),
               ),

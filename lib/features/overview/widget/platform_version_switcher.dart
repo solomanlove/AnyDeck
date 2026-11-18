@@ -94,8 +94,8 @@ class PlatformVersionSwitcher extends StatelessWidget {
   }) {
     final isSelected = selectedPlatform == platform;
 
-    final selectedBg = isDark ? const Color(0xFF383B40) : Colors.white;
-    final selectedFg = isDark ? Colors.white : const Color(0xFF1F2328);
+    final selectedBg = Theme.of(context).colorScheme.primaryContainer;
+    final selectedFg = Theme.of(context).colorScheme.onPrimaryContainer;
     final unselectedFg = isDark
         ? Colors.white.withValues(alpha: 0.65)
         : const Color(0xFF57606A);

@@ -1,0 +1,210 @@
+# AnyDeck 主题色设置
+
+## 需求与入口
+
+2026-11-17：在“设置 → 常规”新增“主题色”，支持绿色、蓝色、紫色、橙色、粉色和青色。默认沿用原绿色；选择后立即刷新、自动保存。颜色名称和设置说明支持中英文，设置全局搜索可按颜色名称定位。
+
+## 实现与边界
+
+- `lib/app/theme/app_theme_color.dart` 集中定义主色、稳定枚举名称及本地化 key。`buildAppTheme` 接收 `themeColor`，同时构建 Light/Dark 的 ColorScheme 和按钮、Checkbox、Radio 主色。
+- `AppSettings.themeColor` 默认 `green`；`copyWith` 保留未修改字段。SharedPreferences key 为 `settings.themeColor`，保存枚举名称；缺失或未知名称回退绿色，兼容旧版本。
+- 外观保存方法收口到 `app_settings_appearance.dart`，将原 `setThemeMode` 一并移入，保持 Controller 在 500 行以内。主题色修改等待初始设置加载，避免旧配置覆盖用户选择。
+- 主窗口和投屏、APK 详情、控制台、版本分布、DLNA 的 Flutter 窗口均接入同一主色。设置菜单、开关和主侧栏高亮使用 Theme；在线、成功、警告和设备品牌等业务颜色保留原语义。
+- 主题色下拉菜单复用设置页公共选择器，支持色点预览，并将色点宽度计入菜单测量，保持按钮与菜单边缘对齐。中英文文案位于独立的 `app_l10n_theme.dart`。
+- 无新增插件、Provider、后台进程或设备命令。原生视频窗口的明暗外观继续走原有接口；主题色作用于 Flutter 控件。
+
+## 跨窗口通信
+
+| 项目 | 约定 |
+| --- | --- |
+| Method | `update_theme_color` |
+| 参数 | `green`、`blue`、`purple`、`orange`、`pink` 或 `teal` 字符串 |
+| 发送 | 修改窗口保存设置后，复用现有广播；子窗口先通知 `any_deck/settings_main`，再同步其他活动窗口 |
+| 接收 | 等待初始加载后只更新内存，不回写 Preference、不再次广播，避免旧值回写及广播循环 |
+| 异常 | 忽略非字符串及未知名称；窗口关闭或广播失败沿用既有容错与 Timeout |
+
+## 验证与回归
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/app_theme_test.dart test/app_theme_color_settings_test.dart \
+  test/settings_theme_color_test.dart test/theme_window_wiring_test.dart \
+  test/dashboard_service_navigation_test.dart test/app_settings_test.dart \
+  test/settings_review_test.dart test/settings_workspace_test.dart \
+  test/dashboard_shell_navigation_test.dart test/autostart_setting_control_test.dart \
+  test/mirror_settings_dialog_test.dart test/core/dlna/dlna_player_bridge_test.dart
+git diff --check
+```
+
+- 自动测试覆盖全部颜色 × Light/Dark、System 跟随、默认兼容、保存重建、初始化竞态、主子窗口广播、非法参数以及接收端不回写和不循环。
+- 实际 Dashboard 覆盖中英文 × 明暗主题 × 900/1600px、颜色预览、菜单对齐、搜索定位、切回绿色、即时保存和通知开关颜色；实际 Console 子窗口验证蓝色切换为紫色。
+- 定向 analyze 使用 `--no-fatal-infos`；当前 Flutter SDK 对仓库沿用的 Material 导入和本地化委托给出弃用 info，未进行无关的包迁移。
+- 验证结果：上述 12 个测试文件共 85 项全部通过；本次 Dart 修改文件定向 analyze 无 error/warning，仅 29 项 SDK 弃用 info，退出码为 0。新文件及测试格式检查、`git diff --check` 均通过。
+- 未启动桌面 App。真实多 Engine 广播、实际 DPI 与原生窗口视觉仍属于桌面人工验收范围。
+
+人工回归：打开设置和任一子窗口，依次选择六种颜色，确认按钮、选中导航和设置开关同步；切换浅色/深色/跟随系统后颜色保持；重启确认恢复选择，设备在线绿点与成功提示继续使用业务状态色。
+
+## 2026-11-17 全页面交互颜色补齐
+
+对 `lib/` 中 `AppPalette.primary`、命名绿色、绿色十六进制值及 `brandGreen`、`_overviewAccent` 等别名逐处检查，修正原设置页之外遗留的绿色交互。改动只涉及配色和相关回归，不改变设备命令与 Provider 生命周期。
+
+| 范围 | 跟随主题的内容 |
+| --- | --- |
+| MCP、消息 | 服务启动按钮、开关、服务运行圆点和头部徽章、目标消息边框和背景、屏蔽列表图标 |
+| 开发者、更新与接收名称 | 工具图标、操作按钮、更新进度、接收名称输入焦点边框 |
+| 设备、模拟器、AirPlay | 连接/投屏/启动入口、模拟器选择背景、打开投屏按钮 |
+| 概览 | 卡片图标、API badge、容量卡背景/边框及进度条 |
+| 应用与投屏 | 启动/权限/开启 Wi-Fi 快捷操作、融合投屏开关、鼠标轨迹回放按钮及进度 |
+| 截图、布局、日志、网页 | 连续保存选中按钮、布局树选中背景、画布选区、日志恢复按钮、地址栏图标 |
+
+- 业务 UI 从 `Theme.of(context).colorScheme.primary/onPrimary` 读取交互主色；`SettingsDeveloperEntry.brandGreen` 仅作为可选覆盖，默认随当前 Theme 更新。
+- 两个布局预览 Painter 由 Widget 注入 `selectionColor`，`shouldRepaint` 比较颜色，确保切换主题后已有选区重新绘制；固定全量边界、Hover、标尺及用户画笔不受影响。
+- 概览成功状态与主题装饰分离；设备在线、Root、充电、执行成功/环境就绪等继续使用固定状态色。侧栏服务运行圆点与 MCP 运行徽章跟随主题色。Android Logo、ANSI/Logcat 语法、图表数据序列、布尔属性及调色板中的绿色保留业务含义。网络页面剩余绿色用于成功 SnackBar，交互已使用 Theme。
+- 公共 `appColors` helper 在标准 `ThemeData` 未安装扩展时回退到对应明暗语义色，支持公共组件单独复用，避免新接入成功语义色后出现空值异常。
+- 新增 `control_theme_color_test.dart`、`device_theme_color_test.dart`、`theme_feature_controls_test.dart`、`screenshot_layout_theme_test.dart`、`logcat_webview_theme_test.dart`，验证非绿色主题、同一组件实时换色、输入及选择保留、回调仍可用，并对实际 Painter 选区像素取样。
+- 旧回归 fixture 补齐原生窗口广播隔离；截图布局回归使用固定 PNG，并隔离侧栏设置/MCP/Share/概览依赖，避免测试等待引擎图像编码或启动真实服务。WebView 测试恢复有效的平台占位实现，避免插件不允许设置空实例的断言。
+
+新增回归与关键旧回归入口：
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/control_theme_color_test.dart test/device_theme_color_test.dart \
+  test/theme_feature_controls_test.dart test/screenshot_layout_theme_test.dart \
+  test/logcat_webview_theme_test.dart test/app_theme_test.dart \
+  test/messages_source_widget_test.dart test/developer_mode_test.dart \
+  test/screenshot_layout_merge_test.dart
+```
+
+本轮共验证 31 个相关测试文件、177 项测试全部通过，包含主题设置与多窗口、MCP、消息、开发者、模拟器、概览、接收端、截图/编辑/布局、Logcat/WebView、应用视图与投屏快捷操作。定向 analyze 无 error；保留 HEAD 已有的 `_OverviewHeroCard.tooltip` 未使用参数 warning、两项既有 info 及 SDK 弃用 info，使用 `--no-fatal-infos --no-fatal-warnings` 验证通过。新文件格式与 `git diff --check` 通过，未启动桌面 App。
+
+## 2026-11-17 MCP 接入开关与平台筛选补齐
+
+- `McpConfigSnippetCard` 的三平台接入与兼容入口开关显式使用 `ColorScheme.primary` 作为选中轨道、`onPrimary` 作为滑块，保留原生自适应外观。仅依赖默认 `Switch.adaptive` 时，macOS/iOS 仍会使用系统绿色；搜索硬编码绿色不能发现这类遗漏。
+- `buildAppTheme` 通过 `cupertinoOverrideTheme.primaryColor` 和 `applyThemeToAll: true` 统一自适应开关的默认选中轨道，覆盖接收服务、开发者模式、鸿蒙连接/共享和虚拟摄像头等 7 处默认开关。显式配置的轨道优先，现有 `CupertinoSwitch` 配色保持原有绑定。
+- `McpToolsToggleList` 的平台与分类筛选统一使用 `primaryContainer/onPrimaryContainer` 作为选中背景、文字和勾选配对色，随主题主色生成并兼顾明暗可读性，避免主色文字叠加半透明同色背景时对比不足。
+- 不改变平台启停、兼容入口或工具权限逻辑；切换主题时保留开关值、搜索和筛选状态。服务运行圆点与徽章跟随主题色，审计日志执行成功仍使用成功语义色。
+- `mcp_access_theme_test.dart` 覆盖 macOS/iOS/Android × 明暗主题的默认自适应开关实际绘制、蓝色切换紫色，以及 MCP 平台/兼容开关和平台筛选交互。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/mcp_access_theme_test.dart test/mcp_platform_config_test.dart \
+  test/theme_feature_controls_test.dart test/mcp_tools_toggle_list_test.dart \
+  test/app_theme_test.dart test/settings_theme_color_test.dart \
+  test/theme_window_wiring_test.dart test/receiver_dashboard_tab_test.dart \
+  test/developer_mode_test.dart
+```
+
+本轮 9 个相关测试文件共 56 项全部通过；4 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（8 项 SDK 弃用 info）。新增测试格式与 `git diff --check` 通过，未启动桌面 App。
+
+## 2026-11-17 投屏接收页开关显式配色
+
+- AirPlay 与 DLNA 共用 `ReceiverServiceCard`，启停开关在公共组件中显式绑定 `ColorScheme.primary/onPrimary`，使轨道与滑块在组件独立复用或局部 Theme 覆盖时也保持主题色。
+- 保留自适应外观、启停回调、忙碌时的 Loading 和服务状态语义色；主题切换不重置接收名称或运行状态。
+- `receiver_theme_color_test.dart` 直接挂载两种实际协议卡片，在 macOS/iOS × Light/Dark 下禁用全局 Cupertino 主题兜底，检查蓝色切换紫色后的 Canvas 轨道绘制，以及名称草稿、卡片状态和关闭状态。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/receiver_theme_color_test.dart test/receiver_dashboard_tab_test.dart \
+  test/receiver_name_setting_field_test.dart test/mcp_access_theme_test.dart \
+  test/app_theme_test.dart
+```
+
+本轮 5 个相关测试文件共 39 项全部通过；2 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（4 项 SDK 弃用 info）。新增测试格式与 `git diff --check` 通过，未启动桌面 App。
+
+## 2026-11-17 画质预设与同类 Chip 选中配色
+
+- `buildAppTheme.chipTheme` 统一配置 `secondarySelectedColor`、`secondaryLabelStyle` 和 `checkmarkColor`。`ChoiceChip` 的选中默认值单独读取 secondary 配置，因此这里显式使用 `primaryContainer/onPrimaryContainer`，与 MCP 平台筛选保持一致并保证明暗可读性。
+- 覆盖投屏画质预设、应用权限筛选、反馈类型、互传记录方向和投屏快捷操作类别。截图间隔继续优先使用原有主色背景与文字，勾选使用统一主题色；MCP 与设备筛选等显式配色继续优先。
+- 未选中选项和普通 `Chip` 的样式保持原样；禁用选项仍禁用交互并使用 SDK 的淡化绘制。预设保存、码率/尺寸及当前选择逻辑不变。
+- `mirror_quality_theme_test.dart` 覆盖中英文 × 明暗的均衡/流畅/清晰选择、实时换色和参数保持；`choice_chip_theme_test.dart` 遍历六种颜色 × 明暗，检查真实背景、文字和勾选绘制，以及未选中/普通 Chip 基线、显式覆盖和禁用交互。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/mirror_quality_theme_test.dart test/choice_chip_theme_test.dart \
+  test/settings_review_test.dart test/app_theme_test.dart \
+  test/github_feedback_test.dart test/app_permissions_panel_test.dart \
+  test/mirror_app_quick_actions_dialog_test.dart test/screenshot_auto_save_test.dart \
+  test/features/harmony_share_history_test.dart test/device_list_filters_test.dart \
+  test/mcp_access_theme_test.dart
+```
+
+本轮 11 个相关测试文件共 65 项全部通过；3 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（5 项 SDK 弃用 info）。新测试兼容 Material/Ink 背景实现，并按 Canvas 实际描边的 ARGB 色值检查勾选，避免浮点记录精度造成误判。新文件格式与 `git diff --check` 通过，未启动桌面 App。
+
+## 2026-11-17 侧栏与 MCP 服务运行标记
+
+- 投屏接收、文件互传和 AI MCP 的侧栏运行圆点统一读取 `ColorScheme.primary`，宽窄侧栏复用同一状态组件；服务运行条件、停止后隐藏以及页面选中判断不变。
+- MCP 页头运行徽章的文字、边框、背景、圆点和阴影，以及服务卡片的圆点和阴影均跟随主题主色。停止时保留原有灰色与中性背景，不显示发光阴影；停止服务按钮仍为红色。
+- `dashboard_service_navigation_test.dart` 覆盖中英文 × 明暗 × 宽窄侧栏，验证三个服务运行中蓝色切换粉色、页面选中与 Provider 实例保持。新增 `mcp_status_theme_test.dart` 挂载实际 MCP 页面，验证中英文 × 明暗的完整徽章配色、运行状态保留和停服回退。
+- 全局成功语义色不变；设备在线、Root、充电及执行审计成功继续使用原有业务色。AirPlay LIVE 与实际媒体播放的运行标记在下述全页面复查中补齐主题配色。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/dashboard_service_navigation_test.dart test/dashboard_global_navigation_test.dart \
+  test/dashboard_shell_navigation_test.dart test/theme_feature_controls_test.dart \
+  test/receiver_theme_color_test.dart
+flutter --no-version-check test --no-pub \
+  test/mcp_status_theme_test.dart test/app_theme_test.dart \
+  test/mcp_access_theme_test.dart test/device_theme_color_test.dart
+```
+
+上述 9 个相关测试文件共 74 项全部通过；7 个变更 Dart 文件定向 analyze 无 error/warning，使用 `--no-fatal-infos` 验证通过（9 项 SDK 弃用 info 和 1 项既有冗余导入 info）。测试格式与 `git diff --check` 通过，未启动桌面 App 或真实服务。
+
+## 2026-11-17 全页面配色复查
+
+复查范围包含主窗口所有 Feature、公共 Widget 与 Flutter 子窗口；同时检索固定颜色、主色别名、成功色误用、局部 Theme、默认自适应开关及各类选中样式，不限于搜索绿色字面量。
+
+| 模块 | 本轮补齐 |
+| --- | --- |
+| 应用与开发者 | 普通应用操作卡默认从公共组件读取主色，列表收藏星标选中态及三平台引导测试按钮跟随主题；危险操作保留语义色 |
+| 设置与版本 | 目录、缓存和通知权限按钮通过共享 helper 默认读取主色；平台切换、版本选中、历史展开、复制、链接和关闭按钮跟随主题 |
+| 接收与设备 | AirPlay 横幅、LIVE、活跃设备行和连接标记、两协议媒体运行状态，以及 Android/iOS/DevEco 模拟器运行点和运行文字使用主色 |
+| 投屏与控制 | 置顶、息屏选中态、音频运行点、鼠标轨迹回放的暂停/继续按钮与进度、普通前台应用快捷操作和虚拟摄像头开关跟随主题 |
+| 消息与截图 | 应用屏蔽开关的选中状态、自动保存刷新间隔 Chip 的背景、文字及勾选跟随主题 |
+| 日志与批量任务 | 当前搜索结果使用主题容器与前景配对色；批量计划任务标签取消固定蓝色，继承 TabBar 默认主题 |
+
+- 小字运行徽章和选中 Chip 使用 `primaryContainer/onPrimaryContainer` 配对，避免纯主色文字叠加同色淡底时明暗对比不足；边框、圆点及运行阴影仍读取 `primary`。MCP 徽章回归遍历六种颜色 × 明暗，并检查文字对比度；HarmonyOS 选中行的 API、占比和累计文字使用同一配对前景，实际文字对比回归不低于 4.5:1，品牌版本块与未选中配色保持原样。
+- 文件页、网页调试、终端、消息列表、网络与其他控制的普通交互已使用 Theme；剩余固定色逐处核对为品牌/通道类型、文件类型、图表数据、日志等级、用户绘图调色板、环境或权限就绪、设备在线/Root/充电、完成结果、错误及警告等业务语义。
+- 不改变 Route、设备操作、服务启停判断、Provider 生命周期、持久化或跨窗口广播，不新增后台任务。换色回归验证同一页面/控制器持续挂载、搜索/筛选/收藏/版本选择/运行状态保留以及操作回调。
+- 测试 fixture 使用内存服务与原生平台替代，不启动真实 App、设备命令、接收或摄像头服务；版本列表按实际 Scrollable 定位懒加载条目，平台切换等待页头双击手势判定，英文版本导航限定按钮角色以避免与页头标题同名。截图测试宿主持有 Provider 监听，模拟工作台在弹窗期间持续保留 Controller，避免复用已 autoDispose 的 Notifier。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/business_actions_theme_test.dart test/devices_audit_theme_test.dart \
+  test/mirror_window_controls_theme_test.dart test/overview_service_theme_test.dart \
+  test/dialog_selection_theme_test.dart test/control_theme_color_test.dart \
+  test/device_theme_color_test.dart test/logcat_webview_theme_test.dart \
+  test/mcp_status_theme_test.dart test/receiver_theme_color_test.dart \
+  test/settings_theme_color_test.dart test/system_versions_review_test.dart \
+  test/app_theme_test.dart test/app_theme_color_settings_test.dart \
+  test/theme_window_wiring_test.dart test/dashboard_service_navigation_test.dart \
+  test/mcp_access_theme_test.dart test/choice_chip_theme_test.dart \
+  test/mirror_quality_theme_test.dart test/platform_version_distribution_test.dart \
+  test/platform_version_distribution_launcher_test.dart test/emulator_platform_tabs_test.dart \
+  test/settings_review_test.dart test/settings_workspace_test.dart \
+  test/receiver_dashboard_tab_test.dart test/platform_icon_usage_test.dart \
+  test/apps_tab_context_menu_test.dart test/apps_tab_filter_test.dart \
+  test/mirror_foreground_app_button_test.dart test/virtual_camera_widget_test.dart \
+  test/mirror_app_quick_actions_dialog_test.dart test/mirror_whiteboard_test.dart \
+  test/screenshot_auto_save_test.dart test/messages_source_widget_test.dart
+```
+
+上述 34 个测试文件共 226 项回归全部通过；49 个本轮变更 Dart 文件定向 analyze 使用 `--no-fatal-infos` 验证通过，无 error/warning（75 项 SDK 弃用或既有冗余导入 info）。12 个变更测试文件格式检查与本轮差异检查通过，5 个新增测试文件均小于 500 行；未启动桌面 App 或真实服务。
+
+## 2026-11-17 MCP 安全与 Tools 开关样式统一
+
+- `McpServerStatusCard` 的高危操作防护开关、`McpToolsToggleList` 的每个工具开关，统一采用平台接入与兼容入口已有的选中样式：轨道读取 `ColorScheme.primary`，滑块读取 `onPrimary`。原先主题色滑块与半透明轨道的组合造成同页开关外观不同。
+- 保留四类开关的 `Switch.adaptive` / `SwitchListTile.adaptive`、默认尺寸、点击区域、动画和未选中样式；macOS/iOS 沿用 Cupertino 外观，Android 沿用 Material 外观，换色继续读取同一 Theme。
+- 改动仅涉及选中配色，不改变危险操作防护、工具启用判断、配置更新、服务运行状态或凭据。工具展开/搜索/筛选与 Provider 生命周期保持原有行为，不新增依赖、后台进程、设备命令或跨窗口广播。
+
+- `mcp_switch_style_test.dart` 挂载真实的服务状态、平台接入与 Tools 卡片，覆盖 macOS/iOS/Android × Light/Dark 六种组合；关闭全局 Cupertino 主色兜底后，检查各开关实际 Canvas 的轨道和滑块配色，并通过真实点击验证安全/工具开关关闭、蓝色切紫色状态保留以及重新开启。配置更新使用内存 fixture，不启动真实服务或执行设备操作。
+- 人工回归路径：进入 AI MCP，比较安全开关、平台接入及兼容入口；展开 Tools，对比任意工具开关。切换设置主题色后，打开/关闭的外观和原有权限应保持一致。
+
+```bash
+flutter --no-version-check test --no-pub \
+  test/mcp_switch_style_test.dart test/theme_feature_controls_test.dart \
+  test/mcp_access_theme_test.dart test/mcp_tools_toggle_list_test.dart \
+  test/mcp_platform_config_test.dart test/mcp_status_theme_test.dart \
+  test/app_theme_test.dart
+```
+
+上述 7 个测试文件共 48 项全部通过；4 个变更 Dart 文件定向 analyze 使用 `--no-fatal-infos` 验证通过，无 error/warning（8 项 SDK 弃用或既有冗余导入 info）。新增测试小于 500 行，测试格式和本轮差异检查通过；未启动桌面 App 或真实服务。

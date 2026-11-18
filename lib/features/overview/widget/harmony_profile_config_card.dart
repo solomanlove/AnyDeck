@@ -55,7 +55,11 @@ class HarmonyProfileConfigCard extends StatelessWidget {
                 ),
               )),
               IconButton(
-                icon: const Icon(Icons.copy_rounded, size: 14),
+                icon: Icon(
+                  Icons.copy_rounded,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 tooltip: context.l10n.t('harmonyCopyConfig'),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),

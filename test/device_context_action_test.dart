@@ -5,20 +5,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/device_context_menu_fixture.dart';
 
 void main() {
-  test('Android 和 HarmonyOS 在线开放全部常用操作，离线保留设备信息与编辑', () {
+  test('三平台常用操作按能力开放，离线保留设备信息、编辑与支持的重连', () {
     for (final device in [deviceMenuAndroid, deviceMenuHarmony]) {
-      expect(
-        DeviceContextAction.values.every(
-          (action) => action.isEnabledFor(device),
-        ),
-        isTrue,
-      );
+      for (final action in [
+        DeviceContextAction.screenshot,
+        DeviceContextAction.preview,
+        DeviceContextAction.mirror,
+        DeviceContextAction.apps,
+        DeviceContextAction.files,
+        DeviceContextAction.terminal,
+        DeviceContextAction.overview,
+        DeviceContextAction.edit,
+      ]) {
+        expect(action.isEnabledFor(device), isTrue);
+      }
     }
     expect(
       DeviceContextAction.values.where(
         (action) => action.isEnabledFor(deviceMenuOffline),
       ),
-      [DeviceContextAction.overview, DeviceContextAction.edit],
+      [
+        DeviceContextAction.overview,
+        DeviceContextAction.edit,
+        DeviceContextAction.wireless,
+      ],
+    );
+    expect(DeviceContextAction.share.isEnabledFor(deviceMenuAndroid), isTrue);
+    expect(DeviceContextAction.share.isVisibleFor(deviceMenuHarmony), isFalse);
+    expect(DeviceContextAction.wireless.isVisibleFor(deviceMenuIos), isFalse);
+    expect(
+      DeviceContextAction.disconnect.isVisibleFor(deviceMenuOffline),
+      isFalse,
     );
   });
 

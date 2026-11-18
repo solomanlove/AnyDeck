@@ -240,19 +240,20 @@ void main() {
     expect(find.text('Market Phone'), findsWidgets);
     // 工具目录与终端操作统一移入设置，设备工具栏只保留设备操作。
     expect(find.byTooltip('打开工具目录'), findsNothing);
-    expect(find.byTooltip('重启调试服务'), findsOneWidget);
-    expect(find.textContaining('1 在线'), findsOneWidget);
+    expect(find.byTooltip('重启调试服务'), findsNothing);
+    expect(find.text('连接设备'), findsOneWidget);
+    expect(find.byKey(const Key('deviceFilter-online')), findsOneWidget);
     expect(find.text('备注/用途'), findsNothing);
     expect(find.text('QA phone'), findsNothing);
     await tester.enterText(find.byKey(const Key('deviceListSearch')), 'qa phone');
     await tester.pumpAndSettle();
     expect(find.text('Market Phone'), findsWidgets);
-    expect(find.byTooltip('编辑设备信息'), findsOneWidget);
+    expect(find.byTooltip('设备操作 · Market Phone'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('deviceListSearch')), 'no-match');
     await tester.pumpAndSettle();
     expect(find.text('没有匹配的设备'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('deviceListSearch')), 'market');
-    await tester.tap(find.byKey(const Key('deviceListOnlineOnly')));
+    await tester.tap(find.byKey(const Key('deviceFilter-online')));
     await tester.pumpAndSettle();
     expect(find.text('Market Phone'), findsWidgets);
     // 真实设置目录接入验证：平台可用分类内容齐全，宽窄导航复用同一套控件。
@@ -260,22 +261,14 @@ void main() {
     tester.view.physicalSize = const Size(1600, 950);
     await tester.pumpAndSettle();
     final settingsBeforeNavigation = container.read(appSettingsProvider);
-    // 设置分类与主设置 Tab 必须使用相同的选中表面和圆角交互组件。
+    // 恢复原侧栏后，设置分类与一级入口仍须同时保持选中。
     final categoryNav = find.byKey(const ValueKey('settings-nav-general'));
-    final mainSettingsNav = find.descendant(
+    expect(tester.widget<AppNavigationItem>(categoryNav).selected, isTrue);
+    final settingsNav = find.descendant(
       of: find.byTooltip('设置'),
       matching: find.byType(AppNavigationItem),
     );
-    expect(tester.widget<AppNavigationItem>(categoryNav).selected, isTrue);
-    expect(tester.widget<AppNavigationItem>(mainSettingsNav).selected, isTrue);
-    Material surface(Finder item) => tester.widget<Material>(
-      find.descendant(of: item, matching: find.byType(Material)).first,
-    );
-    expect(surface(categoryNav).color, surface(mainSettingsNav).color);
-    expect(
-      surface(categoryNav).borderRadius,
-      surface(mainSettingsNav).borderRadius,
-    );
+    expect(tester.widget<AppNavigationItem>(settingsNav).selected, isTrue);
     final workspace = tester.widget<SettingsWorkspace>(
       find.byType(SettingsWorkspace),
     );
