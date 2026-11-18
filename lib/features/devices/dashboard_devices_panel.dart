@@ -15,6 +15,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
   String? _groupId;
   DeviceViewMode _viewMode = DeviceViewMode.wall;
   bool _batchMode = false;
+  bool _batchActionRunning = false;
   String _sortColumn = 'id';
   bool _sortAscending = true;
   String? _contextDeviceId;
@@ -27,6 +28,11 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
 
   void _setDeviceQuickActionRunning(bool running) =>
       setState(() => _deviceQuickActionRunning = running);
+
+  /// 批量异步操作结束后仅在页面仍挂载时刷新按钮状态。
+  void _setBatchActionRunning(bool running) {
+    if (mounted) setState(() => _batchActionRunning = running);
+  }
 
   void _changeQuery(String value) => setState(() => _query = value);
   void _changeFilter(DeviceStatusFilter value) =>

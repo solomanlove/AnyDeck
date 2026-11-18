@@ -57,13 +57,9 @@ void main() {
     await withDeviceMenu(tester, (fixture) async {
       await tester.tap(find.byKey(const Key('deviceBatchManage')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('deviceBatchActions')));
-      await tester.pumpAndSettle();
-      final script = find.byWidgetPredicate(
-        (widget) => widget is PopupMenuItem<String> && widget.value == 'script',
-      );
+      final script = find.byKey(const Key('deviceBatch-script'));
       expect(script, findsOneWidget);
-      expect(tester.widget<PopupMenuItem<String>>(script).enabled, isFalse);
+      expect(tester.widget<TextButton>(script).onPressed, isNull);
     }, devices: [deviceMenuIos.copyWith(isChecked: true)]);
   });
 
@@ -88,9 +84,9 @@ void main() {
         expect(resolveToolPath('adb'), executable.path);
         await tester.tap(find.byKey(const Key('deviceBatchManage')));
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const Key('deviceBatchActions')));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('执行脚本'));
+        final script = find.byKey(const Key('deviceBatch-script'));
+        await tester.ensureVisible(script);
+        await tester.tap(script);
         await tester.pumpAndSettle();
         await tester.enterText(
           find.descendant(
@@ -137,9 +133,9 @@ void main() {
       (fixture) async {
         await tester.tap(find.byKey(const Key('deviceBatchManage')));
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const Key('deviceBatchActions')));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('执行脚本'));
+        final script = find.byKey(const Key('deviceBatch-script'));
+        await tester.ensureVisible(script);
+        await tester.tap(script);
         await tester.pumpAndSettle();
         final dialog = find.byType(AlertDialog);
         await tester.enterText(

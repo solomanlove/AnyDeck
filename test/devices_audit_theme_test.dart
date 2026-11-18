@@ -202,7 +202,7 @@ void main() {
       await withDeviceMenu(
         tester,
         (fixture) async {
-          // 进入批量模式保留预选快照，只有退出时才清空；菜单不再默认展示。
+          // 进入批量模式保留预选快照，直接使用工具栏上的定时任务入口。
           expect(find.byType(Checkbox), findsNothing);
           await tester.tap(find.byKey(const Key('deviceBatchManage')));
           await tester.pumpAndSettle();
@@ -215,14 +215,13 @@ void main() {
                 .value,
             isTrue,
           );
-          final actions = find.byKey(const Key('deviceBatchActions'));
+          final schedule = find.byKey(const Key('deviceBatch-schedule'));
           expect(
-            tester.widget<PopupMenuButton<String>>(actions).enabled,
-            isTrue,
+            tester.widget<TextButton>(schedule).onPressed,
+            isNotNull,
           );
-          await tester.tap(actions);
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('计划任务'));
+          await tester.ensureVisible(schedule);
+          await tester.tap(schedule);
           await tester.pumpAndSettle();
           final label = find.text('创建新任务');
           expect(label, findsOneWidget);

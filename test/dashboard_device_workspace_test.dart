@@ -374,7 +374,10 @@ void main() {
     await tester.enterText(find.byKey(const Key('deviceListSearch')), 'alpha');
     await tester.pumpAndSettle();
     expect(find.byType(DeviceWallCard), findsOneWidget);
-    expect(find.textContaining('其中 1 台不在当前结果中'), findsOneWidget);
+    expect(
+      find.byTooltip('全选当前结果\n已选 1 台\n其中 1 台不在当前结果中'),
+      findsOneWidget,
+    );
     expect(
       container.read(deviceRegistryProvider).where((d) => d.isChecked).length,
       1,

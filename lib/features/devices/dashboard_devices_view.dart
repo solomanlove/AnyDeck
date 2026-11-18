@@ -60,6 +60,9 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     return LayoutBuilder(
       builder: (context, constraints) {
         final windowWidth = MediaQuery.sizeOf(context).width;
+        final selectionBar = _batchMode
+            ? _buildSelectionBar(context, selectable, checked)
+            : null;
         final content = _buildDeviceListContent(
           context: context,
           activeDevicesAsync: activeDevicesAsync,
@@ -68,6 +71,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           sessionByDeviceId: mergedAirPlay.sessionByDeviceId,
           isCompact: windowWidth <= 730,
           hasBoundedHeight: constraints.hasBoundedHeight,
+          selectionBar: selectionBar,
         );
         return Padding(
           padding: windowWidth <= 490
@@ -100,7 +104,9 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                 onBatchModeChanged: _changeBatchMode,
                 onSearchChanged: _changeQuery,
               ),
-              if (_batchMode) _buildSelectionBar(context, selectable, checked),
+              if (selectionBar != null &&
+                  (_viewMode == DeviceViewMode.wall || sortedItems.isEmpty))
+                selectionBar,
               if (constraints.hasBoundedHeight)
                 Expanded(child: content)
               else
@@ -155,6 +161,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
     required Map<String, AirPlaySessionData> sessionByDeviceId,
     required bool isCompact,
     required bool hasBoundedHeight,
+    required Widget? selectionBar,
   }) {
     if (activeDevicesAsync.hasError && sortedItems.isEmpty) {
       return Center(
@@ -227,7 +234,10 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                 ? MainAxisSize.max
                 : MainAxisSize.min,
             children: [
-              if (MediaQuery.sizeOf(context).width > 490)
+              // 管理模式直接复用表头位置，不再额外占据一行。
+              if (selectionBar != null)
+                selectionBar
+              else if (MediaQuery.sizeOf(context).width > 490)
                 _buildTableHeader(context, isCompact, connectionWidth),
               if (hasBoundedHeight)
                 Expanded(
