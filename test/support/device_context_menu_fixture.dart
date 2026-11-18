@@ -147,6 +147,15 @@ class DeviceMenuRegistry extends DeviceRegistryNotifier {
   @override
   List<RegisteredDevice> build() => devices;
 
+  /// 勾选仅发布测试设备集合，避免空发现结果覆盖虚构设备。
+  @override
+  void toggleCheck(String id) => state = [
+    for (final device in state)
+      device.id == id
+          ? device.copyWith(isChecked: !device.isChecked)
+          : device,
+  ];
+
   void disconnect(String id) => state = [
     for (final device in state)
       device.id == id
@@ -280,9 +289,10 @@ Future<void> withDeviceMenu(
   DeviceMenuAdb? adbService,
   DeviceMenuHdc? hdcService,
   bool enableAutomaticPreviews = false,
+  Size windowSize = const Size(1200, 900),
   HostNetworkInfo network = const HostNetworkInfo(),
 }) async {
-  tester.view.physicalSize = const Size(1200, 900);
+  tester.view.physicalSize = windowSize;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   SharedPreferences.setMockInitialValues({});
