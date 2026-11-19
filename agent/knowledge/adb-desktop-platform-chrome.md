@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 主窗口系统栏 | 隐藏标题文字，保留原生 traffic lights | 36 logical px 自绘标题栏，右侧最小化/最大化或还原/关闭 | 保留 GTK/窗口管理器原生装饰 |
 | 主窗口导航 | 顶部预留 36 logical px | 顶部间距 14 logical px | 顶部间距 14 logical px |
-| Dashboard 材质 | 保留半透明与 BackdropFilter | ColorScheme 实色表面与导航分层 | ColorScheme 实色表面与导航分层 |
+| Dashboard 材质 | 导航使用中性实色，右侧工作区保留半透明与 BackdropFilter | 导航使用中性实色，工作区使用 ColorScheme 表面 | 导航使用中性实色，工作区使用 ColorScheme 表面 |
 | 独立窗口 | 保留原有隐藏标题栏与原生按钮 | 原生标题栏与系统控制 | 原生标题栏与系统控制 |
 | APK 工具栏左侧 | 保留 80 logical px 按钮避让 | 移除 macOS 专用避让 | 移除 macOS 专用避让 |
 
@@ -22,7 +22,7 @@ Windows 固定标题栏位于路由、启动动画与页面工具栏上方，切
 - `lib/app/window/widget/desktop_window_frame.dart`：主窗口外壳。Windows 标题文字区负责拖动和双击最大化；按钮提供独立点击、键盘焦点、语义标签和 Tooltip。由于位于 MaterialApp.builder，使用 Overlay.wrap 承载 Tooltip。
 - `lib/app/window/controller/desktop_caption_controller.dart`：监听聚焦、最大化/还原及全屏事件，仅更新标题栏；有操作防重入、异步结果版本保护和卸载后通知保护，dispose 注销 WindowListener，无轮询。
 - `lib/app/window/widget/desktop_workspace_surface.dart`：公共背景和 Material 层级，保证 ListTile 底色与 Ink 在背景上方绘制；Windows/Linux 不挂载工作区 BackdropFilter。
-- `lib/features/overview/dashboard_shell.dart` 与 `dashboard_rail.dart`：接入公共表面与侧栏宿主样式；现有 Tab、设备选择和工具按钮逻辑保持原有职责。
+- `lib/features/overview/dashboard_shell.dart` 与 `dashboard_rail.dart`：接入公共表面、中性实色导航与独立分隔线；现有 Tab、设备选择和工具按钮逻辑保持原有职责。
 - `lib/app/window/desktop_window_title_service.dart`：优先调用 `any_deck/window`，保留 Linux 主 Runner 同步 GTK HeaderBar 的能力；Windows/Linux 子引擎缺少该通道时回退到 window_manager.setTitle。
 - `linux/runner/my_application.cc`：注册 desktop_multi_window 子窗口创建回调，为子引擎注册 window_manager 等已有插件，保证窗口配置与设置读取具有对应原生实现。
 - 模拟器、控制台、Android API 分布独立窗口在 onGenerateTitle 中同步本地化原生标题；APK 与投屏沿用既有标题同步入口。
@@ -44,6 +44,15 @@ Windows 固定标题栏位于路由、启动动画与页面工具栏上方，切
 - 全仓静态分析仍有 43 项任务外诊断，包括 `test/apk_install_coordinator_test.dart` 的 3 处旧方法签名不匹配，以及原有 unused import / lint；本次新增组件无诊断。未修改其他功能或旧测试桩。
 - `git diff --check`：通过。
 - 未启动或重启桌面应用；未进行 Windows/Linux 构建或原生窗口实测。Widget 测试使用 MethodChannel 桩，不能替代宿主验证。
+
+## 主窗口左右背景分区（2026-11-19）
+
+- 主窗口左侧 `PrimaryRail` 统一读取 `ThemeData.navigationSurface`：浅色为中性浅灰、深色为中性深灰。颜色不透明且不受用户主色影响，避免原 macOS 半透明侧栏与右侧内容背景混在一起；侧栏不再挂载无用的 `BackdropFilter`。
+- `dashboard_shell.dart` 在导航与工作区之间放置独立的 1px `VerticalDivider`，颜色读取当前工作区的 `outlineVariant`。替代工作区背景内部的左边框，防止标题栏、子页面或底栏背景将边界盖住。
+- 右侧页面与公共 `DesktopWorkspaceSurface` 延续原主题；导航选中态、图标、文字、宽窄断点和顶部原生按钮避让继续复用已有实现。
+- `test/support/dashboard_surface_expectations.dart` 对真实 Dashboard 采样最终绘制像素，校验两侧亮度差、不透明导航、分隔线颜色与全高几何边界。中英文、明暗主题下在设备页与设置页切换前后验证；测试共享服务使用内存实现，避免像素采样进入真实异步时访问磁盘或 UDP。
+- 自动验证：`dashboard_device_responsive_test.dart`、`dashboard_shell_navigation_test.dart`、`desktop_window_chrome_test.dart`、`app_theme_test.dart` 共 44 项通过；覆盖 320px 至 1200px、1.6 倍字号、原生按钮避让、路由与窗口控制。全仓静态分析无 error，5 项既有 warning 保持不变；`git diff --check` 通过。
+- 无新增依赖、Provider、持久化配置或跨窗口消息；未启动完整 App。
 
 ## 手动回归清单
 

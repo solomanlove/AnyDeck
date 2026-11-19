@@ -6,6 +6,8 @@ import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
+import 'package:any_deck/core/device_share/device_share_provider.dart';
+import 'package:any_deck/core/device_share/device_share_service.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';
 import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
@@ -26,6 +28,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_adb_service.dart';
+import 'support/dashboard_surface_expectations.dart';
 
 /// 在完整主窗口内验证断点，避免以局部容器宽度代替整窗宽度。
 void main() {
@@ -142,6 +145,7 @@ void main() {
           Theme.of(tester.element(find.byType(PrimaryRail))).colorScheme,
           buildAppTheme(brightness).colorScheme,
         );
+        await expectDashboardSurfaceSeparation(tester);
         final bar = find.byType(DashboardHeaderBar);
         final title = find.descendant(
           of: find.byType(DashboardHeaderTitle),
@@ -187,6 +191,7 @@ void main() {
 
         container.read(appRouterProvider).go('/settings');
         await tester.pumpAndSettle();
+        await expectDashboardSurfaceSeparation(tester);
         expect(tester.getRect(bar), deviceBar);
         expect(tester.getTopLeft(title.first), deviceTitle.topLeft);
         expect(tester.getTopLeft(title.last), deviceSubtitle.topLeft);
@@ -414,6 +419,9 @@ Future<ProviderContainer> _pumpDashboard(
   double textScale = 1,
 }) async {
   SharedPreferences.setMockInitialValues({});
+  // 像素采样进入真实异步，使用内存共享服务隔离磁盘与 UDP 初始化。
+  final adb = FakeAdbService();
+  final sharing = DeviceShareService(adb);
   final container = ProviderContainer(
     overrides: [
       receiverIdentityProvider.overrideWith(
@@ -422,7 +430,8 @@ Future<ProviderContainer> _pumpDashboard(
           computerName: 'AnyDeck QA',
         ),
       ),
-      adbServiceProvider.overrideWithValue(FakeAdbService()),
+      adbServiceProvider.overrideWithValue(adb),
+      deviceShareServiceProvider.overrideWithValue(sharing),
       iosDeviceServiceProvider.overrideWithValue(_Ios()),
       discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
       deviceRegistryProvider.overrideWith(_Registry.new),
@@ -448,6 +457,7 @@ Future<ProviderContainer> _pumpDashboard(
   addTearDown(() async {
     await tester.pumpWidget(const SizedBox.shrink());
     container.dispose();
+    await sharing.dispose();
     await tester.pumpAndSettle();
   });
   await tester.pumpWidget(

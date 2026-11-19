@@ -44,11 +44,16 @@ class _WechatStyleShell extends ConsumerWidget {
             isAirplayReceiverRunning: isAirplayReceiverRunning,
           ),
         ),
+        // 独立分隔线不被工作区子页面背景遮住。
+        VerticalDivider(
+          key: const Key('dashboardNavigationDivider'),
+          width: AppThemeSizes.borderWidth,
+          thickness: AppThemeSizes.borderWidth,
+          color: theme.colorScheme.outlineVariant,
+        ),
         Expanded(
           child: DesktopWorkspaceSurface(
-            border: Border(
-              left: BorderSide(color: theme.colorScheme.outlineVariant),
-            ),
+            key: const Key('dashboardWorkspaceSurface'),
             child: Column(
               children: [
                 Expanded(

@@ -338,22 +338,16 @@ class PrimaryRail extends ConsumerWidget {
     }
 
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
       width: railWidth,
       decoration: BoxDecoration(
-        color: DesktopChromePolicy.current.usesMacChrome
-            ? (isDark ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.20))
-            : theme.colorScheme.surfaceContainerLow,
+        color: theme.navigationSurface,
       ),
       child: ClipRect(
-        child: BackdropFilter(
-          enabled: DesktopChromePolicy.current.usesMacChrome,
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: SafeArea(
+        child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final bool renderNarrow = constraints.maxWidth < 130;
@@ -487,7 +481,6 @@ class PrimaryRail extends ConsumerWidget {
           },
         ),
       ),
-    ),
   ),
 );
   }

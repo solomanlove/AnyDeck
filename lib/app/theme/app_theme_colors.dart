@@ -148,6 +148,10 @@ extension AppThemeDataColors on ThemeData {
       ? const Color(0xff40350e)
       : const Color(0xfffff2bf);
 
+  /// 主窗口导航使用不透明中性底色，与右侧内容形成稳定分区。
+  Color get navigationSurface => brightness == Brightness.dark
+      ? const Color(0xff282a31) : const Color(0xffeceef2);
+
   /// 主侧栏与设置分类共用的选中背景，明暗差异统一收口。
   Color get navigationSelectedBackground => colorScheme.primary.withValues(
     alpha: brightness == Brightness.dark ? 0.18 : 0.09,
