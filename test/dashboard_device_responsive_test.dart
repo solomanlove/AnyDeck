@@ -150,14 +150,32 @@ void main() {
         final deviceBar = tester.getRect(bar);
         final deviceTitle = tester.getRect(title.first);
         final deviceSubtitle = tester.getRect(title.last);
-        final refresh = tester.getRect(
-          find.ancestor(
-            of: find.byTooltip(
-              AppLocalizations(Locale(language)).t('refreshDevices'),
-            ),
-            matching: find.byType(IconButton),
+        final refreshButton = find.byKey(const Key('deviceRefreshButton'));
+        final refresh = tester.getRect(refreshButton);
+        final button = tester.widget<OutlinedButton>(refreshButton);
+        final scheme = Theme.of(tester.element(refreshButton)).colorScheme;
+        final label = find.descendant(
+          of: refreshButton,
+          matching: find.text(AppLocalizations(Locale(language)).t('refresh')),
+        );
+        expect(label, findsOneWidget);
+        expect(button.style!.foregroundColor!.resolve({}), scheme.onSurface);
+        expect(button.style!.backgroundColor!.resolve({}), scheme.surface);
+        expect(
+          button.style!.side!.resolve({}),
+          BorderSide(color: scheme.outlineVariant),
+        );
+        expect(
+          button.style!.shape!.resolve({}),
+          const RoundedRectangleBorder(
+            borderRadius: AppThemeSizes.radiusLarge,
           ),
         );
+        final icon = find.descendant(
+          of: refreshButton,
+          matching: find.byType(Icon),
+        );
+        expect(tester.getRect(icon).right, lessThan(tester.getRect(label).left));
         final connect = tester.getRect(
           find.byKey(const Key('deviceConnectionButton')),
         );
@@ -206,13 +224,16 @@ void main() {
           find.byKey(const Key('deviceConnectionButton')),
         );
         final title = tester.getRect(find.byType(DashboardHeaderTitle));
-        final refresh = tester.getRect(
-          find.ancestor(
-            of: find.byTooltip(
-              AppLocalizations(Locale(language)).t('refreshDevices'),
-            ),
-            matching: find.byType(IconButton),
-          ),
+        final refreshButton = find.byKey(const Key('deviceRefreshButton'));
+        final refresh = tester.getRect(refreshButton);
+        expect(tester.widget<OutlinedButton>(refreshButton).onPressed, isNotNull);
+        expect(
+          find.descendant(of: refreshButton, matching: find.byType(Text)),
+          findsNothing,
+        );
+        expect(
+          find.byTooltip(AppLocalizations(Locale(language)).t('refreshDevices')),
+          findsOneWidget,
         );
         expect(title.top, greaterThanOrEqualTo(bar.top + 32));
         expect(refresh.top, greaterThanOrEqualTo(bar.top + 32));

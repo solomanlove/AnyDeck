@@ -71,3 +71,11 @@ DashboardHeaderBar(
 主副标题起点完全一致，并覆盖 320px / 1.6 倍字号的顶部避让、操作有界和菜单交互。
 连同公共标题栏、连接菜单、工作区及导航共 41 项通过；定向静态分析无 error/warning，只有 SDK 既有弃用 info。
 已导出实际 Widget 预览；未启动完整桌面 App，原生窗口实际拖拽仍由既有组件提供。
+
+## 6. 设备管理刷新描边按钮（2026-11-19）
+
+- `_ContentTitleBar` 的刷新入口改为圆角细描边 `OutlinedButton`，左侧保留 17px 刷新图标，右侧复用 `refresh` 中英文短文案；Tooltip 继续使用 `refreshDevices`。
+- 背景、前景与边框分别使用 `ColorScheme.surface`、`onSurface`、`outlineVariant`，圆角复用 `AppThemeSizes.radiusLarge`，最小点击区域 36×36；保持与连接按钮的 8px 间距。
+- 宽度不超过 490px 时保留带描边的图标按钮和完整 Tooltip，避免在 320px / 1.6 倍字号下挤出标题；原刷新注册表和可见设备墙快照回调保持不变。
+- `dashboard_device_responsive_test.dart` 使用稳定的 `deviceRefreshButton` Key 验证中英、明暗、图文顺序、中性颜色、边框圆角、跨页对齐及窄屏边界；工作区测试继续验证真实刷新调用和截图更新。
+- 4 份相关测试共 36 项通过；全仓静态分析无 error，保留 5 项既有 warning，`git diff --check` 通过；不启动完整 App，无新增依赖、Provider 或窗口通信。

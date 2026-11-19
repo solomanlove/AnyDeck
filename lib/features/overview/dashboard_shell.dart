@@ -87,6 +87,7 @@ class _ContentTitleBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final compact = MediaQuery.sizeOf(context).width <= 490;
+    final scheme = Theme.of(context).colorScheme;
     // 窄窗口放大字体时，连接入口以图标和 Tooltip 提供。
     final showConnectionLabel =
         !compact || MediaQuery.textScalerOf(context).scale(13) <= 16;
@@ -99,13 +100,44 @@ class _ContentTitleBar extends ConsumerWidget {
           ? const EdgeInsets.fromLTRB(10, 32, 10, 12)
           : const EdgeInsets.symmetric(horizontal: 28),
       actions: [
-        IconButton(
-          tooltip: context.l10n.t('refreshDevices'),
-          icon: const Icon(LucideIcons.refreshCw, size: 17),
-          onPressed: () async {
-            await _refreshDevices(context, ref);
-            if (context.mounted) refreshVisibleDeviceScreenPreviews(ref);
-          },
+        // 刷新使用中性细描边，窄窗口保留图标与完整 Tooltip。
+        Tooltip(
+          message: context.l10n.t('refreshDevices'),
+          child: OutlinedButton(
+            key: const Key('deviceRefreshButton'),
+            onPressed: () async {
+              await _refreshDevices(context, ref);
+              if (context.mounted) refreshVisibleDeviceScreenPreviews(ref);
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: scheme.onSurface,
+              backgroundColor: scheme.surface,
+              side: BorderSide(
+                color: scheme.outlineVariant,
+                width: AppThemeSizes.borderWidth,
+              ),
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppThemeSizes.radiusLarge,
+              ),
+              minimumSize: const Size(36, 36),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 9 : 12,
+                vertical: 8,
+              ),
+              textStyle: const TextStyle(fontSize: 13),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(LucideIcons.refreshCw, size: 17),
+                if (!compact) ...[
+                  const SizedBox(width: 7),
+                  Text(context.l10n.t('refresh')),
+                ],
+              ],
+            ),
+          ),
         ),
         DeviceConnectionMenu(
           showLabel: showConnectionLabel,
