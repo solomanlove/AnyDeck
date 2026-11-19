@@ -11,14 +11,14 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class DeviceBridgeBuildScopeTests(unittest.TestCase):
-    def test_xcode_build_only_produces_library_without_replacing_other_apps(self):
+    def test_validates_signed_library_before_publishing_to_project_or_apps(self):
         with tempfile.TemporaryDirectory(prefix="anydeck-build-scope-") as temporary:
             root = Path(temporary)
             (root / "script").mkdir()
             shutil.copyfile(ROOT / "script/build_device_bridge.sh", root / "script/build_device_bridge.sh")
             tools = root / "fake-tools"
             tools.mkdir()
-            # 仅模拟编译与签名命令；仍执行真实脚本的文件发布与配置选择逻辑。
+            # 模拟原生工具，按文件内容区分签名前后的产物；发布逻辑仍执行真实脚本。
             commands = {
                 "cargo": '''#!/bin/bash
 set -eu
@@ -36,7 +36,12 @@ while [ "$1" != "-output" ]; do shift; done
 cp "$input" "$2"
 ''',
                 "install_name_tool": "#!/bin/bash\nexit 0\n",
-                "codesign": "#!/bin/bash\nexit 0\n",
+                "codesign": '#!/bin/bash\nprintf signed >> "${!#}"\n',
+                "xcrun": '''#!/bin/bash
+set -eu
+[[ "$1" == dyld_info && "$2" == -validate_only && "$(cat "$3")" == newsigned ]] || exit 2
+exit "$TEST_VALIDATION_EXIT"
+''',
             }
             for name, source in commands.items():
                 path = tools / name
@@ -49,11 +54,24 @@ cp "$input" "$2"
                 library.write_bytes(configuration.encode())
                 artifacts.append((library, library.read_bytes()))
             env = dict(os.environ, PATH=f"{tools}:{os.environ['PATH']}", CARGO=str(tools / "cargo"),
-                       ARCHS="arm64", TARGET_TEMP_DIR=str(root / "temporary"),
+                       ARCHS="arm64", TARGET_TEMP_DIR=str(root / "temporary"), TEST_VALIDATION_EXIT="0",
                        TARGET_BUILD_DIR=str(root / "build/macos/Build/Products/Release"))
-            subprocess.run(["/bin/bash", str(root / "script/build_device_bridge.sh")], env=env,
-                           check=True, capture_output=True, timeout=15)
-            self.assertEqual((root / "macos/Libs/libanydeck_device_bridge.dylib").read_bytes(), b"new")
+            build = ["/bin/bash", str(root / "script/build_device_bridge.sh")]
+            success = subprocess.run(build, env=env, capture_output=True, text=True, timeout=15)
+            self.assertEqual(success.returncode, 0, success.stderr)
+            published = root / "macos/Libs/libanydeck_device_bridge.dylib"
+            self.assertEqual(published.read_bytes(), b"newsigned")
+            for library, original in artifacts:
+                self.assertEqual(library.read_bytes(), original)
+
+            # 独立构建若被 dyld 拒绝，项目库和已有 Debug、Release 包都应保留。
+            published.write_bytes(b"previous")
+            env.pop("TARGET_BUILD_DIR")
+            env["TEST_VALIDATION_EXIT"] = "42"
+            failed = subprocess.run(build, env=env, capture_output=True, text=True, timeout=15)
+            self.assertEqual(failed.returncode, 42, failed.stderr)
+            self.assertEqual(published.read_bytes(), b"previous")
+            self.assertEqual(list(published.parent.iterdir()), [published])
             for library, original in artifacts:
                 self.assertEqual(library.read_bytes(), original)
 

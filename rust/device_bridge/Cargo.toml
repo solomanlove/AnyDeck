@@ -6,6 +6,10 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[profile.release]
+# 避免 macOS 的 strip 将 Mach-O 字符串表移到未按 8 字节对齐的位置，导致 dyld 拒绝加载。
+strip = "none"
+
 [features]
 default = ["airplay-uxplay"]
 airplay-uxplay = []

@@ -49,6 +49,12 @@ adb forward --list
 
 在设备离线期间远端 jar 删除可能失败；会话不恢复为运行态。下次连接可人工检查 `/data/local/tmp/anydeck-*.jar`，不要删除其他会话正在使用的文件。
 
+## macOS 无法加载投屏桥接库
+
+若错误栈在 `RustDeviceBridge._open` 报 `mis-aligned LINKEDIT string pool`，故障发生在建立 ADB 投屏会话之前。macOS 27.0.1 上实测，Cargo 的 release 构建剥离调试符号后，Mach-O 字符串表偏移为 `0x004BC264`，dyld 要求的对齐为 8 字节。Debug App 也使用这份 release 桥接库。
+
+桥接 crate 显式设置 `strip = "none"`，打包脚本在签名后用 `xcrun dyld_info -validate_only` 检查暂存库的所有架构，通过后才替换旧库。本机 Debug 包通过严格签名校验，使用包内桥接库和 server 在 USB 连接的小米 Mi MIX 3 上解码了 3 帧，IOSurface 已就绪。已打开的 AnyDeck 需完整退出后重开才能重新加载。
+
 ## 2026-09-27 Android 15 单 App 投屏验证
 
 - 设备：Xiaomi Mi MIX 3，Android 15 / API 35，ADB serial `2ccaef6`。

@@ -30,6 +30,8 @@ lipo -create "${BRIDGE_LIBRARIES[@]}" -output "$BRIDGE_STAGED"
 install_name_tool -id '@rpath/libanydeck_device_bridge.dylib' "$BRIDGE_STAGED"
 chmod 755 "$BRIDGE_STAGED"
 codesign --force --sign - "$BRIDGE_STAGED"
+# 签名成功仍可能被 dyld 拒绝加载；先校验所有架构，再替换现有库。
+xcrun dyld_info -validate_only "$BRIDGE_STAGED"
 mv -f "$BRIDGE_STAGED" "$BRIDGE_OUTPUT"
 
 # Xcode 由当前 Runner 阶段拷贝动态库，避免改写另一配置已完成签名的 App。
