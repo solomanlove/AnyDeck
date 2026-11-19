@@ -8,6 +8,7 @@ import '../../../app/theme/app_theme.dart';
 ///
 /// [buttonKey] 标识实际菜单按钮，[tooltip] 提供入口说明；[enabled] 控制可用态。
 /// [itemBuilder] 构建业务菜单项，[onSelected] 接收所选值，[child] 为触发入口。
+/// [baseWidth] 为默认字号下的逻辑像素宽度，随字号放大并限制在窗口内。
 /// 连接设备和分组入口均通过此组件复用同一套菜单样式。
 class DeviceWorkspacePopupMenu<T> extends StatelessWidget {
   const DeviceWorkspacePopupMenu({
@@ -18,6 +19,7 @@ class DeviceWorkspacePopupMenu<T> extends StatelessWidget {
     required this.onSelected,
     required this.child,
     this.enabled = true,
+    this.baseWidth = 240,
   });
 
   final Key buttonKey;
@@ -26,13 +28,14 @@ class DeviceWorkspacePopupMenu<T> extends StatelessWidget {
   final ValueChanged<T> onSelected;
   final Widget child;
   final bool enabled;
+  final double baseWidth;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final textScale = MediaQuery.textScalerOf(context).scale(13) / 13;
-    final menuWidth = (240 * textScale.clamp(1.0, 1.4))
+    final menuWidth = (baseWidth * textScale.clamp(1.0, 1.4))
         .clamp(0.0, math.max(0.0, MediaQuery.sizeOf(context).width - 16))
         .toDouble();
     return PopupMenuButton<T>(

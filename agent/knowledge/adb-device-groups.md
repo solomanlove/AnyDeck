@@ -41,12 +41,19 @@
 
 ## 分组菜单样式（2026-11-17）
 
-- 分组入口与“连接设备”共用 `DeviceWorkspacePopupMenu`，使用 `panelSurface` 中性背景、透明 surface tint、主题边框、12px 圆角与轻阴影；菜单在入口下方展开，240px 基础宽度随字号增宽并限制在窗口内。
+- 分组入口与“连接设备”共用 `DeviceWorkspacePopupMenu`，使用 `panelSurface` 中性背景、透明 surface tint、主题边框、12px 圆角与轻阴影；菜单在入口下方展开，基础宽度随字号增宽并限制在窗口内。分组宽度后续收窄为 180px，连接菜单保留 240px，见下节。
 - Android、Harmony、iOS 复用 `buildPlatformIcon` 的 Android、Huawei 花瓣及 Apple Logo；自定义组使用文件夹图标。“全部分组”和管理/重试项也保留统一的图标列与文字对齐。
 - 选项最小高度 40px，选中勾移至右侧，并通过 `Semantics.selected` 保留无障碍状态。固定文案在大字号下允许换行，自定义长名称单行省略，避免撑宽弹窗。
 - 改动仅涉及菜单展示；分组筛选、管理、加载失败重试与连接回调继续沿用原实现，无新增 Provider、持久化写入、依赖、后台进程或跨窗口通信。
 - 新增 `test/device_group_filter_test.dart`，验证实际菜单背景与连接菜单一致、平台图标、文字对齐、选择与全部还原、Escape/外部关闭及 320px / 1.6 倍字号。与连接菜单、分组管理、工具栏、工作区和导航合计 9 份测试、69 项全部通过。
 - 本次 4 个修改/新增 Dart 文件的定向 `flutter analyze --no-pub --no-fatal-infos` 无 error/warning，仅有当前 Flutter SDK 既有的 Material 导入弃用 info；全仓分析无 error，仍有未修改模块的 5 条 warning。`git diff --check` 通过。
+
+## 分组浮窗宽度收窄（2026-11-18）
+
+- 需求：分组下拉浮窗留白过多，将默认字号下的宽度从 240px 调整为 180px，缩窄 25%。宽入口不会拉伸浮窗，自定义长名称继续单行省略。
+- 公共外壳新增 `baseWidth` 参数，默认仍为 240px；仅 `DeviceGroupFilter` 传入 180px。字号缩放与窗口边界限制继续由公共组件统一处理，分组筛选和管理逻辑不变。
+- 新增中英文、明暗主题下的真实菜单几何回归，验证 320px 窗口中的紧凑宽度、固定文案可读性及连接菜单宽度保留。分组菜单、连接菜单、分组工具栏与管理弹窗共 4 个测试文件、31 项通过；保留的 1.6 倍字号用例无溢出。
+- 修改的 3 个 Dart 文件定向静态检查无 error/warning，仅有既有 Material 导入和 `GlobalMaterialLocalizations` 弃用 info。未启动桌面应用，实际窗口观感待人工确认。
 
 ## 验证与交接
 

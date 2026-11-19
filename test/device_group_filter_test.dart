@@ -32,6 +32,49 @@ class _MenuStore extends DeviceGroupsStore {
 void main() {
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
+      testWidgets('分组浮窗保持紧凑且不随宽入口拉伸 $language ${brightness.name}', (
+        tester,
+      ) async {
+        await _pumpMenus(
+          tester,
+          language: language,
+          brightness: brightness,
+          store: _MenuStore(),
+          onChanged: (_) {},
+          width: 320,
+        );
+        await tester.tap(find.byKey(const Key('deviceConnectionButton')));
+        await tester.pumpAndSettle();
+        final connection = tester.getRect(
+          _surface(find.byKey(const Key('deviceConnection-pair'))),
+        );
+        expect(connection.width, closeTo(240, .1));
+        await _escape(tester);
+
+        final button = tester.getRect(find.byKey(_groupButton));
+        await _openGroup(tester);
+        final menu = tester.getRect(_surface(_entry('android')));
+        expect(menu.width, closeTo(180, .1));
+        expect(menu.width, lessThan(button.width));
+        expect(menu.left, greaterThanOrEqualTo(0));
+        expect(menu.right, lessThanOrEqualTo(320));
+        for (final item in [
+          _entry(''),
+          _entry('android'),
+          _entry('harmony'),
+          _entry('ios'),
+          find.byKey(const Key('deviceGroupManage')),
+        ]) {
+          final text = find.descendant(of: item, matching: find.byType(Text));
+          expect(
+            tester.renderObject<RenderParagraph>(text).didExceedMaxLines,
+            isFalse,
+          );
+          expect(tester.getRect(text).right, lessThanOrEqualTo(menu.right));
+        }
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('分组菜单复用连接背景和平台图标 $language ${brightness.name}', (
         tester,
       ) async {
