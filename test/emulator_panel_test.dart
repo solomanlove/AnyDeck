@@ -5,6 +5,7 @@ import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/emulator/emulator_process.dart';
 import 'package:any_deck/core/providers/modules/emulator_terminal_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
+import 'package:any_deck/features/widgets/dashboard_table_header.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -61,6 +62,69 @@ Widget _app(Widget child, {String language = 'zh', bool dark = false}) {
 void main() {
   test('configuration translations have matching Chinese and English keys', () {
     expect(emulatorConfigZh.keys.toSet(), emulatorConfigEn.keys.toSet());
+  });
+
+  testWidgets('Android 模拟器六列随窗口缩放并与数据行对齐', (tester) async {
+    const emulator = AndroidEmulator(
+      name: 'Medium_Phone_API_37.0_with_a_long_display_name',
+      resolution: '1080x2400',
+      sdkVersion: '37.0',
+      abi: 'arm64-v8a',
+      memory: '2G',
+      storage: '8G',
+    );
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1400, 800);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          emulatorListProvider.overrideWith((ref) async => [emulator]),
+          emulatorConnectionsProvider.overrideWith((ref) async => {}),
+        ],
+        child: _app(
+          const Padding(
+            padding: EdgeInsets.only(left: 180),
+            child: EmulatorListPanel(isFullPage: true),
+          ),
+        ),
+      ),
+    );
+
+    final headers = find.byType(DashboardSortableHeaderCell);
+    final values = [
+      emulator.displayName,
+      emulator.resolutionLabel,
+      emulator.sdkVersionLabel,
+      emulator.abiLabel,
+      emulator.memoryLabel,
+      emulator.storageLabel,
+    ];
+    // 连续调整同一窗口，在原先的表格最小宽度两侧检查六列边界。
+    final previousWidths = List.filled(values.length, double.infinity);
+    for (final width in [1580.0, 1100.0, 800.0, 700.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      await tester.pumpAndSettle();
+      expect(headers, findsNWidgets(values.length));
+      expect(tester.getRect(headers.first).left, closeTo(180, 0.01));
+      expect(tester.getRect(headers.last).right, closeTo(width, 0.01));
+      for (var i = 0; i < values.length; i++) {
+        final header = tester.getRect(headers.at(i));
+        expect(header.width, lessThan(previousWidths[i]));
+        previousWidths[i] = header.width;
+        final value = tester.getRect(find.text(values[i]));
+        expect(value.width, greaterThan(0));
+        expect(value.left, greaterThanOrEqualTo(header.left - 0.01));
+        expect(value.right, lessThanOrEqualTo(header.right + 0.01));
+      }
+      final details = find.byIcon(CupertinoIcons.info_circle);
+      expect(details.hitTestable(), findsOneWidget);
+      expect(
+        tester.getRect(details).right,
+        lessThanOrEqualTo(tester.getRect(headers.first).right),
+      );
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets(

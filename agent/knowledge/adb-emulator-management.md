@@ -77,3 +77,8 @@
 - 保留各平台搜索、清除、输入宽度、圆角及模拟器操作，不新增文案、后台命令或 Provider。此次仅扩展搜索框尺寸配置。
 - `emulator_search_fields_test.dart` 将原有等高用例参数化为 Android / HarmonyOS / iOS，与实际设备搜索框比较高度；覆盖中英文环境、Light/Dark、1200/620px 窗口、1.6 倍文字，以及输入前、输入后和清除后的状态。DevEco / iOS 原有搜索结果与清除交互用例继续保留。
 - 验证：`flutter --no-version-check test --no-pub test/emulator_search_fields_test.dart test/emulator_panel_test.dart test/device_list_filters_test.dart` 共 27 项通过；3 个修改 Dart 文件定向 `flutter analyze --no-pub --no-fatal-infos` 无 error / warning，仅有 7 项 SDK 弃用 info；`git diff --check` 通过。未启动桌面 App 或真实模拟器。
+
+## Android 模拟器表格随窗口缩放（2026-11-19）
+
+- 表头和数据行共用六列权重，按侧栏右侧的实际可用宽度分配。单元格左右各留 6 个逻辑像素，名称列保留状态与详情入口，长文本可悬停查看。
+- `emulator_panel_test.dart` 在侧栏占用 180 个逻辑像素的布局下连续缩放窗口，覆盖 520、620、920、1400 四种表格宽度，验证六列同步收窄、首尾贴合边界、数据与表头对齐，以及详情图标可点击。

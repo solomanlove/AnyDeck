@@ -34,136 +34,64 @@ class _EmulatorTable extends StatefulWidget {
 }
 
 class _EmulatorTableState extends State<_EmulatorTable> {
-  // 横向和纵向滚动控制器
-  final ScrollController _horizontalController = ScrollController();
   final ScrollController _verticalController = ScrollController();
 
   @override
   void dispose() {
-    _horizontalController.dispose();
     _verticalController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // 自适应计算各列的宽度
-        final widths = _EmulatorTableWidths.adaptive(constraints.maxWidth);
-        // 如果各列总宽度小于容器宽度，则拉伸至容器宽度
-        final tableWidth = max(widths.total, constraints.maxWidth);
-
-        return Scrollbar(
-          controller: _horizontalController,
-          notificationPredicate: (notification) =>
-              notification.metrics.axis == Axis.horizontal,
-          child: SingleChildScrollView(
-            controller: _horizontalController,
-            primary: false,
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              height: constraints.maxHeight,
-              child: Column(
-                children: [
-                  // 表格头部
-                  _EmulatorTableHeader(
-                    widths: widths,
-                    onSort: widget.onSort,
-                    sortIconBuilder: widget.sortIconBuilder,
-                  ),
-                  // 表格内容列表
-                  Expanded(
-                    child: Scrollbar(
-                      controller: _verticalController,
-                      child: ListView.builder(
-                        controller: _verticalController,
-                        primary: false,
-                        itemCount: widget.items.length,
-                        itemBuilder: (context, index) {
-                          final item = widget.items[index];
-                          return _EmulatorTableRow(
-                            item: item,
-                            widths: widths,
-                            selected: item.emulator.name == widget.selectedName,
-                            index: index,
-                            onSelected: () =>
-                                widget.onSelected(item.emulator.name),
-                            onDoubleTap: () =>
-                                widget.onDoubleTap(item.emulator.name),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    return Column(
+      children: [
+        _EmulatorTableHeader(
+          onSort: widget.onSort,
+          sortIconBuilder: widget.sortIconBuilder,
+        ),
+        Expanded(
+          child: Scrollbar(
+            controller: _verticalController,
+            child: ListView.builder(
+              controller: _verticalController,
+              primary: false,
+              itemCount: widget.items.length,
+              itemBuilder: (context, index) {
+                final item = widget.items[index];
+                return _EmulatorTableRow(
+                  item: item,
+                  selected: item.emulator.name == widget.selectedName,
+                  index: index,
+                  onSelected: () => widget.onSelected(item.emulator.name),
+                  onDoubleTap: () => widget.onDoubleTap(item.emulator.name),
+                );
+              },
             ),
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }
 
-/// 模拟器数据表格中各列的宽度定义。
-class _EmulatorTableWidths {
-  const _EmulatorTableWidths({
-    required this.name,
-    required this.resolution,
-    required this.sdk,
-    required this.abi,
-    required this.memory,
-    required this.storage,
-  });
-
-  /// 模拟器名称列宽
-  final double name;
-
-  /// 分辨率列宽
-  final double resolution;
-
-  /// SDK 版本列宽
-  final double sdk;
-
-  /// ABI 架构列宽
-  final double abi;
-
-  /// 内存列宽
-  final double memory;
-
-  /// 存储空间列宽
-  final double storage;
-
-  /// 各列宽度总和
-  double get total => name + resolution + sdk + abi + memory + storage;
-
-  /// 工厂构造方法：根据当前可视区域宽度动态计算名称列的宽度，保持其他列宽度固定。
-  factory _EmulatorTableWidths.adaptive(double viewportWidth) {
-    const fixed = 180.0 + 130.0 + 210.0 + 110.0 + 110.0;
-    final name = max(280.0, viewportWidth - fixed);
-    return _EmulatorTableWidths(
-      name: name,
-      resolution: 180,
-      sdk: 130,
-      abi: 210,
-      memory: 110,
-      storage: 110,
-    );
-  }
+/// 表头与数据行共用列宽权重和边距，名称列为状态和详情按钮预留空间。
+abstract final class _EmulatorTableLayout {
+  static const name = 30;
+  static const resolution = 18;
+  static const sdk = 14;
+  static const abi = 16;
+  static const memory = 11;
+  static const storage = 11;
+  static const cellPadding = EdgeInsets.symmetric(horizontal: 6);
 }
 
 /// 模拟器数据表格的头部组件。
 class _EmulatorTableHeader extends StatelessWidget {
   const _EmulatorTableHeader({
-    required this.widths,
     required this.onSort,
     required this.sortIconBuilder,
   });
-
-  /// 列宽定义
-  final _EmulatorTableWidths widths;
 
   /// 排序回调
   final ValueChanged<String> onSort;
@@ -197,56 +125,56 @@ class _EmulatorTableHeader extends StatelessWidget {
         children: [
           // 模拟器名称表头单元格
           DashboardSortableHeaderCell(
-            width: widths.name,
+            flex: _EmulatorTableLayout.name,
             label: context.l10n.t('emulatorNameCol'),
             style: style,
             onTap: () => onSort('name'),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: _EmulatorTableLayout.cellPadding,
             sortIcon: sortIconBuilder('name'),
           ),
           // 分辨率表头单元格
           DashboardSortableHeaderCell(
-            width: widths.resolution,
+            flex: _EmulatorTableLayout.resolution,
             label: context.l10n.t('emulatorResolutionCol'),
             style: style,
             onTap: () => onSort('resolution'),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: _EmulatorTableLayout.cellPadding,
             sortIcon: sortIconBuilder('resolution'),
           ),
           // SDK表头单元格
           DashboardSortableHeaderCell(
-            width: widths.sdk,
+            flex: _EmulatorTableLayout.sdk,
             label: context.l10n.t('emulatorSdkCol'),
             style: style,
             onTap: () => onSort('sdk'),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: _EmulatorTableLayout.cellPadding,
             sortIcon: sortIconBuilder('sdk'),
           ),
           // ABI架构表头单元格
           DashboardSortableHeaderCell(
-            width: widths.abi,
+            flex: _EmulatorTableLayout.abi,
             label: context.l10n.t('emulatorAbiCol'),
             style: style,
             onTap: () => onSort('abi'),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: _EmulatorTableLayout.cellPadding,
             sortIcon: sortIconBuilder('abi'),
           ),
           // 内存容量表头单元格
           DashboardSortableHeaderCell(
-            width: widths.memory,
+            flex: _EmulatorTableLayout.memory,
             label: context.l10n.t('emulatorMemoryCol'),
             style: style,
             onTap: () => onSort('memory'),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: _EmulatorTableLayout.cellPadding,
             sortIcon: sortIconBuilder('memory'),
           ),
           // 存储容量表头单元格
           DashboardSortableHeaderCell(
-            width: widths.storage,
+            flex: _EmulatorTableLayout.storage,
             label: context.l10n.t('emulatorStorageCol'),
             style: style,
             onTap: () => onSort('storage'),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: _EmulatorTableLayout.cellPadding,
             sortIcon: sortIconBuilder('storage'),
           ),
         ],
@@ -259,7 +187,6 @@ class _EmulatorTableHeader extends StatelessWidget {
 class _EmulatorTableRow extends StatelessWidget {
   const _EmulatorTableRow({
     required this.item,
-    required this.widths,
     required this.selected,
     required this.index,
     required this.onSelected,
@@ -268,9 +195,6 @@ class _EmulatorTableRow extends StatelessWidget {
 
   /// 模拟器项数据
   final _EmulatorItem item;
-
-  /// 列宽定义
-  final _EmulatorTableWidths widths;
 
   /// 是否被选中
   final bool selected;
@@ -313,7 +237,7 @@ class _EmulatorTableRow extends StatelessWidget {
           children: [
             // 名称列包含状态圆点与名称
             _EmulatorCell(
-              width: widths.name,
+              flex: _EmulatorTableLayout.name,
               child: Row(
                 children: [
                   if ((item.status == 'error' || item.status == 'connectionIssue'))
@@ -355,27 +279,27 @@ class _EmulatorTableRow extends StatelessWidget {
             ),
             // 分辨率列
             _EmulatorCell(
-              width: widths.resolution,
+              flex: _EmulatorTableLayout.resolution,
               child: _EmulatorTableText(item.emulator.resolutionLabel),
             ),
             // SDK 版本列
             _EmulatorCell(
-              width: widths.sdk,
+              flex: _EmulatorTableLayout.sdk,
               child: _EmulatorTableText(item.emulator.sdkVersionLabel),
             ),
             // ABI架构列
             _EmulatorCell(
-              width: widths.abi,
+              flex: _EmulatorTableLayout.abi,
               child: _EmulatorTableText(item.emulator.abiLabel),
             ),
             // 内存列
             _EmulatorCell(
-              width: widths.memory,
+              flex: _EmulatorTableLayout.memory,
               child: _EmulatorTableText(item.emulator.memoryLabel),
             ),
             // 存储列
             _EmulatorCell(
-              width: widths.storage,
+              flex: _EmulatorTableLayout.storage,
               child: _EmulatorTableText(item.emulator.storageLabel),
             ),
           ],
@@ -385,20 +309,22 @@ class _EmulatorTableRow extends StatelessWidget {
   }
 }
 
-/// 表格内部的基础单元格容器，限制宽度并提供水平边距。
+/// 按列宽权重分配可用空间，并与表头使用相同的水平边距。
 class _EmulatorCell extends StatelessWidget {
-  const _EmulatorCell({required this.width, required this.child});
+  const _EmulatorCell({required this.flex, required this.child});
 
-  final double width;
+  final int flex;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      alignment: Alignment.centerLeft,
-      child: child,
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: _EmulatorTableLayout.cellPadding,
+        alignment: Alignment.centerLeft,
+        child: child,
+      ),
     );
   }
 }

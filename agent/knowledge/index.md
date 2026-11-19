@@ -48,7 +48,7 @@
 | `adb-embedded-camera` | 内嵌摄像头预览 | active | scrcpy camera 参数、独立会话/端口、原生 Texture 复用、手动启停及销毁回收、macOS 限制与回归边界 | `core/scrcpy/`, `features/apps/`, `rust/device_bridge/` |
 | `adb-virtual-camera` | macOS 系统摄像头 | experimental | Camera Extension source/sink、720p30、按需采集及预览互斥；扩展 ID 可配置，开发签名与系统激活已验证，会议连续真实画面仍待验收 | `core/virtual_camera/`, `macos/Runner/VirtualCamera/`, `macos/AnyDeckCameraExtension/` |
 | `adb-cert-management` | 证书管理机制 | active | 记录用户证书与系统证书（Root 权限，包含 Android 10+ 内存挂载与 Conscrypt APEX 挂载）的导入机制与 adb 命令设计 | `control/` (控制面板) |
-| `adb-emulator-management` | 模拟器启动诊断与配置详情 | active | 记录启动诊断、ADB 授权与离线状态、定向重连/关闭、冷启动与 SDK 环境、标题工具栏、复用系统版本平台 Tab、三平台搜索框与设备搜索框等高、详情及中英文配置搜索 | `core/emulator/`, `core/providers/`, `features/devices/` |
+| `adb-emulator-management` | 模拟器启动诊断与配置详情 | active | 记录启动诊断、ADB 授权与离线状态、定向重连/关闭、冷启动与 SDK 环境、标题工具栏、复用系统版本平台 Tab、三平台搜索框与设备搜索框等高、Android 表格六列随窗口缩放、详情及中英文配置搜索 | `core/emulator/`, `core/providers/`, `features/devices/` |
 | `adb-desktop-platform-chrome` | 跨平台桌面窗口与工作区 UI | active | macOS 原生按钮避让、Windows 主窗口标题栏、Linux 原生装饰、子窗口标题同步、主窗口导航实色分区与独立分隔线、公共主题表面与宿主验证边界 | `app/window/`, `features/overview/`, `linux/runner/` |
 | `adb-desktop-window-shortcuts` | 桌面窗口与软件快捷键 | active | 统一按键录入、自由修饰键、跨组冲突与旧键释放、持久化广播、子窗口转发、隐藏路由焦点隔离、失焦响应、退出确认与 macOS 菜单边界 | `app/shortcuts/`, `app/settings/`, `app/window/`, `app/router/`, `features/overview/` |
 | `adb-tabs-features-principles` | 各 Tab 功能与实现原理指南 | active | 梳理概览的平台字段分流、Samsung One UI 属性解析与未知系统兜底、产品名称与型号独立展示、折叠机内外屏分辨率、电量/充电状态、内存占用与容量卡布局，以及控制、鸿蒙应用右键清除缓存、鸿蒙文件页单一路径导航、日志紧凑视图时间配色、终端、鸿蒙进程 CPU/内存采样及进程操作、网页调试、布局分析、性能监控、网络/端口转发等 Tab 的功能设计与底层原理 | `dashboard/` (主面板各 Tab) |
