@@ -20,6 +20,7 @@ import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:any_deck/features/overview/settings/autostart_setting_control.dart';
 import 'package:any_deck/app/window/widget/desktop_workspace_surface.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -132,6 +133,8 @@ void main() {
       testWidgets('$language ${brightness.name} 设备与设置标题栏切换时对齐一致', (
         tester,
       ) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
         tester.view.physicalSize = const Size(1200, 900);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
@@ -195,6 +198,9 @@ void main() {
         expect(tester.getRect(bar), deviceBar);
         expect(tester.getTopLeft(title.first), deviceTitle.topLeft);
         expect(tester.getTopLeft(title.last), deviceSubtitle.topLeft);
+        container.read(appRouterProvider).go('/emulators');
+        await tester.pumpAndSettle();
+        await expectDashboardSurfaceSeparation(tester);
         expect(tester.takeException(), isNull);
       });
     }

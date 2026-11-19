@@ -67,6 +67,14 @@ HDC 截图收发按请求使用独立临时目录与远端文件名，finally �
 - `device_connection_status_labels_test.dart` 通过真实 Dashboard 验证 Android 三通道、Harmony USB/TCP、iOS USB/网络和离线状态的可见短名、Tooltip 与读屏；`device_wall_card_test.dart` 验证离线提示区整体移除及手机外观保留。
 - 本次 7 份相关测试共 88 项通过；全仓静态分析无 error，保留 5 项既有 warning。未启动 App 或验证真机。
 
+### 全局底栏背景与标题栏统一（2026-11-19）
+
+- `HostNetworkFooter` 复用一级标题栏的 `DesktopWorkspaceSurface`，移除原 `ColorScheme.surface` 实色底，避免底栏被种子主色染色。macOS 共用透明度和模糊材质，Windows/Linux 共用主题实色表面。
+- 底栏仍由主窗口 Shell 唯一挂载，设备管理、模拟器管理、设置及其他右侧页面均自动使用同一规则；原有顶部边框、高度、内边距、IP 复制、网络详情与服务诊断交互保持原实现。
+- `dashboard_surface_expectations.dart` 增加真实绘制像素比较，验证标题栏与底栏背景一致；响应式集成测试显式覆盖 macOS、中英文、明暗主题，并在设备页、设置页和模拟器页间切换。修复前 macOS 底栏像素与标题栏不一致的用例失败。
+- 毛玻璃采样的相邻内容不同，像素比较允许最多两个色阶的合成差异，并同时检查底栏实际复用公共背景组件。5 份相关测试共 50 项通过，覆盖底栏复制、网络详情、权限、窄屏和控制台切换；全仓静态分析无 error，保留 5 项既有 warning，`git diff --check` 通过。
+- 无新增依赖、Provider、持久化或窗口通信；未启动完整 App。
+
 ## 服务检查与真实边界
 
 | 服务 | 检查证据 |

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../app/widget/app_toast.dart';
+import '../../../app/window/widget/desktop_workspace_surface.dart';
 import '../../../core/network/host_network_info.dart';
 import '../../../core/providers/host_network_provider.dart';
 import '../../console/controller/console_dock_controller.dart';
@@ -26,12 +27,11 @@ class HostNetworkFooter extends ConsumerWidget {
     final placeholder = context.l10n.t(
       network.isLoading ? 'hostNetworkLoading' : 'deviceWorkspaceMissingIp',
     );
-    return Container(
+    final footer = Container(
       key: const Key('hostNetworkFooter'),
       constraints: const BoxConstraints(minHeight: 34),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
         border: Border(
           top: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
@@ -172,6 +172,8 @@ class HostNetworkFooter extends ConsumerWidget {
         ),
       ),
     );
+    // 所有右侧页面底栏与一级标题栏共用背景材质，避免主色染色。
+    return DesktopWorkspaceSurface(child: footer);
   }
 
   ButtonStyle _statusIconStyle() => IconButton.styleFrom(
