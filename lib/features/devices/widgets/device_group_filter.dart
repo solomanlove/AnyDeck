@@ -108,7 +108,7 @@ class DeviceGroupFilter extends ConsumerWidget {
             Icon(
               Icons.folder_outlined,
               size: 15,
-              color: theme.colorScheme.primary,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 5),
             Expanded(
@@ -186,7 +186,7 @@ class DeviceGroupFilter extends ConsumerWidget {
               SizedBox(
                 width: 16,
                 child: selected
-                    ? Icon(Icons.check, size: 16, color: scheme.primary)
+                    ? Icon(Icons.check, size: 16, color: scheme.onSurface)
                     : null,
               ),
             ],

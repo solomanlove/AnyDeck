@@ -72,6 +72,73 @@ void main() {
 
                 final theme = Theme.of(tester.element(toolbar));
                 final scheme = theme.colorScheme;
+                for (final key in [
+                  'deviceFilter-all',
+                  'deviceView-${list ? 'list' : 'wall'}',
+                  'deviceBatchManage',
+                ]) {
+                  final button = tester.widget<ButtonStyleButton>(
+                    find.byKey(Key(key)),
+                  );
+                  expect(
+                    button.style!.foregroundColor!.resolve({}),
+                    scheme.onSurface,
+                  );
+                  expect(
+                    button.style!.backgroundColor!.resolve({}),
+                    theme.deviceSelectionBackground,
+                  );
+                }
+                final device = find.byKey(
+                  ValueKey('${list ? 'device-row' : 'device-wall'}-device-a'),
+                );
+                if (list) {
+                  final container = tester.widget<Container>(
+                    find.descendant(
+                      of: device,
+                      matching: find.byType(Container),
+                    ).first,
+                  );
+                  expect(
+                    (container.decoration! as BoxDecoration).color,
+                    theme.deviceSelectionBackground,
+                  );
+                } else {
+                  final material = tester.widget<Material>(
+                    find.descendant(
+                      of: device,
+                      matching: find.byType(Material),
+                    ).first,
+                  );
+                  expect(material.color, theme.deviceSelectionBackground);
+                  expect(
+                    (material.shape! as RoundedRectangleBorder).side.color,
+                    theme.deviceSelectionBorder,
+                  );
+                }
+                final deviceCheckbox = find.descendant(
+                  of: device,
+                  matching: find.byType(Checkbox),
+                );
+                final deviceCheck = tester.widget<Checkbox>(deviceCheckbox);
+                expect(deviceCheck.activeColor, scheme.onSurface);
+                expect(deviceCheck.checkColor, scheme.surface);
+                expect(
+                  (deviceCheck.side! as WidgetStateBorderSide).resolve(
+                    {WidgetState.selected},
+                  )!.color,
+                  scheme.onSurface,
+                );
+                expect(
+                  find.descendant(
+                    of: deviceCheckbox,
+                    matching: find.byWidgetPredicate(
+                      (widget) =>
+                          widget is CustomPaint && widget.painter != null,
+                    ),
+                  ),
+                  paints..rrect(color: scheme.onSurface),
+                );
                 final background =
                     tester.widget<Container>(toolbar).decoration!
                         as BoxDecoration;

@@ -52,6 +52,14 @@ void main() {
         await _escape(tester);
 
         final button = tester.getRect(find.byKey(_groupButton));
+        final folder = find.descendant(
+          of: find.byKey(_groupButton),
+          matching: find.byIcon(Icons.folder_outlined),
+        );
+        expect(
+          tester.widget<Icon>(folder).color,
+          Theme.of(tester.element(folder)).colorScheme.onSurfaceVariant,
+        );
         await _openGroup(tester);
         final menu = tester.getRect(_surface(_entry('android')));
         expect(menu.width, closeTo(180, .1));
@@ -142,6 +150,10 @@ void main() {
           findsOneWidget,
         );
         _expectCheck('');
+        expect(
+          tester.widget<Icon>(find.byIcon(Icons.check)).color,
+          theme.colorScheme.onSurface,
+        );
 
         // 选择仅改变当前过滤条件；再次打开时勾选应跟随宿主状态。
         for (final id in ['android', 'harmony', 'ios', 'qa', '']) {

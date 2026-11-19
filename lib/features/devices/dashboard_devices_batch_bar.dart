@@ -50,6 +50,7 @@ extension _DeviceSelectionBar on _DeviceListPanelState {
                       key: const Key('deviceSelectAll'),
                       activeColor: scheme.onSurface,
                       checkColor: scheme.surface,
+                      side: theme.deviceSelectionCheckboxSide,
                       overlayColor: WidgetStatePropertyAll(
                         theme.appColors.hoverSurface,
                       ),

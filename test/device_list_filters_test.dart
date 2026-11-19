@@ -57,6 +57,34 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
+          final theme = Theme.of(tester.element(find.byType(DeviceListFilters)));
+          for (final key in [
+            'deviceFilter-all',
+            'deviceView-wall',
+            'deviceBatchManage',
+          ]) {
+            final button = tester.widget<ButtonStyleButton>(find.byKey(Key(key)));
+            expect(
+              button.style!.foregroundColor!.resolve({}),
+              theme.colorScheme.onSurface,
+            );
+            expect(
+              button.style!.backgroundColor!.resolve({}),
+              theme.deviceSelectionBackground,
+            );
+          }
+          for (final key in [
+            'deviceFilter-online',
+            'deviceFilter-offline',
+            'deviceView-list',
+          ]) {
+            final button = tester.widget<TextButton>(find.byKey(Key(key)));
+            expect(
+              button.style!.foregroundColor!.resolve({}),
+              theme.colorScheme.onSurfaceVariant,
+            );
+            expect(button.style!.backgroundColor!.resolve({}), Colors.transparent);
+          }
           expectSearchFieldRadius(
             tester,
             find.byType(TextField),
@@ -159,6 +187,18 @@ void main() {
     await tester.tap(find.byKey(const Key('deviceBatchManage')));
     await tester.pumpAndSettle();
     expect(batchMode, isFalse);
+    final manage = tester.widget<OutlinedButton>(
+      find.byKey(const Key('deviceBatchManage')),
+    );
+    final theme = Theme.of(tester.element(find.byType(DeviceListFilters)));
+    expect(
+      manage.style!.backgroundColor!.resolve({}),
+      theme.appColors.panelSurface,
+    );
+    expect(
+      manage.style!.side!.resolve({})!.color,
+      theme.colorScheme.outlineVariant,
+    );
     expect(tester.getSize(search).width, closeTo(initialWidth, 0.1));
     await tester.tap(find.byTooltip('清空'));
     await tester.pumpAndSettle();

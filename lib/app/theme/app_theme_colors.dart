@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_palette.dart';
+import 'app_theme_sizes.dart';
 
 /// AnyDeck 业务组件使用的语义颜色，补充 Material [ColorScheme] 未覆盖的场景。
 @immutable
@@ -151,6 +152,21 @@ extension AppThemeDataColors on ThemeData {
   /// 主窗口导航使用不透明中性底色，与右侧内容形成稳定分区。
   Color get navigationSurface => brightness == Brightness.dark
       ? const Color(0xff282a31) : const Color(0xffeceef2);
+
+  /// 设备筛选、视图切换及批量选择共用中性灰色，不依赖品牌主色。
+  Color get deviceSelectionBackground => appColors.subtleBorder;
+  Color get deviceSelectionBorder => appColors.strongBorder;
+
+  /// 批量勾选的选中与未选中边框均保持灰色，避免继承品牌色边框。
+  WidgetStateBorderSide get deviceSelectionCheckboxSide =>
+      WidgetStateBorderSide.resolveWith(
+        (states) => BorderSide(
+          color: states.contains(WidgetState.selected)
+              ? colorScheme.onSurface
+              : colorScheme.outline,
+          width: AppThemeSizes.strongBorderWidth,
+        ),
+      );
 
   /// 主侧栏与设置分类共用的选中背景，明暗差异统一收口。
   Color get navigationSelectedBackground => colorScheme.primary.withValues(

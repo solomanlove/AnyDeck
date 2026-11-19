@@ -26,6 +26,14 @@
 执行期间禁用批量动作，并在 `finally` 中检查 `mounted` 后复位，阻止直接按钮重复提交。
 背景使用工作区中性色 `appColors.subtleSurface`，普通操作文字及交互反馈使用 `ColorScheme.onSurface`，全选 Checkbox 同样采用中性色；删除保留 error 语义色。配色随 Light/Dark 自动适配，不受用户主题主色影响；无新增 Provider 或跨 Isolate 通信。
 
+## 筛选、视图与批量选中统一灰色（2026-11-19）
+
+- 设备状态筛选、设备墙/列表切换与批量管理入口的选中态使用 `ThemeData.deviceSelectionBackground` 中性背景及 `onSurface` 前景，未选中态保持普通灰色；批量入口选中边框使用 `deviceSelectionBorder`。搜索焦点边框与分组文件夹、菜单勾选也改为中性色。
+- 设备列表行与设备墙卡片的批量选中背景共用上述规则，卡片边框不再使用主色。背景、边框统一复用 `AppThemeColors` 的灰色语义值，不修改用户主色或侧栏主题。
+- 全选、列表设备与设备墙的 Checkbox 均显式设置中性填充、勾选及交互色；`deviceSelectionCheckboxSide` 统一处理选中与未选中边框，避免全局 CheckboxTheme 的品牌色边框残留。
+- 测试同时覆盖绿色/蓝色主题、Light/Dark、设备墙/列表，检查选中和未选中样式、分组图标、设备高亮与 Checkbox 实际绘制；原计数、三态、筛选、清空和平台能力不变。
+- 6 份相关测试共 81 项通过；全仓静态分析无 error，5 项既有 warning 保持不变，`git diff --check` 通过。未启动完整 App，无新增依赖、Provider 或窗口通信。
+
 ## 测试与验证
 
 - `test/device_batch_toolbar_test.dart`：中英文、Light/Dark、宽窄窗口与放大字号、固定顺序、横向滚动、表头替换、全选三态及平台禁用、定时任务直达。

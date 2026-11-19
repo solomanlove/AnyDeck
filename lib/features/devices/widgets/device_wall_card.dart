@@ -83,7 +83,6 @@ class DeviceWallCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final compact = MediaQuery.sizeOf(context).width <= 490;
     final checked = batchMode && selected;
     final logoAsset = brand.toLowerCase().contains('harmony')
@@ -95,11 +94,11 @@ class DeviceWallCard extends StatelessWidget {
       label: '$name，${statusDescription ?? statusLabel}',
       selected: batchMode ? selected : null,
       child: Material(
-        color: checked ? scheme.primaryContainer : Colors.transparent,
+        color: checked ? theme.deviceSelectionBackground : Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: AppThemeSizes.radiusLarge,
           side: BorderSide(
-            color: checked ? scheme.primary : Colors.transparent,
+            color: checked ? theme.deviceSelectionBorder : Colors.transparent,
           ),
         ),
         child: InkWell(
@@ -162,6 +161,12 @@ class DeviceWallCard extends StatelessWidget {
             SizedBox.square(
               dimension: 21,
               child: Checkbox(
+                activeColor: theme.colorScheme.onSurface,
+                checkColor: theme.colorScheme.surface,
+                side: theme.deviceSelectionCheckboxSide,
+                overlayColor: WidgetStatePropertyAll(
+                  theme.appColors.hoverSurface,
+                ),
                 value: selected,
                 onChanged: selectable && onSelected != null
                     ? (value) => onSelected!(value ?? false)

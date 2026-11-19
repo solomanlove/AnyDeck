@@ -40,7 +40,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
             decoration: BoxDecoration(
               color: selected || isSelected
-                  ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+                  ? theme.deviceSelectionBackground
                   : theme.appColors.panelSurface,
               border: Border(
                 bottom: BorderSide(color: theme.colorScheme.outlineVariant),
@@ -57,6 +57,12 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                       SizedBox(
                         width: 36,
                         child: Checkbox(
+                          activeColor: theme.colorScheme.onSurface,
+                          checkColor: theme.colorScheme.surface,
+                          side: theme.deviceSelectionCheckboxSide,
+                          overlayColor: WidgetStatePropertyAll(
+                            theme.appColors.hoverSurface,
+                          ),
                           value: device.isChecked,
                           onChanged: device.id.startsWith('airplay-')
                               ? null

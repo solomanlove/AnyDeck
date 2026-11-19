@@ -192,10 +192,10 @@ class DeviceListFilters extends StatelessWidget {
                   ),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   foregroundColor: filter == value
-                      ? theme.colorScheme.primary
+                      ? theme.colorScheme.onSurface
                       : theme.colorScheme.onSurfaceVariant,
                   backgroundColor: filter == value
-                      ? theme.colorScheme.primaryContainer
+                      ? theme.deviceSelectionBackground
                       : Colors.transparent,
                   shape: const RoundedRectangleBorder(
                     borderRadius: AppThemeSizes.radiusMedium,
@@ -241,15 +241,13 @@ class DeviceListFilters extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             textStyle: _labelStyle(context),
-            foregroundColor: batchMode
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.onSurface,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
             backgroundColor: batchMode
-                ? Theme.of(context).colorScheme.primaryContainer
+                ? Theme.of(context).deviceSelectionBackground
                 : Theme.of(context).appColors.panelSurface,
             side: BorderSide(
               color: batchMode
-                  ? Theme.of(context).colorScheme.primary
+                  ? Theme.of(context).deviceSelectionBorder
                   : Theme.of(context).colorScheme.outlineVariant,
             ),
             shape: const RoundedRectangleBorder(
@@ -301,10 +299,10 @@ class DeviceListFilters extends StatelessWidget {
                             : FontWeight.w400,
                       ),
                       foregroundColor: viewMode == mode
-                          ? theme.colorScheme.primary
+                          ? theme.colorScheme.onSurface
                           : theme.colorScheme.onSurfaceVariant,
                       backgroundColor: viewMode == mode
-                          ? theme.colorScheme.primaryContainer
+                          ? theme.deviceSelectionBackground
                           : Colors.transparent,
                       shape: const RoundedRectangleBorder(
                         borderRadius: AppThemeSizes.radiusSmall,
@@ -371,7 +369,7 @@ class DeviceListFilters extends StatelessWidget {
             enabledBorder: border,
             focusedBorder: border.copyWith(
               borderSide: BorderSide(
-                color: theme.colorScheme.primary,
+                color: theme.colorScheme.onSurfaceVariant,
                 width: AppThemeSizes.strongBorderWidth,
               ),
             ),
