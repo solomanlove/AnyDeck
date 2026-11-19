@@ -23,6 +23,7 @@ class HostNetworkFooter extends ConsumerWidget {
     final network = ref.watch(hostNetworkProvider);
     final info = network.asData?.value;
     final theme = Theme.of(context);
+    final foreground = theme.colorScheme.onSurfaceVariant;
     final address = info?.address?.ipv4;
     final placeholder = context.l10n.t(
       network.isLoading ? 'hostNetworkLoading' : 'deviceWorkspaceMissingIp',
@@ -39,7 +40,7 @@ class HostNetworkFooter extends ConsumerWidget {
       child: DefaultTextStyle(
         style: theme.textTheme.bodySmall!.copyWith(
           fontSize: 11,
-          color: theme.colorScheme.onSurfaceVariant,
+          color: foreground,
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -54,7 +55,7 @@ class HostNetworkFooter extends ConsumerWidget {
                 SelectableText(
                   address ?? placeholder,
                   key: const Key('hostNetworkAddress'),
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(fontSize: 11, color: foreground),
                 ),
                 IconButton(
                   key: const Key('copyHostIp'),
@@ -82,7 +83,7 @@ class HostNetworkFooter extends ConsumerWidget {
                             }
                           }
                         },
-                  style: _statusIconStyle(),
+                  style: _statusIconStyle(foreground),
                   icon: const Icon(Icons.copy_outlined, size: 13),
                 ),
                 MenuAnchor(
@@ -106,7 +107,7 @@ class HostNetworkFooter extends ConsumerWidget {
                   builder: (context, controller, _) => TextButton(
                     key: const Key('hostNetworkDetails'),
                     style: TextButton.styleFrom(
-                      foregroundColor: theme.colorScheme.onSurfaceVariant,
+                      foregroundColor: foreground,
                       minimumSize: const Size(0, 28),
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       textStyle: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
@@ -131,7 +132,9 @@ class HostNetworkFooter extends ConsumerWidget {
                 ),
               ],
             );
-            const diagnostics = ServicesDiagnosticsButton();
+            final diagnostics = ServicesDiagnosticsButton(
+              foregroundColor: foreground,
+            );
             if (constraints.maxWidth <
                 440 * MediaQuery.textScalerOf(context).scale(1)) {
               return Column(
@@ -144,7 +147,7 @@ class HostNetworkFooter extends ConsumerWidget {
                     children: [
                       IconButton(
                         tooltip: context.l10n.t('console'),
-                        style: _statusIconStyle(),
+                        style: _statusIconStyle(foreground),
                         onPressed: ref
                             .read(consoleDockProvider.notifier)
                             .toggle,
@@ -173,10 +176,16 @@ class HostNetworkFooter extends ConsumerWidget {
       ),
     );
     // 所有右侧页面底栏与一级标题栏共用背景材质，避免主色染色。
-    return DesktopWorkspaceSurface(child: footer);
+    return DesktopWorkspaceSurface(
+      child: IconTheme.merge(
+        data: IconThemeData(color: foreground),
+        child: footer,
+      ),
+    );
   }
 
-  ButtonStyle _statusIconStyle() => IconButton.styleFrom(
+  ButtonStyle _statusIconStyle(Color foreground) => IconButton.styleFrom(
+    foregroundColor: foreground,
     minimumSize: const Size(24, 28),
     maximumSize: const Size(28, 28),
     padding: EdgeInsets.zero,

@@ -13,8 +13,11 @@ import 'services_diagnostics_panel.dart';
 ///
 /// 可直接放入状态栏 Row。点击后按右下角展开最多 500px 的诊断面板，
 /// 保留设备页状态，ESC / 点击外侧关闭并由 Dialog 恢复入口焦点。
+/// [foregroundColor] 可将文字、图标与加载指示器统一到所在状态栏的前景色。
 class ServicesDiagnosticsButton extends ConsumerWidget {
-  const ServicesDiagnosticsButton({super.key});
+  const ServicesDiagnosticsButton({super.key, this.foregroundColor});
+
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -29,7 +32,8 @@ class ServicesDiagnosticsButton extends ConsumerWidget {
       key: const ValueKey('services-diagnostics-button'),
       onPressed: () => showServicesDiagnostics(context),
       style: TextButton.styleFrom(
-        foregroundColor: Theme.of(context).appColors.toolbarForeground,
+        foregroundColor:
+            foregroundColor ?? Theme.of(context).appColors.toolbarForeground,
         minimumSize: const Size(0, 30),
         padding: const EdgeInsets.symmetric(horizontal: 8),
         textStyle: Theme.of(
@@ -41,9 +45,12 @@ class ServicesDiagnosticsButton extends ConsumerWidget {
         ),
       ),
       icon: checking
-          ? const SizedBox.square(
+          ? SizedBox.square(
               dimension: 13,
-              child: CircularProgressIndicator(strokeWidth: 1.5),
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: foregroundColor,
+              ),
             )
           : const Icon(LucideIcons.activity, size: 14),
       label: Row(
