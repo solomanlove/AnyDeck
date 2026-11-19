@@ -6,6 +6,37 @@ import 'package:any_deck/features/widgets/dashboard_header_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// 选中项使用浅色白底/深色面板底，文字保持足够对比度且不使用品牌色底。
+void _expectSelection(WidgetTester tester, EmulatorPlatform selected) {
+  for (final platform in EmulatorPlatform.values) {
+    final label = find.text(platform.label);
+    final item = find.ancestor(
+      of: label,
+      matching: find.byType(AnimatedContainer),
+    );
+    final decoration =
+        tester.widget<AnimatedContainer>(item).decoration! as BoxDecoration;
+    final theme = Theme.of(tester.element(label));
+    if (platform == selected) {
+      expect(decoration.color, theme.appColors.panelSurface);
+      if (theme.brightness == Brightness.light) {
+        expect(decoration.color, Colors.white);
+      }
+      expect(decoration.color, isNot(theme.colorScheme.primaryContainer));
+      final foreground = tester.widget<Text>(label).style!.color!;
+      expect(foreground, theme.colorScheme.onSurface);
+      final a = foreground.computeLuminance();
+      final b = decoration.color!.computeLuminance();
+      expect(
+        a > b ? (a + .05) / (b + .05) : (b + .05) / (a + .05),
+        greaterThanOrEqualTo(4.5),
+      );
+    } else {
+      expect(decoration.color, Colors.transparent);
+    }
+  }
+}
+
 /// 验证模拟器平台适配与受控选中状态，不启动真实模拟器或平台服务。
 void main() {
   const platforms = {
@@ -21,7 +52,14 @@ void main() {
         final changes = <EmulatorPlatform>[];
         await tester.pumpWidget(
           MaterialApp(
-            theme: buildAppTheme(brightness),
+            theme: buildAppTheme(
+              brightness,
+              themeColor: switch (initial) {
+                EmulatorPlatform.android => AppThemeColor.green,
+                EmulatorPlatform.harmony => AppThemeColor.blue,
+                EmulatorPlatform.ios => AppThemeColor.pink,
+              },
+            ),
             home: Scaffold(
               body: SizedBox(
                 width: 650,
@@ -44,6 +82,7 @@ void main() {
         );
 
         final switcher = find.byType(PlatformVersionSwitcher);
+        _expectSelection(tester, initial);
         expect(switcher, findsOneWidget);
         expect(
           tester.widget<PlatformVersionSwitcher>(switcher).selectedPlatform,
@@ -55,6 +94,7 @@ void main() {
           // 标题栏支持双击最大化，等待其双击识别窗口结束再验证单击回调。
           await tester.pump(const Duration(milliseconds: 350));
           await tester.pumpAndSettle();
+          _expectSelection(tester, platform);
           expect(selected, platform);
           expect(changes.last, platform);
           expect(

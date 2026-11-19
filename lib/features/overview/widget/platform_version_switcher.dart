@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../app/widget/device_os_logo_widget.dart';
 import '../model/platform_distribution_type.dart';
 
@@ -94,8 +95,8 @@ class PlatformVersionSwitcher extends StatelessWidget {
   }) {
     final isSelected = selectedPlatform == platform;
 
-    final selectedBg = Theme.of(context).colorScheme.primaryContainer;
-    final selectedFg = Theme.of(context).colorScheme.onPrimaryContainer;
+    final selectedBg = Theme.of(context).appColors.panelSurface;
+    final selectedFg = Theme.of(context).colorScheme.onSurface;
     final unselectedFg = isDark
         ? Colors.white.withValues(alpha: 0.65)
         : const Color(0xFF57606A);
