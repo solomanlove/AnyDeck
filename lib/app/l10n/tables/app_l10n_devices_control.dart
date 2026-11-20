@@ -1,6 +1,7 @@
 /// devices_control 模块文案表。新增 key 时必须同时补齐 zh/en。
 const devicesControlZh = {
   'devices': '设备管理',
+  'backToDevices': '返回设备管理',
   'devicesSubtitle': '统一管理 Android、HarmonyOS 与 iOS 设备',
   'deviceOnline': '已在线',
   'deviceOffline': '已离线',
@@ -262,6 +263,7 @@ const devicesControlZh = {
 
 const devicesControlEn = {
   'devices': 'Devices',
+  'backToDevices': 'Back to devices',
   'devicesSubtitle': 'Unified management of Android, HarmonyOS, and iOS devices',
   'deviceOnline': 'Online',
   'deviceOffline': 'Offline',

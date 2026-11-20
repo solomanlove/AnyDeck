@@ -66,8 +66,10 @@ void main() {
   testWidgets('rail shows all tools when height is enough', (
     WidgetTester tester,
   ) async {
-    await _pumpDashboard(tester, size: const Size(1200, 900));
+    // 为固定返回入口多留 44px 后，原本能完整展开的工具仍应全部可见。
+    await _pumpDashboard(tester, size: const Size(1200, 944));
 
+    expect(find.byTooltip('返回设备管理').hitTestable(), findsOneWidget);
     expect(_railIcon(AppNavigationIcons.overview), findsOneWidget);
     expect(_railIcon(AppNavigationIcons.control), findsOneWidget);
     expect(_railIcon(AppNavigationIcons.apps), findsOneWidget);
@@ -106,7 +108,8 @@ void main() {
 
     expect(_railIcon(AppNavigationIcons.overview), findsOneWidget);
     expect(_railIcon(AppNavigationIcons.control), findsOneWidget);
-    expect(_railIcon(AppNavigationIcons.apps), findsOneWidget);
+    expect(find.byTooltip('返回设备管理').hitTestable(), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.apps), findsNothing);
     expect(_railIcon(AppNavigationIcons.files), findsNothing);
     expect(_railIcon(AppNavigationIcons.logs), findsNothing);
     expect(
@@ -120,6 +123,7 @@ void main() {
     await tester.tap(_railIcon(CupertinoIcons.ellipsis));
     await tester.pumpAndSettle();
 
+    expect(find.byIcon(AppNavigationIcons.apps), findsWidgets);
     expect(
       find.byIcon(AppNavigationIcons.terminal),
       findsWidgets,
@@ -134,7 +138,8 @@ void main() {
     await _pumpDashboard(tester, size: const Size(1200, 460));
 
     expect(_railIcon(AppNavigationIcons.overview), findsOneWidget);
-    expect(_railIcon(AppNavigationIcons.control), findsOneWidget);
+    expect(find.byTooltip('返回设备管理').hitTestable(), findsOneWidget);
+    expect(_railIcon(AppNavigationIcons.control), findsNothing);
     expect(_railIcon(AppNavigationIcons.apps), findsNothing);
     expect(_railIcon(AppNavigationIcons.files), findsNothing);
     expect(_railIcon(AppNavigationIcons.logs), findsNothing);
@@ -143,6 +148,7 @@ void main() {
     await tester.tap(_railIcon(CupertinoIcons.ellipsis));
     await tester.pumpAndSettle();
 
+    expect(find.byIcon(AppNavigationIcons.control), findsWidgets);
     expect(find.byIcon(AppNavigationIcons.files), findsWidgets);
     expect(find.byIcon(AppNavigationIcons.logs), findsWidgets);
     expect(
@@ -160,6 +166,10 @@ void main() {
     expect(_moreIcon(tester).color, const Color(0xff09c47c));
 
     await _pumpDashboard(tester, size: const Size(1200, 500), selectedTool: 2);
+    expect(_moreIcon(tester).color, const Color(0xff09c47c));
+
+    // 应用在当前高度已折叠，控制仍位于侧栏内。
+    await _pumpDashboard(tester, size: const Size(1200, 500), selectedTool: 1);
     expect(_moreIcon(tester).color, const Color(0xff455a64));
   });
 

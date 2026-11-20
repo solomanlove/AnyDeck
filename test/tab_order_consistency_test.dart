@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
+import 'package:any_deck/app/widget/app_navigation_item.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
@@ -78,6 +79,12 @@ Widget _wrapTestWidget(Widget child, {List<Override> overrides = const []}) {
   );
 }
 
+/// 只读取宽侧栏内的导航项，设备身份和返回按钮的提示不参与页签排序。
+List<String> _navigationLabels(WidgetTester tester) => tester
+    .widgetList<AppNavigationItem>(find.byType(AppNavigationItem))
+    .map((item) => item.label)
+    .toList();
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -133,17 +140,12 @@ void main() {
         const Duration(seconds: 3),
       );
 
-      final androidTooltips = tester
-          .widgetList<Tooltip>(find.byType(Tooltip))
-          .map((w) => w.message)
-          .whereType<String>()
-          .skip(1)
-          .toList();
+      final androidLabels = _navigationLabels(tester);
 
       // 验证 Android 工具列表前几个按顺序为：主页、控制、应用、进程、文件、日志、终端调试
-      final androidAppsIndex = androidTooltips.indexOf('应用');
-      final androidProcessesIndex = androidTooltips.indexOf('进程');
-      final androidFilesIndex = androidTooltips.indexOf('文件');
+      final androidAppsIndex = androidLabels.indexOf('应用');
+      final androidProcessesIndex = androidLabels.indexOf('进程');
+      final androidFilesIndex = androidLabels.indexOf('文件');
 
       expect(androidAppsIndex != -1, isTrue);
       expect(androidProcessesIndex != -1, isTrue);
@@ -189,17 +191,12 @@ void main() {
         const Duration(seconds: 3),
       );
 
-      final harmonyTooltips = tester
-          .widgetList<Tooltip>(find.byType(Tooltip))
-          .map((w) => w.message)
-          .whereType<String>()
-          .skip(1)
-          .toList();
+      final harmonyLabels = _navigationLabels(tester);
 
       // 验证 HarmonyOS 端 进程 也紧随 应用，且在 文件 之前
-      final harmonyAppsIndex = harmonyTooltips.indexOf('应用');
-      final harmonyProcessesIndex = harmonyTooltips.indexOf('进程');
-      final harmonyFilesIndex = harmonyTooltips.indexOf('文件');
+      final harmonyAppsIndex = harmonyLabels.indexOf('应用');
+      final harmonyProcessesIndex = harmonyLabels.indexOf('进程');
+      final harmonyFilesIndex = harmonyLabels.indexOf('文件');
 
       expect(harmonyAppsIndex != -1, isTrue);
       expect(harmonyProcessesIndex != -1, isTrue);
@@ -211,8 +208,8 @@ void main() {
 
       // 3. 验证 HarmonyOS 所包含的所有共享工具在 Android 中的相对顺序完全一致
       final sharedInAndroid =
-          androidTooltips.where((item) => harmonyTooltips.contains(item)).toList();
-      expect(harmonyTooltips, equals(sharedInAndroid),
+          androidLabels.where((item) => harmonyLabels.contains(item)).toList();
+      expect(harmonyLabels, equals(sharedInAndroid),
           reason: '鸿蒙的所有工具项顺序应与安卓完全一致');
     });
   });

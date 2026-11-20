@@ -351,15 +351,18 @@ class PrimaryRail extends ConsumerWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final bool renderNarrow = constraints.maxWidth < 130;
+            // 返回入口固定在身份区上方，工具折叠时先预留其高度。
+            final toolAreaHeight = constraints.maxHeight -
+                (hasSelectedDevice ? _RailBackToDevices.slotHeight : 0);
             int visibleToolCount = _visibleToolCount(
-              railHeight: constraints.maxHeight,
+              railHeight: toolAreaHeight,
               toolCount: tools.length,
               isNarrow: renderNarrow,
               hasOverflow: false,
             );
             if (visibleToolCount < tools.length) {
               visibleToolCount = _visibleToolCount(
-                railHeight: constraints.maxHeight,
+                railHeight: toolAreaHeight,
                 toolCount: tools.length,
                 isNarrow: renderNarrow,
                 hasOverflow: true,
@@ -375,27 +378,24 @@ class PrimaryRail extends ConsumerWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                DragToMoveArea(child: SizedBox(height: _topSpacing)),
+                if (hasSelectedDevice)
+                  _RailBackToDevices(
+                    isNarrow: renderNarrow,
+                    onPressed: () => handleTap(-1),
+                  ),
                 DragToMoveArea(
                   child: Container(
                     color: Colors.transparent,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(height: _topSpacing),
                         GestureDetector(
-                          onTap: () {
-                            context.goNamed(AppRouteNames.devices);
-                          },
+                          onTap: () => handleTap(-1),
                           child: MouseRegion(
                             cursor: SystemMouseCursors.click,
                             child: _RailIdentity(
-                              selectedDevice: (selectedTool == -1 ||
-                                      selectedTool == -2 ||
-                                      selectedTool == -3 ||
-                                      selectedTool == -4 ||
-                                      selectedTool == -5)
-                                      ? null
-                                      : selectedDevice,
+                              selectedDevice: hasSelectedDevice ? selectedDevice : null,
                               registeredDevices: registeredDevices,
                               isNarrow: renderNarrow,
                             ),
@@ -473,8 +473,16 @@ class PrimaryRail extends ConsumerWidget {
                     isNarrow: renderNarrow,
                     verticalPadding: renderNarrow ? 3.0 : 2.0,
                   ),
-                const Spacer(),
-                _DashboardRailFooter(isNarrow: renderNarrow),
+                // 矮窗口允许滚动底部工具，返回入口始终留在顶部。
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: SingleChildScrollView(
+                      primary: false,
+                      child: _DashboardRailFooter(isNarrow: renderNarrow),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: _bottomSpacing),
               ],
             );

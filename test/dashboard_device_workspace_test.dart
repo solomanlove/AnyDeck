@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/router/app_router.dart';
 import 'package:any_deck/app/router/dashboard_route.dart';
+import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/app/widget/app_toast.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
@@ -14,6 +15,7 @@ import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
+import 'package:any_deck/core/receiver/receiver_identity.dart';
 import 'package:any_deck/features/devices/widgets/device_wall_card.dart';
 import 'package:any_deck/features/devices/widgets/device_tag_badge.dart';
 import 'package:any_deck/features/devices/widgets/host_network_footer.dart';
@@ -124,6 +126,12 @@ Future<ProviderContainer> _pumpDashboard(
   SharedPreferences.setMockInitialValues({});
   final container = ProviderContainer(
     overrides: [
+      receiverIdentityProvider.overrideWith(
+        (ref) async => const ReceiverIdentity(
+          uuid: '00000000-0000-4000-8000-000000000001',
+          computerName: 'AnyDeck QA',
+        ),
+      ),
       adbServiceProvider.overrideWithValue(adb ?? FakeAdbService()),
       iosDeviceServiceProvider.overrideWithValue(_Ios()),
       discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
@@ -184,6 +192,41 @@ void main() {
     ),
   );
   tearDown(() => messenger.setMockMethodCallHandler(windows, null));
+
+  for (final language in ['zh', 'en']) {
+    for (final size in [const Size(1200, 900), const Size(700, 400)]) {
+      testWidgets('从设备侧栏返回设备管理 $language $size', (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final container = await _pumpDashboard(tester, language: language);
+        final router = container.read(appRouterProvider);
+        final label = language == 'zh' ? '返回设备管理' : 'Back to devices';
+        final entry = find.byTooltip(label);
+        expect(entry, findsNothing);
+        // 从真实设备路由返回，离线设备也应能离开工作区。
+        router.go('/devices/workspace-beta/overview');
+        await tester.pumpAndSettle();
+        expect(container.read(selectedDeviceProvider)?.id, 'workspace-beta');
+        final button = find.descendant(
+          of: entry,
+          matching: find.widgetWithIcon(OutlinedButton, Icons.arrow_back),
+        );
+        expect(button.hitTestable(), findsOneWidget);
+        expect(
+          find.text(label),
+          size.width >= 1000 ? findsOneWidget : findsNothing,
+        );
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(router.routeInformationProvider.value.uri.path, '/devices');
+        expect(container.read(selectedDeviceProvider), isNull);
+        expect(find.byKey(const Key('deviceManagementHeader')), findsOneWidget);
+        expect(entry, findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
 
   testWidgets('可见设备墙自动截图，回墙与刷新更新，列表和隐藏路由停止新增采集', (tester) async {
     tester.view.physicalSize = const Size(1200, 900);

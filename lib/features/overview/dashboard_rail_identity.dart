@@ -1,5 +1,61 @@
 part of '../dashboard_screen.dart';
 
+/// 设备工作区的固定返回入口，窄侧栏使用带目的地提示的箭头。
+class _RailBackToDevices extends StatelessWidget {
+  const _RailBackToDevices({required this.isNarrow, required this.onPressed});
+
+  final bool isNarrow;
+  final VoidCallback onPressed;
+
+  static const double _buttonHeight = 36;
+  static const double _bottomGap = 8;
+  static const double slotHeight = _buttonHeight + _bottomGap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = context.l10n.t('backToDevices');
+    const arrow = Icon(Icons.arrow_back, size: 18);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, _bottomGap),
+      child: Tooltip(
+        message: label,
+        excludeFromSemantics: !isNarrow,
+        child: SizedBox(
+          height: _buttonHeight,
+          child: OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: theme.navigationForeground,
+              backgroundColor: theme.colorScheme.surface,
+              side: BorderSide(color: theme.colorScheme.outlineVariant),
+              padding: EdgeInsets.symmetric(horizontal: isNarrow ? 0 : 8),
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppThemeSizes.radiusMedium,
+              ),
+            ),
+            child: isNarrow
+                ? arrow
+                : Row(
+                    children: [
+                      arrow,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 左侧导航顶部身份区：选中设备时替换 App logo，同时保留返回设备管理的点击入口。
 class _RailIdentity extends ConsumerWidget {
   const _RailIdentity({
