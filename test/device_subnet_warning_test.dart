@@ -6,6 +6,7 @@ import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/features/devices/widgets/device_subnet_warning.dart';
 import 'package:any_deck/features/devices/widgets/host_network_footer.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -127,8 +128,19 @@ void main() {
           ),
         );
         final warning = find.byIcon(CupertinoIcons.exclamationmark_circle_fill);
+        final textFields = find.semantics.byPredicate(
+          (node) => node.flagsCollection.isTextField,
+        );
+        // 启动时占位文字会更新为 IP，两帧都应向辅助功能提供文本标签。
+        expect(textFields, findsNothing);
+        expect(
+          find.semantics.byLabel(l10n.t('hostNetworkLoading')),
+          findsOneWidget,
+        );
         expect(warning, findsNothing);
         await tester.pumpAndSettle();
+        expect(textFields, findsNothing);
+        expect(find.semantics.byLabel('192.168.31.105'), findsOneWidget);
         expect(warning, findsOneWidget);
         expect(find.byTooltip(l10n.t('deviceSubnetWarning')), findsOneWidget);
         expect(service.reads, 1);
@@ -146,6 +158,11 @@ void main() {
         await tester.pumpAndSettle();
         expect(warning, findsNothing);
         expect(find.text('192.168.0.105'), findsNWidgets(2));
+        // 详情弹层中的地址、Wi-Fi 和网卡同样需要通过文本标签读出。
+        expect(textFields, findsNothing);
+        expect(find.semantics.byLabel('192.168.0.105'), findsNWidgets(2));
+        expect(find.semantics.byLabel('test-wifi'), findsOneWidget);
+        expect(find.semantics.byLabel('en0'), findsOneWidget);
         expect(service.reads, 2);
 
         // 不再自动轮询：等待 10 秒后不应触发自动刷新。
@@ -216,7 +233,30 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('192.168.31.105'), findsOneWidget);
+    // Tab 直接进入复制按钮，拖选文字后仍可以用 ⌘C 复制。
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(
+      Focus.of(tester.element(find.byIcon(Icons.copy_outlined))).hasFocus,
+      isTrue,
+    );
+
+    Future<void> dragAndCopy(Finder text) async {
+      final rect = tester.getRect(text);
+      await tester.dragFrom(
+        rect.centerLeft + const Offset(1, 0),
+        Offset(rect.width - 2, 0),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pump();
+    }
+
+    await dragAndCopy(find.byKey(const Key('hostNetworkAddress')));
+    expect(clipboardWrites, ['192.168.31.105']);
+    clipboardWrites.clear();
     expect(service.permissionRequests, 0);
     await tester.tap(find.byKey(const Key('copyHostIp')));
     await tester.pumpAndSettle();
@@ -226,6 +266,11 @@ void main() {
     await tester.tap(find.byKey(const Key('hostNetworkDetails')));
     await tester.pumpAndSettle();
     expect(find.text('未授权(需定位权限)'), findsOneWidget);
+    final interfaceName = find.text('en0');
+    expect(Focus.of(tester.element(interfaceName)).skipTraversal, isTrue);
+    clipboardWrites.clear();
+    await dragAndCopy(interfaceName);
+    expect(clipboardWrites, ['en0']);
     await tester.tap(find.text('点击授权读取名称'));
     await tester.pumpAndSettle();
     expect(service.permissionRequests, 1);
@@ -233,7 +278,7 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   for (final locale in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
@@ -272,7 +317,7 @@ void main() {
           );
           await tester.pumpAndSettle();
           final address = find.byKey(const Key('hostNetworkAddress'));
-          expect(tester.widget<SelectableText>(address).data, '192.168.31.105');
+          expect(find.text('192.168.31.105'), findsOneWidget);
           expect(address.hitTestable(), findsOneWidget);
           for (final key in [
             const Key('hostNetworkAddress'),
