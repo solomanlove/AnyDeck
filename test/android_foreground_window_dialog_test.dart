@@ -15,9 +15,10 @@ void main() {
     );
     expect(tester.widget<AlertDialog>(find.byType(AlertDialog)).title, isNull);
     expect(
-      tester.widget<SelectableText>(find.byType(SelectableText)).data,
+      tester.widget<EditableText>(find.byType(EditableText)).controller.text,
       component,
     );
+    _expectCenteredResult(tester, '关闭');
 
     await tester.tap(find.text('关闭'));
     await tester.pumpAndSettle();
@@ -33,6 +34,7 @@ void main() {
       );
       final l10n = AppLocalizations(locale);
       expect(find.text(l10n.t('foregroundUnavailable')), findsOneWidget);
+      _expectCenteredResult(tester, l10n.t('close'));
     });
   }
 
@@ -43,7 +45,47 @@ void main() {
     );
     expect(find.text('错误'), findsOneWidget);
     expect(find.text('device offline'), findsOneWidget);
+    _expectCenteredResult(tester, '关闭');
   });
+
+  testWidgets('窄窗口内长组件名自然换行，整段仍可完整选取', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 640);
+    addTearDown(tester.view.reset);
+    const longComponent =
+        'com.example.settings/com.example.settings.network.wireless.'
+        'WifiNetworkDetailsActivity';
+    await _openDialog(
+      tester,
+      const AdbResult(exitCode: 0, stdout: longComponent, stderr: ''),
+    );
+    final editable = find.byType(EditableText);
+    expect(
+      tester.widget<EditableText>(editable).controller.text,
+      longComponent,
+    );
+    final render = tester.state<EditableTextState>(editable).renderEditable;
+    final boxes = render.getBoxesForSelection(
+      TextSelection(baseOffset: 0, extentOffset: longComponent.length),
+    );
+    expect(boxes.map((box) => box.top).toSet().length, greaterThan(1));
+    for (final box in boxes) {
+      expect(box.left, greaterThanOrEqualTo(-1));
+      expect(box.right, lessThanOrEqualTo(render.size.width + 1));
+    }
+    _expectCenteredResult(tester, '关闭');
+    expect(tester.takeException(), isNull);
+  });
+}
+
+/// 检查正文实际采用的对齐方式，以及正文和关闭按钮在窗口中的位置。
+void _expectCenteredResult(WidgetTester tester, String closeLabel) {
+  final editable = find.byType(EditableText);
+  expect(tester.widget<EditableText>(editable).textAlign, TextAlign.center);
+  final centerX =
+      tester.view.physicalSize.width / tester.view.devicePixelRatio / 2;
+  expect(tester.getCenter(editable).dx, closeTo(centerX, 1));
+  expect(tester.getCenter(find.text(closeLabel)).dx, closeTo(centerX, 1));
 }
 
 Future<void> _openDialog(

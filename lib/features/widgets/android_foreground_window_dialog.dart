@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/l10n/app_localizations.dart';
+import '../../app/theme/app_theme_sizes.dart';
 import '../../core/adb/adb_result.dart';
 
 /// 控制页和投屏工具栏共用的 Android 前台窗口弹窗。
@@ -20,11 +21,31 @@ class AndroidForegroundWindowDialog extends StatelessWidget {
         : result.message;
     return AlertDialog(
       semanticLabel: l10n.t('focus'),
-      title: result.isSuccess ? null : Text(l10n.t('error')),
+      alignment: Alignment.center,
+      constraints: const BoxConstraints(minWidth: 280, maxWidth: 520),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: const RoundedRectangleBorder(
+        borderRadius: AppThemeSizes.radiusLarge,
+      ),
+      title: result.isSuccess
+          ? null
+          : Text(l10n.t('error'), textAlign: TextAlign.center),
       scrollable: true,
-      content: SelectableText(message),
+      contentPadding: EdgeInsets.fromLTRB(
+        24,
+        result.isSuccess ? 24 : 8,
+        24,
+        12,
+      ),
+      content: SelectableText(
+        message,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      actionsAlignment: MainAxisAlignment.center,
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
       actions: [
-        TextButton(
+        ElevatedButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.t('close')),
         ),
