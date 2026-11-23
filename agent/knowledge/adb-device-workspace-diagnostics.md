@@ -103,6 +103,10 @@ HDC 截图收发按请求使用独立临时目录与远端文件名，finally �
 原生 Plugin 缺失、单项超时和 CLI 失败均保留独立结果，其他检查继续完成。
 诊断不自动启停、安装、修复或请求权限；工具安装引导复用现有配置页面。
 
+点击服务名称或状态检查该项并展开结果，右侧箭头单独控制详情。“检查全部”执行十二项检查。
+单项复测保留其他服务最近一次的结果。同一服务已有探针在执行时复用该次请求，
+不同服务可同时检查。部分完成时显示已检查项数与总数，最近检查时间取最近一次完成的时间。
+
 CLI 版本探测使用参数列表而非 Shell 字符串。输出每个管道最多 64KiB；默认四秒超时，
 超时先 terminate，500ms 后仍未退出则 kill。每个服务检查整体上限十五秒。
 技术错误通过日志脱敏再展示，不复制服务 Token 或其他凭据。
@@ -122,7 +126,7 @@ CLI 版本探测使用参数列表而非 Shell 字符串。输出每个管道最
 - `ios_screenshot_capture_test.dart`：手动镜像恢复、自动预览不挂载及同设备并发合并。
 - `device_context_action_test.dart` / `device_list_context_menu_test.dart`：能力限制、菜单打开后断线/删除、真实操作路由。
 - `device_subnet_warning_test.dart`：地址复制、网络详情、显式权限/刷新、不自动轮询及大字号。
-- `service_diagnostics_test.dart` / `service_diagnostic_probes_test.dart`：防重复、超时回收、状态分类、真实适配器、可选构建和中英明暗布局。
+- `service_diagnostics_test.dart` / `service_diagnostic_probes_test.dart`：单项复测与全量并发去重、部分结果摘要、详情展开、超时回收、状态分类、真实适配器、可选构建和中英明暗布局。
 - 同时回归现有模拟器搜索、Shell 导航、控制台、开发者页面和设备主题测试。
 
 验证命令使用 `flutter test --no-pub`，避免依赖解析混入无关 lockfile 改动；静态分析同样使用 `--no-pub`。

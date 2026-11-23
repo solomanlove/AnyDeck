@@ -15,9 +15,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Map<DiagnosticService, DiagnosticCheck> _checks({Completer<void>? pending}) => {
+/// 使用内存探针记录实际调用，并按需延迟指定服务的响应。
+Map<DiagnosticService, DiagnosticCheck> _checks({
+  Completer<void>? pending,
+  FutureOr<void> Function(DiagnosticService)? onCheck,
+}) => {
   for (final id in DiagnosticService.values)
     id: () async {
+      if (onCheck != null) await onCheck(id);
       if (pending != null) await pending.future;
       return ServiceDiagnostic(
         service: id,
@@ -67,6 +72,83 @@ void main() {
       DiagnosticService.airplay,
       DiagnosticService.virtualCamera,
     ]);
+  });
+
+  test('不同服务可并发单检，重复请求合并且重检保留其他结果', () async {
+    const adb = DiagnosticService.adb;
+    const hdc = DiagnosticService.hdc;
+    final calls = <DiagnosticService>[];
+    final pending = {adb: Completer<void>(), hdc: Completer<void>()};
+    final checks = _checks(
+      onCheck: (service) async {
+        calls.add(service);
+        await pending[service]?.future;
+      },
+    );
+    final container = ProviderContainer(
+      overrides: [serviceDiagnosticChecksProvider.overrideWithValue(checks)],
+    );
+    addTearDown(container.dispose);
+    final controller = container.read(serviceDiagnosticsProvider.notifier);
+    ServiceDiagnosticsState snapshot() =>
+        container.read(serviceDiagnosticsProvider);
+    ServiceDiagnosticStatus status(DiagnosticService service) => snapshot()
+        .entries
+        .singleWhere((item) => item.service == service)
+        .status;
+
+    final first = controller.runSingle(adb);
+    final duplicate = controller.runSingle(adb);
+    final second = controller.runSingle(hdc);
+    expect(duplicate, same(first));
+    expect(status(adb), ServiceDiagnosticStatus.checking);
+    expect(status(hdc), ServiceDiagnosticStatus.checking);
+    expect(status(DiagnosticService.ios), ServiceDiagnosticStatus.notChecked);
+
+    // 后发的 HDC 先返回；另一个探针仍应保留检查中状态。
+    pending[hdc]!.complete();
+    await second;
+    expect(status(hdc), ServiceDiagnosticStatus.missing);
+    expect(status(adb), ServiceDiagnosticStatus.checking);
+    expect(snapshot().isChecking, isTrue);
+    expect(snapshot().checkedAt, isNotNull);
+    pending[adb]!.complete();
+    await Future.wait([first, duplicate]);
+    expect(status(adb), ServiceDiagnosticStatus.ready);
+    expect(status(hdc), ServiceDiagnosticStatus.missing);
+    expect(snapshot().isChecking, isFalse);
+    expect(snapshot().checkedCount, 2);
+    expect(snapshot().issueCount, 1);
+
+    await controller.runSingle(adb);
+    expect(calls, [adb, hdc, adb]);
+    expect(status(hdc), ServiceDiagnosticStatus.missing);
+    expect(snapshot().checkedCount, 2);
+    expect(snapshot().issueCount, 1);
+  });
+
+  test('单项检测与全量诊断交错时，每个探针只执行一次', () async {
+    final pending = Completer<void>();
+    final calls = <DiagnosticService>[];
+    final container = ProviderContainer(
+      overrides: [
+        serviceDiagnosticChecksProvider.overrideWithValue(
+          _checks(pending: pending, onCheck: calls.add),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final controller = container.read(serviceDiagnosticsProvider.notifier);
+    final single = controller.runSingle(DiagnosticService.hdc);
+    final all = controller.run();
+    final overlapping = controller.runSingle(DiagnosticService.adb);
+    pending.complete();
+    await Future.wait([single, all, overlapping]);
+    expect(calls, unorderedEquals(DiagnosticService.values));
+    final result = container.read(serviceDiagnosticsProvider);
+    expect(result.checkedCount, DiagnosticService.values.length);
+    expect(result.issueCount, 3);
+    expect(result.isChecking, isFalse);
   });
 
   test('重复点击合并同一轮，单项超时/原生缺失不会阻断其他结果且错误脱敏', () async {
@@ -209,15 +291,34 @@ void main() {
         (320.0, 1.6),
         (1024.0, 1.0),
       ]) {
-        testWidgets('$language $brightness $width 字号$scale 诊断入口/问题展开/键盘关闭', (
+        testWidgets('$language $brightness $width 字号$scale 单项与全量诊断/详情展开/键盘关闭', (
           tester,
         ) async {
           tester.view.physicalSize = Size(width, 900);
           tester.view.devicePixelRatio = 1;
           addTearDown(tester.view.reset);
+          final calls = <DiagnosticService>[];
+          final firstAdb = Completer<void>();
+          final checks = _checks(onCheck: calls.add);
+          checks[DiagnosticService.adb] = () async {
+            calls.add(DiagnosticService.adb);
+            // CLI 正在更新时，探针已完成但结果仍为 checking，之后可以单项重试。
+            if (!firstAdb.isCompleted) {
+              await firstAdb.future;
+              return const ServiceDiagnostic(
+                service: DiagnosticService.adb,
+                status: ServiceDiagnosticStatus.checking,
+                reasonKey: 'diagnosticsToolBusy',
+              );
+            }
+            return const ServiceDiagnostic(
+              service: DiagnosticService.adb,
+              status: ServiceDiagnosticStatus.ready,
+            );
+          };
           final container = ProviderContainer(
             overrides: [
-              serviceDiagnosticChecksProvider.overrideWithValue(_checks()),
+              serviceDiagnosticChecksProvider.overrideWithValue(checks),
             ],
           );
           addTearDown(container.dispose);
@@ -281,23 +382,80 @@ void main() {
             );
           }
           expect(container.read(serviceDiagnosticsProvider).checkedAt, isNull);
-          await tester.tap(
-            find.byKey(const ValueKey('services-diagnostics-run')),
+          final guide = find.text(
+            language == 'zh'
+                ? '打开安装与配置引导'
+                : 'Open installation & configuration guide',
           );
+          final details = find.byKey(const ValueKey('diagnostic-details-adb'));
+          await tester.tap(details);
           await tester.pumpAndSettle();
-          expect(container.read(serviceDiagnosticsProvider).issueCount, 3);
-          final hdc = find.byKey(const ValueKey('diagnostic-row-hdc'));
-          await tester.ensureVisible(hdc);
-          await tester.tap(hdc);
+          expect(guide, findsOneWidget);
+          await tester.tap(details);
+          await tester.pumpAndSettle();
+          expect(guide, findsNothing);
+          expect(calls, isEmpty);
+
+          final row = find.byKey(const ValueKey('diagnostic-row-adb'));
+          final run = find.byKey(const ValueKey('services-diagnostics-run'));
+          await tester.tap(row);
+          await tester.pump();
+          expect(guide, findsOneWidget);
+          expect(tester.widget<FilledButton>(run).onPressed, isNull);
+          await tester.tap(row);
+          await tester.pump();
+          expect(calls, [DiagnosticService.adb]);
+
+          firstAdb.complete();
+          await tester.pumpAndSettle();
+          final total = DiagnosticService.values.length;
+          final partial = find.text(
+            language == 'zh' ? '已检查 1/$total 项' : '1 of $total checked',
+          );
+          expect(partial, findsOneWidget);
+          expect(tester.widget<FilledButton>(run).onPressed, isNotNull);
+          await tester.tap(row);
+          await tester.pumpAndSettle();
+          expect(calls, [DiagnosticService.adb, DiagnosticService.adb]);
+          expect(find.text(language == 'zh' ? '已就绪' : 'Ready'), findsOneWidget);
+          expect(partial, findsOneWidget);
+          expect(
+            find.text(language == 'zh' ? '未发现问题' : 'No issues found'),
+            findsNothing,
+          );
+
+          final airplay = find.byKey(const ValueKey('diagnostic-row-airplay'));
+          await tester.ensureVisible(airplay);
+          await tester.tap(airplay);
           await tester.pumpAndSettle();
           expect(
             find.text(
-              language == 'zh'
-                  ? '打开安装与配置引导'
-                  : 'Open installation & configuration guide',
+              language == 'zh' ? '已检查 2/$total 项' : '2 of $total checked',
             ),
             findsOneWidget,
           );
+          expect(
+            find.text(
+              tester
+                  .element(run)
+                  .l10n
+                  .t('diagnosticsIssueCount')
+                  .replaceAll('{count}', '1'),
+            ),
+            findsOneWidget,
+          );
+
+          calls.clear();
+          await tester.tap(run);
+          await tester.pumpAndSettle();
+          expect(calls, unorderedEquals(DiagnosticService.values));
+          expect(container.read(serviceDiagnosticsProvider).issueCount, 3);
+          final hdc = find.byKey(const ValueKey('diagnostic-details-hdc'));
+          await tester.ensureVisible(hdc);
+          await tester.tap(hdc);
+          await tester.pumpAndSettle();
+          expect(guide, findsOneWidget);
+          expect(calls, hasLength(DiagnosticService.values.length));
           expect(tester.takeException(), isNull);
           await tester.sendKeyEvent(LogicalKeyboardKey.escape);
           await tester.pumpAndSettle();
