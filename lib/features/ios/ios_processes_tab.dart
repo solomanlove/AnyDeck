@@ -81,7 +81,7 @@ class _IosProcessesViewState extends ConsumerState<_IosProcessesView> {
       ascending: _ascending,
     );
     return DashboardTabLayout(
-      fullWidthBody: true,
+      bodyPadding: EdgeInsets.zero,
       toolbar: IosProcessesToolbar(
         controller: _search,
         category: _category,

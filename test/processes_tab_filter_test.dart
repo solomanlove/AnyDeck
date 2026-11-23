@@ -154,7 +154,7 @@ void main() {
     expect(find.textContaining('共 3 个进程'), findsOneWidget);
   });
 
-  testWidgets('进程表贴合内容区两侧，窄窗口可滚至末列并使用筛选框', (
+  testWidgets('进程表贴合内容区两侧和底边，窄窗口可滚至末列并使用筛选框', (
     WidgetTester tester,
   ) async {
     const device = DiscoveredDevice(
@@ -223,12 +223,17 @@ void main() {
     );
     final headers = find.byType(DashboardSortableHeaderCell);
     final row = tester.getRect(find.widgetWithText(InkWell, process.user));
+    final listViewport = find.descendant(
+      of: find.byType(ListView),
+      matching: find.byType(Viewport),
+    );
     expect(toolbar.left, bounds.left + 16);
     expect(toolbar.right, bounds.right - 16);
     expect(tester.getRect(headers.first).left, bounds.left);
     expect(tester.getRect(headers.last).right, bounds.right);
     expect(row.left, bounds.left);
     expect(row.right, bounds.right);
+    expect(tester.getRect(listViewport).bottom, bounds.bottom);
 
     final tableScroll = find.ancestor(
       of: find.byType(ListView),
@@ -242,6 +247,7 @@ void main() {
     // 窗口缩窄后，滚至最右时末列表头和对应数据均在可见区域。
     tester.view.physicalSize = const Size(680, 700);
     await tester.pumpAndSettle();
+    expect(tester.getRect(listViewport).bottom, tester.getRect(tab).bottom);
     expect(controller.position.maxScrollExtent, greaterThan(0));
     await tester.drag(tableScroll, const Offset(-600, 0));
     await tester.pumpAndSettle();

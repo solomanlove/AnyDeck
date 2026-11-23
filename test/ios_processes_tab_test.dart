@@ -108,6 +108,14 @@ void main() {
       await tester.pumpAndSettle();
 
       final viewport = tester.getRect(find.byType(IosProcessesTable));
+      final listViewport = find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Viewport),
+      );
+      expect(
+        tester.getRect(listViewport).bottom,
+        tester.getRect(find.byType(IosProcessesTab)).bottom,
+      );
       expect(viewport.left, 0);
       expect(viewport.right, width);
       final header = tester.getRect(

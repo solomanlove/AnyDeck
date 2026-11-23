@@ -205,14 +205,14 @@ class DashboardSearchToolbar<T extends Object> extends StatelessWidget {
 /// 仪表盘下各 Tab 页的统一基础布局结构。
 ///
 /// [toolbar] 和 [belowToolbar] 统一保留水平留白。表格页可设置
-/// [fullWidthBody]，使 [body] 中的行背景和分隔线延伸至内容区边缘。
+/// [bodyPadding] 为 [EdgeInsets.zero]，让列表贴合内容区两侧和底部。
 class DashboardTabLayout extends StatelessWidget {
   const DashboardTabLayout({
     super.key,
     required this.toolbar,
     this.belowToolbar,
     required this.body,
-    this.fullWidthBody = false,
+    this.bodyPadding = const EdgeInsets.fromLTRB(16, 0, 16, 16),
   });
 
   /// 工具栏及正文说明文字共用的水平内边距。
@@ -227,13 +227,13 @@ class DashboardTabLayout extends StatelessWidget {
   /// 下方的核心内容展示区（如列表、网格、表格等），会被包裹在 Expanded 中。
   final Widget body;
 
-  /// 为 true 时正文占满可用宽度，默认与工具栏两端对齐。
-  final bool fullWidthBody;
+  /// 正文内边距，默认在两侧和底部各留 16 个逻辑像素。
+  final EdgeInsetsGeometry bodyPadding;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.only(top: 16),
       child: Column(
         children: [
           Padding(padding: horizontalPadding, child: toolbar),
@@ -243,9 +243,7 @@ class DashboardTabLayout extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           Expanded(
-            child: fullWidthBody
-                ? body
-                : Padding(padding: horizontalPadding, child: body),
+            child: Padding(padding: bodyPadding, child: body),
           ),
         ],
       ),

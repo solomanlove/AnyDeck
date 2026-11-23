@@ -26,7 +26,7 @@ extension _ProcessesTabView on _ProcessesTabState {
     final List<AdbPackage> packages = packagesAsync.value ?? [];
 
     return DashboardTabLayout(
-      fullWidthBody: true,
+      bodyPadding: EdgeInsets.zero,
       toolbar: DashboardSearchToolbar<ProcessFilterType>(
         searchController: _filterController,
         searchHint: context.l10n.t('filterPackage'),
