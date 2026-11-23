@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../model/android_version_distribution_data.dart';
 import 'android_distribution_details_pane.dart';
+import 'version_distribution_layout.dart';
 
 /// Android 平台与 API 版本分布主视图面板，高度还原 Android Studio 官方设计。
 /// 全面自适应主窗口的明暗主题与中英文语言环境。
@@ -80,24 +81,11 @@ class _AndroidApiDistributionViewState
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.08);
 
-    final content = Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 左侧版本与 API 分布栏
-        SizedBox(
-          width: 410,
-          child: _buildLeftDistributionPane(isDark),
-        ),
-        // 垂直分割线
-        Container(
-          width: 1,
-          color: dividerColor,
-        ),
-        // 右侧版本特性列表与详情
-        Expanded(
-          child: _buildRightDetailsPane(),
-        ),
-      ],
+    final content = VersionDistributionLayout(
+      list: _buildLeftDistributionPane(isDark),
+      details: _buildRightDetailsPane(),
+      listWidth: 410,
+      dividerColor: dividerColor,
     );
 
     if (widget.isEmbedded) {
@@ -177,162 +165,154 @@ class _AndroidApiDistributionViewState
         ? Colors.white.withValues(alpha: 0.85)
         : const Color(0xFF24292F);
 
-    return Column(
-      children: [
-        // 表头（跟随语言切换）
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 150,
-                child: Text(
-                  context.l10n.t('androidPlatformVersionHeader'),
-                  style: TextStyle(
-                    color: headerTextColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
-                  ),
-                ),
+    final header = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              context.l10n.t('androidPlatformVersionHeader'),
+              style: TextStyle(
+                color: headerTextColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
               ),
-              SizedBox(
-                width: 100,
-                child: Center(
-                  child: Text(
-                    context.l10n.t('apiLevelHeader'),
-                    style: TextStyle(
-                      color: headerTextColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  context.l10n.t('cumulativeDistributionHeader'),
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: headerTextColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-        // 分布图表条块列表
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
-            itemCount: reversedItems.length,
-            itemBuilder: (context, index) {
-              final item = reversedItems[index];
-              final isSelected = item.apiLevel == _selectedItem.apiLevel;
-              final height = _computeRowHeight(item.apiLevel);
-
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedItem = item;
-                  });
-                },
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Container(
-                    height: height,
-                    margin: const EdgeInsets.symmetric(vertical: 1),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // 彩色条形块
-                        Expanded(
-                          flex: 7,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: item.barColor,
-                              border: isSelected
-                                  ? Border.all(
-                                      color: Theme.of(context).colorScheme.primary,
-                                      width: isDark ? 2 : 2.5,
-                                    )
-                                  : null,
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: Stack(
-                              alignment: Alignment.centerLeft,
-                              children: [
-                                // 版本号与代号 (如 16 B, 15 V, 5.1 Lollipop)
-                                Text(
-                                  '${item.platformVersion}   ${item.codename}',
-                                  style: TextStyle(
-                                    color: const Color(0xFF1E2022),
-                                    fontSize: height < 24 ? 11 : 13,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                // 居中/右侧大号 API Level 字符
-                                Positioned(
-                                  right: 20,
-                                  child: Text(
-                                    '${item.apiLevel}',
-                                    style: TextStyle(
-                                      color: const Color(0xFF1E2022)
-                                          .withValues(alpha: height < 30 ? 0.4 : 0.22),
-                                      fontSize: height < 30
-                                          ? 14
-                                          : (height * 0.72).clamp(18.0, 48.0),
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // 累计占比刻度线与百分比
-                        Expanded(
-                          flex: 3,
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                child: Container(
-                                  height: 1,
-                                  color: scaleLineColor,
-                                ),
-                              ),
-                              Positioned(
-                                top: 3,
-                                right: 6,
-                                child: Text(
-                                  item.cumulativeDistributionText,
-                                  style: TextStyle(
-                                    color: percentTextColor,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          Expanded(
+            flex: 3,
+            child: Center(
+              child: Text(
+                context.l10n.t('apiLevelHeader'),
+                style: TextStyle(
+                  color: headerTextColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
-              );
-            },
+              ),
+            ),
           ),
-        ),
-      ],
+          Expanded(
+            flex: 3,
+            child: Text(
+              context.l10n.t('cumulativeDistributionHeader'),
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: headerTextColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+    final rows = SliverPadding(
+      padding: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
+      sliver: SliverList.builder(
+        itemCount: reversedItems.length,
+        itemBuilder: (context, index) {
+          final item = reversedItems[index];
+          final isSelected = item.apiLevel == _selectedItem.apiLevel;
+          final height = _computeRowHeight(item.apiLevel);
+
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              setState(() {
+                _selectedItem = item;
+              });
+            },
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 彩色条形块
+                    Expanded(
+                      flex: 7,
+                      child: Container(
+                        constraints: BoxConstraints(minHeight: height),
+                        alignment: Alignment.centerLeft,
+                        decoration: BoxDecoration(
+                          color: item.barColor,
+                          border: isSelected
+                              ? Border.all(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: isDark ? 2 : 2.5,
+                                )
+                              : null,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: OverflowBar(
+                          alignment: MainAxisAlignment.spaceBetween,
+                          overflowAlignment: OverflowBarAlignment.start,
+                          children: [
+                            // 长代号或放大文字时，API 数字可以独占下一行。
+                            Text(
+                              '${item.platformVersion}   ${item.codename}',
+                              style: TextStyle(
+                                color: const Color(0xFF1E2022),
+                                fontSize: height < 24 ? 11 : 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '${item.apiLevel}',
+                                  style: TextStyle(
+                                    color: const Color(0xFF1E2022)
+                                        .withValues(alpha: height < 30 ? 0.4 : 0.22),
+                                    fontSize: height < 30
+                                        ? 14
+                                        : (height * 0.72).clamp(18.0, 48.0),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // 累计占比刻度线与百分比
+                    Expanded(
+                      flex: 3,
+                      child: Container(
+                        padding: const EdgeInsets.only(top: 2, right: 6),
+                        decoration: BoxDecoration(
+                          border: Border(top: BorderSide(color: scaleLineColor)),
+                        ),
+                        child: Text(
+                          item.cumulativeDistributionText,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            color: percentTextColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    return VersionDistributionList(header: header, rows: rows);
   }
 
   /// 依据 API 级别动态分配行高，还原市场占有率比例

@@ -30,7 +30,7 @@
 
 ## AD-003～AD-006：系统版本资料可读性
 
-- 共享 `VersionContentViewport` 为主窗口三平台内容提供足够排版宽度；窄窗口显示常驻水平滚动条与“版本列表 / 查看详情”两端跳转，原列表选择和详情复制继续可用。控制器随页面卸载释放。
+- 2026-11-23 更新：移除三平台共用的横向滚动视口和“版本列表 / 查看详情”跳转栏。版本列表、详情与资料卡按可用宽度重排，完整文本可纵向阅读。布局断点见[系统版本页](adb-main-window-navigation.md#系统版本页)。
 - HarmonyOS 将建议文字和复制配置分开。`compatibleSdkVersion` 使用确定的整数 API（20 或该条目更低 API），UI 明确标为“需按项目调整”的示例，不能直接覆盖项目已有 products。未做 DevEco 编译验收。
 - Android 17 删除过期预测和未核验的特性描述，按 [官方获取页面](https://developer.android.com/about/versions/17/get) 与 [target API 37 行为变更](https://developer.android.com/about/versions/17/behavior-changes-17) 更新为可获取系统镜像、RemoteViews 内存限制、MessageQueue 与 LAN 权限摘要。核验日期 2026-10-31；分布快照仍为 2026-10-13，独立窗口不再把当天日期伪装为统计更新。
 - iOS 按来源、采样日期、统计对象分卡呈现，移除混用比例轴。旧条目缺少采样日期时标记“未记录”，第三方样本范围未核验时明确显示，保留原始比例不合计。

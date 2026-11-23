@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../model/android_version_distribution_data.dart';
 import 'android_developer_impact_card.dart';
+import 'version_distribution_layout.dart';
 
 /// Android 平台与 API 版本分布视图中的右侧特性详情面板。
 /// 包含稳定版发布时间、开发影响与适配要求重点卡片以及全量新特性列表。
@@ -27,8 +28,6 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
     final langCode = Localizations.localeOf(context).languageCode;
     final sections = item.featureSections;
 
-    final linkColor = Theme.of(context).colorScheme.primary;
-
     // 区分“开发影响与适配要求”和其他常规特性分类
     final impactSection = sections.cast<AndroidFeatureSection?>().firstWhere(
           (s) => _isDeveloperImpactSection(s!),
@@ -38,84 +37,96 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
         .where((s) => !_isDeveloperImpactSection(s))
         .toList();
 
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeaderMetadata(context, isDark, langCode),
+        const SizedBox(height: 14),
+        if (sections.isEmpty)
+          _buildEmptySectionsPlaceholder(context, isDark),
+        if (impactSection != null) ...[
+          AndroidDeveloperImpactCard(
+            section: impactSection,
+            platformVersion: item.platformVersion,
+            isDark: isDark,
+            langCode: langCode,
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (regularSections.isNotEmpty)
+          _buildRegularSectionsLayout(
+            regularSections,
+            isDark,
+            langCode,
+          ),
+      ],
+    );
+    final url = item.summaryUrl;
+    final link = url == null ? null : _buildDocumentLink(context, url);
+
     return SelectionArea(
-      child: Container(
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. 顶部版本大标题与元信息徽章栏（包含稳定版上线时间）
-            _buildHeaderMetadata(context, isDark, langCode),
-            const SizedBox(height: 14),
-            // 2. 特性列表或预留空态
-            Expanded(
-              child: sections.isEmpty
-                  ? _buildEmptySectionsPlaceholder(context, isDark)
-                  : SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 2.1 若存在“开发影响与适配要求”，置顶以高亮卡片呈现
-                          if (impactSection != null) ...[
-                            AndroidDeveloperImpactCard(
-                              section: impactSection,
-                              platformVersion: item.platformVersion,
-                              isDark: isDark,
-                              langCode: langCode,
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          // 2.2 普通特性排版（确保靠左对齐与多列均衡）
-                          if (regularSections.isNotEmpty)
-                            _buildRegularSectionsLayout(
-                              regularSections,
-                              isDark,
-                              langCode,
-                            ),
-                        ],
-                      ),
-                    ),
-            ),
-            // 3. 底部官方文档链接
-            if (item.summaryUrl != null) ...[
-              const SizedBox(height: 10),
-              Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 换行后的链接不能挤占全部正文；低窗口将链接一并纳入纵向滚动。
+            final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
+            final scrollLink = constraints.maxHeight < 240 * textScale;
+            final scroll = SingleChildScrollView(
+              key: ValueKey(item.apiLevel),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => onOpenUrl(item.summaryUrl!),
-                      child: Text(
-                        item.summaryUrl!,
-                        style: TextStyle(
-                          color: linkColor,
-                          fontSize: 12,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(Icons.copy_rounded, size: 13, color: linkColor),
-                    tooltip: context.l10n.t('copyUrl'),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: item.summaryUrl!));
-                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                        SnackBar(
-                          content: Text(context.l10n.t('copySuccess')),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
+                  details,
+                  if (scrollLink && link != null) ...[const SizedBox(height: 10), link],
                 ],
               ),
-            ],
-          ],
+            );
+            if (scrollLink || link == null) return scroll;
+            return Column(
+              children: [Expanded(child: scroll), const SizedBox(height: 10), link],
+            );
+          },
         ),
       ),
+    );
+  }
+
+  /// 官方文档地址按可用宽度折行，点击与复制使用完整 URL。
+  Widget _buildDocumentLink(BuildContext context, String url) {
+    final linkColor = Theme.of(context).colorScheme.primary;
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () => onOpenUrl(url),
+            child: Text(
+              url,
+              style: TextStyle(
+                color: linkColor,
+                fontSize: 12,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: Icon(Icons.copy_rounded, size: 13, color: linkColor),
+          tooltip: context.l10n.t('copyUrl'),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: url));
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              SnackBar(
+                content: Text(context.l10n.t('copySuccess')),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -213,12 +224,14 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
                 color: subtitleColor,
               ),
               const SizedBox(width: 5),
-              Text(
-                '${context.l10n.t('stableReleaseDatePrefix')}$releaseDateText',
-                style: TextStyle(
-                  color: subtitleColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  '${context.l10n.t('stableReleaseDatePrefix')}$releaseDateText',
+                  style: TextStyle(
+                    color: subtitleColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -299,18 +312,8 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
     bool isDark,
     String langCode,
   ) {
-    // 只有 1 个常规分类时，直接排在左半边，绝不置空左列
     if (sections.length == 1) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _buildSectionWidget(sections.first, isDark, langCode),
-          ),
-          const SizedBox(width: 24),
-          const Expanded(child: SizedBox.shrink()),
-        ],
-      );
+      return _buildSectionWidget(sections.first, isDark, langCode);
     }
 
     final hasExplicitColumns = sections.any((s) => s.columnIndex != null);
@@ -332,29 +335,18 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
       rightCols = sections.skip(half).toList();
     }
 
-    return Row(
+    Widget buildColumn(List<AndroidFeatureSection> items) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: leftCols
-                .map((s) => _buildSectionWidget(s, isDark, langCode))
-                .toList(),
-          ),
-        ),
-        if (rightCols.isNotEmpty) ...[
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: rightCols
-                  .map((s) => _buildSectionWidget(s, isDark, langCode))
-                  .toList(),
-            ),
-          ),
-        ],
-      ],
+      children: items
+          .map((s) => _buildSectionWidget(s, isDark, langCode))
+          .toList(),
+    );
+
+    if (rightCols.isEmpty) return buildColumn(leftCols);
+    return VersionDetailColumns(
+      first: buildColumn(leftCols),
+      second: buildColumn(rightCols),
+      spacing: 24,
     );
   }
 

@@ -70,15 +70,16 @@ class AndroidDeveloperImpactCard extends StatelessWidget {
                 color: headerColor,
               ),
               const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  color: headerColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: headerColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const Spacer(),
               IconButton(
                 icon: Icon(
                   Icons.copy_rounded,
