@@ -12,6 +12,8 @@ import '../../../app/widget/app_toast.dart';
 import '../../../core/adb/adb_environment_service.dart';
 import '../../../core/environment/connection_environment_service.dart';
 
+part 'platform_environment_harmony_tab.dart';
+
 /// 多端连接环境自检与安装引导对话框。
 ///
 /// 集中展示 Android (ADB)、纯血鸿蒙 (HDC) 以及苹果 iOS (go-ios) 三大平台的连接工具
@@ -20,10 +22,14 @@ class PlatformEnvironmentGuideDialog extends ConsumerStatefulWidget {
   const PlatformEnvironmentGuideDialog({
     super.key,
     this.initialPlatform = TargetPlatformType.android,
+    this.onOpenHarmonyDownload = ConnectionEnvironmentService.openUrl,
   });
 
   /// 初始激活的平台 Tab
   final TargetPlatformType initialPlatform;
+
+  /// 打开所选鸿蒙工具的官方下载页，默认使用系统浏览器。
+  final Future<void> Function(String url) onOpenHarmonyDownload;
 
   /// 便捷静态展示方法
   static Future<void> show(
@@ -93,10 +99,12 @@ class _PlatformEnvironmentGuideDialogState
             children: [
               const Icon(CupertinoIcons.device_phone_portrait, size: 22),
               const SizedBox(width: 10),
-              Text(
-                context.l10n.t('platformEnvTitle'),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  context.l10n.t('platformEnvTitle'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -266,101 +274,6 @@ class _PlatformEnvironmentGuideDialogState
           _buildGuideStep('1. 进入手机「设置 -> 关于手机」，连击“版本号”开启开发者选项；'),
           _buildGuideStep('2. 返回「设置 -> 系统和更新 -> 开发者选项」，开启「USB 调试」；'),
           _buildGuideStep('3. 用数据线连接电脑，在手机屏幕弹出框中勾选“始终允许此电脑进行调试”。'),
-        ],
-      ),
-    );
-  }
-
-  /// 2. 纯血鸿蒙 (HDC) 内容视图
-  Widget _buildHarmonyTab(BuildContext context, PlatformEnvironmentInfo? info) {
-    final theme = Theme.of(context);
-    final isReady = info?.isReady ?? false;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 状态卡片
-          _buildStatusBanner(
-            context,
-            isReady: isReady,
-            readyText: '纯血鸿蒙 HDC 工具链已就绪\n版本: ${info?.version ?? ""}\n路径: ${info?.executablePath ?? ""}',
-            missingText: context.l10n.t('harmonyEnvDesc'),
-          ),
-          const SizedBox(height: 14),
-
-          // 官方推荐安装：DevEco Studio
-          _buildSectionHeader(context, context.l10n.t('harmonyInstallRecommend')),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.t('harmonyInstallRecommendDesc'),
-                  style: theme.textTheme.bodySmall,
-                ),
-                const SizedBox(height: 10),
-                FilledButton.tonalIcon(
-                  icon: const Icon(CupertinoIcons.link, size: 16),
-                  label: Text(context.l10n.t('harmonyOpenDevEco')),
-                  onPressed: () {
-                    ConnectionEnvironmentService.openUrl(
-                      ConnectionEnvironmentService.devecoStudioDownloadUrl,
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // 终端环境变量配置
-          _buildSectionHeader(context, context.l10n.t('harmonyCliGuide')),
-          const SizedBox(height: 8),
-          _buildCodeBlock(
-            context,
-            Platform.isMacOS
-                ? 'export PATH=\$PATH:~/Library/Huawei/Sdk/openharmony/toolchains'
-                : 'set PATH=%PATH%;%LOCALAPPDATA%\\Huawei\\Sdk\\openharmony\\toolchains',
-          ),
-          const SizedBox(height: 14),
-
-          // 真机连接设置要求
-          _buildSectionHeader(context, context.l10n.t('harmonyDeviceGuide')),
-          const SizedBox(height: 6),
-          _buildGuideStep(context.l10n.t('harmonyDeviceStep1')),
-          _buildGuideStep(context.l10n.t('harmonyDeviceStep2')),
-          _buildGuideStep(context.l10n.t('harmonyDeviceStep3')),
-          const SizedBox(height: 12),
-
-          // 单独重检按钮
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              icon: const Icon(CupertinoIcons.refresh, size: 14),
-              label: const Text('重新检测 HDC'),
-              onPressed: () async {
-                final result = await ref
-                    .read(connectionEnvironmentProvider.notifier)
-                    .checkPlatform(TargetPlatformType.harmony);
-                if (context.mounted) {
-                  AppToast.show(
-                    context,
-                    result.isReady ? '纯血鸿蒙 HDC 环境已就绪！' : '仍未检测到可用 HDC',
-                    type: result.isReady ? AppToastType.success : AppToastType.warning,
-                  );
-                }
-              },
-            ),
-          ),
         ],
       ),
     );
