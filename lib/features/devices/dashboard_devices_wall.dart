@@ -69,6 +69,22 @@ extension _DeviceWallPanel on _DeviceListPanelState {
             .watch(cachedDeviceOverviewProvider(device.id))
             .value;
         final brand = overview?.brand;
+        // 仅由 AirPlay 会话生成的卡片没有设备工作区，仍可打开投屏窗口。
+        final opensWorkspace =
+            device.isOnline &&
+            !(session != null && device.id.startsWith('airplay-'));
+        final (actionKey, actionIcon) = switch (device.isOnline) {
+          true when opensWorkspace => (
+            'deviceWorkspaceOpen',
+            Icons.dashboard_outlined,
+          ),
+          true => ('screenMirror', Icons.ondemand_video_outlined),
+          false when device.id.startsWith('emulator-') => (
+            'deviceWorkspaceStartEmulator',
+            Icons.play_arrow,
+          ),
+          false => ('deviceWorkspaceReconnect', Icons.link),
+        };
         return Builder(
           builder: (cardContext) => DeviceWallCard(
             key: ValueKey('device-wall-${device.id}'),
@@ -105,18 +121,8 @@ extension _DeviceWallPanel on _DeviceListPanelState {
                         ? 'deviceWorkspacePreviewRetryHint'
                         : 'deviceWorkspacePreviewHint',
                   ),
-            actionLabel: context.l10n.t(
-              device.isOnline
-                  ? 'screenMirror'
-                  : device.id.startsWith('emulator-')
-                  ? 'deviceWorkspaceStartEmulator'
-                  : 'deviceWorkspaceReconnect',
-            ),
-            actionIcon: device.isOnline
-                ? Icons.ondemand_video_outlined
-                : device.id.startsWith('emulator-')
-                ? Icons.play_arrow
-                : Icons.link,
+            actionLabel: context.l10n.t(actionKey),
+            actionIcon: actionIcon,
             online: device.isOnline,
             ipAddress: _workspaceDeviceIp(device, overview),
             screenshot: device.isOnline && !preview.hasError
@@ -129,7 +135,9 @@ extension _DeviceWallPanel on _DeviceListPanelState {
             batchMode: _batchMode,
             selected: device.isChecked,
             selectable: !device.id.startsWith('airplay-'),
-            onOpen: () => _openWorkspaceDevice(context, device, session),
+            onOpen: opensWorkspace
+                ? () => _openDeviceInfo(context, device, session)
+                : () => _openWorkspaceDevice(context, device, session),
             onInfo: () => _openDeviceInfo(context, device, session),
             onMore: () => _openWorkspaceMenu(cardContext, device, session),
             onSelected: (_) => _toggleDeviceSelection(device),

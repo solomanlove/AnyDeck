@@ -22,7 +22,8 @@ import 'device_wall_phone.dart';
 /// [tags] 为用户维护的设备标识，非空标签在名称下居中换行，只负责展示。
 /// [batchMode] 为 true 时显示勾选框并隐藏操作栏；[selected]、[selectable]
 /// 和 [onSelected] 由父级管理，点击卡片任意非交互空白或手机均可选择。
-/// 普通模式下 [onOpen] 打开投屏或重连，[onInfo] 进入设备工作台，
+/// 普通模式下手机预览和主按钮共用 [onOpen]，按设备状态进入工作区、打开
+/// AirPlay 会话或恢复连接；[onInfo] 用于点击设备名称，
 /// [onMore] 打开操作菜单，[onSecondaryTapDown] 复用设备右键菜单。
 /// [busy] 阻止重复打开，[actionLabel] 和 [actionIcon] 表达当前主操作。
 class DeviceWallCard extends StatelessWidget {
@@ -45,7 +46,7 @@ class DeviceWallCard extends StatelessWidget {
     this.selectable = true,
     this.busy = false,
     this.phoneWidth = 120,
-    this.actionIcon = LucideIcons.monitorPlay,
+    this.actionIcon = Icons.dashboard_outlined,
     this.onOpen,
     this.onInfo,
     this.onMore,

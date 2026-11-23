@@ -11,7 +11,7 @@ import '../../../app/widget/app_asset_image.dart';
 /// [width] 是外框宽度，高度由 9:18.5 比例计算；[online] 决定边框状态。
 /// [screenshot] 只在在线时居中裁剪铺满屏幕，缺失或解码失败时显示白底品牌封面和 [title]。
 /// [hint] 仅用于在线封面，离线时移除底部提示区。[semanticLabel] 为手机点击
-/// 区提供本地化说明，[onTap] 由宿主实现投屏、重连或批量选择。
+/// 区提供本地化说明，[onTap] 由宿主接入卡片主操作或批量选择。
 /// [logoAsset] 使用项目既有品牌图片路径，由宿主按设备品牌及型号解析。
 class DeviceWallPhone extends StatelessWidget {
   const DeviceWallPhone({

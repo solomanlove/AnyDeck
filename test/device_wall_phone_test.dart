@@ -79,7 +79,7 @@ void main() {
             tester.widget<AppAssetImage>(find.byType(AppAssetImage)).assetName,
             brand.value,
           );
-          expect(find.text('点击打开投屏'), online ? findsOneWidget : findsNothing);
+          expect(find.text('当前屏幕快照'), online ? findsOneWidget : findsNothing);
           expect(tester.takeException(), isNull);
         }
       }
@@ -154,7 +154,7 @@ Widget _host(
           brand: brand,
           logoAsset: logoAsset,
           title: online ? '设备已就绪' : '设备未连接',
-          hint: '点击打开投屏',
+          hint: '当前屏幕快照',
           semanticLabel: '设备预览',
           screenshot: screenshot,
         ),

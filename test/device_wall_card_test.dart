@@ -47,7 +47,7 @@ void main() {
     expect(find.byType(Checkbox), findsNothing);
     expect(find.byType(Image), findsNothing);
     expect(find.text('设备已就绪'), findsOneWidget);
-    expect(find.text('点击打开投屏'), findsOneWidget);
+    expect(find.text('当前屏幕快照'), findsOneWidget);
 
     await tester.tap(phone);
     expect(opens, 1);
@@ -279,7 +279,7 @@ void main() {
                     ? '荣耀 Magic V6 测试设备'
                     : 'sdk_gphone16k_arm64 Android Emulator',
                 statusLabel: language == 'zh' ? 'USB 已连接' : 'USB connected',
-                actionLabel: language == 'zh' ? '重新连接' : 'Reconnect',
+                actionLabel: language == 'zh' ? '进入工作区' : 'Open workspace',
                 tags: language == 'zh'
                     ? const ['主力机超长标签用于完整提示与省略验证', '测试机', '工作设备']
                     : const [
@@ -357,7 +357,7 @@ DeviceWallCard _card({
   String brand = 'Xiaomi',
   List<String> tags = const [],
   String statusLabel = 'USB 已连接',
-  String actionLabel = '投屏',
+  String? actionLabel,
   bool online = true,
   bool batchMode = false,
   bool selected = false,
@@ -374,8 +374,8 @@ DeviceWallCard _card({
   brand: brand,
   tags: tags,
   coverTitle: online ? '设备已就绪' : '设备未连接',
-  coverHint: online ? '点击打开投屏' : '通过 USB 或无线连接',
-  actionLabel: actionLabel,
+  coverHint: online ? '当前屏幕快照' : '通过 USB 或无线连接',
+  actionLabel: actionLabel ?? (online ? '进入工作区' : '重新连接'),
   ipAddress: '192.168.1.219',
   online: online,
   batchMode: batchMode,
