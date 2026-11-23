@@ -151,12 +151,13 @@ Future<void> _showConnectDeviceDialog(
   }
 }
 
-/// 执行 adb 命令，并在弹窗中展示完整输出。
+/// 同步 adb 状态后展示结果，可按操作定制弹窗。
 Future<void> _showAdbResult(
   BuildContext context,
   WidgetRef ref,
-  Future<AdbResult> future,
-) async {
+  Future<AdbResult> future, {
+  Widget Function(AdbResult)? dialogBuilder,
+}) async {
   final result = await future;
   await _syncAdbStateAfterResult(ref, result);
   if (!context.mounted) {
@@ -165,6 +166,7 @@ Future<void> _showAdbResult(
   await showDialog<void>(
     context: context,
     builder: (context) {
+      if (dialogBuilder != null) return dialogBuilder(result);
       return AlertDialog(
         title: Text(
           result.isSuccess ? context.l10n.t('result') : context.l10n.t('error'),

@@ -92,6 +92,9 @@ extension _MirrorToolbarActions on _MirrorFloatingToolbarState {
       showDialog<void>(
         context: context,
         builder: (context) {
+          if (harmonyWindow == null) {
+            return AndroidForegroundWindowDialog(result: res);
+          }
           final isDark = Theme.of(context).brightness == Brightness.dark;
           final cardColor = isDark
               ? const Color(0xff1e1e1e)
@@ -122,15 +125,13 @@ extension _MirrorToolbarActions on _MirrorFloatingToolbarState {
               ],
             ),
             content: SelectableText(
-              harmonyWindow == null
-                  ? res.message
-                  : formatMirrorHarmonyFocus(
-                      context,
-                      harmonyWindow,
-                      fallback: res.isSuccess
-                          ? context.l10n.t('foregroundUnavailable')
-                          : res.message,
-                    ),
+              formatMirrorHarmonyFocus(
+                context,
+                harmonyWindow,
+                fallback: res.isSuccess
+                    ? context.l10n.t('foregroundUnavailable')
+                    : res.message,
+              ),
               style: const TextStyle(fontSize: 13),
             ),
             actions: [

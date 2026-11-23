@@ -1,6 +1,7 @@
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 import '../harmony/hdc_service.dart';
+import 'android_foreground_window.dart';
 
 typedef DeviceSdkVersionResolver = int? Function(String deviceId);
 typedef DeviceHarmonyResolver = bool Function(String deviceId);
@@ -613,105 +614,9 @@ class DeviceActionService {
   Future<AdbResult> androidId(String deviceId) =>
       _adb.shellArgs(deviceId, ['settings', 'get', 'secure', 'android_id']);
 
-  /// 读取当前焦点窗口，并解析其中的 Fragment 类型信息。
-  Future<AdbResult> currentFocus(String deviceId) async {
-    final focusResult = await _adb.shell(
-      deviceId,
-      'dumpsys window | grep mCurrentFocus',
-    );
-    if (!focusResult.isSuccess || focusResult.stdout.trim().isEmpty) {
-      return focusResult;
-    }
-
-    final focusLine = focusResult.stdout.trim();
-    if (focusLine.contains('mCurrentFocus=null')) {
-      return focusResult;
-    }
-
-    // 解析包名，例如从 mCurrentFocus=Window{2baae81 u0 com.xxxx.xxxx/com.xxxx.xxxx.ui.MainActivity} 中提取 com.xxxx.xxxx
-    String packageName = '';
-    final slashIndex = focusLine.indexOf('/');
-    if (slashIndex != -1) {
-      final openBraceIndex = focusLine.lastIndexOf('{', slashIndex);
-      final startSearch = openBraceIndex != -1 ? openBraceIndex + 1 : 0;
-      final prefix = focusLine.substring(startSearch, slashIndex);
-      final parts = prefix.trim().split(RegExp(r'\s+'));
-      if (parts.isNotEmpty) {
-        packageName = parts.last;
-      }
-    }
-
-    if (packageName.isEmpty) {
-      return focusResult;
-    }
-
-    // 获取该应用当前所有的 activity 和 fragment 状态
-    final activityResult = await _adb.shell(
-      deviceId,
-      'dumpsys activity $packageName',
-    );
-    if (!activityResult.isSuccess || activityResult.stdout.trim().isEmpty) {
-      return focusResult;
-    }
-
-    // 解析出 Added Fragments
-    final fragments = _parseFragmentsFromDump(activityResult.stdout);
-    if (fragments.isEmpty) {
-      return focusResult;
-    }
-
-    final combinedStdout =
-        '$focusLine\n\nActive Fragments:\n'
-        '${fragments.map((f) => '  - $f').join('\n')}';
-
-    return AdbResult(
-      exitCode: focusResult.exitCode,
-      stdout: combinedStdout,
-      stderr: focusResult.stderr,
-    );
-  }
-
-  /// 从 dumpsys activity 输出中解析活跃的 Fragment 列表（按层级从底至顶）。
-  List<String> _parseFragmentsFromDump(String dumpsysOutput) {
-    final fragments = <String>[];
-    final lines = dumpsysOutput.split('\n');
-    int flag = 0;
-
-    for (int i = lines.length - 1; i >= 0; i--) {
-      final line = lines[i].trim();
-      if (line.isEmpty) continue;
-
-      if (line.contains('#') && flag == 0) {
-        flag = 1;
-      } else if (line.startsWith('Added Fragments:')) {
-        flag = 2;
-      }
-
-      if (flag == 1 && line.startsWith('#')) {
-        final afterHash = line.substring(1).trimLeft();
-        if (afterHash.isNotEmpty && _isDigit(afterHash[0])) {
-          final indexOfSpace = line.indexOf(' ');
-          if (indexOfSpace != -1) {
-            String fragmentName = line.substring(indexOfSpace + 1).trim();
-            if (fragmentName.contains('{')) {
-              fragmentName = fragmentName.split('{').first.trim();
-            }
-            if (fragmentName.isNotEmpty &&
-                !fragments.contains(fragmentName) &&
-                fragmentName != 'ReportFragment' &&
-                fragmentName != 'SupportRequestManagerFragment' &&
-                fragmentName != 'AutofillManager') {
-              fragments.add(fragmentName);
-            }
-          }
-        }
-      }
-    }
-    return fragments;
-  }
-
-  bool _isDigit(String char) =>
-      char.isNotEmpty && char.codeUnitAt(0) >= 48 && char.codeUnitAt(0) <= 57;
+  /// 查询 Android 前台窗口的包名与完整 Activity 类名。
+  Future<AdbResult> currentFocus(String deviceId) =>
+      readAndroidForegroundWindow(_adb, deviceId);
 
   /// 重启选中设备，支持可选模式 (如 recovery, bootloader, sideload, sideload-auto-reboot)。
   Future<AdbResult> reboot(String deviceId, [String? mode]) => _adb.run([
