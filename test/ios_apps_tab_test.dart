@@ -11,6 +11,8 @@ import 'package:any_deck/features/apps/widgets/apps_alphabet_sidebar.dart';
 import 'package:any_deck/features/ios/controller/ios_apps_controller.dart';
 import 'package:any_deck/features/ios/ios_apps_tab.dart';
 import 'package:any_deck/features/ios/model/ios_apps_filter.dart';
+import 'package:any_deck/features/ios/widgets/ios_apps_table.dart';
+import 'package:any_deck/features/ios/widgets/ios_apps_toolbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -168,6 +170,49 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('iOS 应用表贴合两侧和底部，字母索引固定在横向滚动区外', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final app = ProviderScope(
+      overrides: [
+        iosCommandServiceProvider.overrideWithValue(FakeCommands()),
+        iosIconServiceProvider.overrideWithValue(FakeIcons()),
+      ],
+      child: page('phone'),
+    );
+    for (final width in [1100.0, 520.0]) {
+      tester.view.physicalSize = Size(width, 700);
+      await tester.pumpWidget(app);
+      await tester.pumpAndSettle();
+
+      final table = find.byType(IosAppsTable);
+      final bounds = tester.getRect(table);
+      expect(bounds.left, 0);
+      expect(bounds.right, width);
+      expect(bounds.bottom, 700);
+      final toolbar = tester.getRect(find.byType(IosAppsToolbar));
+      expect(toolbar.left, 16);
+      expect(toolbar.right, width - 16);
+
+      final scrollView = find.descendant(
+        of: table,
+        matching: find.byType(SingleChildScrollView),
+      );
+      final viewport = tester.getRect(scrollView);
+      final index = tester.getRect(find.byType(AppsAlphabetSidebar));
+      expect(viewport.left, bounds.left);
+      expect(viewport.bottom, bounds.bottom);
+      expect(index.left, greaterThanOrEqualTo(viewport.right));
+      expect(index.right, lessThanOrEqualTo(bounds.right));
+      final scroll = tester.widget<SingleChildScrollView>(scrollView);
+      expect(
+        scroll.controller!.position.maxScrollExtent,
+        (600 - viewport.width).clamp(0, double.infinity),
+      );
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('switching device ignores a late app response', (tester) async {

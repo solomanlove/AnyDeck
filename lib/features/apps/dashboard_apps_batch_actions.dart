@@ -117,6 +117,7 @@ class _AppsBatchActionsToolbar extends ConsumerWidget {
         allFilteredPackages.isNotEmpty && count == allFilteredPackages.length;
 
     return Container(
+      margin: DashboardTabLayout.horizontalPadding,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: colorScheme.primaryContainer.withValues(alpha: 0.18),

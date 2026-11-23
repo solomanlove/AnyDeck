@@ -153,6 +153,7 @@ class _IosAppsTabState extends ConsumerState<IosAppsTab> {
     final favoriteIds = favorites.value ?? const <String>{};
     final busy = _busy || apps.isLoading;
     return DashboardTabLayout(
+      bodyPadding: EdgeInsets.zero,
       toolbar: IosAppsToolbar(
         controller: _filterController,
         category: _category,

@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/widget/dashboard_tab_layout.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/apps/adb_package.dart';
 import 'package:any_deck/core/apps/app_management_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/scrcpy/fusion_mode_preference.dart';
+import 'package:any_deck/features/apps/widgets/apps_alphabet_sidebar.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -153,6 +155,54 @@ Future<void> _choose(WidgetTester tester, String label) async {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  for (final harmony in [false, true]) {
+    final platform = harmony ? 'HarmonyOS' : 'Android';
+    testWidgets('$platform 应用列表和网格贴合内容区边缘，工具栏保留左右间距', (tester) async {
+      await _mount(tester, harmony: harmony);
+      for (final width in [1200.0, 600.0]) {
+        tester.view.physicalSize = Size(width, 800);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('appsListViewButton')));
+        await tester.pumpAndSettle();
+
+        final bounds = tester.getRect(find.byType(AppsTab));
+        final toolbar = tester.getRect(
+          find.byType(DashboardSearchToolbar<AppFilterType>),
+        );
+        expect(toolbar.left, bounds.left + 16);
+        expect(toolbar.right, bounds.right - 16);
+
+        // 表格可横向滚动，右侧字母索引固定，索引两侧各留 3 像素。
+        final list = find.byType(ListView);
+        final table = tester.getRect(
+          find.ancestor(of: list, matching: find.byType(SingleChildScrollView)),
+        );
+        final index = tester.getRect(find.byType(AppsAlphabetSidebar));
+        final listViewport = tester.getRect(
+          find.descendant(of: list, matching: find.byType(Viewport)),
+        );
+        expect(table.left, bounds.left);
+        expect(index.left, table.right + 3);
+        expect(index.right, bounds.right - 3);
+        expect(listViewport.left, bounds.left);
+        expect(listViewport.bottom, bounds.bottom);
+
+        await tester.tap(find.byKey(const Key('appsGridViewButton')));
+        await tester.pumpAndSettle();
+        final gridViewport = tester.getRect(
+          find.descendant(
+            of: find.byType(GridView),
+            matching: find.byType(Viewport),
+          ),
+        );
+        expect(gridViewport.left, bounds.left);
+        expect(gridViewport.right, bounds.right);
+        expect(gridViewport.bottom, bounds.bottom);
+        expect(tester.takeException(), isNull);
+      }
+    });
+  }
 
   testWidgets('列表右键展示全部原操作，关闭后不再出现顶部工具栏', (tester) async {
     final (container, adb, packages) = await _mount(tester);
