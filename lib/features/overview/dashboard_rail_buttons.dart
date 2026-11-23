@@ -22,7 +22,6 @@ class _RailMoreButton extends StatelessWidget {
     required this.isToolEnabled,
     required this.onSelected,
     required this.isNarrow,
-    this.verticalPadding,
   });
 
   final List<_RailToolItem> tools;
@@ -31,7 +30,11 @@ class _RailMoreButton extends StatelessWidget {
   final bool Function(int) isToolEnabled;
   final ValueChanged<int> onSelected;
   final bool isNarrow;
-  final double? verticalPadding;
+
+  static const double _verticalPadding = 2;
+  static const double slotHeight =
+      AppThemeSizes.navigationItemHeight + 2 * _verticalPadding;
+  static const double _menuIconSize = 20;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +67,7 @@ class _RailMoreButton extends StatelessWidget {
 
     if (isNarrow) {
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: verticalPadding ?? 6),
+        padding: const EdgeInsets.symmetric(vertical: _verticalPadding),
         child: Center(
           child: PopupMenuButton<int>(
             tooltip: context.l10n.t('moreTools'),
@@ -88,7 +91,7 @@ class _RailMoreButton extends StatelessWidget {
                   child: Center(
                     child: Icon(
                       tool.icon,
-                      size: 26,
+                      size: _menuIconSize,
                       color: tool.tabIndex == selectedTool
                           ? theme.colorScheme.primary
                           : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
@@ -97,8 +100,8 @@ class _RailMoreButton extends StatelessWidget {
                 ),
             ],
             child: Container(
-              width: 48,
-              height: 48,
+              width: AppThemeSizes.navigationItemHeight,
+              height: AppThemeSizes.navigationItemHeight,
               decoration: BoxDecoration(
                 color: selected
                     ? activeBgColor
@@ -113,8 +116,8 @@ class _RailMoreButton extends StatelessWidget {
       );
     } else {
       return Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: verticalPadding ?? 4,
+        padding: const EdgeInsets.symmetric(
+          vertical: _verticalPadding,
           horizontal: 12,
         ),
         child: PopupMenuButton<int>(
@@ -139,7 +142,7 @@ class _RailMoreButton extends StatelessWidget {
                   children: [
                     Icon(
                       tool.icon,
-                      size: 20,
+                      size: _menuIconSize,
                       color: tool.tabIndex == selectedTool
                           ? theme.colorScheme.primary
                           : (isToolEnabled(tool.tabIndex) ? defaultColor : disabledColor),
@@ -166,7 +169,7 @@ class _RailMoreButton extends StatelessWidget {
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              height: 44,
+              height: AppThemeSizes.navigationItemHeight,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
@@ -197,7 +200,7 @@ class _RailButton extends StatelessWidget {
     required this.isNarrow,
     this.selected = false,
     this.statusColor,
-    this.verticalPadding,
+    this.isFooter = false,
     this.onPressed,
   });
 
@@ -206,8 +209,12 @@ class _RailButton extends StatelessWidget {
   final bool isNarrow;
   final bool selected;
   final Color? statusColor;
-  final double? verticalPadding;
+  final bool isFooter;
   final VoidCallback? onPressed;
+
+  static const double _footerPadding = 4;
+  static const double footerSlotHeight =
+      AppThemeSizes.navigationItemHeight + 2 * _footerPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -223,12 +230,13 @@ class _RailButton extends StatelessWidget {
     }
 
     final activeBgColor = theme.navigationSelectedBackground;
+    final verticalPadding = isFooter ? _footerPadding : (isNarrow ? 3.0 : 2.0);
 
     if (isNarrow) {
       return Tooltip(
         message: tooltip,
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: verticalPadding ?? 6),
+          padding: EdgeInsets.symmetric(vertical: verticalPadding),
           child: Center(
             child: IconButton(
               icon: Stack(
@@ -246,7 +254,10 @@ class _RailButton extends StatelessWidget {
               iconSize: AppThemeSizes.navigationIconSize,
               onPressed: onPressed,
               style: IconButton.styleFrom(
-                fixedSize: const Size(48, 48),
+                fixedSize: Size.square(
+                  isFooter ? AppThemeSizes.navigationItemHeight : 48,
+                ),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 foregroundColor: color,
                 backgroundColor: selected
                     ? activeBgColor
@@ -265,7 +276,7 @@ class _RailButton extends StatelessWidget {
         message: tooltip,
         child: Padding(
           padding: EdgeInsets.symmetric(
-            vertical: verticalPadding ?? 4,
+            vertical: verticalPadding,
             horizontal: 12,
           ),
           child: AppNavigationItem(

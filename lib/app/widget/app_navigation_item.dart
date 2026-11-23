@@ -47,7 +47,7 @@ class AppNavigationItem extends StatelessWidget {
           onTap: onTap,
           borderRadius: radius,
           child: Container(
-            height: 44,
+            height: AppThemeSizes.navigationItemHeight,
             padding: const EdgeInsets.only(left: 10),
             child: Row(
               children: [

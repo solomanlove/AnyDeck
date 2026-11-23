@@ -23,9 +23,9 @@ class PrimaryRail extends ConsumerWidget {
     required bool isNarrow,
     required bool hasOverflow,
   }) {
-    // 顶部工具项使用更紧凑的间距，底部设置等保留原有高度以防变动
+    // 按各按钮的实际占位预留底部工具和「更多功能」的空间。
     final double toolSlotHeight = isNarrow ? 54.0 : 48.0;
-    final double bottomButtonsSlotHeight = (isNarrow ? 60.0 : 52.0) * 4;
+    const bottomButtonsSlotHeight = _RailButton.footerSlotHeight * 4;
     final double identityHeight = isNarrow ? _RailIdentity.narrowExtent : 38.0;
     final double logoToolGap = isNarrow
         ? (hasOverflow ? _compactLogoToolGap : _fullLogoToolGap)
@@ -39,15 +39,11 @@ class PrimaryRail extends ConsumerWidget {
         bottomButtonsSlotHeight -
         _bottomSpacing;
 
-    if (availableHeight <= 0) return 0;
-    final slots = availableHeight ~/ toolSlotHeight;
-    if (slots >= toolCount) {
-      return toolCount;
+    if (!hasOverflow) {
+      return (availableHeight ~/ toolSlotHeight).clamp(0, toolCount);
     }
-    if (slots <= 1) {
-      return 0;
-    }
-    return min(toolCount, slots - 1);
+    final remainingHeight = availableHeight - _RailMoreButton.slotHeight;
+    return (remainingHeight ~/ toolSlotHeight).clamp(0, toolCount - 1);
   }
 
   @override
@@ -367,9 +363,6 @@ class PrimaryRail extends ConsumerWidget {
                 isNarrow: renderNarrow,
                 hasOverflow: true,
               );
-              if (visibleToolCount >= tools.length) {
-                visibleToolCount = tools.length - 1;
-              }
             }
             final visibleTools = tools.take(visibleToolCount).toList();
             final overflowTools = tools.skip(visibleToolCount).toList();
@@ -426,7 +419,6 @@ class PrimaryRail extends ConsumerWidget {
                               isRunning ? theme.colorScheme.primary : null,
                           tooltip: tool.label,
                           isNarrow: renderNarrow,
-                          verticalPadding: renderNarrow ? 3.0 : 2.0,
                           onPressed: () => handleTap(tool.tabIndex),
                         );
                       },
@@ -447,7 +439,6 @@ class PrimaryRail extends ConsumerWidget {
                               isRunning ? theme.colorScheme.primary : null,
                           tooltip: tool.label,
                           isNarrow: renderNarrow,
-                          verticalPadding: renderNarrow ? 3.0 : 2.0,
                           onPressed: () => handleTap(tool.tabIndex),
                         );
                       },
@@ -458,7 +449,6 @@ class PrimaryRail extends ConsumerWidget {
                       selected: selectedTool == tool.tabIndex,
                       tooltip: tool.label,
                       isNarrow: renderNarrow,
-                      verticalPadding: renderNarrow ? 3.0 : 2.0,
                       onPressed: isToolEnabled(tool.tabIndex)
                           ? () => handleTap(tool.tabIndex)
                           : null,
@@ -471,7 +461,6 @@ class PrimaryRail extends ConsumerWidget {
                     isToolEnabled: isToolEnabled,
                     onSelected: handleTap,
                     isNarrow: renderNarrow,
-                    verticalPadding: renderNarrow ? 3.0 : 2.0,
                   ),
                 // 矮窗口允许滚动底部工具，返回入口始终留在顶部。
                 Expanded(
