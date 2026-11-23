@@ -76,7 +76,7 @@
 | `adb-flutter-ide-configuration` | Flutter IDE 配置修复 | active | Dart SDK library、主模块宏、主窗口与不含 Share Core 的 Debug 入口、依赖复用、私有组件清理、项目模型缓存与配置恢复回归 | `script/configure_flutter_ide.py`, `.idea/`, `test/script/` |
 | `adb-macos-icon-assets` | macOS 图标资源机制 | active | 记录 Dock 图标、Flutter App logo、菜单栏 template icon 的资源边界和生成命令 | `assets/brand/`, `macos/Runner/Assets.xcassets/` |
 | `adb-dashboard-device-identity` | Dashboard 设备身份入口 | active | 记录 App 万能控制台副文案与 Logo 居中、设备管理与模拟器列表同级入口、设备列表统计标签与自适应搜索筛选栏、操作列按钮圆角矩形水波纹、图标内边距及编辑图标主题色、设备行名称与 IP、品牌 Logo 圆角、左侧导航 App/设备身份切换、品牌优先与制造商兜底、概览缓存兼容、宽窄侧栏返回设备管理入口及 Material 绘制层级 | `features/overview/`, `features/devices/`, `core/device_info/` |
-| `adb-device-context-menu` | 设备列表常用操作右键菜单 | active | 行高亮、截图保存及剪贴板、投屏与工具 Route、三平台能力区分、离线/删除与重复操作拦截及验证边界 | `features/devices/`, `features/control/`, `test/` |
+| `adb-device-context-menu` | 设备列表常用操作右键菜单 | active | 菜单中性背景与行高亮、截图保存及剪贴板、投屏与工具 Route、三平台能力区分、离线/删除与重复操作拦截及验证边界 | `features/devices/`, `features/control/`, `test/` |
 | `adb-main-window-routing` | 主窗口层级路由 | active | 记录 Splash StartupGate、顶层 Route、设备工具 slug、应用详情嵌套路由、隐藏 Navigator 焦点隔离及 Route 与 Riverpod 的职责边界 | `app/router/`, `features/overview/`, `features/apps/`, `features/devices/` |
 | `adb-main-window-navigation` | 主窗口导航、帮助中心、底部控制台与系统版本 | active | AnyDeck 在线帮助入口与中英文文案、侧栏页面选中与服务运行标记分离、主题色状态圆点、侧边栏底部控制台、可调高度日志面板、系统版本 Route、移除独立模拟器管理窗口和原生菜单入口、验证与人工边界 | `features/overview/`, `features/console/`, `app/window/`, `app/router/` |
 | `adb-device-root-status` | Dashboard 手机 Root 状态标识 | active | 记录主页 Root 标识、检测链路、未知状态与控制 Tab 按钮移除 | `features/overview/`, `features/control/`, `core/providers/` |

@@ -24,7 +24,8 @@ extension _DeviceListContextMenu on _DeviceListPanelState {
           localPosition & Size.zero,
           overlay.size,
         ),
-        color: theme.colorScheme.surfaceContainer,
+        color: theme.appColors.panelSurface,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: AppThemeSizes.radiusLarge,
           side: BorderSide(color: theme.colorScheme.outlineVariant),

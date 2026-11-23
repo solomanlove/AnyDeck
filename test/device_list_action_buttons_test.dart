@@ -59,7 +59,8 @@ void main() {
               );
               expect(primary, findsOneWidget);
               final button = tester.widget<ButtonStyleButton>(primary);
-              final scheme = Theme.of(tester.element(primary)).colorScheme;
+              final theme = Theme.of(tester.element(primary));
+              final scheme = theme.colorScheme;
               expect(scheme.primary, themeColor.color);
               expect(
                 button.style!.foregroundColor!.resolve({}),
@@ -70,6 +71,12 @@ void main() {
               await fixture.openMenu(tester, device);
               final edit = deviceMenuAction(DeviceContextAction.edit);
               expect(edit, findsOneWidget);
+              // 从已展开的菜单项定位面板，校验根层 Overlay 沿用设备工作区底色。
+              final panel = tester.widget<Material>(
+                find.ancestor(of: edit, matching: find.byType(Material)).first,
+              );
+              expect(panel.color, theme.appColors.panelSurface);
+              expect(panel.surfaceTintColor, Colors.transparent);
               expect(
                 tester.widget<PopupMenuItem<DeviceContextAction>>(edit).enabled,
                 isTrue,
