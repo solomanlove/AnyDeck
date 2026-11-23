@@ -1,6 +1,7 @@
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/widget/dashboard_tab_layout.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
 import 'package:any_deck/core/adb/adb_service.dart';
@@ -9,6 +10,7 @@ import 'package:any_deck/core/apps/app_management_service.dart';
 import 'package:any_deck/core/process/process_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/processes/processes_tab.dart';
+import 'package:any_deck/features/widgets/dashboard_table_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -152,7 +154,7 @@ void main() {
     expect(find.textContaining('共 3 个进程'), findsOneWidget);
   });
 
-  testWidgets('processes tab does not overflow on narrow viewport', (
+  testWidgets('进程表贴合内容区两侧，窄窗口可滚至末列并使用筛选框', (
     WidgetTester tester,
   ) async {
     const device = DiscoveredDevice(
@@ -163,7 +165,15 @@ void main() {
       transportId: '1',
     );
 
-    tester.view.physicalSize = const Size(500, 700);
+    final process = AdbProcess(
+      pid: '2200',
+      user: 'u0_a331',
+      cpu: '3.2',
+      memory: '39M',
+      cpuTime: '0:10.21',
+      name: 'com.example.chat',
+    );
+    tester.view.physicalSize = const Size(1200, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
       tester.view.resetPhysicalSize();
@@ -176,10 +186,12 @@ void main() {
           deviceOnlineProvider(device.id).overrideWithValue(true),
           processesProvider(
             device.id,
-          ).overrideWith((ref) => Future.value(const <AdbProcess>[])),
-          packagesProvider(
-            device.id,
-          ).overrideWith(() => _FixedPackagesNotifier(packages: const [])),
+          ).overrideWith((ref) => Future.value([process])),
+          packagesProvider(device.id).overrideWith(
+            () => _FixedPackagesNotifier(
+              packages: [AdbPackage(name: process.name)],
+            ),
+          ),
           processServiceProvider.overrideWithValue(ProcessService(_DummyAdbService())),
         ],
         child: MaterialApp(
@@ -193,15 +205,48 @@ void main() {
             GlobalCupertinoLocalizations.delegate,
           ],
           home: Scaffold(
-            body: ProcessesTab(
-              device: device,
-              isVisible: true,
+            body: Padding(
+              // 为侧栏预留空间，确保表宽依据内容区而非整个窗口。
+              padding: const EdgeInsets.only(left: 180),
+              child: ProcessesTab(device: device, isVisible: false),
             ),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
+
+    final tab = find.byType(ProcessesTab);
+    final bounds = tester.getRect(tab);
+    final toolbar = tester.getRect(
+      find.byType(DashboardSearchToolbar<ProcessFilterType>),
+    );
+    final headers = find.byType(DashboardSortableHeaderCell);
+    final row = tester.getRect(find.widgetWithText(InkWell, process.user));
+    expect(toolbar.left, bounds.left + 16);
+    expect(toolbar.right, bounds.right - 16);
+    expect(tester.getRect(headers.first).left, bounds.left);
+    expect(tester.getRect(headers.last).right, bounds.right);
+    expect(row.left, bounds.left);
+    expect(row.right, bounds.right);
+
+    final tableScroll = find.ancestor(
+      of: find.byType(ListView),
+      matching: find.byType(SingleChildScrollView),
+    );
+    final controller = tester
+        .widget<SingleChildScrollView>(tableScroll)
+        .controller!;
+    expect(controller.position.maxScrollExtent, 0);
+
+    // 窗口缩窄后，滚至最右时末列表头和对应数据均在可见区域。
+    tester.view.physicalSize = const Size(680, 700);
+    await tester.pumpAndSettle();
+    expect(controller.position.maxScrollExtent, greaterThan(0));
+    await tester.drag(tableScroll, const Offset(-600, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(headers.last).right, tester.getRect(tab).right);
+    expect(find.text(process.user).hitTestable(), findsOneWidget);
 
     expect(find.byType(TextField), findsOneWidget);
     expect(find.text('用户进程'), findsOneWidget);

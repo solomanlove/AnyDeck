@@ -94,10 +94,6 @@ class _ProcessTableState extends ConsumerState<_ProcessTable> {
   Widget build(BuildContext context) {
     // 应用元数据可能由历史缓存异步补齐，版本变化时刷新可见进程的名称与图标。
     ref.watch(packageMetadataRevisionProvider);
-    final tableWidth = max(
-      widget.widths.total,
-      MediaQuery.of(context).size.width,
-    );
 
     return Scrollbar(
       controller: _horizontalController,
@@ -107,7 +103,8 @@ class _ProcessTableState extends ConsumerState<_ProcessTable> {
         controller: _horizontalController,
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: tableWidth,
+          // 列宽已按内容区计算，侧栏不计入横向滚动范围。
+          width: widget.widths.total,
           child: Column(
             children: [
               // Header
