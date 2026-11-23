@@ -438,7 +438,7 @@ class IosDistributionDetailsPane extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11.5,
                 color: Theme.of(context).colorScheme.primary,
-                decoration: TextDecoration.underline,
+                decoration: TextDecoration.none,
               ),
             ),
           ),

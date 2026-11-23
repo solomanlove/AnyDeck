@@ -105,7 +105,7 @@ class AndroidDistributionDetailsPane extends StatelessWidget {
               style: TextStyle(
                 color: linkColor,
                 fontSize: 12,
-                decoration: TextDecoration.underline,
+                decoration: TextDecoration.none,
               ),
             ),
           ),
