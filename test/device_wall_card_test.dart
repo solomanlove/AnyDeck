@@ -21,6 +21,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         _card(
+          previewOpensWorkspace: true,
           onOpen: () => opens++,
           onInfo: () => infos++,
           onMore: () => menus++,
@@ -48,16 +49,28 @@ void main() {
     expect(find.byType(Image), findsNothing);
     expect(find.text('设备已就绪'), findsOneWidget);
     expect(find.text('当前屏幕快照'), findsOneWidget);
+    expect(
+      tester.widget<DeviceWallPhone>(phone).semanticLabel,
+      '进入工作区 Mi MIX 3',
+    );
+    final mirror = find.widgetWithText(OutlinedButton, '投屏');
+    expect(
+      find.descendant(
+        of: mirror,
+        matching: find.byIcon(Icons.ondemand_video_outlined),
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(phone);
-    expect(opens, 1);
-    await tester.tap(find.byType(OutlinedButton));
-    expect(opens, 2);
+    expect([opens, infos], [0, 1]);
+    await tester.tap(mirror);
+    expect([opens, infos], [1, 1]);
     await tester.tap(find.text('Mi MIX 3'));
-    expect(infos, 1);
+    expect(infos, 2);
     await tester.tap(find.byType(IconButton));
     expect(menus, 1);
-    expect(opens, 2);
+    expect(opens, 1);
     expect(tester.takeException(), isNull);
   });
 
@@ -70,7 +83,9 @@ void main() {
           builder: (context, setState) => _card(
             batchMode: true,
             selected: selected,
+            previewOpensWorkspace: true,
             onOpen: () => opens++,
+            onInfo: () => fail('批量选择不能进入工作区'),
             onSelected: (value) => setState(() => selected = value),
           ),
         ),
@@ -79,6 +94,12 @@ void main() {
     expect(find.byType(Checkbox), findsOneWidget);
     expect(find.byType(OutlinedButton), findsNothing);
     expect(find.byType(IconButton), findsNothing);
+    expect(
+      tester
+          .widget<DeviceWallPhone>(find.byType(DeviceWallPhone))
+          .semanticLabel,
+      '选择设备 Mi MIX 3',
+    );
 
     await tester.tap(find.byType(DeviceWallPhone));
     await tester.pump();
@@ -106,6 +127,37 @@ void main() {
     await tester.tap(find.byType(DeviceWallPhone));
     expect(opens, 0);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('离线预览沿用重连操作，忙碌卡片拦截预览和主按钮', (tester) async {
+    var reconnects = 0;
+    final phone = find.byType(DeviceWallPhone);
+    await tester.pumpWidget(
+      _host(_card(online: false, onOpen: () => reconnects++)),
+    );
+    expect(
+      tester.widget<DeviceWallPhone>(phone).semanticLabel,
+      '重新连接 Mi MIX 3',
+    );
+    await tester.tap(phone);
+    await tester.tap(find.widgetWithText(OutlinedButton, '重新连接'));
+    expect(reconnects, 2);
+
+    await tester.pumpWidget(
+      _host(
+        _card(
+          busy: true,
+          previewOpensWorkspace: true,
+          onOpen: () => fail('忙碌时不能重复发起投屏'),
+          onInfo: () => fail('忙碌时不能通过预览进入工作区'),
+        ),
+      ),
+    );
+    expect(tester.widget<DeviceWallPhone>(phone).onTap, isNull);
+    expect(
+      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      isNull,
+    );
   });
 
   testWidgets('在线仅显示传入的真实截图，离线不展示历史截图', (tester) async {
@@ -279,7 +331,7 @@ void main() {
                     ? '荣耀 Magic V6 测试设备'
                     : 'sdk_gphone16k_arm64 Android Emulator',
                 statusLabel: language == 'zh' ? 'USB 已连接' : 'USB connected',
-                actionLabel: language == 'zh' ? '进入工作区' : 'Open workspace',
+                actionLabel: language == 'zh' ? '投屏' : 'Screen Mirror',
                 tags: language == 'zh'
                     ? const ['主力机超长标签用于完整提示与省略验证', '测试机', '工作设备']
                     : const [
@@ -359,6 +411,8 @@ DeviceWallCard _card({
   String statusLabel = 'USB 已连接',
   String? actionLabel,
   bool online = true,
+  bool busy = false,
+  bool previewOpensWorkspace = false,
   bool batchMode = false,
   bool selected = false,
   bool selectable = true,
@@ -375,9 +429,12 @@ DeviceWallCard _card({
   tags: tags,
   coverTitle: online ? '设备已就绪' : '设备未连接',
   coverHint: online ? '当前屏幕快照' : '通过 USB 或无线连接',
-  actionLabel: actionLabel ?? (online ? '进入工作区' : '重新连接'),
+  actionLabel: actionLabel ?? (online ? '投屏' : '重新连接'),
+  actionIcon: online ? Icons.ondemand_video_outlined : Icons.link,
+  previewOpensWorkspace: previewOpensWorkspace,
   ipAddress: '192.168.1.219',
   online: online,
+  busy: busy,
   batchMode: batchMode,
   selected: selected,
   selectable: selectable,

@@ -63,15 +63,15 @@ extension _DeviceWallPanel on _DeviceListPanelState {
             .watch(cachedDeviceOverviewProvider(device.id))
             .value;
         final brand = overview?.brand;
-        // 仅由 AirPlay 会话生成的卡片没有设备工作区，仍可打开投屏窗口。
-        final opensWorkspace =
-            device.isOnline &&
-            !(session != null && device.id.startsWith('airplay-'));
+        // 纯 AirPlay 卡片仅代表投屏会话，没有可导航的设备工作区。
+        final airplayOnly = session != null && device.id.startsWith('airplay-');
+        final canRunAction =
+            !device.isOnline ||
+            DeviceContextAction.mirror.isEnabledFor(
+              device,
+              hasAirPlaySession: session != null,
+            );
         final (actionKey, actionIcon) = switch (device.isOnline) {
-          true when opensWorkspace => (
-            'deviceWorkspaceOpen',
-            Icons.dashboard_outlined,
-          ),
           true => ('screenMirror', Icons.ondemand_video_outlined),
           false when device.id.startsWith('emulator-') => (
             'deviceWorkspaceStartEmulator',
@@ -117,6 +117,7 @@ extension _DeviceWallPanel on _DeviceListPanelState {
                   ),
             actionLabel: context.l10n.t(actionKey),
             actionIcon: actionIcon,
+            previewOpensWorkspace: device.isOnline && !airplayOnly,
             online: device.isOnline,
             ipAddress: _workspaceDeviceIp(device, overview),
             screenshot: device.isOnline && !preview.hasError
@@ -129,9 +130,9 @@ extension _DeviceWallPanel on _DeviceListPanelState {
             batchMode: _batchMode,
             selected: device.isChecked,
             selectable: !device.id.startsWith('airplay-'),
-            onOpen: opensWorkspace
-                ? () => _openDeviceInfo(context, device, session)
-                : () => _openWorkspaceDevice(context, device, session),
+            onOpen: canRunAction
+                ? () => _openWorkspaceDevice(context, device, session)
+                : null,
             onInfo: () => _openDeviceInfo(context, device, session),
             onMore: () => _openWorkspaceMenu(cardContext, device, session),
             onSelected: (_) => _toggleDeviceSelection(device),
