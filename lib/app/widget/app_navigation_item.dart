@@ -51,7 +51,7 @@ class AppNavigationItem extends StatelessWidget {
             padding: const EdgeInsets.only(left: 10),
             child: Row(
               children: [
-                Icon(icon, size: 24, color: color),
+                Icon(icon, size: AppThemeSizes.navigationIconSize, color: color),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(

@@ -26,7 +26,7 @@ class PrimaryRail extends ConsumerWidget {
     // 顶部工具项使用更紧凑的间距，底部设置等保留原有高度以防变动
     final double toolSlotHeight = isNarrow ? 54.0 : 48.0;
     final double bottomButtonsSlotHeight = (isNarrow ? 60.0 : 52.0) * 4;
-    final double logoSize = isNarrow ? 50.0 : 38.0;
+    final double identityHeight = isNarrow ? _RailIdentity.narrowExtent : 38.0;
     final double logoToolGap = isNarrow
         ? (hasOverflow ? _compactLogoToolGap : _fullLogoToolGap)
         : 12.0;
@@ -34,7 +34,7 @@ class PrimaryRail extends ConsumerWidget {
     final availableHeight =
         railHeight -
         _topSpacing -
-        logoSize -
+        identityHeight -
         logoToolGap -
         bottomButtonsSlotHeight -
         _bottomSpacing;

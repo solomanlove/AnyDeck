@@ -49,6 +49,11 @@ class _RailMoreButton extends StatelessWidget {
     final color = !anyEnabled
         ? disabledColor
         : (selected ? theme.colorScheme.primary : defaultColor);
+    final moreIcon = Icon(
+      CupertinoIcons.ellipsis,
+      size: AppThemeSizes.navigationIconSize,
+      color: color,
+    );
 
     final activeBgColor = theme.colorScheme.primary.withValues(
       alpha: isDark ? 0.18 : 0.09,
@@ -101,7 +106,7 @@ class _RailMoreButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
-              child: Icon(CupertinoIcons.ellipsis, size: 28, color: color),
+              child: moreIcon,
             ),
           ),
         ),
@@ -165,7 +170,7 @@ class _RailMoreButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  Icon(CupertinoIcons.ellipsis, size: 24, color: color),
+                  moreIcon,
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -238,7 +243,7 @@ class _RailButton extends StatelessWidget {
                     ),
                 ],
               ),
-              iconSize: 28,
+              iconSize: AppThemeSizes.navigationIconSize,
               onPressed: onPressed,
               style: IconButton.styleFrom(
                 fixedSize: const Size(48, 48),

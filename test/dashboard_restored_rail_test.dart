@@ -3,7 +3,9 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/settings/app_settings.dart';
 import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/app/theme/app_icon.dart';
+import 'package:any_deck/app/theme/app_navigation_icons.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/widget/app_asset_image.dart';
 import 'package:any_deck/app/widget/app_navigation_item.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/mcp/models/mcp_server_config.dart';
@@ -180,7 +182,8 @@ void main() {
           };
           for (final entry in entries.entries) {
             expect(_entry(l10n, entry.key), findsOneWidget);
-            expect(_entryIcon(l10n, entry.key, entry.value), findsOneWidget);
+            final icon = _entryIcon(l10n, entry.key, entry.value);
+            expect(tester.getSize(icon), const Size.square(24));
             final navigation = find.descendant(
               of: _entry(l10n, entry.key),
               matching: find.byType(AppNavigationItem),
@@ -247,6 +250,10 @@ void main() {
             theme.colorScheme.primary,
           );
           expect(find.byIcon(Icons.layers_outlined), findsNothing);
+          expect(
+            tester.getSize(find.byIcon(CupertinoIcons.ellipsis)),
+            const Size.square(24),
+          );
           await tester.tap(_entry(l10n, 'moreTools'));
           await tester.pumpAndSettle();
           final versions = find.byWidgetPredicate(
@@ -287,6 +294,29 @@ void main() {
         device: _device,
       );
       final railElement = tester.element(find.byType(PrimaryRail));
+      // 设备品牌、返回箭头和工具图标在两种侧栏宽度下沿用展开时的尺寸。
+      final brand = find.byWidgetPredicate(
+        (widget) =>
+            widget is AppAssetImage && widget.assetName == AppIcons.apple,
+      );
+      expect(tester.getSize(brand), const Size.square(36));
+      if (width < 1000) {
+        final target = find.ancestor(
+          of: brand,
+          matching: find.byType(GestureDetector),
+        ).first;
+        expect(tester.getSize(target), const Size.square(50));
+        expect(tester.getCenter(brand), tester.getCenter(target));
+        expect(target.hitTestable(at: Alignment.centerLeft), findsOneWidget);
+      }
+      expect(
+        tester.getSize(find.byIcon(Icons.arrow_back)),
+        const Size.square(18),
+      );
+      expect(
+        tester.getSize(find.byIcon(AppNavigationIcons.overview)),
+        const Size.square(24),
+      );
       for (final isOpen in [true, false]) {
         await tester.tap(find.byTooltip('控制台'));
         await tester.pumpAndSettle();

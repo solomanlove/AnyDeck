@@ -68,6 +68,9 @@ class _RailIdentity extends ConsumerWidget {
   final List<RegisteredDevice> registeredDevices;
   final bool isNarrow;
 
+  /// 窄侧栏身份入口的点击区域，同时供侧栏计算可见工具数量。
+  static const double narrowExtent = 50;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final device = selectedDevice;
@@ -103,23 +106,20 @@ class _RailIdentity extends ConsumerWidget {
             ? context.l10n.t('connectionUsbAndNetwork')
             : isNetwork ? 'Wi-Fi' : 'USB';
 
+    final avatar = DeviceStatusAvatar(
+      device: matchedDevice,
+      size: 36,
+      showTooltip: false,
+    );
     final identity = isNarrow
-        ? DeviceStatusAvatar(
-            device: matchedDevice,
-            size: 50,
-            showTooltip: false,
-          )
+        ? SizedBox.square(dimension: narrowExtent, child: Center(child: avatar))
         : SizedBox(
             height: 38,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  DeviceStatusAvatar(
-                    device: matchedDevice,
-                    size: 36,
-                    showTooltip: false,
-                  ),
+                  avatar,
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -195,7 +195,7 @@ class _RailIdentity extends ConsumerWidget {
   }
 
   Widget _buildAppIdentity(BuildContext context) {
-    final double size = isNarrow ? 50.0 : 36.0;
+    final double size = isNarrow ? narrowExtent : 36.0;
     final radius = size == 36 ? 8.0 : 12.0;
     final avatar = ClipRRect(
       borderRadius: BorderRadius.circular(radius),
