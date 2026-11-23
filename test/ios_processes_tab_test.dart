@@ -11,7 +11,9 @@ import 'package:any_deck/core/ios/ios_process_info.dart';
 import 'package:any_deck/features/ios/ios_processes_tab.dart';
 import 'package:any_deck/features/ios/model/ios_processes_filter.dart';
 import 'package:any_deck/features/ios/widgets/ios_process_tile.dart';
+import 'package:any_deck/features/ios/widgets/ios_processes_table.dart';
 import 'package:any_deck/features/ios/widgets/ios_processes_toolbar.dart';
+import 'package:any_deck/features/widgets/dashboard_table_header.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -80,6 +82,64 @@ void main() {
         tester.getBottomLeft(segment).dy,
         lessThan(tester.getTopLeft(input).dy),
       );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('iOS 进程表铺满内容区，说明与工具栏保留左右边距', (tester) async {
+    const device = DiscoveredDevice(id: 'a', status: 'device', isIos: true);
+    final snapshot = Completer<List<IosProcessInfo>>()
+      ..complete([const IosProcessInfo(pid: 42, name: 'Runner')]);
+    final page = ProviderScope(
+      overrides: [
+        deviceOnlineProvider(device.id).overrideWithValue(true),
+        iosProcessServiceProvider(
+          device.id,
+        ).overrideWith((ref) => _Service(device.id, snapshot)),
+      ],
+      child: _page(const IosProcessesTab(device: device)),
+    );
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    for (final width in [1400.0, 420.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      await tester.pumpWidget(page);
+      await tester.pumpAndSettle();
+
+      final viewport = tester.getRect(find.byType(IosProcessesTable));
+      final listViewport = find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Viewport),
+      );
+      expect(
+        tester.getRect(listViewport).bottom,
+        tester.getRect(find.byType(IosProcessesTab)).bottom,
+      );
+      expect(viewport.left, 0);
+      expect(viewport.right, width);
+      final header = tester.getRect(
+        find
+            .ancestor(
+              of: find.byType(DashboardSortableHeaderCell).first,
+              matching: find.byType(Row),
+            )
+            .first,
+      );
+      final row = tester.getRect(find.byKey(const ValueKey('ios-process-42')));
+      expect(header.left, viewport.left);
+      expect(header.width, width < 1080 ? 1080 : width);
+      expect(row.left, header.left);
+      expect(row.right, header.right);
+
+      for (final inset in [
+        find.byType(IosProcessesToolbar),
+        find.textContaining('Current go-ios'),
+      ]) {
+        final rect = tester.getRect(inset);
+        expect(rect.left, viewport.left + 16);
+        expect(rect.right, viewport.right - 16);
+      }
       expect(tester.takeException(), isNull);
     }
   });

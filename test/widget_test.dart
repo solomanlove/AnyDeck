@@ -98,7 +98,7 @@ void main() {
       findsOneWidget,
     );
     expect(_settingsButton(size: null), findsOneWidget);
-    expect(_railIcon(CupertinoIcons.ellipsis, size: 28.0), findsOneWidget);
+    expect(_railIcon(CupertinoIcons.ellipsis), findsOneWidget);
   });
 
   testWidgets('rail moves trailing tools into more menu as height shrinks', (

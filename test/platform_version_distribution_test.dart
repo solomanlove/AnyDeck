@@ -156,6 +156,7 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       String? copiedText;
+      String? openedUrl;
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
         (call) async {
@@ -190,7 +191,7 @@ void main() {
               height: 700,
               child: AndroidDistributionDetailsPane(
                 item: item,
-                onOpenUrl: (_) {},
+                onOpenUrl: (url) => openedUrl = url,
               ),
             ),
           ),
@@ -220,6 +221,8 @@ void main() {
       await tester.pump();
 
       expect(copiedText, equals(item.summaryUrl));
+      await _tapOfficialLink(tester, item.summaryUrl!);
+      expect(openedUrl, item.summaryUrl);
     });
 
     testWidgets('HarmonyDistributionDetailsPane supports SelectionArea and copy buttons',
@@ -229,6 +232,7 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       String? copiedText;
+      String? openedUrl;
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
         (call) async {
@@ -263,7 +267,7 @@ void main() {
               height: 700,
               child: HarmonyDistributionDetailsPane(
                 item: item,
-                onOpenUrl: (_) {},
+                onOpenUrl: (url) => openedUrl = url,
               ),
             ),
           ),
@@ -297,6 +301,8 @@ void main() {
       await tester.pump();
 
       expect(copiedText, equals(item.link));
+      await _tapOfficialLink(tester, item.link);
+      expect(openedUrl, item.link);
     });
 
     testWidgets('IosDistributionDetailsPane supports SelectionArea and copy buttons',
@@ -306,6 +312,7 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       String? copiedText;
+      String? openedUrl;
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
         (call) async {
@@ -340,7 +347,7 @@ void main() {
               height: 700,
               child: IosDistributionDetailsPane(
                 item: item,
-                onOpenUrl: (_) {},
+                onOpenUrl: (url) => openedUrl = url,
               ),
             ),
           ),
@@ -374,6 +381,19 @@ void main() {
       await tester.pump();
 
       expect(copiedText, equals(item.link));
+      await _tapOfficialLink(tester, item.link);
+      expect(openedUrl, item.link);
     });
   });
+}
+
+/// 检查官方链接的最终文字装饰，并从可见文本触发跳转。
+Future<void> _tapOfficialLink(WidgetTester tester, String url) async {
+  final link = find.text(url, findRichText: true);
+  await tester.ensureVisible(link);
+  await tester.pumpAndSettle();
+  final decoration = tester.widget<RichText>(link).text.style?.decoration;
+  expect(decoration?.contains(TextDecoration.underline) ?? false, isFalse);
+  await tester.tap(link);
+  await tester.pump();
 }

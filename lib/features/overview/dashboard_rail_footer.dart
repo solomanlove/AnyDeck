@@ -21,6 +21,7 @@ class _DashboardRailFooter extends ConsumerWidget {
       children: [
         _RailButton(
           icon: CupertinoIcons.question_circle,
+          isFooter: true,
           tooltip: context.l10n.t('wanAndroid'),
           isNarrow: isNarrow,
           selected: selectedTool == 13,
@@ -28,6 +29,7 @@ class _DashboardRailFooter extends ConsumerWidget {
         ),
         _RailButton(
           icon: CupertinoIcons.sparkles,
+          isFooter: true,
           tooltip: context.l10n.t('aiMcp'),
           isNarrow: isNarrow,
           selected: selectedTool == 14,
@@ -36,6 +38,7 @@ class _DashboardRailFooter extends ConsumerWidget {
         ),
         _RailButton(
           icon: CupertinoIcons.doc_plaintext,
+          isFooter: true,
           tooltip: context.l10n.t('console'),
           isNarrow: isNarrow,
           selected: consoleOpen,
@@ -43,6 +46,7 @@ class _DashboardRailFooter extends ConsumerWidget {
         ),
         _RailButton(
           icon: CupertinoIcons.settings,
+          isFooter: true,
           tooltip: context.l10n.t('settings'),
           isNarrow: isNarrow,
           selected: selectedTool == 12,

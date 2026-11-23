@@ -119,7 +119,11 @@ class ConnectionEnvironmentService {
 
   /// 华为 DevEco Studio 官方下载页面
   static const String devecoStudioDownloadUrl =
-      'https://developer.huawei.com/consumer/cn/deveco-studio/';
+      'https://developer.huawei.com/consumer/cn/download/deveco-studio';
+
+  /// 华为 Command Line Tools 官方下载页面
+  static const String commandLineToolsDownloadUrl =
+      'https://developer.huawei.com/consumer/cn/download/command-line-tools-for-hmos';
 
   /// go-ios 官方 GitHub Releases 页面
   static const String goIosReleasesUrl =

@@ -22,7 +22,9 @@ import 'device_wall_phone.dart';
 /// [tags] 为用户维护的设备标识，非空标签在名称下居中换行，只负责展示。
 /// [batchMode] 为 true 时显示勾选框并隐藏操作栏；[selected]、[selectable]
 /// 和 [onSelected] 由父级管理，点击卡片任意非交互空白或手机均可选择。
-/// 普通模式下 [onOpen] 打开投屏或重连，[onInfo] 进入设备工作台，
+/// 普通模式下主按钮通过 [onOpen] 投屏或重连，设备名称通过 [onInfo] 打开详情。
+/// 在线设备设置 [previewOpensWorkspace] 后，点击手机预览也调用 [onInfo]，
+/// 其他卡片的预览沿用 [onOpen]。
 /// [onMore] 打开操作菜单，[onSecondaryTapDown] 复用设备右键菜单。
 /// [busy] 阻止重复打开，[actionLabel] 和 [actionIcon] 表达当前主操作。
 class DeviceWallCard extends StatelessWidget {
@@ -45,7 +47,8 @@ class DeviceWallCard extends StatelessWidget {
     this.selectable = true,
     this.busy = false,
     this.phoneWidth = 120,
-    this.actionIcon = LucideIcons.monitorPlay,
+    this.actionIcon = Icons.ondemand_video_outlined,
+    this.previewOpensWorkspace = false,
     this.onOpen,
     this.onInfo,
     this.onMore,
@@ -71,6 +74,7 @@ class DeviceWallCard extends StatelessWidget {
   final bool busy;
   final double phoneWidth;
   final IconData actionIcon;
+  final bool previewOpensWorkspace;
   final VoidCallback? onOpen;
   final VoidCallback? onInfo;
   final VoidCallback? onMore;
@@ -85,6 +89,12 @@ class DeviceWallCard extends StatelessWidget {
     final theme = Theme.of(context);
     final compact = MediaQuery.sizeOf(context).width <= 490;
     final checked = batchMode && selected;
+    final onPreview = previewOpensWorkspace ? onInfo : onOpen;
+    final previewActionLabel = batchMode
+        ? context.l10n.t('selectDevice')
+        : previewOpensWorkspace
+        ? context.l10n.t('deviceWorkspaceOpen')
+        : actionLabel;
     final logoAsset = brand.toLowerCase().contains('harmony')
         ? AppIcons.huawei
         : BrandLogoHelper.getBrandLogoAsset(brand, manufacturer: name) ??
@@ -123,14 +133,12 @@ class DeviceWallCard extends StatelessWidget {
                   brand: brand,
                   title: coverTitle,
                   hint: coverHint,
-                  semanticLabel: batchMode
-                      ? '${context.l10n.t('selectDevice')} $name'
-                      : '$actionLabel $name',
+                  semanticLabel: '$previewActionLabel $name',
                   onTap: batchMode
                       ? _select
                       : busy
                       ? null
-                      : onOpen,
+                      : onPreview,
                 ),
                 const SizedBox(height: 8),
                 _buildCaption(context, logoAsset),

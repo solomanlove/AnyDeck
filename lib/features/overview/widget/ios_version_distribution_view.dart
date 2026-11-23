@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../model/ios_version_distribution_data.dart';
 import 'ios_distribution_details_pane.dart';
 import 'ios_adoption_samples.dart';
+import 'version_distribution_layout.dart';
 
 /// Apple iOS 版本采用率与工具链矩阵专属视图。
 ///
@@ -69,26 +70,16 @@ class _IosVersionDistributionViewState
 
     return Column(
       children: [
-        // 核心双栏内容区域（左时间轴列表，右详情）
+        // 版本列表和详情共用工作区宽度，窄窗口按阅读顺序上下排列。
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 左侧时间轴大版本列表
-              SizedBox(
-                width: 420,
-                child: _buildLeftTimelineList(isDark),
-              ),
-              // 垂直分割线
-              Container(width: 1, color: dividerColor),
-              // 右侧矩阵与特性详情
-              Expanded(
-                child: IosDistributionDetailsPane(
-                  item: _selectedItem,
-                  onOpenUrl: _openUrl,
-                ),
-              ),
-            ],
+          child: VersionDistributionLayout(
+            listWidth: 420,
+            dividerColor: dividerColor,
+            list: _buildLeftTimelineList(isDark),
+            details: IosDistributionDetailsPane(
+              item: _selectedItem,
+              onOpenUrl: _openUrl,
+            ),
           ),
         ),
         // 底部历史版本折叠面板（1.0 起）

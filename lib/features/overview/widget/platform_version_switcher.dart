@@ -50,8 +50,10 @@ class PlatformVersionSwitcher extends StatelessWidget {
         border: Border.all(color: borderColor, width: 1),
       ),
       padding: const EdgeInsets.all(3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      // 窄窗口或放大字号时按完整的平台选项换行。
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 2,
         children: [
           _buildItem(
             context: context,

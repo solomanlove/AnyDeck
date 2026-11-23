@@ -5,6 +5,7 @@ import '../../../app/l10n/app_localizations.dart';
 import '../../../app/widget/device_os_logo_widget.dart';
 import '../model/platform_distribution_type.dart';
 import '../model/ios_version_distribution_data.dart';
+import 'version_distribution_layout.dart';
 
 /// iOS 版本特性、工具链对应矩阵与口径说明详情面板。
 ///
@@ -39,6 +40,7 @@ class IosDistributionDetailsPane extends StatelessWidget {
 
     return SelectionArea(
       child: SingleChildScrollView(
+        key: ValueKey(item.version),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,27 +107,29 @@ class IosDistributionDetailsPane extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'iOS ${item.version}',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'iOS ${item.version}',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${item.minor} · 发布 ${item.date} · 数据源 ${item.source}',
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 11.5,
+              const SizedBox(height: 2),
+              Text(
+                '${item.minor} · 发布 ${item.date} · 数据源 ${item.source}',
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 11.5,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -261,15 +265,16 @@ class IosDistributionDetailsPane extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
-                '◈ 编译与适配要求',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0969DA),
+              const Expanded(
+                child: Text(
+                  '◈ 编译与适配要求',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0969DA),
+                  ),
                 ),
               ),
-              const Spacer(),
               IconButton(
                 icon: Icon(
                   Icons.copy_rounded,
@@ -353,35 +358,27 @@ class IosDistributionDetailsPane extends StatelessWidget {
     );
   }
 
-  /// 平台核心与安全能力两列面板
+  /// 平台核心与安全能力按详情区域宽度排列
   Widget _buildCapabilitiesSplit(
     Color cardBg,
     Color cardBorder,
     Color textPrimary,
   ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: _buildCapabilityBox(
-            title: '平台核心与 AI 能力',
-            items: item.core,
-            cardBg: cardBg,
-            cardBorder: cardBorder,
-            textPrimary: textPrimary,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildCapabilityBox(
-            title: '安全与隐私保护',
-            items: item.privacy,
-            cardBg: cardBg,
-            cardBorder: cardBorder,
-            textPrimary: textPrimary,
-          ),
-        ),
-      ],
+    return VersionDetailColumns(
+      first: _buildCapabilityBox(
+        title: '平台核心与 AI 能力',
+        items: item.core,
+        cardBg: cardBg,
+        cardBorder: cardBorder,
+        textPrimary: textPrimary,
+      ),
+      second: _buildCapabilityBox(
+        title: '安全与隐私保护',
+        items: item.privacy,
+        cardBg: cardBg,
+        cardBorder: cardBorder,
+        textPrimary: textPrimary,
+      ),
     );
   }
 
@@ -441,7 +438,7 @@ class IosDistributionDetailsPane extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11.5,
                 color: Theme.of(context).colorScheme.primary,
-                decoration: TextDecoration.underline,
+                decoration: TextDecoration.none,
               ),
             ),
           ),

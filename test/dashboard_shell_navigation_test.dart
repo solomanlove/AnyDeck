@@ -19,6 +19,7 @@ import 'package:any_deck/features/overview/settings/settings_item.dart';
 import 'package:any_deck/features/overview/settings/settings_workspace.dart';
 import 'package:any_deck/features/overview/settings/autostart_setting_control.dart';
 import 'package:any_deck/features/overview/widget/keyboard_shortcut_settings.dart';
+import 'package:any_deck/features/overview/widget/system_versions_page.dart';
 import 'package:any_deck/features/webview/in_app_webview_widget.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -223,10 +224,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(container.read(selectedDeviceProvider), isNull);
     expect(container.read(selectedToolTabProvider), -5);
-    expect(
-      find.byKey(const Key('systemVersionsHorizontalScroll')),
-      findsOneWidget,
-    );
+    expect(find.byType(SystemVersionsPage), findsOneWidget);
     expect(find.byKey(const Key('consoleDockPanel')), findsOneWidget);
     expect(find.byTooltip('系统版本'), findsOneWidget);
     await tester.tap(find.byTooltip('模拟器管理'));

@@ -16,6 +16,7 @@ import '../../theme/app_theme.dart';
 import '../../widget/app_toast.dart';
 import '../../settings/app_settings_controller.dart';
 import '../../../features/control/device_settings_popup.dart';
+import '../../../features/widgets/android_foreground_window_dialog.dart';
 import '../../../features/widgets/device_power_actions.dart';
 import 'mirror_back_long_press_handler.dart';
 import 'mirror_toolbar_button.dart';

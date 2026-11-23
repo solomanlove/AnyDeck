@@ -7,19 +7,29 @@ import '../../../app/theme/app_theme.dart';
 import '../../../core/diagnostics/service_diagnostic.dart';
 import '../../../core/environment/connection_environment_service.dart';
 import '../../devices/widgets/platform_environment_guide_dialog.dart';
+import '../controller/service_diagnostics_controller.dart';
 import 'services_diagnostics_panel.dart';
 
-/// 单项服务结果及原因、影响和建议；技术字段可选中复制，不包含凭据。
+/// 展示 [result] 的状态、原因、影响和建议，点击服务名称可检测该项。
+/// 探针执行期间由 [isChecking] 禁用重复检测；详情箭头可独立展开或收起。
 class ServiceDiagnosticRow extends ConsumerWidget {
-  const ServiceDiagnosticRow({super.key, required this.result, this.checkedAt});
+  const ServiceDiagnosticRow({
+    super.key,
+    required this.result,
+    required this.isChecking,
+  });
   final ServiceDiagnostic result;
-  final DateTime? checkedAt;
+  final bool isChecking;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = context.l10n;
-    final expanded = ref.watch(expandedDiagnosticProvider) == result.service;
+    final expanded = ref.watch(
+      expandedDiagnosticProvider.select((service) => service == result.service),
+    );
+    final title = l10n.t(result.titleKey);
+    final material = MaterialLocalizations.of(context);
     final color = switch (result.status) {
       ServiceDiagnosticStatus.error => theme.colorScheme.error,
       ServiceDiagnosticStatus.missing ||
@@ -52,58 +62,100 @@ class ServiceDiagnosticRow extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Semantics(
-            expanded: expanded,
-            child: InkWell(
-              key: ValueKey('diagnostic-row-${result.service.name}'),
-              onTap: () => ref
-                  .read(expandedDiagnosticProvider.notifier)
-                  .toggle(result.service),
-              borderRadius: AppThemeSizes.radiusSmall,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // 宽屏状态按内容占宽，名称使用剩余空间；窄屏与大字号允许状态换行。
-                    final compact =
-                        constraints.maxWidth >= 420 &&
-                        MediaQuery.textScalerOf(context).scale(11) <= 14;
-                    final label = Text(
-                      l10n.t('diagnosticsStatus${result.status.name}'),
-                      style: TextStyle(fontSize: 11, color: color),
-                    );
-                    final status = Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(icon, color: color, size: 13),
-                        const SizedBox(width: 4),
-                        if (compact) label else Flexible(child: label),
-                      ],
-                    );
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            l10n.t(result.titleKey),
-                            style: const TextStyle(fontSize: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // 宽屏状态按内容占宽，窄屏与大字号允许名称和状态换行。
+              final compact =
+                  constraints.maxWidth >= 420 &&
+                  MediaQuery.textScalerOf(context).scale(11) <= 14;
+              final label = Text(
+                l10n.t('diagnosticsStatus${result.status.name}'),
+                style: TextStyle(fontSize: 11, color: color),
+              );
+              final status = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: color, size: 13),
+                  const SizedBox(width: 3),
+                  if (compact) label else Flexible(child: label),
+                ],
+              );
+              return Row(
+                children: [
+                  Expanded(
+                    child: Tooltip(
+                      message: l10n
+                          .t('diagnosticsCheckService')
+                          .replaceAll('{service}', title),
+                      child: Semantics(
+                        button: true,
+                        enabled: !isChecking,
+                        child: InkWell(
+                          key: ValueKey(
+                            'diagnostic-row-${result.service.name}',
+                          ),
+                          onTap: isChecking
+                              ? null
+                              : () {
+                                  ref
+                                      .read(expandedDiagnosticProvider.notifier)
+                                      .expand(result.service);
+                                  ref
+                                      .read(serviceDiagnosticsProvider.notifier)
+                                      .runSingle(result.service);
+                                },
+                          borderRadius: AppThemeSizes.radiusSmall,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(2, 8, 0, 8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                if (compact)
+                                  status
+                                else
+                                  Flexible(child: status),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        if (compact) status else Flexible(child: status),
-                        const SizedBox(width: 8),
-                        Icon(
+                      ),
+                    ),
+                  ),
+                  Semantics(
+                    expanded: expanded,
+                    child: SizedBox(
+                      width: 28,
+                      height: 32,
+                      child: IconButton(
+                        key: ValueKey(
+                          'diagnostic-details-${result.service.name}',
+                        ),
+                        tooltip: expanded
+                            ? material.expandedIconTapHint
+                            : material.collapsedIconTapHint,
+                        onPressed: () => ref
+                            .read(expandedDiagnosticProvider.notifier)
+                            .toggle(result.service),
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
                           expanded
                               ? LucideIcons.chevronUp
                               : LucideIcons.chevronDown,
                           color: theme.appColors.mutedForeground,
                           size: 13,
                         ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           if (expanded)
             Padding(
@@ -121,11 +173,12 @@ class ServiceDiagnosticRow extends ConsumerWidget {
                     'diagnosticsImpact',
                     l10n.t(result.impactKey),
                   ),
-                  _description(
-                    context,
-                    'diagnosticsAdvice',
-                    l10n.t(result.adviceKey),
-                  ),
+                  if (!isChecking)
+                    _description(
+                      context,
+                      'diagnosticsAdvice',
+                      l10n.t(result.adviceKey),
+                    ),
                   for (final detail in result.details)
                     _description(
                       context,

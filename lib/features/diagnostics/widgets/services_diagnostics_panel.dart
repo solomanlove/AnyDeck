@@ -18,15 +18,26 @@ class ServicesDiagnosticsPanel extends ConsumerWidget {
     final state = ref.watch(serviceDiagnosticsProvider);
     final theme = Theme.of(context);
     final l10n = context.l10n;
-    final summary = state.isChecking
-        ? l10n.t('diagnosticsChecking')
-        : state.checkedAt == null
-        ? l10n.t('diagnosticsNotChecked')
-        : state.issueCount == 0
-        ? l10n.t('diagnosticsNoIssues')
-        : l10n
-              .t('diagnosticsIssueCount')
-              .replaceAll('{count}', '${state.issueCount}');
+    final checked = state.checkedCount;
+    final total = state.entries.length;
+    final partial = checked > 0 && checked < total;
+    final issues = state.issueCount;
+    final issueLabel = l10n
+        .t('diagnosticsIssueCount')
+        .replaceAll('{count}', '$issues');
+    final String summary;
+    if (state.isChecking) {
+      summary = l10n.t('diagnosticsChecking');
+    } else if (checked == 0) {
+      summary = l10n.t('diagnosticsNotChecked');
+    } else if (partial) {
+      summary = l10n
+          .t('diagnosticsPartial')
+          .replaceAll('{checked}', '$checked')
+          .replaceAll('{total}', '$total');
+    } else {
+      summary = issues == 0 ? l10n.t('diagnosticsNoIssues') : issueLabel;
+    }
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -49,7 +60,7 @@ class ServicesDiagnosticsPanel extends ConsumerWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      l10n.t('diagnosticsSubtitle'),
+                      l10n.t('diagnosticsSelectService'),
                       style: TextStyle(
                         fontSize: 11,
                         color: theme.appColors.mutedForeground,
@@ -88,7 +99,9 @@ class ServicesDiagnosticsPanel extends ConsumerWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    l10n.t('diagnosticsReadOnly'),
+                    partial && issues > 0
+                        ? issueLabel
+                        : l10n.t('diagnosticsReadOnly'),
                     style: TextStyle(
                       fontSize: 11,
                       color: theme.appColors.mutedForeground,
@@ -119,15 +132,7 @@ class ServicesDiagnosticsPanel extends ConsumerWidget {
                         child: CircularProgressIndicator(strokeWidth: 1.5),
                       )
                     : const Icon(LucideIcons.scanLine, size: 14),
-                label: Text(
-                  l10n.t(
-                    state.isChecking
-                        ? 'diagnosticsChecking'
-                        : state.checkedAt == null
-                        ? 'diagnosticsStart'
-                        : 'diagnosticsRerun',
-                  ),
-                ),
+                label: Text(l10n.t('diagnosticsCheckAll')),
               );
               if (constraints.maxWidth < 340 ||
                   MediaQuery.textScalerOf(context).scale(11) > 14) {
@@ -158,8 +163,9 @@ class ServicesDiagnosticsPanel extends ConsumerWidget {
                 children: [
                   for (final result in state.orderedEntries)
                     ServiceDiagnosticRow(
+                      key: ValueKey(result.service),
                       result: result,
-                      checkedAt: state.checkedAt,
+                      isChecking: state.isCheckingService(result.service),
                     ),
                   const SizedBox(height: 10),
                   Text(
@@ -201,6 +207,7 @@ final expandedDiagnosticProvider =
 class ExpandedDiagnosticController extends Notifier<DiagnosticService?> {
   @override
   DiagnosticService? build() => null;
+  void expand(DiagnosticService service) => state = service;
   void toggle(DiagnosticService service) =>
       state = state == service ? null : service;
 }

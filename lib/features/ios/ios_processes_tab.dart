@@ -81,6 +81,7 @@ class _IosProcessesViewState extends ConsumerState<_IosProcessesView> {
       ascending: _ascending,
     );
     return DashboardTabLayout(
+      bodyPadding: EdgeInsets.zero,
       toolbar: IosProcessesToolbar(
         controller: _search,
         category: _category,
@@ -96,21 +97,30 @@ class _IosProcessesViewState extends ConsumerState<_IosProcessesView> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            context.l10n.t('iosProcessMetricsHint'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          if (state.metadataError != null)
-            _warning(context.l10n.t('iosProcessMetadataError')),
-          if (state.error != null)
-            _warning(
-              context.l10n
-                  .t('iosProcessStale')
-                  .replaceAll('{error}', state.error!),
+          // 指标说明和刷新状态与工具栏对齐，表格单独铺满内容区。
+          Padding(
+            padding: DashboardTabLayout.horizontalPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  context.l10n.t('iosProcessMetricsHint'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                if (state.metadataError != null)
+                  _warning(context.l10n.t('iosProcessMetadataError')),
+                if (state.error != null)
+                  _warning(
+                    context.l10n
+                        .t('iosProcessStale')
+                        .replaceAll('{error}', state.error!),
+                  ),
+                SizedBox(
+                  height: 4,
+                  child: state.busy ? const LinearProgressIndicator() : null,
+                ),
+              ],
             ),
-          SizedBox(
-            height: 4,
-            child: state.busy ? const LinearProgressIndicator() : null,
           ),
           const SizedBox(height: 6),
           Expanded(

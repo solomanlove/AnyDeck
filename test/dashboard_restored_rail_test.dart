@@ -3,7 +3,9 @@ import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/settings/app_settings.dart';
 import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/app/theme/app_icon.dart';
+import 'package:any_deck/app/theme/app_navigation_icons.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/app/widget/app_asset_image.dart';
 import 'package:any_deck/app/widget/app_navigation_item.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/mcp/models/mcp_server_config.dart';
@@ -180,7 +182,8 @@ void main() {
           };
           for (final entry in entries.entries) {
             expect(_entry(l10n, entry.key), findsOneWidget);
-            expect(_entryIcon(l10n, entry.key, entry.value), findsOneWidget);
+            final icon = _entryIcon(l10n, entry.key, entry.value);
+            expect(tester.getSize(icon), const Size.square(24));
             final navigation = find.descendant(
               of: _entry(l10n, entry.key),
               matching: find.byType(AppNavigationItem),
@@ -229,8 +232,21 @@ void main() {
           );
 
           final railRect = tester.getRect(find.byType(PrimaryRail));
+          double? previousCenterY;
           for (final key in ['wanAndroid', 'aiMcp', 'console', 'settings']) {
-            final rect = tester.getRect(_entry(l10n, key));
+            final button = find.descendant(
+              of: _entry(l10n, key),
+              matching: find.byType(
+                width < 1000 ? IconButton : AppNavigationItem,
+              ),
+            );
+            final rect = tester.getRect(button);
+            // 即使显示服务状态点，底部入口也保持展开侧栏的高度与中心间距。
+            expect(rect.height, 44);
+            if (previousCenterY != null) {
+              expect(rect.center.dy - previousCenterY, 52);
+            }
+            previousCenterY = rect.center.dy;
             expect(railRect.contains(rect.center), isTrue);
             expect(rect.bottom, lessThanOrEqualTo(500));
           }
@@ -247,6 +263,11 @@ void main() {
             theme.colorScheme.primary,
           );
           expect(find.byIcon(Icons.layers_outlined), findsNothing);
+          expect(tester.getSize(find.byType(PopupMenuButton<int>)).height, 44);
+          expect(
+            tester.getSize(find.byIcon(CupertinoIcons.ellipsis)),
+            const Size.square(24),
+          );
           await tester.tap(_entry(l10n, 'moreTools'));
           await tester.pumpAndSettle();
           final versions = find.byWidgetPredicate(
@@ -254,7 +275,10 @@ void main() {
           );
           expect(versions, findsOneWidget);
           expect(tester.widget<PopupMenuItem<int>>(versions).enabled, isTrue);
-          expect(find.byIcon(Icons.layers_outlined), findsOneWidget);
+          expect(
+            tester.getSize(find.byIcon(Icons.layers_outlined)),
+            const Size.square(20),
+          );
           await tester.sendKeyEvent(LogicalKeyboardKey.escape);
           await tester.pumpAndSettle();
           expect(versions, findsNothing);
@@ -269,6 +293,37 @@ void main() {
       }
     }
   }
+
+  testWidgets('窄栏刚好放下第三项工具时将它移出更多菜单', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 500);
+    addTearDown(tester.view.reset);
+    await _pumpRail(
+      tester,
+      container: _container(),
+      language: 'zh',
+      theme: buildAppTheme(Brightness.light),
+    );
+    const l10n = AppLocalizations(Locale('zh'));
+    final firstTool = tester.getRect(_entry(l10n, 'devices'));
+    final railBottom = tester.getBottomLeft(find.byType(PrimaryRail)).dy;
+    final bottomGap =
+        railBottom - tester.getBottomLeft(_entry(l10n, 'settings')).dy;
+    // 从已渲染侧栏量出平台留白，再为「更多功能」与四项底部工具留出空间。
+    final exactHeight =
+        firstTool.top + firstTool.height * 3 + 48 + 4 * 52 + bottomGap;
+    final thirdTool = _entry(l10n, 'receiverCenter');
+    tester.view.physicalSize = Size(320, exactHeight - 1);
+    await tester.pumpAndSettle();
+    expect(_entry(l10n, 'emulators'), findsOneWidget);
+    expect(thirdTool, findsNothing);
+
+    tester.view.physicalSize = Size(320, exactHeight);
+    await tester.pumpAndSettle();
+    expect(thirdTool.hitTestable(), findsOneWidget);
+    expect(_entry(l10n, 'moreTools').hitTestable(), findsOneWidget);
+    expect(_entry(l10n, 'settings').hitTestable(), findsOneWidget);
+  });
 
   for (final width in [320.0, 1200.0]) {
     testWidgets('原侧栏控制台开关保留选中设备、应用与工具 $width', (tester) async {
@@ -287,6 +342,29 @@ void main() {
         device: _device,
       );
       final railElement = tester.element(find.byType(PrimaryRail));
+      // 设备品牌、返回箭头和工具图标在两种侧栏宽度下沿用展开时的尺寸。
+      final brand = find.byWidgetPredicate(
+        (widget) =>
+            widget is AppAssetImage && widget.assetName == AppIcons.apple,
+      );
+      expect(tester.getSize(brand), const Size.square(36));
+      if (width < 1000) {
+        final target = find.ancestor(
+          of: brand,
+          matching: find.byType(GestureDetector),
+        ).first;
+        expect(tester.getSize(target), const Size.square(50));
+        expect(tester.getCenter(brand), tester.getCenter(target));
+        expect(target.hitTestable(at: Alignment.centerLeft), findsOneWidget);
+      }
+      expect(
+        tester.getSize(find.byIcon(Icons.arrow_back)),
+        const Size.square(18),
+      );
+      expect(
+        tester.getSize(find.byIcon(AppNavigationIcons.overview)),
+        const Size.square(24),
+      );
       for (final isOpen in [true, false]) {
         await tester.tap(find.byTooltip('控制台'));
         await tester.pumpAndSettle();

@@ -5,6 +5,12 @@ abstract final class AppThemeSizes {
   static const double borderWidth = 1;
   static const double strongBorderWidth = 1.5;
 
+  /// 主侧栏收起和展开时，导航图标使用相同的边长。
+  static const double navigationIconSize = 24;
+
+  /// 展开侧栏的导航行高度，也是收起侧栏后底部工具和「更多功能」的按钮边长。
+  static const double navigationItemHeight = 44;
+
   static const BorderRadius radiusSmall = BorderRadius.all(Radius.circular(4));
   static const BorderRadius radiusMedium = BorderRadius.all(Radius.circular(8));
   static const BorderRadius radiusLarge = BorderRadius.all(Radius.circular(12));

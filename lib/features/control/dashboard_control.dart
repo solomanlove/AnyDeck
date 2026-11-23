@@ -207,8 +207,13 @@ class _QuickActionsPanel extends ConsumerWidget {
         _ActionButton(
           icon: CupertinoIcons.scope,
           label: context.l10n.t('focus'),
-          onPressed: () =>
-              _showAdbResult(context, ref, actions.currentFocus(device.id)),
+          onPressed: () => _showAdbResult(
+            context,
+            ref,
+            actions.currentFocus(device.id),
+            dialogBuilder: (result) =>
+                AndroidForegroundWindowDialog(result: result),
+          ),
         ),
         _ActionButton(
           icon: Icons.cast,

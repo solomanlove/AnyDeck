@@ -50,6 +50,7 @@ extension _AppsTabView on _AppsTabState {
     }
 
     return DashboardTabLayout(
+      bodyPadding: EdgeInsets.zero,
       toolbar: DashboardSearchToolbar<AppFilterType>(
         searchController: _filterController,
         searchHint: context.l10n.t('filterPackage'),
@@ -181,9 +182,10 @@ extension _AppsTabView on _AppsTabState {
                       ),
                       const SizedBox(height: 8),
                     ] else if (_isGridView) ...[
-                      Row(
-                        children: [
-                          if (_isGridView)
+                      Padding(
+                        padding: DashboardTabLayout.horizontalPadding,
+                        child: Row(
+                          children: [
                             Text(
                               context.l10n
                                   .t('appCount')
@@ -194,8 +196,7 @@ extension _AppsTabView on _AppsTabState {
                                   .replaceAll('{total}', '${items.length}'),
                               style: Theme.of(context).textTheme.labelLarge,
                             ),
-                          const Spacer(),
-                          if (_isGridView) ...[
+                            const Spacer(),
                             IconButton(
                               tooltip: context.l10n.t('zoomIn'),
                               icon: const Icon(CupertinoIcons.zoom_in, size: 20),
@@ -219,7 +220,7 @@ extension _AppsTabView on _AppsTabState {
                                   : null,
                             ),
                           ],
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 8),
                     ],

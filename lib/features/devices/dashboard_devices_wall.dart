@@ -11,8 +11,7 @@ extension _DeviceWallPanel on _DeviceListPanelState {
     builder: (context, constraints) {
       final windowWidth = MediaQuery.sizeOf(context).width;
       final gap = windowWidth <= 490 ? 4.0 : 12.0;
-      final horizontalPadding = windowWidth <= 490 ? 0.0 : 4.0;
-      final availableWidth = constraints.maxWidth - horizontalPadding * 2;
+      final availableWidth = constraints.maxWidth;
       final columns = windowWidth <= 490
           ? 2
           : max(1, ((availableWidth + gap) / (148 + gap)).floor());
@@ -20,12 +19,7 @@ extension _DeviceWallPanel on _DeviceListPanelState {
       final rows = (devices.length / columns).ceil();
       return ListView.separated(
         key: const Key('deviceWall'),
-        padding: EdgeInsets.fromLTRB(
-          horizontalPadding,
-          12,
-          horizontalPadding,
-          16,
-        ),
+        padding: const EdgeInsets.only(top: 12),
         scrollCacheExtent: const ScrollCacheExtent.pixels(0),
         shrinkWrap: !hasBoundedHeight,
         physics: hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
@@ -69,6 +63,22 @@ extension _DeviceWallPanel on _DeviceListPanelState {
             .watch(cachedDeviceOverviewProvider(device.id))
             .value;
         final brand = overview?.brand;
+        // 纯 AirPlay 卡片仅代表投屏会话，没有可导航的设备工作区。
+        final airplayOnly = session != null && device.id.startsWith('airplay-');
+        final canRunAction =
+            !device.isOnline ||
+            DeviceContextAction.mirror.isEnabledFor(
+              device,
+              hasAirPlaySession: session != null,
+            );
+        final (actionKey, actionIcon) = switch (device.isOnline) {
+          true => ('screenMirror', Icons.ondemand_video_outlined),
+          false when device.id.startsWith('emulator-') => (
+            'deviceWorkspaceStartEmulator',
+            Icons.play_arrow,
+          ),
+          false => ('deviceWorkspaceReconnect', Icons.link),
+        };
         return Builder(
           builder: (cardContext) => DeviceWallCard(
             key: ValueKey('device-wall-${device.id}'),
@@ -105,18 +115,9 @@ extension _DeviceWallPanel on _DeviceListPanelState {
                         ? 'deviceWorkspacePreviewRetryHint'
                         : 'deviceWorkspacePreviewHint',
                   ),
-            actionLabel: context.l10n.t(
-              device.isOnline
-                  ? 'screenMirror'
-                  : device.id.startsWith('emulator-')
-                  ? 'deviceWorkspaceStartEmulator'
-                  : 'deviceWorkspaceReconnect',
-            ),
-            actionIcon: device.isOnline
-                ? Icons.ondemand_video_outlined
-                : device.id.startsWith('emulator-')
-                ? Icons.play_arrow
-                : Icons.link,
+            actionLabel: context.l10n.t(actionKey),
+            actionIcon: actionIcon,
+            previewOpensWorkspace: device.isOnline && !airplayOnly,
             online: device.isOnline,
             ipAddress: _workspaceDeviceIp(device, overview),
             screenshot: device.isOnline && !preview.hasError
@@ -129,7 +130,9 @@ extension _DeviceWallPanel on _DeviceListPanelState {
             batchMode: _batchMode,
             selected: device.isChecked,
             selectable: !device.id.startsWith('airplay-'),
-            onOpen: () => _openWorkspaceDevice(context, device, session),
+            onOpen: canRunAction
+                ? () => _openWorkspaceDevice(context, device, session)
+                : null,
             onInfo: () => _openDeviceInfo(context, device, session),
             onMore: () => _openWorkspaceMenu(cardContext, device, session),
             onSelected: (_) => _toggleDeviceSelection(device),

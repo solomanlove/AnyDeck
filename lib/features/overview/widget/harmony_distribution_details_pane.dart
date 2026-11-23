@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../model/harmony_version_distribution_data.dart';
 import 'harmony_profile_config_card.dart';
+import 'version_distribution_layout.dart';
 
 /// HarmonyOS 平台版本特性与工程配置详情面板。
 ///
@@ -39,6 +40,7 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
 
     return SelectionArea(
       child: SingleChildScrollView(
+        key: ValueKey(item.version),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,15 +218,16 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
-                '◆ 开发影响与适配要求',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFFE84335),
+              const Expanded(
+                child: Text(
+                  '◆ 开发影响与适配要求',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFE84335),
+                  ),
                 ),
               ),
-              const Spacer(),
               IconButton(
                 icon: Icon(
                   Icons.copy_rounded,
@@ -308,7 +311,7 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
     );
   }
 
-  /// 左右分栏区域
+  /// 工程配置和平台能力在宽屏并排，窄屏依次展示
   Widget _buildSplitSection(
     BuildContext context,
     Color cardBg,
@@ -316,92 +319,80 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
     Color textPrimary,
     Color textSecondary,
   ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 左边：工程配置建议（可直接复制）
-        Expanded(
-          flex: 5,
-          child: HarmonyProfileConfigCard(
-            item: item,
+    return VersionDetailColumns(
+      first: HarmonyProfileConfigCard(
+        item: item,
+        cardBg: cardBg,
+        cardBorder: cardBorder,
+        textPrimary: textPrimary,
+      ),
+      second: Column(
+        children: [
+          _buildCapabilityCard(
+            title: '平台核心能力',
+            items: item.core,
             cardBg: cardBg,
             cardBorder: cardBorder,
             textPrimary: textPrimary,
           ),
-        ),
-        const SizedBox(width: 12),
-        // 右边：平台核心能力、安全隐私、设备形态
-        Expanded(
-          flex: 5,
-          child: Column(
-            children: [
-              _buildCapabilityCard(
-                title: '平台核心能力',
-                items: item.core,
-                cardBg: cardBg,
-                cardBorder: cardBorder,
-                textPrimary: textPrimary,
-              ),
-              const SizedBox(height: 10),
-              _buildCapabilityCard(
-                title: '安全与隐私保护',
-                items: item.privacy,
-                cardBg: cardBg,
-                cardBorder: cardBorder,
-                textPrimary: textPrimary,
-              ),
-              const SizedBox(height: 10),
-              // 适配设备形态
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: cardBorder),
+          const SizedBox(height: 10),
+          _buildCapabilityCard(
+            title: '安全与隐私保护',
+            items: item.privacy,
+            cardBg: cardBg,
+            cardBorder: cardBorder,
+            textPrimary: textPrimary,
+          ),
+          const SizedBox(height: 10),
+          // 适配设备形态
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: cardBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '适配设备形态',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: textPrimary,
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '适配设备形态',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: textPrimary,
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  children: ['手机', '平板', 'PC(2in1)', '智慧屏'].map(
+                    (tag) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        tag,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: textPrimary,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      children: ['手机', '平板', 'PC(2in1)', '智慧屏'].map(
-                        (tag) => Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blueGrey.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            tag,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: textPrimary,
-                            ),
-                          ),
-                        ),
-                      ).toList(),
-                    ),
-                  ],
+                  ).toList(),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -463,7 +454,7 @@ class HarmonyDistributionDetailsPane extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11.5,
                 color: Theme.of(context).colorScheme.primary,
-                decoration: TextDecoration.underline,
+                decoration: TextDecoration.none,
               ),
             ),
           ),

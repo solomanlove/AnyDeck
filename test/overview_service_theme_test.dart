@@ -113,14 +113,17 @@ void _expectSelection(
       final contrast = a > b ? (a + .05) / (b + .05) : (b + .05) / (a + .05);
       expect(contrast, greaterThanOrEqualTo(4.5), reason: label);
     }
-    final brandBlock = tester
-        .widgetList<Container>(
-          find.descendant(
-            of: find.byWidget(selected),
+    final brandBlock = tester.widget<Container>(
+      find
+          .ancestor(
+            of: find.descendant(
+              of: find.byWidget(selected),
+              matching: find.text(item.version),
+            ),
             matching: find.byType(Container),
-          ),
-        )
-        .singleWhere((widget) => widget.constraints?.maxWidth == 140);
+          )
+          .first,
+    );
     expect(
       (brandBlock.decoration! as BoxDecoration).color,
       const Color(0xFFE84335),
@@ -240,7 +243,8 @@ void main() {
             same(pageElement),
           );
           expect(_selectedItem(tester, platform), same(selected));
-          final colors = Theme.of(tester.element(switcher)).colorScheme;
+          final theme = Theme.of(tester.element(switcher));
+          final colors = theme.colorScheme;
           final selection =
               tester
                       .widget<AnimatedContainer>(
@@ -251,10 +255,10 @@ void main() {
                       )
                       .decoration!
                   as BoxDecoration;
-          expect(selection.color, colors.primaryContainer);
+          expect(selection.color, theme.appColors.panelSurface);
           expect(
             tester.widget<Text>(platformLabel).style?.color,
-            colors.onPrimaryContainer,
+            colors.onSurface,
           );
           _expectSelection(tester, platform, colors);
 

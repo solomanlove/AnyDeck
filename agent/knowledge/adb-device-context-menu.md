@@ -19,7 +19,7 @@
 ## 实现分层
 
 - `lib/features/devices/model/device_context_action.dart`：菜单动作、既有 l10n key、工具 slug 以及平台/在线能力策略。
-- `lib/features/devices/dashboard_devices_context_menu.dart`：右键定位、菜单样式、当前设备回读和执行互斥；颜色及圆角使用 Theme / `AppThemeSizes`，长文案允许换行。
+- `lib/features/devices/dashboard_devices_context_menu.dart` 负责菜单定位、样式、当前设备回读和执行互斥。设备操作菜单与连接、分组菜单共用 `appColors.panelSurface` 并关闭 Material 表面着色，浅色模式呈白色，深色模式呈炭灰色。圆角沿用 `AppThemeSizes`，长文案允许换行。
 - `lib/features/devices/dashboard_devices_panel.dart`：维护页面局部右键高亮和操作状态，避免更改主窗口 Route 所拥有的全局设备选择。
 - `lib/features/devices/dashboard_devices_rows.dart`：列表行接入右键，耗时操作期间在目标行显示进度指示。
 - `lib/features/devices/dashboard_devices_actions.dart`：复用截图、投屏和编辑入口，导航统一使用 `AppRouteNames.deviceTool` 与既有 slug。
@@ -37,6 +37,7 @@
 
 ## 验证
 
+- `test/device_list_action_buttons_test.dart` 在浅色、深色和六种主色下展开设备菜单，检查弹层与设备面板底色一致。
 - `test/device_context_action_test.dart`：Android / HarmonyOS、离线、iOS USB / network、AirPlay LIVE 与虚拟设备能力边界。
 - `test/device_list_context_menu_test.dart`：实际设备行右键、菜单完整性、截图目标、图片写盘及剪贴板、三平台后端分流、离线/删除拦截、进度与重复操作保护、失败恢复、工具 Route、英文暗色菜单及纯 AirPlay 入口。
 - `test/support/device_context_menu_fixture.dart`：隔离设备发现、原生设置广播和剪贴板，图片仅写入临时目录；目标工具使用轻量 Route 测试桩，避免测试时启动终端或投屏进程。

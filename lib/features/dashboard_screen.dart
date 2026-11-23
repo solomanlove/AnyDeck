@@ -103,6 +103,7 @@ import 'performance/performance_tab.dart';
 import 'network/network_tab.dart';
 import 'mcp/presentation/mcp_dashboard_tab.dart';
 import 'mcp/controller/mcp_server_controller.dart';
+import 'widgets/android_foreground_window_dialog.dart';
 import 'widgets/dashboard_snack.dart';
 import 'widgets/remote_controller_dialog.dart';
 import 'devices/widgets/tcpip_connection_dialog.dart';

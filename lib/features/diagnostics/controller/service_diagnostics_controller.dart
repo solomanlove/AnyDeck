@@ -19,36 +19,67 @@ final serviceDiagnosticsProvider =
       ServiceDiagnosticsController.new,
     );
 
-/// 显式执行全量只读诊断；并发点击共用同一轮，单项失败不阻断其余服务。
+/// 执行单项或全量只读诊断；重叠请求共用同一服务的探针。
 class ServiceDiagnosticsController extends Notifier<ServiceDiagnosticsState> {
-  Future<void>? _pending;
+  Future<void>? _pendingAll;
+  final _pendingSingles = <DiagnosticService, Future<ServiceDiagnostic>>{};
 
   @override
   ServiceDiagnosticsState build() => ServiceDiagnosticsState.initial();
 
-  Future<void> run() => _pending ??= _run().whenComplete(() => _pending = null);
-
-  Future<void> _run() async {
+  /// 全量检查接管在途单项，待所有服务完成后一次性发布完整快照。
+  Future<void> run() {
+    final pending = _pendingAll;
+    if (pending != null) return pending;
     final checks = ref.read(serviceDiagnosticChecksProvider);
+    final task =
+        Future.wait([
+          for (final service in DiagnosticService.values)
+            _pendingSingles[service] ?? _check(service, checks[service]),
+        ]).then<void>((entries) {
+          _pendingAll = null;
+          if (!ref.mounted) return;
+          state = ServiceDiagnosticsState(
+            entries: List.unmodifiable(entries),
+            checkedAt: DateTime.now(),
+          );
+        });
+    _pendingAll = task;
     state = ServiceDiagnosticsState(
       entries: [
         for (final service in DiagnosticService.values)
-          ServiceDiagnostic(
-            service: service,
-            status: ServiceDiagnosticStatus.checking,
-            reasonKey: 'diagnosticsCheckingReason',
-          ),
+          ServiceDiagnostic.checking(service),
       ],
       isChecking: true,
     );
-    final entries = await Future.wait([
-      for (final service in DiagnosticService.values)
-        _check(service, checks[service]),
-    ]);
-    if (!ref.mounted) return;
+    return task;
+  }
+
+  /// 只运行指定服务；其他服务的结果与正在执行的检查分别保留。
+  Future<void> runSingle(DiagnosticService service) {
+    final pending = _pendingAll ?? _pendingSingles[service];
+    if (pending != null) return pending;
+    final check = ref.read(serviceDiagnosticChecksProvider)[service];
+    final task = _check(service, check).then((result) {
+      _pendingSingles.remove(service);
+      if (ref.mounted && _pendingAll == null) {
+        _publishSingle(result, DateTime.now());
+      }
+      return result;
+    });
+    _pendingSingles[service] = task;
+    _publishSingle(ServiceDiagnostic.checking(service), state.checkedAt);
+    return task;
+  }
+
+  void _publishSingle(ServiceDiagnostic result, DateTime? checkedAt) {
     state = ServiceDiagnosticsState(
-      entries: List.unmodifiable(entries),
-      checkedAt: DateTime.now(),
+      entries: List.unmodifiable([
+        for (final entry in state.entries)
+          if (entry.service == result.service) result else entry,
+      ]),
+      checkingServices: List.unmodifiable(_pendingSingles.keys),
+      checkedAt: checkedAt,
     );
   }
 

@@ -48,6 +48,14 @@ class ServiceDiagnostic {
     this.details = const [],
   });
 
+  /// 探针执行期间展示的占位结果，实际工具忙碌时也可能返回 checking 状态。
+  const ServiceDiagnostic.checking(DiagnosticService service)
+    : this(
+        service: service,
+        status: ServiceDiagnosticStatus.checking,
+        reasonKey: 'diagnosticsCheckingReason',
+      );
+
   final DiagnosticService service;
   final ServiceDiagnosticStatus status;
   final String reasonKey;
@@ -58,13 +66,16 @@ class ServiceDiagnostic {
   bool get needsAttention => status.needsAttention;
 }
 
-/// 一轮检查的不可变结果；时间表示快照时刻，不宣称实时持续监控。
+/// 各服务的最近诊断快照；时间表示最近一次检测完成的时刻。
 class ServiceDiagnosticsState {
   const ServiceDiagnosticsState({
     required this.entries,
-    this.isChecking = false,
+    bool isChecking = false,
+    List<DiagnosticService> checkingServices = const [],
     this.checkedAt,
-  });
+  }) : _checkingServices = isChecking
+           ? DiagnosticService.values
+           : checkingServices;
 
   factory ServiceDiagnosticsState.initial() => ServiceDiagnosticsState(
     entries: [
@@ -74,8 +85,18 @@ class ServiceDiagnosticsState {
   );
 
   final List<ServiceDiagnostic> entries;
-  final bool isChecking;
+  final List<DiagnosticService> _checkingServices;
   final DateTime? checkedAt;
+  bool get isChecking => _checkingServices.isNotEmpty;
+  bool isCheckingService(DiagnosticService service) =>
+      _checkingServices.contains(service);
+  int get checkedCount => entries
+      .where(
+        (item) =>
+            item.status != ServiceDiagnosticStatus.notChecked &&
+            !isCheckingService(item.service),
+      )
+      .length;
   int get issueCount => entries.where((item) => item.needsAttention).length;
 
   /// 按固定服务顺序稳定排序，故障与待授权项优先展示。

@@ -6,7 +6,8 @@
 - 工具栏依次为全部/在线/离线、自适应搜索、视图切换、批量管理。默认不显示多选。
 - 搜索和状态筛选与视图独立；进入批量管理才显示勾选，切视图/筛选保留选择，退出清空。
 - 全选只作用于当前可见且可选的设备；工具栏说明筛选隐藏的已选数量。
-- 点击设备名称进入设备工作台；更多和右键复用同一设备能力策略，保留截图、调试、投屏、编辑、共享及无线连接。
+- 设备墙中，点击在线设备的手机预览或名称进入该设备的概览，底部“投屏”按钮直接打开该设备的投屏窗口。按钮复用更多菜单的投屏能力判断。仅有 AirPlay 会话的卡片打开该会话，离线卡片提供重连或启动模拟器。
+- 更多和右键复用同一设备能力策略，提供截图、调试、投屏、编辑、共享及无线连接。
 - 本机 IP、复制和网络详情在整个工作区底部常驻；右侧提供“服务与诊断”。控制台展开不覆盖状态栏。
 - 开发者页的原三平台工具诊断改为复用全局诊断入口；开发者测试、日志、缓存等其他内容保留。
 - 设备管理右侧工作区的中性亮暗底色统一在 `app/theme/device_workspace_theme.dart`，保留用户主色和字体；左侧栏与其他工具页使用原应用主题。
@@ -19,7 +20,7 @@
 | 页面状态 | `features/devices/dashboard_devices_panel.dart` | 搜索、状态筛选、视图及批量模式 |
 | 工具栏 | `features/devices/widgets/device_list_filters.dart` | 宽度自适应、筛选和切换回调 |
 | 手机展示 | `device_wall_card.dart` / `device_wall_phone.dart` | 纯展示，真实截图或品牌封面，不创建模拟屏幕 |
-| 表格/设备墙 | `dashboard_devices_rows.dart` / `dashboard_devices_wall.dart` | 共用身份、IP、主操作、菜单及注册表勾选 |
+| 表格/设备墙 | `dashboard_devices_rows.dart` / `dashboard_devices_wall.dart` | 共用身份、IP、工作区路由、菜单及注册表勾选 |
 | 静态封面 | `controller/device_screen_preview_controller.dart` | 可见墙自动采集与手动刷新，按 Android/HarmonyOS/iOS 路由 |
 | 自动预览 | `widgets/device_screen_preview.dart` / `controller/device_screen_preview_queue.dart` | 可见卡片生命周期、最多两路截图并发及隐藏任务撤回 |
 | 全局底栏 | `widgets/host_network_footer.dart` / `overview/dashboard_shell.dart` | 复用主机网络 Provider，位于 ConsoleDock 外侧 |
@@ -38,7 +39,7 @@
 返回墙会更新，采集中重复刷新最多补一轮，不无限堆积。
 自动 iOS 预览复用既有截图底座但禁用开发者镜像自动下载/挂载；手动截图保持原恢复逻辑。
 HDC 截图收发按请求使用独立临时目录与远端文件名，finally 清理，避免并发串图和删除竞争。
-截图失败在卡片内提示重试，自动取图不禁用投屏按钮，不弹出逐台错误通知。
+截图失败在卡片内提示重试，不弹出逐台错误通知。取图期间仍可进入设备工作区。
 原有批量动作按进度、录屏、计划模型和计划对话框拆分，保留命令实现，文件不超过 500 行。
 
 ## 紧凑布局与品牌资源
@@ -102,6 +103,10 @@ HDC 截图收发按请求使用独立临时目录与远端文件名，finally �
 原生 Plugin 缺失、单项超时和 CLI 失败均保留独立结果，其他检查继续完成。
 诊断不自动启停、安装、修复或请求权限；工具安装引导复用现有配置页面。
 
+点击服务名称或状态检查该项并展开结果，右侧箭头单独控制详情。“检查全部”执行十二项检查。
+单项复测保留其他服务最近一次的结果。同一服务已有探针在执行时复用该次请求，
+不同服务可同时检查。部分完成时显示已检查项数与总数，最近检查时间取最近一次完成的时间。
+
 CLI 版本探测使用参数列表而非 Shell 字符串。输出每个管道最多 64KiB；默认四秒超时，
 超时先 terminate，500ms 后仍未退出则 kill。每个服务检查整体上限十五秒。
 技术错误通过日志脱敏再展示，不复制服务 Token 或其他凭据。
@@ -121,7 +126,7 @@ CLI 版本探测使用参数列表而非 Shell 字符串。输出每个管道最
 - `ios_screenshot_capture_test.dart`：手动镜像恢复、自动预览不挂载及同设备并发合并。
 - `device_context_action_test.dart` / `device_list_context_menu_test.dart`：能力限制、菜单打开后断线/删除、真实操作路由。
 - `device_subnet_warning_test.dart`：地址复制、网络详情、显式权限/刷新、不自动轮询及大字号。
-- `service_diagnostics_test.dart` / `service_diagnostic_probes_test.dart`：防重复、超时回收、状态分类、真实适配器、可选构建和中英明暗布局。
+- `service_diagnostics_test.dart` / `service_diagnostic_probes_test.dart`：单项复测与全量并发去重、部分结果摘要、详情展开、超时回收、状态分类、真实适配器、可选构建和中英明暗布局。
 - 同时回归现有模拟器搜索、Shell 导航、控制台、开发者页面和设备主题测试。
 
 验证命令使用 `flutter test --no-pub`，避免依赖解析混入无关 lockfile 改动；静态分析同样使用 `--no-pub`。

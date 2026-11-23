@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../model/harmony_version_distribution_data.dart';
 import 'harmony_distribution_details_pane.dart';
+import 'version_distribution_layout.dart';
 
 /// HarmonyOS 平台与 API 版本分布专属视图。
 ///
@@ -70,26 +71,16 @@ class _HarmonyApiDistributionViewState
 
     return Column(
       children: [
-        // 核心双栏内容区域（左列表，右详情）
+        // 版本列表和详情共用工作区宽度，窄窗口按阅读顺序上下排列。
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 左侧版本与 API 分布栏
-              SizedBox(
-                width: 420,
-                child: _buildLeftList(isDark),
-              ),
-              // 垂直分割线
-              Container(width: 1, color: dividerColor),
-              // 右侧特性与配置详情
-              Expanded(
-                child: HarmonyDistributionDetailsPane(
-                  item: _selectedItem,
-                  onOpenUrl: _openUrl,
-                ),
-              ),
-            ],
+          child: VersionDistributionLayout(
+            listWidth: 420,
+            dividerColor: dividerColor,
+            list: _buildLeftList(isDark),
+            details: HarmonyDistributionDetailsPane(
+              item: _selectedItem,
+              onOpenUrl: _openUrl,
+            ),
           ),
         ),
         // 底部历史版本折叠面板（1.0 起）
@@ -104,66 +95,63 @@ class _HarmonyApiDistributionViewState
         ? Colors.white.withValues(alpha: 0.65)
         : const Color(0xFF57606A);
 
-    return Column(
-      children: [
-        // 表头
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 5,
-                child: Text(
-                  'HarmonyOS 版本（版本号 / API）',
-                  style: TextStyle(
-                    color: headerTextColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+    final header = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 5,
+            child: Text(
+              'HarmonyOS 版本（版本号 / API）',
+              style: TextStyle(
+                color: headerTextColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
               ),
-              SizedBox(
-                width: 80,
-                child: Center(
-                  child: Text(
-                    'API 版本',
-                    style: TextStyle(
-                      color: headerTextColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 4,
-                child: Text(
-                  '存量占比 / 累计覆盖',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: headerTextColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-        // 列表
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            itemCount: HarmonyVersionDistributionData.items.length,
-            itemBuilder: (context, index) {
-              final item = HarmonyVersionDistributionData.items[index];
-              final isSelected = item.version == _selectedItem.version;
+          Expanded(
+            flex: 3,
+            child: Center(
+              child: Text(
+                'API 版本',
+                style: TextStyle(
+                  color: headerTextColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Text(
+              '存量占比 / 累计覆盖',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: headerTextColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
 
-              return _buildRowItem(item, isSelected, isDark);
-            },
-          ),
+    return VersionDistributionList(
+      header: header,
+      rows: SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        sliver: SliverList.builder(
+          itemCount: HarmonyVersionDistributionData.items.length,
+          itemBuilder: (context, index) {
+            final item = HarmonyVersionDistributionData.items[index];
+            final isSelected = item.version == _selectedItem.version;
+            return _buildRowItem(item, isSelected, isDark);
+          },
         ),
-      ],
+      ),
     );
   }
 
@@ -190,7 +178,7 @@ class _HarmonyApiDistributionViewState
       onTap: () => setState(() => _selectedItem = item),
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        height: 52,
+        constraints: const BoxConstraints(minHeight: 52),
         margin: const EdgeInsets.symmetric(vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
@@ -206,70 +194,70 @@ class _HarmonyApiDistributionViewState
         child: Row(
           children: [
             // 左侧版本块
-            Container(
-              width: 140,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: blkBg,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.version,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: blkFg,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      if (item.muteFlag != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: item.muteFlag == 'NEW'
-                                ? Colors.white
-                                : Colors.black.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
+            Expanded(
+              flex: 5,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: blkBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
                           child: Text(
-                            item.muteFlag!,
+                            item.version,
                             style: TextStyle(
-                              color: item.muteFlag == 'NEW'
-                                  ? const Color(0xFFE84335)
-                                  : blkFg,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
+                              color: blkFg,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                  Text(
-                    'API ${item.api}',
-                    style: TextStyle(
-                      color: blkFg.withValues(alpha: 0.8),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
+                        if (item.muteFlag != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: item.muteFlag == 'NEW'
+                                  ? Colors.white
+                                  : Colors.black.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              item.muteFlag!,
+                              style: TextStyle(
+                                color: item.muteFlag == 'NEW'
+                                    ? const Color(0xFFE84335)
+                                    : blkFg,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                ],
+                    Text(
+                      'API ${item.api}',
+                      style: TextStyle(
+                        color: blkFg.withValues(alpha: 0.8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             // 中间大号 API 级别
-            SizedBox(
-              width: 80,
+            Expanded(
+              flex: 3,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -297,6 +285,7 @@ class _HarmonyApiDistributionViewState
             ),
             // 右侧占比与累计覆盖
             Expanded(
+              flex: 4,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,

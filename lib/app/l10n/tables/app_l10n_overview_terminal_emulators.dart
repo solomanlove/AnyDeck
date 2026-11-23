@@ -1,8 +1,5 @@
 /// overview_terminal_emulators 模块文案表。新增 key 时必须同时补齐 zh/en。
 const overviewTerminalEmulatorsZh = {
-  'versionList': '版本列表',
-  'versionDetails': '查看详情',
-  'versionScrollHint': '可横向滚动阅读完整内容',
   'harmonyConfigTemplate': '工程配置示例（需按项目调整）',
   'harmonyCopyConfig': '复制配置示例',
   'harmonyConfigCopied': '已复制配置示例，请核对项目 SDK',
@@ -161,9 +158,6 @@ const overviewTerminalEmulatorsZh = {
 };
 
 const overviewTerminalEmulatorsEn = {
-  'versionList': 'Versions',
-  'versionDetails': 'View details',
-  'versionScrollHint': 'Scroll horizontally for full content',
   'harmonyConfigTemplate': 'Configuration example (adapt to your project)',
   'harmonyCopyConfig': 'Copy configuration example',
   'harmonyConfigCopied': 'Example copied. Check your project SDK.',

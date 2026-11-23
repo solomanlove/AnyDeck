@@ -112,6 +112,7 @@
      - 息屏投屏：`--stay-awake` (投屏时开启物理保持唤醒) 或通过控制端口发送指令将 Android 设备的物理屏幕熄灭。
      - 进程生命周期：通过 Riverpod `ref.onDispose` 统一关闭底层 `scrcpy` 进程，防止僵尸后台残留。
    - **手机快捷设置弹窗**：投屏独立窗口工具栏和控制 Tab 共用 `DeviceSettingsPopup`。弹窗通过 `deviceOverviewProvider` 读取当前字体缩放、显示密度、布局边界、点按反馈状态；写入侧复用 `DeviceActionService` 的 `setFontScale`、`setDisplayDensity`、`toggleLayoutBounds`、`setShowTouches`、`setDarkMode`，执行成功后刷新 `deviceOverviewProvider`，避免重复手写 adb 命令。弹窗内的“快捷跳转”复用已有 `openDeveloperSettings`、`openWifiSettings`、`openMainSettings`、`openDeviceInfoSettings`、`openLocaleSettings`、`openManageApplicationsSettings` 等 Android Settings Intent，作为轻量入口，不在 UI 层手写 `adb shell am start`。
+   - **Android 前台窗口**：控制页和投屏工具栏共用一次 `dumpsys window | grep mCurrentFocus` 查询。弹窗居中展示可复制的 `包名/完整 Activity 类名`，窄窗口内自然换行，“关闭”按钮在正文下方居中对齐。以点开头的类名自动补全。多屏记录按原序去重，跳过空焦点与系统窗口；没有可识别组件时显示本地化提示。
    - **返回键长按强停**：投屏工具栏返回键短按仍发送 `KEYCODE_BACK`。长按时先通过 `dumpsys window | grep mCurrentFocus` 获取前台包名并在窗口内提示应用名；若继续按住且前台不是 HOME/Launcher，则执行 `am force-stop <package>`。桌面包通过系统 HOME resolve 和常见 launcher 包名识别，只提示“桌面”，不执行强停。
    - **电源键与关闭物理屏幕状态同步**：投屏工具栏的“关闭/开启设备屏幕”通过 scrcpy control message 设置 Android 物理屏幕模式，并用 `screenPowerOffProvider` 渲染 UI 状态。用户再点击电源键 (`KEYCODE_POWER`) 时，设备会离开该受控物理屏幕模式；因此电源键命令成功后必须同步将 `screenPowerOffProvider(deviceId)` 重置为 `false`，避免手机真实亮灭状态和软件图标状态不一致。
    - **截图服务按设备类型分流**：Screenshot Tab 和投屏工具栏必须以 `DiscoveredDevice.isHarmony` 为 source-of-truth。纯血 HarmonyOS NEXT 设备调用 `HdcService.captureScreenshot(deviceId)`，Android 设备调用 `AdbService.captureScreenshot(deviceId)`；不得把 HDC `connectKey` 传给 `adb -s`，否则会得到 `device '<connectKey>' not found`。
@@ -136,6 +137,8 @@
 
 ### 功能说明
 管理 Android 设备上的所有已安装程序（包含用户应用与系统预装应用）。提供实时按拼音/首字母检索的列表及网格视图；支持提取应用高分辨率图标并进行渐进式增量渲染；提供一键启动、强行停止、清除应用数据、卸载软件以及检查与授予/撤销具体运行时敏感权限等功能。
+
+Android、HarmonyOS 和 iOS 的应用列表与进程列表沿用同一边距：表格和右侧字母索引占满内容区，滚动视口底边贴合状态栏。Android 和 HarmonyOS 的应用网格同样贴边，工具栏两侧保留 16 个逻辑像素。
 
 应用页安装入口按设备平台区分：Android 显示“安装 APK”，只选择 `.apk` 并调用 ADB 安装；HarmonyOS 显示“安装 HAP”，只选择 `.hap` 并调用 `HdcService.installApp`。安装成功后复用当前应用列表刷新流程。
 
@@ -261,6 +264,8 @@ HarmonyOS 文件页默认进入 `/data/local/tmp/`，工具栏只保留可点击
 
 ### 功能说明
 系统级运行进程管理器，支持通过列表和搜索框定位消耗资源的进程。展示字段包含：PID、USER、CPU使用率、内存占用（RES/RSS 实际物理内存）、已执行时间以及进程名称/参数，支持按任意列名进行排序；右键进程行会选中目标并弹出“复制进程名”“停止该进程”菜单，顶部不再提供容易误触的叉号入口。
+
+Android、HarmonyOS 和 iOS 进程表均铺满设备内容区，列表底部紧贴状态栏，表头和数据行共用列边界。工具栏两侧各留 16 个逻辑像素。表格按扣除侧栏后的可用宽度布局，低于最小列宽总和时才横向滚动（Android/HarmonyOS 为 820，iOS 为 1080）。
 
 ### 底层原理与命令
 1. **单次非阻塞快照获取**：

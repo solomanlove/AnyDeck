@@ -257,6 +257,9 @@ void main() {
           tester,
           (fixture) async {
             final l10n = AppLocalizations(const Locale('zh'));
+            final footer = tester.getRect(
+              find.byKey(const Key('hostNetworkFooter')),
+            );
             for (final view in ['wall', 'list', 'wall']) {
               final switcher = find.byKey(Key('deviceView-$view'));
               await tester.tap(switcher);
@@ -267,11 +270,18 @@ void main() {
                     .style
                     ?.foregroundColor
                     ?.resolve({}),
-                selected.color,
+                Theme.of(tester.element(switcher)).colorScheme.onSurface,
               );
               final device = find.byKey(
                 ValueKey('device-${view == 'wall' ? 'wall' : 'row'}-airplay-1'),
               );
+              // 同一设备在两种视图中的滚动区域都贴齐状态栏的左右上角。
+              final viewport = find.ancestor(
+                of: device,
+                matching: find.byType(Viewport),
+              ).first;
+              expect(tester.getBottomLeft(viewport), footer.topLeft);
+              expect(tester.getBottomRight(viewport), footer.topRight);
               final status = find.descendant(
                 of: device,
                 matching: find.text(

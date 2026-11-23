@@ -14,11 +14,11 @@ import 'package:any_deck/core/network/host_network_info.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
 import 'package:any_deck/core/receiver/receiver_identity.dart';
+import 'package:any_deck/features/devices/widgets/device_list_filters.dart';
 import 'package:any_deck/features/devices/widgets/device_wall_card.dart';
 import 'package:any_deck/features/widgets/dashboard_header_bar.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:any_deck/features/overview/settings/autostart_setting_control.dart';
-import 'package:any_deck/app/window/widget/desktop_workspace_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -52,8 +52,17 @@ void main() {
       addTearDown(tester.view.reset);
       await _pumpDashboard(tester);
       expect(tester.takeException(), isNull);
-      final wall = tester.getRect(find.byKey(const Key('deviceWall')));
-      final header = tester.getRect(find.byType(DesktopWorkspaceSurface).first);
+      final footer = tester.getRect(find.byKey(const Key('hostNetworkFooter')));
+      final filters = tester.getRect(find.byType(DeviceListFilters));
+      // 用实际滚动视口与状态栏的两个交点，同时校验左右和底部边界。
+      void expectViewportEdges(Finder item) {
+        final viewport = find.ancestor(
+          of: item,
+          matching: find.byType(Viewport),
+        ).first;
+        expect(tester.getBottomLeft(viewport), footer.topLeft);
+        expect(tester.getBottomRight(viewport), footer.topRight);
+      }
       if (width == 1200) {
         // 设备管理复用一级页面标题栏，避免单独调整后间距再次偏离。
         final bar = tester.widget<DashboardHeaderBar>(
@@ -67,34 +76,29 @@ void main() {
           : width <= 650
           ? 12
           : 16;
-      expect(wall.left - header.left, closeTo(padding, 0.1));
-      final alpha = tester.getRect(
-        find.byKey(const ValueKey('device-wall-responsive-alpha')),
-      );
+      expect(filters.left, footer.left + padding);
+      expect(filters.right, footer.right - padding);
+      final wall = tester.widget<ListView>(find.byKey(const Key('deviceWall')));
+      expect(wall.padding?.resolve(TextDirection.ltr).bottom ?? 0, 0);
+      final alphaCard = find.byKey(const ValueKey('device-wall-responsive-alpha'));
+      expectViewportEdges(alphaCard);
+      final alpha = tester.getRect(alphaCard);
       final beta = tester.getRect(
         find.byKey(const ValueKey('device-wall-responsive-beta')),
       );
       if (width <= 490) {
         expect(alpha.top, closeTo(beta.top, .1));
         expect(beta.left - alpha.right, closeTo(4, .1));
+        expect(beta.right, closeTo(footer.right, .1));
       }
-      expect(alpha.left, greaterThanOrEqualTo(0));
+      expect(alpha.left, footer.left);
       expect(beta.right, lessThanOrEqualTo(width));
-      expect(
-        tester
-            .widget<DeviceWallCard>(
-              find.byKey(const ValueKey('device-wall-responsive-alpha')),
-            )
-            .ipAddress,
-        '192.168.1.219',
-      );
+      expect(tester.widget<DeviceWallCard>(alphaCard).ipAddress, '192.168.1.219');
 
       await tester.tap(find.byKey(const Key('deviceView-list')));
       await tester.pumpAndSettle();
-      expect(
-        find.byKey(const Key('deviceTableHeader')),
-        width <= 490 ? findsNothing : findsOneWidget,
-      );
+      final tableHeader = find.byKey(const Key('deviceTableHeader'));
+      expect(tableHeader, width <= 490 ? findsNothing : findsOneWidget);
       expect(
         find.byKey(const ValueKey('device-system-inline-responsive-alpha')),
         width <= 730 ? findsOneWidget : findsNothing,
@@ -112,18 +116,21 @@ void main() {
         width <= 490 ? findsOneWidget : findsNothing,
       );
       if (width > 490) {
+        final header = tester.getRect(tableHeader);
+        expect(header.left, footer.left);
+        expect(header.right, footer.right);
         final status = tester.getSize(
           find.byKey(const ValueKey('device-status-column-responsive-alpha')),
         );
         expect(status.width, 80);
       }
       expect(find.text('192.168.1.219'), findsOneWidget);
-      final row = tester.getRect(
-        find.byKey(const ValueKey('device-row-responsive-alpha')),
-      );
+      final alphaRow = find.byKey(const ValueKey('device-row-responsive-alpha'));
+      expectViewportEdges(alphaRow);
+      final row = tester.getRect(alphaRow);
       if (width > 730) expect(row.height, lessThanOrEqualTo(64));
-      expect(row.left, greaterThanOrEqualTo(0));
-      expect(row.right, lessThanOrEqualTo(width));
+      expect(row.left, footer.left);
+      expect(row.right, footer.right);
       expect(tester.takeException(), isNull);
     });
   }

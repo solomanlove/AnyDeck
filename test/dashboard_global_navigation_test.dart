@@ -223,12 +223,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('iOS 27'), findsWidgets);
         expect(find.textContaining('2026-06-07'), findsWidgets);
-        await tester.drag(
-          find.byKey(const Key('systemVersionsHorizontalScroll')),
-          const Offset(-300, 0),
-        );
+        final copyImpact = find.byTooltip('复制编译与适配要求');
+        await tester.ensureVisible(copyImpact);
         await tester.pumpAndSettle();
-        expect(find.byTooltip('复制编译与适配要求'), findsOneWidget);
+        expect(copyImpact.hitTestable(), findsOneWidget);
         tester.view.physicalSize = const Size(624, 180);
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
