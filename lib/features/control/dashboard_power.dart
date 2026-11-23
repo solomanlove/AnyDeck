@@ -1,5 +1,6 @@
 part of '../dashboard_screen.dart';
 
+/// 按卡片可用宽度排列电源操作，触发前统一确认目标模式。
 class _PowerPanel extends ConsumerWidget {
   const _PowerPanel({required this.device});
 
@@ -67,10 +68,15 @@ class _PowerPanel extends ConsumerWidget {
             const SizedBox(height: 16),
             LayoutBuilder(
               builder: (context, constraints) {
-                final double itemWidth = (constraints.maxWidth - 32) / 3;
+                const gap = 8.0;
+                // 保留长模式名称的阅读宽度，剩余空间由同一行的按钮均分。
+                final columns = ((constraints.maxWidth + gap) / (180 + gap))
+                    .floor()
+                    .clamp(1, 3);
+                final itemWidth = (constraints.maxWidth - (columns - 1) * gap) / columns;
                 return Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
+                  spacing: gap,
+                  runSpacing: gap,
                   children: [
                     SizedBox(
                       width: itemWidth,
@@ -210,14 +216,15 @@ class _PowerButton extends StatelessWidget {
           onTap: onPressed,
           borderRadius: BorderRadius.circular(8),
           child: Container(
-            height: 100,
+            constraints: const BoxConstraints(minHeight: 68),
             alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 28, color: foregroundColor),
-                const SizedBox(height: 12),
+                Icon(icon, size: 24, color: foregroundColor),
+                const SizedBox(height: 6),
                 Text(
                   label,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -225,8 +232,6 @@ class _PowerButton extends StatelessWidget {
                     color: foregroundColor,
                   ),
                   textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

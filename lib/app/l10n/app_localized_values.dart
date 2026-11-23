@@ -2,6 +2,7 @@ import 'tables/app_l10n_settings.dart';
 import 'tables/app_l10n_local_logs.dart';
 import 'tables/app_l10n_feedback.dart';
 import 'tables/app_l10n_devices_control.dart';
+import 'tables/app_l10n_android_control.dart';
 import 'tables/app_l10n_apps_files_logcat.dart';
 import 'tables/app_l10n_overview_terminal_emulators.dart';
 import 'tables/app_l10n_tools_mirror.dart';
@@ -39,6 +40,7 @@ const localizedValues = {
     ...localLogsZh,
     ...feedbackZh,
     ...devicesControlZh,
+    ...androidControlZh,
     ...appsFilesLogcatZh,
     ...overviewTerminalEmulatorsZh,
     ...toolsMirrorZh,
@@ -65,6 +67,7 @@ const localizedValues = {
     ...localLogsEn,
     ...feedbackEn,
     ...devicesControlEn,
+    ...androidControlEn,
     ...appsFilesLogcatEn,
     ...overviewTerminalEmulatorsEn,
     ...toolsMirrorEn,

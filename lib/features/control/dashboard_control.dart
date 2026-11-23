@@ -76,198 +76,6 @@ class _ControlTabState extends ConsumerState<_ControlTab> {
   }
 }
 
-/// 只读手机概览面板，数据来自 adb 属性和 sysfs/proc 读取。
-
-class _QuickActionsPanel extends ConsumerWidget {
-  const _QuickActionsPanel({required this.device});
-
-  final DiscoveredDevice device;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final actions = ref.read(deviceActionServiceProvider);
-
-    final overviewAsync = device.isOnline
-        ? ref.watch(deviceOverviewProvider(device.id))
-        : const AsyncValue<DeviceOverview>.loading();
-    final wifiEnabled = overviewAsync.value?.wifiEnabled ?? false;
-    final airplaneModeEnabled =
-        overviewAsync.value?.airplaneModeEnabled ?? false;
-    final mobileDataEnabled = overviewAsync.value?.mobileDataEnabled ?? false;
-    final talkbackEnabled = overviewAsync.value?.talkbackEnabled ?? false;
-
-    return _ActionCard(
-      title: context.l10n.t('deviceActions'),
-      children: [
-        _ActionButton(
-          icon: CupertinoIcons.device_phone_portrait,
-          label: context.l10n.t('deviceSettings'),
-          onPressed: () =>
-              showDeviceSettingsPopup(context: context, deviceId: device.id),
-        ),
-
-        _ActionButton(
-          icon: CupertinoIcons.keyboard,
-          label: context.l10n.t('inputText'),
-          onPressed: () => _showInputTextDialog(context, ref, device.id),
-        ),
-
-        _ActionButton(
-          icon: CupertinoIcons.bell,
-          label: '显示通知',
-          onPressed: () {
-            _runAdbAction(
-              context,
-              ref,
-              ref.read(adbServiceProvider).run(['-s', device.id, 'shell', 'cmd', 'statusbar', 'expand-notifications']),
-            );
-          },
-        ),
-
-        _ActionButton(
-          icon: CupertinoIcons.slider_horizontal_3,
-          label: context.l10n.t('expandSettings'),
-          onPressed: () {
-            _runAdbAction(
-              context,
-              ref,
-              actions.openQuickSettings(device.id),
-            );
-          },
-        ),
-
-        _ToggleActionButton(
-          iconOn: CupertinoIcons.wifi,
-          iconOff: CupertinoIcons.wifi_slash,
-          label: context.l10n.t('wifiToggle'),
-          value: wifiEnabled,
-          onToggle: (on) async {
-            await _runAdbAction(context, ref, actions.setWifi(device.id, on));
-            if (device.isOnline) {
-              ref.invalidate(deviceOverviewProvider(device.id));
-            }
-          },
-        ),
-        _ToggleActionButton(
-          iconOn: CupertinoIcons.airplane,
-          iconOff: CupertinoIcons.airplane,
-          label: context.l10n.t('airplaneModeToggle'),
-          value: airplaneModeEnabled,
-          onToggle: (on) async {
-            await _runAdbAction(
-              context,
-              ref,
-              actions.setAirplaneMode(device.id, on),
-            );
-            if (device.isOnline) {
-              ref.invalidate(deviceOverviewProvider(device.id));
-            }
-          },
-        ),
-        _ToggleActionButton(
-          iconOn: CupertinoIcons.antenna_radiowaves_left_right,
-          iconOff: CupertinoIcons.antenna_radiowaves_left_right,
-          label: context.l10n.t('mobileDataToggle'),
-          value: mobileDataEnabled,
-          onToggle: (on) async {
-            await _runAdbAction(
-              context,
-              ref,
-              actions.setMobileData(device.id, on),
-            );
-            if (device.isOnline) {
-              ref.invalidate(deviceOverviewProvider(device.id));
-            }
-          },
-        ),
-        _ToggleActionButton(
-          iconOn: CupertinoIcons.volume_up,
-          iconOff: CupertinoIcons.volume_mute,
-          label: context.l10n.t('talkbackToggle'),
-          value: talkbackEnabled,
-          onToggle: (on) async {
-            await _runAdbAction(
-              context,
-              ref,
-              actions.setTalkback(device.id, on),
-            );
-            if (device.isOnline) {
-              ref.invalidate(deviceOverviewProvider(device.id));
-            }
-          },
-        ),
-
-        _ToggleActionButton(
-          iconOn: CupertinoIcons.device_phone_landscape,
-          iconOff: CupertinoIcons.device_phone_portrait,
-          label: context.l10n.t('autoRotateToggle'),
-          onToggle: (on) =>
-              _runAdbAction(context, ref, actions.setAutoRotate(device.id, on)),
-        ),
-        _ActionButton(
-          icon: CupertinoIcons.scope,
-          label: context.l10n.t('focus'),
-          onPressed: () => _showAdbResult(
-            context,
-            ref,
-            actions.currentFocus(device.id),
-            dialogBuilder: (result) =>
-                AndroidForegroundWindowDialog(result: result),
-          ),
-        ),
-        _ActionButton(
-          icon: Icons.cast,
-          label: context.l10n.t('screenMirror'),
-          onPressed: () => openStandaloneMirrorWindow(context, ref, device),
-        ),
-        if (!device.isIos)
-          ...buildDeviceCaptureActions(context, ref, device),
-        if (!device.isIos && !device.isHarmony)
-          _ActionButton(
-            icon: CupertinoIcons.videocam,
-            label: context.l10n.t('cameraTitle'),
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => CameraPreviewDialog(deviceId: device.id),
-            ),
-          ),
-        if (!device.isIos)
-          AudioForwardButton(device: device),
-        if (!device.isIos)
-          _ActionButton(
-            icon: Icons.settings_remote,
-            label: context.l10n.t('remoteController'),
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => RemoteControllerDialog(device: device),
-            ),
-          ),
-      ],
-    );
-  }
-
-  /// 输入文本，并通过 adb input 发送到设备。
-  Future<void> _showInputTextDialog(
-    BuildContext context,
-    WidgetRef ref,
-    String deviceId,
-  ) async {
-    final text = await showDialog<String>(
-      context: context,
-      builder: (context) => const _InputTextDialog(),
-    );
-
-    if (text == null || text.isEmpty || !context.mounted) {
-      return;
-    }
-    await _runAdbAction(
-      context,
-      ref,
-      ref.read(deviceActionServiceProvider).inputText(deviceId, text),
-    );
-  }
-}
-
 class _InputTextDialog extends StatefulWidget {
   const _InputTextDialog();
 
@@ -456,23 +264,24 @@ class _WifiPasswordsPanel extends ConsumerWidget {
           },
         ),
         if (!isRoot && !isRootAsync.isLoading)
-          Padding(
-            padding: const EdgeInsets.only(left: 8, top: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  CupertinoIcons.info_circle,
-                  size: 16,
-                  color: Colors.orange,
-                ),
-                const SizedBox(width: 6),
-                Text(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                CupertinoIcons.info_circle,
+                size: 16,
+                color: Theme.of(context).appColors.warning,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
                   context.l10n.t('wifiPasswordNoRoot'),
-                  style: const TextStyle(color: Colors.orange, fontSize: 13),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
       ],
     );

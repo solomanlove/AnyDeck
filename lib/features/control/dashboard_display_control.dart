@@ -1,5 +1,6 @@
 part of '../dashboard_screen.dart';
 
+/// Android 控制页的显示、渲染和动画设置，随目标设备回读当前值。
 class _SystemSettingsPanel extends ConsumerStatefulWidget {
   const _SystemSettingsPanel({required this.device});
 
@@ -11,11 +12,12 @@ class _SystemSettingsPanel extends ConsumerStatefulWidget {
 }
 
 class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
-  final TextEditingController _dpiController = TextEditingController();
-  final TextEditingController _fontScaleCustomController =
-      TextEditingController();
-  final TextEditingController _displaySizeCustomController =
-      TextEditingController();
+  final _dpiController = TextEditingController();
+  final _fontScaleCustomController = TextEditingController();
+  final _displaySizeCustomController = TextEditingController();
+
+  String get _deviceId => widget.device.id;
+  DeviceActionService get _actions => ref.read(deviceActionServiceProvider);
 
   @override
   void dispose() {
@@ -28,866 +30,294 @@ class _SystemSettingsPanelState extends ConsumerState<_SystemSettingsPanel> {
   @override
   void didUpdateWidget(covariant _SystemSettingsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.device.id != oldWidget.device.id) {
+    if (_deviceId != oldWidget.device.id) {
       _dpiController.clear();
       _fontScaleCustomController.clear();
       _displaySizeCustomController.clear();
     }
   }
 
-  int? _parseDpi(String resolutionText) {
-    final match = RegExp(r'\((\d+)dpi\)').firstMatch(resolutionText);
-    if (match != null) {
-      return int.tryParse(match.group(1)!);
+  /// 写入后刷新发起操作的设备，切换设备时不会把旧结果写入新页面。
+  Future<void> _apply(Future<AdbResult> operation) async {
+    final deviceId = _deviceId;
+    await _runAdbAction(context, ref, operation);
+    if (mounted) {
+      ref.invalidate(deviceOverviewProvider(deviceId));
     }
-    return null;
-  }
-
-  // 统一的高级质感输入框装饰器
-  InputDecoration _buildInputDecoration(String? hintText) {
-    final theme = Theme.of(context);
-    return InputDecoration(
-      isDense: true,
-      hintText: hintText,
-      hintStyle: TextStyle(
-        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-        fontSize: 13,
-      ),
-      fillColor: Theme.of(context).appColors.subtleSurface,
-      filled: true,
-      contentPadding: const EdgeInsets.symmetric(
-        vertical: 10,
-        horizontal: 10,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(
-          color: Theme.of(context).appColors.subtleDivider,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(
-          color: theme.colorScheme.primary,
-          width: 1.5,
-        ),
-      ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-    );
-  }
-
-  // 统一的高级预设按钮
-  Widget _buildPresetButton({
-    required String label,
-    required bool isActive,
-    required VoidCallback onPressed,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                )
-              ]
-            : null,
-      ),
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: isActive
-              ? theme.colorScheme.primary
-              : (Theme.of(context).appColors.subtleSurface),
-          foregroundColor: isActive
-              ? theme.colorScheme.onPrimary
-              : (Theme.of(context).appColors.toolbarForeground),
-          side: BorderSide(
-            color: isActive
-                ? theme.colorScheme.primary
-                : (Theme.of(context).appColors.subtleDivider),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        onPressed: onPressed,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // DPI 步进按钮使用同一个 Material 承载边框和 ink，确保 hover 水波纹贴合到边框。
-  Widget _buildDpiStepButton({
-    required IconData icon,
-    required VoidCallback? onPressed,
-    required bool isDark,
-  }) {
-    final theme = Theme.of(context);
-    final borderColor = Theme.of(context).appColors.subtleDivider;
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(8),
-      side: BorderSide(color: borderColor),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Material(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.04)
-            : Colors.black.withValues(alpha: 0.02),
-        shape: shape,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          customBorder: shape,
-          onTap: onPressed,
-          hoverColor: theme.colorScheme.primary.withValues(alpha: 0.08),
-          splashColor: theme.colorScheme.primary.withValues(alpha: 0.16),
-          highlightColor: theme.colorScheme.primary.withValues(alpha: 0.10),
-          child: SizedBox(
-            width: 32,
-            height: 32,
-            child: Icon(
-              icon,
-              size: 16,
-              color: onPressed == null
-                  ? theme.disabledColor
-                  : (Theme.of(context).appColors.toolbarForeground),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final overviewAsync = widget.device.isOnline
-        ? ref.watch(deviceOverviewProvider(widget.device.id))
+        ? ref.watch(deviceOverviewProvider(_deviceId))
         : const AsyncValue<DeviceOverview>.loading();
-
     return overviewAsync.when(
       loading: () => const SizedBox.shrink(),
       error: (err, stack) => const SizedBox.shrink(),
       data: (overview) {
-        final theme = Theme.of(context);
-        final isDark = theme.brightness == Brightness.dark;
-
-        // 解析并更新 DPI
-        final currentDpi = _parseDpi(overview.resolution);
+        final dpiMatch = RegExp(
+          r'\((\d+)dpi\)',
+        ).firstMatch(overview.resolution);
+        final currentDpi = int.tryParse(dpiMatch?.group(1) ?? '');
         if (currentDpi != null &&
             _dpiController.text != currentDpi.toString() &&
             !FocusScope.of(context).hasFocus) {
           _dpiController.text = currentDpi.toString();
         }
-
-        // 解析字体缩放值
-        final double fontScaleNum =
-            double.tryParse(overview.fontScale.replaceAll('x', '')) ?? 1.0;
-
-        final actions = ref.read(deviceActionServiceProvider);
-
-        // 将普通卡片背景替换为与主页一致的毛玻璃卡片背景
+        final rows = [
+          _fontScaleRow(overview),
+          _resolutionRow(overview),
+          _densityRow(currentDpi),
+          _renderingRow('hwuiRenderingBarsLabel', 'visual_bars', overview),
+          _renderingRow('profileGpuRenderingLabel', 'true', overview),
+          _animationRow(overview),
+        ];
+        final title = context.l10n.t('systemSettings');
+        final theme = Theme.of(context);
         return _GlassSectionCard(
-          title: context.l10n.t('systemSettings'),
+          title: title,
           icon: CupertinoIcons.settings,
           children: [
             Text(
-              context.l10n.t('systemSettings'),
+              title,
               style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-
-            // 1. 字体缩放 (Font Scale)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 150,
-                  child: Text(
-                    context.l10n.t('fontScaleLabel'),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      ...[0.80, 1.00, 1.20, 1.40, 1.60].map((preset) {
-                        final isActive =
-                            (fontScaleNum - preset).abs() < 0.01;
-                        return _buildPresetButton(
-                          label: preset.toStringAsFixed(2),
-                          isActive: isActive,
-                          onPressed: () async {
-                            await _runAdbAction(
-                              context,
-                              ref,
-                              actions.setFontScale(
-                                widget.device.id,
-                                preset,
-                              ),
-                            );
-                            ref.invalidate(
-                              deviceOverviewProvider(widget.device.id),
-                            );
-                          },
-                        );
-                      }),
-                      SizedBox(
-                        width: 70,
-                        child: TextField(
-                          controller: _fontScaleCustomController,
-                          keyboardType:
-                              const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 13),
-                          decoration: _buildInputDecoration(null),
-                        ),
-                      ),
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: theme.colorScheme.primary,
-                          side: BorderSide(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: () async {
-                          final customVal = double.tryParse(
-                            _fontScaleCustomController.text,
-                          );
-                          if (customVal != null &&
-                              customVal >= 0.3 &&
-                              customVal <= 4.0) {
-                            await _runAdbAction(
-                              context,
-                              ref,
-                              actions.setFontScale(
-                                widget.device.id,
-                                customVal,
-                              ),
-                            );
-                            ref.invalidate(
-                              deviceOverviewProvider(widget.device.id),
-                            );
-                          } else {
-                            _showSnack(
-                              context,
-                              'Invalid font scale (0.3 - 4.0)',
-                              isError: true,
-                            );
-                          }
-                        },
-                        child: Text(context.l10n.t('setCustomLabel')),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
-
-            // 2. 显示大小/分辨率 (Display Size / Resolution)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 150,
-                  child: Text(
-                    context.l10n.t('displaySizeLabel'),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      _buildPresetButton(
-                        label: context.l10n.t('resetLabel'),
-                        isActive:
-                            overview.resolution ==
-                            overview.physicalResolution,
-                        onPressed: () async {
-                          await _runAdbAction(
-                            context,
-                            ref,
-                            actions.resetDisplaySize(widget.device.id),
-                          );
-                          ref.invalidate(
-                            deviceOverviewProvider(widget.device.id),
-                          );
-                        },
-                      ),
-                      ...[
-                        '480x800',
-                        '720x1280',
-                        '1080x1920',
-                        '1440x3200',
-                      ].map((preset) {
-                        final isActive = overview.rawResolution == preset;
-                        return _buildPresetButton(
-                          label: preset,
-                          isActive: isActive,
-                          onPressed: () async {
-                            await _runAdbAction(
-                              context,
-                              ref,
-                              actions.setDisplaySize(
-                                widget.device.id,
-                                preset,
-                              ),
-                            );
-                            ref.invalidate(
-                              deviceOverviewProvider(widget.device.id),
-                            );
-                          },
-                        );
-                      }),
-                      SizedBox(
-                        width: 100,
-                        child: TextField(
-                          controller: _displaySizeCustomController,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 13),
-                          decoration: _buildInputDecoration('WxH'),
-                        ),
-                      ),
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: theme.colorScheme.primary,
-                          side: BorderSide(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: () async {
-                          final sizeVal = _displaySizeCustomController.text
-                              .trim();
-                          if (RegExp(r'^\d+x\d+$').hasMatch(sizeVal)) {
-                            await _runAdbAction(
-                              context,
-                              ref,
-                              actions.setDisplaySize(
-                                widget.device.id,
-                                sizeVal,
-                              ),
-                            );
-                            ref.invalidate(
-                              deviceOverviewProvider(widget.device.id),
-                            );
-                          } else {
-                            _showSnack(
-                              context,
-                              'Invalid display size (Format: WxH)',
-                              isError: true,
-                            );
-                          }
-                        },
-                        child: Text(context.l10n.t('setCustomLabel')),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
-
-            // 3. 显示大小/密度 (Display Density / DPI)
-            Row(
-              children: [
-                SizedBox(
-                  width: 150,
-                  child: Text(
-                    context.l10n.t('displayDensityLabel'),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                _buildDpiStepButton(
-                  icon: CupertinoIcons.minus,
-                  isDark: isDark,
-                  onPressed: currentDpi == null
-                      ? null
-                      : () async {
-                          final target = currentDpi - 10;
-                          if (target > 80) {
-                            await _runAdbAction(
-                              context,
-                              ref,
-                              actions.setDisplayDensity(
-                                widget.device.id,
-                                target,
-                              ),
-                            );
-                            ref.invalidate(
-                              deviceOverviewProvider(widget.device.id),
-                            );
-                          }
-                        },
-                  ),
-                const SizedBox(width: 4),
-                SizedBox(
-                  width: 70,
-                  child: TextField(
-                    controller: _dpiController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: _buildInputDecoration(null),
-                    onSubmitted: (val) async {
-                      final numVal = int.tryParse(val);
-                      if (numVal != null &&
-                          numVal >= 80 &&
-                          numVal <= 1000) {
-                        await _runAdbAction(
-                          context,
-                          ref,
-                          actions.setDisplayDensity(
-                            widget.device.id,
-                            numVal,
-                          ),
-                        );
-                        ref.invalidate(
-                          deviceOverviewProvider(widget.device.id),
-                        );
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 4),
-                _buildDpiStepButton(
-                  icon: CupertinoIcons.plus,
-                  isDark: isDark,
-                  onPressed: currentDpi == null
-                      ? null
-                      : () async {
-                          final target = currentDpi + 10;
-                          if (target < 1000) {
-                            await _runAdbAction(
-                              context,
-                              ref,
-                              actions.setDisplayDensity(
-                                widget.device.id,
-                                target,
-                              ),
-                            );
-                            ref.invalidate(
-                              deviceOverviewProvider(widget.device.id),
-                            );
-                          }
-                        },
-                  ),
-                const SizedBox(width: 12),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: theme.colorScheme.primary,
-                    side: BorderSide(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: () async {
-                    final numVal = int.tryParse(_dpiController.text);
-                    if (numVal != null && numVal >= 80 && numVal <= 1000) {
-                      await _runAdbAction(
-                        context,
-                        ref,
-                        actions.setDisplayDensity(widget.device.id, numVal),
-                      );
-                      ref.invalidate(
-                        deviceOverviewProvider(widget.device.id),
-                      );
-                    }
-                  },
-                  child: Text(context.l10n.t('send')),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).appColors.toolbarForeground,
-                    side: BorderSide(
-                      color: Theme.of(context).appColors.subtleDivider,
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: () async {
-                    await _runAdbAction(
-                      context,
-                      ref,
-                      actions.resetDisplayDensity(widget.device.id),
-                    );
-                    ref.invalidate(
-                      deviceOverviewProvider(widget.device.id),
-                    );
-                  },
-                  child: Text(context.l10n.t('displayDensityReset')),
-                ),
-              ],
-            ),
-            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
-
-            // 4. HWUI Rendering Bars
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 150,
-                  child: Text(
-                    context.l10n.t('hwuiRenderingBarsLabel'),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    _buildPresetButton(
-                      label: context.l10n.t('onLabel'),
-                      isActive: overview.hwuiProfile == 'visual_bars',
-                      onPressed: () async {
-                        await _runAdbAction(
-                          context,
-                          ref,
-                          actions.setHwuiProfile(
-                            widget.device.id,
-                            'visual_bars',
-                          ),
-                        );
-                        ref.invalidate(
-                          deviceOverviewProvider(widget.device.id),
-                        );
-                      },
-                    ),
-                    _buildPresetButton(
-                      label: context.l10n.t('offLabel'),
-                      isActive: overview.hwuiProfile != 'visual_bars',
-                      onPressed: () async {
-                        await _runAdbAction(
-                          context,
-                          ref,
-                          actions.setHwuiProfile(widget.device.id, 'false'),
-                        );
-                        ref.invalidate(
-                          deviceOverviewProvider(widget.device.id),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
-
-            // 5. Profile GPU Rendering
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 150,
-                  child: Text(
-                    context.l10n.t('profileGpuRenderingLabel'),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    _buildPresetButton(
-                      label: context.l10n.t('onLabel'),
-                      isActive: overview.hwuiProfile == 'true',
-                      onPressed: () async {
-                        await _runAdbAction(
-                          context,
-                          ref,
-                          actions.setHwuiProfile(widget.device.id, 'true'),
-                        );
-                        ref.invalidate(
-                          deviceOverviewProvider(widget.device.id),
-                        );
-                      },
-                    ),
-                    _buildPresetButton(
-                      label: context.l10n.t('offLabel'),
-                      isActive: overview.hwuiProfile != 'true',
-                      onPressed: () async {
-                        await _runAdbAction(
-                          context,
-                          ref,
-                          actions.setHwuiProfile(widget.device.id, 'false'),
-                        );
-                        ref.invalidate(
-                          deviceOverviewProvider(widget.device.id),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            Divider(height: 28, thickness: 0.5, color: Theme.of(context).appColors.softDivider),
-
-            // 6. 动画缩放 (Animation Scale)
-            Text(
-              context.l10n.t('animationScaleLabel'),
-              style: const TextStyle(fontWeight: FontWeight.w600),
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 24,
-              runSpacing: 12,
-              children: [
-                _buildAnimDropdown(
-                  context,
-                  label: context.l10n.t('windowAnimationScale'),
-                  currentVal: overview.windowAnimationScale,
-                  onChanged: (val) async {
-                    if (val != null) {
-                      await _runAdbAction(
-                        context,
-                        ref,
-                        actions.setWindowAnimationScale(
-                          widget.device.id,
-                          val,
-                        ),
-                      );
-                      ref.invalidate(
-                        deviceOverviewProvider(widget.device.id),
-                      );
-                    }
-                  },
+            for (var i = 0; i < rows.length; i++) ...[
+              if (i > 0)
+                Divider(
+                  height: 24,
+                  thickness: 0.5,
+                  color: theme.appColors.softDivider,
                 ),
-                _buildAnimDropdown(
-                  context,
-                  label: context.l10n.t('transitionAnimationScale'),
-                  currentVal: overview.transitionAnimationScale,
-                  onChanged: (val) async {
-                    if (val != null) {
-                      await _runAdbAction(
-                        context,
-                        ref,
-                        actions.setTransitionAnimationScale(
-                          widget.device.id,
-                          val,
-                        ),
-                      );
-                      ref.invalidate(
-                        deviceOverviewProvider(widget.device.id),
-                      );
-                    }
-                  },
-                ),
-                _buildAnimDropdown(
-                  context,
-                  label: context.l10n.t('animatorDurationScale'),
-                  currentVal: overview.animatorDurationScale,
-                  onChanged: (val) async {
-                    if (val != null) {
-                      await _runAdbAction(
-                        context,
-                        ref,
-                        actions.setAnimatorDurationScale(
-                          widget.device.id,
-                          val,
-                        ),
-                      );
-                      ref.invalidate(
-                        deviceOverviewProvider(widget.device.id),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                FilledButton.icon(
-                  icon: const Icon(CupertinoIcons.bolt_slash),
-                  label: Text(context.l10n.t('disableAllAnimations')),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: () async {
-                    await _runAdbAction(
-                      context,
-                      ref,
-                      Future.wait([
-                        actions.setWindowAnimationScale(
-                          widget.device.id,
-                          0.0,
-                        ),
-                        actions.setTransitionAnimationScale(
-                          widget.device.id,
-                          0.0,
-                        ),
-                        actions.setAnimatorDurationScale(
-                          widget.device.id,
-                          0.0,
-                        ),
-                      ]).then(
-                        (results) => results.firstWhere(
-                          (r) => !r.isSuccess,
-                          orElse: () => results.first,
-                        ),
-                      ),
-                    );
-                    ref.invalidate(
-                      deviceOverviewProvider(widget.device.id),
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  icon: const Icon(CupertinoIcons.refresh),
-                  label: Text(context.l10n.t('resetAllAnimations')),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).appColors.toolbarForeground,
-                    side: BorderSide(
-                      color: Theme.of(context).appColors.subtleDivider,
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: () async {
-                    await _runAdbAction(
-                      context,
-                      ref,
-                      Future.wait([
-                        actions.setWindowAnimationScale(
-                          widget.device.id,
-                          1.0,
-                        ),
-                        actions.setTransitionAnimationScale(
-                          widget.device.id,
-                          1.0,
-                        ),
-                        actions.setAnimatorDurationScale(
-                          widget.device.id,
-                          1.0,
-                        ),
-                      ]).then(
-                        (results) => results.firstWhere(
-                          (r) => !r.isSuccess,
-                          orElse: () => results.first,
-                        ),
-                      ),
-                    );
-                    ref.invalidate(
-                      deviceOverviewProvider(widget.device.id),
-                    );
-                  },
-                ),
-              ],
-            ),
+              rows[i],
+            ],
           ],
         );
       },
     );
   }
 
-  Widget _buildAnimDropdown(
-    BuildContext context, {
-    required String label,
-    required String currentVal,
-    required ValueChanged<double?> onChanged,
-  }) {
-    final options = {
-      0.0: context.l10n.t('animationScaleOff'),
-      0.5: '0.5x',
-      1.0: context.l10n.t('animationScaleDefault'),
-      1.5: '1.5x',
-      2.0: '2.0x',
-      5.0: '5.0x',
-      10.0: '10.0x',
-    };
-
-    final double? parsedVal = double.tryParse(currentVal);
-    final effectiveVal = options.keys.firstWhere(
-      (k) => (k - (parsedVal ?? 1.0)).abs() < 0.01,
-      orElse: () => 1.0,
-    );
-
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+  Widget _fontScaleRow(DeviceOverview overview) {
+    final current =
+        double.tryParse(overview.fontScale.replaceAll('x', '')) ?? 1;
+    return _AdvancedSettingRow(
+      label: context.l10n.t('fontScaleLabel'),
+      controls: [
+        for (final preset in const [0.80, 1.00, 1.20, 1.40, 1.60])
+          _DisplayPresetButton(
+            label: preset.toStringAsFixed(2),
+            selected: (current - preset).abs() < 0.01,
+            onPressed: () => _apply(_actions.setFontScale(_deviceId, preset)),
           ),
+        _CustomDisplayValue(
+          field: _DisplayValueField(
+            width: 70,
+            controller: _fontScaleCustomController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          onPressed: () {
+            final value = double.tryParse(_fontScaleCustomController.text);
+            if (value != null && value >= 0.3 && value <= 4.0) {
+              _apply(_actions.setFontScale(_deviceId, value));
+            } else {
+              _showSnack(
+                context,
+                context.l10n.t('invalidControlFontScale'),
+                isError: true,
+              );
+            }
+          },
         ),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: Theme.of(context).appColors.subtleSurface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Theme.of(context).appColors.subtleDivider,
+      ],
+    );
+  }
+
+  Widget _resolutionRow(DeviceOverview overview) {
+    return _AdvancedSettingRow(
+      label: context.l10n.t('displaySizeLabel'),
+      controls: [
+        _DisplayPresetButton(
+          label: context.l10n.t('resetLabel'),
+          selected: overview.resolution == overview.physicalResolution,
+          onPressed: () => _apply(_actions.resetDisplaySize(_deviceId)),
+        ),
+        for (final preset in const [
+          '480x800',
+          '720x1280',
+          '1080x1920',
+          '1440x3200',
+        ])
+          _DisplayPresetButton(
+            label: preset,
+            selected: overview.rawResolution == preset,
+            onPressed: () => _apply(_actions.setDisplaySize(_deviceId, preset)),
+          ),
+        _CustomDisplayValue(
+          field: _DisplayValueField(
+            width: 100,
+            controller: _displaySizeCustomController,
+            hint: 'WxH',
+          ),
+          onPressed: () {
+            final value = _displaySizeCustomController.text.trim();
+            if (RegExp(r'^\d+x\d+$').hasMatch(value)) {
+              _apply(_actions.setDisplaySize(_deviceId, value));
+            } else {
+              _showSnack(
+                context,
+                context.l10n.t('invalidControlResolution'),
+                isError: true,
+              );
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  void _submitDensity(String text) {
+    final value = int.tryParse(text);
+    if (value != null && value >= 80 && value <= 1000) {
+      _apply(_actions.setDisplayDensity(_deviceId, value));
+    }
+  }
+
+  Widget _densityRow(int? currentDpi) {
+    return _AdvancedSettingRow(
+      label: context.l10n.t('displayDensityLabel'),
+      controls: [
+        // 加减键和数值属于同一个步进控件，换行时整体移动。
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 8,
+          children: [
+            _DpiStepButton(
+              icon: CupertinoIcons.minus,
+              onPressed: currentDpi == null
+                  ? null
+                  : () {
+                      if (currentDpi - 10 > 80) {
+                        _apply(
+                          _actions.setDisplayDensity(
+                            _deviceId,
+                            currentDpi - 10,
+                          ),
+                        );
+                      }
+                    },
+            ),
+            _DisplayValueField(
+              width: 70,
+              controller: _dpiController,
+              keyboardType: TextInputType.number,
+              onSubmitted: _submitDensity,
+            ),
+            _DpiStepButton(
+              icon: CupertinoIcons.plus,
+              onPressed: currentDpi == null
+                  ? null
+                  : () {
+                      if (currentDpi + 10 < 1000) {
+                        _apply(
+                          _actions.setDisplayDensity(
+                            _deviceId,
+                            currentDpi + 10,
+                          ),
+                        );
+                      }
+                    },
+            ),
+          ],
+        ),
+        OutlinedButton(
+          style: _displayActionStyle(context),
+          onPressed: () => _submitDensity(_dpiController.text),
+          child: Text(context.l10n.t('send')),
+        ),
+        OutlinedButton(
+          style: _displayActionStyle(context, primary: false),
+          onPressed: () => _apply(_actions.resetDisplayDensity(_deviceId)),
+          child: Text(context.l10n.t('displayDensityReset')),
+        ),
+      ],
+    );
+  }
+
+  Widget _renderingRow(String labelKey, String mode, DeviceOverview overview) {
+    return _AdvancedSettingRow(
+      label: context.l10n.t(labelKey),
+      controls: [
+        _DisplayPresetButton(
+          label: context.l10n.t('onLabel'),
+          selected: overview.hwuiProfile == mode,
+          onPressed: () => _apply(_actions.setHwuiProfile(_deviceId, mode)),
+        ),
+        _DisplayPresetButton(
+          label: context.l10n.t('offLabel'),
+          selected: overview.hwuiProfile != mode,
+          onPressed: () => _apply(_actions.setHwuiProfile(_deviceId, 'false')),
+        ),
+      ],
+    );
+  }
+
+  /// 三个动画设置独立写入；批量操作沿用第一项失败结果的反馈。
+  void _setAllAnimations(double scale) {
+    _apply(
+      Future.wait([
+        _actions.setWindowAnimationScale(_deviceId, scale),
+        _actions.setTransitionAnimationScale(_deviceId, scale),
+        _actions.setAnimatorDurationScale(_deviceId, scale),
+      ]).then(
+        (results) => results.firstWhere(
+          (result) => !result.isSuccess,
+          orElse: () => results.first,
+        ),
+      ),
+    );
+  }
+
+  Widget _animationRow(DeviceOverview overview) {
+    return _AdvancedSettingRow(
+      label: context.l10n.t('animationScaleLabel'),
+      controls: [
+        _AnimationScaleDropdown(
+          label: context.l10n.t('windowAnimationScale'),
+          currentValue: overview.windowAnimationScale,
+          onSelected: (value) =>
+              _apply(_actions.setWindowAnimationScale(_deviceId, value)),
+        ),
+        _AnimationScaleDropdown(
+          label: context.l10n.t('transitionAnimationScale'),
+          currentValue: overview.transitionAnimationScale,
+          onSelected: (value) =>
+              _apply(_actions.setTransitionAnimationScale(_deviceId, value)),
+        ),
+        _AnimationScaleDropdown(
+          label: context.l10n.t('animatorDurationScale'),
+          currentValue: overview.animatorDurationScale,
+          onSelected: (value) =>
+              _apply(_actions.setAnimatorDurationScale(_deviceId, value)),
+        ),
+        FilledButton.icon(
+          icon: const Icon(CupertinoIcons.bolt_slash),
+          label: Text(context.l10n.t('disableAllAnimations')),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            shape: const RoundedRectangleBorder(
+              borderRadius: AppThemeSizes.radiusMedium,
             ),
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<double>(
-              value: effectiveVal,
-              borderRadius: BorderRadius.circular(12),
-              dropdownColor: Theme.of(context).appColors.panelSurface,
-              icon: Padding(
-                padding: const EdgeInsets.only(left: 5),
-                child: Icon(
-                  CupertinoIcons.chevron_down,
-                  size: 14,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-              onChanged: onChanged,
-              items: options.entries.map((entry) {
-                return DropdownMenuItem<double>(
-                  value: entry.key,
-                  child: Text(entry.value),
-                );
-              }).toList(),
-            ),
-          ),
+          onPressed: () => _setAllAnimations(0),
+        ),
+        OutlinedButton.icon(
+          icon: const Icon(CupertinoIcons.refresh),
+          label: Text(context.l10n.t('resetAllAnimations')),
+          style: _displayActionStyle(context, primary: false),
+          onPressed: () => _setAllAnimations(1),
         ),
       ],
     );

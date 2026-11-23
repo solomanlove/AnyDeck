@@ -1,21 +1,17 @@
 part of '../../dashboard_screen.dart';
 
-/// 构建设备操作区的锁屏、截图和录屏按钮。
+/// 构建设备操作区的截图和录屏按钮，默认包含锁屏。
+///
+/// [context]、[ref] 与 [device] 用于将操作路由到当前设备；按用途分组时，
+/// 可传入 `includeLockScreen: false`，将锁屏入口放在设备交互组。
 List<Widget> buildDeviceCaptureActions(
   BuildContext context,
   WidgetRef ref,
-  DiscoveredDevice device,
-) {
+  DiscoveredDevice device, {
+  bool includeLockScreen = true,
+}) {
   return [
-    _ActionButton(
-      icon: CupertinoIcons.lock,
-      label: context.l10n.t('lockScreen'),
-      onPressed: () => _runAdbAction(
-        context,
-        ref,
-        ref.read(deviceActionServiceProvider).lockScreen(device.id),
-      ),
-    ),
+    if (includeLockScreen) _buildDeviceLockAction(context, ref, device),
     _ActionButton(
       icon: CupertinoIcons.camera,
       label: context.l10n.t('screenshot'),
@@ -23,6 +19,23 @@ List<Widget> buildDeviceCaptureActions(
     ),
     _DeviceScreenRecordButton(deviceId: device.id),
   ];
+}
+
+/// 锁屏入口可单独置于设备交互组，也可与截图和录屏一起展示。
+Widget _buildDeviceLockAction(
+  BuildContext context,
+  WidgetRef ref,
+  DiscoveredDevice device,
+) {
+  return _ActionButton(
+    icon: CupertinoIcons.lock,
+    label: context.l10n.t('lockScreen'),
+    onPressed: () => _runAdbAction(
+      context,
+      ref,
+      ref.read(deviceActionServiceProvider).lockScreen(device.id),
+    ),
+  );
 }
 
 Future<void> _captureAndSaveDeviceScreenshot(
