@@ -73,19 +73,20 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           hasBoundedHeight: constraints.hasBoundedHeight,
           selectionBar: selectionBar,
         );
-        return Padding(
-          padding: windowWidth <= 490
-              ? const EdgeInsets.fromLTRB(8, 10, 8, 0)
-              : windowWidth <= 650
-              ? const EdgeInsets.fromLTRB(12, 10, 12, 0)
-              : const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: constraints.hasBoundedHeight
-                ? MainAxisSize.max
-                : MainAxisSize.min,
-            children: [
-              DeviceListFilters(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: constraints.hasBoundedHeight
+              ? MainAxisSize.max
+              : MainAxisSize.min,
+          children: [
+            // 筛选栏保留响应式留白，设备列表和设备墙占满下方内容区。
+            Padding(
+              padding: windowWidth <= 490
+                  ? const EdgeInsets.fromLTRB(8, 10, 8, 0)
+                  : windowWidth <= 650
+                  ? const EdgeInsets.fromLTRB(12, 10, 12, 0)
+                  : const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: DeviceListFilters(
                 controller: _searchController,
                 onlineCount: groupedDevices.where((d) => d.isOnline).length,
                 totalCount: groupedDevices.length,
@@ -104,15 +105,15 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                 onBatchModeChanged: _changeBatchMode,
                 onSearchChanged: _changeQuery,
               ),
-              if (selectionBar != null &&
-                  (_viewMode == DeviceViewMode.wall || sortedItems.isEmpty))
-                selectionBar,
-              if (constraints.hasBoundedHeight)
-                Expanded(child: content)
-              else
-                content,
-            ],
-          ),
+            ),
+            if (selectionBar != null &&
+                (_viewMode == DeviceViewMode.wall || sortedItems.isEmpty))
+              selectionBar,
+            if (constraints.hasBoundedHeight)
+              Expanded(child: content)
+            else
+              content,
+          ],
         );
       },
     );
@@ -224,9 +225,8 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       sessionByDeviceId,
     );
     return Padding(
-      padding: const EdgeInsets.only(top: 6, bottom: 12),
-      child: ClipRRect(
-        borderRadius: AppThemeSizes.radiusLarge,
+      padding: const EdgeInsets.only(top: 6),
+      child: ClipRect(
         child: ColoredBox(
           color: Colors.transparent,
           child: Column(

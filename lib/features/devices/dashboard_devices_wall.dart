@@ -11,8 +11,7 @@ extension _DeviceWallPanel on _DeviceListPanelState {
     builder: (context, constraints) {
       final windowWidth = MediaQuery.sizeOf(context).width;
       final gap = windowWidth <= 490 ? 4.0 : 12.0;
-      final horizontalPadding = windowWidth <= 490 ? 0.0 : 4.0;
-      final availableWidth = constraints.maxWidth - horizontalPadding * 2;
+      final availableWidth = constraints.maxWidth;
       final columns = windowWidth <= 490
           ? 2
           : max(1, ((availableWidth + gap) / (148 + gap)).floor());
@@ -20,12 +19,7 @@ extension _DeviceWallPanel on _DeviceListPanelState {
       final rows = (devices.length / columns).ceil();
       return ListView.separated(
         key: const Key('deviceWall'),
-        padding: EdgeInsets.fromLTRB(
-          horizontalPadding,
-          12,
-          horizontalPadding,
-          16,
-        ),
+        padding: const EdgeInsets.only(top: 12),
         scrollCacheExtent: const ScrollCacheExtent.pixels(0),
         shrinkWrap: !hasBoundedHeight,
         physics: hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
