@@ -1,7 +1,9 @@
-// 验证系统版本独立窗口在窄屏、低高度及放大字号下的阅读和版本选择。
+// 验证系统版本页面的固定首尾、正文滚轮交互及窄窗口大字号下的阅读。
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/features/overview/model/platform_distribution_type.dart';
@@ -9,9 +11,216 @@ import 'package:any_deck/features/overview/widget/harmony_distribution_details_p
 import 'package:any_deck/features/overview/widget/ios_distribution_details_pane.dart';
 import 'package:any_deck/features/overview/widget/platform_version_distribution_shell_view.dart';
 import 'package:any_deck/features/overview/widget/platform_version_switcher.dart';
+import 'package:any_deck/features/overview/widget/system_versions_page.dart';
 import 'package:any_deck/features/overview/widget/version_distribution_layout.dart';
 
+const _delegates = [
+  AppLocalizationsDelegate(),
+  ...GlobalMaterialLocalizations.delegates,
+];
+
+/// 将桌面滚轮事件发送至指定窗口坐标，等待滚动后的布局稳定。
+Future<void> _wheel(WidgetTester tester, Offset point, double delta) async {
+  await tester.sendEventToBinding(
+    PointerScrollEvent(position: point, scrollDelta: Offset(0, delta)),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  for (final mainWindow in [true, false]) {
+    testWidgets('${mainWindow ? '主窗口' : '独立窗口'}三平台仅正文响应滚轮，标题和页脚固定', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(820, 400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            locale: const Locale('zh'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: _delegates,
+            home: Scaffold(
+              body: mainWindow
+                  ? const SystemVersionsPage()
+                  : const PlatformVersionDistributionShellView(
+                      isStandaloneWindow: true,
+                    ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final switcher = find.byType(PlatformVersionSwitcher);
+      final l10n = tester.element(switcher).l10n;
+      for (final platform in PlatformDistributionType.values) {
+        await tester.tap(
+          find.descendant(
+            of: switcher,
+            matching: find.text(platform.displayName),
+          ),
+        );
+        // 独立窗口的 DragToMoveArea 需先完成标题栏双击判定。
+        await tester.pump(kDoubleTapTimeout);
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<PlatformVersionSwitcher>(switcher).selectedPlatform,
+          platform,
+        );
+        final title = find.text(
+          l10n.t(mainWindow ? 'systemVersions' : platform.titleL10nKey),
+        );
+        final footer = find.text(
+          '${l10n.t('lastUpdatedPrefix')}${platform.lastUpdatedDate}',
+        );
+        final fixed = [title, switcher, footer];
+        final before = fixed.map(tester.getRect).toList();
+        for (final widget in fixed) {
+          expect(widget.hitTestable(), findsOneWidget);
+          expect(
+            find.ancestor(of: widget, matching: find.byType(Scrollable)),
+            findsNothing,
+          );
+        }
+        final layout = find.byType(VersionDistributionLayout);
+        final list = find
+            .descendant(of: layout, matching: find.byType(Scrollable))
+            .first;
+        final detailsPane = find
+            .descendant(of: layout, matching: find.byType(SelectionArea))
+            .first;
+        final details = find
+            .descendant(of: detailsPane, matching: find.byType(Scrollable))
+            .first;
+        final listPosition = tester.state<ScrollableState>(list).position;
+        final detailsPosition = tester.state<ScrollableState>(details).position;
+
+        await _wheel(tester, tester.getCenter(list), 90);
+        expect(listPosition.pixels, greaterThan(0));
+        final listOffset = listPosition.pixels;
+        expect(detailsPosition.pixels, 0);
+        final point = tester.getCenter(details);
+        await _wheel(tester, point, 90);
+        expect(detailsPosition.pixels, greaterThan(0));
+        expect(listPosition.pixels, listOffset);
+
+        // 到达详情上下端后继续滚动，外框和相邻版本列表也不能被带走。
+        for (final delta in [100000.0, -100000.0]) {
+          await _wheel(tester, point, delta);
+          final edge = delta > 0
+              ? detailsPosition.maxScrollExtent
+              : detailsPosition.minScrollExtent;
+          expect(detailsPosition.pixels, edge);
+          await _wheel(tester, point, delta);
+          expect(detailsPosition.pixels, edge);
+          expect(listPosition.pixels, listOffset);
+          expect(fixed.map(tester.getRect), orderedEquals(before));
+        }
+        for (final widget in fixed) {
+          await _wheel(tester, tester.getCenter(widget), 120);
+          expect(listPosition.pixels, listOffset);
+          expect(detailsPosition.pixels, 0);
+          expect(fixed.map(tester.getRect), orderedEquals(before));
+        }
+        expect(tester.takeException(), isNull);
+      }
+    });
+  }
+
+  testWidgets('624×180 主窗口可点选版本，大字号英文页脚完整且正文可滚动', (tester) async {
+    tester.view.physicalSize = const Size(624, 180);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          locale: Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: _delegates,
+          home: Scaffold(body: SystemVersionsPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final frame = tester.widget<VersionDistributionPageLayout>(
+      find.byType(VersionDistributionPageLayout),
+    );
+    final top = tester.getRect(find.byWidget(frame.header));
+    final bottom = tester.getRect(find.byWidget(frame.footer));
+    final body = Rect.fromLTRB(top.left, top.bottom, bottom.right, bottom.top);
+    final list = find
+        .descendant(
+          of: find.byType(VersionDistributionLayout),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    final visibleList = tester.getRect(list).intersect(body);
+    expect(visibleList.height, greaterThan(0));
+    final version = find.descendant(of: list, matching: find.text('16   B'));
+    final step = (visibleList.height / 2).clamp(1.0, 30.0);
+    // 只在未被固定栏遮挡的列表区域发送滚轮，不跳转到预构建条目的位置。
+    for (var i = 0; i < 150; i++) {
+      await _wheel(tester, visibleList.center, step);
+      if (version.hitTestable().evaluate().isNotEmpty) break;
+    }
+    expect(tester.state<ScrollableState>(list).position.pixels, greaterThan(0));
+    expect(version.hitTestable(), findsOneWidget);
+    await tester.tap(version);
+    await tester.pumpAndSettle();
+    expect(find.text('Android 16  •  API 36'), findsOneWidget);
+    expect(tester.getRect(find.byWidget(frame.header)), top);
+    expect(tester.getRect(find.byWidget(frame.footer)), bottom);
+    expect(tester.takeException(), isNull);
+
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpAndSettle();
+    final switcher = find.byType(PlatformVersionSwitcher);
+    final l10n = tester.element(switcher).l10n;
+    for (final platform in [
+      PlatformDistributionType.harmony,
+      PlatformDistributionType.ios,
+    ]) {
+      await tester.tap(
+        find.descendant(
+          of: switcher,
+          matching: find.text(platform.displayName),
+        ),
+      );
+      await tester.pump(kDoubleTapTimeout);
+      await tester.pumpAndSettle();
+      final page = tester.widget<VersionDistributionPageLayout>(
+        find.byType(VersionDistributionPageLayout),
+      );
+      final header = tester.getRect(find.byWidget(page.header));
+      final footer = tester.getRect(find.byWidget(page.footer));
+      for (final text in [
+        '${l10n.t('lastUpdatedPrefix')}${platform.lastUpdatedDate}',
+        platform.localizedFlagNotice('en'),
+      ]) {
+        final label = find.text(text, findRichText: true);
+        final paragraph = tester.renderObject<RenderParagraph>(label);
+        expect(paragraph.didExceedMaxLines, isFalse);
+        final textRect = tester.getRect(label);
+        expect(textRect.isEmpty, isFalse);
+        expect(textRect.intersect(footer), textRect);
+      }
+      final visible = tester
+          .getRect(list)
+          .intersect(
+            Rect.fromLTRB(header.left, header.bottom, footer.right, footer.top),
+          );
+      expect(visible.height, greaterThan(0));
+      final position = tester.state<ScrollableState>(list).position;
+      final initial = position.pixels;
+      await _wheel(tester, visible.center, 40);
+      expect(position.pixels, greaterThan(initial));
+      expect(tester.getRect(find.byWidget(page.footer)), footer);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   for (final (size, scale) in [
     (const Size(460, 480), 1.0),
     (const Size(620, 340), 2.0),
@@ -31,20 +240,15 @@ void main() {
           home: Scaffold(body: PlatformVersionDistributionShellView()),
         ),
       );
-      final switcher = find.byType(
-        PlatformVersionSwitcher,
-        skipOffstage: false,
-      );
+      final switcher = find.byType(PlatformVersionSwitcher);
       final l10n = tester.element(switcher).l10n;
       for (final platform in PlatformDistributionType.values) {
-        // 低窗口向下阅读后，平台切换器所在的 Sliver 可能在视口外。
+        // 阅读正文后，固定的平台切换器仍可直接点击。
         final tab = find.descendant(
           of: switcher,
-          matching: find.text(platform.displayName, skipOffstage: false),
-          skipOffstage: false,
+          matching: find.text(platform.displayName),
         );
-        await tester.ensureVisible(tab);
-        await tester.pumpAndSettle();
+        expect(tab.hitTestable(), findsOneWidget);
         await tester.tap(tab);
         await tester.pumpAndSettle();
         final label = l10n.t(platform.titleL10nKey);
@@ -81,8 +285,6 @@ void main() {
           expect(find.text('Android 4.0  •  API 14'), findsOneWidget);
         }
         final close = find.widgetWithText(ElevatedButton, l10n.t('close'));
-        await tester.ensureVisible(close);
-        await tester.pumpAndSettle();
         expect(close.hitTestable(), findsOneWidget);
         final notice = platform.localizedFlagNotice('en');
         if (notice.isNotEmpty) {
@@ -115,10 +317,7 @@ void main() {
       const MaterialApp(
         locale: Locale('zh'),
         supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: [
-          AppLocalizationsDelegate(),
-          ...GlobalMaterialLocalizations.delegates,
-        ],
+        localizationsDelegates: _delegates,
         home: Scaffold(body: PlatformVersionDistributionShellView()),
       ),
     );

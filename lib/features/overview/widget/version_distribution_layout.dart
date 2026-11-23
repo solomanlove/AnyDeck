@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 /// 主窗口和独立窗口共用的版本资料页。将标题栏传给 [header]、平台视图传给
-/// [body]、日期和操作传给 [footer]。高度不足时整页可上下滚动。
+/// [body]、日期和操作传给 [footer]。头尾固定，仅中间的版本资料可滚动。
 class VersionDistributionPageLayout extends StatelessWidget {
   const VersionDistributionPageLayout({
     super.key,
@@ -18,20 +18,25 @@ class VersionDistributionPageLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(child: header),
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 320 为正文的最小阅读高度，剩余空间由 Expanded 分配给正文。
-              Expanded(child: SizedBox(height: 320, child: body)),
-              footer,
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // 窗口较矮时，仍能在正文范围内滚动到版本列表、详情和历史记录。
+              return SingleChildScrollView(
+                primary: false,
+                child: SizedBox(
+                  height: math.max(320, constraints.maxHeight),
+                  child: body,
+                ),
+              );
+            },
           ),
         ),
+        footer,
       ],
     );
   }

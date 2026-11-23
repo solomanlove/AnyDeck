@@ -81,16 +81,23 @@ class _PlatformVersionDistributionShellViewState
         color: windowBg,
         borderRadius: const BorderRadius.all(Radius.circular(10)),
       ),
-      child: VersionDistributionPageLayout(
-        header: _buildMacTitleBar(isDark),
-        body: _buildPlatformBody(),
-        footer: _buildBottomBar(isDark, langCode),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 小窗口放大字体时收紧头尾行距，给正文保留阅读空间。
+          final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+          final compactHeight = constraints.maxHeight < 280 * scale;
+          return VersionDistributionPageLayout(
+            header: _buildMacTitleBar(isDark, compactHeight),
+            body: _buildPlatformBody(),
+            footer: _buildBottomBar(isDark, langCode, compactHeight),
+          );
+        },
       ),
     );
   }
 
   /// 构建 macOS 风格窗体标题栏（包含平台切换器）
-  Widget _buildMacTitleBar(bool isDark) {
+  Widget _buildMacTitleBar(bool isDark, bool compactHeight) {
     final titleBarBg = isDark ? const Color(0xFF2D3035) : const Color(0xFFEBECEF);
     final titleBarBorder = isDark
         ? Colors.white.withValues(alpha: 0.06)
@@ -106,6 +113,7 @@ class _PlatformVersionDistributionShellViewState
       style: TextStyle(
         color: titleTextColor,
         fontSize: 13,
+        height: compactHeight ? 1.1 : null,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
       ),
@@ -119,7 +127,7 @@ class _PlatformVersionDistributionShellViewState
 
     final titleBarContent = Container(
       constraints: const BoxConstraints(minHeight: 42),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: EdgeInsets.symmetric(horizontal: compactHeight ? 6 : 14),
       decoration: BoxDecoration(
         color: titleBarBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
@@ -136,7 +144,7 @@ class _PlatformVersionDistributionShellViewState
           if (constraints.maxWidth < 720 ||
               MediaQuery.textScalerOf(context).scale(13) > 13) {
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
+              padding: EdgeInsets.symmetric(vertical: compactHeight ? 2 : 5),
               child: Wrap(
                 alignment: WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
@@ -179,7 +187,7 @@ class _PlatformVersionDistributionShellViewState
   }
 
   /// 底部数据更新时间、数据来源说明 Flag 与 Close 按钮
-  Widget _buildBottomBar(bool isDark, String langCode) {
+  Widget _buildBottomBar(bool isDark, String langCode, bool compactHeight) {
     final bottomBarBg =
         isDark ? const Color(0xFF232528) : const Color(0xFFF6F8FA);
     final borderTopColor = isDark
@@ -197,9 +205,59 @@ class _PlatformVersionDistributionShellViewState
     final dateText = '$updatePrefix${_currentPlatform.lastUpdatedDate}';
     final flagNotice = _currentPlatform.localizedFlagNotice(langCode);
 
+    final date = Text(
+      dateText,
+      style: TextStyle(
+        color: dateColor,
+        fontSize: 12,
+        height: compactHeight ? 1.1 : null,
+      ),
+    );
+    final notice = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFB06000).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        flagNotice,
+        style: TextStyle(
+          fontSize: 11,
+          height: compactHeight ? 1.1 : null,
+          color: const Color(0xFFB06000),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+    final close = ElevatedButton(
+      onPressed: _handleClose,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: btnBg,
+        foregroundColor: btnFg,
+        elevation: 0,
+        padding: EdgeInsets.symmetric(
+          horizontal: compactHeight ? 8 : 22,
+          vertical: compactHeight ? 4 : 10,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+          side: BorderSide(color: btnBorder),
+        ),
+      ),
+      child: Text(
+        context.l10n.t('close'),
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+      ),
+    );
+
+    // 低窗口下让日期独占第一行，来源与关闭按钮在第二行共享宽度。
+    final separateDate = compactHeight && flagNotice.isNotEmpty;
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: compactHeight ? 8 : 18,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: bottomBarBg,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
@@ -210,59 +268,28 @@ class _PlatformVersionDistributionShellViewState
           ),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 左侧：更新时间与口径提示 Flag 胶囊
-          Expanded(
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  dateText,
-                  style: TextStyle(color: dateColor, fontSize: 12),
-                ),
-                if (flagNotice.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFB06000).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      flagNotice,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFFB06000),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // 右侧：关闭按钮
-          ElevatedButton(
-            onPressed: _handleClose,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: btnBg,
-              foregroundColor: btnFg,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-                side: BorderSide(
-                  color: btnBorder,
+          if (separateDate) date,
+          Row(
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (!separateDate) date,
+                    if (flagNotice.isNotEmpty) notice,
+                  ],
                 ),
               ),
-            ),
-            child: Text(
-              context.l10n.t('close'),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
+              const SizedBox(width: 8),
+              close,
+            ],
           ),
         ],
       ),
