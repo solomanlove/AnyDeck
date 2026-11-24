@@ -52,10 +52,12 @@ class HostNetworkFooter extends ConsumerWidget {
                 const Icon(Icons.laptop_mac_outlined, size: 14),
                 if (constraints.maxWidth > 420)
                   Text('${context.l10n.t('deviceWorkspaceHostIp')}：'),
-                SelectableText(
-                  address ?? placeholder,
-                  key: const Key('hostNetworkAddress'),
-                  style: TextStyle(fontSize: 11, color: foreground),
+                _selectableNetworkValue(
+                  Text(
+                    address ?? placeholder,
+                    key: const Key('hostNetworkAddress'),
+                    style: TextStyle(fontSize: 11, color: foreground),
+                  ),
                 ),
                 IconButton(
                   key: const Key('copyHostIp'),
@@ -194,6 +196,11 @@ class HostNetworkFooter extends ConsumerWidget {
   );
 }
 
+/// 动态网络值使用普通文本语义，避免 macOS 将更新当作开始编辑。
+/// 文字仍支持鼠标拖选和快捷键复制，Tab 导航直接移到操作按钮。
+Widget _selectableNetworkValue(Text text) =>
+    ExcludeFocusTraversal(child: SelectionArea(child: text));
+
 /// 详情弹层使用同一个网络 Provider，保留权限状态、实际网卡与手动刷新。
 class _HostNetworkDetails extends ConsumerWidget {
   const _HostNetworkDetails();
@@ -244,10 +251,12 @@ class _HostNetworkDetails extends ConsumerWidget {
                     child: Text(item.$1, style: const TextStyle(fontSize: 12)),
                   ),
                   Flexible(
-                    child: SelectableText(
-                      item.$2,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 12),
+                    child: _selectableNetworkValue(
+                      Text(
+                        item.$2,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ),
                   ),
                 ],

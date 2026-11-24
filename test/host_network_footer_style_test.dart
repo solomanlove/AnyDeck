@@ -100,11 +100,8 @@ void main() {
               foreground,
             );
           }
-          final address = find.descendant(
-            of: find.byKey(const Key('hostNetworkAddress')),
-            matching: find.byType(EditableText),
-          );
-          expect(tester.widget<EditableText>(address).style.color, foreground);
+          final address = find.byKey(const Key('hostNetworkAddress'));
+          expect(_paintedTextColor(tester, address), foreground);
           final icons = [
             Icons.laptop_mac_outlined,
             Icons.copy_outlined,
