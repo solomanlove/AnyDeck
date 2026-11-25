@@ -23,6 +23,13 @@ class DeviceGroupFilter extends ConsumerWidget {
     required this.names,
   });
 
+  static const double _iconSize = 18;
+  static const double _iconLabelGap = 10;
+  static const _allGroupsIcon = Icon(
+    Icons.folder_open_outlined,
+    size: _iconSize,
+  );
+
   final String? selectedGroupId;
   final ValueChanged<String?> onChanged;
   final List<RegisteredDevice> devices;
@@ -32,10 +39,10 @@ class DeviceGroupFilter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(deviceGroupsProvider);
     final groups = (data.value ?? DeviceGroupsState()).groups;
-    final selected = groups.where((group) => group.id == selectedGroupId);
-    final label = selected.isEmpty
-        ? context.l10n.t('deviceGroupAll')
-        : selected.first.name;
+    final selected = groups
+        .where((group) => group.id == selectedGroupId)
+        .firstOrNull;
+    final label = selected?.name ?? context.l10n.t('deviceGroupAll');
     final theme = Theme.of(context);
     return DeviceWorkspacePopupMenu<String>(
       buttonKey: const Key('deviceGroupFilter'),
@@ -63,8 +70,8 @@ class DeviceGroupFilter extends ConsumerWidget {
           context,
           key: const Key('deviceGroupOption-all'),
           value: '',
-          selected: selected.isEmpty,
-          icon: const Icon(Icons.folder_open_outlined, size: 18),
+          selected: selected == null,
+          icon: _allGroupsIcon,
           label: context.l10n.t('deviceGroupAll'),
         ),
         for (final group in groups)
@@ -105,12 +112,11 @@ class DeviceGroupFilter extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            Icon(
-              Icons.folder_outlined,
-              size: 15,
-              color: theme.colorScheme.onSurfaceVariant,
+            _leadingIcon(
+              selected == null ? _allGroupsIcon : _groupIcon(selected.platform),
+              theme.colorScheme.onSurface,
             ),
-            const SizedBox(width: 5),
+            const SizedBox(width: _iconLabelGap),
             Expanded(
               child: Text(
                 label,
@@ -130,18 +136,24 @@ class DeviceGroupFilter extends ConsumerWidget {
   Widget _groupIcon(DeviceGroupPlatform? platform) => switch (platform) {
     DeviceGroupPlatform.android => buildPlatformIcon(
       PlatformDistributionType.android,
-      size: 18,
+      size: _iconSize,
     ),
     DeviceGroupPlatform.harmony => buildPlatformIcon(
       PlatformDistributionType.harmony,
-      size: 18,
+      size: _iconSize,
     ),
     DeviceGroupPlatform.ios => buildPlatformIcon(
       PlatformDistributionType.ios,
-      size: 18,
+      size: _iconSize,
     ),
-    null => const Icon(Icons.folder_outlined, size: 18),
+    null => const Icon(Icons.folder_outlined, size: _iconSize),
   };
+
+  /// 按钮和菜单项共用图标占位，保证平台 Logo 与文字的间距一致。
+  Widget _leadingIcon(Widget icon, Color color) => IconTheme(
+    data: IconThemeData(color: color),
+    child: SizedBox.square(dimension: _iconSize, child: icon),
+  );
 
   /// 图标与文字统一对齐，勾选标记置右，避免默认 Checked 菜单的额外留白。
   PopupMenuItem<String> _menuItem(
@@ -163,11 +175,8 @@ class DeviceGroupFilter extends ConsumerWidget {
         selected: selected,
         child: Row(
           children: [
-            IconTheme(
-              data: IconThemeData(color: scheme.onSurface),
-              child: SizedBox(width: 18, height: 18, child: icon),
-            ),
-            const SizedBox(width: 10),
+            _leadingIcon(icon, scheme.onSurface),
+            const SizedBox(width: _iconLabelGap),
             Expanded(
               child: Text(
                 label,

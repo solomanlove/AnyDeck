@@ -54,11 +54,12 @@ void main() {
         final button = tester.getRect(find.byKey(_groupButton));
         final folder = find.descendant(
           of: find.byKey(_groupButton),
-          matching: find.byIcon(Icons.folder_outlined),
+          matching: find.byIcon(Icons.folder_open_outlined),
         );
+        expect(folder, findsOneWidget);
         expect(
-          tester.widget<Icon>(folder).color,
-          Theme.of(tester.element(folder)).colorScheme.onSurfaceVariant,
+          IconTheme.of(tester.element(folder)).color,
+          Theme.of(tester.element(folder)).colorScheme.onSurface,
         );
         await _openGroup(tester);
         final menu = tester.getRect(_surface(_entry('android')));
@@ -157,10 +158,28 @@ void main() {
 
         // 选择仅改变当前过滤条件；再次打开时勾选应跟随宿主状态。
         for (final id in ['android', 'harmony', 'ios', 'qa', '']) {
-          await tester.tap(_entry(id));
+          final option = _entry(id);
+          final optionIcon = _groupIconIn(option, id);
+          final optionSize = tester.getSize(optionIcon);
+          final optionGap = _iconLabelGap(tester, option, optionIcon);
+          await tester.tap(option);
           await tester.pumpAndSettle();
           expect(_entry('android'), findsNothing);
           expect(selected.last, id.isEmpty ? null : id);
+          final trigger = find.byKey(_groupButton);
+          final triggerIcon = _groupIconIn(trigger, id);
+          expect(triggerIcon, findsOneWidget);
+          expect(tester.getSize(triggerIcon), optionSize);
+          expect(
+            _iconLabelGap(tester, trigger, triggerIcon),
+            closeTo(optionGap, .1),
+          );
+          if (id == 'harmony') {
+            expect(
+              tester.widget<Image>(triggerIcon).image,
+              const AssetImage(AppIcons.huaweiPetal),
+            );
+          }
           await _openGroup(tester);
           _expectCheck(id);
         }
@@ -236,6 +255,24 @@ Finder _entry(String id) => id.isEmpty
         (widget) => widget is PopupMenuItem<String> && widget.value == '',
       )
     : find.byKey(ValueKey('deviceGroupOption-$id'));
+
+Finder _groupIconIn(Finder parent, String id) => find.descendant(
+  of: parent,
+  matching: switch (id) {
+    'android' => find.byIcon(Icons.android_rounded),
+    'harmony' => find.byType(Image),
+    'ios' => find.byIcon(Icons.apple),
+    '' => find.byIcon(Icons.folder_open_outlined),
+    _ => find.byIcon(Icons.folder_outlined),
+  },
+);
+
+/// 用渲染后的位置比较按钮和菜单项的图标与文字间距。
+double _iconLabelGap(WidgetTester tester, Finder parent, Finder icon) =>
+    tester
+        .getRect(find.descendant(of: parent, matching: find.byType(Text)))
+        .left -
+    tester.getRect(icon).right;
 
 Finder _surface(Finder item) =>
     find.ancestor(of: item, matching: find.byType(Material)).first;
@@ -331,9 +368,8 @@ Future<void> _pumpMenus(
           ...GlobalMaterialLocalizations.delegates,
         ],
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.linear(scale)),
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(scale)),
           child: child!,
         ),
         home: Scaffold(
