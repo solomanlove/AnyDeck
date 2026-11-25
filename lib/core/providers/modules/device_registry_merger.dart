@@ -24,6 +24,7 @@ class DeviceRegistryMerger {
     required Set<String> checkedIds,
     required Map<String, String> serialMap,
     Map<String, String> emulatorNames = const {},
+    Set<String> confirmedEmulatorIds = const {},
     Map<String, List<EmulatorConnectionHistoryEntry>> emulatorHistory = const {},
   }) {
     final activeMap = <String, DiscoveredDevice>{};
@@ -108,6 +109,7 @@ class DeviceRegistryMerger {
             isChecked: isChecked,
             connections: [id],
             emulatorAvdName: avdName,
+            emulatorAvdConfirmed: confirmedEmulatorIds.contains(id),
             connectionHistory: connectionHistory,
             emulatorIdentityAliases: emulatorAliases[avdName] ?? const {},
             serial: serial,
@@ -154,6 +156,7 @@ class DeviceRegistryMerger {
             isChecked: isChecked,
             connections: [id],
             emulatorAvdName: avdName,
+            emulatorAvdConfirmed: confirmedEmulatorIds.contains(id),
             connectionHistory: connectionHistory,
             emulatorIdentityAliases: emulatorAliases[avdName] ?? const {},
             serial: serial,

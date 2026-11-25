@@ -145,7 +145,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                       SizedBox(
                         width: layout.actionsWidth,
                         child: _buildWorkspaceActions(
-                          context,
                           device,
                           airplaySession,
                           compact: layout.phone,
@@ -214,57 +213,63 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
   );
 
   Widget _buildWorkspaceActions(
-    BuildContext context,
     RegisteredDevice device,
     AirPlaySessionData? session, {
     bool compact = false,
-  }) => Row(
-    mainAxisAlignment: MainAxisAlignment.end,
-    children: [
-      Flexible(
-        child: device.isOnline
-            ? FilledButton.tonal(
-                onPressed: _deviceQuickActionRunning
-                    ? null
-                    : () => _openWorkspaceDevice(context, device, session),
-                style: _workspaceActionStyle(context, device.isOnline),
-                child: _workspaceActionLabel(context, device, compact),
-              )
-            : OutlinedButton(
-                onPressed: _deviceQuickActionRunning
-                    ? null
-                    : () => _openWorkspaceDevice(context, device, session),
-                style: _workspaceActionStyle(context, device.isOnline),
-                child: _workspaceActionLabel(context, device, compact),
-              ),
-      ),
-      const SizedBox(width: 5),
-      Builder(
-        builder: (buttonContext) => IconButton(
-          tooltip: context.l10n.t('deviceWorkspaceMore'),
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 28, height: 32),
-          padding: EdgeInsets.zero,
-          onPressed: () => _openWorkspaceMenu(buttonContext, device, session),
-          icon: const Icon(Icons.more_horiz, size: 18),
-        ),
-      ),
-    ],
+  }) => Consumer(
+    builder: (context, ref, _) {
+      final launch = _watchWorkspaceEmulatorLaunch(context, ref, device);
+      final (actionKey, actionIcon) = _workspaceActionAppearance(device, launch);
+      final onPressed = _deviceQuickActionRunning || launch?.starting == true
+          ? null
+          : () => _openWorkspaceDevice(context, device, session);
+      final label = _workspaceActionLabel(
+        context,
+        actionKey,
+        actionIcon,
+        compact,
+      );
+      final style = _workspaceActionStyle(context, device.isOnline);
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Flexible(
+            child: device.isOnline
+                ? FilledButton.tonal(
+                    onPressed: onPressed,
+                    style: style,
+                    child: label,
+                  )
+                : OutlinedButton(
+                    onPressed: onPressed,
+                    style: style,
+                    child: label,
+                  ),
+          ),
+          const SizedBox(width: 5),
+          Builder(
+            builder: (buttonContext) => IconButton(
+              tooltip: context.l10n.t('deviceWorkspaceMore'),
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints.tightFor(width: 28, height: 32),
+              padding: EdgeInsets.zero,
+              onPressed: () => _openWorkspaceMenu(buttonContext, device, session),
+              icon: const Icon(Icons.more_horiz, size: 18),
+            ),
+          ),
+        ],
+      );
+    },
   );
 
   /// 桌面操作保持单行，空间不足时先隐藏图标；窄屏仍允许标签自然换行。
   Widget _workspaceActionLabel(
     BuildContext context,
-    RegisteredDevice device,
+    String actionKey,
+    IconData actionIcon,
     bool compact,
   ) {
-    final label = context.l10n.t(
-      device.isOnline
-          ? 'screenMirror'
-          : device.id.startsWith('emulator-')
-          ? 'deviceWorkspaceStartEmulator'
-          : 'deviceWorkspaceReconnect',
-    );
+    final label = context.l10n.t(actionKey);
     return Tooltip(
       message: label,
       child: LayoutBuilder(
@@ -282,14 +287,7 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (showIcon) ...[
-                Icon(
-                  device.isOnline
-                      ? Icons.ondemand_video_outlined
-                      : device.id.startsWith('emulator-')
-                      ? Icons.play_arrow
-                      : Icons.link,
-                  size: 16,
-                ),
+                Icon(actionIcon, size: 16),
                 const SizedBox(width: 5),
               ],
               Flexible(

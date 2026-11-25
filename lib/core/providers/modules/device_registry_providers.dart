@@ -261,6 +261,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       checkedIds: _checkedIds,
       serialMap: _serialMap,
       emulatorNames: emulatorNames,
+      confirmedEmulatorIds: {
+        for (final entry in emulatorNames.entries)
+          if (_emulators.isConfirmed(entry.key, entry.value)) entry.key,
+      },
       emulatorHistory: _emulators.historyByName,
     );
     // 在线地址回写通道及物理 serial，仅变化时落盘，避免旧快照在重连后恢复。

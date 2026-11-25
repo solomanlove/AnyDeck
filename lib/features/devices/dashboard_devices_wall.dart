@@ -71,14 +71,8 @@ extension _DeviceWallPanel on _DeviceListPanelState {
               device,
               hasAirPlaySession: session != null,
             );
-        final (actionKey, actionIcon) = switch (device.isOnline) {
-          true => ('screenMirror', Icons.ondemand_video_outlined),
-          false when device.id.startsWith('emulator-') => (
-            'deviceWorkspaceStartEmulator',
-            Icons.play_arrow,
-          ),
-          false => ('deviceWorkspaceReconnect', Icons.link),
-        };
+        final launch = _watchWorkspaceEmulatorLaunch(context, ref, device);
+        final (actionKey, actionIcon) = _workspaceActionAppearance(device, launch);
         return Builder(
           builder: (cardContext) => DeviceWallCard(
             key: ValueKey('device-wall-${device.id}'),
@@ -126,7 +120,8 @@ extension _DeviceWallPanel on _DeviceListPanelState {
                           .read(deviceScreenPreviewProvider(device.id).notifier)
                           .cachedBytes
                 : null,
-            busy: _deviceQuickActionRunning && _contextDeviceId == device.id,
+            busy: launch?.starting == true ||
+                (_deviceQuickActionRunning && _contextDeviceId == device.id),
             batchMode: _batchMode,
             selected: device.isChecked,
             selectable: !device.id.startsWith('airplay-'),
@@ -251,7 +246,7 @@ extension _DeviceWallPanel on _DeviceListPanelState {
     _setDeviceQuickActionRunning(true);
     try {
       if (!device.isOnline && device.id.startsWith('emulator-')) {
-        context.goNamed(AppRouteNames.emulators);
+        await _startWorkspaceEmulator(context, device);
       } else if (session != null) {
         await openAirPlayMirrorWindow(
           session,

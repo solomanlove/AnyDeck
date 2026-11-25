@@ -22,6 +22,7 @@ class RegisteredDevice {
     this.isChecked = false,
     this.connections = const [],
     this.emulatorAvdName,
+    this.emulatorAvdConfirmed = false,
     this.connectionHistory = const [],
     this.emulatorIdentityAliases = const {},
     this.serial,
@@ -66,6 +67,9 @@ class RegisteredDevice {
 
   /// Android 模拟器的 AVD 配置名称，供编辑弹窗识别归属。
   final String? emulatorAvdName;
+
+  /// AVD 归属已确认，可以直接启动；旧缓存按镜像特征推测的名称仅供展示。
+  final bool emulatorAvdConfirmed;
 
   /// 模拟器曾用的 ADB 端口及最近上线时间，独立于当前可执行命令的连接。
   final List<EmulatorConnectionHistoryEntry> connectionHistory;
@@ -272,6 +276,7 @@ class RegisteredDevice {
     bool? isChecked,
     List<String>? connections,
     String? emulatorAvdName,
+    bool? emulatorAvdConfirmed,
     List<EmulatorConnectionHistoryEntry>? connectionHistory,
     Set<String>? emulatorIdentityAliases,
     String? serial,
@@ -295,6 +300,7 @@ class RegisteredDevice {
       isChecked: isChecked ?? this.isChecked,
       connections: connections ?? this.connections,
       emulatorAvdName: emulatorAvdName ?? this.emulatorAvdName,
+      emulatorAvdConfirmed: emulatorAvdConfirmed ?? this.emulatorAvdConfirmed,
       connectionHistory: connectionHistory ?? this.connectionHistory,
       emulatorIdentityAliases:
           emulatorIdentityAliases ?? this.emulatorIdentityAliases,

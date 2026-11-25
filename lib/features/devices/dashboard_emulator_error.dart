@@ -22,6 +22,37 @@ String _emulatorErrorSummary(BuildContext context, EmulatorLaunchState launch) {
   return _emulatorErrorText(context, launch);
 }
 
+/// 设备管理与模拟器管理共用完整诊断及复制入口。
+Future<void> _showEmulatorError(
+  BuildContext context,
+  EmulatorLaunchState launch,
+) async {
+  final message = _emulatorErrorText(context, launch);
+  final title = context.l10n.t(
+    launch.isConnectionIssue ? 'emulatorAdbHelp' : 'emulatorViewError',
+  );
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: 640,
+        child: SingleChildScrollView(child: SelectableText(message)),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Clipboard.setData(ClipboardData(text: message)),
+          child: Text(context.l10n.t('emulatorCopyError')),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.t('close')),
+        ),
+      ],
+    ),
+  );
+}
+
 /// 列表中的错误入口；点击可查看、选择和复制完整诊断。
 class _EmulatorErrorButton extends StatelessWidget {
   const _EmulatorErrorButton({required this.launch});
@@ -30,7 +61,6 @@ class _EmulatorErrorButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final message = _emulatorErrorText(context, launch);
     final title = context.l10n.t(launch.isConnectionIssue ? 'emulatorAdbHelp' : 'emulatorViewError');
     return IconButton(
       tooltip: title,
@@ -41,26 +71,7 @@ class _EmulatorErrorButton extends StatelessWidget {
       iconSize: 20,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-      onPressed: () => showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: SizedBox(
-            width: 640,
-            child: SingleChildScrollView(child: SelectableText(message)),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Clipboard.setData(ClipboardData(text: message)),
-              child: Text(context.l10n.t('emulatorCopyError')),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(context.l10n.t('close')),
-            ),
-          ],
-        ),
-      ),
+      onPressed: () => _showEmulatorError(context, launch),
     );
   }
 }

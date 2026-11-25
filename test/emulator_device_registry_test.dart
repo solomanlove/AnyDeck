@@ -43,6 +43,7 @@ void main() {
         final devices = harness.devices;
         if (avds.last.name == 'Api36_4KB') {
           expect(devices.single.emulatorAvdName, 'Api36_16KB');
+          expect(devices.single.emulatorAvdConfirmed, isFalse);
           expect(devices.single.connectionHistory, [
             for (final port in _ports)
               (id: port, connectedAt: null, disconnectedAt: null),
@@ -73,6 +74,7 @@ void main() {
 
     final device = harness.devices.single;
     expect(device.emulatorAvdName, 'Primary');
+    expect(device.emulatorAvdConfirmed, isTrue);
     expect(device.displayName, '测试机');
     expect(device.connectionHistory.map((entry) => entry.id), [
       _ports[0],
@@ -92,6 +94,7 @@ void main() {
     addTearDown(reloaded.dispose);
     await pumpEventQueue();
     expect(reloaded.devices.single.connectionHistory, device.connectionHistory);
+    expect(reloaded.devices.single.emulatorAvdConfirmed, isTrue);
     expect(reloaded.devices.single.displayName, '测试机');
   });
 
@@ -113,6 +116,7 @@ void main() {
       (d) => d.emulatorAvdName == 'Secondary',
     );
     expect(old.isOnline, isFalse);
+    expect(old.emulatorAvdConfirmed, isTrue);
     expect(old.displayName, '旧设备');
     final closedConnection = old.connectionHistory.single;
     expect(closedConnection.id, previousConnection.id);

@@ -225,6 +225,11 @@ class DeviceRegistryEmulators {
     };
   }
 
+  /// 只有当前探测、已持久化的端口归属和由确认记录生成的稳定键可作为启动依据。
+  bool isConfirmed(String id, String name) => _transports.containsKey(id)
+      ? _confirmed[id] == name
+      : id == keyFor(name) || _connectionIndex(name, id) != -1;
+
   /// 每个 AVD 按最近上线时间列出曾用端口，旧端口保留原有顺序。
   Map<String, List<EmulatorConnectionHistoryEntry>> get historyByName {
     final result = <String, Map<String, EmulatorConnectionHistoryEntry>>{};

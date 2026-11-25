@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/router/app_router.dart';
 import 'package:any_deck/app/settings/app_settings_controller.dart';
@@ -8,6 +10,8 @@ import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/device_share/device_share_provider.dart';
 import 'package:any_deck/core/device_share/device_share_service.dart';
+import 'package:any_deck/core/emulator/emulator_process.dart';
+import 'package:any_deck/core/emulator/emulator_service.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';
 import 'package:any_deck/core/ios/ios_mirror_service.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
@@ -30,6 +34,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_adb_service.dart';
 import 'support/dashboard_surface_expectations.dart';
+
+part 'dashboard_device_emulator_cases.dart';
 
 /// 在完整主窗口内验证断点，避免以局部容器宽度代替整窗宽度。
 void main() {
@@ -271,42 +277,7 @@ void main() {
     }
   }
 
-  for (final listMode in [false, true]) {
-    testWidgets('离线模拟器在${listMode ? '列表' : '手机墙'}中显示启动并进入模拟器管理', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 1100);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      final container = await _pumpDashboard(tester);
-      (container.read(deviceRegistryProvider.notifier) as _Registry)
-          .addEmulator();
-      await tester.pumpAndSettle();
-      if (listMode) {
-        await tester.tap(find.byKey(const Key('deviceView-list')));
-        await tester.pumpAndSettle();
-      }
-      final emulator = find.byKey(
-        ValueKey(
-          listMode ? 'device-row-emulator-5554' : 'device-wall-emulator-5554',
-        ),
-      );
-      await tester.tap(
-        find.descendant(of: emulator, matching: find.text('启动')),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        container
-            .read(appRouterProvider)
-            .routeInformationProvider
-            .value
-            .uri
-            .path,
-        '/emulators',
-      );
-      expect(tester.takeException(), isNull);
-    });
-  }
+  _testDeviceEmulatorActions();
 
   testWidgets('批量模式禁用设备墙右键，清除空结果保留视图和已选设备', (tester) async {
     tester.view.physicalSize = const Size(1200, 1100);
@@ -356,14 +327,20 @@ void main() {
 }
 
 class _Registry extends DeviceRegistryNotifier {
-  void addEmulator() {
+  void setEmulator({
+    String? avdName,
+    bool confirmed = false,
+    bool online = false,
+  }) {
     state = [
-      ...state,
-      const RegisteredDevice(
+      ...state.where((device) => device.id != 'emulator-5554'),
+      RegisteredDevice(
         id: 'emulator-5554',
         model: 'Android Emulator',
-        status: 'offline',
-        isOnline: false,
+        status: online ? 'device' : 'offline',
+        isOnline: online,
+        emulatorAvdName: avdName,
+        emulatorAvdConfirmed: confirmed,
       ),
     ];
   }
@@ -430,6 +407,9 @@ Future<ProviderContainer> _pumpDashboard(
   String language = 'zh',
   Brightness brightness = Brightness.light,
   double textScale = 1,
+  EmulatorService? emulatorService,
+  Map<String, DiscoveredDevice> Function()? emulatorConnections,
+  List<DiscoveredDevice> discovered = const [],
 }) async {
   SharedPreferences.setMockInitialValues({});
   // 像素采样进入真实异步，使用内存共享服务隔离磁盘与 UDP 初始化。
@@ -446,7 +426,7 @@ Future<ProviderContainer> _pumpDashboard(
       adbServiceProvider.overrideWithValue(adb),
       deviceShareServiceProvider.overrideWithValue(sharing),
       iosDeviceServiceProvider.overrideWithValue(_Ios()),
-      discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
+      discoveredDevicesProvider.overrideWith((ref) => Stream.value(discovered)),
       deviceRegistryProvider.overrideWith(_Registry.new),
       runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
       for (final id in ['responsive-alpha', 'responsive-beta'])
@@ -465,7 +445,11 @@ Future<ProviderContainer> _pumpDashboard(
         (ref) async => DesktopAutoStartStatus.disabled,
       ),
       emulatorListProvider.overrideWith((ref) async => []),
-      emulatorConnectionsProvider.overrideWith((ref) async => {}),
+      if (emulatorService != null)
+        emulatorServiceProvider.overrideWithValue(emulatorService),
+      emulatorConnectionsProvider.overrideWith(
+        (ref) async => emulatorConnections?.call() ?? {},
+      ),
     ],
   );
   addTearDown(() async {
