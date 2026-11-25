@@ -6,6 +6,7 @@ import '../adb/discovered_device.dart';
 import '../adb/adb_result.dart';
 import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
+import '../process/tool_path_settings.dart';
 import 'ios_device_identity.dart';
 import 'ios_command_service.dart';
 import 'ios_connection_type.dart';
@@ -50,6 +51,9 @@ class IosDeviceService {
     }
 
     final exe = _resolveBinary();
+    // go-ios 是可选依赖，未找到可执行文件时直接返回空设备列表。
+    if (!await isToolPathAvailable('ios', exe)) return [];
+
     Process? process;
     try {
       process = await Process.start(exe, ['list', '--details']);
@@ -163,7 +167,6 @@ class IosDeviceService {
   /// 自动下载并挂载 iOS 开发者镜像 (Developer Disk Image)
   Future<AdbResult> mountDeveloperImage(String udid) async {
     final exe = _resolveBinary();
-    _onLog?.call('正在为 iOS 设备挂载开发者镜像: $exe image auto --udid=$udid', tag: 'ios', level: 'I');
     try {
       // 与截图、WDA 共用绝对缓存路径和超时进程回收，不依赖桌面启动目录。
       final commands = IosCommandService(executable: exe, onLog: _onLog);

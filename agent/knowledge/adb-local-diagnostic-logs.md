@@ -100,3 +100,9 @@ flutter analyze --no-pub lib/core/logging lib/main.dart lib/app/window/console/c
 - 布局：独立窗口移除导出后的 `Spacer`，改为 8px 固定间距，搜索框改用 `Expanded`，窗口扩宽时工具组保持右侧位置。
 - 验证：`console_diagnostics_test.dart` 10 项通过，覆盖两种布局与明暗主题的导出尺寸/交互样式、900→1100px 搜索伸缩及原有筛选导出菜单。`console_dock_test.dart` 6 项通过，定向 `flutter analyze --no-pub` 与 `git diff --check` 通过。
 - 人工边界：未启动桌面 App；实际窗口 DPI 下的 Hover / 点击水波纹仍需目视验收。改动仅涉及 Toolbar 展示，复用既有文案和状态，不新增后台进程、Provider 或跨 Isolate 协议，不涉及投屏数据流。
+
+## 2026-11-25 可选工具缺失时的设备发现
+
+HDC 和 go-ios 的设备发现保留 Rust DAL 优先路径。进入 CLI 回退前复用核心依赖的文件和执行权限校验。工具缺失或不可执行时返回空设备列表，无需启动 CLI，也不会写入轮询命令或启动失败日志。每次发现重新检查路径，安装工具或更新路径后可在下次发现恢复。可用工具的实际查询失败仍记录日志，HDC 也保留详细列表失败后查询普通列表的兼容逻辑。回归见 `test/optional_device_tool_discovery_test.dart`。
+
+HDC 和 iOS 命令在进程启动后记录命令，缺失工具时仍向调用方返回启动失败。HDC 无线重连共用此行为，工具存在但启动失败时保留错误日志。

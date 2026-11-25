@@ -8,6 +8,7 @@ import '../adb/adb_result.dart';
 import '../dal/device_driver.dart';
 import '../dal/rust_dal_bridge.dart';
 import '../process/tool_path_resolver.dart';
+import '../process/tool_path_settings.dart';
 
 import 'hdc_service_device_info.dart';
 import 'hdc_screenshot_capture.dart';
@@ -51,6 +52,9 @@ class HdcService {
     }
 
     if (rawTargets.isEmpty) {
+      // HDC 是可选依赖，轮询时跳过不可执行的 CLI，避免反复记录启动失败。
+      if (!await isToolPathAvailable('hdc', executable)) return [];
+
       final vResult = await run(['list', 'targets', '-v']);
       if (vResult.isSuccess && vResult.stdout.isNotEmpty) {
         rawTargets = parseConnectedTargetsWithStatus(vResult.stdout);
@@ -119,10 +123,10 @@ class HdcService {
     Duration timeout = const Duration(seconds: 15),
   }) async {
     final cmdStr = 'hdc ${args.join(' ')}';
-    _onLog?.call(cmdStr, tag: 'hdc', level: 'I');
     Process? process;
     try {
       process = await Process.start(executable, args);
+      _onLog?.call(cmdStr, tag: 'hdc', level: 'I');
       final stdoutFuture = process.stdout.transform(utf8.decoder).join();
       final stderrFuture = process.stderr.transform(utf8.decoder).join();
       final exitCode = await process.exitCode.timeout(timeout);
@@ -159,7 +163,9 @@ class HdcService {
         stderr: errorMsg,
       );
     } on ProcessException catch (error) {
-      _onLog?.call('Process error: ${error.message}', tag: 'hdc', level: 'E');
+      if (await isToolPathAvailable('hdc', error.executable)) {
+        _onLog?.call('Process error: ${error.message}', tag: 'hdc', level: 'E');
+      }
       return AdbResult(exitCode: 127, stdout: '', stderr: error.message);
     }
   }
@@ -323,10 +329,10 @@ class HdcService {
   }
 
   /// 启动 HDC 外部进程。
-  Future<Process> start(List<String> args) {
-    final cmdStr = 'hdc ${args.join(' ')}';
-    _onLog?.call(cmdStr, tag: 'hdc', level: 'I');
-    return Process.start(executable, args);
+  Future<Process> start(List<String> args) async {
+    final process = await Process.start(executable, args);
+    _onLog?.call('hdc ${args.join(' ')}', tag: 'hdc', level: 'I');
+    return process;
   }
 
   /// 向 HarmonyOS 设备推送文件或目录。

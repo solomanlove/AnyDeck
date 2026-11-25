@@ -61,8 +61,8 @@ class IosCommandService {
     Process? process;
     try {
       args = await _developerImageCache.prepare(args);
-      _onLog?.call('ios ${_displayArgs(args)}', tag: 'ios', level: 'I');
       process = await Process.start(executable, args);
+      _onLog?.call('ios ${_displayArgs(args)}', tag: 'ios', level: 'I');
       final stdoutFuture = process.stdout
           .transform(const Utf8Decoder(allowMalformed: true))
           .join();
@@ -111,9 +111,10 @@ class IosCommandService {
   }
 
   /// 启动需要由页面持有并回收的持续输出命令。
-  Future<Process> start(List<String> args) {
+  Future<Process> start(List<String> args) async {
+    final process = await Process.start(executable, args);
     _onLog?.call('ios ${_displayArgs(args)}', tag: 'ios', level: 'I');
-    return Process.start(executable, args);
+    return process;
   }
 
   Future<List<IosAppInfo>> listApps(String udid) async {
