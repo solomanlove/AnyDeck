@@ -65,7 +65,7 @@ class DeviceRegistryMerger {
       final connectionHistory = emulatorHistory[avdName] ??
           <EmulatorConnectionHistoryEntry>[
             if (EmulatorConnectionService.isTransport(id))
-              (id: id, connectedAt: null),
+              (id: id, connectedAt: null, disconnectedAt: null),
           ];
       final cachedModel = models[id];
       final cachedProduct = products[id];

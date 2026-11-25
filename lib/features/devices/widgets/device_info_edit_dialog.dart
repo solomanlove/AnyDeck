@@ -228,7 +228,7 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
               ),
               if (widget.device.connectionHistory.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                DeviceConnectionHistory(device: widget.device),
+                DeviceConnectionHistory(device: _watchConnectionHistory()),
               ],
             ],
           ),
@@ -279,6 +279,17 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
         ),
       ],
     );
+  }
+
+  /// 按 AVD 订阅连接变化，端口复用后仍显示原模拟器的历史。
+  RegisteredDevice _watchConnectionHistory() {
+    final original = widget.device;
+    final name = original.emulatorAvdName;
+    return ref.watch(deviceRegistryProvider.select((devices) => devices
+        .where((device) => name == null
+            ? device.id == original.id
+            : device.emulatorAvdName == name)
+        .firstOrNull)) ?? original.copyWith(isOnline: false);
   }
 
   /// 构建设备硬件与网络详细信息卡片

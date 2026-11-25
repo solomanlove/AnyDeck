@@ -44,7 +44,8 @@ void main() {
         if (avds.last.name == 'Api36_4KB') {
           expect(devices.single.emulatorAvdName, 'Api36_16KB');
           expect(devices.single.connectionHistory, [
-            for (final port in _ports) (id: port, connectedAt: null),
+            for (final port in _ports)
+              (id: port, connectedAt: null, disconnectedAt: null),
           ]);
           expect(devices.single.isOnline, isFalse);
         } else {
@@ -81,6 +82,8 @@ void main() {
       device.connectionHistory.every((entry) => entry.connectedAt != null),
       isTrue,
     );
+    expect(device.connectionHistory.first.disconnectedAt, isNotNull);
+    expect(device.connectionHistory.last.disconnectedAt, isNull);
     expect(device.connections, [_ports[1]]);
     expect(device.preferredCommandId, _ports[1]);
     expect(harness.adb.probes, 2);
@@ -111,9 +114,16 @@ void main() {
     );
     expect(old.isOnline, isFalse);
     expect(old.displayName, '旧设备');
-    expect(old.connectionHistory, [previousConnection]);
+    final closedConnection = old.connectionHistory.single;
+    expect(closedConnection.id, previousConnection.id);
+    expect(closedConnection.connectedAt, previousConnection.connectedAt);
+    expect(
+      closedConnection.disconnectedAt,
+      current.connectionHistory.single.connectedAt,
+    );
     expect(current.connectionHistory.single.id, port);
     expect(current.connectionHistory.single.connectedAt, isNotNull);
+    expect(current.connectionHistory.single.disconnectedAt, isNull);
     expect(current.customName, isNull);
     expect(current.isOnline, isTrue);
     expect(current.preferredCommandId, port);
@@ -124,7 +134,7 @@ void main() {
     expect(harness.devices.single.emulatorAvdName, 'Secondary');
   });
 
-  test('时间兼容旧缓存，只在实际观察到上线时更新并持久化', () async {
+  test('起止时间兼容旧缓存并按连接状态更新，结束后可重载', () async {
     final previous = DateTime.utc(2025, 1, 1, 10);
     final port = _ports[0];
     SharedPreferences.setMockInitialValues({
@@ -139,13 +149,17 @@ void main() {
     addTearDown(harness.dispose);
     await pumpEventQueue();
     expect(harness.devices.single.connectionHistory, [
-      (id: _ports[1], connectedAt: null),
-      (id: _ports[2], connectedAt: null),
-      (id: port, connectedAt: previous),
+      (id: _ports[1], connectedAt: null, disconnectedAt: null),
+      (id: _ports[2], connectedAt: null, disconnectedAt: null),
+      (id: port, connectedAt: previous, disconnectedAt: null),
     ]);
 
     await harness.connect(port, 'Primary', '1', status: 'unauthorized');
     expect(harness.devices.single.connectionHistory.last.connectedAt, previous);
+    expect(
+      harness.devices.single.connectionHistory.last.disconnectedAt,
+      isNull,
+    );
 
     final before = DateTime.now().toUtc();
     await harness.connect(port, 'Primary', '1');
@@ -154,18 +168,48 @@ void main() {
     expect(newTime.isAfter(DateTime.now().toUtc()), isFalse);
 
     await harness.connect(port, 'Primary', '1');
-    await harness.connect(port, 'Primary', '1', status: 'offline');
     expect(harness.devices.single.connectionHistory.last.connectedAt, newTime);
+    expect(
+      harness.devices.single.connectionHistory.last.disconnectedAt,
+      isNull,
+    );
+
+    final beforeDisconnect = DateTime.now().toUtc();
+    await harness.connect(port, 'Primary', '1', status: 'offline');
+    final stopped = harness.devices.single.connectionHistory.last;
+    final end = stopped.disconnectedAt!;
+    expect(stopped.connectedAt, newTime);
+    expect(end.isBefore(beforeDisconnect), isFalse);
+    expect(end.isAfter(DateTime.now().toUtc()), isFalse);
+    await harness.connect(port, 'Primary', '1', status: 'offline');
+    expect(harness.devices.single.connectionHistory.last, stopped);
+
     final stored = await SharedPreferences.getInstance();
     expect(
       stored.getStringList('devices.emulatorConnections.v1'),
-      contains(jsonEncode(['Primary', port, newTime.toIso8601String()])),
+      contains(
+        jsonEncode([
+          'Primary',
+          port,
+          newTime.toIso8601String(),
+          end.toIso8601String(),
+        ]),
+      ),
     );
+    final reloaded = _Registry([]);
+    addTearDown(reloaded.dispose);
+    await pumpEventQueue();
+    expect(reloaded.devices.single.connectionHistory.last, stopped);
 
     await harness.connect(port, 'Primary', '2');
-    final reconnectedAt =
-        harness.devices.single.connectionHistory.last.connectedAt!;
-    expect(reconnectedAt.isAfter(newTime), isTrue);
+    final reconnected = harness.devices.single.connectionHistory.last;
+    expect(reconnected.connectedAt!.isAfter(newTime), isTrue);
+    expect(reconnected.disconnectedAt, isNull);
+    await harness.disconnect();
+    expect(
+      harness.devices.single.connectionHistory.last.disconnectedAt,
+      isNotNull,
+    );
   });
 
   test('旧 transport 的迟到查询不会覆盖复用端口的新身份', () async {
@@ -226,6 +270,11 @@ class _Registry {
         product: _product,
       ),
     ]);
+    await pumpEventQueue();
+  }
+
+  Future<void> disconnect() async {
+    stream.add(const []);
     await pumpEventQueue();
   }
 

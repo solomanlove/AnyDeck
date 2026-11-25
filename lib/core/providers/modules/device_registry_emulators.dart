@@ -8,7 +8,12 @@ import '../../emulator/android_emulator.dart';
 import '../../emulator/emulator_connection.dart';
 import 'device_registry_storage.dart';
 
-typedef _Connection = ({String name, String id, DateTime? connectedAt});
+typedef _Connection = ({
+  String name,
+  String id,
+  DateTime? connectedAt,
+  DateTime? disconnectedAt,
+});
 typedef _Transport = ({String? transportId, String status});
 
 /// 保存 AVD 与已见端口的关联，支持同一端口被另一个 AVD 复用。
@@ -39,21 +44,23 @@ class DeviceRegistryEmulators {
     final prefs = await SharedPreferences.getInstance();
     for (final entry in prefs.getStringList(_historyKey) ?? const <String>[]) {
       try {
-        final pair = jsonDecode(entry);
-        if (pair is! List || (pair.length != 2 && pair.length != 3)) continue;
-        final name = pair[0];
-        final id = pair[1];
-        final time = pair.length == 3 ? pair[2] : null;
+        final fields = jsonDecode(entry);
+        if (fields is! List || fields.length < 2 || fields.length > 4) continue;
+        final name = fields[0];
+        final id = fields[1];
         if (name is String &&
             id is String &&
             EmulatorConnectionService.isAvdName(name) &&
             EmulatorConnectionService.isTransport(id)) {
+          final start = _parseTime(fields.elementAtOrNull(2));
+          final end = _parseTime(fields.elementAtOrNull(3));
           _history.add((
             name: name,
             id: id,
-            connectedAt: time is String
-                ? DateTime.tryParse(time)?.toUtc()
-                : null,
+            connectedAt: start,
+            disconnectedAt: end != null && start != null && end.isBefore(start)
+                ? null
+                : end,
           ));
         }
       } on FormatException {
@@ -69,9 +76,8 @@ class DeviceRegistryEmulators {
       final inventory = await listConfigured();
       for (final id in unboundIds) {
         final product = data.products[id];
-        final match = RegExp(
-          r'^sdk_gphone(16k|64)_(arm64|x86_64)$',
-        ).firstMatch(product ?? '');
+        final match = RegExp(r'^sdk_gphone(16k|64)_(arm64|x86_64)$')
+            .firstMatch(product ?? '');
         final sdk = data.sdkVersions[id];
         if (match == null ||
             sdk == null ||
@@ -94,7 +100,10 @@ class DeviceRegistryEmulators {
     _preferences = prefs;
   }
 
-  /// 每个 transport 代次只探测一次；连接变化时忽略旧查询的返回值。
+  static DateTime? _parseTime(Object? value) =>
+      value is String ? DateTime.tryParse(value)?.toUtc() : null;
+
+  /// 每个 transport 代次只探测一次；连接变化时结束旧会话并忽略迟到的查询。
   void observe(
     List<DiscoveredDevice> devices,
     EmulatorConnectionService connection,
@@ -109,17 +118,35 @@ class DeviceRegistryEmulators {
             EmulatorConnectionService.isTransport(device.id))
           device.id: (transportId: device.transportId, status: device.status),
     };
-    for (final id in _transports.keys.toList()) {
-      if (current[id] == _transports[id]) continue;
-      _confirmed.remove(id);
+    final observedAt = DateTime.now().toUtc();
+    var endedConnection = false;
+    for (final entry in _transports.entries) {
+      final id = entry.key;
+      if (current[id] == entry.value) continue;
+      final name = _confirmed.remove(id);
       _queries.remove(id);
+      if (entry.value.status == 'device' &&
+          name != null &&
+          _endConnection(name, id, observedAt)) {
+        endedConnection = true;
+      }
     }
+    if (endedConnection) unawaited(_save());
     for (final device in devices) {
       final transport = current[device.id];
       if (transport == null || transport == _transports[device.id]) continue;
       final token = Object();
       _queries[device.id] = token;
-      unawaited(_identify(connection, device, token, onChanged, isActive));
+      unawaited(
+        _identify(
+          connection,
+          device,
+          token,
+          onChanged,
+          isActive,
+          device.isOnline ? observedAt : null,
+        ),
+      );
     }
     _transports
       ..clear()
@@ -132,9 +159,8 @@ class DeviceRegistryEmulators {
     Object token,
     void Function(String id, String? previousName, String name) onChanged,
     bool Function() isActive,
+    DateTime? connectedAt,
   ) async {
-    // 按发现在线快照的时刻记账，设备身份确认的耗时不会计入连接时间。
-    final observedAt = device.isOnline ? DateTime.now().toUtc() : null;
     String? name;
     try {
       name = await connection.identify(device);
@@ -150,19 +176,39 @@ class DeviceRegistryEmulators {
         _legacy[device.id];
     _confirmed[device.id] = name;
     _legacy.remove(device.id);
-    final previousIndex = _history.lastIndexWhere(
-      (entry) => entry.name == name && entry.id == device.id,
-    );
+    final previousIndex = _connectionIndex(name, device.id);
     final previous = previousIndex == -1
         ? null
         : _history.removeAt(previousIndex);
     _history.add((
       name: name,
       id: device.id,
-      connectedAt: observedAt ?? previous?.connectedAt,
+      // 使用发现快照的时间，排除 AVD 身份查询耗时。
+      connectedAt: connectedAt ?? previous?.connectedAt,
+      disconnectedAt: connectedAt == null ? previous?.disconnectedAt : null,
     ));
     unawaited(_save());
     onChanged(device.id, previousName, name);
+  }
+
+  int _connectionIndex(String name, String id) =>
+      _history.lastIndexWhere((entry) => entry.name == name && entry.id == id);
+
+  bool _endConnection(String name, String id, DateTime time) {
+    final index = _connectionIndex(name, id);
+    if (index == -1) return false;
+    final entry = _history[index];
+    final start = entry.connectedAt;
+    if (start == null || entry.disconnectedAt != null) return false;
+
+    // 系统时间向后调整时，时长最低为零。
+    _history[index] = (
+      name: name,
+      id: id,
+      connectedAt: start,
+      disconnectedAt: time.isBefore(start) ? start : time,
+    );
+    return true;
   }
 
   /// 当前传输必须经本轮确认，离线传输使用最后一次已知归属。
@@ -186,12 +232,14 @@ class DeviceRegistryEmulators {
       result.putIfAbsent(entry.value, () => {})[entry.key] = (
         id: entry.key,
         connectedAt: null,
+        disconnectedAt: null,
       );
     }
     for (final entry in _history) {
       result.putIfAbsent(entry.name, () => {})[entry.id] = (
         id: entry.id,
         connectedAt: entry.connectedAt,
+        disconnectedAt: entry.disconnectedAt,
       );
     }
     return result.map((name, ports) {
@@ -234,7 +282,10 @@ class DeviceRegistryEmulators {
         jsonEncode([
           entry.name,
           entry.id,
-          if (entry.connectedAt != null) entry.connectedAt!.toIso8601String(),
+          if (entry.connectedAt != null || entry.disconnectedAt != null)
+            entry.connectedAt?.toIso8601String(),
+          if (entry.disconnectedAt != null)
+            entry.disconnectedAt!.toIso8601String(),
         ]),
     ];
     return _writes = _writes.then((_) async {
