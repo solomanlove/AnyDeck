@@ -49,6 +49,7 @@ class DeviceGroupFilter extends ConsumerWidget {
       tooltip: context.l10n.t('deviceGroupFilter'),
       enabled: !data.isLoading,
       matchButtonWidth: true,
+      menuPadding: EdgeInsets.zero,
       onSelected: (value) {
         if (value == '__retry') {
           ref.invalidate(deviceGroupsProvider);
@@ -84,7 +85,7 @@ class DeviceGroupFilter extends ConsumerWidget {
             label: group.name,
             ellipsize: !group.isBuiltIn,
           ),
-        const PopupMenuDivider(),
+        const PopupMenuDivider(indent: 6, endIndent: 6),
         if (data.hasError)
           _menuItem(
             context,
@@ -170,7 +171,7 @@ class DeviceGroupFilter extends ConsumerWidget {
       key: key,
       value: value,
       height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Semantics(
         selected: selected,
         child: Row(

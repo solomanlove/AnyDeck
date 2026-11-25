@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_icon.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
@@ -13,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _groupButton = Key('deviceGroupFilter');
+const _menuCanvas = Key('deviceGroupMenuTestCanvas');
 const _customName = '用于验证窄窗口内超长名称显示的自定义设备分组';
 
 /// 使用固定分组快照，验证菜单时不访问磁盘或设备服务。
@@ -30,6 +33,68 @@ class _MenuStore extends DeviceGroupsStore {
 
 /// 比较真实菜单的外观与交互，不依赖共享样式组件的内部实现。
 void main() {
+  for (final brightness in Brightness.values) {
+    testWidgets('分组水波纹铺满整行并按菜单外框裁切 ${brightness.name}', (tester) async {
+      await _pumpMenus(
+        tester,
+        language: 'zh',
+        brightness: brightness,
+        store: _MenuStore(),
+        onChanged: (_) {},
+      );
+      await _openGroup(tester);
+      final first = tester.getRect(_entry(''));
+      final last = tester.getRect(find.byKey(const Key('deviceGroupManage')));
+      final menu = tester.getRect(_surface(_entry('')));
+      final samples = [
+        menu.topLeft + const Offset(1, 1),
+        menu.topCenter + const Offset(0, 2),
+        Offset(menu.left + 2, first.bottom - 2),
+        Offset(menu.left + 2, first.bottom + 2),
+        Offset(menu.left + 2, last.top + 2),
+        menu.bottomCenter - const Offset(0, 2),
+        menu.bottomLeft + const Offset(1, -2),
+      ];
+
+      final mouse = await tester.createGesture(
+        kind: ui.PointerDeviceKind.mouse,
+      );
+      await mouse.addPointer(location: const Offset(4, 4));
+      addTearDown(mouse.removePointer);
+      await tester.pumpAndSettle();
+      final idle = await _menuPixels(tester, samples);
+
+      await mouse.moveTo(first.center);
+      await tester.pumpAndSettle();
+      final firstHover = await _menuPixels(tester, samples);
+      expect(firstHover[0], idle[0], reason: '首项的顶部外角由菜单圆角裁切');
+      expect(firstHover[1], isNot(idle[1]), reason: '首项高亮铺到菜单上沿');
+      expect(firstHover[2], isNot(idle[2]), reason: '首项底角直切并铺到菜单左沿');
+      expect(firstHover[3], idle[3], reason: '高亮止于当前菜单项');
+
+      await mouse.moveTo(last.center);
+      await tester.pumpAndSettle();
+      final lastHover = await _menuPixels(tester, samples);
+      expect(lastHover[4], isNot(idle[4]), reason: '末项顶角直切并铺到菜单左沿');
+      expect(lastHover[5], isNot(idle[5]), reason: '末项高亮铺到菜单下沿');
+      expect(lastHover[6], idle[6], reason: '末项的底部外角由菜单圆角裁切');
+
+      await mouse.moveTo(const Offset(4, 4));
+      await tester.pumpAndSettle();
+      final touch = await tester.startGesture(first.center);
+      try {
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
+        final pressed = await _menuPixels(tester, samples);
+        expect(pressed[0], idle[0], reason: '按压水波纹同样受外框圆角裁切');
+        expect(pressed[1], isNot(idle[1]), reason: '按压水波纹铺到菜单上沿');
+        expect(pressed[2], isNot(idle[2]), reason: '按压水波纹铺到首项底角');
+      } finally {
+        await touch.cancel();
+      }
+    });
+  }
+
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
       testWidgets('窄窗口分组浮窗与全宽入口两侧对齐 $language ${brightness.name}', (
@@ -250,6 +315,29 @@ void main() {
   }
 }
 
+/// 检查 Material 交互高亮实际绘制的位置，保留边框和抗锯齿。
+Future<List<int>> _menuPixels(WidgetTester tester, List<Offset> points) async {
+  final boundary = tester.renderObject<RenderRepaintBoundary>(
+    find.byKey(_menuCanvas),
+  );
+  return (await tester.runAsync(() async {
+    final image = await boundary.toImage();
+    try {
+      final bytes = (await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      ))!;
+      return [
+        for (final point in points.map(boundary.globalToLocal))
+          bytes.getUint32(
+            (point.dy.floor() * image.width + point.dx.floor()) * 4,
+          ),
+      ];
+    } finally {
+      image.dispose();
+    }
+  }))!;
+}
+
 Finder _entry(String id) => id.isEmpty
     ? find.byWidgetPredicate(
         (widget) => widget is PopupMenuItem<String> && widget.value == '',
@@ -370,7 +458,7 @@ Future<void> _pumpMenus(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context)
               .copyWith(textScaler: TextScaler.linear(scale)),
-          child: child!,
+          child: RepaintBoundary(key: _menuCanvas, child: child!),
         ),
         home: Scaffold(
           body: StatefulBuilder(
