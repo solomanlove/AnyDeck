@@ -16,6 +16,7 @@ class StubAdbService extends AdbService {
     this.displayOutput,
     this.deviceStatesOutput,
     this.wmSizeOutput,
+    this.pageSizeOutput,
   });
 
   final bool shouldFail;
@@ -25,6 +26,7 @@ class StubAdbService extends AdbService {
   final String? displayOutput;
   final String? deviceStatesOutput;
   final String? wmSizeOutput;
+  final String? pageSizeOutput;
 
   @override
   Future<AdbResult> run(
@@ -39,9 +41,13 @@ class StubAdbService extends AdbService {
       );
     }
     if (args.any((arg) => arg.contains('cat /proc/meminfo'))) {
+      final pageSizeSection =
+          args.last.contains('getconf PAGE_SIZE') && pageSizeOutput != null
+          ? '===PAGESIZE===\n$pageSizeOutput\n'
+          : '';
       return AdbResult(
         exitCode: 0,
-        stdout: '===MEMINFO===\n${meminfoOutput ?? ""}\n===DF===\n'
+        stdout: '$pageSizeSection===MEMINFO===\n${meminfoOutput ?? ""}\n===DF===\n'
             '===BATTERY===\n${batteryOutput ?? ""}\n===IP===\n'
             '===DEVICESTATES===\n${deviceStatesOutput ?? ""}\n'
             '===WMSIZE===\n${wmSizeOutput ?? ""}\n',
@@ -252,6 +258,41 @@ void main() {
     setUp(() {
       SharedPreferences.setMockInitialValues({});
     });
+
+    test('在线刷新时更新同一设备的页大小，离线时保留最后实测值', () async {
+      const deviceId = 'page-size-device';
+      final firstService = DeviceInfoService(
+        StubAdbService(pageSizeOutput: ' 4096\r\n'),
+      );
+      await firstService.saveToCache(deviceId, DeviceOverview.fromJson({}));
+      expect((await firstService.loadFromCache(deviceId))?.pageSizeBytes, isNull);
+      expect((await firstService.loadOverview(deviceId)).pageSizeBytes, 4096);
+
+      final secondService = DeviceInfoService(
+        StubAdbService(pageSizeOutput: '16384'),
+      );
+      expect((await secondService.loadOverview(deviceId)).pageSizeBytes, 16384);
+
+      final offlineService = DeviceInfoService(StubAdbService(shouldFail: true));
+      final cached = await offlineService.loadOverview(deviceId);
+      expect(cached.toJson()['pageSizeBytes'], 16384);
+      expect(cached.copyWith(name: '新名称').pageSizeBytes, 16384);
+    });
+
+    for (final output in [null, '', 'getconf: not found', '8192']) {
+      test('没有识别到页大小时保留其他概览信息（${output ?? "缺少区块"}）', () async {
+        final service = DeviceInfoService(
+          StubAdbService(
+            pageSizeOutput: output,
+            meminfoOutput: 'MemTotal: 8388608 kB',
+          ),
+        );
+        final overview = await service.loadOverview('unknown-page-size');
+        expect(overview.pageSizeBytes, isNull);
+        expect(overview.memory, '8.00G');
+        expect(overview.toJson(), isNot(contains('pageSizeBytes')));
+      });
+    }
 
     test('Android 概览从组合 shell 输出读取电量和充电状态', () async {
       final service = DeviceInfoService(

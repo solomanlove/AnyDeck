@@ -9,7 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 验证厂商系统版本和原生 Android 兜底，隔离真实设备查询与桌面插件。
+/// 验证 Android 专属概览字段与平台隔离，避免真实设备查询。
 void main() {
   for (final language in ['zh', 'en']) {
     for (final brightness in [Brightness.light, Brightness.dark]) {
@@ -65,6 +65,7 @@ void main() {
             brightness: brightness,
             customOs: 'One UI 9.0',
             platform: platform,
+            pageSizeBytes: 16384,
           );
 
           expect(find.text('One UI 9.0'), findsNothing);
@@ -76,10 +77,41 @@ void main() {
             find.text(language == 'zh' ? '原生 Android' : 'Stock Android'),
             findsNothing,
           );
+          expect(find.text('16 KB'), findsNothing);
+          expect(
+            find.text(language == 'zh' ? '内存页大小' : 'Memory page size'),
+            findsNothing,
+          );
           expect(tester.takeException(), isNull);
         });
       }
     }
+  }
+
+  for (final (language, bytes, label, value, kernelLabel) in [
+    ('zh', 4096, '内存页大小', '4 KB', '内核版本'),
+    ('en', 16384, 'Memory page size', '16 KB', 'Kernel version'),
+    ('zh', null, '内存页大小', '未知', '内核版本'),
+    ('en', null, 'Memory page size', 'Unknown', 'Kernel version'),
+  ]) {
+    testWidgets('$language 展示内存页大小 $value', (tester) async {
+      await _pumpOverview(
+        tester,
+        language: language,
+        brightness: language == 'zh' ? Brightness.light : Brightness.dark,
+        customOs: '-',
+        width: language == 'zh' ? 1000 : 400,
+        pageSizeBytes: bytes,
+      );
+      final pageSizeLabel = find.text(label);
+      expect(pageSizeLabel, findsOneWidget);
+      expect(find.text(value), findsOneWidget);
+      expect(
+        tester.getTopLeft(pageSizeLabel).dy,
+        greaterThan(tester.getTopLeft(find.text(kernelLabel)).dy),
+      );
+      expect(tester.takeException(), isNull);
+    });
   }
 }
 
@@ -90,8 +122,10 @@ Future<void> _pumpOverview(
   required Brightness brightness,
   required String customOs,
   String platform = 'android',
+  double width = 1000,
+  int? pageSizeBytes,
 }) async {
-  tester.view.physicalSize = const Size(1000, 1400);
+  tester.view.physicalSize = Size(width, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final isHarmony = platform == 'harmony';
@@ -134,6 +168,7 @@ Future<void> _pumpOverview(
                   ? 'iOS 18'
                   : 'Android 17 (API 37)',
               'customOs': customOs,
+              'pageSizeBytes': ?pageSizeBytes,
             }),
             onRefresh: () {},
           ),

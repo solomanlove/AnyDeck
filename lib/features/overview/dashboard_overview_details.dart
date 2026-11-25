@@ -4,6 +4,7 @@ part of '../dashboard_screen.dart';
 extension _OverviewDetails on DeviceOverviewContent {
   List<_OverviewDetailData> _systemNetworkItems(BuildContext context) {
     if (device.isIos) return _iosSystemItems(context, overview);
+    final pageSizeBytes = overview.pageSizeBytes;
     return [
       _OverviewDetailData(
         label: context.l10n.t(
@@ -17,6 +18,13 @@ extension _OverviewDetails on DeviceOverviewContent {
         label: context.l10n.t('kernelVersion'),
         value: overview.kernelVersion,
       ),
+      if (!device.isHarmony)
+        _OverviewDetailData(
+          label: context.l10n.t('memoryPageSize'),
+          value: pageSizeBytes == null
+              ? context.l10n.t('memoryPageSizeUnknown')
+              : '${pageSizeBytes ~/ 1024} KB',
+        ),
       _OverviewDetailData(label: context.l10n.t('wifi'), value: overview.wifi),
       _OverviewDetailData(
         label: context.l10n.t('ipAddress'),

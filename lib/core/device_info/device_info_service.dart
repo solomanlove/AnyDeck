@@ -41,6 +41,8 @@ class DeviceInfoService {
       final basicScript = '''
 echo "===UNAME==="
 uname -r
+echo "===PAGESIZE==="
+getconf PAGE_SIZE 2>/dev/null
 echo "===NPROC==="
 nproc
 echo "===WMSIZE==="
@@ -198,6 +200,11 @@ settings get global debug_view_attributes
         customOs: AndroidVersionHelper.getCustomOsVersion(properties) ?? '-',
         deviceCode: AndroidVersionHelper.getDeviceCodename(properties) ?? '-',
         kernelVersion: kernel,
+        pageSizeBytes: switch (basicSections['PAGESIZE']) {
+          '4096' => 4096,
+          '16384' => 16384,
+          _ => null,
+        },
         processor: _formatProcessor(deviceCode, cores, abi),
         storage: storage,
         memory: memory.total,

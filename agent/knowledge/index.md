@@ -16,6 +16,7 @@
 | `adb-device-workspace-diagnostics` | 设备墙与全局服务诊断 | active | 紧凑手机墙/列表、在线设备预览进入工作区与独立投屏按钮、完整版本与横排多通道状态、设备墙连接短名与离线提示精简、截图居中铺满与品牌封面白底、恢复原侧栏与主题隔离、图标连接菜单、原品牌Logo与设备标签、可见设备自动截图与有界并发、显式批量选择、本机IP状态栏与标题栏共用背景及图文同色、十二项服务的单项与全量检查、开发者入口复用与验证边界 | `features/devices/`, `features/diagnostics/`, `core/diagnostics/` |
 | `adb-device-batch-toolbar` | 设备批量管理单行工具栏 | active | 设备列表与设备墙贴边布局、批量工具栏满宽居左与中性色配色、筛选/视图/分组与批量选中灰色统一、固定顺序直接操作、全选计数与三态、列表表头原位替换、窄屏横向滚动、平台能力与防重复执行、回归边界 | `features/devices/`, `app/l10n/`, `test/` |
 | `adb-custom-os-detection` | Android 厂商系统版本识别 | active | 多品牌 getprop 属性巡检、Oplus/OnePlus 与 OriginOS 兼容字段分流、显式 ROM 名称、刷机优先级、原生 Android 兜底及测试/真机验证边界 | `core/device_info/`, `app/l10n/`, `features/overview/` |
+| [adb-android-memory-page-size](adb-android-memory-page-size.md) | Android 内存页大小 | active | 分组 ADB 采集、4 KB / 16 KB 展示、旧缓存与异常回退、真机和模拟器验证 | `core/device_info/`, `features/overview/` |
 | `adb-macos-debug-destination` | macOS arm64e 构建兼容 | active | Debug generic destination、SDK 可恢复修复、Release 架构归一与打包脚本传参 | `macos/`, `script/` |
 | `adb-rust-host-recording` | Rust 电脑本地音视频录制 | active | 内置 server 4.0、H.264/AAC MP4、三个录制入口、收尾/取消、有界背压与无线突发修复、真机验证边界 | `rust/device_bridge/src/recording/`, `lib/core/scrcpy/`, `features/screenshot/` |
 | `adb-honor-share-poc` | 荣耀文件互传与统一入口 | experimental | Rust双协议/媒体预览、发送开始事件兼容、间歇回传诊断与有损/重复包完整性回归、实际UI视频与双架构边界 | `nearby_share/`, `harmony_share/`, 私有 `AnyDeck-Share-Core` |

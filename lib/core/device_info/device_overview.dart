@@ -15,6 +15,7 @@ class DeviceOverview {
     this.customOs = '-',
     this.deviceCode = '-',
     required this.kernelVersion,
+    this.pageSizeBytes,
     required this.processor,
     required this.storage,
     required this.memory,
@@ -60,6 +61,9 @@ class DeviceOverview {
   /// 设备代号（如小米手机通过 ro.product.name 获取，未识别时为 '-'）。
   final String deviceCode;
   final String kernelVersion;
+
+  /// Android 当前内核的内存页大小（字节），未采集时为空。
+  final int? pageSizeBytes;
   final String processor;
   final String storage;
   final String memory;
@@ -106,6 +110,7 @@ class DeviceOverview {
       'customOs': customOs,
       'deviceCode': deviceCode,
       'kernelVersion': kernelVersion,
+      if (pageSizeBytes != null) 'pageSizeBytes': pageSizeBytes,
       'processor': processor,
       'storage': storage,
       'memory': memory,
@@ -150,6 +155,7 @@ class DeviceOverview {
       customOs: json['customOs'] as String? ?? '-',
       deviceCode: json['deviceCode'] as String? ?? '-',
       kernelVersion: json['kernelVersion'] as String? ?? '-',
+      pageSizeBytes: json['pageSizeBytes'] as int?,
       processor: json['processor'] as String? ?? '-',
       storage: json['storage'] as String? ?? '-',
       memory: json['memory'] as String? ?? '-',
@@ -199,6 +205,7 @@ class DeviceOverview {
     String? customOs,
     String? deviceCode,
     String? kernelVersion,
+    int? pageSizeBytes,
     String? processor,
     String? storage,
     String? memory,
@@ -240,6 +247,7 @@ class DeviceOverview {
       customOs: customOs ?? this.customOs,
       deviceCode: deviceCode ?? this.deviceCode,
       kernelVersion: kernelVersion ?? this.kernelVersion,
+      pageSizeBytes: pageSizeBytes ?? this.pageSizeBytes,
       processor: processor ?? this.processor,
       storage: storage ?? this.storage,
       memory: memory ?? this.memory,
