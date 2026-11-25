@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/mcp/models/mcp_audit_response_summary.dart';
 import '../models/mcp_audit_log_entry.dart';
 import '../data/mcp_audit_log_store.dart';
 
@@ -55,6 +56,7 @@ class McpAuditLogNotifier extends Notifier<List<McpAuditLogEntry>> {
     required bool isSuccess,
     required String? errorMessage,
     required int durationMs,
+    McpAuditResponseSummary? responseSummary,
   }) {
     final entry = McpAuditLogEntry(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -65,6 +67,7 @@ class McpAuditLogNotifier extends Notifier<List<McpAuditLogEntry>> {
       isSuccess: isSuccess,
       errorMessage: errorMessage,
       durationMs: durationMs,
+      responseSummary: responseSummary,
     );
 
     state = [entry, ...state].take(McpAuditLogStore.maxLogs).toList();

@@ -6,6 +6,7 @@ import '../adb/adb_service.dart';
 import '../harmony/hdc_service.dart';
 import '../ios/ios_command_service.dart';
 import '../ios/ios_device_service.dart';
+import 'models/mcp_audit_response_summary.dart';
 import 'models/mcp_request.dart';
 import 'models/mcp_response.dart';
 import 'models/mcp_server_config.dart';
@@ -23,6 +24,7 @@ typedef McpAuditLogCallback = void Function({
   required bool isSuccess,
   required String? errorMessage,
   required int durationMs,
+  required McpAuditResponseSummary responseSummary,
 });
 
 /// AnyDeck MCP (Model Context Protocol) 服务端核心引擎
@@ -101,23 +103,32 @@ class McpServer {
       return response;
     } finally {
       // 在协议分发边界统一记一次；通知和心跳不占用有限的审计历史。
-      if (!request.isNotification && request.method != 'ping') {
+      final audit = onAuditLog;
+      if (audit != null && !request.isNotification && request.method != 'ping') {
         final params = request.params;
         final name = params?['name'];
+        final toolName = request.method == 'tools/call' && name is String
+            ? name
+            : null;
         final args = params?['arguments'];
-        final success = response != null &&
-            response.error == null &&
-            !(response.result is Map && response.result['isError'] == true);
         try {
-          onAuditLog?.call(
+          final summary = _auditResponse(request.method, version, response);
+          final success =
+              response != null &&
+              summary.errorCode == null &&
+              !summary.isToolError;
+          audit(
             method: request.method,
-            toolName: request.method == 'tools/call' && name is String
-                ? name : null,
+            toolName: toolName,
             arguments: _auditArguments(
-              args is Map<String, dynamic> ? args : null, platform),
+              args is Map<String, dynamic> ? args : null,
+              platform,
+              toolName,
+            ),
             isSuccess: success,
             errorMessage: success ? null : 'MCP request failed',
             durationMs: stopwatch.elapsedMilliseconds,
+            responseSummary: summary,
           );
         } catch (error) {
           // 审计观察者故障不能修改已经完成的工具结果，也不能重复执行工具。
@@ -294,11 +305,67 @@ class McpServer {
         },
       });
 
-  /// 输入文本、Shell 和本地路径不进入审计详情，保留入口用于排障。
-  Map<String, dynamic>? _auditArguments(Map<String, dynamic>? args, String platform) => {
-    'platform': platform,
-    for (final entry in (args ?? <String, dynamic>{}).entries)
-      entry.key: const {'text', 'command', 'localPath', 'ipaPath', 'apkPath', 'hapPath'}.contains(entry.key)
-          ? '[redacted]' : entry.value,
-  };
+  /// 只展示工具声明的参数，限制异常输入的大小并屏蔽敏感值。
+  Map<String, dynamic> _auditArguments(
+    Map<String, dynamic>? args,
+    String platform,
+    String? toolName,
+  ) {
+    final properties =
+        registry.findTool(toolName ?? '')?.inputSchema['properties'];
+    return {
+      'platform': platform,
+      if (args != null && properties is Map)
+        for (final key in properties.keys.whereType<String>())
+          if (key != 'platform' && args.containsKey(key))
+            key: _auditArgumentValue(key, args[key]),
+    };
+  }
+
+  Object? _auditArgumentValue(String key, Object? value) {
+    const sensitive = {
+      'text',
+      'command',
+      'localPath',
+      'ipaPath',
+      'apkPath',
+      'hapPath',
+    };
+    if (sensitive.contains(key)) return '[redacted]';
+    return switch (value) {
+      null || bool() => value,
+      num number when number.isFinite => number,
+      String text when text.length <= 1024 => text,
+      _ => '[redacted]',
+    };
+  }
+
+  /// 根据最终响应统计结果，避免把工具输出、图片或异常正文写入审计历史。
+  McpAuditResponseSummary _auditResponse(
+    String method,
+    String version,
+    McpResponse? response,
+  ) {
+    final result = response?.result;
+    final data = result is Map<String, dynamic> ? result : null;
+    final structured = data?['structuredContent'];
+    final items = switch (method) {
+      'tools/list' => data?['tools'],
+      'resources/list' => data?['resources'],
+      'prompts/list' => data?['prompts'],
+      _ => null,
+    };
+    final count = items is List
+        ? items.length
+        : (structured is Map ? structured['count'] : null);
+    return McpAuditResponseSummary(
+      protocolVersion: version,
+      supportedVersions: method == 'server/discover' && data != null
+          ? McpHttpEndpoint.versions
+          : const [],
+      itemCount: count is int && count >= 0 ? count : null,
+      errorCode: response?.error?.code,
+      isToolError: data?['isError'] == true,
+    );
+  }
 }

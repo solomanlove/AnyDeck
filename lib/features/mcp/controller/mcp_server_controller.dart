@@ -117,6 +117,7 @@ class McpServerNotifier extends Notifier<McpServerState> {
         required bool isSuccess,
         required String? errorMessage,
         required int durationMs,
+        required responseSummary,
       }) {
         ref.read(mcpAuditLogProvider.notifier).recordLog(
               method: method,
@@ -125,6 +126,7 @@ class McpServerNotifier extends Notifier<McpServerState> {
               isSuccess: isSuccess,
               errorMessage: errorMessage,
               durationMs: durationMs,
+              responseSummary: responseSummary,
             );
         state = state.copyWith(totalRequestsCount: state.totalRequestsCount + 1);
       },

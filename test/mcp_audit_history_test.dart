@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:any_deck/core/mcp/models/mcp_audit_response_summary.dart';
+import 'package:any_deck/core/mcp/models/mcp_response.dart';
 import 'package:any_deck/features/mcp/controller/mcp_audit_log_controller.dart';
 import 'package:any_deck/features/mcp/models/mcp_audit_log_entry.dart';
 import 'package:any_deck/features/mcp/data/mcp_audit_log_store.dart';
@@ -62,6 +64,10 @@ void main() {
       isSuccess: true,
       errorMessage: null,
       durationMs: 12,
+      responseSummary: const McpAuditResponseSummary(
+        protocolVersion: '2025-11-25',
+        itemCount: 3,
+      ),
     );
   }
 
@@ -86,6 +92,34 @@ void main() {
     expect(restored.durationMs, 12);
     expect(restored.arguments, {'platform': 'android'});
     expect(restored.isSuccess, true);
+    expect(restored.isFromHistory, true);
+    expect(restored.responseSummary?.protocolVersion, '2025-11-25');
+    expect(restored.responseSummary?.itemCount, 3);
+  });
+
+  test('旧历史条目与包含错误码的新条目可以一同恢复', () async {
+    final old = _entry('old');
+    final failed = McpAuditLogEntry(
+      id: 'failed',
+      timestamp: old.timestamp,
+      method: 'unknown/method',
+      isSuccess: false,
+      errorMessage: 'private-error',
+      durationMs: 1,
+      responseSummary: const McpAuditResponseSummary(
+        protocolVersion: '2026-07-28',
+        errorCode: McpError.methodNotFound,
+      ),
+    );
+    await McpAuditLogStore().save([failed, old]);
+    final restored = await McpAuditLogStore().load();
+    expect(restored, hasLength(2));
+    expect(restored.first.isSuccess, false);
+    expect(restored.first.errorMessage, isNull);
+    expect(restored.first.responseSummary?.errorCode, McpError.methodNotFound);
+    expect(restored.last.toolName, 'old');
+    expect(restored.last.isFromHistory, true);
+    expect(restored.last.responseSummary, isNull);
   });
 
   test('连续调用仅保留最近 200 条并按新到旧恢复', () async {

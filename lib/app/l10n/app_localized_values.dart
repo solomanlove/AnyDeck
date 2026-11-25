@@ -23,6 +23,7 @@ import 'tables/app_l10n_theme.dart';
 import 'tables/app_l10n_device_workspace.dart';
 import 'tables/app_l10n_device_groups.dart';
 import 'tables/app_l10n_service_diagnostics.dart';
+import 'tables/app_l10n_mcp_audit.dart';
 
 /// 全部 UI 文案字符串表。Widget 直接按 key 访问，key 应保持稳定。
 ///
@@ -61,6 +62,7 @@ const localizedValues = {
     ...deviceWorkspaceZh,
     ...deviceGroupsZh,
     ...serviceDiagnosticsZh,
+    ...mcpAuditZh,
   },
   'en': {
     ...settingsEn,
@@ -88,5 +90,6 @@ const localizedValues = {
     ...deviceWorkspaceEn,
     ...deviceGroupsEn,
     ...serviceDiagnosticsEn,
+    ...mcpAuditEn,
   },
 };

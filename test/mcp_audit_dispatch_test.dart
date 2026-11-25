@@ -1,7 +1,9 @@
 import 'package:any_deck/core/mcp/mcp_server.dart';
 import 'package:any_deck/core/mcp/models/mcp_request.dart';
+import 'package:any_deck/core/mcp/models/mcp_response.dart';
 import 'package:any_deck/core/mcp/models/mcp_tool_definition.dart';
 import 'package:any_deck/core/mcp/registry/mcp_tool_registry.dart';
+import 'package:any_deck/core/mcp/transport/mcp_http_endpoint.dart';
 import 'package:any_deck/features/mcp/models/mcp_audit_log_entry.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -41,6 +43,7 @@ void main() {
             required isSuccess,
             required errorMessage,
             required durationMs,
+            required responseSummary,
           }) {
             logs.add(
               McpAuditLogEntry(
@@ -52,6 +55,7 @@ void main() {
                 isSuccess: isSuccess,
                 errorMessage: errorMessage,
                 durationMs: durationMs,
+                responseSummary: responseSummary,
               ),
             );
           },
@@ -72,6 +76,17 @@ void main() {
       expect(logs.single.method, method);
       expect(logs.single.isSuccess, response!.error == null);
       expect(logs.single.durationMs, greaterThanOrEqualTo(0));
+      final summary = logs.single.responseSummary!;
+      expect(summary.protocolVersion, '2024-11-05');
+      expect(summary.errorCode, response.error?.code);
+      switch (method) {
+        case 'server/discover':
+          expect(summary.supportedVersions, McpHttpEndpoint.versions);
+        case 'tools/list':
+          expect(summary.itemCount, 1);
+        case 'unknown/method':
+          expect(summary.errorCode, McpError.methodNotFound);
+      }
     });
   }
 
@@ -92,6 +107,32 @@ void main() {
     expect(logs.single.isSuccess, false);
     expect(logs.single.errorMessage, isNotNull);
     expect(logs.single.arguments, {'platform': 'all', 'text': '[redacted]'});
+    expect(logs.single.responseSummary!.isToolError, true);
+    expect(logs.single.responseSummary!.errorCode, isNull);
+  });
+
+  test('无效请求参数只保留工具声明的脱敏字段和真实接入平台', () async {
+    await server.handleRequest(
+      const McpRequest(
+        id: 1,
+        method: 'tools/call',
+        params: {
+          'name': 'test_tool',
+          'arguments': {
+            'text': {'token': 'private-input'},
+            'platform': 'ios',
+            'token': 'private-token',
+          },
+        },
+      ),
+      platform: 'android',
+    );
+    expect(logs.single.arguments, {
+      'platform': 'android',
+      'text': '[redacted]',
+    });
+    expect(logs.single.isSuccess, false);
+    expect(executions, 0);
   });
 
   test('审计观察者抛错不替换工具响应或重复执行工具', () async {
@@ -105,6 +146,7 @@ void main() {
             required isSuccess,
             required errorMessage,
             required durationMs,
+            required responseSummary,
           }) {
             throw StateError('storage unavailable');
           },

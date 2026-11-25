@@ -118,6 +118,10 @@ void main() {
       expect(logs, hasLength(1));
       expect(logs.single.toolName, 'list_devices');
       expect(logs.single.isSuccess, true);
+      expect(logs.single.responseSummary!.itemCount, 0);
+      if (path != '/mcp') {
+        expect(logs.single.responseSummary!.protocolVersion, '2025-11-25');
+      }
       expect(
         logs.single.arguments?['platform'],
         path == '/mcp' ? 'all' : path.split('/').last,
@@ -136,13 +140,19 @@ void main() {
     expect(logs, hasLength(1));
     expect(logs.single.toolName, 'get_device_detail');
     expect(logs.single.isSuccess, false);
+    expect(logs.single.responseSummary!.isToolError, true);
     expect(container.read(mcpServerProvider).totalRequestsCount, 1);
   });
 
   test('工具列表请求也会进入审计日志和请求计数', () async {
     final json = await call('/mcp', 'tools/list', {});
     expect(json['result']['tools'], isNotEmpty);
-    expect(container.read(mcpAuditLogProvider).single.method, 'tools/list');
+    final entry = container.read(mcpAuditLogProvider).single;
+    expect(entry.method, 'tools/list');
+    expect(
+      entry.responseSummary!.itemCount,
+      (json['result']['tools'] as List).length,
+    );
     expect(container.read(mcpServerProvider).totalRequestsCount, 1);
   });
 }
