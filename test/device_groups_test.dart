@@ -94,7 +94,7 @@ void main() {
       isOnline: false,
       serial: 'emulator-avd-Old',
       emulatorAvdName: 'Old',
-      connectionHistory: ['emulator-5554'],
+      connectionHistory: [(id: 'emulator-5554', connectedAt: null)],
       connections: ['emulator-avd-Old'],
     );
     const current = RegisteredDevice(
@@ -104,7 +104,7 @@ void main() {
       serial: 'emulator-avd-Current',
       emulatorAvdName: 'Current',
       connections: ['emulator-5554'],
-      connectionHistory: ['emulator-5554'],
+      connectionHistory: [(id: 'emulator-5554', connectedAt: null)],
     );
     expect(member.matches(original), isFalse);
     expect(member.matches(current), isFalse);

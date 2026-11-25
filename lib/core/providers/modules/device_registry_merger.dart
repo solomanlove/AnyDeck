@@ -24,7 +24,7 @@ class DeviceRegistryMerger {
     required Set<String> checkedIds,
     required Map<String, String> serialMap,
     Map<String, String> emulatorNames = const {},
-    Map<String, List<String>> emulatorHistory = const {},
+    Map<String, List<EmulatorConnectionHistoryEntry>> emulatorHistory = const {},
   }) {
     final activeMap = <String, DiscoveredDevice>{};
     for (final device in activeDevices) {
@@ -42,13 +42,16 @@ class DeviceRegistryMerger {
     final emulatorPortCounts = <String, int>{};
     for (final ports in emulatorHistory.values) {
       for (final port in ports) {
-        emulatorPortCounts.update(port, (count) => count + 1, ifAbsent: () => 1);
+        emulatorPortCounts.update(port.id, (count) => count + 1, ifAbsent: () => 1);
       }
     }
     final emulatorAliases = emulatorHistory.map(
       (name, ports) => MapEntry(
         name,
-        Set.unmodifiable(ports.where((port) => emulatorPortCounts[port] == 1)),
+        Set.unmodifiable([
+          for (final port in ports)
+            if (emulatorPortCounts[port.id] == 1) port.id,
+        ]),
       ),
     );
 
@@ -60,7 +63,10 @@ class DeviceRegistryMerger {
       final avdName = emulatorNames[id];
       final customName = (avdName == null ? null : aliases[serial]) ?? aliases[id];
       final connectionHistory = emulatorHistory[avdName] ??
-          (EmulatorConnectionService.isTransport(id) ? [id] : const <String>[]);
+          <EmulatorConnectionHistoryEntry>[
+            if (EmulatorConnectionService.isTransport(id))
+              (id: id, connectedAt: null),
+          ];
       final cachedModel = models[id];
       final cachedProduct = products[id];
       // 共享接收历史由共享管理维护；断开后不生成离线设备，也不移除同序列号的 USB。

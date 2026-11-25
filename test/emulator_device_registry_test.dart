@@ -43,7 +43,9 @@ void main() {
         final devices = harness.devices;
         if (avds.last.name == 'Api36_4KB') {
           expect(devices.single.emulatorAvdName, 'Api36_16KB');
-          expect(devices.single.connectionHistory, _ports);
+          expect(devices.single.connectionHistory, [
+            for (final port in _ports) (id: port, connectedAt: null),
+          ]);
           expect(devices.single.isOnline, isFalse);
         } else {
           expect(devices, hasLength(4));
@@ -71,7 +73,14 @@ void main() {
     final device = harness.devices.single;
     expect(device.emulatorAvdName, 'Primary');
     expect(device.displayName, '测试机');
-    expect(device.connectionHistory, [_ports[0], _ports[1]]);
+    expect(device.connectionHistory.map((entry) => entry.id), [
+      _ports[0],
+      _ports[1],
+    ]);
+    expect(
+      device.connectionHistory.every((entry) => entry.connectedAt != null),
+      isTrue,
+    );
     expect(device.connections, [_ports[1]]);
     expect(device.preferredCommandId, _ports[1]);
     expect(harness.adb.probes, 2);
@@ -89,6 +98,7 @@ void main() {
     addTearDown(harness.dispose);
     final port = _ports.first;
     await harness.connect(port, 'Primary', '1');
+    final previousConnection = harness.devices.single.connectionHistory.single;
     await harness.container
         .read(deviceRegistryProvider.notifier)
         .setAlias(port, '旧设备');
@@ -101,8 +111,9 @@ void main() {
     );
     expect(old.isOnline, isFalse);
     expect(old.displayName, '旧设备');
-    expect(old.connectionHistory, [port]);
-    expect(current.connectionHistory, [port]);
+    expect(old.connectionHistory, [previousConnection]);
+    expect(current.connectionHistory.single.id, port);
+    expect(current.connectionHistory.single.connectedAt, isNotNull);
     expect(current.customName, isNull);
     expect(current.isOnline, isTrue);
     expect(current.preferredCommandId, port);
@@ -111,6 +122,50 @@ void main() {
         .read(deviceRegistryProvider.notifier)
         .removeDevice(old.id);
     expect(harness.devices.single.emulatorAvdName, 'Secondary');
+  });
+
+  test('时间兼容旧缓存，只在实际观察到上线时更新并持久化', () async {
+    final previous = DateTime.utc(2025, 1, 1, 10);
+    final port = _ports[0];
+    SharedPreferences.setMockInitialValues({
+      'devices.history': _ports.take(3).toList(),
+      'devices.emulatorConnections.v1': [
+        jsonEncode(['Primary', _ports[1]]),
+        jsonEncode(['Primary', _ports[2], 'invalid']),
+        jsonEncode(['Primary', port, previous.toIso8601String()]),
+      ],
+    });
+    final harness = _Registry([]);
+    addTearDown(harness.dispose);
+    await pumpEventQueue();
+    expect(harness.devices.single.connectionHistory, [
+      (id: _ports[1], connectedAt: null),
+      (id: _ports[2], connectedAt: null),
+      (id: port, connectedAt: previous),
+    ]);
+
+    await harness.connect(port, 'Primary', '1', status: 'unauthorized');
+    expect(harness.devices.single.connectionHistory.last.connectedAt, previous);
+
+    final before = DateTime.now().toUtc();
+    await harness.connect(port, 'Primary', '1');
+    final newTime = harness.devices.single.connectionHistory.last.connectedAt!;
+    expect(newTime.isBefore(before), isFalse);
+    expect(newTime.isAfter(DateTime.now().toUtc()), isFalse);
+
+    await harness.connect(port, 'Primary', '1');
+    await harness.connect(port, 'Primary', '1', status: 'offline');
+    expect(harness.devices.single.connectionHistory.last.connectedAt, newTime);
+    final stored = await SharedPreferences.getInstance();
+    expect(
+      stored.getStringList('devices.emulatorConnections.v1'),
+      contains(jsonEncode(['Primary', port, newTime.toIso8601String()])),
+    );
+
+    await harness.connect(port, 'Primary', '2');
+    final reconnectedAt =
+        harness.devices.single.connectionHistory.last.connectedAt!;
+    expect(reconnectedAt.isAfter(newTime), isTrue);
   });
 
   test('旧 transport 的迟到查询不会覆盖复用端口的新身份', () async {
@@ -155,12 +210,17 @@ class _Registry {
 
   List<RegisteredDevice> get devices => container.read(deviceRegistryProvider);
 
-  Future<void> connect(String port, String avd, String transport) async {
+  Future<void> connect(
+    String port,
+    String avd,
+    String transport, {
+    String status = 'device',
+  }) async {
     adb.names[port] = avd;
     stream.add([
       DiscoveredDevice(
         id: port,
-        status: 'device',
+        status: status,
         transportId: transport,
         model: _product,
         product: _product,

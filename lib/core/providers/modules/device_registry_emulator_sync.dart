@@ -16,7 +16,7 @@ extension _DeviceRegistryEmulatorSync on DeviceRegistryNotifier {
     for (final name in _emulators.confirmedNames.difference(represented)) {
       // 未完成身份查询时，暂用当前端口行展示，避免同一连接重复出现。
       if (histories[name]!.any(
-        (id) => activeIds.contains(id) && !names.containsKey(id),
+        (entry) => activeIds.contains(entry.id) && !names.containsKey(entry.id),
       )) {
         continue;
       }

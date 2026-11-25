@@ -176,10 +176,6 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
             children: [
               // 1. 设备硬件与网络详细信息卡片
               _buildDeviceInfoSection(context),
-              if (widget.device.connectionHistory.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                DeviceConnectionHistory(device: widget.device),
-              ],
               const SizedBox(height: 16),
 
               // 2. 设备自定义名称
@@ -230,6 +226,10 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
                   ),
                 ),
               ),
+              if (widget.device.connectionHistory.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                DeviceConnectionHistory(device: widget.device),
+              ],
             ],
           ),
         ),

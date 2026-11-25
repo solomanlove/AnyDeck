@@ -192,6 +192,6 @@ HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The
 
 ADB 的 `emulator-<port>` 随实例启动端口变化，多个 AVD 也可能共用由模拟器版本生成的序列号。注册表优先读取 `adb -s <id> emu avd name`，在线且 console 无结果时读取 AVD 系统属性。每个 transport 代次只临时查询一次，复用端口后丢弃旧请求结果。同一 AVD 在列表和设备墙显示一个代表项，在线代表使用实际 ADB 端口。
 
-旧缓存包含标准 Android Emulator 产品号时，按 API、ABI 和 16 KB 镜像特征匹配本机配置。唯一候选用于展示，多个候选继续独立展示，随后以实际读取的 AVD 名称为准。已确认的 AVD 与端口关联单独保存，端口复用时保留原 AVD 的离线记录和编辑数据。编辑弹窗按最近记录优先显示已用端口，并标识当前在线连接。旧数据没有连接时间，界面只显示保存过的端口。
+旧缓存包含标准 Android Emulator 产品号时，按 API、ABI 和 16 KB 镜像特征匹配本机配置。唯一候选用于展示，多个候选继续独立展示，随后以实际读取的 AVD 名称为准。已确认的 AVD 与端口关联单独保存，端口复用时保留原 AVD 的离线记录和编辑数据。编辑弹窗在备注下方显示曾用端口，按最近连接时间倒序排列，并标识当前在线连接。每个 AVD 和端口记录 AnyDeck 最近一次观察到上线的时刻，以 UTC 保存，界面按本地时区显示。离线、未授权和同一 transport 的重复快照沿用已记录时间。原缓存中的无时间记录继续显示，标记为「时间未记录」。
 
-验证入口为 `test/emulator_device_registry_test.dart` 和 `test/device_edit_connection_history_test.dart`。覆盖旧记录唯一与多候选、端口变化、同端口不同 AVD、迟到响应、缓存重载、编辑数据归属及中英文显示。
+验证入口为 `test/emulator_device_registry_test.dart` 和 `test/device_edit_connection_history_test.dart`。覆盖旧记录唯一与多候选、端口变化、同端口不同 AVD、迟到响应、缓存重载、编辑数据归属、上线时间更新与持久化、底部历史区域及中英文显示。

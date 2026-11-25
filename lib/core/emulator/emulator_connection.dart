@@ -2,6 +2,9 @@ import '../adb/discovered_device.dart';
 import '../adb/adb_result.dart';
 import '../adb/adb_service.dart';
 
+/// AVD 曾用端口与最近一次上线观察时间。旧缓存只有端口，时间为空。
+typedef EmulatorConnectionHistoryEntry = ({String id, DateTime? connectedAt});
+
 /// AVD 与 ADB transport 的关联；console 查询不依赖 Android shell 授权。
 class EmulatorConnectionService {
   const EmulatorConnectionService(this.adb);

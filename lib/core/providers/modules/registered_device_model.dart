@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../adb/discovered_device.dart';
 import '../../adb/wireless/adb_wireless_state.dart';
+import '../../emulator/emulator_connection.dart';
 import '../../harmony/hdc_service.dart';
 import '../../ios/ios_connection_type.dart';
 import 'device_registry_providers.dart';
@@ -66,8 +67,8 @@ class RegisteredDevice {
   /// Android 模拟器的 AVD 配置名称，供编辑弹窗识别归属。
   final String? emulatorAvdName;
 
-  /// 已见过的模拟器 ADB 端口，独立于当前可执行命令的连接。
-  final List<String> connectionHistory;
+  /// 模拟器曾用的 ADB 端口及最近上线时间，独立于当前可执行命令的连接。
+  final List<EmulatorConnectionHistoryEntry> connectionHistory;
 
   /// 仅归属当前 AVD 的历史端口，可用于升级旧分组里的端口身份。
   final Set<String> emulatorIdentityAliases;
@@ -271,7 +272,7 @@ class RegisteredDevice {
     bool? isChecked,
     List<String>? connections,
     String? emulatorAvdName,
-    List<String>? connectionHistory,
+    List<EmulatorConnectionHistoryEntry>? connectionHistory,
     Set<String>? emulatorIdentityAliases,
     String? serial,
     String? ipAddress,

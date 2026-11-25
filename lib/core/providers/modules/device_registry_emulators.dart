@@ -8,7 +8,7 @@ import '../../emulator/android_emulator.dart';
 import '../../emulator/emulator_connection.dart';
 import 'device_registry_storage.dart';
 
-typedef _Connection = ({String name, String id});
+typedef _Connection = ({String name, String id, DateTime? connectedAt});
 typedef _Transport = ({String? transportId, String status});
 
 /// 保存 AVD 与已见端口的关联，支持同一端口被另一个 AVD 复用。
@@ -40,13 +40,21 @@ class DeviceRegistryEmulators {
     for (final entry in prefs.getStringList(_historyKey) ?? const <String>[]) {
       try {
         final pair = jsonDecode(entry);
-        if (pair is! List || pair.length != 2) continue;
-        final [name, id] = pair;
+        if (pair is! List || (pair.length != 2 && pair.length != 3)) continue;
+        final name = pair[0];
+        final id = pair[1];
+        final time = pair.length == 3 ? pair[2] : null;
         if (name is String &&
             id is String &&
             EmulatorConnectionService.isAvdName(name) &&
             EmulatorConnectionService.isTransport(id)) {
-          _history.add((name: name, id: id));
+          _history.add((
+            name: name,
+            id: id,
+            connectedAt: time is String
+                ? DateTime.tryParse(time)?.toUtc()
+                : null,
+          ));
         }
       } on FormatException {
         // 单个坏记录不影响其余连接。
@@ -125,6 +133,8 @@ class DeviceRegistryEmulators {
     void Function(String id, String? previousName, String name) onChanged,
     bool Function() isActive,
   ) async {
+    // 按发现在线快照的时刻记账，设备身份确认的耗时不会计入连接时间。
+    final observedAt = device.isOnline ? DateTime.now().toUtc() : null;
     String? name;
     try {
       name = await connection.identify(device);
@@ -140,10 +150,17 @@ class DeviceRegistryEmulators {
         _legacy[device.id];
     _confirmed[device.id] = name;
     _legacy.remove(device.id);
-    final entry = (name: name, id: device.id);
-    _history
-      ..remove(entry)
-      ..add(entry);
+    final previousIndex = _history.lastIndexWhere(
+      (entry) => entry.name == name && entry.id == device.id,
+    );
+    final previous = previousIndex == -1
+        ? null
+        : _history.removeAt(previousIndex);
+    _history.add((
+      name: name,
+      id: device.id,
+      connectedAt: observedAt ?? previous?.connectedAt,
+    ));
     unawaited(_save());
     onChanged(device.id, previousName, name);
   }
@@ -162,16 +179,33 @@ class DeviceRegistryEmulators {
     };
   }
 
-  /// 依已见顺序列出每个 AVD 使用过的不同端口。
-  Map<String, List<String>> get historyByName {
-    final result = <String, Set<String>>{};
+  /// 每个 AVD 按最近上线时间列出曾用端口，旧端口保留原有顺序。
+  Map<String, List<EmulatorConnectionHistoryEntry>> get historyByName {
+    final result = <String, Map<String, EmulatorConnectionHistoryEntry>>{};
     for (final entry in _legacy.entries) {
-      result.putIfAbsent(entry.value, () => {}).add(entry.key);
+      result.putIfAbsent(entry.value, () => {})[entry.key] = (
+        id: entry.key,
+        connectedAt: null,
+      );
     }
     for (final entry in _history) {
-      result.putIfAbsent(entry.name, () => {}).add(entry.id);
+      result.putIfAbsent(entry.name, () => {})[entry.id] = (
+        id: entry.id,
+        connectedAt: entry.connectedAt,
+      );
     }
-    return result.map((name, ids) => MapEntry(name, List.unmodifiable(ids)));
+    return result.map((name, ports) {
+      final ordered = ports.values.indexed.toList()
+        ..sort((left, right) {
+          final leftTime = left.$2.connectedAt;
+          final rightTime = right.$2.connectedAt;
+          if (leftTime != null && rightTime == null) return 1;
+          if (leftTime == null && rightTime != null) return -1;
+          final order = leftTime?.compareTo(rightTime!) ?? 0;
+          return order == 0 ? left.$1.compareTo(right.$1) : order;
+        });
+      return MapEntry(name, List.unmodifiable(ordered.map((item) => item.$2)));
+    });
   }
 
   /// 端口被另一个 AVD 使用后，为原 AVD 保留可编辑的离线记录。
@@ -196,7 +230,12 @@ class DeviceRegistryEmulators {
 
   Future<void> _save() {
     final snapshot = [
-      for (final entry in _history) jsonEncode([entry.name, entry.id]),
+      for (final entry in _history)
+        jsonEncode([
+          entry.name,
+          entry.id,
+          if (entry.connectedAt != null) entry.connectedAt!.toIso8601String(),
+        ]),
     ];
     return _writes = _writes.then((_) async {
       try {
