@@ -8,17 +8,17 @@ final iosSimulatorServiceProvider = Provider<IosSimulatorService>((ref) {
 });
 
 /// 首次订阅立即读取，随后低频检查外部启停，取消订阅时停止轮询。
-final iosSimulatorRunningProvider = StreamProvider.autoDispose<bool>((
+final iosRunningSimulatorCountProvider = StreamProvider.autoDispose<int>((
   ref,
 ) async* {
   final service = ref.watch(iosSimulatorServiceProvider);
   if (!service.isSupported) {
-    yield false;
+    yield 0;
     return;
   }
-  yield await service.hasBootedSimulator();
+  yield await service.countBootedSimulators();
   yield* Stream<void>.periodic(const Duration(seconds: 5))
-      .asyncMap((_) => service.hasBootedSimulator());
+      .asyncMap((_) => service.countBootedSimulators());
 });
 
 /// iOS 模拟器列表状态 Provider

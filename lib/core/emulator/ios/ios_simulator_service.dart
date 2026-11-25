@@ -12,8 +12,8 @@ class IosSimulatorService {
   bool get isSupported => Platform.isMacOS;
 
   /// 只查询已启动实例，避免侧栏定期加载完整的模拟器配置列表。
-  Future<bool> hasBootedSimulator() async {
-    if (!isSupported) return false;
+  Future<int> countBootedSimulators() async {
+    if (!isSupported) return 0;
     try {
       final result = await runBoundedProcess('xcrun', [
         'simctl',
@@ -22,18 +22,18 @@ class IosSimulatorService {
         'devices',
         'booted',
       ]);
-      if (result.exitCode != 0) return false;
+      if (result.exitCode != 0) return 0;
       final json = jsonDecode(result.stdout as String);
-      if (json is! Map<String, dynamic>) return false;
+      if (json is! Map<String, dynamic>) return 0;
       final devices = json['devices'];
-      if (devices is! Map<String, dynamic>) return false;
-      return devices.values.whereType<List<dynamic>>().any(
-        (group) => group.whereType<Map<String, dynamic>>().any(
-          (device) => device['state'] == 'Booted',
-        ),
-      );
+      if (devices is! Map<String, dynamic>) return 0;
+      return devices.values
+          .whereType<List<dynamic>>()
+          .expand((group) => group.whereType<Map<String, dynamic>>())
+          .where((device) => device['state'] == 'Booted')
+          .length;
     } on Exception {
-      return false;
+      return 0;
     }
   }
 

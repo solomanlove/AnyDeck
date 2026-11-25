@@ -11,25 +11,40 @@ final _devEcoName = RegExp(
   multiLine: true,
 );
 
-/// 汇总三平台状态，侧栏只在是否有模拟器运行发生变化时重建。
-final anyEmulatorRunningProvider = Provider.autoDispose<bool>((ref) {
-  final iosRunning = ref.watch(
-    iosSimulatorRunningProvider.select((snapshot) => snapshot.value ?? false),
-  );
-  final devices = ref.watch(discoveredDevicesProvider).value ?? [];
-  var running = iosRunning;
-  for (final device in devices) {
-    if (device.isIos || (device.isHarmony && !device.isOnline)) continue;
-    if (EmulatorConnectionService.isTransport(device.id)) {
-      // ADB 未授权或离线时，transport 仍表明 Android 模拟器已启动。
-      running = true;
-    } else if (device.isHarmony && _localHdcAddress.hasMatch(device.id)) {
-      final devEcoRunning = ref.watch(_devEcoTargetProvider(device.id));
-      running = running || devEcoRunning.value == true;
-    }
-  }
-  return running;
-});
+/// 各平台正在运行的模拟器实例数。
+typedef RunningEmulatorCounts = ({int android, int harmony, int ios});
+
+/// 没有运行实例时各平台的数量。
+const RunningEmulatorCounts noRunningEmulators = (
+  android: 0,
+  harmony: 0,
+  ios: 0,
+);
+
+/// 按平台汇总运行实例，数量相同时侧栏无需重建。
+final runningEmulatorCountsProvider =
+    Provider.autoDispose<RunningEmulatorCounts>((ref) {
+      final ios = ref.watch(
+        iosRunningSimulatorCountProvider.select(
+          (snapshot) => snapshot.value ?? 0,
+        ),
+      );
+      final devices = ref.watch(discoveredDevicesProvider).value ?? [];
+      final android = <String>{};
+      final harmony = <String>{};
+      for (final device in devices) {
+        if (device.isIos || (device.isHarmony && !device.isOnline)) continue;
+        if (EmulatorConnectionService.isTransport(device.id)) {
+          // ADB 未授权或离线时，transport 仍表明 Android 模拟器已启动。
+          (device.isHarmony ? harmony : android).add(device.id);
+        } else if (device.isHarmony && _localHdcAddress.hasMatch(device.id)) {
+          if (ref.watch(_devEcoTargetProvider(device.id)).value == true) {
+            harmony.add(device.id);
+          }
+        }
+      }
+      return (android: android.length, harmony: harmony.length, ios: ios);
+    });
 
 /// 现代 DevEco 使用回环地址。确认模拟器属性，避免把本地转发的真机算进去。
 /// 同一个连续连接复用查询结果，连接离开设备发现列表后自动回收。

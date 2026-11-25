@@ -77,7 +77,7 @@ ProviderContainer _container({bool selectedDevice = false}) {
   final container = ProviderContainer(
     overrides: [
       deviceRegistryProvider.overrideWith(_Registry.new),
-      anyEmulatorRunningProvider.overrideWithValue(false),
+      runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
       mcpServerProvider.overrideWith(_Mcp.new),
       harmonyShareServiceProvider.overrideWithValue(share),
       appSettingsProvider.overrideWith(_Settings.new),

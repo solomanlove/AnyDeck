@@ -60,7 +60,7 @@ void main() {
               iosDeviceServiceProvider.overrideWithValue(_Ios()),
               discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
               deviceRegistryProvider.overrideWith(() => _Registry(harmony)),
-              anyEmulatorRunningProvider.overrideWithValue(false),
+              runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
               cachedDeviceOverviewProvider(
                 'reconnect-target',
               ).overrideWith((ref) async => null),

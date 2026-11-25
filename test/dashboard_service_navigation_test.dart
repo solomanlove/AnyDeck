@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
@@ -87,16 +88,16 @@ class _Hdc extends HdcService {
 }
 
 class _IosSimulators extends IosSimulatorService {
-  bool booted = false;
+  int bootedCount = 0;
   int queries = 0;
 
   @override
   bool get isSupported => true;
 
   @override
-  Future<bool> hasBootedSimulator() async {
+  Future<int> countBootedSimulators() async {
     queries++;
-    return booted;
+    return bootedCount;
   }
 }
 
@@ -130,6 +131,15 @@ void main() {
           final l10n = AppLocalizations(Locale(language));
           var theme = buildAppTheme(brightness, themeColor: AppThemeColor.blue);
           final runningHint = l10n.t('navigationServiceRunning');
+          String androidHint(int count) => language == 'zh'
+              ? '${count}台安卓模拟器运行中'
+              : '$count Android ${count == 1 ? 'simulator' : 'simulators'} running';
+          String harmonyHint(int count) => language == 'zh'
+              ? '${count}台鸿蒙模拟器运行中'
+              : '$count HarmonyOS ${count == 1 ? 'simulator' : 'simulators'} running';
+          String iosHint(int count) => language == 'zh'
+              ? '${count}台iOS模拟器运行中'
+              : '$count iOS ${count == 1 ? 'simulator' : 'simulators'} running';
 
           Future<void> pumpRail({bool receiverRunning = false}) async {
             await tester.pumpWidget(
@@ -164,6 +174,7 @@ void main() {
             String labelKey, {
             required bool selected,
             bool running = false,
+            String? statusHint,
           }) {
             final entry = find.byTooltip(l10n.t(labelKey));
             expect(entry, findsOneWidget);
@@ -175,18 +186,13 @@ void main() {
                 .first;
             expect(tester.widget<Icon>(icon).color, expectedColor);
             if (width >= 1000) {
-              final nav = tester.widget<AppNavigationItem>(
-                find.descendant(
-                  of: entry,
-                  matching: find.byType(AppNavigationItem),
-                ),
+              final nav = find.descendant(
+                of: entry,
+                matching: find.byType(AppNavigationItem),
               );
-              expect(nav.selected, selected);
+              expect(tester.widget<AppNavigationItem>(nav).selected, selected);
               final text = tester.widget<Text>(
-                find.descendant(
-                  of: entry,
-                  matching: find.text(l10n.t(labelKey)),
-                ),
+                find.descendant(of: nav, matching: find.text(l10n.t(labelKey))),
               );
               expect(
                 text.style?.fontWeight,
@@ -205,12 +211,26 @@ void main() {
             }
             final status = find.descendant(
               of: entry,
-              matching: find.byTooltip(runningHint),
+              matching: find.byType(Tooltip),
             );
-            expect(status, running ? findsOneWidget : findsNothing);
-            if (running) {
+            final expectedStatus = statusHint ?? (running ? runningHint : null);
+            expect(
+              status,
+              expectedStatus == null ? findsNothing : findsOneWidget,
+            );
+            if (expectedStatus != null) {
+              expect(tester.widget<Tooltip>(status).message, expectedStatus);
               final dot = tester.widget<Container>(
-                find.descendant(of: status, matching: find.byType(Container)),
+                find.descendant(
+                  of: status,
+                  matching: find.byWidgetPredicate((widget) {
+                    final decoration = widget is Container
+                        ? widget.decoration
+                        : null;
+                    return decoration is BoxDecoration &&
+                        decoration.shape == BoxShape.circle;
+                  }),
+                ),
               );
               expect(
                 (dot.decoration as BoxDecoration).color,
@@ -254,34 +274,76 @@ void main() {
           await publishDevices([]);
           expectEntry('emulators', selected: false);
           await publishDevices([android]);
-          expectEntry('emulators', selected: false, running: true);
+          expectEntry('emulators', selected: false, statusHint: androidHint(1));
+
+          // 鼠标停在圆点上时，已打开的提示也随数量刷新。
+          final hover = language == 'zh' && brightness == Brightness.light
+              ? await tester.createGesture(kind: PointerDeviceKind.mouse)
+              : null;
+          if (hover != null) {
+            await hover.addPointer(
+              location: tester.getCenter(find.byTooltip(androidHint(1))),
+            );
+            await tester.pump(const Duration(seconds: 1));
+            await tester.pumpAndSettle();
+            expect(find.text(androidHint(1)), findsOneWidget);
+          }
+          await publishDevices([
+            android,
+            android,
+            const DiscoveredDevice(id: 'emulator-5558', status: 'device'),
+          ]);
+          expectEntry('emulators', selected: false, statusHint: androidHint(2));
+          if (hover != null) {
+            expect(find.text(androidHint(2)), findsOneWidget);
+            expect(find.text(androidHint(1)), findsNothing);
+          }
           await publishDevices([]);
           expectEntry('emulators', selected: false);
+          if (hover != null) {
+            expect(find.text(androidHint(2)), findsNothing);
+            await hover.removePointer();
+            await tester.pumpAndSettle();
+          }
           await publishDevices([harmony]);
-          expectEntry('emulators', selected: false, running: true);
-          await publishDevices([
-            const DiscoveredDevice(
-              id: 'emulator-5556',
-              status: 'device',
-              isHarmony: true,
-            ),
-          ]);
-          expectEntry('emulators', selected: false, running: true);
+          expectEntry('emulators', selected: false, statusHint: harmonyHint(1));
+          const legacyHarmony = DiscoveredDevice(
+            id: 'emulator-5556',
+            status: 'device',
+            isHarmony: true,
+          );
+          await publishDevices([harmony, legacyHarmony]);
+          expectEntry('emulators', selected: false, statusHint: harmonyHint(2));
+          await publishDevices([legacyHarmony]);
+          expectEntry('emulators', selected: false, statusHint: harmonyHint(1));
           await publishDevices([]);
           expectEntry('emulators', selected: false);
 
-          ios.booted = true;
-          await tester.pump(const Duration(seconds: 5));
-          await tester.pumpAndSettle();
-          expectEntry('emulators', selected: false, running: true);
+          Future<void> updateIosCount(int count) async {
+            ios.bootedCount = count;
+            await tester.pump(const Duration(seconds: 5));
+            await tester.pumpAndSettle();
+          }
+
+          await updateIosCount(2);
+          expectEntry('emulators', selected: false, statusHint: iosHint(2));
           await publishDevices([android, harmony]);
-          ios.booted = false;
-          await tester.pump(const Duration(seconds: 5));
-          await tester.pumpAndSettle();
+          expectEntry(
+            'emulators',
+            selected: false,
+            statusHint: [androidHint(1), harmonyHint(1), iosHint(2)].join('\n'),
+          );
+          await updateIosCount(1);
+          expectEntry(
+            'emulators',
+            selected: false,
+            statusHint: [androidHint(1), harmonyHint(1), iosHint(1)].join('\n'),
+          );
+          await updateIosCount(0);
           await publishDevices([harmony]);
           container.read(selectedToolTabProvider.notifier).select(-2);
           await tester.pumpAndSettle();
-          expectEntry('emulators', selected: true, running: true);
+          expectEntry('emulators', selected: true, statusHint: harmonyHint(1));
           await publishDevices([]);
           expectEntry('emulators', selected: true);
           expect(hdc.queriedTargets, [
@@ -339,7 +401,7 @@ void main() {
           expectEntry('aiMcp', selected: true, running: true);
           expectEntry('receiverCenter', selected: false, running: true);
           expectEntry('harmonyShareTitle', selected: false, running: true);
-          expectEntry('emulators', selected: false, running: true);
+          expectEntry('emulators', selected: false, statusHint: androidHint(1));
 
           // 选中页停服仍高亮；其他已停服务不残留运行圆点。
           mcp.setRunning(false);

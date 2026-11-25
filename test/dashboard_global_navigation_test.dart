@@ -43,7 +43,7 @@ void main() {
           final container = ProviderContainer(
             overrides: [
               deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
-              anyEmulatorRunningProvider.overrideWithValue(false),
+              runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
               mcpServerProvider.overrideWith(_IdleMcp.new),
             ],
           );
@@ -108,7 +108,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
-        anyEmulatorRunningProvider.overrideWithValue(false),
+        runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
         mcpServerProvider.overrideWith(_IdleMcp.new),
       ],
     );

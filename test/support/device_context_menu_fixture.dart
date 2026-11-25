@@ -315,7 +315,7 @@ Future<void> withDeviceMenu(
         (ref) => Stream.value(<DiscoveredDevice>[]),
       ),
       deviceRegistryProvider.overrideWith(() => DeviceMenuRegistry(devices)),
-      anyEmulatorRunningProvider.overrideWithValue(false),
+      runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
       selectedDeviceProvider.overrideWith(_Selection.new),
       selectedToolTabProvider.overrideWith(_Tab.new),
       hostNetworkProvider.overrideWith(() => _HostNetwork(network)),

@@ -193,6 +193,55 @@ class _RailMoreButton extends StatelessWidget {
   }
 }
 
+/// 模拟器入口按平台显示运行数量，复用侧栏通用圆点样式。
+class _EmulatorRailButton extends ConsumerWidget {
+  const _EmulatorRailButton({
+    required this.icon,
+    required this.selected,
+    required this.tooltip,
+    required this.isNarrow,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final bool selected;
+  final String tooltip;
+  final bool isNarrow;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final counts = ref.watch(runningEmulatorCountsProvider);
+    final l10n = context.l10n;
+    final platforms = [
+      ('navigationEmulatorAndroid', counts.android),
+      ('navigationEmulatorHarmony', counts.harmony),
+      ('navigationEmulatorIos', counts.ios),
+    ];
+    final lines = [
+      for (final (platform, count) in platforms)
+        if (count > 0)
+          l10n
+              .t(
+                count == 1
+                    ? 'navigationEmulatorRunningOne'
+                    : 'navigationEmulatorRunningMany',
+              )
+              .replaceAll('{count}', '$count')
+              .replaceAll('{platform}', l10n.t(platform)),
+    ];
+    return _RailButton(
+      icon: icon,
+      tooltip: tooltip,
+      isNarrow: isNarrow,
+      selected: selected,
+      statusColor: lines.isEmpty ? null : Theme.of(context).colorScheme.primary,
+      statusTooltip: lines.join('\n'),
+      onPressed: onPressed,
+    );
+  }
+}
+
 class _RailButton extends StatelessWidget {
   const _RailButton({
     required this.icon,
@@ -200,6 +249,7 @@ class _RailButton extends StatelessWidget {
     required this.isNarrow,
     this.selected = false,
     this.statusColor,
+    this.statusTooltip,
     this.isFooter = false,
     this.onPressed,
   });
@@ -209,6 +259,7 @@ class _RailButton extends StatelessWidget {
   final bool isNarrow;
   final bool selected;
   final Color? statusColor;
+  final String? statusTooltip;
   final bool isFooter;
   final VoidCallback? onPressed;
 
@@ -240,14 +291,22 @@ class _RailButton extends StatelessWidget {
           child: Center(
             child: IconButton(
               icon: Stack(
-                clipBehavior: Clip.none,
                 children: [
-                  Icon(icon, color: color),
+                  // 对称留空保持图标与圆点的位置，并让整个圆点可悬浮。
+                  Padding(
+                    padding: statusColor == null
+                        ? EdgeInsets.zero
+                        : const EdgeInsets.all(4),
+                    child: Icon(icon, color: color),
+                  ),
                   if (statusColor != null)
                     Positioned(
-                      top: -4,
-                      right: -4,
-                      child: _RailStatusDot(color: statusColor!),
+                      top: 0,
+                      right: 0,
+                      child: _RailStatusDot(
+                        color: statusColor!,
+                        message: statusTooltip,
+                      ),
                     ),
                 ],
               ),
@@ -291,7 +350,10 @@ class _RailButton extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(width: 8),
-                      _RailStatusDot(color: statusColor!),
+                      _RailStatusDot(
+                        color: statusColor!,
+                        message: statusTooltip,
+                      ),
                       const SizedBox(width: 10),
                     ],
                   ),
@@ -304,14 +366,15 @@ class _RailButton extends StatelessWidget {
 
 /// 宽窄侧栏共用的服务运行标记；不参与页面选中态。
 class _RailStatusDot extends StatelessWidget {
-  const _RailStatusDot({required this.color});
+  const _RailStatusDot({required this.color, this.message});
 
   final Color color;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: context.l10n.t('navigationServiceRunning'),
+      message: message ?? context.l10n.t('navigationServiceRunning'),
       child: Container(
         width: 8,
         height: 8,

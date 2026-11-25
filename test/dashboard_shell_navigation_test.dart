@@ -172,7 +172,7 @@ void main() {
         iosDeviceServiceProvider.overrideWithValue(_Ios()),
         discoveredDevicesProvider.overrideWith((ref) => Stream.value(<DiscoveredDevice>[])),
         deviceRegistryProvider.overrideWith(_Registry.new),
-        anyEmulatorRunningProvider.overrideWithValue(false),
+        runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
         cachedDeviceOverviewProvider(_device.id).overrideWith((ref) async =>
             DeviceOverview.fromJson({'name': 'Market Phone'})),
         selectedDeviceProvider.overrideWith(_SelectedDevice.new),
@@ -467,7 +467,7 @@ void main() {
               (ref) => Stream.value(<DiscoveredDevice>[]),
             ),
             deviceRegistryProvider.overrideWith(_Registry.new),
-            anyEmulatorRunningProvider.overrideWithValue(false),
+            runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
             cachedDeviceOverviewProvider(_device.id).overrideWith(
               (ref) async => DeviceOverview.fromJson({'name': 'Market Phone'}),
             ),

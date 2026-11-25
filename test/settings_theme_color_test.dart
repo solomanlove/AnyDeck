@@ -99,7 +99,7 @@ void main() {
             selectedToolTabProvider.overrideWith(_SettingsTab.new),
             adbEnvironmentProvider.overrideWith(_ReadyAdb.new),
             hostNetworkProvider.overrideWith(_HostNetwork.new),
-            anyEmulatorRunningProvider.overrideWithValue(false),
+            runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
             iosDeviceServiceProvider.overrideWithValue(_Ios()),
             adbServiceProvider.overrideWithValue(FakeAdbService()),
             macNotificationBridgeProvider.overrideWithValue(notifications),

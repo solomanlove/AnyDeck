@@ -91,9 +91,10 @@
 
 ## 模拟器管理侧栏运行圆点
 
-- `anyEmulatorRunningProvider` 汇总 Android、HarmonyOS 和 iOS 的运行状态。任一平台有运行实例即显示圆点，最后一个实例退出后隐藏。侧栏复用投屏接收和 AI MCP 的 `_RailButton`、主题主色及本地化提示。页面选中态仍由当前 Route 对应的 Tab 决定。
+- `runningEmulatorCountsProvider` 汇总 Android、HarmonyOS 和 iOS 各自的运行实例数。任一平台有运行实例即显示圆点，最后一个实例退出后隐藏。侧栏复用投屏接收和 AI MCP 的 `_RailButton` 与主题主色。悬浮圆点时按平台逐行显示实际数量，例如「1台安卓模拟器运行中」，英文按数量选择单复数。提示展开后也随启停更新。页面选中态仍由当前 Route 对应的 Tab 决定。
 - Android 复用设备发现流中的 `emulator-<port>` ADB transport，包含未授权或暂时离线的实例。HarmonyOS 复用同一发现流，旧版以 HDC 的 `emulator-<port>` 标识识别，现代版本只对已连接的本地回环目标执行 `param get | grep hvd`，确认 `ohos.qemu.hvd.name` 后显示圆点。连续连接复用确认结果，普通真机和目录中的离线配置不会触发圆点。参见[华为模拟器 HDC 参数文档](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/ide-emulator-video/)和[旧版模拟器 HDC 示例](https://developer.huawei.com/consumer/cn/doc/harmonyos-faqs-V2/faq-local-emulator-0000001162764909-V2/)。
 - iOS 在 macOS 上用有超时和输出上限的 `xcrun simctl list --json devices booted` 检查已启动实例。侧栏入口订阅时立即读取，此后每 5 秒串行刷新，释放订阅后停止轮询。切换内容页或模拟器平台 Tab 时，全局侧栏显示的状态保持独立。此功能不涉及投屏协议、窗口通信、模拟器启停或配置写入。
 - 自动回归使用设备发现、HDC 和 iOS Simulator 数据替身，检查三平台分别启停、多个实例、最后一个实例退出、排除真机、显示与页面选中解耦、深浅主题和主题色切换、宽窄侧栏及订阅释放。实际桌面窗口仍需用三平台模拟器启停确认，HarmonyOS 的运行识别依赖已连接到 HDC 的模拟器。
 - 独立工作树中 57 项定向测试通过。恢复旧侧栏后，模拟 Android 启动的圆点断言按预期失败。全仓静态分析无 error，保留 5 项既有 warning。使用 `simctl` 只读确认了本机无运行实例时的返回结构。
 - 主窗口 Widget 测试的公共环境与独立夹具统一隔离宿主机模拟器探测，防止真实命令的超时计时器跨出 FakeAsync 测试生命周期。补齐后重跑受影响的 10 个测试文件，93 项全部通过。
+- 动态提示回归覆盖中英文、宽窄栏和三平台混合运行。测试把鼠标停在圆点中心，验证已展开的提示从一台变为两台，并在全部结束时关闭。旧窄栏的圆点超出图标命中范围，图标周围对称预留空间后，圆点位置保持一致且可完整悬浮。16 个相关文件的 164 项回归通过，最后复跑侧栏的 53 项用例通过。

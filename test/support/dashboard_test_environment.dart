@@ -35,7 +35,7 @@ List<Override> dashboardTestPlatformOverrides() => [
   appSettingsProvider.overrideWith(DashboardTestSettings.new),
   adbEnvironmentProvider.overrideWith(DashboardTestAdbEnvironment.new),
   hostNetworkProvider.overrideWith(_HostNetwork.new),
-  anyEmulatorRunningProvider.overrideWithValue(false),
+  runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
   receiverIdentityProvider.overrideWith(
     (ref) async => const ReceiverIdentity(
       uuid: '00000000-0000-4000-8000-000000000001',
