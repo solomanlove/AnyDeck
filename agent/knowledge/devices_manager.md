@@ -187,3 +187,11 @@ HDC 在通信通道仍建立中时可能以退出码 `0` 输出 `[E0...]`、`The
 同一设备快速重连时可能始终显示 `device`，但 `transport_id` 已变化。`DeviceDiscoveryTracker` 的列表去重必须比较 `transportId`，及时发布新快照并更新 `currentDevices`；不能仅以 ID、在线状态、型号和产品标记判断未变化。共享会话绑定具体 transport，旧快照可能误停刚创建的共享，相关事件归属与诊断见 `adb-lan-device-sharing.md` 第 12 节。
 
 `device_discovery_transport_test.dart` 使用真实格式的 `track-devices` 帧验证只变 transport 也发布，完全相同的快照不重复发布；不启动外部 ADB 或桌面应用。
+
+## 6. Android 模拟器身份与连接历史（2026-11-25）
+
+ADB 的 `emulator-<port>` 随实例启动端口变化，多个 AVD 也可能共用由模拟器版本生成的序列号。注册表优先读取 `adb -s <id> emu avd name`，在线且 console 无结果时读取 AVD 系统属性。每个 transport 代次只临时查询一次，复用端口后丢弃旧请求结果。同一 AVD 在列表和设备墙显示一个代表项，在线代表使用实际 ADB 端口。
+
+旧缓存包含标准 Android Emulator 产品号时，按 API、ABI 和 16 KB 镜像特征匹配本机配置。唯一候选用于展示，多个候选继续独立展示，随后以实际读取的 AVD 名称为准。已确认的 AVD 与端口关联单独保存，端口复用时保留原 AVD 的离线记录和编辑数据。编辑弹窗按最近记录优先显示已用端口，并标识当前在线连接。旧数据没有连接时间，界面只显示保存过的端口。
+
+验证入口为 `test/emulator_device_registry_test.dart` 和 `test/device_edit_connection_history_test.dart`。覆盖旧记录唯一与多候选、端口变化、同端口不同 AVD、迟到响应、缓存重载、编辑数据归属及中英文显示。

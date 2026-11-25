@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'android_emulator.dart';
+import 'emulator_connection.dart';
 import '../adb/adb_service.dart';
 import 'emulator_process.dart';
 import '../process/tool_path_resolver.dart';
@@ -46,6 +47,24 @@ class EmulatorService {
           .toList();
       return Future.wait(names.map(_loadEmulator));
     } catch (_) {
+      return [];
+    }
+  }
+
+  /// 读取本机 AVD 配置，用于历史迁移，无需启动 emulator 可执行文件。
+  Future<List<AndroidEmulator>> listConfiguredEmulators() async {
+    final home = avdHome;
+    if (home == null) return [];
+    try {
+      final names = <String>[];
+      await for (final entry in Directory(home).list()) {
+        if (entry is! File || !entry.path.endsWith('.ini')) continue;
+        final fileName = entry.uri.pathSegments.last;
+        final name = fileName.substring(0, fileName.length - 4);
+        if (EmulatorConnectionService.isAvdName(name)) names.add(name);
+      }
+      return await Future.wait(names.map(_loadEmulator));
+    } on FileSystemException {
       return [];
     }
   }

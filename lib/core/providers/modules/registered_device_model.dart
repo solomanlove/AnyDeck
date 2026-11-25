@@ -20,6 +20,9 @@ class RegisteredDevice {
     required this.isOnline,
     this.isChecked = false,
     this.connections = const [],
+    this.emulatorAvdName,
+    this.connectionHistory = const [],
+    this.emulatorIdentityAliases = const {},
     this.serial,
     this.ipAddress,
     this.androidVersion,
@@ -60,7 +63,16 @@ class RegisteredDevice {
   /// 归属于该硬件设备的所有活跃或历史连接通道 ID 列表（例如包含 USB 序列号和 Wi-Fi IP:Port）
   final List<String> connections;
 
-  /// 设备的真实物理硬件序列号
+  /// Android 模拟器的 AVD 配置名称，供编辑弹窗识别归属。
+  final String? emulatorAvdName;
+
+  /// 已见过的模拟器 ADB 端口，独立于当前可执行命令的连接。
+  final List<String> connectionHistory;
+
+  /// 仅归属当前 AVD 的历史端口，可用于升级旧分组里的端口身份。
+  final Set<String> emulatorIdentityAliases;
+
+  /// 物理硬件序列号，已识别的 Android 模拟器使用稳定 AVD 键。
   final String? serial;
 
   /// 设备的 Wi-Fi 局域网 IP 地址
@@ -216,7 +228,7 @@ class RegisteredDevice {
         !HdcServiceDeviceInfo.isGenericOrInvalidModel(model)) {
       return model!.replaceAll('_', ' ');
     }
-    return id;
+    return emulatorAvdName ?? id;
   }
 
   /// 连接方式及型号的详细展示文本（例如 "Pixel 7 (9A123BC)"）
@@ -258,6 +270,9 @@ class RegisteredDevice {
     bool? isOnline,
     bool? isChecked,
     List<String>? connections,
+    String? emulatorAvdName,
+    List<String>? connectionHistory,
+    Set<String>? emulatorIdentityAliases,
     String? serial,
     String? ipAddress,
     String? androidVersion,
@@ -278,6 +293,10 @@ class RegisteredDevice {
       isOnline: isOnline ?? this.isOnline,
       isChecked: isChecked ?? this.isChecked,
       connections: connections ?? this.connections,
+      emulatorAvdName: emulatorAvdName ?? this.emulatorAvdName,
+      connectionHistory: connectionHistory ?? this.connectionHistory,
+      emulatorIdentityAliases:
+          emulatorIdentityAliases ?? this.emulatorIdentityAliases,
       serial: serial ?? this.serial,
       ipAddress: ipAddress ?? this.ipAddress,
       androidVersion: androidVersion ?? this.androidVersion,

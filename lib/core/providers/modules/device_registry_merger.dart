@@ -1,4 +1,5 @@
 import '../../adb/discovered_device.dart';
+import '../../emulator/emulator_connection.dart';
 import '../../ios/ios_device_identity.dart';
 import 'device_registry_storage.dart';
 import 'registered_device_model.dart';
@@ -22,6 +23,8 @@ class DeviceRegistryMerger {
     required Map<String, List<String>> tags,
     required Set<String> checkedIds,
     required Map<String, String> serialMap,
+    Map<String, String> emulatorNames = const {},
+    Map<String, List<String>> emulatorHistory = const {},
   }) {
     final activeMap = <String, DiscoveredDevice>{};
     for (final device in activeDevices) {
@@ -36,12 +39,28 @@ class DeviceRegistryMerger {
       }
     }
 
+    final emulatorPortCounts = <String, int>{};
+    for (final ports in emulatorHistory.values) {
+      for (final port in ports) {
+        emulatorPortCounts.update(port, (count) => count + 1, ifAbsent: () => 1);
+      }
+    }
+    final emulatorAliases = emulatorHistory.map(
+      (name, ports) => MapEntry(
+        name,
+        Set.unmodifiable(ports.where((port) => emulatorPortCounts[port] == 1)),
+      ),
+    );
+
     final allCandidates = <RegisteredDevice>[];
     for (final id in historyIds) {
       final active = activeMap[id];
-      final customName = aliases[id];
       final isChecked = checkedIds.contains(id);
       final serial = serialMap[id] ?? id;
+      final avdName = emulatorNames[id];
+      final customName = (avdName == null ? null : aliases[serial]) ?? aliases[id];
+      final connectionHistory = emulatorHistory[avdName] ??
+          (EmulatorConnectionService.isTransport(id) ? [id] : const <String>[]);
       final cachedModel = models[id];
       final cachedProduct = products[id];
       // 共享接收历史由共享管理维护；断开后不生成离线设备，也不移除同序列号的 USB。
@@ -52,8 +71,8 @@ class DeviceRegistryMerger {
       final androidVersion = androidVersions[serial] ?? androidVersions[id];
       final sdkVersion = sdkVersions[serial] ?? sdkVersions[id];
 
-      final remark = remarks[id];
-      final deviceTags = tags[id] ?? [];
+      final remark = (avdName == null ? null : remarks[serial]) ?? remarks[id];
+      final deviceTags = (avdName == null ? null : tags[serial]) ?? tags[id] ?? [];
 
       if (active != null) {
         // 对鸿蒙设备，若 active 或 models 缓存中已有真实设备名（非通用占位符），优先使用真实型号
@@ -82,6 +101,9 @@ class DeviceRegistryMerger {
             isOnline: active.isOnline,
             isChecked: isChecked,
             connections: [id],
+            emulatorAvdName: avdName,
+            connectionHistory: connectionHistory,
+            emulatorIdentityAliases: emulatorAliases[avdName] ?? const {},
             serial: serial,
             ipAddress: ipAddress,
             androidVersion: active.isIos
@@ -125,6 +147,9 @@ class DeviceRegistryMerger {
             isOnline: false,
             isChecked: isChecked,
             connections: [id],
+            emulatorAvdName: avdName,
+            connectionHistory: connectionHistory,
+            emulatorIdentityAliases: emulatorAliases[avdName] ?? const {},
             serial: serial,
             ipAddress: ipAddress,
             androidVersion: isIos
@@ -174,6 +199,12 @@ class DeviceRegistryMerger {
         candidates.sort((a, b) {
           if (a.isOnline && !b.isOnline) return -1;
           if (!a.isOnline && b.isOnline) return 1;
+
+          if (a.emulatorAvdName != null) {
+            final aActive = activeMap.containsKey(a.id);
+            final bActive = activeMap.containsKey(b.id);
+            if (aActive != bActive) return aActive ? -1 : 1;
+          }
 
           final aIsUsb = a.hasUsbConnection;
           final bIsUsb = b.hasUsbConnection;
@@ -271,9 +302,15 @@ class DeviceRegistryMerger {
           mergedTags = tags[serial] ?? tags[best.id] ?? [];
         }
 
-        final connectionIds = best.isOnline
-            ? candidates.where((c) => c.isOnline).map((c) => c.id).toList()
-            : candidates.map((c) => c.id).toList();
+        final connectionIds = [
+          for (final candidate in candidates)
+            if (best.isOnline
+                ? candidate.isOnline
+                : best.emulatorAvdName == null ||
+                    !activeMap.containsKey(best.id) ||
+                    activeMap.containsKey(candidate.id))
+              candidate.id,
+        ];
 
         merged.add(
           best.copyWith(

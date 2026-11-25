@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/widget/app_toast.dart';
 import '../../../core/providers/app_providers.dart';
+import 'device_connection_history.dart';
 
 /// 统一设备信息编辑对话框。
 ///
@@ -36,6 +37,11 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
   late final TextEditingController _remarkController;
   bool _isSaving = false;
   bool _isDeleting = false;
+
+  // 弹窗打开后端口可能被另一个 AVD 复用，编辑操作继续指向原模拟器。
+  String get _editId => widget.device.emulatorAvdName == null
+      ? widget.device.id
+      : widget.device.serial ?? widget.device.id;
 
   @override
   void initState() {
@@ -78,9 +84,9 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
       final notifier = ref.read(deviceRegistryProvider.notifier);
 
       // 批量更新别名、标签和备注信息
-      await notifier.setAlias(widget.device.id, name);
-      await notifier.updateTags(widget.device.id, tags);
-      await notifier.updateRemark(widget.device.id, remark);
+      await notifier.setAlias(_editId, name);
+      await notifier.updateTags(_editId, tags);
+      await notifier.updateRemark(_editId, remark);
 
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -131,7 +137,7 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
     if (confirmed == true && mounted) {
       setState(() => _isDeleting = true);
       try {
-        await ref.read(deviceRegistryProvider.notifier).removeDevice(device.id);
+        await ref.read(deviceRegistryProvider.notifier).removeDevice(_editId);
         if (mounted) {
           AppToast.show(context, l10n.t('deviceDeletedSuccess'));
           Navigator.of(context).pop(true);
@@ -170,6 +176,10 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
             children: [
               // 1. 设备硬件与网络详细信息卡片
               _buildDeviceInfoSection(context),
+              if (widget.device.connectionHistory.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                DeviceConnectionHistory(device: widget.device),
+              ],
               const SizedBox(height: 16),
 
               // 2. 设备自定义名称
@@ -278,9 +288,10 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
     final device = widget.device;
 
     // 优先显示物理真实硬件序列号，若为空则显示通信 ID
-    final serialText = (device.serial != null && device.serial!.isNotEmpty)
-        ? device.serial!
-        : device.id;
+    final serialText = device.emulatorAvdName ??
+        ((device.serial != null && device.serial!.isNotEmpty)
+            ? device.serial!
+            : device.id);
     final ipText = device.wifiIp ??
         (device.ipAddress != null && device.ipAddress!.isNotEmpty
             ? device.ipAddress!
@@ -355,13 +366,16 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
           const SizedBox(height: 10),
           _buildInfoRow(
             context,
-            label: '设备号',
+            label: device.emulatorAvdName == null
+                ? '设备号'
+                : context.l10n.t('deviceAvdName'),
             value: serialText,
             canCopy: true,
           ),
           if (device.serial != null &&
               device.serial!.isNotEmpty &&
-              device.serial != device.id) ...[
+              device.serial != device.id &&
+              device.emulatorAvdName == null) ...[
             const SizedBox(height: 6),
             _buildInfoRow(
               context,

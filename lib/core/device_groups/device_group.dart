@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../emulator/emulator_connection.dart';
 import '../providers/modules/registered_device_model.dart';
 
 /// 平台分类与设备身份共用的命名空间，避免不同协议相同 ID 串组。
@@ -63,7 +64,7 @@ class DeviceGroupMember {
     if (platform != DeviceGroupPlatform.of(device)) return false;
     final candidateSerial = _serial(device);
     if (serial != null && candidateSerial != null) {
-      return serial == candidateSerial;
+      return serial == candidateSerial || _matchesLegacyEmulatorPort(device);
     }
     if (serial != null) {
       // 身份未知的旧 IP 可能已被另一台设备占用，只允许物理通道回退。
@@ -77,10 +78,19 @@ class DeviceGroupMember {
         (candidateSerial != null && aliases.contains(candidateSerial));
   }
 
+  // 仅使用注册表仅归属当前 AVD 的端口升级旧分组，历史中已被复用的端口不能证明归属。
+  bool _matchesLegacyEmulatorPort(RegisteredDevice device) =>
+      device.emulatorAvdName != null &&
+      serial != null &&
+      EmulatorConnectionService.isTransport(serial!) &&
+      device.emulatorIdentityAliases.contains(serial);
+
   /// 注册表补齐 serial 后升级身份，供后续断线和 transport 切换继续匹配。
   DeviceGroupMember synchronized(RegisteredDevice device) => DeviceGroupMember(
     platform: platform,
-    serial: serial ?? _serial(device),
+    serial: _matchesLegacyEmulatorPort(device)
+        ? _serial(device)
+        : serial ?? _serial(device),
     aliases: {...aliases, device.id, ...device.connections},
   );
 

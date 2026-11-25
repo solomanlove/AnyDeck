@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../adb/discovered_device.dart';
 import '../../adb/adb_result.dart';
 import '../../ios/ios_mirror_service.dart';
+import '../../emulator/emulator_connection.dart';
 import 'dashboard_state_providers.dart';
 import 'device_connection_actions.dart';
 import 'device_registry_merger.dart';
+import 'device_registry_emulators.dart';
+import 'emulator_terminal_providers.dart';
 import 'device_metadata_probe_service.dart';
 import 'device_registry_storage.dart';
 import 'device_tracking_providers.dart';
@@ -19,6 +22,7 @@ import 'harmony_device_ip_provider.dart';
 
 part 'device_registry_item_actions.dart';
 part 'device_registry_ip_sync.dart';
+part 'device_registry_emulator_sync.dart';
 
 /// 全局设备注册表 Provider。
 ///
@@ -33,6 +37,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     with DeviceRegistryItemActionsMixin {
   @override
   final DeviceRegistryStorage _storage = DeviceRegistryStorage();
+  @override
+  final _emulators = DeviceRegistryEmulators();
+  int _emulatorEditRevision = 0;
 
   @override
   List<String> _historyIds = [];
@@ -98,61 +105,29 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
   }
 
   Future<void> _loadFromPrefs() async {
-    final activeDevices = _lastActiveDevices;
-    final data = await _storage.loadFromPrefs(activeDevices);
+    final editRevision = _emulatorEditRevision;
+    final listAvds = ref.read(emulatorServiceProvider).listConfiguredEmulators;
+    final data = await _storage.loadFromPrefs(_lastActiveDevices);
+    if (_isDisposed) return;
+    await _emulators.load(data, listAvds);
     if (_isDisposed) return;
 
     _historyIds = data.historyIds;
-    _aliases = data.aliases;
     _models = data.models;
     _products = data.products;
     _ipAddresses = data.ipAddresses;
     _androidVersions = data.androidVersions;
     _sdkVersions = data.sdkVersions;
-    _remarks = data.remarks;
-    _tags = data.tags;
+    // 端口复用后的编辑迁移可能先于正在读取的磁盘快照完成。
+    if (editRevision == _emulatorEditRevision) {
+      _aliases = data.aliases;
+      _remarks = data.remarks;
+      _tags = data.tags;
+    }
     _serialMap = data.serialMap;
     _restoreLiveDeviceIps(ref);
 
-    state = _mergeDevices(activeDevices);
-  }
-
-  void _scheduleDeviceMetadataProbe(String id) {
-    Future.microtask(() async {
-      final activeDevs = ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
-      final dev = activeDevs.firstWhere(
-        (d) => d.id == id,
-        orElse: () => DiscoveredDevice(id: id, status: 'offline', model: '', product: ''),
-      );
-
-      if (dev.isHarmony) {
-        _scheduleHarmonyMetadataProbe(id);
-        return;
-      }
-
-      try {
-        await ref.read(adbWirelessConnectionProvider.notifier).waitForPreparation(id);
-        if (_isDisposed) return;
-        final adb = ref.read(adbServiceProvider);
-        await DeviceMetadataProbeService.probeAndSyncAndroid(
-          adb: adb,
-          id: id,
-          androidVersions: _androidVersions,
-          sdkVersions: _sdkVersions,
-          serialMap: _serialMap,
-          ipAddresses: _ipAddresses,
-          storage: _storage,
-        );
-      } finally {
-        _pendingFetchIds.remove(id);
-        _attemptedFetchIds.add(id);
-        if (!_isDisposed) {
-          final activeDevices =
-              ref.read(discoveredDevicesProvider).value ?? _lastActiveDevices;
-          state = _mergeDevices(activeDevices);
-        }
-      }
-    });
+    state = _mergeDevices(_lastActiveDevices);
   }
 
   void _scheduleHarmonyMetadataProbe(String id) {
@@ -183,6 +158,12 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
         }
       }
     });
+  }
+
+  Ref get _registryRef => ref;
+
+  void _publishRegistrySnapshot(List<DiscoveredDevice> devices) {
+    state = _mergeDevices(devices);
   }
 
   @override
@@ -265,9 +246,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       }
     }
 
+    final emulatorNames = _syncEmulatorRecords(ref, resolvedActiveDevices);
     final merged = DeviceRegistryMerger.mergeDevices(
       activeDevices: resolvedActiveDevices,
-      historyIds: _historyIds,
+      historyIds: {..._historyIds, ...emulatorNames.keys}.toList(),
       aliases: _aliases,
       models: _models,
       products: _products,
@@ -278,6 +260,8 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
       tags: _tags,
       checkedIds: _checkedIds,
       serialMap: _serialMap,
+      emulatorNames: emulatorNames,
+      emulatorHistory: _emulators.historyByName,
     );
     // 在线地址回写通道及物理 serial，仅变化时落盘，避免旧快照在重连后恢复。
     bool ipsChanged = false;

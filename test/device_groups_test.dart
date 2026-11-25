@@ -82,6 +82,39 @@ void main() {
     expect(state.matches('deleted', ios), isFalse);
   });
 
+  test('模拟器旧分组会升级为 AVD 身份，复用端口的历史不参与匹配', () {
+    final member = DeviceGroupMember(
+      platform: DeviceGroupPlatform.android,
+      serial: 'emulator-5554',
+      aliases: ['emulator-5554'],
+    );
+    const original = RegisteredDevice(
+      id: 'emulator-avd-Old',
+      status: 'offline',
+      isOnline: false,
+      serial: 'emulator-avd-Old',
+      emulatorAvdName: 'Old',
+      connectionHistory: ['emulator-5554'],
+      connections: ['emulator-avd-Old'],
+    );
+    const current = RegisteredDevice(
+      id: 'emulator-5554',
+      status: 'device',
+      isOnline: true,
+      serial: 'emulator-avd-Current',
+      emulatorAvdName: 'Current',
+      connections: ['emulator-5554'],
+      connectionHistory: ['emulator-5554'],
+    );
+    expect(member.matches(original), isFalse);
+    expect(member.matches(current), isFalse);
+    final unique = current.copyWith(emulatorIdentityAliases: {'emulator-5554'});
+    expect(member.matches(unique), isTrue);
+    final upgraded = member.synchronized(unique);
+    expect(upgraded.serial, 'emulator-avd-Current');
+    expect(upgraded.matches(current.copyWith(id: 'emulator-5556')), isTrue);
+  });
+
   test('AnyDeck 分组名校验首尾空格、重复、空名和长度', () {
     final state = DeviceGroupsState(
       customGroups: [DeviceGroup(id: 'qa', name: 'QA')],

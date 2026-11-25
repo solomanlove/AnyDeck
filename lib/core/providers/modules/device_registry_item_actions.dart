@@ -3,6 +3,7 @@ part of 'device_registry_providers.dart';
 /// 设备注册表项目级操作混入（别名、备注、标签、勾选与删除）。
 mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
   DeviceRegistryStorage get _storage;
+  DeviceRegistryEmulators get _emulators;
   List<String> get _historyIds;
   Map<String, String> get _aliases;
   Map<String, String> get _models;
@@ -164,6 +165,7 @@ mixin DeviceRegistryItemActionsMixin on Notifier<List<RegisteredDevice>> {
       await Future.wait(disconnectFutures);
     }
 
+    await _emulators.remove(idsToRemove);
     for (final removeId in idsToRemove) {
       final selected = ref.read(selectedDeviceProvider);
       if (selected != null &&

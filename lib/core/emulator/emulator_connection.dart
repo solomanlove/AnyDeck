@@ -11,31 +11,43 @@ class EmulatorConnectionService {
   Future<Map<String, DiscoveredDevice>> inspect(List<DiscoveredDevice> devices) async {
     final result = <String, DiscoveredDevice>{};
     for (final device in devices) {
-      if (!RegExp(r'^emulator-\d+$').hasMatch(device.id)) continue;
-      final response = await adb.run([
-        '-s',
-        device.id,
-        'emu',
-        'avd',
-        'name',
-      ], timeout: const Duration(seconds: 3));
-      var name = response.isSuccess ? parseAvdName(response.stdout) : null;
-      if (name == null && device.isOnline) {
-        for (final property in [
-          'ro.boot.qemu.avd_name',
-          'ro.kernel.qemu.avd_name',
-        ]) {
-          final value = await adb.shellArgs(device.id, ['getprop', property]);
-          if (value.isSuccess && value.stdout.trim().isNotEmpty) {
-            name = value.stdout.trim();
-            break;
-          }
-        }
-      }
+      final name = await identify(device);
       if (name != null) result[name] = device;
     }
     return result;
   }
+
+  /// 读取当前 transport 对应的 AVD 名称，兼容未授权状态和旧 console。
+  Future<String?> identify(DiscoveredDevice device) async {
+    if (device.isIos || device.isHarmony || !isTransport(device.id)) return null;
+    final response = await adb.run([
+      '-s',
+      device.id,
+      'emu',
+      'avd',
+      'name',
+    ], timeout: const Duration(seconds: 3));
+    final name = response.isSuccess ? parseAvdName(response.stdout) : null;
+    if (name != null || !device.isOnline) return name;
+    for (final property in [
+      'ro.boot.qemu.avd_name',
+      'ro.kernel.qemu.avd_name',
+    ]) {
+      final value = await adb.shellArgs(device.id, ['getprop', property]);
+      final candidate = value.isSuccess ? parseAvdName(value.stdout) : null;
+      if (candidate != null) return candidate;
+    }
+    return null;
+  }
+
+  static final _transportPattern = RegExp(r'^emulator-\d+$');
+  static final _namePattern = RegExp(r'^[\w.\-]+$');
+
+  /// ADB 分配给本地模拟器的端口标识。
+  static bool isTransport(String id) => _transportPattern.hasMatch(id);
+
+  /// AVD 名称可用作本地配置标识。
+  static bool isAvdName(String value) => _namePattern.hasMatch(value);
 
   /// console 回复仅接受单个 AVD 名称，过滤 OK、欢迎信息及失败描述。
   static String? parseAvdName(String output) {
@@ -49,7 +61,7 @@ class EmulatorConnectionService {
               !line.startsWith('Android Console:'),
         );
     final names = lines
-        .where((line) => RegExp(r'^[\w.\-]+$').hasMatch(line))
+        .where(isAvdName)
         .toList();
     return names.length == 1 ? names.single : null;
   }
@@ -67,7 +79,7 @@ class EmulatorConnectionService {
   }
 
   void _validate(String deviceId) {
-    if (!RegExp(r'^emulator-\d+$').hasMatch(deviceId)) {
+    if (!isTransport(deviceId)) {
       throw ArgumentError.value(
         deviceId,
         'deviceId',
