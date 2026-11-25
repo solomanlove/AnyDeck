@@ -85,6 +85,7 @@ void main() {
       testWidgets('$platform 启动和选中行在 $brightness 动态跟随主色', (tester) async {
         final container = ProviderContainer(
           overrides: [
+            runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
             emulatorListProvider.overrideWith(
               (ref) async => [const AndroidEmulator(name: 'Pixel_Test')],
             ),

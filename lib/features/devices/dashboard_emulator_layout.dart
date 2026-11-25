@@ -1,7 +1,7 @@
 part of '../dashboard_screen.dart';
 
 /// 模拟器页标题、分平台 Tab 切换（Android AVD、DevEco Emulator、Xcode Simulator）与操作栏。
-class _EmulatorPageLayout extends StatefulWidget {
+class _EmulatorPageLayout extends ConsumerStatefulWidget {
   const _EmulatorPageLayout({
     required this.layoutWidget,
     required this.toolbar,
@@ -15,15 +15,27 @@ class _EmulatorPageLayout extends StatefulWidget {
   final ValueChanged<String> onFilterChanged;
 
   @override
-  State<_EmulatorPageLayout> createState() =>
-      _EmulatorPageLayoutState();
+  ConsumerState<_EmulatorPageLayout> createState() => _EmulatorPageLayoutState();
 }
 
-class _EmulatorPageLayoutState extends State<_EmulatorPageLayout> {
-  EmulatorPlatform _selectedPlatform = EmulatorPlatform.android;
+class _EmulatorPageLayoutState extends ConsumerState<_EmulatorPageLayout> {
+  // 手动选择仅在本次访问生效，重新进入时按最新运行状态选择。
+  EmulatorPlatform? _manualPlatform;
 
   @override
   Widget build(BuildContext context) {
+    final selectedPlatform =
+        _manualPlatform ??
+        ref.watch<EmulatorPlatform>(
+          runningEmulatorCountsProvider.select((counts) {
+            if (counts.android > 0) return EmulatorPlatform.android;
+            if (counts.harmony > 0) return EmulatorPlatform.harmony;
+            return counts.ios > 0
+                ? EmulatorPlatform.ios
+                : EmulatorPlatform.android;
+          }),
+        );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 650;
@@ -69,15 +81,15 @@ class _EmulatorPageLayoutState extends State<_EmulatorPageLayout> {
               title: context.l10n.t('emulators'),
               subtitle: context.l10n.t('emulatorsSubtitle'),
               trailing: EmulatorPlatformTabs(
-                selectedPlatform: _selectedPlatform,
+                selectedPlatform: selectedPlatform,
                 onPlatformChanged: (platform) {
-                  setState(() => _selectedPlatform = platform);
+                  setState(() => _manualPlatform = platform);
                 },
               ),
             ),
             // 内容区域：安卓模拟器与其他两端页面保持完全一致（搜索框 + 工具栏 + 分割线 + 表格）
             Expanded(
-              child: switch (_selectedPlatform) {
+              child: switch (selectedPlatform) {
                 EmulatorPlatform.android => Column(
                     children: [
                       Padding(

@@ -58,6 +58,7 @@ void main() {
         var running = true;
         final container = ProviderContainer(
           overrides: [
+            runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
             emulatorListProvider.overrideWith(
               (ref) async => [const AndroidEmulator(name: 'Audit_Emulator')],
             ),

@@ -39,6 +39,7 @@ void main() {
               ProviderScope(
                 key: UniqueKey(),
                 overrides: [
+                  runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
                   emulatorListProvider.overrideWith((ref) async => []),
                   emulatorConnectionsProvider.overrideWith((ref) async => {}),
                   devecoEmulatorsProvider.overrideWith((ref) async => []),
