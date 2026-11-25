@@ -46,6 +46,7 @@
 ///     全局设备注册表状态控制器 [DeviceRegistryNotifier] 与 [deviceRegistryProvider]。
 library;
 
+export '../emulator/emulator_running_provider.dart';
 export 'modules/dashboard_state_providers.dart';
 export 'modules/device_overview_providers.dart';
 export 'modules/device_connection_actions.dart';

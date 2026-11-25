@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import '../../process/bounded_process.dart';
 import 'ios_simulator.dart';
 
 /// iOS 模拟器服务接口，负责与 macOS 系统的 `xcrun simctl` 及 Simulator.app 交互。
@@ -9,6 +10,32 @@ class IosSimulatorService {
 
   /// 检查当前系统环境是否支持 iOS 模拟器管理（仅在 macOS 下有效）
   bool get isSupported => Platform.isMacOS;
+
+  /// 只查询已启动实例，避免侧栏定期加载完整的模拟器配置列表。
+  Future<bool> hasBootedSimulator() async {
+    if (!isSupported) return false;
+    try {
+      final result = await runBoundedProcess('xcrun', [
+        'simctl',
+        'list',
+        '--json',
+        'devices',
+        'booted',
+      ]);
+      if (result.exitCode != 0) return false;
+      final json = jsonDecode(result.stdout as String);
+      if (json is! Map<String, dynamic>) return false;
+      final devices = json['devices'];
+      if (devices is! Map<String, dynamic>) return false;
+      return devices.values.whereType<List<dynamic>>().any(
+        (group) => group.whereType<Map<String, dynamic>>().any(
+          (device) => device['state'] == 'Booted',
+        ),
+      );
+    } on Exception {
+      return false;
+    }
+  }
 
   /// 读取本地所有可用的 iOS 模拟器列表
   Future<List<IosSimulator>> fetchSimulators() async {

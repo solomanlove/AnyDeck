@@ -232,6 +232,7 @@ Future<void> _withDashboard(
         (ref) => Stream.value(<DiscoveredDevice>[]),
       ),
       deviceRegistryProvider.overrideWith(_Registry.new),
+      anyEmulatorRunningProvider.overrideWithValue(false),
       selectedToolTabProvider.overrideWith(_SettingsTab.new),
       hostNetworkProvider.overrideWith(_HostNetwork.new),
       adbEnvironmentProvider.overrideWith(_ReadyAdb.new),

@@ -38,6 +38,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [
             deviceRegistryProvider.overrideWith(_EmptyRegistry.new),
+            anyEmulatorRunningProvider.overrideWithValue(false),
             mcpServerProvider.overrideWith(_IdleMcp.new),
             if (!AnyDeckBuildFeatures.shareCore)
               harmonyShareServiceProvider.overrideWith((ref) {

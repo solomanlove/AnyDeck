@@ -1,6 +1,13 @@
+import 'dart:async';
+
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/app/widget/app_navigation_item.dart';
+import 'package:any_deck/core/adb/adb_result.dart';
+import 'package:any_deck/core/adb/discovered_device.dart';
+import 'package:any_deck/core/emulator/ios/ios_simulator_providers.dart';
+import 'package:any_deck/core/emulator/ios/ios_simulator_service.dart';
+import 'package:any_deck/core/harmony/hdc_service.dart';
 import 'package:any_deck/core/mcp/models/mcp_server_config.dart';
 import 'package:any_deck/core/nearby_share/harmony_share_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
@@ -57,6 +64,42 @@ class _Share extends ChangeNotifier implements HarmonyShareService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+// 使用已知的 HDC 回环目标和可控的 simctl 结果模拟外部启停。
+class _Hdc extends HdcService {
+  final queriedTargets = <String>[];
+
+  @override
+  Future<AdbResult> run(
+    List<String> args, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final deviceId = args[1];
+    queriedTargets.add(deviceId);
+    expect(args, ['-t', deviceId, 'shell', 'param get | grep hvd']);
+    return AdbResult(
+      exitCode: 0,
+      stdout: deviceId == '127.0.0.1:5555'
+          ? 'ohos.qemu.hvd.name = Mate 90 RS\n'
+          : 'ohos.qemu.hvd.name = \nother.hvd.property = phone',
+      stderr: '',
+    );
+  }
+}
+
+class _IosSimulators extends IosSimulatorService {
+  bool booted = false;
+  int queries = 0;
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  Future<bool> hasBootedSimulator() async {
+    queries++;
+    return booted;
+  }
+}
+
 void main() {
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
@@ -68,15 +111,22 @@ void main() {
           tester.view.devicePixelRatio = 1;
           addTearDown(tester.view.reset);
           final share = _Share();
+          final devices = StreamController<List<DiscoveredDevice>>.broadcast();
+          final hdc = _Hdc();
+          final ios = _IosSimulators();
           final container = ProviderContainer(
             overrides: [
               deviceRegistryProvider.overrideWith(_Registry.new),
+              discoveredDevicesProvider.overrideWith((ref) => devices.stream),
+              hdcServiceProvider.overrideWithValue(hdc),
+              iosSimulatorServiceProvider.overrideWithValue(ios),
               mcpServerProvider.overrideWith(_Mcp.new),
               harmonyShareServiceProvider.overrideWithValue(share),
             ],
           );
-          addTearDown(container.dispose);
           addTearDown(share.dispose);
+          addTearDown(devices.close);
+          addTearDown(container.dispose);
           final l10n = AppLocalizations(Locale(language));
           var theme = buildAppTheme(brightness, themeColor: AppThemeColor.blue);
           final runningHint = l10n.t('navigationServiceRunning');
@@ -171,6 +221,76 @@ void main() {
 
           await pumpRail();
           expectEntry('devices', selected: true);
+          expectEntry('emulators', selected: false);
+
+          const physicalDevices = [
+            DiscoveredDevice(id: 'android-usb', status: 'device'),
+            DiscoveredDevice(id: 'ios-usb', status: 'device', isIos: true),
+            DiscoveredDevice(
+              id: 'harmony-usb',
+              status: 'device',
+              isHarmony: true,
+            ),
+            DiscoveredDevice(
+              id: '127.0.0.1:6000',
+              status: 'device',
+              isHarmony: true,
+            ),
+          ];
+          const android = DiscoveredDevice(
+            id: 'emulator-5554',
+            status: 'unauthorized',
+          );
+          const harmony = DiscoveredDevice(
+            id: '127.0.0.1:5555',
+            status: 'device',
+            isHarmony: true,
+          );
+          Future<void> publishDevices(List<DiscoveredDevice> emulators) async {
+            devices.add([...physicalDevices, ...emulators]);
+            await tester.pumpAndSettle();
+          }
+
+          await publishDevices([]);
+          expectEntry('emulators', selected: false);
+          await publishDevices([android]);
+          expectEntry('emulators', selected: false, running: true);
+          await publishDevices([]);
+          expectEntry('emulators', selected: false);
+          await publishDevices([harmony]);
+          expectEntry('emulators', selected: false, running: true);
+          await publishDevices([
+            const DiscoveredDevice(
+              id: 'emulator-5556',
+              status: 'device',
+              isHarmony: true,
+            ),
+          ]);
+          expectEntry('emulators', selected: false, running: true);
+          await publishDevices([]);
+          expectEntry('emulators', selected: false);
+
+          ios.booted = true;
+          await tester.pump(const Duration(seconds: 5));
+          await tester.pumpAndSettle();
+          expectEntry('emulators', selected: false, running: true);
+          await publishDevices([android, harmony]);
+          ios.booted = false;
+          await tester.pump(const Duration(seconds: 5));
+          await tester.pumpAndSettle();
+          await publishDevices([harmony]);
+          container.read(selectedToolTabProvider.notifier).select(-2);
+          await tester.pumpAndSettle();
+          expectEntry('emulators', selected: true, running: true);
+          await publishDevices([]);
+          expectEntry('emulators', selected: true);
+          expect(hdc.queriedTargets, [
+            '127.0.0.1:6000',
+            '127.0.0.1:5555',
+            '127.0.0.1:5555',
+          ]);
+          container.read(selectedToolTabProvider.notifier).select(-1);
+          await tester.pumpAndSettle();
           for (final key in ['receiverCenter', 'harmonyShareTitle', 'aiMcp']) {
             expectEntry(key, selected: false);
           }
@@ -178,6 +298,7 @@ void main() {
           final mcp = container.read(mcpServerProvider.notifier) as _Mcp;
           mcp.setRunning(true);
           share.update(enabled: true, scanning: true);
+          await publishDevices([android]);
           await pumpRail(receiverRunning: true);
           expectEntry('devices', selected: true);
           for (final key in ['receiverCenter', 'harmonyShareTitle', 'aiMcp']) {
@@ -218,6 +339,7 @@ void main() {
           expectEntry('aiMcp', selected: true, running: true);
           expectEntry('receiverCenter', selected: false, running: true);
           expectEntry('harmonyShareTitle', selected: false, running: true);
+          expectEntry('emulators', selected: false, running: true);
 
           // 选中页停服仍高亮；其他已停服务不残留运行圆点。
           mcp.setRunning(false);
@@ -239,6 +361,10 @@ void main() {
           expectEntry('harmonyShareTitle', selected: false, running: true);
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pump();
+          final queriesAfterUnmount = ios.queries;
+          await tester.pump(const Duration(seconds: 10));
+          expect(ios.queries, queriesAfterUnmount);
         });
       }
     }

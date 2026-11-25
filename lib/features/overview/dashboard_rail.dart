@@ -406,7 +406,20 @@ class PrimaryRail extends ConsumerWidget {
                   ),
                 ),
                 for (final tool in visibleTools)
-                  if (tool.tabIndex == -3)
+                  if (tool.tabIndex == -2)
+                    Consumer(
+                      builder: (context, ref, _) => _RailButton(
+                        icon: tool.icon,
+                        selected: selectedTool == tool.tabIndex,
+                        statusColor: ref.watch(anyEmulatorRunningProvider)
+                            ? theme.colorScheme.primary
+                            : null,
+                        tooltip: tool.label,
+                        isNarrow: renderNarrow,
+                        onPressed: () => handleTap(tool.tabIndex),
+                      ),
+                    )
+                  else if (tool.tabIndex == -3)
                     ListenableBuilder(
                       listenable: DlnaRendererService.instance,
                       builder: (context, _) {

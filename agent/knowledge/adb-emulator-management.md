@@ -88,3 +88,11 @@
 - 共享 `PlatformVersionSwitcher` 的选中背景改为 `AppThemeColors.panelSurface`，浅色模式为白色，深色模式使用对应面板底色；选中文字改为 `ColorScheme.onSurface`，不再使用主色容器配色。模拟器管理与系统版本页同步生效，平台品牌图标和切换回调沿用原实现。
 - `emulator_platform_tabs_test.dart` 覆盖三平台初始状态及逐项切换，并使用绿色、蓝色、粉色主题验证白底与主色无关；深浅主题均检查选中文字对比度不低于 4.5，未选中项保持透明。
 - 3 份相关测试共 21 项通过；全仓静态分析无 error，5 项既有 warning 保持不变，`git diff --check` 通过。未新增依赖、Provider、文案或后台命令，未启动完整 App 或真实模拟器。
+
+## 模拟器管理侧栏运行圆点
+
+- `anyEmulatorRunningProvider` 汇总 Android、HarmonyOS 和 iOS 的运行状态。任一平台有运行实例即显示圆点，最后一个实例退出后隐藏。侧栏复用投屏接收和 AI MCP 的 `_RailButton`、主题主色及本地化提示。页面选中态仍由当前 Route 对应的 Tab 决定。
+- Android 复用设备发现流中的 `emulator-<port>` ADB transport，包含未授权或暂时离线的实例。HarmonyOS 复用同一发现流，旧版以 HDC 的 `emulator-<port>` 标识识别，现代版本只对已连接的本地回环目标执行 `param get | grep hvd`，确认 `ohos.qemu.hvd.name` 后显示圆点。连续连接复用确认结果，普通真机和目录中的离线配置不会触发圆点。参见[华为模拟器 HDC 参数文档](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/ide-emulator-video/)和[旧版模拟器 HDC 示例](https://developer.huawei.com/consumer/cn/doc/harmonyos-faqs-V2/faq-local-emulator-0000001162764909-V2/)。
+- iOS 在 macOS 上用有超时和输出上限的 `xcrun simctl list --json devices booted` 检查已启动实例。侧栏入口订阅时立即读取，此后每 5 秒串行刷新，释放订阅后停止轮询。切换内容页或模拟器平台 Tab 时，全局侧栏显示的状态保持独立。此功能不涉及投屏协议、窗口通信、模拟器启停或配置写入。
+- 自动回归使用设备发现、HDC 和 iOS Simulator 数据替身，检查三平台分别启停、多个实例、最后一个实例退出、排除真机、显示与页面选中解耦、深浅主题和主题色切换、宽窄侧栏及订阅释放。实际桌面窗口仍需用三平台模拟器启停确认，HarmonyOS 的运行识别依赖已连接到 HDC 的模拟器。
+- 独立工作树中 57 项定向测试通过。恢复旧侧栏后，模拟 Android 启动的圆点断言按预期失败。全仓静态分析无 error，保留 5 项既有 warning。使用 `simctl` 只读确认了本机无运行实例时的返回结构。
