@@ -41,7 +41,7 @@ class DeviceGroupFilter extends ConsumerWidget {
       buttonKey: const Key('deviceGroupFilter'),
       tooltip: context.l10n.t('deviceGroupFilter'),
       enabled: !data.isLoading,
-      baseWidth: 180,
+      matchButtonWidth: true,
       onSelected: (value) {
         if (value == '__retry') {
           ref.invalidate(deviceGroupsProvider);

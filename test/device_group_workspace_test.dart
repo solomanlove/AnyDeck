@@ -7,9 +7,17 @@ import 'support/device_context_menu_fixture.dart';
 
 /// 通过真实 Dashboard 验证分组、搜索、状态及视图共享同一过滤链路。
 Future<void> _chooseGroup(WidgetTester tester, String id) async {
-  await tester.tap(find.byKey(const Key('deviceGroupFilter')));
+  final button = find.byKey(const Key('deviceGroupFilter'));
+  final option = find.byKey(ValueKey('deviceGroupOption-$id'));
+  await tester.tap(button);
   await tester.pumpAndSettle();
-  await tester.tap(find.byKey(ValueKey('deviceGroupOption-$id')));
+  final buttonRect = tester.getRect(button);
+  final menuRect = tester.getRect(
+    find.ancestor(of: option, matching: find.byType(Material)).first,
+  );
+  expect(menuRect.left, closeTo(buttonRect.left, .1));
+  expect(menuRect.right, closeTo(buttonRect.right, .1));
+  await tester.tap(option);
   await tester.pumpAndSettle();
 }
 

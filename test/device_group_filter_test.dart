@@ -32,7 +32,7 @@ class _MenuStore extends DeviceGroupsStore {
 void main() {
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
-      testWidgets('分组浮窗保持紧凑且不随宽入口拉伸 $language ${brightness.name}', (
+      testWidgets('窄窗口分组浮窗与全宽入口两侧对齐 $language ${brightness.name}', (
         tester,
       ) async {
         await _pumpMenus(
@@ -62,8 +62,7 @@ void main() {
         );
         await _openGroup(tester);
         final menu = tester.getRect(_surface(_entry('android')));
-        expect(menu.width, closeTo(180, .1));
-        expect(menu.width, lessThan(button.width));
+        _expectMenuAlignment(menu, button);
         expect(menu.left, greaterThanOrEqualTo(0));
         expect(menu.right, lessThanOrEqualTo(320));
         for (final item in [
@@ -116,6 +115,7 @@ void main() {
         expect(material.shadowColor, connection.shadowColor);
         final menu = tester.getRect(surface);
         expect(menu.top, greaterThanOrEqualTo(button.bottom));
+        _expectMenuAlignment(menu, button);
         expect(menu.left, greaterThanOrEqualTo(0));
         expect(menu.right, lessThanOrEqualTo(900));
 
@@ -188,8 +188,10 @@ void main() {
           width: 320,
           scale: 1.6,
         );
+        final button = tester.getRect(find.byKey(_groupButton));
         await _openGroup(tester);
         final menu = tester.getRect(_surface(_entry('android')));
+        _expectMenuAlignment(menu, button);
         expect(menu.left, greaterThanOrEqualTo(0));
         expect(menu.right, lessThanOrEqualTo(320));
         expect(menu.bottom, lessThanOrEqualTo(700));
@@ -237,6 +239,13 @@ Finder _entry(String id) => id.isEmpty
 
 Finder _surface(Finder item) =>
     find.ancestor(of: item, matching: find.byType(Material)).first;
+
+/// 校验可见菜单表面和按钮实际矩形，避免只比较固定尺寸。
+void _expectMenuAlignment(Rect menu, Rect button) {
+  expect(menu.width, closeTo(button.width, .1));
+  expect(menu.left, closeTo(button.left, .1));
+  expect(menu.right, closeTo(button.right, .1));
+}
 
 Future<void> _openGroup(WidgetTester tester) async {
   await tester.tap(find.byKey(_groupButton));
@@ -343,7 +352,7 @@ Future<void> _pumpMenus(
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
-                      width: width <= 320 ? 288 : 180,
+                      width: width <= 320 ? 288 : 144,
                       child: DeviceGroupFilter(
                         selectedGroupId: groupId,
                         onChanged: (value) {
