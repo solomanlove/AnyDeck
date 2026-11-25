@@ -182,7 +182,7 @@ void main() {
     expect(filter, DeviceStatusFilter.offline);
     expect(batchMode, isTrue);
     expect(controller.text, 'Xiaomi');
-    expect(find.text('退出批量管理'), findsOneWidget);
+    expect(find.text('退出管理'), findsOneWidget);
     expect(tester.getSize(search).width, lessThan(initialWidth));
     await tester.tap(find.byKey(const Key('deviceBatchManage')));
     await tester.pumpAndSettle();

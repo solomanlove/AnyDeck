@@ -27,7 +27,7 @@ const deviceWorkspaceZh = {
   'deviceWorkspaceView': '展示方式',
   'deviceWorkspaceSearchHint': '搜索名称、型号或 IP',
   'deviceWorkspaceBatchManage': '批量管理',
-  'deviceWorkspaceBatchExit': '退出批量管理',
+  'deviceWorkspaceBatchExit': '退出管理',
   'deviceWorkspaceSelectAll': '全选({count})',
   'deviceWorkspaceBatchScreenshot': '截屏',
   'deviceWorkspaceBatchInstall': '安装App',

@@ -59,7 +59,7 @@ class _DeviceListPanelState extends ConsumerState<_DeviceListPanel> {
     );
   }
 
-  /// 退出批量管理时清除注册表勾选，切换视图和筛选则保留选择。
+  /// 退出管理时清除注册表勾选，切换视图和筛选则保留选择。
   void _changeBatchMode(bool value) {
     if (!value) {
       final registry = ref.read(deviceRegistryProvider.notifier);
