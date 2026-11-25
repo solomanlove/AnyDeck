@@ -140,6 +140,8 @@ void main() {
             ],
             child: MaterialApp(
               theme: buildAppTheme(brightness),
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: const [AppLocalizationsDelegate()],
               home: Scaffold(
                 body: platform == 'DevEco'
                     ? const DevecoEmulatorsView()

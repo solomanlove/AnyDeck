@@ -4,9 +4,20 @@ import 'package:flutter/foundation.dart';
 import '../../process/bounded_process.dart';
 import 'ios_simulator.dart';
 
-/// iOS 模拟器服务接口，负责与 macOS 系统的 `xcrun simctl` 及 Simulator.app 交互。
+/// 带超时的模拟器 CLI 命令执行入口。
+typedef IosSimulatorCommandRunner = Future<ProcessResult> Function(
+  String executable,
+  List<String> arguments, {
+  required Duration timeout,
+});
+
+/// 通过 `xcrun simctl` 管理设备，并打开对应的 macOS 模拟器窗口。
 class IosSimulatorService {
-  const IosSimulatorService();
+  const IosSimulatorService({
+    IosSimulatorCommandRunner runProcess = runBoundedProcess,
+  }) : _runProcess = runProcess;
+
+  final IosSimulatorCommandRunner _runProcess;
 
   /// 检查当前系统环境是否支持 iOS 模拟器管理（仅在 macOS 下有效）
   bool get isSupported => Platform.isMacOS;
@@ -84,26 +95,20 @@ class IosSimulatorService {
     }
   }
 
-  /// 启动指定的 iOS 模拟器并唤起 Simulator 桌面窗口
+  /// 等待设备就绪后再打开窗口，避免 Device Hub 收到请求时设备仍在启动。
   Future<bool> bootSimulator(String udid) async {
-    if (!Platform.isMacOS) return false;
-    try {
-      // 1. 若尚未 boot 则先执行 boot 指令
-      await Process.run('xcrun', ['simctl', 'boot', udid]);
-      // 2. 唤起系统 Simulator.app 并定位到该设备
-      await Process.run('open', [
-        '-a',
-        'Simulator',
-        '--args',
-        '-CurrentDeviceUDID',
-        udid,
-      ]);
-      return true;
-    } catch (e) {
-      debugPrint('Failed to boot iOS simulator $udid: $e');
-      return false;
-    }
+    if (!isSupported) return false;
+    final result = await _runSimulatorCommand('xcrun', [
+      'simctl',
+      'bootstatus',
+      udid,
+      '-b',
+    ], timeout: const Duration(minutes: 2));
+    return result != null && await showSimulatorWindow(udid);
   }
+
+  /// 显示已运行设备的桌面窗口，保留设备当前会话。
+  Future<bool> showSimulatorWindow(String udid) => _openSimulatorApp(udid);
 
   /// 关闭指定的 iOS 模拟器
   Future<bool> shutdownSimulator(String udid) async {
@@ -129,14 +134,60 @@ class IosSimulatorService {
     }
   }
 
-  /// 直接打开系统内置 Simulator.app
-  Future<void> openSimulatorApp() async {
-    if (!Platform.isMacOS) return;
-    try {
-      await Process.run('open', ['-a', 'Simulator']);
-    } catch (e) {
-      debugPrint('Failed to open Simulator.app: $e');
+  /// 打开当前 Xcode 对应的模拟器管理应用。
+  Future<bool> openSimulatorApp() => _openSimulatorApp(null);
+
+  Future<bool> _openSimulatorApp(String? udid) async {
+    if (!isSupported) return false;
+    // 与 simctl 使用同一套 Xcode，兼容 DEVELOPER_DIR 和多版本安装。
+    final result = await _runSimulatorCommand('xcrun', ['--find', 'simctl']);
+    if (result == null) return false;
+    final simctlPath = (result.stdout as String).trim();
+    if (!simctlPath.startsWith('/')) return false;
+    final developer = File(simctlPath).parent.parent.parent;
+    final deviceHub = '${developer.parent.path}/Applications/DeviceHub.app';
+    final simulator = '${developer.path}/Applications/Simulator.app';
+    final List<String> args;
+    if (await Directory(deviceHub).exists()) {
+      // Xcode 27 通过 Device Hub 的 URL Scheme 定位设备窗口。
+      args = [
+        '-a',
+        deviceHub,
+        if (udid != null)
+          Uri(
+            scheme: 'devices',
+            host: 'device',
+            path: '/open',
+            queryParameters: {'id': udid},
+          ).toString(),
+      ];
+    } else if (await Directory(simulator).exists()) {
+      args = [
+        '-a',
+        simulator,
+        if (udid != null) ...['--args', '-CurrentDeviceUDID', udid],
+      ];
+    } else {
+      debugPrint('No simulator window app under ${developer.parent.path}');
+      return false;
     }
+    return await _runSimulatorCommand('/usr/bin/open', args) != null;
+  }
+
+  /// 捕获命令退出和超时，供调用方反馈启动或窗口打开失败。
+  Future<ProcessResult?> _runSimulatorCommand(
+    String executable,
+    List<String> arguments, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    try {
+      final result = await _runProcess(executable, arguments, timeout: timeout);
+      if (result.exitCode == 0) return result;
+      debugPrint('$executable ${arguments.first} failed: ${result.stderr}');
+    } on Exception catch (e) {
+      debugPrint('$executable ${arguments.first} failed: $e');
+    }
+    return null;
   }
 
   /// 在 Finder 中打开模拟器的数据沙盒目录

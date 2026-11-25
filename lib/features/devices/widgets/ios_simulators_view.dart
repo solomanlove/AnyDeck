@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/l10n/app_localizations.dart';
 import '../../../app/widget/app_toast.dart';
 import '../../../app/widget/device_os_logo_widget.dart';
 import '../../overview/model/platform_distribution_type.dart';
@@ -12,7 +13,7 @@ import '../../../core/emulator/ios/ios_simulator_providers.dart';
 
 /// iOS Xcode 模拟器独立管理视图。
 ///
-/// 具备独立的操作工具栏、搜索过滤、数据表格以及启动/关闭/抹掉数据操作能力。
+/// 提供搜索、启动、显示窗口、停止和抹掉数据操作。
 class IosSimulatorsView extends ConsumerStatefulWidget {
   const IosSimulatorsView({super.key});
 
@@ -130,8 +131,13 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
               child: Row(
                 children: [
                   searchField,
-                  const Spacer(),
-                  if (!compact) toolbar,
+                  if (!compact)
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: toolbar,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -152,16 +158,23 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
   Widget _buildToolbar(BuildContext context, IosSimulator? selected) {
     final hasSelection = selected != null;
     final isBooted = selected?.isBooted ?? false;
+    final l10n = context.l10n;
 
     return Wrap(
       spacing: 8,
+      alignment: WrapAlignment.end,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         FilledButton.icon(
-          icon: const Icon(CupertinoIcons.play_arrow, size: 16),
-          label: const Text('启动'),
-          onPressed: hasSelection && !isBooted && !_isActionBusy
-              ? () => _bootSimulator(selected)
+          icon: Icon(
+            isBooted ? Icons.open_in_new : CupertinoIcons.play_arrow,
+            size: 16,
+          ),
+          label: Text(
+            l10n.t(isBooted ? 'iosSimulatorShowWindow' : 'iosSimulatorStart'),
+          ),
+          onPressed: hasSelection && !_isActionBusy
+              ? () => _openSimulator(selected)
               : null,
           style: FilledButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.primary,
@@ -190,9 +203,9 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
           ),
         ),
         IconButton(
-          tooltip: '打开系统 Simulator.app',
+          tooltip: l10n.t('iosSimulatorOpenApp'),
           icon: const Icon(Icons.open_in_new, size: 20),
-          onPressed: () => ref.read(iosSimulatorServiceProvider).openSimulatorApp(),
+          onPressed: _isActionBusy ? null : () => _openSimulator(null),
         ),
         IconButton(
           tooltip: '刷新列表',
@@ -215,7 +228,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
 
         return InkWell(
           onTap: () => setState(() => _selectedUdid = item.udid),
-          onDoubleTap: () => _bootSimulator(item),
+          onDoubleTap: _isActionBusy ? null : () => _openSimulator(item),
           child: Container(
             height: 56,
             decoration: BoxDecoration(
@@ -329,15 +342,19 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                       IconButton(
                         icon: Icon(CupertinoIcons.play_circle,
                             color: Theme.of(context).colorScheme.primary, size: 20),
-                        tooltip: '启动',
-                        onPressed: () => _bootSimulator(item),
+                        tooltip: context.l10n.t('iosSimulatorStart'),
+                        onPressed: _isActionBusy
+                            ? null
+                            : () => _openSimulator(item),
                       )
                     else
                       IconButton(
                         icon: const Icon(CupertinoIcons.stop_circle,
                             color: Colors.orange, size: 20),
                         tooltip: '停止',
-                        onPressed: () => _shutdownSimulator(item),
+                        onPressed: _isActionBusy
+                            ? null
+                            : () => _shutdownSimulator(item),
                       ),
                     if (item.dataPath != null)
                       IconButton(
@@ -392,18 +409,35 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
     );
   }
 
-  Future<void> _bootSimulator(IosSimulator sim) async {
+  /// 启动关机设备或唤出运行中设备的窗口，阻止重复操作。
+  Future<void> _openSimulator(IosSimulator? sim) async {
+    if (_isActionBusy) return;
     setState(() => _isActionBusy = true);
-    AppToast.show(context, '正在启动 ${sim.name}...');
-    final ok = await ref.read(iosSimulatorServiceProvider).bootSimulator(sim.udid);
-    if (mounted) {
-      setState(() => _isActionBusy = false);
-      if (ok) {
-        AppToast.show(context, '${sim.name} 启动成功');
-        ref.invalidate(iosSimulatorsProvider);
-      } else {
-        AppToast.show(context, '${sim.name} 启动失败', isError: true);
-      }
+    final service = ref.read(iosSimulatorServiceProvider);
+    final needsBoot = sim != null && !sim.isBooted;
+    if (needsBoot) {
+      AppToast.show(
+        context,
+        context.l10n.t('emulatorStarting'),
+        type: AppToastType.info,
+      );
+    }
+    final ok = switch (sim) {
+      null => await service.openSimulatorApp(),
+      _ when needsBoot => await service.bootSimulator(sim.udid),
+      _ => await service.showSimulatorWindow(sim.udid),
+    };
+    if (!mounted) return;
+    setState(() => _isActionBusy = false);
+    // 启动成功但窗口打开失败时，列表仍需反映设备的最新状态。
+    if (sim != null) ref.invalidate(iosSimulatorsProvider);
+    if (!ok) {
+      final key = needsBoot
+          ? 'iosSimulatorStartFailed'
+          : 'iosSimulatorOpenFailed';
+      AppToast.show(context, context.l10n.t(key), isError: true);
+    } else if (needsBoot) {
+      AppToast.show(context, context.l10n.t('iosSimulatorStarted'));
     }
   }
 
