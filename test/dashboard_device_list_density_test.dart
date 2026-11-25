@@ -418,6 +418,7 @@ Future<ProviderContainer> _pumpDashboard(
       iosDeviceServiceProvider.overrideWithValue(_Ios()),
       discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
       deviceRegistryProvider.overrideWith(_Registry.new),
+      anyEmulatorRunningProvider.overrideWithValue(false),
       hostNetworkProvider.overrideWith(_HostNetwork.new),
       adbEnvironmentProvider.overrideWith(_ReadyAdb.new),
       emulatorListProvider.overrideWith((ref) async => []),

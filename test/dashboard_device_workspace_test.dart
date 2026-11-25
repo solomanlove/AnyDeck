@@ -136,6 +136,7 @@ Future<ProviderContainer> _pumpDashboard(
       iosDeviceServiceProvider.overrideWithValue(_Ios()),
       discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
       deviceRegistryProvider.overrideWith(_Registry.new),
+      anyEmulatorRunningProvider.overrideWithValue(false),
       for (final id in ['workspace-alpha', 'workspace-beta'])
         cachedDeviceOverviewProvider(id).overrideWith(
           (ref) async => DeviceOverview.fromJson({

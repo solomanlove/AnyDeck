@@ -1,6 +1,7 @@
 import 'package:any_deck/app/settings/app_settings.dart';
 import 'package:any_deck/app/settings/app_settings_controller.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
+import 'package:any_deck/core/emulator/emulator_running_provider.dart';
 import 'package:any_deck/core/receiver/receiver_identity.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
 import 'package:any_deck/core/providers/host_network_provider.dart';
@@ -34,6 +35,7 @@ List<Override> dashboardTestPlatformOverrides() => [
   appSettingsProvider.overrideWith(DashboardTestSettings.new),
   adbEnvironmentProvider.overrideWith(DashboardTestAdbEnvironment.new),
   hostNetworkProvider.overrideWith(_HostNetwork.new),
+  anyEmulatorRunningProvider.overrideWithValue(false),
   receiverIdentityProvider.overrideWith(
     (ref) async => const ReceiverIdentity(
       uuid: '00000000-0000-4000-8000-000000000001',

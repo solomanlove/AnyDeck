@@ -143,7 +143,6 @@ Future<void> _pumpDashboard(
           (ref) => Stream.value(<DiscoveredDevice>[]),
         ),
         deviceRegistryProvider.overrideWith(_FixedDeviceRegistryNotifier.new),
-        anyEmulatorRunningProvider.overrideWithValue(false),
         selectedDeviceProvider.overrideWith(_FixedSelectedDeviceNotifier.new),
         selectedToolTabProvider.overrideWith(
           () => _FixedToolTabNotifier(selectedTool),
