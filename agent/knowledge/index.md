@@ -8,6 +8,7 @@
 
 | Knowledge | 中文名 | 状态 | 用途 | 关联模块 |
 | --- | --- | --- | --- | --- |
+| [anydeck-ui-rules](anydeck-ui-rules.md) | AnyDeck 桌面 UI 规则 | active | 从归档会话汇总已实施的水波纹、菜单、配色、图标与间距、滚动和入口规则，附对应实现与验证入口 | `app/theme/`, `features/` |
 | `adb-development-toolchain` | 多机开发工具链统一 | active | Flutter 3.50.0、Rust/Cargo、CocoaPods 固定版本，初始化/检查、CLI/IDE/CI 共用入口和 SDK 补丁边界 | `.fvmrc`, `rust-toolchain.toml`, `Gemfile`, `script/`, `.github/workflows/` |
 | `adb-flutter-test-isolation` | Flutter 测试隔离与异步回归 | active | Flutter 3.50.0 失败/挂起修复，平台与 FakeAsync 隔离、Tracker 订阅、UDP 释放、WDA 超时注入及 CI 全量门禁 | `test/`, `core/device_share/`, `core/providers/`, `features/overview/`, `.github/workflows/` |
 | `adb-device-system-version-sort` | 设备系统版本排序 | active | 系统版本表头升降序、数字分段与 API 比较、未知值置底、在线/投屏优先及视图筛选回归 | `features/devices/` |
