@@ -1,5 +1,6 @@
 import '../../adb/adb_service.dart';
 import '../../adb/discovered_device.dart';
+import '../../apps/android_app_instance_service.dart';
 import '../../apps/app_management_service.dart';
 import '../../device_actions/device_action_service.dart';
 import '../../device_info/device_info_service.dart';
@@ -128,6 +129,7 @@ class McpRegistryFactory {
     registry.registerAll(
       McpAppTools(
         appService: AppManagementService(adb, hdc: hdc),
+        androidAppInstances: AndroidAppInstanceService(adb),
         isHarmonyDevice: isHarmony,
       ).getTools(),
     );

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/adb/adb_service.dart';
+import '../../../core/apps/android_app_launcher.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/scrcpy/app_virtual_display_launcher.dart';
 import '../../../core/scrcpy/fusion_display_resize.dart';

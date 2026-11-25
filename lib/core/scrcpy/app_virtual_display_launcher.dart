@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../adb/adb_service.dart';
+import '../apps/android_app_launcher.dart';
 import 'activity_escape_guardian.dart';
 
 /// 在 scrcpy 虚拟副屏创建后放置指定 App，确保首帧等待不会和 App 迁移互相阻塞。
@@ -121,34 +122,6 @@ Future<void> launchAppOnPrimaryDisplay({
   if (!start.isSuccess || start.stdout.contains('Error:')) {
     throw StateError('Failed to launch $packageName on display 0: ${start.message}');
   }
-}
-
-/// 按当前用户解析应用的 LAUNCHER Activity，避免厂商 ROM 拒绝隐式包名 Intent。
-Future<String> resolveAppLauncherComponent(
-  AdbService adbService,
-  String deviceId,
-  String packageName,
-) async {
-  final result = await adbService.shellArgs(deviceId, [
-    'cmd', 'package', 'resolve-activity', '--brief', '--user', 'current',
-    '-a', 'android.intent.action.MAIN',
-    '-c', 'android.intent.category.LAUNCHER',
-    '-p', packageName,
-  ]);
-  if (result.isSuccess) {
-    for (final line in const LineSplitter().convert(result.stdout).reversed) {
-      final component = line.trim();
-      final prefix = '$packageName/';
-      if (component.startsWith(prefix) &&
-          RegExp(r'^[A-Za-z0-9_.$]+$')
-              .hasMatch(component.substring(prefix.length))) {
-        return component;
-      }
-    }
-  }
-  throw StateError(
-    '应用 $packageName 没有可启动的主界面：${result.message}',
-  );
 }
 
 /// 从 `cmd activity stack list` 中找到包名所属的 RootTask。

@@ -1,24 +1,76 @@
+import '../../apps/android_app_instance_service.dart';
 import '../../apps/app_management_service.dart';
 import '../models/mcp_tool_definition.dart';
 
 /// 应用生命周期与软件包管理相关的 MCP Tools
 class McpAppTools {
   final AppManagementService appService;
+  final AndroidAppInstanceService androidAppInstances;
 
   final Future<bool> Function(String id)? isHarmonyDevice;
 
-  McpAppTools({required this.appService, this.isHarmonyDevice});
+  McpAppTools({
+    required this.appService,
+    required this.androidAppInstances,
+    this.isHarmonyDevice,
+  });
 
   /// 获取所有应用管理工具
   List<McpToolDefinition> getTools() {
     return [
       _buildListInstalledAppsTool(),
+      _buildListAppInstancesTool(),
       _buildInstallAppTool(),
       _buildUninstallAppTool(),
       _buildLaunchAppTool(),
       _buildStopAppTool(),
       _buildClearAppDataTool(),
     ];
+  }
+
+  /// 按包名查找 Android 应用双开及其他用户空间中的安装实例。
+  McpToolDefinition _buildListAppInstancesTool() {
+    return McpToolDefinition(
+      name: 'list_app_instances',
+      category: 'app',
+      platforms: const {'android'},
+      readOnly: true,
+      description: '查找 Android 应用安装在哪些用户空间，包括 XSpace 等双开应用。'
+          '从结果选择 userId 传给 launch_app。unavailableUserIds 表示安装状态未知。',
+      inputSchema: {
+        'type': 'object',
+        'required': ['deviceId', 'packageName'],
+        'properties': {
+          'deviceId': {'type': 'string', 'description': '目标设备序列号'},
+          'packageName': {
+            'type': 'string',
+            'pattern': r'^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$',
+            'description': '要查找的 Android 应用包名',
+          },
+        },
+      },
+      handler: (args) async {
+        final deviceId = args['deviceId'] as String;
+        final packageName = args['packageName'] as String;
+        final result = await androidAppInstances.listInstances(
+          deviceId,
+          packageName,
+        );
+        return {
+          'deviceId': deviceId,
+          'packageName': packageName,
+          'instances': [
+            for (final instance in result.instances)
+              {
+                'userId': instance.userId,
+                'userName': instance.userName,
+                if (instance.userType != null) 'userType': instance.userType,
+              },
+          ],
+          'unavailableUserIds': result.unavailableUserIds,
+        };
+      },
+    );
   }
 
   /// 1. 获取已安装应用包名列表
@@ -157,29 +209,45 @@ class McpAppTools {
       name: 'launch_app',
       category: 'app',
       platforms: const {'android', 'harmony'},
-      description: '启动设备上的指定应用',
+      description: '启动设备上的指定应用。Android 双开应用先用 list_app_instances 查找，再传入对应的 userId。',
       inputSchema: {
         'type': 'object',
         'required': ['deviceId', 'packageName'],
         'properties': {
           'deviceId': {'type': 'string', 'description': '目标设备序列号'},
           'packageName': {'type': 'string', 'pattern': r'^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$', 'description': '应用包名或 HarmonyOS bundleName'},
+          'userId': {
+            'type': 'integer',
+            'minimum': 0,
+            'maximum': 2147483647,
+            'description': '仅 Android。由 list_app_instances 返回的用户 ID，省略时使用默认启动方式。',
+          },
         },
       },
       handler: (args) async {
         final deviceId = args['deviceId'] as String;
         final packageName = args['packageName'] as String;
+        final userId = args['userId'] as int?;
+        final isHarmony = await isHarmonyDevice?.call(deviceId) == true;
 
-        final result = await appService.launch(deviceId, packageName,
-            isHarmony: await isHarmonyDevice?.call(deviceId) == true);
-
-        if (!result.isSuccess) {
-          throw Exception('启动应用失败: ${result.stderr}');
+        if (userId != null) {
+          if (isHarmony) throw ArgumentError('userId 仅支持 Android 应用');
+          await androidAppInstances.launchInUser(deviceId, packageName, userId);
+        } else {
+          final result = await appService.launch(
+            deviceId,
+            packageName,
+            isHarmony: isHarmony,
+          );
+          if (!result.isSuccess) {
+            throw Exception('启动应用失败: ${result.stderr}');
+          }
         }
 
         return {
           'deviceId': deviceId,
           'packageName': packageName,
+          'userId': ?userId,
           'success': true,
           'summary': '应用 $packageName 已启动',
         };

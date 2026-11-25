@@ -61,9 +61,10 @@ AnyDeck MCP 服务基于分层架构实现：
 | **UI** | `device_input_text` | 向前台焦点输入框发送文本 (支持空格自动转义) | `deviceId`, `text` |
 | **UI** | `device_press_key` | 使用兼容 KeyCode；iOS 限 Home/音量/锁屏 (Home=3, Back=4, Power=26 等) | `deviceId`, `keyCode` |
 | **App** | `list_installed_apps` | 列出设备上安装的应用包名与应用名 | `deviceId`, `filter` |
+| **App** | `list_app_instances` | 查询 Android 应用所在的用户空间，包括双开实例 | `deviceId`, `packageName` |
 | **App** | `install_app` | 为设备推送并安装本地 APK | `deviceId`, `apkPath` |
 | **App** | `uninstall_app` *(高危)* | 卸载指定应用 | `deviceId`, `packageName` |
-| **App** | `launch_app` | 启动应用；HarmonyOS 当前使用 EntryAbility | `deviceId`, `packageName` |
+| **App** | `launch_app` | 启动应用，Android 支持指定用户，HarmonyOS 使用 EntryAbility | `deviceId`, `packageName`, `userId`（仅 Android，可选） |
 | **App** | `stop_app` | 强制停止指定应用进程 | `deviceId`, `packageName` |
 | **App** | `clear_app_data` *(高危)* | 清除应用所有数据与缓存 | `deviceId`, `packageName` |
 | **Log** | `query_logcat` | 检索指定 Tag/Level 的实时日志 | `deviceId`, `tag`, `level`, `limitLines` |
@@ -244,3 +245,10 @@ flutter test --no-pub test/mcp_audit_dispatch_test.dart test/mcp_audit_history_t
 - `McpServer.handleRequest` 从最终响应提取协议版本、`server/discover` 的服务端支持版本、列表结果数量、JSON-RPC 错误码或工具失败标记。工具参数按已注册工具的声明收集，输入文本、Shell、本机文件路径及异常结构或超长值显示为 `[redacted]`，接入平台取自服务端路由。
 - 历史仍使用 `mcp.auditLog.v1`，新记录增加可选响应摘要。旧记录可查看原有字段，新旧历史均只保留摘要。脱敏工具参数留在当次 AnyDeck 进程的内存中。
 - 回归覆盖详情弹窗的窄窗滚动、中英文与明暗主题、最终响应到审计 Provider 的 HTTP 链路，以及旧版历史恢复和磁盘脱敏。人工验收时，分别点击一次 `server/discover`、一次成功工具调用和一次失败调用，然后重启 AnyDeck 核对历史摘要。
+
+## 13. Android 双开应用发现与启动（2026-11-25）
+
+- Android 和兼容入口的 MCP `instructions` 引导客户端先通过 `list_devices` 获取在线设备 ID，再用 `list_app_instances` 查询应用包，选择与用户要求一致的实例。启动时将该实例的 `userId` 连同 `deviceId` 和 `packageName` 传给 `launch_app`，然后检查前台画面。
+- `list_app_instances` 使用 `cmd user list -v` 读取设备提供的名称和类型，例如小米 HyperOS 的 `XSpace` 和 `profile.CLONE`。无法识别详细输出时使用 `pm list users`，返回用户 ID、名称和可用的类型。逐个执行 `pm list packages --user <ID> <包名>` 做精确匹配。部分用户查询失败时，`unavailableUserIds` 标明这些用户的安装状态未知。
+- 指定 `userId` 时，先在该 Android 用户下解析 LAUNCHER Activity，再通过 `am start -W --user <ID>` 启动该入口，检查 Activity Manager 的状态。解析或启动失败会返回工具错误。省略 `userId` 时沿用既有启动流程。工具复用现有平台校验、分类开关、同设备命令队列与 ADB 超时。
+- 自动回归在 `test/mcp_android_app_instances_test.dart`，覆盖工具发现和指引、动态用户 ID、精确包名、旧系统回退、查询受限、错误参数、启动超时和 Android / HarmonyOS 默认启动。人工验收在启用双开的 Android 真机调用查询及显式启动，核对前台窗口的用户 ID 与所选实例一致。
