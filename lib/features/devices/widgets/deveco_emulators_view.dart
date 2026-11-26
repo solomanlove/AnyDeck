@@ -6,7 +6,8 @@ import '../../../app/widget/app_toast.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/emulator/harmony/deveco_emulator.dart';
 import '../../../core/emulator/harmony/deveco_emulator_providers.dart';
-import 'deveco_emulator_empty_state.dart';
+import 'emulator_empty_state.dart';
+import 'emulator_platform_tabs.dart';
 
 /// 华为 HarmonyOS DevEco 模拟器独立管理视图。
 ///
@@ -38,7 +39,10 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
 
     final allItems = emulatorsAsync.value ?? [];
     if (allItems.isEmpty) {
-      return DevecoEmulatorEmptyState(isScanning: emulatorsAsync.isLoading);
+      return EmulatorEmptyState(
+        platform: EmulatorPlatform.harmony,
+        isScanning: emulatorsAsync.isLoading,
+      );
     }
 
     final filtered = allItems.where((emu) {

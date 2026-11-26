@@ -106,6 +106,11 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
               subtitle: emulatorsAsync.error.toString(),
             ),
           );
+        } else if (widget.isFullPage && emulators.isEmpty) {
+          contentWidget = EmulatorEmptyState(
+            platform: EmulatorPlatform.android,
+            isScanning: emulatorsAsync.isLoading,
+          );
         } else if (emulatorsAsync.isLoading && emulators.isEmpty) {
           // 正在扫描/加载中的界面
           contentWidget = Center(

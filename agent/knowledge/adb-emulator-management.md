@@ -117,3 +117,9 @@
 - 列表和侧栏中的运行状态以 `simctl` 的 `Booted` 为准。选中已运行设备后点击「显示窗口」，也可双击设备行。该操作使用设备 UDID 打开窗口，保留当前会话。
 - 启动关机设备时先等待 `xcrun simctl bootstatus <UDID> -b` 成功，再发送开窗请求。按 `xcrun --find simctl` 解析当前 Xcode，使用 Device Hub 的 `devices://device/open?id=<UDID>`，旧版 Xcode 使用对应的 `Simulator.app`。启动或开窗命令失败时提示检查 Xcode，并刷新设备状态。
 - 本机 Xcode 27.2 验证了已运行设备的窗口唤出，以及临时 iOS 27.2 设备从关机到显示窗口。临时设备和窗口已清理。旧版 Xcode 的命令路由由单测覆盖，桌面窗口行为待在对应版本上验证。
+
+## 三平台模拟器空态与 IDE 安装引导
+
+- 本地列表扫描完成且为空时，三个平台共用居中空态。未检测到对应 IDE 时提供官方下载入口，检测到时提供创建步骤和打开入口。搜索无匹配时保留搜索框。iOS 在非 macOS 上说明系统要求。
+- macOS 检查系统与用户的 Applications 目录，并用有超时的 Spotlight 查询补充自定义安装位置。Android 也检查 Windows 常用安装目录和 Linux 启动器。iOS 优先查找 DEVELOPER_DIR 或 xcode-select 对应的完整 Xcode，选中 Command Line Tools 时继续查找 Xcode 应用包。
+- Android 使用 Device Manager 创建虚拟设备。Xcode 27 使用 Device Hub，旧版使用 Devices and Simulators。打开 IDE 失败后重新探测。相关测试以临时文件和启动替身覆盖状态切换、主窗口各平台标签和搜索。 [Android 官方指南](https://developer.android.com/studio/run/managing-avds) · [Apple Device Hub 指南](https://developer.apple.com/documentation/xcode/managing-your-simulated-and-physical-devices-in-device-hub) · [Apple 旧版模拟器指南](https://developer.apple.com/documentation/safari-developer-tools/adding-additional-simulators)

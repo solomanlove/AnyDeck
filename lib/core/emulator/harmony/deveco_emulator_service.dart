@@ -3,14 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../../process/bounded_process.dart';
+import '../emulator_ide_service.dart';
 import 'deveco_emulator.dart';
-
-/// 带超时的宿主机命令入口，可在测试中替换 Spotlight 和应用启动。
-typedef DevEcoCommandRunner = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments, {
-  required Duration timeout,
-});
 
 /// 华为 DevEco 模拟器管理服务。
 class DevEcoEmulatorService {
@@ -21,7 +15,7 @@ class DevEcoEmulatorService {
   });
 
   static const _appNames = ['DevEco-Studio', 'DevEco Studio'];
-  final DevEcoCommandRunner _runProcess;
+  final EmulatorIdeCommandRunner _runProcess;
   final TargetPlatform? _platform;
   final List<String>? _applicationDirectories;
 
@@ -72,46 +66,10 @@ class DevEcoEmulatorService {
   /// 先检查常用安装目录，再查询 Spotlight 中已索引的自定义位置。
   Future<String?> findDevEcoStudio() async {
     if (!supportsStudioDetection) return null;
-    final userHome = Platform.environment['HOME'];
-    final directories =
-        _applicationDirectories ??
-        [
-          '/Applications',
-          if (userHome != null && userHome.isNotEmpty) '$userHome/Applications',
-        ];
-    for (final directory in directories) {
-      for (final name in _appNames) {
-        final path = '$directory/$name.app';
-        if (await _isStudioBundle(path)) return path;
-      }
-    }
-
-    try {
-      final query = _appNames
-          .map((name) => 'kMDItemFSName == "$name.app"c')
-          .join(' || ');
-      final result = await _runProcess('/usr/bin/mdfind', [
-        '-0',
-        query,
-      ], timeout: const Duration(seconds: 2));
-      if (result.exitCode != 0) return null;
-      // 使用 NUL 分隔读取路径，兼容含空格或换行的安装目录。
-      for (final path in (result.stdout as String).split('\u0000')) {
-        if (await _isStudioBundle(path)) return path;
-      }
-    } on Exception catch (error) {
-      debugPrint('Failed to find DevEco Studio: $error');
-    }
-    return null;
-  }
-
-  /// 校验索引结果仍指向 DevEco Studio 应用包。
-  Future<bool> _isStudioBundle(String path) async {
-    final app = File(path);
-    if (!app.isAbsolute) return false;
-    final bundleName = app.uri.pathSegments.last.toLowerCase();
-    return _appNames.any((name) => bundleName == '$name.app'.toLowerCase()) &&
-        await File('$path/Contents/Info.plist').exists();
+    return EmulatorIdeService(
+      runProcess: _runProcess,
+      applicationDirectories: _applicationDirectories,
+    ).findMacApplication(appNames: _appNames);
   }
 
   /// 空态使用探测到的应用路径，列表工具栏沿用应用名称启动。

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/emulator/android_emulator.dart';
+import 'package:any_deck/core/emulator/emulator_ide_providers.dart';
+import 'package:any_deck/core/emulator/emulator_ide_service.dart';
 import 'package:any_deck/core/emulator/harmony/deveco_emulator.dart';
 import 'package:any_deck/core/emulator/harmony/deveco_emulator_providers.dart';
 import 'package:any_deck/core/emulator/harmony/deveco_emulator_service.dart';
@@ -60,6 +62,15 @@ void main() {
               return [if (hasEmulator) _androidEmulator];
             }),
             emulatorConnectionsProvider.overrideWith((ref) async => {}),
+            emulatorIdeServiceProvider.overrideWithValue(
+              const EmulatorIdeService(platform: TargetPlatform.macOS),
+            ),
+            androidStudioAppPathProvider.overrideWith(
+              (ref) async => '/Applications/Android Studio.app',
+            ),
+            xcodeAppPathProvider.overrideWith(
+              (ref) async => '/Applications/Xcode.app',
+            ),
             devecoEmulatorsProvider.overrideWith((ref) async {
               await scan.future;
               return [if (hasEmulator) _devecoEmulator];
@@ -108,9 +119,9 @@ void main() {
           find.byType(Divider),
         ];
         final hint = find.textContaining(switch (platform) {
-          'Android' => '请在 Android Studio 中创建模拟器',
+          'Android' => '在 Android Studio 中打开 Device Manager',
           'HarmonyOS' => '在 DevEco Studio 的 Tools',
-          _ => '请在 Xcode 的 Window',
+          _ => 'Xcode → Open Developer Tool → Device Hub',
         });
         final simulator = find.text(switch (platform) {
           'Android' => _androidEmulator.displayName,

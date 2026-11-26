@@ -10,6 +10,8 @@ import '../../overview/model/platform_distribution_type.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/emulator/ios/ios_simulator.dart';
 import '../../../core/emulator/ios/ios_simulator_providers.dart';
+import 'emulator_empty_state.dart';
+import 'emulator_platform_tabs.dart';
 
 /// iOS Xcode 模拟器独立管理视图。
 ///
@@ -40,6 +42,13 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
     final simulatorsAsync = ref.watch(iosSimulatorsProvider);
 
     final allItems = simulatorsAsync.value ?? [];
+    if (allItems.isEmpty) {
+      return EmulatorEmptyState(
+        platform: EmulatorPlatform.ios,
+        isScanning: simulatorsAsync.isLoading,
+      );
+    }
+
     final filtered = allItems.where((sim) {
       if (_filter.isEmpty) return true;
       final q = _filter.toLowerCase();
@@ -88,18 +97,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
         );
 
         Widget content;
-        if (simulatorsAsync.isLoading && allItems.isEmpty) {
-          content = const Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(strokeWidth: 2),
-                SizedBox(height: 12),
-                Text('正在扫描 Xcode 模拟器...', style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-          );
-        } else if (filtered.isEmpty) {
+        if (filtered.isEmpty) {
           content = Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -112,9 +110,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  allItems.isNotEmpty
-                      ? '没有匹配 "$_filter" 的模拟器'
-                      : '请在 Xcode 的 Window -> Devices and Simulators 中创建或安装模拟器。',
+                  '没有匹配 "$_filter" 的模拟器',
                   style: const TextStyle(fontSize: 13, color: Colors.grey),
                 ),
               ],
@@ -124,8 +120,6 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
           content = _buildTable(context, filtered, isDark);
         }
 
-        // 本地列表为空时只显示扫描状态或安装引导。
-        if (allItems.isEmpty) return content;
         final toolbar = _buildToolbar(context, selectedSim);
         return Column(
           children: [
