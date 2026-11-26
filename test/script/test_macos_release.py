@@ -29,6 +29,11 @@ class MacOSReleaseTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         self.architecture = platform.machine()
+        # 用实际发布版本验证 Tag 匹配，避免版本升级后仍只覆盖旧值。
+        pubspec = (ROOT / 'pubspec.yaml').read_text().splitlines()
+        version = next(line.partition(':')[2].strip() for line in pubspec
+                       if line.startswith('version:'))
+        self.version, build_number = version.split('+', 1)
         self.app = self.root / 'AnyDeck.app'
         source = self.root / 'main.c'
         source.write_text('int main(void) { return 0; }\n')
@@ -48,7 +53,7 @@ class MacOSReleaseTests(unittest.TestCase):
         (self.app / 'Contents/Info.plist').write_bytes(plistlib.dumps({
             'CFBundleIdentifier': 'com.github.anydeck.release-test',
             'CFBundleExecutable': 'AnyDeck', 'CFBundlePackageType': 'APPL',
-            'CFBundleShortVersionString': '1.0.0'}))
+            'CFBundleShortVersionString': self.version, 'CFBundleVersion': build_number}))
         (self.app / 'Contents/Resources/fixture-link').symlink_to('ShareCore/manifest.json')
         self.sign()
 
@@ -59,11 +64,11 @@ class MacOSReleaseTests(unittest.TestCase):
         self.run_command(['codesign', '--force', '--deep', '--sign', '-', str(self.app)])
 
     def test_valid_bundle_and_version_tag(self):
-        with patch.dict(os.environ, {'GITHUB_REF_TYPE': 'tag', 'GITHUB_REF_NAME': 'v1.0.0'}):
+        with patch.dict(os.environ, {'GITHUB_REF_TYPE': 'tag', 'GITHUB_REF_NAME': f'v{self.version}'}):
             VERIFIER.verify(self.app)
 
     def test_rejects_version_mismatch(self):
-        with patch.dict(os.environ, {'GITHUB_REF_TYPE': 'tag', 'GITHUB_REF_NAME': 'v2.0.0'}):
+        with patch.dict(os.environ, {'GITHUB_REF_TYPE': 'tag', 'GITHUB_REF_NAME': f'v{self.version}-rc'}):
             with self.assertRaisesRegex(ValueError, '不一致'):
                 VERIFIER.verify(self.app)
 

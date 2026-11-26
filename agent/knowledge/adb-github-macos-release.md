@@ -7,7 +7,7 @@
 ## 发布入口
 
 - Workflow：`.github/workflows/release-macos.yml`。
-- 固定 Flutter 3.47.2；macOS 15 arm64 与 Intel Runner 分别安装本机 OpenSSL、libplist、pkg-config 及对应 Rust target。
+- Flutter 版本从 `.fvmrc` 读取；macOS 15 arm64 与 Intel Runner 分别安装本机 OpenSSL、libplist、pkg-config 及对应 Rust target。
 - 测试前先执行 `flutter build macos --release --config-only --no-pub` 生成干净 Runner 必需的 Flutter/Xcode 配置。
 - `script/build_macos.sh` 复用 Xcode 原生构建阶段及现有 ad-hoc 签名策略。
 - `script/package_macos_release.sh` 调用验证器后生成 DMG、保留权限与符号链接的 ZIP、`SHA256SUMS` 与 `INSTALL-macOS.md`。
@@ -21,6 +21,8 @@ git push origin v1.0.0
 ```
 
 版本读取构建后 Info.plist，Tag 必须等于 `v<CFBundleShortVersionString>`。先更新 `pubspec.yaml` 再发布新版本。已有 Release 不自动覆盖，避免相同版本下悄悄替换安装包。
+
+v1.0.2 使用 `pubspec.yaml` 中的 `1.0.2+3`，App 版本为 `1.0.2`，构建号为 `3`。版本变更见 [Changelog](../../CHANGELOG.md#102)。
 
 ## 一次性私有组件配置
 

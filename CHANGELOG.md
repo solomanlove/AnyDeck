@@ -21,6 +21,24 @@ Semantic Versioning while the project is in early development.
 
 - No fixes yet.
 
+## [1.0.2]
+
+### Added
+
+- Device wall and list views with custom groups, live screenshot previews, and batch actions.
+- Service diagnostics and improved local emulator discovery and setup guidance.
+- Separate Android, HarmonyOS, and iOS MCP endpoints, with a persistent audit history and support for discovering and launching cloned Android apps.
+
+### Changed
+
+- Local screen recordings use the built-in Rust recorder for H.264/AAC MP4 output.
+- File sharing combines the Honor and HarmonyOS flows in one view.
+
+### Fixed
+
+- Reduced UI stalls during device discovery and shell commands.
+- Fixed iOS simulator window visibility with Xcode 27 and incorrect ports in DLNA device descriptions.
+
 ## [1.0.0] - 2026-06-20
 
 ### Added
