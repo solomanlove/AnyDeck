@@ -20,6 +20,8 @@ void main() {
       final host = IosWdaHost(
         commands: IosCommandService(executable: cli.path),
         forwardExecutable: cli.path,
+        // 假转发需要启动 Python，在共享 Intel Runner 上耗时长于原生 iproxy。
+        existingWdaProbeTimeout: const Duration(seconds: 20),
       );
       addTearDown(host.close);
       for (var i = 0; i < 2; i++) {
@@ -58,6 +60,7 @@ void main() {
       }
     },
     skip: Platform.isWindows,
+    timeout: const Timeout(Duration(seconds: 90)),
   );
 
   test(
@@ -110,6 +113,6 @@ void main() {
       }
     },
     skip: Platform.isWindows,
-    timeout: const Timeout(Duration(seconds: 45)),
+    timeout: const Timeout(Duration(seconds: 90)),
   );
 }

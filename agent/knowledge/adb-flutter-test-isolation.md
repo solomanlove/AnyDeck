@@ -30,6 +30,7 @@
 - 真实 IO 在 `tester.runAsync` 中推进；FakeAsync 下只等待由测试可控制的 Future，释放资源时先卸载 Widget/Provider 订阅，再关闭服务。
 - 模态框背后仍有 busy 动画时，只推进所需转场，不用 `pumpAndSettle` 等待永不停止的动画。
 - HTTP 超时故障必须明显超过正常调度预算；不要把并行测试机器的瞬时负载当作协议故障。
+- WDA 本地集成回归包含 Python 假 CLI 和实际 HTTP。Intel Hosted Runner 的旧测试在假转发就绪前误启动 Runner，另有用例在 WDA 启动阶段超过默认 30 秒。复用用例单独延长可注入的探测预算，恢复用例为启动和 HTTP 故障预留测试时间。用户运行时继续使用原有探测和请求时限。
 - 设备共享发现回归使用 `loopbackOnly` 绑定真实的 `127.0.0.1` UDP 端口，只交换回环单播。macOS Hosted Runner 无需加入组播或发送广播即可验证协议、凭据隔离和端口释放。默认发现仍使用局域网探测。
 - macOS Release 的 arm64/Intel 两个 job 均执行静态分析和全量 Flutter 测试，再执行脚本回归与构建。远端 CI 是否通过需以实际 workflow 结果为准。
 
