@@ -8,6 +8,7 @@ import 'package:any_deck/features/console/controller/console_dock_controller.dar
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:any_deck/features/mcp/controller/mcp_server_controller.dart';
 import 'package:any_deck/features/overview/widget/system_versions_page.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -218,10 +219,13 @@ void main() {
         expect(find.textContaining('API 37'), findsWidgets);
         expect(find.textContaining('2026-10-13'), findsOneWidget);
         await tester.tap(find.text('HarmonyOS'));
+        // 标题栏需先完成双击判定，再执行平台切换的单击回调。
+        await tester.pump(kDoubleTapTimeout);
         await tester.pumpAndSettle();
         expect(find.text('HarmonyOS 7.0.0（当前最新）'), findsOneWidget);
         expect(find.textContaining('2026-10-07'), findsOneWidget);
         await tester.tap(find.text('iOS'));
+        await tester.pump(kDoubleTapTimeout);
         await tester.pumpAndSettle();
         expect(find.text('iOS 27'), findsWidgets);
         expect(find.textContaining('2026-06-07'), findsWidgets);

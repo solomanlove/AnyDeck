@@ -53,39 +53,16 @@ class SystemVersionsPage extends ConsumerWidget {
       builder: (context, constraints) {
         final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
         final shortWindow = constraints.maxHeight < 240 * textScale;
-        final separateSwitcher =
-            !shortWindow && constraints.maxWidth < 900 * textScale;
-        // 控制台展开后，平台选项和标题共用一行，给可滚动的正文留出高度。
-        final inlineSwitcher = shortWindow
-            ? ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: constraints.maxWidth * .6,
-                ),
-                child: FittedBox(fit: BoxFit.scaleDown, child: switcher),
-              )
-            : switcher;
         return VersionDistributionPageLayout(
-          header: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DashboardHeaderBar(
-                title: context.l10n.t('systemVersions'),
-                subtitle: context.l10n.t(platform.titleL10nKey),
-                height: shortWindow ? 48 : 72,
-                trailing: separateSwitcher ? null : inlineSwitcher,
-              ),
-              if (separateSwitcher)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 8,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: switcher,
-                  ),
-                ),
-            ],
+          header: DashboardHeaderBar(
+            title: context.l10n.t('systemVersions'),
+            subtitle: context.l10n.t(platform.titleL10nKey),
+            height: shortWindow ? 48 : 72,
+            // 与模拟器管理同用标题栏右侧位置，窄窗口缩放后仍显示全部选项。
+            trailing: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * .6),
+              child: FittedBox(fit: BoxFit.scaleDown, child: switcher),
+            ),
           ),
           body: switch (platform) {
             PlatformDistributionType.android =>

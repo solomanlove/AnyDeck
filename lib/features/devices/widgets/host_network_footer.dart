@@ -226,11 +226,45 @@ class _HostNetworkDetails extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.t('hostNetworkComputer'),
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          // 标题与刷新入口共用一行，放大字号时两侧文字可分别换行。
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  l10n.t('hostNetworkComputer'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: TextButton.icon(
+                  onPressed: network.isLoading
+                      ? null
+                      : () => ref.read(hostNetworkProvider.notifier).refresh(),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: network.isLoading
+                      ? const SizedBox.square(
+                          dimension: 12,
+                          child: CircularProgressIndicator(strokeWidth: 1.5),
+                        )
+                      : const Icon(Icons.refresh, size: 14),
+                  label: Text(
+                    l10n.t('hostNetworkRefresh'),
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           for (final item in [
             (
               l10n.t('deviceWorkspaceHostIp'),
@@ -279,25 +313,6 @@ class _HostNetworkDetails extends ConsumerWidget {
                         .refresh(requestWifiAccess: true),
               child: Text(l10n.t('hostWifiReadName')),
             ),
-          const Divider(),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: network.isLoading
-                  ? null
-                  : () => ref.read(hostNetworkProvider.notifier).refresh(),
-              icon: network.isLoading
-                  ? const SizedBox.square(
-                      dimension: 12,
-                      child: CircularProgressIndicator(strokeWidth: 1.5),
-                    )
-                  : const Icon(Icons.refresh, size: 14),
-              label: Text(
-                l10n.t('hostNetworkRefresh'),
-                style: const TextStyle(fontSize: 11),
-              ),
-            ),
-          ),
         ],
       ),
     );

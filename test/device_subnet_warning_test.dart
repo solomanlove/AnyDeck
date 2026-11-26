@@ -100,6 +100,57 @@ void main() {
     );
   });
 
+  for (final (locale, width, scale) in [
+    ('zh', 800.0, 1.0),
+    ('en', 320.0, 1.6),
+  ]) {
+    testWidgets('网络详情的刷新入口与标题同行并移除分割线 $locale', (tester) async {
+      tester.view.physicalSize = Size(width, 480);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final l10n = AppLocalizations(Locale(locale));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            hostNetworkServiceProvider.overrideWithValue(_HostNetworkService()),
+          ],
+          child: MaterialApp(
+            locale: Locale(locale),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizationsDelegate(),
+              ...GlobalMaterialLocalizations.delegates,
+            ],
+            home: const Scaffold(
+              body: Column(children: [Spacer(), HostNetworkFooter()]),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('hostNetworkDetails')));
+      await tester.pumpAndSettle();
+
+      final title = tester.getRect(find.text(l10n.t('hostNetworkComputer')));
+      final refresh = find.widgetWithText(
+        TextButton,
+        l10n.t('hostNetworkRefresh'),
+      );
+      final button = tester.getRect(refresh);
+      final firstDetail = tester.getRect(
+        find.text(l10n.t('deviceWorkspaceHostIp')),
+      );
+      expect(button.left, greaterThan(title.right));
+      expect(button.center.dy, closeTo(title.center.dy, 1));
+      expect(button.bottom, lessThan(firstDetail.top));
+      expect(refresh.hitTestable(), findsOneWidget);
+      expect(find.byType(Divider), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final locale in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
       testWidgets('底栏手动刷新同步更新提示 $locale $brightness', (tester) async {

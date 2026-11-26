@@ -13,6 +13,7 @@ import 'package:any_deck/features/overview/widget/platform_version_distribution_
 import 'package:any_deck/features/overview/widget/platform_version_switcher.dart';
 import 'package:any_deck/features/overview/widget/system_versions_page.dart';
 import 'package:any_deck/features/overview/widget/version_distribution_layout.dart';
+import 'package:any_deck/features/widgets/dashboard_header_bar.dart';
 
 const _delegates = [
   AppLocalizationsDelegate(),
@@ -28,6 +29,50 @@ Future<void> _wheel(WidgetTester tester, Offset point, double delta) async {
 }
 
 void main() {
+  for (final (width, scale) in [(860.0, 1.0), (320.0, 1.6)]) {
+    testWidgets('主窗口平台切换器固定在标题栏右侧 $width × $scale', (tester) async {
+      tester.view.physicalSize = Size(width, 720);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            locale: Locale('zh'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: _delegates,
+            home: Scaffold(body: SystemVersionsPage()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final header = find.byType(DashboardHeaderBar);
+      final switcher = find.descendant(
+        of: header,
+        matching: find.byType(PlatformVersionSwitcher),
+      );
+      final headerRect = tester.getRect(header);
+      final switcherRect = tester.getRect(switcher);
+      expect(switcherRect.right, headerRect.right - 28);
+      expect(switcherRect.center.dy, closeTo(headerRect.center.dy, 1));
+      expect(switcherRect.intersect(headerRect), switcherRect);
+      for (final platform in PlatformDistributionType.values) {
+        expect(
+          find
+              .descendant(
+                of: switcher,
+                matching: find.text(platform.displayName),
+              )
+              .hitTestable(),
+          findsOneWidget,
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final mainWindow in [true, false]) {
     testWidgets('${mainWindow ? '主窗口' : '独立窗口'}三平台仅正文响应滚轮，标题和页脚固定', (
       tester,
@@ -61,7 +106,7 @@ void main() {
             matching: find.text(platform.displayName),
           ),
         );
-        // 独立窗口的 DragToMoveArea 需先完成标题栏双击判定。
+        // DragToMoveArea 需先完成标题栏双击判定。
         await tester.pump(kDoubleTapTimeout);
         await tester.pumpAndSettle();
         expect(
