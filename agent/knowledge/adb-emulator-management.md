@@ -123,3 +123,4 @@
 - 本地列表扫描完成且为空时，三个平台共用居中空态。未检测到对应 IDE 时提供官方下载入口，检测到时提供创建步骤和打开入口。搜索无匹配时保留搜索框。iOS 在非 macOS 上说明系统要求。
 - macOS 检查系统与用户的 Applications 目录，并用有超时的 Spotlight 查询补充自定义安装位置。Android 也检查 Windows 常用安装目录和 Linux 启动器。iOS 优先查找 DEVELOPER_DIR 或 xcode-select 对应的完整 Xcode，选中 Command Line Tools 时继续查找 Xcode 应用包。
 - Android 使用 Device Manager 创建虚拟设备。Xcode 27 使用 Device Hub，旧版使用 Devices and Simulators。打开 IDE 失败后重新探测。相关测试以临时文件和启动替身覆盖状态切换、主窗口各平台标签和搜索。 [Android 官方指南](https://developer.android.com/studio/run/managing-avds) · [Apple Device Hub 指南](https://developer.apple.com/documentation/xcode/managing-your-simulated-and-physical-devices-in-device-hub) · [Apple 旧版模拟器指南](https://developer.apple.com/documentation/safari-developer-tools/adding-additional-simulators)
+- 主窗口布局回归固定 `androidStudioAppPathProvider` 的返回值。切换到无 AVD 的 Android 页时，空态可以结束加载，`pumpAndSettle` 无需等待宿主文件系统或 Spotlight。

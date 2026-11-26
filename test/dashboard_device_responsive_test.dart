@@ -10,6 +10,7 @@ import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/device_info/device_overview.dart';
 import 'package:any_deck/core/device_share/device_share_provider.dart';
 import 'package:any_deck/core/device_share/device_share_service.dart';
+import 'package:any_deck/core/emulator/emulator_ide_providers.dart';
 import 'package:any_deck/core/emulator/emulator_process.dart';
 import 'package:any_deck/core/emulator/emulator_service.dart';
 import 'package:any_deck/core/ios/ios_device_service.dart';
@@ -445,6 +446,8 @@ Future<ProviderContainer> _pumpDashboard(
         (ref) async => DesktopAutoStartStatus.disabled,
       ),
       emulatorListProvider.overrideWith((ref) async => []),
+      // 固定空态的 IDE 探测结果，避免 widget test 等待宿主文件系统和 Spotlight。
+      androidStudioAppPathProvider.overrideWith((ref) async => null),
       if (emulatorService != null)
         emulatorServiceProvider.overrideWithValue(emulatorService),
       emulatorConnectionsProvider.overrideWith(
