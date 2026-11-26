@@ -87,8 +87,6 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
           ),
         );
 
-        final toolbar = _buildToolbar(context, selectedSim);
-
         Widget content;
         if (simulatorsAsync.isLoading && allItems.isEmpty) {
           content = const Center(
@@ -114,7 +112,9 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _filter.isNotEmpty ? '没有匹配 "$_filter" 的模拟器' : '请在 Xcode 的 Window -> Devices and Simulators 中创建或安装模拟器。',
+                  allItems.isNotEmpty
+                      ? '没有匹配 "$_filter" 的模拟器'
+                      : '请在 Xcode 的 Window -> Devices and Simulators 中创建或安装模拟器。',
                   style: const TextStyle(fontSize: 13, color: Colors.grey),
                 ),
               ],
@@ -124,6 +124,9 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
           content = _buildTable(context, filtered, isDark);
         }
 
+        // 本地列表为空时只显示扫描状态或安装引导。
+        if (allItems.isEmpty) return content;
+        final toolbar = _buildToolbar(context, selectedSim);
         return Column(
           children: [
             Padding(

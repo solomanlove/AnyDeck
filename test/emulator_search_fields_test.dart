@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:any_deck/app/l10n/app_localizations.dart';
 import 'package:any_deck/app/theme/app_theme.dart';
+import 'package:any_deck/core/emulator/android_emulator.dart';
+import 'package:any_deck/core/emulator/harmony/deveco_emulator.dart';
 import 'package:any_deck/core/emulator/harmony/deveco_emulator_providers.dart';
+import 'package:any_deck/core/emulator/ios/ios_simulator.dart';
 import 'package:any_deck/core/emulator/ios/ios_simulator_providers.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
@@ -16,8 +21,156 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/search_field_expectations.dart';
 
-/// 固定空列表，验证搜索框样式与清除交互，不启动平台扫描或模拟器。
+const _androidEmulator = AndroidEmulator(name: 'Test_AVD');
+const _devecoEmulator = DevEcoEmulator(
+  name: 'Test DevEco',
+  apiVersion: 'API 12',
+  deviceType: 'Phone',
+  state: 'Stopped',
+);
+const _iosSimulator = IosSimulator(
+  udid: 'test-ios',
+  name: 'Test iPhone',
+  runtime: 'iOS 26',
+  deviceTypeIdentifier: 'iPhone',
+  state: 'Shutdown',
+  isAvailable: true,
+);
+
+/// 用替代列表验证工具栏显示、搜索样式与清除交互。
 void main() {
+  for (final platform in ['Android', 'HarmonyOS', 'iOS']) {
+    for (final width in [620.0, 1200.0]) {
+      testWidgets('$platform 无本地模拟器时隐藏工具栏 $width', (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = Size(width, 900);
+        addTearDown(tester.view.reset);
+        final scan = Completer<void>();
+        var hasEmulator = false;
+        final container = ProviderContainer(
+          overrides: [
+            runningEmulatorCountsProvider.overrideWithValue((
+              android: 0,
+              harmony: platform == 'HarmonyOS' ? 1 : 0,
+              ios: platform == 'iOS' ? 1 : 0,
+            )),
+            emulatorListProvider.overrideWith((ref) async {
+              await scan.future;
+              return [if (hasEmulator) _androidEmulator];
+            }),
+            emulatorConnectionsProvider.overrideWith((ref) async => {}),
+            devecoEmulatorsProvider.overrideWith((ref) async {
+              await scan.future;
+              return [if (hasEmulator) _devecoEmulator];
+            }),
+            iosSimulatorsProvider.overrideWith((ref) async {
+              await scan.future;
+              return [if (hasEmulator) _iosSimulator];
+            }),
+          ],
+        );
+        addTearDown(container.dispose);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              locale: const Locale('zh'),
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: const [
+                AppLocalizationsDelegate(),
+                ...GlobalMaterialLocalizations.delegates,
+              ],
+              home: const Scaffold(body: EmulatorListPanel(isFullPage: true)),
+            ),
+          ),
+        );
+        final scanning = find.textContaining(switch (platform) {
+          'Android' => '正在扫描',
+          'HarmonyOS' => '正在扫描 DevEco 模拟器',
+          _ => '正在扫描 Xcode 模拟器',
+        });
+        expect(scanning, findsOneWidget);
+
+        final search = find.byType(TextField);
+        final controls = [
+          search,
+          find.byIcon(CupertinoIcons.play_arrow),
+          find.byIcon(CupertinoIcons.stop),
+          find.byIcon(CupertinoIcons.refresh),
+          find.byIcon(Icons.open_in_new),
+          find.byType(Divider),
+        ];
+        final hint = find.textContaining(switch (platform) {
+          'Android' => '请在 Android Studio 中创建模拟器',
+          'HarmonyOS' => '请在 DevEco Studio 中',
+          _ => '请在 Xcode 的 Window',
+        });
+        final simulator = find.text(switch (platform) {
+          'Android' => _androidEmulator.displayName,
+          'HarmonyOS' => _devecoEmulator.name,
+          _ => _iosSimulator.name,
+        });
+
+        // 首次扫描与扫描完成后的实际空列表都隐藏整行与分隔线。
+        for (final control in controls) {
+          expect(control, findsNothing);
+        }
+        scan.complete();
+        await tester.pumpAndSettle();
+        for (final control in controls) {
+          expect(control, findsNothing);
+        }
+        expect(hint, findsOneWidget);
+        if (platform == 'HarmonyOS') {
+          expect(
+            find.widgetWithText(FilledButton, '打开 DevEco Studio'),
+            findsOneWidget,
+          );
+        }
+
+        void refreshList() {
+          switch (platform) {
+            case 'Android':
+              container.invalidate(emulatorListProvider);
+            case 'HarmonyOS':
+              container.invalidate(devecoEmulatorsProvider);
+            case 'iOS':
+              container.invalidate(iosSimulatorsProvider);
+          }
+        }
+
+        hasEmulator = true;
+        refreshList();
+        await tester.pumpAndSettle();
+        expect(simulator, findsOneWidget);
+        expect(hint, findsNothing);
+
+        // 搜索无匹配时仍然能清除输入并恢复列表。
+        await tester.enterText(search, 'no matches');
+        await tester.pumpAndSettle();
+        expect(simulator, findsNothing);
+        expect(hint, findsNothing);
+        expect(search, findsOneWidget);
+        expect(find.byIcon(CupertinoIcons.refresh), findsOneWidget);
+        expect(find.byType(Divider), findsOneWidget);
+        await tester.tap(find.byIcon(CupertinoIcons.clear_circled));
+        await tester.pumpAndSettle();
+        expect(simulator, findsOneWidget);
+
+        // 刷新发现本地列表变空后，即使曾输入关键词，也恢复平台引导。
+        await tester.enterText(search, 'no matches');
+        hasEmulator = false;
+        refreshList();
+        await tester.pumpAndSettle();
+        for (final control in controls) {
+          expect(control, findsNothing);
+        }
+        expect(hint, findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   final emulatorHeights = <String, double>{};
   for (final language in ['zh', 'en']) {
     for (final brightness in Brightness.values) {
@@ -40,10 +193,16 @@ void main() {
                 key: UniqueKey(),
                 overrides: [
                   runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
-                  emulatorListProvider.overrideWith((ref) async => []),
+                  emulatorListProvider.overrideWith(
+                    (ref) async => [_androidEmulator],
+                  ),
                   emulatorConnectionsProvider.overrideWith((ref) async => {}),
-                  devecoEmulatorsProvider.overrideWith((ref) async => []),
-                  iosSimulatorsProvider.overrideWith((ref) async => []),
+                  devecoEmulatorsProvider.overrideWith(
+                    (ref) async => [_devecoEmulator],
+                  ),
+                  iosSimulatorsProvider.overrideWith(
+                    (ref) async => [_iosSimulator],
+                  ),
                 ],
                 child: MaterialApp(
                   locale: Locale(language),
@@ -136,8 +295,12 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
-              devecoEmulatorsProvider.overrideWith((ref) async => []),
-              iosSimulatorsProvider.overrideWith((ref) async => []),
+              devecoEmulatorsProvider.overrideWith(
+                (ref) async => [_devecoEmulator],
+              ),
+              iosSimulatorsProvider.overrideWith(
+                (ref) async => [_iosSimulator],
+              ),
             ],
             child: MaterialApp(
               theme: buildAppTheme(brightness),

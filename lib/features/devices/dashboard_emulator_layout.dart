@@ -4,12 +4,14 @@ part of '../dashboard_screen.dart';
 class _EmulatorPageLayout extends ConsumerStatefulWidget {
   const _EmulatorPageLayout({
     required this.layoutWidget,
+    required this.showToolbar,
     required this.toolbar,
     required this.filterController,
     required this.onFilterChanged,
   });
 
   final Widget layoutWidget;
+  final bool showToolbar;
   final Widget toolbar;
   final TextEditingController filterController;
   final ValueChanged<String> onFilterChanged;
@@ -87,28 +89,30 @@ class _EmulatorPageLayoutState extends ConsumerState<_EmulatorPageLayout> {
                 },
               ),
             ),
-            // 内容区域：安卓模拟器与其他两端页面保持完全一致（搜索框 + 工具栏 + 分割线 + 表格）
+            // 有本地模拟器时显示搜索框、工具栏和分隔线。
             Expanded(
               child: switch (selectedPlatform) {
                 EmulatorPlatform.android => Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(28, 12, 28, 12),
-                        child: Row(
-                          children: [
-                            search,
-                            const Spacer(),
-                            if (!compact) widget.toolbar,
-                          ],
+                      if (widget.showToolbar) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(28, 12, 28, 12),
+                          child: Row(
+                            children: [
+                              search,
+                              const Spacer(),
+                              if (!compact) widget.toolbar,
+                            ],
+                          ),
                         ),
-                      ),
-                      if (compact)
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
-                          child: widget.toolbar,
-                        ),
-                      const Divider(height: 1),
+                        if (compact)
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
+                            child: widget.toolbar,
+                          ),
+                        const Divider(height: 1),
+                      ],
                       Expanded(child: widget.layoutWidget),
                     ],
                   ),

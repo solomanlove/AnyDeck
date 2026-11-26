@@ -82,8 +82,6 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
           ),
         );
 
-        final toolbar = _buildToolbar(context, selectedEmu);
-
         Widget content;
         if (emulatorsAsync.isLoading && allItems.isEmpty) {
           content = const Center(
@@ -111,7 +109,9 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _filter.isNotEmpty ? '没有匹配 "$_filter" 的模拟器' : '请在 DevEco Studio 中通过 "Tools" -> "Device Manager" 创建或管理 HarmonyOS 模拟器。',
+                    allItems.isNotEmpty
+                        ? '没有匹配 "$_filter" 的模拟器'
+                        : '请在 DevEco Studio 中通过 "Tools" -> "Device Manager" 创建或管理 HarmonyOS 模拟器。',
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 13, color: Colors.grey),
                   ),
@@ -133,6 +133,9 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
           content = _buildTable(context, filtered, isDark);
         }
 
+        // 本地列表为空时只显示扫描状态或安装引导。
+        if (allItems.isEmpty) return content;
+        final toolbar = _buildToolbar(context, selectedEmu);
         return Column(
           children: [
             Padding(

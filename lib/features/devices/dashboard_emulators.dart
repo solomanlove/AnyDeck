@@ -121,7 +121,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
             child: _PanelMessage(
               icon: CupertinoIcons.device_desktop,
               title: context.l10n.t('noEmulators'),
-              subtitle: _filter.trim().isEmpty
+              subtitle: emulators.isEmpty
                   ? context.l10n.t('createEmulatorHint')
                   : null,
             ),
@@ -158,6 +158,7 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
             layoutWidget: layoutWidget,
             filterController: _filterController,
             onFilterChanged: (value) => setState(() => _filter = value),
+            showToolbar: emulators.isNotEmpty,
             toolbar: _EmulatorToolbar(
               onStart: selectedItem != null && selectedItem.canStart
                   ? () => _startEmulator(context, selectedItem.emulator.name)
