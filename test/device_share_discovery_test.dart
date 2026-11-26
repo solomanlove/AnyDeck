@@ -5,7 +5,7 @@ import 'package:any_deck/core/device_share/device_share_discovery.dart';
 import 'package:any_deck/core/device_share/device_share_invitation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 使用独立 UDP 端口验证地址重定位、凭据隔离和关闭回收。
+/// 使用真实回环 UDP 验证地址重定位、凭据隔离和关闭回收。
 void main() {
   late int port;
   late UdpDeviceShareDiscovery publisher, receiver;
@@ -19,8 +19,8 @@ void main() {
     final closed = reservation.drain<void>();
     reservation.close();
     await closed;
-    publisher = UdpDeviceShareDiscovery(port: port);
-    receiver = UdpDeviceShareDiscovery(port: port);
+    publisher = UdpDeviceShareDiscovery(port: port, loopbackOnly: true);
+    receiver = UdpDeviceShareDiscovery(port: port, loopbackOnly: true);
     invitation = DeviceShareInvitation(
       host: '127.0.0.1',
       port: 32000,
@@ -39,6 +39,7 @@ void main() {
     await publisher.publish([invitation.at('127.0.0.1', 53001)]);
     final found = await receiver.find(invitation);
     expect(found?.port, 53001);
+    expect(found?.host, InternetAddress.loopbackIPv4.address);
     expect(found?.fingerprint, invitation.fingerprint);
     expect(found?.token, invitation.token);
   });
@@ -106,7 +107,7 @@ void main() {
     await publisher.close();
     await opening;
     final replacement = await RawDatagramSocket.bind(
-      InternetAddress.anyIPv4,
+      InternetAddress.loopbackIPv4,
       port,
       reuseAddress: false,
     );
@@ -117,7 +118,9 @@ void main() {
     await publisher.publish([invitation]);
     await publisher.close();
     final replacement = await RawDatagramSocket.bind(
-      InternetAddress.anyIPv4, port, reuseAddress: false,
+      InternetAddress.loopbackIPv4,
+      port,
+      reuseAddress: false,
     );
     final closed = replacement.drain<void>();
     replacement.close();
@@ -128,7 +131,9 @@ void main() {
     await publisher.publish([invitation]);
     await publisher.publish([]);
     final replacement = await RawDatagramSocket.bind(
-      InternetAddress.anyIPv4, port, reuseAddress: false,
+      InternetAddress.loopbackIPv4,
+      port,
+      reuseAddress: false,
     );
     final closed = replacement.drain<void>();
     replacement.close();

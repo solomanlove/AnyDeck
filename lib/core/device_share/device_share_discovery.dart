@@ -13,8 +13,12 @@ abstract class DeviceShareDiscovery {
 
 /// 有界的局域网查找；发现结果仍须通过原有 TLS 指纹和分享令牌认证。
 class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
-  UdpDeviceShareDiscovery({this.port = 52847});
+  /// [loopbackOnly] 将监听和查找限制在本机回环网络。
+  UdpDeviceShareDiscovery({this.port = 52847, this.loopbackOnly = false});
   final int port;
+  final bool loopbackOnly;
+  InternetAddress get _bindAddress =>
+      loopbackOnly ? InternetAddress.loopbackIPv4 : InternetAddress.anyIPv4;
   static final _group = InternetAddress('239.255.88.21');
   static const _protocol = 'anydeck-device-share';
   final _advertisements = <String, DeviceShareInvitation>{};
@@ -53,7 +57,7 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
   Future<void> _start() async {
     await _listenerDone;
     final socket = await RawDatagramSocket.bind(
-      InternetAddress.anyIPv4,
+      _bindAddress,
       port,
       reuseAddress: true,
     );
@@ -71,7 +75,9 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
     // 分别加入可用网卡，VPN 或不支持 multicast 的网卡失败不影响单播/广播。
     List<NetworkInterface> interfaces;
     try {
-      interfaces = await NetworkInterface.list(type: InternetAddressType.IPv4);
+      interfaces = loopbackOnly
+          ? []
+          : await NetworkInterface.list(type: InternetAddressType.IPv4);
     } catch (_) {
       interfaces = [];
     }
@@ -126,12 +132,14 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
   @override
   Future<DeviceShareInvitation?> find(DeviceShareInvitation invitation) async {
     if (_closed || !invitation.resumable) return null;
-    final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+    final socket = await RawDatagramSocket.bind(_bindAddress, 0);
     _searches.add(socket);
-    socket
-      ..broadcastEnabled = true
-      ..writeEventsEnabled = false
-      ..multicastHops = 1;
+    socket.writeEventsEnabled = false;
+    if (!loopbackOnly) {
+      socket
+        ..broadcastEnabled = true
+        ..multicastHops = 1;
+    }
     final result = Completer<DeviceShareInvitation?>();
     final nonce = DeviceShareInvitation.createToken();
     final request = utf8.encode(
@@ -170,9 +178,13 @@ class UdpDeviceShareDiscovery implements DeviceShareDiscovery {
     );
     void send() {
       for (final address in [
-        InternetAddress(invitation.host),
-        InternetAddress('255.255.255.255'),
-        _group,
+        if (loopbackOnly)
+          InternetAddress.loopbackIPv4
+        else ...[
+          InternetAddress(invitation.host),
+          InternetAddress('255.255.255.255'),
+          _group,
+        ],
       ]) {
         try {
           socket.send(request, address, port);
