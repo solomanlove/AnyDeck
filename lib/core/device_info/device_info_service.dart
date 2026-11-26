@@ -29,6 +29,10 @@ class DeviceInfoService {
   Future<DeviceOverviewSnapshot?> loadCachedSnapshot(String deviceId) =>
       _cache.load(deviceId);
 
+  /// 读取可在同一台 Android 真机的不同通道间复用的展示字段。
+  Future<DeviceDisplayIdentity> loadCachedDisplayIdentity(String serial) =>
+      _cache.loadDisplayIdentity(serial);
+
   Future<void> clearDeviceCache(String deviceId) => _cache.clear(deviceId);
 
   /// 并行加载所有概览字段，避免 dashboard 阻塞。

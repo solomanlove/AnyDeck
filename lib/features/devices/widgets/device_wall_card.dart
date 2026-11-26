@@ -15,7 +15,7 @@ import 'device_wall_phone.dart';
 ///
 /// [name]、[systemVersion]、[statusLabel] 和 [ipAddress] 来自实际设备资料；
 /// [statusDescription] 为 Tooltip 和读屏保留完整连接说明，省略时使用短状态。
-/// [brand]、[coverTitle]、[coverHint] 是没有可用截图时的封面信息，
+/// [brand]、[manufacturer] 用于匹配图标，[coverTitle]、[coverHint] 是没有可用截图时的封面信息，
 /// [screenshot] 仅接受真实截图，不会生成模拟的手机内容。
 /// [phoneWidth] 决定手机尺寸，默认 120px 并保持 9:18.5 的比例。
 /// 品牌 Logo 复用项目资源，封面和名称旁均展示，真实截图不会遮蔽品牌身份。
@@ -38,6 +38,7 @@ class DeviceWallCard extends StatelessWidget {
     required this.coverHint,
     required this.actionLabel,
     required this.online,
+    this.manufacturer,
     this.statusDescription,
     this.tags = const [],
     this.ipAddress,
@@ -61,6 +62,7 @@ class DeviceWallCard extends StatelessWidget {
   final String statusLabel;
   final String? statusDescription;
   final String brand;
+  final String? manufacturer;
   final String coverTitle;
   final String coverHint;
   final String actionLabel;
@@ -97,7 +99,8 @@ class DeviceWallCard extends StatelessWidget {
         : actionLabel;
     final logoAsset = brand.toLowerCase().contains('harmony')
         ? AppIcons.huawei
-        : BrandLogoHelper.getBrandLogoAsset(brand, manufacturer: name) ??
+        : BrandLogoHelper.getBrandLogoAsset(brand, manufacturer: manufacturer) ??
+              BrandLogoHelper.getBrandLogoAsset(name) ??
               AppIcons.androidDefaultAppIcon;
     return Semantics(
       container: true,

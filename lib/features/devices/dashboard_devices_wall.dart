@@ -62,7 +62,11 @@ extension _DeviceWallPanel on _DeviceListPanelState {
         final overview = ref
             .watch(cachedDeviceOverviewProvider(device.id))
             .value;
-        final brand = overview?.brand;
+        final (brand, manufacturer) = ref.watch(
+          cachedDeviceIdentity(device).select(
+            (identity) => (identity.brand, identity.manufacturer),
+          ),
+        );
         // 纯 AirPlay 卡片仅代表投屏会话，没有可导航的设备工作区。
         final airplayOnly = session != null && device.id.startsWith('airplay-');
         final canRunAction =
@@ -93,6 +97,7 @@ extension _DeviceWallPanel on _DeviceListPanelState {
                 : device.isHarmony
                 ? 'HarmonyOS'
                 : 'Android',
+            manufacturer: manufacturer,
             coverTitle: context.l10n.t(
               !device.isOnline
                   ? 'deviceWorkspaceDisconnected'

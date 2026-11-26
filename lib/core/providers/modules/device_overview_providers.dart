@@ -2,14 +2,17 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../adb/discovered_device.dart';
 import '../../device_info/device_memory_info.dart';
 import '../../device_info/device_battery_info.dart';
 import '../../device_info/device_info_service.dart';
 import '../../device_info/device_overview.dart';
+import '../../device_info/device_overview_cache.dart';
 import '../../harmony/hdc_service.dart';
 import '../../ios/ios_mirror_service.dart';
 import '../../ios/ios_overview_service.dart';
 import 'device_registry_providers.dart';
+import 'device_registry_storage.dart';
 import 'device_tracking_providers.dart';
 import 'registered_device_model.dart';
 import 'service_providers.dart';
@@ -359,6 +362,7 @@ final deviceOverviewProvider = StreamProvider.autoDispose
         _syncDiscoveredIp(ref, deviceId, fresh.ipAddress);
       }
       ref.invalidate(cachedDeviceOverviewProvider(deviceId));
+      ref.invalidate(_cachedPhysicalDeviceIdentityProvider(fresh.serial));
       yield fresh;
     });
 
@@ -412,3 +416,45 @@ final cachedDeviceOverviewProvider = FutureProvider.autoDispose
     .family<DeviceOverview?, String>((ref, deviceId) {
       return ref.watch(deviceInfoServiceProvider).loadFromCache(deviceId);
     });
+
+/// 保留当前连接的概览缓存，并按物理序列号单独共享品牌和商品名。
+final _cachedPhysicalDeviceIdentityProvider = FutureProvider.autoDispose
+    .family<DeviceDisplayIdentity, String>((ref, serial) {
+      return ref
+          .watch(deviceInfoServiceProvider)
+          .loadCachedDisplayIdentity(serial);
+    });
+
+final _cachedDeviceIdentityProvider = Provider.autoDispose
+    .family<DeviceDisplayIdentity, (String, String?)>((ref, key) {
+      final (id, serial) = key;
+      final local = ref.watch(cachedDeviceOverviewProvider(id)).value;
+      final physical = serial == null
+          ? null
+          : ref.watch(_cachedPhysicalDeviceIdentityProvider(serial)).value;
+      return (
+        name: physical?.name ?? local?.name,
+        brand: physical?.brand ?? local?.brand,
+        manufacturer: physical?.manufacturer ?? local?.manufacturer,
+      );
+    });
+
+/// 设备管理只读取缓存。Android 真机复用同一硬件序列号的身份，
+/// 未知序列号、其他平台、模拟器和共享端点沿用各自通道的缓存。
+Provider<DeviceDisplayIdentity> cachedDeviceIdentity(
+  RegisteredDevice device,
+) {
+  final serial = device.serial;
+  final shareIdentity =
+      !device.isIos &&
+      !device.isHarmony &&
+      !device.isEmulator &&
+      !device.isShared &&
+      serial != null &&
+      DiscoveredDevice.hasUsableId(serial) &&
+      !DeviceRegistryStorage.isNetworkId(serial);
+  return _cachedDeviceIdentityProvider((
+    device.id,
+    shareIdentity ? serial : null,
+  ));
+}

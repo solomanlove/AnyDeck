@@ -123,3 +123,9 @@ Dashboard 左侧导航顶部统一承担 App/设备身份入口：未选择设�
 - 边界：只调整编辑图标颜色，沿用布局、Tooltip、弹窗回调和显隐条件；断开、禁用、在线状态继续保持各自语义色，不新增文案、Provider、设备命令或跨窗口协议。
 - 回归：`device_list_action_buttons_test.dart` 新增六种主题色 × Light/Dark 的真实设备行断言，比较编辑图标与当前主色及相邻投屏、连接图标；复用已有圆角、内边距与编辑回调测试。测试 fixture 仅新增默认绿色的可选 `themeColor` 参数。
 - 验证：上述测试连同 `device_list_context_menu_test.dart`、`adb_wireless_controls_test.dart`、`device_share_widget_test.dart`、`device_theme_color_test.dart` 共 47 项通过。3 个修改 Dart 文件的定向 analyze 无 error / warning，仅保留 5 项 SDK 弃用 info；新测试格式与 `git diff --check` 通过。未启动桌面 App。
+
+## Android 真机跨通道保留品牌和商品名（2026-11-26）
+
+- 同一台 Android 真机拔掉 USB 后，设备管理列表和设备墙继续展示已识别的商品名和品牌 Logo。用户设置的设备别名仍优先用于名称展示。
+- `cachedDeviceIdentity` 使用注册表提供的硬件序列号共享商品名、品牌和制造商。先读取序列号对应的概览记录，缺字段时从序列号一致的旧通道记录补齐。原始硬件型号作为商品名的回退，未知序列号的设备继续读取当前通道缓存。
+- 复用 `devices.overview.<id>` 的现有字段，无需迁移已有数据。设备列表在切换前后订阅同一份物理设备身份，连接状态、IP、截图和设备命令仍跟随当前通道。身份显示继续只读缓存，已完成的在线概览查询会刷新共享身份。

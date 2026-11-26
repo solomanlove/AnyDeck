@@ -153,17 +153,22 @@ class DeviceStatusAvatar extends ConsumerWidget {
     }
 
     // 次优：从设备概览信息中获取精准识别的品牌厂商
-    final overviewAsync = cacheOnly
-        ? ref.watch(cachedDeviceOverviewProvider(device.id))
-        : ref.watch(deviceOverviewProvider(device.id));
-    final overview = overviewAsync.hasValue ? overviewAsync.value : null;
-    if (overview != null) {
-      final asset = BrandLogoHelper.getBrandLogoAsset(
-        overview.brand,
-        manufacturer: overview.manufacturer,
-      );
-      if (asset != null) return asset;
-    }
+    final (brand, manufacturer) = cacheOnly
+        ? ref.watch(
+            cachedDeviceIdentity(device).select(
+              (identity) => (identity.brand, identity.manufacturer),
+            ),
+          )
+        : ref.watch(
+            deviceOverviewProvider(device.id).select(
+              (value) => (value.value?.brand, value.value?.manufacturer),
+            ),
+          );
+    final brandAsset = BrandLogoHelper.getBrandLogoAsset(
+      brand ?? '',
+      manufacturer: manufacturer,
+    );
+    if (brandAsset != null) return brandAsset;
 
     // 再次：从自定义别名（如 "Redmi K40", "纯血鸿蒙"）中推导
     final nameAsset = BrandLogoHelper.getBrandLogoAsset(

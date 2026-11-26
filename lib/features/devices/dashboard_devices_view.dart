@@ -27,9 +27,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         device.id: DeviceListPresentation.name(
           device,
           ref.watch(
-            cachedDeviceOverviewProvider(
-              device.id,
-            ).select((value) => value.value?.name),
+            cachedDeviceIdentity(device).select((identity) => identity.name),
           ),
         ),
     };
