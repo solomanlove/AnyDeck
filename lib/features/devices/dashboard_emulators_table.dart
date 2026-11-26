@@ -84,6 +84,9 @@ abstract final class _EmulatorTableLayout {
   static const memory = 11;
   static const storage = 11;
   static const cellPadding = EdgeInsets.symmetric(horizontal: 6);
+
+  // 与单元格边距合计 28，首尾内容对齐工具栏两侧。
+  static const pagePadding = EdgeInsets.symmetric(horizontal: 22, vertical: 12);
 }
 
 /// 模拟器数据表格的头部组件。
@@ -114,6 +117,9 @@ class _EmulatorTableHeader extends StatelessWidget {
         color: Theme.of(
           context,
         ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      ),
+      // 分隔线覆盖在内容上，避免底部边框将表头内容向上挤。
+      foregroundDecoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
@@ -174,6 +180,7 @@ class _EmulatorTableHeader extends StatelessWidget {
             label: context.l10n.t('emulatorStorageCol'),
             style: style,
             onTap: () => onSort('storage'),
+            alignRight: true,
             padding: _EmulatorTableLayout.cellPadding,
             sortIcon: sortIconBuilder('storage'),
           ),
@@ -224,8 +231,8 @@ class _EmulatorTableRow extends StatelessWidget {
       onDoubleTap: onDoubleTap,
       child: Container(
         height: (item.status == 'error' || item.status == 'connectionIssue') ? 88 : 56,
-        decoration: BoxDecoration(
-          color: rowColor,
+        decoration: BoxDecoration(color: rowColor),
+        foregroundDecoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
               color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
@@ -300,6 +307,7 @@ class _EmulatorTableRow extends StatelessWidget {
             // 存储列
             _EmulatorCell(
               flex: _EmulatorTableLayout.storage,
+              alignment: Alignment.centerRight,
               child: _EmulatorTableText(item.emulator.storageLabel),
             ),
           ],
@@ -311,10 +319,15 @@ class _EmulatorTableRow extends StatelessWidget {
 
 /// 按列宽权重分配可用空间，并与表头使用相同的水平边距。
 class _EmulatorCell extends StatelessWidget {
-  const _EmulatorCell({required this.flex, required this.child});
+  const _EmulatorCell({
+    required this.flex,
+    required this.child,
+    this.alignment = Alignment.centerLeft,
+  });
 
   final int flex;
   final Widget child;
+  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -322,7 +335,7 @@ class _EmulatorCell extends StatelessWidget {
       flex: flex,
       child: Container(
         padding: _EmulatorTableLayout.cellPadding,
-        alignment: Alignment.centerLeft,
+        alignment: alignment,
         child: child,
       ),
     );

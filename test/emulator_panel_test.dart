@@ -65,7 +65,7 @@ void main() {
     expect(emulatorConfigZh.keys.toSet(), emulatorConfigEn.keys.toSet());
   });
 
-  testWidgets('Android 模拟器六列随窗口缩放并与数据行对齐', (tester) async {
+  testWidgets('Android 模拟器六列随窗口缩放并保持对称留白', (tester) async {
     const emulator = AndroidEmulator(
       name: 'Medium_Phone_API_37.0_with_a_long_display_name',
       resolution: '1080x2400',
@@ -102,22 +102,41 @@ void main() {
       emulator.memoryLabel,
       emulator.storageLabel,
     ];
-    // 连续调整同一窗口，在原先的表格最小宽度两侧检查六列边界。
+    // 连续调整窗口，检查首尾内容边距、上下留白和六列对齐。
     final previousWidths = List.filled(values.length, double.infinity);
     for (final width in [1580.0, 1100.0, 800.0, 700.0]) {
       tester.view.physicalSize = Size(width, 800);
       await tester.pumpAndSettle();
       expect(headers, findsNWidgets(values.length));
-      expect(tester.getRect(headers.first).left, closeTo(180, 0.01));
-      expect(tester.getRect(headers.last).right, closeTo(width, 0.01));
+      final tableTop = tester.getRect(find.byType(Divider)).bottom + 12;
+      final list = tester.getRect(find.byType(ListView));
+      final searchLeft = tester.getRect(find.byType(TextField)).left;
+      final nameHeader = tester.getRect(find.text('模拟器名称'));
+      final storageSortIcon = tester.getRect(
+        find.descendant(of: headers.last, matching: find.byType(Icon)),
+      );
+      final statusDot = tester.getRect(find.byTooltip('已关闭'));
+      expect(list.top, closeTo(tableTop + 48, 0.01));
+      expect(list.bottom, closeTo(800 - 12, 0.01));
+      expect(searchLeft, closeTo(180 + 28, 0.01));
+      expect(nameHeader.left, closeTo(searchLeft, 0.01));
+      expect(statusDot.left, closeTo(searchLeft, 0.01));
+      expect(storageSortIcon.right, closeTo(width - 28, 0.01));
+      expect(
+        tester.getRect(find.text(values.last)).right,
+        closeTo(width - 28, 0.01),
+      );
+      expect(statusDot.center.dy, closeTo(list.top + 28, 0.01));
       for (var i = 0; i < values.length; i++) {
         final header = tester.getRect(headers.at(i));
+        expect(header.center.dy, closeTo(tableTop + 24, 0.01));
         expect(header.width, lessThan(previousWidths[i]));
         previousWidths[i] = header.width;
         final value = tester.getRect(find.text(values[i]));
         expect(value.width, greaterThan(0));
         expect(value.left, greaterThanOrEqualTo(header.left - 0.01));
         expect(value.right, lessThanOrEqualTo(header.right + 0.01));
+        expect(value.center.dy, closeTo(list.top + 28, 0.01));
       }
       final details = find.byIcon(CupertinoIcons.info_circle);
       expect(details.hitTestable(), findsOneWidget);
