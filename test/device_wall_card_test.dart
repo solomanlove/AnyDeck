@@ -230,6 +230,28 @@ void main() {
     }
   });
 
+  const missingIps = <String, String?>{'缺失': null, '空字符串': '', '空白': '  '};
+  for (final entry in missingIps.entries) {
+    testWidgets('设备墙无 IP 时操作区贴近系统版本（${entry.key}）', (tester) async {
+      final ip = find.text('192.168.1.219');
+      final actions = [find.byType(OutlinedButton), find.byType(IconButton)];
+      const tags = ['测试机'];
+      await tester.pumpWidget(_host(_card(online: false, tags: tags)));
+      final ipHeight = tester.getSize(ip).height;
+      final tops = [for (final action in actions) tester.getTopLeft(action).dy];
+
+      // 保持同一台设备的标签和版本，比较移除 IP 前后的操作区位置。
+      await tester.pumpWidget(
+        _host(_card(online: false, tags: tags, ipAddress: entry.value)),
+      );
+      expect(ip, findsNothing);
+      expect(
+        [for (final action in actions) tester.getTopLeft(action).dy],
+        [for (final top in tops) closeTo(top - ipHeight, .001)],
+      );
+    });
+  }
+
   testWidgets('标签在名称下方居中展示，无标签和空白标签不预留空间', (tester) async {
     var opens = 0;
     var infos = 0;
@@ -408,6 +430,7 @@ DeviceWallCard _card({
   String name = 'Mi MIX 3',
   String brand = 'Xiaomi',
   List<String> tags = const [],
+  String? ipAddress = '192.168.1.219',
   String statusLabel = 'USB 已连接',
   String? actionLabel,
   bool online = true,
@@ -432,7 +455,7 @@ DeviceWallCard _card({
   actionLabel: actionLabel ?? (online ? '投屏' : '重新连接'),
   actionIcon: online ? Icons.ondemand_video_outlined : Icons.link,
   previewOpensWorkspace: previewOpensWorkspace,
-  ipAddress: '192.168.1.219',
+  ipAddress: ipAddress,
   online: online,
   busy: busy,
   batchMode: batchMode,

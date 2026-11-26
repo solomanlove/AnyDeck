@@ -49,6 +49,7 @@ HDC 截图收发按请求使用独立临时目录与远端文件名，finally �
 - 列表恢复原 `DeviceStatusAvatar`；`cacheOnly: true` 仅读取缓存品牌，避免为整个设备列表触发完整硬件探测，其他调用方默认行为不变。
 - 手机墙复用 `BrandLogoHelper` 与原品牌资源；截图成功后名称旁仍保留品牌 Logo，未取到画面时用原 Logo 封面。
 - 手机外框宽 120px，单卡基础宽 148px，卡片内间距收紧；操作点击区保留 40px，窄窗口与放大字体仍按内容适配。
+- `DeviceWallCard` 仅在 IP 非空白时显示地址行。没有 IP 时，地址行收起，主按钮和更多按钮上移至系统版本下方，保留原操作区间距。
 
 ### 截图居中铺满与品牌封面白底（2026-11-17）
 
@@ -124,7 +125,7 @@ CLI 版本探测使用参数列表而非 Shell 字符串。输出每个管道最
 - `dashboard_device_workspace_test.dart`：真实 Dashboard 的视图、筛选、批量、底栏和控制台。
 - `dashboard_device_responsive_test.dart`：730/650/490 断点、窄屏双列、表格降级、批量禁右键与清筛选。
 - `dashboard_device_reconnect_test.dart`：设备墙/列表的离线 HDC 与 iOS 入口，禁止误用 ADB 连接。
-- `device_wall_card_test.dart`：手机比例、真实图像、离线封面、点击/选择隔离。
+- `device_wall_card_test.dart`：手机比例、真实图像、离线封面、点击/选择隔离，以及 IP 缺失、为空字符串或纯空白时操作区上移一行的几何回归。
 - `device_screen_preview_controller_test.dart`：三平台路由、可见生命周期、防重复、有界并发、异常重试和销毁隔离。
 - `dashboard_device_list_density_test.dart`：原品牌资源、紧凑连接方式及列表行、缓存读取边界。
 - `hdc_screenshot_concurrency_test.dart`：并行截图隔离、接收失败清理及 snapshot_display 回退。

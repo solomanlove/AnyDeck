@@ -14,6 +14,7 @@ import 'device_wall_phone.dart';
 /// 设备墙中的手机卡片，只负责展示，设备命令与选择状态由宿主持有。
 ///
 /// [name]、[systemVersion]、[statusLabel] 和 [ipAddress] 来自实际设备资料；
+/// [ipAddress] 缺失或为空白时省略整行，操作区紧接系统版本。
 /// [statusDescription] 为 Tooltip 和读屏保留完整连接说明，省略时使用短状态。
 /// [brand]、[manufacturer] 用于匹配图标，[coverTitle]、[coverHint] 是没有可用截图时的封面信息，
 /// [screenshot] 仅接受真实截图，不会生成模拟的手机内容。
@@ -213,6 +214,7 @@ class DeviceWallCard extends StatelessWidget {
   Widget _buildCaption(BuildContext context, String logoAsset) {
     final theme = Theme.of(context);
     final visibleTags = tags.where((tag) => tag.trim().isNotEmpty).toList();
+    final address = ipAddress;
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final metaStyle = TextStyle(
       fontSize: 11,
@@ -269,7 +271,8 @@ class DeviceWallCard extends StatelessWidget {
         ],
         const SizedBox(height: 2),
         Text(systemVersion, textAlign: TextAlign.center, style: metaStyle),
-        Text(ipAddress ?? '', textAlign: TextAlign.center, style: metaStyle),
+        if (address != null && address.trim().isNotEmpty)
+          Text(address, textAlign: TextAlign.center, style: metaStyle),
       ],
     );
   }
