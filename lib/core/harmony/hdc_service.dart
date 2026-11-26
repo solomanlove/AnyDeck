@@ -16,15 +16,21 @@ export 'hdc_service_device_info.dart';
 export 'hdc_service_fport.dart';
 export 'hdc_service_settings.dart';
 
+part 'hdc_service_shell.dart';
+
 /// HDC (HarmonyOS Device Connector) 服务封装，提供与纯血鸿蒙设备的通信指令。
 class HdcService {
   HdcService({
     String? executable,
+    this._bridge,
     void Function(String message, {String tag, String level})? onLog,
   })  : _executable = executable,
         _onLog = onLog;
 
   final String? _executable;
+  final RustDalBridge? _bridge;
+  RustDalBridge get _nativeBridge => _bridge ?? RustDalBridge.instance;
+
   /// 路径设置只影响后续启动的命令，不中断已有进程或会话。
   String get executable => _executable ?? resolveToolPath('hdc');
   final void Function(String message, {String tag, String level})? _onLog;
@@ -44,9 +50,9 @@ class HdcService {
   /// 获取已连接的鸿蒙设备列表。
   Future<List<DiscoveredDevice>> listDevices() async {
     List<String> rawTargets = [];
-    if (!hasUserToolPath('hdc') && RustDalBridge.instance.isAvailable) {
+    if (!hasUserToolPath('hdc') && _nativeBridge.isAvailable) {
       try {
-        final targets = await RustDalBridge.instance.listHarmonyDevices();
+        final targets = await _nativeBridge.listHarmonyDevices();
         rawTargets = connectedTargetIds(targets);
       } catch (_) {}
     }
@@ -155,13 +161,7 @@ class HdcService {
           return 124;
         },
       );
-      final errorMsg = 'hdc 命令超时(${timeout.inSeconds}s): $cmdStr';
-      _onLog?.call(errorMsg, tag: 'hdc', level: 'E');
-      return AdbResult(
-        exitCode: 124,
-        stdout: '',
-        stderr: errorMsg,
-      );
+      return _timeoutResult(cmdStr, timeout);
     } on ProcessException catch (error) {
       if (await isToolPathAvailable('hdc', error.executable)) {
         _onLog?.call('Process error: ${error.message}', tag: 'hdc', level: 'E');
@@ -175,21 +175,7 @@ class HdcService {
     String deviceId,
     String command, {
     Duration timeout = const Duration(seconds: 15),
-  }) async {
-    if (!hasUserToolPath('hdc') && RustDalBridge.instance.isAvailable) {
-      try {
-        final out = await RustDalBridge.instance.executeShell(
-          deviceId,
-          command,
-          platform: DevicePlatform.harmony,
-        );
-        return AdbResult(exitCode: 0, stdout: out, stderr: '');
-      } catch (e) {
-        // 原生驱动失败时平滑降级走下方通用 CLI 通道
-      }
-    }
-    return run(['-t', deviceId, 'shell', command], timeout: timeout);
-  }
+  }) => _executeShell(deviceId, command, timeout);
 
   /// 注入 HarmonyOS 键盘事件；key code 必须使用 OpenHarmony 定义，不能直接复用 Android key code。
   Future<AdbResult> injectKey(String deviceId, int keyCode, {int repeat = 1}) {

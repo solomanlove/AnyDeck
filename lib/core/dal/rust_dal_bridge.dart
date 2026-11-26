@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'device_driver.dart';
 
@@ -10,15 +12,11 @@ typedef _BatchExecuteDart =
     Pointer<Uint8> Function(int, Pointer<Uint8>, Pointer<Uint8>, int);
 
 typedef _DalExecuteNative =
-    Pointer<Uint8> Function(Uint8, Pointer<Uint8>, Pointer<Uint8>);
+    Pointer<Uint8> Function(Uint8, Pointer<Uint8>, Pointer<Uint8>, Uint64);
 typedef _DalExecuteDart =
-    Pointer<Uint8> Function(int, Pointer<Uint8>, Pointer<Uint8>);
+    Pointer<Uint8> Function(int, Pointer<Uint8>, Pointer<Uint8>, int);
 
-typedef _ListHarmonyDevicesNative = Pointer<Uint8> Function();
-typedef _ListHarmonyDevicesDart = Pointer<Uint8> Function();
-
-typedef _ListIosDevicesNative = Pointer<Uint8> Function();
-typedef _ListIosDevicesDart = Pointer<Uint8> Function();
+typedef _ListDevices = Pointer<Uint8> Function();
 
 typedef _CronAddJobNative =
     Uint8 Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>);
@@ -36,7 +34,7 @@ typedef _FreeStringDart = void Function(Pointer<Uint8>);
 
 /// 统一设备抽象层 (DAL) 与批量并发引擎的 Rust FFI 桥接单例
 class RustDalBridge {
-  RustDalBridge._(DynamicLibrary? lib) : _library = lib {
+  RustDalBridge._(this._libraryPath) : _library = _tryOpen(_libraryPath) {
     if (_library != null) {
       try {
         _alloc = _library
@@ -53,13 +51,17 @@ class RustDalBridge {
             .lookupFunction<_BatchExecuteNative, _BatchExecuteDart>(
               'anydeck_batch_execute_shell',
             );
-        _dalExecute = _library
-            .lookupFunction<_DalExecuteNative, _DalExecuteDart>(
-              'anydeck_dal_execute_shell',
-            );
+        try {
+          _dalExecute = _library
+              .lookupFunction<_DalExecuteNative, _DalExecuteDart>(
+                'anydeck_dal_execute_shell_with_timeout',
+              );
+        } catch (_) {
+          _dalExecute = null;
+        }
         try {
           _listHarmonyDevices = _library
-              .lookupFunction<_ListHarmonyDevicesNative, _ListHarmonyDevicesDart>(
+              .lookupFunction<_ListDevices, _ListDevices>(
                 'anydeck_harmony_list_devices',
               );
         } catch (_) {
@@ -67,7 +69,7 @@ class RustDalBridge {
         }
         try {
           _listIosDevices = _library
-              .lookupFunction<_ListIosDevicesNative, _ListIosDevicesDart>(
+              .lookupFunction<_ListDevices, _ListDevices>(
                 'anydeck_ios_list_devices',
               );
         } catch (_) {
@@ -104,28 +106,36 @@ class RustDalBridge {
     }
   }
 
+  /// 使用指定动态库路径，后台 Isolate 按同一路径加载。
+  RustDalBridge.open(String libraryPath) : this._(libraryPath);
+
+  final String? _libraryPath;
   final DynamicLibrary? _library;
   bool _isInitialized = false;
 
   late final Pointer<Uint8> Function(int) _alloc;
   late final void Function(Pointer<Uint8>, int) _free;
   late final _BatchExecuteDart _batchExecute;
-  late final _DalExecuteDart _dalExecute;
-  _ListHarmonyDevicesDart? _listHarmonyDevices;
-  _ListIosDevicesDart? _listIosDevices;
+  _DalExecuteDart? _dalExecute;
+  _ListDevices? _listHarmonyDevices;
+  _ListDevices? _listIosDevices;
   _CronAddJobDart? _cronAddJob;
   _CronRemoveJobDart? _cronRemoveJob;
   _CronListJobsDart? _cronListJobs;
   late final _FreeStringDart _freeString;
 
-  static final RustDalBridge instance = RustDalBridge._(_tryOpen());
+  static final RustDalBridge instance = RustDalBridge._(null);
 
   /// 底层 Rust 桥接与动态库是否就绪可用
   bool get isAvailable => _isInitialized;
 
-  static DynamicLibrary? _tryOpen() {
+  /// 旧库没有带 timeout 的 ABI 时，调用方直接选择异步 CLI。
+  bool get supportsTimedShell => _isInitialized && _dalExecute != null;
+
+  static DynamicLibrary? _tryOpen(String? libraryPath) {
     try {
-      final customPath = Platform.environment['ANYDECK_DEVICE_BRIDGE'];
+      final customPath =
+          libraryPath ?? Platform.environment['ANYDECK_DEVICE_BRIDGE'];
       if (customPath != null && customPath.isNotEmpty) {
         return DynamicLibrary.open(customPath);
       }
@@ -220,53 +230,76 @@ class RustDalBridge {
     }
   }
 
-  /// 获取已连接的鸿蒙设备列表 (通过 Rust HDC 驱动原生解析)
-  Future<List<Map<String, dynamic>>> listHarmonyDevices() async {
-    if (!_isInitialized || _listHarmonyDevices == null) {
-      return [];
-    }
+  /// 获取已连接的鸿蒙设备列表。
+  Future<List<Map<String, dynamic>>> listHarmonyDevices() =>
+      _listDevicesAsync(_libraryPath, DevicePlatform.harmony);
 
-    Pointer<Uint8> resultPtr = nullptr;
-    try {
-      resultPtr = _listHarmonyDevices!();
-      if (resultPtr == nullptr) {
-        return [];
-      }
+  /// 获取已连接的 iOS 设备列表。
+  Future<List<Map<String, dynamic>>> listIosDevices() =>
+      _listDevicesAsync(_libraryPath, DevicePlatform.ios);
 
-      final jsonString = _cStringToString(resultPtr);
-      final decoded = jsonDecode(jsonString);
-      if (decoded is List) {
-        return decoded.whereType<Map<String, dynamic>>().toList();
-      }
-      return [];
-    } catch (_) {
-      return [];
-    } finally {
-      if (resultPtr != nullptr) {
-        _freeString(resultPtr);
-      }
-    }
-  }
+  // 闭包只捕获路径和平台。动态库和指针由执行 FFI 的 Isolate 持有。
+  static Future<List<Map<String, dynamic>>> _listDevicesAsync(
+    String? libraryPath,
+    DevicePlatform platform,
+  ) => Isolate.run(() {
+    final bridge = libraryPath == null
+        ? instance
+        : RustDalBridge.open(libraryPath);
+    final query = platform == DevicePlatform.harmony
+        ? bridge._listHarmonyDevices
+        : bridge._listIosDevices;
+    return bridge._readDevices(query);
+  });
 
   /// 统一设备抽象层单设备执行 Shell 指令
   Future<String> executeShell(
     String serial,
     String command, {
     DevicePlatform platform = DevicePlatform.android,
-  }) async {
-    if (!_isInitialized) {
-      throw StateError('RustDalBridge is not initialized');
+    Duration timeout = const Duration(seconds: 30),
+  }) => _executeShellAsync(_libraryPath, platform, serial, command, timeout);
+
+  static Future<String> _executeShellAsync(
+    String? libraryPath,
+    DevicePlatform platform,
+    String serial,
+    String command,
+    Duration timeout,
+  ) => Isolate.run(() {
+    final bridge = libraryPath == null
+        ? instance
+        : RustDalBridge.open(libraryPath);
+    return bridge._executeShell(platform, serial, command, timeout);
+  });
+
+  String _executeShell(
+    DevicePlatform platform,
+    String serial,
+    String command,
+    Duration timeout,
+  ) {
+    if (!supportsTimedShell) {
+      throw UnsupportedError('Rust DAL shell with timeout is unavailable');
+    }
+    if (timeout <= Duration.zero) {
+      throw TimeoutException('Rust DAL shell timeout expired', timeout);
     }
 
     final serialBytesLen = utf8.encode(serial).length + 1;
     final cmdBytesLen = utf8.encode(command).length + 1;
 
     final serialPtr = _stringToBuffer(serial);
-    final cmdPtr = _stringToBuffer(command);
-
+    Pointer<Uint8> cmdPtr = nullptr;
     Pointer<Uint8> resultPtr = nullptr;
     try {
-      resultPtr = _dalExecute(platform.value, serialPtr, cmdPtr);
+      cmdPtr = _stringToBuffer(command);
+      resultPtr = _dalExecute!(
+        platform.value,
+        serialPtr,
+        cmdPtr,
+        timeout.inMicroseconds,
+      );
       if (resultPtr == nullptr) {
         throw StateError('Null response from DAL execute shell');
       }
@@ -286,19 +319,18 @@ class RustDalBridge {
         _freeString(resultPtr);
       }
       _free(serialPtr, serialBytesLen);
-      _free(cmdPtr, cmdBytesLen);
+      if (cmdPtr != nullptr) _free(cmdPtr, cmdBytesLen);
     }
   }
 
-  /// 查询已连接的 iOS 设备列表
-  Future<List<Map<String, dynamic>>> listIosDevices() async {
-    if (!_isInitialized || _listIosDevices == null) {
+  List<Map<String, dynamic>> _readDevices(_ListDevices? query) {
+    if (!_isInitialized || query == null) {
       return [];
     }
 
     Pointer<Uint8> resultPtr = nullptr;
     try {
-      resultPtr = _listIosDevices!();
+      resultPtr = query();
       if (resultPtr == nullptr) {
         return [];
       }

@@ -308,24 +308,32 @@ extension _DeviceListPanelBatchActions on _DeviceListPanelState {
           }
 
           // 显式配置 ADB 时必须经当前 CLI；默认环境保留 Direct Socket 优化。
+          const cliTimeout = Duration(seconds: 15);
+          var fallbackTimeout = cliTimeout;
           if (!device.isIos &&
               !device.isHarmony &&
               !hasUserToolPath('adb') &&
-              RustDalBridge.instance.isAvailable) {
+              RustDalBridge.instance.supportsTimedShell) {
+            const timeout = Duration(seconds: 30);
+            final elapsed = Stopwatch()..start();
             try {
               final out = await RustDalBridge.instance.executeShell(
                 device.id,
                 script,
                 platform: DevicePlatform.android,
+                timeout: timeout,
               );
               return out.isEmpty ? '执行完成 (无输出)' : out.trim();
             } catch (_) {
-              // 原生调用异常时自动平滑降级走下方 ADB CLI 通道
+              // 只用剩余预算回退 CLI，避免慢脚本超时后再次执行。
+              final remaining = timeout - elapsed.elapsed;
+              if (remaining <= Duration.zero) rethrow;
+              if (remaining < cliTimeout) fallbackTimeout = remaining;
             }
           }
           final res = await ref
               .read(adbServiceProvider)
-              .shell(device.id, script);
+              .shell(device.id, script, timeout: fallbackTimeout);
           if (res.isSuccess) {
             return res.stdout.isEmpty ? '执行完成 (无输出)' : res.stdout.trim();
           } else {

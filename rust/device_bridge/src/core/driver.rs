@@ -1,6 +1,9 @@
 //! 统一设备抽象层 (Device Abstraction Layer, DAL) 核心 Trait 定义
+use std::time::Duration;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+
+pub(crate) const DEFAULT_SHELL_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// 目标设备硬件平台类型
 #[repr(u8)]
@@ -34,7 +37,12 @@ pub trait DeviceDriver: Send + Sync {
     fn platform(&self) -> DevicePlatform;
 
     /// 异步执行底层控制台指令 (ADB shell / HDC shell / iOS test CLI)
-    async fn execute_shell(&self, cmd: &str) -> Result<String, String>;
+    async fn execute_shell(&self, cmd: &str) -> Result<String, String> {
+        self.execute_shell_with_timeout(cmd, DEFAULT_SHELL_TIMEOUT).await
+    }
+
+    /// 用调用方的时限执行单条命令，由各传输层负责超时和回收。
+    async fn execute_shell_with_timeout(&self, cmd: &str, timeout: Duration) -> Result<String, String>;
 
     /// 抓取全屏截图 (返回统一的 PNG 编码二进制字节)
     async fn take_screenshot(&self) -> Result<Vec<u8>, String>;
