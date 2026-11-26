@@ -292,13 +292,18 @@ class DlnaRendererService extends ChangeNotifier {
         '[DLNA] HTTP ${request.method} $path from=${request.connectionInfo?.remoteAddress.address}',
       );
       if (request.method == 'GET' && path == '/device.xml') {
-        final host =
-            request.headers.value(HttpHeaders.hostHeader) ??
-            '127.0.0.1:${_http!.port}';
+        final authority = request.headers.value(HttpHeaders.hostHeader) ?? '';
+        final host = Uri.tryParse('http://$authority')?.host ?? '';
+        // 部分控制端请求设备描述时会省略 Host 端口，控制地址仍须指向接收服务。
+        final baseUrl = Uri(
+          scheme: 'http',
+          host: host.isEmpty ? InternetAddress.loopbackIPv4.address : host,
+          port: request.connectionInfo?.localPort ?? httpPort,
+        );
         _writeXml(
           response,
           DlnaProtocol.deviceDescription(
-            'http://$host',
+            baseUrl.toString(),
             name: _serverName,
             deviceUuid: _uuid,
           ),

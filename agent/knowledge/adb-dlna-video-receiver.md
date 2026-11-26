@@ -11,6 +11,7 @@
 
 1. `lib/core/dlna/dlna_renderer_service.dart` 绑定 SSDP UDP `1900`，发布 `MediaRenderer:1`，并在收到 `M-SEARCH` 后回复设备描述地址。
 2. 同一服务在固定 TCP `18583` 端口提供设备描述、`AVTransport`、`RenderingControl`、`ConnectionManager` 的 SCPD 与 SOAP 接口，避免手机缓存重启前的随机端口。
+   `device.xml` 的 `URLBase` 保留请求中的主机名或 IP，端口使用接收连接的本地端口。各服务的相对路径均以此地址解析。
 3. Android 控制端下发 `SetAVTransportURI` / `Play` / `Pause` / `Stop` / `Seek`。MP4/HLS 由 macOS `AVPlayer` 获取；`.mpd` 或媒体元数据标记为 `application/dash+xml` 时直接交给 libmpv，AVPlayer 失败时也自动回退一次。
 4. `macos/Runner/DlnaPlayerBridgeService.swift` 通过 `any_deck/dlna_player` MethodChannel 接收播放命令，使用 `AVPlayerLayer` 在独立 macOS 窗口显示；视频保持原比例时，窗口与播放层以黑色填充留白。
 5. libmpv 通过 `media_kit`、`media_kit_video` 和随包内置的 `media_kit_libs_macos_video` 在独立 Flutter 子窗口播放；URL 只经窗口 MethodChannel 传递，不放入启动参数或日志。播放、暂停、跳转、音量、静音、进度和关闭控制都由主窗口的 DLNA 服务路由。
@@ -112,3 +113,10 @@
 - 诊断仅增加 `GetProtocolInfo` 动作名日志，便于区分能力查询与媒体下发，不记录媒体 URL、签名或请求正文。无新依赖、Provider、窗口通道、播放器策略或设备 Shell 执行逻辑。
 - 自动回归：新增 `dlna_http_framing_test.dart`，真实 HTTP 连接覆盖四个描述接口、中文名称的 UTF-8 字节长度、无 chunked、订阅后的初始 NOTIFY 与事件正文；修改前两项失败（Content-Length 为 -1），修改后通过。DLNA Core、窗口通道及投屏接收 Dashboard 共 24 项测试通过；定向 `flutter analyze --no-pub lib/core/dlna test/core/dlna/dlna_http_framing_test.dart` 无问题，`git diff --check` 通过。
 - 交付验收：现有 AnyDeck 进程仍是修改前的代码，本次未启动、重启或 Hot Reload 主程序。加载新代码后，手机退出当前投屏会话、重选 AnyDeck，再分别验证央视直播与普通点播的媒体下发、首帧和声音；同步对照 `GetProtocolInfo`、`SetAVTransportURI`、`Play`。若仍只读取描述/订阅，继续定位手机会话和内容地址获取，不能宣称问题已修复。其他 DLNA App 需回归发现、播放和结束；scrcpy / AirPlay 路径未修改。
+
+## 2026-11-26 央视频控制请求端口修复
+
+- Android 央视频 `3.5.7.26115` 投放 CCTV-2 时，先通过 TCP `18583` 读取 AnyDeck 设备描述，随后两次向 TCP `80` 发送 `SetAVTransportURI`，均被拒绝。央视频日志中的 `URLBase` 缺少端口。以无端口的 `Host` 请求运行中的 AnyDeck 得到相同结果。
+- `URLBase` 现在保留 `Host` 的主机部分并使用本地监听端口。标准客户端提供正确端口时，控制地址与之前一致。请求头缺少端口或携带其他端口时，SCPD、SOAP 和事件订阅的相对路径均解析到实际监听端口。
+- 自动回归通过真实 HTTP 连接读取 `device.xml`，解析 `URLBase` 与 `AVTransport` 的 `controlURL`，覆盖标准 `Host`、无端口、不同端口以及主机名。后面三种输入在旧实现中均解析到 `80`。央视频与其他手机 App 在含本次修复的构建上仍需验证实际出画与控制。
+- 修复后 DLNA Core、DLNA 窗口通道、AirPlay 视频及投屏接收页共 57 项测试通过。定向静态分析保留 6 条已有 info，无新增提示、警告或错误。

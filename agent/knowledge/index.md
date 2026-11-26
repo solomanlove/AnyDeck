@@ -68,7 +68,7 @@
 | `ios-mirror-principles` | iOS 投屏与设备管理机制 | active | 记录 go-ios 集成、USB/Network 连接类型与旧 Rust 库兼容、概览读取与型号规格边界、USB 投屏、截图镜像恢复、进程应用关联、扩展宿主 Bundle ID、多窗口及验证边界 | `core/ios/`, `features/ios/`, `features/overview/`, `app/window/mirror/` |
 | `ios-airplay-server-architecture` | iOS AirPlay 实验性接收端与连接故障 | experimental | UxPlay/FairPlay 实验接入、VideoToolbox 首帧与重连、AudioQueue 持续静音恢复、后台启停和原子打包；真机音频已完成定向验收 | `core/airplay/`, `rust/device_bridge/src/airplay/` |
 | `ios-airplay-video-playback` | AirPlay 视频媒体播放窗口 | experimental | 镜像/视频按类型开窗、首帧前镜像状态与失败重试、独立视频播放器；iPhone 6s 镜像实测通过，B 站视频无线投放待验收 | `core/airplay/`, `macos/Runner/`, `rust/device_bridge/` |
-| `adb-dlna-video-receiver` | 视频 App 通过 DLNA 投到 macOS | experimental | SSDP 多网卡路由地址选择、UPnP 控制与 XML 报文长度兼容、AVPlayer 与 libmpv DASH 回退、播放窗口置顶、接收端名称热更新及真机验收边界 | `core/dlna/`, `features/dlna/`, `app/window/dlna/`, `macos/Runner/` |
+| `adb-dlna-video-receiver` | 视频 App 通过 DLNA 投到 macOS | experimental | SSDP 多网卡路由地址选择、UPnP 控制端口与 XML 报文长度兼容、AVPlayer 与 libmpv DASH 回退、播放窗口置顶、接收端名称热更新及真机验收边界 | `core/dlna/`, `features/dlna/`, `app/window/dlna/`, `macos/Runner/` |
 | `adb-cast-receiver-dashboard` | AirPlay 与 DLNA 投屏接收统一入口 | active | 记录左侧投屏接收一级 Route、协议 Card 双列等高与名称区对齐、单列自然高度、启停与名称管理、状态复用及回归边界 | `app/router/`, `features/receivers/`, `features/overview/` |
 | `adb-cast-receiver-naming` | 局域网投屏接收端电脑名称 | active | 电脑名默认值、自定义保留、Bonjour 异步冲突与实际发布名、DLNA 运行时重名收敛、稳定短码升级与跨窗口持久化、协议卡片名称和独立 UDN 验证边界 | `core/receiver/`, `core/airplay/`, `app/settings/`, `features/receivers/`, `core/dlna/`, `rust/device_bridge/` |
 | `ios-process-management` | iOS 进程表格与生命周期管理 | active | 全进程查询、应用归属筛选、图标缓存、3 秒轮询、未知性能指标、PID 身份回读及取消隔离 | `core/ios/`, `features/ios/` |
