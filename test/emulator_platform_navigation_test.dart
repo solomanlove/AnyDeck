@@ -6,6 +6,7 @@ import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/adb/adb_environment_service.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/emulator/harmony/deveco_emulator_providers.dart';
+import 'package:any_deck/core/emulator/harmony/deveco_emulator_service.dart';
 import 'package:any_deck/core/emulator/ios/ios_simulator_providers.dart';
 import 'package:any_deck/core/network/host_network_info.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
@@ -38,6 +39,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     var counts = (android: 0, harmony: 0, ios: 1);
+    var studioChecks = 0;
     final container = ProviderContainer(
       overrides: [
         appSettingsProvider.overrideWith(DashboardTestSettings.new),
@@ -52,6 +54,13 @@ void main() {
         emulatorListProvider.overrideWith((ref) async => []),
         emulatorConnectionsProvider.overrideWith((ref) async => {}),
         devecoEmulatorsProvider.overrideWith((ref) async => []),
+        devecoEmulatorServiceProvider.overrideWithValue(
+          const DevEcoEmulatorService(platform: TargetPlatform.macOS),
+        ),
+        devecoStudioAppPathProvider.overrideWith((ref) async {
+          studioChecks++;
+          return null;
+        }),
         iosSimulatorsProvider.overrideWith((ref) async => []),
       ],
     );
@@ -92,6 +101,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(selectedPlatform(), EmulatorPlatform.harmony);
     expect(find.byType(DevecoEmulatorsView), findsOneWidget);
+    expect(studioChecks, 1);
 
     for (final (running, expected) in [
       (counts, EmulatorPlatform.android),
@@ -111,6 +121,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(selectedPlatform(), expected, reason: '$running');
     }
+    expect(studioChecks, 3);
 
     // 检测结果晚于页面切换返回时，仍能显示已运行的平台。
     counts = (android: 0, harmony: 0, ios: 1);

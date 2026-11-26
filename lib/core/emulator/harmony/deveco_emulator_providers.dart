@@ -13,3 +13,8 @@ final devecoEmulatorsProvider =
   final service = ref.watch(devecoEmulatorServiceProvider);
   return service.fetchEmulators();
 });
+
+/// 仅在模拟器空态订阅，离开 HarmonyOS 标签后释放探测结果。
+final devecoStudioAppPathProvider = FutureProvider.autoDispose<String?>((ref) {
+  return ref.watch(devecoEmulatorServiceProvider).findDevEcoStudio();
+});

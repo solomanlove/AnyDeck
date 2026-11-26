@@ -5,6 +5,7 @@ import 'package:any_deck/app/theme/app_theme.dart';
 import 'package:any_deck/core/emulator/android_emulator.dart';
 import 'package:any_deck/core/emulator/harmony/deveco_emulator.dart';
 import 'package:any_deck/core/emulator/harmony/deveco_emulator_providers.dart';
+import 'package:any_deck/core/emulator/harmony/deveco_emulator_service.dart';
 import 'package:any_deck/core/emulator/ios/ios_simulator.dart';
 import 'package:any_deck/core/emulator/ios/ios_simulator_providers.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
@@ -63,6 +64,12 @@ void main() {
               await scan.future;
               return [if (hasEmulator) _devecoEmulator];
             }),
+            devecoEmulatorServiceProvider.overrideWithValue(
+              const DevEcoEmulatorService(platform: TargetPlatform.macOS),
+            ),
+            devecoStudioAppPathProvider.overrideWith(
+              (ref) async => '/Applications/DevEco-Studio.app',
+            ),
             iosSimulatorsProvider.overrideWith((ref) async {
               await scan.future;
               return [if (hasEmulator) _iosSimulator];
@@ -102,7 +109,7 @@ void main() {
         ];
         final hint = find.textContaining(switch (platform) {
           'Android' => '请在 Android Studio 中创建模拟器',
-          'HarmonyOS' => '请在 DevEco Studio 中',
+          'HarmonyOS' => '在 DevEco Studio 的 Tools',
           _ => '请在 Xcode 的 Window',
         });
         final simulator = find.text(switch (platform) {

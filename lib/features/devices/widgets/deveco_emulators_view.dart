@@ -6,6 +6,7 @@ import '../../../app/widget/app_toast.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/emulator/harmony/deveco_emulator.dart';
 import '../../../core/emulator/harmony/deveco_emulator_providers.dart';
+import 'deveco_emulator_empty_state.dart';
 
 /// 华为 HarmonyOS DevEco 模拟器独立管理视图。
 ///
@@ -36,6 +37,10 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
     final emulatorsAsync = ref.watch(devecoEmulatorsProvider);
 
     final allItems = emulatorsAsync.value ?? [];
+    if (allItems.isEmpty) {
+      return DevecoEmulatorEmptyState(isScanning: emulatorsAsync.isLoading);
+    }
+
     final filtered = allItems.where((emu) {
       if (_filter.isEmpty) return true;
       final q = _filter.toLowerCase();
@@ -83,18 +88,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
         );
 
         Widget content;
-        if (emulatorsAsync.isLoading && allItems.isEmpty) {
-          content = const Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(strokeWidth: 2),
-                SizedBox(height: 12),
-                Text('正在扫描 DevEco 模拟器...', style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-          );
-        } else if (filtered.isEmpty) {
+        if (filtered.isEmpty) {
           content = Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -109,9 +103,7 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    allItems.isNotEmpty
-                        ? '没有匹配 "$_filter" 的模拟器'
-                        : '请在 DevEco Studio 中通过 "Tools" -> "Device Manager" 创建或管理 HarmonyOS 模拟器。',
+                    '没有匹配 "$_filter" 的模拟器',
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 13, color: Colors.grey),
                   ),
@@ -133,8 +125,6 @@ class _DevecoEmulatorsViewState extends ConsumerState<DevecoEmulatorsView> {
           content = _buildTable(context, filtered, isDark);
         }
 
-        // 本地列表为空时只显示扫描状态或安装引导。
-        if (allItems.isEmpty) return content;
         final toolbar = _buildToolbar(context, selectedEmu);
         return Column(
           children: [
