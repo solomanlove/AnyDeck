@@ -82,11 +82,9 @@ extension _DeviceListPanelView on _DeviceListPanelState {
           children: [
             // 筛选栏保留响应式留白，设备列表和设备墙占满下方内容区。
             Padding(
-              padding: windowWidth <= 490
-                  ? const EdgeInsets.fromLTRB(8, 10, 8, 0)
-                  : windowWidth <= 650
-                  ? const EdgeInsets.fromLTRB(12, 10, 12, 0)
-                  : const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: EdgeInsets.symmetric(
+                horizontal: _DeviceTableLayout.insetFor(windowWidth),
+              ).copyWith(top: windowWidth <= 650 ? 10 : 12),
               child: DeviceListFilters(
                 controller: _searchController,
                 onlineCount: groupedDevices.where((d) => d.isOnline).length,
@@ -226,7 +224,10 @@ extension _DeviceListPanelView on _DeviceListPanelState {
       sessionByDeviceId,
     );
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      // 筛选组件已有 10px 底部留白，宽窗补齐到与顶部一致。
+      padding: EdgeInsets.only(
+        top: MediaQuery.sizeOf(context).width <= 650 ? 0 : 2,
+      ),
       child: ClipRect(
         child: ColoredBox(
           color: Colors.transparent,
@@ -332,17 +333,17 @@ extension _DeviceListPanelView on _DeviceListPanelState {
         final layout = _DeviceTableLayout.resolve(
           context,
           constraints.maxWidth,
-          _batchMode,
           connectionWidth,
         );
         return Container(
           key: const Key('deviceTableHeader'),
-          constraints: const BoxConstraints(minHeight: 36),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        color: theme.appColors.sunkenSurface,
+          constraints: BoxConstraints(
+            minHeight: _DeviceTableLayout.headerHeight(context),
+          ),
+          padding: EdgeInsets.symmetric(horizontal: layout.horizontalInset),
+          color: theme.appColors.sunkenSurface,
           child: Row(
             children: [
-              if (_batchMode) const SizedBox(width: 36),
               _SortableHeaderCell(
                 flex: 1,
                 label: context.l10n.t('deviceNameCol'),
@@ -356,6 +357,8 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                   child: Text(
                     context.l10n.t('deviceWorkspaceConnectionStatus'),
                     style: style,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               if (!layout.systemInline)
@@ -368,15 +371,16 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                   sortIcon: _getSortIcon('systemVersion'),
                   onTap: () => _toggleSort('systemVersion'),
                 ),
-              if (!_batchMode)
-                SizedBox(
-                  width: layout.actionsWidth,
-                  child: Text(
-                    context.l10n.t('deviceActionsCol'),
-                    style: style,
-                    textAlign: TextAlign.right,
-                  ),
+              SizedBox(
+                width: layout.actionsWidth,
+                child: Text(
+                  context.l10n.t('deviceActionsCol'),
+                  style: style,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
                 ),
+              ),
             ],
           ),
         );
@@ -440,6 +444,7 @@ class _SortableHeaderCell extends StatelessWidget {
               child: Text(
                 label,
                 style: style,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),

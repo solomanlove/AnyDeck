@@ -19,7 +19,6 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
         final layout = _DeviceTableLayout.resolve(
           context,
           constraints.maxWidth,
-          _batchMode,
           connectionWidth,
         );
         return InkWell(
@@ -37,11 +36,17 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 ),
           child: Container(
             constraints: const BoxConstraints(minHeight: 60),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            padding: EdgeInsets.symmetric(
+              horizontal: layout.horizontalInset,
+              vertical: 7,
+            ),
             decoration: BoxDecoration(
               color: selected || isSelected
                   ? theme.deviceSelectionBackground
                   : theme.appColors.panelSurface,
+            ),
+            // 分隔线不占行内空间，保持内容在整行内垂直居中。
+            foregroundDecoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: theme.colorScheme.outlineVariant),
               ),
@@ -54,8 +59,8 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                 Row(
                   children: [
                     if (_batchMode)
-                      SizedBox(
-                        width: 36,
+                      SizedBox.square(
+                        dimension: _DeviceTableLayout.selectionWidth,
                         child: Checkbox(
                           activeColor: theme.colorScheme.onSurface,
                           checkColor: theme.colorScheme.surface,
@@ -144,14 +149,17 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                           ),
                         ),
                       ),
-                    if (!_batchMode)
+                    // 批量模式隐藏操作，保留独立状态和版本列的横向位置。
+                    if (!_batchMode || !layout.statusInline)
                       SizedBox(
                         width: layout.actionsWidth,
-                        child: _buildWorkspaceActions(
-                          device,
-                          airplaySession,
-                          compact: layout.phone,
-                        ),
+                        child: _batchMode
+                            ? null
+                            : _buildWorkspaceActions(
+                                device,
+                                airplaySession,
+                                compact: layout.phone,
+                              ),
                       ),
                   ],
                 ),
@@ -342,43 +350,54 @@ class _DeviceTableLayout {
     required this.statusInline,
     required this.statusWidth,
     required this.actionsWidth,
+    required this.horizontalInset,
   });
 
   /// 版本独立列留出完整常规版本与 API 空间，长版本仍允许自然换行。
   static const systemWidth = 160.0;
+  static const selectionWidth = 36.0;
+
+  // 筛选栏、表头、批量栏和数据行共用工作区内侧的对齐线。
+  static double insetFor(double windowWidth) {
+    if (windowWidth <= 490) return 8;
+    return windowWidth <= 650 ? 12 : 16;
+  }
+
+  // 表头与批量栏使用同一高度，大字号时同步抬高。
+  static double headerHeight(BuildContext context) =>
+      max(36, MediaQuery.textScalerOf(context).scale(13) * 1.5 + 16);
 
   final bool phone;
   final bool systemInline;
   final bool statusInline;
   final double statusWidth;
   final double actionsWidth;
+  final double horizontalInset;
 
   static _DeviceTableLayout resolve(
     BuildContext context,
     double available,
-    bool batchMode,
     double connectionWidth,
   ) {
     final windowWidth = MediaQuery.sizeOf(context).width;
     final phone = windowWidth <= 490;
-    final inner = available - 16 - (batchMode ? 36 : 0);
+    final horizontalInset = insetFor(windowWidth);
+    final inner = available - horizontalInset * 2;
     final statusWidth = connectionWidth;
-    var actionsWidth = batchMode
-        ? 0.0
-        : windowWidth <= 730
-        ? 132.0
-        : 155.0;
+    final actionsWidth = min(
+      windowWidth <= 730 ? 132.0 : 155.0,
+      max(64.0, inner - 84),
+    );
+    // 按有复选框时的可用宽度统一判断是否需要折行。
+    final availableForColumns = inner - actionsWidth - selectionWidth;
     var systemInline = windowWidth <= 730;
     var statusInline = phone;
-    if (!systemInline && inner - actionsWidth - statusWidth - systemWidth < 84) {
+    if (!systemInline && availableForColumns - statusWidth - systemWidth < 84) {
       systemInline = true;
     }
-    if (!statusInline && inner - actionsWidth - statusWidth < 84) {
+    if (!statusInline && availableForColumns - statusWidth < 84) {
       statusInline = true;
       systemInline = true;
-    }
-    if (!batchMode) {
-      actionsWidth = min(actionsWidth, max(64, inner - 84));
     }
     return _DeviceTableLayout(
       phone: phone,
@@ -386,6 +405,7 @@ class _DeviceTableLayout {
       statusInline: statusInline,
       statusWidth: statusWidth,
       actionsWidth: actionsWidth,
+      horizontalInset: horizontalInset,
     );
   }
 }

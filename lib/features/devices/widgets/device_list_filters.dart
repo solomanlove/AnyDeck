@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -89,7 +91,12 @@ class DeviceListFilters extends StatelessWidget {
               _textWidth(context, _filterLabel(context, value)) +
               _textWidth(context, '${_count(value)}', size: 11),
         );
-        final manageWidth = _textWidth(context, _manageLabel(context)) + 18;
+        // 两种模式共用较宽的按钮尺寸，切换时搜索框与视图开关保持原位。
+        final manageLabelWidth = max(
+          _textWidth(context, context.l10n.t('deviceWorkspaceBatchManage')),
+          _textWidth(context, context.l10n.t('deviceWorkspaceBatchExit')),
+        );
+        final manageWidth = manageLabelWidth + 18;
         final labeledViewsWidth =
             70 +
             _textWidth(context, context.l10n.t('deviceWorkspaceWall')) +
@@ -101,6 +108,8 @@ class DeviceListFilters extends StatelessWidget {
             ? 0.0
             : 144 * MediaQuery.textScalerOf(context).scale(1);
         final groupSpace = groupFilter == null ? 0.0 : groupWidth + 8;
+        // 搜索框两侧各留 8px，视图开关与批量按钮之间留 6px。
+        const singleRowSpacing = 22.0;
         final showLabels =
             available >=
             filterWidth +
@@ -108,7 +117,7 @@ class DeviceListFilters extends StatelessWidget {
                 manageWidth +
                 minSearch +
                 groupSpace +
-                30;
+                singleRowSpacing;
         final viewsWidth = showLabels ? labeledViewsWidth : iconViewsWidth;
         final singleRow =
             available >=
@@ -117,9 +126,9 @@ class DeviceListFilters extends StatelessWidget {
                 manageWidth +
                 minSearch +
                 groupSpace +
-                30;
+                singleRowSpacing;
         final filters = _buildFilters(context);
-        final controls = _buildControls(context, showLabels);
+        final controls = _buildControls(context, showLabels, manageWidth);
         final search = _buildSearch(context);
         if (singleRow) {
           return Row(
@@ -224,7 +233,11 @@ class DeviceListFilters extends StatelessWidget {
     );
   }
 
-  Widget _buildControls(BuildContext context, bool showLabels) => Wrap(
+  Widget _buildControls(
+    BuildContext context,
+    bool showLabels,
+    double manageWidth,
+  ) => Wrap(
     spacing: 6,
     runSpacing: 6,
     crossAxisAlignment: WrapCrossAlignment.center,
@@ -237,7 +250,7 @@ class DeviceListFilters extends StatelessWidget {
           key: const Key('deviceBatchManage'),
           onPressed: () => onBatchModeChanged(!batchMode),
           style: OutlinedButton.styleFrom(
-            minimumSize: const Size(0, 36),
+            minimumSize: Size(manageWidth, 36),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             textStyle: _labelStyle(context),

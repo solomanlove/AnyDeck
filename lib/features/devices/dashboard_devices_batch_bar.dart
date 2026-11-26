@@ -9,6 +9,10 @@ extension _DeviceSelectionBar on _DeviceListPanelState {
   ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isList = _viewMode == DeviceViewMode.list;
+    final inset = isList
+        ? _DeviceTableLayout.insetFor(MediaQuery.sizeOf(context).width)
+        : 8.0;
     final count = visible.where((device) => device.isChecked).length;
     final all = visible.isNotEmpty && count == visible.length;
     final hidden = checked.length - count;
@@ -28,8 +32,10 @@ extension _DeviceSelectionBar on _DeviceListPanelState {
       key: const Key('deviceBatchActions'),
       width: double.infinity,
       alignment: Alignment.centerLeft,
-      constraints: const BoxConstraints(minHeight: 36),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      constraints: BoxConstraints(
+        minHeight: isList ? _DeviceTableLayout.headerHeight(context) : 36,
+      ),
+      padding: EdgeInsets.symmetric(horizontal: inset),
       decoration: BoxDecoration(
         color: theme.appColors.subtleSurface,
         borderRadius: AppThemeSizes.radiusLarge,
@@ -44,8 +50,9 @@ extension _DeviceSelectionBar on _DeviceListPanelState {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox.square(
-                    dimension: 24,
+                  SizedBox(
+                    width: isList ? _DeviceTableLayout.selectionWidth : 24,
+                    height: 24,
                     child: Checkbox(
                       key: const Key('deviceSelectAll'),
                       activeColor: scheme.onSurface,

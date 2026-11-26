@@ -55,7 +55,10 @@ void main() {
                 );
                 final all = find.byKey(const Key('deviceSelectAll'));
                 final selection = find.text('全选(1)');
-                expect(tester.getRect(all).left - bar.left, closeTo(8, .1));
+                expect(
+                  tester.getRect(all).left - bar.left,
+                  closeTo(list ? 16 : 8, .1),
+                );
                 expect(
                   tester.getRect(selection).left - tester.getRect(all).right,
                   closeTo(6, .1),

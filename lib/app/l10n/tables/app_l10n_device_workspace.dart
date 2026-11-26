@@ -85,7 +85,7 @@ const deviceWorkspaceEn = {
   'deviceWorkspaceView': 'Display mode',
   'deviceWorkspaceSearchHint': 'Search name, model or IP',
   'deviceWorkspaceBatchManage': 'Batch manage',
-  'deviceWorkspaceBatchExit': 'Exit batch manage',
+  'deviceWorkspaceBatchExit': 'Exit batch mode',
   'deviceWorkspaceSelectAll': 'Select all ({count})',
   'deviceWorkspaceBatchScreenshot': 'Screenshot',
   'deviceWorkspaceBatchInstall': 'Install App',
