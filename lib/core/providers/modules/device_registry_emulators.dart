@@ -16,10 +16,12 @@ typedef _Connection = ({
 });
 typedef _Transport = ({String? transportId, String status});
 
-/// 保存 AVD 与已见端口的关联，支持同一端口被另一个 AVD 复用。
+/// 保存 Android AVD 连接历史和已确认的 HarmonyOS 模拟器端点。
 class DeviceRegistryEmulators {
   static const _historyKey = 'devices.emulatorConnections.v1';
+  static const _harmonyHistoryKey = 'devices.harmonyEmulators.v1';
   final _history = <_Connection>[];
+  final _harmonyIds = <String>{};
   final _legacy = <String, String>{};
   final _transports = <String, _Transport>{};
   final _confirmed = <String, String>{};
@@ -42,6 +44,7 @@ class DeviceRegistryEmulators {
     Future<List<AndroidEmulator>> Function() listConfigured,
   ) async {
     final prefs = await SharedPreferences.getInstance();
+    _harmonyIds.addAll(prefs.getStringList(_harmonyHistoryKey) ?? const []);
     for (final entry in prefs.getStringList(_historyKey) ?? const <String>[]) {
       try {
         final fields = jsonDecode(entry);
@@ -102,6 +105,30 @@ class DeviceRegistryEmulators {
 
   static DateTime? _parseTime(Object? value) =>
       value is String ? DateTime.tryParse(value)?.toUtc() : null;
+
+  /// 离线沿用已确认记录；在线端点只使用本次探测，防止端口复用时误标。
+  Set<String> syncHarmonyIds(
+    List<DiscoveredDevice> devices,
+    Map<String, bool?> probes,
+  ) {
+    final visible = {..._harmonyIds};
+    var changed = false;
+    for (final device in devices) {
+      final confirmed = device.isHarmony ? probes[device.id] : false;
+      if (confirmed == true) {
+        visible.add(device.id);
+      } else {
+        visible.remove(device.id);
+      }
+      if (confirmed == null || _preferences == null) continue;
+      final updated = confirmed
+          ? _harmonyIds.add(device.id)
+          : _harmonyIds.remove(device.id);
+      changed = changed || updated;
+    }
+    if (changed) unawaited(_saveHarmonyIds());
+    return visible;
+  }
 
   /// 每个 transport 代次只探测一次；连接变化时结束旧会话并忽略迟到的查询。
   void observe(
@@ -273,12 +300,26 @@ class DeviceRegistryEmulators {
     _legacy.removeWhere(
       (id, name) => ids.contains(id) || ids.contains(keyFor(name)),
     );
+    var harmonyChanged = false;
     for (final id in ids) {
+      if (_harmonyIds.remove(id)) harmonyChanged = true;
       _confirmed.remove(id);
       _queries.remove(id);
       _transports.remove(id);
     }
     if (_history.length != previous) await _save();
+    if (harmonyChanged) await _saveHarmonyIds();
+  }
+
+  Future<void> _saveHarmonyIds() {
+    final snapshot = _harmonyIds.toList();
+    return _writes = _writes.then((_) async {
+      try {
+        await _preferences?.setStringList(_harmonyHistoryKey, snapshot);
+      } catch (_) {
+        // 当前会话仍保留已确认的标识。
+      }
+    });
   }
 
   Future<void> _save() {

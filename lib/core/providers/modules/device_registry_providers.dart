@@ -5,6 +5,7 @@ import '../../adb/discovered_device.dart';
 import '../../adb/adb_result.dart';
 import '../../ios/ios_mirror_service.dart';
 import '../../emulator/emulator_connection.dart';
+import '../../emulator/harmony/harmony_emulator_probes.dart';
 import 'dashboard_state_providers.dart';
 import 'device_connection_actions.dart';
 import 'device_registry_merger.dart';
@@ -98,6 +99,9 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
     if (activeDevicesAsync.hasValue) {
       _lastActiveDevices = activeDevices;
     }
+    ref.listen(harmonyEmulatorProbesProvider, (_, _) {
+      _publishRegistrySnapshot(_lastActiveDevices);
+    });
 
     _loadFromPrefs();
 
@@ -266,6 +270,10 @@ class DeviceRegistryNotifier extends Notifier<List<RegisteredDevice>>
           if (_emulators.isConfirmed(entry.key, entry.value)) entry.key,
       },
       emulatorHistory: _emulators.historyByName,
+      harmonyEmulatorIds: _emulators.syncHarmonyIds(
+        resolvedActiveDevices,
+        ref.read(harmonyEmulatorProbesProvider),
+      ),
     );
     // 在线地址回写通道及物理 serial，仅变化时落盘，避免旧快照在重连后恢复。
     bool ipsChanged = false;

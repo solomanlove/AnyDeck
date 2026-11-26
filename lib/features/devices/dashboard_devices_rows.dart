@@ -97,7 +97,10 @@ extension _DeviceListPanelRows on _DeviceListPanelState {
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    for (final tag in device.tags)
+                                    for (final tag in DeviceListPresentation.tags(
+                                      device,
+                                      context.l10n,
+                                    ))
                                       if (tag.trim().isNotEmpty)
                                         DeviceTagBadge(tag: tag),
                                   ],

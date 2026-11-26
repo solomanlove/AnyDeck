@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/adb/device_discovery_tracker.dart';
 import 'package:any_deck/core/adb/adb_result.dart';
+import 'package:any_deck/core/emulator/ios/ios_simulator_providers.dart';
 import 'package:any_deck/core/harmony/hdc_service.dart';
 import 'package:any_deck/core/providers/app_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -59,6 +61,23 @@ class _CountingHdcDeviceService extends HdcService {
         isHarmony: true,
       ),
     ];
+  }
+}
+
+/// 可控探测结果用于验证同一个 DevEco 端口被真机转发复用。
+class _DevEcoHdc extends _FakeHdcSerialService {
+  final queries = <Completer<AdbResult>>[];
+
+  @override
+  Future<AdbResult> run(
+    List<String> args, {
+    Duration timeout = const Duration(seconds: 15),
+  }) {
+    expect(args, ['-t', '127.0.0.1:5555', 'shell', 'param get | grep hvd']);
+    expect(timeout, const Duration(seconds: 3));
+    final query = Completer<AdbResult>();
+    queries.add(query);
+    return query.future;
   }
 }
 
@@ -217,6 +236,84 @@ void main() {
   });
 
   group('Harmony Device Registry Merge Tests', () {
+    test('设备注册表与侧栏共用 HDC 探测，离线保留且同端口真机无标识', () async {
+      const address = '127.0.0.1:5555';
+      const target = DiscoveredDevice(
+        id: address,
+        status: 'device',
+        model: 'HarmonyOS test device',
+        product: 'HarmonyOS NEXT',
+        isHarmony: true,
+      );
+      SharedPreferences.setMockInitialValues({
+        'devices.history': [address],
+        'devices.tags': jsonEncode({address: ['测试机']}),
+        'devices.overview.$address': jsonEncode({
+          'serial': address,
+          'androidVersion': 'HarmonyOS 6 (API 23)',
+        }),
+      });
+      final discovery = StreamController<List<DiscoveredDevice>>.broadcast();
+      addTearDown(discovery.close);
+      final hdc = _DevEcoHdc();
+      final container = ProviderContainer.test(
+        overrides: [
+          discoveredDevicesProvider.overrideWith((ref) => discovery.stream),
+          adbServiceProvider.overrideWithValue(FakeAdbService()),
+          hdcServiceProvider.overrideWithValue(hdc),
+          iosRunningSimulatorCountProvider.overrideWith((ref) => Stream.value(0)),
+        ],
+      );
+      container.listen(deviceRegistryProvider, (_, _) {});
+      container.listen(runningEmulatorCountsProvider, (_, _) {});
+      RegisteredDevice registered() => container.read(deviceRegistryProvider).single;
+
+      await pumpEventQueue();
+      discovery.add([target]);
+      await pumpEventQueue();
+      expect(registered().isEmulator, isFalse);
+      hdc.queries.single.complete(const AdbResult(
+        exitCode: 0,
+        stdout: 'ohos.qemu.hvd.name = Pura',
+        stderr: '',
+      ));
+      await pumpEventQueue();
+      expect(registered().isEmulator, isTrue);
+      expect(registered().tags, ['测试机']);
+      expect(container.read(runningEmulatorCountsProvider).harmony, 1);
+
+      discovery.add([]);
+      await pumpEventQueue();
+      expect(registered().isOnline, isFalse);
+      expect(registered().isEmulator, isTrue);
+      expect(container.read(runningEmulatorCountsProvider).harmony, 0);
+
+      final reloaded = ProviderContainer.test(
+        overrides: [
+          discoveredDevicesProvider.overrideWith((ref) => Stream.value([])),
+          hdcServiceProvider.overrideWithValue(hdc),
+        ],
+      );
+      reloaded.listen(deviceRegistryProvider, (_, _) {});
+      await pumpEventQueue();
+      expect(reloaded.read(deviceRegistryProvider).single.isEmulator, isTrue);
+
+      discovery.add([target]);
+      await pumpEventQueue();
+      expect(hdc.queries, hasLength(2));
+      expect(registered().isOnline, isTrue);
+      expect(registered().isEmulator, isFalse);
+      hdc.queries.last.complete(
+        const AdbResult(exitCode: 1, stdout: '', stderr: ''),
+      );
+      await pumpEventQueue();
+      expect(container.read(runningEmulatorCountsProvider).harmony, 0);
+      discovery.add([]);
+      await pumpEventQueue();
+      expect(registered().isEmulator, isFalse);
+      expect(registered().tags, ['测试机']);
+    });
+
     test('同一地址同时被 ADB 和 HDC 发现时保留 Android 路由', () async {
       const address = '192.168.31.153:5555';
       SharedPreferences.setMockInitialValues({

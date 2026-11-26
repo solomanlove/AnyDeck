@@ -82,6 +82,40 @@ void main() {
     });
   }
 
+  for (final (locale, tag, confirm, isHarmony) in [
+    (const Locale('zh'), '模拟器', '确认', false),
+    (const Locale('en'), 'Emulator', 'Confirm', true),
+  ]) {
+    testWidgets('编辑弹窗在标签标识字段自动填入模拟器标签 ${locale.languageCode}', (
+      tester,
+    ) async {
+      final device = RegisteredDevice(
+        id: isHarmony ? '127.0.0.1:5555' : _port,
+        status: 'offline',
+        isOnline: false,
+        isHarmony: isHarmony,
+        isHarmonyEmulator: isHarmony,
+        tags: const ['QA'],
+      );
+      final registry = _Registry(device);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [deviceRegistryProvider.overrideWith(() => registry)],
+          child: _host(locale, DeviceInfoEditDialog(device: device)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final field = find.byType(TextField).at(1);
+      expect(tester.widget<TextField>(field).controller!.text, '$tag, QA');
+      await tester.enterText(field, '$tag，QA, Lab');
+      await tester.tap(find.text(confirm));
+      await tester.pumpAndSettle();
+      expect(registry.savedTags, ['QA', 'Lab']);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('在线时长每秒刷新，断开后固定并停止计时', (tester) async {
     var now = _start.add(const Duration(seconds: 3));
     Future<void> show(RegisteredDevice device) => tester.pumpWidget(
@@ -144,9 +178,21 @@ class _Registry extends DeviceRegistryNotifier {
   _Registry(this.device);
 
   final RegisteredDevice device;
+  List<String>? savedTags;
 
   @override
   List<RegisteredDevice> build() => [device];
 
   void replace(List<RegisteredDevice> devices) => state = devices;
+
+  @override
+  Future<void> setAlias(String id, String alias) async {}
+
+  @override
+  Future<void> updateTags(String id, List<String> tags) async {
+    savedTags = tags;
+  }
+
+  @override
+  Future<void> updateRemark(String id, String remark) async {}
 }

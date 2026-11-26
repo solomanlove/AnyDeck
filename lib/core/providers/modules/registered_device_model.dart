@@ -31,6 +31,7 @@ class RegisteredDevice {
     this.sdkVersion,
     this.isIos = false,
     this.isHarmony = false,
+    this.isHarmonyEmulator = false,
     this.iosConnectionTypes = const {},
     this.remark,
     this.tags = const [],
@@ -94,6 +95,16 @@ class RegisteredDevice {
 
   /// 是否为鸿蒙（HarmonyOS NEXT / OpenHarmony）设备
   final bool isHarmony;
+
+  /// 当前或历史 HDC 回环端点已通过 DevEco 模拟器属性确认。
+  final bool isHarmonyEmulator;
+
+  /// Android AVD 和旧版 HDC 模拟器也可通过稳定名称或模拟器端口识别。
+  bool get isEmulator =>
+      !isIos &&
+      !isShared &&
+      (EmulatorConnectionService.isTransport(id) ||
+          (isHarmony ? isHarmonyEmulator : emulatorAvdName != null));
 
   /// iOS 当前已发现的通道，离线时为空；UDID 本身不代表物理连接方式。
   final Set<IosConnectionType> iosConnectionTypes;
@@ -285,6 +296,7 @@ class RegisteredDevice {
     int? sdkVersion,
     bool? isIos,
     bool? isHarmony,
+    bool? isHarmonyEmulator,
     Set<IosConnectionType>? iosConnectionTypes,
     String? remark,
     List<String>? tags,
@@ -310,6 +322,7 @@ class RegisteredDevice {
       sdkVersion: sdkVersion ?? this.sdkVersion,
       isIos: isIos ?? this.isIos,
       isHarmony: isHarmony ?? this.isHarmony,
+      isHarmonyEmulator: isHarmonyEmulator ?? this.isHarmonyEmulator,
       iosConnectionTypes: iosConnectionTypes ?? this.iosConnectionTypes,
       remark: remark ?? this.remark,
       tags: tags ?? this.tags,

@@ -23,6 +23,10 @@ void _testDeviceEmulatorActions() {
         avdName: 'Primary_AVD',
         confirmed: true,
       );
+      expect(
+        find.descendant(of: emulator, matching: find.byTooltip('模拟器')),
+        findsOneWidget,
+      );
       await tester.tap(action('启动'));
       await tester.pump();
       await tester.pump();

@@ -26,6 +26,7 @@ class DeviceRegistryMerger {
     Map<String, String> emulatorNames = const {},
     Set<String> confirmedEmulatorIds = const {},
     Map<String, List<EmulatorConnectionHistoryEntry>> emulatorHistory = const {},
+    Set<String> harmonyEmulatorIds = const {},
   }) {
     final activeMap = <String, DiscoveredDevice>{};
     for (final device in activeDevices) {
@@ -123,6 +124,7 @@ class DeviceRegistryMerger {
             isIos: active.isIos,
             iosConnectionTypes: active.iosConnectionTypes,
             isHarmony: active.isHarmony,
+            isHarmonyEmulator: harmonyEmulatorIds.contains(id),
             remark: remark,
             tags: deviceTags,
           ),
@@ -169,7 +171,9 @@ class DeviceRegistryMerger {
             remark: remark,
             tags: deviceTags,
             isIos: isIos,
+            isHarmonyEmulator: harmonyEmulatorIds.contains(id),
             isHarmony:
+                harmonyEmulatorIds.contains(id) ||
                 cachedProduct == 'HarmonyOS NEXT' ||
                 (cachedModel != null &&
                     (cachedModel.contains('HarmonyOS') ||

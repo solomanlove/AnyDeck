@@ -49,6 +49,7 @@ extension _DeviceListPanelView on _DeviceListPanelState {
                     names[device.id]!,
                     _query,
                     false,
+                    l10n: context.l10n,
                   ),
             )
             .toList();

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/l10n/app_localizations.dart';
 import '../../../app/widget/app_toast.dart';
 import '../../../core/providers/app_providers.dart';
+import '../model/device_list_presentation.dart';
 import 'device_connection_history.dart';
 
 /// 统一设备信息编辑对话框。
@@ -33,7 +34,13 @@ class DeviceInfoEditDialog extends ConsumerStatefulWidget {
 
 class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
   late final TextEditingController _nameController;
-  late final TextEditingController _tagsController;
+  late final _automaticTag = DeviceListPresentation.automaticTag(
+    widget.device,
+    context.l10n,
+  );
+  late final _tagsController = TextEditingController(
+    text: [?_automaticTag, ...widget.device.tags].join(', '),
+  );
   late final TextEditingController _remarkController;
   bool _isSaving = false;
   bool _isDeleting = false;
@@ -48,9 +55,6 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
     super.initState();
     _nameController = TextEditingController(
       text: widget.device.customName ?? widget.device.displayName,
-    );
-    _tagsController = TextEditingController(
-      text: widget.device.tags.join(', '),
     );
     _remarkController = TextEditingController(
       text: widget.device.remark ?? '',
@@ -74,11 +78,13 @@ class _DeviceInfoEditDialogState extends ConsumerState<DeviceInfoEditDialog> {
       final tagsText = _tagsController.text.trim();
       final remark = _remarkController.text.trim();
 
-      // 解析逗号分隔的标签列表
+      // 自动标签来自设备识别，仅将用户标签写入自定义标签缓存。
       final tags = tagsText
           .split(RegExp(r'[,，]'))
           .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
+          .where(
+            (e) => e.isNotEmpty && e.toLowerCase() != _automaticTag?.toLowerCase(),
+          )
           .toList();
 
       final notifier = ref.read(deviceRegistryProvider.notifier);
