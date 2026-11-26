@@ -309,7 +309,7 @@ impl DeviceDriver for IosDriver {
     }
 
     /// 异步执行指令（支持 go-ios CLI 指令分发）
-    async fn execute_shell(&self, cmd: &str) -> Result<String, String> {
+    async fn execute_shell_with_timeout(&self, cmd: &str, timeout: Duration) -> Result<String, String> {
         let parts: Vec<&str> = cmd.split_whitespace().collect();
         if parts.is_empty() {
             return Ok(String::new());
@@ -319,7 +319,7 @@ impl DeviceDriver for IosDriver {
         let udid_arg = format!("--udid={}", self.udid);
         args.push(&udid_arg);
 
-        Self::run_ios_cmd(&args, Duration::from_secs(30)).await
+        Self::run_ios_cmd(&args, timeout).await
     }
 
     /// 异步抓取 iOS 全屏截图并返回 PNG 二进制流

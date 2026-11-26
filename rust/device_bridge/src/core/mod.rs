@@ -39,7 +39,7 @@ mod tests {
             DevicePlatform::Android
         }
 
-        async fn execute_shell(&self, cmd: &str) -> Result<String, String> {
+        async fn execute_shell_with_timeout(&self, cmd: &str, _timeout: Duration) -> Result<String, String> {
             let current = self.active_counter.fetch_add(1, Ordering::SeqCst) + 1;
             let mut prev_max = self.max_seen.load(Ordering::SeqCst);
             while current > prev_max {

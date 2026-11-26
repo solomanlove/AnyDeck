@@ -20,12 +20,22 @@
 | iOS syslog（P2） | 分行阶段最多 16384 字符；展示缓冲最多 3000 行/4 Mi 字符；待发布最多 1000 行/1 Mi 字符；100 ms 合批 | 隐藏/断线停止进程，返回时仅恢复先前由用户开始的采集；手动停止不自动恢复；启动和停止串行，迟到启动按序号强杀 |
 | iOS 进程页（P2） | 隐藏时停止监听自动释放 Provider，取消轮询、图标请求和 CLI；保留页面本地筛选控件 | 返回时创建新的设备会话；旧 Future 不更新当前列表；只声明 `autoDispose` 不足以处理仍挂载的隐藏页面 |
 | 连续截图（P2） | 自动截图和 PNG 保存处于同一在途链路，写完才排下一张；保存失败不增加计数；保存完成时检查请求及自动刷新轮次 | 切页失效在途结果和计数；已开始的单次文件写入完成后退出，不再积压后续 PNG；最后一个监听者离开后释放 `ui.Image` 和录屏资源 |
-| iOS 设备发现 | 5 秒轮询有单次在途保护；CLI 回退 10 秒超时并杀进程 | Tracker 销毁后取消轮询，不再发布结果 |
+| 鸿蒙和 iOS 设备发现 | 鸿蒙 2 秒、iOS 5 秒轮询均有在途控制；由后台 Isolate 执行原生发现，保留异步 CLI 回退 | Tracker 销毁后取消轮询，迟到查询不再发布结果 |
+| DAL 单设备 Shell | 鸿蒙 Shell 与 Android 批量脚本的 Direct ADB 调用在后台 Isolate 执行，调用方的时限直接传给底层传输 | 自定义路径和旧库直接使用 CLI；原生提前失败时可以使用剩余预算回退 |
 | 应用包缓存 | 现有应用列表内存最多保留 12 个近期设备/连接 key | 历史完整快照仍兼容已有 SharedPreferences 版本键和格式 |
 | 跨设备展示元数据（P2） | `PackageMetadataIndex` 使用 SQLite 磁盘索引，UI LRU/负缓存各最多 2048 项，待查询最多 128 项/批，负缓存 1 分钟；UI 缓存仅保留名称和图标路径 | 首屏仅打开索引，首次缺项时逐个迁移旧快照；JSON 解码、指纹计算、SQLite 和图标文件检查在 worker 中完成；Provider 销毁后不再通知 UI |
 | macOS Texture（P2） | 使用已有 `anydeck_decoded_frames` 帧计数，帧序号未变化不调用 `textureFrameAvailable`；隐藏且没有录制时停 Timer | 窗口可见性通知恢复调度；隐藏录制维持 30 Hz 时间采样，静止画面不缩短录制时长；旧底座缺少帧计数符号时兼容原刷新方式 |
 
 日志内存上限同时约束条数和单条长度；iOS syslog 额外约束字符总量。截图控制器按设备隔离，`autoDispose` 在最后一个监听者离开后执行，当前 `IndexedStack` 中的截图预览仍可保留。
+
+## 2026-11-26 设备发现与 Shell
+
+- `RustDalBridge.listHarmonyDevices()`、`listIosDevices()` 和 `executeShell()` 在后台 Isolate 加载动态库、调用同步 FFI、解析结果并释放指针。界面等待 Dart `Future`，可以继续绘制和处理输入。现有 Tracker 继续控制轮询与结果发布。
+- `anydeck_dal_execute_shell_with_timeout` 接收微秒时限。Flutter 的 `Duration` 传给 Rust `DeviceDriver`，Android 交给 Direct ADB Socket 的整体 deadline，鸿蒙和 iOS 交给各自 CLI 的超时及子进程回收。旧 ABI 保留默认 30 秒，Flutter 遇到只带旧 ABI 的动态库时走异步 CLI。
+- `HdcService.shell()` 使用调用方的时限，默认 15 秒。原生提前失败时只用剩余时限回退，同一命令耗尽预算时返回退出码 `124`。Android 批量脚本的原生预算仍为 30 秒，CLI 回退最多使用剩余预算中的 15 秒。显式工具路径优先。
+- 回归用例以可控原生等待检查主 Isolate 心跳，覆盖鸿蒙和 iOS 发现、鸿蒙 Shell、Android Direct ADB、微秒时限传递、旧库兼容及预算耗尽后避免重复执行。Rust 用实际子进程检查 HDC 超时和回收。
+- 真机验收可在开启鸿蒙进程自动刷新和连接 iOS 的同时连续切换页面，然后执行慢速 Android 批量脚本，确认窗口仍可操作，设备结果与脚本进度随后更新。本次验证使用自动化测试和原生子进程夹具。
+- 验证结果为新增 Dart 回归 7 项通过、Rust 71 项通过及 1 项忽略，Flutter 静态分析无 error。Flutter 全量 2744 项通过、7 项跳过，`device_list_filters_test.dart` 的批量模式搜索框宽度断言失败 1 项，在修改前的 `2cac91d` 复现同样结果。
 
 ## 元数据索引与兼容
 

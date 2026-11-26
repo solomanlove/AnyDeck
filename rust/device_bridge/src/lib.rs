@@ -21,6 +21,7 @@ use std::ffi::{c_char, c_void, CStr};
 use std::net::{Shutdown, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Duration;
 
 pub(crate) struct Session {
     pub(crate) stopped: AtomicBool,
@@ -463,7 +464,31 @@ pub unsafe extern "C" fn anydeck_dal_execute_shell(
     serial: *const c_char,
     command: *const c_char,
 ) -> *mut c_char {
-    if serial.is_null() || command.is_null() {
+    execute_dal_shell(platform, serial, command, core::driver::DEFAULT_SHELL_TIMEOUT)
+}
+
+/// 使用调用方的微秒时限执行 Shell。旧 ABI 继续使用默认时限。
+///
+/// # Safety
+/// serial 与 command 必须为有效的 NUL 结尾 C 字符串指针。
+/// 非空返回值须由调用方通过 `anydeck_free_string` 释放。
+#[no_mangle]
+pub unsafe extern "C" fn anydeck_dal_execute_shell_with_timeout(
+    platform: u8,
+    serial: *const c_char,
+    command: *const c_char,
+    timeout_micros: u64,
+) -> *mut c_char {
+    execute_dal_shell(platform, serial, command, Duration::from_micros(timeout_micros))
+}
+
+unsafe fn execute_dal_shell(
+    platform: u8,
+    serial: *const c_char,
+    command: *const c_char,
+    timeout: Duration,
+) -> *mut c_char {
+    if serial.is_null() || command.is_null() || timeout.is_zero() {
         return std::ptr::null_mut();
     }
     let (Ok(serial_str), Ok(cmd_str)) = (
@@ -481,7 +506,7 @@ pub unsafe extern "C" fn anydeck_dal_execute_shell(
     };
 
     let result = core::BatchManager::runtime().block_on(async {
-        driver.execute_shell(cmd_str).await
+        driver.execute_shell_with_timeout(cmd_str, timeout).await
     });
 
     let (success, payload) = match result {

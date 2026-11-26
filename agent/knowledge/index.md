@@ -23,7 +23,7 @@
 | `adb-macos-dual-architecture` | macOS 双架构构建发布 | active | 原生 arm64/x86_64 matrix、私有制品锁定、安装包与 helper 验证、发布合并与官网入口 | `.github/workflows/`, `macos/`, `script/` |
 | `adb-developer-options-layout` | 开发者页面头部布局 | active | 模式开关移入正文、设置返回按钮与空白拖拽区、宽窄布局、主题与中英文、开关保存和入口激活回归 | `features/developer/`, `app/l10n/` |
 | `adb-github-macos-release` | macOS ad-hoc 自动打包发布 | active | arm64 Actions、只读私有制品凭据、DMG/ZIP/签名与依赖验证、Tag Releases 和安装边界 | `.github/workflows/`, `script/`, `agent/distribution/` |
-| `adb-memory-performance-controls` | 内存与后台性能控制 | active | 性能采样 worker、日志/终端与 PID 进程、可见性轮询、截图保存背压、SQLite 展示索引及原生 Texture 帧门控 | `core/performance/`, `core/logcat/`, `core/terminal/`, `core/apps/`, `features/ios/`, `features/screenshot/`, `macos/Runner/` |
+| `adb-memory-performance-controls` | 内存与后台性能控制 | active | 设备发现和 DAL Shell 后台执行与超时、性能采样 worker、日志/终端与 PID 进程、可见性轮询、截图保存背压、SQLite 展示索引及原生 Texture 帧门控 | `core/dal/`, `core/performance/`, `core/logcat/`, `core/terminal/`, `core/apps/`, `features/ios/`, `features/screenshot/`, `macos/Runner/` |
 | `adb-screenshot-image-editing` | 截图图片编辑 | active | 右上角编辑入口、形状/画笔/马赛克与遮盖、撤销重做、原图坐标、PNG 合成、会话互斥与资源释放 | `features/screenshot/` |
 | `adb-mirror-whiteboard` | 投屏白板本地标注 | active | 画笔入口、颜色/撤销/清空、Texture 透明画布、设备输入阻断、窗口生命周期及回归边界 | `app/window/mirror/`, `features/control/` |
 | `adb-settings-manual-removal` | 设置页说明书入口移除 | active | 记录设置页“软件说明书”入口、弹框和专用文案的移除范围及回归验证 | `features/overview/`, `features/widgets/`, `app/l10n/` |

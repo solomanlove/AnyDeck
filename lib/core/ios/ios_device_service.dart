@@ -15,9 +15,12 @@ import 'ios_usb_mirror_service.dart';
 /// 负责管理 go-ios 进程、解析设备列表以及管理 iOS 投屏会话。
 class IosDeviceService {
   IosDeviceService({
+    this._bridge,
     void Function(String message, {String tag, String level})? onLog,
   }) : _onLog = onLog;
 
+  final RustDalBridge? _bridge;
+  RustDalBridge get _nativeBridge => _bridge ?? RustDalBridge.instance;
   final void Function(String message, {String tag, String level})? _onLog;
   final usbMirror = IosUsbMirrorService();
   bool _useNativeDiscovery = true;
@@ -38,8 +41,10 @@ class IosDeviceService {
 
   /// 获取已连接的 iOS 设备列表。
   Future<List<DiscoveredDevice>> listDevices() async {
-    if (!hasUserToolPath('ios') && _useNativeDiscovery && RustDalBridge.instance.isAvailable) {
-      final nativeList = await RustDalBridge.instance.listIosDevices();
+    if (!hasUserToolPath('ios') && _useNativeDiscovery && _nativeBridge.isAvailable) {
+      final nativeList = await _nativeBridge.listIosDevices().onError(
+        (_, _) => [],
+      );
       if (nativeList.isNotEmpty) {
         if (nativeList.every((item) => item.containsKey('connection_type'))) {
           // Rust 与 CLI 共用解析规则，保持型号、版本和连接通道一致。

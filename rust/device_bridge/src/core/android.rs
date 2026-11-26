@@ -29,12 +29,12 @@ impl DeviceDriver for AndroidDriver {
     }
 
     /// 异步执行 ADB Shell 指令，使用 Direct Socket 通信
-    async fn execute_shell(&self, cmd: &str) -> Result<String, String> {
+    async fn execute_shell_with_timeout(&self, cmd: &str, timeout: Duration) -> Result<String, String> {
         let serial = self.serial.clone();
         let cmd = cmd.to_string();
 
         tokio::task::spawn_blocking(move || {
-            let bytes = AdbSocketClient::execute_shell(&serial, &cmd, Duration::from_secs(30))?;
+            let bytes = AdbSocketClient::execute_shell(&serial, &cmd, timeout)?;
             Ok(String::from_utf8_lossy(&bytes).into_owned())
         })
         .await

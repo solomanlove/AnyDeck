@@ -96,18 +96,25 @@ impl HarmonyDriver {
     /// 底层通用执行 HDC 命令，带异步超时与错误捕获
     pub async fn run_hdc_cmd(args: &[&str], timeout_duration: Duration) -> Result<String, String> {
         let hdc_path = find_hdc_path()?;
-        let child = tokio::process::Command::new(hdc_path)
-            .args(args)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Failed to spawn hdc process: {e}"))?;
+        Self::run_hdc_at_path(&hdc_path, args, timeout_duration).await
+    }
 
-        let output_fut = child.wait_with_output();
-        let output = tokio::time::timeout(timeout_duration, output_fut)
-            .await
-            .map_err(|_| format!("hdc command timed out after {timeout_duration:?}"))?
-            .map_err(|e| format!("Failed to wait for hdc process: {e}"))?;
+    async fn run_hdc_at_path(
+        executable: &std::path::Path,
+        args: &[&str],
+        timeout_duration: Duration,
+    ) -> Result<String, String> {
+        // 超时丢弃 output Future 时终止 HDC 子进程，避免下一次轮询叠加。
+        let output = tokio::time::timeout(
+            timeout_duration,
+            tokio::process::Command::new(executable)
+                .args(args)
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .map_err(|_| format!("hdc command timed out after {timeout_duration:?}"))?
+        .map_err(|e| format!("Failed to run hdc process: {e}"))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -241,12 +248,8 @@ impl DeviceDriver for HarmonyDriver {
     }
 
     /// 异步执行 HDC Shell 指令
-    async fn execute_shell(&self, cmd: &str) -> Result<String, String> {
-        Self::run_hdc_cmd(
-            &["-t", &self.target, "shell", cmd],
-            Duration::from_secs(30),
-        )
-        .await
+    async fn execute_shell_with_timeout(&self, cmd: &str, timeout: Duration) -> Result<String, String> {
+        Self::run_hdc_cmd(&["-t", &self.target, "shell", cmd], timeout).await
     }
 
     /// 异步抓取鸿蒙全屏截图并拉取至本地内存
@@ -307,5 +310,52 @@ impl DeviceDriver for HarmonyDriver {
         )
         .await?;
         Ok(())
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[tokio::test]
+    async fn hdc_uses_callers_timeout_and_terminates_child() {
+        let pid_file = std::env::temp_dir().join(format!(
+            "anydeck-hdc-timeout-{}.pid",
+            std::process::id(),
+        ));
+        let timeout = Duration::from_millis(300);
+        let error = HarmonyDriver::run_hdc_at_path(
+            Path::new("/bin/sh"),
+            &[
+                "-c",
+                "printf '%s' \"$$\" > \"$1\"; exec /bin/sleep 15",
+                "hdc-fixture",
+                pid_file.to_str().unwrap(),
+            ],
+            timeout,
+        )
+        .await
+        .unwrap_err();
+        let pid = std::fs::read_to_string(&pid_file);
+        let _ = std::fs::remove_file(&pid_file);
+        assert_eq!(error, "hdc command timed out after 300ms");
+        let pid = pid.expect("fixture subprocess started before the timeout");
+
+        // Tokio 回收子进程可能晚于超时返回，轮询等待系统确认该 PID 消失。
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while tokio::process::Command::new("/bin/kill")
+                .args(["-0", &pid])
+                .output()
+                .await
+                .unwrap()
+                .status
+                .success()
+            {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("timed-out HDC subprocess must be terminated and reaped");
     }
 }
