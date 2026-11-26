@@ -251,7 +251,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
                 ),
               ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 28),
+            padding: AppThemeSizes.emulatorTablePadding,
             child: Row(
               children: [
                 // 状态指示
@@ -397,7 +397,7 @@ class _IosSimulatorsViewState extends ConsumerState<IosSimulatorsView> {
           ),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 28),
+      padding: AppThemeSizes.emulatorTablePadding,
       child: Row(
         children: [
           const SizedBox(width: 20),

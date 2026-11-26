@@ -83,10 +83,16 @@ abstract final class _EmulatorTableLayout {
   static const abi = 16;
   static const memory = 11;
   static const storage = 11;
-  static const cellPadding = EdgeInsets.symmetric(horizontal: 6);
+  static const statusDotSize = 10.0;
+  static const statusGap = 10.0;
+  static const cellGap = 4.0;
+  static const cellPadding = EdgeInsets.only(right: cellGap);
 
-  // 与单元格边距合计 28，首尾内容对齐工具栏两侧。
-  static const pagePadding = EdgeInsets.symmetric(horizontal: 22, vertical: 12);
+  // 为名称表头留出与状态圆点等宽的区域，标题与普通行名称对齐。
+  static const nameHeaderPadding = EdgeInsets.only(
+    left: statusDotSize + statusGap,
+    right: cellGap,
+  );
 }
 
 /// 模拟器数据表格的头部组件。
@@ -113,6 +119,7 @@ class _EmulatorTableHeader extends StatelessWidget {
 
     return Container(
       height: 48,
+      padding: AppThemeSizes.emulatorTablePadding,
       decoration: BoxDecoration(
         color: Theme.of(
           context,
@@ -135,7 +142,7 @@ class _EmulatorTableHeader extends StatelessWidget {
             label: context.l10n.t('emulatorNameCol'),
             style: style,
             onTap: () => onSort('name'),
-            padding: _EmulatorTableLayout.cellPadding,
+            padding: _EmulatorTableLayout.nameHeaderPadding,
             sortIcon: sortIconBuilder('name'),
           ),
           // 分辨率表头单元格
@@ -180,7 +187,6 @@ class _EmulatorTableHeader extends StatelessWidget {
             label: context.l10n.t('emulatorStorageCol'),
             style: style,
             onTap: () => onSort('storage'),
-            alignRight: true,
             padding: _EmulatorTableLayout.cellPadding,
             sortIcon: sortIconBuilder('storage'),
           ),
@@ -231,6 +237,7 @@ class _EmulatorTableRow extends StatelessWidget {
       onDoubleTap: onDoubleTap,
       child: Container(
         height: (item.status == 'error' || item.status == 'connectionIssue') ? 88 : 56,
+        padding: AppThemeSizes.emulatorTablePadding,
         decoration: BoxDecoration(color: rowColor),
         foregroundDecoration: BoxDecoration(
           border: Border(
@@ -251,7 +258,7 @@ class _EmulatorTableRow extends StatelessWidget {
                     _EmulatorErrorButton(launch: item.launch!)
                   else
                     _EmulatorStatusDot(status: item.status),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: _EmulatorTableLayout.statusGap),
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -307,7 +314,6 @@ class _EmulatorTableRow extends StatelessWidget {
             // 存储列
             _EmulatorCell(
               flex: _EmulatorTableLayout.storage,
-              alignment: Alignment.centerRight,
               child: _EmulatorTableText(item.emulator.storageLabel),
             ),
           ],
@@ -319,15 +325,10 @@ class _EmulatorTableRow extends StatelessWidget {
 
 /// 按列宽权重分配可用空间，并与表头使用相同的水平边距。
 class _EmulatorCell extends StatelessWidget {
-  const _EmulatorCell({
-    required this.flex,
-    required this.child,
-    this.alignment = Alignment.centerLeft,
-  });
+  const _EmulatorCell({required this.flex, required this.child});
 
   final int flex;
   final Widget child;
-  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -335,7 +336,7 @@ class _EmulatorCell extends StatelessWidget {
       flex: flex,
       child: Container(
         padding: _EmulatorTableLayout.cellPadding,
-        alignment: alignment,
+        alignment: Alignment.centerLeft,
         child: child,
       ),
     );
@@ -384,8 +385,8 @@ class _EmulatorStatusDot extends StatelessWidget {
     return Tooltip(
       message: label,
       child: Container(
-        width: 10,
-        height: 10,
+        width: _EmulatorTableLayout.statusDotSize,
+        height: _EmulatorTableLayout.statusDotSize,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
     );

@@ -4,6 +4,8 @@ import 'package:any_deck/core/emulator/android_emulator.dart';
 import 'package:any_deck/core/adb/discovered_device.dart';
 import 'package:any_deck/core/emulator/emulator_process.dart';
 import 'package:any_deck/core/emulator/emulator_running_provider.dart';
+import 'package:any_deck/core/emulator/ios/ios_simulator.dart';
+import 'package:any_deck/core/emulator/ios/ios_simulator_providers.dart';
 import 'package:any_deck/core/providers/modules/emulator_terminal_providers.dart';
 import 'package:any_deck/features/dashboard_screen.dart';
 import 'package:any_deck/features/widgets/dashboard_table_header.dart';
@@ -65,7 +67,7 @@ void main() {
     expect(emulatorConfigZh.keys.toSet(), emulatorConfigEn.keys.toSet());
   });
 
-  testWidgets('Android 模拟器六列随窗口缩放并保持对称留白', (tester) async {
+  testWidgets('Android 模拟器沿用 iOS 列表边距且六列随窗口缩放', (tester) async {
     const emulator = AndroidEmulator(
       name: 'Medium_Phone_API_37.0_with_a_long_display_name',
       resolution: '1080x2400',
@@ -73,6 +75,14 @@ void main() {
       abi: 'arm64-v8a',
       memory: '2G',
       storage: '8G',
+    );
+    const iosSimulator = IosSimulator(
+      udid: 'test-ios',
+      name: 'Test iPhone',
+      runtime: 'iOS 26',
+      deviceTypeIdentifier: 'iPhone',
+      state: 'Shutdown',
+      isAvailable: true,
     );
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1400, 800);
@@ -83,6 +93,7 @@ void main() {
           runningEmulatorCountsProvider.overrideWithValue(noRunningEmulators),
           emulatorListProvider.overrideWith((ref) async => [emulator]),
           emulatorConnectionsProvider.overrideWith((ref) async => {}),
+          iosSimulatorsProvider.overrideWith((ref) async => [iosSimulator]),
         ],
         child: _app(
           const Padding(
@@ -102,30 +113,28 @@ void main() {
       emulator.memoryLabel,
       emulator.storageLabel,
     ];
-    // 连续调整窗口，检查首尾内容边距、上下留白和六列对齐。
+    // 连续调整窗口，检查满宽列表、对称内边距及六列对齐。
     final previousWidths = List.filled(values.length, double.infinity);
     for (final width in [1580.0, 1100.0, 800.0, 700.0]) {
       tester.view.physicalSize = Size(width, 800);
       await tester.pumpAndSettle();
       expect(headers, findsNWidgets(values.length));
-      final tableTop = tester.getRect(find.byType(Divider)).bottom + 12;
+      final tableTop = tester.getRect(find.byType(Divider)).bottom;
       final list = tester.getRect(find.byType(ListView));
       final searchLeft = tester.getRect(find.byType(TextField)).left;
-      final nameHeader = tester.getRect(find.text('模拟器名称'));
-      final storageSortIcon = tester.getRect(
-        find.descendant(of: headers.last, matching: find.byType(Icon)),
-      );
       final statusDot = tester.getRect(find.byTooltip('已关闭'));
       expect(list.top, closeTo(tableTop + 48, 0.01));
-      expect(list.bottom, closeTo(800 - 12, 0.01));
+      expect(list.bottom, closeTo(800, 0.01));
+      expect(list.left, closeTo(180, 0.01));
+      expect(list.right, closeTo(width, 0.01));
       expect(searchLeft, closeTo(180 + 28, 0.01));
-      expect(nameHeader.left, closeTo(searchLeft, 0.01));
-      expect(statusDot.left, closeTo(searchLeft, 0.01));
-      expect(storageSortIcon.right, closeTo(width - 28, 0.01));
+      expect(tester.getRect(headers.first).left, closeTo(searchLeft, 0.01));
+      expect(tester.getRect(headers.last).right, closeTo(width - 28, 0.01));
       expect(
-        tester.getRect(find.text(values.last)).right,
-        closeTo(width - 28, 0.01),
+        tester.getRect(find.text('模拟器名称')).left,
+        closeTo(searchLeft + 20, 0.01),
       );
+      expect(statusDot.left, closeTo(searchLeft, 0.01));
       expect(statusDot.center.dy, closeTo(list.top + 28, 0.01));
       for (var i = 0; i < values.length; i++) {
         final header = tester.getRect(headers.at(i));
@@ -133,8 +142,11 @@ void main() {
         expect(header.width, lessThan(previousWidths[i]));
         previousWidths[i] = header.width;
         final value = tester.getRect(find.text(values[i]));
+        final title = tester.getRect(
+          find.descendant(of: headers.at(i), matching: find.byType(Text)),
+        );
         expect(value.width, greaterThan(0));
-        expect(value.left, greaterThanOrEqualTo(header.left - 0.01));
+        expect(value.left, closeTo(title.left, 0.01));
         expect(value.right, lessThanOrEqualTo(header.right + 0.01));
         expect(value.center.dy, closeTo(list.top + 28, 0.01));
       }
@@ -146,6 +158,30 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     }
+
+    // 在同一页面切换到 iOS，核对名称列及表格边界。
+    final androidList = tester.getRect(find.byType(ListView));
+    final androidNameLeft = tester.getRect(find.text(values.first)).left;
+    await tester.tap(find.text('iOS'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    final iosList = tester.getRect(find.byType(ListView));
+    expect(iosList.left, closeTo(androidList.left, 0.01));
+    expect(iosList.right, closeTo(androidList.right, 0.01));
+    expect(iosList.bottom, closeTo(androidList.bottom, 0.01));
+    expect(
+      iosList.top,
+      closeTo(tester.getRect(find.byType(Divider)).bottom, 0.01),
+    );
+    expect(
+      tester.getRect(find.text('模拟器名称')).left,
+      closeTo(androidNameLeft, 0.01),
+    );
+    expect(
+      tester.getRect(find.text(iosSimulator.name)).left,
+      closeTo(androidNameLeft, 0.01),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(

@@ -31,4 +31,7 @@ abstract final class AppThemeSizes {
     minWidth: 40,
     minHeight: 40,
   );
+
+  /// Android 和 iOS 模拟器表头与数据行共用的水平内边距。
+  static const emulatorTablePadding = EdgeInsets.symmetric(horizontal: 28);
 }

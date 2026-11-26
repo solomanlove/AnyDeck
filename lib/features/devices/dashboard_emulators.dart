@@ -148,12 +148,6 @@ class EmulatorListPanelState extends ConsumerState<EmulatorListPanel> {
               );
             },
           );
-          if (widget.isFullPage) {
-            contentWidget = Padding(
-              padding: _EmulatorTableLayout.pagePadding,
-              child: contentWidget,
-            );
-          }
         }
 
         final layoutWidget = contentWidget;
