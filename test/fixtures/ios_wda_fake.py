@@ -7,6 +7,7 @@ import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from socketserver import TCPServer
 
 args = sys.argv[1:]
 with open(Path(__file__).with_suffix('.calls'), 'a') as calls:
@@ -72,4 +73,10 @@ else:
             except (BrokenPipeError, ConnectionResetError):
                 pass
 
-    ThreadingHTTPServer(('127.0.0.1', port), Handler).serve_forever()
+    class LoopbackHTTPServer(ThreadingHTTPServer):
+        def server_bind(self):
+            # HTTPServer 默认在监听前反查主机名，macOS Runner 的回环反查可能阻塞。
+            TCPServer.server_bind(self)
+            self.server_name, self.server_port = self.server_address
+
+    LoopbackHTTPServer(('127.0.0.1', port), Handler).serve_forever()

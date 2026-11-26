@@ -13,7 +13,6 @@ class IosWdaHost {
     IosCommandService? commands,
     String? forwardExecutable,
     this.requestTimeout = const Duration(seconds: 8),
-    this.existingWdaProbeTimeout = const Duration(seconds: 2),
   }) : commands = commands ?? IosCommandService(),
        _forwardExecutable = forwardExecutable;
   final IosCommandService commands;
@@ -22,9 +21,6 @@ class IosWdaHost {
   String get forwardExecutable =>
       _forwardExecutable ?? resolveToolPath('iproxy');
   final Duration requestTimeout;
-
-  /// 启动新 Runner 前，等待已有 WDA 响应的时间。
-  final Duration existingWdaProbeTimeout;
   final Map<String, _WdaConnection> _connections = {};
   final Set<String> _busy = {};
   final Set<String> _cancelled = {};
@@ -247,7 +243,7 @@ class IosWdaHost {
       // WDA 可在之前的启动进程退出后继续服务。先复用，避免重复启动失败时
       // 将健康的 USB 转发一起关闭；短暂等待也覆盖 iproxy 尚未绑定端口的竞态。
       var responding = false;
-      final reuseDeadline = DateTime.now().add(existingWdaProbeTimeout);
+      final reuseDeadline = DateTime.now().add(const Duration(seconds: 2));
       do {
         checkCancelled();
         try {

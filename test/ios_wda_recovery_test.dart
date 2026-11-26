@@ -7,8 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// 本地 HTTP/子进程故障注入：单次超时不能杀死可用会话，也不能重放输入。
 void main() {
-  // 包含假 CLI 启动、WDA 就绪轮询和最慢的两次 HTTP 超时。
-  const integrationTimeout = Timeout(Duration(seconds: 90));
   late Directory dir;
   late IosWdaHost host;
   late File fault;
@@ -23,7 +21,7 @@ void main() {
       commands: IosCommandService(executable: cli.path),
       forwardExecutable: cli.path,
       // 真实 HTTP/子进程在全量并行测试时也需要调度预算；故障由假服务持续阻塞响应注入。
-      requestTimeout: const Duration(seconds: 5),
+      requestTimeout: const Duration(seconds: 2),
     );
     await host.execute('phone', 'start', {});
   });
@@ -40,13 +38,12 @@ void main() {
           host.execute('phone', 'geometry', {}),
           host.execute('phone', 'geometry', {}),
           host.execute('phone', 'tap', {'x': 1, 'y': 2}),
-        ]).timeout(const Duration(seconds: 10));
+        ]).timeout(const Duration(seconds: 3));
         expect(results.every((r) => r['ready'] == true), true);
         expect(results.first['width'], 375);
       }
     },
     skip: Platform.isWindows,
-    timeout: integrationTimeout,
   );
 
   for (final action in ['tap', 'geometry']) {
@@ -60,7 +57,7 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 550));
         }
         await fault.writeAsString(
-          jsonEncode({'kind': 'timeout', 'path': path, 'delaySeconds': 20}),
+          jsonEncode({'kind': 'timeout', 'path': path, 'delaySeconds': 10}),
         );
         await expectLater(
           host.execute('phone', action, {'x': 1, 'y': 2}),
@@ -79,20 +76,19 @@ void main() {
         );
       },
       skip: Platform.isWindows,
-      timeout: integrationTimeout,
     );
   }
 
   for (final kind in ['timeout', 'invalidSession']) {
     test('$kind with unusable session clears ready', () async {
       await fault.writeAsString(
-        jsonEncode({'kind': kind, 'path': '*', 'delaySeconds': 20}),
+        jsonEncode({'kind': kind, 'path': '*', 'delaySeconds': 10}),
       );
       await expectLater(
         host.execute('phone', 'tap', {'x': 1, 'y': 2}),
         throwsA(predicate((e) => '$e'.contains('iosWdaConnectionLost'))),
       );
       expect((await host.execute('phone', 'status', {}))['ready'], false);
-    }, skip: Platform.isWindows, timeout: integrationTimeout);
+    }, skip: Platform.isWindows);
   }
 }
